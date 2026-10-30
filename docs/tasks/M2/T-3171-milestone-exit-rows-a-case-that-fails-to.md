@@ -3,7 +3,7 @@ id: T-3171
 title: "Milestone exit rows: a case that fails to load, panics or times out fails its measure (the M0-M2 probe row reads met with 8 unloadable cases)"
 milestone: M2
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -42,23 +42,42 @@ cases do not load.
   `crates/rustsheet-eval` is not a protected path.
 
 ## Acceptance criteria
-- [ ] Decision record in `docs/decisions/` (via `make new-decision`): a scored case with status
+- [x] Decision record in `docs/decisions/` (via `make new-decision`): a scored case with status
       `EngineError`, `Panic` or `Timeout` fails the exit measure (gen suite, ironcalc-calc, probe
       row) that reads it; the rule for pending cases; amends decisions 0135 and 0146.
-- [ ] The probe-milestone table (`## Probe milestones`) gains a column with the count of such
+- [x] The probe-milestone table (`## Probe milestones`) gains a column with the count of such
       cases per row, and the "Failing cases in <row>" lists keep naming them.
-- [ ] Unit tests in `milestone_exit.rs`: a probe row with one `EngineError` case and 0 visibly-off
+- [x] Unit tests in `milestone_exit.rs`: a probe row with one `EngineError` case and 0 visibly-off
       cells reads `not met`; the same row with the case passing reads `met`; a gen suite with a
       `Timeout` case reads `not met`; a pending case that runs cleanly does not change a verdict.
-- [ ] `make eval` on a tree where T-3165 is still open shows the M2 exit row `not met` and the
+- [x] `make eval` on a tree where T-3165 is still open shows the M2 exit row `not met` and the
       row text names the 8 `t3097-nesting-paren-*` cases (or their count with the list below the
       table); every other row's verdict is unchanged on that run (state any that flip in the PR,
       with the case that flips it).
-- [ ] The threshold paragraph above the exit table states the new rule.
-- [ ] `make check` green; reviewers approve.
+- [x] The threshold paragraph above the exit table states the new rule.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fixing the eight cases (T-3165).
 - The Phase 1 line and the v1.5 checkpoint's per-function rates: if they share the hole, file a
   follow-up task naming the field.
 - Moving the current milestone or editing docs/status.md (the steward does that).
+
+## Outcome
+Decision 0174: a case whose status is `EngineError`, `Panic` or `Timeout` fails every exit measure that reads it.
+- One definition: `CaseStatus::did_not_run` and `CaseResult::blocked_key` (`case!*`), which the poi M8 subset
+  now uses too.
+- Gen suite: a required suite (`gen_met`, `more_suites`) is not met while one of its cases did not run.
+- Probe row: the row (`probes_met`) is not met while one of its cases did not run. "Probe milestones" gains a
+  `did not run` column.
+- ironcalc-calc: a case that did not run has no cells to classify, so it fails `calc_met` in every row that has
+  a calc measure.
+- Pending cases: one that runs cleanly never counts; one that crashes counts.
+- The exit table shows `N cases did not run`. The exit row lists the cases (`gen_blocked_cases`,
+  `calc_blocked_cases`, `probe_blocked_cases`), and `scripts/exit_owners.py` lists them as whole cases. The
+  threshold paragraph states the rule.
+
+`make eval` on this branch (2026-10-30, after T-3165 pinned the eight paren-depth cases): no case in any suite
+failed to run, so no exit verdict flipped. M2 reads `not met` on 292 visibly-off M0-M2 probe cells, the same as
+on main. Unit tests pin the T-3165 shape: an M0-M2 row with one case that did not run and 0 visibly-off cells
+reads `not met`. Eval delta: none (no cell changed).

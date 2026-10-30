@@ -129,9 +129,7 @@ pub fn summarize(catalog: &Catalog, results: &[CaseResult]) -> Option<FunctionSc
         ..FunctionScope::default()
     };
     for r in cases {
-        if r.status.did_not_run() {
-            scope.blocked_cases.push(format!("{}!*", r.id));
-        }
+        scope.blocked_cases.extend(r.blocked_key());
         for c in &r.cells {
             let Some(formula) = c.formula.as_deref().or(c.anchor_formula.as_deref()) else {
                 scope.no_formula += 1;

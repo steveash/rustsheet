@@ -350,8 +350,8 @@ pub struct MilestoneRow {
     /// row (decision 0146 item 4).
     #[serde(default)]
     pub text_failing_cells: Vec<String>,
-    /// Cases of the row that did not run to scoring ([`crate::runner::CaseStatus::did_not_run`]), as `case!*`, in
-    /// case order: the row's exit measure is not met while there is one (decision 0174).
+    /// Cases of the row that did not run to scoring, as `case!*` ([`CaseResult::blocked_key`]),
+    /// in case order: the row's exit measure is not met while there is one (decision 0174).
     #[serde(default)]
     pub blocked_cases: Vec<String>,
 }
@@ -402,9 +402,8 @@ pub fn summarize(rules: &Rules, results: &[CaseResult], mode: BaselineMode) -> V
             rows_of_case.insert(row);
         }
         let case_row = row_of(rules.case_milestone(r));
-        if r.status.did_not_run() {
-            let s = rows.entry(case_row).or_default();
-            s.blocked_cases.push(format!("{}!*", r.id));
+        if let Some(key) = r.blocked_key() {
+            rows.entry(case_row).or_default().blocked_cases.push(key);
         }
         // A text item takes its cell's milestone, as its value cell does (decision 0146 item 4).
         for t in &r.text {

@@ -233,6 +233,14 @@ enum Prepared {
 }
 
 impl CaseResult {
+    /// `case!*` when the case did not run to scoring ([`CaseStatus::did_not_run`]): how every exit
+    /// measure lists such a case and `scripts/exit_owners.py` reads it as a whole case (decision
+    /// 0174).
+    #[must_use]
+    pub fn blocked_key(&self) -> Option<String> {
+        self.status.did_not_run().then(|| format!("{}!*", self.id))
+    }
+
     /// A case `id` of `suite` with `status`, nothing checked or skipped and no cells: the start
     /// of every result, filled in with struct-update syntax.
     pub(crate) fn empty(id: &str, suite: &str, status: CaseStatus) -> CaseResult {

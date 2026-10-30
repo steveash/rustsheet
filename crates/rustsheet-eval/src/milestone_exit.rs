@@ -316,14 +316,6 @@ fn subset_exit(report: &RunReport, num: usize) -> SuiteExit {
     out
 }
 
-/// The cases of `cases` that did not run to scoring, as `case!*` (decision 0174).
-fn blocked_cases<'a>(cases: impl Iterator<Item = &'a CaseResult>) -> Vec<String> {
-    cases
-        .filter(|r| r.status.did_not_run())
-        .map(|r| format!("{}!*", r.id))
-        .collect()
-}
-
 /// `need`'s measure from the report's suite row and its cases.
 fn suite_exit(report: &RunReport, need: &SuiteNeed) -> SuiteExit {
     let mut out = SuiteExit {
@@ -343,7 +335,7 @@ fn suite_exit(report: &RunReport, need: &SuiteNeed) -> SuiteExit {
     out.rate15 = (scored > 0).then(|| s.rate(scored - visible));
     out.allowance = Some(allowance(scored, need.rate_num));
     let cases = || report.cases.iter().filter(|r| r.suite == need.name);
-    out.blocked_cases = blocked_cases(cases());
+    out.blocked_cases = cases().filter_map(CaseResult::blocked_key).collect();
     out.met = Some(
         out.blocked_cases.is_empty()
             && scored >= need.min_scored

@@ -141,9 +141,9 @@ pub fn summarize(results: &[CaseResult]) -> Option<PoiM8Subset> {
     }
     let mut out = PoiM8Subset::default();
     for r in cases {
-        if r.status.did_not_run() {
+        if let Some(key) = r.blocked_key() {
             if !r.reference_forms.subset.is_empty() {
-                out.blocked_cases.push(format!("{}!*", r.id));
+                out.blocked_cases.push(key);
             }
             continue;
         }
