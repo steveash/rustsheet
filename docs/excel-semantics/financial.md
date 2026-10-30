@@ -3288,11 +3288,10 @@ date past the calendar is `#NUM!` before AMORDEGRC's boolean rate (`AMORDEGRC(70
 e8d55ec393460bb7 A374), while a date of 0 passes the read (`AMORDEGRC(-1,<blank>,38872,265,0,<#VALUE!>,0)` is `#VALUE!`,
 1dce4774f5c0e736 A199) and one below 0 is `#NUM!` as it is read ("AMORLINC and AMORDEGRC check order").
 Ours: since T-2455 (`cast_number_no_bools_ref` in `accrintm_of`, `accrint_of` and the AMORLINC/AMORDEGRC kernel, which since
-T-2485 refuses a boolean in every argument, "AMORLINC and AMORDEGRC check order"). ACCRINT's other dates and numbers
-still take booleans; a FALSE par cell is `#VALUE!` in Excel ("ACCRINT check order: calc_method first, dates as read",
-T-2792), the others are unprobed.
+T-2485 refuses a boolean in every argument, "AMORLINC and AMORDEGRC check order"). Since T-2827 ACCRINT refuses a boolean in
+every argument but calc_method ("ACCRINT check order: calc_method first, dates as read").
 Status: VERIFIED (excel-graph)
-Tasks: T-2455
+Tasks: T-2455, T-2827
 
 ## ACCRINT check order: calc_method first, dates as read (T-2676)
 Rule: ACCRINT reads its last argument, calc_method, before all the others: calc_method's own error is the result, and
@@ -3317,12 +3316,13 @@ securities functions check frequency and dates first"). A par read from a FALSE 
   before a later bad argument, 9 are `#NUM!` (also A37, A157, A232 of 290180acf017709c, A43 of 932b33b1ef8b7608 and A255
   of f81bd3b6dc373e5c); the tenth, f81bd3b6dc373e5c A115, is `#SPILL!` because its par is an array, which lifts first.
 - boolean par: `ACCRINT(32965,35462,36817,10,<FALSE cell>,100,1.005,FALSE)` is `#VALUE!` (932b33b1ef8b7608 A233).
+- booleans anywhere: a TRUE or FALSE, typed or from a cell, in issue, first_interest, settlement, rate, par, frequency or
+  basis is `#VALUE!` (probes/accrint-boolean-args A1:A28, T-2827; the all-number baseline A29 is 506.8056).
 Unprobed: whether an issue after the settlement waits for the later arguments (ours checks the order after every
-read); a settlement past 2958465 (every cell past 2958465 is an issue or first_interest) or below 0 read before a later error; a first_interest of 0 in a 1900 workbook (ours: `#NUM!`); a typed boolean par, and
-booleans in first_interest, settlement, frequency and basis.
+read); a settlement past 2958465 (every cell past 2958465 is an issue or first_interest) or below 0 read before a later error, and a boolean frequency or basis after such a settlement; a first_interest of 0 in a 1900 workbook (ours: `#NUM!`).
 Evidence: gen-m9/290180acf017709c, 932b33b1ef8b7608, f81bd3b6dc373e5c (excel-graph, T-2676 sweep, 2026-10-26); each
 cell's arguments evaluated with the engine on the case's Data sheet.
-Ours: since T-2792, `accrint_of` (functions/financial/accrint.rs) reads calc_method first, then issue and first_interest, each range-checked from serial 0 as it is read (serial 0 itself still fails the later calendar check), then the other arguments in order; settlement is checked against its calendar limit only after all are read, and a boolean par, typed or from a cell, is `#VALUE!` (the engine cannot tell a typed one from a cell).
+Ours: since T-2792, `accrint_of` (functions/financial/accrint.rs) reads calc_method first, then issue and first_interest, each range-checked from serial 0 as it is read (serial 0 itself still fails the later calendar check), then the other arguments in order; settlement is checked against its calendar limit only after all are read, and a boolean in any of the seven is `#VALUE!`, typed or from a cell (T-2827).
 Status: VERIFIED (excel-graph)
 Tasks: T-2792
 
