@@ -25,7 +25,7 @@ campaign: visible
   sd 19; (150, 90) 576 sd 18; (60.5, 67.5) 275 sd 9; (40.7, 55.3) 235 sd 8; (40.25, 89.75) 230 sd 10; (50, 50) 174
   sd 15; (45.2, 60.9) 118 sd 0.5; 9 more shapes with 2-38 cells each. Within a shape the miss varies with x. The one
   exception is (45.2, 60.9), a constant offset of +5.3 units, which is the Loader constant's residue (T-2586 item 1).
-  So most of this is the x-dependent part: bd0 and the exponent. The sd grows with n, as on T-3243's a = 1025 column.
+  So most of this is the x-dependent part: bd0 and the exponent. The sd grows with n, as on T-3250's a = 1025 column.
 - Stage `visible`. On 300-cell samples against 200-bit mpmath, Excel is a median 21 ulp (p90 74) from the correctly
   rounded density on the bd0 run probe and the engine 14 (p90 67). On the bd0 hold-out probe the figures are 22
   (p90 62) and 17 (p90 49). So Excel is the inaccurate one.
@@ -56,7 +56,7 @@ Cells (gap triage 2026-10-30c; 3,417 cells, all BETA.DIST(.,FALSE) with a + b - 
 ## Acceptance criteria
 - [ ] The listed cells are within 15 digits of Excel's value, or each one left over is named here with its reason
       and an owner.
-- [ ] No new visibly-off cell in any suite. T-2507's fixed cells, T-3220's and T-3243's cells, and the
+- [ ] No new visibly-off cell in any suite. T-2507's fixed cells, T-3220's and T-3250's cells, and the
       min(a,b) <= 1 densities keep their verdicts. The known-failure lines in eval/baseline/probes-numeric.txt only
       shrink, and the ironcalc-calc BETA.DIST lines do not grow.
 - [ ] statistics.md's Loader entry records the piece found, with its hold-out score (exact, 4 ulp and 15 digits, and
@@ -65,7 +65,7 @@ Cells (gap triage 2026-10-30c; 3,417 cells, all BETA.DIST(.,FALSE) with a + b - 
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- n < 90 (T-3220), the a = 1025 column and shapes above n = 256 (T-3243), min(a,b) <= 1 (T-2503, T-2821, T-3035).
+- n < 90 (T-3220), the a = 1025 column and shapes above n = 256 (T-3250), min(a,b) <= 1 (T-2503, T-2821, T-3035).
 - The cdf (incomplete beta tasks).
 
 ## Visible-parity stage

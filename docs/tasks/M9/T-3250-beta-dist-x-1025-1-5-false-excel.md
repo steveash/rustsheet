@@ -1,5 +1,5 @@
 ---
-id: T-3243
+id: T-3250
 title: "BETA.DIST(x,1025,1.5,FALSE): Excel's Loader density at a large exponent (t2464-r2-log1p-hix column C, 4,180 unowned visibly-off cells)"
 milestone: M9
 lane: functions-stat
@@ -7,13 +7,13 @@ status: todo
 priority: P2
 size: M
 tier: opus
-depends_on: [T-3242]
+depends_on: [T-3249]
 campaign: visible
 ---
 
 ## Goal
 `BETA.DIST(x,a,b,FALSE)` at large shapes, where the Loader exponent is large, matches Excel's value to 15 digits.
-That covers the 4,180 visibly-off cells of T-2464's a = 1025, b = 1.5 column and T-3242's sweep, with no new
+That covers the 4,180 visibly-off cells of T-2464's a = 1025, b = 1.5 column and T-3249's sweep, with no new
 visibly-off cell anywhere.
 
 ## Context
@@ -29,7 +29,7 @@ visibly-off cell anywhere.
   - Calc!C4000: 1.6760890714342508e-38 vs 1.6760890714342558e-38
   - Calc!C5000: 2.6526585654535142e-5 vs 2.65265856545351e-5
 - Root cause (suspected): an error at the scale of the exponent. The sd of (ours - Excel) in units of 2^-52 relative
-  grows with |ln f|: 14 at 0-50, 52 at 100-150, 110 at 250-350. It falls back to 18-38 above 400 (T-3242's Context
+  grows with |ln f|: 14 at 0-50, 52 at 100-150, 110 at 250-350. It falls back to 18-38 above 400 (T-3249's Context
   has the table). That is the signature of one rounding at |E| scale that Excel makes and the engine does not, or the
   reverse. The model of record (docs/excel-semantics/statistics.md, "Beta density for min(a,b) > 1 is Loader's
   saddle point") holds E extended into EXP. Its stirlerr and bd0 pieces were fitted at n <= 256, with an n trend
@@ -39,9 +39,9 @@ visibly-off cell anywhere.
   not Excel's value (91 ulp).
 - docs/research/t2464/r2-log1p/RESULTS.md section 5: for x > 0.625 the density's ln x is Excel's LN(x), not
   alnrel(-y). It calls this column (b = 1.5) "inconclusive", with an unsolved composition.
-- **Needs an oracle sweep (T-3242).** One shape cannot separate what depends on n, on k and on bd0's arguments, and
-  the fit needs a hold-out no choice uses (decision 0056). Fit on this column and T-3242's fit case. Score once on
-  T-3242's hold-out. Time-box per decision 0056 and record negatives in statistics.md.
+- **Needs an oracle sweep (T-3249).** One shape cannot separate what depends on n, on k and on bd0's arguments, and
+  the fit needs a hold-out no choice uses (decision 0056). Fit on this column and T-3249's fit case. Score once on
+  T-3249's hold-out. Time-box per decision 0056 and record negatives in statistics.md.
 - Coordinate with T-3244 (two large shapes, n 90-256) and T-2586 (research on the Loader constant and the bd0
   series). If one of them lands a piece first, start from it. T-3173 (the F density's power term) shows the same
   pattern of error growing with the exponent.
@@ -50,7 +50,7 @@ Cells (gap triage 2026-10-30c): every cell of this case:
 - probes-numeric/t2464-r2-log1p-hix.case.json
 
 ## Acceptance criteria
-- [ ] Every cell of the case, and every cell of T-3242's two cases, is within 15 digits of Excel's value, or each
+- [ ] Every cell of the case, and every cell of T-3249's two cases, is within 15 digits of Excel's value, or each
       cell left over is named here with its reason and an owner.
 - [ ] No new visibly-off cell in any suite: the cells of T-2507, T-3220, T-3244 and the min(a,b) <= 1 tasks keep
       their verdicts, and the known-failure lines in eval/baseline/probes-numeric.txt only shrink.

@@ -1,5 +1,5 @@
 ---
-id: T-3242
+id: T-3249
 title: "Oracle sweep: BETA.DIST(.,FALSE) Loader density at large shapes (a + b from 128 to 8192, partner 1.5 to a), the fitting and hold-out points the large-exponent residue needs"
 milestone: M9
 lane: research
@@ -11,13 +11,13 @@ depends_on: []
 ---
 
 ## Goal
-Oracle-filled probe cases give T-3243 (BETA.DIST at a = 1025, b = 1.5) the Excel points it needs to fit the Loader
+Oracle-filled probe cases give T-3250 (BETA.DIST at a = 1025, b = 1.5) the Excel points it needs to fit the Loader
 density's large-shape behaviour, plus a hold-out no fitting choice uses, so the fit is not made blind to one shape
 (decision 0056).
 
 ## Context
 - Gap triage 2026-10-30c (`make eval` on main 40ca52179, excel-graph). The only cached evidence above a + b = 300 is
-  the a = 1025, b = 1.5 column of T-2464's log1p probe (5,264 cells, one shape, x in (0.625, 1); T-3243 owns it).
+  the a = 1025, b = 1.5 column of T-2464's log1p probe (5,264 cells, one shape, x in (0.625, 1); T-3250 owns it).
   There, the error between Excel and the engine grows with the size of the log of the density. Table: |ln f| bucket,
   cells, sd of (ours - Excel) in units of 2^-52 relative:
   0-50 273 13.6; 50-100 463 28.3; 100-150 488 51.6; 150-200 499 57.3; 200-250 467 58.4; 250-300 503 110;
@@ -50,12 +50,12 @@ density's large-shape behaviour, plus a hold-out no fitting choice uses, so the 
       The generator that rebuilds them byte for byte is in docs/research/t3242/.
 - [ ] `make eval` loads both. Their known failures are recorded with `make eval-baseline` and no existing line
       regresses.
-- [ ] T-3243's Cells section names both new case stems, so that no visibly-off cell they add is unowned
+- [ ] T-3250's Cells section names both new case stems, so that no visibly-off cell they add is unowned
       (`make unowned-off ALL=1 FUNCTION=BETA.DIST`). T-3173's Cells section names the F.DIST column.
 - [ ] statistics.md's Loader entry gets one line on what the sweep shows, without fitting: the error sd against
       |ln f| and n per shape, and where it collapses.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- Fitting or changing the engine (T-3243, T-3244).
+- Fitting or changing the engine (T-3250, T-3244).
 - min(a,b) <= 1 (T-2503, T-2821, T-3035).
