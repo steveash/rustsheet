@@ -132,3 +132,6 @@ Reopen on new evidence, either of:
 - a model of Excel's own cdf near p that reproduces those 18 cdf cells bit for bit;
 - T-3175's exact-piece probe of Excel's cdf at consecutive doubles around one quantile, which would show whether
   Excel's quantile is the first point of its own band along some path.
+
+Main against HEAD, per cell: no engine change, so 0 fixed, 0 lost bit-exact, 0 newly visibly off and 0 visibly
+fixed. `make check` is green.
