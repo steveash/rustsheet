@@ -26,7 +26,7 @@ use xml::XmlNode;
 
 use rustsheet_engine::{
     expressions::{
-        parser::{new_parser_english, stringify::to_english_string},
+        parser::{new_parser_english, stringify::to_english_string, MAX_NESTED_CALLS},
         types::CellReferenceRC,
     },
     types::{Metadata, Workbook, WorkbookSettings, WorkbookView},
@@ -93,7 +93,11 @@ fn resolve_theme_path(rels: &HashMap<String, Relationship>) -> Option<String> {
 
 // FIXME: This is a bit of a HACK. We basically re-parse all the defined names assuming the context is `A1`
 // and there is no tables or defined names.
-fn reparse_formula_hack(formula: &str, worksheets: &[String]) -> Result<String, XlsxError> {
+fn reparse_formula_hack(
+    name: &str,
+    formula: &str,
+    worksheets: &[String],
+) -> Result<String, XlsxError> {
     let defined_names = Vec::new();
     let tables = HashMap::new();
     let mut parser = new_parser_english(worksheets.to_owned(), defined_names, tables);
@@ -103,6 +107,13 @@ fn reparse_formula_hack(formula: &str, worksheets: &[String]) -> Result<String, 
         row: 1,
     };
     let t = parser.parse(formula, &cell_reference);
+    // A name body is held to the cell formulas' 65 nested calls: Excel refuses a workbook whose
+    // name body nests 66 (probes/t3143-name-body-65, T-3143; syntax.md "Formula nesting depth cap").
+    if parser.nests_too_many_calls() {
+        return Err(XlsxError::Workbook(format!(
+            "definedName {name} body nests more than {MAX_NESTED_CALLS} function calls"
+        )));
+    }
 
     Ok(to_english_string(&t, &cell_reference))
 }
@@ -174,7 +185,7 @@ fn load_package<R: Read + Seek>(
         .map(|s| s.name.clone())
         .collect::<Vec<_>>();
     for dn in &mut workbook.defined_names {
-        dn.formula = reparse_formula_hack(&dn.formula, &worksheet_names)?;
+        dn.formula = reparse_formula_hack(&dn.name, &dn.formula, &worksheet_names)?;
     }
     let external_books = load_external_books(archive, &rels, &workbook.external_references);
     let metadata = match load_metadata(archive) {

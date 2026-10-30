@@ -380,45 +380,37 @@ impl Model {
         let skipped_columns = i64::from(full_column2) - i64::from(column2.max(column1 - 1));
         let skipped_rows = i64::from(full_row2) - i64::from(row2.max(row1 - 1));
         let width = i64::from(full_column2) - i64::from(column1) + 1;
-        if skipped_columns == 0 {
-            self.textjoin_push_range(
-                &Range { left, right },
-                false,
-                (&mut *size, &mut *values, &mut *over_limit),
-                cell,
-            )?;
-        } else {
-            // The clipped columns' delimiters follow each row's cells, so the join stays in
-            // row-major order (the first error cell reached, and the limit, depend on it): one walk
-            // per row. Past the limit nothing more changes the result (cell errors are dropped), so
-            // the walk stops.
-            for row in row1..=row2 {
-                if column2 >= column1 {
-                    let row_range = Range {
-                        left: CellReferenceIndex {
-                            row,
-                            column: column1,
-                            ..left
-                        },
-                        right: CellReferenceIndex {
-                            row,
-                            column: column2,
-                            ..right
-                        },
-                    };
-                    self.textjoin_push_range(
-                        &row_range,
-                        false,
-                        (&mut *size, &mut *values, &mut *over_limit),
-                        cell,
-                    )?;
-                }
-                if !*over_limit {
-                    *over_limit = size.push_empties(values, skipped_columns);
-                }
-                if *over_limit {
-                    return Ok(());
-                }
+        // One walk per row, so the join stays in row-major order (the first error cell reached, and
+        // the limit, depend on it) when columns are clipped, and so the walk can stop at the limit:
+        // Excel reads no cell past it, so a range that includes the TEXTJOIN cell itself is #CALC!,
+        // not circular (probes/textjoin-whole-rows-self-reference{,-full-width} B5; text.md). Past
+        // the limit nothing more changes the result (cell errors are dropped).
+        for row in row1..=row2 {
+            if column2 >= column1 {
+                let row_range = Range {
+                    left: CellReferenceIndex {
+                        row,
+                        column: column1,
+                        ..left
+                    },
+                    right: CellReferenceIndex {
+                        row,
+                        column: column2,
+                        ..right
+                    },
+                };
+                self.textjoin_push_range(
+                    &row_range,
+                    false,
+                    (&mut *size, &mut *values, &mut *over_limit),
+                    cell,
+                )?;
+            }
+            if !*over_limit {
+                *over_limit = size.push_empties(values, skipped_columns);
+            }
+            if *over_limit {
+                return Ok(());
             }
         }
         if !*over_limit {

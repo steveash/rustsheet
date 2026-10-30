@@ -30,6 +30,8 @@ the two cells T-0972 made newly visibly off belong to T-3239 and T-3238, after T
 - probes-numeric/t1049-chisqinvrt Calc!A20 `CHISQ.INV.RT(0.999,20)`: Excel 5.921040745487456, ours 5.92104074548752
 - probes-numeric/t1049-chisqinv Calc!A27 `CHISQ.INV(0.5,1E10)` and t1049-chisqinvrt Calc!A27 `CHISQ.INV.RT(0.5,1E10)`:
   Excel 9999999999.333334, ours `#NUM!` (shape above `REFINE_SHAPE_MAX`, statrs' search alone; check T-2982 first)
+  (2026-10-30: T-3070 removed `REFINE_SHAPE_MAX` and gives `CHISQ.INV(0.5,1E10)` and `CHISQ.INV.RT(0.5,1E10)` Excel's
+  value to 15 digits, 2 ulps; these two t1049 A27 cells are no longer this task's, T-3272 owns their last digits.)
 
 Near p = 0.999 Excel's double cdf is flat and Excel is far from the true quantile (`docs/excel-semantics/statistics.md`,
 the T-0972 bullet), so those cells need Excel's iteration, not more accuracy.

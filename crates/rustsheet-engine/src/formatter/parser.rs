@@ -399,6 +399,8 @@ impl Parser {
         // Where each currency symbol sits among `tokens`, for a date section to print it there.
         let mut currency_positions: Vec<(usize, char)> = Vec::new();
         let mut is_time = false;
+        // Excel: after a minute, later `m`/`mm` are months (number-formats.md "`mm` after a minute").
+        let mut minute_read = false;
         let mut hijri = false;
         let mut calendar_prefix = false;
         // Whether the previous token is an unescaped colon, which the next one joins.
@@ -674,23 +676,18 @@ impl Parser {
                     is_date = true;
                     tokens.push(TextToken::MonthName);
                 }
-                Token::Month => {
-                    if is_time || self.minute_before_seconds(&next_token) {
-                        // minute
-                        tokens.push(TextToken::Minute);
-                    } else {
-                        is_date = true;
-                        tokens.push(TextToken::Month);
-                    }
-                }
-                Token::MonthPadded => {
-                    if is_time || self.minute_before_seconds(&next_token) {
-                        // minute padded
-                        tokens.push(TextToken::MinutePadded);
-                    } else {
-                        is_date = true;
-                        tokens.push(TextToken::MonthPadded);
-                    }
+                Token::Month | Token::MonthPadded => {
+                    let padded = matches!(token, Token::MonthPadded);
+                    let minute =
+                        (is_time && !minute_read) || self.minute_before_seconds(&next_token);
+                    minute_read |= minute;
+                    is_date |= !minute;
+                    tokens.push(match (minute, padded) {
+                        (true, false) => TextToken::Minute,
+                        (true, true) => TextToken::MinutePadded,
+                        (false, false) => TextToken::Month,
+                        (false, true) => TextToken::MonthPadded,
+                    });
                 }
                 Token::MonthLetter => {
                     is_date = true;
