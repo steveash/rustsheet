@@ -180,6 +180,11 @@ class Collected:
     ready: list[merge_ready.Verdict] = field(default_factory=list)
     unlabel: list[tuple[int, str]] = field(default_factory=list)
     keep: list[tuple[int, str]] = field(default_factory=list)
+    # Verdict-record gaps under `verdict_records = "warn"` (decision 0178): reported only.
+    warnings: list[tuple[int, str]] = field(default_factory=list)
+
+    def warning_lines(self) -> list[str]:
+        return [f"verdict records #{pr} (warn): {warning}" for pr, warning in self.warnings]
 
 
 def collect(client: Client, repo: merge_ready.Repo) -> Collected:
@@ -192,6 +197,7 @@ def collect(client: Client, repo: merge_ready.Repo) -> Collected:
         verdict = merge_ready.verify(client, pr, repo)
         actions = {f.action for f in verdict.failures}
         reasons = "; ".join(f.reason for f in verdict.failures)
+        found.warnings += [(pr, warning) for warning in verdict.warnings]
         if merge_ready.UNLABEL in actions:
             found.unlabel.append((pr, reasons))
         elif merge_ready.KEEP in actions:
@@ -222,6 +228,7 @@ def dry_run(client: Client, root: Path = ROOT) -> str:
     lines += [f"would unlabel #{pr}: {reason}" for pr, reason in found.unlabel]
     lines += [f"skipped, label kept #{pr}: {reason}" for pr, reason in found.keep]
     lines += [f"waiting for a later batch #{v.pr}" for v in found.ready[BATCH_MAX:]]
+    lines += found.warning_lines()
     return "\n".join(lines)
 
 
@@ -660,6 +667,7 @@ class Stage:
         repo.fetch_base()
         base = git("rev-parse", f"refs/merge-ready/{merge_ready.BASE_BRANCH}", root=self.root).stdout.strip()
         found = collect(self.client, repo)
+        self.log += found.warning_lines()
         for pr, reason in found.unlabel:
             self.unlabel(pr, reason)
         heads = [(v.pr, v.marker.head) for v in found.ready[:BATCH_MAX] if v.marker is not None]

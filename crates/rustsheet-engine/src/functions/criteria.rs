@@ -4,10 +4,10 @@
 
 use crate::{
     calc_result::CalcResult,
-    cast::value_number_text,
+    cast::value_number_text_with,
     expressions::token::{is_english_error_string, Error},
     formatter::date_text::{parse_date, CurrentYear},
-    functions::util::collation::{cmp_text, fold_case},
+    functions::util::collation::{cmp_text_pairwise, fold_case},
     locale::Locale,
     number_format::{cmp_excel_precision, parse_excel_number, parse_finite_number},
     text::Text,
@@ -57,6 +57,7 @@ fn numbers_equal(a: f64, b: f64) -> bool {
 /// read further, which keeps a numeric criterion over a column of words cheap.
 fn criterion_text_number(
     text: &str,
+    currencies: &[&str],
     locale: &Locale,
     current_year: CurrentYear,
     date_system: DateSystem,
@@ -71,8 +72,21 @@ fn criterion_text_number(
     {
         return None;
     }
-    value_number_text(trimmed, locale, current_year, date_system)
+    value_number_text_with(
+        trimmed,
+        currencies,
+        currencies,
+        locale,
+        current_year,
+        date_system,
+    )
 }
+
+/// Currencies a criterion operand reads (`-$3 1/2`; not `€3 1/2`, `€1` or `1€`: `COUNTIF(3.5,
+/// "€3 1/2")` and `COUNTIF(1,"€1")` are 0) and a text cell reads (`COUNTIF("€3 1/2",3.5)` is 1)
+/// (probes/typed-input-sign-space-mixed-fraction I5, J2, J3, E5).
+const OPERAND_CURRENCIES: &[&str] = &["$"];
+const CELL_CURRENCIES: &[&str] = &["$", "€"];
 
 /// [`criterion_text_number`] for a matcher, which outlives the caller's current-year closure:
 /// the year is read once, when the criterion is built.
@@ -97,7 +111,13 @@ impl NumberTextReader {
     }
 
     fn read(&self, text: &str) -> Option<f64> {
-        criterion_text_number(text, self.locale, &|| self.year, self.date_system)
+        criterion_text_number(
+            text,
+            CELL_CURRENCIES,
+            self.locale,
+            &|| self.year,
+            self.date_system,
+        )
     }
 }
 
@@ -176,15 +196,17 @@ fn result_is_not_equal_to_bool(calc_result: &CalcResult, target: bool) -> bool {
 // STRINGS ///
 //*********///
 
-// Text criteria compare with `cmp_text`, which ignores case and reads a lone surrogate as its own
-// unit (docs/excel-semantics/text.md "Lone surrogates", criteria paragraph;
-// probes/criteria-lone-surrogates A1-A8, A18-A21).
+// Text criteria compare with `cmp_text_pairwise`, Excel's `<`, `=`, `>` between texts: it ignores
+// case, reads a lone surrogate as its own unit (docs/excel-semantics/text.md "Lone surrogates",
+// criteria paragraph; probes/criteria-lone-surrogates A1-A8, A18-A21) and skips the accent units
+// two letters share before summing the rest (`COUNTIF(r,"a")` does not count `"a"` plus 16
+// U+0302; probes/t3181-collation-prefix-callers Calc!B1:B12).
 
 fn result_is_equal_to_string(calc_result: &CalcResult, target: &Text) -> bool {
     match calc_result {
         // Excel: `COUNTIF(r,"ae")` counts "æ" and `"a-b"` does not equal "ab" (the collation of
         // `=`, docs/excel-semantics/criteria.md "COUNTIF text criteria use the collation").
-        CalcResult::String(s) => cmp_text(s, target).is_eq(),
+        CalcResult::String(s) => cmp_text_pairwise(s, target).is_eq(),
         CalcResult::EmptyCell => target.is_empty(),
         _ => false,
     }
@@ -209,14 +231,14 @@ fn result_starts_with_units(calc_result: &CalcResult, target: &[u16]) -> bool {
 // errors and blanks (same as the number/bool variants above).
 fn result_is_not_equal_to_string(calc_result: &CalcResult, target: &Text) -> bool {
     match calc_result {
-        CalcResult::String(s) => cmp_text(s, target).is_ne(),
+        CalcResult::String(s) => cmp_text_pairwise(s, target).is_ne(),
         _ => true,
     }
 }
 
 fn result_is_less_than_string(calc_result: &CalcResult, target: &Text) -> bool {
     match calc_result {
-        CalcResult::String(s) => cmp_text(s, target).is_lt(),
+        CalcResult::String(s) => cmp_text_pairwise(s, target).is_lt(),
         _ => false,
     }
 }
@@ -225,21 +247,21 @@ fn result_is_less_than_string(calc_result: &CalcResult, target: &Text) -> bool {
 // E10-E13: "10.1.2026" and "10.3.2026" are `<="10.3.2026"`, not `<="1.3.2026"`).
 fn result_is_less_or_equal_than_string(calc_result: &CalcResult, target: &Text) -> bool {
     match calc_result {
-        CalcResult::String(s) => cmp_text(s, target).is_le(),
+        CalcResult::String(s) => cmp_text_pairwise(s, target).is_le(),
         _ => false,
     }
 }
 
 fn result_is_greater_than_string(calc_result: &CalcResult, target: &Text) -> bool {
     match calc_result {
-        CalcResult::String(s) => cmp_text(s, target).is_gt(),
+        CalcResult::String(s) => cmp_text_pairwise(s, target).is_gt(),
         _ => false,
     }
 }
 
 fn result_is_greater_or_equal_than_string(calc_result: &CalcResult, target: &Text) -> bool {
     match calc_result {
-        CalcResult::String(s) => cmp_text(s, target).is_ge(),
+        CalcResult::String(s) => cmp_text_pairwise(s, target).is_ge(),
         _ => false,
     }
 }
@@ -376,7 +398,7 @@ pub(crate) enum IndexedCriterion {
     /// Numbers `op` the target, equality to 15 digits ([`numbers_equal`]). Under `Eq` a text that
     /// reads as an equal number matches too, and under `Ne` every cell but an equal number.
     Number(CriterionOp, f64),
-    /// Text equal to this one under `cmp_text`; never empty, so a blank never matches.
+    /// Text equal to this one under `cmp_text_pairwise`; never empty, so a blank never matches.
     Text(Text),
 }
 
@@ -439,7 +461,7 @@ pub(crate) fn indexed_criterion(
     if matches!(op, CriterionOp::Eq | CriterionOp::Ne) && wildcard {
         return None;
     }
-    if let Some(f) = criterion_text_number(v, locale, current_year, date_system)
+    if let Some(f) = criterion_text_number(v, OPERAND_CURRENCIES, locale, current_year, date_system)
         .or_else(|| parse_date_criterion(v, locale, current_year, date_system))
     {
         return Some(IndexedCriterion::Number(op, f));

@@ -31,7 +31,7 @@ from gh_client import SHA, Client, GhError
 from merge_lock import GitError, git
 
 ROOT = Path(__file__).resolve().parent.parent
-SWITCH = "scripts/merge_train.toml"
+SWITCH = merge_ready.SWITCH
 LOCK = "lock"
 REGULAR_FILE = "100644"
 

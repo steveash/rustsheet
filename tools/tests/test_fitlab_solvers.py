@@ -9,7 +9,7 @@ from collections.abc import Callable
 import pytest
 
 from rustsheet_tools.fitlab import fit
-from rustsheet_tools.fitlab.kernels import irr_fallback, registry, solvers, xirr, yield_caret
+from rustsheet_tools.fitlab.kernels import irr_fallback, irr_secant_d, registry, solvers, xirr, yield_caret
 from rustsheet_tools.fitlab.sweep import (
     Arg,
     Cell,
@@ -142,6 +142,27 @@ def test_irr_secant_fit_scores() -> None:
     assert s["secant in v, no residual test"] == 181
     assert s["secant in v, no retry"] == 187
     assert s["Newton in v=1/(1+r), converged"] == 74
+
+
+def test_irr_secant_d_needs_twice_rounded_npv() -> None:
+    # T-3205: m9-fin-irr-rate Calc!A214 and gen-m9 67a4c03afd63f988 Calc!A395. With NPV in plain doubles
+    # both stop one secant iterate early, 16 ulp off Excel.
+    cells = [
+        ([-1000.0, 230.0, 200.0, 125.0, 200.0, 10.0], 5.0, -0.10150067605359347),
+        ([0.5, 0.1, -0.5], 0.5, -0.09501243788791103),
+    ]
+    plain = irr_secant_d.irr_secant_d(irr_secant_d.npv_v_running_plain)
+    for flows, guess, excel in cells:
+        assert irr_secant_d.irr_secant_d()(flows, guess, None) == excel
+        assert plain(flows, guess, None) != excel
+
+
+@pytest.mark.usefixtures("real_cases")
+def test_irr_secant_d_fit_scores() -> None:
+    s = _scores("irr")
+    assert s["secant in d, shipped (T-3205)"] == 263
+    assert s["secant in d, NPV in plain doubles (T-3120)"] == 262
+    assert s["secant in d, unconditional zero-step stop"] == 257
 
 
 def test_irr_secant_on_a_two_flow_root() -> None:
@@ -325,6 +346,22 @@ def test_yield_fitted_start_and_short_stop() -> None:
         assert model(*cell.args) == cell.expected, cell.key
 
 
+def test_yield_unrounded_term_start_sits_one_ulp_above_rounded_once() -> None:
+    # T-2974 attempts 2 and 4 (T-3152 names them in the fit): yield-solver-sweep S!C7 takes one step
+    # from the start, so its bits show the start's last bit. The rounded-once start (decision 0162)
+    # is one ulp below Excel's; the unrounded-term start (decision 0166, the engine's) is Excel's.
+    sweep = {c.key: c for c in load_sweep(["probes/yield-solver-sweep"], r"^=YIELD\((.*)\)$").cells}
+    cell = sweep["S!C7"]
+    once = yield_caret.rounded_once_yield_start(*cell.args)
+    assert yield_caret.unrounded_term_yield_start(*cell.args) == math.nextafter(once, math.inf)
+    for start, exact in (
+        (yield_caret.rounded_once_yield_start, False),
+        (yield_caret.unrounded_term_yield_start, True),
+    ):
+        model = yield_caret.caret_priced(solvers._newton_yield_short(start, 1e-10))
+        assert (model(*cell.args) == cell.expected) == exact, start.__name__
+
+
 @pytest.mark.usefixtures("real_cases")
 def test_yield_short_stop_cut_is_bracketed_by_two_cells() -> None:
     # T-2330: from the fitted start, yield-start-sweep C18 does not take a 9.67e-11 step (bit-exact) and
@@ -374,6 +411,7 @@ def test_yield_start_term_whole_years_then_leftover_days() -> None:
         assert abs(old(*cell.args) - cell.expected) >= 1e-13 * abs(cell.expected), key
     assert solvers.start_years(datetime.date(2010, 1, 31), datetime.date(2020, 1, 30), 1) == 9 + 364 / 366
     assert solvers.start_years(datetime.date(2012, 2, 29), datetime.date(2019, 8, 15), 0) == 7 + 164 / 360
+    assert solvers.start_term(datetime.date(2012, 2, 29), datetime.date(2019, 8, 15), 0) == (7, 164, 360)
 
 
 def test_irr_fallback_newton_matches_the_engine_and_keeps_the_selection_rule() -> None:

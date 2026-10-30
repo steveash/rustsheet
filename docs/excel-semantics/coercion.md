@@ -189,7 +189,35 @@ Microsoft's Windows sorting weight table (`Windows Server 2022 Sorting Weight Ta
   wrapped weight says otherwise: `"a"&UNICHAR(834)` < `"a"&UNICHAR(834)&UNICHAR(834)` although the
   latter equals `"a"&UNICHAR(807)`, which is below `"a"&UNICHAR(834)`; likewise `"a"&UNICHAR(803)` <
   three U+0323 < `"á"` < `"a"&UNICHAR(803)` (pairs Calc!S19, T18, W23, X22, AB28, AC27). The next
-  bullet is the general rule; the prefix rule is its case where one side runs out.
+  bullet is the general rule; the prefix rule is its case where one side runs out. It also makes
+  texts with equal wrapped sums unequal: `"a"=("a"&REPT(UNICHAR(770),16))` is FALSE and `<` TRUE
+  (circumflexes 16 * 16 = 256, so the same sum as `"a"`).
+  **Every caller uses it (T-3181).** Evidence: probes/t3181-collation-prefix-callers (35 cells) and
+  probes/t3181-collation-prefix-arrays (13 cells), excel-graph 2026-10-30, Status: VERIFIED, on
+  `"a"`, `"a"` plus 16 U+0302, U+0342 once and twice, U+0327, U+0323 once and three times and `"á"`:
+  - the operators `= <> < <= > >=` (callers Calc!A1:A9);
+  - COUNTIF and COUNTIFS criteria, `=` and the ordered ones (`COUNTIF(r,"a")` counts `"a"` but not
+    `"a"` plus 16 U+0302; callers Calc!B1:B12);
+  - approximate MATCH (1 and -1) and VLOOKUP TRUE (callers Calc!C3:C12, C14), and XMATCH next
+    smaller/larger (arrays Calc!B5:B8);
+  - exact XMATCH, XLOOKUP and SWITCH (`"a"` is not found in `"a"` plus 16 U+0302; arrays
+    Calc!B3, B4, B11, B12); MATCH(...,0) misses both ways too (callers Calc!C1, C2), as it misses
+    `"a"` against `"a"&UNICHAR(807)`'s equal `"a"&UNICHAR(834)&UNICHAR(834)` (C13): MATCH(...,0)
+    is not the collation's equality (T-1590 below);
+  - SORT and SORTBY: `SORT` of U+0342 once and twice gives once, twice whichever comes first
+    (arrays Calc!A1, A5), descending twice, once (A6), and `"a"` before `"a"` plus 16 U+0302 (A3,
+    A4). On the three-text cycle U+0342 once, twice, U+0327 SORT gives once, twice, U+0327 (A2),
+    and on U+0323, three U+0323, `"á"` it gives U+0323, three U+0323, `"á"` (A8): Excel sorts with
+    the pairwise comparison and its output on a cycle depends on its algorithm.
+  - `UNIQUE` of two U+0342 and U+0327 (equal sums, nothing shared after the letter) is one row
+    (arrays Calc!B2).
+  Ours (T-3181): the operators and the criteria compare texts with `cmp_text_pairwise`, which
+  applies the rule (the criteria index still hashes the `CollationKey` of the wrapped sums,
+  which every pair the rule finds equal shares, and tests each candidate with the rule); so do
+  all cells of the four t3154/t3201 accent cases, which compare with `<` and `=`. Sorts, sorted
+  lookups and the hashed exact lookups keep the total order of the wrapped sums (`cmp_text`;
+  `slice::sort_by` may panic on a non-total order): the lookup cells above fail (T-3210), and so do
+  the SORT, SORTBY and UNIQUE cells (T-3211). Open: T-3210, T-3211.
 - **Shared leading units are skipped before the sum (T-3201).** Evidence:
   probes/t3201-collation-long-mark-runs (1,000 cells: a ladder of 246 texts `"a"` plus up to three
   marks, one per weight 2, 5, 8, 11 and 14 to 255, self-ranked in order (Calc!A1:A246); `"a"` with
@@ -224,11 +252,10 @@ Microsoft's Windows sorting weight table (`Windows Server 2022 Sorting Weight Ta
     t3201 accent cases (pairs, weights, long-mark-runs, wrapped-run-pairs). Open, UNVERIFIED: units
     shared across letters (`"áb"` against `"a"&UNICHAR(769)&"c"`), two units with equal sums that
     share a prefix, and marks after `æ`/`ß`.
-  Ours: the wrapped total with nothing skipped, a total order (sorts such as GROUPBY's need one;
-  `slice::sort_by` may panic otherwise), so the cells this rule decides fail: accent-weights
-  Calc!A2:A112 (55 cells), accent-pairs (6), and the long-mark-runs and wrapped-run-pairs cells
-  listed in T-3202. The rule is not transitive (wrapped-run-pairs has 554 intransitive triples), so
-  matching it in sorts is the T-3181 question (pairwise only, or a DEVIATION). Open: T-3181, T-3202.
+  Ours (T-3181): `cmp_text_pairwise` applies this rule for the operators and criteria, so every
+  cell of the four accent cases passes. The rule is not transitive (wrapped-run-pairs has 554
+  intransitive triples), so the sorts keep the wrapped total with nothing skipped (`cmp_text`, a
+  total order); where Excel's sorts and lookups differ is in the "Not a total order" bullet.
 Implemented (T-3154): `collation_tables.rs` (`MARK_WEIGHT` from the Windows table, `DECOMPOSED`
 extended to Latin Extended-B and Additional) and `collation.rs` (accent byte, variant pass).
 ### Collation equality in lookups and criteria; unprobed characters (T-1590)
