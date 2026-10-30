@@ -3,7 +3,7 @@ id: T-2860
 title: "CHISQ.INV, CHISQ.INV.RT and CHIINV at df 2 and GAMMA.INV at alpha 1 are Excel's closed forms -2*LOG1P(-p), -2*LN(p) and -beta*LOG1P(-p) (34 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -74,3 +74,11 @@ Cells (2026-10-27; 12 lines in eval/baseline/gen-m9.txt, 22 in the ungated probe
 Decisions 0083 and 0114, stage `accuracy`: done when every cell this task owns is within half a unit of the 15th
 significant digit of Excel's value; the closed forms are expected to be bit-exact, and any ulp residue moves to a
 `defer: phase-1b` follow-up named in the Outcome.
+
+## Outcome
+Already fixed on main by T-3016 (`exponential_quantile`, shape-1 closed form in the smaller tail) before this task
+was picked: none of the 34 cells fails in `make eval` (the 12 gen-m9 lines were already absent from
+eval/baseline/gen-m9.txt; all 22 probes-numeric cells pass). This PR adds the unit test
+`t2860_df2_and_alpha1_cells_are_excels_doubles` (the four acceptance values, bit-exact) and the statistics.md
+"Implemented in" line. No eval delta, no baseline change.
+Also dropped the three cells it shared (4ab2ba98d26c8a5e A315, 8d3588d8df0812df A130, abc2939ebd1e2365 A337) from T-2695's list.

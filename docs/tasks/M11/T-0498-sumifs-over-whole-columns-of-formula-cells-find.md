@@ -3,7 +3,7 @@ id: T-0498
 title: "SUMIFS over whole columns of formula cells: find why the T-0449/T-0465 pass cache does not pay on calipers pv23_042 (6.75 s, 1,080 calls)"
 milestone: M11
 lane: perf
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -53,20 +53,48 @@ second distinct criterion on a range. Find out which of these fails here and fix
 Also check T-0465's own counterexample note: corpus-bench 52450 turned out to be a different case (T-0477).
 
 ## Acceptance criteria
-- [ ] The Outcome names the root cause, with a counter or log that shows the cache state (`RangeState`) of the four
+- [x] The Outcome names the root cause, with a counter or log that shows the cache state (`RangeState`) of the four
       `5.8` columns over the pass, before and after.
-- [ ] calipers pv23_042 runs in at most 2,500 ms in `rustsheet-eval run --suite calipers --filter pv23_042` on a release
+- [x] calipers pv23_042 runs in at most 2,500 ms in `rustsheet-eval run --suite calipers --filter pv23_042` on a release
       build (from 6,750 ms). The Outcome gives callgrind's `Model::evaluate` instruction count before (21.2G) and after;
       the target is at most 5G.
-- [ ] A bench in crates/rustsheet/benches/aggregate.rs reproduces the shape: four criteria over formula columns of
+- [x] A bench in crates/rustsheet/benches/aggregate.rs reproduces the shape: four criteria over formula columns of
       about 20,000 rows, one constant and selective, one constant and matching nearly all rows, one varying per row
       and one varying per column, 1,000 calls.
-- [ ] Unit tests (test_ifs_cache.rs style) compare the new path with the walk on formula-cell criteria columns,
+- [x] Unit tests (test_ifs_cache.rs style) compare the new path with the walk on formula-cell criteria columns,
       including a cycle and a spill into a cached range.
-- [ ] `make eval` with calipers, corpus-bench and poi fetched shows no new known failure; `make check` green; reviewers
+- [x] `make eval` with calipers, corpus-bench and poi fetched shows no new known failure; `make check` green; reviewers
       approve.
 
 ## Out of scope
 - The harness's own volatile-scan cost on large workbooks (`rustsheet_eval::volatile::volatile_cells`, 19% of this
   run's instructions; T-3196).
 - Defined-name parse time on load (T-3195).
+
+## Outcome
+Root cause, close to the first candidate: `ifs_leading_matches` took sheet `5.8`'s I (constants) from the
+cache, but K, E, F and P are shared formulas the walk evaluates only at the rows the criteria before them match, so
+the resumable whole-range check stopped at their first unmatched row and never reached `Ready`. A trace of
+`RangeState` per call on origin/main: for all 1,080 calls I is `Ready`, K is `Waiting { checked: 8 }` (row 9), E,
+F and P `Waiting { checked: 7 }` (row 8). Every call then read K, E, F and P cell by cell at I's 398 rows (T-3227's
+mixed path), testing K and F with `cmp_text`.
+
+Fix (`ifs_cache.rs`): a range not cacheable as a whole is cached at the cells the chain of criteria before it
+matches (each link a range and its criterion key), once those cells are all evaluated, which are exactly the cells
+the walk reads of it; its match sets are cached per chain. The same trace after: of 1,080 calls, K and E come from
+the cache 1,070 times (10 chains, one per distinct I criterion), F 1,015 times (90 chains, one per I and year); the
+first call of each chain walks as before. Chain keys and gathered values are charged to the existing bit and cell
+budgets (directive 5).
+
+Measurements, this container, release build:
+- callgrind of `rustsheet-eval show calipers/pv_goldens/pv23_042/golden.xlsx`: `Model::evaluate` 1.98G before, 1.61G
+  after (`sum_ifs` 1.03G -> 0.52G). The task's 21.2G no longer reproduces on origin/main: the T-3227 mixed path
+  (leading cached criteria filter the rows) had already landed, so the 5G target was met before this change.
+- `rustsheet-eval run --suite calipers --filter pv23_042`: 2,147 ms -> 1,890 ms (both under 2,500). What is left is
+  import (3.7G instructions) and the harness's volatile scan (7.6G, T-3196), not engine time.
+- New bench `cargo bench -p rustsheet --bench aggregate -- chained` (1,000 four-criteria SUMIFS over 20,000-row
+  formula columns): min 187 ms -> 98 ms.
+
+Tests: `test_ifs_cache.rs` adds the chained shape (walk vs cache, with and without iteration, and the cache's
+`RangeState` counts), a cycle through a range cached at its chain, and a spill into one. Eval: calipers pv23_042
+still 121,666/121,666; no eval cell changed.
