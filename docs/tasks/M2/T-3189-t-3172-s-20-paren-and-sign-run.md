@@ -52,4 +52,4 @@ cells as deviations); take T-3165's outcome and apply it here. Cases (each fails
 - [ ] No regressions; `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Changing the probe cases or their sidecars; function-call nesting (T-3097, T-3143).

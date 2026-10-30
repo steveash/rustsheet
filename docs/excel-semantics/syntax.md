@@ -174,8 +174,9 @@ Bare parentheses and unary sign runs have caps of their own (T-3172, probes/t317
 2026-10-30, bisected; stored and typed give the same counts): Excel accepts 256 nested parentheses
 around `1` and refuses 257; accepts a run of 1,024 unary minus signs before the number `1` and refuses
 1,025; accepts 1,023 unary plus signs before the text `"a"` and 1,023 alternating `-+` signs before a
-reference (`C1`), and refuses 1,024 of either. The minus run before a number literal is one longer,
-so its last sign likely folds into the literal. Accepted and evaluated (with sidecars): parentheses
+reference (`C1`), and refuses 1,024 of either. The minus run before a number literal is one longer;
+why is unprobed (each sign was probed with one operand kind only: the last minus folding into the
+number, or the operand type, would both explain it). Accepted and evaluated (with sidecars): parentheses
 at 256 (`1`); minus runs of 255 (`-1`), 256 and 1,024 (`1`); plus runs of 255, 256 and 1,023 (`a`);
 alternating runs of 255, 256 and 1,023 (`2`). Refused (createSession 501 `FileCorruptTryRepair`
 stored, Graph PATCH 400 `InvalidArgument` typed; dropped after the run, no sidecar can exist):
@@ -190,8 +191,8 @@ LET name or of a cell-shaped callee count as calls; `SINGLE(x)` and `ANCHORARRAY
 `Input::StoredFormula` are not checked (unprobed; T-3143). It also refuses
 128 or more bare parentheses (t3097-nesting-paren-128 and -255) and 64 or more levels of `(ABS(`
 (t3097-nesting-paren-abs-64 and -65, two depth levels each), all of which Excel accepts. Of the
-counts T-3172 probed it refuses all that Excel accepts: 256 parentheses and sign runs of 255 and
-more (minus up to 1,024, plus and alternating up to 1,023; the 20 t3172 cases, owned by T-3189).
+counts T-3172 probed it refuses all that Excel accepts: 256 parentheses and every probed sign run
+(255 and up: minus up to 1,024, plus and alternating up to 1,023; the 20 t3172 cases, owned by T-3189).
 That is the DEVIATION below: the depth bound protects the stack (directive 5).
 Operator chains (`=A1+A2+...`, `&`, `* /`, `^` and comparisons, mixed or not) are not bounded by
 depth (T-0128): every consumer walks a chain in a loop, so its links add no level. Instead a formula
