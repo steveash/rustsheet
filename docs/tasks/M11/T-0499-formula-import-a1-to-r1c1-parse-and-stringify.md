@@ -3,7 +3,7 @@ id: T-0499
 title: "Formula import: A1-to-R1C1 parse and stringify cost about 650k instructions a formula (corpus-bench 52450 loads in about 3 s, 80% of its run)"
 milestone: M11
 lane: perf
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
