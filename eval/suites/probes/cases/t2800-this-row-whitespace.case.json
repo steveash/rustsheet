@@ -1,0 +1,50 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2800: this-row structured references with whitespace, each in its own column of a one-row table (no fill across rows); FORMULATEXT in row 3.",
+ "tags": [
+  "M2",
+  "syntax",
+  "probe"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "S",
+   "tables": [
+    {
+     "name": "T",
+     "ref": "A1:F2"
+    }
+   ],
+   "cells": {
+    "A1": "Col",
+    "B1": "P",
+    "C1": "Q",
+    "D1": "R",
+    "E1": "U",
+    "F1": "V",
+    "A2": 5,
+    "B2": {
+     "entered": "=T[[#This Row], [Col]]"
+    },
+    "C2": {
+     "entered": "=T[ [#This Row] , [Col] ]"
+    },
+    "D2": {
+     "entered": "=T[ [#This Row],[Col] ]"
+    },
+    "E2": {
+     "entered": "=T[[#This Row] , [Col]]"
+    },
+    "F2": {
+     "entered": "=[@ Col]"
+    },
+    "B3": "=FORMULATEXT(B2)",
+    "C3": "=FORMULATEXT(C2)",
+    "D3": "=FORMULATEXT(D2)",
+    "E3": "=FORMULATEXT(E2)",
+    "F3": "=FORMULATEXT(F2)"
+   }
+  }
+ ]
+}
