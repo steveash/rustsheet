@@ -59,8 +59,10 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   | `lock` | the per-PR flow under "Merge lock" above | stops at once |
   | `shadow` | `make mark-ready`, then the per-PR flow; remove `ready-to-merge` after its merge | builds and tests trains on `merge-train/shadow`, takes no lock, merges nothing |
   | `train` | `make mark-ready`, then move on | batches ready PRs, tests them on `merge-train/current`, squash-merges the green ones in order |
-  - **Marking.** `make mark-ready PR=<n> REVIEW="security=APPROVE architecture=APPROVE
-    quality=APPROVE [excel-fidelity=APPROVE]"` with the PR head checked out. It posts a marker
+  - **Marking.** `make mark-ready PR=<n>` with the PR head checked out. It takes the verdicts
+    from the verdict records the `review` skill posted on that head (decision 0178); while
+    `verdict_records = "warn"`, `REVIEW="security=APPROVE architecture=APPROVE quality=APPROVE
+    [excel-fidelity=APPROVE]"` stands in for a missing record, with a warning. It posts a marker
     comment (head sha, verdicts) and the `ready-to-merge` label, and refuses a draft, a red or
     pending head, a task not `done` with an Outcome, or a missing verdict. When a session cannot
     write through `gh api`, add `STEP=1`: perform each printed JSON action in order with the
@@ -142,7 +144,7 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   apply to closing a duplicate. When any condition fails, do what you did before: fix CI, comment
   the blocker, or mark the task blocked with reasons.
   In `train` mode (decision 0157 amending 0050) these are the conditions for **marking** an
-  orphaned PR ready (`make mark-ready` with the verdicts of your own panel), not for merging it,
+  orphaned PR ready (`make mark-ready` with the verdict records of your own panel), not for merging it,
   and the up-to-date condition drops out: the train provides it. A PR whose worker already
   marked it ready, on its current head, is not orphaned. In `shadow` mode, mark it ready and then
   merge it per the per-PR flow, as its worker would.

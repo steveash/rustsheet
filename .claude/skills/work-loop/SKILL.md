@@ -56,7 +56,8 @@ If the task is bigger than size M, split it (planner) instead of doing it.
   the first commit after the claim so other sessions see the number.
 
 ## 5. Review
-Use the `review` skill. Fix every BLOCKING / REQUEST_CHANGES finding, re-run `make check`, and
+Open the PR as a draft (step 6.2's template) if none exists, so the reviewers' verdict records
+have a PR to go on. Use the `review` skill. Fix every BLOCKING / REQUEST_CHANGES finding, re-run `make check`, and
 re-run only the reviewers that did not approve. Max 3 review rounds; if still blocked, set the
 task `status: blocked` with a "Blocked because" section, push the branch, open the PR as draft,
 and stop work on this task (pick the next one at step 1 while the session budget allows). When
@@ -111,9 +112,12 @@ file and its acceptance criteria.
    fetched `origin/main`, never your branch; decision 0157) and follow its mode. Read it again
    for each PR: the mode can change while you work.
    - **Mark ready** (`shadow` and `train`): with the PR's head checked out (`HEAD` must equal the
-     PR head), `make mark-ready PR=<n> REVIEW="security=APPROVE architecture=APPROVE
-     quality=APPROVE [excel-fidelity=APPROVE]"` with your review table's verdicts on that head
-     (the `steward` skill's "Merge train"). If its GitHub writes are refused in your session, run
+     PR head), `make mark-ready PR=<n>`: it takes the verdicts from the verdict records the
+     `review` skill posted on that head (decision 0178; the `steward` skill's "Merge train").
+     While `verdict_records = "warn"`, add `REVIEW="security=APPROVE architecture=APPROVE
+     quality=APPROVE [excel-fidelity=APPROVE]"` with your review table's verdicts on that head:
+     it stands in for a reviewer whose record is missing, with a warning; never in `require`.
+     If its GitHub writes are refused in your session, run
      it again with `STEP=1`, perform each printed JSON action in order with the GitHub MCP tools,
      exactly as printed, then `make merge-ready-verify PR=<n>`. A refusal (exit 1) names what is
      missing: fix that, never work around it.
@@ -141,8 +145,9 @@ file and its acceptance criteria.
      `ci-red` is red CI on the train: fix it per the `steward` skill. `conflict with main`: merge
      `origin/main` in and resolve (decision 0121 (1)). `id collision`: renumber your own file
      (decision 0121 (2)). `invalidated`: a push moved the head after marking. Then run `make
-     check`, re-run the reviewers the change concerns, wait for green CI, and mark again with
-     `REVIEW="..."`. Only when the new head is a clean merge of `origin/main` onto the marked head
+     check`, re-run the reviewers the change concerns (each posts a verdict record on the new head;
+     once `verdict_records = "require"`, every applicable reviewer needs one there), wait for
+     green CI, and mark again (`REVIEW="..."` covers the others only while in `warn`). Only when the new head is a clean merge of `origin/main` onto the marked head
      and nothing else (no conflict resolution, no other commit) may you carry the old verdicts
      over with `make mark-ready PR=<n> CARRY=1`; the script checks that mechanically. Marking
      again removes `merge-train-ejected` (decision 0177).

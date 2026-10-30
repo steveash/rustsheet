@@ -20,6 +20,16 @@ description: Run RustSheet's multi-agent code review on the current branch versu
    architecture and quality on Sonnet; Excel fidelity on Opus). Do not override it
    per call, with one exception: the steward's weekly spot-audit launches every reviewer with
    `model: opus`, so a cheaper reviewer's miss is re-checked by the stronger model.
+   As each reviewer returns, post its **verdict record** (SPEC-0027 "Verdict records (v2)",
+   decision 0178), in `warn` and `require` mode alike: save the report verbatim to a file in your
+   scratchpad, then, with the commit its `HEAD:` line names still checked out, run `make
+   verdict-record PR=<n> REVIEWER=<security|architecture|quality|excel-fidelity>
+   VERDICT=<APPROVE|REQUEST_CHANGES> REPORT=<file>` (record a `BLOCK` as `REQUEST_CHANGES`). The
+   PR must exist: open it as a draft before the first round if it does not. When `gh api` writes
+   are refused, add `STEP=1` and post the printed comment body exactly as printed with the GitHub
+   MCP tools. If HEAD has moved past the reviewed commit, post nothing: that reviewer runs again on
+   the new head. The file holds the report and nothing else (no tool output, environment or
+   credentials). A re-run on the same head posts a new record; the newest per reviewer counts.
 4. Consolidate into a table: reviewer | verdict | blocking findings. A PR is mergeable only when
    every reviewer returned `APPROVE` (MINOR findings may be deferred as follow-up tasks).
 5. For each MINOR finding you choose not to fix, create a follow-up task or note why it is moot.
