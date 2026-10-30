@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used)]
 use super::{
-    cdf_terms_bound, continued_fraction_budget, gamma_cdf, gamma_density, gamma_inverse_cdf,
-    gamma_quantile, gamma_sf, gamma_ur, incomplete_gamma_pair, inverse_cdf_within, temme_pair,
-    wilson_hilferty_quantile, Tail, Terms, MAX_TERMS, TEMME_C,
+    cdf_terms_bound, continued_fraction_budget, excel_small_shape_lower, gamma_cdf, gamma_density,
+    gamma_inverse_cdf, gamma_quantile, gamma_sf, gamma_ur, incomplete_gamma_pair,
+    inverse_cdf_within, temme_pair, wilson_hilferty_quantile, Tail, Terms, MAX_TERMS, TEMME_C,
 };
 use statrs::distribution::{ChiSquared, ContinuousCDF, DiscreteCDF, Gamma, Poisson};
 use statrs::function::gamma::{gamma_lr as statrs_lr, gamma_ur as statrs_ur};
@@ -442,4 +442,38 @@ fn wilson_hilferty_quantile_is_excels_at_a_huge_shape() {
         wilson_hilferty_quantile(2e10, 0.0),
         20_005_316_470.675_835
     ));
+}
+
+/// Excel's GAMMA.DIST at a shape below 1 and a small x is its own leading factor
+/// EXP(a*LN(x))/EXP(GAMMALN(a+1)) times e^-x and the series, bit for bit, where the accurate pair is
+/// up to 102 ulps away (probes/t3012-gamma-dist-at-quantile; the literals are read at 15 digits,
+/// so these are the 15-digit x values Excel evaluated; T-3060).
+#[test]
+fn small_shape_lower_is_excels_leading_factor() {
+    let cells: [(f64, f64, f64); 8] = [
+        // (x, a, Excel), cells A16, A17, A18, A3, A5, B22, A9 and A29.
+        (4.147_567_013_992_2e-134, 0.75, 1.000_000_000_000_026e-100),
+        (8.935_662_254_176_51e-41, 0.75, 9.999_999_999_999_968e-31),
+        (4.147_567_013_992_1e-22, 0.75, 9.999_999_999_999_981e-17),
+        (6.073_048_362_407_71e-301, 0.1, 9.999_999_999_999_915e-31),
+        (6.073_048_362_407_84e-101, 0.1, 9.999_999_999_999_995e-11),
+        (4.444_826_637_535_33e-34, 0.9, 1.000_000_000_000_001_1e-30),
+        (6.749_697_893_111_74e-41, 0.25, 1.000_000_000_000_000_6e-10),
+        (1e-30, 0.25, 3.488_822_835_570_022e-8),
+    ];
+    for (x, a, excel) in cells {
+        let ours = excel_small_shape_lower(a, x).unwrap();
+        assert_eq!(
+            ours.to_bits(),
+            excel.to_bits(),
+            "GAMMA.DIST({x:e},{a},1,TRUE)"
+        );
+    }
+    // Outside its region it leaves the pair alone: a shape of 1 or more, x of 1 or more, a
+    // subnormal x, and an a·LN(x) above -16, where A31 and C25 are bit-exact on the pair.
+    assert_eq!(excel_small_shape_lower(1.0, 1e-30), None);
+    assert_eq!(excel_small_shape_lower(0.75, 1.0), None);
+    assert_eq!(excel_small_shape_lower(0.75, 1e-310), None);
+    assert_eq!(excel_small_shape_lower(0.25, 1e-5), None);
+    assert_eq!(excel_small_shape_lower(0.9, 2.664_607_301_508_61e-6), None);
 }
