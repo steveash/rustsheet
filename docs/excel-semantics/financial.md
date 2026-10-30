@@ -3430,10 +3430,11 @@ Tasks: T-2496, T-2656, T-2657, T-2493, T-2470, T-2468, T-2427, T-2469, T-2435, T
 
 ## NPV's residue at IRR's root is not the double sum
 Rule: NPV divides by (1+r) once, at the end: NPV(r, v1..vn) = (v1/d0 + v2/d1 + ... + vn/d(n-1)) / (1+r), where d0 = 1
-and d(i) = d(i-1)*(1+r) is a running product. All of it is in doubles: 1+r rounded, each product, each quotient and
-each partial sum (left to right) rounded to a double, each twice (64 bits, then 53; numbers.md "Division rounds
-twice"): the NPV fit below cannot tell that from one rounding, but IRR's secant, which runs on this sum, can (T-3205,
-"IRR is a secant in d = 1 - v"), and so can gen-m9 9d9ceba257f8001b Calc!A85 (9.999999981999995). Where NPV's terms cancel, this differs from both the exact sum
+and d(i) = d(i-1)*(1+r) is a running product. All of it is in doubles: 1+r rounded (once in the engine; whether
+Excel rounds it twice is unprobed), and each product, each quotient and each partial sum (left to right) rounded to
+a double twice (64 bits, then 53; numbers.md "Division rounds twice"). The NPV fit below cannot tell that from one
+rounding, but IRR's secant, which runs on this sum, can (T-3205, "IRR is a secant in d = 1 - v"), and so can gen-m9
+9d9ceba257f8001b Calc!A85 (9.999999981999995), the one worksheet NPV cell that separates the two. Where NPV's terms cancel, this differs from both the exact sum
 and the plain double sum of v_i/(1+r)^i by more than half a unit of the 15th significant digit of the result. At M2,
 M8 and Three Parameters!E2 below (and at H367 and A148) Excel is nearer the exact value than the plain double sum, at
 M3 further from it.
