@@ -3,7 +3,7 @@ id: T-3116
 title: "Probe whether NOW and TODAY read the clock once per recalc or once per call, and settle SPEC-0008's non-goal"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
