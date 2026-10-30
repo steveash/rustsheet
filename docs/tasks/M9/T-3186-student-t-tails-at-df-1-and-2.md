@@ -1,5 +1,5 @@
 ---
-id: T-3182
+id: T-3186
 title: "Student t tails at df 1 and 2 for large t: Excel is within an ulp of the exact tail and ours 5 to 24 ulp off (6 visibly-off gen-m9 cells)"
 milestone: M9
 lane: functions-stat

@@ -440,6 +440,6 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
 
 Gap triage 2026-10-30: at df 1, and at df 2 below the closed-form cut (y < 0.1), Excel is within an ulp of the exact
-tail and ours is 5 to 24 ulp off. That is an accuracy gap, not Excel's noise, so T-3182 takes it (campaign: accuracy).
+tail and ours is 5 to 24 ulp off. That is an accuracy gap, not Excel's noise, so T-3186 takes it (campaign: accuracy).
 It covers gen-m9 46ac3ef5e61583ca A236, 11eb3ab4f4f8104c A174, 5395b8a427764a3f A125, a5342a7e24fd803e A230 and
 91e167cd8d7eb652 A292, and probes-numeric m9-t-dist-rt and m9-t-dist-2t.
