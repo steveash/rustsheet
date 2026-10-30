@@ -18,6 +18,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import merge_ready  # noqa: E402 (the sys.path line above must run first)
 import merge_train  # noqa: E402
+import merge_train_filing  # noqa: E402
 from gh_client import Client, FakeGh, GhError, Reply, Request  # noqa: E402
 
 SCRIPTS = Path(__file__).resolve().parent
@@ -432,7 +433,7 @@ class GitHub(Client):
         self.tested: dict[str, list[object]] = {}
 
     def git(self, *args: str) -> str:
-        return run("git", *merge_train.IDENTITY, *args, cwd=self.origin)  # CI has no git identity
+        return run("git", *merge_train_filing.IDENTITY, *args, cwd=self.origin)  # CI has no git identity
 
     def main(self) -> str:
         return self.git("rev-parse", "refs/heads/main")
@@ -652,7 +653,7 @@ class StageFixture(unittest.TestCase):
 
     def filed(self) -> str:
         """The one task file on the task-only PR's branch, after checking it with main's tasks.py."""
-        [opened] = [o for o in self.gh.opened if str(o["head"]).startswith(merge_train.TASKS_PREFIX)]
+        [opened] = [o for o in self.gh.opened if str(o["head"]).startswith(merge_train_filing.TASKS_PREFIX)]
         branch = f"refs/heads/{opened['head']}"
         [path] = self.gh.git("diff", "--name-only", f"{branch}^", branch).split()
         self.assertRegex(path, r"^docs/tasks/M2/T-\d{4}-[a-z0-9-]+\.md$")
