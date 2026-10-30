@@ -27,6 +27,34 @@ const HALF_SHAPE: f64 = 0.5;
 /// at 1E-15, where the direct form is 4 to 12 off; T-2753, T-2852).
 const LOG_FORM_RATIO: f64 = 1E-15;
 
+/// The smallest `(alpha - 1)·(-LN(x/beta))`, at an x/beta below 1, at which Excel's GAMMA.DIST density
+/// has been seen to be `#NUM!` rather than 0: `GAMMA.DIST(1E-300,1E+9,3,FALSE)` (6.9187E+11), while
+/// 6.9E+10 (shape 1E+8) is 0 and a huge x at a huge shape stays 0 (probes/t2435-dist-extremes A26,
+/// A92, A31). The true cut lies in that bracket, unprobed (docs/excel-semantics/statistics.md
+/// "GAMMA.DIST at a huge shape", T-3271).
+const HUGE_SHAPE_DENSITY_CUT: f64 = 6.9187E+11;
+
+/// The smallest shape at which Excel's GAMMA.DIST cdf of a positive x has been seen to be `#NUM!`
+/// where it would be 0: `GAMMA.DIST(2,1.85E+76,1E+10,TRUE)`, while shapes up to 1E+40 there are 0
+/// (probes/t2435-dist-extremes A101, A100). The true cut lies in that bracket, unprobed (T-3271).
+/// A cdf that is not 0 keeps its value: `GAMMA.DIST(1E300,1E300,1,TRUE)` is 0.5
+/// (probes/incomplete-gamma-cap E3).
+const HUGE_SHAPE_CDF_CUT: f64 = 1.85E+76;
+
+/// Whether GAMMA.DIST's computed 0 is Excel's `#NUM!` at a huge shape: a density
+/// at a tiny x / beta past [`HUGE_SHAPE_DENSITY_CUT`], or a cdf of a positive x at a shape of at
+/// least [`HUGE_SHAPE_CDF_CUT`].
+fn huge_shape_num_error(alpha: f64, x: f64, beta: f64, cumulative: bool) -> bool {
+    if x <= 0.0 {
+        return false;
+    }
+    if cumulative {
+        return alpha >= HUGE_SHAPE_CDF_CUT;
+    }
+    let y = x / beta;
+    y < 1.0 && (alpha - 1.0) * -y.ln() >= HUGE_SHAPE_DENSITY_CUT
+}
+
 /// GAMMA.DIST's (and CHISQ.DIST's, at beta = 2) density where y = x / beta is at most
 /// [`LOG_FORM_RATIO`]: Excel forms EXP(a LN(y) - y) / GAMMA(a) / x, whose log carries about |LN(y)| ulp of error into the
 /// result, so `GAMMA.DIST(1E-300,1,1,FALSE)` is 1.0000000000000235, not 1 (probes/
@@ -132,7 +160,9 @@ impl Model {
                     .unwrap_or_else(|| dist.pdf(x)),
             )
         };
-        if !result.is_finite() {
+        if !result.is_finite()
+            || (result == 0.0 && huge_shape_num_error(alpha, x, beta_scale, cumulative))
+        {
             return Err(num_error(cell));
         }
         Ok(result)

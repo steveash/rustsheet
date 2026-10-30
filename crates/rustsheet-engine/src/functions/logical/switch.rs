@@ -3,7 +3,7 @@ use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, types::CellReferenceIndex},
-    functions::util::compare_values,
+    functions::util::compare_values_pairwise,
     model::Model,
     reference_operators::Picked,
 };
@@ -129,7 +129,7 @@ fn switch_matches(expr: &CalcResult, case: &CalcResult) -> bool {
             value
         }
     }
-    compare_values(blank_as_zero(expr), blank_as_zero(case)) == 0
+    compare_values_pairwise(blank_as_zero(expr), blank_as_zero(case)) == 0
 }
 
 /// SWITCH on one element of lifted `[expression, case1, value1, ..., default?]`: the scalar path's

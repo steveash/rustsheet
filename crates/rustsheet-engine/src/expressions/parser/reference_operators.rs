@@ -66,9 +66,7 @@ impl Parser {
         // chars after the first.
         let first = self.lexer.get_position_index().saturating_sub(1);
         let mut opened = 1;
-        while !self.lexer.whitespace_follows()
-            && self.lexer.peek_token() == TokenType::LeftParenthesis
-        {
+        while !self.lexer.whitespace_follows() && *self.lexer.peek() == TokenType::LeftParenthesis {
             opened += 1;
             if self.open_groups + opened > MAX_PARENTHESES {
                 return self.too_deep();
@@ -143,7 +141,7 @@ impl Parser {
         let separator = self.get_argument_separator_token();
         let mut t = first;
         let mut depth = self.depth;
-        while self.lexer.peek_token() == separator {
+        while *self.lexer.peek() == separator {
             self.lexer.advance_token();
             let p = operand(self);
             if let Node::ParseErrorKind { .. } = p {
@@ -190,7 +188,7 @@ impl Parser {
         let mut as_name = false;
         while !is_constant(&t)
             && self.lexer.whitespace_follows()
-            && starts_reference(&self.lexer.peek_token())
+            && starts_reference(self.lexer.peek())
         {
             // Excel refuses the formula (load-time `FileCorruptTryRepair`, so no oracle value)
             // on CR, TAB, NBSP and the like as separator, and on a value as an operand.
@@ -274,8 +272,7 @@ impl Parser {
             return t;
         }
         let depth = self.depth;
-        let next_token = self.lexer.peek_token();
-        if next_token == TokenType::Colon {
+        if *self.lexer.peek() == TokenType::Colon {
             self.lexer.advance_token();
             let p = self.parse_primary();
             if let Node::ParseErrorKind { .. } = p {
@@ -299,8 +296,7 @@ impl Parser {
     /// `=@A1:A3 A2:B2` in row 11 to 2, `@(A1:A3 A2:B2)`, where `=@A1:A3` alone is `#VALUE!`
     /// (probes/intersection-operands H11, probes/intersection-at-operands; T-0149).
     fn parse_implicit(&mut self) -> Node {
-        let next_token = self.lexer.peek_token();
-        if next_token == TokenType::At && self.pending_operand.is_none() {
+        if *self.lexer.peek() == TokenType::At && self.pending_operand.is_none() {
             self.lexer.advance_token();
             // `@` recurses into the intersection without an operand in between (`A1 @A1
             // @A1 ...`), so it reserves nesting like an operand does to bound the recursion.
@@ -310,10 +306,10 @@ impl Parser {
             // `=@ B1:B2` keeps its space (probes/t2776-ws-after-at, SPEC-0023); a signed operand
             // keeps it as its own (`Parser::parse_power`).
             let gap = self.run_ahead();
-            let t = if self.lexer.peek_token() == TokenType::At {
+            let t = if *self.lexer.peek() == TokenType::At {
                 // `@@A1`: an operand cannot start with `@`.
                 self.parse_primary()
-            } else if matches!(self.lexer.peek_token(), TokenType::Addition(_)) {
+            } else if matches!(self.lexer.peek(), TokenType::Addition(_)) {
                 // `@-1` loads (probes/anchorarray-at-operand-kinds H101, T-1247): the sign is
                 // the operand's, a value, so the `@` of it is a value too. The precedence against
                 // `%`, `^` and ranges is inferred (UNVERIFIED, T-1285).
@@ -342,8 +338,7 @@ impl Parser {
         if let Node::ParseErrorKind { .. } = primary {
             return primary;
         }
-        let next_token = self.lexer.peek_token();
-        if next_token == TokenType::Spill {
+        if *self.lexer.peek() == TokenType::Spill {
             self.lexer.advance_token();
             // `x#` is stored as `_xlfn.ANCHORARRAY(x)`, so it takes the same operands.
             if !is_reference_operand(&primary) {
@@ -364,8 +359,7 @@ impl Parser {
     /// `node` if the whole formula was consumed, otherwise a parse error: input left over
     /// after a complete expression (`=1 2`, `=SUM(A1))`) is invalid, not silently dropped.
     pub(super) fn expect_end(&mut self, node: Node) -> Node {
-        if matches!(node, Node::ParseErrorKind { .. }) || self.lexer.peek_token() == TokenType::EOF
-        {
+        if matches!(node, Node::ParseErrorKind { .. }) || *self.lexer.peek() == TokenType::EOF {
             return node;
         }
         Node::ParseErrorKind {
