@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use crate::expressions::{
     lexer::LexerMode,
-    parser::{new_parser_english, stringify::to_english_string, Node},
+    parser::{is_limit_error, new_parser_english, stringify::to_english_string, Node},
     types::CellReferenceRC,
 };
 use crate::model::Model;
@@ -78,6 +78,47 @@ pub(crate) fn open_parenthesis_is_a_call(formula: &str) -> bool {
 }
 
 impl Model {
+    /// Parses a formula typed into a cell. A formula that fails to parse is
+    /// retried with a closing parenthesis (`SUM(A1:A3` => `SUM(A1:A3)`) and
+    /// otherwise kept as a parse error, except one past the parser's limits (nested too deep
+    /// or too many operators; no `)` helps), which is rejected: the cell could never hold it.
+    /// Typed ([`Model::set_typed_user_input`]), only a call's missing `)` is added, and any
+    /// other parse error is rejected.
+    pub(crate) fn parse_cell_formula(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        formula: &str,
+    ) -> Result<Node, String> {
+        let sheet = self.workbook.worksheet(sheet)?.get_name();
+        let cell_reference = &CellReferenceRC { sheet, row, column };
+        let mut node = self.parser.parse(formula, cell_reference);
+        // Typed, Excel closes a call's parenthesis only, not a group's (`=(1` is refused).
+        if matches!(&node, Node::ParseErrorKind { message, .. } if !is_limit_error(message))
+            && (!self.parser.is_typed() || open_parenthesis_is_a_call(formula))
+        {
+            let closed = format!("{formula})");
+            let retry = self.parser.parse(&closed, cell_reference);
+            if !matches!(retry, Node::ParseErrorKind { .. }) {
+                node = retry;
+            }
+        }
+        match node {
+            Node::ParseErrorKind { message, .. } if is_limit_error(&message) => {
+                Err(format!("Formula: {message}"))
+            }
+            // Excel refuses a typed formula that does not parse (Graph PATCH 400
+            // `InvalidArgument`, probes/t3113-entered-refused, t3213-typed-parse-errors), where it
+            // keeps stored text as written (syntax.md "A typed formula that does not parse is
+            // refused", T-3213).
+            Node::ParseErrorKind { message, .. } if self.parser.is_typed() => {
+                Err(format!("{TYPED_FORMULA_DOES_NOT_PARSE}: {message}"))
+            }
+            node => self.parser.typed_refusal().map_or(Ok(node), Err),
+        }
+    }
+
     /// [`Model::set_user_input`] for text a user types, which Excel refuses where it would read
     /// stored text: a LET name or LAMBDA parameter spelled like a cell (`=LET(f1,1,f1+1)`) is an
     /// error here (decision 0103, T-2497) and binds through `set_user_input`. A formula typed

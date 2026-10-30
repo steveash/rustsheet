@@ -682,11 +682,6 @@ impl Parser {
         self.loaded = loaded;
     }
 
-    /// Whether the formula is being typed ([`Parser::set_typed`]).
-    pub(crate) fn is_typed(&self) -> bool {
-        self.typed
-    }
-
     /// Reads the next formulas as typed (`true`) or as stored (`false`, the default); see
     /// [`Parser::typed_refusal`].
     pub(crate) fn set_typed(&mut self, typed: bool) {
