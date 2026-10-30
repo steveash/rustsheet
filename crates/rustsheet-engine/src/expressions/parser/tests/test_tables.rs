@@ -555,4 +555,19 @@ fn a_padded_bare_column_is_ours_only() {
         parser.set_loaded(false);
         assert_eq!(to_excel_string(&loaded, &cell), "SUM(#REF!)", "{formula}");
     }
+    // Only the reference is `#REF!`: the rest of the formula is read as written.
+    for (formula, loaded_text) in [
+        ("SUM(T[ Col ],1)", "SUM(#REF!,1)"),
+        ("SUM(T[ Col],A2)", "SUM(#REF!,A2)"),
+        ("T[ Col ]+SUM(A2)", "#REF!+SUM(A2)"),
+    ] {
+        parser.set_loaded(true);
+        let loaded = parser.parse(formula, &cell);
+        parser.set_loaded(false);
+        assert_eq!(to_excel_string(&loaded, &cell), loaded_text, "{formula}");
+        parser.set_typed(true);
+        let typed = parser.parse(formula, &cell);
+        parser.set_typed(false);
+        assert!(matches!(typed, Node::ParseErrorKind { .. }), "{formula}");
+    }
 }

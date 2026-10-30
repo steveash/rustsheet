@@ -280,13 +280,13 @@ impl Lexer {
             ..TableSpacing::default()
         };
         // A padded `#` start (`T[ #Data ]`) is unprobed and keeps its old reading.
-        if !spacing.open.is_empty()
-            && self.padded_bare_columns
-            && !matches!(self.peek_char(), Some('[' | '#' | '@'))
-        {
-            if let Some(token) = self.padded_bare_column(table_name, &spacing.open)? {
-                return Ok(token);
+        if !spacing.open.is_empty() && !matches!(self.peek_char(), Some('[' | '#' | '@')) {
+            if self.padded_bare_columns {
+                if let Some(token) = self.padded_bare_column(table_name, &spacing.open)? {
+                    return Ok(token);
+                }
             }
+            // Back onto the run, so the bare column reads it as part of the name, up to `]`.
             self.position = start;
             spacing.open.clear();
         }
