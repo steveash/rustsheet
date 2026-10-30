@@ -262,6 +262,7 @@ Microsoft's Windows sorting weight table (`Windows Server 2022 Sorting Weight Ta
   total order); where Excel's sorts and lookups differ is in the "Not a total order" bullet.
 Implemented (T-3154): `collation_tables.rs` (`MARK_WEIGHT` from the Windows table, `DECOMPOSED`
 extended to Latin Extended-B and Additional) and `collation.rs` (accent byte, variant pass).
+
 ### Full-width and half-width forms, kana, voicing and the long-vowel mark (T-3275)
 Evidence: probes/t3275-collation-width-kana (137 strings in Data!A; Calc!A = count less, B = count equal,
 C = exact MATCH position, D = XMATCH position, E = COUNTIF `"="&x`, G1:G34 = `(x<y)+2*(x=y)+4*(x>y)` for
@@ -277,7 +278,7 @@ VERIFIED (cells cited):
   (case 1 Calc!B25, B31 = 2). Width is weighed after the accents: `"Ａ" < "á"` (case 1 G3), `"Ａa" < "aá"`
   (D4), and left to right: `"AＢ" < "Ａb"` (H6). The full-width apostrophe U+FF07 and hyphen U+FF0D are
   ignored like `'` and `-`, after them in the tiebreak: `"ab" < "a＇b" < "a-b" < "a－b" < "AＢ"` (ranks
-  A15, A62, A61, A60, A33 in that order; G9), and `"'" < "＇" < "-" < "－"` alone.
+  A15, A62, A61, A60, A33 in that order; case 1 G10, G11; pairs G9), and `"'" < "＇" < "-" < "－"` alone.
 - **Kana**: hiragana, katakana and half-width katakana of one syllable share a letter; base order is
   the syllabary, `あ < い < う < え < お < か < き < さ < た < な < は < ま < や < ら < わ < を < ん`
   (katakana interleaved, not after the hiragana block: `"ア" < "い"`, case 1 G15; `"アあ" < "あい"`, G16).
@@ -310,11 +311,11 @@ VERIFIED (cells cited):
 - **`ー` after a Latin letter is not transitive.** `"aー"` is greater than `"aa"`, `"ab"`, `"AＢ"` and
   `"a゛b"` (C8, F8, G8, T8) but less than `"Ａa"` and `"Ａb"` (E8, H8), although `"Ａa" < "ab"` (F4) and
   `"AＢ" < "Ａb"` (H6). So Excel's `<` here is no sort key; no total order reproduces all cells, and an
-  implementation can only match the pairs (the pairs case lists 18 such triangles). Exact MATCH of
+  implementation can only match the pairs (the pairs case holds 6 such cyclic triangles, all through `"aー"`). Exact MATCH of
   `"aー"` finds `"aa"` (case 1 C136 = 13) while `=` says no string but itself is equal (B136 = 1) and
   XMATCH finds itself (D136).
 UNVERIFIED: whether full-width punctuation other than `！＃＄％＆（，．／：＠＿＋＜＝＞` and digits other
-than `０ １ ９` follow the same rule (only these were probed); the order of the kana-type, small-kana
+than the probed `０ １ ９` (not `２`-`８`) follow the same rule (only these were probed); the order of the kana-type, small-kana
 and long-vowel tiebreaks against the Latin width tiebreak (different scripts never tie on letters in
 these cells); where `ー` after a Latin letter weighs when compared with strings without full-width
 letters (it sorts above `"ab"`, below the kana: U8).

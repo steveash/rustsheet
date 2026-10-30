@@ -33,7 +33,8 @@ XMATCH/XLOOKUP `CollationKey` pass both T-3275 probe cases.
   C136); MATCH does not equate the decomposed `か`+U+3099 with `が` (as for Latin marks).
 - Failing cells (172 + 358):
   - probes/t3275-collation-width-kana.case.json Calc!A2:A5, Calc!A7:A120, Calc!A122:A137, Calc!B96:B97, Calc!B106, Calc!B111, Calc!B119, Calc!B127:B129, Calc!C127:C129, Calc!C136, Calc!D106, Calc!D111, Calc!D127:D129, Calc!E96:E97, Calc!E106, Calc!E111, Calc!E119, Calc!E127:E129, Calc!G3:G5, Calc!G7, Calc!G12:G17, Calc!G21, Calc!G24, Calc!G34
-  - probes/t3275-collation-width-kana-pairs.case.json Calc!B1:AL37
+  - probes/t3275-collation-width-kana-pairs.case.json Calc!B1:AL37 (the whole grid; 358 of its 1,369 cells fail, listed in
+    eval/baseline/probes.txt)
 
 ## Acceptance criteria
 - [ ] Every cell of probes/t3275-collation-width-kana passes, and every cell of
