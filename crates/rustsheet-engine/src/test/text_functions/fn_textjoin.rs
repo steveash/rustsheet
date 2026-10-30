@@ -61,6 +61,25 @@ fn whole_column_sees_a_spill_beyond_the_used_area() {
     assert_eq!(model.evaluation.restarts_in_last_evaluation, 0);
 }
 
+// Excel values: probes/textjoin-whole-rows-self-reference-full-width B5, B8, D3. With ignore_empty FALSE
+// the padding passes the limit in row 2, so no later cell is read: a range holding the TEXTJOIN cell is
+// #CALC! even when the used area spans every column; with ignore_empty TRUE it is circular.
+#[test]
+fn full_width_rows_stop_reading_at_the_limit() {
+    let mut model = new_empty_model();
+    model._set("A1", "x");
+    model._set("XFD1", "z");
+    model._set("A2", "y");
+    model._set("XFD2", "w");
+    model._set("B5", "=TEXTJOIN(\",\",FALSE,1:10)");
+    model._set("B8", "=TEXTJOIN(\",\",FALSE,A1:XFD10)");
+    model._set("D3", "=TEXTJOIN(\",\",TRUE,1:10)");
+    model.evaluate();
+    assert_eq!(model._get_text("B5"), "#CALC!");
+    assert_eq!(model._get_text("B8"), "#CALC!");
+    assert_eq!(model._get_text("D3"), "0");
+}
+
 // Excel values: probes/textjoin-array-arguments.
 #[test]
 fn array_literals_and_function_results() {
