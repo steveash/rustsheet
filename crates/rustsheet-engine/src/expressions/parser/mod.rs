@@ -75,8 +75,8 @@ use chain::ChainLevel;
 pub(crate) use chain::{for_each_chain_operand_mut, left_chain, value_operands};
 pub(crate) use depth::is_limit_error;
 pub use depth::{
-    MAX_FORMULA_DEPTH, MAX_NESTED_CALLS, MAX_PARENTHESES, MAX_VALUE_OPERATORS, TOO_DEEP_MESSAGE,
-    TOO_MANY_NESTED_CALLS_MESSAGE, TOO_MANY_OPERATORS_MESSAGE,
+    MAX_FORMULA_DEPTH, MAX_NESTED_CALLS, MAX_PARENTHESES, MAX_SIGNS, MAX_VALUE_OPERATORS,
+    TOO_DEEP_MESSAGE, TOO_MANY_NESTED_CALLS_MESSAGE, TOO_MANY_OPERATORS_MESSAGE,
 };
 pub(crate) use spacing::Run;
 pub use spacing::Spacing;
@@ -581,6 +581,8 @@ pub struct Parser {
     pending_operand: Option<(Node, usize)>,
     /// Written groups open on the current parse path, bounded by [`MAX_PARENTHESES`].
     open_groups: usize,
+    /// Unary signs open on the current parse path, bounded by [`MAX_SIGNS`].
+    open_signs: usize,
     /// Value operators in the formula so far, bounded by [`MAX_VALUE_OPERATORS`].
     value_operators: usize,
     /// The parser is outside every parenthesis and argument list, where a comma is the bare
@@ -654,6 +656,7 @@ impl Parser {
             inner_depth: 0,
             pending_operand: None,
             open_groups: 0,
+            open_signs: 0,
             value_operators: 0,
             bound_names: Vec::new(),
             typed: false,
@@ -739,6 +742,7 @@ impl Parser {
         self.inner_depth = 0;
         self.pending_operand = None;
         self.open_groups = 0;
+        self.open_signs = 0;
         self.value_operators = 0;
         self.bound_names.clear();
         self.cell_shaped_binding = None;
@@ -851,8 +855,13 @@ impl Parser {
     /// before and after the operand is in helpers of their own, to keep this frame small in
     /// unoptimized builds (T-1110).
     pub(super) fn parse_power(&mut self) -> Node {
-        let (before, signs) = self.parse_prefix();
+        let (before, signs, counted) = self.parse_prefix();
+        if self.open_signs + counted > MAX_SIGNS {
+            return self.too_deep();
+        }
+        self.open_signs += counted;
         let t = self.parse_bare_union();
+        self.open_signs -= counted;
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
@@ -865,20 +874,25 @@ impl Parser {
     /// run after it. Every sign is kept in its written order (`--x` coerces `x` to a number,
     /// `+-5` prints back as written), but a plus written directly before a number literal folds
     /// into it: `=+5` is `=5`, `=-+5` is `=-5`, `=+ 5` stays (syntax.md, T-2723). The run before a
-    /// folded plus stays where it was: `=  +5` prints `=  5` (T-2776).
+    /// folded plus stays where it was: `=  +5` prints `=  5` (T-2776). Also returns how many of
+    /// them count toward [`MAX_SIGNS`]: all but a minus written directly before a number literal.
     #[inline(never)]
-    pub(super) fn parse_signs(&mut self) -> Vec<(bool, Run)> {
+    pub(super) fn parse_signs(&mut self) -> (Vec<(bool, Run)>, usize) {
         let mut signs = Vec::new();
+        let mut counted = 0;
         while let TokenType::Addition(op) = self.lexer.peek_token() {
             self.lexer.advance_token();
-            let fold = op == token::OpSum::Add
-                && !self.lexer.whitespace_follows()
+            let is_minus = op == token::OpSum::Minus;
+            let before_number = !self.lexer.whitespace_follows()
                 && matches!(self.lexer.peek_token(), TokenType::Number(_));
-            if !fold {
-                signs.push((op == token::OpSum::Minus, self.run_ahead()));
+            if !before_number {
+                counted += 1;
+            }
+            if is_minus || !before_number {
+                signs.push((is_minus, self.run_ahead()));
             }
         }
-        signs
+        (signs, counted)
     }
 
     /// Operand `t` of [`Parser::parse_power`] under its `signs`, then its `%`s, with the runs
@@ -890,9 +904,10 @@ impl Parser {
         before: Run,
         signs: Vec<(bool, Run)>,
     ) -> Result<Node, Node> {
+        // A sign adds no depth: its consumers walk a run in a loop (`Model::apply_unary_chain`),
+        // and [`MAX_SIGNS`] bounds how many are open at once.
         for (is_minus, after_sign) in signs.into_iter().rev() {
             t = t.spaced(after_sign, Run::default());
-            self.grow(self.depth, 0)?;
             let right = Box::new(t);
             t = if is_minus {
                 Node::UnaryKind {

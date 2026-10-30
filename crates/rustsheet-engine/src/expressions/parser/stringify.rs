@@ -4,15 +4,14 @@ mod sheet_edits;
 mod structured;
 mod wrong_reference;
 use super::reference_operators::{
-    at_text, callee_operand, group_text, intersection_text, spill_operand, tight_operand,
-    union_text,
+    at_text, callee_operand, intersection_text, spill_operand, tight_operand, union_text,
 };
 use super::structured_reference::is_unresolved_structured_reference;
 use super::{
     super::utils::{name_needs_quoting, quote_name},
     left_chain,
     move_formula::{moved_reference_text, MoveContext},
-    value_operands, ArrayNode, Node, Reference,
+    value_operands, ArrayNode, Node, Reference, Spacing,
 };
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::static_analysis::remove_redundant_implicit_intersection;
@@ -828,13 +827,17 @@ fn stringify(
             context.is_none() || export_to_excel,
         ),
         NamedVariableKind { name, id: _ } => variable_text(name, context),
-        UnaryKind { kind, right } => {
-            let operand = wrap(sub(right), binding(right) < binding(node));
-            match kind {
-                OpUnary::Minus => format!("-{operand}"),
-                OpUnary::Percentage => format!("{operand}%"),
-            }
+        UnaryKind {
+            kind: OpUnary::Minus,
+            ..
         }
+        | UnaryPlus { .. }
+        | Group { .. }
+        | Spaced { .. } => wrapped_text(node, sub),
+        UnaryKind {
+            kind: OpUnary::Percentage,
+            right,
+        } => format!("{}%", wrap(sub(right), binding(right) < binding(node))),
         ErrorKind(kind) => format!("{kind}"),
         SheetRefErrorKind { sheet_name } => wrong_reference::ref_error_text(Some(sheet_name)),
         ParseErrorKind { message, .. }
@@ -844,9 +847,6 @@ fn stringify(
         }
         ParseErrorKind { formula, .. } => formula.to_string(),
         EmptyArgKind => "".to_string(),
-        Group { levels, child } => group_text(*levels, &sub(child)),
-        UnaryPlus { child } => format!("+{}", wrap(sub(child), binding(child) < binding(node))),
-        Spaced { space, child } => space.around(&sub(child)),
         ThisRowKind { .. } => structured::this_row_text(node, context, rewrite, sub),
         StructuredReferenceKind { reference, lowered } => structured::reference_text(
             reference,
@@ -957,6 +957,65 @@ fn binding(node: &Node) -> Binding {
         | Node::UnaryPlus { .. } => Binding::Minus,
         _ => Binding::Operand,
     }
+}
+
+/// What [`wrapped_text`] prints after the operand of a wrapper: the `)`s of written parentheses,
+/// or the whitespace written behind it.
+enum Closer {
+    Parentheses(u16),
+    Space(Spacing),
+}
+
+/// The text of `node`, a run of the wrappers printed around one operand, unary signs, written
+/// parentheses ([`Node::Group`]) and whitespace ([`Node::Spaced`]), and of that operand. Printed
+/// in a loop, not a frame per wrapper: a sign run holds up to [`super::MAX_SIGNS`] signs, and
+/// `-(-(...))` nests as deep as `((...))` (T-3193).
+fn wrapped_text(node: &Node, sub: impl Fn(&Node) -> String) -> String {
+    let mut text = String::new();
+    let mut closers = Vec::new();
+    let mut node = node;
+    loop {
+        match node {
+            Node::UnaryKind {
+                kind: OpUnary::Minus,
+                right: child,
+            }
+            | Node::UnaryPlus { child } => {
+                text.push(if matches!(node, Node::UnaryPlus { .. }) {
+                    '+'
+                } else {
+                    '-'
+                });
+                node = child;
+                if binding(child) < Binding::Minus {
+                    text.push('(');
+                    closers.push(Closer::Parentheses(1));
+                    break;
+                }
+            }
+            Node::Group { levels, child } => {
+                text.extend(std::iter::repeat_n('(', usize::from(*levels)));
+                closers.push(Closer::Parentheses(*levels));
+                node = child;
+            }
+            Node::Spaced { space, child } => {
+                space.push_before(&mut text);
+                closers.push(Closer::Space(*space));
+                node = child;
+            }
+            _ => break,
+        }
+    }
+    text.push_str(&sub(node));
+    for closer in closers.iter().rev() {
+        match closer {
+            Closer::Parentheses(levels) => {
+                text.extend(std::iter::repeat_n(')', usize::from(*levels)));
+            }
+            Closer::Space(space) => space.push_after(&mut text),
+        }
+    }
+    text
 }
 
 /// `text` in parentheses when `parens`.

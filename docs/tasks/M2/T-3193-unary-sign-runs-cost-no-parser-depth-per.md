@@ -31,9 +31,9 @@ parenthesis case (t3172-paren-256) belongs with T-3191. This may need a spec fir
 change is bigger than M.
 
 ## Acceptance criteria
-- [ ] The eighteen sign-run cases load and match Excel; their whole-case lines leave
+- [x] The eighteen sign-run cases load and match Excel; their whole-case lines leave
       probes/deviations (the stale report flags them) and the baseline records the passes.
-- [ ] At-limit tests on a 1 MiB release stack (test_nesting_depth.rs) cover runs of 1,024 signs;
+- [x] At-limit tests on a 1 MiB release stack (test_nesting_depth.rs) cover runs of 1,024 signs;
       syntax.md updated.
 - [ ] `make check` green; reviewers approve.
 
@@ -42,3 +42,19 @@ change is bigger than M.
 
 ## Notes
 - 2026-10-30: resumed by an opus run (the claim had been idle since 08:32 with no further commit).
+
+## Outcome
+- A unary sign no longer costs a level of `MAX_FORMULA_DEPTH`; instead `MAX_SIGNS` (1,023) bounds
+  the signs open on one parse path, a minus written directly before a number literal not counted,
+  which matches every T-3172 cap (1,024 minus before `1`, 1,023 plus before `"a"`, 1,023 `-+`
+  before `C1`; one more is "Formula is nested too deeply"). Nested runs (`=-(-(...))`) share the
+  budget (unprobed in Excel; syntax.md says so). No new node: the evaluator already walked a run in
+  a loop (`apply_unary_chain`); the printer now does too: `stringify::wrapped_text` prints a run
+  of signs, written parentheses and whitespace in one loop (it overflowed a 1 MiB release stack at
+  1,023 spaced signs, and a 2 MiB debug stack at 127 levels of `- ( `, which now nests as deep as
+  `(`). `group_text` and `Spacing::around` are gone with it.
+- Tests on a 1 MiB release stack: a 1,023-sign run (bare, spaced, line-fed) under the deepest
+  `(1+` nesting the depth bound admits parses, evaluates, prints, survives a row insert and a
+  sheet rename; one more sign, alone or across a `-(` run, is too deep. Measured headroom: the
+  same test overflows at 512 KiB (in the derived `Clone`), so about 2x.
+- The eighteen t3172 sign-run lines left probes/deviations; the cases now load and match Excel.

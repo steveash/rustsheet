@@ -159,8 +159,12 @@ parses, as Excel's does, and 257 or more is too deep (`MAX_PARENTHESES`, T-3191,
 `=(1+((...)))`) count together: more than 256 open at once is too deep. Whether Excel counts split
 runs the same way is unprobed (only an unbroken run around `1` was, T-3172). A group holding more than the group inside it
 (`((x)+1)`) still costs an operand's two levels. Each unary minus is a node (T-0132), and so is each unary plus kept in the formula text
-(T-2723), so a run of more than about 250 signs (`=----...1`, `=++++..."a"`) is also a parse error;
-a plus directly before a number literal folds into it and adds no node. Typed whitespace adds no
+(T-2723), but a sign costs no depth level: the evaluator walks a run of them in a loop. Instead at
+most 1,023 signs may be open at once (`MAX_SIGNS`, T-3193), a minus written directly before a number
+literal not counted, so a run matches Excel's caps below (1,024 minus signs before `1`, 1,023 plus
+signs before `"a"`, 1,023 alternating `-+` before `C1`) and one more sign is too deep. Signs in
+several runs on one path (`=-(-(...))`) count together (unprobed in Excel); a plus directly before a
+number literal folds into it and adds no node. Typed whitespace adds no
 level either (SPEC-0023, decision 0127): `=SUM( - SUM( - …` nests as deep as `=SUM(-SUM(-…`. Calls are further capped at 65 (below).
 Excel caps function nesting at 64
 levels (Microsoft, "Excel specifications and limits": "Nested levels of functions: 64") and formula
@@ -194,13 +198,13 @@ refuses a workbook holding one (`XlsxError::Workbook`), T-3097. `TRUE()`, `FALSE
 LET name or of a cell-shaped callee count as calls; `SINGLE(x)` and `ANCHORARRAY(x)` (stored `@` and
 `#`) do not (unprobed). Defined-name bodies, conditional formats, data validation and
 `Input::StoredFormula` are not checked (unprobed; T-3143). Bare parentheses match Excel:
-t3097-nesting-paren-128 and -255 and t3172-paren-256 load and evaluate (T-3191). It still refuses
-64 or more levels of `(ABS(` (t3097-nesting-paren-abs-64 and -65, four depth levels each) and every
-sign run T-3172 probed (255 and up: minus up to 1,024, plus and alternating up to 1,023), all of
+t3097-nesting-paren-128 and -255 and t3172-paren-256 load and evaluate (T-3191), and so do the
+sign runs T-3172 probed (minus up to 1,024, plus and alternating up to 1,023; T-3193). It still
+refuses 64 or more levels of `(ABS(` (t3097-nesting-paren-abs-64 and -65, four depth levels each),
 which Excel accepts.
 That is the DEVIATION below: the depth bound protects the stack (directive 5). Those cases are
 pinned whole in probes/deviations (decision 0168; T-3165, T-3189); T-3197 owns lifting the bound
-for `(ABS(`, T-3193 for sign runs. Measured on a 1 MiB stack in a release build before T-3191, the
+for `(ABS(`. Measured on a 1 MiB stack in a release build before T-3191, the
 parser alone overflowed at about 292 recursively nested parentheses (about 3.5 KB per level, as
 each one passes through the whole precedence chain), 180 nested `ABS(` and 112 nested `(ABS(`;
 parentheses separated by whitespace still take that path, under the depth bound.
@@ -236,7 +240,7 @@ re-measured against these limits (the at-limit tests run on a 1 MiB stack in rel
 must walk operator chains with `expressions/parser/chain.rs`.
 Evidence: probes/operator-chain-limit (chains at and one character past the published limit), the T-1091 refusals above and probes/t3097-nesting-* (Excel's 65-call cap; the parentheses RustSheet refuses past its bound) and probes/t3172-* (Excel's 256-parenthesis and 1,023/1,024-sign caps, T-3172); this is a resource limit.
 Status: DEVIATION (decision 0014)
-Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `MAX_VALUE_OPERATORS`, `MAX_NESTED_CALLS`, `MAX_PARENTHESES`, `Parser::in_call`, `Parser::parse_primary`, `Parser::grow`, `Parser::grow_chain`); expressions/parser/chain.rs; expressions/parser/reference_operators.rs (`Parser::parse_parenthesis_run`); model.rs (`Model::parse_cell_formula`, `Model::evaluate_operator_chain`); rustsheet-xlsx `import::worksheets::from_a1_to_rc` (the call cap on load)
+Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `MAX_VALUE_OPERATORS`, `MAX_NESTED_CALLS`, `MAX_PARENTHESES`, `MAX_SIGNS`, `Parser::in_call`, `Parser::parse_primary`, `Parser::grow`, `Parser::grow_chain`); expressions/parser/mod.rs (`Parser::parse_signs`); expressions/parser/chain.rs; expressions/parser/reference_operators.rs (`Parser::parse_parenthesis_run`); model.rs (`Model::parse_cell_formula`, `Model::evaluate_operator_chain`); rustsheet-xlsx `import::worksheets::from_a1_to_rc` (the call cap on load)
 
 ## Input left over after a complete formula is a syntax error
 Rule: text after a complete expression (`=1 2`, `=1+2 3`, `=SUM(A1:A2))`, `="a" "b"`, `=SIN(1)(3)`,

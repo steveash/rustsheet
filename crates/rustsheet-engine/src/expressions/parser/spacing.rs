@@ -80,13 +80,14 @@ impl Spacing {
         self.before.is_empty() && self.after.is_empty()
     }
 
-    /// `text`, the printed operand, with the runs around it.
-    pub(crate) fn around(self, text: &str) -> String {
-        let mut spaced = String::with_capacity(text.len() + 4);
-        self.before.push_to(&mut spaced);
-        spaced.push_str(text);
-        self.after.push_to(&mut spaced);
-        spaced
+    /// Appends the run written ahead of the operand to `text`.
+    pub(crate) fn push_before(self, text: &mut String) {
+        self.before.push_to(text);
+    }
+
+    /// Appends the run written behind the operand to `text`.
+    pub(crate) fn push_after(self, text: &mut String) {
+        self.after.push_to(text);
     }
 }
 
@@ -96,7 +97,8 @@ impl Node {
     /// has some join them, so a `Spaced` never wraps another.
     ///
     /// A `Spaced` costs no level of [`super::MAX_FORMULA_DEPTH`]: it only ever wraps a node that
-    /// costs one, and never another `Spaced`, so the tree is at most twice as deep as counted, and
+    /// costs one or a unary sign (bounded by [`super::MAX_SIGNS`]), and never another `Spaced`, so
+    /// the tree is at most twice as deep as counted, and
     /// only the printers and edits walk it (evaluation reads the tree with no whitespace,
     /// decision 0127). A formula nests as deep with spaces as without, as Excel's does; the
     /// nesting tests print and edit the spaced shapes at the limit on a 2 MiB stack.

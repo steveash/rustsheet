@@ -27,6 +27,15 @@ pub const MAX_FORMULA_DEPTH: usize = 256;
 /// ([`Parser::parse_parenthesis_run`]), so this bound is Excel's, not the stack's.
 pub const MAX_PARENTHESES: usize = 256;
 
+/// Most unary signs (`-`, `+`) a formula may hold open at once, a minus written directly before a
+/// number literal not counted: Excel loads 1,024 minus signs before `1`, 1,023 plus signs before
+/// `"a"` and 1,023 alternating `-+` signs before `C1`, and refuses one more of each, stored and
+/// typed (probes/t3172-minus-*, -plus-*, -alt-*; T-3172). Signs in several runs on one path
+/// (`=-(-(...))`) count together (unprobed). A sign adds no level of [`MAX_FORMULA_DEPTH`]: the
+/// evaluator walks a run in a loop (`Model::apply_unary_chain`), so this bound is Excel's; it
+/// also keeps the walks that recurse per sign (printing, analysis, dropping) on the stack.
+pub const MAX_SIGNS: usize = 1023;
+
 /// Levels an operand adds over its subexpressions, at most: a call wrapped in
 /// `@` or `#` on import (`_xlfn.SINGLE`), or `LAMBDA(...)(...)`.
 pub(super) const PRIMARY_DEPTH: usize = 2;
@@ -134,11 +143,14 @@ impl Parser {
 
     /// The run and the signs before an operand of [`Parser::parse_power`]. A pending operand has
     /// none of its own (what follows it is read after it, [`Parser::parse_parenthesis_run`]).
-    pub(super) fn parse_prefix(&mut self) -> (Run, Vec<(bool, Run)>) {
+    /// Also returns how many of the signs count toward [`MAX_SIGNS`] ([`Parser::parse_signs`]).
+    pub(super) fn parse_prefix(&mut self) -> (Run, Vec<(bool, Run)>, usize) {
         if self.pending_operand.is_some() {
-            return (Run::default(), Vec::new());
+            return (Run::default(), Vec::new(), 0);
         }
-        (self.run_ahead(), self.parse_signs())
+        let before = self.run_ahead();
+        let (signs, counted) = self.parse_signs();
+        (before, signs, counted)
     }
 
     /// Parses an operand. Its subexpressions (parenthesised, function
