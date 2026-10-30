@@ -144,9 +144,9 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   apply to closing a duplicate. When any condition fails, do what you did before: fix CI, comment
   the blocker, or mark the task blocked with reasons.
   In `train` mode (decision 0157 amending 0050) these are the conditions for **marking** an
-  orphaned PR ready (`make mark-ready` with the verdict records of your own panel), not for merging it,
-  and the up-to-date condition drops out: the train provides it. A PR whose worker already
-  marked it ready, on its current head, is not orphaned. In `shadow` mode, mark it ready and then
+  orphaned PR ready (`make mark-ready` with the verdict records of your own panel), not for
+  merging it, and the up-to-date condition drops out: the train provides it. A PR whose worker
+  already marked it ready, on its current head, is not orphaned. In `shadow` mode, mark it ready and then
   merge it per the per-PR flow, as its worker would.
 - **Merge-train daily check** (SPEC-0027 "Daily thresholds"): in `shadow` and `train` mode, the
   daily run runs `make merge-train-stats` (T-3076; until it exists, say so in docs/status.md and

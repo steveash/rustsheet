@@ -56,9 +56,9 @@ If the task is bigger than size M, split it (planner) instead of doing it.
   the first commit after the claim so other sessions see the number.
 
 ## 5. Review
-Open the PR as a draft (step 6.2's template) if none exists, so the reviewers' verdict records
-have a PR to go on. Use the `review` skill. Fix every BLOCKING / REQUEST_CHANGES finding, re-run `make check`, and
-re-run only the reviewers that did not approve. Max 3 review rounds; if still blocked, set the
+Open the PR as a draft (step 6.2's template) if none exists, so the reviewers' verdict
+records have a PR to go on. Use the `review` skill. Fix every BLOCKING / REQUEST_CHANGES
+finding, re-run `make check`, and re-run only the reviewers that did not approve. Max 3 review rounds; if still blocked, set the
 task `status: blocked` with a "Blocked because" section, push the branch, open the PR as draft,
 and stop work on this task (pick the next one at step 1 while the session budget allows). When
 the round limit is the only blocker, the section's first line is exactly
@@ -97,7 +97,8 @@ file and its acceptance criteria.
 1. Mark the task `status: done` with a short "Outcome" section (what changed, eval delta), commit.
    Do not add a line to `docs/status.md`: the squash commit and the Outcome are the record, and the
    steward summarizes merged work daily (decision 0024).
-2. `git push -u origin agent/<lane>/T-XXXX-<slug>`; open a PR to `main` using
+2. `git push -u origin agent/<lane>/T-XXXX-<slug>`; mark the step-5 draft PR ready for review
+   (or, if none exists, open a PR to `main`) using
    `.github/pull_request_template.md`, pasting the eval delta and the review table. When the
    task has `issue: <N>` (it came from a GitHub issue; the `issue-intake` skill, decision 0158),
    the PR body says `Closes #<N>`, or `Part of #<N>` while `python3 scripts/tasks.py issue <N>`
@@ -147,10 +148,11 @@ file and its acceptance criteria.
      (decision 0121 (2)). `invalidated`: a push moved the head after marking. Then run `make
      check`, re-run the reviewers the change concerns (each posts a verdict record on the new head;
      once `verdict_records = "require"`, every applicable reviewer needs one there), wait for
-     green CI, and mark again (`REVIEW="..."` covers the others only while in `warn`). Only when the new head is a clean merge of `origin/main` onto the marked head
-     and nothing else (no conflict resolution, no other commit) may you carry the old verdicts
-     over with `make mark-ready PR=<n> CARRY=1`; the script checks that mechanically. Marking
-     again removes `merge-train-ejected` (decision 0177).
+     green CI, and mark again (`REVIEW="..."` covers the others only while in `warn`). Only
+     when the new head is a clean merge of `origin/main` onto the marked head and nothing else
+     (no conflict resolution, no other commit) may you carry the old verdicts over with `make
+     mark-ready PR=<n> CARRY=1`; the script checks that mechanically. Marking again removes
+     `merge-train-ejected` (decision 0177).
    - **Revert PRs** the merger opens (`revert: merge train mismatch at #k`) are handled by
      whoever takes their P0 task: full review panel, then merge under the lock (`lock`, `shadow`)
      or mark ready (`train`), with P0 priority. No review waiver applies to reverts.
