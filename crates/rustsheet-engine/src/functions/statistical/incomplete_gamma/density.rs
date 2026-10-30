@@ -48,6 +48,7 @@ fn density_with(a: f64, x: f64, scale: f64, form: Exponent) -> Option<f64> {
     // `GAMMA.DIST(10,9,2,FALSE)` of ironcalc-calc GAMMA.xlsx E3 at 0.56a).
     if form == Exponent::Excel
         && (SMALL_RATIO_SHAPE_MIN..DIRECT_SHAPE_MAX).contains(&a)
+        // Above the mode only; the 1.4a bound is unbracketed below 20 (UNVERIFIED, T-3219).
         && y - a > a * NEAR_MODE
     {
         return Some(stirling_prefactor(a, excel_ratio_exponent(a, y), stirlerr_exact(a).0) / x);

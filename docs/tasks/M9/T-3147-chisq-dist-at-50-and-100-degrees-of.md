@@ -84,7 +84,7 @@ closed by T-2638, which left A53, A63 and A68 within it; the t3148 flat-band cel
 shape 3 to 20 Excel's *density* above the mode (x > 1.4a) is T-2638's large-shape ratio form, with the exact Stirling
 error (`stirlerr_exact`); the cdf there is not, so P and Q keep the direct form (`incomplete_gamma::density_with`,
 `SMALL_RATIO_SHAPE_MIN` a fit in (2.5, 3]; the density moved to `incomplete_gamma/density.rs`, which
-keeps mod.rs under the 1,000-line limit after T-3013). Every form tried, with its bit-exact and 1-ulp counts on the 110 literal
+leaves mod.rs headroom under the 1,000-line limit for T-2561 and T-3313). Every form tried, with its bit-exact and 1-ulp counts on the 110 literal
 small-shape densities in eval/, is in docs/excel-semantics/statistics.md (the T-3147 paragraph of "Incomplete gamma:
 accurate kernel"). Fit attempt 1 of 2 (decision 0056); the small-shape cdf and the densities below the mode stay with
 T-3219.
