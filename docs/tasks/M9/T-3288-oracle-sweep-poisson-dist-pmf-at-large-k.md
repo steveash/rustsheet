@@ -3,7 +3,7 @@ id: T-3288
 title: "Oracle sweep: POISSON.DIST pmf at large k (30 to 1000) with the mean from k/2 to 2.5k, and ulp runs at the five visibly-off cells"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
