@@ -3,7 +3,7 @@ id: T-3207
 title: "Merge-train verdict records: record format, make verdict-record, mark derives verdicts, V4 checks them in warn mode"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
