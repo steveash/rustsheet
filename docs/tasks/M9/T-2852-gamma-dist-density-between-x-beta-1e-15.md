@@ -55,7 +55,7 @@ shapes below 0.5, y up to 1E-15, the residue) is T-3303 (`defer: phase-1b`); one
 Review round 1 cut the form at shape 2.5 above the mode, which restores m9-chisq-dist A36, A38, A40, t1049-chisqdist A38
 and gated gen-m9/a54c738c697617c3 A29 to their main values.
 
-Main (b2696e397) against HEAD, every cell of every vendored suite (calipers, corpus-bench and poi not fetched; both
+Main (ffe77cd77, with T-3147, T-2561 and T-3146) against HEAD, every cell of every vendored suite (calipers, corpus-bench and poi not fetched; both
 binaries rebuilt from a `cargo clean` of the engine and harness):
 - Fixed (bit-exact now), 44: 23 in gated suites (probes/t2753-gamma-density-switch and -ratio-sweep 18; gen-m9/
   8dd2312c96effb1b A150, 9cca17438a7e6f8a A133, bc40d37cb4d8301d A165, d8266bc15533702a A230, e6cf3b20a014e6a3 A92), 21
