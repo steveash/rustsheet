@@ -3,7 +3,7 @@ id: T-3282
 title: "Probe the displayed text of a text over 255 characters under a text section"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
