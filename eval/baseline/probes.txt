@@ -1620,6 +1620,7 @@ C	probes/t3137-date-parts-near-midnight.case.json	1134
 C	probes/t3138-blank-criterion.case.json	111
 C	probes/t3140-snap-coerced-operands.case.json	1273
 C	probes/t3151-number-criterion-formatted-text.case.json	21
+C	probes/t3153-sort-lifted-by-col-text.case.json	30
 C	probes/t3154-collation-accent-pairs.case.json	812
 C	probes/t3154-collation-accent-weights.case.json	357
 C	probes/t3154-collation-accents.case.json	595
