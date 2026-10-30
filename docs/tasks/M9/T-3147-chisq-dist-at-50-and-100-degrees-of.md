@@ -83,12 +83,14 @@ A50 `CHISQ.DIST(40,10,FALSE)` is Excel's bit for bit, so all nine owned cells ar
 closed by T-2638, which left A53, A63 and A68 within it; the t3148 flat-band cells were closed there too). Found: from
 shape 3 to 20 Excel's *density* above the mode (x > 1.4a) is T-2638's large-shape ratio form, with the exact Stirling
 error (`stirlerr_exact`); the cdf there is not, so P and Q keep the direct form (`incomplete_gamma::density_with`,
-`SMALL_RATIO_SHAPE_MIN` a fit in (2.5, 3]). Every form tried, with its bit-exact and 1-ulp counts on the 110 literal
+`SMALL_RATIO_SHAPE_MIN` a fit in (2.5, 3]; the density moved to `incomplete_gamma/density.rs`, which
+keeps mod.rs under the 1,000-line limit after T-3013). Every form tried, with its bit-exact and 1-ulp counts on the 110 literal
 small-shape densities in eval/, is in docs/excel-semantics/statistics.md (the T-3147 paragraph of "Incomplete gamma:
 accurate kernel"). Fit attempt 1 of 2 (decision 0056); the small-shape cdf and the densities below the mode stay with
 T-3219.
 
-Main (b666cbc85) against HEAD, every cell of every vendored suite (calipers, corpus-bench and poi not fetched):
+Main (9efff2847) against HEAD, every cell of every vendored suite (calipers, corpus-bench and poi not fetched; both
+binaries rebuilt from a `cargo clean` of the engine and harness; the same result as against b666cbc85):
 - Fixed (bit-exact now), 3: probes-numeric/m9-chisq-dist A50 `CHISQ.DIST(40,10,FALSE)` (8 ulp before),
   m9-gamma-dist-a9 A10 `GAMMA.DIST(27,9,1,FALSE)` and A20 `GAMMA.DIST(54,9,2,FALSE)` (1 ulp each).
 - Lost bit-exact, 1: probes-numeric/m9-gamma-dist-a9 A30 `GAMMA.DIST(27000000,9,1000000,FALSE)`, 1 ulp (ungated).
