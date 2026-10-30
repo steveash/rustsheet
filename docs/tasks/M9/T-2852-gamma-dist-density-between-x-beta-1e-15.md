@@ -3,7 +3,7 @@ id: T-2852
 title: "GAMMA.DIST density between x / beta 1E-15 and 1E-10, and at shape 50: find Excel's form (up to 37 ulp off today)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
