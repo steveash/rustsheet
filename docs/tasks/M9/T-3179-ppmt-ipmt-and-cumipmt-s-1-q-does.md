@@ -39,3 +39,6 @@ toward Excel's on the cells where Kahan's expm1 at |nper*L| >= 1 is the miss, wi
 ## Out of scope
 - PMT (T-3014, done).
 - RATE and NPV.
+
+## Scope after T-2243 (2026-10-29)
+IPMT and PPMT take PMT's `1-Q` switch: T-2243 found that they split Excel's discounted PMT, switch included, bit-exact on all 1495 IPMT cells and on 2552 of 2556 PPMT cells (financial.md "IPMT and PPMT split Excel's discounted payment"). What is left here is CUMIPMT and CUMPRINC. CUMIPMT's type-1 per-period sum still takes the exact split (`SplitForm::Exact`). Summing the discounted IPMT instead fixes 4 CUMPRINC_CUMIPMT.xlsx type-1 cells but regresses G3, G4 and G15, and fin-cumipmt-overflow-and-forms A8, by an ulp each. So CUMIPMT has a form of its own. T-2243 also hands this task its last cell: fin-cumipmt-overflow-and-forms A13 (`CUMIPMT(0.0083,36,8000,3,3,0)`, type 0, 3 ulp).
