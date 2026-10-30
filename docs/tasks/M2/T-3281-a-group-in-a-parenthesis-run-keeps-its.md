@@ -3,7 +3,7 @@ id: T-3281
 title: "A group in a parenthesis run keeps its text in a U+3000 intersection name"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -24,9 +24,16 @@ been read, so `start` is taken after it and the name loses the group's text. Fou
 T-3197 (closed duplicate PR #2440). FORMULATEXT and export then print the wrong formula.
 
 ## Acceptance criteria
-- [ ] `=((A1:A3)　A2:B2)` and `=(((A1:A3))　A2:B2)+1` are `#NAME?` and print as written (unit
+- [x] `=((A1:A3)　A2:B2)` and `=(((A1:A3))　A2:B2)+1` are `#NAME?` and print as written (unit
       test); `=(A1:A3　A2:B2)` still does.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Which other separators Excel accepts (references.md).
+
+## Outcome
+The parser records where a pending operand's text starts (`Parser::pending_start`): a group of a
+parenthesis run starts `n` chars after the run's first `(`. `Parser::parse_intersection` builds the
+U+3000 name from there, so `=((A1:A3)　A2:B2)`, `=(((A1:A3))　A2:B2)+1` and `=((A1)　(A2))` are
+`#NAME?` and print as written (were `=(A2:B2)` etc.). Unit test in test_intersection_operator.rs.
+Eval: no change (no case holds the shape).
