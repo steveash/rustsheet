@@ -102,6 +102,40 @@ fn parenthesis_runs_nest_as_deep_as_excel_allows() {
             MAX_PARENTHESES + 1
         ))));
         assert!(is_too_deep(&parse(&"(".repeat(MAX_PARENTHESES + 1))));
+        // Groups in several runs count together (unprobed; syntax.md): split by a space, an
+        // operand or a call, 256 in all fit and 257 do not.
+        let half = MAX_PARENTHESES / 2;
+        for (open, close) in [("( ", ")"), ("(1+", ")"), ("ABS(", ")")] {
+            let fits = format!(
+                "{open}{}{close}",
+                nested("(", "1", ")", MAX_PARENTHESES - 1)
+            );
+            assert!(
+                !matches!(parse(&fits), Node::ParseErrorKind { .. }),
+                "{open}"
+            );
+            let past = format!("{open}{}{close}", nested("(", "1", ")", MAX_PARENTHESES));
+            let past = if open == "ABS(" {
+                format!("({past})")
+            } else {
+                past
+            };
+            assert!(is_too_deep(&parse(&past)), "{open}");
+        }
+        let split = nested(
+            "(",
+            &format!("1+{}", nested("(", "1", ")", half)),
+            ")",
+            half,
+        );
+        assert!(!matches!(parse(&split), Node::ParseErrorKind { .. }));
+        let split = nested(
+            "(",
+            &format!("1+{}", nested("(", "1", ")", half + 1)),
+            ")",
+            half,
+        );
+        assert!(is_too_deep(&parse(&split)));
         let mut model = crate::test::util::new_empty_model();
         let formula = format!("={}", nested("(", "-A2", ")", MAX_PARENTHESES));
         model._set("A1", &formula);

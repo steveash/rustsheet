@@ -11,7 +11,9 @@
   (`Parser::parse_parenthesis_run`): the innermost group first, then each enclosing one with the
   group inside handed to its content as its first operand. A group whose content is exactly the
   group inside merges with it and adds no depth; any other costs an operand's levels, as before.
-  A run of more than 256 (`MAX_PARENTHESES`, Excel's own limit) is too deep. Parentheses separated
+  More than 256 groups open at once (`MAX_PARENTHESES`, Excel's own limit for a run) is too deep,
+  whether in one run or split by whitespace, an operand or a call; Excel was probed with an
+  unbroken run only, so counting split runs together is the conservative reading. Parentheses separated
   by whitespace, calls and every other shape keep the recursive path and its bound.
 - **Consequences:** The pinned lines for t3097-nesting-paren-128 and -255 (stored and typed) and
   t3172-paren-256 leave `eval/suites/probes/deviations`; those cases now match Excel. `Group.levels`

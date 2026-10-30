@@ -56,18 +56,30 @@ impl Parser {
     /// content is exactly the group inside merges with it (`((x))` is one [`Node::Group`] of two
     /// levels, [`regroup`]) and adds no depth; any other costs an operand's.
     /// Excel loads 256 directly nested parentheses and refuses 257 (probes/t3172-paren-256,
-    /// docs/excel-semantics/syntax.md "Formula nesting depth cap"), so a longer run is too deep.
+    /// docs/excel-semantics/syntax.md "Formula nesting depth cap"), so a formula nesting more
+    /// than 256 groups, in one run or several (`( ((...)))`, `(1+((...)))`), is too deep.
     pub(super) fn parse_parenthesis_run(&mut self) -> Node {
         let mut opened = 1;
         while !self.lexer.whitespace_follows()
             && self.lexer.peek_token() == TokenType::LeftParenthesis
         {
             opened += 1;
-            if opened > MAX_PARENTHESES {
+            if self.open_groups + opened > MAX_PARENTHESES {
                 return self.too_deep();
             }
             self.lexer.advance_token();
         }
+        if self.open_groups + opened > MAX_PARENTHESES {
+            return self.too_deep();
+        }
+        self.open_groups += opened;
+        let node = self.parse_run_groups(opened);
+        self.open_groups -= opened;
+        node
+    }
+
+    /// The `opened` groups of a run, after its last `(`: see [`Parser::parse_parenthesis_run`].
+    fn parse_run_groups(&mut self, opened: usize) -> Node {
         let mut node = self.parse_parenthesized_call();
         let mut depth = self.inner_depth + PRIMARY_DEPTH;
         for _ in 1..opened {

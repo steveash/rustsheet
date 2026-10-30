@@ -155,7 +155,9 @@ one, so the depth bound admits up to 127 nested function calls; union operand li
 (T-0134). A run of directly nested parentheses (`((...(x)...))`, nothing between the `(`s) is
 parsed in a loop and is one group node, so it costs no level per parenthesis; a run of up to 256
 parses, as Excel's does, and 257 or more is too deep (`MAX_PARENTHESES`, T-3191, decision 0173;
-`=((...(0.1+0.2-0.3+B1)...))` too, T-1169). A group holding more than the group inside it
+`=((...(0.1+0.2-0.3+B1)...))` too, T-1169). Groups split into several runs (`=( ((...)))`,
+`=(1+((...)))`) count together: more than 256 open at once is too deep. Whether Excel counts split
+runs the same way is unprobed (only an unbroken run around `1` was, T-3172). A group holding more than the group inside it
 (`((x)+1)`) still costs an operand's two levels. Each unary minus is a node (T-0132), and so is each unary plus kept in the formula text
 (T-2723), so a run of more than about 250 signs (`=----...1`, `=++++..."a"`) is also a parse error;
 a plus directly before a number literal folds into it and adds no node. Typed whitespace adds no

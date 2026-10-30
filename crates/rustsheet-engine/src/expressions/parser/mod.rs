@@ -580,6 +580,8 @@ pub struct Parser {
     /// returns instead of reading one: the inner group of a run of parentheses, parsed before
     /// the content around it (see [`Parser::parse_parenthesis_run`]).
     pending_operand: Option<(Node, usize)>,
+    /// Written groups open on the current parse path, bounded by [`MAX_PARENTHESES`].
+    open_groups: usize,
     /// Value operators in the formula so far, bounded by [`MAX_VALUE_OPERATORS`].
     value_operators: usize,
     /// The parser is outside every parenthesis and argument list, where a comma is the bare
@@ -652,6 +654,7 @@ impl Parser {
             depth: 0,
             inner_depth: 0,
             pending_operand: None,
+            open_groups: 0,
             value_operators: 0,
             bound_names: Vec::new(),
             typed: false,
@@ -735,6 +738,7 @@ impl Parser {
         self.depth = 0;
         self.inner_depth = 0;
         self.pending_operand = None;
+        self.open_groups = 0;
         self.value_operators = 0;
         self.bound_names.clear();
         self.cell_shaped_binding = None;

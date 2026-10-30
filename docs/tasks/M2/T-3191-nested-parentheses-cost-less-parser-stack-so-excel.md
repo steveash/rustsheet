@@ -46,7 +46,8 @@ A run of directly nested parentheses is parsed in a loop (`Parser::parse_parenth
 innermost group first, then each enclosing one with the group inside handed to its content as its
 first operand (`Parser::pending_operand`, returned by `parse_primary`; `parse_power` and
 `parse_implicit` read no sign, run or `@` before it). A group that is exactly the group inside merges
-into it and adds no depth; a run of more than 256 (`MAX_PARENTHESES`, Excel's limit) is too deep.
+into it and adds no depth; more than 256 groups open at once, in one run or several
+(`MAX_PARENTHESES`, Excel's limit for a run; split runs unprobed), is too deep.
 `Group.levels` is now `u16`. Decision 0173. Eval delta: probes t3097-nesting-paren-128/-255 and
 t3172-paren-256 (stored and typed, 6 cases) go from whole-case deviations to bit-exact passes (12
 cells); no regressions. Follow-up: T-3197 (`(ABS(` levels).

@@ -21,8 +21,9 @@ use crate::expressions::parser::{value_operands, ExpectedTokens, Node, Parser};
 /// stack (about 2 KB of parser stack per nesting level).
 pub const MAX_FORMULA_DEPTH: usize = 256;
 
-/// Most parentheses a run of directly nested ones may hold (`((...(x)...))`): Excel loads 256
-/// and refuses 257, stored and typed (probes/t3172-paren-256, T-3172). A run is parsed in a loop
+/// Most written groups a formula may nest (`((...(x)...))`): Excel loads 256 directly nested
+/// parentheses and refuses 257, stored and typed (probes/t3172-paren-256, T-3172). Groups split
+/// into several runs (`(1+((...)))`) count together (unprobed). A run is parsed in a loop
 /// ([`Parser::parse_parenthesis_run`]), so this bound is Excel's, not the stack's.
 pub const MAX_PARENTHESES: usize = 256;
 
