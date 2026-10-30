@@ -13,7 +13,7 @@
   scripts/tasks.py validate              # schema + dependency checks, every TODO(T-XXXX) in
                                          # code names an open task, and no task this branch adds
                                          # (vs the origin/main merge base) lists cells another
-                                         # open task lists without naming it (CI; task-format.md)
+                                         # open task lists without naming it (CI, decision 0182)
   scripts/tasks.py board                 # write docs/tasks/BOARD.md (local view, git-ignored)
   scripts/tasks.py stats --json          # task counts per milestone, campaign stage and status,
                                          # and deferred tasks, for the progress dashboard
