@@ -3,7 +3,7 @@ id: T-3177
 title: "merge_ready: accept the session's trailing attribution footer after the merge-train-ready marker"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
