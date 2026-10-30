@@ -3,7 +3,7 @@ id: T-2969
 title: "spec2xlsx writes a table column's calculatedColumnFormula; probe whether Excel refills it on load"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
