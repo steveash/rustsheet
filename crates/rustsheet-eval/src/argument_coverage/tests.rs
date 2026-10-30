@@ -267,6 +267,37 @@ fn pairwise_counts_expected_class_pairs_one_call_passes_together() {
     assert_eq!(rows[2].params[2].covered, 1);
     // One counted parameter has no pairs.
     assert_eq!(rows[0].pairwise, None);
+    assert!(rows[0].unseen_pairs.is_empty());
+    // Every expected pair not seen is listed: 121 - 2 for ROUND, 23 - 4 for SUMIF.
+    assert_eq!(rows[1].unseen_pairs.len(), 119);
+    assert_eq!(rows[2].unseen_pairs.len(), 19);
+    assert_eq!(
+        rows[1].unseen_pairs[0],
+        UnseenPair {
+            params: ["number".into(), "num_digits".into()],
+            classes: [ArgClass::Number, ArgClass::Number],
+        }
+    );
+    assert!(!rows[1]
+        .unseen_pairs
+        .iter()
+        .any(|u| u.classes == [ArgClass::Fraction, ArgClass::Zero]));
+}
+
+#[test]
+fn no_pair_is_unseen_once_every_one_is_seen() {
+    // A `range` parameter expects one class, so one call with two references (as SUMIF's sum_range above) sees the only pair.
+    let catalog = Catalog::from_functions([function(
+        "SUMSQ",
+        vec![param("a", "range", None), param("b", "range", None)],
+    )]);
+    let sheets = vec!["Calc".to_string(), "Data".to_string()];
+    let cells = [cell("=SUMSQ(Data!A1,Data!B1)", true)];
+    let mut result = CaseResult::empty("c", "s", crate::runner::CaseStatus::Pass);
+    result.arguments = observe(&Data, &sheets, &cells);
+    let rows = summarize(&catalog, &[result]);
+    assert_eq!(rows[0].pairwise, Some(1.0));
+    assert!(rows[0].unseen_pairs.is_empty());
 }
 
 #[test]

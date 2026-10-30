@@ -3,7 +3,7 @@ id: T-3277
 title: "report.json argument_coverage lists each function's unseen argument-class pairs, so the generator can target them"
 milestone: M2
 lane: harness
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -44,3 +44,6 @@ exactly those pairs without re-implementing the classifier.
 ## Out of scope
 - Any generator change (T-3278) or dashboard view of the list.
 - Changing what counts as a pair or a class.
+
+## Outcome
+`FunctionArguments::unseen_pairs` (argument_coverage.rs) lists the expected pairs no call passed, computed in `summarize` from the same pair set; unit tests assert the exact counts and the empty case; eval-harness.md names the field. No eval delta (report field only).
