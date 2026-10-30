@@ -3,7 +3,7 @@ id: T-2045
 title: "XIRR over flows dated before the first: stop where Excel stops on long spans (whole-column-empty-walkers E7, F3)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -68,3 +68,11 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
   financial.md and filed as T-3267, which owns A31.
 - Eval delta: none fixed; 13 new-coverage known failures (the new probe: 12 owned here, A31 by T-3267),
   0 regressions.
+
+## Outcome
+Partial, closed after attempt 1 (decision 0056). The remaining work moves to T-3268, which owns E7, F3 and the
+probe's 12 stop-rule cells, with the hypothesis above.
+- Done: probe probes/xirr-back-dated-stop (31 cells), and the named T-2045 lab candidates (76/81 on `xirr-oos`,
+  227/227 on `xirr`). The numeric-text quirk is recorded and filed as T-3267.
+- Not done: E7 and F3 are still off. Every candidate tried either misses them or regresses nogaps A4.
+- Eval delta: none fixed; 13 new-coverage known failures; 0 regressions.
