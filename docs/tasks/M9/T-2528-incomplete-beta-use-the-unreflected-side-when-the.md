@@ -3,7 +3,7 @@ id: T-2528
 title: "Incomplete beta: accurate upper side at a huge shape where the reflected continued fraction does not converge (T-1538 split)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
