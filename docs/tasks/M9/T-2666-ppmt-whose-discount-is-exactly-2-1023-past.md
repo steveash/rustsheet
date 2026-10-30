@@ -3,7 +3,7 @@ id: T-2666
 title: "PPMT whose discount is exactly 2^-1023 past the range: why PPMT(7,10,350,58827) keeps it (gen-m9, 1 cell)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
