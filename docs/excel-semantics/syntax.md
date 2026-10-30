@@ -468,7 +468,8 @@ agree):
   "Calculated columns: a formula typed into a table column", T-2957, T-2958.)
   Ours (t2786 case): the adapter typed these before the table existed, so they were `#ERROR!` (T-2955).
   Ours since T-3069: an unqualified `@` reference keeps the padding inside its brackets and a run after `@` is that
-  padding (`[@ Col]` prints `[ @Col ]`, which reads back); a reference written with its table name still prints the
+  padding (`[@ Col]` prints `[ @Col ]`, which reads back; one-sided `[@Col ]` and the qualified `T[@ Col]`, `T[ @Col ]`
+  read the same way and are unprobed, T-3240); a reference written with its table name still prints the
   long form in its own table (T-3241; header, totals and outside-the-table shapes unprobed, T-3240). `T[ Col ]` is only
   the engine's own printed text for `T[ [Col] ]`, which it re-parses after edits: typed or loaded, a padded bare column
   reads the run as part of the column name, so it is a parse error typed and `#REF!` loaded, and the xlsx export writes
