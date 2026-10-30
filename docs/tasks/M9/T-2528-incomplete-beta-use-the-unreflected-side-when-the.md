@@ -33,7 +33,7 @@ expansion (`bgrat`, used by `bratio` for a huge b with a small a) or Temme's uni
 - [x] New probes-numeric cases (excel-graph) for F.DIST and F.DIST.RT at x = 2, 5, 10, 20, 50 with df (5,1E10),
       (5,1E9), (5,1E8), and the matching BETA.DIST reflections, pass at 15 digits (amended under decision 0114:
       38 of 60 do; the other 22 are where Excel is itself more than half a unit of the 15th digit off the true
-      value, handed to T-3205); no cell of t1530-f-df-cut or
+      value, handed to T-3209); no cell of t1530-f-df-cut or
       t1538-* moves away from Excel (diff against main).
 - [x] A unit test sweeps x above the mean for a = 2.5, b = 5E9 and asserts 0 <= I <= 1 and finiteness.
 - [ ] No regressions in any baseline; `make check` green; reviewers approve.
@@ -53,7 +53,7 @@ expansion (`bgrat`, used by `bratio` for a huge b with a small a) or Temme's uni
 - t1530-f-df-cut A8 bit-exact, A12 and A14 within half a unit of the 15th digit (were 8E-8 off).
 - New probes-numeric/t2528-f-dist-huge-df2 (60 cells, excel-graph): 38 within 15 digits; the other 22 are where
   Excel itself is 1E-15 to 1.5E-14 off the true value (statistics.md "Incomplete beta at a huge first shape"),
-  handed to T-3205.
+  handed to T-3209.
 - Eval against main: +16 passing cells, 44 cells closer to Excel, none further (t1530-f-df-cut +1,
   t1538-beta-dist-at-excel-inv +6, t3007-beta-dist-ln-x-overflow +4: A3, A4, A21, A22, t2528 +6; gen-m9 FDIST(7,10,1E+8),
   FDIST(37.5,...), BETADIST(1E-10,0.5,1E10), m9-legacy-fdist A86, t2435-dist-extremes A38 from 1E-7 to 1E-15 off).

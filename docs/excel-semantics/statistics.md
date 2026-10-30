@@ -3059,10 +3059,10 @@ Ours: since T-2528 DiDonato and Morris' expansion in Q(b, z) (`large_shape_beta.
 b/a at most 1E-6, in accurate arithmetic (z and ln x in double-double, Legendre's fraction for Q/r from the bottom up):
 within 2E-15 of the true value on the probe; Cephes' fraction there did not converge and was about 1E-7 off. 38 of
 the 60 cells are within 15 digits of Excel; the other 22 are where Excel is itself more than half a unit of the 15th
-digit off the true value (T-3205).
-Status: VERIFIED (excel-graph) for the values; Excel's arithmetic inside bgrat is UNVERIFIED (T-3205, T-2510)
+digit off the true value (T-3209).
+Status: VERIFIED (excel-graph) for the values; Excel's arithmetic inside bgrat is UNVERIFIED (T-3209, T-2510)
 Implemented in: functions/statistical/large_shape_beta.rs `large_shape_lower`
-Tasks: T-2528, T-3205
+Tasks: T-2528, T-3209
 
 ## F-distribution df limit (T-1530)
 Rule: either df above 1E10 (after truncation) makes every F function `#NUM!`: F.DIST (cumulative and pdf), F.DIST.RT,
