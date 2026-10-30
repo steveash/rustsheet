@@ -993,3 +993,9 @@ fn value_extent(
         )),
     }
 }
+
+/// The error of an uncalled LAMBDA read as text: `&` (probes/t2622-take-let-reference-lambda-text),
+/// CONCAT and TEXTJOIN (probes/t3130-concat-lambda-trimrange-cell-variable Q5-Q12).
+pub(crate) fn lambda_text_error(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(Error::VALUE, cell, "A LAMBDA joined as text".to_string())
+}

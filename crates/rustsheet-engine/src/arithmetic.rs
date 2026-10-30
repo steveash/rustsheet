@@ -1,4 +1,4 @@
-use crate::functions::text::concatenate::lambda_text_error;
+use crate::cast::lambda_text_error;
 use crate::{
     area_budget::{text_units, NODE_UNITS},
     calc_result::CalcResult,

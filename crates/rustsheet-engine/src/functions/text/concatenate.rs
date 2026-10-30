@@ -1,4 +1,5 @@
 use crate::calc_result::Range;
+use crate::cast::lambda_text_error;
 use crate::functions::util::{array_node_to_calc_result, RangeItem};
 use crate::number_format::number_to_text;
 use crate::{
@@ -520,10 +521,4 @@ impl Model {
         }
         CalcResult::String(joined.into())
     }
-}
-
-/// The error of an uncalled LAMBDA read as text: `&` (probes/t2622-take-let-reference-lambda-text),
-/// CONCAT and TEXTJOIN (probes/t3130-concat-lambda-trimrange-cell-variable Q5-Q12).
-pub(crate) fn lambda_text_error(cell: CellReferenceIndex) -> CalcResult {
-    CalcResult::new_error(Error::VALUE, cell, "A LAMBDA joined as text".to_string())
 }
