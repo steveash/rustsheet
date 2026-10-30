@@ -3,12 +3,12 @@ id: T-2507
 title: "Beta density for min(a,b) > 1: Loader's saddle point with Excel's bd0 (T-2464 E5)"
 milestone: M9
 lane: functions-stat
-status: blocked
+status: done
 priority: P1
 size: M
 tier: opus
 campaign: visible
-depends_on: [T-2645, T-2586]
+depends_on: [T-2645]
 spec: docs/specs/SPEC-0025-incomplete-beta-bratio-port.md
 ---
 
@@ -110,15 +110,18 @@ stage needs a high-precision reference to show Excel close to correctly rounded,
 - Loader's model (M3) reaches 3,176 of hold1 within 15 digits. So matching Excel's visible digits means
   reproducing its algorithm, which is the visible stage (decision 0114, decision 0056's time-box).
 
-## Blocked because
-Blocked because: the Loader model cannot yet meet the no-new-visibly-off and no-gated-regression rules. The first
-attempt's branch `claude/hopeful-meitner-5oxf0g-t2507` (2026-10-25, commits 090e13ec1 and 9d9fd0a0b) implements the
-structure and wires it into BETA.DIST's pdf for min(a,b) > 1. Against main 77ea05010 it fixes 36,410 visibly-off
-probes-numeric cells, makes 677 visibly off where Excel disagrees with it (median 9 ulp, max 84), and regresses the
-gated `BETADIST_BETAINV.xlsx` G3 by 1 ulp (Excel 0.17924096936442618; the correctly rounded value is
-0.17924096936442616, so a correctly rounded kernel loses G3 too). No regime split by bd0 branch pair or by n avoids
-both. That branch's task file has the full comparison (`docs/research/t2507/lost_cells.tsv`,
-`newly_visibly_off.tsv`, both only on that branch at 9d9fd0a0b). Unblock when T-2586 pins the shape constant and the
-series branch, or when the owner accepts
-the losses with a decision record; then resume from that branch's code (`loader.rs`, `stirlerr_exact`,
-`ln_double_double`).
+## Outcome
+- Landed 2026-10-30 (owner-run session https://claude.ai/code/session_01Xbmds2YtTrK9a9T4mMitSB) under decision 0181,
+  ported from `claude/hopeful-meitner-5oxf0g-t2507` (090e13ec1, 9d9fd0a0b) onto `main` ec865788:
+  - `loader.rs` keeps only Excel's pieces (`excel_beta_density`, `excel_dbinom_exponent`, `excel_bd0`,
+    `stirlerr_exact`); the R-style `stirlerr`, `bd0` and `dbinom_raw_dev` left with T-3034. Its logarithm of a
+    double-double is `x87_log10::ln_double_double_pair`. `x87_register::Register` gains `from_double_double`,
+    `to_double_double` and `neg`.
+  - `beta.rs`: the density is T-2503's small-shape form, then the Loader density for a, b > 1, then today's forms.
+- Against a `main` build over gen-m9, ironcalc-calc, probes and probes-numeric: visibly-off cells 82,100 -> 46,065
+  (36,696 fixed, 661 new, all BETA.DIST densities in probes-numeric, docs/research/t2507/newly_visibly_off.tsv).
+  Gated: ironcalc-calc 2 lines fixed, 1 regressed (BETADIST_BETAINV.xlsx G3, 1 ulp); no other suite moves.
+- Criteria: t2464-r2-density-large-p1 is within 15 digits on all 13,824 cells (3,874 bit-exact; the criterion's
+  32,264-cell r2 set is the research data, not one case); t2513-r3-loader-const-hold1 on 4,021 of 4,114 cells (1,785
+  bit-exact) against 3,172 and 952 asked on its 3,296 a, b > 1 cells. The gated regression is decision 0181's.
+- Follow-up T-3220 owns the 661 cells and G3 (T-2586's constant and bd0 series pieces).
