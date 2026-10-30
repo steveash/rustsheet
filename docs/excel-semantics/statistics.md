@@ -2386,6 +2386,12 @@ L5 = LN(n + 1) (Excel's);  Cs = accurate stirlerr(n) - stirlerr(k) - stirlerr(nk
     685/2,675/3,029; exact constant 658/2,987/3,161; CR 251/1,738/2,435;
   - verifier hold-out (1,600): M3 133/1,035/1,351, exact constant 98/1,043/1,350, CR 66/533/909;
   - r2's 32,264 cells: M3 6,312/25,807/31,461, LDe 5,765/25,254/31,385, CR 3,573/26,024/29,280.
+- Excel is not close to correctly rounded here, so a more accurate kernel does not reach its visible digits (T-2507,
+  decision 0114's stage test): on `docs/research/t2464/beta_exact.tsv`'s 928 a, b > 1 density cells Excel is
+  123 exact, 744 within 4 ulp and 737 within 15 shown digits of the 60-digit value, with errors up to 235 ulp
+  (`BETA.DIST(0.9,5,100,FALSE)`) and 24-182 ulp at a dozen cells of shapes 10-100; on t2464-w2f-absweep 327 / 1,997 /
+  2,259 of 3,072 and t2464-w2f-xruns-1 299 / 4,611 / 5,013 of 6,144. The same reference with q = fl(1 - x) scores
+  worse (626 of the 928 within 15 digits), so Excel's error is not q's rounding alone.
 - With one free constant per block (a structure test, not a model), on the verifier's bd0 hold-out (1,920 cells):
   r3's knobs 668/1,501/1,732, r2's 568/1,337/1,678, CR 163/940/1,407, a free-constant null 202/912/1,413. Both-log
   blocks are 387/474/474 of 640: the worker's 656 of 770 was a favourable subset.
@@ -2584,7 +2590,15 @@ those three pieces (`r2-tdist/xlk.py` `bgrat_half_ld`).
 Evidence: probes-numeric t2464-r2-tdist-p1 (parts A-D), t0969-t-tail-grid, t0969-t-beta-link, t0969-t-df2-cut,
 m9-t-dist-*; docs/research/t2464/r2-tdist (`hx.py`, `hx_ctl.py`, `xlk.py`, `tscore.py`, `oos_bgrat.py`, `p1.py`,
 `pdf_*.py`), w5-triangulation `t_link2.py`, `t_pairs.py`.
-Ours: `student_t.rs`'s own composite (a double-double series, a Cephes deep tail, incbcf/incbd from z).
+- In the engine (T-2509) bgrat at b = 1/2 is double-double TOMS bgrat with the three stored pieces
+  (`bratio/bgrat.rs`): T bgrat cells 1,546 of 1,564 bit-exact, 1,563 within 15 digits; part C 4,898 of 4,915. Every
+  df from 3 takes the one call: the cells.tsv lower-side tails go from 1,498 bit-exact and 280 visibly off (the
+  engine's composite before T-2509) to 3,261 and 5, part D from 205 visibly off to 10.
+- df 1 is the exception: through the ported bpser at a = b = 1/2 (w3, GL53's ln B) 24 of cells.tsv's 67 df-1 tails are
+  bit-exact, against 41 for the double-double series, and `T.DIST.2T(1,1)` (Excel 0.5000000000000001) is 5 ulp low.
+  So Excel's bpser at (1/2, 1/2) is not w3's; df 1 keeps the series (T-2930).
+Ours: K(n/2, 1/2, y, z) from df 3 (`student_t::kernel_tail`); df 1 and 2 keep `student_t.rs`'s own composite (a
+double-double series, a Cephes deep tail, incbcf/incbd from z, and df 2's closed forms).
 Status: VERIFIED (excel-graph) for the call form and bgrat at b = 1/2; the bup arithmetic and the T density UNVERIFIED
 Tasks: T-2509, T-2513, T-0969
 

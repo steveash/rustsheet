@@ -11,6 +11,14 @@ use crate::arithmetic::{
     extended_div, round_extended_to_double, round_extended_to_subnormal, round_to_bits,
     significand_and_exponent,
 };
+use crate::x87_exp::{dd_to_extended, power_of_two};
+
+/// 2^exponent as an exact double: the product of two in-range powers of two, so any exponent of a
+/// value in the normal range (and somewhat beyond, towards 0 or infinity) is reached.
+fn wide_power_of_two(exponent: i32) -> f64 {
+    let half = exponent / 2;
+    power_of_two(half) * power_of_two(exponent - half)
+}
 
 /// `significand * 2^exponent`, with `significand` below 2^64 (zero, or at least 2^63 once
 /// normalised by an operation).
@@ -43,6 +51,53 @@ impl Register {
     /// 2^exponent`, and a zero has a zero significand.
     pub(crate) fn parts(self) -> (bool, u128, i32) {
         (self.negative, self.significand, self.exponent)
+    }
+
+    /// A double-double `hi + lo` rounded to a 64-bit significand (RN64, ties to even), as a value
+    /// formed exactly and then held in a register.
+    pub(crate) fn from_double_double((hi, lo): (f64, f64)) -> Self {
+        if hi == 0.0 || !hi.is_finite() {
+            return Self::load(hi);
+        }
+        let negative = hi < 0.0;
+        let magnitude = if negative { (-hi, -lo) } else { (hi, lo) };
+        let (significand, exponent) = dd_to_extended(magnitude);
+        Self::rounded(negative, significand, exponent, false)
+    }
+
+    /// The register's value exactly as a double-double `hi + lo` (a 64-bit significand splits into
+    /// its top 53 bits and the 11 below), for a value well inside the normal double range.
+    pub(crate) fn to_double_double(self) -> (f64, f64) {
+        if self.significand == 0 {
+            return (0.0, 0.0);
+        }
+        let low_bits = self.significand & 0x7FF;
+        // Both parts are integers below 2^64 with at most 53 significant bits: exact as doubles.
+        let scale = wide_power_of_two(self.exponent);
+        let sign = if self.negative { -1.0 } else { 1.0 };
+        (
+            sign * ((self.significand - low_bits) as f64 * scale),
+            sign * (low_bits as f64 * scale),
+        )
+    }
+
+    /// `-self`, exactly.
+    pub(crate) fn neg(self) -> Self {
+        Self {
+            negative: !self.negative,
+            ..self
+        }
+    }
+
+    /// Whether the register holds a negative non-zero value.
+    pub(crate) fn is_negative(self) -> bool {
+        self.negative && self.significand != 0
+    }
+
+    /// Whether two registers hold the same value (a load keeps 53 bits unnormalised, so the
+    /// fields of equal values can differ): their difference is exactly zero.
+    pub(crate) fn same_value(self, other: Self) -> bool {
+        self.add(other.neg()).significand == 0
     }
 
     /// The register `(-1)^negative * significand * 2^exponent` for a significand below 2^64,
@@ -265,6 +320,27 @@ mod tests {
         assert_eq!(third.store(), 1.0 / 3.0);
         assert_eq!(Register::load(-6.0).div(Register::load(3.0)).store(), -2.0);
         assert_eq!(Register::load(0.0).div(Register::load(3.0)).store(), 0.0);
+    }
+
+    /// A register splits exactly into a double-double and back; a double-double rounds to 64
+    /// bits (1 + 2^-60 + 2^-70 keeps 2^-60 and drops 2^-70); negation is exact; equal values
+    /// compare equal whether loaded (53 bits) or computed (normalised to 64).
+    #[test]
+    fn double_double_round_trip_and_value_equality() {
+        let third = Register::load(1.0).div(Register::load(-3.0));
+        let (hi, lo) = third.to_double_double();
+        assert_eq!(hi, -1.0 / 3.0);
+        assert!(lo != 0.0);
+        assert_eq!(Register::from_double_double((hi, lo)), third);
+        let rounded =
+            Register::from_double_double((1.0 + 2f64.powi(-52), 2f64.powi(-60) + 2f64.powi(-70)));
+        assert_eq!(rounded.significand, (1u128 << 63) + (1 << 11) + 8);
+        assert_eq!(Register::from_double_double((0.0, 0.0)).store(), 0.0);
+        assert_eq!(third.neg().neg(), third);
+        assert!(third.is_negative() && !third.neg().is_negative());
+        let two = Register::load(1.5).add(Register::load(0.5));
+        assert!(two.same_value(Register::load(2.0)) && two != Register::load(2.0));
+        assert!(!two.same_value(Register::load(2.0 + f64::EPSILON * 2.0)));
     }
 
     /// Cancellation is exact.
