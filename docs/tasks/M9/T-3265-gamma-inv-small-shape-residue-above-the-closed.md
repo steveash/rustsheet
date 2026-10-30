@@ -1,5 +1,5 @@
 ---
-id: T-3252
+id: T-3265
 title: "GAMMA.INV at a shape below 1 and a quantile from 1E-21 up: Excel's Newton steps from its closed form"
 milestone: M9
 lane: functions-stat

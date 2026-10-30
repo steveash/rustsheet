@@ -3506,7 +3506,7 @@ Tasks: T-1543, T-1634
     about 3.5E-14 of x. The step is on that form even where a·LN(x) is above -16 and the engine's GAMMA.DIST is the
     accurate pair, a few ulps away. A254 and A396 need that: on the engine's GAMMA.DIST their steps would be 2.2E-14
     (kept) and -4.2E-14 (taken), both against Excel. So either Excel's GAMMA.INV steps on an internal form, or the
-    engine's GAMMA.DIST is off there (T-3252 probes GAMMA.DIST at those two closed forms). The step is kept at
+    engine's GAMMA.DIST is off there (T-3265 probes GAMMA.DIST at those two closed forms). The step is kept at
     2.78E-14 (gen-m9/146b46e74f2dac3b A396 `GAMMA.INV(0.05,0.01,EOMONTH(58733,-18))`, F 2.2E-16 below p at the
     closed form). It is taken at 4.1E-14 (A26 `GAMMA.INV(1E-100,0.75,1)`: F is 3.09E-14 below p at the closed form,
     and 2.60E-14 above p at the result, Excel's 4.1475670139922064E-134) and at 4.4E-14 (gen-m9/3a25a03eb94fcfbd A254

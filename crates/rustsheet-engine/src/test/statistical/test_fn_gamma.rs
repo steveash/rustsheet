@@ -117,7 +117,7 @@ fn test_fn_gamma_inv() {
 /// underflows is 0 (A1), a subnormal (or zero) scale stays #NUM! (the closed form is skipped where
 /// the rate 1 / beta overflows, as `gamma_quantile` refuses it), and a subnormal product of a
 /// normal unit quantile and the scale is 0 (A4 and A5 here follow the engine's flush and rate
-/// conventions, not an oracle cell: UNVERIFIED, T-3252).
+/// conventions, not an oracle cell: UNVERIFIED, T-3265).
 #[test]
 fn test_fn_gamma_inv_small_shape_closed_form() {
     let mut model = new_empty_model();

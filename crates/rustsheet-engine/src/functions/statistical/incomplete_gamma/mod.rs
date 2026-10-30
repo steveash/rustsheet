@@ -435,7 +435,7 @@ fn excel_form_lower(a: f64, x: f64, exponent: f64) -> Option<f64> {
 /// gen-m9/60b0b6e69ad35a45 A210 (shape 1/60, 4.9E-19). The cut is on x, not on p or a·LN(x): A28
 /// and A34 share p = 1E-16 and nearly the same a·LN(x) (about -36.9), and only A28 is the closed
 /// form. Below it the series' correction (about x / (a + 1)) is far below an ulp, so the closed
-/// form is the quantile of the leading factor alone. T-3252 probes the gap.
+/// form is the quantile of the leading factor alone. T-3265 probes the gap.
 const CLOSED_FORM_QUANTILE_MAX: f64 = 1e-21;
 
 /// GAMMA.INV takes one Newton step from the closed form where that step is more than this
@@ -452,8 +452,8 @@ const CLOSED_FORM_QUANTILE_MAX: f64 = 1e-21;
 /// [`EXCEL_EXPONENT_MAX`] and the engine's GAMMA.DIST is the pair. A254 and A396 need that: on
 /// GAMMA.DIST's value their steps would be 2.2E-14 (kept) and 4.2E-14 (taken), both against Excel.
 /// So either Excel's GAMMA.INV steps on an internal form, or the engine's GAMMA.DIST is off there
-/// (T-3252 probes it). One step only: at A26 a second would be 3.46E-14 of x and Excel takes none.
-/// A loop under the same test, with the threshold in [3.46E-14, 4.1E-14), fits as well. T-3252
+/// (T-3265 probes it). One step only: at A26 a second would be 3.46E-14 of x and Excel takes none.
+/// A loop under the same test, with the threshold in [3.46E-14, 4.1E-14), fits as well. T-3265
 /// probes steps from 2.9E-14 to 4.0E-14.
 const CLOSED_FORM_STEP_MIN: f64 = 3.5e-14;
 

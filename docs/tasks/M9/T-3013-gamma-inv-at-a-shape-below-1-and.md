@@ -69,7 +69,7 @@ At shape a the quantile's relative error is 1/a times that of p·Gamma(a+1), so 
   3.5E-14 of x. 3.5E-14 is a point inside the evidence bracket (2.78E-14, 4.1E-14), not an Excel constant. The step
   uses that form even where the engine's GAMMA.DIST is the pair (a·LN(x) above -16), and gen-m9 A254 and A396
   need it. A subnormal step counts as no step (single-cell evidence, A9 and B9). The 1E-21 cut is a choice inside
-  (4.15E-22, 6.75E-21), and T-3252 probes all three choices. A subnormal quantile is `#DIV/0!` (A4, B4), one that
+  (4.15E-22, 6.75E-21), and T-3265 probes all three choices. A subnormal quantile is `#DIV/0!` (A4, B4), one that
   underflows is 0, and the scale is a plain final product. This is why T-3012 found the quantile off the crossing.
   Implemented as `incomplete_gamma::excel_small_shape_quantile` (no loop: one closed form, at most one step), called
   from `gamma.rs` `gamma_inv_of` for unit quantiles below 1E-21. Unit test
@@ -97,7 +97,7 @@ At shape a the quantile's relative error is 1/a times that of p·Gamma(a+1), so 
   A396 (kept at 2.78E-14) and A26/A254 (taken at 4.1E-14 and 4.4E-14). A unit-quantile-times-scale rule for every
   shape below 1 would fix B20-B22 and B29 too, but it loses three bit-exact cells (statistics.md), so it was not
   kept.
-- Open, filed as T-3252 (`campaign: visible`): unit quantiles from 1E-21 up. Probe A18, A29, A30, A34-A36 and
+- Open, filed as T-3265 (`campaign: visible`): unit quantiles from 1E-21 up. Probe A18, A29, A30, A34-A36 and
   column B (B29, A35 and B35 visibly off) and gen-m9/60b0b6e69ad35a45 A210 (shape 1/60, -83 ulps). One step from the
   closed form on our cdf model is 1 to 34 ulps off Excel there. Shape-1/2 column B (B20-B24) is 1 to 4 ulps off,
   within 15 digits. The task names no CHISQ.INV cell; CHISQ.INV (chisq.rs) is unchanged and unprobed at df other
