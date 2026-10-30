@@ -3,7 +3,7 @@ id: T-3116
 title: "Probe whether NOW and TODAY read the clock once per recalc or once per call, and settle SPEC-0008's non-goal"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -36,17 +36,29 @@ same serial, or reads the clock at each call. SPEC-0008 then states the rule as 
 - Method: the `excel-probe` skill (excel-graph). Note the backend, the dates and the run count in the evidence line.
 
 ## Acceptance criteria
-- [ ] A probe case `probes/t3116-now-once-per-recalc` holds the comparison cells above, built so that a per-call
+- [x] A probe case `probes/t3116-now-once-per-recalc` holds the comparison cells above, built so that a per-call
       clock gives FALSE in at least one of them on a typical run. It is oracle-filled at least three times, the
       results are recorded, and its scored cells are listed in `invariant` and are the same on every fill.
-- [ ] dates.md replaces the "Unprobed" sentence with the rule and its evidence (VERIFIED, or UNVERIFIED with the
+- [x] dates.md replaces the "Unprobed" sentence with the rule and its evidence (VERIFIED, or UNVERIFIED with the
       reason if the runs disagree). SPEC-0008's "One instant per recalc" bullet is updated to match.
-- [ ] If Excel reads once per recalc, an engine follow-up task (M2, engine) is filed. It makes `Clock::System` give
+- [x] If Excel reads once per recalc, an engine follow-up task (M2, engine) is filed. It makes `Clock::System` give
       one instant per recalc and names this case's cells. If Excel reads per call, the engine needs no change and the
       task says so in its Outcome.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing the engine clock (the follow-up task).
 - RAND/RANDBETWEEN/RANDARRAY, which are SPEC-0008 non-goals, and the timezone model.
 - Desktop Excel (M14, decision 0039).
+
+## Outcome
+- probes/t3116-now-once-per-recalc was filled four times with excel-graph on 2026-10-30. The first
+  repeat fills returned the cached workbook unchanged, so three fills changed an inert cell (Z1)
+  to make Excel recalculate afresh. On every fill, two NOW reads with about 50 ms of dependent work
+  between them differ by 20 to 50 ms, in 10 ms steps: D1, A2, A4 and A7 are FALSE. NOW()-NOW()=0
+  (A5) and INT(TODAY())=INT(NOW()) (A6) are TRUE.
+- Rule: Excel reads its clock per call, not once per recalc. dates.md and SPEC-0008 now say so
+  (VERIFIED). The engine's `Clock::System` already reads per call, so no engine follow-up is needed.
+- Only A5 and A6 are scored (`invariant`). The per-call cells are recorded, not scored: the
+  harness's fixed clock gives one instant per recalc, and those cells cannot show the difference.
+- Eval delta: +2 scored cells, both passing; 0 new known failures; 0 regressions.

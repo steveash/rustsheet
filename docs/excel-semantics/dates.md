@@ -194,9 +194,17 @@ Evidence: eval/suites/ironcalc-calc DATE_AND_TIME/NOW_TODAY.xlsx cached `=NOW()`
 (59002.58 s into the day). The engine truncated to whole seconds before T-0005; fixed in `tz/os_tz.rs`
 (the wasm `tz/browser_tz.rs` path still truncates).
 Status: VERIFIED (Excel-cached values)
-Unprobed: whether Excel reads its clock once per recalc, so that two `=NOW()` cells and
-`=NOW()-NOW()` agree exactly, or once per call. RustSheet's system clock reads once per call;
-a fixed clock (SPEC-0008) makes the question moot.
+Excel reads its clock **at each call, not once per recalc**, in steps of 10 ms. Two `NOW()` reads
+with slow work between them differ: a `NOW()` cell, a cell doing about 50 ms of work that depends on
+it (`SUM(SEQUENCE(1000,1000))` plus a 150x150 `MAKEARRAY`), and a later `NOW()` cell that depends on
+that work give `C1=A1` FALSE, 20 to 30 ms apart. The same holds inside one `LET` (30 to 50 ms) and
+for a `NOW()` on another sheet. `NOW()-NOW()=0` within one formula was TRUE on every run, but only
+because both reads fell in one 10 ms tick. Evidence: probes/t3116-now-once-per-recalc Calc!D1, E1,
+A2, A3, A4, A5, Other!A2, excel-graph 2026-10-30, four fills (three with a changed inert cell so
+Excel recalculated afresh). Status: VERIFIED. RustSheet's system clock (`Clock::System`) also reads
+once per call, so it needs no change. A fixed clock (SPEC-0008, which the harness uses) gives one
+instant for every call, so the eval scores only A5 and A6. The FALSE cells cannot be shown with a
+fixed clock.
 
 ## TIMEVALUE of "date time" text keeps serial-subtraction error
 Rule: for text carrying a date and a time, Excel builds the full serial and returns its fractional
