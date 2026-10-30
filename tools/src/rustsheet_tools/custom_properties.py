@@ -38,6 +38,7 @@ def _utf16_chunks(text: str, units: int) -> list[str]:
 
 
 def set_json_property(wb: xlsxwriter.Workbook, name: str, value: object, what: str) -> None:
+    """Records `value` as JSON in the custom property `name`, continued in `name.2`, ... past 255 units."""
     text = json.dumps(value, ensure_ascii=False)
     if len(text) > _PROPERTY_JSON_MAX:
         msg = f"{what} is too long for the custom properties ({len(text)} > {_PROPERTY_JSON_MAX})"

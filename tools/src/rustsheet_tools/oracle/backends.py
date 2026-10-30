@@ -414,8 +414,8 @@ class GraphBackend:
         """Types `entry` into its cell. Writing `values` runs Excel's typed-input parser: "(1)"
         becomes -1 with a number format Excel picks, as if typed into the cell (T-0280);
         `formulasR1C1` is the same typed in R1C1 mode (T-3113). Text Excel refuses (400
-        `InvalidArgument`) leaves the cell blank, as the UI does: that is the answer, not a
-        failure (decision 0179)."""
+        `InvalidArgument`) leaves the cell blank: that is the answer, not a failure (decision
+        0179)."""
         sheet_ref = quote(entry.sheet.replace("'", "''"), safe="")
         resp = self._call(
             "PATCH",

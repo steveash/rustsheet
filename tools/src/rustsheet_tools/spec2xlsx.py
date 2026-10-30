@@ -26,8 +26,8 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     `{"entered_r1c1":"=R1C2+1"}` is typed in R1C1 mode (T-3113, decision 0179): recorded the same way
     with a fourth element, `[sheet, a1, text, "r1c1"]`, and written by the backends as
     `formulasR1C1` (Graph) or `Range.FormulaR1C1` (desktop); the engine adapter converts it to A1
-    relative to the cell. Excel refusing either kind (Graph 400 `InvalidArgument`) leaves the cell
-    blank, as its UI does after the error dialog; the backend logs `REFUSED` and goes on.
+    relative to the cell. Excel for the web refusing either kind (Graph 400 `InvalidArgument`) leaves
+    the cell blank; the excel-graph backend logs `REFUSED` and goes on (decision 0179).
   * `"sheet_ops": [{"op": "rename", "sheet": "Data", "to": "Inputs"}, {"op": "add", "sheet": "New"},
     {"op": "move", "sheet": "Inputs", "to": 0}]` at the top level are sheet edits made after the
     workbook loads and before it is recalculated (T-1608): `add` appends a sheet, `rename` renames

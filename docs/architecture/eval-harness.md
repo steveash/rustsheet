@@ -54,9 +54,10 @@ Input conventions:
   excel-desktop sets `Range.Value` (that this parses exactly like typing is UNVERIFIED: no desktop run yet), libreoffice refuses. The engine adapter enters it as
   `Input::Parse`. Formulas can only observe the value: `CELL("format")` is `#VALUE!` on excel-graph.
 - `{"entered_r1c1":"=R1C2+1"}` is typed the same way in R1C1 mode (T-3113, decision 0179): recorded with
-  a fourth element `"r1c1"` and written with a range `formulasR1C1` PATCH. The engine adapter converts
+  a fourth element `"r1c1"` and written with a range `formulasR1C1` PATCH (excel-desktop:
+  `Range.FormulaR1C1`, UNVERIFIED like `Range.Value`). The engine adapter converts
   it to A1 text relative to its cell (`rustsheet_engine::r1c1_formula_to_a1`) and enters that as
-  `Input::Parse`. Typed text Excel refuses (PATCH 400 `InvalidArgument`) leaves the cell blank, and so
+  `Input::Parse`. Typed text Excel for the web refuses (PATCH 400 `InvalidArgument`) leaves the cell blank, and so
   does R1C1 text the engine cannot parse; probe a refusal through a dependant such as `=ISBLANK(A1)`.
 - Optional per-sheet `"legacy_formulas": ["H1"]` lists formula cells that spec2xlsx writes as plain
   legacy `<f>` formulas (no dynamic-array `cm`), to probe what Excel shows for a non-array formula

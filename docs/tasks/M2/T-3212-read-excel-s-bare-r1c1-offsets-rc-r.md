@@ -19,7 +19,11 @@ lexer's `LexerMode::R1C1`, which is the engine's storage grammar: it always writ
 are identifiers there (LAMBDA parameters such as `c` re-parse from storage, `is_valid_r1c1_identifier` in
 expressions/lexer/mod.rs). So the converter refuses `=R[-1]C`, and the eval adapter leaves the cell blank. Fix it in
 the converter (a typed-entry flag on the lexer, or a pre-pass) without changing how stored formulas re-parse.
-Probe first: which short forms Excel accepts typed in R1C1 mode, and what a LET name `rc` does there.
+Probe first: which short forms Excel accepts typed in R1C1 mode, and what a LET name `rc` does there; also
+cell-shaped LET/LAMBDA names (`f1`, refused typed in A1 mode by decision 0103) and a structured reference typed in
+R1C1 mode. The converter returns `None` for every parse failure, so the adapter blanks text the engine merely does
+not support (or that passes a nesting/length limit) as if Excel refused it: return a distinct result for those and
+fail the case instead (fidelity review of T-3113).
 
 ## Acceptance criteria
 - [ ] Probe case(s) with `entered_r1c1` cells for each short form, filled by excel-graph; engine matches.
