@@ -4,12 +4,13 @@ use super::erf::gamma_half_lower;
 use super::gamma_x87::excel_gamma;
 use super::gammaln::excel_gammaln;
 use super::incomplete_gamma::{
-    excel_small_shape_lower, gamma_cdf, gamma_density, gamma_quantile, wilson_hilferty_quantile,
-    Tail, DIRECT_SHAPE_MAX, WILSON_HILFERTY_SHAPE_MIN,
+    excel_small_shape_lower, excel_small_shape_quantile, gamma_cdf, gamma_density, gamma_quantile,
+    wilson_hilferty_quantile, Tail, DIRECT_SHAPE_MAX, WILSON_HILFERTY_SHAPE_MIN,
 };
 use super::normal::normal_quantile;
 
 use crate::arithmetic::{extended_quotient, flush_subnormal};
+use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{num_error, number_or_error};
 use crate::functions::Function;
@@ -162,6 +163,30 @@ impl Model {
         // probability outside [0, 1], alpha <= 0 and beta <= 0 are #NUM!.
         if !(0.0..=1.0).contains(&p) || alpha <= 0.0 || beta_scale <= 0.0 {
             return Err(num_error(cell));
+        }
+        // Excel's closed form at a shape below 1 and a tiny quantile, times the scale as a plain
+        // final product (T-3012: column B of probes/t3012-gamma-inv-small-shape is column A times
+        // 1E+15 to the double). A subnormal quantile there is #DIV/0! (A4
+        // `GAMMA.INV(1E-16,0.05,1)`, about 1E-320), one that underflows is 0 (A1-A3; T-3013).
+        // A scale whose rate 1 / beta overflows stays #NUM! (`gamma_quantile`).
+        let closed_form = (1.0 / beta_scale)
+            .is_finite()
+            .then(|| excel_small_shape_quantile(alpha, p))
+            .flatten();
+        if let Some(x) = closed_form {
+            if x > 0.0 && x < f64::MIN_POSITIVE {
+                return Err(CalcResult::new_error(
+                    Error::DIV,
+                    cell,
+                    "GAMMA.INV's quantile is subnormal".to_string(),
+                ));
+            }
+            let scaled = x * beta_scale;
+            if !scaled.is_finite() {
+                return Err(num_error(cell));
+            }
+            // A subnormal product is 0, as `gamma_quantile` flushes after its scale.
+            return Ok(flush_subnormal(scaled));
         }
         let x = if alpha >= WILSON_HILFERTY_SHAPE_MIN && p > 0.0 && p < 1.0 {
             let z = normal_quantile(p, 0.0, 1.0, cell)?;

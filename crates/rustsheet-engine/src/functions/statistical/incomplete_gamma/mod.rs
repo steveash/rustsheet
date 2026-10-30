@@ -346,18 +346,76 @@ pub(crate) fn excel_small_shape_lower(a: f64, x: f64) -> Option<f64> {
     if !(a > 0.0 && a < 1.0 && (f64::MIN_POSITIVE..1.0).contains(&x)) {
         return None;
     }
-    let exponent = a * excel_ln(x);
-    if exponent > EXCEL_EXPONENT_MAX {
+    if a * excel_ln(x) > EXCEL_EXPONENT_MAX {
         return None;
     }
     // P is then about e^-16 / Gamma(a + 1), under 2E-7, so the pair takes it from the series (it
     // takes 1 - Q only where Q is at most 1/2).
+    excel_form_lower(a, x)
+}
+
+/// Excel's form of P(a, x) for x below 1 at any shape below 1, ungated (T-3060): the leading
+/// factor `EXP(a*LN(x))/EXP(GAMMALN(a+1))` times e^-x and the series. `None` where the series
+/// runs out of terms.
+fn excel_form_lower(a: f64, x: f64) -> Option<f64> {
     let sum = lower_series(a, x, &mut Terms(MAX_TERMS));
     if sum.is_nan() {
         return None;
     }
-    let lead = excel_exp(exponent) / excel_exp(excel_gammaln(a + 1.0));
+    let lead = excel_exp(a * excel_ln(x)) / excel_exp(excel_gammaln(a + 1.0));
     Some(lead * excel_exp(-x) * sum)
+}
+
+/// Below this quantile (at scale 1) Excel's GAMMA.INV at a shape below 1 is its closed form
+/// [`excel_small_shape_quantile`] and not its search (T-3013). Bracketed by
+/// probes/t3012-gamma-inv-small-shape: A28 `GAMMA.INV(1E-16,0.75,1)` = 4.147567013992107E-22 is
+/// the closed form, while A18 `GAMMA.INV(1E-5,0.25,1)` (6.75E-21), A34 `(1E-16,0.9,1)`
+/// (1.6E-18) and gen-m9/60b0b6e69ad35a45 A210 (shape 1/60, 4.9E-19 at scale 1) are neither it
+/// nor one Newton step from it on the engine's model of Excel's cdf: so the cut is somewhere in
+/// (4.15E-22, 6.75E-21). Here the series' correction (about x / (a + 1)) is
+/// far below an ulp, so the closed form is the quantile of Excel's leading factor alone.
+const CLOSED_FORM_QUANTILE_MAX: f64 = 1e-21;
+
+/// Excel takes one Newton step on its own cdf from the closed form where that step is more than
+/// this relative part of x, and keeps the closed form otherwise (T-3013). The step is (p - F)/(a F)
+/// of x to first order, so a test on the cdf alone does not fit. Kept at up to 2.78E-14
+/// (gen-m9/146b46e74f2dac3b A396 `GAMMA.INV(0.05,0.01,EOMONTH(58733,-18))`, cdf 2.2E-16 below p;
+/// A6 `GAMMA.INV(1E-5,0.05,1)` at 1.33E-14), taken at 4.1E-14 (A26 `GAMMA.INV(1E-100,0.75,1)`, cdf
+/// 3.09E-14 below p, to Excel's 4.1475670139922064E-134) and at 4.4E-14 (gen-m9/3a25a03eb94fcfbd
+/// A254 `GAMMAINV(0.5,0.01,100)`, cdf 4.4E-16 below p, to Excel's 4.4655350189103716E-29). So the
+/// threshold is in (2.78E-14, 4.1E-14). At A26 a second step would be 3.46E-14 of x, and Excel
+/// takes none, so a loop under the same test (a threshold in [3.46E-14, 4.1E-14)) fits as well.
+const CLOSED_FORM_STEP_MIN: f64 = 3.5e-14;
+
+/// Excel's GAMMA.INV(p, a, 1) at a shape below 1 other than 1/2, where its quantile is tiny
+/// (T-3013; docs/excel-semantics/statistics.md, T-3013 bullet): the closed form
+/// `EXP((LN(p)+GAMMALN(a)+LN(a))/a)`, the root of the leading factor p = x^a / Gamma(a + 1),
+/// summed in that order (probes/t3012-gamma-inv-small-shape: bit-exact at 14 cells of column A,
+/// A9 `GAMMA.INV(1E-30,0.1,1)` = 6.073048362407713E-301 and A16 `(1E-16,0.25,1)` =
+/// 6.749697893111757E-65 among them, where `GAMMALN(a+1)` in place of the last two terms is one
+/// ulp of the exponent off). Where the Newton step on Excel's own cdf ([`excel_form_lower`]) is
+/// more than [`CLOSED_FORM_STEP_MIN`] of x, Excel takes that one step (A26). The value may be 0 or subnormal
+/// (Excel's `#DIV/0!`, the caller's to decide). `None` outside [`CLOSED_FORM_QUANTILE_MAX`], at a
+/// p outside (0, 1), and where a cdf or density fails: the search applies there.
+pub(crate) fn excel_small_shape_quantile(a: f64, p: f64) -> Option<f64> {
+    if !(a > 0.0 && a < 1.0 && a != 0.5 && p > 0.0 && p < 1.0) {
+        return None;
+    }
+    let exponent = (excel_ln(p) + excel_gammaln(a) + excel_ln(a)) / a;
+    let mut x = excel_exp(exponent);
+    if x.is_nan() || x >= CLOSED_FORM_QUANTILE_MAX {
+        return None;
+    }
+    if x < f64::MIN_POSITIVE {
+        return Some(x);
+    }
+    let step = (excel_form_lower(a, x)? - p) / gamma_density(a, x, 1.0)?;
+    // A subnormal step is no step: A9 `GAMMA.INV(1E-30,0.1,1)` = 6.073048362407713E-301 is the
+    // closed form though its step, 8.5E-14 of x, is about 5E-314 (as if Excel flushed it to zero).
+    if step.abs() >= f64::MIN_POSITIVE && step.abs() > CLOSED_FORM_STEP_MIN * x {
+        x -= step;
+    }
+    (x > 0.0 && x.is_finite()).then_some(x)
 }
 
 /// The shape from which the pair is Temme's uniform asymptotic expansion ([`temme_pair`]) and not a
