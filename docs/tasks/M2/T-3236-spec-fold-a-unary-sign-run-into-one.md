@@ -23,7 +23,7 @@ foresaw ("This may need a spec first if the node change is bigger than M"). `Par
 `Node::UnaryPlus` per sign and calls `grow` for each, so `MAX_FORMULA_DEPTH` (256, depth.rs) refuses
 the eighteen probes/t3172-minus-*, -plus-* and -alt-* cases pinned in probes/deviations by T-3189
 (decision 0168). The two variants are matched at 63 sites in 27 files, 22 of them production code in
-rustsheet-engine (evaluator and node_frames.rs, stringify and its sheet-edit/rename/bound-variable walkers,
+rustsheet-engine (node_frames.rs, stringify and its sheet-edit/rename/bound-variable walkers,
 static_analysis and its legacy/redundant/operand_array passes, reference_operators.rs,
 contains_function.rs, cast.rs, call_arguments.rs, spill_shape.rs, tailed_array.rs, units.rs,
 let.rs, read_once.rs, t_function.rs, lifted_options.rs, model.rs). Dropping the tree and the
