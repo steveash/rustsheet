@@ -444,6 +444,26 @@ fn wilson_hilferty_quantile_is_excels_at_a_huge_shape() {
     ));
 }
 
+/// The T-2860 cells by name: chi-squared at df 2 is the shape-1 quantile at scale 2, and
+/// `GAMMA.INV(p,1,beta)` is the scale-`beta` one (probes-numeric m9-legacy-chiinv A23,
+/// m9-gamma-inv A20 and A26, gen-m9/8fec7b207f4dd753 A265).
+#[test]
+fn t2860_df2_and_alpha1_cells_are_excels_doubles() {
+    for (scale, p, tail, excel) in [
+        (2.0, 0.01, Tail::Upper, 9.210_340_371_976_182_f64),
+        (2.0, 0.999, Tail::Lower, 13.815_510_557_964_272),
+        (2.0, 0.001, Tail::Upper, 13.815_510_557_964_274),
+        (1e6, 0.999, Tail::Lower, 6_907_755.278_982_135_5),
+    ] {
+        let ours = gamma_quantile(1.0, scale, p, tail);
+        assert_eq!(
+            ours.to_bits(),
+            excel.to_bits(),
+            "{p} at scale {scale}: {ours}"
+        );
+    }
+}
+
 #[test]
 fn shape_one_quantile_is_excels_closed_form() {
     // Excel's doubles (T-3016): CHISQ.INV(0.5,2) and CHISQ.INV.RT(0.5,2) are 2 ln 2 (gen-m9

@@ -3260,6 +3260,8 @@ t1049-chisqinv, t1049-chisqinvrt, t1543-inverse-cdf-tiny-p A55/A58, and 12 gen-m
 `CHISQ.INV.RT(0.001,2)` = 13.815510557964274; ecc87f80077959e0 A154 `CHISQ.INV.RT(0.001,2.5)`, same value). Passing
 cells were not re-checked. T-0972 already noted CHIINV at df 2 as `-2*LN(p)` (gen-m9/4df1b22d3ed63f58 A9).
 Ours: the incomplete-gamma search (`gamma_quantile`), 1 to 40 ulp off and 4 cells visibly off.
+Implemented in: T-3016 (`exponential_quantile` in `incomplete_gamma/mod.rs`, the smaller-tail form); T-2860 pinned the cells
+with a unit test.
 Status: VERIFIED (excel-graph)
 Tasks: T-2860
 
