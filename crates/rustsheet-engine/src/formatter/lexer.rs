@@ -140,6 +140,16 @@ impl Lexer {
         }
     }
 
+    /// The index of the next character to read.
+    pub(crate) fn position(&self) -> usize {
+        self.position
+    }
+
+    /// The format's characters from `start` to the end.
+    pub(crate) fn source_from(&self, start: usize) -> &[char] {
+        self.chars.get(start..).unwrap_or_default()
+    }
+
     fn peek_char(&self) -> Option<char> {
         let position = self.position;
         if position < self.len {

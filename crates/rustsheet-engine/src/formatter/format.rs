@@ -187,14 +187,29 @@ pub fn format_text_value(text: &str, format: &str) -> Formatted {
 }
 
 /// The text a cell shows for a text or boolean value under `format`. `TEXT()` is `#VALUE!` past 255
-/// characters but a cell shows its text whole (unprobed with a text section: the plain text is kept).
+/// characters, where Excel shows the text whole when the format leaves it unchanged (no text
+/// section, or a bare `@`) and 255 `#` when a text section changes it (`"pre "@`, `_(@_)`,
+/// `[Red]@`; probes/displayed-text-long-text, -b; number-formats.md "Displayed text"). Any other
+/// `TEXT()` error keeps the plain text: Excel refuses to open a workbook with an invalid code (T-3282).
 #[must_use]
 pub fn displayed_text(text: &str, format: &str) -> String {
     let formatted = format_text_value(text, format);
-    if formatted.error.is_some() {
-        text.to_string()
-    } else {
-        formatted.displayed()
+    match formatted.error.as_deref() {
+        None => formatted.displayed(),
+        Some(TEXT_TOO_LONG) if text_section_changes_text(format) => {
+            "#".repeat(MAX_TEXT_FORMAT_CHARS)
+        }
+        Some(_) => text.to_string(),
+    }
+}
+
+/// Whether `format` has a text section other than a bare `@`.
+fn text_section_changes_text(format: &str) -> bool {
+    let mut parser = Parser::new(format);
+    parser.parse();
+    match parser.parts.last() {
+        Some(last) if is_text_section(last) => !parser.last_part_is_bare_at(),
+        _ => false,
     }
 }
 
