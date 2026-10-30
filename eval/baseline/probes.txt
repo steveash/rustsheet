@@ -2795,9 +2795,7 @@ F	probes/ftest-decomposition.case.json	Calc!A4
 F	probes/ftest-decomposition.case.json	Calc!A5
 F	probes/ftest-decomposition.case.json	Calc!A6
 F	probes/ftest-decomposition.case.json	Calc!A8
-F	probes/ftest-decomposition.case.json	Calc!B4
-F	probes/ftest-decomposition.case.json	Calc!B6
-F	probes/ftest-decomposition.case.json	Calc!B8
+F	probes/ftest-decomposition.case.json	Calc!B12
 F	probes/ftest-decomposition.case.json	Calc!B9
 F	probes/ftest-decomposition.case.json	Calc!C10
 F	probes/ftest-decomposition.case.json	Calc!C4
