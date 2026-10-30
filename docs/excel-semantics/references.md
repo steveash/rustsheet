@@ -2631,7 +2631,26 @@ columns `Col` 1,2,4, `Other` 10,20,40 and an empty `Calc` C; FORMULATEXT of each
    into D2 grows `T` to A1:D4 (`COLUMNS(T[#All])` 4), names the new column `Column1` (D1 holds that text, as for a
    column insert above) and fills D2:D4 with `=A2*2`, `=A3*2`, `=A4*2`. `=1+1` typed into the header-row cell D1
    grows `T` to A1:D4 too, but D1 becomes the **text** `0` (not 2, not a formula; the column is named `0`), and
-   D2:D4 stay blank. Typing a constant beside the table, below its last row, or beside a totals row is unprobed.
+   D2:D4 stay blank. T-3003 probed the rest (excel-graph 2026-10-30, probes/t3003-*, table `T` A1:C4, readouts COLUMNS/ROWS of
+   `T[#All]`, `D<n>&""`, `TYPE(D<n>)`, FORMULATEXT, ISFORMULA/ISTEXT of D1):
+   (a) **A constant grows the table too**: `5` or `hello` typed into D2 grows `T` to A1:D4, names the column `Column1`,
+   keeps D2 as the constant and fills nothing (D3:D4 blank) (const-number-d2, const-text-d2). Typed into the header
+   cell D1, the constant becomes the header text (`5` is the **text** `5`, TYPE 2; `hello`) and nothing is filled
+   (const-number-d1, const-text-d1).
+   (b) **Any formula typed into D1 gives the header text `0`**, not its value: `=1+1`, `=2+3` and `="x"` all give the
+   text `0` (ISTEXT TRUE, ISFORMULA FALSE) (header-formula-*).
+   (c) **A totals row does not stop the growth**: with `T` A1:C5 (totals row 5), `=A2*2` typed into D2 grows `T` to
+   A1:D5, names the column `Column1`, fills D2:D4 (`=A2*2`, `=A3*2`, `=A4*2`) and leaves the totals cell D5 blank
+   (totals-data-row). Typed into the totals cell D5 it grows `T` the same way, keeps `=A2*2` in D5 only (value 2) and
+   leaves D2:D4 blank (totals-totals-row).
+   (d) **An occupied neighbour cell stops the growth**: with 7 in D3, or text `x` in D1, `=A2*2` typed into D2 leaves
+   `T` at A1:C4 and is just a formula in D2 (value 2; D3 stays 7, D1 stays `x`) (occupied-below, occupied-above).
+   (e) **Typing just below the last data row grows the table by a row**: `=B4*2` or the constant `7` typed into A5
+   makes `ROWS(T[#All])` 5 and `COLUMNS` 3, A5 keeps what was typed (formula `=B4*2`), nothing else is filled
+   (below-last-row, below-last-row-const).
+   (f) **An unqualified `=[@Col]*2` typed into D2 is accepted** (Excel resolves it against the table the new column
+   joins): `T` grows to A1:D4, D2:D4 are `=[@Col]*2` in every row (2, 4, 8) (unqualified-structured-d2). The engine
+   refuses this entry as a parse error (T-2979).
 What Excel saves for a filled column is in xlsx-storage.md ("A calculated column is saved as
 `calculatedColumnFormula` plus one formula per row"). Rules 1-4 depend only on the column's other data cells (all
 blank, or all the one calculated formula). Rule 8 (T-2983, excel-graph 2026-10-28, same table and `FORMULATEXT` in F;
@@ -2673,8 +2692,8 @@ over the new column. The new column is named as a column insert names one (`Colu
 and the name is written into its header cell. A formula typed into the header cell itself is not stored: the header
 is the text `0`. This is only probed with `=1+1`, and the oracle's H3 (`D1&""`) does not tell the text `0` from the number 0; headers are text, so the engine writes text. Whether Excel derives the `0` from the formula is unknown. If the
 table already has a column named `0`, the engine falls back to `ColumnN` (an engine choice). The table does not grow,
-and the cell is typed as before, in four unprobed cases: a constant typed there, a table with a totals row, a new
-column whose other cells are not all blank, and a new column that another table overlaps. Nor does it grow for a formula that does not parse there as typed (a parse error, or typed text decision 0103 refuses), since Excel refuses that entry and changes nothing. That includes an unqualified `=[@Col]*2` typed beside the table, which is a parse error outside every table (T-2979): what Excel does with it there is unprobed (T-3003). The facade's edit holds
+and the cell is typed as before, in these cases: a constant typed there, a table with a totals row, a new
+column whose other cells are not all blank (Excel also stays put for an occupied neighbour, rule 7d) and a new column that another table overlaps (unprobed). Rule 7a, 7c, 7e and 7f differ from the engine (T-3200 onwards). Nor does it grow for a formula that does not parse there as typed (a parse error, or typed text decision 0103 refuses), since Excel refuses that entry and changes nothing. That includes an unqualified `=[@Col]*2` typed beside the table, which is a parse error outside every table (T-2979) but which Excel accepts and fills (rule 7f). The facade's edit holds
 the growth, the header cell and the filled rows, and its rollback puts the table back.
 Status: VERIFIED (excel-graph; desktop unprobed; rule 3's no-re-fill half on 3 of 4 runs)
 Implemented in: rules 1-5 and 8, crates/rustsheet-engine/src/calculated_columns.rs (T-2958, T-3024); rule 7, the same file (T-2968)
