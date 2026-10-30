@@ -3,7 +3,7 @@ id: T-3273
 title: "Typing just below a table's last data row grows the table by a row (references.md rule 7e, t3003-below-last-row)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
