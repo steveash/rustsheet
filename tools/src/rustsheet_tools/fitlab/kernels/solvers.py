@@ -5,7 +5,7 @@ Sweeps (excel-graph): probes-numeric/m9-fin-irr-rate (T-1009) and probes/solver-
 `xirr-oos`. probes/bond-one-period-bases (T-1525 review) adds YIELD on every basis.
 
 - `xirr`, `xirr-oos`: in kernels/xirr.py.
-- `irr`: the fitted secant in v = 1/(1 + r) (`irr_secant_v`, T-1533) and its rejected variants, and the
+- `irr`: in kernels/irr_secant_d.py (the fit; T-3120's secant in d is shipped); here the fitted secant in v = 1/(1 + r) (`irr_secant_v`, T-1533) and its rejected variants, and the
   value-returning Newton candidates (k steps, or to convergence, in r, x = 1 + r and v).
 - `irr-fallback`: in kernels/irr_fallback.py.
 - `rate`: the T-2005 secant on the FV residual and its residual variants, traced (T-2527; a nested PMT is
@@ -225,81 +225,6 @@ def irr_secant_v(
     return method
 
 
-def _npv_v_running(values: list[float], v: float) -> float:
-    """NPV(v) as the sum of c_i / d_i with d_i = d_(i-1) * x a running product, x = 1/v: worksheet NPV's
-    arithmetic (the engine's `discounted_sum`, T-2671)."""
-    x = X87.div(1.0, v)
-    total = 0.0
-    discount = 1.0
-    for i, c in enumerate(values):
-        if i:
-            discount *= x
-        if discount == 0 or not math.isfinite(discount):
-            raise NoResultError("discount out of range")
-        total += c / discount
-    return total
-
-
-def irr_secant_d(
-    npv: NpvV = _npv_v_running,
-    *,
-    start: str = "g/(1+g)",
-    newer: bool = True,
-    strip: bool = True,
-    stall: float | None = 1e-7,
-) -> IrrMethod:
-    """The secant of `irr_secant_v` run on d = 1 - v = r/(1 + r) (T-3120): d0 = `start` (g/(1+g), or
-    1 - 1/(1+g)), d1 = d0 -+ 0.001, NPV evaluated at v = 1 - d, so from v = 0.5 down every iterate's v
-    sits on the 2^-53 grid Excel's results sit on. `newer`: the step is d1 - f1 (d1 - d0)/(f1 - f0)
-    (else anchored on d0). `strip`: leading zero flows dropped. `stall`: a zero step (d2 = d1) also
-    stops when |NPV| < stall * max|c_i| (None: never). Same stop tests, retry and 50-step cap."""
-
-    def run(values: list[float], g: float) -> float:
-        div = X87.div
-        largest = max(abs(c) for c in values)
-        d0 = div(g, 1 + g) if start == "g/(1+g)" else 1.0 - div(1.0, 1 + g)
-        f0 = npv(values, 1.0 - d0)
-        d1 = d0 - (1e-3 if f0 > 0 else -1e-3)
-        f1 = npv(values, 1.0 - d1)
-        for _ in range(50):
-            if f1 == f0:
-                raise NoResultError("flat secant")
-            d2 = d1 - div(f1 * (d1 - d0), f1 - f0) if newer else d0 - div(f0 * (d1 - d0), f1 - f0)
-            if not math.isfinite(d2) or d2 >= 1:
-                raise NoResultError("iterate is not a discount factor")
-            f2 = npv(values, 1.0 - d2)
-            stalled = stall is not None and d2 == d1 and abs(f2) < stall * largest
-            if abs(d2 - d1) < 1e-7 and (abs(f2) < 1e-7 or stalled):
-                return div(1.0, 1.0 - d2) - 1
-            d0, f0, d1, f1 = d1, f1, d2, f2
-        raise NoResultError("no convergence in 50 steps")
-
-    def method(values: list[float], g: float, k: int | None) -> float:  # noqa: ARG001 - IrrMethod's step count
-        if strip:
-            values = values[next((i for i, c in enumerate(values) if c != 0), 0) :]
-        try:
-            return run(values, g)
-        except (NoResultError, ZeroDivisionError, OverflowError):
-            if g == 0.1:
-                raise
-            return run(values, 0.1)
-
-    return method
-
-
-def irr_grid_result(method: IrrMethod) -> IrrMethod:
-    """`method`'s result with v = 1/(1 + r) rounded to the nearest multiple of 2^-53 below v = 0.5
-    (T-3120's candidate A: Excel's results sit on that grid)."""
-
-    def rounded(values: list[float], g: float, k: int | None) -> float:
-        v = X87.div(1.0, 1 + method(values, g, k))
-        if v < 0.5:
-            v = round(v * 2.0**53) / 2.0**53
-        return X87.div(1.0, v) - 1
-
-    return rounded
-
-
 def _irr(method: IrrMethod, k: int | None) -> Callable[..., float]:
     def call(values: Arg, guess: Arg = 0.1) -> float:
         return method(floats(values), numeric_arg(guess), k)
@@ -334,15 +259,8 @@ def irr_candidates() -> list[Candidate]:
         "secant in v, 35 steps": irr_secant_v(max_steps=35),
         "secant in v, 1000 steps": irr_secant_v(max_steps=1000),
         "secant in v, v1 = v0 + 1e-3 always": irr_secant_v(signed=False),
-        "secant in v, result on the 2^-53 grid (candidate A)": irr_grid_result(irr_secant_v()),
-        "secant in d, shipped (T-3120)": irr_secant_d(),
-        "secant in d, d0 = 1 - 1/(1+g)": irr_secant_d(start="1-v"),
-        "secant in d, step anchored on d0 (candidate B)": irr_secant_d(newer=False),
-        "secant in d, NPV as c/x^i": irr_secant_d(_npv_v_over_x),
-        "secant in d, leading zeros kept": irr_secant_d(strip=False),
-        "secant in d, no zero-step stop": irr_secant_d(stall=None),
     }
-    out += [candidate(name, _irr(method, None), name.split(",")[0]) for name, method in secants.items()]
+    out += [candidate(name, _irr(method, None), "secant in v") for name, method in secants.items()]
     return out
 
 
@@ -1017,14 +935,6 @@ def yield_candidates() -> list[Candidate]:
 
 
 FITS = [
-    Fit(
-        name="irr",
-        description="IRR fit set: the fitted secant in v (T-1533) and its variants, Newton candidates in r, x and v",
-        cases=FIT_CASES,
-        pattern=r"^=IRR\((.*)\)$",
-        candidates=irr_candidates,
-        where=_literal_irr,
-    ),
     Fit(
         name="rate",
         description="RATE cells of the fit set, nested PMT at Excel's bits: the T-2005 secant, its variants, Newton",

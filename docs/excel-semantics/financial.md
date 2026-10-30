@@ -711,8 +711,8 @@ two other kinds:
   spacing 2^-53), not only the result. Fit set (263 cells), bit-exact / within 4 ulp: the secant in v 189/207;
   that secant's result rounded to the grid (candidate A) 190/208; the secant in d anchored on d0 with
   d0 = 1 - 1/(1 + g) and NPV as c_i/x^i (candidate B) 202/214, anchored on d0 with the shipped start and NPV 225/234;
-  the shipped rule 262/262. Each part counts: d0 = 1 - 1/(1 + g) instead of g/(1 + g) 235/239, NPV as c_i/x^i with
-  pow 229/232, leading zeros kept 260/260 (Calc!A173, A175). It also gives irr-fallback-roots P!A25-A28 and A36-A39
+  the shipped rule 262/262. Each part counts: d0 = 1 - 1/(1 + g) instead of g/(1 + g) 235/239, NPV as c_i/x^i (pow,
+  `_npv_v_over_x`) 229/232, leading zeros kept 260/260 (Calc!A173, A175). It also gives irr-fallback-roots P!A25-A28 and A36-A39
   bit for bit (the two-flow roots too: NPV by the running product of x is what puts them on the grid point nearest
   the root) and 180 of the 181 t2565 cells; P!C95 is exact now and P!C157 stays the outlier. Rounding only the
   final v cannot be the rule: in v in [0.25, 0.5) every off-grid double is a tie, and Excel takes the lower v for

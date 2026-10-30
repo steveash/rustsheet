@@ -4,9 +4,9 @@ use crate::{
     expressions::token::Error,
 };
 
-// The solvers behind RATE, IRR and XIRR. IRR (a secant in d = 1 - v, v = 1/(1+r)) and XIRR (a bracket walk
-// and bisection) follow models fitted to oracle sweeps in the fit lab (T-1525, T-1533; see their
-// doc comments). RATE is a fitted secant too (T-2005, financial.md "RATE is a secant on the FV
+// The solvers behind RATE, IRR and XIRR. IRR (a secant in d = 1 - v, v = 1/(1+r)) and XIRR (a
+// bracket walk and bisection) follow models fitted to oracle sweeps in the fit lab (T-1525,
+// T-1533, T-3120; see their doc comments). RATE is a fitted secant too (T-2005, financial.md "RATE is a secant on the FV
 // residual").
 
 /// RATE's residual f(r) = ((pv·P) + (pmt·(k·((P-1)/r)))) + fv, P = (1+r)^n by FV's power

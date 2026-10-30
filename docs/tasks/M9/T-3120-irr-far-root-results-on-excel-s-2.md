@@ -96,8 +96,8 @@ t2565 and irr-fallback-roots cells above are within half a unit of the 15th sign
 except P!C95 and C157 as the acceptance criteria allow.
 Any bit-level residue goes to a follow-up with `defer: phase-1b`.
 
-## Progress notes (2026-10-30, opus run, not a handoff)
-Work in flight on this branch: `on_discount_grid` in functions/financial/financial_util.rs rounds the secant's
+## Progress notes (2026-10-30, opus run, not a handoff; history: superseded by the Outcome)
+An earlier attempt on this branch, since replaced by the secant in d: `on_discount_grid` in functions/financial/financial_util.rs rounds the secant's
 converged v to the nearest multiple of 2^-53 below v = 0.5 (no-op above), in the engine, not yet in the fit lab.
 Measured with `rustsheet-eval check --suite probes --suite gen-m9 --suite ironcalc-calc`:
 - `round()` (ties away from 0): fixed probes 184, gen-m9 15; REGRESSIONS gen-m9 9a1fa5366bc50918 A302 and
