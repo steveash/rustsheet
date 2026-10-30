@@ -74,3 +74,10 @@ follow-up task without the campaign key.
 
 ## Phase 1 triage (T-0090, 2026-10-27)
 This task is on the critical path of the Phase 1 exit: BETA.DIST, F.DIST, BINOM.DIST, NEGBINOM.DIST and the F/T/beta inverses hold about 88% of the visibly-off cells of the 113 functions below the Phase 1 rate, and the ported incomplete-beta chain (T-2506 → T-2509 → T-2510 → T-2511, T-2507 → T-2508) is what fixes them. Priority raised to P1. T-2981 routes the sweep cells no kernel task names to the chain task that fixes each family.
+
+## Note from T-2509 (2026-10-30)
+T-2509's bgrat at b = 1/2 (`bratio/bgrat.rs`) is reached only through `bratio::t_kernel_tails`. Letting `ported_tails`
+take it for every caller is this task's: F with a df of 1 through it moved gated FDIST cells (gen-m9
+7c20351562a2d71d A205, c18dbf21f11093f3 A151) by 7 ulp and made 13 F.DIST / F.DIST.RT cells of
+probes-numeric t2220-f-dist-sweep (d1-1, d2-1, cdf, rt) and three gen-m9 cells visibly off.
+

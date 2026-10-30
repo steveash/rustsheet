@@ -3359,13 +3359,9 @@ F	probes/stat-argument-modes.case.json	Sheet1!H337
 F	probes/stat-argument-modes.case.json	Sheet1!H374
 F	probes/stat-argument-modes.case.json	Sheet1!H380
 F	probes/stat-argument-modes.case.json	Sheet1!H5
-F	probes/stat-argument-modes.case.json	Sheet1!H505
-F	probes/stat-argument-modes.case.json	Sheet1!H510
-F	probes/stat-argument-modes.case.json	Sheet1!H514
 F	probes/stat-argument-modes.case.json	Sheet1!H518
 F	probes/stat-argument-modes.case.json	Sheet1!H522
 F	probes/stat-argument-modes.case.json	Sheet1!H526
-F	probes/stat-argument-modes.case.json	Sheet1!H530
 F	probes/stat-argument-modes.case.json	Sheet1!H535
 F	probes/stat-argument-modes.case.json	Sheet1!H536
 F	probes/stat-argument-modes.case.json	Sheet1!H541

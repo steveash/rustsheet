@@ -3,7 +3,7 @@ id: T-2509
 title: "Student t tails through the ported kernel: K(n/2,1/2,y,z) and Excel's bgrat at b = 1/2 (T-2464 r2-tdist)"
 milestone: M9
 lane: functions-stat
-status: blocked
+status: done
 priority: P1
 size: M
 tier: opus
@@ -60,14 +60,14 @@ Cells:
 - gen-m9/a612e89321a6df9c.case.json (1): Calc!A191
 
 ## Acceptance criteria
-- [ ] The T bgrat cells of docs/research/t2464/cells.tsv score at least 1,545 bit-exact of 1,564, and t2464-r2-tdist-p1
+- [x] The T bgrat cells of docs/research/t2464/cells.tsv score at least 1,545 bit-exact of 1,564, and t2464-r2-tdist-p1
       part C at least 4,895 of 4,915.
-- [ ] The T tail family on cells.tsv's 5,152 lower-side cells is visibly off on at most 7 (the y == 1 guard fixes two of
+- [x] The T tail family on cells.tsv's 5,152 lower-side cells is visibly off on at most 7 (the y == 1 guard fixes two of
       r2-tdist's seven).
-- [ ] T.DIST.2T(t) = 2·T.DIST.RT(t), and the other wrapper identities of w5's table, hold bit for bit.
-- [ ] bgrat at b = 1/2 is shared with the non-T callers (T-2510 uses it).
-- [ ] No gated known-failure line is added.
-- [ ] `make check` green; reviewers approve.
+- [x] T.DIST.2T(t) = 2·T.DIST.RT(t), and the other wrapper identities of w5's table, hold bit for bit.
+- [ ] bgrat at b = 1/2 is shared with the non-T callers (T-2510 uses it). Not done: see the Outcome; T-2510 owns it.
+- [x] No gated known-failure line is added, except the ten 1-ulp cells decision 0180 accepts.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The T density, T.DIST(.,FALSE) (T-2513).
@@ -79,25 +79,10 @@ Decision 0083: this task is done when every T tail cell it owns (T.DIST TRUE, T.
 tail) is within half a unit of the 15th significant digit of Excel's value, or the cells still off are named in the
 Outcome. Bit-level criteria still unmet then move to a follow-up task without the campaign key.
 
-## Blocked because
-Blocked because: the baseline update needs `--allow-regressions` (decision 0083's standing ulp-regression allowance),
-which the 2026-10-27 opus run's permissions refused. The code is done; nothing else is open.
-- `make eval-check` on the branch: gen-m9 known failures 3,724 -> 3,664 (fixed 70), ironcalc-calc 617 -> 609 (fixed 8),
-  probes 2,868 -> 2,864 (fixed 4); visible parity 3,221 in-scope cells visibly off (lock 3,337).
-- 10 regressions, all numeric, each exactly 1 ulp, none visibly off (all small integer df, bpser or bup + bgrat):
-  gen-m9 0620505280d2ea6e A158 `T.DIST.2T(37.5,10)` and A273 `TDIST(2,3,2)`; 334f3dc9ca937f10 A171 (TDIST at df 6,
-  1.7E-22); 3fb9cecf2c23169f A345 `T.DIST.2T(..,3)` (= TDIST(2,3,2)); 44a8841352dc48e9 A310 `TDIST(1.5,7,2)`;
-  5389dd4d5b5739d2 A216 `TDIST(37.5,10,2)`; 5be29fa316931f05 A238 and cb61169f4c033d4b A160 `TDIST(2,3,1)`;
-  a2262ea466fcc142 A58 `T.DIST.2T(1E+5,8)`; eedd629f3d69fdda A261 `T.DIST.2T(1E+10,7)`. Follow-up ulp task: T-2930.
-- Still to check for condition 3 of the allowance: that at least one fixed cell was visibly off on main (compare
-  `make eval` on main and on the branch).
-- Next step: `rustsheet-eval update-baseline --allow-regressions`, `rustsheet-eval evidence-floor --update`, commit
-  `eval/baseline/`, run the review skill, mark the PR ready.
-
-## Outcome (so far)
+## Outcome
 - `bratio/bgrat.rs`: TOMS bgrat at b = 1/2 in double-double with Excel's three stored pieces (LN or log1p(-y) at the
   0.01 cut, z = fl(-ν·lnx), ERFC.PRECISE(fl(sqrt z))); `ported_tails` takes bgrat and bup + bgrat when bgrat's b is 1/2
-  (shared with BETA.DIST). `x87_exp`: `dd_exp`, and `dd_sqrt` moved there from `student_t.rs`.
+  (`x87_exp`: `dd_exp`, and `dd_sqrt` moved there from `student_t.rs`.
 - `student_t::kernel_tail`: from df 3 every T tail is one call K(n/2, 1/2, y, z), halved. df 1 and 2 keep today's
   path (df 1: the ported bpser at a = b = 1/2 is bit-exact on 24 of 67 cells.tsv df-1 tails against 41; df 2: closed
   forms).
@@ -107,3 +92,14 @@ which the 2026-10-27 opus run's permissions refused. The code is done; nothing e
   T.DIST.RT(2.5,30) bup + bgrat); p1 part D visibly off 205 -> 10. Wrapper identities hold by construction
   (2T = 2L exactly, the upper side fl(1 - L)).
 - T.TEST's tail is unchanged (no evidence for its complement): T-2930.
+- Landed 2026-10-30 (owner-run session https://claude.ai/code/session_01Xbmds2YtTrK9a9T4mMitSB, decision 0180), on
+  the branch merged with `main` ec865788:
+  - bgrat at b = 1/2 is taken by the Student t call only (`bratio::t_kernel_tails`). `main` had meanwhile moved F
+    onto the same bratio branches, and F with a df of 1 through bgrat at b = 1/2 moved gated FDIST cells by 7 ulp
+    and made 13 F.DIST sweep cells visibly off, so F stays on today's kernel; sharing bgrat with F and BETA.DIST is
+    T-2510's.
+  - Gated: 81 lines fixed (gen-m9 69, ironcalc-calc 8, probes 4), 10 regressed at exactly 1 ulp (listed under
+    T-2930). Over gen-m9, ironcalc-calc, probes and probes-numeric against a `main` build, visibly-off cells
+    82,100 -> 79,707.
+  - Five Student t cells are newly visibly off, accepted by decision 0180 and owned by T-2930: gen-m9
+    787ba8d801105a60 A91 and probes-numeric t2464-r2-tdist-p1 A10465, A3913, A4416, A9295.

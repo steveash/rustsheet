@@ -34,3 +34,13 @@ come from the same kernel call as the bgrat tails, K(n/2, 1/2, y, z), without lo
 
 ## Out of scope
 - bgrat (T-2509), the T density (T-2513), T.INV (T-2511).
+
+## Added when T-2509 landed (2026-10-30, decision 0180)
+Visibly off since T-2509 (Student t tails on the ported kernel), accepted by decision 0180; this task owns them:
+- gen-m9/787ba8d801105a60: Calc!A91 `T.DIST.2T(0.5,1E+8)` (Excel 0.6170750785521777, ours 0.6170750785521784)
+- probes-numeric/t2464-r2-tdist-p1: Calc!A10465, A3913, A4416, A9295 (`T.DIST.RT` at df 16, 1964, 1665, 16)
+
+The ten gated cells T-2509 moves by 1 ulp: gen-m9 0620505280d2ea6e A158, A273; 334f3dc9ca937f10 A171;
+3fb9cecf2c23169f A345; 44a8841352dc48e9 A310; 5389dd4d5b5739d2 A216; 5be29fa316931f05 A238; cb61169f4c033d4b A160;
+a2262ea466fcc142 A58; eedd629f3d69fdda A261.
+
