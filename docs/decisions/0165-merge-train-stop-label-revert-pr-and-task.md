@@ -36,3 +36,8 @@
     the writes added here (unlabel `merge-train-stop`, open a PR, delete a branch) before `train`
     mode is switched on (T-2991). T-3077's context now says so.
   - The section 4 write policy gains the `merge-train/tasks-*` pushes and the two PR openings.
+  - T-3156 moved the mismatch response and the task filing (`respond`, `open_revert`, `file_tasks`,
+    `write_task` and the types, constants and helpers they use) unchanged into `scripts/merge_train_filing.py`, which
+    `merge_train.py` imports and which imports nothing from the train, to bring `merge_train.py`
+    back under the file-size limit. Nothing this record decides changes; the tests changed only
+    their import paths.
