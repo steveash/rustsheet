@@ -26,6 +26,9 @@ Excel's own error under the accuracy campaign (decision 0114).
 - The error grows with z = -nu ln x, which suggests z formed in Excel's own LN/log1p in bgrat (bratio L140 bup + bgrat
   at b0 = 1/2): T-2510's models (`bratio_excel.py` `bgrat`) are the place to test it.
 
+- `large_shape_beta.rs` is an accuracy stand-in: when T-2510's bratio bgrat lands and the old kernel goes, it is
+  folded into or replaced by `bratio`'s bgrat, so the two series do not stay as parallel definitions.
+
 ## Acceptance criteria
 - [ ] A model of Excel's bgrat at these points reproduces at least the sign and size of Excel's error on the 22 cells,
       or the Outcome records why the cells stay off (decision 0114 defer).

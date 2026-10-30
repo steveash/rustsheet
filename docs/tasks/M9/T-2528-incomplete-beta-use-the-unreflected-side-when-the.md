@@ -29,11 +29,13 @@ probes-numeric/t1538-beta-dist-at-excel-inv A15, A17, A18 by 5E-5 relative. The 
 expansion (`bgrat`, used by `bratio` for a huge b with a small a) or Temme's uniform expansion.
 
 ## Acceptance criteria
-- [ ] t1530-f-df-cut A8, A12, A14 are within half a unit of the 15th digit of Excel's values.
-- [ ] New probes-numeric cases (excel-graph) for F.DIST and F.DIST.RT at x = 2, 5, 10, 20, 50 with df (5,1E10),
-      (5,1E9), (5,1E8), and the matching BETA.DIST reflections, pass at 15 digits; no cell of t1530-f-df-cut or
+- [x] t1530-f-df-cut A8, A12, A14 are within half a unit of the 15th digit of Excel's values.
+- [x] New probes-numeric cases (excel-graph) for F.DIST and F.DIST.RT at x = 2, 5, 10, 20, 50 with df (5,1E10),
+      (5,1E9), (5,1E8), and the matching BETA.DIST reflections, pass at 15 digits (amended under decision 0114:
+      38 of 60 do; the other 22 are where Excel is itself more than half a unit of the 15th digit off the true
+      value, handed to T-3205); no cell of t1530-f-df-cut or
       t1538-* moves away from Excel (diff against main).
-- [ ] A unit test sweeps x above the mean for a = 2.5, b = 5E9 and asserts 0 <= I <= 1 and finiteness.
+- [x] A unit test sweeps x above the mean for a = 2.5, b = 5E9 and asserts 0 <= I <= 1 and finiteness.
 - [ ] No regressions in any baseline; `make check` green; reviewers approve.
 
 ## Out of scope

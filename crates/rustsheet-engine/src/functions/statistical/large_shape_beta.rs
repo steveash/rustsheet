@@ -1,6 +1,8 @@
 //! The regularized incomplete beta `I_x(a, b)` at a huge first shape and a small second one
-//! (T-2528): `DiDonato` and Morris' asymptotic expansion in the incomplete gamma, the series of TOMS
-//! 708 `bgrat` (their section 9), in accurate double arithmetic rather than Excel's.
+//! (T-2528): `DiDonato` and Morris' asymptotic expansion in the incomplete gamma, the series of
+//! TOMS 708 `bgrat` (their section 9), in accurate double arithmetic rather than Excel's. An
+//! accuracy stand-in like `incomplete_beta.rs` `half_integer_tail`: the bratio port's bgrat
+//! branches (SPEC-0025, T-2510) replace it, or absorb it, when the old kernel goes.
 //!
 //! Cephes' continued fraction (`incomplete_beta.rs`) needs about 42,000 steps for
 //! `F.DIST(2,5,1E10,TRUE)` = 1 - `I_y(5E9, 2.5)` at y = 1 - 1E-9 and is about 1E-7 relative off at
@@ -45,7 +47,8 @@ const MAX_FRACTION_DEPTH: u32 = 1 << 14;
 const SERIES_TOLERANCE: f64 = 1e-17;
 
 /// `I_x(a, b)` with y = 1 - x given, for a of [`MIN_SHAPE`] or more, b below [`MAX_SECOND_SHAPE`]
-/// and at most [`MAX_SHAPE_RATIO`] of a, and 0 < x, y < 1; `None` elsewhere or where a step is not finite, and the caller keeps its kernel.
+/// and at most [`MAX_SHAPE_RATIO`] of a, and 0 < x, y < 1; `None` elsewhere or where a step is not
+/// finite, and the caller keeps its kernel.
 pub(super) fn large_shape_lower(a: f64, b: f64, x: f64, y: f64) -> Option<f64> {
     if !(a >= MIN_SHAPE
         && a.is_finite()
@@ -196,7 +199,8 @@ mod tests {
     }
 
     /// 1 - `I_u(5/2, df2/2)` = `I_v(df2/2, 5/2)`, the F tail above x, against a 60-digit mpmath
-    /// `betainc(5/2, df2/2, u, 1)` (120 digits: at 60 it is 4E-14 off at x = 50) at the double u = 5x / (5x + df2) (T-2528).
+    /// `betainc(5/2, df2/2, u, 1)` (120 digits: at 60 it is 4E-14 off at x = 50) at the double
+    /// u = 5x / (5x + df2) (T-2528).
     #[test]
     fn f_upper_tails_at_a_huge_df2_match_the_reference() {
         for (df2, x, reference) in [
