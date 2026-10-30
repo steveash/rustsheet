@@ -158,7 +158,11 @@ parses, as Excel's does, and 257 or more is too deep (`MAX_PARENTHESES`, T-3191,
 `=((...(0.1+0.2-0.3+B1)...))` too, T-1169). Groups split into several runs (`=( ((...)))`,
 `=(1+((...)))`) count together: more than 256 open at once is too deep. Whether Excel counts split
 runs the same way is unprobed (only an unbroken run around `1` was, T-3172). A group holding more than the group inside it
-(`((x)+1)`) still costs an operand's two levels. Each unary minus is a node (T-0132), and so is each unary plus kept in the formula text
+(`((x)+1)`) still costs an operand's two levels. The first operand of a group's content, unless a
+group itself, reserves one and a half levels of the parser's bound instead of two, and a call there
+adds one level to the tree, so a level of `(ABS(` costs three and a half: Excel's 64 and 65 levels
+of `(ABS(` load and match (probes/t3097-nesting-paren-abs-*), up to 72 levels parse and 73 are too
+deep (T-3197, decision 0184). Each unary minus is a node (T-0132), and so is each unary plus kept in the formula text
 (T-2723), but a sign costs no depth level: the evaluator walks a run of them in a loop. Instead at
 most 1,023 signs may be open at once (`MAX_SIGNS`, T-3193), a minus written directly before a number
 literal not counted, so a run matches Excel's caps below (1,024 minus signs before `1`, 1,023 plus

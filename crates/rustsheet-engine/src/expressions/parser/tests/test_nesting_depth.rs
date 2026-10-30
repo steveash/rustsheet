@@ -152,6 +152,34 @@ fn parenthesis_runs_nest_as_deep_as_excel_allows() {
     });
 }
 
+/// T-3197: a call at the head of a group reserves one and a half levels of nesting and adds one
+/// level to the tree, so Excel's 65 calls each wrapped in parentheses parse
+/// (probes/t3097-nesting-paren-abs-65), up to 72 levels; one more is too deep.
+#[test]
+fn calls_wrapped_in_parentheses_nest_as_deep_as_excel_allows() {
+    on_small_stack(|| {
+        let levels = (2 * MAX_FORMULA_DEPTH - 4) / 7;
+        for (open, close) in [("(ABS(", "))"), ("SUM((", "))"), ("( ABS( ", " ) )")] {
+            for fits in [65, levels] {
+                let formula = nested(open, "1", close, fits);
+                assert!(
+                    !matches!(parse(&formula), Node::ParseErrorKind { .. }),
+                    "{open} {fits}"
+                );
+            }
+            let past = nested(open, "1", close, levels + 1);
+            assert!(is_too_deep(&parse(&past)), "{open}");
+        }
+        // A group at the head of a group still costs an operand's two levels.
+        assert!(is_too_deep(&parse(&nested(
+            "( ",
+            "1",
+            ")",
+            MAX_NESTING + 1
+        ))));
+    });
+}
+
 /// T-3191: a run whose groups hold more than the group inside them (`(((1)+1)*2)`) still costs
 /// an operand per parenthesis, but no parser stack: it is bounded by the depth, not the stack.
 #[test]

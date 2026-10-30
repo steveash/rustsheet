@@ -122,11 +122,18 @@ fn nested_lifted_edate_at_the_nesting_limit_evaluates_on_a_2_mib_stack() {
 
 /// SPEC-0007: a call and a written group alternating, `SUM((SUM((…))))`, so every level is a
 /// `Group` node under a call, evaluates at the parser's limit on a 2 MiB stack. Each level is two
-/// operands, so it nests half as deep as a one-operand shape.
+/// operands, a group (two levels of nesting) and the call at its head (one and a half, T-3197), so
+/// it nests 72 levels, past Excel's 65 nested calls (probes/t3097-nesting-paren-abs-65); the
+/// outermost operand and the innermost `1` take the rest. Measured in an unoptimized build: 72
+/// levels need about 1.9 MiB, as 127 levels of `ABS(` do.
 #[test]
 fn alternating_calls_and_groups_at_the_nesting_limit_evaluate_on_a_2_mib_stack() {
-    let deepest = deepest_on_2_mib_stack("SUM((", "))");
-    assert_eq!(deepest, Some((MAX_NESTING / 2, "1".to_string())));
+    let levels = (2 * MAX_FORMULA_DEPTH - 4) / 7;
+    assert_eq!(levels, 72);
+    for (open, close) in [("SUM((", "))"), ("(ABS(", "))"), ("( SUM( ", " ) )")] {
+        let deepest = deepest_on_2_mib_stack(open, close);
+        assert_eq!(deepest, Some((levels, "1".to_string())), "{open}");
+    }
 }
 
 /// T-1169: the reported shape, `=` + N `(` + `0.1+0.2-0.3+B1` + N `)`, on the default test thread
