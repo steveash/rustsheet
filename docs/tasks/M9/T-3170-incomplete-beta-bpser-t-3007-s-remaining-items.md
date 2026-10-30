@@ -41,6 +41,7 @@ docs/research/t3007/cell_diff.py for full-eval A/B diffs.
   between the model and the engine at b0 >= 8 (2,861 against 2,859) is not algdiv's arithmetic. Next step: diff
   the model's L and the engine's L at those cells, which `score_branches.py` lists. The change was reverted (commit
   0305f063d, revert 8e63c0bd5) and is kept here only as this record. Items 2 and 3 are untouched.
+- 2026-10-30 (opus run): resumed the idle branch (routine step 2).
 
 ## Acceptance criteria
 - [ ] Each item above is ported (no gated cell regresses), or recorded as a negative result in statistics.md with
