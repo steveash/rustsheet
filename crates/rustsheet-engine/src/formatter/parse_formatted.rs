@@ -1,6 +1,7 @@
 //! Reading typed text as a number together with the format it implies ("$1,234.50" ->
 //! (1234.5, "$#,##0.00")), split from format.rs, which renders numbers.
 
+use crate::mixed_fraction::mixed_fraction;
 use crate::{locale::Locale, number_format::parse_excel_number, types::DateSystem};
 
 use super::{
@@ -34,6 +35,12 @@ pub(crate) fn parse_typed_number(
         let text = without_single_letter_dot(original);
         if let Some(parsed) = parse_bare_letter_clock(text) {
             return Ok(parsed);
+        }
+        // A mixed fraction, signed, with `$` or `%`, is a number (probes/typed-input-sign-space-
+        // mixed-fraction B6, B7, B9-B12). Its number format is UNVERIFIED (CELL("format") is
+        // #VALUE! on excel-graph), so it stays General: TODO(T-3237).
+        if let Some(v) = mixed_fraction(original.trim_matches(' '), currencies) {
+            return Ok((v, None));
         }
         let Some(shape) = typed_clock_shape(text) else {
             return Err(err);

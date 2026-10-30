@@ -2,6 +2,7 @@ use crate::arithmetic::{flush_subnormal, TINY_SUBNORMAL_BELOW};
 use crate::external_reference::{one_external_area, ExternalArea, PickedReference};
 use crate::formatter::date_text::CurrentYear;
 use crate::locale::Locale;
+use crate::mixed_fraction::mixed_fraction;
 use crate::number_format::{number_to_text, parse_excel_number};
 use crate::reference_operators::{several_areas_ref, Ranges, RefArg};
 use crate::types::DateSystem;
@@ -194,55 +195,26 @@ pub(crate) fn value_number_text(
     year: CurrentYear,
     date_system: DateSystem,
 ) -> Option<f64> {
+    value_number_text_with(text, &["$", "€"], &["$", "€"], locale, year, date_system)
+}
+
+/// [`value_number_text`] with the currency symbols the plain grammar reads and, apart, those a
+/// mixed fraction reads: a criterion reads `-$3 1/2` but not `€3 1/2` (probes/typed-input-sign-
+/// space-mixed-fraction I5, I6).
+pub(crate) fn value_number_text_with(
+    text: &str,
+    currencies: &[&str],
+    fraction_currencies: &[&str],
+    locale: &Locale,
+    year: CurrentYear,
+    date_system: DateSystem,
+) -> Option<f64> {
     if number_text_too_long(text) {
         return None;
     }
     let trimmed = text.trim_matches(' ');
-    number_text_in(trimmed, &["$", "€"], locale, year, date_system)
-        .or_else(|| mixed_fraction(trimmed))
-}
-
-/// A mixed fraction `w n/d` (ASCII digits, one space) as `w + n/d`, with an optional sign (spaces
-/// may follow it), a leading `$` or `€` and a trailing `%`.
-/// Excel: `VALUE("3 1/2")` is 3.5, `"-3 1/2"` and `"- 3 1/2"` -3.5, `"$3 1/2"` 3.5, `"3 1/2%"`
-/// 0.034999999999999996 (the whole and the fraction divided by 100 apart), `"1 3/2"` 2.5 and
-/// `"3 01/02"` 3.5; `"3 1/0"`, `"3  1/2"`, `"3 1 /2"` and `"3 1/ 2"` are #VALUE!
-/// (docs/excel-semantics/text.md "VALUE reads a mixed fraction", probes/value-sign-space-mixed-
-/// fraction-dash-date A7-A12, A24-A35, probes/eng-inumber-date-boundary B22).
-fn mixed_fraction(text: &str) -> Option<f64> {
-    let (sign, rest) = match text.as_bytes().first()? {
-        b'-' => (-1.0, text[1..].trim_start_matches(' ')),
-        b'+' => (1.0, text[1..].trim_start_matches(' ')),
-        _ => (1.0, text),
-    };
-    let rest = ["$", "€"]
-        .iter()
-        .find_map(|c| rest.strip_prefix(c))
-        .unwrap_or(rest);
-    let (rest, percent) = match rest.strip_suffix('%') {
-        Some(rest) => (rest, true),
-        None => (rest, false),
-    };
-    let (whole, fraction) = rest.split_once(' ')?;
-    let (numerator, denominator) = fraction.split_once('/')?;
-    let digits = |part: &str| -> Option<f64> {
-        if part.is_empty() || !part.bytes().all(|b| b.is_ascii_digit()) {
-            return None;
-        }
-        part.parse::<f64>().ok()
-    };
-    let (whole, numerator, denominator) =
-        (digits(whole)?, digits(numerator)?, digits(denominator)?);
-    if denominator == 0.0 {
-        return None;
-    }
-    let fraction = numerator / denominator;
-    let value = if percent {
-        whole / 100.0 + fraction / 100.0
-    } else {
-        whole + fraction
-    };
-    value.is_finite().then_some(sign * value)
+    number_text_in(trimmed, currencies, locale, year, date_system)
+        .or_else(|| mixed_fraction(trimmed, fraction_currencies))
 }
 
 /// The `#N/IMPL!` of a range, an array or a LAMBDA where a scalar cast expects a value.
@@ -298,6 +270,7 @@ impl Model {
                     currencies.push(currency);
                 }
                 self.parse_number_text(s, &currencies, current_year)
+                    .or_else(|| mixed_fraction(s.trim_matches(' '), &["$", "€"]))
             }
         }
     }
