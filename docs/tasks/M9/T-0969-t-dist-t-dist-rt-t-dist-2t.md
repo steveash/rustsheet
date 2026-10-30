@@ -438,3 +438,8 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 - TTEST: 29 cells (13-14 digits right 20, 10-12 9, 6-9 0, fewer or 0 vs nonzero 0); most in `probes-numeric/t1048-ttest.case.json` 28; `probes/stat-argument-modes.case.json` 1. e.g. `TTEST(C1:C6,B1:B8,1,2)` Excel 0.07941923058217022, ours 0.07941923058217071
 
 Against a 50-digit reference, Excel is close to correctly rounded for this family and the engine is the inaccurate side, so an accurate kernel (not a fit) should reach this stage.
+
+Gap triage 2026-10-30: at df 1, and at df 2 below the closed-form cut (y < 0.1), Excel is within an ulp of the exact
+tail and ours is 5 to 24 ulp off. That is an accuracy gap, not Excel's noise, so T-3182 takes it (campaign: accuracy).
+It covers gen-m9 46ac3ef5e61583ca A236, 11eb3ab4f4f8104c A174, 5395b8a427764a3f A125, a5342a7e24fd803e A230 and
+91e167cd8d7eb652 A292, and probes-numeric m9-t-dist-rt and m9-t-dist-2t.

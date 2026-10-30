@@ -122,3 +122,8 @@ not required here: they belong to T-2221.
 
 ## Stage (decision 0114)
 `campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.
+
+Gap triage 2026-10-30: `make unowned-off ALL=1` listed one visibly-off cell that only deferred T-2221 owned:
+probes-numeric/m9-f-dist-rt Calc!A19, `F.DIST.RT(3,50,100)`. Excel 1.516786664496894e-6, ours 1.5167866644968792e-6;
+mpmath (80 digits) gives 1.5167866644968894697e-6, so Excel is +22 ulp and ours -48 ulp. Half a unit in the 15th digit
+is about 24 ulp here, so an accurate tail meets the stage. This task owns it.
