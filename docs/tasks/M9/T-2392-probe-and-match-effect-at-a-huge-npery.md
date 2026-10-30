@@ -3,7 +3,7 @@ id: T-2392
 title: "Probe and match EFFECT at a huge npery (1E10): Excel's power differs in the eighth digit"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
