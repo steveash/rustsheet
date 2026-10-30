@@ -36,8 +36,6 @@ t3172-minus-255-stored.case.json	*	decision 0014	docs/excel-semantics/syntax.md#
 t3172-minus-255-typed.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
 t3172-minus-256-stored.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
 t3172-minus-256-typed.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
-t3172-paren-256-stored.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
-t3172-paren-256-typed.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
 t3172-plus-1023-stored.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
 t3172-plus-1023-typed.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
 t3172-plus-255-stored.case.json	*	decision 0014	docs/excel-semantics/syntax.md#formula-nesting-depth-cap	refused "Formula is nested too deeply"
