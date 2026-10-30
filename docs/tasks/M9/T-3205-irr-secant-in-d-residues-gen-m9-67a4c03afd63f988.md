@@ -28,6 +28,11 @@ fit-set cells.
   T-2565; the secant in d does not move it.
 - Code: `irr_secant`, `irr_npv`, `compute_irr` (crates/rustsheet-engine/src/functions/financial/financial_util.rs);
   fit lab `irr_secant_d` (tools/src/rustsheet_tools/fitlab/kernels/solvers.py).
+- From T-3120's review (minor, folded in here): (1) dropping leading zero flows rests on three cells, all with a root
+  near 0.1; probe a few leading-zero flows with far roots (the 1e-7 residual scales by x^k). (2) The lab's
+  `_npv_v_running` does not flush subnormals as the engine's `discounted_sum` does; flush or say so. (3) Add an
+  "unconditional zero-step stop" candidate to `secant_d_candidates()` so financial.md's 6-cell claim is reproducible,
+  and pin the zero-step bound with a probe if one can separate the bounds.
 - Decision 0056: each attempt is a fit-lab run of named candidates; two attempts that do not raise the
   bit-exact count block the task as time-boxed.
 
