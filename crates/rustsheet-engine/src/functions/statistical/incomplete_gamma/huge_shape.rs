@@ -50,7 +50,8 @@ const WILSON_HILFERTY_CUBE: f64 = -3.086_760e-3;
 /// Excel's Wilson-Hilferty start for a scale of 1, where `z` is the standard normal quantile of
 /// the lower tail's probability: a (1 - 1/(9a) + z/(3 sqrt a))^3 with Excel's offset, spread and
 /// higher terms inside the cube (probes/t2982-gamma-inv-huge-shape, probes/t3070-gamma-inv-band).
-/// Where its density underflows it is Excel's quantile.
+/// Where its density underflows it is Excel's quantile. Below a huge shape the refinement starts
+/// from the textbook form instead (`super::wilson_hilferty_start`, T-3131).
 pub(super) fn wilson_hilferty_quantile(shape: f64, z: f64) -> f64 {
     let root = shape.sqrt();
     let cube_root = 1.0 + WILSON_HILFERTY_OFFSET - 1.0 / (9.0 * shape)

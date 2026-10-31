@@ -7,9 +7,10 @@
 //! correctly rounded for this family, docs/excel-semantics/statistics.md "Incomplete gamma:
 //! accurate kernel"): the prefactor of TOMS 654, the power series for P below x = a + 1
 //! and a continued fraction for Q above it, Q computed directly for a small shape, and a = 1 as
-//! `-expm1(-x)`. The quantile is [`gamma_quantile`], the crossing of that cdf found by halving
-//! the bit patterns of the whole range (T-1634, T-3131; statrs 0.18.0's `Gamma::inverse_cdf`
-//! search was its start until T-3131). Neither loop is open: the
+//! `-expm1(-x)`. The quantile is [`gamma_quantile`], the crossing of that cdf, refined from a
+//! Wilson-Hilferty start or from the whole range where that start is NaN, in at most 129 cdfs
+//! (T-1634, T-3131; statrs 0.18.0's `Gamma::inverse_cdf` search was its start until T-3131).
+//! Neither loop is open: the
 //! series needs about 6.8 * sqrt(a) terms where x is near a (6.4 million at a = 1E12), and never
 //! converges once `a + 1 == a` (a of 2^53 or more: `GAMMA.DIST(1E16,1E16,1,TRUE)`), so every
 //! call is NaN, which its callers turn into `#NUM!` (docs/excel-semantics/statistics.md
@@ -771,8 +772,8 @@ pub(crate) enum Tail {
 /// (`GAMMA.INV(0.95,1,1000000)` = 2995732.27355399, probes-numeric m9-gamma-inv A26).
 ///
 /// Other shapes take the crossing of the smaller tail of the cdf of rate 1 / scale
-/// (`special::refine_increasing` with no start: at most 64 cdfs, halving the bit patterns of the
-/// whole range). Excel is close to the true quantile (against mpmath, 509 of 545
+/// (`special::refine_increasing` from [`wilson_hilferty_start`], or halving the bit patterns of
+/// the whole range where that start is NaN: at most 129 cdfs). Excel is close to the true quantile (against mpmath, 509 of 545
 /// literal-argument quantile cells are within half a unit of the 15th digit); statrs' search,
 /// the start until T-3131, could be 7E-15 off it (`GAMMA.INV(0.5,9,1)`). The smaller tail is `p` or
 /// its exact complement `1 - p`, so a tiny right-tail `p` keeps the digits `1 - p` loses, as in
@@ -839,10 +840,14 @@ pub(crate) fn gamma_quantile(shape: f64, scale: f64, p: f64, tail: Tail) -> f64 
 }
 
 /// The start of [`gamma_quantile`]'s refinement for a scale of 1 (T-3131, in place of statrs'
-/// search): Wilson and Hilferty's a (1 - 1/(9a) + z / (3 sqrt a))^3, z the standard normal
-/// quantile of `lower` by statrs' closed form, relative error about 1E-3 / a in the body. NaN
-/// where it is not a positive finite number (a small shape in a far tail), where the refinement
-/// halves the whole range instead.
+/// search): the textbook Wilson and Hilferty a (1 - 1/(9a) + z / (3 sqrt a))^3, z the standard
+/// normal quantile of `lower` by statrs' closed form, relative error about 1E-3 / a in the body.
+/// NaN where it is not a positive finite number (a small shape in a far tail, or `lower` rounded
+/// to 1), where the refinement halves the whole range instead. It is not
+/// [`huge_shape::wilson_hilferty_quantile`], Excel's fitted form with an offset, a spread and higher
+/// terms, which is Excel's value from a huge shape: this one only places the bracket, and since
+/// the doubles next to a crossing are not always monotone in the cdf, changing it can move a
+/// landing by an ulp.
 fn wilson_hilferty_start(shape: f64, lower: f64) -> f64 {
     let z = Normal::standard().inverse_cdf(lower);
     let cube_root = 1.0 - 1.0 / (9.0 * shape) + z / (3.0 * shape.sqrt());

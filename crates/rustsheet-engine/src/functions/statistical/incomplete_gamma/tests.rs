@@ -335,6 +335,7 @@ fn a_call_past_its_cap_is_nan() {
         gamma_quantile(2e6, 1.0, 1e-300, Tail::Lower),
     );
     assert!((back / 1e-300 - 1.0).abs() < 1e-11);
+    // Past it the whole inversion is NaN: its cdfs draw on the one `MAX_TERMS` budget, not one each.
     assert!(gamma_quantile(1e7, 1.0, 0.5, Tail::Lower).is_nan());
 }
 

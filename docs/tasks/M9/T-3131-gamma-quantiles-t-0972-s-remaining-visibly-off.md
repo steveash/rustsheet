@@ -55,7 +55,8 @@ T-0972's criterion 3 is also open: `inverse_cdf_within` (the ported statrs searc
 double, 8 bisections, 4 Newton steps, up to about 2,120 cdfs). Its refinement (`special::refine_increasing`) starts from
 Wilson and Hilferty's a (1 - 1/(9a) + z/(3 sqrt a))^3 (`wilson_hilferty_start`, z by statrs' normal closed form), or
 from the whole range where that is not a positive finite number. `INVERSION_CDFS`, which the lifting table charges an
-inversion by, is 129 (was 2,250). Without any start (64 halvings of the whole range) the inversions near Temme's shape
+inversion by, is 129 (was 2,250): a lifted GAMMA.INV, GAMMAINV, CHISQ.INV, CHISQ.INV.RT or CHIINV element is now
+charged 129 cdfs per inversion, not 2,250, under the same 2^18 weight cap. Without any start (64 halvings of the whole range) the inversions near Temme's shape
 would spend their term budget sooner; with this one `gamma_quantile(2E6, 1, 1E-300)` still reproduces p, and
 `GAMMA.INV(0.5,1E7,1)` is NaN (`#NUM!`) as on main (DEVIATION in statistics.md).
 

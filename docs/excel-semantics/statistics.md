@@ -1038,7 +1038,10 @@ cdfs at df 1E10, 0.4999982128217492 on statrs and main, are now Excel's 0.500001
 shape of 1E8 needs no term past C_3 (they fall by 1/a each). The cap of 2^19 terms now binds a cdf nowhere (below 1E8
 the series takes at most about 68,000 terms) and still binds an inversion's cdfs together below that shape.
 DEVIATION (decision 0014, CLAUDE.md directive 5): an inversion whose cdfs together need more than 2^19 terms is `#NUM!`
-where Excel gives a number (from shape 1E7 to Temme's 1E8: `GAMMA.INV(0.5,1E7,1)`, before and after T-3131). From a shape of 1E9 the quantile is
+where Excel gives a number (from shape 1E7 to Temme's 1E8: `GAMMA.INV(0.5,1E7,1)`, before and after T-3131; Excel
+unprobed there, its numbers are probed from 1E9). For a tiny upper-tail p the lower tail rounds to 1 and the
+Wilson-Hilferty start is NaN, so the refinement halves the whole range and can spend the budget sooner from about
+shape 2E6 to 1E9 (statrs' search also took the lower tail; T-2367 measures it). From a shape of 1E9 the quantile is
 `huge_shape_quantile` (section "GAMMA.INV and CHISQ.INV at a huge shape"; T-3070), so `GAMMA.INV(0.5,1E300,1E-300)`
 (E5) and `CHISQ.INV(5.6221E-26,4715100000)` (E15) are Excel's values; E5, E14 and E19 are 1 ulp off. A CHISQ.TEST's
 cdf is never past the cap. Unit tests `incomplete_gammas_that_hung_or_panicked_are_bounded` and
@@ -1052,7 +1055,7 @@ the power series a + 58 (it runs for x < a + 1, where every ratio x / (a + n) is
 the small-shape Q series 20 more, and the continued fraction a budget of 256 + 32 * cbrt(a) terms, enforced by the kernel
 (NaN past it). A sweep of shapes 1E-3 to 1.6E15 needed at most about 10 * cbrt(a) terms (110 below a = 10), so the budget
 is at least twice the need and changes no value (unit test `the_continued_fraction_stays_within_half_its_budget`). An
-inversion is charged 2,250 cdfs of that bound, within its one budget of 2^19 terms. The shape comes from the shape
+inversion is charged 129 cdfs of that bound (2,250 before T-3131), within its one budget of 2^19 terms. The shape comes from the shape
 argument (alpha, df / 2, or POISSON's x + 1); an element with an error argument, or an inversion whose probability is
 outside (0, 1), a logical or a blank, is charged 1, as the kernel returns before any cdf; a text shape or probability is
 charged 2^18. So `CHIDIST(x,5)` costs 150 units an element and a CHIDIST over a 731-element PIVOTBY runs (gen-m9/
