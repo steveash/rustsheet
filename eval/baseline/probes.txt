@@ -485,6 +485,7 @@ C	probes/fin-mirr-overflow-underflow.case.json	7
 C	probes/fin-odd-date-before-error-arg.case.json	17
 C	probes/fin-ppmt-discount-underflow.case.json	81
 C	probes/fin-ppmt-subnormal-discount-by-size.case.json	80
+C	probes/fin-pv-power-underflow.case.json	35
 C	probes/fin-remaining-later-argument-ranges.case.json	197
 C	probes/fin-rri-vdb-edges.case.json	24
 C	probes/fin-rri.case.json	16
