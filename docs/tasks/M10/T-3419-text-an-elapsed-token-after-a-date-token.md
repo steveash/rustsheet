@@ -3,7 +3,7 @@ id: T-3419
 title: "TEXT: an elapsed token after a date token beside General counts from General's clock residue (TEXT(5,\"d [h] General\") is \"5 12 0.5\")"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
