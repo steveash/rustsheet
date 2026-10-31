@@ -84,11 +84,13 @@ or anchor off the grid, a spill range of more than 1,048,576 cells (the array li
 together claim more spill cells than the workbook stores, past one whole array (a few bytes per anchor could otherwise
 claim 2^20 cells each; the engine stores every cell of a spill and resets a blocked spill's range to its anchor, and the
 622 array formulas in the repository's xlsx files store all 3,447 cells they claim, but what range Excel writes for a
-#SPILL! anchor is UNVERIFIED, T-3436; the bound is the cells stored plus 2^20 per load; T-3426), array formula `ref`s that together cover more cells
-than one per 16 bytes of the workbook's sheets read so far plus 4 x 2^20 once per load (checked by the xlsx importer
-itself, before the model exists, because it maps every covered cell to its anchor; Excel writes `r` on every cell, so a
-covered cell takes at least 22 bytes, and a writer that leaves `r` out, at least 14, fits up to 32 x 2^20 covered
-cells; T-3437), a row or column record or a merged range off the grid, and cell storage whose
+#SPILL! anchor is UNVERIFIED, T-3436; the bound is the cells stored plus 2^20 per load; T-3426), array formula `ref`s that, when each anchor is
+reached, cover more cells than one per 16 bytes of the workbook's sheets read so far plus 4 x 2^20 once per load. The
+xlsx importer checks this itself, before the model exists, because it maps every covered cell to its anchor; worst
+case, a hostile 256 MiB package still makes that map about 21M cells (1 to 1.5 GB), the accepted ceiling. An anchor
+comes before its cells, so more than four whole-column spills anchored ahead of their cells (`=A:A+1` in five
+columns of row 1) are refused even in a file Excel wrote; the 22 bytes a covered cell takes in Excel's files (it
+writes `r` on every cell) and 14 without `r` only matter once the cells are read; T-3437), a row or column record or a merged range off the grid, and cell storage whose
 rows or columns are out of order or off the grid. The error names the sheet and the index
 (`Sheet 'Sheet1': cell R1C2 has style 9999, which does not exist`). Indices the model reads with a
 checked lookup that tolerates a dangling value load as before: a shared-string index (it reads as

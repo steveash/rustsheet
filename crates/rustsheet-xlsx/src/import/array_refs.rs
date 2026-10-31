@@ -11,8 +11,9 @@ use crate::error::XlsxError;
 const MAX_ARRAY_CELLS: u64 = LAST_ROW.unsigned_abs() as u64;
 
 /// The cells the array formulas of one workbook may cover beyond one per 16 bytes of its sheets
-/// read: four whole columns, once per load, so that a few whole-column spills side by side, whose
-/// cells come after their anchors, still load.
+/// read: four whole columns, once per load, so that up to four whole-column spills side by side,
+/// whose cells come after their anchors, still load; a fifth is refused (a DEVIATION,
+/// docs/excel-semantics/xlsx-storage.md).
 const SLACK: u64 = 4 * MAX_ARRAY_CELLS;
 
 /// The cells the array formulas of one workbook's sheets cover, against the bytes of those sheets
@@ -41,9 +42,9 @@ impl ArrayClaims {
     /// Charges the cells of the array formula `range`, whose corners are (`row1`, `column1`) and
     /// (`row2`, `column2`), before each is mapped. Refused: an array of more than a whole column,
     /// and arrays covering more than one cell per 16 bytes read plus [`SLACK`]. The bytes counted
-    /// are the ones read, not a size the package declares. Excel writes `r` on every cell, so each
-    /// covered cell takes at least 22 bytes (`<c r="A1"><v>1</v></c>`); a writer that leaves `r`
-    /// out takes at least 14 (`<c><v>1</v></c>`), which fits up to 32 x 2^20 covered cells.
+    /// are the ones read when the anchor is reached, not a size the package declares. Once its
+    /// cells are read, a covered cell has paid for itself: Excel writes `r` on every cell, so it
+    /// takes at least 22 bytes (`<c r="A1"><v>1</v></c>`), and at least 14 without `r`.
     pub(super) fn claim(
         &mut self,
         range: &str,
@@ -63,7 +64,7 @@ impl ArrayClaims {
         let read = self.read_before.saturating_add(self.read);
         if self.claimed > (read / 16).saturating_add(SLACK) {
             return Err(XlsxError::Xml(format!(
-                "The array formulas up to {range} spill over more cells than the sheet stores"
+                "The array formulas up to {range} spill over more cells than the sheets read so far store"
             )));
         }
         Ok(())

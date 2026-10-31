@@ -30,7 +30,7 @@ today either.
 ## Acceptance criteria
 - [x] A test imports an xlsx with thousands of whole-sheet array `ref`s and is refused quickly, with bounded memory.
 - [x] Every suite workbook imports as before (`make eval-check`, no regressions).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
@@ -46,11 +46,16 @@ before any of its cells goes into the map. Two cases are refused:
 So memory and time are proportional to the bytes the file actually holds.
 
 **Why this bound.**
-- **Excel's files fit.** Excel writes `r` on every cell, so each covered cell costs at least 22 bytes
-  (`<c r="A1"><v>1</v></c>`). A writer that leaves `r` out costs at least 14, which fits up to 32 x 2^20 covered
-  cells.
+- **What Excel's files can hit.** Each anchor is checked against the bytes read before it, and it comes before its
+  cells. So more than four whole-column spills anchored ahead of their cells (`=A:A+1` in five columns of row 1,
+  about 130 MB) are refused even though Excel wrote the file. This is accepted as a DEVIATION, the price of not
+  trusting the declared size. Once the cells are read, a covered cell has paid for itself: at least 22 bytes in
+  Excel's files, which write `r`, and 14 without it.
+- **Accepted ceiling.** A hostile 256 MiB package still makes the map about 21M cells (1 to 1.5 GB) in the worst
+  case (security review).
 - **The repository's files fit.** The Excel-fidelity review scanned 2,039 xlsx files: 45,815 array formulas on
-  317 sheets, the densest at 0.45 of the budget.
+  317 sheets. Under the prefix rule none of the 235 workbooks with arrays is refused; the tightest claims about
+  30,000 cells ahead of 4.19M allowed.
 - **The slack is per load, not per sheet.** Otherwise about 5,000 tiny sheets would each get a column's worth of map
   entries (Excel-fidelity review).
 - **It counts bytes read, not the size the zip declares.** A tiny part declaring 256 MiB would otherwise buy about

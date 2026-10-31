@@ -691,7 +691,7 @@ fn array_formula_refs_naming_more_cells_than_the_sheet_holds_are_an_error() -> T
     let rows = format!(r#"<row r="1">{cells}</row>"#);
     assert_import_error(
         &with_first_sheet_rows(&rows)?,
-        "more cells than the sheet stores",
+        "more cells than the sheets read so far store",
     );
     Ok(())
 }
