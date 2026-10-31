@@ -1000,7 +1000,8 @@ flows after a large outlay). The secant model fails in two ways, both reproduced
 Neither raising the secant's cap nor any stop variant (|dd| alone, |NPV| relative to the largest flow, a zero step)
 reproduces Excel's digits. What does fit which flows return: Newton on P(v) = sum c_i v^i from v = 1 (r = 0), capped
 at 50 steps like the fallback: the 159 returning series need 1 to 46 steps, the three `#NUM!` ones 64 to 159 (from
-v = 0 they would need 61 to 416, overlapping). The engine runs it as a last stage, on conventional flows only, after
+v = 0 they would need 61 to 416, overlapping). The engine runs it as a last stage, only on the probed shape (one outlay, then flows of the other sign or zero;
+other flows with one sign change, such as two outlays first, are unprobed and stay `#NUM!`), after
 the fallback from v = 0 (which it does not change: starting that one at v = 1 instead breaks 60 cells of
 t2927-irr-fallback-sweep and irr-fallback-roots), then polishes the root with up to three Newton steps. Where the
 secant does converge on these series the engine matches Excel bit for bit.

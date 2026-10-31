@@ -323,7 +323,8 @@ fn irr_newton(values: &[f64], start: f64) -> Option<f64> {
 const IRR_POLISH_STEPS: usize = 3;
 
 /// The last stage, where both secant runs and [`irr_fallback`] fail on conventional flows (one
-/// sign change, so P has one positive root): Newton from v = 1 (r = 0), then polished. Excel
+/// outlay, then flows of the other sign, so P has one positive root): Newton from v = 1 (r = 0),
+/// then polished. Excel
 /// returns these roots, where the secant drifts for 50+ steps near r = -10% or stalls on a flat
 /// step near r = 0 (financial.md "IRR on conventional flows near 0 and -10%",
 /// probes/t3347-irr-conventional-num, probes-numeric/t3347-irr-conventional-sweep, T-3347), and
@@ -331,13 +332,10 @@ const IRR_POLISH_STEPS: usize = 3;
 /// A117; the slowest that returns needs 46), the split of [`IRR_FALLBACK_STEPS`]. Fitted, not
 /// Excel's code: the digits are within 2.2e-11 of Excel's and 1.5e-11 of the exact root.
 fn irr_conventional(values: &[f64]) -> Option<f64> {
-    let nonzero = values.iter().filter(|&&c| c != 0.0);
-    let sign_changes = nonzero
-        .clone()
-        .zip(nonzero.skip(1))
-        .filter(|(a, b)| (**a > 0.0) != (**b > 0.0))
-        .count();
-    if sign_changes != 1 {
+    // Only the probed shape: one outlay, then flows of the other sign (or zero). Other flows with
+    // one sign change, such as two outlays first, are unprobed and stay `#NUM!` here.
+    let (&first, rest) = values.split_first()?;
+    if rest.iter().any(|&c| c != 0.0 && (c > 0.0) == (first > 0.0)) {
         return None;
     }
     let mut v = irr_newton(values, 1.0)?;

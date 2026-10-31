@@ -32,11 +32,11 @@ accuracy stage.
   (T-3361) and keep it inside its measured range.
 
 ## Acceptance criteria
-- [x] Conventional series with an IRR between 1e-5 and 3e-4, and near -10%, match Excel's result (number or error, within 15 significant digits for a number) on the oracle-filled cells. (Type and error: all 162. Digits: 141 of 162; the 21 others are 2e-15 to 2.2e-11 off, follow-up T-3385.)
+- [x] Conventional series with an IRR between 1e-5 and 3e-4, and near -10%, match Excel's result (number or error, within 15 significant digits for a number) on the oracle-filled cells. (Type and error: all 162. Digits: 141 of 162; the 21 others are 2e-15 to 2.2e-11 off, deferred to T-3385.)
 - [x] A new public probe case under eval/suites/probes/cases/ (one milestone tag, M9; decision 0057), filled by the
       oracle (excel-graph), reproduces the bug; its cells are listed in this file before the fix. Include the inputs in
       Context and points on both sides of the failing region.
-- [ ] After the fix every cell of that case is within 15 significant digits of Excel's value, with the right type and
+- [ ] (deferred to T-3385: 11 cells are 7e-15 to 2.2e-11 off) After the fix every cell of that case is within 15 significant digits of Excel's value, with the right type and
       error (decision 0083's rule).
 - [x] No gated cell regresses (`make eval-baseline` refuses regressions; decision 0083's ulp allowance only as it
       states).
@@ -60,12 +60,12 @@ a number on every cell; the engine was `#NUM!` on A10-A21 and A36-A42 (19 cells)
   flat step (near 0 with large flows, v = 1 - d is the same double for successive d), and the v = 0 Newton fallback
   needs 61 to 416 steps on these flows. No secant variant reproduces Excel (financial.md "IRR on conventional flows
   near 0 and -10%" lists them).
-- Fix: `irr_conventional`, a last stage on conventional flows only (one sign change): Newton on P(v) from v = 1
+- Fix: `irr_conventional`, a last stage on the probed shape only (one outlay, then flows of the other sign): Newton on P(v) from v = 1
   under the same 50-step cap (the 159 returning series need at most 46 steps, the three `#NUM!` ones 64 to 159),
   then up to three polishing steps. The v = 0 Newton loop is now `irr_newton`, shared; `irr_fallback` is unchanged
   in behavior. Fitted (decision 0188 R4): the `FITTED` tag does not exist yet (T-3361 adds it).
 - Eval: a full run before and after changes only cells of the two new cases (no other cell's value moves, so none of
-  T-2131, T-2928, T-3205 or T-3246's cells move). probes/t3347-irr-conventional-num: 19 `#NUM!` to numbers, 31 of 42
+  T-2131, T-2928, T-3205 or T-3246's cells move). probes/t3347-irr-conventional-num: 19 `#NUM!` to numbers, 31 of 42 (A14, one ulp off, is among them but stays a baseline known failure)
   within 15 digits of Excel (bit-exact or ulp), 11 within 2.2e-11. probes-numeric/t3347-irr-conventional-sweep (Gate
   A sweep, 120 points): 23 `#NUM!` to numbers, 110 of 120 within 15 digits, 0 type mismatches.
 - Gate A floor, sweep per stratum (within 15 digits of Excel / within 1e-9 of the 50-digit root / outside both / type
