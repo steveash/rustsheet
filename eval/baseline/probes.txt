@@ -1477,6 +1477,14 @@ C	probes/t2800-stored-ws-2.case.json	2
 C	probes/t2800-stored-ws-3.case.json	2
 C	probes/t2800-this-row-whitespace.case.json	10
 C	probes/t2812-currency-tag-cost.case.json	54
+C	probes/t2816-lift-averagea-bool.case.json	1
+C	probes/t2816-lift-averagea-num.case.json	1
+C	probes/t2816-lift-maxa-bool.case.json	1
+C	probes/t2816-lift-maxa-num.case.json	1
+C	probes/t2816-lift-stdevs.case.json	1
+C	probes/t2816-lift-sumsq-row2.case.json	1
+C	probes/t2816-lift-sumsq.case.json	1
+C	probes/t2816-lift-vars.case.json	1
 C	probes/t2829-ftest-a306-shapes.case.json	12
 C	probes/t2829-ftest-ln-beta-grid.case.json	99
 C	probes/t2829-ftest-tail-over-b.case.json	22

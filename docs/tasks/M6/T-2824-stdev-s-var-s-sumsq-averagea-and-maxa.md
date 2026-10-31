@@ -34,7 +34,7 @@ Owned M6 exit cells (5; known failures in eval/baseline/probes.txt):
 - probes/t2065-lift-maxa Sheet1!E1
 
 ## Acceptance criteria
-- [ ] The five cells, and T-2816's probe cells, leave eval/baseline/probes.txt (`make eval-baseline`), with no
+- [x] The five cells, and T-2816's probe cells, leave eval/baseline/probes.txt (`make eval-baseline`), with no
       regressions.
 - [x] `make exit-owners MILESTONE=M6` no longer lists them; lookup.md says the engine implements the rule.
 - [x] `make check` green; reviewers approve.
@@ -60,8 +60,8 @@ Eval: probes 8 fewer known failures, none new.
 - Three M9 probe cells: probes/t2577-indirect-ref-array Calc!A157, T157 and U157, a legacy STDEV over a lifted
   INDIRECT.
 
-T-2816's seven probe cells (probes/t2816-lift-*) are not on `main` yet: PR #2620 was ejected for a
-`visible-parity.json` conflict, which only its worker may resolve. The unit test
-`fn_offset_lifted_into_the_statistical_aggregates_reads_top_left_cells` asserts all of their oracle values. When
-#2620 merges, its `make eval-baseline` drops them from the baseline.
-
+T-2816's eight probe cases (probes/t2816-lift-averagea-bool, -averagea-num, -maxa-bool, -maxa-num, -stdevs, -sumsq,
+-sumsq-row2 and -vars, Sheet1!E1, excel-graph 2026-10-31) come into this PR unchanged from PR #2620's branch,
+together with its lookup.md and SPEC-0014 findings. #2620 had been ejected for a `visible-parity.json` conflict that
+only its worker may resolve. All eight pass, so they enter the baseline with no known failure. The identical files
+merge cleanly with #2620 later.
