@@ -497,6 +497,27 @@ fn a_whole_sheet_area_is_walked_by_its_cells() {
     let mut sheet = model();
     let error = assert_refused(&mut sheet, &one(DiffType::Redo, array("=1")), "array");
     assert!(error.contains("too many cells"), "{error}");
+
+    // An anchor restored with a whole-sheet spill range would make the next clear or evaluation
+    // walk all of it.
+    let anchor = Cell::ArrayFormula {
+        f: 0,
+        s: 0,
+        r: (LAST_COLUMN, LAST_ROW),
+        kind: crate::types::ArrayKind::Cse,
+        v: FormulaValue::Unevaluated,
+    };
+    let restore = Diff::RangeClearContents {
+        sheet: 0,
+        row: 1,
+        column: 1,
+        width: 1,
+        height: 1,
+        old_value: vec![vec![Some(anchor)]],
+    };
+    let mut sheet = model();
+    let error = assert_refused(&mut sheet, &one(DiffType::Undo, restore), "anchor");
+    assert!(error.contains("too many cells"), "{error}");
 }
 
 #[test]

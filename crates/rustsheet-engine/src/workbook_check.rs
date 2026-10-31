@@ -8,6 +8,7 @@
 
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::utils::{is_valid_block, is_valid_column_number, is_valid_row};
+use crate::limits::check_array_cells;
 use crate::types::{Cell, MergedCell, Row, Styles, Workbook, Worksheet};
 
 /// Checks every index of `workbook` that a later read trusts unchecked, in one pass linear in its
@@ -141,11 +142,17 @@ pub(crate) fn check_cell(
             r: (width, height),
             ..
         } => {
-            // An anchor's spill range may be empty, but it may not leave the grid.
+            // An anchor's spill range may be empty, but it may not leave the grid, nor hold more
+            // cells than any array may (evaluation fills a CSE anchor's whole range, and the clears
+            // walk it; T-2896).
             if !(0..=LAST_COLUMN - column + 1).contains(&width)
                 || !(0..=LAST_ROW - row + 1).contains(&height)
             {
                 return Err(format!("cell R{row}C{column} spills outside the sheet"));
+            }
+            let cells = |n: i32| usize::try_from(n).unwrap_or(usize::MAX);
+            if check_array_cells(cells(height), cells(width)).is_some() {
+                return Err(format!("cell R{row}C{column} spills over too many cells"));
             }
             s
         }

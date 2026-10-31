@@ -52,6 +52,9 @@ three are now handled.
     cell.
   - `set_user_array_formula` writes every cell of its area, so it refuses an area of more than 2^20 cells, the
     existing array limit. This is a DEVIATION, recorded in docs/excel-semantics/arrays.md.
+  - The same cap applies to an array anchor's spill range in `check_cell`, so it holds for diffs and loads alike.
+    A restored anchor claiming the whole sheet would make evaluation fill 2^34 cells. Refusing it at load is a
+    DEVIATION, recorded in docs/excel-semantics/xlsx-storage.md.
 
 The security review's two other findings are also fixed:
 - `insert_sheet` refuses an id that is taken, which the undo of a sheet delete could carry;
@@ -67,9 +70,11 @@ evaluates the whole workbook. SPEC-0026 decision 4 has an "As built" note on thi
 **Tests.** `test/user_model/test_external_diffs_untrusted.rs`:
 - three real send queues with one index changed (style, sheet, formula);
 - a list that builds on itself and still applies;
-- 31 labelled crafted diffs, each refused with the workbook unchanged, after which an edit, an insert, an undo and a
+- 31 crafted diffs, reported by index,, each refused with the workbook unchanged, after which an edit, an insert, an undo and a
   reload all work;
 - whole-sheet areas;
 - a taken sheet id and a NaN width.
 
-**Follow-up.** T-3423: a fuzz target for diffs, since the probe found more shapes than the ones listed.
+**Follow-ups.**
+- T-3423: a fuzz target for diffs, since the probe found more shapes than the ones listed.
+- T-3426: bound the spill area many anchors claim in total; the per-anchor cap leaves n x 2^20.
