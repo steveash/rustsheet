@@ -34,15 +34,18 @@ visibly-off numeric probe cells reported as Phase 1b evidence, and R7 applied to
       decisions 0134 and 0143 exceptions) of the gen-* suites, ironcalc-calc, corpus-bench, calipers, poi, smoke and
       fixtures only; the Phase 1 line reads it; a run missing calipers, poi or corpus-bench shows Gate B as not
       measured (`n/a`, never met). The all-suite rate stays beside it as information.
-- [ ] R1(c): each milestone's probe row and ironcalc-calc row counts visibly-off type, error or text cells, semantic-rule
+Split (size L): this task delivers Gate B (criterion 1, its tests and its eval-harness.md description); criteria 2 to 4
+are T-3427, criterion 5 is T-3428, criterion 6's dashboard is T-3429.
+
+- [ ] (T-3427) R1(c): each milestone's probe row and ironcalc-calc row counts visibly-off type, error or text cells, semantic-rule
       cells, and numeric cells outside Gate A's envelope; the other visibly-off numeric probe and probes-numeric cells
       are reported in their own "Phase 1b evidence" counts, and the bit-level counts stay beside them.
-- [ ] Cells in a `MATH-OVER-EXCEL` region where the engine returns the math within ε count as passing in Gate B and
+- [ ] (T-3427) Cells in a `MATH-OVER-EXCEL` region where the engine returns the math within ε count as passing in Gate B and
       R1(c), and stay F lines of eval/baseline (decision 0188 R3).
-- [ ] R7: a probe cell that only open M14 tasks own (decision 0143's `owned` rule) leaves the milestone probe row, as it
+- [ ] (T-3427) R7: a probe cell that only open M14 tasks own (decision 0143's `owned` rule) leaves the milestone probe row, as it
       leaves the Phase 1 rate; the 41 M9 FORECAST.ETS probe cells are the test case.
-- [ ] `scripts/exit_owners.py` lists only the cells the new rows count.
-- [ ] docs/progress.md's generator shows Gate B, Gate A (once T-3356 lands; `n/a` before) and the Phase 1b evidence
+- [ ] (T-3428) `scripts/exit_owners.py` lists only the cells the new rows count.
+- [ ] (T-3429) docs/progress.md's generator shows Gate B, Gate A (once T-3356 lands; `n/a` before) and the Phase 1b evidence
       counts; docs/architecture/eval-harness.md describes the measures.
 - [ ] Unit tests for a met and an unmet row of each new measure.
 - [ ] `make check` green; reviewers approve.
