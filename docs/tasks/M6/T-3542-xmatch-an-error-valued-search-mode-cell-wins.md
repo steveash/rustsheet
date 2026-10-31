@@ -1,6 +1,6 @@
 ---
 id: T-3542
-title: "XMATCH: an error-valued search_mode cell wins over the match_mode and range errors (gen-m6 arg-pairs cells)"
+title: "XMATCH: an error-valued search_mode cell wins over an out-of-range numeric match_mode and a 2D range (non-numeric text match_mode still wins) (gen-m6 arg-pairs cells)"
 milestone: M6
 lane: functions-lookup
 status: todo
@@ -11,7 +11,7 @@ depends_on: []
 ---
 
 ## Goal
-XMATCH returns Excel's #DIV/0! when search_mode is a #DIV/0! cell, ahead of the engine's #VALUE!.
+XMATCH returns Excel's #DIV/0! when search_mode is a #DIV/0! cell and match_mode is out of range or the range is 2D; A64/A598 (text match_mode, #VALUE!) must keep passing (see lookup.md).
 
 ## Context
 Found by the T-3496 arg-pairs batch (excel-graph): Excel returns #DIV/0!, the engine #VALUE!, with a bad lookup range or match_mode as well.

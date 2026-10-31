@@ -52,3 +52,4 @@ gen-m6 gains an oracle-filled batch from `rustsheet-gen --policy arg-pairs` (T-3
 ## Outcome
 32 arg-pairs cases added to gen-m6 with excel-graph sidecars; pairwise share 1.0 (0 unseen pairs) for all 10 functions. gen-m6 30652/30674 bit-exact:
 22 new known failures, owned by T-3541 (CHOOSEROWS/CHOOSECOLS, 18 cells) and T-3542 (XMATCH, 4 cells). The visible-parity lock was recorded by `make eval-baseline` as new coverage (decision 0088).
+The lock rose by 11 for 22 new failures because only some failing cells count as visibly off.

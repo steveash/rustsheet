@@ -1,6 +1,6 @@
 ---
 id: T-3541
-title: "CHOOSEROWS and CHOOSECOLS: an error-cell array with a cell index returns #VALUE! (gen-m6 arg-pairs cells)"
+title: "CHOOSEROWS and CHOOSECOLS: a referenced error cell is a 1x1 array, so an invalid index gives #VALUE! (gen-m6 arg-pairs cells)"
 milestone: M6
 lane: functions-lookup
 status: todo
@@ -11,7 +11,7 @@ depends_on: []
 ---
 
 ## Goal
-CHOOSEROWS and CHOOSECOLS return Excel's #VALUE! when the array argument is a #DIV/0! cell and the index is a cell reference.
+CHOOSEROWS and CHOOSECOLS return Excel's #VALUE! when the array argument is a referenced #DIV/0! cell and the index is out of range or not numeric for a 1x1 array; a valid index (1.5, the cell itself) and a literal error keep returning #DIV/0! (see lookup.md).
 
 ## Context
 Found by the T-3496 arg-pairs batch (excel-graph): Excel returns #VALUE!, the engine #DIV/0!. Related: T-2273 (error argument order).
