@@ -3455,7 +3455,7 @@ Where it is tiny (the second shape huge, p <= 1/2) the search stops early, a New
   `BETAINV(1E-20,1E10,0.5)` = 0.9999999956419133 is the true quantile rounded (gen-m9/0a9226016e8f5f33 A358).
   Exception: `F.INV.RT(0.5,2,123456789.1229)` (gen-m9/f34f66fb7f81e673 A209, y = BETA.INV(0.5,61728394.5,1) near 1,
   I_x = x^a) is one double from the nearest root, which lies almost halfway (0.50/0.50 ulp) between two doubles: a tie
-  Excel's own rounding decides, UNVERIFIED (T-2555; T-3516 sweeps odd and fractional huge dfs and T-3501
+  Excel's own rounding decides, UNVERIFIED (T-3516 sweeps odd and fractional huge dfs and T-3501
   fixes the kernel). Excel 0.6931471803615475, ours 0.6931471872147749, 50-digit math 0.69314718445161477.
 - Early stop where tiny: the cells A133, A135, A137, A139, A145, A153, A155 (x from 1.3E-12 to 5.3E-10) are 6E-16
   to 9.3E-7 relative off the true root, near AS 109's second Newton iterate from its own start (1E-12 to 4E-8

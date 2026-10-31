@@ -34,22 +34,22 @@ sweep is outside Gate A's envelope.
   unless it lands on the nearest grid point. statistics.md "BETA.INV at a huge shape is AS 109's Newton search
   (T-1538)" already records this cell as an exception: y = BETA.INV(0.5,61728394.5,1) is one double from the nearest
   root, which lies almost halfway (0.50/0.50 ulp) between two doubles, "a tie Excel's own rounding decides,
-  UNVERIFIED (T-2555)". The engine picks the other side of the tie. A scratch evaluation of y = p^(1/a) and its grid
+  UNVERIFIED (T-2555)" before this triage. The engine picks the other side of the tie. A scratch evaluation of y = p^(1/a) and its grid
   neighbours through the engine's mapping gives 0.69314718105, 0.69314718790 and 0.69314717420, none of them Excel's
   value bit for bit, so the mapping's rounding (statistics.md: "not pinned" to about 10 ulps) is open too. Half-integer
   shapes (odd dfs) are the untested axis: at the even df 1E8 the engine matches.
 - What the task decides: (a) a rule for Excel's side of such ties and its mapping, from T-3516's points, or, if none
   reproduces them, (b) the R4.3 fallback, accurate math, which is inside Gate A's envelope but stays visibly off Excel
-  here; record which in statistics.md (the exception's UNVERIFIED status) and drop T-2555 from that line if this task
-  settles it.
+  here; record which in statistics.md (the exception's UNVERIFIED status).
 - statistics.md "F quantile at a huge df goes through Excel's BETA.INV (T-1538)": which of the reciprocal paths
   Excel takes is "not pinned", and the mapping's rounding is "not pinned" to within about 10 ulps.
 - Decision 0188 R4.3: a piece measured at round dfs and applied between them is an extrapolation; if no model fits
   T-3516's sweep, the fallback outside the measured range is accurate math (the `s`-form 1 - y from
   `-expm1(ln p / a)` at b = 1 gives 0.6931471844516146 here, inside the envelope).
-- Related: T-3398 (BETA.INV and F quantiles on the ported CDF, in flight), T-3363 (Excel's t, F and chi-squared
+- Related: T-3398 (BETA.INV and F quantiles on the ported CDF, in flight), T-3485 (F quantiles through the BETA.INV
+  mapping where Excel's y is 2+ ulps from any crossing, mostly below a df of 1E5), T-3363 (Excel's t, F and chi-squared
   inverse), T-3364 (extrapolated fits fall back to accurate math), T-2555 (BETA.INV early Newton stop at a huge
-  shape). None lists this cell.
+  shape). T-2555 owned this cell until this task; it now lists A209 as moved here, so T-3501 is its only owner.
 
 ## Visible-parity stage
 `visible`: Excel is itself 6E-9 off the math here, so the target is Excel's value (directive 1; R3's 1E-4 bar is not
@@ -73,5 +73,5 @@ Gate A's envelope.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- F quantiles below a df of 1E5 (T-3398, T-2500).
+- F quantiles below a df of 1E5 (T-3398, T-3485, T-2500).
 - The tiny-p quantiles (decision 0188 R3 case 1).
