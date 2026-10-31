@@ -408,14 +408,19 @@ holds the result; `phase1_met` is `gate_b.met`, and the Phase 1 line prints Gate
 **R1(c)** (`r1c.rs`, decision 0188 R1(c), R3 and R7, T-3427) decides which visibly-off cells the probe
 rows and the ironcalc-calc exit rows count. `R1cCells::build` classifies every visibly-off cell of the run
 once (`main.rs` `score_milestones`, kept on the report but not in its JSON) as one of four classes:
-- `m14_owned`: a cell in decision 0143's generated desktop-owned list (R7). It leaves the row.
-- `r3_pass`: a cell `eval/accuracy/math-over-excel.tsv` marks, where Gate A's `envelope` puts the engine
-  within ε of the cell's math value. It passes, and Gate B attributes it as a pass.
-- `phase1b`: a number inside the envelope (within ε of its math value, T-3380), whose Excel value is within
-  G = 1e-4 of the math.
+- `m14_owned`: a probe-row cell (suite `probes`) in decision 0143's generated desktop-owned list (R7). It
+  leaves the row. R7 names the probe rows only, so an M14-owned ironcalc-calc cell is classified like any
+  other and still counts in the calc rows, which keep decision 0146's exit exceptions for such cells.
+- `r3_pass`: a cell `eval/accuracy/math-over-excel.tsv` marks, where Excel is more than G = 1e-4 off its math
+  value (R3's evidence, checked per cell; a mark without it is ignored) and Gate A's `envelope` puts the
+  engine within ε of the math. It passes, and Gate B attributes it as a pass.
+- `phase1b`: a number inside the envelope (within ε of its math value, T-3380) whose Excel value is within ε
+  of the math too, so the engine and Excel differ by at most about 2ε: last-digit residue, Phase 1b work.
 - `counts`: everything else. That covers a type, error or text cell; a number outside the envelope or with
-  no math value; and a number within ε of the math where Excel is more than G off it with no R3 mark, which
-  is R1(c)'s semantic-rule case.
+  no math value; and a number within ε of the math whose Excel value is more than ε off it with no R3 mark.
+  That last gap may be a rule Excel applies that the engine misses (R1(c)'s semantic-rule cells) or an Excel
+  inaccuracy (an R3 candidate); the values cannot tell them apart, so it counts, which is the strictest
+  reading of R1(c).
 
 A cell the run did not classify counts too, so nothing reads as met early. Each probe row carries
 `r1c_off`, `r1c_off_cells`, `phase1b`, `r3_pass` and `m14_owned` beside `visibly_off`. The exit rows

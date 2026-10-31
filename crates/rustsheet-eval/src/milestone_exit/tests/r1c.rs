@@ -36,7 +36,7 @@ fn the_ironcalc_calc_measure_reads_the_r1c_count() {
     r.r1c = crate::r1c::R1cCells::from_classes([
         ("x!S!A1", crate::r1c::R1c::Phase1b),
         ("x!S!A2", crate::r1c::R1c::R3Pass),
-        ("x!S!A3", crate::r1c::R1c::M14Owned),
+        ("x!S!A3", crate::r1c::R1c::Phase1b),
     ]);
     let row = m9(&r);
     assert_eq!((row.calc_visibly_off, row.calc_r1c_off), (Some(3), Some(0)));

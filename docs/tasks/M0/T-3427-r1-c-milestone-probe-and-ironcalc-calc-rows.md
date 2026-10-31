@@ -41,14 +41,18 @@ visibly-off numeric probe and probes-numeric cells are reported as Phase 1b evid
 Done (2026-10-31).
 - **One classifier** (`crates/rustsheet-eval/src/r1c.rs`): every visibly-off cell of a run gets one R1(c) class. The
   rules, in order:
-  1. `m14_owned`: the cell is in decision 0143's desktop-owned list (R7).
+  1. `m14_owned`: a probe-row cell in decision 0143's desktop-owned list (R7). R7 names the probe rows only, so an
+     M14-owned ironcalc-calc cell is classified by the rules below (review round 1, Excel fidelity).
   2. `counts`: the cell is not a number on both sides.
   3. `counts`: a number outside Gate A's envelope, using the shared `accuracy::envelope`. A number with no math value
      is outside too.
-  4. `r3_pass`: an R3-marked cell inside the envelope.
-  5. `counts`: a number within ε of the math where Excel is more than G = 1e-4 off it with no R3 mark. This is
-     R1(c)'s "wrong number from a semantic rule", in R3's own terms: such a gap needs an owner ruling, and without
-     one Excel's value is the target.
+  4. `r3_pass`: an R3-marked cell inside the envelope whose Excel value is more than G off the math, the evidence R3
+     requires on each cell; a mark without it is ignored (review round 1, Excel fidelity).
+  5. `counts`: a number within ε of the math whose Excel value is more than ε off it, with no R3 mark. The gap may be
+     a rule Excel applies that the engine misses (R1(c)'s semantic-rule cells) or an Excel inaccuracy (an R3
+     candidate); the values cannot tell them apart, so the cell counts. So a cell is Phase 1b only when the engine and
+     Excel are both within ε of the math, at most about 2ε apart. Review round 1 (architecture) asked for this: the
+     first draft used G = 1e-4 on Excel's side, which could hide a sub-G semantic miss.
   6. `phase1b`: anything else.
 
   An unclassified cell counts.
@@ -63,11 +67,13 @@ Done (2026-10-31).
   (`milestone_lists`) is outside the probe rows this task names.
 - **Measured** with `make eval` on main plus T-3380's math sidecars:
   - **M9 probe row:** 673 visibly off, 622 counted. The 51 left out are the M9 FORECAST.ETS probe cells, all
-    M14-owned. The task named 41; the case has 51 visibly-off cells today, and none of them still counts.
-  - **ironcalc-calc:** 47 counted and 4 M14-owned. The M9 calc measure is 46 of an allowance of 36, not met, as
-    before.
+    M14-owned. Criterion 3 names 41: the case has grown to 51 visibly-off FORECAST.ETS cells since, and none of them
+    still counts.
+  - **ironcalc-calc:** all 51 visibly-off cells count; R7 leaves them alone. The M9 calc measure is 46 of an
+    allowance of 36, not met, as before: its exit exceptions already cover the four M14-owned cells.
   - **probes:** 910 counted and 51 M14-owned. No probe cell has a math value yet, so none is Phase 1b evidence.
-  - **probes-numeric:** 69,757 counted and 584 Phase 1b evidence. T-3358 and its slices add definitions, and with
+  - **probes-numeric:** 69,757 counted and 584 Phase 1b evidence. Every one of the 584 has Excel within ε of the math as
+    well, so the stricter round-1 rule moved none of them. T-3358 and its slices add definitions, and with
     them math values for the rest.
 - **Tests:** `r1c::tests` (8: each class, the boundaries, the per-suite counts), the probe row split, the exit
   measures met and unmet for both counts, and Gate B with and without an R3 mark.

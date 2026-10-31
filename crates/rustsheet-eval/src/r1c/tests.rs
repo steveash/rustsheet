@@ -77,7 +77,19 @@ fn a_number_outside_the_envelope_or_without_math_counts() {
 }
 
 #[test]
-fn excel_more_than_g_off_the_math_is_a_semantic_cell_that_counts_unless_r3_marks_it() {
+fn excel_more_than_epsilon_off_the_math_counts_even_below_g() {
+    // The engine returns the math; Excel is 1e-6 off it: more than ε, less than G = 1e-4. It may
+    // be a rule Excel applies that the engine misses, so it counts (and an R3 mark needs more
+    // than G, so it cannot excuse it).
+    let c = cell(n(MATH * (1.0 + 1e-6)), n(MATH), Some(MATH));
+    assert_eq!(
+        class(&c, &R3Marks::new(), &Phase1Exceptions::default()),
+        Some(R1c::Counts)
+    );
+}
+
+#[test]
+fn excel_more_than_g_off_the_math_counts_unless_r3_marks_it() {
     // The engine returns the math; Excel is 1e-3 off it (more than G = 1e-4).
     let c = cell(n(MATH * 1.001), n(MATH), Some(MATH));
     let none = Phase1Exceptions::default();
@@ -102,6 +114,32 @@ fn a_cell_only_m14_tasks_own_leaves_the_row_whatever_its_values() {
         class(&error, &R3Marks::new(), &other_case),
         Some(R1c::Counts)
     );
+}
+
+/// R7 names the milestone probe rows only: an M14-owned ironcalc-calc cell still counts.
+#[test]
+fn an_m14_owned_cell_outside_the_probe_rows_still_counts() {
+    let calc = "ironcalc-calc/BESSEL.xlsx";
+    let error = cell(n(MATH), Value::Error("#NUM!".into()), None);
+    let exceptions = owned(calc, "S!A1");
+    assert_eq!(
+        classify(calc, &error, &R3Marks::new(), &exceptions),
+        Some(R1c::Counts)
+    );
+}
+
+/// An R3 mark needs its evidence on the cell, Excel more than G off the math (decision 0188 R3);
+/// below G the mark is ignored and Excel's value stays the target.
+#[test]
+fn an_r3_mark_without_its_evidence_does_not_pass() {
+    let marked = marks(&cell_id(CASE, "S!A1"));
+    let none = Phase1Exceptions::default();
+    // Excel 1e-6 off the math, the engine on it: more than ε, less than G.
+    let below_g = cell(n(MATH * (1.0 + 1e-6)), n(MATH), Some(MATH));
+    assert_eq!(class(&below_g, &marked, &none), Some(R1c::Counts));
+    // Excel 1e-12 off the math, the engine 1e-12 the other way: Phase 1b, mark or not.
+    let tiny = cell(n(MATH * (1.0 + 1e-12)), n(MATH * (1.0 - 1e-12)), Some(MATH));
+    assert_eq!(class(&tiny, &marked, &none), Some(R1c::Phase1b));
 }
 
 #[test]

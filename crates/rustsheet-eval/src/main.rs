@@ -43,7 +43,7 @@ use rustsheet_eval::r1c::R1cCells;
 use rustsheet_eval::report::RunReport;
 use rustsheet_eval::run_meta::RunMeta;
 use rustsheet_eval::runner::{run_suites, CaseResult, RunOptions};
-use rustsheet_eval::suite::{BaselineMode, FetchState, Suite, SuiteKind, ACCURACY_MANIFEST};
+use rustsheet_eval::suite::{BaselineMode, FetchState, Suite, SuiteKind, ACCURACY_DIR};
 use rustsheet_eval::text_expect;
 use rustsheet_eval::v15_checkpoint;
 use rustsheet_eval::visible_parity::{self, VisibleCount};
@@ -307,8 +307,7 @@ fn load_milestones(root: &Path, catalog: &Catalog) -> Result<Milestones> {
     let lists = milestone_lists::load_all(root)?;
     let exceptions = ExitExceptions::load(root)?;
     let phase1_exceptions = Phase1Exceptions::load(root)?;
-    let accuracy_dir = root.join(ACCURACY_MANIFEST);
-    let r3 = load_r3_marks(accuracy_dir.parent().unwrap_or(root))?;
+    let r3 = load_r3_marks(&root.join(ACCURACY_DIR))?;
     let mapping = Mapping::load(root)?;
     if !lists.is_empty() || mapping != Mapping::default() {
         let mut files = BTreeMap::new();
