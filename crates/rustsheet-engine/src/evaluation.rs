@@ -296,6 +296,8 @@ pub(crate) struct Evaluation {
     /// The criteria aggregates' range values and match sets of this pass (`ifs_cache.rs`, T-0449),
     /// dropped by `clear_pass_caches`.
     pub(crate) ifs_cache: crate::functions::statistical::ifs_cache::IfsCache,
+    /// The running totals of this pass (`sum_prefix.rs`, T-3456).
+    pub(crate) sum_prefixes: crate::functions::math_and_trigonometry::sum_prefix::SumPrefixes,
     /// Reads of a formula cell that was still `Evaluating` (a cycle), or of the spill area of
     /// a running anchor, so far: a search vector whose build made one is not cached.
     pub(crate) evaluating_reads: u64,
@@ -343,6 +345,7 @@ impl Evaluation {
     pub(crate) fn clear_pass_caches(&mut self) {
         self.search_cache.clear();
         self.ifs_cache.clear();
+        self.sum_prefixes.clear();
     }
 }
 
@@ -371,6 +374,7 @@ impl Default for Evaluation {
             unwinding: false,
             search_cache: Default::default(),
             ifs_cache: Default::default(),
+            sum_prefixes: Default::default(),
             evaluating_reads: 0,
             pivot_indexes: Default::default(),
             order_state: OrderState::default(),

@@ -26,6 +26,7 @@ use crate::cellref::Addr;
 use crate::closeness::Visible;
 use crate::formula_calls::functions_in;
 use crate::milestone_lists::MilestoneList;
+use crate::r1c::{R1c, R1cCells};
 use crate::runner::{CaseResult, CellKind, CellResult};
 use crate::suite::BaselineMode;
 use crate::value::Verdict;
@@ -336,6 +337,22 @@ pub struct MilestoneRow {
     /// row (decision 0135).
     #[serde(default)]
     pub visibly_off_cells: Vec<String>,
+    /// Of `visibly_off`, the cells decision 0188 R1(c) counts ([`crate::r1c`]): the row's Phase 1
+    /// exit reads these (T-3427).
+    #[serde(default)]
+    pub r1c_off: usize,
+    /// Those cells, as `case!Sheet!A1`, in case order.
+    #[serde(default)]
+    pub r1c_off_cells: Vec<String>,
+    /// Of `visibly_off`, the numeric cells inside Gate A's envelope: Phase 1b evidence.
+    #[serde(default)]
+    pub phase1b: usize,
+    /// Of `visibly_off`, the R3 cells where the engine returns the math (decision 0188 R3).
+    #[serde(default)]
+    pub r3_pass: usize,
+    /// Of `visibly_off`, the cells only open M14 tasks own (decision 0188 R7).
+    #[serde(default)]
+    pub m14_owned: usize,
     /// Cells the spill-extent check failed (filled by the engine, left empty by Excel; decision
     /// 0063): the M7 exit requires none (decision 0140).
     #[serde(default)]
@@ -359,13 +376,18 @@ pub struct MilestoneRow {
 /// `case!Sheet!A1` when cell `c` of case `r` is visibly off (decision 0114): neither bit-exact nor
 /// a pinned deviation, and outside what `Visible` tolerates.
 pub(crate) fn visibly_off_name(r: &CaseResult, c: &CellResult) -> Option<String> {
-    (c.verdict.is_failure() && Visible::is_off(c)).then(|| crate::runner::cell_id(&r.id, &c.key()))
+    Visible::is_failing_off(c).then(|| crate::runner::cell_id(&r.id, &c.key()))
 }
 
-/// Scores the `probes` cases of `results` per milestone; `mode` is the suite's baseline mode.
-/// Empty when the run executed no `probes` case.
+/// Scores the `probes` cases of `results` per milestone; `mode` is the suite's baseline mode and
+/// `r1c` the run's R1(c) classes. Empty when the run executed no `probes` case.
 #[must_use]
-pub fn summarize(rules: &Rules, results: &[CaseResult], mode: BaselineMode) -> Vec<MilestoneRow> {
+pub fn summarize(
+    rules: &Rules,
+    results: &[CaseResult],
+    mode: BaselineMode,
+    r1c: &R1cCells,
+) -> Vec<MilestoneRow> {
     let probes: Vec<&CaseResult> = results.iter().filter(|r| r.suite == SUITE).collect();
     if probes.is_empty() {
         return Vec::new();
@@ -397,6 +419,15 @@ pub fn summarize(rules: &Rules, results: &[CaseResult], mode: BaselineMode) -> V
                 s.deviations += 1;
             } else if let Some(name) = visibly_off_name(r, c) {
                 s.visibly_off += 1;
+                match r1c.class(&name) {
+                    R1c::Counts => {
+                        s.r1c_off += 1;
+                        s.r1c_off_cells.push(name.clone());
+                    }
+                    R1c::Phase1b => s.phase1b += 1,
+                    R1c::R3Pass => s.r3_pass += 1,
+                    R1c::M14Owned => s.m14_owned += 1,
+                }
                 s.visibly_off_cells.push(name);
             }
             rows_of_case.insert(row);
@@ -811,7 +842,7 @@ mod tests {
                 ..case("other/x.case.json", &["M5"], CaseStatus::Panic, vec![])
             },
         ];
-        let rows = summarize(&rules, &results, BaselineMode::Cells);
+        let rows = summarize(&rules, &results, BaselineMode::Cells, &R1cCells::default());
         let row = |m: &str, cases, cells, bit_exact, deviations, failing: &[(&str, usize)]| {
             MilestoneRow {
                 milestone: m.into(),
@@ -839,6 +870,9 @@ mod tests {
                 MilestoneRow {
                     visibly_off: 1,
                     visibly_off_cells: vec!["probes/catalog/c.case.json!S!A2".into()],
+                    // An unclassified visibly-off cell counts in R1(c) (decision 0188).
+                    r1c_off: 1,
+                    r1c_off_cells: vec!["probes/catalog/c.case.json!S!A2".into()],
                     ..row(
                         "M9",
                         2,
@@ -868,7 +902,13 @@ mod tests {
             md.contains("Failing cases in M9:\n\n- `probes/catalog/c.case.json`: 1\n- `probes/d.case.json`: 1\n"),
             "{md}"
         );
-        assert!(summarize(&rules, &results[5..], BaselineMode::Cells).is_empty());
+        assert!(summarize(
+            &rules,
+            &results[5..],
+            BaselineMode::Cells,
+            &R1cCells::default()
+        )
+        .is_empty());
     }
 
     #[test]
@@ -886,7 +926,12 @@ mod tests {
             ..case("probes/t.case.json", &["M9"], CaseStatus::Pass, vec![])
         };
         let plain = case("probes/n.case.json", &["M5"], CaseStatus::Pass, vec![]);
-        let rows = summarize(&rules, &[with_text, plain], BaselineMode::Cells);
+        let rows = summarize(
+            &rules,
+            &[with_text, plain],
+            BaselineMode::Cells,
+            &R1cCells::default(),
+        );
         let find = |m: &str| rows.iter().find(|r| r.milestone == m).expect(m);
         let m9 = find("M9");
         assert_eq!((m9.text_items, m9.text_failing), (2, 1));
@@ -917,7 +962,7 @@ mod tests {
             CaseStatus::Fail,
             vec![pass("S!A1", "SEQUENCE(1)"), extent],
         )];
-        let rows = summarize(&rules, &results, BaselineMode::Cells);
+        let rows = summarize(&rules, &results, BaselineMode::Cells, &R1cCells::default());
         let m7 = rows.iter().find(|r| r.milestone == "M7").expect("M7 row");
         assert_eq!((m7.cells, m7.spill_extent_failures), (2, 1));
         assert!(rows
@@ -925,4 +970,6 @@ mod tests {
             .filter(|r| r.milestone != "M7")
             .all(|r| r.spill_extent_failures == 0));
     }
+
+    mod r1c;
 }

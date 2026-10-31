@@ -336,7 +336,7 @@ impl Model {
     /// cell already evaluated in this pass, or a spill cell whose anchor is. `None` for a
     /// circular cell or a cycle member under iterative calculation (whose reader joins it, where
     /// the lazy walk may not read it), which never becomes readable this way.
-    fn read_is_inert(&self, at: CellReferenceIndex) -> Option<bool> {
+    pub(crate) fn read_is_inert(&self, at: CellReferenceIndex) -> Option<bool> {
         if self.evaluation.circular.contains(&key(at)) || self.is_cycle_member(at) {
             return None;
         }
