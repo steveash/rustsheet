@@ -7,8 +7,9 @@
   for another 3-4 min, and the train ran out of its 40 min hold before it could merge the four
   green PRs.
 - **Decision:** `merge_ready.ci_state(..., early=True)`, which the train uses, reads a run still in
-  progress as RED as soon as one job of that run's check suite has concluded `failure`. Only
-  `failure` counts; `cancelled` and `timed_out` keep their infrastructure meaning and are read
+  progress as RED as soon as the newest check run of one job of that run's check suite has
+  concluded `failure`, except the summary job `rust (fmt, clippy, test)`, which fails for cancelled
+  shards too (ci.yml). Only `failure` counts; `cancelled` and `timed_out` keep their infrastructure meaning and are read
   when the run completes. A PR head's readiness check (`mark-ready`, V2) is unchanged.
 - **Consequences:** a red train run costs the time to its first failure, not to its slowest job,
   which saves 3-4 min per red run and more in a bisection. The run is not cancelled; it finishes

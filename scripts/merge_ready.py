@@ -95,10 +95,12 @@ PERMISSION_REFUSED = "HTTP 403"
 ACTIONS_APP_ID = 15368
 CI_WORKFLOW = ".github/workflows/ci.yml"
 CHANGES_JOB = "changes (docs-only?)"
+# The rust shards' summary job: `failure` unless every shard succeeded, cancelled ones included.
+RUST_SUMMARY_JOB = "rust (fmt, clippy, test)"
 REQUIRED_JOBS = (
     CHANGES_JOB,
     "hygiene (ratchets, deny, machete, typos, governance)",
-    "rust (fmt, clippy, test)",
+    RUST_SUMMARY_JOB,
 )
 # Skipped counts as green for these only when the PR's diff is docs-only (`run_heavy=false`).
 HEAVY_JOBS = ("eval (Excel-compatibility gate)", "python (tools + bindings)")
@@ -387,19 +389,12 @@ def ci_state(
     if not ci:
         return PENDING, ["no ci.yml run yet"]
     run = max(ci, key=lambda r: int_of(r, "id"))
+    latest = latest_checks(run, check_runs)
     if text_of(run, "status") != "completed":
-        failed = early_failures(run, check_runs) if early else []
+        failed = early_failures(latest) if early else []
         return (RED, failed) if failed else (PENDING, ["the ci.yml run is still running"])
     if text_of(run, "conclusion") != "success":
         return RED, [f"the ci.yml run concluded {text_of(run, 'conclusion') or 'nothing'}"]
-    suite = field_of(run, "check_suite_id")
-    latest: dict[str, object] = {}
-    for check in check_runs:
-        if field_of(check, "app", "id") != ACTIONS_APP_ID or field_of(check, "check_suite", "id") != suite:
-            continue
-        name = text_of(check, "name")
-        if int_of(check, "id") > int_of(latest.get(name), "id"):
-            latest[name] = check
     pending, red = [], []
     for name in (*REQUIRED_JOBS, *HEAVY_JOBS):
         check = latest.get(name)
@@ -417,16 +412,29 @@ def ci_state(
     return (PENDING, pending) if pending else (GREEN, [])
 
 
-def early_failures(run: object, check_runs: Sequence[object]) -> list[str]:
-    """The jobs of `run`'s check suite that already concluded `failure`, as "name: failure".
-    Only `failure` counts: a `cancelled` job can be a superseded run's, and the merger reads
-    `cancelled` and `timed_out` as infrastructure (merge_train.INFRA_CONCLUSIONS)."""
+def latest_checks(run: object, check_runs: Sequence[object]) -> dict[str, object]:
+    """The newest check run per job name in `run`'s check suite (GitHub Actions only)."""
     suite = field_of(run, "check_suite_id")
+    latest: dict[str, object] = {}
+    for check in check_runs:
+        if field_of(check, "app", "id") != ACTIONS_APP_ID or field_of(check, "check_suite", "id") != suite:
+            continue
+        name = text_of(check, "name")
+        if int_of(check, "id") > int_of(latest.get(name), "id"):
+            latest[name] = check
+    return latest
+
+
+def early_failures(latest: Mapping[str, object]) -> list[str]:
+    """The jobs of a running suite that already concluded `failure`, as "name: failure"
+    (decision 0212). Only `failure` counts: the merger reads `cancelled` and `timed_out` as
+    infrastructure once the run completes (merge_train.INFRA_CONCLUSIONS). The summary job
+    RUST_SUMMARY_JOB is left out: it reports `failure` for cancelled shards too (ci.yml, "a
+    cancelled run must report a failure here"), and a shard that really failed reports itself."""
     return sorted(
-        f"{text_of(check, 'name')}: failure"
-        for check in check_runs
-        if field_of(check, "app", "id") == ACTIONS_APP_ID
-        and field_of(check, "check_suite", "id") == suite
+        f"{name}: failure"
+        for name, check in latest.items()
+        if name != RUST_SUMMARY_JOB
         and text_of(check, "status") == "completed"
         and text_of(check, "conclusion") == "failure"
     )

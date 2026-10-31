@@ -226,6 +226,16 @@ class RedTrain(StageFixture):
         self.assertEqual(state([run_], other, False, events, early=True)[0], merge_ready.PENDING)  # another run's job
         self.assertEqual(state([run_], cancelled, False, events, early=True)[0], merge_ready.PENDING)
         self.assertFalse(f"{eval_job}: failure".endswith(merge_train.INFRA_CONCLUSIONS))  # red, not infrastructure
+        # A cancelled shard makes the summary job fail; that is infrastructure, read once the run completes.
+        summary = merge_ready.RUST_SUMMARY_JOB
+        cancelled_shard = [check(1, slow, "completed", "cancelled"), check(2, summary, "completed", "failure"),
+                           check(3, eval_job, "in_progress", None)]
+        self.assertEqual(state([run_], cancelled_shard, False, events, early=True)[0], merge_ready.PENDING)
+        # The newest check run per name counts, as on the completed path.
+        rerun = [check(1, eval_job, "completed", "failure"), check(4, eval_job, "in_progress", None)]
+        self.assertEqual(state([run_], rerun, False, events, early=True)[0], merge_ready.PENDING)
+        queued = {**run_, "status": "queued"}
+        self.assertEqual(state([queued], failed, False, events, early=True)[0], merge_ready.RED)
 
     def test_a_forged_or_malformed_state_record_is_ignored(self) -> None:
         good = merge_train.Resume("a" * 40, ((4, "b" * 40),))

@@ -628,6 +628,11 @@ flip therefore takes effect within about 1 min of its stop label, or of its merg
 
    A `cancelled`, `timed_out` or superseded run is **never** green. The same rule judges V3 on PR
    heads (event `pull_request`).
+
+   **Red early** (train runs only, decision 0212): a run still in progress is red as soon as the
+   newest check run of one of its jobs (Actions app, the run's check suite) concluded `failure`,
+   except the summary job `rust (fmt, clippy, test)`, which also fails for cancelled shards. A
+   `cancelled` or `timed_out` job is read only once the run completes, as an infrastructure failure.
 7. **Green: merge in order** (`train` mode only). Renew the lock first; exit 4 means stop with
    nothing merged. Check that `origin/main` is still `M0`. If not, someone merged without the
    lock: release, report, file a P0 and stop. No merge lands on an untested tree. Then, for k = 1
@@ -899,7 +904,7 @@ a cut-off resumes rather than restarting (below).
   That is still 5 runs, now over **two holds**, with no third rebuild.
 
 **Infrastructure failures** (a cancelled or timed-out job, a runner that never started, no run for
-the sha) are not a PR's fault. Retry the same train once. If it fails again, release and stop the
+the sha) are not a PR's fault; the early red read of step 6 never counts one as red. Retry the same train once. If it fails again, release and stop the
 run without ejecting anyone.
 
 **Budget cut-off.** No CI wait starts unless `CI_TIMEOUT + n × MERGE_BUDGET` remains of

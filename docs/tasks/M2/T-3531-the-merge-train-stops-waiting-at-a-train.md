@@ -21,7 +21,8 @@ A red train CI run costs the train the time to its first failed job, not to its 
 ## Acceptance criteria
 - [x] `merge_ready.ci_state(..., early=True)` is RED for an in-progress run once a job of its
       check suite concluded `failure`; PENDING for another suite's failure or a `cancelled` job;
-      unchanged without `early` (scripts/test_merge_train_red.py
+      unchanged without `early`; PENDING when only the summary job failed over a cancelled
+      shard (scripts/test_merge_train_red.py
       `test_a_running_train_ci_is_red_at_its_first_failed_job`).
 - [x] The train's CI read passes `early=True`; the scripts tests pass.
 
@@ -29,4 +30,7 @@ A red train CI run costs the train the time to its first failed job, not to its 
 - Cancelling the red run.
 
 ## Outcome
-Done in this PR.
+Done in this PR. On the 2026-10-31 bisection of #2581 the eval job failed about 5 min into
+each run and `rust (test 2/2)` ended 3-4 min later, so a red run now costs the train about
+5 min instead of 9. The summary job is excluded from the early read because it fails for
+cancelled shards too (review finding).
