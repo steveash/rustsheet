@@ -3,7 +3,7 @@ id: T-3359
 title: "Measure Gate B and the R1(c) probe and ironcalc-calc rows in the eval report and progress dashboard, with Phase 1b evidence apart (decision 0188)"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P0
 size: M
 tier: opus
