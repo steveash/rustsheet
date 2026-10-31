@@ -32,13 +32,12 @@ runs by the owner's merger routine, provided the shadow evidence meets SPEC-0027
     delay p90 under 1 min;
   - the red-train rate is reported against p = 0.09.
 
-
 ## Acceptance criteria
 - [x] The PR gives `make merge-train-stats`'s shadow evidence against every point of the bar,
       with run links.
 - [x] `scripts/merge_train.toml` says `mode = "train"`. A short decision record cites the evidence
       and T-2996's record.
-- [ ] The Outcome links any live trains that ran during this session. The first live trains are
+- [x] The Outcome links any live trains that ran during this session. The first live trains are
       checked by T-2990 at its checkpoint, so this task does not wait for them. A tree-check
       failure at any time means the emergency flip back to `lock`, with a P0 task.
 
@@ -60,4 +59,3 @@ The owner approved the switch below the 90% agreement point and before the 24 h 
 in decision 0192: 12 stranded, 6 changed after marking, 5 batch order.
 
 Live trains: none ran during this session. T-2990 checks the first ones at its checkpoint.
-

@@ -1,7 +1,8 @@
 # 0192 — The merge train goes live at 87% shadow agreement (owner ruling)
 
-- **Status:** accepted (2026-10-31, T-2991; owner ruling: the owner approved switching at 87%, and
-  then without waiting for the 24 h mark, in the session that filed this record)
+- **Status:** accepted (2026-10-31, T-2991; owner ruling in session
+  https://claude.ai/code/session_018kHzCtGoS4gXMYKAZWDHEd: the owner approved switching at 87%
+  agreement, then asked not to wait for the 24 h mark)
 - **Context:**
   - SPEC-0027's rollout bar for `mode = "train"` asks for:
     - at least 10 scored shadow trains over at least 24 h;
@@ -34,8 +35,23 @@
     - the 90% agreement point, given the explanations above;
     - the 24 h span. The 42 scored trains cover 22 h, and the owner judged that evidence enough
       to leave shadow mode now.
-  - Every other point holds: at least 10 scored trains with the newest fresh, zero tree-check
-    mismatches, and the load bar.
+  - Every other point holds:
+    - at least 10 scored trains, the newest within 2 h (shadow run 41181616335 at 07:41Z, stats
+      at 08:07Z);
+    - zero tree-check mismatches;
+    - the load bar: PR CI p90 at +20%, the limit, on rounded figures (7.8/6.5 min), and queue p90
+      at 3 s;
+    - the red-train rate: 0/47 against the spec's p = 0.09.
+  - The counts measure different things. There are 42 scored *predictions* (trains with a
+    prediction), 47 completed shadow *trains* that ran CI, and 51 shadow CI *runs*, of which 50
+    are green and 1 was cancelled.
+  - The waivers cover this one flip only. A later re-flip from `lock` to `train`, for example
+    after an emergency flip, meets SPEC-0027's full bar again or needs its own owner ruling.
+  - Owner step 3 (SPEC-0027 "Owner steps") is done:
+    - The owner confirmed on 2026-10-31 that the deployed routine prompts match
+      docs/process/routines.md.
+    - The five worker routines' prompts were checked word for word against it, `train`-mode
+      clauses included.
   - The rest of SPEC-0027 is unchanged: T-2990 measures the live train for a week, and a
     tree-check mismatch at any time means the emergency flip back to `lock` (decision 0157) with a
     P0 task.
@@ -43,6 +59,9 @@
   - Workers and the steward mark green, approved PRs ready (`make mark-ready`) and no longer
     merge them. The merger routine merges ready PRs in trains, every 30 minutes. The routine
     prompts already carry the `train`-mode clauses (decision 0157, T-2996).
+  - Shadow-era `ready-to-merge` labels on PRs whose readiness no longer verifies are removed by
+    the first live train (`merge_train.py` unlabels them). So they do not trip the "stranded"
+    daily threshold for long.
   - Stranded `ready-to-merge` PRs should stop. The "stranded" daily threshold in
     `make merge-train-stats` becomes the check that they have.
   - T-2990's checkpoint judges the first live week against SPEC-0027's metrics.
