@@ -79,8 +79,9 @@ close to correctly rounded and the engine not.
 - `CouponSchedule::price` (PRICE, and YIELD's Newton): accrued `rate/f·(A/E)·100`, and coupon k discounted at
   `k + DSC/E` from k = 0. `duration_of` (DURATION, MDURATION): the same coupon exponent. Rule and fit table:
   financial.md "PRICE, DURATION and MDURATION sum order at a huge coupon rate and yield".
-- Fit (239 PRICE cells of probes/bond-extreme-coupon-yield): bit-exact 63 → 196, within 15 digits 176 → 238; the
-  candidates scored are in the financial.md entry.
+- Eval result on probes/bond-extreme-coupon-yield (`rustsheet-eval show`): 532 of 579 cells pass; all 240 PRICE
+  cells are bit-exact, and the 47 cells left are all DURATION or MDURATION (Calc columns B and C), within 2 ulp. The
+  offline fit that ranked the candidate orders is in the financial.md entry; it is not the eval result.
 - Eval (`update-baseline` after merging `main` at 1248554ae): probes known failures 2316 → 1933 (387 fixed: 371 in
   bond-extreme-coupon-yield, 16 in the yield-* probes), gen-m9 3015 → 2999 (17 fixed, among them the three gen-m9
   cells of this task). Every failing cell of probes/bond-extreme-coupon-yield (47, all numeric) is within half a unit
@@ -96,4 +97,4 @@ close to correctly rounded and the engine not.
   - gen-m9/5ded7594e597e31e Calc!A123 `DURATION(37952,44607,123456789.123,Data!$C3,1,2)`: 2.1997586986000424 vs
     2.199758698600043, 1 ulp.
   probes/yield-newton-domain P!B7, which regressed by an ulp before the merge, passes on top of T-3215's YIELD start.
-- Follow-ups: T-2972 (bit-exact residue, `defer: phase-1b`), T-2973 (the five regressed cells).
+- Follow-ups: T-2972 (the 43 DURATION/MDURATION residue cells, `defer: phase-1b`), T-2973 (the five regressed cells).

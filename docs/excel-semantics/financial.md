@@ -2243,15 +2243,18 @@ Tasks: T-2207, T-2732, T-2733
 ## PRICE, DURATION and MDURATION sum order at a huge coupon rate and yield
 Rule: PRICE takes the accrued interest as `rate/f · A/E · 100` (left to right, `A/E` one quotient) and discounts
 coupon k (k = 0..N-1) at the exponent `k + DSC/E`; the redemption keeps `DSC/E + N - 1`, and each discount is
-Excel's `^` ("PRICE and ODDFPRICE discount with Excel's `^`"). DURATION and MDURATION discount coupon k at the same
-`k + DSC/E`. Written this way every cell of probes/bond-extreme-coupon-yield is within half a unit of Excel's 15th
-significant digit, among them the three gen-m9 cells: `PRICE(38136,44737,1E+300,7,100,2)` (Calc!A181) is
-8.95449454935698e+300, `PRICE(43830,45293,100,278,50,4,1)` (A182) -133.76680342333566 and
-`MDURATION(39697,44449,58988,44270,2,0)` (C183) 5.029680055838246e-07. The order before (accrued `coupon · (A/E)`,
+Excel's `^` ("PRICE and ODDFPRICE discount with Excel's `^`"). The same accrued order applies to the single-coupon
+(N = 1) branch, which discounts linearly; the eval shows no regression from it. DURATION and MDURATION discount
+coupon k at the same `k + DSC/E`. Written this way every cell of probes/bond-extreme-coupon-yield is within half a
+unit of Excel's 15th significant digit, among them the probe rows that mirror gen-m9 0a957119475760c5 A279,
+a91bad4e84f49739 A142 and 30e20ba3302fea8b A90 with literal arguments: `PRICE(38136,44737,1E+300,7,100,2)`
+(Calc!A181) is 8.95449454935698e+300, `PRICE(43830,45293,100,278,50,4,1)` (Calc!A182) -133.76680342333566 and
+`MDURATION(39697,44449,58988,44270,2,0)` (Calc!C183) 5.029680055838246e-07; the three gen-m9 cells pass too. The order before (accrued `coupon · (A/E)`,
 exponent `DSC/E + k - 1` for k = 1..N) left 62 cells visibly off, Calc!A20 `PRICE(38136,44737,1E+10,7,100,1,0)` at
 55709579072.88501 against Excel's 55709579072.88489.
-Fit (T-2733; 239 PRICE cells of the case with more than one coupon left, plain doubles unless named; bit-exact /
-within 15 digits by display):
+Offline fit (T-2733: the candidate orders scored outside the engine, over 239 PRICE cells of the case with more
+than one coupon left, plain doubles unless named; bit-exact / within 15 digits by display; it ranks the candidates and
+is not the eval result, below):
 - before: 63 / 176; exponent `k + DSC/E` with accrued `coupon·A/E`: 146 / 215; with `coupon·(A/E)`: 142 / 214;
 - accrued `rate/f·(A/E)·100`, `rate·(A/E)·(100/f)` or `A/E·rate·100/f` (the same doubles here): **196 / 238**;
   `rate·A/E·100/f`: 166 / 223; every other order of the five factors scored lower;
@@ -2262,12 +2265,13 @@ within 15 digits by display):
 - the coupon `100·rate/f`, `rate·(100/f)` or `rate/f·100`: tie; summing from the last coupon: 85 at best; a
   closed-form annuity, `v^k·v^(DSC/E)`, a running product of `v`, or discounting the coupon-date value by
   `v^(DSC/E)` once: 79 at best; the exponent written `(k·E + DSC)/E` (one rounding): no change.
-The 43 PRICE cells left are last-digit residue (T-2972), among them the redemption term alone: `PRICE(38136,44737,0,
-42,100,2,0)` (Parts!B3) is 3.0121596882492917e-47, while 100 over the worksheet's
-`(1+42/2)^(COUPDAYSNC/COUPDAYS+COUPNUM-1)` (Parts!D3, Excel's own value) is 3.012159688249292e-47, so PRICE's
-internal power differs from `^` at some exponents. YIELD prices with the same sum: on top of T-3215's start it
-fixes 16 cells of the yield-* probes and moves none. DURATION and MDURATION moved by 1 or 2 ulp in five cells
-(T-2973).
+Eval (the engine at T-2733, `rustsheet-eval show`): every one of the case's 240 PRICE cells (Calc!A1-A198,
+Parts!B1-B6 and E1-J6) is bit-exact. The redemption term alone (rate 0, Parts!B1-B6) is 100 over the worksheet's
+`(1+yld/2)^(COUPDAYSNC/COUPDAYS+COUPNUM-1)` (Parts!D1-D6, Excel's own `^`) to the bit in all six rows in Excel, and
+the engine matches; for example `PRICE(38136,44737,0,42,100,2,0)` (Parts!B3) is 3.012159688249292e-47 = 100/Parts!D3.
+The 47 cells of the case left are all DURATION or MDURATION (Calc columns B and C), numeric and within 2 ulp:
+last-digit residue, T-2972's except Calc!B7, B43, C7 and C43, which T-2733 moved by 1 or 2 ulp (T-2973). YIELD
+prices with the same sum: on top of T-3215's start it fixes 16 cells of the yield-* probes and moves none.
 Evidence: probes/bond-extreme-coupon-yield (579 cells, excel-graph, 2026-10-26, T-2732); gen-m9/0a957119475760c5
 Calc!A279, a91bad4e84f49739 Calc!A142, 30e20ba3302fea8b Calc!A90 (excel-graph, 2026-10-23).
 Ours: `CouponSchedule::price` and `duration_of` in functions/financial/financial_bonds.rs since T-2733.

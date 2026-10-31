@@ -125,10 +125,11 @@ impl CouponSchedule {
 
         let coupon = 100.0 * rate / frequency as f64;
         // The accrued interest is `rate/f · A/E · 100`, not `coupon · A/E`, and each coupon is
-        // discounted at `k + DSC/E` counted from k = 0 (not `DSC/E + k - 1` from k = 1): over the
-        // 239 PRICE cells of probes/bond-extreme-coupon-yield this order gives 196 bit-exact and
-        // 238 within 15 digits, the former order 63 and 176 (financial.md "PRICE, DURATION and
-        // MDURATION sum order at a huge coupon rate and yield", T-2733).
+        // discounted at `k + DSC/E` counted from k = 0 (not `DSC/E + k - 1` from k = 1): with it
+        // all 240 PRICE cells of probes/bond-extreme-coupon-yield are bit-exact in the eval, and
+        // the single-coupon branch below uses the same accrued order without regressions
+        // (financial.md "PRICE, DURATION and MDURATION sum order at a huge coupon rate and yield",
+        // T-2733).
         let accrued = rate / frequency as f64 * (a / e) * 100.0;
 
         // A single remaining coupon is discounted with simple (linear) interest
