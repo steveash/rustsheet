@@ -1,0 +1,29 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3293: TEXTJOIN ignore_empty FALSE over a row whose 32,767-unit limit is passed before (ZZ1, ZZ9) or after (B3) the formula's own cell in its own row; ZZ5 (range excludes self) and ZZ7 (ignore_empty TRUE) are controls. A1/A3/A5/A7/A9 are 32,160-unit texts.",
+ "tags": [
+  "M5",
+  "probe",
+  "text",
+  "T-3293"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=TEXTJOIN(\"\",TRUE,REPT(\"x\",200)&SEQUENCE(160,1,0,0))",
+    "ZZ1": "=TEXTJOIN(\",\",FALSE,1:1)",
+    "A3": "=TEXTJOIN(\"\",TRUE,REPT(\"x\",200)&SEQUENCE(160,1,0,0))",
+    "B3": "=TEXTJOIN(\",\",FALSE,3:3)",
+    "A5": "=TEXTJOIN(\"\",TRUE,REPT(\"x\",200)&SEQUENCE(160,1,0,0))",
+    "ZZ5": "=LEN(TEXTJOIN(\",\",FALSE,A5:ZY5))",
+    "A7": "=TEXTJOIN(\"\",TRUE,REPT(\"x\",200)&SEQUENCE(160,1,0,0))",
+    "ZZ7": "=TEXTJOIN(\",\",TRUE,7:7)",
+    "A9": "=TEXTJOIN(\"\",TRUE,REPT(\"x\",200)&SEQUENCE(160,1,0,0))",
+    "ZZ9": "=TEXTJOIN(\",\",FALSE,1:10)",
+    "A10": "=LEN(A1)"
+   }
+  }
+ ],
+ "expected": {}
+}
