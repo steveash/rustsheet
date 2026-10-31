@@ -27,7 +27,7 @@ closed form leaves 1 to 12 ulp from Excel become bit-exact without moving any ce
     probes-numeric/t1745-beta-inv-roundtrip rows J11, J12, J39, J40, J53, J55, J80, J113; probes-numeric/
     t1543-inverse-cdf-tiny-p Calc!A90 `BETA.INV(1-1E-10,1000,1)`.
 - Cells still off after T-3457 (1 to 12 ulp): m9-beta-inv A43, A44, A59, A66, A67, A68, A69, A78, A113 and t1745 J41,
-  J42, J57, J64, J65, J66, J67, J75, J109; ironcalc-calc BETADIST_BETAINV.xlsx H31; gen-m9/bbdfc06cae0e0d71 A269;
+  J42, J57, J64, J65, J66, J67, J75, J109; ironcalc-calc BETADIST_BETAINV.xlsx H31;
   probes/t2435-dist-extremes A72.
 - Hints: A12 `BETA.INV(0.95,0.5,1)` is 0.9024999999999999 in Excel, not 0.95^2, so Excel does not square; the
   crossing of our cdf matched these 18 cells, so a crossing of a cdf that is not flat (an accurate shape-1 cdf, or
