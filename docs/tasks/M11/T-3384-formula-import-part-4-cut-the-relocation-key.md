@@ -37,9 +37,9 @@ formula's text shifted (a cheaper pre-check). Soundness arguments in the module 
 
   | function (inclusive) | before | after |
   |---|---|---|
-  | `KeyLexer::key` | 4.10G | 0.081G (−98%) |
-  | `from_a1_to_rc` | 4.18G | 0.156G |
-  | whole run | 22.9G | 19.7G |
+  | `KeyLexer::key` | 4.10G | 0.113G (−97%) |
+  | `from_a1_to_rc` | 4.18G | 0.187G |
+  | whole run | 22.9G | 19.8G |
 
   52450 now loads in 152 ms, from 545 ms (standalone `load_from_xlsx`). Other loads: calipers pv26_010
   565 → 490 ms, pv26_001 629 → 470 ms, pv23_057 616 → 557 ms. pv26_002 goes 3.70 → 3.41 s; its load is spent
