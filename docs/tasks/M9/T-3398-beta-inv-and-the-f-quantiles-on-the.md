@@ -3,7 +3,7 @@ id: T-3398
 title: "BETA.INV and the F quantiles on the ported CDF (T-2511 remainder)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
