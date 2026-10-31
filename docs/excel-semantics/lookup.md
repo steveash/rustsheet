@@ -1425,3 +1425,10 @@ vector of two or more cells a scalar return is `#VALUE!` (sizes differ), found o
 return of the wrong size with a miss still gives `if_not_found`
 (`XLOOKUP("z",A1,A1:A2,"miss")` is "miss"). An invalid `match_mode` 9 is `#VALUE!`.
 Evidence: probes/t3317-xlookup-scalar-return (C1-C20, oracle-filled).
+
+## gen-m6 arg-pairs batch (T-3496): error-cell arguments of CHOOSEROWS, CHOOSECOLS and XMATCH
+Rule: `CHOOSEROWS(Data!G9,Data!G1)` and `CHOOSECOLS(Data!G9,Data!G1)` with G9 = #DIV/0! and a cell index are #VALUE!; `XMATCH(1,Data!A1:A5,Data!G1,Data!G9)` with search_mode G9 = #DIV/0! is #DIV/0!.
+Evidence: gen-m6 21db5363d711888d, ad47b47c4e97019d, 315644f84093cf49, 75b38d80dd3152b2 (excel-graph).
+Ours: CHOOSEROWS/CHOOSECOLS return #DIV/0!; XMATCH returns #VALUE!.
+Status: UNVERIFIED (probe pending; cells are oracle values, the general rule is not probed)
+Tasks: T-3541, T-3542

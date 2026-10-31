@@ -1,0 +1,117 @@
+{
+ "check": [
+  "Calc!A1",
+  "Calc!A4",
+  "Calc!A7",
+  "Calc!A10",
+  "Calc!A13",
+  "Calc!A16",
+  "Calc!A19",
+  "Calc!A22",
+  "Calc!A25",
+  "Calc!A28",
+  "Calc!A31",
+  "Calc!A34"
+ ],
+ "description": "generated arg-pairs seed=0 milestone=M6 TRIMRANGE part 2/2: 12 calls over 106 unseen pairs; skipped: none",
+ "expected": {},
+ "format": "rustsheet-case/v1",
+ "sheets": [
+  {
+   "cells": {
+    "A1": "x",
+    "A10": "a*",
+    "A11": false,
+    "A12": "1",
+    "A3": 0.1,
+    "A4": true,
+    "A5": "1",
+    "A6": 0.5,
+    "A7": -1,
+    "A8": 42,
+    "A9": "x",
+    "B1": 1e-15,
+    "B11": " x ",
+    "B12": "TRUE",
+    "B2": 1e-15,
+    "B4": "#N/A",
+    "B7": 0.1,
+    "B8": "#N/A",
+    "B9": 2,
+    "C1": -0.0001,
+    "C10": 0.1,
+    "C11": " x ",
+    "C12": true,
+    "C2": 1,
+    "C3": 1,
+    "C4": 123456789.123,
+    "C5": 2,
+    "C7": " x ",
+    "C8": true,
+    "C9": false,
+    "D1": "\u00fc",
+    "D10": "a*",
+    "D11": false,
+    "D12": 1,
+    "D2": 0.2,
+    "D3": "a*",
+    "D4": " x ",
+    "D8": true,
+    "D9": 1e-15,
+    "E1": 1000000000000000.0,
+    "E10": 1000000000000000.0,
+    "E11": "?b",
+    "E12": 1000000000000000.0,
+    "E2": "#N/A",
+    "E3": 7,
+    "E5": -0.0001,
+    "E6": 0,
+    "E7": "?b",
+    "E8": true,
+    "E9": false,
+    "G1": 7,
+    "G2": 0,
+    "G3": -2.5,
+    "G4": 1.5,
+    "G5": {
+     "t": "s",
+     "v": "12"
+    },
+    "G6": {
+     "t": "s",
+     "v": "x"
+    },
+    "G7": "",
+    "G8": false,
+    "G9": {
+     "t": "e",
+     "v": "#DIV/0!"
+    }
+   },
+   "name": "Data"
+  },
+  {
+   "cells": {
+    "A1": "=TRIMRANGE(Data!C3:C6,Data!A1:B2,\"abc\")",
+    "A10": "=TRIMRANGE(Data!A5:C7,Data!C3:D4,Data!G7)",
+    "A13": "=TRIMRANGE(Data!C5:E5,Data!A1:B2,TRUE)",
+    "A16": "=TRIMRANGE(Data!B4:E5,Data!C3:D4,Data!G8)",
+    "A19": "=TRIMRANGE(Data!B7:E12,Data!A1:B2,#N/A)",
+    "A22": "=TRIMRANGE(Data!C10:D11,Data!C3:D4,Data!G9)",
+    "A25": "=TRIMRANGE(Data!E4:E4,Data!A1:B2,Data!H1)",
+    "A28": "=TRIMRANGE(Data!A11:D11,Data!C3:D4,Data!H2)",
+    "A31": "=TRIMRANGE(Data!A8:B8,Data!A1:B2,Data!A1:B2)",
+    "A34": "=TRIMRANGE(Data!E1:E10,Data!C3:D4,Data!C3:D4)",
+    "A4": "=TRIMRANGE(Data!D9:E12,Data!C3:D4,Data!G6)",
+    "A7": "=TRIMRANGE(Data!D5:E9,Data!A1:B2,\"\")"
+   },
+   "name": "Calc"
+  }
+ ],
+ "tags": [
+  "generated",
+  "arg-pairs",
+  "M6",
+  "TRIMRANGE"
+ ]
+}
