@@ -3,7 +3,7 @@ id: T-3358
 title: "Gate A slice 3: first reference tables for the numeric functions in scope, oracle-filled, with the MATH-OVER-EXCEL points marked"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P0
 size: M
 tier: opus
@@ -19,6 +19,11 @@ the decision 0188 R3 points marked, and `make check` running them.
 - Decision 0188 R1(a), R2, R3. The first batch must include the functions of the owner's 2026-10-31 assessment: IRR,
   RATE, XIRR, NPER, T.INV, T.INV.2T, TINV, F.INV, CHISQ.INV, CHISQ.INV.RT, BETA.INV, GAMMA.INV, BINOM.DIST,
   NEGBINOM.DIST, POISSON.DIST, F.DIST, T.DIST, BETA.DIST. The spec splits the rest into further slices.
+- **Split 2026-10-31** (18 functions with 3 definitions is more than an M task): this task keeps the continuous
+  distributions and quantiles: T.DIST, T.INV, T.INV.2T, TINV, F.DIST, F.INV, CHISQ.INV, CHISQ.INV.RT, BETA.DIST,
+  BETA.INV and GAMMA.INV, with their R3 points (the deep-tail quantiles, GAMMA.INV at a huge shape). T-3527 takes the
+  discrete distributions (BINOM.DIST, NEGBINOM.DIST, POISSON.DIST) and T-3528 the financial solvers (IRR, XIRR, NPER,
+  RATE, with NPER's R3 points).
 - R3's initial `MATH-OVER-EXCEL` cases (statistics.md and financial.md) need committed evidence points: the deep-tail
   quantiles (for example `T.INV(1.87E-297,3937)`, Excel -156.96, math -40.26), NPER at rates below 1e-14, GAMMA.INV at
   a huge shape. Add them as R3-marked points, filled, and cite them from the semantics entries.
@@ -30,7 +35,7 @@ the decision 0188 R3 points marked, and `make check` running them.
   slices by family are in SPEC-0029's rollout step 4.
 
 ## Acceptance criteria
-- [ ] Tables for the batch are committed and filled; each failing point is named with its owner task in the Outcome.
+- [ ] Tables for this task's functions (the split above) are committed and filled; each failing point is named with its owner task in the Outcome.
 - [ ] The `MATH-OVER-EXCEL` entries cite their committed evidence points.
 - [ ] Further slices for the remaining numeric functions are filed.
 - [ ] `make check` green; reviewers approve.
