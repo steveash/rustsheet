@@ -1,5 +1,5 @@
 use super::gammaln::excel_gammaln;
-use super::incomplete_gamma::poisson_upper;
+use super::incomplete_gamma::gamma_ur;
 use super::loader::{excel_bd0, stirlerr_exact};
 use crate::arithmetic::{extended_product, extended_quotient, extended_sqrt, extended_sum};
 use crate::expressions::types::CellReferenceIndex;
@@ -154,8 +154,8 @@ impl Model {
             return Err(num_error(cell));
         }
         let prob = if cumulative {
-            // statrs' `Poisson::cdf`, Q(k + 1, mean), with Excel's far upper tail (T-3269).
-            poisson_upper(k as f64 + 1.0, lambda)
+            // statrs' `Poisson::cdf`.
+            gamma_ur(k as f64 + 1.0, lambda)
         } else {
             excel_poisson_pmf(k, lambda)
         };

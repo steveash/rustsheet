@@ -18,7 +18,6 @@
   "crates/rustsheet-engine/src/functions/statistical/geomean.rs": 1,
   "crates/rustsheet-engine/src/functions/statistical/incomplete_beta.rs": 3,
   "crates/rustsheet-engine/src/functions/statistical/incomplete_gamma/density.rs": 1,
-  "crates/rustsheet-engine/src/functions/statistical/incomplete_gamma/excel_tail.rs": 1,
   "crates/rustsheet-engine/src/functions/statistical/incomplete_gamma/half_integer.rs": 1,
   "crates/rustsheet-engine/src/functions/statistical/incomplete_gamma/huge_shape.rs": 10,
   "crates/rustsheet-engine/src/functions/statistical/incomplete_gamma/mod.rs": 5,

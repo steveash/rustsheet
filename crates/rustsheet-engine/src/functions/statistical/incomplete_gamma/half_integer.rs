@@ -22,7 +22,7 @@ use super::{continued_fraction, Terms, DIRECT_SHAPE_MAX};
 use crate::x87_exp::{dd_add, dd_div, dd_div_small, dd_exp, dd_mul, dd_sqrt, two_sum};
 
 /// A double-double: an unevaluated sum `hi + lo`.
-pub(super) type Dd = (f64, f64);
+type Dd = (f64, f64);
 
 /// Past this x the prefactor's e^-x is past [`dd_exp`]'s double-double range (its tail word turns
 /// subnormal); such points, Q below about 1E-282, keep the double kernel.
@@ -37,11 +37,13 @@ const DEPTH_FACTOR: u32 = 2;
 const DEPTH_MARGIN: u32 = 8;
 
 /// The largest x / a at which CHISQ.DIST.RT takes [`accurate_half_integer_upper`]. Measured on
-/// the eval (T-3285): up to 3a the accurate Q fixed or moved closer every changed cell
-/// (`CHISQ.DIST.RT(10,5)` four times, ironcalc-calc CHISQ.xlsx G3 and G4,
-/// `CHISQ.DIST.RT(6,3)`), while past it Excel is not correctly rounded either and the accurate Q
-/// lost `CHIDIST(42,7)` = Q(3.5, 21) (gen-m9/fec39efaba9284c3 A249), where Excel is 1 ulp above it.
-/// FITTED(T-3285, 12 cells, x/a 1.76..6)
+/// the gated cells the accurate Q changed when applied from a to 30a (T-3285 attempt 1, x/a from
+/// 1.05 to 13.3): up to 3a it fixed or moved closer every one but two that went from 2 to 3 ulp
+/// (`CHISQ.DIST.RT(8,3.34)` and `(12.3,7.2)`, ironcalc-calc CHISQ.xlsx G3 and G4, and
+/// `CHISQ.DIST.RT(10,5)` four times in probes-numeric), while past it Excel is not correctly
+/// rounded either and the accurate Q lost `CHIDIST(42,7)` = Q(3.5, 21) (gen-m9/fec39efaba9284c3
+/// A249), where Excel is 1 ulp above it.
+/// FITTED(T-3285, 17 cells, x/a 1.05..13.3)
 const ACCURATE_MAX_RATIO: f64 = 3.0;
 
 /// CHISQ.DIST.RT's Q(a, x) at a half-integer shape from 3/2 up to [`DIRECT_SHAPE_MAX`] for
@@ -65,19 +67,12 @@ pub(super) fn accurate_half_integer_upper(a: f64, x: f64, terms: &mut Terms) -> 
     if !(x >= a && x <= MAX_X) {
         return None;
     }
-    let upper = dd_mul(prefactor(a, x), accurate_fraction(a, x, terms)?);
-    upper.0.is_normal().then_some(upper.0)
-}
-
-/// The continued fraction of [`continued_fraction`] in double-double for a shape `a` that is a
-/// multiple of 1/2 below [`DIRECT_SHAPE_MAX`]: the forward fraction sets the depth, from which
-/// [`backward_fraction`] evaluates it. `None` past `terms` or the fraction's budget.
-pub(super) fn accurate_fraction(a: f64, x: f64, terms: &mut Terms) -> Option<Dd> {
     let (_, taken) = continued_fraction(a, x, terms)?;
     let depth = taken
         .saturating_mul(DEPTH_FACTOR)
         .saturating_add(DEPTH_MARGIN);
-    Some(backward_fraction(a, x, depth))
+    let upper = dd_mul(prefactor(a, x), backward_fraction(a, x, depth));
+    upper.0.is_normal().then_some(upper.0)
 }
 
 /// x^a e^-x / Gamma(a) at a = n + 1/2: sqrt(x) e^-x / sqrt(pi) times 2x / (2j - 1) for j = 1..n.
@@ -95,7 +90,7 @@ fn prefactor(a: f64, x: f64) -> Dd {
 /// The continued fraction of [`continued_fraction`] evaluated from depth `depth` up:
 /// `t(depth) = 0`, `t(i - 1) = i (a - i) / (x + 1 - a + 2i + t(i))`, then
 /// `1 / (x + 1 - a + t(0))`. Each numerator i (a - i) and offset 1 - a + 2i is exact (a
-/// multiple of 1/2 below 20, i at most twice the fraction's budget); x plus the offset is formed
+/// half-integer below 20, i at most twice the fraction's budget); x plus the offset is formed
 /// exactly by `two_sum`.
 fn backward_fraction(a: f64, x: f64, depth: u32) -> Dd {
     let mut tail: Dd = (0.0, 0.0);
