@@ -1,6 +1,8 @@
 # 0192 — RATE's flat-secant hold loses 13 Gate A points and T-3348 is re-scoped
 
-- **Status:** accepted (2026-10-31, T-3348; takes effect when the T-3348 reviewers approve its PR, review round 1)
+- **Status:** accepted (2026-10-31, T-3348). Owner ruling (2026-10-31, in chat with the repository owner): accept the
+  trade (+164 cells of Excel's type, -13 Gate A points) and merge, with the 13 points owned by P0 task T-3397. Takes
+  effect when the T-3348 reviewers approve its PR.
 - **Context:**
   - T-3348 changes `compute_rate` (financial_util.rs) in two ways. A flat secant (f1 = f0) holds at r1 and returns
     it when it passes the convergence test or the cap's test. An iterate at or below -1 runs on (financial.md
