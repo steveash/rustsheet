@@ -240,16 +240,24 @@ ulp of 315), `IPMT(1E+10,10,10,0,315)` is 315.00007935392205 (exact 314.99999996
 are the exact payment" has it. The form needs no `(1+rate)^nper`, so past its overflow IPMT keeps
 its value, about `-pv*rate` for huge rates: `IPMT(1E+300,3,2000,452017,905)` is -4.52017E+305,
 `IPMT(123456789.123,3,156,64486)` -7961234503385.777, `IPMT(2,1100,1100,1,5)` 2. PPMT past the
-overflow is the discounted form of "PPMT discounts with an atanh-series log", with a discount
-`Q(per-1-nper)` below the normal range read as 0 (so PPMT is 0): `PPMT(r,1,300,1)` keeps a discount of
-2^-1022 and is 0 from 2^-1022.5 on, `PPMT(10,1,296,1)` is 0 though its value, 5.6E-308, is normal, `PPMT(42,10,303,8292,1,1)` and `PPMT(1E+300,1.5,180,194733,-1E+300)`
+overflow is the discounted form of "PPMT discounts with an atanh-series log", and it is 0 where the discounted balance
+`A*Q(per-1-nper)` is below the normal range, `A = (pv+fv)/(1-Q(-nper))`, which is `pv+fv` here (a flush to zero of that
+product, not of the discount nor of the final value): `PPMT(r,1,300,1)`
+keeps a discount of 2^-1022 and is 0 from 2^-1022.5 on, `PPMT(10,1,296,1)` is 0 though its value, 5.6E-308, is normal,
+`PPMT(7,1,341,1.9999)` is 0 and `PPMT(7,1,341,2)` -1.5575517009551696E-307 (the discount 8^-341 = 2^-1023), as are
+`PPMT(7,1,341,1,1)`, `PPMT(7,1,341,3,-1)` and `PPMT(7,10,350,2)`; the period does not matter (`PPMT(7,k,340+k,1)` is 0 and
+`PPMT(7,k,340+k,2)` kept for k 2, 10 and 100), and a deeper discount is kept once `pv+fv` lifts the product (`PPMT(7,1,353,2^36)`
+is 0, `PPMT(7,1,353,2^37)` kept, the discount 2^-1059; `PPMT(10,1,300,1E10)` -3.821153221973863E-302).
+`PPMT(42,10,303,8292,1,1)` and `PPMT(1E+300,1.5,180,194733,-1E+300)`
 0, `PPMT(10,11,304,44626,826)` -3.0768304255991313E-301, `PPMT(2,1100,1100,1,5)` -4. Neither needs
 PMT's value: `PPMT(1E+307,7,292,176644,89)` is 0 where `pv*rate` overflows, and
 `IPMT(-0.5,1,2000,1,0,1)` is 0 where PMT is `#NUM!` (PPMT of it `#NUM!`, as PMT).
 Evidence: probes/fin-ipmt-ppmt-huge-rate (excel-graph, 2026-10-25, T-2490): column A, 1152 cells
 over rates 0.5 to 1E+300, nper 10 to 2000, period 2, nper/2 and nper, pv/fv (1000,0), (0,315),
 (1000,315), (1000,-1000) and both types; column B the edges above. probes/fin-ppmt-discount-underflow
-(excel-graph, 2026-10-25): `PPMT(r,1,300,1)` with `(1+r)^300 = 2^k`, k from 1021.5 to 1074, and power-of-two bases. Fit (exact rationals, then the
+(excel-graph, 2026-10-25): `PPMT(r,1,300,1)` with `(1+r)^300 = 2^k`, k from 1021.5 to 1074, and power-of-two bases.
+probes/fin-ppmt-subnormal-discount-by-size (excel-graph, 2026-10-30, T-2666): subnormal discounts by pv and fv size, period
+(1 to 100), base (4, 8, 10.5, 11) and type. Fit (exact rationals, then the
 rounding named): on its 595 IPMT cells the cancelling form is within 15 digits on 590, the exact
 balance on 521 (all its misses pv-0 cells); on m9-fin-pmt's 286 IPMT cells the doubles-everywhere
 form misses 38 to the bit and 2 to 15 digits (`IPMT(0.05/12,2,3,10000,0,1)`), so the switch on
@@ -274,9 +282,6 @@ rates; `-expm1` 586. The gen-m9 cells of T-2257 that motivated it: 31474c20fc1da
 - Open: at rate 1000, type 1 matches neither form, on all 48 such cells of the probe: `IPMT(1000,7,1E+5,1000,0,1)` is
   -999.0009990009992, where the double form gives ...991 and the exact value ...990. `-(rate*B)*EXP(-LN(1+rate))` with
   libm fits these cells but misses the rate-1.005 cells (T-3086).
-- Open: `PPMT(7,10,350,58827)` is -4.581304695604488E-303, its discount 8^-341 = 2^-1023 kept, where
-  `PPMT(7,1,341,1)` with the same discount is 0 (probes/fin-ppmt-discount-underflow F1, F8; gen-m9
-  a91bad4e84f49739 A158; T-2666).
 - Open: the fit's rational model is within 15 digits on 590 of 595, the engine on 588: 7 pv-0 cells keep
   their cancellation's last bits unexplained: `IPMT(10,2,10,0,315)` (Excel 1.2144607808295405E-6, ours
   1.214461349263729E-6), `IPMT(10,5,10,0,315)` and `IPMT(10,10,10,0,315)` (one ulp of 315 in B; Excel
@@ -354,7 +359,7 @@ plus ironcalc-calc FINANCIAL/IPMT_PPMT.xlsx, Mac Excel cached values):
   - three are one ulp (`PPMT(0.21,1,160,10000)`, `PPMT(1,1,44,10000)`, `PPMT(0.1,1,320,10000)`); the old form
     matched the first. On each of those rows Excel's PMT cell (ppmt-log-rate-sweep B371, B742,
     ppmt-first-period-sweep B320) is an ulp off our PMT too, so the misses are PMT's, not the split's (T-3186);
-  - the fourth is `PPMT(7,10,350,58827)`, whose subnormal discount Excel keeps (T-2666, still open).
+  - the fourth was `PPMT(7,10,350,58827)`, whose subnormal discount Excel keeps since `pv+fv` times it is normal (T-2666).
   `-(A*d*Q)`, `-(A*(Q*d))` and `-(A*Q*rate)/(1+rate)` score 21 to 71 points lower on the sweeps.
 - CUMIPMT does not sum this IPMT. Its type-1 per-period sum still takes the exact split ("PMT, IPMT and PPMT are the
   exact payment"), which is bit-exact on CUMPRINC_CUMIPMT.xlsx G3, G4, G15 and fin-cumipmt-overflow-and-forms A8. With
@@ -2047,7 +2052,9 @@ in another order, a first charge computed in another order (107 each), a charge 
 rounded to a whole number before it is subtracted, and an accumulated depreciation subtracted from the cost. The
 product `rate * remain` kept in extended precision too (rounded twice when it is the charge) also gives all 135 and
 differs from the double product in 2 raw charges of 135, none visible once rounded; the subtraction of the first
-period's rounded charge from the cost fits the probes plain or rounded twice (no cell tells them apart).
+period's rounded charge from the cost is rounded twice too: 12 costs where it differs from the plain difference,
+a unit in the period-1 charge, give Excel's twice-rounded value in both directions (probes/amordegrc-first-subtraction
+A1-A6 plain above, B1-B6 plain below; excel-graph, 2026-10-31, T-2917).
 The first period's charge (period 0) rounds the same way: `AMORDEGRC(3.47925977217322E18,39679,39813,300,0,1E-7,1)`
 (318456837070.49963) is 318456837071, where main's pre-round gave ...070 (probes/amordegrc-round-mid F1-F6; G1-G6 at
 period 1, charges 1.2E12 to 2.3E12). Smaller charges, where the two rules still differ for a fraction within 0.5*10^(d-15) below a half (d integer digits;
@@ -2081,7 +2088,7 @@ capped beyond those bounds.
 Since T-2840 an element the kernel refuses before its walk is charged 1, not the weight, so a broadcast of such elements
 lifts in full: an error or a logical in any argument (each is read, the basis too, before the walk), a cost, salvage,
 period and rate, all numbers, that fail the value checks (`0 <= salvage < cost`, `period >= 0`, `rate > 0`, NaN failing
-them), or for AMORDEGRC a rate whose asset life is refused (`1/rate` in [0, 3] or (4, 5)); the charge calls the
+them), or for AMORDEGRC a rate whose asset life is refused (`1/rate` in [0, 2], T-1978); the charge calls the
 kernel's own predicates (`amortization_values_valid`, `asset_life_refused`). A text or a blank is not judged (it may
 read as any number), nor is a date's calendar check, which depends on the date system: such an element is charged the
 weight. gen-m9/e8d55ec393460bb7
@@ -2158,8 +2165,11 @@ Tasks: T-2032
 ## EFFECT and NOMINAL raise to their power with `^`
 Rule: EFFECT is `(1 + r/n)^n - 1` and NOMINAL is `((1 + e)^(1/n) - 1) * n`, with n floored, and both powers are
 Excel's `^` operator, not libm `pow`. EFFECT's integer n goes through right-to-left square-and-multiply (numbers.md
-"Integer exponents: right-to-left square-and-multiply"). For NOMINAL, n = 1 is an exact integer power, n = 2 is the
-square root, and every other n is `exp(ln(1+e) * (1/n))` (numbers.md "Non-integer exponents: exp(y·ln x)").
+"Integer exponents: right-to-left square-and-multiply") below 2^32 - 1, and through `exp(n·ln x)` from there on
+(numbers.md "Integer exponents from 2^32 - 1: exp(y·ln x)", T-2392): `EFFECT(0.05,3E9)` is 0.05127110013105862 and
+`EFFECT(0.05,1E10)` 0.05127110072502061, each equal to its `(1+0.05/n)^n-1` (probes/fin-effect-huge-npery).
+For NOMINAL, n = 1 is an exact integer power, n = 2 is the square root, and every other n is `exp(ln(1+e) * (1/n))`
+(numbers.md "Non-integer exponents: exp(y·ln x)").
 `EFFECT(0.5,10)` is 0.6288946267774416 (libm pow gives ...442), `NOMINAL(0.5,4.5)` is 0.4267276788012868 (...859), and
 `EFFECT(0.05,4)` is 0.050945336914062445 (...222). Columns E and F of NOMINAL_EFFECT.xlsx, which convert the other
 function's result back, match once C and D do.
@@ -2346,9 +2356,25 @@ to 0; the same rule as PRICE. ODDLPRICE is linear in the yield and never overflo
 - ODDLPRICE stays a number at every yield up to 9.99999999999999E+307 (`ODDLPRICE(47300,47484,47119,0.05,9.99999999999999E+307,100,2,0)`
   is -2.5; a few periods, -0.41666666666666663).
 Evidence: probes/odd-bond-huge-yield-overflow (excel-graph, 2026-10-29, T-2659).
-Ours: matches since T-2659 (`OddFirstSchedule::discount_overflows`). ODDFYIELD and ODDLYIELD near the boundary are unprobed (T-3122).
+Ours: matches since T-2659 (`OddFirstSchedule::discount_overflows`). ODDFYIELD and ODDLYIELD near the boundary: see "ODDFYIELD and ODDLYIELD at a price far from par" (T-3122).
 Status: VERIFIED (excel-graph)
 Tasks: T-2659
+
+## ODDFYIELD and ODDLYIELD at a price far from par
+Rule: ODDLYIELD is closed form and returned a number at every price probed, from 1E-300 (82 for one period,
+1264.17391304348 for a few) to 1E15 (-1.99999999999979). ODDFYIELD is a number from 1E-300 up to a price of 3E4 and
+`#NUM!` from 1E5 up (semiannual, 10 years, first coupon half a year after settlement, redemption 100). At a vanishing
+price ODDFYIELD saturates rather than failing: 13.745966692460962 for every price from 1E-20 down to 1E-300 (basis 1:
+13.614800524624842 at 1E-300), so no price of this bond makes ODDFYIELD fail from the low side. Why Excel stops at 13.7
+and where exactly between 3E4 and 1E5 it turns `#NUM!` were not probed. The result at 3E4, -3.5048035053499063, is below
+-2, so `1 + yield / frequency` is negative there, and Excel still returns it as a number (1E4 is -0.40210502794450986).
+- `ODDFYIELD(43831,47484,43800,44013,0.05,P,100,2,0)`: P = 1 is 3.9188814666622176, 150 is 0, 1000 is -0.19969492032817104,
+  3E4 is -3.5048035053499063, 1E5, 3E5, 1E6, 1E10 and 1E15 are `#NUM!`; annual (first coupon 44197) is `#NUM!` from 1E6 and
+  -0.18891309879713358 at 1000; a redemption of 1E300 stays a number (235.9546570552217 at P = 1E15).
+Evidence: probes/odd-yield-far-from-par (102 cells, excel-graph, 2026-10-31, T-3122).
+Ours: matches without a change; the solver is `odd_first_yield` in yield_solver.rs.
+Status: VERIFIED (excel-graph)
+Tasks: T-3122
 
 ## ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD check order
 Rule: the four odd-coupon functions read their arguments in order and check few of them as they read:
@@ -3043,8 +3069,8 @@ Evidence: probes/fin-fvschedule-bool-ref (excel-graph, 2026-10-19, T-1992).
 Status: VERIFIED (excel-graph)
 Implemented (T-1764; the fractional-period rules are now the fractional grid of "VDB charge order", T-2185): VDB with salvage above cost never switches to straight line (-600); a fractional end period
 prorates the unclipped declining-balance charge and the total is capped at `cost - salvage` (A9 is 0; salvage <= cost only, salvage above cost keeps the clipped charge); AMORDEGRC
-rejects only an asset life (1/rate) in [0, 3] or strictly between 4 and 5 (exactly 4 and 5 are valid, coefficients
-1.5 and 2). The salvage-above-cost rule (A17) and the cap (A9) are each inferred from one probe cell. The AMORDEGRC bands at life 3 and strictly between 4 and 5 are documentation-only. Probes needed: T-1978. The ulp differences (VDB A6, A7, A10, A13, MDURATION, RRI) are fixed by T-1975: see "VDB charge order" and "DURATION and RRI operation order".
+rejects only an asset life (1/rate) of 2 or less (T-1978 replaced T-1764's [0, 3] and (4, 5) bands; see "AMORDEGRC
+life bands"). T-1978 confirmed the VDB rules across 59 more cells (see "VDB charge order"). The ulp differences (VDB A6, A7, A10, A13, MDURATION, RRI) are fixed by T-1975: see "VDB charge order" and "DURATION and RRI operation order".
 Implemented (T-1765): a typed boolean principal is `#VALUE!` (A18); a text-number principal still converts. A boolean principal read through a reference is `#VALUE!` too, verified by probes/fin-fvschedule-bool-ref (T-1992).
 Tasks: T-1764 (incl. MDURATION, RRI ulp), T-1765
 
@@ -3086,11 +3112,28 @@ build the per-period charges differently, so the same inputs give different last
   running-total difference this replaced both miss visibly: fin-vdb-schedule A44 is 250.50773812499992 and
   242.0635349999999 with them.
 Evidence: probes/fin-vdb-schedule (78 cells), fin-vdb-modes, fin-rri-vdb-edges (excel-graph, 2026-10-20, T-1975);
-fin-vdb-fractional-start (45 cells), fin-vdb-fractional-start-edges (14 cells) (excel-graph, 2026-10-28, T-2185).
+fin-vdb-fractional-start (45 cells), fin-vdb-fractional-start-edges (14 cells) (excel-graph, 2026-10-28, T-2185);
+fin-vdb-amordegrc-edges A1-A59 (excel-graph, 2026-10-30, T-1978): salvage at or above cost in both modes (switching
+gives -300 for `VDB(2400,3000,10,0,0.5)`, -600 for (0,1.5) and (0,10), 0 from period 1 on; `no_switch` TRUE and salvage
+equal to cost give 0 everywhere), fractional windows near the end of life (`VDB(2400,300,10,9.25,9.75,2,FALSE)` is
+3.0082099200000414, TRUE 11.061273600000135), and a fractional life 9.5 (an end past it is #NUM!, factor 3 reaches the
+salvage before period 8). The model already matched all 59 cells.
 Status: VERIFIED (excel-graph)
 Implemented (T-1975, T-2185): `vdb_no_switch_between` and `vdb_switching_between` in
 functions/financial/financial_depreciation.rs.
 Tasks: T-1975, T-2185, T-3022
+
+## AMORDEGRC life bands
+Rule: AMORDEGRC refuses (#NUM!) an asset life `1/rate` of 2 or less, that is a rate of 0.5 or more, and nothing else
+for a positive rate. There is no refused gap at life 3 or strictly between 4 and 5, which Microsoft's documentation and
+the library RustSheet ported from both have: `AMORDEGRC(2400,39679,39813,300,0,r,1)` is a number for r = 1/2.000001
+(659), 1/2.01 (656), 1/2.5, 1/2.9, 1/2.99, 1/3 (439), 0.34, 1/4.01 (438), 1/4.5 (391), 1/4.99 (352), and #NUM! for
+r = 0.5, 1/2, 1/1.99, 1/1.5 and 1. The coefficient goes by the whole life `ceil(1/rate)`: 1.5 for 3 and 4 (so lives
+above 2 up to 4), 2 for 5 and 6 (lives above 4 up to 6), 2.5 above; the 1.0 coefficient of a life under 3 is never reached.
+Evidence: probes/fin-vdb-amordegrc-edges A60-A143 (excel-graph, 2026-10-30, T-1978).
+Status: VERIFIED (excel-graph)
+Implemented (T-1978): `asset_life_refused` and `amor_depr_coeff` in functions/financial/amortization.rs.
+Tasks: T-1764, T-1978
 
 ## VDB, DDB and ACCRINT argument types
 Rule: VDB's `no_switch` reads as a boolean. TRUE, FALSE and a number are taken, and so is the text "TRUE" or "FALSE"
@@ -3239,7 +3282,8 @@ formula per pool entry:
 - A coupon frequency truncates: `COUPNUM(39448,43831,2.5)` is 24 and `...,4.9)` 48; `"2"` is coerced (24); 3, 0, 12, -1
   and -0.0001 are `#NUM!`.
 - EFFECT floors npery: `EFFECT(0.05,1.5)` = `EFFECT(0.05,1)` = 0.050000000000000044, and npery 0.5, 0.999, 0 and -1 are
-  `#NUM!`. `EFFECT(0.05,1E+10)` is 0.05127110072502061 (ours 0.05127110027547532, T-2392).
+  `#NUM!`. `EFFECT(0.05,1E+10)` is 0.05127110072502061 (ours was 0.05127110027547532; fixed by T-2392, see "EFFECT and NOMINAL
+  raise to their power with `^`").
 - PMT: a rate of -1 and nper 0 are `#NUM!`; a negative nper computes (`PMT(0.05,-12,1000)` = 62.82541002081538); nper
   1E+6, 1E+9 and 1E+300 give -50 (`-pv*rate`). IPMT per 0, 0.5, -1 and past nper (13 of 12) is `#NUM!`; per 1.5 computes.
 - IRR: no sign change, a single flow and all zeros are `#NUM!`; text and TRUE inside an array literal are skipped
@@ -3277,8 +3321,25 @@ a text, boolean or error guess keeps the element reading's `#VALUE!` or that err
 unless either is a text, boolean or empty cell (`#VALUE!`; an array element such as BYROW's `{FALSE}` is not a cell, so
 `#N/A`); a single date that is a text, boolean or empty cell is `#VALUE!`; a single text or boolean value cell against
 several dates is `#VALUE!`; then different counts are `#NUM!` whatever a larger range holds (gen-m9/0a957119475760c5 A47);
-then the element reading. Open (T-2428): an error guess beside numeric values is the guess's error in Excel
-(1b60bf99d71424e7 A29, 67a4c03afd63f988 A388) but text values beside an error guess are `#VALUE!` (b72d952c5f52cb4d A50).
+then the element reading. T-2611 (gen-m9, excel-graph, 2026-10-24; 42 top-level cells): an error values argument comes
+first (`XIRR(<#VALUE!>,<#DIV/0!>,..)` is `#VALUE!`, 79d87fc527927626 A228; an `INDEX` `#REF!` beside an error dates,
+81bcdc0bec0c8e6b A305, bc04c1f478c9896c A220); then an error guess is that error before an error dates argument, the size checks and the values'
+cells (`XIRR(1E+21,<#VALUE!>,<#NUM!>)` is `#NUM!`, 1dce4774f5c0e736 A189; `XIRR({-1000,300,400,500},<16 dates>,<#N/A>)`
+`#N/A`, 1b60bf99d71424e7 A29; `XIRR(<text cells>,<5 dates>,<#VALUE!>)` `#VALUE!`, b72d952c5f52cb4d A50, whose guess is
+itself `#VALUE!`); then an error dates argument, before the values' cells are read (`XIRR(Data!B11:E11,<#N/A>)` with E11
+the text `" x "` is `#N/A`, 67a4c03afd63f988 A241). Ours reads a non-numeric text guess as its `#VALUE!` at the guess's
+point too, and a boolean guess as 1 or 0 that only skips the size checks, as before T-2611; neither order is evidenced
+(b6a02893a8d6b151 A226, a TRUE guess beside 6 values and 3 dates, is `#VALUE!`, but its values range holds the numeric
+text `"1.5"`, so it does not separate the guess from the reading). In the size checks one empty or numeric-text cell is not "a text, boolean
+or empty cell": one empty values cell against several dates (`XIRR(Data!D10:D10,Data!B7:E8)`, 1dce4774f5c0e736 A91;
+89f0aee953a55a45 A36; ba4ddb817a8e700e A339), one empty date cell against several values (`XIRR(Data!B6:C11,<empty>,0.5)`,
+89f0aee953a55a45 A330; d0854366830dcdee A133) and one numeric-text date `"1"` against 14 values (c0681a8b150ce301 A266) are
+the count's `#NUM!`; one FALSE date stays `#VALUE!` (1cd3096e3e87c965 A48). 1db18890916ee643 A108, once cited for an
+empty date cell's `#VALUE!`, is a nested cell with a FALSE guess and other `#VALUE!` arguments, so it does not show
+the empty date's error (unconfirmed which argument decides it). Unprobed: an error values argument beside an error guess
+(ours: the values'); a numeric-text guess beside different counts (ours: the old reading); numeric text inside a values
+range (`XIRR(Data!C9:C11,{39448,39508,39859},0.1)` with C11 `"1"` is `#NUM!`, 31474c20fc1dafd6 A351, ours `#VALUE!`; text
+read as 1, skipped or refused all give `#NUM!` there; T-3312).
 Order (XNPV, T-2428): the rate first, per element, where a boolean is `#VALUE!` (a cell, `XNPV(<TRUE>,..)`,
 1dce4774f5c0e736 A22, or an array element, `XNPV(SORT(<FALSE>),..)`, 5c6a23c4f6597f1c A258); then one values cell that is
 non-numeric text or a boolean is `#VALUE!`, before an error dates argument (`XNPV(-1,<FALSE>,<#N/A>)`, 3aa168259335be54
@@ -3560,7 +3621,12 @@ Tasks: T-2671, T-2672, T-1528, T-2131
 Rule: PV's growth factor `P = (1+rate)^nper` is Excel's `^`, errors included, and PV then divides by P:
 - a rate of -1 with nper 0 is 0^0, which is `#NUM!` (`PV(-1,0,-713)`);
 - a P of 0 is the division's `#DIV/0!`. That covers a rate of -1 with nper > 0, and a rate so near -1 that P underflows
-  (`PV(-1+2^-52,165,-978,224,0)`, where 1+rate is 2^-52 and its 165th power is 0).
+  (`PV(-1+2^-52,165,-978,224,0)`, where 1+rate is 2^-52 and its 165th power is 0);
+- so is a subnormal P, whatever pmt, fv and type are (`PV(-0.5,1030,0,0)` too): `PV(-0.9999999999,30,-1,1)` is
+  9.999976005322188E+289 and `PV(-0.9999999999,31,-1,1)` (P = 1E-310) `#DIV/0!`, as are 31.5, 78 and 161 periods;
+  `PV(-0.5,1022,0,1)` is -4.49423283715579E+307 (P = 2^-1022) and `PV(-0.5,1023,-1,1)` `#DIV/0!`; `PV(-0.9,307,-1,1)` is
+  1.1111111111112013E+306 and `PV(-0.9,308,-1,1)` `#DIV/0!`. Evidence: probes/fin-pv-power-underflow (excel-graph,
+  2026-10-31, T-2685), 35 cells, all matched.
 
 NPER divides by ln(1+rate):
 - a rate so small that 1+rate is 1 is `#DIV/0!`, start-of-period type 1 too (`NPER(1E-300,-113,3037,368,1)`);
@@ -3580,3 +3646,13 @@ with a large even nper too, `#NUM!` before), and NPER's LN of a non-positive rat
 Status: VERIFIED for the probed cells; DB's boolean month beyond the FALSE pair and the inferred lines are UNVERIFIED
 (T-2749 probes them).
 Tasks: T-2620, T-2698, T-2749
+
+## NPER at a tiny positive rate: Excel is up to 4% off, RustSheet returns the math (MATH-OVER-EXCEL)
+Rule: NPER at 0 < rate < 1e-14 is up to 4% off the true period count in Excel, above G = 1e-4, so RustSheet returns the
+math there (decision 0188 R3). Excluded: rates so small that 1 + rate == 1, which are `#DIV/0!` in Excel ("NPER divides
+by ln(1+rate)" above, VERIFIED) and stay `#DIV/0!`. Negative tiny rates are not covered.
+Evidence: the owner's 2026-10-31 assessment (decision 0188), 50-digit mpmath against Excel for the web. The committed
+probe case and the bounded region come with T-3367, before the engine changes.
+Status: MATH-OVER-EXCEL (decision 0188)
+Ours: today the engine matches Excel bit for bit; T-3367 moves it to the math in the region.
+Tasks: T-3367

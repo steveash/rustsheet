@@ -344,3 +344,170 @@ fn a_padded_column_survives_an_edit_that_rewrites_its_text() {
     model.evaluate();
     assert_eq!(model.get_formatted_cell_value(0, 9, 5).unwrap(), "");
 }
+
+/// probes/t3003-unqualified-structured-d2: `=[@Col]*2` typed into D2, just right of `T` A1:C4,
+/// parses inside the table it grows (rule 7f): `T` becomes A1:D4, the new column `Column1` fills
+/// against each row, and every row prints `=[@Col]*2`. The stored text names the table, so it
+/// reads `T` again after a save and load.
+#[test]
+fn an_unqualified_reference_typed_beside_a_data_row_grows_the_table() {
+    let mut grown = model(false);
+    grown
+        .set_typed_user_input(0, 2, 4, "=[@Col]*2".to_string())
+        .unwrap();
+    grown.evaluate();
+    assert_eq!(column_d(&grown), ["2", "4", "8"]);
+    for row in 2..=4 {
+        assert_eq!(
+            grown.get_cell_formula(0, row, 4).unwrap().as_deref(),
+            Some("=[@Col]*2")
+        );
+    }
+    let stored = &grown.workbook.worksheets[0].shared_formulas;
+    assert!(
+        !stored.is_empty() && stored.iter().all(|f| f.starts_with("[T]")),
+        "{stored:?}"
+    );
+    let mut reloaded = Model::from_bytes(&grown.to_bytes(), "en").unwrap();
+    reloaded.evaluate();
+    assert_eq!(column_d(&reloaded), ["2", "4", "8"]);
+    assert_eq!(
+        reloaded.get_cell_formula(0, 3, 4).unwrap().as_deref(),
+        Some("=[@Col]*2")
+    );
+    assert_eq!(
+        expansion_readout(&mut grown),
+        ["4", "4", "Column1", "FALSE"]
+    );
+
+    // Another column of the grown table resolves too.
+    let mut other = model(false);
+    other
+        .set_typed_user_input(0, 3, 4, "=[@Other]+[@Col]".to_string())
+        .unwrap();
+    other.evaluate();
+    assert_eq!(column_d(&other), ["11", "22", "44"]);
+}
+
+/// Two unprobed shapes keep the parse outside the table: with an occupied neighbour the table
+/// does not grow (rule 7d), so `=[@Col]*2` is outside every table and refused; and an unknown
+/// column `[@Nope]` is refused and the table does not grow. Unprobed in Excel.
+#[test]
+fn unqualified_references_beside_the_table_that_grow_nothing_are_refused() {
+    let mut occupied = model(false);
+    occupied.set_user_input(0, 4, 4, "7".to_string()).unwrap();
+    let refused = occupied.set_typed_user_input(0, 2, 4, "=[@Col]*2".to_string());
+    assert!(refused.is_err());
+    assert_eq!(expansion_readout(&mut occupied)[0], "3");
+    assert_eq!(column_d(&occupied), ["", "", "7"]);
+
+    let mut unknown = model(false);
+    let refused = unknown.set_typed_user_input(0, 2, 4, "=[@Nope]*2".to_string());
+    assert!(refused.is_err());
+    assert_eq!(expansion_readout(&mut unknown)[0], "3");
+    assert_eq!(column_d(&unknown), ["", "", ""]);
+    assert_eq!(unknown.workbook.tables["T"].reference, "A1:C4");
+}
+
+/// `COLUMNS(T[#All])` and `ROWS(T[#All])` after typing `text` into (`row`, `column`) of `model`.
+fn grown_by(mut model: Model, row: i32, column: i32, text: &str) -> Vec<String> {
+    model
+        .set_typed_user_input(0, row, column, text.to_string())
+        .unwrap();
+    expansion_readout(&mut model)[..2].to_vec()
+}
+
+/// probes/t3003-below-last-row, -const: `=B4*2` or `7` typed into A5, just below `T` A1:C4,
+/// grows `T` to A1:C5 and A5 keeps what was typed (rule 7e, T-3273).
+#[test]
+fn typing_just_below_the_last_data_row_grows_the_table_by_a_row() {
+    for text in ["=B4*2", "7"] {
+        let mut model = model(false);
+        model
+            .set_typed_user_input(0, 5, 1, text.to_string())
+            .unwrap();
+        assert_eq!(expansion_readout(&mut model)[..2], ["3", "5"], "{text}");
+        let stored = model.get_cell_formula(0, 5, 1).unwrap();
+        let value = model.get_formatted_cell_value(0, 5, 1).unwrap();
+        if text.starts_with('=') {
+            assert_eq!((stored.as_deref(), value.as_str()), (Some("=B4*2"), "80"));
+        } else {
+            assert_eq!((stored, value.as_str()), (None, "7"));
+        }
+        // The new row is the table's: its column sums see it.
+        model
+            .set_user_input(0, 7, 1, "=ROWS(T[Col])".to_string())
+            .unwrap();
+        model.evaluate();
+        assert_eq!(model.get_formatted_cell_value(0, 7, 1).unwrap(), "4");
+    }
+}
+
+/// Stored or untyped input (`set_user_input`, xlsx import) never grows a table by a row.
+#[test]
+fn untyped_input_below_the_table_does_not_grow_it() {
+    let mut model = model(false);
+    model.set_user_input(0, 5, 1, "7".to_string()).unwrap();
+    model
+        .set_loaded_user_input(0, 5, 2, "=B4*2".to_string())
+        .unwrap();
+    assert_eq!(expansion_readout(&mut model)[..2], ["3", "4"]);
+}
+
+/// Unprobed neighbours of rule 7e, pinned as the engine has them (T-3273): no growth below a
+/// totals row, outside the table's columns, two rows below, into a row another table reaches, or
+/// into a row whose other cells are not blank (the column rule 7d's analogue).
+#[test]
+fn unprobed_neighbours_below_the_table_do_not_grow_it() {
+    // A totals row (row 5): typing into A6 leaves `T` A1:C5.
+    assert_eq!(grown_by(model(true), 6, 1, "7"), ["3", "5"]);
+    // Below the table but outside its columns: E5.
+    assert_eq!(grown_by(model(false), 5, 5, "7"), ["3", "4"]);
+    // Two rows below: A6.
+    assert_eq!(grown_by(model(false), 6, 1, "7"), ["3", "4"]);
+    // Another table over C5:E6 reaches the new row.
+    let mut overlap = model(false);
+    overlap.set_user_input(0, 5, 3, "U1".to_string()).unwrap();
+    overlap.set_user_input(0, 5, 4, "U2".to_string()).unwrap();
+    overlap.set_user_input(0, 5, 5, "U3".to_string()).unwrap();
+    overlap
+        .add_table_with_totals(0, "U", (5, 3, 6, 5), false, false)
+        .unwrap();
+    assert_eq!(grown_by(overlap, 5, 1, "7"), ["3", "4"]);
+    // B5 already holds a value.
+    let mut occupied = model(false);
+    occupied.set_user_input(0, 5, 2, "1".to_string()).unwrap();
+    assert_eq!(grown_by(occupied, 5, 1, "7"), ["3", "4"]);
+}
+
+/// A table that ends on the sheet's last row has no row below it to grow into: typing past it is
+/// refused before any growth (unprobed, T-3273).
+#[test]
+fn a_table_on_the_last_row_does_not_grow_down() {
+    let last = crate::constants::LAST_ROW;
+    let mut model = Model::new_empty("book", "en", "UTC", "en").unwrap();
+    model
+        .set_user_input(0, last - 1, 1, "Col".to_string())
+        .unwrap();
+    model.set_user_input(0, last, 1, "1".to_string()).unwrap();
+    model
+        .add_table_with_totals(0, "T", (last - 1, 1, last, 1), false, false)
+        .unwrap();
+    assert_eq!(model.table_expansion(0, last + 1, 1, "7").unwrap(), None);
+}
+
+/// A formula typed just below an empty column, or below a calculated column, grows the table by
+/// the row and fills nothing: the other data rows stay as they were (unprobed, pinned, T-3273).
+#[test]
+fn a_formula_typed_below_the_table_fills_no_calculated_column() {
+    let mut empty = model(false);
+    typed(&mut empty, 5, "=1");
+    assert_eq!(calc(&empty, 5), ["", "", "", "1"]);
+    assert_eq!(expansion_readout(&mut empty)[..2], ["3", "5"]);
+
+    let mut filled = model(false);
+    typed(&mut filled, 2, "=[@Col]*2");
+    assert_eq!(calc(&filled, 4), ["2", "4", "8"]);
+    typed(&mut filled, 5, "=1");
+    assert_eq!(calc(&filled, 5), ["2", "4", "8", "1"]);
+}

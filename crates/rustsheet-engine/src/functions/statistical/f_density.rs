@@ -35,16 +35,25 @@ const LOG1P_SERIES_LIMIT: f64 = 0.375;
 /// From this smaller df on, the offset is the bracket error plus [`LARGE_SHAPE_OFFSET`]
 /// (r5-f-bigconst `bcmodel`: `BIG_MIN`, `C_BIG`).
 const LARGE_DF_MIN: f64 = 16.0;
+/// `bcmodel`'s `C_BIG` (units of 2^-53): the mean need over r5-f-bigconst's in-sample x = 1 runs
+/// (+0.09 on its hold-out).
+/// FITTED(T-2586, 3420 cells, F.DIST df 16..1000, x near 1)
 const LARGE_SHAPE_OFFSET: f64 = -0.42;
 
 /// r4-f-small-df `sdmodel`'s fitted constants: `C0`, and e(1/2), e(1) (units of 2^-53).
+/// FITTED(T-2586, 5752 cells, F.DIST df 1..10)
 const SMALL_SHAPE_OFFSET: f64 = 5.33;
+/// `sdmodel`'s e(1/2), fitted with [`SMALL_SHAPE_OFFSET`].
+/// FITTED(T-2586, 5752 cells, F.DIST df 1..10)
 const STIRLING_ERROR_HALF: f64 = 0.22;
+/// `sdmodel`'s e(1), fitted with [`SMALL_SHAPE_OFFSET`].
+/// FITTED(T-2586, 5752 cells, F.DIST df 1..10)
 const STIRLING_ERROR_ONE: f64 = 0.06;
 
 /// r3-loader-const's measured error of Excel's stirlerr at v = 1.5, 2, ..., 28 in units of 2^-53
 /// (`docs/research/t2464/r3-loader-const/grid_e.tsv`; v = 1/2 and 1 are the fitted
 /// [`STIRLING_ERROR_HALF`] and [`STIRLING_ERROR_ONE`]).
+/// FITTED(T-2513, 4232 cells, BETA.DIST half-integer a, b 1.5..16, v 1.5..28)
 const STIRLING_ERROR: [f64; 54] = [
     -5.144, -5.151, -8.481, -9.05, -11.632, -14.36, -15.081, -18.88, -19.128, -22.94, -25.296,
     -27.369, -29.408, -31.661, -33.955, -35.76, -38.022, -40.557, -43.291, -45.715, -47.417,
@@ -56,7 +65,10 @@ const STIRLING_ERROR: [f64; 54] = [
 
 /// `sdmodel`'s linear extrapolation of [`STIRLING_ERROR`] above 28: numpy's least-squares line
 /// through the table's v >= 14 points, slope and intercept bit for bit (`_ALPHA`, `_GAMMA`).
+/// FITTED(T-2586, 4232 cells, BETA.DIST table points v 14..28, applied past v 28)
 const STIRLING_ERROR_SLOPE: f64 = -4.509_156_650_246_305;
+/// The intercept of that line (see [`STIRLING_ERROR_SLOPE`]).
+/// FITTED(T-2586, 4232 cells, BETA.DIST table points v 14..28, applied past v 28)
 const STIRLING_ERROR_INTERCEPT: f64 = 3.785_324_137_930_950_4;
 
 /// ln(2 pi)/2 in double-double.

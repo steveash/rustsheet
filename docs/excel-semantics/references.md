@@ -2367,8 +2367,9 @@ Rule (gen-m8b, excel-graph, 2026-10-16, T-1607):
   `#This Row` one in its `@` form (`=[[#This Row],[Col]]` prints `=[@Col]`, as calculated-column rule 6 shows for
   `=[@Col]*2`). Since T-3241 a `#This Row` reference written with the table name prints the same `@` form in a data row
   of its table (probes/t2800-this-row-whitespace B3:E3, table-edits/table-insert-row-calc-column-inside-data
-  F!A1:A2), and any `#This Row` reference prints with the name in a cell outside its table (the engine's choice so the
-  text parses there; Excel's spelling there is T-3240). Counting the header and totals rows as inside the
+  F!A1:A2), and any reference written without the name prints with it in a cell outside its table (`[@Col]` as
+  `T[[#This Row],[Col]]`, `[Col]` as `T[Col]`: the engine's choice so the text parses there; Excel's spelling there
+  is T-3240). Counting the header and totals rows as inside the
   table is an engine choice too, unprobed (T-3000). Storage (R1C1) keeps the table as a `[T]` prefix
   (`[T][[#This Row],[Col]]*2`), so the same text in two tables of one sheet reads each its own table and a re-parse
   (a sheet rename) prints it unqualified again; the export writes the qualified form Excel saves
@@ -2661,10 +2662,16 @@ columns `Col` 1,2,4, `Other` 10,20,40 and an empty `Calc` C; FORMULATEXT of each
    (e) **Typing just below the last data row grows the table by a row**: `=B4*2` or the constant `7` typed into A5
    makes `ROWS(T[#All])` 5 and `COLUMNS` 3, A5 keeps what was typed (formula `=B4*2`), column D stays blank (B5, C5 and the
    constant in A5 are not read back)
-   (below-last-row, below-last-row-const).
+   (below-last-row, below-last-row-const). Ours (T-3273): `set_typed_user_input` grows the table by the row through
+   `table_expansion`, for a typed formula or constant inside the table's columns; stored or untyped input does not.
+   Unprobed and pinned as no growth: below a totals row, two rows down, outside the table's columns, into a row
+   another table reaches, or into a row whose other cells are not blank. Nothing is filled into the new row.
    (f) **An unqualified `=[@Col]*2` typed into D2 is accepted** (Excel resolves it against the table the new column
-   joins): `T` grows to A1:D4, D2:D4 are `=[@Col]*2` in every row (2, 4, 8) (unqualified-structured-d2). The engine
-   refuses this entry as a parse error (T-2979).
+   joins): `T` grows to A1:D4, D2:D4 are `=[@Col]*2` in every row (2, 4, 8) (unqualified-structured-d2). Ours
+   (T-3274): `table_expansion` parses a formula typed beside a data row against the table as it would be grown, so the
+   `[@Col]` names it; the stored text carries the `[T]` prefix. Unprobed and pinned as before (refused): the same
+   entry when the new column is occupied (rule 7d, no growth), beside the header or totals row, and an unknown
+   column (`[@Nope]`), which grows nothing.
 What Excel saves for a filled column is in xlsx-storage.md ("A calculated column is saved as
 `calculatedColumnFormula` plus one formula per row"). Rules 1-4 depend only on the column's other data cells (all
 blank, or all the one calculated formula). Rule 8 (T-2983, excel-graph 2026-10-28, same table and `FORMULATEXT` in F;
@@ -2676,8 +2683,16 @@ stored cells come from spec2xlsx, which writes no `calculatedColumnFormula`):
    (b) Stored `=A2*2` in C2 and `=A4*2` in C4, C3 blank, then `=A4*3` typed into C4: C2 stays 2, C3 stays blank (F3
    `#N/A`), C4 is 12 (t2983-formulas-and-blank-enter-last). (c) The same with `=A3*3` typed into the blank C3: C2 2,
    C3 6, C4 8, nothing filled (t2983-formulas-and-blank-enter-blank). (c) is a second witness for (a): C2 and C4 are
-   one relative formula. (b) follows from (a) too, so **whether a blank beside a real calculated-column formula blocks
-   the fill is unprobed** (T-3025). Only A1 formulas are probed.
+   one relative formula. (b) follows from (a) too, so it did not show whether a blank beside a real calculated-column
+   formula blocks the fill; (e) does.
+   (d) The same holds for a stored structured formula (T-3023, excel-graph 2026-10-30): stored `T[[#This Row],[Col]]*2`
+   (the file form of `[@Col]*2`; a bare `[@Col]` in a stored cell loads as `#REF!`) in C2:C4, then `=[@Col]*3` typed into
+   C5: C2:C4 stay 2, 4, 8 (F2:F4 `=[@Col]*2`), C5 is 24 (F5 `=[@Col]*3`), so identical stored structured formulas are
+   no calculated column either (t3023-identical-stored-structured-refill). The engine matches (a stored formula never fills).
+   (e) **A blank beside a real calculated column blocks the re-fill** (T-3025, excel-graph 2026-10-31): `=[@Col]*2`
+   typed into C2 fills C2:C4, C3 is cleared (an empty entry), then `=[@Col]*3` typed into C4: only C4 changes (C2 stays 2,
+   C3 stays blank with FORMULATEXT `#N/A`, C4 is 12), the same as a constant in C3 (t2957-constant-then-refill)
+   (t3025-blank-beside-calculated). The engine matches (it blocks the fill for a blank beside formulas).
 (T-2969 probes a stored column formula.)
 Evidence: probes/t2957-* (excel-graph, 2026-10-27): fill-one-totals C2:C4, F2:F5, G5; refill-second C2:C4, F2:F4;
 constant-exception C2, C4, F2:F4; constant-then-refill C2, C4, F2:F4; existing-constant C3, F2:F4; a1-reference
@@ -2694,7 +2709,7 @@ re-fills it does (only whether it is set is read; its text, the first data row's
 choice); a typed constant
 keeps it. So a column of identical stored formulas is not re-filled (rule 8a). It stays set until the column is
 removed: clearing or overwriting the column's cells does not clear it, an engine choice (what Excel does is unprobed). A blank cell beside formulas blocks the
-fill in the engine, an unprobed choice (T-3025). The column formula is neither read from nor written to xlsx yet
+fill, as in Excel (rule 8e). The column formula is neither read from nor written to xlsx yet
 (T-2969 probes whether Excel honors it on load; T-3033 then imports and exports it), so a column Excel saved as
 calculated is, after import, no calculated column for a typed re-fill. A stored formula (`Input::StoredFormula`, xlsx import) never fills;
 the facade logs the filled cells and the table as it was, so they are one edit with the typed cell. The eval adapter
@@ -2713,7 +2728,7 @@ column whose other cells are not all blank (Excel also stays put for an occupied
 the growth, the header cell and the filled rows, and its rollback puts the table back.
 Status: VERIFIED (excel-graph; desktop unprobed; rule 3's no-re-fill half on 3 of 4 runs; rule 7a-7f by probes/t3003-*)
 Implemented in: rules 1-5 and 8, crates/rustsheet-engine/src/calculated_columns.rs (T-2958, T-3024); rule 7 (7a-7d), the same file (T-2968, T-3218)
-Tasks: T-2957, T-2958, T-2968, T-2969, T-2983, T-3024, T-3025, T-3033, T-3003, T-3218
+Tasks: T-2957, T-2958, T-2968, T-2969, T-2983, T-3023, T-3024, T-3025, T-3033, T-3003, T-3218
 
 ## Unknown function call names: spelling in FORMULATEXT
 Rule (excel-graph, 2026-10-16, T-1719): a call to a name that is no function (`=foo(1)`) is `#NAME?`

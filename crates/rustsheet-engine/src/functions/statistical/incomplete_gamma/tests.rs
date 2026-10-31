@@ -2,9 +2,9 @@
 use super::huge_shape::{huge_shape_quantile, wilson_hilferty_quantile};
 use super::{
     cdf_terms_bound, continued_fraction_budget, excel_small_shape_lower,
-    excel_small_shape_quantile, gamma_cdf, gamma_density, gamma_inverse_cdf, gamma_quantile,
-    gamma_sf, gamma_ur, incomplete_gamma_pair, inverse_cdf_within, temme_pair, Tail, Terms,
-    MAX_TERMS, TEMME_C,
+    excel_small_shape_quantile, excel_tiny_quantile, gamma_cdf, gamma_density, gamma_inverse_cdf,
+    gamma_quantile, gamma_sf, gamma_ur, incomplete_gamma_pair, inverse_cdf_within, temme_pair,
+    Tail, Terms, MAX_TERMS, TEMME_C,
 };
 use statrs::distribution::{ChiSquared, ContinuousCDF, DiscreteCDF, Gamma, Poisson};
 use statrs::function::gamma::{gamma_lr as statrs_lr, gamma_ur as statrs_ur};
@@ -523,6 +523,26 @@ fn the_large_shape_prefactor_is_excels_away_from_the_mode() {
     ));
 }
 
+// From shape 3 to 20 the density above the mode is Excel's ratio form too, and the cdf is not
+// (T-3147). Excel's own values: probes-numeric m9-chisq-dist A50 `CHISQ.DIST(40,10,FALSE)` (7 ulp
+// above the true value; the direct form was 8 below) and m9-gamma-dist-a9 A10
+// `GAMMA.DIST(27,9,1,FALSE)` bit for bit; gen-m9/984cba67bbe6972b A42 `CHISQ.DIST(37.5,6,FALSE)`
+// within 1 ulp (6 before). Below the mode the direct form stays: ironcalc-calc GAMMA.xlsx E3
+// `GAMMA.DIST(10,9,2,FALSE)`.
+#[test]
+fn the_small_shape_density_above_the_mode_is_excels_ratio_form() {
+    for (a, x, scale, excel) in [
+        (5.0, 40.0, 2.0, 6.870_512_074_795_199e-6_f64),
+        (9.0, 27.0, 1.0, 1.316_553_701_532_281e-5),
+        (9.0, 10.0, 2.0, 0.032_639_019_674_079_374),
+    ] {
+        let ours = gamma_density(a, x, scale).unwrap();
+        assert_eq!(ours.to_bits(), excel.to_bits(), "({x},{a},{scale}): {ours}");
+    }
+    let ours = gamma_density(3.0, 37.5, 2.0).unwrap();
+    assert!(within_ulps(ours, 6.322_968_483_684_426e-7, 1.0), "{ours}");
+}
+
 #[test]
 fn shape_one_quantile_is_excels_closed_form() {
     // Excel's doubles (T-3016): CHISQ.INV(0.5,2) and CHISQ.INV.RT(0.5,2) are 2 ln 2 (gen-m9
@@ -633,4 +653,37 @@ fn small_shape_quantile_is_excels_closed_form() {
     assert_eq!(excel_small_shape_quantile(0.25, 1e-5), None);
     assert_eq!(excel_small_shape_quantile(0.9, 1e-16), None);
     assert_eq!(excel_small_shape_quantile(0.25, 0.0), None);
+}
+
+/// T-2561: at a shape above 1 a tiny lower-tail quantile is Excel's leading-factor root, bit for bit
+/// (gen-m9, excel-graph; docs/excel-semantics/statistics.md "Deep lower tail at a shape above 1").
+#[test]
+fn a_tiny_quantile_above_shape_one_is_the_leading_factor_root() {
+    // (shape, scale, p, Excel): CHISQ.INV(1E-300,4), (1E-300,5), (1E-200,7), (1E-100,4),
+    // (1E-200,9), (1E-100,6), GAMMAINV(1E-300,2,1925) and GAMMAINV(1E-100,1.500000000000001,0.3).
+    for (shape, scale, p, excel) in [
+        (2.0, 2.0, 1e-300, 2.828427124746146e-150),
+        (2.5, 2.0, 1e-300, 3.233_407_780_583_180_5e-120),
+        (3.5, 2.0, 1e-200, 2.90163405242589e-57),
+        (2.0, 2.0, 1e-100, 2.828_427_124_746_177_2e-50),
+        (4.5, 2.0, 1e-200, 1.732023266119695e-44),
+        (3.0, 2.0, 1e-100, 1.686865330603492e-33),
+        (2.0, 1925.0, 1e-300, 2.722_361_107_568_165_7e-147),
+        (1.500_000_000_000_001, 0.3, 1e-100, 7.814095618017905e-68),
+    ] {
+        assert_eq!(
+            gamma_quantile(shape, scale, p, Tail::Lower),
+            excel,
+            "shape {shape} p {p}"
+        );
+    }
+    // Where our cdf at the root is 5.88E-14 and 6.24E-14 off p, Excel is not the root
+    // (`CHISQ.INV(1E-200,10)`, `(1E-200,5)`), and the search applies.
+    assert_eq!(excel_tiny_quantile(5.0, 1e-200), None);
+    assert_eq!(excel_tiny_quantile(2.5, 1e-200), None);
+    // The check keeps the root off quantiles where e^-x and the series matter (x = 2.6E-11).
+    assert_eq!(excel_tiny_quantile(1.5, 1e-16), None);
+    // Outside the shapes it covers.
+    assert_eq!(excel_tiny_quantile(1.0, 1e-300), None);
+    assert_eq!(excel_tiny_quantile(25.0, 1e-300), None);
 }

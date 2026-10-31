@@ -250,6 +250,21 @@ mod tests {
         assert_eq!(
             lines,
             [
+                (
+                    "ironcalc-calc/ENGINEERING/COMPLEXs.xlsx!Sheet1!AL12",
+                    9,
+                    "0188"
+                ),
+                (
+                    "ironcalc-calc/ENGINEERING/COMPLEXs.xlsx!Sheet1!AL26",
+                    9,
+                    "0188"
+                ),
+                (
+                    "ironcalc-calc/ENGINEERING/COMPLEXs.xlsx!Sheet1!N6",
+                    9,
+                    "0188"
+                ),
                 ("ironcalc-calc/LOGICAL/IF_ARRAY.xlsx!Sheet1!C11", 2, "0074"),
                 ("ironcalc-calc/LOGICAL/IF_ARRAY.xlsx!Sheet1!C4", 5, "0085"),
                 ("ironcalc-calc/LOGICAL/IF_ARRAY.xlsx!Sheet1!E4", 5, "0085"),

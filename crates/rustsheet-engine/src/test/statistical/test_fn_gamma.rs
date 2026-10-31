@@ -201,3 +201,29 @@ fn test_fn_gamma_inv_huge_shape() {
     // Below the cut the search's true quantile, about a - 1/3.
     assert_eq!(model._get_text("A4"), *"999999999.7");
 }
+
+/// GAMMA.DIST at a huge shape is `#NUM!` for a density at a tiny x / beta and for a cdf above a
+/// shape of about 1E+76, and 0 on the near side of each cut and for a huge x
+/// (probes/t2435-dist-extremes A25:A31, A92:A102; T-3271).
+#[test]
+fn test_fn_gamma_dist_huge_shape_cuts() {
+    let mut model = new_empty_model();
+    let cells = [
+        ("A1", "=GAMMA.DIST(1E-300,1E+9,3,FALSE)", "#NUM!"),
+        ("A2", "=GAMMADIST(1E-300,10000000001,3,FALSE)", "#NUM!"),
+        ("A3", "=GAMMA.DIST(2,1.85E+76,1E+10,TRUE)", "#NUM!"),
+        ("A4", "=GAMMADIST(2,1.85E+76,1E+10,\"TRUE\")", "#NUM!"),
+        ("A5", "=GAMMA.DIST(1E-300,1E+8,3,FALSE)", "0"),
+        ("A6", "=GAMMA.DIST(1E-10,1E+9,3,FALSE)", "0"),
+        ("A7", "=GAMMA.DIST(1E-300,1E+9,3,TRUE)", "0"),
+        ("A8", "=GAMMA.DIST(2,1E+40,1E+10,TRUE)", "0"),
+        ("A9", "=GAMMA.DIST(1E+307,1E+10,0.5,FALSE)", "0"),
+    ];
+    for (cell, formula, _) in cells {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, formula, expected) in cells {
+        assert_eq!(model._get_text(cell), *expected, "{cell} {formula}");
+    }
+}

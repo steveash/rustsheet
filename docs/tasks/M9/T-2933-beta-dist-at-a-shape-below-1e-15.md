@@ -9,6 +9,7 @@ size: S
 tier: opus
 depends_on: []
 campaign: visible
+defer: phase-1b
 ---
 
 ## Goal
@@ -17,6 +18,10 @@ skips TOMS 708's fpser and apser, as Excel does: an unswapped point (x <= 0.5) r
 a swapped point with x0 >= 0.3 runs the ported w1 = bpser(b0, a0, y0). Today both go back to the Cephes kernel.
 
 ## Context
+- Decision 0188 R5 (owner's 2026-10-31 rulings): parked as Phase 1b. Every cell this task owns is a BETA.DIST or
+  F.DIST density cell or a dense probes-numeric sweep cell, within Gate A's envelope (most agree with Excel to 12 or
+  more digits, and Excel and the engine are both close to the math), so R1(c) counts it as Phase 1b evidence. A
+  point that Gate A's tables show outside the envelope gets its own task without the key.
 Gap triage 2026-10-27 (eval on origin/main 43ac55b). No open task names these two probes. T-2505's Context said "no
 fpser; apser falls through the dispatch", but its Outcome did not ship that, and T-2847, which took T-2505's other
 criteria, does not cover it.

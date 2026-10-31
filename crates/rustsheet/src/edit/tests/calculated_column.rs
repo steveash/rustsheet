@@ -158,6 +158,30 @@ fn rollback_restores_the_table_a_typed_formula_grew() {
     assert_eq!(wb.value("H1").unwrap(), Value::Number(4.0));
 }
 
+/// probes/t3003-unqualified-structured-d2: `=[@Col]*2` typed just right of the table names the
+/// table it grows (rule 7f, T-3274); rolling the edit back restores the table and clears D1:D4.
+#[test]
+fn an_unqualified_reference_typed_beside_the_table_grows_it_and_rolls_back() {
+    let mut wb = table_book();
+    wb.set("H1", "=COLUMNS(T[#All])").unwrap();
+    let before = dump(&wb);
+    let result: Result<((), ChangeSet), _> = wb.edit(|tx| {
+        tx.set("D2", "=[@Col]*2")?;
+        Err(EditError::Engine("abort".into()))
+    });
+    assert!(result.is_err());
+    assert_eq!(dump(&wb), before);
+    assert_eq!(wb.value("H1").unwrap(), Value::Number(3.0));
+    for a1 in ["D1", "D2", "D3", "D4"] {
+        assert_eq!(wb.value(a1).unwrap(), Value::Empty, "{a1}");
+    }
+    let changes = wb.set("D2", "=[@Col]*2").unwrap();
+    assert_eq!(wb.value("H1").unwrap(), Value::Number(4.0));
+    assert_eq!(formula(&wb, "D4").as_deref(), Some("=[@Col]*2"));
+    assert_eq!(wb.value("D4").unwrap(), Value::Number(8.0));
+    assert_eq!(changes.inputs.len(), 4);
+}
+
 /// probes/t3003-const-*: a constant typed just right of the table grows it too, but fills nothing;
 /// typed into the header cell it becomes the header text, `5` as the text `5` (rule 7a, T-3218).
 #[test]
@@ -221,4 +245,45 @@ fn a_table_with_a_totals_row_grows_too() {
     assert_eq!(wb.value("D5").unwrap(), Value::Number(2.0));
     assert_eq!(wb.value("D2").unwrap(), Value::Empty);
     assert_eq!(wb.value("D4").unwrap(), Value::Empty);
+}
+
+/// probes/t3003-below-last-row: a formula typed just below the table grows it by a row in one
+/// edit, and rolling that edit back puts the table back to four rows (rule 7e, T-3273).
+#[test]
+fn typing_below_the_table_grows_it_by_a_row_and_rollback_restores_it() {
+    let mut wb = table_book();
+    wb.set("H2", "=ROWS(T[#All])").unwrap();
+    let before = dump(&wb);
+    let result: Result<((), ChangeSet), _> = wb.edit(|tx| {
+        tx.set("A5", "=B4*2")?;
+        Err(EditError::Engine("abort".into()))
+    });
+    assert!(result.is_err());
+    assert_eq!(dump(&wb), before);
+    assert_eq!(wb.value("H2").unwrap(), Value::Number(4.0));
+
+    wb.set("A5", "=B4*2").unwrap();
+    assert_eq!(wb.value("H2").unwrap(), Value::Number(5.0));
+    assert_eq!(formula(&wb, "A5").as_deref(), Some("=B4*2"));
+    assert_eq!(wb.value("A5").unwrap(), Value::Number(80.0));
+}
+
+/// A formula typed just below an empty column grows the table but fills nothing, so rolling the
+/// edit back leaves every cell as it was (unprobed, pinned, T-3273).
+#[test]
+fn a_formula_typed_below_an_empty_column_fills_nothing_and_rolls_back() {
+    let mut wb = table_book();
+    wb.set("H2", "=ROWS(T[#All])").unwrap();
+    let before = dump(&wb);
+    let result: Result<((), ChangeSet), _> = wb.edit(|tx| {
+        tx.set("C5", "=1")?;
+        Err(EditError::Engine("abort".into()))
+    });
+    assert!(result.is_err());
+    assert_eq!(dump(&wb), before);
+
+    wb.set("C5", "=1").unwrap();
+    assert_eq!(wb.value("H2").unwrap(), Value::Number(5.0));
+    assert_eq!(wb.value("C2").unwrap(), Value::Empty);
+    assert_eq!(formula(&wb, "C4"), None);
 }

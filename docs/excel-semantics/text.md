@@ -457,6 +457,35 @@ Ours: matches (`around_empty_delimiter` in functions/text/before_after.rs).
 Status: VERIFIED (web)
 Tasks: T-1361
 
+## TEXTBEFORE and TEXTAFTER: overlapping delimiter instances
+Rule: TEXTBEFORE and TEXTAFTER count only disjoint delimiter matches, unlike SUBSTITUTE's instance_num ("SUBSTITUTE
+instances overlap" above). From the start, the scan counts the longest delimiter that starts at a position and resumes
+after its end: `TEXTBEFORE("aaa","aa",2)` is `#N/A`, `TEXTBEFORE("aaaa","aa",2)` "aa", `,3)` `#N/A`, `TEXTAFTER("aaaaa","aa",2)`
+"a"; `TEXTBEFORE("-2.5",{"2.5","-2.5"},2)` is `#N/A` in either list order ("-2.5" at unit 0 hides the "2.5" inside it);
+`TEXTBEFORE("xabcx",{"b","abc"},2)` is `#N/A` ("abc" at unit 1 hides the "b"). With a negative instance_num the scan
+takes start positions from the last back, and after a counted match steps back by that match's length and goes on from
+there, checking the whole rest of the text at each position, so a longer delimiter may still run into the counted match
+(`TEXTAFTER("3.141590.2-0.5x~*",C5:D12,-2)` with "0.2" and "2" among the delimiters counts "2" at unit 9, then "0.2" at
+unit 7, and is "-0.5x~*"; gen-m7/a470dc9e165bdb20 Calc!A1441), while the same delimiter cannot:
+`TEXTBEFORE("aaa","aa",-1)` "a", `-2` `#N/A`; `TEXTBEFORE("aaaaa","aa",-2)` "a"; `TEXTBEFORE("ababa","aba",-1)` "ab",
+`-2` `#N/A`; `TEXTBEFORE("xabcx",{"abc","b"},-1)` is "xa" (the later start wins, even though "abc" ends later);
+`TEXTBEFORE("abcd",{"ab","bc","cd"},-2)` is "" ("cd", then "ab"; "bc" overlaps "cd"). match_mode 1 counts the same way
+(`TEXTBEFORE("AAA","aa",2,1)` `#N/A`, `TEXTBEFORE("aAaA","AA",2,1)` "aA"). With match_end 1 the end of the text (the
+start, from the end) is one more instance after the last disjoint match, not only when nothing matches:
+`TEXTBEFORE("aaa","aa",2,,1)` is "aaa", `TEXTBEFORE("aaa","aa",-2,,1)` "", `TEXTAFTER("aaa","aa",2,,1)` ""; and
+`TEXTBEFORE("aaa","aa",2,,,"nf")` is "nf". The `#VALUE!` bound on instance_num ("instance_num past the text" below)
+counts positions, not disjoint matches: `TEXTBEFORE("aaa","aa",3)` is `#VALUE!` but `TEXTBEFORE("aaaa","aa",3)` `#N/A`.
+TEXTSPLIT splits at the same disjoint matches: `TEXTSPLIT("aaa","aa")` is "","a", `TEXTSPLIT("aaaaa","aa")` "","","a",
+`TEXTSPLIT("-2.5",{"2.5","-2.5"})` "","", `TEXTSPLIT("ababa","aba")` splits only at unit 0, `TEXTSPLIT("xabcx",{"b","abc"})` "x","x".
+Evidence: probes/t3335-textbefore-overlapping-instances A1-A58, C1-E29 (excel-graph, 2026-10-31, T-3335);
+gen-m9/cde551ea787f713a Calc!A37 (`TEXTBEFORE("-2.5",{2.5,-2.5},2)` inside BETADIST, `#N/A`); gen-m7/a470dc9e165bdb20
+Calc!A1441 (excel-graph). The backward step is inferred from these cells: whether it is the match's length or the
+shortest delimiter's (they agree on every cell) is unprobed, as is a forward scan's step past a match whose delimiter
+list holds a shorter entry starting inside it.
+Ours: matches (`Instances::Disjoint` in functions/text/util.rs; TEXTSPLIT's `split_grid` already scanned disjointly).
+Status: VERIFIED (excel-graph)
+Tasks: T-3335
+
 ## TEXTSPLIT of empty text is #VALUE!
 Rule: TEXTSPLIT of empty text is `#VALUE!` whatever its valid other arguments: a literal `""`, a blank cell and an empty-string cell,
 with or without a row delimiter, with `ignore_empty` TRUE, `match_mode` 1 or a `pad_with`. `TEXTSPLIT("","a","TRUE")` is `#VALUE!` too, so
@@ -1166,3 +1195,13 @@ reference to an error cell (also `B1:B1`) the same. With two errors the first ar
 engine, unprobed beyond that cell). UNPROBED: a multi-cell range of only errors and a 1x1 array (`{#N/A}`) with format 2 (the engine gives `#VALUE!`); a reference to an error cell with an error or text format, such as `ARRAYTOTEXT(B1,NA())` or `ARRAYTOTEXT(B1,"x")` with B1 holding `#N/A` (the engine reads the format first and returns its error).
 
 See also: RIGHT num_chars numeric-text coercion is recorded in criteria.md "Zero and negative SUMIFS criteria; IF error arguments; RIGHT numeric-text num_chars" (T-2980).
+
+## CHAR lifts over ranges and arrays
+
+`CHAR` takes a range or array argument and returns an array, like `UNICHAR`, `CODE` and
+`UNICODE`; inside `CONCAT`, `TEXTJOIN` (as text or delimiter) and `CONCAT`'s mixed arguments the
+elements are joined whole (`=CONCAT(CHAR(A1:A3))` is "Hi!" for 72, 105, 33), not implicitly
+intersected. An error element (`CHAR(0)` is `#VALUE!`, a `#N/A` cell) is the join's result.
+Evidence: probes/t3302-text-funcs-arrays (E1-E20, oracle-filled). The probe shows
+`CONCAT`/`TEXTJOIN` over `CHAR`, `UNICHAR`, `CODE`, `UNICODE` ranges and computed arrays already
+agree; the only gap was `CHAR`, fixed in T-3302.

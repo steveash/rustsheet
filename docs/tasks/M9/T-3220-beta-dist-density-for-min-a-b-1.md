@@ -9,6 +9,7 @@ size: M
 tier: opus
 depends_on: [T-2586]
 campaign: visible
+defer: phase-1b
 ---
 
 ## Goal
@@ -17,6 +18,10 @@ port leaves visibly off (docs/research/t2507/newly_visibly_off.tsv), and BETADIS
 again.
 
 ## Context
+- Decision 0188 R5 (owner's 2026-10-31 rulings): parked as Phase 1b. Every cell this task owns is a BETA.DIST or
+  F.DIST density cell or a dense probes-numeric sweep cell, within Gate A's envelope (most agree with Excel to 12 or
+  more digits, and Excel and the engine are both close to the math), so R1(c) counts it as Phase 1b evidence. A
+  point that Gate A's tables show outside the envelope gets its own task without the key.
 - Decision 0181 let T-2507 merge with these cells: the port fixed 36,696 visibly-off BETA.DIST cells against `main`
   ec865788, and its shape constant (2-4 units) and bd0 series (3-41 units) carry the residuals T-2586 items 1 and 2
   are cracking. Each fix here is T-2586's model of those two pieces, ported into `loader.rs` `excel_beta_density`.

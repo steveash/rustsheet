@@ -5,7 +5,7 @@ use statrs::distribution::{Continuous, Gamma};
 
 use super::element_errors::array_element_error;
 use super::erf::{gamma_half_lower, gamma_half_upper};
-use super::gamma::tiny_ratio_density;
+use super::gamma::log_form_density;
 use super::incomplete_gamma::{
     gamma_cdf, gamma_density, gamma_quantile, gamma_sf, huge_shape_quantile, Tail, HUGE_SHAPE_MIN,
 };
@@ -51,20 +51,40 @@ fn chi_squared_sf(dist: &Gamma, x: f64) -> f64 {
     }
 }
 
-/// Below this right-tail probability Excel's CHISQ.INV.RT and CHIINV are `#NUM!` for 3 to 10
-/// degrees of freedom (`CHISQ.INV.RT(1E-100,3)`, `CHIINV(1E-200,6)`, `(1E-300,10)`: 21 literal gen-m9
-/// cells, T-1634), though the quantile exists, while `CHISQ.INV.RT(1E-20,n)` is a value for every
-/// n probed. Two degrees of freedom (a closed form, `CHISQ.INV.RT(1E-300,2)` = 1381.5510557964274),
-/// 22 (`CHISQ.INV.RT(1E-100,AVERAGE((Data!E10*7),42))` = 542.4417060011164, gen-m9) and 50
-/// (`CHISQ.INV.RT(1E-300,50)` = 1592.6841019848946, T-1543) have values. The boundary p between
-/// 1E-20 and 1E-100, and the degrees of freedom from 11 to 21, are not probed
-/// (docs/excel-semantics/statistics.md, T-1634).
-// TODO(T-2561): the exact boundary is unprobed; T-2561 probes and pins it.
-const RIGHT_TAIL_P_MIN: f64 = 1e-20;
+/// Below `RIGHT_TAIL_P_MIN[df - 3]` Excel's CHISQ.INV.RT and CHIINV at 3 to 42 degrees of freedom
+/// are `#NUM!`, though the quantile exists. 1E-k there is still a value, and 1E-(k+1) is `#NUM!`
+/// (probes-numeric/t2561-chisq-inv-rt-num-boundary, -num-edge, -num-large-df and -num-large-df-edge,
+/// excel-graph: every p = 1E-k from 1E-20 to 1E-300 at each df bracketing its edge, 1,320 cells,
+/// one edge per df with no value below it). `CHISQ.INV.RT(1E-20,3)` = 96.2391239380938 and
+/// `(1E-21,3)` is `#NUM!`; `(1E-291,42)` is a value and `(1E-292,42)` `#NUM!`; from 43 degrees of
+/// freedom every p to 1E-300 is a value (`CHISQ.INV.RT(1E-300,50)` = 1592.6841019848946, T-1543).
+/// The edge rises by 3 to 10 decades a degree of freedom with no closed form found (it is
+/// neither a fixed quantile, a fixed multiple of df, nor a fixed distance from the
+/// Wilson-Hilferty start; docs/excel-semantics/statistics.md, T-2561). It is Excel's search
+/// giving up, not its cdf: CHISQ.DIST.RT is a plain number up to 7% past each edge
+/// (probes-numeric/t2561-chisq-dist-rt-past-edge). Each entry is a fit inside its probed decade:
+/// any threshold in (1E-(k+1), 1E-k] scores the same, and a p strictly inside a decade is unprobed.
+/// Every probed cell is CHISQ.INV.RT; CHIINV takes the same edge by inference, as it shares the
+/// function elsewhere, not by probe (TODO(T-3310)).
+/// FITTED(T-2561, 1320 cells, df 3..42, p 1E-20..1E-300)
+const RIGHT_TAIL_P_MIN: [f64; 40] = [
+    1e-20, 1e-27, 1e-35, 1e-43, 1e-52, 1e-62, 1e-72, 1e-81, 1e-87, 1e-90, 1e-94, 1e-99, 1e-104,
+    1e-110, 1e-116, 1e-121, 1e-127, 1e-133, 1e-139, 1e-146, 1e-152, 1e-158, 1e-165, 1e-171, 1e-178,
+    1e-184, 1e-191, 1e-198, 1e-205, 1e-212, 1e-219, 1e-226, 1e-234, 1e-241, 1e-249, 1e-257, 1e-265,
+    1e-273, 1e-282, 1e-291,
+];
 
-/// From this shape (11 degrees of freedom) a right-tail quantile below [`RIGHT_TAIL_P_MIN`] is a
-/// value, as at 22 and 50 in Excel.
-const RIGHT_TAIL_SHAPE_ALL_P: f64 = 5.5;
+/// Whether Excel's right-tail quantile of `p` at `df` (truncated) degrees of freedom is `#NUM!`
+/// below its search's edge ([`RIGHT_TAIL_P_MIN`]).
+fn right_tail_beyond_edge(df: f64, p: f64) -> bool {
+    if !(3.0..43.0).contains(&df) {
+        return false;
+    }
+    // df is a whole number in [3, 43) here, so the index is exact and within the table.
+    RIGHT_TAIL_P_MIN
+        .get(df as usize - 3)
+        .is_some_and(|&p_min| p < p_min)
+}
 
 /// A distribution value as a cell value: `#NUM!` unless finite and not negative.
 fn non_negative(value: f64, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
@@ -106,12 +126,12 @@ impl Model {
         } else if cumulative {
             gamma_cdf(&dist, x)
         } else {
-            // CHISQ.DIST's density is GAMMA.DIST's at scale 2, its tiny-ratio log form included:
+            // CHISQ.DIST's density is GAMMA.DIST's at scale 2, its log forms included:
             // `CHISQ.DIST(1E-300,1,FALSE)` is within 1 ulp of Excel's 3.9894228040142567E+149,
             // which is 154 ulp below the exact 1/SQRT(2*PI()*1E-300) (gen-m9/3e98b26cf6713e77
             // A268, T-2638).
             let scale = 1.0 / dist.rate();
-            tiny_ratio_density(dist.shape(), x, scale)
+            log_form_density(dist.shape(), x, scale)
                 .or_else(|| gamma_density(dist.shape(), x, scale))
                 .unwrap_or_else(|| dist.pdf(x))
         };
@@ -230,7 +250,7 @@ impl Model {
                 cell,
             );
         }
-        if p < RIGHT_TAIL_P_MIN && dist.shape() != 1.0 && dist.shape() < RIGHT_TAIL_SHAPE_ALL_P {
+        if right_tail_beyond_edge(dist.shape() * 2.0, p) {
             return Err(num_error(cell));
         }
         non_negative(
