@@ -3,7 +3,7 @@ id: T-3456
 title: "Running-total SUMs over a growing prefix (SUM($A$1:A1) filled down or across) read from a per-pass prefix cache (calipers pv26_002)"
 milestone: M11
 lane: perf
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -41,11 +41,32 @@ The running state after each cell of a prefix is therefore all a longer prefix f
 - Cleared with the other pass caches, used only where `pass_cache_safe`, and bounded (directive 5).
 
 ## Acceptance criteria
-- [ ] Tests compare the cached path with the walk (`no_pass_caches`): values, snapped near-zero results, the first
+- [x] Tests compare the cached path with the walk (`no_pass_caches`): values, snapped near-zero results, the first
       error, text, booleans and blanks, formulas not evaluated yet, circular cells, iterative calculation, and
       rows and columns. Each comparison includes whether the cell is marked circular.
-- [ ] calipers `pv26_002` release `evaluate()` time before and after, in the Outcome.
-- [ ] `make check` green; reviewers approve.
+- [x] calipers `pv26_002` release `evaluate()` time before and after, in the Outcome.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - SUM with several arguments, SUM of a 2-D block, and other aggregates (AVERAGE, COUNT and so on).
+
+## Outcome
+`functions/math_and_trigonometry/sum_prefix.rs`: a per-pass cache of `SumParts` states keyed by start cell and
+axis, consulted by `sum_with_last_addition` for a lone 1-D range inside the used area. A cell read that is not
+inert drops the start's entry and lets the walk run; a running total read while extending its own start (`B5 =
+SUM($B$1:B4)+1` reached out of order) leaves the entry as the inner read left it. At most 4,000,000 states per
+pass, as the criteria caches.
+
+Tests (`test/mathematical/test_sum_prefix.rs`) compare stored values (bit for bit) and circular marks with
+`no_pass_caches` down, up and across, over near-zero cancellation, text, booleans, numeric text, blanks,
+formulas evaluated on first read, an error cell, self-referencing and circular totals, and a cycle member under
+iterative calculation with a recalculating edit. Mutations caught: no inert check, `== Some(false)` for the
+inert check, an off-by-one hit, extending an entry an inner read already extended. Equivalent: dropping the
+cached-error shortcut (falls back to the walk).
+
+Timing (release, `evaluate()`, best of two):
+- `SUM($A$1:An)` filled down n rows: 20,000 rows 4.63 s → 0.011 s; 50,000 rows 34.4 s → 0.029 s.
+- calipers `pv26_002`: 12.4 s → 12.2 s. The Context's 30% was misread: the SUM samples were the first
+  evaluation of the I-column formulas the walk reads, not the prefix walk itself; the cache now extends by one
+  cell per call (58,000 extensions, 634,000 cells read in all). The rest of its time is SUMPRODUCT (about half
+  of samples), SUMIFS, AND and COUNTIFS.
