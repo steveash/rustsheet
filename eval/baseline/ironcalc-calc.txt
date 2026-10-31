@@ -350,7 +350,6 @@ F	ironcalc-calc/STATISTICAL/BINOM.xlsx	NEGBINOM.DIST!E61
 F	ironcalc-calc/STATISTICAL/BINOM.xlsx	NEGBINOM.DIST!E62
 F	ironcalc-calc/STATISTICAL/CHISQ.xlsx	Sheet1!E4
 F	ironcalc-calc/STATISTICAL/CHISQ.xlsx	Sheet1!G2
-F	ironcalc-calc/STATISTICAL/CHISQ.xlsx	Sheet1!G3
 F	ironcalc-calc/STATISTICAL/CHISQ.xlsx	Sheet1!G4
 F	ironcalc-calc/STATISTICAL/CHISQ.xlsx	Sheet1!I2
 F	ironcalc-calc/STATISTICAL/CONFIDENCE.xlsx	CONFIDENCE.NORM CONFIDENCE.T!D11

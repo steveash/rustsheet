@@ -689,48 +689,11 @@ fn pair_with(a: f64, x: f64, terms: &mut Terms, exponent: Exponent) -> (f64, f64
         }
         return (lower, 1.0 - lower);
     }
-    let Some((h, _)) = continued_fraction(a, x, terms) else {
+    let Some((h, _)) = fraction::continued_fraction(a, x, terms) else {
         return (f64::NAN, f64::NAN);
     };
     let upper = prefactor * h;
     (1.0 - upper, upper)
-}
-
-/// Q(a, x) / prefactor = 1/(x + 1 - a - 1(1-a)/(x + 3 - a - 2(2-a)/(x + 5 - a - ...))) by the
-/// modified Lentz method, and the number of terms it took; `None` past `terms` or the fraction's
-/// own [`continued_fraction_budget`].
-fn continued_fraction(a: f64, x: f64, terms: &mut Terms) -> Option<(f64, u32)> {
-    let tiny = f64::MIN_POSITIVE / f64::EPSILON;
-    let mut b = x + 1.0 - a;
-    let mut c = 1.0 / tiny;
-    let mut d = 1.0 / b;
-    let mut h = d;
-    let mut i = 1.0;
-    let mut taken = 0;
-    let mut budget = Terms(continued_fraction_budget(a));
-    loop {
-        if !terms.take() || !budget.take() {
-            return None;
-        }
-        taken += 1;
-        let an = -i * (i - a);
-        b += 2.0;
-        d = an * d + b;
-        if d.abs() < tiny {
-            d = tiny;
-        }
-        c = b + an / c;
-        if c.abs() < tiny {
-            c = tiny;
-        }
-        d = 1.0 / d;
-        let delta = d * c;
-        h *= delta;
-        if (delta - 1.0).abs() <= f64::EPSILON * 0.25 {
-            return Some((h, taken));
-        }
-        i += 1.0;
-    }
 }
 
 /// [`gamma_cdf`]'s and [`gamma_sf`]'s value at a positive, finite `scaled` = x * rate: the
@@ -993,6 +956,7 @@ fn quantile_tail(dist: &Gamma, x: f64, tail: Tail, terms: &mut Terms) -> f64 {
 }
 
 mod density;
+mod fraction;
 mod half_integer;
 mod huge_shape;
 
