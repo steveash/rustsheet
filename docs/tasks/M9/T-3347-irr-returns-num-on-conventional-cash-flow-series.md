@@ -69,8 +69,10 @@ Blocked because: the R4 hold-out misses its margin (stated below before scoring)
 probes-numeric/t3347-irr-conventional-holdout the fitted stage has 4 type mismatches of its own (A26, A70 and A142 a
 number where Excel is `#NUM!`; A61 `#NUM!` where Excel is a number), so `scripts/check_fitted.py --update` is not
 allowed and hygiene stays red. It fixes 29 hold-out cells, so the stage is still a net gain; merging it as it is
-needs either the rule T-3406 looks for or an owner ruling that accepts a fit with known wrong-type cells. Unblock
-when T-3406 lands a rule (then re-fill a fresh sweep, R4.2) or the owner rules.
+needs either a model of what Excel does there or an owner ruling that accepts a fit with known wrong-type cells.
+T-3406 (PR #2562) found no rule: its probe shows the decision is path-sensitive and refutes Newton from v = 1 under
+any cap (a returning n = 60 annuity needs 137 steps, a `#NUM!` n = 20 one 33). Unblock when T-3411 lands a model
+(then re-fill a fresh sweep, R4.2) or the owner rules.
 
 ## Hold-out (decision 0188 R4.1, R4.2; fixed before any scoring)
 - Train: the 162 cells the stage was fitted on (probes/t3347-irr-conventional-num, 42, and
