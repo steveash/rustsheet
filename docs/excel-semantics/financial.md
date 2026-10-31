@@ -1918,14 +1918,14 @@ workbook-wide state written in Excel's calculation order:
   the call's last element (485 for `{1,2}`, 776 for `{2,1}`, 776 for `{1,0.5}`) nor the AMORLINC's 132 below it
   (-ac to -af: A1 fraction, A2 the lifted SUM, A3 `AMORLINC(2400,39679,39813,300,1,0.15,1)`).
   An error element inside a lifted call is unprobed (ours: it leaves the value as it was, like a scalar error, so
-  `{1,-1,0.5}` is 776, `#NUM!`, 776; T-3220).
+  `{1,-1,0.5}` is 776, `#NUM!`, 776; T-3389).
 - Hypothesis from one probe: a dynamic-array formula in the order empties the state, as WEEKNUM's does
   (excel_order.rs): a fraction above
   `=SEQUENCE(1,2)` (A2) above the 485 charge (A3) is 0 (-ag; ours 485: emptying the state at the formula's place in
   `run_excel_order` did not change it, so how the pass reaches a spilling anchor is still to be found). Not fully
   explained: `=SEQUENCE(1,2)+AMORDEGRC(..485..)` in A2 above an AMORLINC in A3 leaves the 485 for the fraction in A1
   (-ah, 485; ours 132), where `=SEQUENCE(1,2)*0+AMORDEGRC(..485..)` alone below the fraction leaves it 0 (-ai; ours
-  the same). Known failures: -ag and -ah (T-3220).
+  the same). Known failures: -ag and -ah (T-3389).
 - The order is Excel's fresh-load order (recalc.md "The order Excel calculates a freshly loaded workbook in"): the
   value comes from the cell below (-p: A1 is 776 from A2, not A3's 485), the cell to the right (-q: A1 is B1's 485)
   or a later sheet (-n: Sheet1!A1 is Sheet2!A1's 485); a precedent is evaluated first wherever it sits (-o: A2's
@@ -1949,7 +1949,7 @@ Status: VERIFIED (excel-graph) on freshly loaded workbooks; after an edit in a l
 reproducible from the file (recalc.md); as for what a lifted call and a dynamic-array formula's place in the order do to the
 value: a lifted call is VERIFIED (ours matches), a dynamic-array formula's place is only partly explained (-ag, -ah known
 failures), and gen-m9 A76 is UNEXPLAINED
-Tasks: T-1895, T-2825, T-2844, T-3220
+Tasks: T-1895, T-2825, T-2844, T-3389
 
 ## AMORDEGRC past 2^22 periods
 Rule: past 2^22 periods (4,194,304) RustSheet computes AMORDEGRC's decay in closed form, `remain * exp(n *

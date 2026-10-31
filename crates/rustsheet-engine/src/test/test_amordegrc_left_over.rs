@@ -135,7 +135,7 @@ fn a_lifted_call_reads_what_its_own_earlier_elements_left() {
     assert_eq!(model._get_text("A1"), "776");
 }
 
-/// Our behaviour, not Excel's: an error element inside a lifted call is unprobed (T-3220).
+/// Our behaviour, not Excel's: an error element inside a lifted call is unprobed (T-3389).
 #[test]
 fn an_error_element_stays_an_error_beside_a_fraction() {
     let model = lifted("{-1,0.5}");

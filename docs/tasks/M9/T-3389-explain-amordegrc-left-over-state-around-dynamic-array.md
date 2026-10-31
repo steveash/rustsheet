@@ -1,5 +1,5 @@
 ---
-id: T-3220
+id: T-3389
 title: "Explain AMORDEGRC left-over state around dynamic-array formulas (probes -ag, -ah)"
 milestone: M9
 lane: functions-financial
