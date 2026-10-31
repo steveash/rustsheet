@@ -8,7 +8,12 @@
 
 Exit codes of `acquire` and `wait`: 0 the lock is yours; 1 busy (you are in the queue), or `wait`
 timed out; 2 an error; 3 PR N is already merged or closed; 4 lost, for `acquire --renew` only:
-you held the lock and it was taken over.
+you held the lock and it was taken over; 5 refused, `--pr N` in `train` mode (below).
+
+In `train` mode only merge trains (`--train`) and the emergency-flip PR (labelled
+`merge-train-stop`) take the lock; any other `--pr N` claim exits 5 and names `make mark-ready`
+(decision 0204). A failed read of the mode (it reads as `lock`) or of the PR's labels lets the
+claim through, so a GitHub outage never blocks an emergency flip.
 
 The lock is the branch `merge-lock` on origin: an orphan commit with an empty tree whose message
 (format `version: 2`, SPEC-0027 section 1) names the holder and the PR, or says `state: free`, and
@@ -94,7 +99,7 @@ QUEUE_FULL = f"queue full ({QUEUE_MAX} waiters)"
 # The start of what `busy_message` says to a caller that is in the queue.
 IN_QUEUE = "you are waiter"
 
-HELD, BUSY, ERROR, DONE, LOST = 0, 1, 2, 3, 4
+HELD, BUSY, ERROR, DONE, LOST, REFUSED = 0, 1, 2, 3, 4, 5
 
 
 class GitError(Exception):
@@ -286,6 +291,36 @@ def describe(lock: Lock, now: float, ttl_minutes: float) -> str:
         f" ({' '.join(lock.prs) or 'between batches'})" if lock.pr == TRAIN else ""
     )
     return f"held by {lock.holder} for {pr}, {lock.age_minutes(now):.0f} min ago{stale}"
+
+
+def train_mode_refusal(pr: str, root: Path = ROOT) -> str | None:
+    """Why a `--pr` claim is refused in `train` mode, or None when it may proceed (decision 0204).
+
+    Sessions still on the per-PR flow after the switch to `train` queued ahead of the trains and
+    stranded the ready PRs (2026-10-31: 27 per-PR holds against about 12 train holds). Only the
+    emergency-flip PR merges under the lock in `train` mode (`steward` skill, "Emergency flip to
+    `lock`" step 4). The mode is `make merge-mode`'s read; unreadable reads as `lock`, and an
+    unreadable label lets the claim through, so neither failure can block a flip."""
+    import merge_ready  # imports this module
+    import merge_train  # imports this module
+
+    if merge_train.read_mode(root) != merge_train.TRAIN:
+        return None
+    client = gh_client.from_remote(root, REMOTE)
+    if client is None or not valid_pr(pr):
+        return None
+    try:
+        labels = merge_ready.label_names(client.pull(pr))
+    except gh_client.GhError:
+        return None
+    if merge_ready.STOP_LABEL in labels:
+        return None
+    return (
+        f"merge lock refused: the merge train is on (`make merge-mode` says train), so PR {pr} does not "
+        f"take the lock. Mark it ready with `make mark-ready PR={pr}` and move on; the train merges it "
+        f"(work-loop step 3, decision 0204). Only the emergency-flip PR, labelled "
+        f"{merge_ready.STOP_LABEL}, merges under the lock in train mode."
+    )
 
 
 def pr_finished(pr: str, root: Path = ROOT) -> bool | None:
@@ -564,6 +599,10 @@ def main(argv: list[str], root: Path = ROOT) -> int:
         if args.command == "release":
             return release(holder, root)
         pr = TRAIN if args.train else str(args.pr)
+        check_claim(holder, pr)
+        if pr != TRAIN and (refusal := train_mode_refusal(pr, root)) is not None:
+            print(refusal, file=sys.stderr)
+            return REFUSED
         prs = None if args.prs is None else [str(p) for p in args.prs]
         if args.command == "wait":
             return wait(holder, pr, prs=prs, timeout_minutes=args.timeout, ttl_minutes=args.ttl, root=root)

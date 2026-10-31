@@ -149,11 +149,11 @@ board: ## Write docs/tasks/BOARD.md locally (git-ignored; decision 0017)
 
 # ---------------------------------------------------------------- Merge lock (decisions 0075, 0145)
 .PHONY: merge-lock-acquire merge-lock-wait merge-lock-release merge-lock-status
-merge-lock-acquire: ## Take (or renew) the merge lock before merging a PR: make merge-lock-acquire PR=123 [RENEW=1] (exit 1: busy, you are queued; 3: PR already done; 4: lost)
+merge-lock-acquire: ## Take (or renew) the merge lock before merging a PR: make merge-lock-acquire PR=123 [RENEW=1] (exit 1: busy, you are queued; 3: PR already done; 4: lost; 5: refused, train mode)
 	$(if $(PR),,$(error PR=<number> is required))
 	$(PY) scripts/merge_lock.py acquire --pr '$(PR)' $(if $(RENEW),--renew)
 
-merge-lock-wait: ## Wait in the queue until the merge lock is yours (run it in the background): make merge-lock-wait PR=123 [TIMEOUT=45] (exit 0: held; 1: timed out; 2: error; 3: PR already done)
+merge-lock-wait: ## Wait in the queue until the merge lock is yours (run it in the background): make merge-lock-wait PR=123 [TIMEOUT=45] (exit 0: held; 1: timed out; 2: error; 3: PR already done; 5: refused, train mode)
 	$(if $(PR),,$(error PR=<number> is required))
 	$(PY) scripts/merge_lock.py wait --pr '$(PR)' --timeout '$(or $(TIMEOUT),45)'
 

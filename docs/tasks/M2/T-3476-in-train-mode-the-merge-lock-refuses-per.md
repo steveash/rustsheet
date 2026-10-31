@@ -3,7 +3,7 @@ id: T-3476
 title: "In train mode the merge lock refuses per-PR claims except the emergency-flip PR"
 milestone: M2
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -32,24 +32,43 @@ the emergency-flip PR (`merge-train-stop`, `steward` skill "Emergency flip to `l
 Nothing enforces this.
 
 ## Acceptance criteria
-- [ ] In `train` mode (`merge_train.read_mode`, the same read as `make merge-mode`), `acquire
+- [x] In `train` mode (`merge_train.read_mode`, the same read as `make merge-mode`), `acquire
       --pr N` and `wait --pr N` exit 5 with a message naming `make mark-ready`, unless PR N
       carries `merge-train-stop`.
       - `--train` claims are unaffected.
       - `release` and `status` are unaffected.
       - In `lock` and `shadow` mode nothing changes.
-- [ ] A failed read of the mode (which reads as `lock`) or of the PR's labels lets the claim
+- [x] A failed read of the mode (which reads as `lock`) or of the PR's labels lets the claim
       proceed. An emergency flip must never be blocked by a GitHub read.
-- [ ] Tests cover:
+- [x] Tests cover:
       - refusal in `train` mode;
       - the flip-PR exception;
       - `lock` and `shadow` modes;
       - a failed label read;
       - `--train` claims.
-- [ ] The skills and the Makefile help name exit 5. A decision record covers the protected-path
+- [x] The skills and the Makefile help name exit 5. A decision record covers the protected-path
       change.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Creating the merger routine (an owner step).
 - Queue priority for trains.
+
+## Outcome
+- **The guard:** `scripts/merge_lock.py` `train_mode_refusal()`. `acquire --pr` and `wait --pr`
+  exit 5 (`REFUSED`) in `train` mode unless the PR carries `merge-train-stop`. The mode is
+  `merge_train.read_mode` (`make merge-mode`'s read). An unreadable mode or label lets the claim
+  through. The claim is validated first, so a malformed holder is still exit 2.
+- **Tests:** a new test in `test_merge_lock.py` covers:
+  - refusal of `acquire` and `wait`, leaving the lock untouched;
+  - the flip-PR exception;
+  - an unreadable label;
+  - `lock` and `shadow` modes;
+  - a `--train` claim.
+
+  All 40 lock tests pass.
+- **Live check** on 2026-10-31 (in `train` mode): `merge_lock.py acquire --pr 2593` exits 5 with
+  the message. At the same time another session was still queued per-PR for #2598.
+- **Docs:** decision 0204; the `work-loop` `train` bullet and the `steward` "Merge lock" step name
+  exit 5; the Makefile help for `merge-lock-acquire` and `merge-lock-wait` too.
+
