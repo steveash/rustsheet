@@ -3507,8 +3507,24 @@ within 1E-15 of the exact quantile, and the form is thousands of ulps off. The s
 A100, A113), p = 0.95 (q = 0.475) the exact quantile (T-2724 review; T-2724's centre kernel starts at c = 1 - 2q
 below 0.075, inside that bracket). At df 30 and q = 5E-17 (`T.INV.2T(1E-16,30)`, gen-m9 583ca2baea0bb30a A147) Excel's t is 2E-12
 off (its y about 4E-12; T-1542).
-Ours: the exact quantile (A&S 26.7.5 from df 1E5, statrs' inverse below), so up to 2.2E-7 relative away at huge df:
-T-3061.
+Which y (T-2511, 2026-10-31, scored over gen-m9, ironcalc-calc, probes and probes-numeric against main): y as the
+double nearest the crossing of the Student-t tail evaluated at a rounded y (`I_y(df/2, 1/2)/2`, the tail T.TEST
+takes; "T.TEST rounds y = df/(df+t^2) to a double before the tail") fixes 294 visibly-off cells and makes none newly
+visibly off, and 65 of T-3061's 75 cells come within 15 digits. Other choices of y score worse: the crossing of
+T.DIST's ported kernel at y (`bratio::t_kernel_tails`) fixes 298 but makes 3 newly visibly off (`T.INV(0.2,5)` =
+-0.9195437802408258, 6 ulp off through it, gen-m9/0bbab6206b5c9a07 A67); the other end of the final bracket fixes 285
+and breaks 6; AS 109's own root (statrs' search) with this back-transform fixes 137. So Excel's y is the nearest
+crossing of a tail at least as accurate as the y-tail on most cells. At q = 0.05 it is about 2 ulps from that
+crossing at df 999 and 1E10 alike (`T.INV.2T(0.1,1E10)` = 1.6448533237762966, `CONFIDENCE.T(0.1,1,1000)` =
+0.05206311786485653), which looks like the stop of Excel's search (T-3399).
+In the deep tail (q below 1E-5 with x = df/(df + t^2) below 1E-8) Excel's quantile is not this form but the closed
+form from the leading term and first correction of `I_x(df/2, 1/2)` (`TINV(1E-200,2)` = 1.0000000000000101E+100,
+gen-m9/7980ffb6095a340d A312, where the form gives 9.99999999999996E+99): the form makes 29 such cells newly visibly
+off, the closed form none.
+Implemented in: functions/statistical/t_dist.rs `t_rounded_y_quantile` (every df from 2; df 1 is T-2858's closed form),
+`t_tail_closed_form` (the deep tail), `t_centre_quantile` (the centre, T-2724).
+Ours: this form from df 2 (T-2511); 10 of T-3061's cells and the bit-level remainder are T-3061 and T-3399.
+Tasks: T-3061, T-2511, T-3399
 
 ## Inverse CDF functions at a tiny or near-1 probability (T-1543)
 Rule: NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and BETA.INV return a value (or `#NUM!`) for p from 1E-300 to 1-1E-16; none panics or hangs in Excel.
