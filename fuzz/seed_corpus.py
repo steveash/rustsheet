@@ -3,9 +3,9 @@
 
 Formula targets get one file per formula shape in eval/suites (without the leading `=`), at most
 MAX_FORMULA_SEEDS of them; `xlsx_import` gets every workbook under crates/rustsheet-xlsx/tests and
-eval/suites. Corpora are generated, never committed, so they track the suites as they grow. Seeds
-are added to whatever a corpus directory already holds, so the inputs libFuzzer found on earlier
-runs are kept.
+eval/suites; `bitcode_workbook` gets the engine-written workbooks of `seeds/bitcode_seeds.rs`.
+Corpora are generated, never committed, so they track the suites as they grow. Seeds are added to
+whatever a corpus directory already holds, so the inputs libFuzzer found on earlier runs are kept.
 
 Usage: fuzz/seed_corpus.py   (from anywhere; writes fuzz/corpus/<target>/ and fuzz/dict/)
 """
@@ -15,6 +15,8 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import subprocess
+import tempfile
 from pathlib import Path
 
 FUZZ = Path(__file__).resolve().parent
@@ -76,6 +78,22 @@ def write_seed(directory: Path, data: bytes) -> None:
     (directory / hashlib.sha256(data).hexdigest()).write_bytes(data)
 
 
+def bitcode_seeds(directory: Path) -> int:
+    """Adds `Model::to_bytes()` of small engine-written workbooks to `directory`, from the
+    `bitcode_seeds` binary of the fuzz crate (Rust writes them; T-2895). Returns how many."""
+    directory.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory() as written:
+        subprocess.run(
+            ["cargo", "run", "--quiet", "--release", "--bin", "bitcode_seeds", "--", written],
+            cwd=FUZZ,
+            check=True,
+        )
+        seeds = sorted(Path(written).iterdir())
+        for seed in seeds:
+            write_seed(directory, seed.read_bytes())
+    return len(seeds)
+
+
 def main() -> int:
     corpus = FUZZ / "corpus"
     formulas: set[str] = set()
@@ -99,8 +117,9 @@ def main() -> int:
         if workbook.stat().st_size <= MAX_SEED_BYTES:
             write_seed(directory, workbook.read_bytes())
             kept += 1
-    print(f"{len(seeds)} formula seeds of {len(formulas)} formulas, {kept} workbook seeds in {corpus}; "
-          f"dictionary {dictionary}")
+    encoded = bitcode_seeds(corpus / "bitcode_workbook")
+    print(f"{len(seeds)} formula seeds of {len(formulas)} formulas, {kept} workbook seeds, {encoded} bitcode "
+          f"seeds in {corpus}; dictionary {dictionary}")
     return 0
 
 

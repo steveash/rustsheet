@@ -1,0 +1,71 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-3260: a table without a header row, unedited (the baseline of table-no-header-delete-first-row). Sales on S!B3:C6 without a header row (columns Column1/Column2, data rows 3-6: E,W,N,S and Qty 1,2,4,8), S!B2 'above' and S!C10 99 outside it; sheet F holds A1 =ROWS(Sales), A2 =ROWS(Sales[#All]), A3 =SUM(Sales[Column2]), A4 =COUNTA(Sales[Column1]), A5 =ROW(Sales), A6 =ROW(Sales[#Headers]), A7 =SUM(S!C3:C6) and A8 FORMULATEXT(A7), A9 =S!C10 and A10 FORMULATEXT(A9), A11 =INDEX(Sales[Column1],1), A12 =COLUMNS(Sales), A13 =SUM(S!C3:C3) (the first row alone) and A14 FORMULATEXT(A13), A15 =S!B2 (above the table).",
+  "tags": [
+    "M8",
+    "tables",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "B2": "above",
+        "B3": "E",
+        "B4": "W",
+        "B5": "N",
+        "B6": "S",
+        "C3": 1,
+        "C4": 2,
+        "C5": 4,
+        "C6": 8,
+        "C10": 99
+      },
+      "tables": [
+        {
+          "name": "Sales",
+          "ref": "B3:C6",
+          "header_row": false
+        }
+      ]
+    },
+    {
+      "name": "F",
+      "cells": {
+        "A1": "=ROWS(Sales)",
+        "A2": "=ROWS(Sales[#All])",
+        "A3": "=SUM(Sales[Column2])",
+        "A4": "=COUNTA(Sales[Column1])",
+        "A5": "=ROW(Sales)",
+        "A6": "=ROW(Sales[#Headers])",
+        "A7": "=SUM(S!C3:C6)",
+        "A8": "=FORMULATEXT(A7)",
+        "A9": "=S!C10",
+        "A10": "=FORMULATEXT(A9)",
+        "A11": "=INDEX(Sales[Column1],1)",
+        "A12": "=COLUMNS(Sales)",
+        "A13": "=SUM(S!C3:C3)",
+        "A14": "=FORMULATEXT(A13)",
+        "A15": "=S!B2"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "F!A1",
+    "F!A2",
+    "F!A3",
+    "F!A4",
+    "F!A5",
+    "F!A6",
+    "F!A7",
+    "F!A8",
+    "F!A9",
+    "F!A10",
+    "F!A11",
+    "F!A12",
+    "F!A13",
+    "F!A14",
+    "F!A15"
+  ]
+}

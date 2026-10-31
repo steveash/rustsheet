@@ -55,7 +55,9 @@ impl Model {
         let mut result = vec![vec![ArrayNode::Error(Error::NA); num_cols]; num_rows];
         // One argument buffer for every element.
         let mut values: Vec<CalcResult> = Vec::with_capacity(arrays.len());
-        let mut caller = self.lambda_caller(&lambda_result, arrays.len());
+        let mut caller = self
+            .lambda_caller(&lambda_result, arrays.len())
+            .snapping_root();
 
         for (i, result_row) in result.iter_mut().enumerate() {
             for (j, slot) in result_row.iter_mut().enumerate() {
@@ -120,7 +122,8 @@ impl Model {
 
         let mut caller = self
             .lambda_caller(&lambda_result, 2)
-            .keeping_trimrange_references();
+            .keeping_trimrange_references()
+            .snapping_root();
         for index in start..count {
             accumulator = self.call_lambda_caller(
                 &mut caller,
