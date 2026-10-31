@@ -29,6 +29,12 @@ error of T.INV and T.INV.2T against the math (median 7.5e-15 and 1.5e-14, Excel 
   T-2839, T-2858) in its Outcome. T-3363 replaces the
   inverse algorithm as a whole; this task is the user-visible bug and goes first.
 
+- Probe (T-3349): probes/t3349-t-inv-2t-near-one A1-A44 (excel-graph, 2026-10-31): A1 the assessment's
+  `T.INV.2T(0.999999999989522,2)`, Excel 1.481806159731988E-11; A2 TINV, A3 df 1, A4 df 30, A5 CONFIDENCE.T of it;
+  A6-A35 `T.INV.2T(1-1E-k,df)` for k 3, 6, 9, 12, 15 at df 1, 2, 5, 30, 1000, 1E6; A36-A38 p = 1.001, 1.000000001, 1
+  (the 16-digit 1+1E-15 reads as 1) at df 2; A39-A44 T.INV at 0.5 +- 1E-6, 1E-12 and TINV(1-1E-6, 1-1E-12) at df 2.
+  The bug the assessment saw (1.49E-8 at A1) was fixed on main by T-2724 (#2510) before this task started; the probe
+  is the evidence that it stays fixed. Sweep: probes-numeric/t3349-t-inv-2t-sweep (300 points, seed 3349).
 ## Acceptance criteria
 - [ ] `T.INV.2T(0.999999999989522,2)` is within 15 digits of Excel's value (a unit test and a probe cell). When the
       probe lands, record Excel's filled value for it in this file's Context and in statistics.md.
