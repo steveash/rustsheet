@@ -5,6 +5,7 @@ mod iso_date;
 mod metadata;
 mod package;
 mod pivots;
+pub(crate) mod relocation_key;
 pub mod rich_errors;
 pub(crate) mod shared_strings;
 mod sheet_data;
