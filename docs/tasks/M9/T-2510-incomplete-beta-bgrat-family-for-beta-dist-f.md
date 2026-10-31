@@ -56,6 +56,8 @@ Routed by T-2981 (eval of 2026-10-28 at `main` 9586958b): cdf cells whose bratio
 - [x] Per function (BETA.DIST, F.DIST, F.DIST.RT, FDIST, BINOM.DIST, NEGBINOM.DIST), the change in visibly-off cells is
       net negative. A branch that is not stays on today's kernel, with the measurement in the Outcome.
 - [ ] Non-T bgrat cells at b = 1/2 score at least 365 bit-exact of 387.
+      Not met: F's share stays on today's kernel by the criterion above; handed to T-2512 (its "Also open from
+      T-2510" item), see the Outcome.
 - [x] The gated FDIST c18dbf21 A151 is kept or recorded under decision 0083.
 - [x] `make check` green; reviewers approve.
 
