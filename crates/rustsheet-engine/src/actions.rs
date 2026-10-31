@@ -355,6 +355,14 @@ fn displace_cf_rule_formulas(
     }
 }
 
+/// Whether the `count` rows (or columns) from `first`, shifted by `delta`, lie within
+/// `1..=last`. Computed in `i64`: a move read from an external diff can carry any `i32` (T-2896).
+fn moved_span_in_grid(first: i32, count: i32, delta: i32, last: i32) -> bool {
+    let first = i64::from(first) + i64::from(delta);
+    let span_last = first + i64::from(count) - 1;
+    (1..=i64::from(last)).contains(&first) && (1..=i64::from(last)).contains(&span_last)
+}
+
 impl Model {
     fn shift_cell_formula(
         &mut self,
@@ -609,6 +617,13 @@ impl Model {
         if column_count <= 0 {
             return Err("Cannot add a negative number of cells :)".to_string());
         }
+        // Before anything adds `column_count` to a column: it can be any `i32` (T-2896).
+        if !utils::is_valid_column_number(column) || column_count > LAST_COLUMN {
+            return Err(
+                "Cannot shift cells because that would delete cells at the end of a row"
+                    .to_string(),
+            );
+        }
         if !self.can_insert_columns(sheet, column, column_count)? {
             return Err(
                 "Cannot insert columns because that would break an array formula".to_string(),
@@ -730,7 +745,7 @@ impl Model {
         if !(1..=LAST_COLUMN).contains(&column) {
             return Err(format!("Column number '{column}' is not valid."));
         }
-        if column + column_count - 1 > LAST_COLUMN {
+        if column_count > LAST_COLUMN - column + 1 {
             return Err("Cannot delete columns beyond the last column of the sheet".to_string());
         }
         if !self.can_delete_columns(sheet, column, column_count)? {
@@ -996,6 +1011,13 @@ impl Model {
         if row_count <= 0 {
             return Err("Cannot add a negative number of cells :)".to_string());
         }
+        // Before anything adds `row_count` to a row: it can be any `i32` (T-2896).
+        if !utils::is_valid_row(row) || row_count > LAST_ROW {
+            return Err(
+                "Cannot shift cells because that would delete cells at the end of a column"
+                    .to_string(),
+            );
+        }
         if !self.can_insert_rows(sheet, row, row_count)? {
             return Err("Cannot insert rows because that would break an array formula".to_string());
         }
@@ -1101,7 +1123,7 @@ impl Model {
         if !(1..=LAST_ROW).contains(&row) {
             return Err(format!("Row number '{row}' is not valid."));
         }
-        if row + row_count - 1 > LAST_ROW {
+        if row_count > LAST_ROW - row + 1 {
             return Err("Cannot delete rows beyond the last row of the sheet".to_string());
         }
         if !self.can_delete_rows(sheet, row, row_count)? {
@@ -1678,14 +1700,10 @@ impl Model {
         if column_count <= 0 || delta == 0 {
             return Ok(());
         }
-        let target_first = column + delta;
-        let target_last = column + column_count - 1 + delta;
-        if !(1..=LAST_COLUMN).contains(&target_first) || !(1..=LAST_COLUMN).contains(&target_last) {
+        if !moved_span_in_grid(column, column_count, delta, LAST_COLUMN) {
             return Err("Target column out of boundaries".to_string());
         }
-        if !(1..=LAST_COLUMN).contains(&column)
-            || !(1..=LAST_COLUMN).contains(&(column + column_count - 1))
-        {
+        if !moved_span_in_grid(column, column_count, 0, LAST_COLUMN) {
             return Err("Initial column out of boundaries".to_string());
         }
         if !self.can_move_columns_action(sheet, column, column_count, delta)? {
@@ -1758,12 +1776,10 @@ impl Model {
         if row_count <= 0 || delta == 0 {
             return Ok(());
         }
-        let target_first = row + delta;
-        let target_last = row + row_count - 1 + delta;
-        if !(1..=LAST_ROW).contains(&target_first) || !(1..=LAST_ROW).contains(&target_last) {
+        if !moved_span_in_grid(row, row_count, delta, LAST_ROW) {
             return Err("Target row out of boundaries".to_string());
         }
-        if !(1..=LAST_ROW).contains(&row) || !(1..=LAST_ROW).contains(&(row + row_count - 1)) {
+        if !moved_span_in_grid(row, row_count, 0, LAST_ROW) {
             return Err("Initial row out of boundaries".to_string());
         }
         if !self.can_move_rows_action(sheet, row, row_count, delta)? {

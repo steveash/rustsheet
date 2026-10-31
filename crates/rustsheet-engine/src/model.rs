@@ -212,6 +212,16 @@ pub(crate) struct SharedFormulaLookup {
 /// The lookup for a list of shared formulas. If a formula is in the list twice
 /// the first one stays, as it would for someone looking through the list from
 /// the start.
+/// Refuses an area that is empty or leaves the grid: the clears walk `row..row + height`, which
+/// overflows for an area past the grid (T-2896: an external diff can carry any area).
+fn check_area_in_grid(area: &Area) -> Result<(), String> {
+    if crate::expressions::utils::is_valid_block(area.row, area.column, area.width, area.height) {
+        Ok(())
+    } else {
+        Err("The range is outside the sheet".to_string())
+    }
+}
+
 pub(crate) fn build_shared_formula_lookup(shared_formulas: &[String]) -> SharedFormulaLookup {
     let mut index = HashMap::with_capacity(shared_formulas.len());
     for (i, formula) in shared_formulas.iter().enumerate() {
@@ -2040,6 +2050,9 @@ impl Model {
         height: i32,
         value: &str,
     ) -> Result<(), String> {
+        if !crate::expressions::utils::is_valid_block(row, column, width, height) {
+            return Err("The array formula's range is outside the sheet".to_string());
+        }
         if self
             .workbook
             .worksheet(sheet)?
@@ -2514,6 +2527,7 @@ impl Model {
     /// # }
     /// ```
     pub fn range_clear_contents(&mut self, range: &Area) -> Result<(), String> {
+        check_area_in_grid(range)?;
         if !self.can_clear_range(range)? {
             return Err("Cannot clear the range because it contains array formulas".to_string());
         }
@@ -2624,6 +2638,7 @@ impl Model {
     /// # Ok(())
     /// # }
     pub fn range_clear_all(&mut self, area: &Area) -> Result<(), String> {
+        check_area_in_grid(area)?;
         if !self.can_clear_range(area)? {
             return Err("Cannot clear the range because it contains array formulas".to_string());
         }

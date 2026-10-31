@@ -3,7 +3,7 @@ id: T-2896
 title: "UserModel::apply_external_diffs refuses crafted diffs instead of panicking"
 milestone: M12
 lane: engine
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -25,9 +25,42 @@ load panics: flush a real send queue, change one index in the bytes, apply. The 
 (T-2897); this task hardens the Rust API, which the web UI layer still uses.
 
 ## Acceptance criteria
-- [ ] A crafted diff list with a dangling style index and one with a dangling sheet index each get `Err`, with no panic
+- [x] A crafted diff list with a dangling style index and one with a dangling sheet index each get `Err`, with no panic
       and the model unchanged; the existing diff tests still pass.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - A fuzz target for diffs (file one if this task finds more than the shapes above).
+
+## Outcome
+A temporary probe of 57 crafted single-diff lists showed two kinds of failure, so both are now handled:
+
+- **Diff data written into the sheet without a check.** Undo restores the cells, row and column records and sheets
+  that the diff carries, and `SetMergedCells` installs ranges. Each is now checked with T-2913's checks, which
+  `workbook_check.rs` exposes as `check_cell`, `check_row_record`, `check_style`, `check_merged_cells` and
+  `check_worksheet`. The check runs against the model as it is when the diff applies. Undo matrices are read with
+  `get`.
+- **`i32` overflow and unbounded loops.** These were in the structural actions (`insert_rows`, `delete_rows` and their
+  column versions, and `move_rows_action` and `move_columns_action`), in `set_user_array_formula`, in the range clears
+  and in `Worksheet::set_row_style`. Each one now returns `Err` for a count or area off the grid, and the new
+  `is_valid_block` in `expressions/utils` checks the area. These are public `Model` and `UserModel` methods, so a direct
+  call no longer panics either.
+
+**Atomicity.** A diff's validity depends on the diffs before it: the list can add the sheet a later diff edits, or
+create the style that a later undo restores. So `apply_external_diffs` clones the workbook, applies the list, and on any
+`Err` rebuilds the model from the clone with `Model::from_workbook_with_clock`. A refused list therefore leaves the
+workbook unchanged, including the diffs that applied before the refused one. The clone costs one pass over the workbook
+per call; a list that changes a cell already evaluates the whole workbook. This differs from the spec's "checked before
+the first applies", so SPEC-0026 decision 4 gained an "As built" note.
+
+**Tests.** `test/user_model/test_external_diffs_untrusted.rs`:
+- three real send queues with one index changed (style, sheet, formula);
+- a list that builds on itself and still applies;
+- 31 crafted diffs, each refused with the workbook unchanged, after which an edit, an insert, an undo and a reload all
+  work.
+
+**Follow-ups.**
+- T-3422: `range_clear_contents` still walks every cell of an in-grid area, so a whole-sheet area takes about 17 billion
+  steps.
+- T-3423: a fuzz target for diffs, since the probe found more shapes than the ones listed.
+

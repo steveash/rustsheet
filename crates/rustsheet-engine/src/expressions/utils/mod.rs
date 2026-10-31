@@ -72,6 +72,16 @@ pub fn is_valid_row(row: i32) -> bool {
     (1..=LAST_ROW).contains(&row)
 }
 
+/// Whether the block of `width` columns by `height` rows whose top left cell is (`row`, `column`)
+/// is at least one cell and lies within the grid, so `row + height` and `column + width` cannot
+/// overflow.
+pub fn is_valid_block(row: i32, column: i32, width: i32, height: i32) -> bool {
+    is_valid_row(row)
+        && is_valid_column_number(column)
+        && (1..=LAST_ROW - row + 1).contains(&height)
+        && (1..=LAST_COLUMN - column + 1).contains(&width)
+}
+
 fn is_valid_row_str(row: &str) -> bool {
     match row.parse::<i32>() {
         Ok(r) => is_valid_row(r),

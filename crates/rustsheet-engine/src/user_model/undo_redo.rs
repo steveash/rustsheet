@@ -3,8 +3,11 @@
 use crate::{
     cf_types::ConditionalFormatting,
     constants::COLUMN_WIDTH_FACTOR,
-    expressions::types::Area,
+    expressions::{types::Area, utils::is_valid_block},
     types::{Cell, Style},
+    workbook_check::{
+        check_cell, check_merged_cells, check_row_record, check_style, check_worksheet,
+    },
     UserModel,
 };
 
@@ -24,6 +27,9 @@ impl UserModel {
                     ..
                 } => {
                     needs_evaluation = true;
+                    if let Some(cell) = old_value.as_ref() {
+                        self.check_restored_cell(*sheet, *row, *column, cell)?;
+                    }
                     self.undo_set_cell_value(*sheet, *row, *column, old_value.as_ref().as_ref())?;
                 }
                 Diff::SetArrayValue {
@@ -36,6 +42,11 @@ impl UserModel {
                     old_values,
                 } => {
                     needs_evaluation = true;
+                    check_block(*row, *column, *width, *height)?;
+                    let restored = restored_cells(*row, *column, *width, *height, old_values);
+                    for &(r, c, cell) in &restored {
+                        self.check_restored_cell(*sheet, r, c, cell)?;
+                    }
                     // Clear all cells in the array formula range (anchor + spill cells).
                     let ws = self.model.workbook.worksheet_mut(*sheet)?;
                     for r in *row..*row + *height {
@@ -44,18 +55,12 @@ impl UserModel {
                         }
                     }
                     // Restore all cells that existed before the array formula was placed.
-                    for (ri, row_vals) in old_values.iter().enumerate() {
-                        for (ci, cell) in row_vals.iter().enumerate() {
-                            if let Some(cell) = cell {
-                                let r = *row + ri as i32;
-                                let c = *column + ci as i32;
-                                self.model.workbook.worksheet_mut(*sheet)?.update_cell(
-                                    r,
-                                    c,
-                                    cell.clone(),
-                                )?;
-                            }
-                        }
+                    for (r, c, cell) in restored {
+                        self.model.workbook.worksheet_mut(*sheet)?.update_cell(
+                            r,
+                            c,
+                            cell.clone(),
+                        )?;
                     }
                 }
                 Diff::SetColumnWidth {
@@ -95,17 +100,17 @@ impl UserModel {
                     old_value,
                 } => {
                     needs_evaluation = true;
-                    for r in *row..*row + *height {
-                        for c in *column..*column + *width {
-                            let row_index = (r - *row) as usize;
-                            let col_index = (c - *column) as usize;
-                            if let Some(value) = old_value[row_index][col_index].clone() {
-                                self.model
-                                    .workbook
-                                    .worksheet_mut(*sheet)?
-                                    .update_cell(r, c, value)?;
-                            }
-                        }
+                    check_block(*row, *column, *width, *height)?;
+                    let restored = restored_cells(*row, *column, *width, *height, old_value);
+                    for &(r, c, cell) in &restored {
+                        self.check_restored_cell(*sheet, r, c, cell)?;
+                    }
+                    for (r, c, cell) in restored {
+                        self.model.workbook.worksheet_mut(*sheet)?.update_cell(
+                            r,
+                            c,
+                            cell.clone(),
+                        )?;
                     }
                 }
                 Diff::RangeClearAll {
@@ -118,19 +123,28 @@ impl UserModel {
                     old_style,
                 } => {
                     needs_evaluation = true;
-                    for r in *row..*row + *height {
-                        for c in *column..*column + *width {
-                            let row_index = (r - *row) as usize;
-                            let col_index = (c - *column) as usize;
-                            if let Some(value) = old_value[row_index][col_index].clone() {
-                                self.model
-                                    .workbook
-                                    .worksheet_mut(*sheet)?
-                                    .update_cell(r, c, value)?;
-                                let style = &old_style[row_index][col_index];
-                                self.model.set_cell_style(*sheet, r, c, style)?;
-                            }
-                        }
+                    check_block(*row, *column, *width, *height)?;
+                    let restored = restored_cells(*row, *column, *width, *height, old_value);
+                    let mut styled = Vec::with_capacity(restored.len());
+                    for (r, c, cell) in restored {
+                        self.check_restored_cell(*sheet, r, c, cell)?;
+                        // The offsets are not negative: `restored_cells` starts at the corner.
+                        let style = usize::try_from(r - *row)
+                            .ok()
+                            .zip(usize::try_from(c - *column).ok())
+                            .and_then(|(i, j)| old_style.get(i)?.get(j))
+                            .ok_or_else(|| {
+                                format!("cell R{r}C{c} is restored without its style")
+                            })?;
+                        styled.push((r, c, cell, style));
+                    }
+                    for (r, c, cell, style) in styled {
+                        self.model.workbook.worksheet_mut(*sheet)?.update_cell(
+                            r,
+                            c,
+                            cell.clone(),
+                        )?;
+                        self.model.set_cell_style(*sheet, r, c, style)?;
                     }
                 }
                 Diff::SetCellStyle {
@@ -191,11 +205,20 @@ impl UserModel {
                     old_data,
                 } => {
                     needs_evaluation = true;
-                    self.model
-                        .insert_rows(*sheet, *row, old_data.len() as i32)?;
+                    let count = restored_count(old_data.len())?;
+                    check_block(*row, 1, 1, count)?;
+                    let styles = self.model.workbook.styles.cell_xfs.len();
+                    for (r, row_data) in (*row..*row + count).zip(old_data) {
+                        if let Some(record) = &row_data.row {
+                            check_row_record(record, styles)?;
+                        }
+                        for (c, cell) in &row_data.data {
+                            self.check_restored_cell(*sheet, r, *c, cell)?;
+                        }
+                    }
+                    self.model.insert_rows(*sheet, *row, count)?;
                     let worksheet = self.model.workbook.worksheet_mut(*sheet)?;
-                    for (i, row_data) in old_data.iter().enumerate() {
-                        let r = *row + i as i32;
+                    for (r, row_data) in (*row..*row + count).zip(old_data) {
                         if let Some(row_style) = row_data.row.clone() {
                             worksheet.rows.push(row_style);
                         }
@@ -217,11 +240,20 @@ impl UserModel {
                     old_data,
                 } => {
                     needs_evaluation = true;
-                    self.model
-                        .insert_columns(*sheet, *column, old_data.len() as i32)?;
+                    let count = restored_count(old_data.len())?;
+                    check_block(1, *column, count, 1)?;
+                    let styles = self.model.workbook.styles.cell_xfs.len();
+                    for (c, col_data) in (*column..*column + count).zip(old_data) {
+                        if let Some(style) = col_data.column.as_ref().and_then(|col| col.style) {
+                            check_style(style, styles).map_err(|e| format!("column {c} {e}"))?;
+                        }
+                        for (r, cell) in &col_data.data {
+                            self.check_restored_cell(*sheet, *r, c, cell)?;
+                        }
+                    }
+                    self.model.insert_columns(*sheet, *column, count)?;
                     let worksheet = self.model.workbook.worksheet_mut(*sheet)?;
-                    for (i, col_data) in old_data.iter().enumerate() {
-                        let c = *column + i as i32;
+                    for (c, col_data) in (*column..*column + count).zip(old_data) {
                         for (row, cell) in &col_data.data {
                             worksheet.update_cell(*row, c, cell.clone())?;
                         }
@@ -364,6 +396,9 @@ impl UserModel {
                     rewritten,
                 } => {
                     needs_evaluation = true;
+                    let styles = self.model.workbook.styles.cell_xfs.len();
+                    check_worksheet(old_data, styles)
+                        .map_err(|e| format!("Sheet '{}': {e}", old_data.name))?;
                     let (name, id) = (old_data.name.clone(), old_data.sheet_id);
                     self.model.insert_sheet(&name, *sheet, Some(id))?;
                     let worksheet = self.model.workbook.worksheet_mut(*sheet)?;
@@ -434,12 +469,9 @@ impl UserModel {
                     column_count,
                     delta,
                 } => {
-                    self.model.move_columns_action(
-                        *sheet,
-                        *column + *delta,
-                        *column_count,
-                        -*delta,
-                    )?;
+                    let (moved, back) = moved_back(*column, *delta)?;
+                    self.model
+                        .move_columns_action(*sheet, moved, *column_count, back)?;
                     needs_evaluation = true;
                 }
                 Diff::MoveRows {
@@ -448,8 +480,9 @@ impl UserModel {
                     row_count,
                     delta,
                 } => {
+                    let (moved, back) = moved_back(*row, *delta)?;
                     self.model
-                        .move_rows_action(*sheet, *row + *delta, *row_count, -*delta)?;
+                        .move_rows_action(*sheet, moved, *row_count, back)?;
                     needs_evaluation = true;
                 }
                 Diff::SetLocale {
@@ -580,6 +613,7 @@ impl UserModel {
                 } => {
                     // Merged cells block spilling, so a change can affect results
                     needs_evaluation = true;
+                    check_merged_cells(old_value)?;
                     self.model.workbook.worksheet_mut(*sheet)?.merged_cells = old_value.clone();
                 }
             }
@@ -1038,6 +1072,7 @@ impl UserModel {
                 } => {
                     // Merged cells block spilling, so a change can affect results
                     needs_evaluation = true;
+                    check_merged_cells(new_value)?;
                     self.model.workbook.worksheet_mut(*sheet)?.merged_cells = new_value.clone();
                 }
             }
@@ -1048,4 +1083,70 @@ impl UserModel {
         }
         Ok(())
     }
+}
+
+// A diff list from a peer (`UserModel::apply_external_diffs`) is untrusted (CLAUDE.md
+// directive 5, T-2896): the undo of an edit writes the cells, records and ranges it carries
+// straight into the sheet, so each is checked against the model as it is when the diff applies,
+// with the checks a loaded workbook passes (`workbook_check`).
+impl UserModel {
+    /// Checks `cell` before an undo restores it at (`row`, `column`) of `sheet`.
+    fn check_restored_cell(
+        &self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        cell: &Cell,
+    ) -> Result<(), String> {
+        let formulas = self.model.workbook.worksheet(sheet)?.shared_formulas.len();
+        check_cell(
+            row,
+            column,
+            cell,
+            self.model.workbook.styles.cell_xfs.len(),
+            formulas,
+        )
+    }
+}
+
+/// Refuses a block a diff names that leaves the grid, before `row + height` is computed.
+fn check_block(row: i32, column: i32, width: i32, height: i32) -> Result<(), String> {
+    if is_valid_block(row, column, width, height) {
+        Ok(())
+    } else {
+        Err(format!("The range at R{row}C{column} is outside the sheet"))
+    }
+}
+
+/// The number of rows or columns an undo restores, refused when it is no `i32`.
+fn restored_count(len: usize) -> Result<i32, String> {
+    i32::try_from(len).map_err(|_| "Too many rows or columns to restore".to_string())
+}
+
+/// The cells of `old_values`, a `height` by `width` block from (`row`, `column`) that `check_block`
+/// accepted, with their places; the cells past the block are not restored.
+fn restored_cells(
+    row: i32,
+    column: i32,
+    width: i32,
+    height: i32,
+    old_values: &[Vec<Option<Cell>>],
+) -> Vec<(i32, i32, &Cell)> {
+    (row..row + height)
+        .zip(old_values)
+        .flat_map(|(r, cells)| {
+            (column..column + width)
+                .zip(cells)
+                .filter_map(move |(c, cell)| cell.as_ref().map(|cell| (r, c, cell)))
+        })
+        .collect()
+}
+
+/// Where the undo of a move by `delta` starts and how far it moves back, refused when either
+/// is no `i32`.
+fn moved_back(first: i32, delta: i32) -> Result<(i32, i32), String> {
+    first
+        .checked_add(delta)
+        .zip(delta.checked_neg())
+        .ok_or_else(|| "The move is outside the sheet".to_string())
 }

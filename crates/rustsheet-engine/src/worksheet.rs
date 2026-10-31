@@ -106,6 +106,10 @@ impl Worksheet {
     }
 
     pub fn set_row_style(&mut self, row: i32, style_index: i32) -> Result<(), String> {
+        // A record off the grid would overflow when rows are inserted (T-2896).
+        if !is_valid_row(row) {
+            return Err(format!("Row number '{row}' is not valid."));
+        }
         // FIXME: This is a HACK
         let custom_format = style_index != 0;
         for r in self.rows.iter_mut() {
