@@ -7,21 +7,23 @@ case's oracle sidecar: for every scored cell (a key of the oracle sidecar or of 
 the cell's result only while `f` still matches the cell's formula, and R1(c) counts a visibly-off
 numeric cell inside Gate A's envelope through it.
 
-A cell gets no math value when an argument reads a formula cell (its value is the engine's or
-Excel's, not a literal), unless that cell's whole formula is arithmetic over number literals
-(`=(83892212*2^-28+4861903*2^-54)`, an exact-input cell), which is read with Excel's operator model
-as the fit lab reads it; or when an argument is anything the fit lab's sweep reader leaves unparsed, is text, empty or
-a range, or does not fit the parameter: an integer parameter given a non-integer (the definitions
-take integers; whether Excel truncates is per function, so the cell is skipped rather than
-guessed), or a call with a different number of arguments than the definition (an omitted or extra
-optional argument). Points the generator would drop (no convergence at dps 60 against 80, over the
-time limit, a value beyond the double range) are skipped too. xlsx cases are skipped: tools never
-parse xlsx values.
+A candidate cell gets no math value when:
+- an argument reads a formula cell (its value is the engine's or Excel's, not a literal), unless that
+  cell's whole formula is arithmetic over number literals (`=(83892212*2^-28+4861903*2^-54)`, an
+  exact-input cell), which is read with Excel's operator model as the fit lab reads it;
+- an argument is anything else the fit lab's sweep reader leaves unparsed (a nested call), text,
+  empty or a range;
+- an integer parameter is given a non-integer (the definitions take integers; whether Excel
+  truncates is per function, so the cell is skipped rather than guessed), a logical parameter is
+  given a number (likewise unevidenced per function), or the call has a
+  different number of arguments than the definition (an omitted or extra optional argument);
+- the generator would drop the point (dps 60 and 80 disagree, over the time limit, or a value beyond
+  the double range).
+xlsx cases are skipped: tools never parse xlsx values.
 """
 
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 from collections.abc import Iterable
@@ -32,13 +34,12 @@ from typing import Any
 
 from rustsheet_tools.accuracy import defs, literal
 from rustsheet_tools.accuracy.model import REGISTRY, Definition, NoValueError
-from rustsheet_tools.accuracy.tables import DPS, VERSION, DroppedError, compute
+from rustsheet_tools.accuracy.tables import MATH_FORMAT, DroppedError, compute, math_sidecar_bytes
 from rustsheet_tools.fitlab.sweep import UnparsedError, Workbook, arithmetic, parse_arg, split_args
 from rustsheet_tools.snapshot import suite_cases
 
 _ = defs  # importing the package registers the definitions
 
-MATH_FORMAT = "rustsheet-math/v1"
 _CALL = re.compile(r"=\s*([A-Za-z][A-Za-z0-9._]*)\((.*)\)\s*", re.DOTALL)
 
 
@@ -75,7 +76,8 @@ class CaseMath:
 
 
 def math_path(oracle_sidecar: Path) -> Path:
-    """`foo.oracle.json` → `foo.math.json`, beside it (the runner's `math_sidecar`)."""
+    """`foo.oracle.json` → `foo.math.json`, beside it. Keep in step with the runner's
+    `accuracy::math::math_sidecar` (crates/rustsheet-eval/src/accuracy/math.rs), which reads it."""
     name = oracle_sidecar.name.removesuffix(".oracle.json")
     return oracle_sidecar.with_name(f"{name}.math.json")
 
@@ -111,7 +113,9 @@ def fit_args(definition: Definition, values: list[Any]) -> list[literal.Arg] | s
         if isinstance(value, list) or value is None or isinstance(value, str):
             return "non-numeric argument"
         if param.kind == "bool":
-            out.append(bool(value))  # Excel reads a number as a logical: nonzero is TRUE
+            if not isinstance(value, bool):  # no evidence yet of how each function reads a number here
+                return "number for a logical"
+            out.append(value)
         elif isinstance(value, bool):
             return "logical for a number"
         elif param.kind == "int":
@@ -173,17 +177,8 @@ def case_math(case_id: str, case_path: Path, sidecar: Path) -> CaseMath:
 
 def sidecar_bytes(case_path: Path, math: CaseMath) -> bytes:
     """The math sidecar for `math`, keyed to the case file's hash."""
-    data = {
-        "format": MATH_FORMAT,
-        "source": {
-            "generator": "rustsheet-accuracy",
-            "version": VERSION,
-            "dps": DPS[-1],
-            "input_sha256": hashlib.sha256(case_path.read_bytes()).hexdigest(),
-        },
-        "sheets": {s: dict(sorted(c.items())) for s, c in sorted(math.cells.items())},
-    }
-    return (json.dumps(data, indent=1, ensure_ascii=False) + "\n").encode("utf-8")
+    sheets = {s: dict(sorted(c.items())) for s, c in sorted(math.cells.items())}
+    return math_sidecar_bytes(case_path.read_bytes(), sheets)
 
 
 def _job(entry: dict[str, Any]) -> tuple[dict[str, Any], CaseMath]:

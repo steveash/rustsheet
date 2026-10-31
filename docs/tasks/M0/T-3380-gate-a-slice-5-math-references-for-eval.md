@@ -68,4 +68,16 @@ Done (2026-10-31).
   - 69,529 have no math value: their functions have no definition yet (most are BETA.DIST, F.DIST and other
     densities), which T-3358 and its slices add.
 - **Eval delta:** none. probes-numeric is not gated, the runner only adds a field, and no verdict changes.
+- **Review round 1:**
+  - The math-sidecar envelope is now built in one place, `tables.math_sidecar_bytes` (with `dump_json` and
+    `MATH_FORMAT`), for both table batches and eval cases.
+  - A number given for a logical parameter is now skipped, as a non-integer df is, because there is no evidence of how
+    each function reads it.
+  - The sidecars are byte-identical after both changes.
+- **Notes for later slices:**
+  - A math domain error says only that the arguments are outside the math's domain, not which Excel error code is
+    right. `T.DIST(2,0,FALSE)` is `#DIV/0!` in Excel, so a report that compares errors must not read a domain error as
+    a specific code.
+  - RATE's `nper` is an integer parameter, so a fractional nper is skipped. Excel's handling of it is not recorded in
+    docs/excel-semantics (T-3358 if it widens RATE).
 

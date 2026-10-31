@@ -39,7 +39,7 @@ def test_single_call_takes_one_whole_call_only() -> None:
 
 def test_fit_args_follows_the_parameters() -> None:
     assert fit_args(T_DIST, [1.5, 3.0, True]) == [1.5, 3, True]
-    assert fit_args(T_DIST, [1.5, 3.0, 1.0]) == [1.5, 3, True]  # a number as a logical
+    assert fit_args(T_DIST, [1.5, 3.0, 1.0]) == "number for a logical"
     assert fit_args(T_DIST, [1.5, 2.5, True]) == "non-integer for an integer parameter"
     assert fit_args(T_DIST, [1.5, 3.0]) == "argument count"
     assert fit_args(T_DIST, ["1", 3.0, True]) == "non-numeric argument"
