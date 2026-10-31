@@ -3,7 +3,7 @@ id: T-2512
 title: "Crack the open incomplete-beta pieces: general-b bgrat, algdiv for b0 >= 8, bfrac noise, the b < 1 bpser ceiling (T-2464 follow-up)"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
