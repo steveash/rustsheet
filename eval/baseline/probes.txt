@@ -4295,7 +4295,6 @@ F	probes/t3304-collation-multi-letter-accents.case.json	Rank!H14
 F	probes/t3304-collation-multi-letter-accents.case.json	Rank!H19
 F	probes/t3304-collation-multi-letter-accents.case.json	Rank!H20
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A1
-F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A10
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A12
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A13
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A14
@@ -4314,7 +4313,6 @@ F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A26
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A27
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A28
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A29
-F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A3
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A30
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A31
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A32
@@ -4330,10 +4328,6 @@ F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A42
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A43
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A44
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A5
-F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A6
-F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A7
-F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A8
-F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A9
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F10
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F2
 F	probes/table-edits/table-convert-names-this-row.case.json	T!A2
