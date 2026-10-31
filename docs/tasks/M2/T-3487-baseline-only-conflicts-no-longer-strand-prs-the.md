@@ -1,5 +1,5 @@
 ---
-id: T-3479
+id: T-3487
 title: "Baseline-only conflicts no longer strand PRs the merge train ejects"
 milestone: M2
 lane: harness

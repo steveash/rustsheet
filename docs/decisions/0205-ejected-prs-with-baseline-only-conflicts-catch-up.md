@@ -1,6 +1,6 @@
 # 0205 — Ejected PRs with baseline-only conflicts catch up without a new review
 
-- **Status:** accepted (2026-10-31, T-3479; the owner asked for the fix)
+- **Status:** accepted (2026-10-31, T-3487; the owner asked for the fix)
 - **Context:**
   - The merge train ejects a PR whose merge with `main` conflicts ("conflict with main"). Only
     the PR's worker could clear it: merge `main` in, re-mark, and run the reviewers again,
