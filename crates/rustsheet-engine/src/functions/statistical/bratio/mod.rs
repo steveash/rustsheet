@@ -288,7 +288,7 @@ fn ported_tails_with(a: f64, b: f64, x: f64, y: f64, half_bgrat: bool) -> Option
 /// 1E-6 off there, and grossly wrong past n = 6E5). BETA.DIST, F and T stay on today's kernel at
 /// these points: with basym under BETA.DIST, BETA.INV of Excel's `BETA.DIST(0.555,1000,1000,TRUE,
 /// 0.1,1)` comes back 0.5550000000000002 instead of 0.555 whichever kernel its search crosses
-/// (ironcalc-calc BETADIST_BETAINV.xlsx H29), so moving them waits on BETA.INV's own crossing
+/// (ironcalc-calc `BETADIST_BETAINV.xlsx` H29), so moving them waits on BETA.INV's own crossing
 /// (TODO(T-3443)).
 pub(crate) fn basym_tails(x: f64, y: f64, a: f64, b: f64) -> Option<(f64, f64)> {
     let d = dispatch(a, b, x, y)?;

@@ -13,8 +13,8 @@ use super::ln_beta::bcorr;
 /// The most coefficient pairs basym's series takes (TOMS's `num = 20`).
 const NUM: usize = 20;
 
-/// 2/sqrt(pi), TOMS's `e0`.
-const E0: f64 = 1.128_379_167_095_51;
+/// 2/sqrt(pi) as TOMS's `e0` writes it, 1.12837916709551 (short of `FRAC_2_SQRT_PI`'s digits).
+const E0: f64 = f64::from_bits(0x3FF2_0DD7_5042_9B61);
 
 /// 2^(-3/2), TOMS's `e1`.
 const E1: f64 = 0.353_553_390_593_274;
