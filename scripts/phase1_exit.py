@@ -133,7 +133,8 @@ def rate_line(report: dict[str, Any]) -> Line:
     if gate is not None and not isinstance(gate, dict):
         return Line("function rate", NOT_MEASURED, "Gate B unreadable: v15_checkpoint.gate_b is not an object")
     if isinstance(gate, dict) and gate.get("measured") is not True:
-        missing = ", ".join(str(s) for s in gate.get("missing") or []) or "unknown suites"
+        listed = gate.get("missing")
+        missing = ", ".join(str(s) for s in listed) if isinstance(listed, list) and listed else "unknown suites"
         return Line("function rate", NOT_MEASURED, f"Gate B not measured: the run did not score {missing}")
     met = (gate.get("met") if isinstance(gate, dict) else v15.get("phase1_met")) is True
     met = met and not stale and not unchecked

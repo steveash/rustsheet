@@ -147,8 +147,11 @@ def r1c_left_out(report: dict[str, Any]) -> dict[str, str]:
 def gate_b_suites(report: dict[str, Any]) -> set[str]:
     """The suites Gate B counted in this run (decision 0188 R1(b), `v15_checkpoint.gate_b.suites`)."""
     gate = (report.get("v15_checkpoint") or {}).get("gate_b")
-    # A malformed `gate_b` names no suite: Gate B's reading then applies nowhere, the stricter way.
-    return {str(s) for s in gate.get("suites") or []} if isinstance(gate, dict) else set()
+    # A malformed `gate_b` names no suite. The listing then drops every left-out class everywhere
+    # (the looser reading for owners), but the exit cannot pass on it: `phase1_exit.py` reads a
+    # malformed `gate_b` as `n/a`, which fails the Phase 1 exit.
+    suites = gate.get("suites") if isinstance(gate, dict) else None
+    return {str(s) for s in suites} if isinstance(suites, list) else set()
 
 
 def counted(name: str, left_out: dict[str, str], gate_b: bool) -> bool:
