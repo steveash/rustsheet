@@ -78,7 +78,7 @@ MATCH, XMATCH, COUNTIF, 36 chosen pairs and 13 single cells; 643 checked cells).
   are letters.
 - Prevowels are not reordered: Thai `เ`/`แ` sort before the consonants, Lao `ເ` after them.
 - Other-script digits are a tiebreak on their ASCII digit.
-- Symbols above `€` sort among the punctuation.
+- No probed symbol above `€` sorts after the letters; the arrows and dingbats sort among the punctuation.
 - In passing: VALUE reads Arabic-Indic, Devanagari and Thai digits as numbers.
 Eval delta: +1 case; 115 new known failures, 0 regressions. Owners: T-3324 (101 collation cells) and
 T-3325 (14 digit cells).
