@@ -3,7 +3,7 @@ id: T-3410
 title: "Name IRR.xlsx Two Values!C4 and COMPLEXs.xlsx K25 as M14 desktop-only cells (engine = web, the cache differs)"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -45,20 +45,37 @@ staying known failures.
 - The other COMPLEXs desktop/web cells (IMARGUMENT H2, H3, H10) are within 4 ulp, not visibly off: out of scope.
 
 ## Acceptance criteria
-- [ ] A probe case under eval/suites/probes/cases/ (excel-graph filled, milestone tag M9) holds at least `IRR({-4,4})`,
+- [x] A probe case under eval/suites/probes/cases/ (excel-graph filled, milestone tag M9) holds at least `IRR({-4,4})`,
       `IRR({-4,4},0.1)`, `IRR({4,-4})`, `IRR({-1,1})`, `IRR({-2,1,1})` (an exact zero root of three flows) and
       `IMAGINARY(IMCOS("4+3i"))`, `IMREAL(IMCOS("4+3i"))`; its Context lists the inputs. If the web value of either
       ironcalc cell is no longer the engine's, stop and re-file the cell as an engine task instead.
-- [ ] A decision record (`make new-decision`) names IRR.xlsx Two Values!C4 and COMPLEXs.xlsx Sheet1!K25 as M14
+- [x] A decision record (`make new-decision`) names IRR.xlsx Two Values!C4 and COMPLEXs.xlsx Sheet1!K25 as M14
       desktop-only evidence, citing the probe cells and oracle-calibration.md; the same PR adds their lines to
       eval/milestones/exit-exceptions.tsv (milestone M9) and eval/milestones/phase1-exceptions.tsv, owner T-1075.
-- [ ] T-1075 gains an item for each (the question to ask desktop Excel), and financial.md gets an entry for IRR at an
+- [x] T-1075 gains an item for each (the question to ask desktop Excel), and financial.md gets an entry for IRR at an
       exact zero root (web 0, the cache 2^-52; the plain-double secant reproduces the cache) citing the probe cells.
-- [ ] The M9 row of report.md no longer counts the two cells as ironcalc-calc visibly off; both stay in
+- [x] The M9 row of report.md no longer counts the two cells as ironcalc-calc visibly off; both stay in
       eval/baseline/ironcalc-calc.txt (no baseline edit).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing IRR's final quotient or IMCOS: the engine follows the web (decision 0039 item 4) unless the probe shows the
   web gives the cached value.
 - IRR.xlsx General!L17 and M17 (T-2928, T-2131).
+
+## Outcome
+- probes/t3410-irr-zero-root-imcos (M9, excel-graph 2026-10-31, 13 cells, engine 13/13): the web gives 0 for
+  `IRR(A4:B4)` on {-4,4} (C4), `IRR({-4,4})` with and without a guess (C1, C2, C8) and `IRR({-1,1})` (C5);
+  -2^-52 for `IRR({4,-4})` (C3); -2.886801908630332E-12 for `IRR({-2,1,1})` (C6); and 7.58155274274654 for
+  `IMAGINARY(IMCOS("4+3i"))` (C9, C12). Both ironcalc cells' web values are still the engine's, so no engine
+  task was needed.
+- Decision 0196 names IRR.xlsx Two Values!C4 and COMPLEXs.xlsx Sheet1!K25 as M14 desktop-only evidence. Their lines
+  are in eval/milestones/exit-exceptions.tsv (M9) and phase1-exceptions.tsv, owner T-1075, which gains items 23
+  and 24. The committed-file tests of both readers list the two new cells.
+- financial.md has a new entry, "IRR at an exact zero root". A scratch run of the documented secant in plain doubles
+  gives exactly the cached 2^-52 on {-4,4}, and the web's values on {4,-4} and {-2,1,1}. engineering.md's K25 note
+  cites the probe.
+- Eval delta: probes +1 case (13 passing cells, recorded in eval/baseline/probes.txt). Known failures are unchanged
+  (both cells stay in ironcalc-calc.txt), with 0 regressions. The M9 ironcalc-calc row "failing excl. exceptions"
+  is now 386 of 396. The milestone row's visibly-off count is 80 against an allowance of 36; it was 82 at triage.
+
