@@ -451,7 +451,7 @@ class Repo:
         return self.git("rev-parse", "--verify", f"{ref}^{{commit}}").strip()
 
     def fetch_base(self) -> None:
-        """Fetches `main`, first turning a shallow clone into a full one (T-3455, decision 0201).
+        """Fetches `main`, first turning a shallow clone into a full one (T-3499, decision 0201).
 
         `ci_changes.classify_range` counts every diff in a shallow clone as code, because the
         merge base cannot be trusted there. Cloud sessions clone shallow, so without this step

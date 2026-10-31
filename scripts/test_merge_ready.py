@@ -396,7 +396,7 @@ class Verify(PrFixture):
 
     def test_a_shallow_clone_is_deepened_before_the_docs_only_check(self) -> None:
         # Cloud sessions clone shallow, where `classify_range` counts every diff as code: before
-        # T-3455 each docs-only PR with skipped heavy jobs was ejected as CI red (#2574, #2577).
+        # T-3499 each docs-only PR with skipped heavy jobs was ejected as CI red (#2574, #2577).
         self.checks = green_checks(**dict.fromkeys(merge_ready.HEAVY_JOBS, "skipped"))
         base = Path(self.tmp.name)
         origin = (base / "origin.git").as_uri()

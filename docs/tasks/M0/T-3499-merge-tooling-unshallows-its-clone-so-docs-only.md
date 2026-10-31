@@ -1,5 +1,5 @@
 ---
-id: T-3455
+id: T-3499
 title: "Merge tooling unshallows its clone so docs-only PRs are not ejected as CI red"
 milestone: M0
 lane: harness
@@ -53,3 +53,6 @@ full clone also passes, because `--unshallow` is not repeated. The 102 tests in
 `classify_range` on #2574 and #2577 gave code while the clone was shallow and docs-only after
 unshallowing it. The docs-only PRs ejected since 10:20 UTC (#2574, #2577 and the other task-only
 PRs without the label) need `make mark-ready` again.
+
+Renumbered from T-3455 to T-3499 (decision 0121 (2)): the train ejected #2590 for an id collision
+with the merged T-3455 (#2589, "The live merge train checks a stale GitHub test merge locally").

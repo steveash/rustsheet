@@ -1,6 +1,6 @@
 # 0201 — Merge tooling deepens a shallow clone before its docs-only check
 
-- **Status:** accepted (2026-10-31, T-3455). It amends nothing; it makes 0147's merge-base
+- **Status:** accepted (2026-10-31, T-3499). It amends nothing; it makes 0147's merge-base
   classification work in the clones that the merge tooling actually runs in.
 - **Context:** The merge tooling's "green" rule (`merge_ready.ci_state`) accepts skipped heavy jobs
   only on a docs-only diff. It decides this with `ci_changes.classify_range`, which answers "code"
