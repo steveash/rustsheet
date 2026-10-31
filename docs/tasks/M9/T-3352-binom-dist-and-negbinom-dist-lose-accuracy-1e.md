@@ -24,6 +24,15 @@ the math, instead of 1e-9 to 1e-8 off today.
   form or the incomplete beta with an accurate prefactor, not a sum or a log-gamma difference that cancels.
 - Related: T-2146 (BINOM last digits, ironcalc-calc), T-3366 (BINOM.DIST generalizes poorly to fresh points). This task
   is the gross loss at a large n; it does not chase last digits.
+- Probe (written before the fix, filled by excel-graph): probes/t3352-binom-negbinom-large-n, 208 cells, Calc!A1:A208.
+  A1:A124 are BINOM.DIST(k,n,p,FALSE|TRUE) at n 1E4, 1E5, 6E5, 1E6, 1E7, 1E8, 1E9 with p 0.3, 0.5, 0.001 and k =
+  floor(mean), floor(mean + 2 sd), floor(mean - 3 sd) (k >= 1); A125:A208 are NEGBINOM.DIST(f,r,p,FALSE|TRUE) at failures
+  1E3 to 1E9 with (r, p) = (f, 0.5), (f/4, 0.2), (10, 10/(f + 10)) and f at the mean and at mean + 2 sd. n 1E4 and 1E5
+  and failures 1E3 to 1E4 are the side below the failing region.
+- Before the fix: 42 of 208 within 15 digits of Excel, 124 within 1E-9 of the 50-digit math; the cdf near the mean was
+  grossly wrong from n = 6E5 (A108 `BINOM.DIST(300000000,1000000000,0.3,TRUE)` -2.82, Excel 0.5000156001249112; A198
+  `NEGBINOM.DIST(1000000000,1000000000,0.5,TRUE)` -5.65, Excel 0.5000089206205796) and the pmf 1E-11 (n = 1E4) to 9E-6
+  (failures 1E9) off.
 
 ## Acceptance criteria
 - [ ] BINOM.DIST at n from 6e5 to 1e9 and NEGBINOM.DIST with failures from 1e5 to 1e9, pmf and cdf, match Excel's
