@@ -584,7 +584,8 @@ class Stage:
         if local.returncode == 1:
             raise Stop(f"#{member.pr} does not merge cleanly onto main {expected[:12]}")
         if local.returncode != 0:
-            raise Stop(f"git merge-tree failed for #{member.pr} (exit {local.returncode}): {local.stderr.strip()[:200]}")
+            raise Stop(f"git merge-tree failed for #{member.pr} (exit {local.returncode}): "
+                       f"{local.stderr.strip()[:200]}")
         if local.stdout.split()[0] != want:
             raise Stop(f"main differs from the tested train at #{member.pr}: its merge onto "
                        f"{expected[:12]} has another tree", p0=True, pr=member.pr)
