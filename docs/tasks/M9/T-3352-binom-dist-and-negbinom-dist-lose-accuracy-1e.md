@@ -3,7 +3,7 @@ id: T-3352
 title: "BINOM.DIST and NEGBINOM.DIST lose accuracy (1E-9 to 1E-8) at a very large n or number of failures"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P0
 size: M
 tier: opus
@@ -62,3 +62,36 @@ the math, instead of 1e-9 to 1e-8 off today.
 Decision 0083 and 0114 (`accuracy`): done when every cell this task owns is within half a unit of the 15th significant
 digit of Excel's value with the right type and error, and the fresh sweep shows the Gate A envelope (decision 0188 R2).
 Bit-level residue moves to a follow-up with `defer: phase-1b`.
+
+## Outcome
+- Cause: past the double-double walk's 2^10 terms, both functions fell back to statrs. Its cdf near the mean was
+  grossly wrong from n = 6E5 (`BINOM.DIST(300000000,1000000000,0.3,TRUE)` -2.82, Excel 0.5000156001249112), because
+  bratio's basym branch was not ported. Its pmf (a log-gamma difference) was 1E-11 off at n = 1E4 and up to 9E-6 off at
+  1E9.
+- Fix: a TOMS 708 `basym` port (`bratio/basym.rs`, in doubles), reached through `bratio::basym_tails`, which only the
+  binomial family calls. Past the walk, the pmf uses Excel's Loader kernel (`binom.rs` `loader_pmf`; for NEGBINOM.DIST,
+  p times the shifted kernel). BETA.DIST, F and T stay on today's kernel: with basym under BETA.DIST, ironcalc-calc
+  BETADIST_BETAINV.xlsx G29 passes but H29 (BETA.INV round trip) regresses by an ulp. Two search changes were tried; both
+  regressed other gated cells (T-3443).
+- Probe probes/t3352-binom-negbinom-large-n (208 cells, excel-graph):
+  - Within 15 digits of Excel: 42 before, 133 after.
+  - Within 1E-9 of the 50-digit math: 124 before, 208 after. Worst is 5.2E-12, the same as Excel's own worst.
+  - The 75 cells not within 15 digits are at most 4.4E-12 from Excel. They come from the Loader kernel's unidentified
+    arithmetic at a rounded n·p (T-2586, T-2146) and from bfrac or walk tails. Ours is nearer the math on 52 of them.
+  - Recorded as new-coverage known failures (148 cells not bit-exact).
+- Gate A envelope on the fresh sweep probes-numeric/t3352-binom-negbinom-sweep (300 points, seed 3352, scored against
+  mpmath at 50 digits by a scratch script; SPEC-0029's generator is T-3357). Per stratum: within 15 digits of Excel /
+  within 1E-9 of the math / outside both / error against number:
+  - typical: 91 / 120 / 0 / 0 of 120
+  - large n near the mean: 42 / 90 / 0 / 0 of 90
+  - tails 3 to 8 sd: 14 / 60 / 0 / 0 of 60
+  - log-uniform: 24 / 30 / 0 / 0 of 30
+  No Excel value is more than 1E-9 off the math.
+  The misses have both sides about 1E-14 to 3E-11 off the math. Ours is nearer on most (Phase 1b evidence, decision 0188
+  R1(c)).
+- Eval delta: gated suites have 0 fixed and 0 regressions; probes gains 1 case (208 cells, 60 bit-exact). In ungated
+  probes-numeric, m9-legacy-binomdist gains 2 bit-exact cells and t2513-r3-binom-pmf-n gains 14; no case lost any.
+- Follow-ups:
+  - T-3443: basym for BETA.DIST, F and T, with BETA.INV's crossing.
+  - T-3444: BINOM.DIST.RANGE and BINOM.INV at a large n are still statrs; `BINOM.DIST.RANGE(1E9,0.3,3E8,3E8+100)` is
+    1.47.
