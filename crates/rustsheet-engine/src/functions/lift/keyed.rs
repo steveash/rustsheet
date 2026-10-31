@@ -1,6 +1,7 @@
 //! A keyed lookup's lift continued from its head to its tail (SPEC-0020 Amendment 2, section 2;
-//! T-3221, T-3223): VLOOKUP, HLOOKUP, MATCH, XLOOKUP or XMATCH over a whole-column key, read as a head and a tail by
-//! `tailed_array.rs`, charges and checks what its one lift over the whole key would.
+//! T-3221, T-3223): VLOOKUP, HLOOKUP, MATCH, XLOOKUP or XMATCH over a whole-column key, read as a
+//! head and a tail by `tailed_array.rs`, charges and checks what its one lift over the whole key
+//! would.
 
 use super::driver::{broadcast_shape, Kernel, LiftCost, LiftOptions, LiftedArg};
 use crate::calc_result::CalcResult;
@@ -39,13 +40,14 @@ pub(super) fn tally_visits(visits: u64) {
 
 impl Model {
     /// [`Self::lift_values`] for the keyed lookup whose arguments are `call` (VLOOKUP, HLOOKUP,
-    /// MATCH, XLOOKUP, XMATCH): while its tailed argument's head or tail is evaluated, the two lifts charge, check
-    /// and compute what its one lift over the logical key would (SPEC-0020 Amendment 2, section
-    /// 2). The head lifts as usual and records its up-front visits, its last element's slots and
-    /// that element's result. The tail's one element, when its slots equal the recorded ones,
-    /// is the recorded result, as [`EqualRuns`](super::driver::Reuse::EqualRuns) reuses it, and
-    /// nothing is charged; otherwise the per-call cap is checked on the head's visits and the
-    /// tail's together, and only the tail's are charged. Any other shape lifts as usual.
+    /// MATCH, XLOOKUP, XMATCH): while its tailed argument's head or tail is evaluated, the two
+    /// lifts charge, check and compute what its one lift over the logical key would (SPEC-0020
+    /// Amendment 2, section 2). The head lifts as usual and records its up-front visits, its last
+    /// element's slots and that element's result. The tail's one element, when its slots equal the
+    /// recorded ones, is the recorded result, as [`EqualRuns`](super::driver::Reuse::EqualRuns)
+    /// reuses it, and nothing is charged; otherwise the per-call cap is checked on the head's
+    /// visits and the tail's together, and only the tail's are charged. Any other shape lifts as
+    /// usual.
     pub(crate) fn lift_values_keyed(
         &mut self,
         call: &[Node],

@@ -187,18 +187,19 @@ Status: VERIFIED (web)
 
 ## A lookup over a whole-column key read as a head and a tail: the limits it meets
 Rule: Excel has no per-call cap, work budget or text budget, so the lookup's values are the same whichever limit
-applies. Inside an aggregate, SUMPRODUCT, SMALL, LARGE, UNIQUE or LOOKUP-vector argument, the engine reads
-VLOOKUP, HLOOKUP, MATCH, XLOOKUP or XMATCH over a whole-column (or past-the-used-area) key as its used head plus one
-tail element standing for every row below (SPEC-0020 Amendment 2, T-3221, T-3223). For example `SUM(--(VLOOKUP(A:A,T,2,FALSE)=x))` and
-`COUNT(MATCH(A:A,T,0))` take this reading. The head's lift and the tail's are charged and checked as the one lift
-over 1,048,576 keys: the same kernel runs, the same visits against `MAX_LIFTED_CELL_VISITS` and the same work units.
-An XLOOKUP or XMATCH tail continues its head's regex state (its compiled patterns, its compile and search budgets),
-and each finish charges only the regex work units not yet charged, so the two charge and run out as the one call does.
+applies. Inside an aggregate, SUMPRODUCT, SMALL, LARGE, UNIQUE or LOOKUP-vector argument, the engine reads VLOOKUP,
+HLOOKUP, MATCH, XLOOKUP or XMATCH over a whole-column (or past-the-used-area) key as its used head plus one tail
+element standing for every row below (SPEC-0020 Amendment 2, T-3221, T-3223). For example
+`SUM(--(VLOOKUP(A:A,T,2,FALSE)=x))` and `COUNT(MATCH(A:A,T,0))` take this reading. The head's lift and the tail's
+are charged and checked as the one lift over 1,048,576 keys: the same kernel runs, the same visits against
+`MAX_LIFTED_CELL_VISITS` and the same work units. An XLOOKUP or XMATCH tail continues its head's regex state (its
+compiled patterns, its compile and search budgets), and each finish charges only the regex work units not yet
+charged, so the two charge and run out as the one call does.
 Three outcomes can still differ from that one lift, each only for a formula already at an engine limit:
-- When the head or the tail lift fails the per-call cap, or an XLOOKUP or XMATCH regex budget (`#ERROR!`), the argument is read again the ordinary way.
-  That gives today's `#ERROR!`, unless the reread's charges take the formula past its work budget
-  (`MAX_FORMULA_WORK`). Then it is `#VALUE!` ("Formula needs too much work"). This is the same class as the
-  stale-head reread of SPEC-0020.
+- When the head or the tail lift fails the per-call cap, or an XLOOKUP or XMATCH regex budget (`#ERROR!`), the
+  argument is read again the ordinary way. That gives today's `#ERROR!`, unless the reread's charges take the
+  formula past its work budget (`MAX_FORMULA_WORK`). Then it is `#VALUE!` ("Formula needs too much work"). This is
+  the same class as the stale-head reread of SPEC-0020.
 - The array the lookup builds is charged to the cell budget for the head and the one tail element, not for the
   1,048,576 rows. A formula that the whole column's array would take past that budget is not taken past it.
 - The 64 MiB broadcast text budget counts the texts of the head (and of the tail element when it is computed), not

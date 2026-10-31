@@ -33,7 +33,8 @@ use crate::calc_result::CalcResult;
 use crate::expressions::parser::{ArrayNode, Node};
 use crate::expressions::token::{Error, OpUnary};
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::{Function, LookupRegexes};
+use crate::functions::text::LookupRegexes;
+use crate::functions::Function;
 use crate::model::Model;
 use crate::reference_operators::RefArg;
 

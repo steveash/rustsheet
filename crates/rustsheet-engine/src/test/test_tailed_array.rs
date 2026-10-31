@@ -4,7 +4,7 @@
 //! T-0469) give what the 1,048,576-row arrays give.
 
 use crate::functions::lift::LIFT_TALLY;
-use crate::functions::REGEX_UNITS;
+use crate::functions::text::REGEX_UNITS;
 use crate::tailed_array::{TAILED_OFF, TAILED_WALKS};
 use crate::test::util::new_empty_model;
 use crate::Model;
