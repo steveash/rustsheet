@@ -30,6 +30,11 @@ compare equal to one another.
     XMATCH(..,0) and VLOOKUP(..,FALSE)?
   - Which BMP characters are weightless: probe one representative of every block the sweep shows "other", then
     sweep the block edges.
+  - Why MATCH equals the small Greek Extended dasia+oxia letters with the capital psili+varia ones (U+1F05 with
+    U+1F0A, U+1F15 with U+1F1A, and U+1F25, U+1F35, U+1F45, U+1F65, U+1F85, U+1F95, U+1FA5; Calc!C25:C27), and the
+    other unexplained hits lookup.md lists (C35 position 12, C36 position 2, C34 positions 31-32, C8 position 11, C33
+    position 32).
+  - Whether Cherokee small letters U+AB7B-U+ABBA are weightless like U+AB70-U+AB7A and U+ABBB-U+ABBF.
   - The per-character fold of the "other" pairs in Greek (ϐ ϑ ϕ ϖ ϰ ϱ ϵ µ ι ͅ), Cyrillic Ext-C (U+1C80-U+1C88),
     Latin (ı ſ ǅ ǈ ǋ ǲ ẛ), and Georgian Mtavruli (U+1C90-U+1CBF).
 - lookup.md "MATCH, VLOOKUP and HLOOKUP exact-match keys fold case one character to one" holds the current text.

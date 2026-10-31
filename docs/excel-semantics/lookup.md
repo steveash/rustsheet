@@ -646,19 +646,28 @@ nothing and 158 hit another position. By block:
   old per-character case table"): MATCH folds Glagolitic, Coptic and Greek Extended, which UPPER and LOWER leave alone.
 - stay apart (each matches only itself): the supplementary-plane scripts (Deseret, Osage, Vithkuqi, Old Hungarian,
   Garay, Warang Citi, Medefaidrin, U+16EA0-U+16ED3, Adlam; Calc!C38:D38 from position 24 and C39:D48 are all 0),
-  Cherokee U+13AB-U+13EA with U+AB7B-U+ABBA, and as T-3133 found ı/I and ſ/S; the Greek symbol variants ϐ ϑ ϕ ϖ ϰ ϱ,
+  and as T-3133 found ı/I and ſ/S. Cherokee U+13AB-U+13EA and U+AB7B-U+ABBA do not equal each other (rows 18-19, C and D
+  0); the sweep never looks a character up against itself, so whether U+AB7B-U+ABBA are weightless (below) is open; the Greek symbol variants ϐ ϑ ϕ ϖ ϰ ϱ,
   µ, U+0345, the Cyrillic Ext-C variants U+1C80-U+1C87 and ẛ do not equal their capital (C is 0; in D the capital finds
   its ordinary small letter's row), while ϵ and U+1FBE equal Ε and Ι, and the titlecase digraphs ǅ ǈ ǋ ǲ equal their
   capital and small forms (Calc!C5:D6).
 - equal one another: characters that look missing from Excel's comparison table (BMP letters Unicode added after about
   5.0, e.g. U+0524-U+052F, U+10C7, U+10CD, U+10FD-U+10FF, U+13F5-U+13FD, U+1C88-U+1C8A, Georgian Mtavruli
-  U+1C90-U+1CBF, U+2D27, U+2D2D, much of Latin Extended-D from U+A792, U+AB53, U+AB70-U+AB7A) match the first such
-  character of the other column, whatever it is: Calc!C17 position 22 (U+AB70 finds U+10C7), C15 position 4 (U+0529
-  finds U+0524), C37 and D37 (positions 1 and 5). They behave like characters with no sort weight. Which characters
-  are weightless, and whether they also equal empty text, is unprobed (T-3444).
+  U+1C90-U+1CBF, U+2D27, U+2D2D, much of Latin Extended-D from U+A792, U+AB53, U+AB70-U+AB7A, U+ABBB-U+ABBF) match the
+  first such character of the other column, whatever it is: Calc!C17 position 22 (U+AB70 finds U+10C7), C15 position 4
+  (U+0529 finds U+0524), C20 positions 1-5 (U+ABBB-U+ABBF find U+13F5), C37 and D37 (positions 1 and 5).
+  UNVERIFIED: that they are characters with no sort weight, which characters are weightless, and whether they also
+  equal empty text (T-3444).
+- observed, not yet explained (T-3444): in Greek Extended MATCH equals each small dasia+oxia letter with the capital
+  psili+varia letter: U+1F05 ἅ finds U+1F0A Ἂ (Calc!C25 position 29 reads 26), U+1F15 finds U+1F1A, U+1F25 U+1F2A,
+  U+1F35 U+1F3A, U+1F45 U+1F4A, U+1F65 U+1F6A, U+1F85 U+1F8A, U+1F95 U+1F9A, U+1FA5 U+1FAA (C26 positions 5, 11, 19,
+  27; C27 positions 5, 13, 21, 29). These are Unicode 1.1 letters, so the late-addition reading above does not
+  obviously cover them. Also the small U+A73B finds U+A738 (C35 position 12), U+A767 finds U+A764 (C36 position 2),
+  U+A699 and U+A69B find U+A660 (C34 positions 31-32), U+03F3 ϳ finds U+0376 Ͷ (C8 position 11) and U+1C88 finds
+  U+2CF2 (C33 position 32).
 The engine folds every pair through Rust's `to_lowercase`, so the cells of C and D listed in eval/baseline/probes.txt
 fail (T-3445).
-Status: VERIFIED
+Status: VERIFIED (excel-graph). Implemented for T-3133's list only; the T-3298 blocks are not (T-3445).
 Implemented in: `fold_case` (functions/util/collation.rs), through `folded_units` (`ExactKey`, the indexed exact
 search) and `WildcardPattern` (the linear one); `decompose` (collation.rs) for XMATCH's `İ`
 

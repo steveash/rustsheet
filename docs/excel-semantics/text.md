@@ -967,10 +967,11 @@ Rule: UPPER and LOWER map a character only if Excel's own case table has it, and
 Unicode (it reads like the Windows NT-era tables): many letters whose case pair Unicode added later are left unchanged.
 Swept over all 3037 code points whose Rust std (rustc 1.97) `to_lowercase` or `to_uppercase` differs from itself, BMP and
 supplementary. Where Excel maps a character it gives Rust's one-to-one mapping, except as listed here.
-- UPPER leaves these unchanged (code point ranges of the swept characters, so a range holds only the swept ones in it):
-  00B5, 017F, 019B, 023F-0240, 0250-0252, 025C, 0261, 0264-0266, 026A-026C, 0271, 0282, 0287, 029D-029E, 0345,
+- UPPER leaves these unchanged (code point ranges of the swept characters: every swept character inside a range is unchanged, and the characters
+  in a range that were not swept are not claimed):
+  00B5, 017F, 019B, 023F-0240, 0250-0252, 025C, 0261, 0264-0266, 026A, 026C, 0271, 0282, 0287, 029D-029E, 0345,
   0371-0373, 0377, 037B-037D, 03D7-03D9, 03F2-03F5, 03F8, 03FB, 0515-052F, 10D0-10FA, 10FD-10FF, 13F8-13FD, 1C80-1C8A,
-  1D79, 1D8E, 1E9B, 1EFB-1F07, 1F10-1F15, 1F20-1F27, 1F30-1F37, 1F40-1F45, 1F51-1F57, 1F60-1F67, 1F70-1F7D, 1FB0-1FB1,
+  1D79, 1D8E, 1E9B, 1EFB-1F07, 1F10-1F15, 1F20-1F27, 1F30-1F37, 1F40-1F45, 1F51, 1F53, 1F55, 1F57, 1F60-1F67, 1F70-1F7D, 1FB0-1FB1,
   1FBE, 1FD0-1FD1, 1FE0-1FE1, 1FE5, 2170-217F, 2C30-2C5F, 2C73, 2C81-2CE3, 2CEC-2CEE, 2CF3, 2D00-2D27, 2D2D,
   A641-A66D, A681-A69B, A723-A72F, A733-A76F, A77A-A77C, A77F-A787, A78C, A791-A794, A797-A7A9, A7B5-A7C3, A7C8-A7CA,
   A7CD-A7DB, A7F6, AB53, AB70-ABBF, and every supplementary-plane letter swept (Deseret 10428-1044F, Osage 104D8-104FB,
