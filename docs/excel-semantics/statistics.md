@@ -2510,7 +2510,7 @@ that kernel is off by the same order but not by the same amount (up to 4.4E-12 f
   NEGBINOM.DIST, p times the kernel shifted by one, q^f at r = 1). Probe: 133 of 208 within 15 digits of Excel, all 208
   within 1E-9 of the math (worst 5.2E-12, Excel's own worst 5.2E-12). The 75 others are the Loader kernel's unidentified
   arithmetic and basym, bfrac or walk tails, at most 4.4E-12 from Excel (T-3447). A48 `BINOM.DIST(600,600000,0.001,TRUE)`
-was within 15 digits on statrs and is 1 digit short on basym.
+  was within 15 digits on statrs and is 1 digit short on basym.
 - Only the binomial family takes basym so far. With it under BETA.DIST too, `BETA.DIST(0.555,1000,1000,TRUE,0.1,1)`
   becomes Excel's 0.6903551301985376 bit for bit, but BETA.INV of that value is then 0.5550000000000002, not Excel's
   0.555 (ironcalc-calc BETADIST_BETAINV.xlsx G29, H29), whether its search crosses Cephes' fraction or basym (T-3443).

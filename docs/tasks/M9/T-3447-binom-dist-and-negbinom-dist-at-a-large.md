@@ -28,7 +28,7 @@ Every cell of probes/t3352-binom-negbinom-large-n is within 15 significant digit
   (statrs) and is not on basym: ours 0.5108555229841736, Excel 0.5108555229841731.
 - Cells (probes/t3352-binom-negbinom-large-n, Calc!):
   - pmf (57): A5, A9, A11, A19, A21, A25, A27, A31, A33, A37, A39, A45, A47, A51, A55, A57, A61, A63, A69, A73, A75, A79, A81, A83, A85, A87, A91, A93, A97, A99, A103, A105, A109, A111, A115, A117, A121, A123, A127, A135, A137, A139, A151, A153, A155, A163, A167, A171, A173, A175, A179, A187, A191, A197, A199, A201, A203
-- cdf (18): A6, A8, A12, A28, A34, A48, A52, A70, A88, A126, A128, A130, A138, A140, A142, A146, A174, A206
+  - cdf (18): A6, A8, A12, A28, A34, A48, A52, A70, A88, A126, A128, A130, A138, A140, A142, A146, A174, A206
 - Score against Excel first; the math reference (T-3352's scratch scorer: 50-digit continued fraction and log-gamma)
   only tells which side is noisier. Any fit follows decision 0188 R4.
 
