@@ -3,7 +3,7 @@ id: T-3298
 title: "Sweep UPPER, LOWER and the exact-match case fold over every cased character, to find where Excel's case tables differ from the Rust std Unicode mappings the engine uses"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
