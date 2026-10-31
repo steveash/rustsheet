@@ -3,7 +3,7 @@ id: T-3372
 title: "Move FILTER out of spill_functions.rs into its own module (spill_functions.rs is at 952 of its 1,000 lines)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
