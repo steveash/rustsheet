@@ -171,3 +171,53 @@ T_INV = register(
         sources=(DF_SOURCE, TINY_P_SOURCE, "Abramowitz and Stegun 26.7.1"),
     )
 )
+
+
+TWO_TAILED_SOURCE = "statistics.md#student-t-sweep-df-truncation-df-limits-tinv2t-above-1-t-1043"
+
+
+def two_tailed_quantile(p: mpmath.mpf, df: mpmath.mpf) -> mpmath.mpf:
+    """T.INV.2T(p, df) = T.INV(1 - p/2, df): the positive x with P(|T| > x) = p for p ≤ 1, and the
+    negative quantile T.INV(1 - p/2) for p in (1, 2) (statistics.md, "T.INV.2T does not reject p in
+    (1,2)"). p/2 and 1 - p/2 are exact at the working precision, so no tail is lost."""
+    half = p / 2
+    return -lower_quantile(half, df) if p <= 1 else lower_quantile(1 - half, df)
+
+
+def _t_inv_2t(args: Sequence[MathArg]) -> mpmath.mpf:
+    p, df = args
+    assert not isinstance(p, bool) and not isinstance(df, bool)
+    return two_tailed_quantile(p, df)
+
+
+def _two_tailed(function: str) -> Definition:
+    return Definition(
+        function=function,
+        params=(
+            Param(
+                "probability",
+                "real",
+                Interval(0, 2),
+                typical=(0.001, 1.999),
+                extreme=(1e-300, 1e-15),
+                edges=(1.0,),
+                source=TWO_TAILED_SOURCE,
+            ),
+            Param(
+                "deg_freedom",
+                "int",
+                Interval(1, DF_CUT, lo_open=False, hi_open=False),
+                typical=(1, 30),
+                extreme=(1e3, DF_CUT),
+                source=DF_SOURCE,
+            ),
+        ),
+        value=_t_inv_2t,
+        sources=(TWO_TAILED_SOURCE, DF_SOURCE, TINY_P_SOURCE, "Abramowitz and Stegun 26.7.1"),
+    )
+
+
+T_INV_2T = register(_two_tailed("T.INV.2T"))
+# TINV is T.INV.2T's legacy name with the same rules (statistics.md, "T.INV.2T(p,1) and TINV(p,1)
+# are t2(p) for p up to 1, and -t2(2-p) for p in (1, 2)").
+TINV = register(_two_tailed("TINV"))

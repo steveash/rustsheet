@@ -5393,15 +5393,26 @@ Tasks: T-1811
 Rule: at p < 1e-150, T.INV(p, df), F.INV(p, d1, d2) and BETA.INV(p, alpha, beta) in their left tail and
 CHISQ.INV.RT(p, df) in its right tail (a tiny p is the upper tail there) can be far from the true quantile in Excel;
 where Excel's relative error exceeds G = 1e-4 RustSheet returns the 50-digit math value (decision 0188 R3).
-Region: the parameter bounds (df; d1 and d2; alpha and beta) are not yet evidenced. The assessment's "df ≥ 1e6" does
-not hold for its own example (df 3937), so each function's exact region is fixed from T-3358's R3-marked points and
-amended here. Until then this entry covers only the cited point, `T.INV(1.87E-297,3937)`.
-Evidence: the owner's 2026-10-31 assessment (decision 0188), stratified points scored against Excel for the web and
-50-digit mpmath: `T.INV(1.87E-297,3937)` is -156.96 in Excel and -40.26 in truth. Committed evidence points are owed by
-T-3358 (Gate A, R3-marked).
+Region (T-3358, from its R3-marked points; still bounded by p < 1e-150):
+- T.INV: p from 2.4E-259 to 9.0E-222 at df 10068 to 274584, plus the assessment's `T.INV(1.87E-297,3937)`.
+- F.INV: p from 2.2E-308 to 9.0E-245 at (d1, d2) of (17, 50), (39, 3), (1024, 56), (107702, 58) and (215432724, 6).
+
+The assessment's "df ≥ 1e6" does not hold for these points. Tables for BETA.INV and CHISQ.INV.RT are T-3529's, and
+their regions are fixed there. Points of these functions outside the region are not covered, even where Excel is off by
+more than G: T.INV, T.INV.2T, TINV and F.INV at p from 1.2E-69 to 1.4E-143 (accuracy/T.INV/s1 A91, A96; T.INV.2T/s1
+A98, A103; TINV/s1 A102; F.INV/s1 A164, A169) need an owner ruling, and T-3386 has the
+two-tailed cases. The engine is within ε of the math on all of them, so they pass Gate A through its math side.
+Evidence: R3-marked points of the Gate A tables (eval/accuracy/math-over-excel.tsv), excel-graph and 50-digit mpmath:
+- T.INV: accuracy/T.INV/s1 A89, A93 and A95. For example, `T.INV(1.68092983773194E-249,10068)` is -77.496 in Excel and
+  -34.691 in truth.
+- F.INV: accuracy/F.INV/s1 A112, A126, A146, A160 and A171. For example, `F.INV(5.17400512983499E-289,215432724,6)` is
+  2.93E-10 in Excel and 0.00444 in truth, and `F.INV(2.22507385850721E-308,39,3)` is 2.06E-36 in Excel and 1.18E-17
+  in truth.
+
+The owner's 2026-10-31 assessment (decision 0188) gives `T.INV(1.87E-297,3937)` as -156.96 in Excel and -40.26 in
+truth.
 Status: MATH-OVER-EXCEL (decision 0188)
-Ours: the assessment reports the engine already returns the true value at the cited point; that, too, is evidence
-T-3358 owes as committed points. Such cells stay F lines of eval/baseline and count as passing in Gate B and the R1(c)
+Ours: the engine returns the math within ε at every marked point (Gate A's R3 check). Such cells stay F lines of eval/baseline and count as passing in Gate B and the R1(c)
 rows once T-3359 lands. The math path keeps directive 5's caps.
 Tasks: T-3358, T-3359, T-3363
 
@@ -5442,3 +5453,22 @@ Ours: within 1.01e-13 of the math throughout the Rule's region in both cases (wo
 reaches 1.43e-10 (C168, `F.DIST.RT(1.09080885395379,8,5567623)`), still inside Gate A; cells beyond half a unit of
 Excel's 15th digit are Phase 1b residue (decision 0188 R5).
 Tasks: T-3354, T-3479
+
+## T.DIST's density is #NUM! at a huge x, and T.INV.2T and TINV at p = 2.2E-308 (T-3358)
+Rule:
+- `T.DIST(x,df,FALSE)` is `#NUM!` in Excel at a huge x where the true density underflows to 0. The observed cells are x
+  from 1.0E+236 to 1.4E+307 at df 2 to 824733515. The engine returns 0.
+- `T.INV.2T(2.22507385850721E-308,df)` and `TINV(2.22507385850721E-308,df)` are `#NUM!` at df 8, 9, 12 and 14, although
+  the quantile is a finite double (about 3.2E+22 to 6.9E+38). T.INV accepts p down to 1E-300 (T-1531).
+- `F.INV(0,d1,d2)` is 0, the lower end of the support.
+
+The x where T.DIST's density turns `#NUM!` and the p below which the two-tailed quantile does are not yet probed.
+Evidence: Gate A tables, excel-graph:
+- accuracy/T.DIST/s1 A85, A95, A105 and A110;
+- accuracy/T.INV.2T/s1 A68 and A78, and accuracy/TINV/s1 A68 and A78;
+- the first fill of accuracy/F.INV/s1 (`F.INV(0,38,10)`, `F.INV(0,59,38)`).
+Status: VERIFIED (excel-graph) for the cited cells; the cut points are UNVERIFIED.
+Ours: T.DIST returns 0 and T.INV.2T and TINV return the quantile. These are Gate A known failures owned by T-3533 and
+T-3386.
+Tasks: T-3533, T-3386, T-3358
+
