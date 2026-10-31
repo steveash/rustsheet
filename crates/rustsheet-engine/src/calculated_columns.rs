@@ -46,6 +46,21 @@ fn constant_header(value: &str) -> String {
     value.strip_prefix('\'').unwrap_or(value).to_string()
 }
 
+/// The A1 range of a table of [`Bounds`] `b` grown by `growth`.
+///
+/// # Errors
+/// When the grown range has no column name (beyond the last column).
+fn grown_reference(b: &Bounds, growth: TableGrowth) -> Result<String, String> {
+    let (right, bottom) = match growth {
+        TableGrowth::Right => (b.right + 1, b.bottom),
+        TableGrowth::Down => (b.right, b.bottom + 1),
+    };
+    let (first, last) = number_to_column(b.left)
+        .zip(number_to_column(right))
+        .ok_or_else(|| format!("No column {right}"))?;
+    Ok(format!("{first}{}:{last}{bottom}", b.top))
+}
+
 /// The table column a typed formula fills as a calculated column ([`Model::calculated_column`]).
 #[derive(Debug, Clone, PartialEq)]
 pub struct CalculatedColumn {
@@ -153,6 +168,16 @@ impl Model {
             .filter(|&r| (r == b.top && table.header_row_count > 0) || fills && r <= b.data.1)
             .map(|r| (r, column))
             .collect();
+        // Typed beside a data row, the formula parses inside the table it grows, so an unqualified
+        // `[@Col]` names that table (probes/t3003-unqualified-structured-d2, rule 7f). Beside the
+        // header or totals row it parses outside, as before (unprobed).
+        let grown = fills
+            .then(|| grown_reference(&b, growth).ok())
+            .flatten()
+            .map(|reference| Table {
+                reference,
+                ..table.clone()
+            });
         let expansion = TableExpansion {
             table: table.clone(),
             growth,
@@ -161,7 +186,14 @@ impl Model {
             header,
             header_text: (header && !formula).then(|| constant_header(value)),
         };
-        Ok((!formula || self.parses_as_typed(sheet, row, column, value)).then_some(expansion))
+        if !formula {
+            return Ok(Some(expansion));
+        }
+        let parses = match grown {
+            Some(grown) => self.parses_inside(grown, sheet, row, column, value),
+            None => self.parses_as_typed(sheet, row, column, value),
+        };
+        Ok(parses.then_some(expansion))
     }
 
     /// Whether `value`, a formula, parses as typed into (`sheet`, `row`, `column`): no parse
@@ -174,6 +206,26 @@ impl Model {
         let parsed = self.parse_cell_formula(sheet, row, column, formula);
         self.parser.set_typed(false);
         matches!(parsed, Ok(node) if !matches!(node, Node::ParseErrorKind { .. }))
+    }
+
+    /// [`Model::parses_as_typed`] with `grown` standing in for the table of its name for this one
+    /// parse: the parser's table list is put back after it, so nothing changes.
+    fn parses_inside(
+        &mut self,
+        grown: Table,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        value: &str,
+    ) -> bool {
+        let name = grown.name.clone();
+        let before = self.parser.replace_table(grown);
+        let parses = self.parses_as_typed(sheet, row, column, value);
+        match before {
+            Some(table) => self.parser.replace_table(table),
+            None => self.parser.remove_table(&name),
+        };
+        parses
     }
 
     /// Grows the table of `expansion` (on `sheet`). A [`TableGrowth::Down`] expansion only moves
@@ -191,23 +243,17 @@ impl Model {
         let Some(b) = bounds(&expansion.table) else {
             return Ok(());
         };
-        let (right, bottom) = match expansion.growth {
-            TableGrowth::Right => (b.right + 1, b.bottom),
-            TableGrowth::Down => (b.right, b.bottom + 1),
-        };
-        let (first, last) = number_to_column(b.left)
-            .zip(number_to_column(right))
-            .ok_or_else(|| format!("No column {right}"))?;
+        let reference = grown_reference(&b, expansion.growth)?;
         let name = expansion.table.name.clone();
         let Some(table) = self.workbook.tables.get_mut(&name) else {
             return Ok(());
         };
-        table.reference = format!("{first}{}:{last}{bottom}", b.top);
+        table.reference = reference;
         if expansion.growth == TableGrowth::Down {
             self.reset_tables();
             return Ok(());
         }
-        let column = right;
+        let column = b.right + 1;
         let typed_name = match &expansion.header_text {
             Some(text) => Some(text.as_str()),
             None => expansion.header.then_some("0"),

@@ -91,8 +91,10 @@ in the order above, digits, letters; an accented Latin-1 letter weighs as its ba
 acute < grave < circumflex < diaeresis < tilde < ring, then stroke (`ø`); T-3114 below extends this
 order. (3) Hyphens and apostrophes as (position, weight), a later position first, apostrophe before
 hyphen. `þ`, `ð`, `œ` and the Latin-1 symbols were placed later (T-1590, T-1595, T-1662, T-1669,
-below), and the Latin Extended-A, Greek and Cyrillic letters by T-3114 (next section). Every other
-character (CJK, other scripts, other symbols) keeps code-point order after the letters, UNVERIFIED.
+below), and the Latin Extended-A, Greek and Cyrillic letters by T-3114 (next section); full-width and
+half-width forms and kana are probed by T-3275 (below; not yet implemented, T-3321). Every other
+character (CJK ideograph order, other scripts, other symbols; T-3276) keeps code-point order after the
+letters, UNVERIFIED.
 
 ### Letters beyond Latin-1 and combining marks (T-3114)
 Evidence: probes/t3114-collation-beyond-latin1 (excel-graph, 2026-10-29), 282 strings ranked against
@@ -260,6 +262,64 @@ Microsoft's Windows sorting weight table (`Windows Server 2022 Sorting Weight Ta
   total order); where Excel's sorts and lookups differ is in the "Not a total order" bullet.
 Implemented (T-3154): `collation_tables.rs` (`MARK_WEIGHT` from the Windows table, `DECOMPOSED`
 extended to Latin Extended-B and Additional) and `collation.rs` (accent byte, variant pass).
+
+### Full-width and half-width forms, kana, voicing and the long-vowel mark (T-3275)
+Evidence: probes/t3275-collation-width-kana (137 strings in Data!A; Calc!A = count less, B = count equal,
+C = exact MATCH position, D = XMATCH position, E = COUNTIF `"="&x`, G1:G34 = `(x<y)+2*(x=y)+4*(x>y)` for
+chosen pairs) and probes/t3275-collation-width-kana-pairs (37 strings, every pair: Calc!<col j+1><row i> =
+the same code for x = Data!A<i>, y = Data!A<j>), excel-graph 2026-10-30. Below, "rank" cites case 1 Calc!A
+by Data row and a bare cell cites the pairs case. The engine fails 172 + 358 cells (T-3321).
+VERIFIED (cells cited):
+- **Width is a tiebreak, not a letter.** Full-width Latin letters, digits, punctuation and the
+  ideographic space U+3000 weigh as their ASCII forms: `"１a" < "1b"` (rank A37 < A38), `"Ａa" < "ab"`
+  (F4), `"！a" < "!b"` (AG31 = 4 read from the `!b` side), `"　a" < " b"` (AI33), `"＄a" < "$b"` (AK35).
+  Each sorts right after its ASCII form (`"0" < "０" < "1"`, `"!" < "！" < "#"`, `" " < "　" < "!"`; case 1
+  G6, G8, G9) and is never equal to it (`"Ａ"="A"` FALSE, G1). Case still folds: `"Ａ"="ａ"`, `"Ａb"="ａb"`
+  (case 1 Calc!B25, B31 = 2). Width is weighed after the accents: `"Ａ" < "á"` (case 1 G3), `"Ａa" < "aá"`
+  (D4), and left to right: `"AＢ" < "Ａb"` (H6). The full-width apostrophe U+FF07 and hyphen U+FF0D are
+  ignored like `'` and `-`, after them in the tiebreak: `"ab" < "a＇b" < "a-b" < "a－b" < "AＢ"` (ranks
+  A15, A62, A61, A60, A33 in that order; case 1 G10, G11; pairs G9), and `"'" < "＇" < "-" < "－"` alone.
+- **Kana**: hiragana, katakana and half-width katakana of one syllable share a letter; base order is
+  the syllabary, `あ < い < う < え < お < か < き < さ < た < な < は < ま < や < ら < わ < を < ん`
+  (katakana interleaved, not after the hiragana block: `"ア" < "い"`, case 1 G15; `"アあ" < "あい"`, G16).
+  Kana sort after Cyrillic (`"あ" > "я"`, G32) and the full-width Latin letters (`"ｱ" > "z"`, G31), before
+  the ideographs `一`, `中` (G33). Kana type is a late tiebreak, half-width < katakana < hiragana, left to
+  right: `"ｱ" < "ア" < "あ"` (G13, G14, G12), `"ｱあ" < "アあ" < "あア" < "ああ"` (ranks A95, A92, A91, A90).
+- **Small kana and voicing are tiebreaks.** `ぁ`/`あ`, `っ`/`つ` share a letter, small first
+  (`"ぁ" < "ｱ"`, rank A99 below A86; `"っあ" < "つあ" < "つい"`). Voicing is an accent: `"か" < "が"`,
+  `"は" < "ば" < "ぱ"`, and `"があ" < "かい"` (case 1 G21), `"ばあ" < "はい"`. Small-kana and the long-vowel
+  mark weigh **before** kana type (`"かぁ" < "カア" < "かあ" < "カー" < "かー" < "があ"`; U23, W20, V22,
+  Y21), voicing before both (it is the accent level).
+- **Combining and spacing voicing marks**: `"か"&UNICHAR(12441)` (U+3099) equals `"が"` and
+  `"は"&UNICHAR(12442)` equals `"ぱ"` (case 1 B96, B97 = 2; G24 = 2); COUNTIF counts both (E96, E106 = 2)
+  and XMATCH finds the decomposed spelling for `"が"` (D106 = 96), but exact MATCH does not (C106 = 106),
+  as T-3114 found for Latin marks. The half-width U+FF9E and the spacing U+309B also voice the
+  preceding character, as an accent and not an ignored mark: `"ｶﾞa" > "ｶá"` (Q15), `"か゛a" > "かá"`
+  (S17), even after a Latin letter: `"a゛b" > "Ａb"` (H19) and `> "a－b"` (J19). `"ｶﾞ"` sorts just
+  before `"ガ"` (half-width tiebreak) and is not equal to it (case 1 B98 = 1). A lone `"゛"` sorts among
+  the ignorable-only strings, after `"－"`, before `" "` (rank A118 = 5).
+- **Long-vowel and iteration marks after a kana or kanji repeat it.** `ー` after a kana is the
+  preceding vowel, sorting just after the written vowel: `"かあ" < "かー" < "かい"` (case 1 G26; ranks
+  A108, A120, A109) and `"きい" < "きー"` (ranks A126 = 100, A125 = 101), so the mark takes the vowel of
+  the kana before it (`あ` after `か`, `い` after `き`), not a fixed letter. `ゝ` repeats the
+  kana and `ゞ` repeats it voiced: `"かか" < "かゝ" < "かが" < "かゞ"` (ranks A131, A130, A133, A132;
+  AE29). `々` after `人` repeats it but sorts **before** the written repeat: `"人" < "人々" < "人人"`
+  (AB26, AC27), the opposite tiebreak to `ゝ`. Alone or first (`"ー"`, `"ゝ"`, `"ゞ"`, `"々"`, `"ーa"`),
+  they sort after the ideographs probed (`"ー" > "人人"`, AC25; `"ーa"`, AC37) and the four lone marks
+  are **equal** to each other (case 1 B119 = 4, COUNTIF E119 = 4; MATCH and XMATCH of each find `ー`,
+  C127:D129 = 119).
+- **`ー` after a Latin letter is not transitive.** `"aー"` is greater than `"aa"`, `"ab"`, `"AＢ"` and
+  `"a゛b"` (C8, F8, G8, T8) but less than `"Ａa"` and `"Ａb"` (E8, H8), although `"Ａa" < "ab"` (F4) and
+  `"AＢ" < "Ａb"` (H6). So Excel's `<` here is no sort key; no total order reproduces all cells, and an
+  implementation can only match the pairs (the pairs case holds 6 such cyclic triangles, all through `"aー"`). Exact MATCH of
+  `"aー"` finds `"aa"` (case 1 C136 = 13) while `=` says no string but itself is equal (B136 = 1) and
+  XMATCH finds itself (D136).
+UNVERIFIED: whether full-width punctuation other than `！＃＄％＆（，．／：＠＿＋＜＝＞` and digits other
+than the probed `０ １ ９` (not `２`-`８`) follow the same rule (only these were probed); the order of the kana-type, small-kana
+and long-vowel tiebreaks against the Latin width tiebreak (different scripts never tie on letters in
+these cells); where `ー` after a Latin letter weighs when compared with strings without full-width
+letters (it sorts above `"ab"`, below the kana: U8).
+
 ### Collation equality in lookups and criteria; unprobed characters (T-1590)
 Evidence: probes/text-collation-lookups (66 formula cells) and probes/text-collation-unprobed (90 strings ranked by
 `SUMPRODUCT(--(range<x))`), excel-graph 2026-10-15. Status: VERIFIED.
