@@ -10,38 +10,33 @@ use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::utils::{is_valid_column_number, is_valid_row};
 use crate::types::{Cell, Styles, Workbook, Worksheet};
 
-/// Checks every index of `workbook` that a later read trusts, in one pass linear in its size:
+/// Checks every index of `workbook` that a later read trusts unchecked, in one pass linear in its
+/// size. Each invariant names the read that panics without it:
 ///
-/// - there is at least one worksheet, and the selected sheet of every workbook view is one;
-/// - styles: `cell_xfs` is not empty (a new cell takes style 0); the font, fill and border ids
-///   of every `cell_xfs` and `cell_style_xfs` entry are in range, and their number format ids
-///   are not negative (`get_num_fmt` indexes the built-in formats by any id below their count);
-/// - worksheets: the storage of the cells (`SheetData::check_layout`); every cell's style, a
-///   shared string's index, a formula's index into the sheet's shared formulas; an array
-///   formula's spill range and a spill cell's anchor within the grid;
-/// - row records within the grid with a style in range; column records a range within the grid
-///   with a style in range; merged ranges at least one cell and within the grid; frozen rows and
-///   columns within the grid.
+/// - styles: `cell_xfs` is not empty (a new cell takes style 0, and `style_is_quote_prefix`
+///   indexes `cell_xfs` unchecked); the font, fill and border ids of every `cell_xfs` and
+///   `cell_style_xfs` entry are in range (`get_style`, `get_style_by_name` index them); number
+///   format ids are not negative (`get_num_fmt` indexes the built-in formats by any id below
+///   their count);
+/// - worksheets: the storage of the cells (`SheetData::check_layout`: reads index a chunk's rows
+///   by the row number); every cell's style (`style_is_quote_prefix`); a formula's index into the
+///   sheet's shared formulas (evaluation indexes the parsed formulas by it); an array formula's
+///   spill range and a spill cell's anchor within the grid (`anchor + height` and
+///   `anchor + width` are computed in `i32`, actions.rs);
+/// - row records within the grid with a style in range, and column records a range within the
+///   grid with a style in range (a row or column style becomes a new cell's style, and row and
+///   column inserts shift the records by `+ count` in `i32`); merged ranges at least one cell and
+///   within the grid (merged_cells.rs walks `row..row + height`).
 ///
-/// Indices read through a checked lookup that tolerates a dangling value (conditional format
-/// dxf ids, a named style's `xf_id`, a defined name's sheet id) are not checked, so a workbook
-/// that loads today keeps loading.
+/// Indices read through a checked lookup that tolerates a dangling value are not checked, so a
+/// workbook that loads today keeps loading: a shared-string index (it reads as empty text), a
+/// conditional format's dxf id, a named style's `xf_id`, a defined name's sheet id, the selected
+/// sheet of a view, the frozen panes, and a workbook with no sheets.
 pub(crate) fn check_indices(workbook: &Workbook) -> Result<(), String> {
-    let sheets = workbook.worksheets.len();
-    if sheets == 0 {
-        return Err("The workbook has no worksheets".to_string());
-    }
-    if workbook
-        .views
-        .values()
-        .any(|view| view.sheet as usize >= sheets)
-    {
-        return Err("A workbook view selects a sheet that does not exist".to_string());
-    }
     check_styles(&workbook.styles)?;
     let styles = workbook.styles.cell_xfs.len();
     for worksheet in &workbook.worksheets {
-        check_worksheet(worksheet, styles, workbook.shared_strings.len())
+        check_worksheet(worksheet, styles)
             .map_err(|e| format!("Sheet '{}': {e}", worksheet.name))?;
     }
     Ok(())
@@ -89,11 +84,7 @@ fn check_styles(styles: &Styles) -> Result<(), String> {
     Ok(())
 }
 
-fn check_worksheet(
-    worksheet: &Worksheet,
-    styles: usize,
-    shared_strings: usize,
-) -> Result<(), String> {
+fn check_worksheet(worksheet: &Worksheet, styles: usize) -> Result<(), String> {
     worksheet.sheet_data.check_layout()?;
     let formulas = worksheet.shared_formulas.len();
     for (row, column, cell) in worksheet.sheet_data.cells() {
@@ -101,15 +92,8 @@ fn check_worksheet(
             Cell::EmptyCell { s }
             | Cell::BooleanCell { s, .. }
             | Cell::NumberCell { s, .. }
-            | Cell::ErrorCell { s, .. } => s,
-            Cell::SharedString { si, s } => {
-                if !in_range(si, shared_strings) {
-                    return Err(format!(
-                        "cell R{row}C{column} points to shared string {si}, which does not exist"
-                    ));
-                }
-                s
-            }
+            | Cell::ErrorCell { s, .. }
+            | Cell::SharedString { s, .. } => s,
             Cell::CellFormula { f, s, .. } => {
                 if !in_range(f, formulas) {
                     return Err(format!(
@@ -187,11 +171,6 @@ fn check_worksheet(
                 merged.row, merged.column
             ));
         }
-    }
-    if !(0..=LAST_ROW).contains(&worksheet.frozen_rows)
-        || !(0..=LAST_COLUMN).contains(&worksheet.frozen_columns)
-    {
-        return Err("the frozen panes are outside the sheet".to_string());
     }
     Ok(())
 }

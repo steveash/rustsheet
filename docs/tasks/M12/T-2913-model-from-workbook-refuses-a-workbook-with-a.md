@@ -49,8 +49,10 @@ is rebuilt or parsed from the workbook, and `SheetData::check_layout` checks the
 invariants are listed in `check_indices`'s doc comment for T-2895's fuzz target. Unit tests:
 `test/test_workbook_check.rs` (T-2882's two reproductions, which panic at styles.rs:478 and
 evaluation.rs:833 without the check, and one test per invariant) and `sheet_data.rs`
-(`check_layout_*`). Indices read through a tolerant lookup (CF dxf ids, a named style's `xf_id`, a
-defined name's sheet id) are not checked, so workbooks that load today keep loading (SPEC-0026 decision 3 notes this). Decoded counts: the bitcode decoder
+(`check_layout_*`). Indices read through a tolerant lookup (shared-string indices, CF dxf ids, a named style's
+`xf_id`, a defined name's sheet id, a view's selected sheet, frozen panes, a sheetless workbook) are not checked: the
+Excel-fidelity review found that refusing a dangling shared string stopped poi/sample-beta.xlsx loading, and
+`a_dangling_shared_string_still_loads` pins that, so workbooks that load today keep loading (SPEC-0026 decision 3 notes this). Decoded counts: the bitcode decoder
 allocates what the bytes encode before the check runs (bounded by the input size); the check guarantees nothing the model
 builds afterwards is sized from a count past the grid. One existing test
 changed meaning: `malformed_import`'s empty-`<fonts>` workbook used to load, but its style 0 points at

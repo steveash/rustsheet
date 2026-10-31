@@ -113,9 +113,10 @@ freeze.
 - a decoded count or dimension (sheets, rows, columns, cells per row, shared strings) past the engine's grid limits,
   checked before anything is allocated from it, so a crafted buffer cannot request a huge allocation.
 
-As built (T-2913): a CF dxf id and a defined name's sheet id are not refused. Both are read through a checked lookup
-that tolerates a dangling value (the format is skipped, the name is global), so refusing them would only stop
-workbooks that load today. The selected sheet of a view is checked. The check runs on the decoded `Workbook`, so the
+As built (T-2913): only indices some read trusts unchecked are refused. A shared-string index, a CF dxf id, a defined
+name's sheet id, a view's selected sheet, the frozen panes and a workbook with no sheets are read through checked
+lookups that tolerate them (empty text, no format, a global name, sheet 0), so refusing them would only stop
+workbooks that load today (poi/sample-beta.xlsx, an Office 2007 beta package, imports with no shared strings). The check runs on the decoded `Workbook`, so the
 bitcode decoder has already allocated what the bytes encode (bounded by the input's size); what the check guarantees
 is that nothing the model builds afterwards (row chunks, spill ranges, merged ranges, column records) is sized from a
 count past the grid.

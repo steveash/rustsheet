@@ -4,9 +4,7 @@
 
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::test::util::new_empty_model;
-use crate::types::{
-    ArrayKind, Cell, Col, FormulaValue, MergedCell, Row, SpillValue, Workbook, WorkbookView,
-};
+use crate::types::{ArrayKind, Cell, Col, FormulaValue, MergedCell, Row, SpillValue, Workbook};
 use crate::Model;
 
 /// A one-sheet workbook with a number in A1 and a formula in A2.
@@ -31,6 +29,16 @@ fn set_cell(workbook: &mut Workbook, row: i32, column: i32, cell: Cell) {
     workbook.worksheets[0]
         .sheet_data
         .set_cell(row, column, cell);
+}
+
+/// A dangling shared string is read through a checked lookup, so it is not refused: an Office 2007
+/// beta workbook (poi/sample-beta.xlsx) imports with no shared strings and loads today.
+#[test]
+fn a_dangling_shared_string_still_loads() {
+    let mut workbook = workbook();
+    set_cell(&mut workbook, 1, 2, Cell::SharedString { si: 40, s: 0 });
+    let model = Model::from_workbook(workbook, "en").unwrap();
+    assert_eq!(model._get_text("B1"), "");
 }
 
 #[test]
@@ -84,26 +92,6 @@ fn a_negative_number_format_id_is_refused() {
 fn a_workbook_without_cell_styles_is_refused() {
     let e = refusal(|w| w.styles.cell_xfs.clear());
     assert!(e.contains("no cell styles"), "{e}");
-}
-
-#[test]
-fn a_dangling_shared_string_is_refused() {
-    let e = refusal(|w| set_cell(w, 1, 2, Cell::SharedString { si: 40, s: 0 }));
-    assert!(e.contains("shared string 40"), "{e}");
-}
-
-#[test]
-fn a_workbook_without_sheets_or_with_a_view_past_them_is_refused() {
-    assert!(refusal(|w| w.worksheets.clear()).contains("no worksheets"));
-    let e = refusal(|w| {
-        let view = WorkbookView {
-            sheet: 3,
-            window_width: 800,
-            window_height: 600,
-        };
-        w.views.insert(0, view);
-    });
-    assert!(e.contains("selects a sheet"), "{e}");
 }
 
 #[test]
@@ -181,12 +169,6 @@ fn a_merged_range_off_the_grid_is_refused() {
         let e = refusal(|w| w.worksheets[0].merged_cells.push(range));
         assert!(e.contains("merged range"), "{range:?}: {e}");
     }
-}
-
-#[test]
-fn frozen_panes_off_the_grid_are_refused() {
-    assert!(refusal(|w| w.worksheets[0].frozen_rows = -1).contains("frozen"));
-    assert!(refusal(|w| w.worksheets[0].frozen_columns = LAST_COLUMN + 1).contains("frozen"));
 }
 
 #[test]
