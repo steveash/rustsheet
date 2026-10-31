@@ -1,0 +1,1191 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "S": {
+   "A1": {
+    "t": "s",
+    "v": "ene.|enero|e"
+   },
+   "A10": {
+    "t": "s",
+    "v": "oct.|octubre|o"
+   },
+   "A11": {
+    "t": "s",
+    "v": "nov.|noviembre|n"
+   },
+   "A12": {
+    "t": "s",
+    "v": "dic.|diciembre|d"
+   },
+   "A13": {
+    "t": "s",
+    "v": "mi\u00e9.|mi\u00e9rcoles"
+   },
+   "A14": {
+    "t": "s",
+    "v": "jue.|jueves"
+   },
+   "A15": {
+    "t": "s",
+    "v": "vie.|viernes"
+   },
+   "A16": {
+    "t": "s",
+    "v": "s\u00e1b.|s\u00e1bado"
+   },
+   "A17": {
+    "t": "s",
+    "v": "dom.|domingo"
+   },
+   "A18": {
+    "t": "s",
+    "v": "lun.|lunes"
+   },
+   "A19": {
+    "t": "s",
+    "v": "mar.|martes"
+   },
+   "A2": {
+    "t": "s",
+    "v": "feb.|febrero|f"
+   },
+   "A20": {
+    "t": "s",
+    "v": "6 a.\u00a0m.|6 a.\u00a0m.|6 a.\u00a0m."
+   },
+   "A21": {
+    "t": "s",
+    "v": "6 p.\u00a0m.|6 p.\u00a0m.|6 p.\u00a0m."
+   },
+   "A3": {
+    "t": "s",
+    "v": "mar.|marzo|m"
+   },
+   "A4": {
+    "t": "s",
+    "v": "abr.|abril|a"
+   },
+   "A5": {
+    "t": "s",
+    "v": "may.|mayo|m"
+   },
+   "A6": {
+    "t": "s",
+    "v": "jun.|junio|j"
+   },
+   "A7": {
+    "t": "s",
+    "v": "jul.|julio|j"
+   },
+   "A8": {
+    "t": "s",
+    "v": "ago.|agosto|a"
+   },
+   "A9": {
+    "t": "s",
+    "v": "sep.|septiembre|s"
+   },
+   "B1": {
+    "t": "s",
+    "v": "ene.|enero|e"
+   },
+   "B10": {
+    "t": "s",
+    "v": "oct.|octubre|o"
+   },
+   "B11": {
+    "t": "s",
+    "v": "nov.|noviembre|n"
+   },
+   "B12": {
+    "t": "s",
+    "v": "dic.|diciembre|d"
+   },
+   "B13": {
+    "t": "s",
+    "v": "mi\u00e9.|mi\u00e9rcoles"
+   },
+   "B14": {
+    "t": "s",
+    "v": "jue.|jueves"
+   },
+   "B15": {
+    "t": "s",
+    "v": "vie.|viernes"
+   },
+   "B16": {
+    "t": "s",
+    "v": "s\u00e1b.|s\u00e1bado"
+   },
+   "B17": {
+    "t": "s",
+    "v": "dom.|domingo"
+   },
+   "B18": {
+    "t": "s",
+    "v": "lun.|lunes"
+   },
+   "B19": {
+    "t": "s",
+    "v": "mar.|martes"
+   },
+   "B2": {
+    "t": "s",
+    "v": "feb.|febrero|f"
+   },
+   "B20": {
+    "t": "s",
+    "v": "6 a.\u00a0m.|6 a.\u00a0m.|6 a.\u00a0m."
+   },
+   "B21": {
+    "t": "s",
+    "v": "6 p.\u00a0m.|6 p.\u00a0m.|6 p.\u00a0m."
+   },
+   "B3": {
+    "t": "s",
+    "v": "mar.|marzo|m"
+   },
+   "B4": {
+    "t": "s",
+    "v": "abr.|abril|a"
+   },
+   "B5": {
+    "t": "s",
+    "v": "may.|mayo|m"
+   },
+   "B6": {
+    "t": "s",
+    "v": "jun.|junio|j"
+   },
+   "B7": {
+    "t": "s",
+    "v": "jul.|julio|j"
+   },
+   "B8": {
+    "t": "s",
+    "v": "ago.|agosto|a"
+   },
+   "B9": {
+    "t": "s",
+    "v": "sept.|septiembre|s"
+   },
+   "C1": {
+    "t": "s",
+    "v": "ene.|enero|e"
+   },
+   "C10": {
+    "t": "s",
+    "v": "oct.|octubre|o"
+   },
+   "C11": {
+    "t": "s",
+    "v": "nov.|noviembre|n"
+   },
+   "C12": {
+    "t": "s",
+    "v": "dic.|diciembre|d"
+   },
+   "C13": {
+    "t": "s",
+    "v": "mi\u00e9.|mi\u00e9rcoles"
+   },
+   "C14": {
+    "t": "s",
+    "v": "jue.|jueves"
+   },
+   "C15": {
+    "t": "s",
+    "v": "vie.|viernes"
+   },
+   "C16": {
+    "t": "s",
+    "v": "s\u00e1b.|s\u00e1bado"
+   },
+   "C17": {
+    "t": "s",
+    "v": "dom.|domingo"
+   },
+   "C18": {
+    "t": "s",
+    "v": "lun.|lunes"
+   },
+   "C19": {
+    "t": "s",
+    "v": "mar.|martes"
+   },
+   "C2": {
+    "t": "s",
+    "v": "feb.|febrero|f"
+   },
+   "C20": {
+    "t": "s",
+    "v": "6 a.m.|6 a.m.|6 a.m."
+   },
+   "C21": {
+    "t": "s",
+    "v": "6 p.m.|6 p.m.|6 p.m."
+   },
+   "C3": {
+    "t": "s",
+    "v": "mar.|marzo|m"
+   },
+   "C4": {
+    "t": "s",
+    "v": "abr.|abril|a"
+   },
+   "C5": {
+    "t": "s",
+    "v": "may.|mayo|m"
+   },
+   "C6": {
+    "t": "s",
+    "v": "jun.|junio|j"
+   },
+   "C7": {
+    "t": "s",
+    "v": "jul.|julio|j"
+   },
+   "C8": {
+    "t": "s",
+    "v": "ago.|agosto|a"
+   },
+   "C9": {
+    "t": "s",
+    "v": "sep.|septiembre|s"
+   },
+   "D1": {
+    "t": "s",
+    "v": "Jan|Januar|J"
+   },
+   "D10": {
+    "t": "s",
+    "v": "Okt|Oktober|O"
+   },
+   "D11": {
+    "t": "s",
+    "v": "Nov|November|N"
+   },
+   "D12": {
+    "t": "s",
+    "v": "Dez|Dezember|D"
+   },
+   "D13": {
+    "t": "s",
+    "v": "Mi.|Mittwoch"
+   },
+   "D14": {
+    "t": "s",
+    "v": "Do.|Donnerstag"
+   },
+   "D15": {
+    "t": "s",
+    "v": "Fr.|Freitag"
+   },
+   "D16": {
+    "t": "s",
+    "v": "Sa.|Samstag"
+   },
+   "D17": {
+    "t": "s",
+    "v": "So.|Sonntag"
+   },
+   "D18": {
+    "t": "s",
+    "v": "Mo.|Montag"
+   },
+   "D19": {
+    "t": "s",
+    "v": "Di.|Dienstag"
+   },
+   "D2": {
+    "t": "s",
+    "v": "Feb|Februar|F"
+   },
+   "D20": {
+    "t": "s",
+    "v": "6 AM|6 AM|6 AM"
+   },
+   "D21": {
+    "t": "s",
+    "v": "6 PM|6 PM|6 PM"
+   },
+   "D3": {
+    "t": "s",
+    "v": "M\u00e4r|M\u00e4rz|M"
+   },
+   "D4": {
+    "t": "s",
+    "v": "Apr|April|A"
+   },
+   "D5": {
+    "t": "s",
+    "v": "Mai|Mai|M"
+   },
+   "D6": {
+    "t": "s",
+    "v": "Jun|Juni|J"
+   },
+   "D7": {
+    "t": "s",
+    "v": "Jul|Juli|J"
+   },
+   "D8": {
+    "t": "s",
+    "v": "Aug|August|A"
+   },
+   "D9": {
+    "t": "s",
+    "v": "Sep|September|S"
+   },
+   "E1": {
+    "t": "s",
+    "v": "Jan|Januar|J"
+   },
+   "E10": {
+    "t": "s",
+    "v": "Okt|Oktober|O"
+   },
+   "E11": {
+    "t": "s",
+    "v": "Nov|November|N"
+   },
+   "E12": {
+    "t": "s",
+    "v": "Dez|Dezember|D"
+   },
+   "E13": {
+    "t": "s",
+    "v": "Mi.|Mittwoch"
+   },
+   "E14": {
+    "t": "s",
+    "v": "Do.|Donnerstag"
+   },
+   "E15": {
+    "t": "s",
+    "v": "Fr.|Freitag"
+   },
+   "E16": {
+    "t": "s",
+    "v": "Sa.|Samstag"
+   },
+   "E17": {
+    "t": "s",
+    "v": "So.|Sonntag"
+   },
+   "E18": {
+    "t": "s",
+    "v": "Mo.|Montag"
+   },
+   "E19": {
+    "t": "s",
+    "v": "Di.|Dienstag"
+   },
+   "E2": {
+    "t": "s",
+    "v": "Feb|Februar|F"
+   },
+   "E20": {
+    "t": "s",
+    "v": "6 AM|6 AM|6 AM"
+   },
+   "E21": {
+    "t": "s",
+    "v": "6 PM|6 PM|6 PM"
+   },
+   "E3": {
+    "t": "s",
+    "v": "M\u00e4r|M\u00e4rz|M"
+   },
+   "E4": {
+    "t": "s",
+    "v": "Apr|April|A"
+   },
+   "E5": {
+    "t": "s",
+    "v": "Mai|Mai|M"
+   },
+   "E6": {
+    "t": "s",
+    "v": "Jun|Juni|J"
+   },
+   "E7": {
+    "t": "s",
+    "v": "Jul|Juli|J"
+   },
+   "E8": {
+    "t": "s",
+    "v": "Aug|August|A"
+   },
+   "E9": {
+    "t": "s",
+    "v": "Sep|September|S"
+   },
+   "F1": {
+    "t": "s",
+    "v": "\u4e00\u6708|\u4e00\u6708|\u4e00"
+   },
+   "F10": {
+    "t": "s",
+    "v": "\u5341\u6708|\u5341\u6708|\u5341"
+   },
+   "F11": {
+    "t": "s",
+    "v": "\u5341\u4e00\u6708|\u5341\u4e00\u6708|\u5341"
+   },
+   "F12": {
+    "t": "s",
+    "v": "\u5341\u4e8c\u6708|\u5341\u4e8c\u6708|\u5341"
+   },
+   "F13": {
+    "t": "s",
+    "v": "\u9031\u4e09|\u661f\u671f\u4e09"
+   },
+   "F14": {
+    "t": "s",
+    "v": "\u9031\u56db|\u661f\u671f\u56db"
+   },
+   "F15": {
+    "t": "s",
+    "v": "\u9031\u4e94|\u661f\u671f\u4e94"
+   },
+   "F16": {
+    "t": "s",
+    "v": "\u9031\u516d|\u661f\u671f\u516d"
+   },
+   "F17": {
+    "t": "s",
+    "v": "\u9031\u65e5|\u661f\u671f\u65e5"
+   },
+   "F18": {
+    "t": "s",
+    "v": "\u9031\u4e00|\u661f\u671f\u4e00"
+   },
+   "F19": {
+    "t": "s",
+    "v": "\u9031\u4e8c|\u661f\u671f\u4e8c"
+   },
+   "F2": {
+    "t": "s",
+    "v": "\u4e8c\u6708|\u4e8c\u6708|\u4e8c"
+   },
+   "F20": {
+    "t": "s",
+    "v": "6 \u4e0a\u5348|6 \u4e0a\u5348|6 \u4e0a\u5348"
+   },
+   "F21": {
+    "t": "s",
+    "v": "6 \u4e0b\u5348|6 \u4e0b\u5348|6 \u4e0b\u5348"
+   },
+   "F3": {
+    "t": "s",
+    "v": "\u4e09\u6708|\u4e09\u6708|\u4e09"
+   },
+   "F4": {
+    "t": "s",
+    "v": "\u56db\u6708|\u56db\u6708|\u56db"
+   },
+   "F5": {
+    "t": "s",
+    "v": "\u4e94\u6708|\u4e94\u6708|\u4e94"
+   },
+   "F6": {
+    "t": "s",
+    "v": "\u516d\u6708|\u516d\u6708|\u516d"
+   },
+   "F7": {
+    "t": "s",
+    "v": "\u4e03\u6708|\u4e03\u6708|\u4e03"
+   },
+   "F8": {
+    "t": "s",
+    "v": "\u516b\u6708|\u516b\u6708|\u516b"
+   },
+   "F9": {
+    "t": "s",
+    "v": "\u4e5d\u6708|\u4e5d\u6708|\u4e5d"
+   },
+   "G1": {
+    "t": "s",
+    "v": "Jan|January|J"
+   },
+   "G10": {
+    "t": "s",
+    "v": "Oct|October|O"
+   },
+   "G11": {
+    "t": "s",
+    "v": "Nov|November|N"
+   },
+   "G12": {
+    "t": "s",
+    "v": "Dec|December|D"
+   },
+   "G13": {
+    "t": "s",
+    "v": "Wed|Wednesday"
+   },
+   "G14": {
+    "t": "s",
+    "v": "Thu|Thursday"
+   },
+   "G15": {
+    "t": "s",
+    "v": "Fri|Friday"
+   },
+   "G16": {
+    "t": "s",
+    "v": "Sat|Saturday"
+   },
+   "G17": {
+    "t": "s",
+    "v": "Sun|Sunday"
+   },
+   "G18": {
+    "t": "s",
+    "v": "Mon|Monday"
+   },
+   "G19": {
+    "t": "s",
+    "v": "Tue|Tuesday"
+   },
+   "G2": {
+    "t": "s",
+    "v": "Feb|February|F"
+   },
+   "G20": {
+    "t": "s",
+    "v": "6 AM|6 AM|6 AM"
+   },
+   "G21": {
+    "t": "s",
+    "v": "6 PM|6 PM|6 PM"
+   },
+   "G3": {
+    "t": "s",
+    "v": "Mar|March|M"
+   },
+   "G4": {
+    "t": "s",
+    "v": "Apr|April|A"
+   },
+   "G5": {
+    "t": "s",
+    "v": "May|May|M"
+   },
+   "G6": {
+    "t": "s",
+    "v": "Jun|June|J"
+   },
+   "G7": {
+    "t": "s",
+    "v": "Jul|July|J"
+   },
+   "G8": {
+    "t": "s",
+    "v": "Aug|August|A"
+   },
+   "G9": {
+    "t": "s",
+    "v": "Sep|September|S"
+   },
+   "H1": {
+    "t": "s",
+    "v": "Jan|January|J"
+   },
+   "H10": {
+    "t": "s",
+    "v": "Oct|October|O"
+   },
+   "H11": {
+    "t": "s",
+    "v": "Nov|November|N"
+   },
+   "H12": {
+    "t": "s",
+    "v": "Dec|December|D"
+   },
+   "H13": {
+    "t": "s",
+    "v": "Wed|Wednesday"
+   },
+   "H14": {
+    "t": "s",
+    "v": "Thu|Thursday"
+   },
+   "H15": {
+    "t": "s",
+    "v": "Fri|Friday"
+   },
+   "H16": {
+    "t": "s",
+    "v": "Sat|Saturday"
+   },
+   "H17": {
+    "t": "s",
+    "v": "Sun|Sunday"
+   },
+   "H18": {
+    "t": "s",
+    "v": "Mon|Monday"
+   },
+   "H19": {
+    "t": "s",
+    "v": "Tue|Tuesday"
+   },
+   "H2": {
+    "t": "s",
+    "v": "Feb|February|F"
+   },
+   "H20": {
+    "t": "s",
+    "v": "6 AM|6 AM|6 AM"
+   },
+   "H21": {
+    "t": "s",
+    "v": "6 PM|6 PM|6 PM"
+   },
+   "H3": {
+    "t": "s",
+    "v": "Mar|March|M"
+   },
+   "H4": {
+    "t": "s",
+    "v": "Apr|April|A"
+   },
+   "H5": {
+    "t": "s",
+    "v": "May|May|M"
+   },
+   "H6": {
+    "t": "s",
+    "v": "Jun|June|J"
+   },
+   "H7": {
+    "t": "s",
+    "v": "Jul|July|J"
+   },
+   "H8": {
+    "t": "s",
+    "v": "Aug|August|A"
+   },
+   "H9": {
+    "t": "s",
+    "v": "Sep|September|S"
+   },
+   "I1": {
+    "t": "s",
+    "v": "Jan|January|J"
+   },
+   "I10": {
+    "t": "s",
+    "v": "Oct|October|O"
+   },
+   "I11": {
+    "t": "s",
+    "v": "Nov|November|N"
+   },
+   "I12": {
+    "t": "s",
+    "v": "Dec|December|D"
+   },
+   "I13": {
+    "t": "s",
+    "v": "Wed|Wednesday"
+   },
+   "I14": {
+    "t": "s",
+    "v": "Thu|Thursday"
+   },
+   "I15": {
+    "t": "s",
+    "v": "Fri|Friday"
+   },
+   "I16": {
+    "t": "s",
+    "v": "Sat|Saturday"
+   },
+   "I17": {
+    "t": "s",
+    "v": "Sun|Sunday"
+   },
+   "I18": {
+    "t": "s",
+    "v": "Mon|Monday"
+   },
+   "I19": {
+    "t": "s",
+    "v": "Tue|Tuesday"
+   },
+   "I2": {
+    "t": "s",
+    "v": "Feb|February|F"
+   },
+   "I20": {
+    "t": "s",
+    "v": "6 AM|6 AM|6 AM"
+   },
+   "I21": {
+    "t": "s",
+    "v": "6 PM|6 PM|6 PM"
+   },
+   "I3": {
+    "t": "s",
+    "v": "Mar|March|M"
+   },
+   "I4": {
+    "t": "s",
+    "v": "Apr|April|A"
+   },
+   "I5": {
+    "t": "s",
+    "v": "May|May|M"
+   },
+   "I6": {
+    "t": "s",
+    "v": "Jun|June|J"
+   },
+   "I7": {
+    "t": "s",
+    "v": "Jul|July|J"
+   },
+   "I8": {
+    "t": "s",
+    "v": "Aug|August|A"
+   },
+   "I9": {
+    "t": "s",
+    "v": "Sep|September|S"
+   },
+   "J1": {
+    "t": "s",
+    "v": "jan|janeiro|j"
+   },
+   "J10": {
+    "t": "s",
+    "v": "out|outubro|o"
+   },
+   "J11": {
+    "t": "s",
+    "v": "nov|novembro|n"
+   },
+   "J12": {
+    "t": "s",
+    "v": "dez|dezembro|d"
+   },
+   "J13": {
+    "t": "s",
+    "v": "quarta|quarta-feira"
+   },
+   "J14": {
+    "t": "s",
+    "v": "quinta|quinta-feira"
+   },
+   "J15": {
+    "t": "s",
+    "v": "sexta|sexta-feira"
+   },
+   "J16": {
+    "t": "s",
+    "v": "s\u00e1bado|s\u00e1bado"
+   },
+   "J17": {
+    "t": "s",
+    "v": "domingo|domingo"
+   },
+   "J18": {
+    "t": "s",
+    "v": "segunda|segunda-feira"
+   },
+   "J19": {
+    "t": "s",
+    "v": "ter\u00e7a|ter\u00e7a-feira"
+   },
+   "J2": {
+    "t": "s",
+    "v": "fev|fevereiro|f"
+   },
+   "J20": {
+    "t": "s",
+    "v": "6 a.m.|6 a.m.|6 a.m."
+   },
+   "J21": {
+    "t": "s",
+    "v": "6 p.m.|6 p.m.|6 p.m."
+   },
+   "J3": {
+    "t": "s",
+    "v": "mar|mar\u00e7o|m"
+   },
+   "J4": {
+    "t": "s",
+    "v": "abr|abril|a"
+   },
+   "J5": {
+    "t": "s",
+    "v": "mai|maio|m"
+   },
+   "J6": {
+    "t": "s",
+    "v": "jun|junho|j"
+   },
+   "J7": {
+    "t": "s",
+    "v": "jul|julho|j"
+   },
+   "J8": {
+    "t": "s",
+    "v": "ago|agosto|a"
+   },
+   "J9": {
+    "t": "s",
+    "v": "set|setembro|s"
+   },
+   "K1": {
+    "t": "s",
+    "v": "J\u00e4n|J\u00e4nner|J"
+   },
+   "K10": {
+    "t": "s",
+    "v": "Okt|Oktober|O"
+   },
+   "K11": {
+    "t": "s",
+    "v": "Nov|November|N"
+   },
+   "K12": {
+    "t": "s",
+    "v": "Dez|Dezember|D"
+   },
+   "K13": {
+    "t": "s",
+    "v": "Mi.|Mittwoch"
+   },
+   "K14": {
+    "t": "s",
+    "v": "Do.|Donnerstag"
+   },
+   "K15": {
+    "t": "s",
+    "v": "Fr.|Freitag"
+   },
+   "K16": {
+    "t": "s",
+    "v": "Sa.|Samstag"
+   },
+   "K17": {
+    "t": "s",
+    "v": "So.|Sonntag"
+   },
+   "K18": {
+    "t": "s",
+    "v": "Mo.|Montag"
+   },
+   "K19": {
+    "t": "s",
+    "v": "Di.|Dienstag"
+   },
+   "K2": {
+    "t": "s",
+    "v": "Feb|Februar|F"
+   },
+   "K20": {
+    "t": "s",
+    "v": "6 AM|6 AM|6 AM"
+   },
+   "K21": {
+    "t": "s",
+    "v": "6 PM|6 PM|6 PM"
+   },
+   "K3": {
+    "t": "s",
+    "v": "M\u00e4r|M\u00e4rz|M"
+   },
+   "K4": {
+    "t": "s",
+    "v": "Apr|April|A"
+   },
+   "K5": {
+    "t": "s",
+    "v": "Mai|Mai|M"
+   },
+   "K6": {
+    "t": "s",
+    "v": "Jun|Juni|J"
+   },
+   "K7": {
+    "t": "s",
+    "v": "Jul|Juli|J"
+   },
+   "K8": {
+    "t": "s",
+    "v": "Aug|August|A"
+   },
+   "K9": {
+    "t": "s",
+    "v": "Sep|September|S"
+   },
+   "L1": {
+    "t": "s",
+    "v": "\u4e00\u6708|\u4e00\u6708|\u4e00"
+   },
+   "L10": {
+    "t": "s",
+    "v": "\u5341\u6708|\u5341\u6708|\u5341"
+   },
+   "L11": {
+    "t": "s",
+    "v": "\u5341\u4e00\u6708|\u5341\u4e00\u6708|\u5341"
+   },
+   "L12": {
+    "t": "s",
+    "v": "\u5341\u4e8c\u6708|\u5341\u4e8c\u6708|\u5341"
+   },
+   "L13": {
+    "t": "s",
+    "v": "\u5468\u4e09|\u661f\u671f\u4e09"
+   },
+   "L14": {
+    "t": "s",
+    "v": "\u5468\u56db|\u661f\u671f\u56db"
+   },
+   "L15": {
+    "t": "s",
+    "v": "\u5468\u4e94|\u661f\u671f\u4e94"
+   },
+   "L16": {
+    "t": "s",
+    "v": "\u5468\u516d|\u661f\u671f\u516d"
+   },
+   "L17": {
+    "t": "s",
+    "v": "\u5468\u65e5|\u661f\u671f\u65e5"
+   },
+   "L18": {
+    "t": "s",
+    "v": "\u5468\u4e00|\u661f\u671f\u4e00"
+   },
+   "L19": {
+    "t": "s",
+    "v": "\u5468\u4e8c|\u661f\u671f\u4e8c"
+   },
+   "L2": {
+    "t": "s",
+    "v": "\u4e8c\u6708|\u4e8c\u6708|\u4e8c"
+   },
+   "L20": {
+    "t": "s",
+    "v": "6 \u4e0a\u5348|6 \u4e0a\u5348|6 \u4e0a\u5348"
+   },
+   "L21": {
+    "t": "s",
+    "v": "6 \u4e0b\u5348|6 \u4e0b\u5348|6 \u4e0b\u5348"
+   },
+   "L3": {
+    "t": "s",
+    "v": "\u4e09\u6708|\u4e09\u6708|\u4e09"
+   },
+   "L4": {
+    "t": "s",
+    "v": "\u56db\u6708|\u56db\u6708|\u56db"
+   },
+   "L5": {
+    "t": "s",
+    "v": "\u4e94\u6708|\u4e94\u6708|\u4e94"
+   },
+   "L6": {
+    "t": "s",
+    "v": "\u516d\u6708|\u516d\u6708|\u516d"
+   },
+   "L7": {
+    "t": "s",
+    "v": "\u4e03\u6708|\u4e03\u6708|\u4e03"
+   },
+   "L8": {
+    "t": "s",
+    "v": "\u516b\u6708|\u516b\u6708|\u516b"
+   },
+   "L9": {
+    "t": "s",
+    "v": "\u4e5d\u6708|\u4e5d\u6708|\u4e5d"
+   },
+   "M1": {
+    "t": "s",
+    "v": "Jan|January|J"
+   },
+   "M10": {
+    "t": "s",
+    "v": "Oct|October|O"
+   },
+   "M11": {
+    "t": "s",
+    "v": "Nov|November|N"
+   },
+   "M12": {
+    "t": "s",
+    "v": "Dec|December|D"
+   },
+   "M13": {
+    "t": "s",
+    "v": "Wed|Wednesday"
+   },
+   "M14": {
+    "t": "s",
+    "v": "Thu|Thursday"
+   },
+   "M15": {
+    "t": "s",
+    "v": "Fri|Friday"
+   },
+   "M16": {
+    "t": "s",
+    "v": "Sat|Saturday"
+   },
+   "M17": {
+    "t": "s",
+    "v": "Sun|Sunday"
+   },
+   "M18": {
+    "t": "s",
+    "v": "Mon|Monday"
+   },
+   "M19": {
+    "t": "s",
+    "v": "Tue|Tuesday"
+   },
+   "M2": {
+    "t": "s",
+    "v": "Feb|February|F"
+   },
+   "M20": {
+    "t": "s",
+    "v": "6 AM|6 A|6 a"
+   },
+   "M21": {
+    "t": "s",
+    "v": "6 PM|6 P|6 p"
+   },
+   "M3": {
+    "t": "s",
+    "v": "Mar|March|M"
+   },
+   "M4": {
+    "t": "s",
+    "v": "Apr|April|A"
+   },
+   "M5": {
+    "t": "s",
+    "v": "May|May|M"
+   },
+   "M6": {
+    "t": "s",
+    "v": "Jun|June|J"
+   },
+   "M7": {
+    "t": "s",
+    "v": "Jul|July|J"
+   },
+   "M8": {
+    "t": "s",
+    "v": "Aug|August|A"
+   },
+   "M9": {
+    "t": "s",
+    "v": "Sep|September|S"
+   },
+   "N1": {
+    "t": "s",
+    "v": "Jan|January|J"
+   },
+   "N10": {
+    "t": "s",
+    "v": "Oct|October|O"
+   },
+   "N11": {
+    "t": "s",
+    "v": "Nov|November|N"
+   },
+   "N12": {
+    "t": "s",
+    "v": "Dec|December|D"
+   },
+   "N13": {
+    "t": "s",
+    "v": "Wed|Wednesday"
+   },
+   "N14": {
+    "t": "s",
+    "v": "Thu|Thursday"
+   },
+   "N15": {
+    "t": "s",
+    "v": "Fri|Friday"
+   },
+   "N16": {
+    "t": "s",
+    "v": "Sat|Saturday"
+   },
+   "N17": {
+    "t": "s",
+    "v": "Sun|Sunday"
+   },
+   "N18": {
+    "t": "s",
+    "v": "Mon|Monday"
+   },
+   "N19": {
+    "t": "s",
+    "v": "Tue|Tuesday"
+   },
+   "N2": {
+    "t": "s",
+    "v": "Feb|February|F"
+   },
+   "N20": {
+    "t": "s",
+    "v": "6 AM|6 AM|6 AM"
+   },
+   "N21": {
+    "t": "s",
+    "v": "6 PM|6 PM|6 PM"
+   },
+   "N3": {
+    "t": "s",
+    "v": "Mar|March|M"
+   },
+   "N4": {
+    "t": "s",
+    "v": "Apr|April|A"
+   },
+   "N5": {
+    "t": "s",
+    "v": "May|May|M"
+   },
+   "N6": {
+    "t": "s",
+    "v": "Jun|June|J"
+   },
+   "N7": {
+    "t": "s",
+    "v": "Jul|July|J"
+   },
+   "N8": {
+    "t": "s",
+    "v": "Aug|August|A"
+   },
+   "N9": {
+    "t": "s",
+    "v": "Sep|September|S"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "03723e8465583db85d41107e457a983c6ad73804b725f52d3adc394993044049",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-31T05:34:25+00:00",
+  "version": null,
+  "workbook_name": "9974050f4f1b57c1f6acf36880e540cc01e2d461e53ea2191cfb257045285949.xlsx"
+ }
+}

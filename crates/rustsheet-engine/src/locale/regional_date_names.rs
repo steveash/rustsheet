@@ -2,7 +2,7 @@
 //! probes/text-locale-regional-lcids (excel-graph, 2026-10-18, T-1858); the table list and the
 //! resolution order live in [`super::excel_date_names`].
 
-use super::excel_date_names::DateNames;
+use super::excel_date_names::{DateNames, PT};
 
 pub(super) static DE_AT: DateNames = DateNames {
     months_short: [
@@ -143,6 +143,58 @@ pub(super) static ES_AR: DateNames = DateNames {
     ],
     am: "a.\u{a0}m.",
     pm: "p.\u{a0}m.",
+};
+
+/// es-CL (T-1875; es-CO equals es-AR): the es-AR names, except that it prints "sept." for September.
+/// Excel: probes/text-locale-regional-lcids-2 B1-B21.
+pub(super) static ES_CL: DateNames = DateNames {
+    months_short: [
+        "ene.", "feb.", "mar.", "abr.", "may.", "jun.", "jul.", "ago.", "sept.", "oct.", "nov.",
+        "dic.",
+    ],
+    ..ES_AR
+};
+
+/// es-419 (`[$-es-419]`, T-1875): the es-AR names with the day halves "a.m." and "p.m." (plain
+/// spaces, no no-break space). Excel: probes/text-locale-regional-lcids-2 C1-C21.
+pub(super) static ES_419: DateNames = DateNames {
+    am: "a.m.",
+    pm: "p.m.",
+    ..ES_AR
+};
+
+/// de-LU and de-LI (T-1875): the de-AT names with "Januar" and "Jan" for January.
+/// Excel: probes/text-locale-regional-lcids-2 D1-D21, E1-E21.
+pub(super) static DE_LU: DateNames = DateNames {
+    months_short: [
+        "Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez",
+    ],
+    months: [
+        "Januar",
+        "Februar",
+        "März",
+        "April",
+        "Mai",
+        "Juni",
+        "Juli",
+        "August",
+        "September",
+        "Oktober",
+        "November",
+        "Dezember",
+    ],
+    ..DE_AT
+};
+
+/// pt-AO (T-1875): the pt-PT names with bare weekday abbreviations and "a.m." / "p.m.".
+/// Excel: probes/text-locale-regional-lcids-2 J1-J21.
+pub(super) static PT_AO: DateNames = DateNames {
+    days_short: [
+        "domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado",
+    ],
+    am: "a.m.",
+    pm: "p.m.",
+    ..PT
 };
 
 pub(super) static EL: DateNames = DateNames {
