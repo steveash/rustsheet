@@ -52,6 +52,12 @@ On docs-only PRs (decision 0049) CI skips the rust, eval and python jobs; hygien
   - Changing the file is a protected change (`scripts/check_governance.py` asks for a decision
     record): the DEVIATION entry lands in the same PR, and the
     Excel-fidelity reviewer confirms the limit is a directive-5 limit.
+  - A difference from Excel is accepted only for directive 5 (a `DEVIATION` entry, decision 0014)
+    or inside a `MATH-OVER-EXCEL` case listed in decision 0188 R3, or in a later decision record
+    carrying an owner ruling (a new region needs one). `MATH-OVER-EXCEL` cells are not lines of
+    this file: they stay F lines of eval/baseline, which Gate B and R1(c) count as passing when
+    the engine returns the math within ε.
+    Anything else is a CI failure (an F line in eval/baseline, or a regression the gate refuses).
 - **Evidence floor** (`quality/evidence-floor.json`, decision 0062): `rustsheet-eval
   evidence-floor` runs the vendored suites (fetched external suites do not count) and counts the
   in-scope catalog functions the oracle can evaluate with fewer than 20 Excel-evidence cells. It
