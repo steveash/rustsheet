@@ -5555,6 +5555,6 @@ Evidence: Gate A tables, excel-graph:
 - accuracy/T.DIST/s1 A94 and A97 (density 0 below the cut);
 - accuracy/F.INV/s1 A111 (`F.INV(0,38,10)`) and A125 (`F.INV(0,9,50)`), and probes-numeric/t1049-finv A16 (`F.INV(0,3,7)`).
 Status: VERIFIED (excel-graph) for the cited cells; the cut points are UNVERIFIED.
-Ours: T.DIST returns 0 and T.INV.2T and TINV return the quantile. These are Gate A known failures owned by T-3533 and
+Ours: T.DIST returns 0 and T.INV.2T and TINV return the quantile. These are Gate A known failures owned by T-3554 and
 T-3386.
-Tasks: T-3533, T-3386, T-3358
+Tasks: T-3554, T-3386, T-3358

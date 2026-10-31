@@ -22,7 +22,7 @@ the decision 0188 R3 points marked, and `make check` running them.
 - **Split 2026-10-31** (18 functions with 3 definitions is more than an M task): this task keeps the continuous
   Student-t and F families: T.DIST, T.INV, T.INV.2T, TINV, F.DIST and F.INV, with the deep-tail T.INV R3 points.
   T-3529 takes CHISQ.INV, CHISQ.INV.RT, GAMMA.INV, BETA.DIST and BETA.INV (with GAMMA.INV's huge-shape R3 points),
-  T-3543 the discrete distributions (BINOM.DIST, NEGBINOM.DIST, POISSON.DIST) and T-3535 the financial solvers (IRR,
+  T-3553 the discrete distributions (BINOM.DIST, NEGBINOM.DIST, POISSON.DIST) and T-3535 the financial solvers (IRR,
   XIRR, NPER, RATE, with NPER's R3 points).
 - R3's initial `MATH-OVER-EXCEL` cases (statistics.md and financial.md) need committed evidence points: the deep-tail
   quantiles (for example `T.INV(1.87E-297,3937)`, Excel -156.96, math -40.26), NPER at rates below 1e-14, GAMMA.INV at
@@ -47,7 +47,7 @@ the decision 0188 R3 points marked, and `make check` running them.
 
 ## Outcome
 Done (2026-10-31), on T-3379's governance (built on its branch).
-- **Split:** this task keeps the Student-t and F families. The rest are filed as T-3543 (BINOM.DIST, NEGBINOM.DIST,
+- **Split:** this task keeps the Student-t and F families. The rest are filed as T-3553 (BINOM.DIST, NEGBINOM.DIST,
   POISSON.DIST), T-3535 (IRR, XIRR, NPER, RATE, with NPER's R3 points) and T-3529 (CHISQ.INV, CHISQ.INV.RT, GAMMA.INV,
   BETA.DIST, BETA.INV, with GAMMA.INV's R3 points). The missing-table count lists the other 317 numeric functions;
   the family slices of SPEC-0029 rollout step 4 cover them as they are filed.
@@ -69,7 +69,7 @@ Done (2026-10-31), on T-3379's governance (built on its branch).
     engine and Excel are both off the math, differently.
   - **T-3386**, 4 points: T.INV.2T and TINV at p = 2.2E-308, where Excel gives `#NUM!` (T.INV.2T/s1 A68, A78;
     TINV/s1 A68, A78).
-  - **T-3533** (new), 4 points: T.DIST's density is `#NUM!` in Excel at a huge x where the engine returns 0
+  - **T-3554** (new), 4 points: T.DIST's density is `#NUM!` in Excel at a huge x where the engine returns 0
     (T.DIST/s1 A85, A95, A105, A110).
 - **R3 marks (decision 0213):** 8 points inside the tiny-p case's approved region (p < 1e-150):
   - T.INV/s1 A89, A93 and A95;
