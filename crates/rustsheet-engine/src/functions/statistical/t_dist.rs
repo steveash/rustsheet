@@ -292,6 +292,29 @@ fn t_test_p(
 /// Excel: see docs/excel-semantics/statistics.md#student-t-sweep-df-truncation-df-limits-tinv2t-above-1-t-1043
 pub(crate) const T_DF_MAX: f64 = 1e10;
 
+/// T.INV (`two_tailed` false, p in (0, 1)) and T.INV.2T / TINV (p in (0, 2)) at one degree of
+/// freedom: Excel's closed form (T-2858) through [`cauchy_two_tail_quantile`]. T.INV(0.5) is 0,
+/// unprobed (T-3396).
+fn df_one_quantile(p: f64, two_tailed: bool) -> f64 {
+    if two_tailed {
+        if p == 1.0 {
+            // 1/TAN(PI/2) would be 6.1E-17; Excel returns 0 (gen-m9 0620505280d2ea6e A90
+            // `TINV(1,1)`, 7f7ca726c3f68554 A166 `TINV(1-1E-17,1)`).
+            0.0
+        } else if p > 1.0 {
+            -cauchy_two_tail_quantile(2.0 - p)
+        } else {
+            cauchy_two_tail_quantile(p)
+        }
+    } else if p < 0.5 {
+        -cauchy_two_tail_quantile(2.0 * p)
+    } else if p > 0.5 {
+        cauchy_two_tail_quantile(2.0 * (1.0 - p))
+    } else {
+        0.0
+    }
+}
+
 /// Whether the cumulative Student-t functions refuse `x`: Excel's T.DIST (cumulative), T.DIST.RT,
 /// T.DIST.2T and TDIST of 1E+300 and 1E+307 are `#NUM!`, not 0, while `T.DIST.2T(1E+15,1)` is a number
 /// (gen-m9 T-2256 cells; statistics.md "Scalar distributions at extreme arguments, part 2"). The cut,
@@ -577,24 +600,7 @@ impl Model {
             return Err(num_error(cell));
         }
         if df == 1.0 {
-            // Closed form Excel evaluates at df 1 (T-2858); T.INV(0.5) keeps today's 0.
-            let x = if two_tailed {
-                if p == 1.0 {
-                    // 1/TAN(PI/2) would be 6.1E-17; Excel returns 0 (gen-m9 0620505280d2ea6e A90
-                    // `TINV(1,1)`, 7f7ca726c3f68554 A166 `TINV(1-1E-17,1)`).
-                    0.0
-                } else if p > 1.0 {
-                    -cauchy_two_tail_quantile(2.0 - p)
-                } else {
-                    cauchy_two_tail_quantile(p)
-                }
-            } else if p < 0.5 {
-                -cauchy_two_tail_quantile(2.0 * p)
-            } else if p > 0.5 {
-                cauchy_two_tail_quantile(2.0 * (1.0 - p))
-            } else {
-                0.0
-            };
+            let x = df_one_quantile(p, two_tailed);
             return if x.is_finite() {
                 Ok(x)
             } else {
@@ -698,7 +704,9 @@ impl Model {
 
 #[cfg(test)]
 mod tests {
-    use super::{cauchy_two_tail_quantile, t_centre_quantile, t_quantile, t_upper_quantile};
+    use super::{
+        cauchy_two_tail_quantile, df_one_quantile, t_centre_quantile, t_quantile, t_upper_quantile,
+    };
     use crate::test::util::within_fifteen_digits;
     use statrs::distribution::StudentsT;
 
@@ -847,6 +855,15 @@ mod tests {
     #[test]
     fn df_one_quantile_is_one_over_excel_tan() {
         // T.INV.2T(0.5,1) = 1 and T.INV.2T(1.5,1) = -1 (round points, double-rounded division)
+        assert_eq!(df_one_quantile(0.5, true), 1.0);
+        assert_eq!(df_one_quantile(1.5, true), -1.0);
+        assert_eq!(df_one_quantile(1.0, true), 0.0);
+        assert_eq!(df_one_quantile(0.9, false), 3.0776835371752544);
+        assert_eq!(df_one_quantile(1e-16, false), -3183098861837907.0);
+        assert_eq!(
+            df_one_quantile(1.0 + f64::EPSILON, true),
+            -5.053466325954936e-16
+        );
         assert_eq!(cauchy_two_tail_quantile(0.5), 1.0);
         assert_eq!(-cauchy_two_tail_quantile(2.0 - 1.5), -1.0);
         // TINV(1-1E-10,1)

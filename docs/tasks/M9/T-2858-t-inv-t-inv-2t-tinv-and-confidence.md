@@ -121,7 +121,7 @@ within 4 ulp / within 15 digits; "correctly rounded" is the exact quantile at th
 | fresh sweep, df 1 (18) | 18 / 18 / 18 | 8 / 15 / 14 |
 The hold-out exact rate equals the train rate (100%), and the form beats the correctly rounded quantile on hold-out (38 against 14
 bit-exact). Fresh sweep: probes-numeric/t3349-t-inv-2t-sweep (300 points, seed 3349, filled by T-3349 after this form was frozen
-on 2026-10-27), its 18 df 1 points (A24, A37, A44, A71, ...). Gate A envelope: 18 of 18 inside (all within 15 digits of Excel and
+in c31c9fae1 on 2026-10-30; the sweep landed in a3df1f163 on 2026-10-31), its 18 df 1 points (A24, A37, A44, A71, ...). Gate A envelope: 18 of 18 inside (all within 15 digits of Excel and
 within 1E-9 relative of the math), none outside, no error against a number. Scored with a scratch script, not committed.
 
 Review follow-ups: T-3396 probes `T.INV(0.5,1)`, two-tailed p in (0.999999999999999, 1) at df 1, and the error kind for a

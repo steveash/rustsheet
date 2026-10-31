@@ -19,20 +19,9 @@ fn test_fn_confidence_norm_smoke() {
 
     assert_eq!(model._get_text("A1"), *"0.692951912");
 
-    assert_eq!(
-        model._get_text("A2"),
-        *"#NUM!",
-        "{:?}",
-        ["A2", "A3", "A4", "A5", "A6"].map(|c| model._get_text(c))
-    );
+    assert_eq!(model._get_text("A2"), *"#NUM!");
     assert_eq!(model._get_text("A3"), *"#NUM!");
-    assert_eq!(
-        model._get_text("A4"),
-        *"#NUM!",
-        "{} {}",
-        model._get_text("A5"),
-        model._get_text("A6")
-    );
+    assert_eq!(model._get_text("A4"), *"#NUM!");
     assert_eq!(model._get_text("A5"), *"4.899909961");
     assert_eq!(model._get_text("A6"), *"#NUM!");
 }
@@ -54,20 +43,9 @@ fn test_fn_confidence_t_smoke() {
 
     assert_eq!(model._get_text("A1"), *"9921.084758");
 
-    assert_eq!(
-        model._get_text("A2"),
-        *"#NUM!",
-        "{:?}",
-        ["A2", "A3", "A4", "A5", "A6"].map(|c| model._get_text(c))
-    );
+    assert_eq!(model._get_text("A2"), *"#NUM!");
     assert_eq!(model._get_text("A3"), *"#NUM!");
-    assert_eq!(
-        model._get_text("A4"),
-        *"#NUM!",
-        "{} {}",
-        model._get_text("A5"),
-        model._get_text("A6")
-    );
+    assert_eq!(model._get_text("A4"), *"#NUM!");
     assert_eq!(model._get_text("A5"), *"#DIV/0!");
     assert_eq!(model._get_text("A6"), *"#DIV/0!");
 }
