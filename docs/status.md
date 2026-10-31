@@ -13,7 +13,7 @@ This is the scheduled 05:47 UTC run (it started at 05:52 UTC). It follows #2456,
 
 `make eval` ran on 6c7c6438 with a clean tree.
 - All 17 suites were scored. calipers, corpus-bench and poi were again not fetched in this container, so I ran `rustsheet-eval fetch` for them first (a first `make eval` started before the fetch was stopped and rerun). Timeouts: 0 in every suite.
-- Eval gate: `make eval-lower-visible-lock` shows 0 regressions and 0 fixed in every gated suite. It lowered the visible-parity lock from 3,029 to 2,418 (decision 0093).
+- Eval gate: `make eval-lower-visible-lock` shows 0 regressions and 0 fixed in every gated suite. It lowered the visible-parity lock (decision 0093): to 2,418 on 6c7c6438, and, after `main` moved to 3,031 during this run, from 3,031 to 2,422 on the merge of `main` into this PR (re-run there; 0 visibly-off cells in new cases).
 - The dashboard has this run's numbers (`make progress-report`; the judgment blocks pass `--check`). Its visibly-off number count rose, from new probes-numeric oracle sweeps (T-3249's BETA.DIST and F.DIST at large shapes, owned by T-3250 and T-3173); probes-numeric is not gated.
 
 CI on `main` is green. Of the 66 push runs created since 18:50 UTC yesterday, 52 succeeded and 13 were cancelled by the next push. None failed. The run on 6c7c6438 was still in progress when this snapshot was taken.
