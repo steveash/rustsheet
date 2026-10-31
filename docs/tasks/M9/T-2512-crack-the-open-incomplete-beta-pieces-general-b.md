@@ -8,7 +8,7 @@ priority: P2
 size: M
 tier: opus
 depends_on: []
-defer: phase-1b
+campaign: accuracy
 ---
 
 ## Goal
@@ -65,5 +65,30 @@ reach.
 - Engine changes.
 - The densities (T-2513).
 
-## Deferred (decision 0114)
-`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).
+## Stage (decision 0114)
+Was `defer: phase-1b` (its cells within 15 digits). T-2510 handed it the bgrat-family cells it could not fix (decision
+0083), and those are visibly off, so per the old Deferred note the key is gone and the task takes `campaign: accuracy`:
+find Excel's general-b bgrat (and F's b = 1/2 form below) close enough to bring them to visible parity; file the engine
+follow-up for what is found.
+
+### Cases owned (from T-2510, eval of 2026-10-31 at `main` 5638599)
+cdf cells on bratio's bgrat branches (bgrat, bup+bgrat, L140 bup+bgrat, L140 bup+bup+bgrat) that T-2510 left visibly off
+(T-2981's routing, less what T-2510 fixed at a0 = 1/2):
+- probes-numeric/m9-beta-dist-a10: BETA.DIST cdf, L140BupBgrat
+- probes-numeric/m9-beta-dist-a100: BETA.DIST cdf, Bgrat, L140BupBgrat
+- probes-numeric/m9-beta-dist-a5: BETA.DIST cdf, L140BupBgrat
+- probes-numeric/m9-beta-dist-a50: BETA.DIST cdf, Bgrat, L140BupBgrat
+- probes-numeric/t1538-beta-dist-at-excel-inv: BETA.DIST, F.DIST and F.DIST.RT cdf, L140BupBgrat
+- probes-numeric/t2220-f-dist-sweep-cdf: F.DIST cdf, Bgrat, BupBgrat, L140BupBgrat, L140BupBupBgrat
+- probes-numeric/t2220-f-dist-sweep-d1-1: F.DIST and F.DIST.RT cdf, Bgrat (a df of 1: b = 1/2)
+- probes-numeric/t2220-f-dist-sweep-d2-1: F.DIST and F.DIST.RT cdf, Bgrat, BupBgrat (a df of 1: b = 1/2)
+- probes-numeric/t2220-f-dist-sweep-rt: F.DIST.RT cdf, Bgrat, BupBgrat, L140BupBgrat, L140BupBupBgrat
+- probes-numeric/t2464-r2-bratio-x29: BETA.DIST cdf, BupBgrat
+- probes-numeric/t2464-w2f-absweep: BETA.DIST cdf, L140BupBgrat
+- probes-numeric/t2464-w2f-unit-shape: BETA.DIST cdf, BupBgrat
+- probes-numeric/t2464-w2f-xruns-2: BETA.DIST cdf, L140BupBgrat
+
+Also open from T-2510: F at a df of 1 reaches bgrat at b = 1/2, but T-2509's `bgrat_half` on F's (x, y) misses Excel
+(`FDIST(x,1,9)` Excel 0.190947117169724, bgrat 0.19094711716972382, 7 ulp; F.DIST/F.DIST.RT visibly off 10/11 -> 15/15 on
+probes-numeric with it), so F keeps today's kernel there; find what Excel's F does differently (statistics.md "Student t
+tails are one kernel call").

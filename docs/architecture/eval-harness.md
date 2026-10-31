@@ -81,6 +81,11 @@ Input conventions:
   creates the workbook with `WorkbookOptions::date_system` and applies formats with
   `Txn::set_number_format`. Number formats change only what a cell displays, which excel-graph
   cannot report (it reads cached values), so they are for cases that formulas read through.
+- Optional per-sheet `"conditional_formats": [{"ref": "A1:A3", "formula": "=A1>0"}]` and
+  `"data_validations": [{"ref": "A1", "formula": "=A1>0"}]` write formula conditional formats
+  (`<cfRule type="expression">`) and custom data validations, their formulas prefixed like cell
+  formulas (T-3263). They probe what Excel accepts in those formulas (a refused workbook is the
+  answer); the engine adapter ignores both, as neither changes a cell value.
 - Optional `"names": {"rate": "=Sheet1!$B$1"}` declares workbook-scoped defined names (any
   formula Excel accepts as a name body, e.g. an intersection). A key `Sheet1!name` is a name scoped
   to that sheet.
@@ -312,6 +317,10 @@ verdict is `n/a` and `exit` ignores it), needs 10,000 scored `gen-m2` cells with
 and reads the `M0-M2` probe row (`probe_row`). Each row lists its gen suite's visibly-off cells
 (`gen_visibly_off_cells`) and each probe row its own (`visibly_off_cells`), so
 `scripts/exit_owners.py` lists exactly the visibly-off exit cells without re-deriving closeness.
+`make phase1-exit` (`scripts/phase1_exit.py`, decision 0187) prints one verdict per Phase 1 exit
+criterion (run completeness, catalog, function rate, owners, each Phase 1 milestone row, and the
+`manual` items) from report.json, the catalog and the task tree, and exits 1 unless every measured
+one is met; `--json` prints the same lines for other tools.
 The M9 row (decision 0146 item 3, T-0095) requires no suite (`gen_suite` is empty and prints `none
 required`); its ironcalc-calc measure is a rate: the function-scope row less its deviations and exit
 exceptions (`calc_scored`) with at most `floor(0.0005 * calc_scored)` visibly off (`calc_allowance`),

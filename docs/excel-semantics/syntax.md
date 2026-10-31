@@ -222,9 +222,17 @@ Defined names (T-3143): a name body of 65 nested ABS calls loads and evaluates
 (probes/t3143-name-body-65, tagged M8 as defined-name bodies are, decision 0051), and one of 66 makes Excel refuse the workbook (createSession 501). The
 importer refuses both workbooks Excel refuses, cell formulas and name bodies (`reparse_formula_hack`).
 `Input::StoredFormula` through the API is not checked (it keeps 66 calls, as it keeps `=SUM()`):
-Excel has no per-cell stored entry to probe, only the whole file. Unprobed: conditional-format and
-data-validation formulas past 65 calls (the case format cannot express them yet, T-3263), names
-defined through the API, and whether a name's use counts its body's calls toward the using formula (T-3264).
+Excel has no per-cell stored entry to probe, only the whole file.
+Conditional formats and data validation (T-3263, probes/t3263-*, excel-graph 2026-10-31): a formula
+conditional format (`<cfRule type="expression">`) and a custom data validation (`<dataValidation
+type="custom">`, `<formula1>`) on S!A1 whose formula nests 65 ABS calls load (t3263-cf-abs-65,
+t3263-dv-abs-65), and the same at 66 make Excel refuse the workbook (createSession 501
+`FileCorruptTryRepair`; those two cases were dropped after the run). Rule formulas have no 255-character
+file limit (the UI's): a 299-character `1+1+...+1` loads in both (t3263-cf-long-299, t3263-dv-long-299),
+as do the 326-character 65-call formulas. The importer refuses the same workbooks
+(`check_rule_formulas`). Unprobed: other rule types (`cellIs` formulas, whole/decimal/list/date data
+validation, whose formulas are not checked), the x14 `extLst` forms, names defined through the API, and
+whether a name's use counts its body's calls toward the using formula (T-3264).
 The refused T-3143 inputs (`single-inner-65-stored`, `single-mid-65-stored`, `anchor-inner-65-stored`,
 `single-spelled-65-typed`, `name-body-66`) were dropped after the run.
 Bare parentheses and unary sign runs have caps of their own (T-3172, probes/t3172-*, excel-graph
@@ -293,7 +301,7 @@ re-measured against these limits (the at-limit tests run on a 1 MiB stack in rel
 must walk operator chains with `expressions/parser/chain.rs`.
 Evidence: probes/operator-chain-limit (chains at and one character past the published limit), the T-1091 refusals above and probes/t3097-nesting-* (Excel's 65-call cap; all of them match since T-3191 and T-3197) and probes/t3172-* (Excel's 256-parenthesis and 1,023/1,024-sign caps, T-3172); this is a resource limit.
 Status: DEVIATION (decision 0014)
-Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `MAX_VALUE_OPERATORS`, `MAX_NESTED_CALLS`, `MAX_PARENTHESES`, `MAX_SIGNS`, `Parser::in_call`, `Parser::parse_primary`, `Parser::grow`, `Parser::grow_chain`); expressions/parser/mod.rs (`Parser::parse_signs`); expressions/parser/chain.rs; expressions/parser/reference_operators.rs (`Parser::parse_parenthesis_run`); model.rs (`Model::parse_cell_formula`, `Model::evaluate_operator_chain`); rustsheet-xlsx `import::worksheets::from_a1_to_rc` (the call cap on load)
+Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `MAX_VALUE_OPERATORS`, `MAX_NESTED_CALLS`, `MAX_PARENTHESES`, `MAX_SIGNS`, `Parser::in_call`, `Parser::parse_primary`, `Parser::grow`, `Parser::grow_chain`); expressions/parser/mod.rs (`Parser::parse_signs`); expressions/parser/chain.rs; expressions/parser/reference_operators.rs (`Parser::parse_parenthesis_run`); model.rs (`Model::parse_cell_formula`, `Model::evaluate_operator_chain`); rustsheet-xlsx `import::worksheets::from_a1_to_rc` and `import::call_cap` (`refuse_too_many_calls`, `check_rule_formulas`) (the call cap on load: cells, name bodies, rule formulas)
 
 ## Input left over after a complete formula is a syntax error
 Rule: text after a complete expression (`=1 2`, `=1+2 3`, `=SUM(A1:A2))`, `="a" "b"`, `=SIN(1)(3)`,
@@ -595,12 +603,26 @@ Rule: Excel refuses a formula typed through the API (Graph PATCH 400 `InvalidArg
 not parse, and the cell keeps its content (blank in the probes): `=1+`, `=(1`, `=1)`, `=+`, `=1 2`,
 `="a`, `=NoSuchTable[Col]` and `=[1]!Table3[#Data]` with no such table or link. A call left open is
 closed instead: `=SUM(1` stores `=SUM(1)` (1) and `=SUM(1,,` stores `=SUM(1,,)` (1); a group left
-open (`=(1`) is not. And `=1**2` is not refused: Excel stores `=100` (100), a reading of `**` nobody
-documents; RustSheet refuses it (TODO(T-3283)). Stored text that does not parse loads as a parse
-error (`#ERROR!`, the text kept), as before.
-Evidence: probes/t3113-entered-refused (`=1+`, A1 and R1C1 mode), probes/t3213-typed-parse-errors
-(excel-graph, 2026-10-30). Only one `)` was probed missing, after a call or a group with nothing
-after it; `=SUM(1+(2`, `=SUM((1`, `=LAMBDA(x,x)(1` and other `**` shapes are unprobed.
-Status: VERIFIED (excel-graph); `=1**2` open (T-3283).
+open (`=(1`) is not, and neither is anything with two `(` open: `=SUM(1+(2`, `=SUM((1`,
+`=SUM(SUM(1`, `=ABS(-(1`, `=SUM(1,(2` and `=LAMBDA(x,x)(1` (the open `(` follows a `)`) are all
+refused. Stored text that does not parse loads as a parse error (`#ERROR!`, the text kept), as
+before. `**` in a typed number is its exponent marker: see "`**` in a typed number is `E`" below.
+Evidence: probes/t3113-entered-refused (`=1+`, A1 and R1C1 mode), probes/t3213-typed-parse-errors,
+probes/t3283-typed-missing-paren (excel-graph, 2026-10-30/31).
+Status: VERIFIED (excel-graph).
 Implemented in: model.rs (`Model::parse_cell_formula`), typed_input.rs (`TYPED_FORMULA_DOES_NOT_PARSE`,
 `open_parenthesis_is_a_call`); rustsheet-eval engine.rs leaves a refused typed cell blank (decision 0179).
+
+## `**` in a typed number is `E`
+Rule: in a typed formula Excel reads `**` written where a number's exponent marker `E` could stand
+as that `E`: `=1**2` stores `=100` (100), `=2**3` `=2000`, `=1.5**2` `=150`, `=2**-1` `=0.2`,
+`=-2**2` `=-200`, `=2**3*2` `=2000*2` (4000), `=SUM(1**2)` `=SUM(100)`. It is not a power operator:
+`**` anywhere an `E` would not be is refused like any other parse error: `=1**` (no exponent),
+`=Z1**2` (after a reference), `=(2)**3` (after `)`), `=2** 3` (a space), `=2**0.5` (a fraction),
+`=1E2**1` and `=2**3**2` (a second exponent), `=1***2`, `="a"**2`.
+Evidence: probes/t3283-typed-double-star, probes/t3213-typed-parse-errors A5 (excel-graph,
+2026-10-31). Unprobed: `**` in stored (file) text, which RustSheet keeps a parse error; `2**+3`
+(read like `2E+3`).
+Status: VERIFIED (excel-graph).
+Implemented in: lexer/number.rs (`Lexer::consume_number`), lexer/mod.rs (`Lexer::set_typed`, set by
+`Parser::set_typed`) (T-3283).

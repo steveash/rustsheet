@@ -35,13 +35,23 @@ below, T-1450), non-ASCII letters (only `ü` is probed; the engine treats every 
 - Letters that are date tokens make the section a date one: `TEXT(PI(),"ab")` = "a43" (`b`, Buddhist year), and
   `TEXT(12.3,"a.b")` is `#VALUE!` (a point and a date token). `n`/`N` and a bare `E` are `#VALUE!`.
 - `General` may stand among literals: `TEXT(5,"General x")` = "5 x", `TEXT(5,"x General")` = "x 5".
+- The word `General` is case-insensitive (`"general x"`, `"GENERAL x"` give "5 x"). `%` and `,` beside it
+  print and do not scale: `TEXT(5,"General%")` = "5%", `TEXT(0.5,"General%")` = "0.5%", `TEXT(5,"General,")` = "5,".
+  `General` beside a digit placeholder (`"0 General"`, `"General 0"`, `"General0"`, `"General.0"`, `"0.0 General"`), a
+  point (`"General."`), or a second `General` is `#VALUE!`, as is `TEXT(-5,"x General;y")`; `TEXT(-5,"General x")` =
+  "-5 x"; `TEXT(1234567890123,"x General")` = "x 1.23457E+12". Oddity, unimplemented: `TEXT(5,"d General")` =
+  "5 0.5" (General after a date token appends a value that is not the serial; the engine says `#VALUE!`).
+  Triage probe 2026-10-31 (excel-graph, scratch, not yet a committed case; T-3378 commits it): `"d General"` gives
+  "0 0.5" at 0, "15 0.499999803" at 45000 and at 45000.75, and `#VALUE!` at -5; `"yyyy General"` "1900 0.5",
+  `"General d"` "0.5 5", `"[h] General"` "120 5". UNVERIFIED hypothesis (T-3378): General prints
+  `(fl(x + 0.5/86400) - x) * 86400`, the half-second rounding step measured back in seconds.
+  Evidence: probes/text-format-general-company (excel-graph, 2026-10-31, T-1614).
 - A one-section format holding `@` and other text applies General to a number: `TEXT(5,"x@")` = "5".
 Evidence: probes/text-format-bare-literals A1-A31, A57-A76 (excel-graph, 2026-10-15, T-1262); gen-m6/2c1a6e93a1974f48
 Calc!A15, gen-m6/63012866a9d8b7db Calc!A3 (excel-graph, 2026-10-09, T-1239).
 Status: VERIFIED
 Implemented in: `Lexer::next_token` (formatter/lexer.rs), `Parser::parse_part` (formatter/parser.rs, the implicit `#`
-before a point and `General` among literals), `format_number` (formatter/format.rs). Unprobed: `General` next to digit
-placeholders or date tokens, or twice (the engine says `#VALUE!`; T-1614), and a lowercase
+before a point and `General` among literals), `format_number` (formatter/format.rs). Unprobed: a lowercase
 scientific `0.0e+0` (always the year token here, so `#VALUE!` as before).
 Tasks: T-1262, T-1450, T-1129
 
