@@ -139,5 +139,6 @@ def main(name):
     )
     print(cid, len(rows), "rows", len(cells), "cells", {b: blk.count(b) for b in dict.fromkeys(blk)})
 
+
 if __name__ == "__main__":
     main(sys.argv[1])

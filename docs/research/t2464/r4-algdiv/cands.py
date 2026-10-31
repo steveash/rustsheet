@@ -8,7 +8,6 @@ shape and per row, on this worker's probes. A candidate L(a, b) hits a shape whe
   gl_flat  fl(fl(GL(a) + GL(b)) - GL(a+b))
 Usage: cands.py a|hold"""
 
-import json
 import sys
 from pathlib import Path
 

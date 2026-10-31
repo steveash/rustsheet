@@ -52,5 +52,6 @@ def main(name):
     (HERE / f"probe_{name}.meta.json").write_text(json.dumps({"case": cid, "rows": rows}) + "\n")
     print(cid, len(rows), "rows", len(cells), "cells")
 
+
 if __name__ == "__main__":
     main(sys.argv[1])
