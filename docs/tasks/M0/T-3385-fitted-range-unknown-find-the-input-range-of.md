@@ -67,6 +67,7 @@ the fit lab's `xirr`, `xirr-oos` and `yield` sweeps.
   quality/fitted.json 80 -> 81 by `--update`. It tags an existing fit (no value change), so no new hold-out applies.
   numbers.md "SINH and TANH below 1" notes the bracket.
 - Also named the bracketing probes (t2535, t2778) on `INVERSE_EXP_LOW`/`INVERSE_EXP_HIGH`.
+- Decision 0190 records the fitted-lock raise (governance: quality/fitted.json is protected).
 - Not done (the optional "worth correcting" items): t_dist weak counts, f_density `LARGE_DF_MIN`/`LOG1P_SERIES_LIMIT`
   and Stirling counts, RATE secant and IRR model: follow-up T-3395.
 Eval delta: none (comments only).
