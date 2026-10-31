@@ -11,17 +11,15 @@ use std::fmt::Write as _;
 
 use serde::{Deserialize, Serialize};
 
-use crate::closeness::sole_call;
 use crate::formula_calls::functions_in;
-use crate::milestone_exit::{meets_rate, RATE_NUM};
 use crate::phase1_exceptions::Phase1Exceptions;
-use crate::report::FunctionStat;
+use crate::report::{attribute_cell, FunctionStat};
 use crate::runner::CaseResult;
-use crate::v15_checkpoint::{excepted_cells, left_out_counts, share, V15Function};
+use crate::v15_checkpoint::{excepted_cells, rate_count, share, V15Function};
 use crate::value::Verdict;
 
 /// The user-representative suites besides the generated ones (decision 0188 R1(b)).
-pub const SUITES: [&str; 6] = [
+const SUITES: [&str; 6] = [
     "ironcalc-calc",
     "corpus-bench",
     "calipers",
@@ -30,9 +28,9 @@ pub const SUITES: [&str; 6] = [
     "fixtures",
 ];
 /// Every suite whose name starts with this counts too (the gen-* suites).
-pub const GENERATED_PREFIX: &str = "gen-";
+const GENERATED_PREFIX: &str = "gen-";
 /// Without these (fetched) suites the run does not measure Gate B.
-pub const REQUIRED: [&str; 3] = ["calipers", "poi", "corpus-bench"];
+const REQUIRED: [&str; 3] = ["calipers", "poi", "corpus-bench"];
 
 /// Whether Gate B counts the cells of `suite`.
 #[must_use]
@@ -124,48 +122,22 @@ pub fn summarize(
     let mut stats: BTreeMap<String, FunctionStat> = BTreeMap::new();
     let scored: BTreeSet<&str> = results.iter().map(|r| r.suite.as_str()).collect();
     for r in results.iter().filter(|r| counts(&r.suite)) {
-        // A by-design value says nothing about how well a function matches Excel
-        // (`RunReport::build`, whose per-function counts these are, restricted to the suites).
+        // A by-design value says nothing about how well a function matches Excel.
         for c in r.cells.iter().filter(|c| c.verdict != Verdict::Deviation) {
             let called = c.formula.as_deref().map(functions_in).unwrap_or_default();
-            let sole = sole_call(&called).cloned();
-            for f in called {
-                let is_sole = sole.as_ref() == Some(&f);
-                stats
-                    .entry(f.clone())
-                    .or_insert_with(|| FunctionStat {
-                        name: f,
-                        ..FunctionStat::default()
-                    })
-                    .add_attributed(c, is_sole);
-            }
+            attribute_cell(&mut stats, &called, c);
         }
     }
     let (left_out, _, _) = excepted_cells(results, exceptions, counts);
     let mut rows: Vec<GateBFunction> = functions
         .iter()
         .map(|f| {
-            let (attribution, counted) =
-                stats
-                    .get(&f.name)
-                    .map_or((crate::attribution::Attribution::All, None), |s| {
-                        let (a, c) = s.counted();
-                        (a, Some(c))
-                    });
-            let (listed, desktop) = left_out_counts(&left_out, &f.name, attribution);
-            let (scored_cells, visible) = counted.map_or((0, 0), |c| (c.scored(), c.visible()));
-            let rate_cells = scored_cells.saturating_sub(listed + desktop);
-            let rate_visible = visible.saturating_sub(listed + desktop);
+            let rate = rate_count(stats.get(&f.name), &left_out, &f.name, f.covered);
             GateBFunction {
                 name: f.name.clone(),
-                rate_cells,
-                rate_visible,
-                meets_rate: f.covered
-                    && meets_rate(
-                        rate_cells.saturating_sub(rate_visible),
-                        rate_cells,
-                        RATE_NUM,
-                    ),
+                rate_cells: rate.rate_cells,
+                rate_visible: rate.rate_visible,
+                meets_rate: rate.meets_rate,
             }
         })
         .collect();

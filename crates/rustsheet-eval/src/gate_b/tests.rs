@@ -122,3 +122,33 @@ fn counted_suites() {
         assert!(!counts(s), "{s}");
     }
 }
+
+#[test]
+fn listed_cells_leave_the_rate_only_from_counted_suites() {
+    let at = |address: &str| CellResult {
+        cell: address.into(),
+        ..off()
+    };
+    let mut g = case("gen-m5/a", 1);
+    g.cells = pass(999);
+    g.cells.extend([at("B1"), at("C1")]);
+    let mut probe = case("probes/a", 1);
+    probe.cells = vec![at("B1")];
+    let results = [vec![g, probe], fetched()].concat();
+    let none = summarize(&results, &Phase1Exceptions::default(), &pi(true));
+    assert_eq!(
+        (none.functions[0].rate_cells, none.functions[0].rate_visible),
+        (1001, 2)
+    );
+    assert!(!none.met);
+    // The probes line is outside Gate B's suites: it must not take a gen-m5 cell with it.
+    let listed =
+        Phase1Exceptions::parse("gen-m5/a!S!B1\t0134\tT-1075\nprobes/a!S!B1\t0134\tT-1075\n")
+            .expect("parses");
+    let gate = summarize(&results, &listed, &pi(true));
+    assert_eq!(
+        (gate.functions[0].rate_cells, gate.functions[0].rate_visible),
+        (1000, 1)
+    );
+    assert!(gate.met);
+}

@@ -245,6 +245,48 @@ pub(crate) fn left_out_counts(
     (counted.len() - desktop, desktop)
 }
 
+/// One function's Phase 1 rate count (decision 0118): which cells it is measured by, those cells
+/// less the left-out ones, and whether a covered function meets the rate on them.
+pub(crate) struct RateCount {
+    pub attribution: Attribution,
+    pub rate_cells: usize,
+    pub rate_visible: usize,
+    /// Left out as listed (decision 0134).
+    pub listed: usize,
+    /// Left out as owned only by open M14 tasks (decision 0143).
+    pub desktop: usize,
+    pub meets_rate: bool,
+}
+
+/// [`RateCount`] of `name` from its counts `stat` (none: no cell) and the `left_out` cells.
+pub(crate) fn rate_count(
+    stat: Option<&FunctionStat>,
+    left_out: &[LeftOut],
+    name: &str,
+    covered: bool,
+) -> RateCount {
+    let (attribution, counted) = stat.map_or((Attribution::All, Closeness::default()), |s| {
+        let (a, c) = s.counted();
+        (a, *c)
+    });
+    let (listed, desktop) = left_out_counts(left_out, name, attribution);
+    let rate_cells = counted.scored().saturating_sub(listed + desktop);
+    let rate_visible = counted.visible().saturating_sub(listed + desktop);
+    RateCount {
+        attribution,
+        rate_cells,
+        rate_visible,
+        listed,
+        desktop,
+        meets_rate: covered
+            && meets_rate(
+                rate_cells.saturating_sub(rate_visible),
+                rate_cells,
+                RATE_NUM,
+            ),
+    }
+}
+
 /// The cells the Phase 1 rate leaves out: each visibly-off, non-deviation Excel cell of `results`
 /// that `exceptions` lists or (decision 0143) says only M14 tasks own; and the listed cells that
 /// are not such a cell, as `case!Sheet!A1`. A desktop-owned cell that is not one is not stale: the
@@ -351,18 +393,7 @@ pub fn summarize(
             };
             let stat = stats.get(name).copied();
             let visible = stat.map_or(0, |s| s.visible.total());
-            let (attribution, counted) =
-                stat.map_or((Attribution::All, Closeness::default()), |s| {
-                    let (a, c) = s.counted();
-                    (a, *c)
-                });
-            let (rate_excepted, desktop_owned) = left_out_counts(&left_out, name, attribution);
-            let rate_cells = counted
-                .scored()
-                .saturating_sub(rate_excepted + desktop_owned);
-            let rate_visible = counted
-                .visible()
-                .saturating_sub(rate_excepted + desktop_owned);
+            let rate = rate_count(stat, &left_out, name, covered);
             V15Function {
                 name: f.name.clone(),
                 milestone: f.milestone.clone(),
@@ -372,17 +403,12 @@ pub fn summarize(
                 visible,
                 covered,
                 meets: covered && visible == 0,
-                attribution,
-                rate_cells,
-                rate_visible,
-                rate_excepted,
-                desktop_owned,
-                meets_rate: covered
-                    && meets_rate(
-                        rate_cells.saturating_sub(rate_visible),
-                        rate_cells,
-                        RATE_NUM,
-                    ),
+                attribution: rate.attribution,
+                rate_cells: rate.rate_cells,
+                rate_visible: rate.rate_visible,
+                rate_excepted: rate.listed,
+                desktop_owned: rate.desktop,
+                meets_rate: rate.meets_rate,
                 strict: StrictRate {
                     meets_rate: covered && meets_rate(n.saturating_sub(visible), n, RATE_NUM),
                 },
