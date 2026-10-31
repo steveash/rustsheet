@@ -3,7 +3,7 @@ id: T-3311
 title: "Gamma quantiles in the search region of the deep lower tail: 7 visibly-off gen-m9 cells left by T-2561 (CHISQ.INV(1E-200,5), (1E-20,6), GAMMAINV(1E-16,2.5,1))"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
