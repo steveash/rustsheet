@@ -17,7 +17,7 @@ cited mpmath definition, the decision 0188 R3 points marked, and `make check` ru
 
 ## Context
 - Split out of T-3358 (2026-10-31), which keeps the Student-t and F families (T.DIST, T.INV, T.INV.2T, TINV, F.DIST,
-  F.INV); T-3534 has the discrete distributions and T-3535 the financial solvers.
+  F.INV); T-3543 has the discrete distributions and T-3535 the financial solvers.
 - Domains and edges to cite: statistics.md "Chi-squared quantile at df 2 and gamma quantile at alpha 1 are closed
   forms (T-2860)", "BETA.INV solves Excel's own CDF to the crossing (T-1745)", "BETA.DIST's density is #NUM! at an x
   of 0 or 1 (T-2435)", "BETAINV is #NUM! where its quantile underflows ... (T-2435)", the inverse-CDF p range note
