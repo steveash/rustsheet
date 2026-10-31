@@ -83,7 +83,8 @@ Cells this task owns:
     m9-chisq-dist-rt A19, m9-legacy-chidist A45, A46, t1049-chisqdistrt A19); closer 67 (m9-chisq-dist-rt A14
     `CHISQ.DIST.RT(6,3)`, T-2367's cell, 19 to 1); farther 61; lost 2 (t3284-gamma-deep-upper-tail A245
     `CHISQ.DIST.RT(42,7)` and A252 `(54,9)`, 0 to 1); visibly fixed 8; newly visibly off 2 (t3284-gamma-deep-upper-tail
-    A246 `CHISQ.DIST.RT(56,7)` 2 to 3, A260 `(120,15)` 11 to 13). Nearly all the farther cells are past x = 30
+    A246 `CHISQ.DIST.RT(56,7)` 2 to 3, A260 `(120,15)` 11 to 13; accepted by the owner's extended ruling (a), decision
+    0202). Nearly all the farther cells are past x = 30
     (t2561-chisq-dist-rt-past-edge, t3284-gamma-deep-upper-tail), where Excel takes its Stirling ratio form (T-3269).
   - eval/baseline (`update-baseline --allow-regressions`): gen-m9 2894 to 2892 known failures (fixed 3, the one
     regression `CHIDIST(42,7)`); ironcalc-calc one line fewer (CHISQ.xlsx G3). Visible parity 2265 in-scope cells

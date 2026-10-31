@@ -2,7 +2,9 @@
 
 - **Status:** accepted (2026-10-31, T-3285; owner ruling (a) "Allow, with records", session
   https://claude.ai/code/session_01WTJ7rq9tsQyspbybqNLk1a). Applies decision 0083's standing ulp-regression allowance to
-  T-3285's PR, with the cells below named.
+  T-3285's PR, with the cells below named. Amended 2026-10-31 by the owner's extended ruling (a) ("Extend both
+  rulings", same session): the ruling also covers the two ungated probe cells the PR makes newly visibly off, named under
+  Consequences.
 - **Context:**
   - T-3285 computes Q(a, x) at a half-integer shape from 3/2 to 20 in double-double, rounded once
     (`incomplete_gamma/half_integer.rs`): correctly rounded against 50-digit mpmath. Excel is correctly rounded at
@@ -32,6 +34,12 @@
       1 and 2). Fixed 4 and visibly fixed 2 (ironcalc-calc CHISQ.xlsx G3 and G4), more than regressed (condition 3).
   - Ungated (probes-numeric) cells the PR loses or makes newly visibly off are listed in T-3285's Outcome; probes-numeric
     has no baseline and is Phase 1b evidence (decision 0188 R1(c)). Every changed value is within Gate A's envelope.
+    The extended ruling (a) names and accepts the two newly visibly off, in ulps of Excel's value, main to HEAD:
+    - probes-numeric/t3284-gamma-deep-upper-tail Calc!A246 `CHISQ.DIST.RT(56,7)` = Q(3.5, 28), 2 to 3;
+    - probes-numeric/t3284-gamma-deep-upper-tail Calc!A260 `CHISQ.DIST.RT(120,15)` = Q(7.5, 60), 11 to 13.
+
+    Both are past x = 30, Excel's deep upper tail (T-3269's region, not T-3461's), and both stay within Gate A's
+    envelope; T-3285's Outcome lists them.
   - T-3461 (deferred to Phase 1b, R5) names the regressed cells and looks for Excel's own form on [a + 1, 30]
     (condition 4); T-3269 covers x > 30.
   - eval/baseline/gen-m9.txt gains the line for `CHIDIST(42,7)` and loses the fixed cells' lines;

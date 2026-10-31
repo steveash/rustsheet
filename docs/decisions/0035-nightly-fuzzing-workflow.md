@@ -32,3 +32,7 @@
   `rustc -vV` explicitly. Permissions, triggers and secrets are unchanged.
 - **Revision (2026-10-30, T-3163):** capped formula seeds, a `cargo fuzz cmin` before the cache save and a `v2`
   cache key; see decision 0171.
+- **Revision (2026-10-31, T-2895):** a fourth target, `bitcode_workbook` (decoded bitcode through
+  `Model::from_bytes`). Its seeds are `Model::to_bytes()` of engine-written workbooks, written by the fuzz crate's
+  `bitcode_seeds` binary (`fuzz/seeds/bitcode_seeds.rs`), which `seed_corpus.py` runs. Corpora are still generated,
+  never committed.

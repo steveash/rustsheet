@@ -671,16 +671,32 @@ impl Txn<'_> {
         filtered: bool,
         totals_row: bool,
     ) -> Result<(), EditError> {
+        self.add_table_with_rows(range, name, filtered, (true, totals_row))
+    }
+
+    /// [`Txn::add_table_with_totals`] for a table with or without a header row
+    /// (`(header_row, totals_row)`). Without one the data starts on the first row of `range` and
+    /// the columns are named `Column1`, `Column2`, ...; such a table takes no filter.
+    ///
+    /// # Errors
+    /// As [`Txn::add_table`]; a table without a header row needs one data row and no filter.
+    pub fn add_table_with_rows(
+        &mut self,
+        range: RangeRef,
+        name: &str,
+        filtered: bool,
+        (header_row, totals_row): (bool, bool),
+    ) -> Result<(), EditError> {
         let index = sheet_index(self.model, range.sheet)?;
         let (top, left) = engine_rc(range.top, range.left).ok_or(RefError::OutOfBounds)?;
         let (bottom, right) = engine_rc(range.bottom, range.right).ok_or(RefError::OutOfBounds)?;
         self.model
-            .add_table_with_totals(
+            .add_table_with_rows(
                 index,
                 name,
                 (top, left, bottom, right),
                 filtered,
-                totals_row,
+                (header_row, totals_row),
             )
             .map_err(EditError::Table)?;
         self.sheet_op = true;
