@@ -3,7 +3,7 @@ id: T-3395
 title: "FITTED weak counts and untagged cuts: t_dist p cuts, f_density LARGE_DF_MIN and LOG1P_SERIES_LIMIT, RATE secant and IRR model"
 milestone: M0
 lane: quality
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
