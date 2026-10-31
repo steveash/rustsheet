@@ -156,7 +156,8 @@ impl Model {
         // `MATCH({#N/A;1},A1:A3,"x")` is #N/A in slot 1 (probes/match-lookup-value-lift E17; slot 2,
         // #VALUE!, follows from the per-slot match_type check and is not probed;
         // docs/excel-semantics/lookup.md "MATCH lifts over lookup_value", T-1866).
-        self.lift_values(
+        self.lift_values_keyed(
+            args,
             vec![target, match_type],
             LiftCost::Cells(values.as_ref().map_or(1, SearchVector::scan_cells)),
             &LiftOptions::REUSE_EQUAL_RUNS,
@@ -271,6 +272,7 @@ impl Model {
         // We look for `lookup_value` in the first row of the table
         let search_vector = table.first_row(self, cell);
         let search = LookupSearch {
+            call: args,
             search_vector: &search_vector,
             index: row_index,
             size: table.rows(),
@@ -324,6 +326,7 @@ impl Model {
         // We look for `lookup_value` in the first column of the table
         let search_vector = table.first_column(self, cell);
         let search = LookupSearch {
+            call: args,
             search_vector: &search_vector,
             index: column_index,
             size: table.columns(),

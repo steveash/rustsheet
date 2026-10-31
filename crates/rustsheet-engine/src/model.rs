@@ -1310,6 +1310,8 @@ impl Model {
         language_id: &str,
         clock: Clock,
     ) -> Result<Model, String> {
+        // Before anything is built from it: the indices are untrusted (T-2913).
+        crate::workbook_check::check_indices(&workbook)?;
         workbook.rebuild_derived_state();
         let worksheets = &workbook.worksheets;
 
