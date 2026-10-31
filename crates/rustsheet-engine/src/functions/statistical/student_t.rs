@@ -48,9 +48,11 @@ const SERIES_MAX_DF: f64 = 1000.0;
 /// From this shape up to [`LOG_GAMMA_BETA_MAX`] Excel's B(a, 1/2) is a sum of GAMMALNs
 /// ([`log_gamma_ratio`]). Below it (df under 13) the form is not probed and scaling by it loses
 /// probes-numeric cells (statistics.md "Student t prefactor per df").
+/// FITTED(T-0969, 192 cells, df 1..1E6, T.DIST.RT and T.TEST)
 const LOG_GAMMA_BETA_MIN: f64 = 6.5;
 /// Up to this shape Excel's B(a, 1/2) is a sum of GAMMALNs: past 8 GAMMALN is Stirling's series and
 /// Excel's B is accurate.
+/// FITTED(T-0969, 970 cells, BETA.DIST a 0.25..2.5, b 6.5..9.5)
 const LOG_GAMMA_BETA_MAX: f64 = 8.0;
 /// From this shape on, Gamma(a + 1/2)/Gamma(a) comes from its asymptotic series.
 const ASYMPTOTIC_MIN_SHAPE: f64 = 85.0;
@@ -66,9 +68,11 @@ const TAYLOR_TERMS: u32 = 40;
 /// Below this the double-double tail 1/2 - A/2 keeps fewer than 40 of its 106 bits.
 const MIN_SERIES_TAIL: f64 = 1e-12;
 /// df 1 and 2 keep today's path rather than the kernel call ([`kernel_tail`]).
+/// FITTED(T-2509, 67 cells, df 1, t up to 1E6)
 const KERNEL_MIN_DF: f64 = 2.0;
 /// Largest rounded y = n/(n+t^2) at which the tail of a t beyond 1 is taken at that y
 /// ([`unflushed_upper_tail`]).
+/// FITTED(T-0969, 3232 cells, df 2..1000, t 0.0013..8)
 const ROUNDED_Y_MAX: f64 = 0.99;
 /// 1/pi as a double-double.
 const FRAC_1_PI_DD: Dd = (

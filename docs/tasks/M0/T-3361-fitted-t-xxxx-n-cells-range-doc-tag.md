@@ -3,7 +3,7 @@ id: T-3361
 title: "FITTED(T-XXXX, n_cells, range) doc tag: tag the known fitted constants and ratchet their count in make hygiene (decision 0188 R4.3)"
 milestone: M0
 lane: quality
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -46,3 +46,20 @@ Every empirically fitted constant, cut-point or table in the engine carries a `F
 
 ## Out of scope
 - Changing any fitted value or adding the out-of-range fallbacks (T-3364, T-3365).
+
+## Outcome
+- 80 `/// FITTED(T-NNNN, <n> cells, <range>)` tags on 25 files under crates/rustsheet-engine/src/functions/: every
+  listed site the evidence shows was fitted, plus the fits the search found (financial form cuts and solver stops,
+  the Bessel asymptotic tables, the hyperbolic switches, the GAMMALN kernels, the gamma, Poisson, chisq and exponential
+  cuts). Counts and ranges come from each task's Outcome note, its probe cases or the cells the item's doc cites.
+- Not tagged, because the value is math, a published algorithm, an Excel limit or a directive-5 cap, not chosen on
+  Excel cells: t_dist.rs `T_QUANTILE_SERIES_DF` (a statrs hang guard, T-1518) and `T_TAIL_X` (the asymptotic's
+  truncation error); inverse_beta.rs, audited whole (its step caps are directive-5 limits, the AS 64/109 terms are
+  the published algorithm and `GAMMA_LIMIT_SHAPE_RATIO` is an mpmath error bound; the "probe-tuned thresholds" are the
+  t_dist.rs `T_TAIL_P` and `T_STATRS_MIN_P`, which are tagged); the TOMS 708 / AS 241 constants.
+- Five tags say `range unknown` (irr_fallback, compute_xirr, excel_yield_newton, SERIES_MIN_SHAPE_SUM,
+  F_QUANTILE_REFINE_P_MIN): follow-up T-3385, which also settles hyperbolic.rs `EXPM1_FORM_LIMIT`.
+- Fits applied past their measured range, now visible in the tags: f_density.rs `STIRLING_ERROR` (measured on
+  BETA.DIST, applied to F.DIST past v 28), yield_solver.rs `yield_start` (price 90.5..99.5), t_dist.rs `T_TAIL_P` and
+  `T_STATRS_MIN_P` (probe p up to 1E-10, cuts at 1E-5 and 1E-8) — T-3364's subject.
+- Ratchet: scripts/check_fitted.py (+ tests) in `make hygiene` against quality/fitted.json (80). Eval delta: none.

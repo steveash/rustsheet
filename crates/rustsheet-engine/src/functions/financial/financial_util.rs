@@ -178,6 +178,7 @@ fn irr_from_discount(v: f64) -> Option<f64> {
 /// is not a positive discount factor, or no stop in 50 steps). The state is d = 1 - v = r/(1 + r),
 /// so from v = 0.5 down the iterates' v = 1 - d sit on Excel's grid of multiples of 2^-53
 /// (probes/t2565-irr-guess-sweeps), and each step is anchored on the newer iterate.
+/// FITTED(T-3120, 36 cells, IRR of {-2.5,-1,123456789.123} over a guess sweep)
 fn irr_secant(values: &[f64], guess: f64) -> Option<f64> {
     const MAX_STEPS: usize = 50;
     let npv = |d: f64| irr_npv(values, 1.0 - d);
@@ -272,6 +273,7 @@ pub(crate) fn compute_irr(values: &[f64], guess: f64) -> Result<f64, (Error, Str
 /// reach its root and is `#NUM!`. The method is fitted, not Excel's code: the returned digits are
 /// 15 to 35 ulp from Excel's on the probed roots (T-1686, T-2131).
 /// `values` has no leading zero flow ([`compute_irr`] drops them).
+/// FITTED(T-2727, 39 cells, range unknown)
 fn irr_fallback(values: &[f64]) -> Option<f64> {
     // Horner for P(v) and P'(v), highest power first
     let polynomial = |v: f64| {
@@ -411,6 +413,7 @@ fn xirr_bracket(values: &[f64], dates: &[f64], guess: f64) -> Option<(f64, f64)>
 /// probes-numeric/m9-fin-irr-rate) and 80 of 81 out of sample, the miss being the input check of
 /// xirr-early-dates A7 (fit lab `xirr`, `xirr-oos`; T-1525, T-1583, T-3268).
 /// Excel's bisection cap is unprobed: 200 steps is enough on every oracle cell.
+/// FITTED(T-3268, 267 cells, range unknown)
 pub(crate) fn compute_xirr(
     values: &[f64],
     dates: &[f64],
