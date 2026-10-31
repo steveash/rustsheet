@@ -61,8 +61,8 @@ pub(super) fn bgrat_half(a: f64, x: f64, y: f64, w: f64) -> Option<f64> {
     } else {
         0.5 + (0.5 - erf(root))
     };
-    // r = b z^b e^-z / Gamma(b + 1) and u = r e^-(algdiv(b, a) + b ln nu), at b = 1/2.
-    // bgrat's r = b z^b e^-z / Gamma(b + 1) is z^(1/2) e^-z / sqrt(pi) at b = 1/2.
+    // At b = 1/2, r = b z^b e^-z / Gamma(b + 1) is z^(1/2) e^-z / sqrt(pi), and
+    // u = r e^-(algdiv(b, a) + b ln nu).
     let r = dd_mul(dd_mul(dd_sqrt((z, 0.0)), dd_exp((-z, 0.0))), FRAC_1_SQRT_PI);
     let ln_nu = dd_add(ln_double_double(nu.0), (nu.1 / nu.0, 0.0));
     let exponent = dd_add(algdiv_half(a), (0.5 * ln_nu.0, 0.5 * ln_nu.1));

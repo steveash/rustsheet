@@ -698,7 +698,7 @@ fn ulp_distance(a: f64, b: f64) -> u64 {
 }
 
 // Q at the half-integer shapes 1/2, 3/2, 5/2 and 7/2 for x from a to 30a, by the accurate kernel
-// (`accurate_half_integer_upper`; CHISQ.DIST.RT takes it from a + 1 to 3a), against mpmath's
+// (`accurate_half_integer_upper`; CHISQ.DIST.RT takes it from a + 1 on), against mpmath's
 // `gammainc(a, x, inf, regularized=True)` at 50 digits rounded to a double (T-3285): within 1
 // ulp. The forward fraction was up to 19 ulp off here.
 #[test]

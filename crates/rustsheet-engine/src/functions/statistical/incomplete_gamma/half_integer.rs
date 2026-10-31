@@ -2,14 +2,17 @@
 //! [`DIRECT_SHAPE_MAX`], for x >= a, in double-double and rounded once (T-3285): CHISQ.DIST.RT,
 //! CHIDIST and CHISQ.TEST at an odd df from 3 on, where x lies in [`half_integer_upper`]'s range.
 //!
-//! There Excel is correctly rounded at the probed points (60-digit mpmath, ulps of Excel's value):
-//! `CHISQ.DIST.RT(10,5)` = Q(2.5, 5) is 0.07523524614651218 (+0.3; probes-numeric/
+//! Excel is correctly rounded at two of the probed points (60-digit mpmath, ulps of Excel's
+//! value): `CHISQ.DIST.RT(10,5)` = Q(2.5, 5) is 0.07523524614651218 (+0.3; probes-numeric/
 //! m9-chisq-dist-rt A19, m9-legacy-chidist A45 and A46, t1049-chisqdistrt A19) and
 //! `CHISQ.DIST.RT(8,3.34)` = Q(1.5, 4) 0.04601170568923137 (-0.0; ironcalc-calc STATISTICAL/
-//! CHISQ.xlsx G3), where the double kernel was 5.7 and 11 ulp off. Its loss was the forward
-//! (Lentz) continued fraction: every step's rounding is carried into the product, 5.1 ulp at
-//! Q(2.5, 5) and 16 at Q(1.5, 3), while the prefactor x^a e^-x / Gamma(a) was within 1.3
-//! (docs/excel-semantics/statistics.md "Incomplete gamma: accurate kernel (T-0971)").
+//! CHISQ.xlsx G3), where the double kernel was 5.7 and 11 ulp off. Elsewhere Excel is within a
+//! few ulp of the truth but not correctly rounded: `CHISQ.DIST.RT(6,3)` = Q(1.5, 3) -0.7,
+//! `CHISQ.DIST.RT(12.3,7.2)` = Q(3.5, 6.15) +1.5 (CHISQ.xlsx G4), `CHIDIST(9,5)` = Q(2.5, 4.5)
+//! -2.6, `CHIDIST(42,7)` = Q(3.5, 21) +1 (docs/excel-semantics/statistics.md "Incomplete gamma:
+//! accurate kernel (T-0971)"). The double kernel's loss was the forward (Lentz) continued
+//! fraction: every step's rounding is carried into the product, 5.1 ulp at Q(2.5, 5) and 16 at
+//! Q(1.5, 3), while the prefactor x^a e^-x / Gamma(a) was within 1.3.
 //!
 //! So both factors are taken in double-double: the prefactor as
 //! sqrt(x) e^-x / sqrt(pi) * prod_(j=1..n) 2x / (2j - 1), which is exact in its shape
@@ -26,22 +29,14 @@ use crate::x87_exp::{dd_div_small, dd_exp, dd_mul, dd_sqrt};
 /// subnormal); such points, Q below about 1E-282, keep the double kernel.
 const MAX_X: f64 = 650.0;
 
-/// The largest x / a at which CHISQ.DIST.RT takes [`accurate_half_integer_upper`]. Measured on
-/// the gated cells the accurate Q changed when applied from a to 30a (T-3285 attempt 1, x/a from
-/// 1.05 to 13.3): up to 3a it fixed or moved closer every one but two that went from 2 to 3 ulp
-/// (`CHISQ.DIST.RT(8,3.34)` and `(12.3,7.2)`, ironcalc-calc CHISQ.xlsx G3 and G4, and
-/// `CHISQ.DIST.RT(10,5)` four times in probes-numeric), while past it Excel is not correctly
-/// rounded either and the accurate Q lost `CHIDIST(42,7)` = Q(3.5, 21) (gen-m9/fec39efaba9284c3
-/// A249), where Excel is 1 ulp above it.
-/// FITTED(T-3285, 17 cells, x/a 1.05..13.3)
-const ACCURATE_MAX_RATIO: f64 = 3.0;
-
 /// CHISQ.DIST.RT's Q(a, x) at a half-integer shape from 3/2 up to [`DIRECT_SHAPE_MAX`] for
-/// `a + 1 <= x <= 3a` ([`ACCURATE_MAX_RATIO`]): the accurate Q there, `None` elsewhere. Below a + 1
-/// Excel is 1 - P (`CHIDIST(5,5)` = Q(2.5, 2.5) and `CHIDIST(7,7)` are its bits, 1 ulp from the
-/// accurate Q: gen-m9/4250f880ab640c49 A331, 899f9555e67da2d6 A72), so the caller keeps its pair.
+/// `x >= a + 1`: the accurate Q there (up to [`MAX_X`]), `None` elsewhere. Below a + 1 Excel is
+/// 1 - P (`CHIDIST(5,5)` = Q(2.5, 2.5) and `CHIDIST(7,7)` = Q(3.5, 3.5) are its bits, 1 ulp from
+/// the accurate Q: gen-m9/4250f880ab640c49 A331, 899f9555e67da2d6 A72), so the caller keeps its
+/// pair. Above it there is no upper cut: Excel is within a few ulp of the truth but not correctly
+/// rounded in general, and the owner ruled (decision 0202) that the accurate Q applies throughout.
 pub(super) fn half_integer_upper(a: f64, x: f64, terms: &mut Terms) -> Option<f64> {
-    if a < 1.5 || !(x >= a + 1.0 && x <= ACCURATE_MAX_RATIO * a) {
+    if !(a >= 1.5 && x >= a + 1.0) {
         return None;
     }
     accurate_half_integer_upper(a, x, terms)

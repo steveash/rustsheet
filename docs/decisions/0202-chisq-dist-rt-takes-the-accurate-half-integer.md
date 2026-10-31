@@ -23,7 +23,19 @@
     Excel and within 15 significant digits, so none becomes visibly off. They are listed under Consequences.
   - T-3285's PR may run `rustsheet-eval update-baseline --allow-regressions` for exactly these cells.
 - **Consequences:**
-  - The cells lost or moved farther (main against the PR head, per cell): see the list below.
+  - Main (1af9bd6c6) against T-3285's head, per cell over every suite, in ulps of Excel's value. Gated:
+    - lost (bit-exact to not): gen-m9/fec39efaba9284c3 Calc!A249 `CHIDIST(42,7)` = Q(3.5, 21), 0 to 1;
+    - farther: gen-m9/320d51765af9b6b7 Calc!A249 and 7674c89c824aca43 Calc!A332 `CHIDIST(9,5)` = Q(2.5, 4.5), 2 to 3
+      (Excel is -2.6 ulp from the truth); gen-m9/b8ee55934c5b824c Calc!A262 `CHIDIST(37.5,7)` 2 to 3 and Calc!A400
+      `CHIDIST(37.5,5)` 1 to 2;
+    - none newly visibly off; every one numeric, within 4 ulp and within 15 digits of Excel (decision 0083 conditions
+      1 and 2). Fixed 4 and visibly fixed 2 (ironcalc-calc CHISQ.xlsx G3 and G4), more than regressed (condition 3).
+  - Ungated (probes-numeric) cells the PR loses or makes newly visibly off are listed in T-3285's Outcome; probes-numeric
+    has no baseline and is Phase 1b evidence (decision 0188 R1(c)). Every changed value is within Gate A's envelope.
+  - T-3461 (deferred to Phase 1b, R5) names the regressed cells and looks for Excel's own form on [a + 1, 30]
+    (condition 4); T-3269 covers x > 30.
+  - eval/baseline/gen-m9.txt gains the line for `CHIDIST(42,7)` and loses the fixed cells' lines;
+    eval/baseline/ironcalc-calc.txt loses CHISQ.xlsx G3; `update-baseline --allow-regressions` writes both.
   - quality/fitted.json loses half_integer.rs's one FITTED tag (the 3a cut is gone).
-  - Excel's own form for Q at these shapes (T-3269's far tail, and its follow-up) may later move these cells back to
-    Excel's bits; until then Excel's value stays the expected one and the cells are lines of eval/baseline.
+  - Decision 0188 R4: with no fitted piece, R4.1's hold-out does not apply; R4.2's fresh sweep
+    (probes-numeric/t3285-chisq-dist-rt-half-integer-sweep, docs/research/t3285) is in T-3285's Outcome.
