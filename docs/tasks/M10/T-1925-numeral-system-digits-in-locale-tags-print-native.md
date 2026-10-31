@@ -3,7 +3,7 @@ id: T-1925
 title: "Numeral-system digits in locale tags print native digits"
 milestone: M10
 lane: functions-text
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -23,8 +23,11 @@ From T-1924 (2026-10-26): `[$-fr_FR-x]` reads as 0x10E00AF1, numeral byte 0x10, 
 probes/t1924-locale-tag-extended-hex A26, B26.
 
 ## Acceptance criteria
-- [ ] A probe covers the numeral digits; its cells pass or are filed.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe covers the numeral digits; its cells pass or are filed.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/t1925-numeral-digits (32 numeral bytes x en-US/ja-JP dates and a plain number), filled from excel-graph; findings in number-formats.md. Implementation filed as T-3467 (cells are known failures). Eval delta: new probe cells added as known failures, no regressions.

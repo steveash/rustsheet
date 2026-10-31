@@ -244,7 +244,7 @@ fn hijri_default(value: u32, hijri_prefix: bool) -> u32 {
 /// the ar-SA names, 14 Gregorian with the Korean native month names (probes/t1923-calendar-digits).
 /// 6 is Hijri, with the LCID's Hijri names ([`hijri_names`]), 8 Hebrew and 10 Saka
 /// ([`hebrew_or_saka`]). Day halves follow the LCID throughout. Numeral-system digits (bits 24-31;
-/// TODO(T-1925)) stay [`LocaleTag::Silent`].
+/// TODO(T-3467)) stay [`LocaleTag::Silent`].
 fn resolve_lcid(value: u32) -> LocaleTag {
     match value {
         SYSTEM_DATE_LCID => return LocaleTag::SystemDate,
