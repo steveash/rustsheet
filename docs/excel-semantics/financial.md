@@ -797,7 +797,7 @@ guess of 0.1 or -0.5), `IRR(A4:B4)` on -4 and 4, and `IRR({-1,1})`, but -2^-52 f
   and twice-rounded arithmetic agree (a scratch run of the rule in plain doubles, T-3410).
 - ironcalc-calc/FINANCIAL/IRR.xlsx Two Values!C4, the same formula on the same cells, caches 2^-52, though its
   app.xml names Excel Online 16.0300. docs/research/oracle-calibration.md (T-0004) recorded the web's 0 there too.
-  So the build that computed the cache rounded the final quotient once. Decision 0196 names the cell M14
+  That is consistent with a build that rounds the final quotient once, though other paths could give the same bits. Decision 0196 names the cell M14
   desktop-only evidence (T-1075 item 23); it stays a known failure.
 Status: VERIFIED (web); the desktop value is T-1075 item 23
 Tasks: T-3410

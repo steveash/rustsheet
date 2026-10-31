@@ -654,8 +654,9 @@ and the oracle calibration found IMARGUMENT differing by ulps between Excel for 
   `IMSECH("3+4i")` prints -0.065294027857947 (probes/eng-argument-modes Calc!A45 and gen-m9/a2e51f48717af2a1
   Calc!A24, excel-graph). Ours gives the other digit in both. The remaining cells are now T-2044 (sweep T-2043);
   IMARGUMENT H2, H3, H10 and IMCOS K25 are desktop/web differences (docs/research/oracle-calibration.md), not fitting
-  targets until the desktop oracle exists. K25 is confirmed: `IMCOS("4+3i")` on the web is "-6.58066304055116+7.58155274274654i"
-  and its imaginary part 7.58155274274654, the engine's digits, against the Mac cache's ...655
+  targets until the desktop oracle exists. K25 is confirmed: `IMCOS("4+3i")` on the web is
+  "-6.58066304055116+7.58155274274654i" and its imaginary part 7.58155274274654, the engine's digits, against the
+  Mac cache's ...655
   (probes/t3410-irr-zero-root-imcos Calc!C9, C11, C12, excel-graph, 2026-10-31); decision 0196 names it M14
   desktop-only evidence (T-1075 item 24).
 - Where `cosh 2y` overflows (|y| above about 355) IMTAN gives `i` (`-i` for a negative imaginary part) and
