@@ -22,7 +22,7 @@ use super::{continued_fraction, Terms, DIRECT_SHAPE_MAX};
 use crate::x87_exp::{dd_add, dd_div, dd_div_small, dd_exp, dd_mul, dd_sqrt, two_sum};
 
 /// A double-double: an unevaluated sum `hi + lo`.
-type Dd = (f64, f64);
+pub(super) type Dd = (f64, f64);
 
 /// Past this x the prefactor's e^-x is past [`dd_exp`]'s double-double range (its tail word turns
 /// subnormal); such points, Q below about 1E-282, keep the double kernel.
@@ -65,12 +65,19 @@ pub(super) fn accurate_half_integer_upper(a: f64, x: f64, terms: &mut Terms) -> 
     if !(x >= a && x <= MAX_X) {
         return None;
     }
+    let upper = dd_mul(prefactor(a, x), accurate_fraction(a, x, terms)?);
+    upper.0.is_normal().then_some(upper.0)
+}
+
+/// The continued fraction of [`continued_fraction`] in double-double for a shape `a` that is a
+/// multiple of 1/2 below [`DIRECT_SHAPE_MAX`]: the forward fraction sets the depth, from which
+/// [`backward_fraction`] evaluates it. `None` past `terms` or the fraction's budget.
+pub(super) fn accurate_fraction(a: f64, x: f64, terms: &mut Terms) -> Option<Dd> {
     let (_, taken) = continued_fraction(a, x, terms)?;
     let depth = taken
         .saturating_mul(DEPTH_FACTOR)
         .saturating_add(DEPTH_MARGIN);
-    let upper = dd_mul(prefactor(a, x), backward_fraction(a, x, depth));
-    upper.0.is_normal().then_some(upper.0)
+    Some(backward_fraction(a, x, depth))
 }
 
 /// x^a e^-x / Gamma(a) at a = n + 1/2: sqrt(x) e^-x / sqrt(pi) times 2x / (2j - 1) for j = 1..n.
@@ -88,7 +95,7 @@ fn prefactor(a: f64, x: f64) -> Dd {
 /// The continued fraction of [`continued_fraction`] evaluated from depth `depth` up:
 /// `t(depth) = 0`, `t(i - 1) = i (a - i) / (x + 1 - a + 2i + t(i))`, then
 /// `1 / (x + 1 - a + t(0))`. Each numerator i (a - i) and offset 1 - a + 2i is exact (a
-/// half-integer below 20, i at most twice the fraction's budget); x plus the offset is formed
+/// multiple of 1/2 below 20, i at most twice the fraction's budget); x plus the offset is formed
 /// exactly by `two_sum`.
 fn backward_fraction(a: f64, x: f64, depth: u32) -> Dd {
     let mut tail: Dd = (0.0, 0.0);

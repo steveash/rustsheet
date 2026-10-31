@@ -4,8 +4,8 @@ use super::huge_shape::{huge_shape_quantile, wilson_hilferty_quantile};
 use super::{
     cdf_terms_bound, continued_fraction_budget, excel_small_shape_lower,
     excel_small_shape_quantile, excel_tiny_quantile, gamma_cdf, gamma_density, gamma_inverse_cdf,
-    gamma_quantile, gamma_sf, gamma_ur, incomplete_gamma_pair, inverse_cdf_within, temme_pair,
-    Tail, Terms, MAX_TERMS, TEMME_C,
+    gamma_quantile, gamma_sf, gamma_ur, incomplete_gamma_pair, inverse_cdf_within, poisson_upper,
+    temme_pair, Tail, Terms, MAX_TERMS, TEMME_C,
 };
 use statrs::distribution::{ChiSquared, ContinuousCDF, DiscreteCDF, Gamma, Poisson};
 use statrs::function::gamma::{gamma_lr as statrs_lr, gamma_ur as statrs_ur};
@@ -695,7 +695,8 @@ fn ulp_distance(a: f64, b: f64) -> u64 {
 }
 
 // Q at the half-integer shapes 1/2, 3/2, 5/2 and 7/2 for x from a to 30a, by the accurate kernel
-// (`accurate_half_integer_upper`; CHISQ.DIST.RT takes it from a + 1 to 3a), against mpmath's
+// (`accurate_half_integer_upper`; CHISQ.DIST.RT takes it from a + 1 to 3a, and past x = 30
+// Excel's far tail, T-3269), against mpmath's
 // `gammainc(a, x, inf, regularized=True)` at 50 digits rounded to a double (T-3285): within 1
 // ulp. The forward fraction was up to 19 ulp off here.
 #[test]
@@ -767,5 +768,40 @@ fn half_integer_upper_tail_is_within_an_ulp_of_the_reference() {
     assert_eq!(
         sf(1.5, 4.0).to_bits(),
         0.046_011_705_689_231_37_f64.to_bits()
+    );
+}
+
+// Excel's far upper tail (T-3269): the Stirling ratio prefactor times the accurate fraction gives
+// Excel's own bits at these cells (probes-numeric/t3284-gamma-deep-upper-tail A26, A37, A44, A46,
+// A64, A241), where the accurate kernel was 2 to 46 ulp off; up to x = 30 the accurate Q stays.
+#[test]
+fn the_far_upper_tail_is_excels_ratio_form() {
+    let excel = [
+        (3.0, 45.0, 3.029_975_917_511_539e-17_f64),
+        (4.0, 80.0, 1.599_357_024_996_615e-30),
+        (5.0, 40.0, 5.020_464_318_829_131e-13),
+        (5.0, 75.0, 3.727_485_055_062_530_6e-27),
+        (7.0, 56.0, 2.288_364_346_433_654_5e-17),
+    ];
+    for (a, x, q) in excel {
+        assert_eq!(
+            poisson_upper(a, x).to_bits(),
+            q.to_bits(),
+            "POISSON({}, {x}, TRUE)",
+            a - 1.0
+        );
+        assert_ne!(gamma_ur(a, x).to_bits(), q.to_bits());
+    }
+    // CHISQ.DIST.RT(100,5) = Q(2.5, 50) through gamma_sf (gen-m9/bbdfc06cae0e0d71 A125 too).
+    let chi = gamma_sf(&Gamma::new(2.5, 1.0).unwrap(), 50.0);
+    assert_eq!(chi.to_bits(), 5.285_148_360_943_260_4e-20_f64.to_bits());
+    // Below the switch both callers keep the accurate kernel; past the measured range too.
+    assert_eq!(
+        poisson_upper(3.0, 30.0).to_bits(),
+        gamma_ur(3.0, 30.0).to_bits()
+    );
+    assert_eq!(
+        poisson_upper(3.0, 650.0).to_bits(),
+        gamma_ur(3.0, 650.0).to_bits()
     );
 }
