@@ -10,7 +10,8 @@ message lists the most recent claims, one per line (`T-3541`, `0213`). A claim r
 the next id with the caller's rule over everything taken *plus* the registry's claims, and
 pushes the registry with the new claim appended under `--force-with-lease` (merge_lock's CAS).
 Of two racing allocators exactly one push wins; the other re-reads and picks the next id. The
-list keeps the newest KEEP claims: an older claim's id is long pushed, and ids only grow.
+list keeps the newest KEEP claims plus each task block's and the decisions' highest claim
+(`kept`), so pruning never lets an id be handed out twice.
 
 Best effort: without a network the caller falls back to the tree-and-branches scan, and the
 validators in CI still catch a collision.
@@ -59,12 +60,27 @@ def read(root: Path = ROOT) -> tuple[str, list[str]]:
     return sha, [line.strip() for line in message.splitlines() if CLAIM.fullmatch(line.strip())]
 
 
+def kept(claims: list[str]) -> list[str]:
+    """The newest KEEP claims, plus the high-water marks they would drop: the highest claim in
+    each task hundred-block (`tasks.next_id` allocates within a milestone's block) and the highest
+    decision number. Ids only grow, so the marks alone keep a pruned id from being handed out
+    again, even when its branch was never pushed."""
+    newest = claims[-KEEP:]
+    marks: dict[str, str] = {}
+    for c in claims:
+        key = f"T-{int(c[2:]) // 100}" if TASK.fullmatch(c) else "decision"
+        number = int(c[2:] if TASK.fullmatch(c) else c)
+        if key not in marks or number > int(marks[key].removeprefix("T-")):
+            marks[key] = c
+    return sorted(m for m in marks.values() if m not in newest) + newest
+
+
 def commit(claims: list[str], root: Path) -> str:
     """An orphan commit with an empty tree whose message lists `claims`. The nonce makes every
     claim's commit unique: two sessions claiming the same id in the same second would otherwise
     build byte-identical commits, and the loser's push would succeed as "up to date"."""
     tree = git("mktree", root=root).stdout.strip()
-    message = "\n".join([HEADER, f"nonce: {uuid.uuid4().hex}", "", *claims[-KEEP:]])
+    message = "\n".join([HEADER, f"nonce: {uuid.uuid4().hex}", "", *kept(claims)])
     return git(*IDENTITY, "commit-tree", tree, "-m", message, root=root).stdout.strip()
 
 
@@ -86,13 +102,13 @@ def claim(pick: Callable[[set[str]], str], kind: re.Pattern[str], root: Path = R
 
 
 def allocate(
-    pick: Callable[[set[str]], str], kind: re.Pattern[str], fetch: bool, root: Path = ROOT
+    pick: Callable[[set[str]], str], kind: re.Pattern[str], fetch: bool, root: Path | None = None
 ) -> tuple[str, bool]:
     """(id, reserved): `claim(pick)` when `fetch` (online); otherwise, or when the registry fails,
     `pick(set())` unreserved, with a warning: the scan of the tree and the branches still applies."""
     if fetch:
         try:
-            return claim(pick, kind, root), True
+            return claim(pick, kind, root or ROOT), True
         except RegistryError as e:
             print(f"warning: id registry unavailable ({e}); the id is not reserved", file=sys.stderr)
     return pick(set()), False

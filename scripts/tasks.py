@@ -614,8 +614,8 @@ TODO(fill): why; failing case ids; semantics notes; code paths.
 
 def reserve_id(pick: Callable[[set[str]], str], fetch: bool) -> tuple[str, str]:
     """(id, note): the id `pick` chooses, reserved in the id registry when it can be (decision
-    0215). tasks.py stays usable alone (the merger copies it into a scratch tree and runs it with
-    `python -I`): without id_registry beside it, the plain scan decides, unreserved."""
+    0215). `python -I` (the merger's filing) leaves this directory off sys.path, so it is added; a
+    tasks.py copied alone (as test fixtures do) falls back to the plain scan, unreserved."""
     here = str(Path(__file__).resolve().parent)
     if here not in sys.path:
         sys.path.insert(0, here)

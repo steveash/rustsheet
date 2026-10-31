@@ -15,7 +15,8 @@
     claims, then push the registry with the new claim under `--force-with-lease` (merge_lock's
     CAS). A lost race re-reads and picks the next id. Each claim commit carries a nonce, because
     two identical commits would let the loser's push pass as "up to date".
-  - The registry keeps the newest 400 claims. Offline (`--no-fetch`) or when it cannot be
+  - The registry keeps the newest 400 claims plus the highest claim of each task hundred-block and
+    the highest decision number, so pruning cannot let an id be reissued. Offline (`--no-fetch`) or when it cannot be
     reached, allocation falls back to the old scan with a warning; `tasks.py validate`,
     `check_decisions.py` and the train's id check still catch what slips through.
   - Ids are never picked by hand, including in a renumber.
