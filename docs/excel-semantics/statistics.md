@@ -4839,8 +4839,8 @@ then goes through the probability checks (`#NUM!` for a probability outside [0, 
 `PROB(COLUMNS(Data!C5:E10),0.1,-1,-1)` is `#NUM!`, 0bbab6206b5c9a07 A322; `PROB(Data!B3:E3,Data!E7:E10,1,Data!E7)`, 4
 against 4, 873f30d2bf76f8db A72). The `#DIV/0!` of `PROB((ERF(1E-10)+(-0.5)),EFFECT(10,11),PV((-0.9999999999),161,..))`
 (6e18550e9fc9c1b9 A394) and `PROB(Data!C6:C9,..,PV((-0.9999999999),78,..))` (92d4fa29e5510f1e A70) is then the lower
-limit's: Excel's PV at a rate of -0.9999999999 over 78 or 161 periods would be `#DIV/0!` (ours `#NUM!`; inferred,
-UNVERIFIED, the PV itself is not probed). These are direct error values; an error inside a range still loses to a
+limit's: Excel's PV at a rate of -0.9999999999 over 78 or 161 periods is `#DIV/0!`, its `(1+rate)^nper` below the
+normal range (probes/fin-pv-power-underflow A1, A2; financial.md "Annuity and DB argument domains at their limits"). These are direct error values; an error inside a range still loses to a
 lower/upper error (T-1813, section "RANK, FORECAST, PROB, Z.TEST and T.TEST: lifted scalar arguments"). Whether a
 lower_limit error beats unequal counts rests on a cell whose lower_limit is an inner YIELD (d37313406b9f6e55 A142,
 `#NUM!`, which ours now matches); no probe cell separates them (t2707 A57 has the same error on both sides): UNVERIFIED.
