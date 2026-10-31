@@ -470,8 +470,9 @@ fn impower_angle_is_excels_atan2_kernel() {
     assert_eq!(model._get_text("A1"), "1000+1i");
 }
 
-// IMSIN, IMCOS, IMSEC, IMCSC and IMCOT of a real number take SIN, COS and TAN's kernels and are
-// `#NUM!` from 2^27, IMCOT "0"; IMTAN takes the limit only (probes/t2534-im-trig-real-limit, T-2534).
+// IMSIN, IMCOS, IMTAN, IMSEC, IMCSC and IMCOT of a real number take SIN, COS and TAN's kernels and
+// are `#NUM!` from 2^27, IMCOT "0" (probes/t2534-im-trig-real-limit, T-2534;
+// probes/t3054-imtan-real-tan-kernel, T-2774).
 #[test]
 fn im_trig_of_a_real_number_follows_sin_cos_tan() {
     let cases = [
@@ -490,8 +491,14 @@ fn im_trig_of_a_real_number_follows_sin_cos_tan() {
         (r#"=IMCSC("1E+200")"#, "#NUM!"),
         (r#"=IMCOT("1E+200")"#, "0"),
         (r#"=IMCOT("-134217728")"#, "0"),
-        // The desktop cache of COMPLEXs.xlsx N6; the web gives TAN's -3.38051500624659 (T-2774).
-        (r#"=IMTAN("5")"#, "-3.38051500624658"),
+        // Excel for the web (decision 0188 R6): TAN's kernel. COMPLEXs.xlsx N6, a Mac 16.0300
+        // cache, has the double-angle -3.38051500624658 (T-1075 item 17).
+        (r#"=IMTAN("5")"#, "-3.38051500624659"),
+        ("=IMTAN(123456789.123)", "56.4157574800738"),
+        ("=IMTAN(3.14159)", "-2.65358979336212E-06"),
+        (r#"=IMTAN("-17.2737")"#, "-197.642601323436"),
+        (r#"=IMTAN("-17.3011")"#, "44.7544983375159"),
+        (r#"=IMTAN("1.5707963267949")"#, "-286413440886091"),
     ];
     assert_texts(&cases);
 }
@@ -510,6 +517,27 @@ fn im_sin_cos_take_sinh_and_cosh_from_exp() {
         ),
         (r#"=IMSIN("1E-200+1E-200i")"#, "1E-200"),
         (r#"=IMSIN("-4i")"#, "-27.2899171971278i"),
+    ];
+    assert_texts(&cases);
+}
+
+// IMSQRT of a negative real is the polar root through Excel's ATAN2, COS and SIN of the half
+// angle: COS(ATAN2(-1,0)/2) is 6.1257422745431E-17, libm's cos(π/2) 6.12323399573677E-17 (gen-m9
+// 59a16b5ab566ee5c A6, 516488da78a6b08c A52, 7dc52cfcbc8b4448 A254, f280df8ba95f96b9 A26;
+// excel-graph, decision 0188 R6, T-2536). The libm `atan2` fallback (a subnormal x, an
+// overflowing y/x) and a -0 imaginary part with x < 0 are unprobed and not pinned here (T-2736).
+#[test]
+fn imsqrt_of_a_negative_real_takes_excel_atan2_cos_and_sin() {
+    let cases = [
+        (r#"=IMSQRT("-1")"#, "6.1257422745431E-17+i"),
+        (r#"=IMSQRT(TEXT(-1,"0"))"#, "6.1257422745431E-17+i"),
+        ("=IMSQRT(-2.5)", "9.68564897336834E-17+1.58113883008419i"),
+        ("=IMSQRT(-0.0001)", "6.1257422745431E-19+0.01i"),
+        (
+            "=IMSQRT(-3.85841)",
+            "1.20326949922385E-16+1.96428358441443i",
+        ),
+        ("=IMSQRT(4)", "2"),
     ];
     assert_texts(&cases);
 }
