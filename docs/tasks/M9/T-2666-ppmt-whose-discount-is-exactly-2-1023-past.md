@@ -3,7 +3,7 @@ id: T-2666
 title: "PPMT whose discount is exactly 2^-1023 past the range: why PPMT(7,10,350,58827) keeps it (gen-m9, 1 cell)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -26,10 +26,18 @@ power-of-two and other bases (e.g. `PPMT(7,k,340+k,1)`, `PPMT(3,k,510+k,1)`, `PP
 fit the rule.
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9): the known-failure line of gen-m9/a91bad4e84f49739.case.json Calc!A158 disappears from
+- [x] Visible parity (gen-m9): the known-failure line of gen-m9/a91bad4e84f49739.case.json Calc!A158 disappears from
       eval/baseline/gen-m9.txt, with no new known-failure lines in any baseline.
-- [ ] The probe and its rule in financial.md.
-- [ ] `make check` green; reviewers approve.
+- [x] The probe and its rule in financial.md.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - IPMT past the range (T-2665).
+
+## Outcome
+probes/fin-ppmt-subnormal-discount-by-size (40 PPMT cells, excel-graph) separates it: the period and the base do not
+matter; past the range Excel's PPMT is 0 where the discounted balance `A*Q(x)` (about `(pv+fv)` times the discount) is
+below the normal range, and kept from there on (`PPMT(7,1,341,1.9999)` 0, `PPMT(7,1,341,2)` and `PPMT(7,10,350,2)`
+-1.5575517009551696E-307; `PPMT(7,1,353,2^36)` 0, `2^37` kept). `discounted_split` now flushes that product instead of the
+discount. Eval: gen-m9 3033 -> 3032 known failures (a91bad4e84f49739 A158), probes 2119 -> 2118
+(fin-ppmt-discount-underflow F8) plus the new case at 80/80; no regressions. Rule in financial.md "IPMT cancels on fv".
