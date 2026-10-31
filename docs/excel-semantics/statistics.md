@@ -3505,7 +3505,7 @@ Tasks: T-1543, T-1634, T-2561
     2026-10-31) the lower cdf erf(sqrt(x/2)) at ours rounds to the double 1 - 1E-9 and at Excel's to the double one
     ulp below it (0.9999999989999999), and the gap between them is exactly one band, 2^-53 over the density
     5.128E-10: Excel stops in the band below the one holding 1 - p. `CHISQ.INV.RT(1E-10,1)` is not one band off,
-    so the rule is not a constant step; T-3329 sweeps it and T-3330 fits it.
+    so the rule is not a constant step; T-3339 sweeps it and T-3330 fits it.
   - Excel's search gives up in the far right tail. Below an edge that depends on df, CHISQ.INV.RT and CHIINV are
     `#NUM!`, though the quantile exists and CHISQ.DIST.RT past it is a plain number. With p = 1E-k, the last k that
     is still a value is, for df 3 to 42: 20, 27, 35, 43, 52, 62, 72, 81, 87, 90, 94, 99, 104, 110, 116, 121, 127,

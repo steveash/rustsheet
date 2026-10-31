@@ -1,5 +1,5 @@
 ---
-id: T-3329
+id: T-3339
 title: "Probe CHISQ.INV.RT and CHIINV at df 1 from p = 1E-4 to 1E-16, with Excel's CHISQ.DIST at the doubles beside each quantile"
 milestone: M9
 lane: research

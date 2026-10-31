@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: opus
-depends_on: [T-3329]
+depends_on: [T-3339]
 campaign: visible
 ---
 
@@ -34,7 +34,7 @@ A 50-digit mpmath check (gap triage):
 So Excel stops in the band below the one that holds 1 - p. That is the edge or start a bracketing or Newton search
 on a double cdf would reach. Where it starts, which edge it takes and whether it does the same for every p is not in
 eval/. `CHISQ.INV.RT(1E-10,1)` (41.82145620298276) passes, so the rule is not "always one band below". Needs an
-oracle sweep: T-3329 adds Excel's quantiles for p = 1E-4 to 1E-16 and Excel's cdf at the bands beside four of them.
+oracle sweep: T-3339 adds Excel's quantiles for p = 1E-4 to 1E-16 and Excel's cdf at the bands beside four of them.
 
 Related work. T-3146 (time-boxed) fits Excel's landing in the flat band near p = 0.999 at other shapes and records its
 candidates in statistics.md. Its forms are the first to try here: the band is 1E-8 relative, not 1E-13, so
@@ -44,11 +44,11 @@ incomplete_gamma.rs `gamma_quantile`.
 
 ## Acceptance criteria
 - [ ] m9-legacy-chiinv Calc!A1 and A2 are within half a unit of Excel's 15th significant digit, and so is every
-      df-1 and df-1.5 quantile cell of T-3329's case. If the rule cannot reach some, the Outcome lists them with
+      df-1 and df-1.5 quantile cell of T-3339's case. If the rule cannot reach some, the Outcome lists them with
       the forms tried and their bit-exact and visible counts (decision 0056: two attempts, then time-box).
 - [ ] No cell that passes today gets worse: `CHISQ.INV.RT(1E-10,1)`, the `#NUM!` at p of 2^-54 or less, and the df-2
       closed form. No new known-failure line in any eval/baseline file (`make eval-baseline`).
-- [ ] The landing rule, with the T-3329 cells that pin it down, is in statistics.md's df-1 bullet, replacing "Excel
+- [ ] The landing rule, with the T-3339 cells that pin it down, is in statistics.md's df-1 bullet, replacing "Excel
       searches its own double-valued cdf".
 - [ ] Iteration stays bounded on untrusted input (the shared iteration budget; p next to 0 and next to 2^-54).
 - [ ] `make check` green; reviewers approve.
