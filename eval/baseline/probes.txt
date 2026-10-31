@@ -1759,6 +1759,7 @@ C	probes/t3302-text-funcs-arrays.case.json	21
 C	probes/t3304-collation-multi-letter-accents.case.json	1896
 C	probes/t3317-xlookup-scalar-return.case.json	20
 C	probes/t3335-textbefore-overlapping-instances.case.json	78
+C	probes/t3347-irr-conventional-num.case.json	42
 C	probes/t3349-t-inv-2t-near-one.case.json	44
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
@@ -4290,6 +4291,18 @@ F	probes/t3304-collation-multi-letter-accents.case.json	Rank!H12
 F	probes/t3304-collation-multi-letter-accents.case.json	Rank!H14
 F	probes/t3304-collation-multi-letter-accents.case.json	Rank!H19
 F	probes/t3304-collation-multi-letter-accents.case.json	Rank!H20
+F	probes/t3347-irr-conventional-num.case.json	P!A10
+F	probes/t3347-irr-conventional-num.case.json	P!A11
+F	probes/t3347-irr-conventional-num.case.json	P!A12
+F	probes/t3347-irr-conventional-num.case.json	P!A13
+F	probes/t3347-irr-conventional-num.case.json	P!A14
+F	probes/t3347-irr-conventional-num.case.json	P!A16
+F	probes/t3347-irr-conventional-num.case.json	P!A17
+F	probes/t3347-irr-conventional-num.case.json	P!A19
+F	probes/t3347-irr-conventional-num.case.json	P!A37
+F	probes/t3347-irr-conventional-num.case.json	P!A38
+F	probes/t3347-irr-conventional-num.case.json	P!A39
+F	probes/t3347-irr-conventional-num.case.json	P!A40
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A1
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A10
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A12

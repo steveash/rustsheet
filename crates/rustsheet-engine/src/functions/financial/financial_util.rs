@@ -164,8 +164,10 @@ fn irr_npv(values: &[f64], v: f64) -> Option<f64> {
 /// two-flow root are `#NUM!` (probes/irr-fallback-roots A25-A39, irr-guess-edges-2 A15-A34).
 const IRR_FAR_ROOT_BOUND: f64 = 1e7;
 
-/// The most Newton steps of [`irr_fallback`]: a run that needs 119 is `#NUM!` in Excel
-/// (gen-m9/abb7d565af89b849 A254) and the slowest probed root that returns needs 29 (`{42,1,1,-1}`).
+/// The most Newton steps of [`irr_newton`]: from v = 0 ([`irr_fallback`]) a run that needs 119 is
+/// `#NUM!` in Excel (gen-m9/abb7d565af89b849 A254) and the slowest probed root that returns needs 29
+/// (`{42,1,1,-1}`); from v = 1 ([`irr_conventional`]) runs of 64 to 159 are `#NUM!` and the slowest
+/// that returns needs 46 (probes-numeric/t3347-irr-conventional-sweep).
 const IRR_FALLBACK_STEPS: usize = 50;
 
 /// The rate 1/v - 1 at a converged discount factor `v`, or `None` past [`IRR_FAR_ROOT_BOUND`].
@@ -222,8 +224,9 @@ const IRR_GUESS_BOUND: f64 = 9_007_199_254_740_992.0;
 /// `irr_secant_d`, T-3120, T-3205) and 180 of the 181 of probes/t2565-irr-guess-sweeps.
 /// Not Excel facts, kept from the fit: the d >= 1 (v <= 0) guard, no retry when the guess is
 /// already 0.1, and `#NUM!` for flows without a sign change. Where both runs fail,
-/// [`irr_fallback`] runs a Newton search from v = 0 (fitted, T-2727). A root with 1 + r at or past
-/// [`IRR_FAR_ROOT_BOUND`] is `#NUM!` from either. The 50-step cap is a directive-5 bound
+/// [`irr_fallback`] runs a Newton search from v = 0 (fitted, T-2727), and where that fails too on
+/// conventional flows, [`irr_conventional`] one from v = 1 (fitted, T-3347). A root with 1 + r at
+/// or past [`IRR_FAR_ROOT_BOUND`] is `#NUM!` from any of them. The 50-step cap is a directive-5 bound
 /// (financial.md "The IRR and XIRR solver caps").
 pub(crate) fn compute_irr(values: &[f64], guess: f64) -> Result<f64, (Error, String)> {
     // Excel: a guess at or above 2^53 is #VALUE! too, before the sign-change check:
@@ -257,6 +260,7 @@ pub(crate) fn compute_irr(values: &[f64], guess: f64) -> Result<f64, (Error, Str
     };
     result
         .or_else(|| irr_fallback(values))
+        .or_else(|| irr_conventional(values))
         .filter(|r| r.is_finite())
         .ok_or_else(|| (Error::NUM, "Failed to converge".to_string()))
 }
@@ -278,18 +282,27 @@ pub(crate) fn compute_irr(values: &[f64], guess: f64) -> Result<f64, (Error, Str
 /// cells) has 2 to 29 flows of |c| 1E-15 to 1E+15, and only 4 of its 68 calls return a root.
 /// FITTED(T-2727, 39 cells, within IRR of 2..29 flows, |c| 1E-15..1E+15, roots -0.93..661, mostly #NUM!)
 fn irr_fallback(values: &[f64]) -> Option<f64> {
-    // Horner for P(v) and P'(v), highest power first
-    let polynomial = |v: f64| {
-        let (mut p, mut dp) = (0.0_f64, 0.0_f64);
-        for &c in values.iter().rev() {
-            dp = dp * v + p;
-            p = p * v + c;
-        }
-        (p, dp)
-    };
-    let mut v = 0.0_f64;
+    irr_newton(values, 0.0).and_then(irr_from_discount)
+}
+
+/// P(v) = `sum c_i v^i` and P'(v) by Horner, highest power first.
+fn irr_polynomial(values: &[f64], v: f64) -> (f64, f64) {
+    let (mut p, mut dp) = (0.0_f64, 0.0_f64);
+    for &c in values.iter().rev() {
+        dp = dp * v + p;
+        p = p * v + c;
+    }
+    (p, dp)
+}
+
+/// Newton's method on [`irr_polynomial`] from `start`, the search of [`irr_fallback`] and
+/// [`irr_conventional`]: the discount factor v where a step moves less than 1e-7 (relative past
+/// v = 1), or `None` when the step is flat or not finite, the run does not settle in
+/// [`IRR_FALLBACK_STEPS`] steps, or the root is not positive or has a negative root nearer 0.
+fn irr_newton(values: &[f64], start: f64) -> Option<f64> {
+    let mut v = start;
     for _ in 0..IRR_FALLBACK_STEPS {
-        let (p, dp) = polynomial(v);
+        let (p, dp) = irr_polynomial(values, v);
         if dp == 0.0 {
             return None;
         }
@@ -302,16 +315,45 @@ fn irr_fallback(values: &[f64]) -> Option<f64> {
             // Newton reached: Excel is `#NUM!` there (gen-m9/1b60bf99d71424e7 A117, root v = 8.41
             // past one at -4.6E-5; 1cd3096e3e87c965 A277, 4.06 past -4.01).
             let nearer_negative_root =
-                (polynomial(-next).0 > 0.0) != values.first().is_some_and(|&c| c > 0.0);
-            return if next > 0.0 && !nearer_negative_root {
-                irr_from_discount(next)
-            } else {
-                None
-            };
+                (irr_polynomial(values, -next).0 > 0.0) != values.first().is_some_and(|&c| c > 0.0);
+            return (next > 0.0 && !nearer_negative_root).then_some(next);
         }
         v = next;
     }
     None
+}
+
+/// The most polishing steps [`irr_conventional`] takes past its stop: Newton doubles the digits
+/// per step, so two take a root from the 1e-7 stop to full precision; the third is a margin.
+const IRR_POLISH_STEPS: usize = 3;
+
+/// The last stage, where both secant runs and [`irr_fallback`] fail on conventional flows (one
+/// outlay, then flows of the other sign, so P has one positive root): Newton from v = 1 (r = 0),
+/// then polished. Excel returns these roots, where the secant drifts for 50+ steps near
+/// r = -10% or stalls on a flat step near r = 0 (financial.md "IRR on conventional flows near 0
+/// and -10%", probes/t3347-irr-conventional-num, probes-numeric/t3347-irr-conventional-sweep,
+/// T-3347), and is `#NUM!` on the three swept series whose run from v = 1 needs 64 to 159 steps
+/// (A111, A115, A117; the slowest that returns needs 46), the split of [`IRR_FALLBACK_STEPS`].
+/// Fitted, not Excel's code: the digits are within 2.2e-11 of Excel's and 1.5e-11 of the exact
+/// root.
+/// FITTED(T-3347, 162 cells, r -0.5..1 with one outlay then positive flows, no hold-out yet)
+fn irr_conventional(values: &[f64]) -> Option<f64> {
+    // Only the probed shape: one outlay, then flows of the other sign (or zero). Other flows with
+    // one sign change, such as two outlays first, are unprobed and stay `#NUM!` here.
+    let (&first, rest) = values.split_first()?;
+    if rest.iter().any(|&c| c != 0.0 && (c > 0.0) == (first > 0.0)) {
+        return None;
+    }
+    let mut v = irr_newton(values, 1.0)?;
+    for _ in 0..IRR_POLISH_STEPS {
+        let (p, dp) = irr_polynomial(values, v);
+        let next = v - p / dp;
+        if !next.is_finite() || next <= 0.0 || next == v {
+            break;
+        }
+        v = next;
+    }
+    irr_from_discount(v)
 }
 
 /// XNPV: the sum of `value_i / (1 + rate)^((date_i - date_0)/365)`, days counted from the first date;
@@ -459,4 +501,42 @@ pub(crate) fn compute_xirr(
         }
     }
     Err(no_result())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 40 flows of 15 after an outlay of 9998.24, an IRR near -10% (probes/t3347-irr-conventional-num
+    /// A18): both secant runs and the v = 0 fallback fail, the conventional stage returns Excel's
+    /// -0.09999998988243108 to the bit.
+    const LEVEL_NEAR_MINUS_TEN: [f64; 41] = {
+        let mut flows = [15.0; 41];
+        flows[0] = -9998.24;
+        flows
+    };
+
+    #[test]
+    fn the_conventional_stage_returns_a_root_the_other_stages_miss() {
+        let flows = LEVEL_NEAR_MINUS_TEN;
+        assert_eq!(irr_secant(&flows, 0.1), None);
+        assert_eq!(irr_fallback(&flows), None);
+        assert_eq!(irr_conventional(&flows), Some(-0.099_999_989_882_431_08));
+        assert_eq!(
+            compute_irr(&flows, 0.1).ok(),
+            Some(-0.099_999_989_882_431_08)
+        );
+    }
+
+    #[test]
+    fn the_conventional_stage_takes_only_one_outlay_then_the_other_sign() {
+        let mut two_outlays = LEVEL_NEAR_MINUS_TEN;
+        two_outlays[1] = -1.0;
+        assert_eq!(irr_conventional(&two_outlays), None);
+        let mut sign_back = LEVEL_NEAR_MINUS_TEN;
+        sign_back[40] = -1.0;
+        assert_eq!(irr_conventional(&sign_back), None);
+        let negated = LEVEL_NEAR_MINUS_TEN.map(|c| -c);
+        assert_eq!(irr_conventional(&negated), Some(-0.099_999_989_882_431_08));
+    }
 }
