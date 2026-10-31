@@ -33,7 +33,7 @@ significant digits of Excel's value, or when one side is an error and the other 
 - [x] `make check` runs the check and fails on a failing point (shown by a test fixture, not a real table).
 - [x] The check's runtime on the slice's fixture tables is reported in the Outcome against the spec's budget.
 - [x] docs/architecture/eval-harness.md describes the check and links SPEC-0029.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The generator and the oracle fill (T-3357); the real tables (T-3358).
@@ -84,5 +84,12 @@ significant digits of Excel's value, or when one side is an error and the other 
   - A missing list file is empty (deleting one only makes the gate stricter).
   - The summary prints `missing tables n/a (T-3379)` (the count and `exempt.tsv` are T-3379's);
     its seconds cover the check, not the JSON write.
+- **Review fixes.** An unsupported engine result (`#NAME?`, `#N/IMPL`, verdict `Unsupported`)
+  never counts as inside on the Excel side; an R3 point drops the Excel side only where Excel gives a
+  number, so Excel's errors are still matched (decision 0188 R3); the R3 evidence test has no
+  absolute floor (nonzero Excel against an exact-0 math counts as more than G). The plain eval path
+  builds no check cells (`prepare` takes the `values` flag), and `--json` streams a borrowed wrapper
+  through a `BufWriter`. String-keyed math lookups and the timeout default are left for T-3358 to
+  measure.
 - **Follow-ups.** None new: ci_changes routing, the missing-table count, protected paths and the
   known-failure line rules are T-3379; the generator T-3357; real tables T-3358.

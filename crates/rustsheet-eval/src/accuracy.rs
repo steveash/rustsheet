@@ -495,6 +495,12 @@ impl Check {
     /// # Errors
     /// When the file cannot be written.
     pub fn write_json(&self, path: &Path) -> Result<(), AccuracyError> {
+        /// The file's top level: the verdict beside every point.
+        #[derive(Serialize)]
+        struct Out<'a> {
+            passes: bool,
+            check: &'a Check,
+        }
         let fail = |e: &dyn std::fmt::Display| AccuracyError::Write {
             path: path.display().to_string(),
             message: e.to_string(),
@@ -502,12 +508,14 @@ impl Check {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).map_err(|e| fail(&e))?;
         }
-        let text = serde_json::to_string(&serde_json::json!({
-            "passes": self.passes(),
-            "check": self,
-        }))
-        .map_err(|e| fail(&e))?;
-        std::fs::write(path, text).map_err(|e| fail(&e))
+        let file = std::fs::File::create(path).map_err(|e| fail(&e))?;
+        let mut writer = std::io::BufWriter::new(file);
+        let out = Out {
+            passes: self.passes(),
+            check: self,
+        };
+        serde_json::to_writer(&mut writer, &out).map_err(|e| fail(&e))?;
+        std::io::Write::flush(&mut writer).map_err(|e| fail(&e))
     }
 }
 

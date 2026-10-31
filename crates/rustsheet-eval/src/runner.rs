@@ -382,7 +382,7 @@ fn run_isolated(
     timeout: Duration,
     values: bool,
 ) -> CaseValues {
-    let (prepared, refusal) = match prepare(suite, case) {
+    let (prepared, refusal) = match prepare(suite, case, values) {
         Ok(p) => p,
         Err(e) => {
             return CaseValues {
@@ -591,10 +591,15 @@ fn score(evaluated: &dyn Evaluated, expectations: &[Expectation], listed: bool) 
 }
 
 /// The case ready to run, and the refusal message its whole-case `deviations` line pins, if any.
-fn prepare(suite: &Suite, case: &CaseFile) -> Result<(PreparedCase, Option<String>), String> {
+/// `values` also lists the spec case's check cells ([`run_case_values`]); a plain run skips it.
+fn prepare(
+    suite: &Suite,
+    case: &CaseFile,
+    values: bool,
+) -> Result<(PreparedCase, Option<String>), String> {
     let mut prepared = match suite.manifest.kind {
         SuiteKind::Xlsx => prepare_xlsx(suite, case),
-        SuiteKind::Spec => prepare_spec(case),
+        SuiteKind::Spec => prepare_spec(case, values),
     }?;
     let refusal = pin_deviations(suite, case, &mut prepared.expectations)?;
     Ok((prepared, refusal))
@@ -782,7 +787,7 @@ fn apply_cached_overrides(
     Ok(expectations)
 }
 
-fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
+fn prepare_spec(case: &CaseFile, values: bool) -> Result<PreparedCase, String> {
     let text = std::fs::read_to_string(&case.path).map_err(|e| e.to_string())?;
     let spec: CaseSpec = serde_json::from_str(&text).map_err(|e| e.to_string())?;
     if spec.format != CASE_FORMAT {
@@ -858,15 +863,17 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
         let (sheet, a1) = split_qualified(&q).ok_or_else(|| format!("bad cell key {q}"))?;
         let addr = Addr::parse(&a1).ok_or_else(|| format!("bad cell key {q}"))?;
         let key = cell_key(&sheet, addr);
-        check.push(CheckCell {
-            sheet: sheet.clone(),
-            addr,
-            formula: formula_of(&sheet, &a1),
-        });
+        let formula = formula_of(&sheet, &a1);
+        if values {
+            check.push(CheckCell {
+                sheet: sheet.clone(),
+                addr,
+                formula: formula.clone(),
+            });
+        }
         let Some(value) = expected.get(&key).filter(|v| !is_undecoded(v)).cloned() else {
             continue; // pending oracle for this cell (or an undecoded rich error)
         };
-        let formula = formula_of(&sheet, &a1);
         let from_graph = formula.as_deref().is_some_and(|f| kept_nonzero.contains(f));
         if volatile.contains(&(sheet.clone(), addr)) {
             skipped_volatile += 1;

@@ -11,7 +11,7 @@ use serde::Serialize;
 
 use crate::closeness::Visible;
 use crate::runner::CellResult;
-use crate::value::Value;
+use crate::value::{Value, Verdict};
 
 /// ε of decision 0188 R2: the relative distance from the math that is always accurate enough.
 pub const EPSILON: f64 = 1e-9;
@@ -115,7 +115,12 @@ pub fn envelope(
         (Value::Error(a), _, Some(Value::Error(e))) if a != e => return Envelope::ErrorMismatch,
         _ => {}
     }
-    let excel_side = !r3 && excel.is_some_and(|c| !Visible::is_off(c));
+    // R3 drops Excel's side only where Excel gives a number: its errors are still matched
+    // (decision 0188 R3). An unsupported engine result (`#NAME?`, `#N/IMPL`) is never inside,
+    // though the closeness buckets leave it out of the visibly-off count.
+    let r3_drops_excel = r3 && matches!(excel_value, Some(Value::Number(_)));
+    let excel_side = !r3_drops_excel
+        && excel.is_some_and(|c| c.verdict != Verdict::Unsupported && !Visible::is_off(c));
     let math_side = match (math, engine) {
         (MathValue::Number(m), Value::Number(e)) => within_math(*e, *m),
         (MathValue::DomainError(_), Value::Error(code)) => match excel_value {
@@ -153,6 +158,8 @@ pub fn relative_error(value: f64, math: f64) -> f64 {
 
 /// Whether Excel's value is off the math by more than [`R3_GAP`]: the evidence an R3 mark on a
 /// filled point needs (decision 0188 R3). Only two numbers can be: R3 never applies to an error.
+/// The absolute floor does not apply here: a nonzero Excel value against an exact-0 math value is
+/// infinitely off ([`relative_error`]), so it counts as more than G.
 #[must_use]
 pub fn excel_off_math(excel: &Value, math: &MathValue) -> bool {
     match (excel, math) {
@@ -334,6 +341,48 @@ mod tests {
             class(excel(), &err("#NUM!"), math(), true),
             Envelope::ErrorMismatch
         );
+    }
+
+    #[test]
+    fn an_unsupported_engine_result_is_never_inside_on_the_excel_side() {
+        // Excel text against the engine's #NAME?: compare() gives `Unsupported`, which the
+        // closeness buckets do not count as visibly off.
+        let math = || Some(MathValue::Number(MATH));
+        for code in ["#NAME?", "#N/IMPL"] {
+            let engine = err(code);
+            let cell = filled(Value::Text("x".into()), &engine);
+            assert_eq!(cell.verdict, Verdict::Unsupported);
+            assert!(!Visible::is_off(&cell));
+            assert_eq!(
+                envelope(Some(&cell), &engine, math().as_ref(), false),
+                Envelope::Outside,
+                "{code}"
+            );
+        }
+    }
+
+    #[test]
+    fn an_r3_point_still_matches_excel_errors() {
+        let math = || Some(MathValue::Number(-40.26));
+        assert_eq!(
+            class(Some(err("#NUM!")), &err("#NUM!"), math(), true),
+            Envelope::Excel15
+        );
+        assert_eq!(
+            class(Some(err("#NUM!")), &err("#VALUE!"), math(), true),
+            Envelope::ErrorMismatch
+        );
+        assert_eq!(
+            class(Some(err("#NUM!")), &n(-40.26), math(), true),
+            Envelope::ErrorMismatch
+        );
+    }
+
+    #[test]
+    fn r3_evidence_has_no_absolute_floor() {
+        let zero = MathValue::Number(0.0);
+        assert!(excel_off_math(&n(1e-310), &zero));
+        assert!(!excel_off_math(&n(0.0), &zero));
     }
 
     #[test]
