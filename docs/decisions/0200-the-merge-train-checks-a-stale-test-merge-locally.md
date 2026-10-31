@@ -21,12 +21,12 @@
     for the last four squashes on main. Two of them were on PRs whose test merge was stale, so
     GitHub merges afresh at squash time:
 
-    | PR | squash | GitHub's squash tree | local merge tree |
-    |---|---|---|---|
-    | #2533 | bc8d263e | 210676dc | 210676dc |
-    | #2524 | 06c142a2 | 25f50995 | 25f50995 |
-    | #2532 | 625d27be | daa1ff73 | daa1ff73 |
-    | #2588 | d4c03854 | 61205076 | 61205076 |
+    | PR | squash | tree of GitHub's squash, equal to the local merge's tree |
+    |---|---|---|
+    | #2533 | bc8d263e | `210676dc87248353917a1741129b6b55cafdb814` |
+    | #2524 | 06c142a2 | `25f50995b0231cf6e9ef57548801b7d98864d2f9` |
+    | #2532 | 625d27be | `daa1ff7305b075b24d052a82359c2c30e30b7e43` |
+    | #2588 | d4c03854 | `61205076cc23b36729554fa3699f3ae9ff635f26` |
   - The tests' fake GitHub recomputed on every read, and shadow mode never squashes, so step 7.2
     never ran against real GitHub before T-2991 turned the train on.
 - **Decision:** step 7.2 no longer waits for GitHub's test merge.
