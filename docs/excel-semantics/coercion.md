@@ -92,7 +92,7 @@ acute < grave < circumflex < diaeresis < tilde < ring, then stroke (`ø`); T-311
 order. (3) Hyphens and apostrophes as (position, weight), a later position first, apostrophe before
 hyphen. `þ`, `ð`, `œ` and the Latin-1 symbols were placed later (T-1590, T-1595, T-1662, T-1669,
 below), and the Latin Extended-A, Greek and Cyrillic letters by T-3114 (next section); full-width and
-half-width forms and kana are probed by T-3275 (below; not yet implemented, T-3321). Hebrew, Arabic,
+half-width forms and kana are probed by T-3275 (below; implemented by T-3321). Hebrew, Arabic,
 Devanagari, Thai, Lao, Hangul, CJK ideographs, symbols above `€` and astral characters are probed by
 T-3276 (below; not yet implemented, T-3324). Every other character (other scripts, such as Bengali,
 Tamil, Georgian, Armenian and Ethiopic, and other symbol blocks) keeps code-point order after the
@@ -309,7 +309,8 @@ Evidence: probes/t3275-collation-width-kana (137 strings in Data!A; Calc!A = cou
 C = exact MATCH position, D = XMATCH position, E = COUNTIF `"="&x`, G1:G34 = `(x<y)+2*(x=y)+4*(x>y)` for
 chosen pairs) and probes/t3275-collation-width-kana-pairs (37 strings, every pair: Calc!<col j+1><row i> =
 the same code for x = Data!A<i>, y = Data!A<j>), excel-graph 2026-10-30. Below, "rank" cites case 1 Calc!A
-by Data row and a bare cell cites the pairs case. The engine fails 172 + 358 cells (T-3321).
+by Data row and a bare cell cites the pairs case. The engine passes every cell of both cases since
+T-3321 (before it, 172 + 358 failed).
 VERIFIED (cells cited):
 - **Width is a tiebreak, not a letter.** Full-width Latin letters, digits, punctuation and the
   ideographic space U+3000 weigh as their ASCII forms: `"１a" < "1b"` (rank A37 < A38), `"Ａa" < "ab"`
@@ -355,6 +356,24 @@ VERIFIED (cells cited):
   implementation can only match the pairs (the pairs case holds 6 such cyclic triangles, all through `"aー"`). Exact MATCH of
   `"aー"` finds `"aa"` (case 1 C136 = 13) while `=` says no string but itself is equal (B136 = 1) and
   XMATCH finds itself (D136).
+Implemented (T-3321), `collation.rs`: after the accent pass come two new passes, a **kana pass**
+(small kana 1, every other letter 2, `ー` after a kana and `ゝ ゞ ヽ ヾ` 3, `々` 1) and the **variant
+pass** (superscripts 1, full-width forms 2, kana type: half-width 0, katakana 1, hiragana 2), then
+the skipped characters (`' ＇ - － – —`). Kana weigh as their plain hiragana, by code point (the
+syllabary), voicing an accent (voiced +1, semi-voiced +2; U+3099/U+309B/U+FF9E and U+309A/U+309C/U+FF9F
+are marks adding the same). The marks resolve against the letter weight before them: `ー` after a
+kana is its vowel, `ゝ`/`ゞ`/`々` repeat the letter (`ゞ` voiced), and with no letter before them
+they are one weight after the ideographs. `ー` after any other letter is that letter again (so
+`"aー"` sorts and hashes as `"aa"`, and `"aー" < "Ａa"`), except in Excel's `<`/`=` at the first
+character where the two texts differ (case-insensitively), where it has no letter before it and is
+the lone weight: `"aー" > "ab"`, `"aー" > "AＢ"`, `"aー" <> "aa"`. That reproduces the six cyclic
+triangles; the collation key and the sorts keep the total order (`"aー"` = `"aa"`). Exact MATCH,
+VLOOKUP/HLOOKUP exact and the wildcard patterns fold `ー` after a letter or digit that is not kana or
+an ideograph to that character and a leading `ゝ ゞ ヽ ヾ 々` to `ー` (`collation::fold_lookup`).
+Engine choices, UNVERIFIED: the voicing weights against the Latin marks; the full-width variant
+against the superscript one; `ー` after `ん`, after an ideograph or after a digit or symbol; `ゝ`
+and `々` after a Latin letter; the katakana-only `ヷ ヸ ヹ ヺ` (voiced `わ ゐ ゑ を`), `ゕ ゖ` (small
+`か け`) and `ヽ ヾ`; the marks in wildcard patterns.
 UNVERIFIED: whether full-width punctuation other than `！＃＄％＆（，．／：＠＿＋＜＝＞` and digits other
 than the probed `０ １ ９` (not `２`-`８`) follow the same rule (only these were probed); the order of the kana-type, small-kana
 and long-vowel tiebreaks against the Latin width tiebreak (different scripts never tie on letters in
