@@ -33,7 +33,14 @@ Owned M6 exit cells (5; known failures in eval/baseline/probes.txt):
 - probes/t2065-lift-averagea Sheet1!E1
 - probes/t2065-lift-maxa Sheet1!E1
 
+Same rule through INDIRECT (gap triage 2026-10-31c: no open task named these since T-2065 closed; statistics.md says
+"The one-list functions read through the references"): probes/t2577-indirect-ref-array Calc!A157
+`STDEV(INDIRECT("B1",{1;1}))` is 0 in Excel (B1 = 5 twice), ours `#VALUE!`; T157 and U157 are `ROWS(..)` and
+`COLUMNS(..)` of it (Excel 1). They are M8 probe cells, not M6 exit cells, and follow the same aggregate reader.
+- probes/t2577-indirect-ref-array.case.json (3): Calc!A157, T157, U157
+
 ## Acceptance criteria
+- [ ] The three probes/t2577-indirect-ref-array cells above leave eval/baseline/probes.txt too.
 - [ ] The five cells, and T-2816's probe cells, leave eval/baseline/probes.txt (`make eval-baseline`), with no
       regressions.
 - [ ] `make exit-owners MILESTONE=M6` no longer lists them; lookup.md says the engine implements the rule.
