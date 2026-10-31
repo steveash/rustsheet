@@ -38,7 +38,7 @@ const SERIES_LIMIT: f64 = 0.375;
 
 /// Excel's ln(1 + a) by the stored atanh series (module docs). It is Excel's for -0.375 <= a < 0
 /// (a = 0 gives 0); outside that range the series is still evaluated, but Excel's positive-argument
-/// alnrel is a different function (r2-log1p `algdiv_try.py`, T-3383) and below -0.375 Excel takes
+/// alnrel is a different function (r2-log1p `algdiv_try.py`, T-3468) and below -0.375 Excel takes
 /// [`excel_ln_one_minus`]'s LN. A NaN gives NaN.
 pub(crate) fn excel_log1p(a: f64) -> f64 {
     let r = extended_quotient(a, a + 2.0);
