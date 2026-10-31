@@ -8,6 +8,7 @@ use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::constants::MINIMUM_DATE_SERIAL_NUMBER;
 use crate::types::DateSystem;
 
+use super::elapsed::is_elapsed;
 use super::parser::TextToken;
 
 pub const DATE_OUT_OF_RANGE_MESSAGE: &str = "Out of range parameters for date";
@@ -217,12 +218,7 @@ pub fn negative_serial_allowed(tokens: &[TextToken], date_system: DateSystem) ->
         match token {
             token if token.is_literal() => {}
             TextToken::General => {}
-            TextToken::ElapsedHour
-            | TextToken::ElapsedHourPadded
-            | TextToken::ElapsedMinute
-            | TextToken::ElapsedMinutePadded
-            | TextToken::ElapsedSecond
-            | TextToken::ElapsedSecondPadded => elapsed += 1,
+            token if is_elapsed(token) => elapsed += 1,
             _ => return false,
         }
     }

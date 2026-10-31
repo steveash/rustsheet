@@ -1,5 +1,7 @@
 //! Elapsed `[h]`/`[m]`/`[s]` token text and fractional seconds (`s.000`, `[s].000`).
 
+use super::date_clock::SECONDS_PER_DAY_F64;
+use super::parser::TextToken;
 use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 
 /// The unit of an elapsed `[h]`/`[m]`/`[s]` token.
@@ -112,17 +114,56 @@ impl DisplayClock {
     }
 }
 
-/// What `General` prints in a date section with a date or clock token: the seconds within the
-/// minute, in units of the shown second fraction, of the serial after Excel's half-unit rounding
-/// step (`x + 0.5/86400` with no fraction digits, `x + 0.05/86400` with `.0`), with that step's
-/// float error left in. `TEXT(5,"d General")` is "5 0.5", `TEXT(45000,"d General")` "15 0.499999803",
-/// `TEXT(12345.678,"d General")` "18 19.69999995", `TEXT(45000,"s.0 General")` "0.0 0.499997288"
-/// (probes/t3378-general-in-date-section, excel-graph 2026-10-31, T-3378; number-formats.md).
-pub(super) fn general_clock_residue(value: f64, fraction_digits: Option<usize>) -> f64 {
+/// Whether the token is an elapsed `[h]`, `[m]` or `[s]` count, padded or not.
+pub(super) fn is_elapsed(token: &TextToken) -> bool {
+    matches!(
+        token,
+        TextToken::ElapsedHour
+            | TextToken::ElapsedHourPadded
+            | TextToken::ElapsedMinute
+            | TextToken::ElapsedMinutePadded
+            | TextToken::ElapsedSecond
+            | TextToken::ElapsedSecondPadded
+    )
+}
+
+/// Whether the token reads the serial's date or time of day (`d`, `mmm`, `h`, `ss`, `AM/PM`, an
+/// era): anything in a date section but literals, `General`, elapsed counts and fraction digits.
+fn is_date_or_clock(token: &TextToken) -> bool {
+    !(token.is_literal()
+        || is_elapsed(token)
+        || matches!(
+            token,
+            TextToken::Raw
+                | TextToken::General
+                | TextToken::Digit(_)
+                | TextToken::Period
+                | TextToken::SecondFraction(_)
+        ))
+}
+
+/// What one `General` among the tokens of a date section prints (the parser lets one in; a digit
+/// placeholder beside it still makes the section a number one and `#VALUE!`). Beside elapsed tokens
+/// only, the value's magnitude: `TEXT(5.25,"[h] General")` is "126 5.25". Once any date or clock
+/// token splits the serial, wherever it stands, the seconds within the minute, in units of the
+/// shown second fraction, of the serial after Excel's half-unit rounding step (`x + 0.5/86400`
+/// with no fraction digits, `x + 0.05/86400` with `.0`), with that step's float error left in:
+/// `TEXT(5,"d General")` is "5 0.5", `TEXT(45000,"General d")` "0.499999803 15",
+/// `TEXT(12345.678,"d General")` "18 19.69999995", `TEXT(45000,"s.0 General")` "0.0 0.499997288".
+/// `value` is non-negative. Evidence: probes/t3378-general-in-date-section (excel-graph,
+/// 2026-10-31, T-3378); number-formats.md "`General` in a date section".
+pub(super) fn general_in_date_section(
+    value: f64,
+    tokens: &[TextToken],
+    fraction_digits: Option<usize>,
+) -> f64 {
+    if !tokens.iter().any(is_date_or_clock) {
+        return value;
+    }
     let scale = 10f64.powi(i32::try_from(fraction_digits.unwrap_or(0)).unwrap_or(0));
-    let shifted = value + 0.5 / (86400.0 * scale);
+    let shifted = value + 0.5 / (SECONDS_PER_DAY_F64 * scale);
     let day_fraction = shifted - shifted.floor();
-    (day_fraction * 86400.0 * scale) % (60.0 * scale)
+    (day_fraction * SECONDS_PER_DAY_F64 * scale) % (60.0 * scale)
 }
 
 /// `x` rounded to `1/scale`; a magnitude whose scaled value overflows is already integral, and

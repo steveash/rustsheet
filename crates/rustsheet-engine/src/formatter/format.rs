@@ -1,4 +1,4 @@
-use super::elapsed::{elapsed_text, general_clock_residue, DisplayClock, ElapsedUnit};
+use super::elapsed::{elapsed_text, general_in_date_section, DisplayClock, ElapsedUnit};
 use super::fraction::{comma_exponent, format_fraction};
 use super::general::{format_general, lead_abs};
 use crate::{
@@ -451,16 +451,8 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             {
                 return invalid_date(value_original);
             }
-            // `General` in a date section prints the value itself beside elapsed tokens only
-            // (`TEXT(5.25,"[h] General")` is "126 5.25") and the clock residue once any date or
-            // clock token splits the serial, wherever it stands (`"General d"` on 45000 is
-            // "0.499999803 15"; probes/t3378-general-in-date-section, T-3378).
-            let splits_clock = tokens.iter().any(TextToken::is_date_or_clock);
-            let general_value = if splits_clock {
-                general_clock_residue(value, fraction_digits)
-            } else {
-                value
-            };
+            // What `General` prints here (T-3378; number-formats.md "`General` in a date section").
+            let general_value = general_in_date_section(value, tokens, fraction_digits);
             let clock = DisplayClock::new(value, fraction_digits);
             let (hours, minutes, seconds) = clock.hms;
             let elapsed_fraction = clock.elapsed.as_ref();
@@ -506,9 +498,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                     }
                     TextToken::Digit(_) => {}
                     TextToken::Period => {}
-                    TextToken::General => {
-                        text = format!("{text}{}", general_text(general_value, locale));
-                    }
+                    TextToken::General => text.push_str(&general_text(general_value, locale)),
                     TextToken::Day => {
                         if !date_valid {
                             return invalid_date(value);
