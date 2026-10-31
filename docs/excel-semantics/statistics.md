@@ -3192,7 +3192,14 @@ Below 1E-15 Excel leaves the closed form: probes-numeric t1543-inverse-cdf-tiny-
 1.0000000000000237E-300, `BETA.INV(1E-200,1,1)` = 9.99999999999978E-201) and A86 (`BETA.INV(1E-200,1000,1)` = 0.2064,
 the quantile 0.63), and `BETA.INV(1E-20,1000,1)` is `#NUM!` (see "Inverse CDF functions at a tiny or near-1
 probability (T-1543)"); `BETA.INV(1E-20,1,1)` still matches.
+In the eval as a whole (T-3457's run, every BETA.INV/BETAINV cell): the closed form makes 32 cells bit-exact and moves
+18 that the crossing of our cdf matched to 1 ulp, among them the gated gen-m9/589f42e67f4b4b8d A221
+`BETAINV(0.001,1,42)` (Excel 2.3821152785727803E-5, closed form 2.3821152785727806E-5; the 50-digit root
+2.38211527857278045E-5 sits half way between them), probes-numeric m9-beta-inv A12 `BETA.INV(0.95,0.5,1)` (Excel
+0.9024999999999999, not 0.95^2 = 0.9025) and A40 `BETA.INV(0.95,1,0.5)` (Excel 0.9975, closed form 0.9974999999999999).
+So at a shape of 1 Excel is not the libm closed form either: its last bit is UNVERIFIED.
 Status: VERIFIED (15 digits; Excel's bits, 1 to 12 ulp from the closed form at 47 points, are UNVERIFIED)
+Implemented in: crates/rustsheet-engine/src/functions/statistical/beta.rs `beta_quantile_shape_one`
 Tasks: T-3457
 
 ## Incomplete gamma sweep (T-1045)

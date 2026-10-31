@@ -36,6 +36,9 @@ fn beta_quantile(alpha: f64, beta: f64, p: f64) -> f64 {
     if alpha > BETA_QUANTILE_STATRS_SHAPE_MAX || beta > BETA_QUANTILE_STATRS_SHAPE_MAX {
         return beta_quantile_crossing(alpha, beta, p);
     }
+    if let Some(x) = beta_quantile_shape_one(alpha, beta, p) {
+        return x;
+    }
     let estimate = if p >= BETA_QUANTILE_STATRS_P_MIN {
         beta_inverse_cdf(alpha, beta, p)
     } else {
@@ -57,6 +60,29 @@ fn beta_quantile(alpha: f64, beta: f64, p: f64) -> f64 {
             0.0,
             1.0,
         )
+    }
+}
+
+/// The quantile at a shape of exactly 1 and p of 1E-15 or more, in closed form: p when both
+/// shapes are 1, `-expm1(log1p(-p)/beta)` when alpha is 1 and `exp(ln(p)/alpha)` when beta is 1.
+/// The crossing search cannot be used there: BETA.DIST's cdf at a shape of 1 forms its small tail
+/// as (0.5 - w) + 0.5 (T-3007), so it is flat over a band tens of doubles wide and the search
+/// stops anywhere in it (probes-numeric/m9-beta-inv A69 `BETA.INV(0.999,1,100)`: 40 ulp off by
+/// the search, Excel within an ulp of the 50-digit root). Over the 127 literal shape-1 cells in
+/// eval/ with 1E-15 <= p < 1 this form is within 15 digits of Excel at every one (80 bit-exact);
+/// `1 - (1-p)^(1/beta)` is not (A51 `BETA.INV(0.001,1,2.5)`, 640 ulp). Below 1E-15 Excel leaves
+/// the closed form (probes-numeric/t1543-inverse-cdf-tiny-p A73:A75, A86), so the search stays
+/// there. docs/excel-semantics/statistics.md "BETA.INV at a shape of 1 is the closed form to 15
+/// digits for p of 1E-15 or more (T-3457)".
+fn beta_quantile_shape_one(alpha: f64, beta: f64, p: f64) -> Option<f64> {
+    if p < BETA_QUANTILE_STATRS_P_MIN {
+        return None;
+    }
+    match (alpha == 1.0, beta == 1.0) {
+        (true, true) => Some(p),
+        (true, false) => Some(-((-p).ln_1p() / beta).exp_m1()),
+        (false, true) => Some((p.ln() / alpha).exp()),
+        (false, false) => None,
     }
 }
 

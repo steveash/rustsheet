@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::test::util::new_empty_model;
+use crate::test::util::{new_empty_model, round_trip_value, within_fifteen_digits};
 
 #[test]
 fn empty_argument_cumulative() {
@@ -84,4 +84,32 @@ fn test_fn_beta_inv_tiny_probability_is_bounded() {
     assert_eq!(model._get_text("A3"), "0.794328235");
     assert_eq!(model._get_text("A4"), "0.458650995");
     assert_eq!(model._get_text("A5"), "7.8736E-203");
+}
+
+// T-3457: at a shape of exactly 1 and p of 1E-15 or more the quantile is the closed form, not the
+// crossing of BETA.DIST's cdf, which is flat over tens of doubles there (T-3007). Excel values from
+// probes-numeric/m9-beta-inv A69 and A149 (the same points as t1745-beta-inv-roundtrip J67, J144);
+// below 1E-15 the search stays (t1543-inverse-cdf-tiny-p A73 `BETA.INV(1E-300,1,1)`, Excel
+// 1.0000000000000237E-300, not p).
+#[test]
+fn test_fn_beta_inv_shape_one_closed_form() {
+    let mut model = new_empty_model();
+    model._set("A1", "=BETA.INV(0.999,1,100)");
+    model._set("A2", "=BETA.INV(0.001,100,1)");
+    model._set("A3", "=BETA.INV(0.25,1,1)");
+    model._set("A4", "=BETA.INV(1E-300,1,1)");
+    model.evaluate();
+    let number = |cell: &str| round_trip_value(&model, cell).parse::<f64>().unwrap();
+    for (cell, excel) in [
+        ("A1", 0.066_745_699_203_008_99),
+        ("A2", 0.933_254_300_796_991),
+    ] {
+        let value = number(cell);
+        assert!(
+            within_fifteen_digits(excel, value),
+            "{cell}: {value} against Excel {excel}"
+        );
+    }
+    assert_eq!(number("A3").to_bits(), 0.25_f64.to_bits());
+    assert_ne!(number("A4").to_bits(), 1e-300_f64.to_bits());
 }
