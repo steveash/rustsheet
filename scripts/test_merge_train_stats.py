@@ -3,10 +3,13 @@ section 4 on scripted PR histories, the lock and train groupings, and a whole re
 
 from __future__ import annotations
 
+import contextlib
+import io
 import sys
 import unittest
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import merge_lock  # noqa: E402 (the sys.path line above must run first)
@@ -281,6 +284,47 @@ class Report(unittest.TestCase):
         for line in expected:
             self.assertIn(line, report.splitlines())
         self.assertIn("T-2991 bar: not met: 1 scored trains", report)
+
+
+class Stranded(unittest.TestCase):
+    """`stranded()` and `--stranded` (T-3344): ready-labelled, not ejected, newest marker past 2 h."""
+
+    @staticmethod
+    def routes(now: datetime) -> dict[str, object]:
+        def iso(hours_ago: float) -> str:
+            return (now - timedelta(hours=hours_ago)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        def pull(n: int, *labels: str) -> dict[str, object]:
+            return {"number": n, "labels": [{"name": label} for label in labels]}
+
+        def marker(hours_ago: float) -> dict[str, object]:
+            return {"created_at": iso(hours_ago), "body": "Marked ready.\n\n<!-- merge-train-ready v1\n-->"}
+
+        ready, ejected = "ready-to-merge", "merge-train-ejected"
+        return {
+            "pulls": [pull(5, ready), pull(6, ready, ejected), pull(7, ready), pull(8, ready), pull(9)],
+            # 5: marked 5 h and 3 h ago (the newest counts); 6: ejected; 7: marked 1 h ago; 8: no marker.
+            "issues/5/comments": [marker(5), marker(3)],
+            "issues/6/comments": [marker(5)],
+            "issues/7/comments": [marker(4), marker(1)],
+            "issues/8/comments": [{"created_at": iso(5), "body": "a plain comment"}],
+        }
+
+    def test_only_old_markers_on_ready_unejected_prs(self) -> None:
+        now = at(10)
+        found = stats.Stats(Routed(self.routes(now)), NoGit(), now, now - stats.DAY).stranded()
+        self.assertEqual(found, [5])
+
+    def test_the_flag_prints_only_the_stranded_line(self) -> None:
+        now = datetime.now(UTC)
+        out = io.StringIO()
+        with (
+            mock.patch.object(stats.gh_client, "from_remote", return_value=Routed(self.routes(now))),
+            mock.patch.object(stats, "GitHistory", NoGit),
+            contextlib.redirect_stdout(out),
+        ):
+            self.assertEqual(stats.main(["--stranded"]), 0)
+        self.assertEqual(out.getvalue().splitlines(), ["stranded PRs: #5"])
 
 
 if __name__ == "__main__":
