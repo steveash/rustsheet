@@ -3,7 +3,7 @@ id: T-3372
 title: "Move FILTER out of spill_functions.rs into its own module (spill_functions.rs is at 952 of its 1,000 lines)"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -41,3 +41,7 @@ dispatch in `functions/mod.rs` (`Function::Filter => Self::fn_filter`) does not 
 - Any change to what FILTER computes. (Its doc comment's note that a comparison like `A1:A5>3` must be stored in a
   helper column first looks stale; the moved comment may drop that sentence, nothing else.)
 - SORT, SORTBY and UNIQUE (T-3211 owns their collation work).
+
+## Outcome
+`fn_filter` and `array_node_is_truthy` moved unchanged into `lookup_and_reference/filter.rs` (only the stale
+helper-column sentence in the doc comment was dropped). spill_functions.rs is 803 lines. No eval cell changed.

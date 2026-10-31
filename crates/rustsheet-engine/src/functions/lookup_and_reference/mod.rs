@@ -30,6 +30,7 @@ mod address_areas;
 mod choosecols_chooserows;
 mod drop_take;
 mod expand;
+mod filter;
 mod formulatext;
 mod getpivotdata;
 mod group_functions;
