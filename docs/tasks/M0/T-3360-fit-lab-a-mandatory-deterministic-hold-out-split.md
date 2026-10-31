@@ -3,7 +3,7 @@ id: T-3360
 title: "Fit lab: a mandatory deterministic hold-out split, with train and test counts side by side (decision 0188 R4.1)"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
