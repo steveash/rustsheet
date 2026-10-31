@@ -3,7 +3,7 @@ id: T-3353
 title: "XIRR on two-flow series over long spans loses accuracy (1E-8 to 1E-7 off)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P0
 size: M
 tier: opus
