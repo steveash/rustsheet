@@ -82,12 +82,23 @@ Each cell below has GAMMA.DIST, GAMMADIST, CHISQ.DIST, CHIDIST or CHISQ.DIST.RT 
 - probes/incomplete-gamma-cap.case.json (1): Sheet1!E13
 - probes/t2738-gamma-dist-tiny-ratio.case.json (1): S!A4
 
+Added by gap triage 2026-10-31e (`make eval` on origin/main 4ff408243): 64 GAMMA.DIST density cells, all within 15
+significant digits (60 at 1 to 4 ulp, 4 at 5 to 7 ulp), that no open task listed. Most are at a tiny x / beta or a
+huge scale, where T-2753's log-space density applies. Examples, Excel vs ours:
+`GAMMA.DIST(1E-17,1,1,FALSE)` (S!A3) 0.999999999999999 vs 0.9999999999999989;
+`GAMMA.DIST(1E-15,2,1,FALSE)` (S!A19) 1.000000000000001E-15 vs 1.0000000000000022E-15;
+`GAMMA.DIST(1500000,1,1000000,FALSE)` (m9-gamma-dist-a1 A28) 2.2313016014842983E-07 vs 2.231301601484298E-07.
+- probes/t2753-gamma-density-switch.case.json (63): S!A3, A4, A5, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A23, A24, A25, A26, A27, A28, A29, A30, A31, A32, A33, A34, A37, A38, A41, A42, B4, B5, B10, B11, B12, B13, B14, B15, B17, B18, B19, B20, B21, B22, B23, B24, B25, B26, B27, B28, B29, B30, B31, B32, B33, B35, B36, B38, B40, B42
+- probes-numeric/m9-gamma-dist-a1.case.json (1): Calc!A28
+
 ## Acceptance criteria
 - [ ] These known-failure lines disappear from the baselines, with no new ones in any baseline (`make eval-baseline`,
       `make eval-check`: 0 regressions):
       - the 11 gen-m9 lines from eval/baseline/gen-m9.txt;
       - the 10 ironcalc-calc lines from eval/baseline/ironcalc-calc.txt;
       - the 36 probes lines from eval/baseline/probes.txt.
+- [ ] The 63 probes/t2753-gamma-density-switch lines added by gap triage 2026-10-31e disappear from
+      eval/baseline/probes.txt with no new line in any baseline, and m9-gamma-dist-a1 A28 passes in report.json.
 - [ ] probes-numeric is ungated, so its 142 owned cells are scored from `make eval`'s report.json: they pass
       bit-exact. Or, under the decision 0056 time box, the Outcome records the formulations tried with their bit-exact
       counts, and the open cells move to a follow-up.
