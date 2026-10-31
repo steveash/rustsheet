@@ -445,21 +445,46 @@ class MergeLock(unittest.TestCase):
         # 31 polls: own PR and the holder's at polls 0, 10, 20 and 30, not 62 reads.
         self.assertEqual(sorted(reads), ["101"] * 4 + ["202"] * 4)
 
-    def test_wait_retries_git_errors_until_three_in_a_row(self) -> None:
-        real, errors = merge_lock.read_lock, [merge_lock.GitError("fetch failed")] * 2
+    def flaky_read(self, errors: list[Exception]) -> mock._patch[mock.MagicMock]:
+        real = merge_lock.read_lock
 
         def flaky(root: Path) -> merge_lock.Lock | None:
             if errors:
                 raise errors.pop()
             return real(root)
 
-        with mock.patch.object(merge_lock, "read_lock", side_effect=flaky):
-            self.assertEqual(self.wait()[:2], (0, 2))  # two failed polls, then the lock is free
+        return mock.patch.object(merge_lock, "read_lock", side_effect=flaky)
+
+    def test_wait_retries_git_errors_until_its_timeout(self) -> None:
+        with self.flaky_read([merge_lock.GitError("fetch failed")] * 4):
+            self.assertEqual(self.wait()[:2], (0, 4))  # four failed polls, then the lock is free
+        with mock.patch.object(merge_lock, "read_lock", side_effect=merge_lock.GitError("down")):
+            code, sleeps, lines = self.wait(timeout=5)
+        self.assertEqual((code, sleeps), (1, 10))
+        self.assertEqual(lines[0], "merge lock: down (retrying)")
+
+    def test_wait_keeps_its_place_across_errors_and_a_racing_unreadable_marker(self) -> None:
+        merge_lock.acquire("agent-a", "101", root=self.a)
+        merge_lock.acquire("agent-c", "303", root=self.a)
+        errors: list[Exception] = [merge_lock.LockFormatError("racing write"), merge_lock.GitError("push failed")]
+        with self.flaky_read(errors):
+            code, _, lines = self.wait(timeout=2)
+        self.assertEqual(code, 1)  # still waiting at the timeout
+        self.assertIn("merge lock: push failed (retrying)", lines)
+        self.assertIn("merge lock: racing write (retrying)", lines)
+        self.assertEqual(self.queue(), ["agent-c", "agent-b"])  # agent-b kept its place behind agent-c
+
+    def test_wait_exits_2_on_a_persistent_unreadable_marker_a_bad_claim_or_a_full_queue(self) -> None:
         with (
-            mock.patch.object(merge_lock, "read_lock", side_effect=merge_lock.GitError("down")),
-            self.assertRaises(merge_lock.GitError),
+            mock.patch.object(merge_lock, "read_lock", side_effect=merge_lock.LockFormatError("bad")),
+            self.assertRaises(merge_lock.LockFormatError),
         ):
             self.wait()
+        with self.assertRaises(merge_lock.LockFormatError):
+            merge_lock.wait("bad id!", "202", root=self.b)
+        full = tuple(merge_lock.Waiter(f"w{i}", "1", self.now, self.now) for i in range(merge_lock.QUEUE_MAX))
+        self.put(merge_lock.Lock("", "agent-a", "101", renewed=self.now, waiters=full))
+        self.assertEqual(self.wait()[:2], (merge_lock.ERROR, 0))
 
     def test_main_waits_for_a_pr_or_a_train_and_refuses_bad_minutes(self) -> None:
         self.assertEqual(
