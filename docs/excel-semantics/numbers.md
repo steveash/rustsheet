@@ -1264,7 +1264,9 @@ sweep's 1035 COSH cells).
   where either function's forms differ, on (0.99977, 1.00038) and within 12 ulp of 1: every discriminating cell up to
   0.9999999999999994 (1 - 5 ulp) is the expm1 forms, every one from 1.0000000000000004 (1 + 2 ulp) the exp forms.
   At the doubles in between, 1 itself included, the two forms give the same double, so no cell can place the cut
-  more finely; `|x| < 1` fits every cell.
+  more finely; `|x| < 1` fits every cell. Both probes are excel-graph (Excel for the web) only, and the cells that
+  discriminate differ by about 1 ulp, inside the 4-ulp web-against-desktop floor (docs/research/oracle-calibration.md):
+  the narrowed bracket is web-only until a desktop fill confirms it. Nothing is fitted to it (the cut stays 1).
 Ours: `functions/math_and_trigonometry/hyperbolic.rs` `sinh`, `tanh` (`expm1_pair`, `excel_expm1`).
 Status: VERIFIED (excel-graph); the expm1 kernel is below.
 

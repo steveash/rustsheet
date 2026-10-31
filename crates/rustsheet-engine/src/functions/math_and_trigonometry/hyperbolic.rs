@@ -27,6 +27,8 @@ use crate::x87_log10::excel_ln;
 /// two forms differ for SINH, TANH or both) narrow it to 1 - 5 ulp..1 + 2 ulp: the expm1 forms through
 /// 0.9999999999999994, the exp forms from 1.0000000000000004. Between them, 1 included, both forms
 /// give the same double, so no cell can narrow it further (numbers.md "SINH and TANH below 1").
+/// The probes are Excel for the web only, and their cells differ by about 1 ulp, inside the
+/// web-against-desktop floor, so the narrowed bracket awaits a desktop fill.
 /// FITTED(T-2134, 2284 cells, SINH and TANH |x| 1E-10..1.49; cut bracketed 0.9999999999999994..1.0000000000000004)
 const EXPM1_FORM_LIMIT: f64 = 1.0;
 /// |tanh(x)| rounds to 1.0 in f64 beyond this.

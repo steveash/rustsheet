@@ -62,9 +62,11 @@ pub(crate) fn compute_rate(
     // nper 1..1000, |pmt| 1E-6..1E+6, pv -100..1E+7, guess -0.5..10 and rates -0.75..2.
     /// FITTED(T-2005, 782 cells, RATE nper 1..1000, |pmt| 1E-6..1E+6, guess -0.5..10, rate -0.75..2)
     const OFFSET: f64 = 0.001;
-    // Not a fit: Microsoft's RATE documentation gives 0.0000001 as the convergence bound. Scoring
-    // only confirms it (financial.md "RATE is a secant on the FV residual": 1e-6 and 1e-8 score
-    // lower).
+    // Two uses. The step stop is not a fit: Microsoft's RATE documentation gives 0.0000001 as the
+    // convergence bound. The residual stop |f| < 1e-7 is not documented and was chosen by scoring
+    // (financial.md "RATE is a secant on the FV residual": |f| < 1e-6 scores 188, < 1e-8 181), as
+    // IRR's is (`irr_secant`).
+    /// FITTED(T-2005, 782 cells, RATE nper 1..1000, |pmt| 1E-6..1E+6, guess -0.5..10, rate -0.75..2; the residual stop)
     const TOLERANCE: f64 = 1e-7;
     // Excel's looser test at the cap (T-2689): the 200th iterate is returned when its step and
     // |f| are below 1e-4 and it is above -1 + 1e-4. probes/rate-cap-return-rule: steps of 7.3e-5

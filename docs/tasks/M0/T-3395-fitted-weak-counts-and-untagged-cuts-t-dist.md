@@ -61,15 +61,16 @@ near each cut.
   `a10_grid.py`'s 529 grid shapes x 8 x of t2513-r3-loader-const-grid1.
 - hyperbolic.rs `EXPM1_FORM_LIMIT`: new probes-numeric t3395-hyperbolic-form-switch (120 cells) and -2 (94) at
   points where the engine's two forms differ narrow Excel's switch from 0.99505..1.0375 to 1 - 5 ulp..1 + 2 ulp,
-  inside which the forms agree, so 1 fits every cell (numbers.md). Both cases pass.
-- financial_util.rs, tagged (decision 0195, fitted lock 81 -> 85 by `--update`): RATE's start offset (782 cells of
-  the fit lab's `rate` set), RATE's cap tolerance (178 cap-probe cells, one cut inside all three brackets,
+  inside which the forms agree, so 1 fits every cell (numbers.md). Both cases pass. They are excel-graph only and
+  their cells differ by about 1 ulp, inside the web-against-desktop floor, so the narrowing is web-only so far.
+- financial_util.rs, tagged (decision 0195, fitted lock 81 -> 86 by `--update`): RATE's start offset and residual
+  stop (782 cells of the fit lab's `rate` set), RATE's cap tolerance (178 cap-probe cells, one cut inside all three brackets,
   9.4E-5..1.02E-4), IRR's start offset and residual stop (263 cells of the `irr` set) and `IRR_FAR_ROOT_BOUND` (35
-  probe cells, 9999999.994..1E+7). Not fits, now said in the comments: RATE's and IRR's 1E-7 step stops (Microsoft's
-  documented bounds), `RATE_MAX_STEPS` and `IRR_GUESS_BOUND` (pinned exactly), the loop caps (directive 5).
+  probe cells, 9999999.994..1E+7). These and f_density's small-shape constant apply past their tagged ranges:
+  T-3413. Not fits, now said in the comments: RATE's and IRR's 1E-7 step stops (Microsoft's documented bounds), `RATE_MAX_STEPS` and `IRR_GUESS_BOUND` (pinned exactly), the loop caps (directive 5).
 - R4 guards: no value changed, so no hold-out or fresh sweep is owed; the in-sample scores above are why T-3410 owns
   moving the three t cuts under R4.
 - Not done: a committed range script (the T-3385 review's optional point); the cut-moving method needs an override
   hook the engine must not carry, so it stays a recipe here.
-Follow-up: T-3410 (move the t cuts under R4). Eval delta: +214 cells (the two new probe cases, all bit-exact); no
+Follow-ups: T-3410 (move the t cuts under R4), T-3413 (fits applied past their tagged ranges). Eval delta: +214 cells (the two new probe cases, all bit-exact); no
 other change.

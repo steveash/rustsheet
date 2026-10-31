@@ -4,7 +4,7 @@
   "crates/rustsheet-engine/src/functions/financial/annuity.rs": 4,
   "crates/rustsheet-engine/src/functions/financial/cumulative.rs": 2,
   "crates/rustsheet-engine/src/functions/financial/financial_bonds/yield_solver.rs": 2,
-  "crates/rustsheet-engine/src/functions/financial/financial_util.rs": 7,
+  "crates/rustsheet-engine/src/functions/financial/financial_util.rs": 8,
   "crates/rustsheet-engine/src/functions/math_and_trigonometry/hyperbolic.rs": 3,
   "crates/rustsheet-engine/src/functions/statistical/bratio/bgrat.rs": 1,
   "crates/rustsheet-engine/src/functions/statistical/chisq.rs": 1,
