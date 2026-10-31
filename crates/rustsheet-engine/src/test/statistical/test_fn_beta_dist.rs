@@ -86,8 +86,8 @@ fn test_fn_beta_inv_tiny_probability_is_bounded() {
     assert_eq!(model._get_text("A5"), "7.8736E-203");
 }
 
-// BETA.INV whose quantile rounds to 1 (T-3351, probes/t3351-beta-inv-p-near-1, excel-graph): exactly 1
-// while the flipped tail's quantile y is a normal double, #NUM! once it underflows.
+// BETA.INV whose quantile rounds to 1 (T-3351, probes/t3351-beta-inv-p-near-1, excel-graph):
+// exactly 1 while the flipped tail's quantile y is a normal double, #NUM! once it underflows.
 #[test]
 fn beta_inv_quantile_rounding_to_one() {
     let cases = [

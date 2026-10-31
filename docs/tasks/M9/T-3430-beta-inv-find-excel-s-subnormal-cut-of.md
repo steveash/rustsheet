@@ -4,7 +4,7 @@ title: "BETA.INV: model where Excel's AS 109 search fails at tiny shapes (1 or 0
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P2
+priority: P1
 size: S
 tier: opus
 depends_on: []

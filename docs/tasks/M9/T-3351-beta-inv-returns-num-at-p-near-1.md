@@ -3,11 +3,11 @@ id: T-3351
 title: "BETA.INV returns #NUM! at p near 1-1E-8 with a small b, where the answer is 1"
 milestone: M9
 lane: functions-stat
-status: done
+status: todo
 priority: P0
 size: S
 tier: opus
-depends_on: []
+depends_on: [T-3430, T-3431]
 campaign: accuracy
 ---
 
@@ -27,20 +27,20 @@ the answer is 1.0.
   moves in the Outcome.
 
 ## Acceptance criteria
-- [x] BETA.INV at p from 1 − 1e-6 to 1 − 1e-15 with b from 1e-3 to 1 returns Excel's value (1.0 where Excel gives it).
-- [ ] A new public probe case under eval/suites/probes/cases/ (one milestone tag, M9; decision 0057), filled by the
+- [ ] BETA.INV at p from 1 − 1e-6 to 1 − 1e-15 with b from 1e-3 to 1 returns Excel's value (1.0 where Excel gives it).
+- [x] A new public probe case under eval/suites/probes/cases/ (one milestone tag, M9; decision 0057), filled by the
       oracle (excel-graph), reproduces the bug; its cells are listed in this file before the fix. Include the inputs in
       Context and points on both sides of the failing region.
 - [ ] After the fix every cell of that case is within 15 significant digits of Excel's value, with the right type and
       error (decision 0083's rule).
-- [ ] No gated cell regresses (`make eval-baseline` refuses regressions; decision 0083's ulp allowance only as it
+- [x] No gated cell regresses (`make eval-baseline` refuses regressions; decision 0083's ulp allowance only as it
       states).
 - [ ] Gate A envelope on a fresh sweep of its own (decision 0188 R2, R4.2): a new probes-numeric case, filled, with
       points drawn log-uniform over the function's valid domain and stratified around the failing region, scored
       against a 50-digit mpmath reference. The Outcome reports, per stratum, the points within 15 digits of Excel and
       the points within 1e-9 relative of the math (absolute 1e-300 near 0): 0 points outside both, and 0 cells where
       one side is an error and the other a number. This is a floor only: the target stays Excel's value.
-- [ ] The rule (what Excel does, what was wrong) is in docs/excel-semantics/ in the same PR.
+- [x] The rule (what Excel does, what was wrong) is in docs/excel-semantics/ in the same PR.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -60,7 +60,16 @@ the bounds form (A196), the underflow boundary at b = 0.03 for a = 2 and 0.5 (A1
 `#NUM!` in the engine: A28-A31, A37-A54, A91-A94, A100-A117, A126, A154-A157, A163-A180, A189, A194, A195,
 A197-A199, A206-A211 and C197-C199 (86 cells).
 
-## Outcome
+## Status: partial (PR #2573)
+PR #2573 lands the fix for every point where the flipped tail's y is a normal double (81 of the 86 probe cells that
+were `#NUM!`, 37 of the sweep's 40 points where Excel is 1), with no regression. The task stays open (`status: todo`)
+because three criteria are not met: the first (Excel's 1 where Excel's search still answers below the subnormal cut),
+the 15-digit match on every probe cell, and the clean Gate A envelope. No decision narrows them. The remaining cells
+are owned by T-3430 (where Excel's AS 109 search fails: probe A199, A209-A211, C199, column B; sweep A88, A89, A122,
+A175, A188) and T-3431 (sweep A200, the upper-tail kernel). Close this task after both land: re-score the sweep and
+the probe, tick the criteria and set `status: done`.
+
+## Outcome (partial, PR #2573)
 - `beta.rs` `upper_quantile_near_one`: when BETA.INV's upper-tail quantile rounds to 1 (p > 1/2), the flipped tail's
   y (the lower quantile of Beta(beta, alpha) at 1 - p, on Excel's BETA.DIST kernel through `beta_lower_crossing`) gives
   1 - y for a normal y, and `#NUM!` for a y of 0 or a subnormal one. Unit test `beta_inv_quantile_rounding_to_one`;

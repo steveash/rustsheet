@@ -102,7 +102,8 @@ const BINOM_INV_WEIGHT: u32 = 1 << 12;
 /// a huge shape or df, a crossing of at most 67 of those cdfs (`inverse_beta::beta_quantile_crossing`,
 /// T-1538: 0.5 ms), so the full Newton search plus refinement (2.5 ms) is the bound; where that
 /// quantile rounds to 1, one more such crossing on the flipped tail (`beta.rs`
-/// `upper_quantile_near_one`, T-3351: 0.5 ms) makes it 3.0 ms.
+/// `upper_quantile_near_one`, T-3351: 0.5 ms) makes it 3.0 ms. 512 elements at 3.0 ms is 1.5 s
+/// of kernel time, still inside the 2 s budget below, so the weight is unchanged.
 /// The weight caps a lifted call at 2^27 / 2^18 = 512 elements: 1.7 s at the bound (a DEVIATION,
 /// statistics.md). The cases measured cost much less (over 8,192 elements in release: 167 us for
 /// `BETA.INV(1E-300,0.5,1E6)`, a full bisection of fast cdfs; 105 us for the longest Newton search

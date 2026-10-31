@@ -72,8 +72,8 @@ fn beta_quantile(alpha: f64, beta: f64, p: f64) -> f64 {
 /// alpha 0.5), and Excel's search sometimes still answers 1 far below it
 /// (probes-numeric/t3351-beta-inv-sweep A122, y about 1E-700): TODO(T-3430). The crossing is of
 /// Excel's BETA.DIST kernel (`inverse_beta::beta_lower_crossing`, at most 67 cdfs), since statrs'
-/// search there stops near 1E-17 whatever the true `y` (docs/excel-semantics/statistics.md "BETA.INV where the quantile
-/// rounds to 1 (T-3351)").
+/// search there stops near 1E-17 whatever the true `y` (docs/excel-semantics/statistics.md
+/// "BETA.INV where the quantile rounds to 1 (T-3351)").
 fn upper_quantile_near_one(alpha: f64, beta: f64, p: f64) -> Option<f64> {
     let y = beta_lower_crossing(beta, alpha, 1.0 - p);
     (f64::MIN_POSITIVE..0.5).contains(&y).then_some(1.0 - y)

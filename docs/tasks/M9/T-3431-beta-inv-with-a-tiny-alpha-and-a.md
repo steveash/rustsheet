@@ -4,7 +4,7 @@ title: "BETA.INV with a tiny alpha and a large beta near p = 1 is grossly off: t
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P1
+priority: P0
 size: S
 tier: opus
 depends_on: []
