@@ -50,7 +50,7 @@ moved, each with its note, below the list.
         point outside it listed.
 - [x] The rule (what Excel does, what was wrong) is in docs/excel-semantics/ in the same PR.
 - [x] `make check` green.
-- [ ] Reviewers approve, decision 0192 included.
+- [x] Reviewers approve, decision 0192 included.
 
 Moved by decision 0192:
 - *Every cell of the probe case within 15 significant digits of Excel* goes to **T-3389 (P1)**. 4 cells are beyond
@@ -113,7 +113,9 @@ runs on below -1".
 
 **Reviewer check 7: structural model, kind (c).**
 
-*Hold-out (R4.1).* The split was fixed before any scoring. The cells are the 960 cells of the fit lab's `rate` fit
+*Hold-out (R4.1).* The hold-out cells were visible while the rule was designed (the bound evidence cites
+fv-nonzero A99 and A126), so the table below shows consistency with the evidence, not generalization; the
+operative R4 test is the fresh sweep further down. The split was fixed before any scoring. The cells are the 960 cells of the fit lab's `rate` fit
 (RATE_CASES plus rate-step-cap, rate-cap-return-rule and rate-pmt-zero-cap) and the 236 cells of t3348-rate-fv-nonzero
 and t3348-rate-below-minus-one, 1196 in all. A cell is hold-out when sha256("T-3348:" + case + "!" + cell)'s first
 byte is below 77 (about 30%); that gives 367 hold-out cells and 829 train. The margin is that the new model's
