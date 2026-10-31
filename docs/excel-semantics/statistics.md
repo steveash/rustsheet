@@ -2468,7 +2468,7 @@ docs/research/t2464/cells.tsv; docs/research/t2464/r3-binom-pmf (`a1_survey.out`
 `b19_cfit_mul.out`, `c1_hold.out`), verify-r3-binom-pmf (`vscore_v.out`, `vstruct_v.out`).
 Implemented in: `binom_dist_of` in `crates/rustsheet-engine/src/functions/statistical/binom.rs` (T-2645): k = 0, pmf and
 cdf, is `excel_exp(n * excel_ln_one_minus(p))`; the pmf at k = n is `excel_exp(n * excel_ln(p))`. Ours: the interior pmf
-is `discrete.rs` `binomial_pmf`, a double-double walk.
+is `discrete.rs` `binomial_pmf`, a double-double walk, and past its budget this kernel (`binom.rs` `loader_pmf`, T-3352).
 Status: VERIFIED (excel-graph) for k = 0, k = n and the shared kernel; the interior pmf UNVERIFIED
 Tasks: T-2645, T-2146, T-2586
 
@@ -2484,9 +2484,44 @@ dnbinom (r/(f+r))·dbinom_raw(r, f+r, p, q).
   beats R's two forms (hold-out 328/2,316/2,541 against 233-275/1,775-1,779/2,203-2,211 of 3,072).
 Evidence: probes-numeric t2513-r3-binom-pmf-n, -hold, t2513-verify-r3-binom-pmf-h; docs/research/t2464/r3-binom-pmf
 (`b21_neg.out`, `b3_reg_neg_shift.out`, `b3_reg_neg.out`), verify-r3-binom-pmf (`vneg1.out`, `vneg2.out`).
-Ours: `discrete.rs`, a double-double walk.
+Ours: `discrete.rs`, a double-double walk, and past its budget p times this shifted kernel (T-3352).
 Status: VERIFIED (excel-graph) for the shifted kernel; the final step UNVERIFIED
 Tasks: T-2146, T-2586
+
+## BINOM.DIST and NEGBINOM.DIST at a large n: basym and Loader, within 1E-11 of the math (T-3352)
+Rule: at a large trial count (or number of failures) Excel's BINOM.DIST and NEGBINOM.DIST stay close to the exact value:
+on probes/t3352-binom-negbinom-large-n (208 cells: n 1E4 to 1E9 with p 0.3, 0.5 and 0.001; failures 1E3 to 1E9 with
+r = f at p 0.5, r = f/4 at p 0.2 and r = 10; k at the mean, mean + 2 sd and mean - 3 sd; pmf and cdf) every Excel value is
+within 5.2E-12 of 50-digit mpmath, and on the fresh sweep probes-numeric/t3352-binom-negbinom-sweep (300 points, seed
+3352) none is more than 1E-9 off. That is what bratio gives: near the mean, two shapes above 100 with λ within 3% of the
+smaller one, Excel's cdf is TOMS 708's `basym` (its asymptotic expansion in the scaled erfc), and its interior pmf is
+Loader's saddle point ("BINOM.DIST pmf: closed forms at k = 0 and k = n, and one kernel with BETA.DIST", "NEGBINOM.DIST
+pmf sits on the shifted binomial kernel"). Excel's own error at a large n is that kernel's: n·p is rounded before bd0, so
+an off-mean pmf at n = 1E9 is a few 1E-12 off the math (`BINOM.DIST(300028982,1000000000,0.3,FALSE)` 4.1E-12), and both
+tails carry the same noise.
+- What was wrong (ours before T-3352): past the double-double walk's 2^10 terms both functions fell back to statrs. Its
+  pmf, a log-gamma difference, was 1E-11 off at n = 1E4 and 3E-6 at 1E9; its cdf near the mean was grossly wrong from
+  n = 6E5 (`BINOM.DIST(300000000,1000000000,0.3,TRUE)` -2.82 against Excel's 0.5000156001249112;
+  `NEGBINOM.DIST(1000000000,1000000000,0.5,TRUE)` -5.65), because bratio's basym branch was not ported and today's
+  incomplete beta does not reach those shapes. 42 of the probe's 208 cells were within 15 digits of Excel, 124 within
+  1E-9 of the math.
+- Ours now: the cdf takes the basym port (`bratio/basym.rs`, in doubles: TOMS's coefficient recurrences, `erfc1`,
+  `bcorr` and `rlog1`), and the pmf past the walk's budget takes `loader::excel_dbinom_exponent` into Excel's EXP (for
+  NEGBINOM.DIST, p times the kernel shifted by one, q^f at r = 1). Probe: 133 of 208 within 15 digits of Excel, all 208
+  within 1E-9 of the math (worst 5.2E-12, Excel's own worst 5.2E-12). The 75 others are the Loader kernel's unidentified
+  arithmetic (T-2586) and bfrac or walk tails, at most 4.4E-12 from Excel, and ours is nearer the math on 52 of them.
+- Only the binomial family takes basym so far. With it under BETA.DIST too, `BETA.DIST(0.555,1000,1000,TRUE,0.1,1)`
+  becomes Excel's 0.6903551301985376 bit for bit, but BETA.INV of that value is then 0.5550000000000002, not Excel's
+  0.555 (ironcalc-calc BETADIST_BETAINV.xlsx G29, H29), whether its search crosses Cephes' fraction or basym (T-3443).
+- BINOM.DIST.RANGE and BINOM.INV still take statrs past the walk: `BINOM.DIST.RANGE(1000000000,0.3,300000000,300000100)`
+  is 1.47 and `BINOM.INV(1000000000,0.3,0.5)` 299998246 (T-3444).
+Evidence: probes/t3352-binom-negbinom-large-n (excel-graph), probes-numeric/t3352-binom-negbinom-sweep (excel-graph,
+scored against 50-digit mpmath; T-3352's Outcome).
+Implemented in: `crates/rustsheet-engine/src/functions/statistical/bratio/basym.rs`, `bratio::basym_tails`, and
+`binom_dist_of` and `negbinom_dist_of` (`loader_pmf`) in `binom.rs`.
+Status: VERIFIED (excel-graph) to 1E-11 of the math; last digits UNVERIFIED (Excel's arithmetic in basym and in Loader's
+kernel at a large n not identified)
+Tasks: T-3352, T-3443, T-3444, T-2586, T-2146
 
 ## Beta density for min(a,b) <= 1: lnB and a double-double exponent split (T-2464, T-2513)
 Rule: BETA.DIST(x,a,b,FALSE) with min(a,b) <= 1 is model M2 (r3-m1-residual, verifier-confirmed), for every b, b = 1

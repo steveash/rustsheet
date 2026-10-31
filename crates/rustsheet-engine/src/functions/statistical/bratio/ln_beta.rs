@@ -64,7 +64,7 @@ pub(super) fn toms_betaln(a: f64, b: f64) -> Option<f64> {
 
 /// TOMS 708 `bcorr(a, b)` = del(a) + del(b) - del(a + b) for 8 <= a <= b, del the Stirling
 /// remainder of ln Gamma.
-fn bcorr(a: f64, b: f64) -> f64 {
+pub(super) fn bcorr(a: f64, b: f64) -> f64 {
     let [c0, c1, c2, c3, c4, c5] = ALGDIV_C;
     let h = a / b;
     let w = stirling_del(h / (h + 1.0), 1.0 / (h + 1.0), b);

@@ -2,11 +2,13 @@
 //! Fortran, ported one branch at a time (SPEC-0025; docs/excel-semantics/statistics.md "Incomplete beta
 //! is TOMS 708 `bratio`"). This file is the dispatch: which branch bratio takes for a point, after
 //! its swap, and the branches ported so far ([`ported_tails`]): bfrac ([`bfrac`]) for b0 >= 40, bpser ([`bpser`]) for
-//! w = bpser(a0, b0, x0), w1 = bpser(b0, a0, y0) and min(a, b) > 1, and L140's bup + bpser
-//! ([`bup`]). The line-by-line model is `docs/research/t2464/r2-bratio/bratio_excel.py`
+//! w = bpser(a0, b0, x0), w1 = bpser(b0, a0, y0) and min(a, b) > 1, L140's bup + bpser
+//! ([`bup`]), and basym ([`basym`]) for two shapes above 100 near the mean, for the binomial
+//! family only ([`basym_tails`]). The line-by-line model is `docs/research/t2464/r2-bratio/bratio_excel.py`
 //! `kernel`; every branch not ported yet keeps today's kernel (`incomplete_beta.rs`, SPEC-0025's
 //! migration).
 
+mod basym;
 mod bfrac;
 mod bgrat;
 pub(super) mod bpser;
@@ -15,6 +17,7 @@ pub(super) mod ln_beta;
 
 use super::incomplete_beta::{beta_reg_tails, closed_form_tails};
 use crate::arithmetic::extended_sum;
+use basym::basym;
 use bfrac::bfrac;
 use bgrat::bgrat_half;
 use bpser::bpser;
@@ -30,6 +33,9 @@ const W1_BPSER_MIN_X: f64 = 0.3;
 
 /// bratio's tolerance for bfrac, 15·eps.
 const BFRAC_EPS_FACTOR: f64 = 15.0;
+
+/// bratio's tolerance for basym, 100·eps.
+const BASYM_EPS_FACTOR: f64 = 100.0;
 
 /// The bup terms bratio takes before bgrat for b0 <= 15 (its `n = 20`).
 const BUP_BGRAT_TERMS: f64 = 20.0;
@@ -275,6 +281,29 @@ fn ported_tails_with(a: f64, b: f64, x: f64, y: f64, half_bgrat: bool) -> Option
         _ => return None,
     };
     Some(if d.swapped { (w1, w) } else { (w, w1) })
+}
+
+/// (w, w1) of K(a, b, x, y) where bratio takes basym (two shapes above 100 near the mean), `None`
+/// elsewhere. Only the binomial family takes it so far (T-3352: today's kernel and statrs were up to
+/// 1E-6 off there, and grossly wrong past n = 6E5). BETA.DIST, F and T stay on today's kernel at
+/// these points: with basym under BETA.DIST, BETA.INV of Excel's `BETA.DIST(0.555,1000,1000,TRUE,
+/// 0.1,1)` comes back 0.5550000000000002 instead of 0.555 whichever kernel its search crosses
+/// (ironcalc-calc BETADIST_BETAINV.xlsx H29), so moving them waits on BETA.INV's own crossing
+/// (TODO(T-3443)).
+pub(crate) fn basym_tails(x: f64, y: f64, a: f64, b: f64) -> Option<(f64, f64)> {
+    let d = dispatch(a, b, x, y)?;
+    if d.branch != Branch::Basym {
+        return None;
+    }
+    let (w, w1) = basym_oriented(&d)?;
+    Some(if d.swapped { (w1, w) } else { (w, w1) })
+}
+
+/// (w, w1) of basym on a dispatched point, before the swap back, the other tail bratio's
+/// (0.5 - w) + 0.5.
+fn basym_oriented(d: &Dispatch) -> Option<(f64, f64)> {
+    let w = basym(d.a0, d.b0, d.lambda, BASYM_EPS_FACTOR * EPS)?;
+    Some((w, half_complement(w)))
 }
 
 /// (0.5 - v) + 0.5, each step an x87 op stored to a double: bratio's complement and bpser's
