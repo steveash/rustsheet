@@ -523,6 +523,14 @@ fn excel_tiny_quantile(a: f64, p: f64) -> Option<f64> {
 /// operations at any shape (T-1891).
 const TEMME_SHAPE_MIN: f64 = 1e8;
 
+/// The shape from which [`gamma_quantile`]'s cdfs are [`temme_pair`] (one term each) and it halves
+/// the whole range (65 cdfs). One inversion's cdfs share [`MAX_TERMS`], and a series cdf near the
+/// median takes about 7.3 * sqrt(a) terms, so the 140-odd cdfs of statrs' search and the refinement
+/// could pass it from about 2.6E5; they did from about 5E6 (`CHISQ.INV(0.5,2E7)` was `#NUM!`, Excel
+/// the true quantile, probes/t3350-chisq-inv-huge-df; T-3350). From here the expansion's variable
+/// is at most 0.13 where a tail is above e^-800 and its dropped terms below 1E-20 of the first.
+const QUANTILE_TEMME_SHAPE_MIN: f64 = 1e5;
+
 /// Above this a·phi (`temme_pair`'s exponent) the smaller tail is below e^-800, so 0 in doubles,
 /// and the expansion's polynomials are not evaluated (their variable may overflow there).
 const TEMME_EXPONENT_MAX: f64 = 800.0;
@@ -845,8 +853,9 @@ pub(crate) enum Tail {
 /// (`GAMMA.INV(0.95,1,1000000)` = 2995732.27355399, probes-numeric m9-gamma-inv A26).
 ///
 /// Other shapes take the crossing of the smaller tail of the cdf of rate 1 / scale
-/// (`special::refine_increasing`: below [`HUGE_SHAPE_MIN`] at most 129 cdfs, from statrs' search,
-/// [`inverse_cdf_within`], when it has a result; from it at most 65, halving the whole range).
+/// (`special::refine_increasing`: below [`QUANTILE_TEMME_SHAPE_MIN`] at most 129 cdfs, from
+/// statrs' search, [`inverse_cdf_within`], when it has a result; from it at most 65 Temme cdfs,
+/// halving the whole range).
 /// Excel is close to the true quantile (against mpmath, 509 of 545
 /// literal-argument quantile cells are within half a unit of the 15th digit), so statrs' result
 /// is never kept as it is: it can be 7E-15 off (`GAMMA.INV(0.5,9,1)`). The smaller tail is `p` or
@@ -892,11 +901,11 @@ pub(crate) fn gamma_quantile(shape: f64, scale: f64, p: f64, tail: Tail) -> f64 
         // (`probability` calls no cdf of its own), so no borrow can overlap.
         let terms = RefCell::new(Terms(MAX_TERMS));
         let probability = |x: f64| quantile_tail(&dist, x, small, &mut terms.borrow_mut());
-        // From a huge shape statrs' search is NaN or far off (its 8 bisections leave Newton too
-        // far out: 4714346327.59633 for `CHISQ.INV(5.6221E-26,4715100000)`, whose quantile is
-        // Excel's 4714082845.627977, probes/incomplete-gamma-cap E15), so the refinement halves
-        // the whole range instead: at most 65 cdfs, each one Temme term.
-        let estimate = if shape >= HUGE_SHAPE_MIN {
+        // From a large shape the refinement halves the whole range ([`QUANTILE_TEMME_SHAPE_MIN`]);
+        // at a huge one statrs' search is also NaN or far off (its 8 bisections leave Newton too
+        // far out: 4714346327.59633 for `CHISQ.INV(5.6221E-26,4715100000)`, Excel's quantile
+        // 4714082845.627977, probes/incomplete-gamma-cap E15).
+        let estimate = if shape >= QUANTILE_TEMME_SHAPE_MIN {
             f64::NAN
         } else {
             inverse_cdf_within(&dist, lower, &mut terms.borrow_mut())
@@ -965,7 +974,15 @@ fn quantile_tail(dist: &Gamma, x: f64, tail: Tail, terms: &mut Terms) -> f64 {
             return power * rest * lower_series(a, scaled, terms);
         }
     }
-    let (lower, upper) = pair_with(a, scaled, terms, Exponent::Accurate);
+    let (lower, upper) = if a >= QUANTILE_TEMME_SHAPE_MIN {
+        // A fixed amount of work, charged as one term, as in `pair_with`.
+        if !terms.take() {
+            return f64::NAN;
+        }
+        temme_pair(a, scaled)
+    } else {
+        pair_with(a, scaled, terms, Exponent::Accurate)
+    };
     match tail {
         Tail::Lower => lower,
         Tail::Upper => upper,

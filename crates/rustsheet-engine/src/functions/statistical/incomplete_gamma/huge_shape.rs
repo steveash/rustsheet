@@ -9,7 +9,7 @@
 //! normal quantile z; and `#NUM!` outside that band. Excel's search itself is not known: the band's
 //! edges are fits, each bracketed by the cells that pin it.
 
-use super::{gamma_density, gamma_quantile, Tail};
+use super::{gamma_density, gamma_quantile, temme_pair, Tail};
 
 /// From this shape on the quantile is [`huge_shape_quantile`]. Below it statrs' search and the
 /// refinement give the true quantile, as Excel does at every probed p down to shape 1E8 (T-1634);
@@ -65,13 +65,18 @@ const BAND_UPPER_SLOPE: f64 = 1.35;
 /// The upper edge of the band, for [`BAND_UPPER_SLOPE`].
 const BAND_UPPER_EDGE: f64 = 27.25;
 
-/// The lower edge of the band: offset - z < 39, the offset's slope fixed at 1 (UNVERIFIED: any
-/// slope from about 0.5 to 1.2 also separates the probed cells). The edge lies in (38.05, 40.07),
-/// pinned by one value, probes/t2982-gamma-inv-huge-shape A44 `GAMMA.INV(1E-30,1E10,1)` =
-/// 9998853641.00538, and one `#NUM!` point, probes/t3070-gamma-inv-band A44 and A370
-/// (`GAMMA.INV(1E-100,5E9,1)`, `CHISQ.INV(1E-100,1E10)`). Near it only p = 1E-30, 1E-100 and
-/// 1E-300 were probed, so it is in effect a cut in p between 1E-30 and 1E-100.
-const BAND_LOWER_EDGE: f64 = 39.0;
+/// The lower edge of the band, for a start inside the lower tail's quantile (z < 0): Excel finds
+/// the true quantile only while ln P(a, x0) - ln p, the decades (in e) its start's lower tail lies
+/// above `p`, is below this. Newton's method from the inner side of a convex tail divides the
+/// tail by about e each step, so this reads as an iteration cap of about 200 (UNVERIFIED as
+/// Excel's algorithm). A fit (T-3350): the edge lies in (204.9, 205.8), pinned at every shape
+/// from 1E9 to 7E9 by probes/t3350-gamma-inv-band-lower-edge (`GAMMA.INV(1E-140,1.2E9,1)` a
+/// value at 190.4, `GAMMA.INV(1E-180,1E9,1)` `#NUM!` at 205.8, in its sweeps of p from 1E-40
+/// to 1E-250 at ten shapes); it separates 548 of the 549 huge-shape quantile cells in eval/
+/// (the old fit, offset - z < 39, 528), and the fresh sweep's
+/// probes-numeric/t3350-r4-chisq-inv-sweep A16 (`#NUM!` at 210.6), not used in the fit. The one
+/// miss is `GAMMA.INV(1E-80,1E10,1)`, `#NUM!` at 184.2 (A122; TODO(T-3396)).
+const BAND_LOWER_EDGE: f64 = 205.3;
 
 /// Excel's quantile of the gamma distribution of `shape` (at least [`HUGE_SHAPE_MIN`]) and
 /// `scale` where the probability of `tail` is `p` in (0, 1), and `z` the standard normal quantile
@@ -95,9 +100,27 @@ pub(crate) fn huge_shape_quantile(shape: f64, scale: f64, p: f64, tail: Tail, z:
         return start * scale;
     }
     let offset = (wilson_hilferty_quantile(shape, 0.0) - shape) / shape.sqrt();
-    if z + BAND_UPPER_SLOPE * offset < BAND_UPPER_EDGE && offset - z < BAND_LOWER_EDGE {
+    if z + BAND_UPPER_SLOPE * offset < BAND_UPPER_EDGE
+        && !beyond_lower_edge(shape, start, p, tail, z)
+    {
         gamma_quantile(shape, scale, p, tail)
     } else {
         f64::NAN
     }
+}
+
+/// Whether a start (at scale 1) inside a lower-tail quantile (z < 0) lies past the band's lower
+/// edge ([`BAND_LOWER_EDGE`]): its lower tail, Temme's ([`temme_pair`]; the shape is at least
+/// [`HUGE_SHAPE_MIN`], above its threshold) is more than e^205.3 times the lower tail's
+/// probability, `p` or (for the upper tail) `1 - p`.
+fn beyond_lower_edge(shape: f64, start: f64, p: f64, tail: Tail, z: f64) -> bool {
+    if z >= 0.0 {
+        return false;
+    }
+    let lower = match tail {
+        Tail::Lower => p,
+        Tail::Upper => 1.0 - p,
+    };
+    let (at_start, _) = temme_pair(shape, start);
+    at_start.ln() - lower.ln() >= BAND_LOWER_EDGE
 }

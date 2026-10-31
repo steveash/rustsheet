@@ -4691,14 +4691,21 @@ Rule: from a shape of 1E9 Excel's GAMMA.INV (and GAMMAINV, CHISQ.INV, CHISQ.INV.
   every scale, A78-A86), while at 2E10 p = 0.1 and below are `#NUM!` (t3070 A127-A134), at 5E10 only p = 1E-300 is
   (A155), and from about 8E10 every p is the closed form;
 - **the true quantile** inside a band of the start's offset o = (x0(z = 0) - a)/sqrt(a), about 2.66E-4 sqrt(a)
-  standard deviations, and z: z + 1.35 o < 27.25 and o - z < 39 (a fit: the edges lie in (26.93, 27.60) and
-  (38.05, 40.07), pinned by t3070 A77 `GAMMA.INV(0.001,7E9,1)` (a value) and t2982 A45 `GAMMA.INV(1E-16,1E10,1)`
-  (`#NUM!`), and by t2982 A44 `GAMMA.INV(1E-30,1E10,1)` = 9998853641.00538 and t3070 A44 `GAMMA.INV(1E-100,5E9,1)`
-  (`#NUM!`); slopes 1.30 to 1.41 also separate every probed cell, UNVERIFIED between them). The lower edge fixes the
-  offset's slope at 1, UNVERIFIED: any slope from about 0.5 to 1.2 separates the probed cells, and it is pinned by one
-  value (t2982 A44, at 38.05) and one `#NUM!` point (t3070 A44 and A370, at 40.07); near it only p = 1E-30, 1E-100 and
-  1E-300 were probed, so it is in effect a cut in p between 1E-30 and 1E-100. `GAMMA.INV(0.5,5E9,1)` =
-  4999999999.666667, `GAMMA.INV(1E-30,7E9,1)` = 6999040894.354145, `CHISQ.INV(1E-100,6E9)` = 5997669910.951994,
+  standard deviations, and z. Upper edge: z + 1.35 o < 27.25 (a fit: the edge lies in (26.93, 27.60), pinned by
+  t3070 A77 `GAMMA.INV(0.001,7E9,1)` (a value) and t2982 A45 `GAMMA.INV(1E-16,1E10,1)` (`#NUM!`); slopes 1.30 to 1.41
+  also separate every probed cell, UNVERIFIED between them). Lower edge, for z < 0 (T-3350): the start's lower tail
+  is at most e^205.3 times p, ln P(a, x0) - ln p < 205.3, which reads as Newton's method from the start (each step
+  from the inner side of a convex tail divides the tail by about e) giving up after about 200 steps (UNVERIFIED as
+  Excel's algorithm). The edge lies in (204.9, 205.8) at every shape from 1E9 to 7E9 (probes/t3350-gamma-inv-band-lower-edge,
+  p = 1E-40 to 1E-250 at ten shapes: `GAMMA.INV(1E-160,1E9,1)` = 999146781.3935351 at 191.9,
+  `GAMMA.INV(1E-180,1E9,1)` `#NUM!` at 205.8, `GAMMA.INV(1E-100,4E9,1)` `#NUM!` at 217.8), so it is a cut in p that
+  moves with the shape: from about 1E-170 at 1E9 to 1E-90 at 7E9. It separates 548 of the 549 huge-shape quantile
+  cells in eval/, and probes-numeric/t3350-r4-chisq-inv-sweep A16 `CHISQ.INV(1.85282139646205E-165,2410384116)`
+  (`#NUM!` at 210.6), which was not used in the fit. The old fit, o - z < 39 (T-3070), separated 528: it made
+  `GAMMA.INV(1E-140,1.5E9,1)` a value and `GAMMA.INV(1E-70,1E10,1)` = 9998225940.269697 `#NUM!`. The one miss is
+  `GAMMA.INV(1E-80,1E10,1)` (A122), `#NUM!` at only 184.2. At 7E9 and 1E10 the start lies above the mean (its lower
+  tail is about 1), so steps there may count differently (T-3396). `GAMMA.INV(0.5,5E9,1)` = 4999999999.666667,
+  `GAMMA.INV(1E-30,7E9,1)` = 6999040894.354145, `CHISQ.INV(1E-100,6E9)` = 5997669910.951994,
   `CHISQ.INV(5.6221E-26,4715100000)` = 4714082845.627977 (incomplete-gamma-cap E15);
 - **`#NUM!`** elsewhere: at the far tails (`GAMMA.INV(1E-300,1E9,1)`, `GAMMA.INV(1-1E-15,3E9,1)`, `CHISQ.INV.RT(1E-100,2E9)`),
   above the band (`GAMMA.INV(0.5,6E9,1)`, every probed p at 1.2E10) and below the closed form.
@@ -4717,18 +4724,34 @@ CHISQ.DIST.RT and CHIDIST are `#NUM!` above 1E10 (t2982 A91, t3070 A222-A333). "
 stays `#NUM!` there (`chisq.rs` `chi_squared`) (T-3272 probes both).
 The cdf itself has no such factor (`GAMMA.DIST(1E12,1E12,1,TRUE)` is correctly rounded, probes/incomplete-gamma-cap E9),
 so the factor is the inversion's: Excel is the inaccurate side here (T-3070's stage moved to `campaign: visible`).
-Evidence: probes/t3070-gamma-inv-band (381 cells: p sweeps at shapes 1E9 to 1E12, the median at 17 shapes of the band,
+Evidence: probes/t3350-chisq-inv-huge-df (372 cells: CHISQ.INV and CHISQ.INV.RT at 12 p from 1E-300 to 1-1E-15 and
+15 df from 1E6 to 1E11, and CHIINV), probes/t3350-gamma-inv-band-lower-edge (160 cells), probes-numeric/t3350-r4-chisq-inv-sweep
+(240 cells; excel-graph, 2026-10-31); probes/t3070-gamma-inv-band (381 cells: p sweeps at shapes 1E9 to 1E12, the median at 17 shapes of the band,
 the chi-square functions from 1.5E10 to 1E15 degrees of freedom, CHISQ.INV and CHISQ.INV.RT at 2E9 to 1E10; excel-graph,
 2026-10-30); probes/t2982-gamma-inv-huge-shape A1-A95 (excel-graph, 2026-10-28); probes/incomplete-gamma-cap E5, E14,
 E15, E19; gen-m9 0a614cfe974b59c3 A327, 4e55500bb8ad3cd8 A341, 7bd219ec0c0c5e22 A239, a013a45a8fbcab4f A338,
 d8266bc15533702a A296. excel-graph refused (FileCorruptTryRepair) workbooks holding `GAMMA.DIST(2,a,1E10,TRUE)` for a
 from 1E40 to 1E100 and `GAMMA.DIST(x,1E10..1E11,1,FALSE)` at a tiny x, so those cells were dropped from the probe (T-2982).
+Below shape 1E9 the closed form also shows where the start's density underflows (T-3350): `CHISQ.INV.RT(1E-300,df)`
+for df from 5E6 to 1E9 is Excel's start x0, within 3.4E-9 of it with the constants above, e.g.
+`CHISQ.INV.RT(1E-300,1E7)` = 10169279.767968982 against the true 10166595.23034497 (2.6E-4 off; probes/t3350-chisq-inv-huge-df
+A205-A289). At df 2E6 it is the true quantile (A193). Ours returns the math at these cells, which R3's closed-form
+case asks for. Its region starts at shape 1E9 as written, so it is for the owner to say whether the case covers them
+(T-3397). They stay F lines of eval/baseline.
+From df 1E6 to 1E9, at every other probed p from 1E-300 to 1-1E-15, Excel's CHISQ.INV, CHISQ.INV.RT and CHIINV are the
+true quantile to within 4 ulps (probes/t3350-chisq-inv-huge-df, 372 cells; the fresh sweep
+probes-numeric/t3350-r4-chisq-inv-sweep, 240 cells, log-uniform over df 1 to 1E10).
 Ours: `incomplete_gamma/huge_shape.rs` `huge_shape_quantile` for GAMMA.INV, GAMMAINV, CHISQ.INV, CHISQ.INV.RT and CHIINV
 from shape 1E9, its true quantile the crossing of the accurate cdf (Temme's expansion), halved over the whole range
 (65 cdfs) since statrs' search is NaN or far off there; `chisq.rs` lets CHISQ.INV.RT and CHIINV past
-`MAX_DEGREES_OF_FREEDOM`.
+`MAX_DEGREES_OF_FREEDOM`. From shape 1E5 every gamma quantile takes Temme's cdfs and halves the whole range
+(`QUANTILE_TEMME_SHAPE_MIN`, T-3350). Before that, from about shape 5E6 the series cdfs of statrs' search and of the
+refinement used up the inversion's shared budget of 2^19 terms near the median, and the quantile was `#NUM!`:
+`CHISQ.INV(0.5,2E7)`, `CHISQ.INV.RT(0.999,1E7)` and `CHIINV(0.5,1E8)` (Excel 19999999.333333336, 9986185.76048885,
+99999999.33333333) and 43 other cells of probes/t3350-chisq-inv-huge-df, for df 1E7 to 1E8 and the smaller tail
+being the lower one.
 Status: VERIFIED (excel-graph) for the cells; the band's edges and the closed form's terms are fits (UNVERIFIED as forms)
-Tasks: T-2982, T-3070
+Tasks: T-2982, T-3070, T-3350, T-3396, T-3397
 
 ## GAMMA.DIST at a huge shape: #NUM! for a density at a tiny x, for the cdf above about 1E+76 (T-2435)
 Rule: GAMMA.DIST's density is `#NUM!`, not 0, where the shape is large and x/beta tiny:

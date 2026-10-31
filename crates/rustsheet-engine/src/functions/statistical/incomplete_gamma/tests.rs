@@ -406,6 +406,32 @@ fn quantiles_in_the_tails_are_excel_s() {
     );
 }
 
+// From a shape of about 5E6 to the huge shape, the series' cdfs of one inversion pass the shared
+// budget near the median, and the quantile was NaN (`#NUM!`) where Excel has the true one
+// (probes/t3350-chisq-inv-huge-df, excel-graph; T-3350). Each is within half a unit of Excel's
+// 15th significant digit. CHISQ.INV.RT(p, df) is the upper tail at shape df/2, scale 2.
+#[test]
+fn quantiles_at_a_large_shape_below_the_huge_one_are_excel_s() {
+    let cases = [
+        // A40 `CHISQ.INV(1E-10,1E7)`, A55 `(0.5,2E7)`, A67 `(0.5,5E7)`, A75 `(1E-30,1E8)`.
+        (5e6, 1e-10, Tail::Lower, 9_971_577.524_441_81),
+        (1e7, 0.5, Tail::Lower, 19_999_999.333_333_336),
+        (2.5e7, 0.5, Tail::Lower, 49_999_999.333_333_336),
+        (5e7, 1e-30, Tail::Lower, 99_837_961.146_094_16),
+        // A228 `CHISQ.INV.RT(1-1E-15,1E7)`, A238 `(1-1E-6,2E7)`, A264 `(1-1E-15,1E8)`.
+        (5e6, 1.0 - 1e-15, Tail::Upper, 9_964_526.147_198_48),
+        (1e7, 1.0 - 1e-6, Tail::Upper, 19_969_951.100_390_22),
+        (5e7, 1.0 - 1e-15, Tail::Upper, 99_887_732.389_205_52),
+    ];
+    for (shape, p, tail, excel) in cases {
+        let ours = gamma_quantile(shape, 2.0, p, tail);
+        assert!(
+            (ours - excel).abs() <= 5e-15 * excel,
+            "{p} at shape {shape}: {ours:e}, Excel {excel:e}"
+        );
+    }
+}
+
 /// Excel's closed form at a huge shape (probes/t2982-gamma-inv-huge-shape, probes/
 /// t3070-gamma-inv-band; T-2982, T-3070): the median is 1.0002658235505755 times the shape, and
 /// the p sweeps from shape 1.5E10 are within a few ulps of the fit.
@@ -464,6 +490,19 @@ fn huge_shape_quantile_has_excels_three_regimes() {
     assert!(huge_shape_quantile(6e9, 1.0, 0.5, Tail::Lower, 0.0).is_nan());
     assert!(huge_shape_quantile(5e9, 1.0, 1e-100, Tail::Lower, -21.273_453_560_965_32).is_nan());
     assert!(huge_shape_quantile(1.2e10, 1.0, 0.5, Tail::Lower, 0.0).is_nan());
+    // The lower edge (probes/t3350-gamma-inv-band-lower-edge, T-3350): A10 `GAMMA.INV(1E-160,
+    // 1E9,1)` and A121 `GAMMA.INV(1E-70,1E10,1)` are values, A11 `(1E-180,1E9,1)` and A35
+    // `(1E-140,1.5E9,1)` are `#NUM!`.
+    assert!(close(
+        huge_shape_quantile(1e9, 1.0, 1e-160, Tail::Lower, -26.988_808_268_418_41),
+        999_146_781.393_535_1
+    ));
+    assert!(close(
+        huge_shape_quantile(1e10, 1.0, 1e-70, Tail::Lower, -17.741_643_174_195_34),
+        9_998_225_940.269_697
+    ));
+    assert!(huge_shape_quantile(1e9, 1.0, 1e-180, Tail::Lower, -28.642_286_179_286_17).is_nan());
+    assert!(huge_shape_quantile(1.5e9, 1.0, 1e-140, Tail::Lower, -25.227_503_820_942_285).is_nan());
     // A371 `CHISQ.INV.RT(1E-100,1E10)`: the right tail's closed form at shape 5E9.
     let ours = huge_shape_quantile(5e9, 2.0, 1e-100, Tail::Upper, 21.273_453_560_965_32);
     assert!(
