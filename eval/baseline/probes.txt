@@ -1698,6 +1698,8 @@ C	probes/t3302-text-funcs-arrays.case.json	21
 C	probes/t3304-collation-multi-letter-accents.case.json	1896
 C	probes/t3317-xlookup-scalar-return.case.json	20
 C	probes/t3335-textbefore-overlapping-instances.case.json	78
+C	probes/t3348-rate-below-minus-one.case.json	50
+C	probes/t3348-rate-fv-nonzero.case.json	186
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
 C	probes/table-edits/plain-range-delete-rows-across-edge.case.json	10
@@ -4223,6 +4225,13 @@ F	probes/t3304-collation-multi-letter-accents.case.json	Rank!H12
 F	probes/t3304-collation-multi-letter-accents.case.json	Rank!H14
 F	probes/t3304-collation-multi-letter-accents.case.json	Rank!H19
 F	probes/t3304-collation-multi-letter-accents.case.json	Rank!H20
+F	probes/t3348-rate-fv-nonzero.case.json	Sheet1!A112
+F	probes/t3348-rate-fv-nonzero.case.json	Sheet1!A138
+F	probes/t3348-rate-fv-nonzero.case.json	Sheet1!A153
+F	probes/t3348-rate-fv-nonzero.case.json	Sheet1!A171
+F	probes/t3348-rate-fv-nonzero.case.json	Sheet1!A175
+F	probes/t3348-rate-fv-nonzero.case.json	Sheet1!A180
+F	probes/t3348-rate-fv-nonzero.case.json	Sheet1!A185
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F10
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F2
 F	probes/table-edits/table-convert-names-this-row.case.json	T!A2
