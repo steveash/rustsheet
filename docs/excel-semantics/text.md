@@ -457,6 +457,20 @@ Ours: matches (`around_empty_delimiter` in functions/text/before_after.rs).
 Status: VERIFIED (web)
 Tasks: T-1361
 
+## TEXTBEFORE and TEXTAFTER: overlapping delimiter instances
+Rule (inferred): TEXTBEFORE does not count a delimiter match that overlaps an earlier counted one, unlike SUBSTITUTE's
+instance_num ("SUBSTITUTE instances overlap" above): `TEXTBEFORE("-2.5",{"2.5","-2.5"},2)` is `#N/A` in Excel, so
+"-2.5" at unit 0 is the only instance and the "2.5" inside it at unit 1 is not a second one.
+Evidence: gen-m9/cde551ea787f713a Calc!A37 (excel-graph), `=BETADIST(TEXTBEFORE((Data!C11&Data!E3),Data!B11:C11,2),..)`
+with C11 = -2.5, E3 blank and B11:C11 = 2.5, -2.5: Excel `#N/A`. BETADIST's other arguments are `#VALUE!` (NPV at the
+text rate " x ") and `#REF!` (INDEX past its range), so the `#N/A` is TEXTBEFORE's not-found (gap triage 2026-10-31).
+Unprobed: a delimiter overlapping itself (`TEXTBEFORE("aaa","aa",2)`), a negative instance_num, TEXTAFTER, match_mode 1,
+and whether TEXTSPLIT's split points follow the same scan.
+Ours: overlapping (`text_sensitive`, `text_sensitive_reverse` in functions/text/util.rs step one character after a
+match), so `TEXTBEFORE("-2.5",{"2.5","-2.5"},2)` is "-" and the gen-m9 cell is `#VALUE!`.
+Status: UNVERIFIED (probe pending, T-3335)
+Tasks: T-3335
+
 ## TEXTSPLIT of empty text is #VALUE!
 Rule: TEXTSPLIT of empty text is `#VALUE!` whatever its valid other arguments: a literal `""`, a blank cell and an empty-string cell,
 with or without a row delimiter, with `ignore_empty` TRUE, `match_mode` 1 or a `pad_with`. `TEXTSPLIT("","a","TRUE")` is `#VALUE!` too, so

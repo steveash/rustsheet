@@ -81,6 +81,11 @@ Input conventions:
   creates the workbook with `WorkbookOptions::date_system` and applies formats with
   `Txn::set_number_format`. Number formats change only what a cell displays, which excel-graph
   cannot report (it reads cached values), so they are for cases that formulas read through.
+- Optional per-sheet `"conditional_formats": [{"ref": "A1:A3", "formula": "=A1>0"}]` and
+  `"data_validations": [{"ref": "A1", "formula": "=A1>0"}]` write formula conditional formats
+  (`<cfRule type="expression">`) and custom data validations, their formulas prefixed like cell
+  formulas (T-3263). They probe what Excel accepts in those formulas (a refused workbook is the
+  answer); the engine adapter ignores both, as neither changes a cell value.
 - Optional `"names": {"rate": "=Sheet1!$B$1"}` declares workbook-scoped defined names (any
   formula Excel accepts as a name body, e.g. an intersection). A key `Sheet1!name` is a name scoped
   to that sheet.

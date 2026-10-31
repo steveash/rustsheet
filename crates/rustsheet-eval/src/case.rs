@@ -146,6 +146,27 @@ pub struct SheetSpec {
     /// (probes/displayed-text-formats B1:B3; docs/excel-semantics/number-formats.md).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub column_widths: BTreeMap<String, f64>,
+    /// Conditional formats of type `formula` (`<cfRule type="expression">`), written by
+    /// spec2xlsx (T-3263) to probe what Excel accepts in their formulas. The engine adapter
+    /// ignores them: conditional formats change no cell value.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub conditional_formats: Vec<RangeFormulaSpec>,
+    /// Custom data validations (`<dataValidation type="custom">`), written by spec2xlsx
+    /// (T-3263). The engine adapter ignores them: data validation is not evaluated.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub data_validations: Vec<RangeFormulaSpec>,
+}
+
+/// A formula applied to a range of a spec sheet: a conditional format's rule or a data
+/// validation's criterion (T-3263).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RangeFormulaSpec {
+    /// A1 range the rule applies to (`A1:B3`).
+    #[serde(rename = "ref")]
+    pub range: String,
+    /// The formula, with its leading `=`.
+    pub formula: String,
 }
 
 /// A table in a spec sheet. spec2xlsx gives a filtered table a values filter that keeps exactly
