@@ -9,6 +9,7 @@ size: M
 tier: opus
 depends_on: [T-2510]
 campaign: visible
+defer: phase-1b
 ---
 
 ## Goal
@@ -17,6 +18,10 @@ are within it: Excel's bratio L140 bup + bgrat arithmetic is modelled and matche
 reproducing Excel's own algorithm where Excel is the inaccurate one).
 
 ## Context
+- Decision 0188 R5 (owner's 2026-10-31 rulings): parked as Phase 1b. Every cell this task owns is a BETA.DIST or
+  F.DIST density cell or a dense probes-numeric sweep cell, within Gate A's envelope (most agree with Excel to 12 or
+  more digits, and Excel and the engine are both close to the math), so R1(c) counts it as Phase 1b evidence. A
+  point that Gate A's tables show outside the envelope gets its own task without the key.
 - T-2528 replaced Cephes' non-converging fraction at a first shape of 1E6 or more and b/a at most 1E-6 with an
   accurate DiDonato-Morris expansion (`large_shape_beta.rs`), within 2E-15 of a 120-digit mpmath reference.
 - Excel is within about 1E-15 of the true value for tails above 1E-4 but up to 1.5E-14 off further out

@@ -74,3 +74,9 @@ T-2585 and T-2146 then have targets for the cells they cannot reach.
   at |P| >= 256) and a ±1.5-unit scatter at exact-product shapes. Next: Excel's exponential step for this density
   (exp2 split, x87 F2XM1/FSCALE, value-space x^(a-1)·(1+r)^-h with per-factor pow roundings), probed at (2,2) side 1
   where E = LN(x) - 2·LN(fl(1+x)) has no other rounding.
+
+## Decision 0188 note (2026-10-31)
+Owner's 2026-10-31 rulings, R5: the densities this task is cracking (BETA.DIST, F.DIST, BINOM, NEGBINOM last digits)
+are Phase 1b work. Its status is unchanged and its open PR may still merge; the remaining cells, all dense probes-numeric
+sweep cells within Gate A's envelope, count as Phase 1b evidence under R1(c), not toward the Phase 1 exit. Follow-ups it
+files for those cells carry `defer: phase-1b`.

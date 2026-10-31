@@ -10,6 +10,7 @@ tier: opus
 campaign: accuracy
 depends_on: [T-2505, T-2506, T-2509]
 spec: docs/specs/SPEC-0025-incomplete-beta-bratio-port.md
+defer: phase-1b
 ---
 
 ## Goal
@@ -18,6 +19,10 @@ bup+bup+bgrat. At b = 1/2 they use T-2509's extended bgrat. At other b they use 
 LN, EXP, log1p and GAMMALN, and brcmp1 = density·x·y), where that is a net visible gain.
 
 ## Context
+- Decision 0188 R5 (owner's 2026-10-31 rulings): parked as Phase 1b. Every cell this task owns is a BETA.DIST or
+  F.DIST density cell or a dense probes-numeric sweep cell, within Gate A's envelope (most agree with Excel to 12 or
+  more digits, and Excel and the engine are both close to the math), so R1(c) counts it as Phase 1b evidence. A
+  point that Gate A's tables show outside the envelope gets its own task without the key.
 - T-2464 research, step E7 of docs/research/t2464/r2-impact/RESULTS.md section 4.
   - r2-impact's E7 said "T keeps `student_t.rs`". With r2-tdist the T tails take their own rule instead, so T is
     T-2509's, and this task reuses T-2509's b = 1/2 bgrat for the other callers (365 of 387 non-T b = 1/2 cells, against
