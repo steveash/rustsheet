@@ -397,7 +397,7 @@ impl Model {
     }
 }
 
-/// Whether bratio takes bfrac for NEGBINOM.DIST's cdf I_p(r, f + 1) at y = fl(1 - p).
+/// Whether bratio takes bfrac for NEGBINOM.DIST's cdf, `I_p(r, f + 1)` at y = fl(1 - p).
 fn takes_bfrac(r: f64, f_plus_one: f64, p: f64) -> bool {
     dispatch(r, f_plus_one, p, 1.0 - p).is_some_and(|d| d.branch == Branch::Bfrac)
 }
