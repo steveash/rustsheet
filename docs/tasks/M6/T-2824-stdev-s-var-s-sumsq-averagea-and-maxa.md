@@ -3,7 +3,7 @@ id: T-2824
 title: "STDEV.S, VAR.S, SUMSQ, AVERAGEA and MAXA over a lifted OFFSET (T-2065 probes)"
 milestone: M6
 lane: engine
-status: todo
+status: done
 priority: P0
 size: S
 tier: opus
@@ -36,8 +36,32 @@ Owned M6 exit cells (5; known failures in eval/baseline/probes.txt):
 ## Acceptance criteria
 - [ ] The five cells, and T-2816's probe cells, leave eval/baseline/probes.txt (`make eval-baseline`), with no
       regressions.
-- [ ] `make exit-owners MILESTONE=M6` no longer lists them; lookup.md says the engine implements the rule.
-- [ ] `make check` green; reviewers approve.
+- [x] `make exit-owners MILESTONE=M6` no longer lists them; lookup.md says the engine implements the rule.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - COUNTIFS, AVERAGEIF and MAXIFS: T-2823.
+
+## Outcome
+STDEV.S, VAR.S and SUMSQ read each element of an array of references by its top-left cell (`GridReading::TopLeft`,
+as SUM does since T-2063). AVERAGEA and MAXA read that cell as an array element (the new
+`GridReading::TopLeftElements`), so a blank or TRUE is skipped and AVERAGEA counts text as 0, as T-2816's probes
+show. The plumbing:
+- `variance_of_values` and `for_each_value_with` take the grid reading from their callers;
+- `for_each_value_a` takes it per function;
+- SUMSQ's policy is now `SUMSQ_ARGS`.
+
+AGGREGATE 7 and 10 pass numbers, so they are unchanged. VAR.P, STDEV.P, MINA, MEDIAN and the VARA family keep the
+value view. MAXA's text reading and legacy VAR are UNVERIFIED. Probes for them: T-3533.
+
+Eval: probes 8 fewer known failures, none new.
+- The five M6 exit cells: probes/t2065-lift-stdevs, -vars, -sumsq, -averagea and -maxa, Sheet1!E1. M6's probe row then
+  has no visibly-off cell.
+- Three M9 probe cells: probes/t2577-indirect-ref-array Calc!A157, T157 and U157, a legacy STDEV over a lifted
+  INDIRECT.
+
+T-2816's seven probe cells (probes/t2816-lift-*) are not on `main` yet: PR #2620 was ejected for a
+`visible-parity.json` conflict, which only its worker may resolve. The unit test
+`fn_offset_lifted_into_the_statistical_aggregates_reads_top_left_cells` asserts all of their oracle values. When
+#2620 merges, its `make eval-baseline` drops them from the baseline.
+

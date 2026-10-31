@@ -1389,8 +1389,12 @@ Evidence: probes/t2065-lift-* (one formula per workbook, excel-graph 2026-10-26;
   Which arguments lift is inferred from SUMIF/SUMIFS (COUNTIFS every criteria range, AVERAGEIF range and average_range,
   MAXIFS max_range and every criteria range); forms with only some ranges lifted are unprobed (T-2833).
 - `AVERAGEA` and `MAXA(OFFSET(A4,{0;1;2},0))` over "5", blank, TRUE are 0: the text is not read as 5 and TRUE not as 1; which elements count is open (the data holds no number).
-Status: VERIFIED (excel-graph) for the values above. COUNTIFS, AVERAGEIF and MAXIFS implemented (T-2823); the rest
-not yet (T-2824).
+Status: VERIFIED (excel-graph) for the values above. COUNTIFS, AVERAGEIF and MAXIFS implemented (T-2823). STDEV.S,
+VAR.S and SUMSQ implemented (T-2824, `GridReading::TopLeft`: each element's top-left cell, as SUM), and AVERAGEA and
+MAXA (`GridReading::TopLeftElements`: that cell read as an array element, so a blank or TRUE is skipped and AVERAGEA's
+text is 0). Legacy STDEV follows STDEV.S (probes/t2577-indirect-ref-array Calc!A157 is 0). UNVERIFIED: legacy VAR
+(as VAR.S) and MAXA's text (skipped, or 0, the probes cannot tell). VAR.P, STDEV.P, MINA and the VARA family keep
+the value view, unprobed (T-3533).
 
 ### MEDIAN, LARGE and SMALL over a lifted OFFSET
 Rule: each is `#VALUE!` over a lifted OFFSET (an array of references), like CONCAT and unlike STDEV.S, VAR.S and SUMSQ
