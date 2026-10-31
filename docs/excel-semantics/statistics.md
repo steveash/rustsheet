@@ -1074,8 +1074,7 @@ where statrs lost them: `CHISQ.DIST(1E10,1E10,TRUE)` = 0.5000018806319452 (probe
 ended.
 Evidence: ironcalc-calc STATISTICAL/GAMMA.xlsx, CHISQ.xlsx, CHISQ_TEST.xlsx, BETA_GAMMA.xlsx, POISSON.xlsx (Excel-authored
 cached values); probes-numeric `m9-gamma-dist-a*`, `m9-chisq-dist`, `m9-chisq-dist-rt`, `t1048-*`, `t1049-*` (T-1045);
-probes/incomplete-gamma-cap (T-1872); the deep upper tail, probes-numeric/t3284-gamma-deep-upper-tail (T-3289, 343
-cells, Excel within 1 ulp of 60-digit mpmath at 64; docs/research/t3284/reference.py).
+probes/incomplete-gamma-cap (T-1872).
 Ours: `statistical/incomplete_gamma.rs` `incomplete_gamma_pair`, replacing statrs' `gamma_lr`/`gamma_ur` (whose
 prefactor exp(a ln x - x - ln Gamma(a)) carries an ulp of that exponent into the result, and whose Q is 1 - P below
 x = a). The prefactor x^a e^-x / Gamma(a) is `powf * exp / tgamma` below a = 20 (each factor normal) and DiDonato and
@@ -1119,18 +1118,6 @@ sweep T-3289). Excel is correctly rounded nearer the bulk at small half-integer 
 0.07523524614651218 (+0.3 ulp; m9-chisq-dist-rt A19, ours -5.7: T-3285), and near the mode at large shapes,
 `POISSON.DIST(46040,46071,TRUE)` 0.4438020698095389 (-0.2 ulp; ironcalc-calc POISSON.xlsx D55, ours +15.8: T-3286),
 so only the far tail is Excel's own inaccurate form.
-T-3289's sweep (probes-numeric/t3284-gamma-deep-upper-tail, excel-graph; ulps of Excel's value against 60-digit
-mpmath, docs/research/t3284/reference.py) maps that far tail: Excel is within 1 ulp at 64 of 343 cells. Every
-`POISSON(k,m,TRUE)` equals its twin `CHISQ.DIST.RT(2m,2(k+1))` bit for bit (111 of 111), so both share one Q(a, x).
-At shape 1 (`POISSON(0,m,TRUE)` = EXP(-m)) Excel is within 1 ulp at every x / a from 4 to 100 (10 of 10). Elsewhere
-the error grows with x, not with x / a: at integer shapes at most 1 ulp below x = 30, up to about 50 ulp near
-x = 100, about 160 at x = 300 to 400 and 317 at `POISSON(16,510,TRUE)`, with no sign pattern along shape or x / a.
-The half-integer shapes grow the same way but are a few ulp off even at small x: at shape 0.5 (x = df s / 2 from 2
-to 50) `CHISQ.DIST.RT(4,1)` to `(50,1)` are -9 to +5 and `(100,1)` -34; `CHISQ.DIST.RT(780,39)` is -160. The ulp runs show why: over 32
-adjacent doubles `POISSON(2,100+j*2^-46,TRUE)` drifts about 2.2 ulp per step and jumps by about 64 ulp (from -26 to
-+42 and back) where it wraps, and `CHISQ.DIST.RT(200+j*2^-45,5)` drifts from -26 to -59. A jump of 2^-46 relative
-(64 ulp of the value) is one ulp of a log near 100, so Excel's tail is exp of a log-sum rounded to a double at about
-|ln Q|, with an error that cancels in no tried storage order (T-2638 above). Fitting it is T-3269.
 Not Excel's either, and not correctly rounded on either side (gap triage 2026-10-29, 60-digit mpmath reference;
 T-3147): CHISQ.DIST at 50 and 100 degrees of freedom, the `rcomp` branch of the prefactor (shape 20 and up).
 `CHISQ.DIST(10,100,FALSE)` is 9.838365191393825E-32 in Excel, 63 ulp below the true 9.8383651913938939E-32.
@@ -1177,6 +1164,10 @@ and Q keep the direct form below 20 (T-3219). The bounds are fits inside their b
 unbracketed below 20 (UNVERIFIED: no probed density between a and 1.5a changes with the form).
 Status: VERIFIED (excel-graph)
 Tasks: T-0971, T-0972, T-2638, T-3147, T-3219
+Deep upper tail sweep (T-3289): probes-numeric/t3284-gamma-deep-upper-tail (343 cells: POISSON cdf at mean 4(k+1) to 100(k+1),
+its CHISQ.DIST.RT twin, half-integer shapes at x = 4 to 100 df, and 32-double ulp runs at POISSON(2,100) and CHISQ.DIST.RT(200,5)).
+Excel is within 1 ulp of the 50-digit value in 64 of the 343 cells (docs/research/t3284/ulp_vs_exact.py), and today's engine is
+bit-exact on 53 (`rustsheet-eval show --all`); T-3269 fits the rest.
 
 ## HYPGEOM.DIST: per-call cap and lifting (T-1873)
 Rule: HYPGEOM.DIST and HYPGEOMDIST lift every argument over an array and over a two-cell range on the formula's own rows,

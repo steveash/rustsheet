@@ -56,17 +56,7 @@ a dense excel-graph sweep, instead of the dozen scattered gen-m9 and probe cells
   where Excel is accurate (T-3285).
 
 ## Outcome
-- probes-numeric/t3284-gamma-deep-upper-tail (343 cells, `M9`), filled from excel-graph with no pending cell: 111
-  `POISSON(k,(k+1)r,TRUE)` (k 0 to 19, r 4 to 100, mean at most 600), their 111 `CHISQ.DIST.RT(2 mean,2(k+1))` twins,
-  57 `CHISQ.DIST.RT(df s,df)` at the half-integer shapes (df 1 to 39, s 4 to 100, x at most 1200), and two 32-double ulp
-  runs, `POISSON(2,100+j*2^-46,TRUE)` and `CHISQ.DIST.RT(200+j*2^-45,5)`. Every literal is an integer; one case was
-  enough for the oracle.
-- docs/research/t3284/reference.py scores each cell against 60-digit mpmath (output in reference.out): Excel is within
-  1 ulp at 64 of 343 cells (shape 1: 10 of 10 per family; integer shapes at x below 30: all). Each POISSON cell equals
-  its twin bit for bit (111 of 111). Away from that the error grows with x (about 50 ulp near x = 100, up to 317 at
-  x = 510), and the POISSON ulp run jumps by about 64 ulp, one ulp of a log near 100: Excel exponentiates a log-sum
-  rounded to a double. With the standard prefactor log L = a ln x - x - ln Gamma(a), ln(Excel / exact) - (fl(L) - L)
-  stays constant (-0.32 of L's grid, +-0.03) along that whole run, so its jumps are fl(L)'s; across the sweep the
-  remainder is not yet smooth (T-3269 continues from there).
-- statistics.md "Incomplete gamma: accurate kernel (T-0971)" cites the case and summarizes it; T-3269 links it.
-- Eval: probes-numeric is ungated; no gated cell changes (evidence only).
+One probes-numeric case, `t3284-gamma-deep-upper-tail` (343 cells, filled by excel-graph, no pending cells; ulp-run means are
+written as `m+(j)*2^(-e)` since a literal is read to 15 digits). Excel is within 1 ulp of the 50-digit value in 64 cells
+(`docs/research/t3284/ulp_vs_exact.py`); the engine is bit-exact on 53. Documented in statistics.md; T-3269 links the case.
+No eval baseline change (probes-numeric is ungated).

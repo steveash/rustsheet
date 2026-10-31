@@ -32,6 +32,16 @@ Examples (`make eval-show CASE=gen-m9/<id>.case.json`), Excel vs ours:
 Code: crates/rustsheet-engine/src/functions/statistical/ (the incomplete gamma behind CHISQ.DIST and GAMMA.DIST, and the
 inversion behind CHISQ.INV and GAMMA.INV). docs/excel-semantics/statistics.md has the current models.
 
+Cells added by gap triage 2026-10-30d. `make eval` on origin/main ran, then the owner rule of
+`scripts/exit_owners.py` was applied to every failing cell, with the task files of origin/main and of the pushed task
+branches. These three gen-m9 known-failure lines are 1 to 4 ulp off, not visibly off, and no open task names them:
+- gen-m9/3e98b26cf6713e77.case.json (1): Calc!A268 `CHISQ.DIST(1E-300,COUNTA(Data!$D2),"FALSE")` (shape 0.5, density):
+  3.9894228040142567E+149 vs 3.9894228040142563E+149 (-1 ulp)
+- gen-m9/c2974c061384fdd9.case.json (1): Calc!A13 `CHISQ.DIST(SUM(ROUND(Data!B$1,-6),Data!E5:E11),10,BYCOL(..))` (cdf):
+  0.09849448946078171 vs 0.09849448946078165 (-4 ulp)
+- gen-m9/68d8ffb69ff739d8.case.json (1): Calc!A325 `CHIDIST(COUPNUM(39311,44972,2,"1"),5)`: 9.367248705398532E-06 vs
+  9.367248705398537E-06 (+3 ulp)
+
 Owned gen-m9 cells (gap triage 2026-10-25, excel-graph): 86 known-failure lines in eval/baseline/gen-m9.txt, none visibly off.
 Cells:
 - gen-m9/05d44f6dd6cfc567.case.json (1): Calc!A231
