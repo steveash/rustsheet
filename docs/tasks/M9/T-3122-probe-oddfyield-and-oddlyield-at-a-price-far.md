@@ -3,7 +3,7 @@ id: T-3122
 title: "Probe ODDFYIELD and ODDLYIELD at a price far from par where the solver nears the discount overflow"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,9 @@ T-2659 found ODDFPRICE is `#NUM!` once the discount power overflows and ODDLPRIC
 
 ## Out of scope
 -
+
+## Outcome
+probes/odd-yield-far-from-par (102 cells, excel-graph) runs ODDFYIELD and ODDLYIELD from price 1E-300 to 1E15 for
+semiannual, annual, basis 1 and a 1E300 redemption. ODDLYIELD never errors; ODDFYIELD is `#NUM!` from a price of 1E5 (a
+number at 3E4) and saturates at a vanishing price. The engine already matched every cell, so no code changed; the rule is in
+financial.md ("ODDFYIELD and ODDLYIELD at a price far from par").

@@ -9,6 +9,7 @@ size: S
 tier: opus
 campaign: visible
 depends_on: []
+defer: phase-1b
 ---
 
 ## Goal
@@ -17,6 +18,10 @@ it moved there from within 15 digits), agree with Excel to 15 significant digits
 T-2219 fixed.
 
 ## Context
+- Decision 0188 R5 (owner's 2026-10-31 rulings): parked as Phase 1b. Every cell this task owns is a BETA.DIST or
+  F.DIST density cell or a dense probes-numeric sweep cell, within Gate A's envelope (most agree with Excel to 12 or
+  more digits, and Excel and the engine are both close to the math), so R1(c) counts it as Phase 1b evidence. A
+  point that Gate A's tables show outside the envelope gets its own task without the key.
 T-2219 (docs/excel-semantics/statistics.md "Incomplete beta in the ironcalc-calc workbooks",
 bullet "Accurate tails at half-integer shapes from a + b = 10") routes half-integer shapes with
 10 <= a + b < MAXGAM to `incomplete_beta.rs::half_integer_tail`, close to correctly rounded. On these

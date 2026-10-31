@@ -8,7 +8,7 @@ priority: P1
 size: M
 tier: opus
 campaign: visible
-depends_on: [T-2505, T-2506, T-2508, T-2509, T-2510]
+depends_on: [T-2505, T-2506, T-2508, T-2509]
 spec: docs/specs/SPEC-0025-incomplete-beta-bratio-port.md
 ---
 
@@ -18,6 +18,8 @@ crossing is T-1745's rule: Excel's x is a crossing of its own CDF. This replaces
 `checked_beta_reg`.
 
 ## Context
+- Decision 0188 R5 (owner's 2026-10-31 rulings): T-2510 (the bgrat family) is parked as Phase 1b, since its cells are
+  all dense probes-numeric sweep cells, so it left `depends_on`; work on today's kernel for the bgrat branches.
 - T-2977: F.INV, F.INV.RT and FINV search `fisher.rs::f_quantile_tail` (the unoriented tail,
   `unoriented_shape_one_tail` at a shape of 1); delete both once they invert the ported F tail. Searching the ported
   tail as of T-2977 fixes 9 gen-m9 cells and moves 9 gated cells 2 to 8 ulp off (T-2977 Outcome).

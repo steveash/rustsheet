@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::{
-    formatter::format::{format_number, format_text_value, FormatContext},
+    formatter::format::{displayed_text, format_number, format_text_value, FormatContext},
     locale::get_locale,
 };
 
@@ -93,4 +93,67 @@ fn cyan_is_a_color() {
         ("0".to_string(), false)
     );
     assert_eq!(number(5.0, "[Cyan]0"), ("5".to_string(), false));
+}
+
+// The text section on a cell's displayed text (T-1736; gen-m10 "Displayed text").
+#[test]
+fn displayed_text_goes_through_the_text_section() {
+    assert_eq!(displayed_text("TRUE", "\"pre \"@"), "pre TRUE");
+    assert_eq!(displayed_text("text", "_(@_)"), " text ");
+    assert_eq!(displayed_text("", "_(@_)"), "  ");
+    assert_eq!(displayed_text("text", ";;;"), "");
+}
+
+// Past TEXT()'s 255-character limit a text shows whole when the format leaves it unchanged and as
+// 255 `#` when a text section changes it (probes/displayed-text-long-text, -b; T-3282).
+#[test]
+fn displayed_text_of_a_long_text() {
+    let long = "a".repeat(300);
+    let hashes = "#".repeat(255);
+    for format in [
+        "General",
+        "0.00",
+        "@",
+        "0;@",
+        "0;0;0;@",
+        "General;General;General;@",
+    ] {
+        assert_eq!(displayed_text(&long, format), long, "{format}");
+    }
+    for format in [
+        "\"pre \"@",
+        "_(@_)",
+        "[Red]@",
+        "[$-409]@",
+        "@\"\"",
+        "\"\"@",
+        "@*-",
+        "0;0;0;\"pre \"@",
+        "_(* #,##0_);_(* \\(#,##0\\);_(* \"-\"_);_(@_)",
+    ] {
+        assert_eq!(displayed_text(&long, format), hashes, "{format}");
+    }
+    assert_eq!(displayed_text(&long, ";;;"), "");
+    // The limit is on the formatted result: 251 + 4 is 255, 252 + 4 is not.
+    let a251 = "a".repeat(251);
+    assert_eq!(displayed_text(&a251, "\"pre \"@"), format!("pre {a251}"));
+    assert_eq!(displayed_text(&"a".repeat(252), "\"pre \"@"), hashes);
+    assert_eq!(displayed_text(&"a".repeat(254), "_(@_)"), hashes);
+    assert_eq!(displayed_text(&"b".repeat(128), "@@"), hashes);
+}
+
+// An error cell is not a text: its text section never applies.
+#[test]
+fn an_error_cell_ignores_the_text_section() {
+    let mut model = crate::Model::new_empty("model", "en", "UTC", "en").unwrap();
+    model.set_user_input(0, 1, 1, "=1/0".to_string()).unwrap();
+    model.set_user_input(0, 1, 2, "x".to_string()).unwrap();
+    for column in 1..=2 {
+        let mut style = model.get_style_for_cell(0, 1, column).unwrap();
+        style.num_fmt = "\"pre \"@".to_string();
+        model.set_cell_style(0, 1, column, &style).unwrap();
+    }
+    model.evaluate();
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1).unwrap(), "#DIV/0!");
+    assert_eq!(model.get_formatted_cell_value(0, 1, 2).unwrap(), "pre x");
 }

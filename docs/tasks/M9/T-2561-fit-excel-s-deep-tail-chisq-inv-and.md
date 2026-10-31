@@ -3,7 +3,7 @@ id: T-2561
 title: "Fit Excel's deep-tail CHISQ.INV and GAMMA.INV kernel (T-1634 residue)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -81,9 +81,9 @@ Cells:
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-1634 residue): these 30 known-failure lines disappear from
       eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] The candidates tried, with their bit-exact and visible-parity counts, are recorded here and in
+- [x] The candidates tried, with their bit-exact and visible-parity counts, are recorded here and in
       docs/excel-semantics/statistics.md (decision 0056).
-- [ ] The CHISQ.INV.RT `#NUM!` boundary is probed (the p between 1E-20 and 1E-100 at df 3 to 10, and
+- [x] The CHISQ.INV.RT `#NUM!` boundary is probed (the p between 1E-20 and 1E-100 at df 3 to 10, and
       df 11 to 21 at 1E-100), chisq.rs matches the oracle values and the `TODO(T-2561)` there is gone.
 - [ ] `make check` green; reviewers approve.
 
@@ -102,3 +102,78 @@ every visibly-off cell it owns has Excel's type, error and text, or is within ha
 `make eval` on main a2ecf005b (excel-graph), `python3 scripts/exit_owners.py --all-off`: visibly off, no open task named them, same cause as this task's cells.
 - gen-m9/b4173fe25109a238 Calc!A252 `CHISQ.INV(1E-200,9)`: Excel 1.732023266119695e-44, ours 1.7320232661196884e-44
 - gen-m9/c2974c061384fdd9 Calc!A355 `CHISQ.INV(1E-20,10)`: Excel 0.0005210568413974334, ours 0.0005210568413974328
+
+## Outcome
+First checked on main 9efff2847: 16 of the 34 owned cells were still visibly off. T-0972, T-3013, T-3070 and T-2638
+had already brought the other 18 to visible parity or better.
+
+Two changes, both in this PR.
+
+**Deep lower tail (`incomplete_gamma::excel_tiny_quantile`).** At shapes 1 to 20, a tiny lower-tail quantile is the
+root of the cdf's leading factor, `EXP((LN(p)+GAMMALN(a)+LN(a))/a)` times the scale, with no Newton step. It
+applies where our GAMMA.DIST at the root is within 5E-14 of p.
+- The cut is a fit inside the bracket [4.09E-14, 5.88E-14), set by A240 `CHISQ.INV(1E-200,7)` (4.09E-14, root) and
+  A212 `CHISQ.INV(1E-200,10)` (5.88E-14, not the root).
+- The cited cells reduce to 9 distinct (shape, p) points, 7 in and 2 out.
+- The rule is a proxy: at shape 25, Excel's root (t1543 A31) has our cdf 9.8E-12 off. T-3294 sweeps for Excel's
+  real test.
+
+Two attempts (decision 0056):
+- Attempt 1: the root and its Newton-step variants.
+- Attempt 2: the root orderings, and the search-region cells now owned by T-3311.
+
+Scores on the 65 literal-argument CHISQ.INV, CHISQ.INV.RT, CHIINV, GAMMA.INV and GAMMAINV cells in eval/ outside
+the T-2561 probes, with a smaller-tail p of at most 1E-5 and a shape above 1 and below 1E9. Each is bit-exact /
+within 4 ulp / visible, recomputed in review round 1 on main after T-3070:
+
+| Candidate | Bit-exact | Within 4 ulp | Visible |
+|---|---|---|---|
+| Engine crossing (main) | 17 | 49 | 52 |
+| Root alone | 8 | 8 | 8 |
+| Root + one Newton step (T-3013's 3.5E-14 test) | 9 | 11 | 11 |
+| Root + Newton loop under that test | 12 | 28 | 35 |
+| Root + one unconditional step | 3 | 5 | 6 |
+| Root + unconditional loop | 4 | 31 | 30 |
+| Crossing, with the gated root (shipped) | 23 | 56 | 59 |
+
+Root orderings tried at the 11 tiny cells, where the shipped form is bit-exact on 8:
+- `GAMMALN(a+1)` in place of `GAMMALN(a)+LN(a)`: the same on all 11;
+- `LN(p)/a+GAMMALN(a+1)/a`: 7 exact;
+- `(p*GAMMA(a+1))^(1/a)`: 0 exact;
+- the scale inside the exponent: 0 exact.
+
+The first-round table counted 80 cells (shapes from 1E9 included, where every form was NaN) and 16 / 52 for the
+crossing on main before T-3070.
+
+**CHISQ.INV.RT `#NUM!` edge.** Probed at excel-graph (probes-numeric t2561-chisq-inv-rt-num-boundary, -num-edge,
+-num-large-df, -num-large-df-edge: 1,320 cells). Every df from 3 to 42 has one edge, with every probed p below it
+`#NUM!`. From df 43 on, every p to 1E-300 is a value. chisq.rs now tabulates the last valid decade per df
+(`RIGHT_TAIL_P_MIN`). It replaces the 1E-20 / df-10 guess, and the `TODO(T-2561)` is gone. All 1,320 cells now have
+Excel's type, error and value class. No closed form for the edge was found. CHISQ.DIST.RT is still a number past
+it (t2561-chisq-dist-rt-past-edge, 160 rows), so the edge comes from Excel's search, not its cdf. Every probed cell is CHISQ.INV.RT: CHIINV gets the same edge by inference (its own probe, a mantissa sweep inside a decade and df above 50 are T-3310 items).
+
+**Main against HEAD, per cell.** Full `rustsheet-eval run` on origin/main 8e42b5bf9 (after T-3070) against this
+branch, on the cases both have:
+- fixed: 9 gen-m9 cells, all visibly off before: 0a9226016e8f5f33 A240, 165db58d1540f014 A283, 3e98b26cf6713e77
+  A142, 4e55500bb8ad3cd8 A217, a61e547a1cab994c A184, a790a4d4a6a82756 A293, a7bf0d8d81d33ba6 A399,
+  b4173fe25109a238 A252, eced4bb6a0234c9e A123;
+- lost bit-exact: 0;
+- changed while failing: 0;
+- newly visibly off: 0;
+- type or error changed: 0;
+- visibly fixed: 9.
+
+The new probe cases are ungated (probes-numeric). On them, 276 cells are visibly off and owned by T-3310: 273 far
+right-tail CHISQ.DIST.RT and density cells, plus 3 quantiles.
+
+**Left (time-boxed, decision 0056).** Seven owned cells are still visibly off, now owned by T-3311:
+- `CHISQ.INV(1E-200,5)` (A128, A98) and `(1E-200,10)` (A212), where Excel is not the root;
+- `CHISQ.INV(1E-20,6)` (A169), `(1E-20,10)` (A355), `GAMMAINV(1E-16,2.5,1)` (A338) and `CHISQ.INV.RT(1-1E-16,3)`
+  (A301), in the search region.
+
+Nine more owned cells are within the 15th digit but not bit-exact (A215, A250, A5, A111, A88, A13, A14, A347, A173).
+Shape 20 and above (`CHISQ.INV(1E-300,50)`, which is the root in Excel) goes to T-3294.
+
+Iteration stays bounded: one closed form plus one cdf of at most `cdf_terms_bound(20)` terms, and a 40-entry table
+scan. Findings are in docs/excel-semantics/statistics.md: the "Deep lower tail at a shape above 1" entry and the
+CHISQ.INV.RT edge bullet.

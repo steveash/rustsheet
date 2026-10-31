@@ -244,7 +244,17 @@ impl Engine for RustSheetEngine {
                             if input_phase != phase {
                                 continue;
                             }
-                            tx.set(CellRef::new(id, addr.row - 1, addr.col - 1)?, input)?;
+                            match tx.set(CellRef::new(id, addr.row - 1, addr.col - 1)?, input) {
+                                // Excel refuses a typed formula that does not parse and the cell
+                                // stays blank (decision 0179, T-3213); a typed formula past a
+                                // resource limit still fails the case (decision 0168).
+                                Err(rustsheet::EditError::InvalidInput { message, .. })
+                                    if phase == Phase::Entered
+                                        && message.starts_with(
+                                            rustsheet_engine::TYPED_FORMULA_DOES_NOT_PARSE,
+                                        ) => {}
+                                result => result?,
+                            }
                         }
                     }
                 }
@@ -344,17 +354,27 @@ fn apply_sheet_ops(workbook: &mut Workbook, ops: &[SheetOp]) -> Result<(), Strin
             SheetOp::DeleteTable { table, .. } => workbook
                 .delete_table(table)
                 .map(|()| workbook.recalculate()),
-            SheetOp::InsertRow { sheet, row } | SheetOp::DeleteRow { sheet, row } => {
+            SheetOp::InsertRow { sheet, row } => {
                 let id = sheet_id_of(workbook, sheet)?;
                 let row = row
                     .checked_sub(1)
                     .ok_or_else(|| format!("sheet op {op:?}: rows are 1-based"))?;
-                let result = if matches!(op, SheetOp::InsertRow { .. }) {
-                    workbook.insert_rows(id, row, 1)
-                } else {
-                    workbook.delete_rows(id, row, 1)
-                };
-                result.map(|()| workbook.recalculate())
+                workbook
+                    .insert_rows(id, row, 1)
+                    .map(|()| workbook.recalculate())
+            }
+            SheetOp::DeleteRow { sheet, row, count } => {
+                let id = sheet_id_of(workbook, sheet)?;
+                let row = row
+                    .checked_sub(1)
+                    .ok_or_else(|| format!("sheet op {op:?}: rows are 1-based"))?;
+                let count = count.unwrap_or(1);
+                if count == 0 {
+                    return Err(format!("sheet op {op:?}: count is at least 1"));
+                }
+                workbook
+                    .delete_rows(id, row, count)
+                    .map(|()| workbook.recalculate())
             }
             SheetOp::InsertColumn { sheet, column } | SheetOp::DeleteColumn { sheet, column } => {
                 let id = sheet_id_of(workbook, sheet)?;
@@ -649,6 +669,7 @@ mod tests {
             r#"{"op":"convert_table","sheet":"Calc","table":"Nope"}"#,
             r#"{"op":"delete_table","sheet":"Calc","table":"Nope"}"#,
             r#"{"op":"delete_row","sheet":"Calc","row":0}"#,
+            r#"{"op":"delete_row","sheet":"Calc","row":1,"count":0}"#,
             r#"{"op":"delete_row","sheet":"Nope","row":1}"#,
             r#"{"op":"insert_column","sheet":"Calc","column":"A1"}"#,
             r#"{"op":"delete_column","sheet":"Calc","column":"XFE"}"#,

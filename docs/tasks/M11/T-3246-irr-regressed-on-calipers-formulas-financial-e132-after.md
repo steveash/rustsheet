@@ -26,6 +26,9 @@ Found by T-3230 on 2026-10-30, when `update-baseline --suite calipers` refused o
   `pv26_002` and `pv26_2_002`, back since T-3230) wait to be recorded. calipers is not a gated
   suite, so `make check` is unaffected.
 
+Update 2026-10-31 (T-2708): E132 passes on main again (formulas_financial 477/477), probably since T-3205
+(#2421), and T-2708's PR ratcheted the calipers baseline. What is left is the unit test pinning this input.
+
 Code: `crates/rustsheet-engine/src/functions/financial*` (IRR secant). Check whether the guess 0.5
 starts the iteration differently from the probes T-3120 fitted.
 

@@ -178,6 +178,7 @@ fn irr_from_discount(v: f64) -> Option<f64> {
 /// is not a positive discount factor, or no stop in 50 steps). The state is d = 1 - v = r/(1 + r),
 /// so from v = 0.5 down the iterates' v = 1 - d sit on Excel's grid of multiples of 2^-53
 /// (probes/t2565-irr-guess-sweeps), and each step is anchored on the newer iterate.
+/// FITTED(T-3120, 36 cells, IRR of {-2.5,-1,123456789.123} over a guess sweep)
 fn irr_secant(values: &[f64], guess: f64) -> Option<f64> {
     const MAX_STEPS: usize = 50;
     let npv = |d: f64| irr_npv(values, 1.0 - d);
@@ -272,6 +273,7 @@ pub(crate) fn compute_irr(values: &[f64], guess: f64) -> Result<f64, (Error, Str
 /// reach its root and is `#NUM!`. The method is fitted, not Excel's code: the returned digits are
 /// 15 to 35 ulp from Excel's on the probed roots (T-1686, T-2131).
 /// `values` has no leading zero flow ([`compute_irr`] drops them).
+/// FITTED(T-2727, 39 cells, range unknown)
 fn irr_fallback(values: &[f64]) -> Option<f64> {
     // Horner for P(v) and P'(v), highest power first
     let polynomial = |v: f64| {
@@ -404,12 +406,14 @@ fn xirr_bracket(values: &[f64], dates: &[f64], guess: f64) -> Option<(f64, f64)>
 /// XIRR as Excel computes it: not Newton, but a bisection of [`xirr_bracket`]. `a` starts at the
 /// upper end; each step takes m = a + (b - a)/2 and replaces the upper end when
 /// XNPV(m)·values[0] >= 0, else the lower one (an exact 0 does not stop the search). It returns m
-/// once the half-width is below 5e-9 + 1e-8·|m| and |XNPV(m)| is below
-/// 2e-8·max|value|·max(1, years from the first date to the latest), with no XNPV bound when the
-/// first value is 0. This matches all 227 numeric cells of the fit set (probes/solver-iteration-traces
-/// sheet X, probes-numeric/m9-fin-irr-rate) and 21 of 22 out of sample (fit lab `xirr`,
-/// `xirr-oos`; T-1525, T-1583). The span scaling rests on one long-span cell (T-1591 probes it).
+/// once the half-width is below 5e-9 + 1e-8·|m| and, on a negative midpoint only, |XNPV(m)| is
+/// below 2e-8·max|value| (no XNPV bound when the first value is 0). Every positive root in the
+/// oracle cells stops at the first step-test pass and every negative one fits that bound (T-3268),
+/// so the fitted rule matches all 227 cells of the fit set (probes/solver-iteration-traces sheet X,
+/// probes-numeric/m9-fin-irr-rate) and 80 of 81 out of sample, the miss being the input check of
+/// xirr-early-dates A7 (fit lab `xirr`, `xirr-oos`; T-1525, T-1583, T-3268).
 /// Excel's bisection cap is unprobed: 200 steps is enough on every oracle cell.
+/// FITTED(T-3268, 267 cells, range unknown)
 pub(crate) fn compute_xirr(
     values: &[f64],
     dates: &[f64],
@@ -432,16 +436,13 @@ pub(crate) fn compute_xirr(
     };
     let first_value = values[0];
     let largest = values.iter().fold(0.0_f64, |m, v| m.max(v.abs()));
-    let d0 = dates[0];
-    let latest = dates.iter().fold(d0, |m, &d| m.max(d));
-    let span_years = ((latest - d0) / 365.0).max(1.0);
     // `a` (here `upper`) is the end the midpoint is measured from
     for _ in 0..BISECTION_CAP {
         let m = upper + (lower - upper) / 2.0;
         let fm = xirr_xnpv(m, values, dates).ok_or_else(no_result)?;
         let half_width = (lower - upper).abs() / 2.0;
         if half_width < 5e-9 + 1e-8 * m.abs()
-            && (first_value == 0.0 || fm.abs() < 2e-8 * largest * span_years)
+            && (m >= 0.0 || first_value == 0.0 || fm.abs() < 2e-8 * largest)
         {
             return Ok(m);
         }
