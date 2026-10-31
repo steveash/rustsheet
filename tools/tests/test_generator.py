@@ -16,6 +16,13 @@ import pytest
 
 from rustsheet_tools import repo_root
 from rustsheet_tools.gen import database
+from rustsheet_tools.gen.arg_pairs import (
+    CALLS_PER_PAIR,
+    CLASS_FORMS,
+    ERROR_LITERALS,
+    generate_arg_pairs,
+    load_unseen_pairs,
+)
 from rustsheet_tools.gen.common import quoted
 from rustsheet_tools.gen.generator import (
     NAME_POOL,
@@ -1227,3 +1234,133 @@ def test_number_and_bool_value_params_draw_empty_text_and_errors() -> None:
         assert drawn & set(POOLS["errors"]), typ
     hard = {"type": "number", "domain": {"int": True, "min": 1, "max": 5, "hard": True}}
     assert all(g.scalar_text(hard, 0) in {"1", "2", "3", "4", "5"} for _ in range(2000))
+
+
+# -- arg-pairs (T-3278) -------------------------------------------------------------------------------------
+
+
+def _split_args(call: str) -> tuple[str, list[str]]:
+    """The name and top-level argument texts of `NAME(a,b,...)` (commas inside quotes, braces or parens stay)."""
+    name, _, rest = call.partition("(")
+    assert rest.endswith(")")
+    args, depth, quote, cur = [], 0, False, ""
+    for ch in rest[:-1]:
+        if ch == '"':
+            quote = not quote
+        elif not quote and ch in "({":
+            depth += 1
+        elif not quote and ch in ")}":
+            depth -= 1
+        elif not quote and depth == 0 and ch == ",":
+            args.append(cur)
+            cur = ""
+            continue
+        cur += ch
+    return name, [*args, cur]
+
+
+def _is_class(cls: str, value: Any) -> bool:
+    """Whether a Data cell input holds a value of `cls`, read independently of the generator's table."""
+    tag = value.get("t") if isinstance(value, dict) else None
+    v = value.get("v") if isinstance(value, dict) else value
+    if tag == "e":
+        found = "error"
+    elif isinstance(v, str):
+        numeric = re.fullmatch(r"[+-]?\d+(\.\d+)?", v) is not None
+        found = "empty_text" if v == "" else "numeric_text" if numeric else "text"
+    elif isinstance(v, bool):
+        found = "boolean"
+    elif isinstance(v, int | float):
+        found = "zero" if v == 0 else "negative" if v < 0 else "fraction" if v != int(v) else "number"
+    else:
+        found = "blank"
+    return found == cls
+
+
+_LITERAL_CLASS = {
+    "number": lambda t: re.fullmatch(r"[1-9]\d*", t) is not None,
+    "zero": lambda t: t == "0",
+    "negative": lambda t: re.fullmatch(r"-\d+(\.\d+)?", t) is not None,
+    "fraction": lambda t: re.fullmatch(r"\d*\.\d*[1-9]", t) is not None,
+    "numeric_text": lambda t: re.fullmatch(r'"[+-]?\d+(\.\d+)?"', t) is not None,
+    "text": lambda t: re.fullmatch(r'"[^"\d][^"]*"', t) is not None,
+    "empty_text": lambda t: t == '""',
+    "boolean": lambda t: t in ("TRUE", "FALSE"),
+    "error": lambda t: t in ERROR_LITERALS,
+}
+
+
+def _arg_pairs_report(tmp_path: Path) -> Path:
+    classes = list(CLASS_FORMS)
+    rows = [
+        {
+            "name": "ROUND",
+            "unseen_pairs": [
+                {"params": ["number", "num_digits"], "classes": [a, b]} for a in classes for b in classes
+            ],
+        },
+        {
+            "name": "VLOOKUP",
+            "unseen_pairs": [
+                {"params": ["table_array", "range_lookup"], "classes": ["range", c]} for c in classes
+            ]
+            + [{"params": ["lookup_value", "col_index_num"], "classes": [c, "blank"]} for c in classes],
+        },
+        {
+            "name": "MID",
+            "unseen_pairs": [{"params": ["text", "num_chars"], "classes": ["blank", "empty_text"]}],
+        },
+    ]
+    path = tmp_path / "report.json"
+    path.write_text(json.dumps({"argument_coverage": rows}))
+    return path
+
+
+def test_arg_pairs_forces_every_target_pair(tmp_path: Path) -> None:
+    unseen = load_unseen_pairs(_arg_pairs_report(tmp_path))
+    cat = catalog()
+    params = {f["name"]: [p["name"] for p in f["params"]] for f in cat.functions if "params" in f}
+    specs, skipped = generate_arg_pairs(cat, unseen, 0, milestone="M2")
+    assert skipped == {}
+    calls: dict[str, list[tuple[str, dict[str, Any]]]] = {}
+    for spec in specs:
+        data = spec["sheets"][0]["cells"]
+        assert spec["check"] == [f"Calc!{a1}" for a1 in spec["sheets"][1]["cells"]]
+        assert "skipped: none" in spec["description"]
+        for text in spec["sheets"][1]["cells"].values():
+            name, _ = _split_args(text[1:])
+            calls.setdefault(name, []).append((text[1:], data))
+    for fn, pairs in unseen.items():
+        assert len(calls[fn]) == CALLS_PER_PAIR * len(pairs)
+        for k, (call, data) in enumerate(calls[fn]):
+            pair, variant = pairs[k // CALLS_PER_PAIR], k % CALLS_PER_PAIR
+            _, args = _split_args(call)
+            for pname, cls in zip(pair.params, pair.classes, strict=True):
+                arg = args[params[fn].index(pname)]
+                if cls == "range":
+                    assert re.fullmatch(r"Data!\$?[A-Z]\$?\d+:[A-Z]\d+|\{.*\}", arg), call
+                    continue
+                if cls == "blank":
+                    m = re.fullmatch(r"Data!([A-Z]\d+)", arg)
+                    assert m and m[1] not in data, call
+                    continue
+                if variant == 0:
+                    assert _LITERAL_CLASS[cls](arg), (call, pname, cls)
+                else:
+                    m = re.fullmatch(r"Data!([A-Z]\d+)", arg)
+                    assert m and _is_class(cls, data[m[1]]), (call, pname, cls)
+
+
+def test_arg_pairs_skips_hard_domain_pairs_and_is_deterministic(tmp_path: Path) -> None:
+    unseen = load_unseen_pairs(_arg_pairs_report(tmp_path))
+    cat = catalog()
+    rnd = next(f for f in cat.functions if f["name"] == "ROUND")
+    rnd["params"][1]["domain"]["hard"] = True
+    specs, skipped = generate_arg_pairs(cat, unseen, 3, milestone="M2")
+    assert len(skipped["ROUND"]) == len(unseen["ROUND"])
+    assert all(s.endswith("(hard domain)") for s in skipped["ROUND"])
+    assert not any("ROUND(" in t for s in specs for t in s["sheets"][1]["cells"].values())
+    assert generate_arg_pairs(cat, unseen, 3, milestone="M2") == (specs, skipped)
+    assert generate_arg_pairs(cat, unseen, 4, milestone="M2")[0] != specs
+    only_mid, _ = generate_arg_pairs(cat, unseen, 3, milestone="M2", functions=["MID"])
+    assert [s["tags"][-1] for s in only_mid] == ["MID"]

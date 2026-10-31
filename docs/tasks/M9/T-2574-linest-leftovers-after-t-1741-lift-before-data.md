@@ -45,6 +45,17 @@ is revisited.
   - gen-m9/b8ee55934c5b824c.case.json: Calc!A161
   - gen-m9/c2974c061384fdd9.case.json: Calc!A89
 
+Cell added by gap triage (2026-10-31, `make eval` on origin/main, excel-graph; `scripts/exit_owners.py --all-off`
+listed it as unattributed, and no open task named it). Same root cause as the lift-order bullet above:
+- gen-m9/a4090567758520df Calc!A277 `=PEARSON({3,3,3,3},LOGEST(Data!B6:E6,XNPV(2,Data!B8:D10,Data!C10:E10),
+  _xlfn.GROUPBY(Data!E1:E12,Data!D1:D12,LAMBDA(x,x))))`: Excel `#N/A`, ours `#NUM!`. The const is a 10x2 GROUPBY
+  array and known_x's an XNPV error (ours `#NUM!`, a 9-cell values range against 3 dates). Ours reports the known_x's
+  error (`LOGEST(Data!B6:E6,1/0,GROUPBY(..))` is `#DIV/0!` in a scratch run), so PEARSON gets one error. If the array
+  const lifts first, as at c2974c061384fdd9 A89, LOGEST is a 10x2 array and PEARSON of 4 against 20 values is the
+  size `#N/A`, which is Excel's value.
+Cells:
+- gen-m9/a4090567758520df.case.json (1): Calc!A277
+
 ## Acceptance criteria
 - [ ] The cells listed above pass or name another open task that owns their root cause; their lines leave
       eval/baseline/gen-m9.txt.
