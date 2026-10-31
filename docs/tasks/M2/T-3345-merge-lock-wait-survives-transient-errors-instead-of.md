@@ -3,7 +3,7 @@ id: T-3345
 title: "merge_lock wait survives transient errors instead of exiting 2"
 milestone: M2
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -57,7 +57,7 @@ T-3010 built `wait`.
 `merge_lock.py wait` now checks the claim up front (bad id/PR exits 2), exits 2 at once when the
 queue is full on first join, retries `GitError`s until its timeout, and retries an unreadable marker,
 raising only after `UNREADABLE_POLLS` (5) in a row. `GIT_FAILURES` is gone. Tests cover each case and
-that the waiter keeps its queue place. No eval delta (harness script).
+that the waiter keeps its queue place. No eval delta (harness script). Decision 0189 records the rule.
 
 ## Handoff (resumed)
 The implementation is finished and passes `make check` locally. Security, architecture and quality
