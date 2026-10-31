@@ -16,6 +16,10 @@ F.INV, F.INV.RT, FINV, BETA.INV and BETAINV match Excel to the bit on the 227 qu
 cell is already within half a unit of Excel's 15th significant digit, and no open task lists any of them.
 
 ## Context
+Split (T-3229 check): 116 of the cells below are also T-3225's (the probes-numeric quantile sweeps). T-3225
+owns them; this task covers the rest and the same F and beta quantile kernels, so a fit landed under either task
+closes the shared cells for both.
+
 - Gap triage 2026-10-30 (`make eval` at e1255db9, excel-graph evidence). Each cell has one of these quantiles as its
   only non-glue call. By function: F.INV.RT 87, F.INV 65, FINV 53, BETAINV 12, BETA.INV 10. By suite: probes-numeric
   146, gen-m9 77, ironcalc-calc 2, probes 2.

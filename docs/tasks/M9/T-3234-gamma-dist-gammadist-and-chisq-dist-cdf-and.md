@@ -17,6 +17,10 @@ and gamma density cells listed below. Each cell is already within half a unit of
 no open task lists any of them.
 
 ## Context
+Split (T-3229 check): 43 of the cells below are also T-3224's (the cumulative shape sweeps), and
+gen-m9/c468f5046aadfbbc A171 is also T-3303's (the density's log form). Those tasks own the shared cells; a fit
+landed under either closes them for both.
+
 - Gap triage 2026-10-30 (`make eval` at e1255db9, excel-graph evidence). Each cell has one of these functions as its
   only non-glue call. By function: GAMMA.DIST 119, CHISQ.DIST 59, GAMMADIST 18, CHIDIST 2, CHISQ.DIST.RT 1. By suite:
   probes-numeric 142, probes 36, gen-m9 11, ironcalc-calc 10.
