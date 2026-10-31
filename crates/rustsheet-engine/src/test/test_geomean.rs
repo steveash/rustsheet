@@ -143,7 +143,10 @@ fn test_fn_geomean_keeps_the_power_of_two_out_of_the_logarithm() {
     // in-range root"; probes-numeric/t3502-geomean-fresh A41, A93, A130, A176; T-3502). Each
     // Excel value has 15 digits, so the literal is that double.
     let mut model = new_empty_model();
-    model._set("A1", "=(GEOMEAN(1.03908E+87,4.05961E+81,2.31055E+83)-9.91477561834331E+83)");
+    model._set(
+        "A1",
+        "=(GEOMEAN(1.03908E+87,4.05961E+81,2.31055E+83)-9.91477561834331E+83)",
+    );
     model._set(
         "A2",
         "=(GEOMEAN(4.455775033895E-68,5.622040981674E-42,1.225386951298E-70,4.743160354953E-51,\
