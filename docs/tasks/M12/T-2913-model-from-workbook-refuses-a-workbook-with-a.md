@@ -3,7 +3,7 @@ id: T-2913
 title: "Model::from_workbook refuses a workbook with a dangling index (style, shared string, shared formula, sheet, row, column) instead of panicking"
 milestone: M12
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
