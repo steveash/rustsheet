@@ -24,7 +24,7 @@ Found by the T-3496 arg-pairs batch (excel-graph): Excel returns #VALUE!, the en
 - Other functions and the unrelated cells of these cases.
 
 ## Visible-parity stage
-Decision 0083: every cell below returns a wrong error (visibly off). The acceptance criteria are the stage.
+Decision 0083: every cell below returns a wrong error; only some count in the in-scope visibly-off lock (it rose by 11 for the batch's 22 cells). The acceptance criteria are the stage.
 Cells:
 - 21db5363d711888d CHOOSECOLS(Data!G9, ...): A280 A286 A292 A304 A310 A316 A322 A334 A340
 - ad47b47c4e97019d CHOOSEROWS(Data!G9, ...): A304 A310 A316 A328 A334 A340 A346 A358 A364
