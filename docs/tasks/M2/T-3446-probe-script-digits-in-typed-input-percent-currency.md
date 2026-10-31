@@ -21,4 +21,4 @@ T-3325 maps the three blocks in `cast::number_text_in` (coercion, VALUE, criteri
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Collation of these digits (T-3324).
