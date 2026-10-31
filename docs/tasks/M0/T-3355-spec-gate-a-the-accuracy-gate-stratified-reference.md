@@ -3,7 +3,7 @@ id: T-3355
 title: "SPEC: Gate A, the accuracy gate: stratified reference tables with 50-digit math and Excel values, checked by make check"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P0
 size: M
 tier: opus
