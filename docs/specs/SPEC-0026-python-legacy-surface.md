@@ -113,6 +113,13 @@ freeze.
 - a decoded count or dimension (sheets, rows, columns, cells per row, shared strings) past the engine's grid limits,
   checked before anything is allocated from it, so a crafted buffer cannot request a huge allocation.
 
+As built (T-2913): a CF dxf id and a defined name's sheet id are not refused. Both are read through a checked lookup
+that tolerates a dangling value (the format is skipped, the name is global), so refusing them would only stop
+workbooks that load today. The selected sheet of a view is checked. The check runs on the decoded `Workbook`, so the
+bitcode decoder has already allocated what the bytes encode (bounded by the input's size); what the check guarantees
+is that nothing the model builds afterwards (row chunks, spill ranges, merged ranges, column records) is sized from a
+count past the grid.
+
 The validator's doc comment lists the invariants, so that what it misses is the fuzz target's to find. Because the
 check sits in `from_workbook`, it covers every decoder: `Model::from_bytes`, `UserModel::from_bytes`,
 `rustsheet_xlsx::import::load_from_icalc`, and the xlsx importer's final step. An xlsx-built workbook that fails it was
