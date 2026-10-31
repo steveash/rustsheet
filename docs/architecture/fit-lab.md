@@ -26,12 +26,45 @@ The output has three parts:
 - A ranked table: bit-exact, `<=4 ulp` (exact included), `<=1e-9` relative, errors and the worst
   ulp distance per candidate. Ranking is by exact count, then the 4-ulp count, then the 1e-9 count,
   then the worst distance. The engine's row is always shown.
+- The hold-out table (below): train and test counts side by side and each candidate's accept
+  verdict.
 - A family table, when candidates are grouped. It gives each family's best member, the union of
   the cells its members get exactly, and the cumulative union.
 - The worst cells of the engine and of the best three candidates.
 
 The JSON (`eval/runs/fitlab/<fit>.json`, git-ignored, or `--json PATH`) holds every candidate's
-counts and worst cells, the per-family unions, and the cells the reader could not parse.
+counts and worst cells, its `train` and `test` counts and `verdict`, the split (`holdout`), the
+per-family unions, and the cells the reader could not parse.
+
+## Hold-out split and accept rule
+
+Every run splits the sweep before scoring (`fitlab/holdout.py`, decision 0188 R4.1, T-3360). It is
+mandatory: there is no option to turn it off.
+
+- **The split.** A cell is held out (the *test* side) when the first 8 bytes of
+  `sha256("rustsheet-fitlab-holdout/v1" NUL <case> NUL <Sheet!A1>)`, read big-endian, are below 300
+  modulo 1000: about 30% of the cells. The side depends only on the cell's case and address, so the
+  same cell is always on the same side, whatever else the sweep holds, the order it is read in, or
+  which candidates run. Changing the salt or the ratio moves cells between sides, so
+  `tests/test_fitlab_holdout.py` pins both, and the side of 20 named cells.
+- **The counts.** Each candidate is scored on train and on test separately: bit-exact, within 4 ulp,
+  and within 15 significant digits (`score.within_fifteen_digits`, the harness's
+  `closeness.rs` rule; a cell within 4 ulp always counts, decision 0088). The ranked table and the
+  family table are over the whole sweep: the two sides merged (`score.merged`). No cell is
+  evaluated twice.
+- **The accept rule.** A candidate is accepted only when both of these hold:
+  - its test bit-exact rate is at most `Fit.margin` below its train rate. The margin is stated with
+    the fit, before any scoring; the default is 5 percentage points (`DEFAULT_MARGIN`). Rates are
+    compared as exact fractions, so a drop of exactly the margin passes.
+  - it beats the candidate named `correctly rounded` on test: more test bit-exact cells, with the test
+    within-4-ulp count breaking a tie.
+
+  The correctly rounded candidate is the reference and gets no verdict. A fit with no such candidate,
+  or a sweep with no test cell, accepts nothing.
+- **Recording a fit.** A fit task's Outcome (decision 0056) records the hold-out rows of the chosen
+  candidate and of the correctly rounded one, with the margin, as reviewer-excel-fidelity's
+  hold-out item asks. An attempt counts as raising the bit-exact count only if it raises the test
+  count (decision 0188, T-3362).
 
 The verdicts are the harness's (`crates/rustsheet-eval/src/value.rs`). `score.ulp_distance` is a
 port of `ulp_distance`, so 0.0 and -0.0 are 0 apart. A candidate that raises, or returns something

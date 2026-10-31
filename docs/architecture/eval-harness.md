@@ -261,6 +261,17 @@ Normative design: [SPEC-0029](../specs/SPEC-0029-gate-a-accuracy-gate.md) (decis
   `TABLE` lines. `--json PATH` (default `eval/runs/accuracy.json`, git-ignored) holds every point's
   class, standing and values. Exit 1 on a failing point, a stale known-failure line, a bad mark or a
   table defect. Budget: 30 s for the whole set on the CI runner.
+- **Math references for eval cells** (T-3380, SPEC-0029 "Math references for eval cells"). Any eval
+  case may carry the same `rustsheet-math/v1` sidecar, `<case>.math.json` beside its oracle sidecar
+  (no stratum `s`). `run_case` reads it when present and puts each cell's value on
+  `CellResult::math` (absent from the JSON when there is none), through `MathTable::attach`, so a
+  value whose `f` differs from the cell's formula is dropped. An unreadable sidecar makes the case
+  `InvalidCase`. `rustsheet-accuracy math --suite S` (tools/, `accuracy/eval_math.py`) writes the
+  sidecars for a suite's spec cases: every scored cell that is one call of a function with a Gate A
+  definition and whose arguments the fit lab's sweep reader reads without a formula cell (literals,
+  constant cells, `DATE`, arithmetic over literals), with integer parameters given integers and the
+  definition's argument count. R1(c)'s report rows (T-3427) count a visibly-off numeric cell inside
+  the envelope through it; a cell with no math value counts as outside.
 - **Not yet.** The missing-table count and `exempt.tsv`, the protected-path and known-failure line
   rules and ci_changes routing are T-3379's; the generator and the real tables are T-3357's and
   T-3358's. The end-to-end fixture is `crates/rustsheet-eval/tests/data/accuracy-fixture`.

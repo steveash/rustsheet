@@ -193,6 +193,7 @@ fn unexpected(sheet: &str, addr: Addr, actual: Value) -> CellResult {
         listed_deviation: false,
         graph_subnormal: false,
         kind: CellKind::SpillExtent,
+        math: None,
     }
 }
 
