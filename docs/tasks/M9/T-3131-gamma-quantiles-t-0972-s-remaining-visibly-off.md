@@ -45,7 +45,7 @@ T-0972's criterion 3 is also open: `inverse_cdf_within` (the ported statrs searc
       baseline line.
 - [x] No statrs search left for the gamma quantile (`rg inverse_cdf_within` finds nothing), with bounded iteration on
       untrusted input: at most 129 cdfs in one budget of `MAX_TERMS` terms (huge shape or scale, p near 0 and 1).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The five cells and 49 ulp lines of decision 0152 (now T-3146, T-3238 and T-3239, after T-3016); the CDF kernel (T-0971 follow-ups T-2367, T-2638).

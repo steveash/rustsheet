@@ -4754,7 +4754,7 @@ d8266bc15533702a A296. excel-graph refused (FileCorruptTryRepair) workbooks hold
 from 1E40 to 1E100 and `GAMMA.DIST(x,1E10..1E11,1,FALSE)` at a tiny x, so those cells were dropped from the probe (T-2982).
 Ours: `incomplete_gamma/huge_shape.rs` `huge_shape_quantile` for GAMMA.INV, GAMMAINV, CHISQ.INV, CHISQ.INV.RT and CHIINV
 from shape 1E9, its true quantile the crossing of the accurate cdf (Temme's expansion), halved over the whole range
-(65 cdfs) since statrs' search is NaN or far off there; `chisq.rs` lets CHISQ.INV.RT and CHIINV past
+(65 cdfs) since statrs' search (used before T-3131) was NaN or far off there; `chisq.rs` lets CHISQ.INV.RT and CHIINV past
 `MAX_DEGREES_OF_FREEDOM`.
 Status: VERIFIED (excel-graph) for the cells; the band's edges and the closed form's terms are fits (UNVERIFIED as forms)
 Tasks: T-2982, T-3070
