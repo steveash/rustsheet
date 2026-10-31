@@ -216,3 +216,82 @@ fn rc_text_cache_keeps_the_sign_of_zero() {
         }
     }
 }
+
+/// The relocation key (T-3326) at the places the A1 parse reads its cell: each formula is copied
+/// over a grid of cells, every copy is read through one shared cache and through a fresh one, and
+/// the two must print the same. Mixed-`$` range corners swap order with the cell; LET names,
+/// dotted ranges, defined names and a callee spelled like a cell are never keyed.
+#[test]
+fn relocation_key_gives_equal_trees_for_equal_keys() {
+    use rustsheet_engine::expressions::parser::new_parser_english;
+    use rustsheet_engine::expressions::parser::stringify::to_english_string;
+    use rustsheet_engine::expressions::types::CellReferenceRC;
+
+    use crate::import::relocation_key::KeyLexer;
+    use crate::import::worksheets::{from_a1_to_rc, RcTextCache};
+
+    let sheets = vec!["Sheet1".to_string(), "Other".to_string()];
+    let mut parser = new_parser_english(sheets.clone(), vec![], HashMap::new());
+    parser.set_loaded(true);
+    let mut copier = new_parser_english(sheets, vec![], HashMap::new());
+    let mut shared = RcTextCache::default();
+    let mut lexer = KeyLexer::default();
+    let at = |row, column| CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row,
+        column,
+    };
+    // The key's own marker in a sheet name could alias another formula's key.
+    assert_eq!(lexer.key("'X\u{1}'!A1+1", &at(3, 3)), None);
+    for formula in [
+        "COUNTIFS($A$2:$A$9,B3,C$1:C3,\">0\")",
+        "SUM(C$3:$B5)",
+        "SUM($C3:B$5)+Other!$A1",
+        "A1 B1:C3",
+        "SUM(A1:A3 B2:C2)",
+        "IF(A1>0,\"x\",#N/A)*{1,2;3,4}",
+        "_xlfn.XLOOKUP(A1,B:B,C:C)",
+        "SUM(1:1)+ABS(-0)",
+        "LET(x1,1,x1+A1)",
+        "_xlfn.LET(_xlpm.x,A1,_xlpm.x)",
+        "A1.B2",
+        "rate*A1",
+        "A1(2)",
+        "SUM(A1",
+    ] {
+        let origin = at(3, 3);
+        // As stored (the copies below are as the engine prints them, `A1.B2` as `A1:B2`).
+        let keyed = lexer.key(formula, &origin).is_some();
+        let expect = !["LET", "A1.B2", "rate", "A1(2)"]
+            .iter()
+            .any(|s| formula.contains(s));
+        assert_eq!(keyed, expect, "{formula}");
+        for (row, column) in [(3, 3), (4, 3), (3, 4), (6, 1), (1, 6), (9, 9)] {
+            let cell = at(row, column);
+            let Some(name) = number_to_column(column) else {
+                continue;
+            };
+            let copy = to_english_string(&copier.parse(formula, &origin), &cell);
+            let context = format!("Sheet1!{name}{row}");
+            for array in [false, true] {
+                let fresh = from_a1_to_rc(
+                    copy.clone(),
+                    &mut parser,
+                    &mut RcTextCache::default(),
+                    context.clone(),
+                    array,
+                )
+                .map_err(|e| e.to_string());
+                let cached = from_a1_to_rc(
+                    copy.clone(),
+                    &mut parser,
+                    &mut shared,
+                    context.clone(),
+                    array,
+                )
+                .map_err(|e| e.to_string());
+                assert_eq!(cached, fresh, "{context}: {copy}");
+            }
+        }
+    }
+}
