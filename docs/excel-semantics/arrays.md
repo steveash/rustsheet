@@ -2125,3 +2125,42 @@ Status: DEVIATION (decision 0014). Whether Excel accepts a CSE formula over more
 (probe pending, T-3436).
 Implemented in: crates/rustsheet-engine/src/model.rs (`set_user_array_formula`)
 Tasks: T-2896, T-3436
+
+## A one-cell error reference is a 1x1 array in TOCOL, TOROW and FILTER (T-3497)
+Rule: a one-cell reference to an error cell passed as TOCOL's or TOROW's `array`, or FILTER's `array` or `include`, is a 1x1
+array holding the error, not an error argument. The other arguments are checked first, and the error survives only as an element
+of the result. With Data!G9 holding `#DIV/0!`:
+- `TOROW(Data!G9,Data!G1)` (ignore 7) is `#VALUE!` (gen-m7/20df23f84a528470 Calc!A8724).
+- `TOCOL(Data!G9,3,Data!G2)` is `#CALC!`: ignore 3 drops the error, so nothing is left (gen-m7/7cd94f345acd55bb A8480).
+- `FILTER(Data!G9,Data!G2)` (include 0) is `#CALC!` (gen-m7/68e7f10771a7118a A10798).
+- `FILTER(Data!G9,(Data!A1:A12>0),Data!G4)` is `#VALUE!`: a 1x1 array against a 12-row include (gen-m7/ee81c689b5fde629 A1160).
+- `FILTER(Data!A1:D12,Data!G9,Data!G3)` is `#VALUE!` (gen-m7/d7a127bd9334c2b4 A2380).
+Evidence: gen-m7 arg-pairs batch (excel-graph, 2026-10-31, T-3497); the full cell list is in T-3506.
+Ours: the referenced error is returned before the other arguments are read (`#DIV/0!` in every cell above).
+Status: VERIFIED (excel-graph); not implemented
+Tasks: T-3506
+
+## TOCOL, TOROW and SORT: which bad argument wins (T-3497)
+Rule:
+- TOCOL and TOROW: an invalid `ignore` is `#VALUE!` even when `scan_by_column` is an error. This holds for a text ignore, an
+  empty text and a range: `TOROW(Data!A7:D7,"abc",#NULL!)` (gen-m7/1157e6d3a3c6ae12 Calc!A4393), `TOCOL(Data!B3:C3,"",#NAME?)`
+  (gen-m7/52ccea5df17b29a8 A5613) and `TOCOL(Data!D$11,Data!C3:D4,Data!G9)` (A10676).
+- SORT: a text `sort_index` ("", "abc") loses to an error in a later argument: `SORT(Data!C4,"",Data!B10:D12,#DIV/0!)` is
+  `#DIV/0!` (gen-m7/75534bc7e1ce6474 A245) and `SORT({#DIV/0!;2;#VALUE!},"abc",#NULL!)` is `#NULL!` (gen-m7/91b6b88061b805b1 A367).
+  But a blank sort_index or sort_order, an out-of-range index and a FALSE index win with `#VALUE!`: `SORT(0.3,Data!H1,-1,#NAME?)`
+  (75534bc7e1ce6474 A4027), `SORT(Data!A4:B6,2,Data!H2,Data!G9)` (gen-m7/8217549f0b417328 A1770) and
+  `SORT(Data!D7:E12,Data!G8,Data!E7,Data!G9)` (75534bc7e1ce6474 A1526). So the order is not left to right, and text is coerced
+  later than a range check.
+Evidence: gen-m7 arg-pairs batch (excel-graph, 2026-10-31, T-3497); the full cell list is in T-3507.
+Ours: TOCOL and TOROW return the scan_by error; SORT returns `#VALUE!` for a text index and the later error for the others.
+Status: VERIFIED (excel-graph) for the cells named; the general order is UNVERIFIED (T-3507)
+Tasks: T-3507
+
+## SORT's lifted by_col spreads an argument error (T-3497)
+Rule: SORT lifts over a multi-cell `by_col` (T-2319). When it fails on another argument, the error fills `by_col`'s shape.
+`SORT(Data!B3,#NUM!,Data!B1:D1,Data!A1:B2)` spills a 2x2 of `#NUM!` (gen-m7/75534bc7e1ce6474 Calc!A3051:B3052), and
+`SORT(#REF!,Data!A7:D9,1,Data!A1:B2)` spills `#REF!` (gen-m7/d2945e939d6fe742 A5979:B5980).
+Evidence: gen-m7 arg-pairs batch (excel-graph, 2026-10-31, T-3497); the full cell list is in T-3508.
+Ours: a single error in the anchor; the other three cells stay empty.
+Status: VERIFIED (excel-graph); not implemented
+Tasks: T-3508
