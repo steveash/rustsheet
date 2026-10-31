@@ -63,9 +63,9 @@ sweep drawn after it is frozen. It unblocks T-3347, whose `irr_conventional` sta
   from any of 17 fixed guesses in -0.9 to 2. Recorded in docs/excel-semantics/financial.md "IRR on conventional flows
   where the secant fails: which return is path-sensitive".
 - Eval: the new case adds 76 known failures to probes (28 + 26 `#NUM!` where Excel returns the root, 22 `#NUM!` where
-  Excel is `#DIV/0!`); no other cell moves (no engine change). eval/baseline/visible-parity.json rises from 2427 to
-  2502 (`make eval-baseline` after merging main on 2026-10-31, main's baseline files taken first: "2502 in-scope
-  cells visibly off (76 in new cases), lock 2427"): the 76 new-case cells, less 1 cell main already fixed below the
+  Excel is `#DIV/0!`); no other cell moves (no engine change). eval/baseline/visible-parity.json rises from 2442 to
+  2509 (`make eval-baseline` after merging main on 2026-10-31, main's baseline files taken first: "2509 in-scope
+  cells visibly off (76 in new cases), lock 2442"): the 76 new-case cells, less 9 cells main already fixed below the
   lock. A rise that
   new cases account for is what decision 0093 lets `eval-baseline` record; no existing cell got worse
   (REGRESSIONS 0). The probes-numeric hold-out copy is ungated (no baseline) and is not in the count.

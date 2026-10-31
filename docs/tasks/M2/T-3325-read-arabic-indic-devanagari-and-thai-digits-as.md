@@ -3,7 +3,7 @@ id: T-3325
 title: "Read Arabic-Indic, Devanagari and Thai digits as numbers in VALUE, arithmetic and numeric criteria (T-3276 probe)"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -33,3 +33,6 @@ a decimal point, as Excel does; full-width digits stay text.
 
 ## Out of scope
 - Collation of these digits (T-3324).
+
+## Outcome
+`script_digit_to_ascii` (parse_formatted.rs) is applied in `cast::number_text_in`, the one coercion entry used by VALUE, arithmetic coercion and criteria. Typed cell input, dates and times, and other digit blocks are left out (unprobed). Percent/currency/parenthesis/group/exponent forms inherit the mapping through coercion; a probe follow-up is filed. 14 known failures removed from eval/baseline/probes.txt, no regressions.
