@@ -48,10 +48,28 @@ Needs an oracle sweep, T-3148, which also gives Excel's cdf at the doubles besid
 the same probes are within 2 ulp, so the rule changes between those p.
 
 This task owns the `CHISQ.INV(0.999,5)` pair (m9-chisq-inv A27, t1049-chisqinv A19, listed above) since T-3016 handed
-it over. T-3131 (`CHISQ.INV.RT(0.999,5)` and `(0.999,20)` in the T-1049 CHISQ.INV.RT probe) owns cells with the same
-cause: whichever of the two lands the landing rule first takes them all, and the other then only checks its cells.
+it over, and T-3131's five remaining cells since T-3131 (2026-10-31; same cause, listed under "Also owned: T-3131's
+cells" below).
 `GAMMA.INV(0.999,9,1)` and `(0.999,9,1000000)` are 2-3E-15 relative off, within 15 digits; it should follow the same
 rule.
+
+### Also owned: T-3131's cells (2026-10-31)
+`make eval` on the T-3131 branch, excel-graph. Each is a landing in the flat band: at Excel's double the true cdf of
+the tail it is given is within 0.7 ulp of p (60-digit mpmath), while ours is within an ulp of the true quantile.
+Excel vs ours (Excel's offset from the truth; the cdf offset in ulps of p):
+- probes-numeric/t1049-chisqinvrt Calc!A19 `CHISQ.INV.RT(0.999,5)`: 0.210212602629218 vs 0.21021260262921926 (-44;
+  +0.13)
+- probes-numeric/t1049-chisqinvrt Calc!A20 `CHISQ.INV.RT(0.999,20)`: 5.921040745487456 vs 5.92104074548752 (-72; +0.71)
+- gen-m9/4250f880ab640c49 Calc!A371 `CHISQ.INV.RT(((-0.0001)+1),3)`: 0.005214832329030269 vs 0.005214832329027594
+  (+3,084; -0.69)
+- gen-m9/73f053591a54bc43 Calc!A108 `NORMSDIST(MOD(SUMIF(Data!A10:D12,"",Data!B4:E12),CHISQ.INV.RT(0.975,5)))`:
+  0.6004864351048662 vs 0.6004864351049074. The MOD amplifies the inner quantile's gap: Excel's
+  `CHIINV(0.975,5)` is 0.8312116134866638, 10 ulp above the truth and -0.65 ulp of p in its upper-tail cdf, a flat-band
+  landing too, where ours is within an ulp of the truth. T-3219 also lists this cell and the two lone
+  `CHIINV(0.975,5)` cells under its prefactor hypothesis; the cdf offset says it is the landing.
+- gen-m9/d8266bc15533702a Calc!A29 `CHISQ.INV(T.DIST((7-1),6,("x~*"="x~*")),5)`: 22.187751453507733 vs
+  22.18775145350798. At the correctly rounded `T.DIST(6,6,TRUE)` = 0.9995177324027924 Excel is -70 ulp (-0.47) and
+  ours -1; at the double below, Excel is +78 (+0.53).
 
 ### Also owned: T-3148's probe (gap triage 2026-10-29)
 `make eval` on main a2ecf005b, `python3 scripts/exit_owners.py --all-off`: T-3148 (done) added
