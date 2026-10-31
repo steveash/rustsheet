@@ -159,6 +159,7 @@ fn erfc1_scaled(x: f64) -> f64 {
         99.019_181_462_391_4,
         18.012_457_594_874_7,
     ];
+    // Highest degree first, in TOMS's order (`util::poly` takes the lowest first).
     let horner = |c: &[f64], v: f64| c.iter().fold(0.0, |acc, &k| acc * v + k);
     if x <= 0.5 {
         let t = x * x;

@@ -76,9 +76,11 @@ Bit-level residue moves to a follow-up with `defer: phase-1b`.
 - Probe probes/t3352-binom-negbinom-large-n (208 cells, excel-graph):
   - Within 15 digits of Excel: 42 before, 133 after.
   - Within 1E-9 of the 50-digit math: 124 before, 208 after. Worst is 5.2E-12, the same as Excel's own worst.
-  - The 75 cells not within 15 digits are at most 4.4E-12 from Excel. They come from the Loader kernel's unidentified
-    arithmetic at a rounded n·p (T-2586, T-2146) and from bfrac or walk tails. Ours is nearer the math on 52 of them.
-  - Recorded as new-coverage known failures (148 cells not bit-exact).
+  - The 75 cells not within 15 digits are at most 4.4E-12 from Excel: Loader-kernel pmf cells (cause not identified) and
+    basym, bfrac or walk cdf tails.
+  - Recorded as new-coverage known failures (148 cells not bit-exact). The 75 cells outside 15 digits (57 pmf, 18 cdf)
+    move to T-3447, which owns acceptance criteria 1 and 3 for them. One of them, A48 `BINOM.DIST(600,600000,0.001,TRUE)`,
+    was within 15 digits on main and is not on basym (ours 0.5108555229841736, Excel 0.5108555229841731).
 - Gate A envelope on the fresh sweep probes-numeric/t3352-binom-negbinom-sweep (300 points, seed 3352, scored against
   mpmath at 50 digits by a scratch script; SPEC-0029's generator is T-3357). Per stratum: within 15 digits of Excel /
   within 1E-9 of the math / outside both / error against number:
@@ -91,7 +93,10 @@ Bit-level residue moves to a follow-up with `defer: phase-1b`.
   R1(c)).
 - Eval delta: gated suites have 0 fixed and 0 regressions; probes gains 1 case (208 cells, 60 bit-exact). In ungated
   probes-numeric, m9-legacy-binomdist gains 2 bit-exact cells and t2513-r3-binom-pmf-n gains 14; no case lost any.
+- Acceptance criteria: 2 (probe), 4 (no regression), 5 (Gate A), 6 (semantics) and 7 are met; 1 and 3 are met for 133
+  of 208 cells, and T-3447 owns the remaining 75.
 - Follow-ups:
+  - T-3447: the 75 probe cells still outside 15 digits of Excel.
   - T-3443: basym for BETA.DIST, F and T, with BETA.INV's crossing.
   - T-3444: BINOM.DIST.RANGE and BINOM.INV at a large n are still statrs; `BINOM.DIST.RANGE(1E9,0.3,3E8,3E8+100)` is
     1.47.
