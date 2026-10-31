@@ -206,6 +206,16 @@ pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
     }
 }
 
+/// [`compare_values`], except that two texts compare as Excel's `<`, `=`, `>` do (`cmp_text_pairwise`):
+/// the lookups and SWITCH use this, sorts keep `compare_values` (docs/excel-semantics/coercion.md
+/// "Not a total order"; probes/t3181-collation-prefix-callers; T-3210).
+pub(crate) fn compare_values_pairwise(left: &CalcResult, right: &CalcResult) -> i32 {
+    match (left, right) {
+        (CalcResult::String(l), CalcResult::String(r)) => collation::cmp_text_pairwise(l, r) as i32,
+        _ => compare_values(left, right),
+    }
+}
+
 /// Whether `node` is `@IF(...)`: the `@` of an IF keeps the reference the IF picks.
 pub(crate) fn is_at_if(node: &Node) -> bool {
     matches!(

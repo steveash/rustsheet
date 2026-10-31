@@ -16,7 +16,7 @@
 //! a correction below 1E-12 of Q.
 
 use super::incomplete_beta::{rlog1, stirling_correction};
-use super::incomplete_gamma::{gamma_density, gamma_ur};
+use super::incomplete_gamma::{accurate_gamma_density, gamma_ur};
 use crate::x87_exp::{dd_mul, two_sum};
 use crate::x87_log10::ln_double_double_pair;
 
@@ -75,7 +75,7 @@ pub(super) fn large_shape_lower(a: f64, b: f64, x: f64, y: f64) -> Option<f64> {
         return Some(0.0);
     }
     // r = z^b e^-z / Gamma(b) = z times the gamma density at z.
-    let r = gamma_density(b, z, 1.0).map_or(0.0, |density| density * z);
+    let r = accurate_gamma_density(b, z, 1.0).map_or(0.0, |density| density * z);
     if !(r.is_finite() && scale.is_finite()) {
         return None;
     }

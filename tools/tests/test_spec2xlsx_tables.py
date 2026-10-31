@@ -185,3 +185,18 @@ def test_totals_row_needs_a_data_row() -> None:
 def test_totals_row_cells_are_labels_or_formulas() -> None:
     with pytest.raises(ValueError, match="totals row cell B4"):
         _parts({"tables": [{"name": "Data", "ref": "A1:B4", "totals_row": True}]})
+
+
+def test_calculated_column_writes_the_formula_and_leaves_the_cells() -> None:
+    parts = _parts(
+        {"tables": [{"name": "Data", "ref": "A1:B5", "calculated": {"B": "=Data[[#This Row],[Key]]*2"}}]}
+    )
+    table = parts["xl/tables/table1.xml"]
+    assert "<calculatedColumnFormula>Data[[#This Row],[Key]]*2</calculatedColumnFormula>" in table
+    assert '<tableColumn id="1" name="Key"/>' in table
+    assert "<f>" not in parts["xl/worksheets/sheet1.xml"]
+
+
+def test_calculated_column_must_be_inside_the_table() -> None:
+    with pytest.raises(ValueError, match="calculated column"):
+        _parts({"tables": [{"name": "Data", "ref": "A1:B5", "calculated": {"D": "=1"}}]})

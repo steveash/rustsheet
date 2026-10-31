@@ -10,6 +10,7 @@ use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 /// Phi(z) - 0.5 (`GAUSS(1E-10)` = 3.9894310077670525E-11, `GAUSS(4E-15)` = 1.5543122344752192E-15;
 /// gen-m9 oracle), so the cut lies in (1E-15, 4E-15); 2E-15 is a stand-in inside that interval, not Excel's real threshold (T-2931).
 /// Excel: see docs/excel-semantics/statistics.md, "GAUSS of a tiny argument is x times phi(0) (T-2255)"
+/// FITTED(T-2434, 4 cells, z 1E-300..1E-10)
 const TINY_Z: f64 = 2e-15;
 
 impl Model {

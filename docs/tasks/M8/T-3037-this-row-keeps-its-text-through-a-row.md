@@ -4,10 +4,11 @@ title: "#This Row keeps its text through a row insert that moves or grows its ta
 milestone: M8
 lane: engine
 status: todo
-priority: P2
+priority: P1
 size: M
 tier: opus
 depends_on: []
+campaign: semantics
 ---
 
 ## Goal
@@ -16,6 +17,8 @@ cells beside the table that move with the insert, cells on another sheet that st
 table. Each one then evaluates at its own row against the table as it is after the edit, as Excel does.
 
 ## Context
+- Decision 0188 (owner's 2026-10-31 rulings, R1(c)): this task owns probe-row or text cells of its milestone's exit,
+  which Phase 1 still counts in full, so it is in the semantics stage at P1 (was P2).
 - Evidence (excel-graph, 2026-10-28, T-2845): probes/table-edits table-insert-row-this-row-above-header,
   table-insert-row-this-row-inside-data, table-insert-row-calc-column-above-header and
   table-insert-row-calc-column-inside-data (all of each; the text cells with T-1683). These are 39 known-failure lines in

@@ -8,7 +8,7 @@ priority: P1
 size: M
 tier: opus
 campaign: visible
-depends_on: [T-0969, T-1043, T-2511]
+depends_on: [T-1043, T-2511]
 ---
 
 ## Goal
@@ -16,6 +16,9 @@ T.INV, T.INV.2T and CONFIDENCE.T return Excel's values from one Student-t quanti
 the T-0969 CDF kernel.
 
 ## Context
+- Decision 0188 (owner's 2026-10-31 rulings): T-0969 left `depends_on`. It is blocked under decision 0056's time-box and
+  reopens only on a new hypothesis, so it would hold this task forever; the quantile route no longer needs its CDF
+  (T-3061: SQRT(df*(1/y-1)) of the rounded beta quantile). T-2511 stays (same inverse code, sequencing of T-0098).
 Kernel map (T-1522, decision 0056): rank 5 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 Triage T-0903. Kernel: `statrs::distribution::StudentsT::inverse_cdf`, which calls statrs'
 `inv_beta_reg(df/2, 0.5, 2p)` and back-transforms (`sqrt(df(1-y)/y)`), losing precision near p = 0.5.
@@ -161,6 +164,13 @@ Cells:
 - gen-m9/ede0323c389fc703.case.json (3): Calc!A110, A148, A262
 - gen-m9/f82473275380882e.case.json (4): Calc!A291, A320, A353, A382
 
+Split 2026-10-27 (gap triage, opus refill): while this task waits on T-0969, two parts that need no new CDF are
+their own tasks. T-2858 (sonnet) owns every df = 1 cell: Excel's df = 1 quantile is `1/TAN(PI()*p/2)` through
+Excel's TAN, bit-exact on all 112 failing df = 1 cells (statistics.md, T-2858 entry). T-2859 (opus, `accuracy`)
+owns the visibly-off cells for df 2 to 99998 with p/2 >= 2E-5 where Excel is within a few ulps of the true
+quantile and ours is not (274 cells, the list is in T-2859). This task keeps the bit-level target, the cells
+T-2859 shows Excel itself is off on, and whatever T-2858 and T-2859 leave in their Outcomes.
+
 Gap triage 2026-10-27 (`make eval` on 7dba3bfe): 3 visibly-off cells that no task named. They are p in (1,2), which
 T-2096 maps to `T.INV(1 - p/2, df)`, and the engine gives the same digits for `T.INV(0.25,df)`, `TINV(1.5,df)` and
 `-T.INV(0.75,df)`. So the miss is the central quantile itself, not the p > 1 mapping. Exact (mpmath)
@@ -218,3 +228,9 @@ Against a 50-digit reference, Excel is close to correctly rounded for this famil
 
 ## Cells added by the Phase 1 triage (T-0090, 2026-10-27)
 From the parked T-2695: CONFIDENCE.T gen-m9/85f48d5cdfb24555 Calc!A372 `CONFIDENCE.T(0.3,0.3,29)`, 0.0588276537815129 expected, 0.05882765378149652 today.
+
+## Cells back from T-2724 (2026-10-31)
+T-2724's centre kernel (an accurate quantile, never a fit) leaves these owned cells within about 2E-16 of the true
+quantile (mpmath) but more than half a unit of the 15th digit from Excel, whose own last digits are 1E-15 to 3.6E-15
+relative off there (statistics.md "Student t sweep", "Centre quantiles are accurate"): gen-m9/09b47629f54b9817 A40
+`TINV(1-1E-16,8)`, 4bad303d32cc3f46 A5 and A371, 984cba67bbe6972b A128, ecc87f80077959e0 A327 `CONFIDENCE.T(1-1E-10,2.5,16)`.

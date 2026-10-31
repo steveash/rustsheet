@@ -8,6 +8,9 @@
 //! ([`excel_dbinom_exponent`], [`excel_beta_density`]). The model's shape constant carries an
 //! unexplained residual of 2-4 units of 2^-53 and the series branch 3-41 units of noise (T-2586),
 //! so it is not bit-exact everywhere.
+//!
+//! `poisson.rs` is a second consumer: Excel's POISSON.DIST pmf is this saddle point too, on
+//! [`excel_bd0`] and [`stirlerr_exact`] (T-2055), so retuning either moves POISSON cells as well.
 
 use crate::arithmetic::{extended_product, extended_quotient, extended_sum};
 use crate::x87_exp::{dd_add, dd_div, dd_div_small, dd_mul, excel_exp_extended, two_sum};
@@ -78,6 +81,7 @@ fn stirling_series(m: Dd) -> Dd {
 /// The ratio cut of Excel's bd0: its series runs while |k - M| < 0.2 (k + M) (statistics.md "Beta
 /// density for min(a,b) > 1 ...": 0.25 drops (5.5, 12.5) from 113 to 13 of 120 exact cells; R's
 /// is 0.1).
+/// FITTED(T-2464, 3072 cells, BETA.DIST a 2.5, b 3.5, v 0.130..0.250)
 const EXCEL_BD0_CUT: f64 = 0.2;
 
 /// Excel's bd0(k, M) = k ln(k / M) + M - k, as the double its beta density sums (model M4 of

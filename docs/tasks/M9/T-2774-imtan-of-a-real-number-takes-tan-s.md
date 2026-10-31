@@ -61,3 +61,9 @@ authorizes following the web for N6.
 Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c2b6143a (`python3 scripts/exit_owners.py --all-off`; calipers, poi and corpus-bench not fetched): IMTAN 1. This task now owns them:
 - gen-m9/e85daedce5c2675e: Calc!A109
 The added cell is `IMTAN("5")`, the real-number case this task is blocked on, so the same desktop answer (T-1075 item 17) settles it; it is owned, but not picked, until then.
+
+## Decision 0188 note (2026-10-31)
+Decision 0188 R6 settles the blocker: IMTAN of a real follows the Excel-for-the-web value under decision 0039 item 4,
+and this task's PR may regress ironcalc-calc/ENGINEERING/COMPLEXs.xlsx Sheet1!N6 (lines added to
+eval/milestones/exit-exceptions.tsv and phase1-exceptions.tsv, owner T-1075 item 17). Status left as is by the owner's
+instruction for this PR; the next steward or worker unblocks it (docs/process/agent-workflow.md, "Unblocking").

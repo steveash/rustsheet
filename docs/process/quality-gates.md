@@ -19,8 +19,9 @@ On docs-only PRs (decision 0049) CI skips the rust, eval and python jobs; hygien
 | Python tools | `make py-check` | ruff, mypy `--strict`, pytest |
 | Python bindings | `make py-bindings` | maturin build + pytest |
 | Duplication | `scripts/check_duplication.py` | duplicated lines (10-line normalized windows) may not increase; `quality/duplication.json` |
+| Fitted constants | `scripts/check_fitted.py` | every empirically fitted constant, cut-point or table carries one `/// FITTED(T-NNNN, <n> cells, <range>)` doc line (`range unknown` when the evidence does not say); malformed tags and tags citing a task with no file fail; the count per source file may only fall, and a rise needs `--update` in a PR citing the fit task and its hold-out result; `quality/fitted.json` (decision 0188 R4.3) |
 | File size | `scripts/check_file_size.py` | new source files ≤ 1000 lines; inherited oversized files may not grow; `quality/oversized-files.json` |
-| Tasks | `scripts/tasks.py validate` | task schema, ids, dependencies, no unsplit L tasks; every `TODO(T-XXXX)` under crates/, bindings/, tools/, scripts/ names an open task (decision 0072) |
+| Tasks | `scripts/tasks.py validate` | task schema, ids, dependencies, no unsplit L tasks; every `TODO(T-XXXX)` under crates/, bindings/, tools/, scripts/ names an open task (decision 0072); a task the branch adds lists no cell another open task lists unless one names the other (T-3229, decision 0182) |
 | Dependencies | `cargo deny check` | license allow-list, RustSec advisories, sources, no wildcard versions |
 | Unused deps | `cargo machete` | none |
 | Spelling | `typos` | clean (Excel names allow-listed in `_typos.toml`) |
@@ -65,7 +66,7 @@ On docs-only PRs (decision 0049) CI skips the rust, eval and python jobs; hygien
   drop, so fix PRs do not conflict on the file, and the steward lowers the lock daily with `make
   eval-lower-visible-lock` (decision 0093). Any other rise needs `--allow-regressions` and a
   decision record.
-- **Lint debt / duplication / oversized files:** the scripts fail on increases. When you reduce
+- **Lint debt / duplication / oversized files / fitted constants:** the scripts fail on increases. When you reduce
   them, run the script with `--update` and commit the JSON in the same PR.
 
 ## What reviewers check that tools cannot

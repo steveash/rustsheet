@@ -4,10 +4,11 @@ title: "Probe the near-zero root snap of GROUPBY and PIVOTBY aggregation LAMBDAs
 milestone: M7
 lane: research
 status: todo
-priority: P3
+priority: P1
 size: S
 tier: sonnet
 depends_on: []
+campaign: semantics
 ---
 
 ## Goal
@@ -15,6 +16,8 @@ Excel evidence for whether GROUPBY and PIVOTBY snap a near-zero `+`/`-` root of 
 whether an eta-reduced helper call (`MAP(r,SUM)`, `BYROW(r,SUM)`) snaps anything, so the engine can match each cell.
 
 ## Context
+- Decision 0188 (owner's 2026-10-31 rulings, R1(c)): this task owns probe-row or text cells of its milestone's exit,
+  which Phase 1 still counts in full, so it is in the semantics stage at P1 (was P3).
 - T-3095 (probes/t3095-snap-lambda-helpers, excel-graph 2026-10-29) found that MAP, MAKEARRAY, BYROW, BYCOL, REDUCE
   and SCAN snap their LAMBDA body's root at every call (docs/excel-semantics/numbers.md "Near-zero snapping",
   paragraph "Pickers, LET, LAMBDA and unary signs"). Its out-of-scope note asks for this probe once per-call snapping

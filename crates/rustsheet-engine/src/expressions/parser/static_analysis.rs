@@ -537,7 +537,6 @@ fn fallback_signature(kind: &Function, arg_count: usize) -> Option<Vec<Signature
         Function::Rand => args_signature_scalars(arg_count, 0, 0),
         Function::Randbetween => args_signature_scalars(arg_count, 2, 0),
         Function::Formulatext => args_signature_scalars(arg_count, 1, 0),
-        Function::Char => args_signature_scalars(arg_count, 1, 0),
         Function::Clean => args_signature_scalars(arg_count, 1, 0),
         Function::Asc | Function::Dbcs => args_signature_scalars(arg_count, 1, 0),
         Function::Arraytotext => args_signature_arraytotext(arg_count),
@@ -781,7 +780,6 @@ fn fallback_shape(kind: &Function, args: &[Node]) -> Option<StaticResult> {
         }
         Function::T => scalar_arguments(args),
         Function::Trim => scalar_arguments(args),
-        Function::Char => not_implemented(args),
         Function::Clean => scalar_arguments(args),
         Function::Asc | Function::Dbcs => scalar_arguments(args),
         Function::Phonetic => not_implemented(args),

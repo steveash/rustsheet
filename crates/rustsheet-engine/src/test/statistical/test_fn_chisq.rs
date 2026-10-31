@@ -155,6 +155,34 @@ fn test_fn_chisq_inv_rt_smoke() {
     assert_eq!(model._get_text("A9"), *"#NUM!");
 }
 
+/// T-2561: the right-tail `#NUM!` edge of Excel's search, one decade per df from 3 to 42
+/// (probes-numeric/t2561-chisq-inv-rt-num-*, excel-graph).
+#[test]
+fn chisq_inv_rt_num_edge() {
+    let mut model = new_empty_model();
+    let cells = [
+        ("A1", "=CHISQ.INV.RT(1E-20,3)", "96.23912394"),
+        ("A2", "=CHISQ.INV.RT(1E-21,3)", "#NUM!"),
+        ("A3", "=CHISQ.INV.RT(1E-81,10)", "409.2718204"),
+        ("A4", "=CHIINV(1E-82,10)", "#NUM!"),
+        ("A5", "=CHISQ.INV.RT(1E-87,11)", "441.3453172"),
+        ("A6", "=CHISQ.INV.RT(1E-88,11.9)", "#NUM!"),
+        ("A7", "=CHISQ.INV.RT(1E-146,22)", "761.0296431"),
+        ("A8", "=CHISQ.INV.RT(1E-147,22)", "#NUM!"),
+        ("A9", "=CHISQ.INV.RT(1E-291,42)", "1520.841398"),
+        ("A10", "=CHISQ.INV.RT(1E-292,42)", "#NUM!"),
+        ("A11", "=CHISQ.INV.RT(1E-300,43)", "1567.117853"),
+        ("A12", "=CHISQ.INV.RT(1E-300,2)", "1381.551056"),
+    ];
+    for (cell, formula, _) in cells {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, formula, expected) in cells {
+        assert_eq!(model._get_text(cell), *expected, "{formula}");
+    }
+}
+
 #[test]
 fn test_booleans() {
     let mut model = new_empty_model();

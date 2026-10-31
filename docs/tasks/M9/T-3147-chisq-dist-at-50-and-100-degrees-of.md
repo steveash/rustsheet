@@ -3,7 +3,7 @@ id: T-3147
 title: "CHISQ.DIST at 50 and 100 degrees of freedom and CHISQ.DIST(40,10,FALSE): Excel's large-shape prefactor (9 unowned visibly-off cells of the m9 CHISQ.DIST probe)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -52,10 +52,10 @@ records these cells (T-3147 bullet). Coordinate with T-2852 (same `gamma_prefact
 first records its forms there; neither may regress the other's cells.
 
 ## Acceptance criteria
-- [ ] The nine cells above (m9-chisq-dist A50, A51, A52, A54, A58, A61, A62, A63, A64) are within half a unit of
+- [x] The nine cells above (m9-chisq-dist A50, A51, A52, A54, A58, A61, A62, A63, A64) are within half a unit of
       Excel's 15th significant digit (`python3 scripts/exit_owners.py --all-off --function CHISQ.DIST` no longer
       lists them), with no new known-failure line in any eval/baseline file (`make eval-baseline`).
-- [ ] The candidate forms tried, with their bit-exact and visible-parity counts on the evidence above, are recorded in
+- [x] The candidate forms tried, with their bit-exact and visible-parity counts on the evidence above, are recorded in
       docs/excel-semantics/statistics.md (decision 0056: two attempts, then time-box).
 - [ ] `make check` green; reviewers approve.
 
@@ -72,3 +72,32 @@ rounded there (2 to 63 ulp), so the stage is `visible`. The target is that each 
 ## Cells added by gap triage (2026-10-29)
 `make eval` on main a2ecf005b (excel-graph), `python3 scripts/exit_owners.py --all-off`: visibly off, no open task named them, same cause as this task's cells.
 - probes-numeric/t3148-gamma-quantile-flat-band Calc!A356 `CHISQ.DIST(24.673905271877182,50,TRUE)`: Excel 0.000999999999999913, ours 0.0009999999999999105 (11 ulp), the shape-25 cdf this task fits. Its neighbours A340, A344, A348 and A350 are off by 1.6E-15 to 3.1E-15 relative but within 15 digits; check they follow.
+
+## Update (T-2638)
+T-2638 found Excel's form from shape 20 (docs/excel-semantics/statistics.md, the T-2638 paragraph): A51, A52, A54, A58,
+A61, A62 and A64 are bit-exact and A53, A63 and A68 within the 15th digit. Only A50 `CHISQ.DIST(40,10,FALSE)` (shape 5,
+the direct branch) is left; T-3219 works the same branch.
+
+## Outcome
+A50 `CHISQ.DIST(40,10,FALSE)` is Excel's bit for bit, so all nine owned cells are now within the 15th digit (eight
+closed by T-2638, which left A53, A63 and A68 within it; the t3148 flat-band cells were closed there too). Found: from
+shape 3 to 20 Excel's *density* above the mode (x > 1.4a) is T-2638's large-shape ratio form, with the exact Stirling
+error (`stirlerr_exact`); the cdf there is not, so P and Q keep the direct form (`incomplete_gamma::density_with`,
+`SMALL_RATIO_SHAPE_MIN` a fit in (2.5, 3]; the density moved to `incomplete_gamma/density.rs`, which
+leaves mod.rs headroom under the 1,000-line limit for T-2561 and T-3313). Every form tried, with its bit-exact and 1-ulp counts on the 110 literal
+small-shape densities in eval/, is in docs/excel-semantics/statistics.md (the T-3147 paragraph of "Incomplete gamma:
+accurate kernel"). Fit attempt 1 of 2 (decision 0056); the small-shape cdf and the densities below the mode stay with
+T-3219.
+
+Main (9efff2847) against HEAD, every cell of every vendored suite (calipers, corpus-bench and poi not fetched; both
+binaries rebuilt from a `cargo clean` of the engine and harness; the same result as against b666cbc85):
+- Fixed (bit-exact now), 3: probes-numeric/m9-chisq-dist A50 `CHISQ.DIST(40,10,FALSE)` (8 ulp before),
+  m9-gamma-dist-a9 A10 `GAMMA.DIST(27,9,1,FALSE)` and A20 `GAMMA.DIST(54,9,2,FALSE)` (1 ulp each).
+- Lost bit-exact, 1: probes-numeric/m9-gamma-dist-a9 A30 `GAMMA.DIST(27000000,9,1000000,FALSE)`, 1 ulp (ungated).
+- Changed, still off, 3: gen-m9/984cba67bbe6972b A42 `CHISQ.DIST(37.5,6,FALSE)` 6 -> 1 ulp (a T-3219 cell),
+  gen-m9/9cca17438a7e6f8a A255 `CHISQ.DIST(Data!B11,10,"FALSE")` 11 -> 1, probes-numeric/t1049-chisqdist A48
+  `CHISQ.DIST(50,20,FALSE)` 8 -> 10 (visibly off before and after: Excel is 8 ulp below the true value there, so
+  neither form is Excel's at x = 2.5a, shape 10; the first two were within the 15th digit before and after).
+- Visibly fixed, 2: m9-chisq-dist A50 and gen-m9/984cba67bbe6972b A42. Newly visibly off: 0. Type or error changes: 0.
+- Gated suites: 0 regressions, no baseline change (`make eval-baseline`); visible parity 2,577 in-scope cells off.
+
