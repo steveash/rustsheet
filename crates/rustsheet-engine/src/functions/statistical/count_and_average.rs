@@ -45,23 +45,26 @@ const AVERAGE_ARGS: AggregatePolicy = AggregatePolicy {
     nested: NestedReading::NotAvailable,
 };
 
-/// AVERAGE itself: [`AVERAGE_ARGS`], but an array of references is read by its elements'
-/// top-left cells (SPEC-0014 rule 4: `AVERAGE(OFFSET(A1,{0;1},0))` is 50.5;
-/// probes/reference-lift-consumers E21, E133, -b2 E137, E165, E181). The rest of the family is
-/// unprobed there and keeps the value view (T-2065).
+/// AVERAGE, VAR.S and STDEV.S: [`AVERAGE_ARGS`], but an array of references is read by its
+/// elements' top-left cells (SPEC-0014 rule 4: `AVERAGE(OFFSET(A1,{0;1},0))` is 50.5;
+/// probes/reference-lift-consumers E21, E133, -b2 E137, E165, E181; `STDEV.S(..)` 70.0035713374682
+/// and `STDEV.S(OFFSET(A1,0,0,{1;2}))` 0: probes/t2065-lift-stdevs, probes/t2816-lift-stdevs,
+/// T-2824). The rest of the family is unprobed there and keeps the value view.
 const AVERAGE_TOP_LEFT_ARGS: AggregatePolicy = AggregatePolicy {
     grids: GridReading::TopLeft,
     ..AVERAGE_ARGS
 };
 
-/// SUMSQ: an empty argument is skipped (unprobed: `SUMSQ(1,)`, T-1748 left it), and errors rank as in
+/// SUMSQ: an empty argument is skipped (unprobed: `SUMSQ(1,)`, T-1748 left it), errors rank as in
 /// the AVERAGE family: a direct error beats a referenced or array error whichever comes first
-/// (probes/aggregate-error-precedence-stat-family rows 10-12, T-1439).
+/// (probes/aggregate-error-precedence-stat-family rows 10-12, T-1439), and an array of
+/// references is read by its elements' top-left cells (`SUMSQ(OFFSET(A1,{0;1},0))` is 10001;
+/// probes/t2065-lift-sumsq, probes/t2816-lift-sumsq*, T-2824).
 const SKIP_EMPTY_ARGS: AggregatePolicy = AggregatePolicy {
     reading: ArgReading::Aggregate,
     errors: ErrorRule::Ranked,
     skip_empty_args: true,
-    grids: GridReading::Values,
+    grids: GridReading::TopLeft,
     nested: NestedReading::NotAvailable,
 };
 
@@ -96,6 +99,20 @@ impl Model {
         self.for_each_aggregate_number(args, cell, AVERAGE_ARGS, AVERAGE_NUMBERS, f)
     }
 
+    /// [`Self::for_each_value`], but an array of references is read by its elements' top-left
+    /// cells ([`AVERAGE_TOP_LEFT_ARGS`]: VAR.S and STDEV.S).
+    pub(crate) fn for_each_value_top_left<F>(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        f: F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(f64),
+    {
+        self.for_each_aggregate_number(args, cell, AVERAGE_TOP_LEFT_ARGS, AVERAGE_NUMBERS, f)
+    }
+
     /// `for_each_value` that skips empty arguments (`SUMSQ(1, )`) instead of counting them as 0;
     /// errors rank as in `for_each_value` (T-1439). Excel counts the empty argument of AVEDEV and
     /// DEVSQ as 0 (probes/stat-order-floor-batch A274, A299, T-1748), so those use
@@ -114,11 +131,13 @@ impl Model {
 
     /// The values AVERAGEA, MAXA and MINA read from `args`: a reference's cells and a direct
     /// argument coerce text to 0 and booleans to 1/0 (coercion.md "MAXA / MINA"), while an array
-    /// value's elements follow `array_text` (statistics.md "AVERAGEA, MAXA and MINA over an array").
+    /// value's elements follow `array_text` (statistics.md "AVERAGEA, MAXA and MINA over an array"),
+    /// and an array of references is read as `grids` says.
     fn for_each_value_a<F>(
         &mut self,
         args: &[Node],
         array_text: ArrayNumbers,
+        grids: GridReading,
         cell: CellReferenceIndex,
         mut f: F,
     ) -> Result<(), CalcResult>
@@ -130,7 +149,7 @@ impl Model {
             cells: CellNumbers::CoercedA,
             array: array_text,
         };
-        let mut walk = AggregateWalk::new(A_ARGS);
+        let mut walk = AggregateWalk::new(AggregatePolicy { grids, ..A_ARGS });
         let mut visit = |model: &mut Self, source, value| {
             // A text or FALSE cell or array element counts as 0 but is no addend of a sum (`true`
             // below); a direct "0" or FALSE is one (probes/t3092-averagea-subtotal-snap D1, D3, D5-D10).
@@ -223,8 +242,13 @@ impl Model {
         let mut sum = SumParts::default();
         // Coerced as MAXA coerces, a cached range of a linked workbook included
         // (`AVERAGEA([1]Uses!$A$1:$B$3)` is 3.2; fixtures/external-link-cached-ranges Refs!B53).
-        if let Err(error) =
-            self.for_each_value_a(args, ArrayNumbers::TextZero, cell, |value, text| {
+        if let Err(error) = self.for_each_value_a(
+            args,
+            ArrayNumbers::TextZero,
+            // probes/t2065-lift-averagea, probes/t2816-lift-averagea-* (T-2824).
+            GridReading::TopLeftElements,
+            cell,
+            |value, text| {
                 count += 1.0;
                 // Rounds each addition twice like AVERAGE's (probes-numeric/double-rounding-accumulators).
                 // A text counts in `count` but adds no 0 addend, so a snap before it still holds
@@ -232,8 +256,8 @@ impl Model {
                 if !text {
                     sum.add(value);
                 }
-            })
-        {
+            },
+        ) {
             return error;
         }
         if count == 0.0 {
@@ -379,13 +403,19 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let mut mina: Option<f64> = None;
-        if let Err(e) = self.for_each_value_a(args, ArrayNumbers::Numbers, cell, |f, _| {
-            if let Some(m) = mina {
-                mina = Some(m.min(f));
-            } else {
-                mina = Some(f);
-            }
-        }) {
+        if let Err(e) = self.for_each_value_a(
+            args,
+            ArrayNumbers::Numbers,
+            GridReading::Values,
+            cell,
+            |f, _| {
+                if let Some(m) = mina {
+                    mina = Some(m.min(f));
+                } else {
+                    mina = Some(f);
+                }
+            },
+        ) {
             return e;
         }
         // No value at all is 0, as for MAX (`MINA(Z1:Z3)` over blanks and `MINA({"a"})` are 0;
@@ -398,13 +428,19 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let mut maxa: Option<f64> = None;
-        if let Err(e) = self.for_each_value_a(args, ArrayNumbers::Numbers, cell, |f, _| {
-            if let Some(m) = maxa {
-                maxa = Some(m.max(f));
-            } else {
-                maxa = Some(f);
-            }
-        }) {
+        if let Err(e) = self.for_each_value_a(
+            args,
+            ArrayNumbers::Numbers,
+            GridReading::TopLeftElements,
+            cell,
+            |f, _| {
+                if let Some(m) = maxa {
+                    maxa = Some(m.max(f));
+                } else {
+                    maxa = Some(f);
+                }
+            },
+        ) {
             return e;
         }
         // No value at all is 0, as for MAX (`MAXA(Z1:Z3)` over blanks and `MAXA({"a"})` are 0;

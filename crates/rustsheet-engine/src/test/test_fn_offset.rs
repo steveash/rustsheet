@@ -211,20 +211,71 @@ fn fn_offset_lifted_into_top_left_aggregates() {
     assert_eq!(model._get_text("C13"), *"0");
 }
 
-// The aggregates SPEC-0014 rules 4-5 do not name keep the value view, every reference element
-// `#VALUE!`, until their Excel results are known (T-2065).
+// STDEV.S, VAR.S and SUMSQ read each element of an array of references by its top-left cell, as
+// SUM does; AVERAGEA and MAXA read that cell as an array element, so text is 0 and a blank or TRUE
+// is skipped (T-2824; probes/t2065-lift-*, probes/t2816-lift-*, excel-graph). The data is the
+// probes': A1:A3 1, 100, 10000, B1:B3 2, 200, 20000, A4 "5", A5 blank, A6 TRUE, A7 7.
+#[test]
+fn fn_offset_lifted_into_the_statistical_aggregates_reads_top_left_cells() {
+    let mut model = new_empty_model();
+    for (cell, value) in [
+        ("A1", "1"),
+        ("A2", "100"),
+        ("A3", "10000"),
+        ("B1", "2"),
+        ("B2", "200"),
+        ("B3", "20000"),
+        ("A4", "'5"),
+        ("A6", "TRUE"),
+        ("A7", "7"),
+    ] {
+        model._set(cell, value);
+    }
+    let cases = [
+        // t2065: single-cell elements.
+        ("=STDEV.S(OFFSET(A1,{0;1},0))", "70.00357134"),
+        ("=VAR.S(OFFSET(A1,{0;1},0))", "4900.5"),
+        ("=SUMSQ(OFFSET(A1,{0;1},0))", "10001"),
+        ("=AVERAGEA(OFFSET(A4,{0;1;2},0))", "0"),
+        ("=MAXA(OFFSET(A4,{0;1;2},0))", "0"),
+        // t2816: multi-cell elements count by their top-left cell, not by the formula's row.
+        ("=STDEV.S(OFFSET(A1,0,0,{1;2}))", "0"),
+        ("=VAR.S(OFFSET(A1,0,0,{1;2}))", "0"),
+        ("=SUMSQ(OFFSET(A1,0,0,{1;2}))", "2"),
+        ("=SUMSQ(OFFSET(A2,0,0,{1;2}))", "20000"),
+        // t2816: text is 0, a blank or TRUE element is skipped.
+        ("=AVERAGEA(OFFSET(A4,{0;3},0))", "3.5"),
+        ("=MAXA(OFFSET(A4,{0;3},0))", "7"),
+        ("=AVERAGEA(OFFSET(A5,{0;1},0))", "#DIV/0!"),
+        ("=MAXA(OFFSET(A5,{0;1},0))", "0"),
+    ];
+    for (row, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("E{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, expected)) in cases.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("E{}", row + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
+}
+
+// The aggregates no probe has read an array of references with keep the value view, every
+// reference element `#VALUE!`: MEDIAN (Excel for the web cannot open it, M14), and VAR.P,
+// STDEV.P and MINA, which are unprobed (T-2824 left them).
 #[test]
 fn fn_offset_lifted_into_other_aggregates_is_its_value_view() {
     let mut model = new_empty_model();
     model._set("A1", "1");
     model._set("A2", "100");
     model._set("C1", "=MEDIAN(OFFSET(A1,{0;1},0))");
-    model._set("C2", "=AVERAGEA(OFFSET(A1,{0;1},0))");
-    model._set("C3", "=STDEV.S(OFFSET(A1,{0;1},0))");
-    model._set("C4", "=MAXA(OFFSET(A1,{0;1},0))");
-    model._set("C5", "=SUMSQ(OFFSET(A1,{0;1},0))");
+    model._set("C2", "=VAR.P(OFFSET(A1,{0;1},0))");
+    model._set("C3", "=STDEV.P(OFFSET(A1,{0;1},0))");
+    model._set("C4", "=MINA(OFFSET(A1,{0;1},0))");
     model.evaluate();
-    for cell in ["C1", "C2", "C3", "C4", "C5"] {
+    for cell in ["C1", "C2", "C3", "C4"] {
         assert_eq!(model._get_text(cell), *"#VALUE!", "{cell}");
     }
 }

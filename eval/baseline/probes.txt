@@ -3433,11 +3433,6 @@ F	probes/t1924-locale-tag-extended-hex.case.json	S!B28
 F	probes/t1924-locale-tag-extended-hex.case.json	S!B29
 F	probes/t1924-locale-tag-extended-hex.case.json	S!B3
 F	probes/t1924-locale-tag-extended-hex.case.json	S!B4
-F	probes/t2065-lift-averagea.case.json	Sheet1!E1
-F	probes/t2065-lift-maxa.case.json	Sheet1!E1
-F	probes/t2065-lift-stdevs.case.json	Sheet1!E1
-F	probes/t2065-lift-sumsq.case.json	Sheet1!E1
-F	probes/t2065-lift-vars.case.json	Sheet1!E1
 F	probes/t2429-hypgeom-huge-count.case.json	Calc!A1
 F	probes/t2429-hypgeom-huge-count.case.json	Calc!A13
 F	probes/t2429-hypgeom-huge-count.case.json	Calc!A19
@@ -3519,13 +3514,10 @@ F	probes/t2576-error-type-cell-paired.case.json	Calc!E16
 F	probes/t2576-error-type-cell-paired.case.json	Calc!E34
 F	probes/t2576-error-type-cell-paired.case.json	Calc!F34
 F	probes/t2577-indirect-ref-array.case.json	Calc!A148
-F	probes/t2577-indirect-ref-array.case.json	Calc!A157
 F	probes/t2577-indirect-ref-array.case.json	Calc!A64
 F	probes/t2577-indirect-ref-array.case.json	Calc!T148
-F	probes/t2577-indirect-ref-array.case.json	Calc!T157
 F	probes/t2577-indirect-ref-array.case.json	Calc!T64
 F	probes/t2577-indirect-ref-array.case.json	Calc!U148
-F	probes/t2577-indirect-ref-array.case.json	Calc!U157
 F	probes/t2577-indirect-ref-array.case.json	Calc!U64
 F	probes/t2738-gamma-dist-tiny-ratio.case.json	S!A4
 F	probes/t2753-gamma-density-ratio-sweep.case.json	S!A1

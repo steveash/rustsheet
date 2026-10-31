@@ -81,7 +81,10 @@ pub(crate) fn excel_variance(values: &[f64], kind: VarianceKind) -> f64 {
 
 impl Model {
     /// VAR.P / VAR.S / STDEV.P / STDEV.S (and AGGREGATE 7, 8, 10, 11) of the numbers
-    /// `for_each_value` yields.
+    /// `for_each_value` yields. The sample forms read an array of references by its elements'
+    /// top-left cells (`STDEV.S(OFFSET(A1,{0;1},0))` is 70.0035713374682; probes/t2065-lift-stdevs,
+    /// -vars, probes/t2816-lift-stdevs, -vars, T-2824); the population forms are unprobed there
+    /// and keep the value view.
     pub(crate) fn variance_of_values(
         &mut self,
         args: &[Node],
@@ -94,7 +97,12 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let mut values = Vec::new();
-        if let Err(error) = self.for_each_value(args, cell, |value| values.push(value)) {
+        let push = |value| values.push(value);
+        let read = match kind {
+            VarianceKind::Sample => self.for_each_value_top_left(args, cell, push),
+            VarianceKind::Population => self.for_each_value(args, cell, push),
+        };
+        if let Err(error) = read {
             return error;
         }
         variance_result(&values, kind, std_dev, name, cell)
