@@ -125,6 +125,10 @@ class Phase1Exit(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("function rate\tn/a\tGate B not measured: the run did not score calipers, poi", text)
         self.assertEqual(self.failing(text), "Phase 1 exit: not met: function rate")
+        v15["gate_b"] = ["not", "an", "object"]
+        code, text = self.run_main(report(v15_checkpoint=v15))
+        self.assertEqual(code, 1)
+        self.assertIn("function rate\tn/a\tGate B unreadable", text)
 
     def test_a_stale_exception_fails_the_rate_even_when_met(self) -> None:
         v15 = dict(report()["v15_checkpoint"], stale_exceptions=["gen-m9/x!Calc!A1"])

@@ -146,8 +146,9 @@ def r1c_left_out(report: dict[str, Any]) -> dict[str, str]:
 
 def gate_b_suites(report: dict[str, Any]) -> set[str]:
     """The suites Gate B counted in this run (decision 0188 R1(b), `v15_checkpoint.gate_b.suites`)."""
-    gate = (report.get("v15_checkpoint") or {}).get("gate_b") or {}
-    return {str(s) for s in gate.get("suites") or []}
+    gate = (report.get("v15_checkpoint") or {}).get("gate_b")
+    # A malformed `gate_b` names no suite: Gate B's reading then applies nowhere, the stricter way.
+    return {str(s) for s in gate.get("suites") or []} if isinstance(gate, dict) else set()
 
 
 def counted(name: str, left_out: dict[str, str], gate_b: bool) -> bool:
@@ -156,6 +157,12 @@ def counted(name: str, left_out: dict[str, str], gate_b: bool) -> bool:
     since its rate is the 15-digit share whatever the math says."""
     cls = left_out.get(name)
     return cls is None or (gate_b and cls != R3_PASS)
+
+
+def counted_cell(case: str, key: str, left_out: dict[str, str], gate_b: set[str]) -> bool:
+    """`counted` for cell `key` of `case`, with Gate B's reading when the case's suite is one of
+    Gate B's suites (`gate_b`): the one rule of `--all-off` and `--unattributed`."""
+    return counted(f"{case}!{key}", left_out, case.split("/", 1)[0] in gate_b)
 
 
 def formula_of(cell: dict[str, Any]) -> str:
@@ -398,7 +405,7 @@ def unowned_unattributed(report: dict[str, Any], tasks_dir: Path) -> list[ExitCe
     cells = [
         ExitCell(UNATTRIBUTED, str(c["case"]), str(c["cell"]), str(c.get("formula") or ""))
         for c in report.get("unattributed_off") or []
-        if counted(f"{c['case']}!{c['cell']}", left_out, str(c["case"]).split("/", 1)[0] in gate_b)
+        if counted_cell(str(c["case"]), str(c["cell"]), left_out, gate_b)
     ]
     called = report_case_names(report, cells)
     return [c for c in cells if not owned(c, texts, called[c.case])]
@@ -441,10 +448,12 @@ def attributed_off_cells(report: dict[str, Any]) -> list[OffCell]:
 
 
 def all_off_cells(report: dict[str, Any]) -> list[OffCell]:
-    """Every visibly-off Excel cell of the report that decision 0188 counts: attributed (by
-    function, sorted) and unattributed, less the R1(c) left-out cells of the suites outside Gate B
-    and the R3 passes of Gate B's suites, then the probe rows' counted cells the first two lists
-    lack (T-3428)."""
+    """Every visibly-off Excel cell of the report that decision 0188's Gate B and R1(c) rows count:
+    attributed (by function, sorted) and unattributed, less the R1(c) left-out cells of the suites
+    outside Gate B and the R3 passes of Gate B's suites, then the probe rows' counted cells the first
+    two lists lack (T-3428). Two exit rows read wider lists and are owned through `unowned` per
+    milestone, not here: a gen suite's row counts every visibly-off cell (an R3 pass too), and M1's
+    frozen `m1-probes` list counts its Phase 1b cells."""
     by_key = {
         (str(case["id"]), f"{c['sheet']}!{c['cell']}"): c
         for case in report.get("cases") or []
@@ -457,16 +466,12 @@ def all_off_cells(report: dict[str, Any]) -> list[OffCell]:
 
     left_out, gate_b = r1c_left_out(report), gate_b_suites(report)
 
-    def keep(o: OffCell) -> bool:
-        suite = o.cell.case.split("/", 1)[0]
-        return counted(f"{o.cell.case}!{o.cell.key}", left_out, suite in gate_b)
-
     out = attributed_off_cells(report)
     out += [
         off(UNATTRIBUTED, str(c["case"]), str(c["cell"]), str(c.get("formula") or ""))
         for c in report.get("unattributed_off") or []
     ]
-    out = [o for o in out if keep(o)]
+    out = [o for o in out if counted_cell(o.cell.case, o.cell.key, left_out, gate_b)]
     seen = {(o.cell.case, o.cell.key) for o in out}
     cases_with_cells = {k[0] for k in by_key}
     for row in report.get("probe_milestones") or []:

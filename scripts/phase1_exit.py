@@ -130,6 +130,8 @@ def rate_line(report: dict[str, Any]) -> Line:
     unchecked = list(v15.get("unchecked_exceptions") or [])
     gate = v15.get("gate_b")
     detail = f"{v15.get('phase1_line') or 'no phase1_line in the report'}"
+    if gate is not None and not isinstance(gate, dict):
+        return Line("function rate", NOT_MEASURED, "Gate B unreadable: v15_checkpoint.gate_b is not an object")
     if isinstance(gate, dict) and gate.get("measured") is not True:
         missing = ", ".join(str(s) for s in gate.get("missing") or []) or "unknown suites"
         return Line("function rate", NOT_MEASURED, f"Gate B not measured: the run did not score {missing}")

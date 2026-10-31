@@ -50,4 +50,3 @@ Done (2026-10-31).
   `test_cells_decision_0188_leaves_out_need_no_owner` and `test_the_rate_reads_gate_b_met_not_met_or_not_measured`.
   All 62 script tests pass.
 - **Eval delta:** none; only the report and the scripts change.
-

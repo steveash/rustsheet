@@ -24,8 +24,10 @@
     did not score. `n/a` fails the exit as `not met` does, because an unmeasured criterion is never met. A
     report from before T-3359 has no `gate_b`, and for it the line reads `phase1_met` as before.
 - **Consequences:**
-  - The scripts list fewer cells only where decision 0188 already leaves cells out. They list none that the
-    report's rows count, so no exit reads as met early. An unclassified cell counts.
+  - The scripts list fewer cells only where decision 0188 already leaves cells out, so no exit reads as met early.
+    An unclassified cell counts. `--all-off` follows Gate B and the R1(c) rows. Two exit rows read wider lists: a gen
+    suite's row counts an R3 pass, and M1's frozen list counts its Phase 1b cells. Those cells are still listed per
+    milestone by `exit_owners.py M<k>`, which `phase1_exit.py` runs for every Phase 1 milestone.
   - M1's frozen `m1-probes` list is unchanged: it still counts every visibly-off cell (T-3427).
   - Tests: `scripts/test_exit_owners.py` (R1(c) rows and the rate; `--all-off` inside and outside Gate B's
     suites) and `scripts/test_phase1_exit.py` (Gate B met, not met and n/a).
