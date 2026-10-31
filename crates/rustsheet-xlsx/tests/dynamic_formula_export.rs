@@ -253,6 +253,7 @@ fn a_plain_formula_with_a_spill_reference_imports_dynamic() {
         ] {
             let start = xml.find(&format!("<c r=\"{cell}\"")).unwrap();
             let end = start + xml[start..].find("</c>").unwrap();
+            // An empty replacement drops the whole `<c>…</c>`; otherwise its `</c>` is kept.
             let close = if replacement.is_empty() { end + 4 } else { end };
             xml = format!("{}{replacement}{}", &xml[..start], &xml[close..]);
         }

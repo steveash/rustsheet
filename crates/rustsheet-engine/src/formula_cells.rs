@@ -165,34 +165,42 @@ impl Model {
             let Some(formulas) = self.parsed_formulas.get(sheet) else {
                 continue;
             };
-            let dynamic = |f: i32| {
-                usize::try_from(f)
-                    .ok()
-                    .and_then(|f| formulas.get(f))
-                    .is_some_and(|parsed| {
-                        !matches!(parsed.static_result, StaticResult::Scalar)
-                            && legacy_formula_is_dynamic(&parsed.evaluated)
-                    })
-            };
+            // Decided once per shared formula, not per cell: many cells share one formula, and
+            // the walks are as long as its tree (T-3467 review).
+            let dynamic: Vec<bool> = formulas
+                .iter()
+                .map(|parsed| {
+                    is_dynamic_anchor(parsed) && legacy_formula_is_dynamic(&parsed.evaluated)
+                })
+                .collect();
             let promoted: Vec<(i32, i32)> = worksheet
                 .sheet_data
                 .cells()
                 .filter_map(|(row, column, cell)| match cell {
-                    Cell::CellFormula { f, .. } if dynamic(*f) => Some((row, column)),
+                    Cell::CellFormula { f, .. }
+                        if usize::try_from(*f)
+                            .ok()
+                            .and_then(|f| dynamic.get(f))
+                            .is_some_and(|dynamic| *dynamic) =>
+                    {
+                        Some((row, column))
+                    }
                     _ => None,
                 })
                 .collect();
             for (row, column) in promoted {
                 if let Some(cell) = worksheet.sheet_data.cell_mut(row, column) {
-                    if let Cell::CellFormula { f, s, v } = cell.clone() {
-                        *cell = Cell::ArrayFormula {
+                    let placeholder = Cell::EmptyCell { s: 0 };
+                    *cell = match std::mem::replace(cell, placeholder) {
+                        Cell::CellFormula { f, s, v } => Cell::ArrayFormula {
                             f,
                             s,
                             r: (1, 1),
                             kind: ArrayKind::Dynamic,
                             v,
-                        };
-                    }
+                        },
+                        other => other,
+                    };
                 }
             }
         }
@@ -208,10 +216,8 @@ impl Model {
         formula_index: i32,
         style: i32,
     ) -> Result<(), String> {
-        let is_dynamic = !matches!(
-            self.parsed_formulas[sheet as usize][formula_index as usize].static_result,
-            StaticResult::Scalar
-        );
+        let is_dynamic =
+            is_dynamic_anchor(&self.parsed_formulas[sheet as usize][formula_index as usize]);
         let worksheet = self.workbook.worksheet_mut(sheet)?;
         if is_dynamic {
             worksheet.set_cell_with_dynamic_formula(row, column, formula_index, style, 1, 1)
@@ -257,4 +263,11 @@ impl Model {
         }
         Ok(())
     }
+}
+
+/// Whether a formula cell holding `parsed` is stored as a dynamic anchor: unless its static result
+/// is a scalar. A typed formula follows this alone; a formula loaded without the dynamic-array flag
+/// must also have no automatic `@` ([`Model::promote_dynamic_formula_cells`]).
+fn is_dynamic_anchor(parsed: &ParsedFormula) -> bool {
+    !matches!(parsed.static_result, StaticResult::Scalar)
 }

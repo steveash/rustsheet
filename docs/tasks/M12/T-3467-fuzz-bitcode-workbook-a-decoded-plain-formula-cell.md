@@ -108,5 +108,9 @@ formulas.
 - `rustsheet-xlsx/tests/dynamic_formula_export.rs`: a plain `<f>SIN(A1#)</f>` imports dynamic and spills.
 - The probe passes (19/19).
 
-**Fuzz inputs.** Both saved crash inputs of `bitcode_workbook` no longer crash; see the PR for the rerun.
+**Fuzz inputs.** Both saved crash inputs of `bitcode_workbook` no longer crash. `cargo fuzz run bitcode_workbook` on
+`crash-42ebad52b089168fc0d32702772ff81bbf37b01d` and on `crash-2b2723aaaee50a4f00c9f14fb9a411b746829af2` runs each
+cleanly, in 23 ms and 78 ms, exit 0.
 
+**Cost.** The promotion decides once per shared formula, then walks the cells, so a load costs O(cells + formula size)
+(security review). The rule shares `is_dynamic_anchor` with the typed path.
