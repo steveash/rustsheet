@@ -117,25 +117,25 @@ fn fn_rate_holds_on_a_flat_secant() {
     check_cells(
         &[],
         &[
-            // A1: decision 0188's example, a zero step at |f| 3.2e-7
+            // probes/t3348-rate-fv-nonzero A1: decision 0188's example, a zero step at |f| 3.2e-7
             (
                 "A1",
                 "=RATE(239,-14841.27102594,344293.4825124,-155496.6323522,0)",
                 "0.04310546919282547",
             ),
-            // A10: the same run at 2^8 the scale, |f| 8.3e-5
+            // probes/t3348-rate-fv-nonzero A10: the same run at 2^8 the scale, |f| 8.3e-5
             (
                 "A2",
                 "=RATE(239,-14841.27102594*2^8,344293.4825124*2^8,-155496.6323522*2^8,0)",
                 "0.04310546919282547",
             ),
-            // A182: f1 = f0 at two iterates 7e-18 apart, type 1
+            // probes/t3348-rate-fv-nonzero A182: f1 = f0 at two iterates 7e-18 apart, type 1
             (
                 "A3",
                 "=RATE(189,-90562.52118237,2416244.605283,-2145.356961869,1)",
                 "0.0389104591457023",
             ),
-            // A99: held at |f| 1.6e-4, over the cap's 1e-4
+            // probes/t3348-rate-fv-nonzero A99: held at |f| 1.6e-4, over the cap's 1e-4
             ("A4", "=RATE(234,2469.37,-28911.03,-549000.41,1)", "#NUM!"),
             // probes/rate-zero-residual-guess A1: flat on a residual of exactly 0
             ("A5", "=RATE(1,0,0,0)", "#NUM!"),
@@ -167,7 +167,7 @@ fn fn_rate_runs_on_below_minus_one() {
                 "=RATE(12,7.219302529839,-62.09095397375,-23.2320462273,1,-0.5)",
                 "0.00667837581646823",
             ),
-            // A3: converges below -1
+            // probes/t3348-rate-below-minus-one A3: converges below -1
             (
                 "A4",
                 "=RATE(4,-29.08640117694,104.8028437104,1.6496936838,0,-0.5)",
