@@ -169,11 +169,11 @@ merge-ready-verify: ## Check a PR's readiness marker, V1-V6 of SPEC-0027 (reads 
 	$(PY) scripts/merge_ready.py verify --pr '$(PR)'
 
 .PHONY: mark-ready merge-labels verdict-record
-catch-up: ## Clear a merge-train ejection for a conflict with main that lies only in eval/baseline/ (decision 0205): make catch-up PR=123 merges main into the PR, re-records the lists and pushes; then make mark-ready PR=123 CARRY=1 once CI is green (exit 0: pushed; 1: refused; 2: error)
+catch-up: ## Clear a merge-train ejection for a conflict with main that lies only in eval/baseline/ (decision 0207): make catch-up PR=123 merges main into the PR, re-records the lists and pushes; then make mark-ready PR=123 CARRY=1 once CI is green (exit 0: pushed; 1: refused; 2: error)
 	$(if $(PR),,$(error PR=<number> is required))
 	$(PY) scripts/merge_catchup.py --pr '$(PR)'
 
-mark-ready: ## Mark a green, approved PR ready for the merge train (SPEC-0027 section 2): make mark-ready PR=123, its verdicts from the verdict records on the head [REVIEW="security=APPROVE architecture=APPROVE quality=APPROVE [excel-fidelity=APPROVE]" for a reviewer with no record, while verdict_records = warn] (or CARRY=1 after a merge of main that is clean or only re-records eval-gated baseline lists, decision 0205) [STEP=1: print the writes as step-mode actions] (exit 0: marked; 1: refused; 2: error)
+mark-ready: ## Mark a green, approved PR ready for the merge train (SPEC-0027 section 2): make mark-ready PR=123, its verdicts from the verdict records on the head [REVIEW="security=APPROVE architecture=APPROVE quality=APPROVE [excel-fidelity=APPROVE]" for a reviewer with no record, while verdict_records = warn] (or CARRY=1 after a merge of main that is clean or only re-records eval-gated baseline lists, decision 0207) [STEP=1: print the writes as step-mode actions] (exit 0: marked; 1: refused; 2: error)
 	$(if $(PR),,$(error PR=<number> is required))
 	$(PY) scripts/merge_ready.py mark --pr '$(PR)' $(if $(CARRY),--carry) $(if $(REVIEW),--review '$(REVIEW)') $(if $(STEP),--step)
 

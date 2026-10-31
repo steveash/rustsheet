@@ -284,7 +284,7 @@ def verdict(pr: int, head: str, at: str, *failures: merge_ready.Failure) -> merg
 
 class Candidates(unittest.TestCase):
     def test_a_run_builds_from_more_ready_prs_than_one_batch(self) -> None:
-        # Ejected or deferred candidates make room for later ones (decision 0204), so a run hands
+        # Ejected or deferred candidates make room for later ones (decision 0206), so a run hands
         # the build up to CANDIDATES_MAX ready PRs, oldest first, not just the first BATCH_MAX.
         count = merge_train.CANDIDATES_MAX + 3
         found = merge_train.Collected(

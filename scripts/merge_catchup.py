@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Catch up a PR the merge train ejected for a conflict with main, when the conflict is only in
-the eval-gated known-failure lists (decision 0205).
+the eval-gated known-failure lists (decision 0207).
 
   scripts/merge_catchup.py --pr N   # exit 0: pushed; 1: refused (nothing pushed); 2: error
 

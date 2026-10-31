@@ -1,5 +1,5 @@
 ---
-id: T-3476
+id: T-3500
 title: "The merge train fills its batch past ejected candidates"
 milestone: M2
 lane: harness
@@ -18,14 +18,14 @@ ejected or deferred candidate no longer shrinks the batch.
 ## Context
 - Step 2 took only the 5 oldest ready PRs, so ejections inside that window shrank the batch. On
   2026-10-31 a train with 21 PRs ready merged only 2 (#2548, #2568) after ejecting #2585, #2562,
-  #2564 and #2565. Decision 0204 has the details.
+  #2564 and #2565. Decision 0206 has the details.
 
 ## Acceptance criteria
 - [x] Runs and dry runs build from up to `CANDIDATES_MAX` (20) ready PRs, oldest first; the build
       keeps at most `BATCH_MAX` members.
 - [x] Tests: `candidates()` returns 20 of 23 ready PRs in order, and a build with 2 PRs
       conflicting with main still fills to 5 members from the rest.
-- [x] SPEC-0027 step 2 and decision 0204 record the change; the scripts tests pass.
+- [x] SPEC-0027 step 2 and decision 0206 record the change; the scripts tests pass.
 
 ## Out of scope
 - Resolving ejected PRs' conflicts (baseline-only conflicts are a separate change).

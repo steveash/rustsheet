@@ -46,7 +46,7 @@ ID_CHECKS = (("tasks.py", "validate"), ("check_decisions.py",))
 BATCH_MAX = 5
 # Ready PRs a run hands to the build, oldest first. The build keeps the first BATCH_MAX that merge
 # cleanly, so an ejected or deferred PR makes room for the next one instead of shrinking the
-# batch (decision 0204). Each candidate costs one local merge.
+# batch (decision 0206). Each candidate costs one local merge.
 CANDIDATES_MAX = 4 * BATCH_MAX
 # Ids that an id-check failure line names; only these, never its file names, reach a reason.
 COLLIDING_ID = re.compile(r"\b(?:duplicate id (T-\d{4})|decision number (\d{4}))\b")

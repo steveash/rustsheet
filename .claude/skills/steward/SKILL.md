@@ -82,7 +82,7 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
     Any session may clear a `conflict with main` ejection whose conflicts are all in the
     eval-gated, non-fetched suites' `eval/baseline/<suite>.txt` lists: run `make catch-up
     PR=<n>`, which merges `main` in, re-records the lists and pushes, then `make mark-ready
-    PR=<n> CARRY=1` once CI is green (decision 0205). Any other conflict stays with the PR's
+    PR=<n> CARRY=1` once CI is green (decision 0207). Any other conflict stays with the PR's
     worker.
   - **Stall fallback** (`train` mode only): any session may run one `make merge-train TRAIN=1`
     pass when a PR has been ready for more than 45 min (by its marker's `updated_at`), the last

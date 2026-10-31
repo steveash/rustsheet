@@ -1,6 +1,6 @@
-# 0204 — The merge train builds from up to 20 ready PRs so ejections do not shrink a batch
+# 0206 — The merge train builds from up to 20 ready PRs so ejections do not shrink a batch
 
-- **Status:** accepted (2026-10-31, T-3476; the owner asked for the fix)
+- **Status:** accepted (2026-10-31, T-3500; the owner asked for the fix)
 - **Context:** step 2 of SPEC-0027 section 4 handed the build only the `BATCH_MAX` (5) oldest
   ready PRs. The build ejects those that conflict with `main` or collide on an id, and defers
   those that conflict within the batch. It never pulled in the next ready PR. On 2026-10-31,

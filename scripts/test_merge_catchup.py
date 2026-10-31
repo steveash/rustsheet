@@ -1,4 +1,4 @@
-"""Tests for merge_catchup.py (`make catch-up`, decision 0205) over a temporary origin."""
+"""Tests for merge_catchup.py (`make catch-up`, decision 0207) over a temporary origin."""
 
 from __future__ import annotations
 

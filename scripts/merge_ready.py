@@ -53,7 +53,7 @@ from merge_lock import GitError, git
 ROOT = Path(__file__).resolve().parent.parent
 REMOTE = "origin"
 BASE_BRANCH = "main"
-# The known-failure lists; a carry-over merge may re-record the eval-gated ones (decision 0205).
+# The known-failure lists; a carry-over merge may re-record the eval-gated ones (decision 0207).
 BASELINE_DIR = "eval/baseline/"
 
 # Labels of the merge train (SPEC-0027 sections 2, 4 and "The switch").
@@ -493,7 +493,7 @@ class Repo:
         (`git merge-tree --write-tree`), except that the content of a list in `checked_baselines`
         may differ, without a failure line neither parent had: a conflict there resolved and the
         lists re-recorded (decision 0093). The eval
-        gate on the head, which marking requires green, checks exactly those lists (decision 0205).
+        gate on the head, which marking requires green, checks exactly those lists (decision 0207).
         Anything else (another file, an addition, deletion, rename or mode change) breaks the carry."""
         parents = self.git("rev-list", "--parents", "-n", "1", head).split()[1:]
         if len(parents) != 2 or parents[0] != prev:
@@ -530,7 +530,7 @@ class Repo:
     def new_failures(self, path: str, parents: Sequence[str], head: str) -> list[str]:
         """The known-failure lines (`F` and `TF`) of list `path` in `head` that no parent's list has.
         The eval gate only checks that a list matches the engine, so a regression recorded in a
-        merge would pass it; the carry refuses one instead (decision 0205)."""
+        merge would pass it; the carry refuses one instead (decision 0207)."""
 
         def failures(commit: str) -> set[str]:
             shown = git("show", f"{commit}:{path}", root=self.root, check=False)
@@ -688,7 +688,7 @@ def record_check(
 LABEL_STYLES = {
     READY_LABEL: ("0e8a16", "Marked ready for the merge train (make mark-ready, SPEC-0027)"),
     EJECTED_LABEL: ("d93f0b", "Ejected from a merge train; mark again after fixing (SPEC-0027)"),
-    STOP_LABEL: ("b60205", "Stops the merge train while any open PR carries it (SPEC-0027)"),
+    STOP_LABEL: ("b60207", "Stops the merge train while any open PR carries it (SPEC-0027)"),
 }
 # The step-mode actions `mark` prints (SPEC-0027 section 4, "GitHub access"); scripts/merge_step.py
 # holds the whole schema, the merger's actions included, and validates these (decision 0169).

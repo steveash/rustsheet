@@ -1,4 +1,4 @@
-# 0205 — Ejected PRs with baseline-only conflicts catch up without a new review
+# 0207 — Ejected PRs with baseline-only conflicts catch up without a new review
 
 - **Status:** accepted (2026-10-31, T-3487; the owner asked for the fix)
 - **Context:**

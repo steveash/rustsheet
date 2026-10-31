@@ -19,7 +19,7 @@ re-marked by any session, without a new review and without its original worker.
 ## Context
 - On 2026-10-31 trains ejected #2585, #2562, #2564, #2565, #2546 and #2532 for "conflict with
   main"; most such conflicts are in the known-failure lists. Their workers' sessions had ended,
-  so they stranded. Decision 0205 has the rule.
+  so they stranded. Decision 0207 has the rule.
 
 ## Acceptance criteria
 - [x] `carry_problem` accepts a merge of main whose tree differs from the plain merge only in the
@@ -28,7 +28,7 @@ re-marked by any session, without a new review and without its original worker.
 - [x] `make catch-up PR=<n>` merges main in, refuses non-baseline conflicts, takes main's side of
       the lists, runs `make eval-baseline` (refusing regressions), pushes without force and
       restores the checkout's branch (scripts/test_merge_catchup.py).
-- [x] SPEC-0027 "Carry-over", the steward skill's "Ejections" and decision 0205 record it.
+- [x] SPEC-0027 "Carry-over", the steward skill's "Ejections" and decision 0207 record it.
 - [x] The scripts tests pass.
 
 ## Out of scope
