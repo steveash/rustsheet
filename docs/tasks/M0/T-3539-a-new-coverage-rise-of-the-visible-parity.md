@@ -26,10 +26,10 @@ inside its own slack, so the PR is not ejected from the merge train for a count 
   (`ci-red`, visible parity) and every merge of `main` re-ran the re-record.
 
 ## Acceptance criteria
-- [ ] A new-coverage rise records `lock + new_coverage` (main's slack kept), not the run's count;
+- [x] A new-coverage rise records `lock + new_coverage` (main's slack kept), not the run's count;
       `--allow-regressions` and `--lower-visible-lock` keep recording the count.
-- [ ] Unit tests in visible_parity.rs pin the recorded value for each path.
-- [ ] Decision record amending 0093.
+- [x] Unit tests in visible_parity.rs pin the recorded value for each path.
+- [x] Decision record amending 0093 (0214).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

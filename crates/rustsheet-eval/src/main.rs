@@ -450,11 +450,8 @@ fn visible_parity_gate(
     );
     Ok(match visible_parity::judge(lock, count, update) {
         Judgement::Holds => true,
-        Judgement::Record => {
-            Lock {
-                visibly_off_cells: count.cells,
-            }
-            .write(root)?;
+        Judgement::Record(visibly_off_cells) => {
+            Lock { visibly_off_cells }.write(root)?;
             println!("  updated {LOCK_PATH}: commit it");
             true
         }

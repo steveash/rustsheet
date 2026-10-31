@@ -1,7 +1,7 @@
 //! The visible-parity ratchet (T-0061, decision 0088): the in-scope cells of the vendored gated
 //! suites that are visibly off from Excel (decision 0083) may not grow. `rustsheet-eval check`
 //! holds a full gated run to [`LOCK_PATH`] with [`judge`]; `update-baseline` records a rise that
-//! new cases account for, and only `update-baseline --lower-visible-lock` (the steward, daily)
+//! new cases account for (keeping main's slack, decision 0214), and only `update-baseline --lower-visible-lock` (the steward, daily)
 //! records a drop. A PR that only fixes cells leaves the lock alone, so parallel fix PRs do not
 //! all conflict on its one number (T-2245, decision 0093).
 
@@ -99,28 +99,31 @@ pub enum Judgement {
     /// The count is at or below the lock, and nothing is to be recorded. Below the lock is slack
     /// that the steward's daily `--lower-visible-lock` run takes back (decision 0093).
     Holds,
-    /// Record the count (`update-baseline` only).
-    Record,
+    /// Record this lock (`update-baseline` only): the run's count for a drop or an allowed
+    /// regression, and the old lock plus the new coverage for a rise new cases account for, so the
+    /// slack `main` already had stays (decision 0214).
+    Record(usize),
     /// More cells are visibly off than the lock (plus, when recording, the new coverage) allows.
     Regressed,
 }
 
 /// Judges `count` against `lock`. `update` is `None` for `check`, which fails only a rise. For
-/// `update-baseline` it records a rise that new cases account for, any rise with
-/// `--allow-regressions`, and a drop only with `--lower-visible-lock`.
+/// `update-baseline` it records a rise that new cases account for (as the old lock plus the new
+/// coverage), any rise with `--allow-regressions`, and a drop only with `--lower-visible-lock`.
 #[must_use]
 pub fn judge(lock: Lock, count: VisibleCount, update: Option<Update>) -> Judgement {
     let locked = lock.visibly_off_cells;
     match update {
         _ if count.cells == locked => Judgement::Holds,
         // A drop is recorded only for the steward's daily run; for everyone else it is slack.
-        Some(u) if count.cells < locked && u.lower => Judgement::Record,
+        Some(u) if count.cells < locked && u.lower => Judgement::Record(count.cells),
         _ if count.cells < locked => Judgement::Holds,
-        Some(u)
-            if u.allow_regressions || count.cells <= locked.saturating_add(count.new_coverage) =>
-        {
-            Judgement::Record
+        // Main's slack belongs to main: the PR adds only its new cases' cells to the lock, so cells
+        // main gains inside that slack after this branch was cut still fit (decision 0214).
+        Some(_) if count.cells <= locked.saturating_add(count.new_coverage) => {
+            Judgement::Record(locked.saturating_add(count.new_coverage))
         }
+        Some(u) if u.allow_regressions => Judgement::Record(count.cells),
         None | Some(_) => Judgement::Regressed,
     }
 }
@@ -223,8 +226,11 @@ mod tests {
         };
         assert_eq!(judge(lock, count(7, 0), Some(PR)), Judgement::Holds);
         let steward = Update { lower: true, ..PR };
-        assert_eq!(judge(lock, count(7, 0), Some(steward)), Judgement::Record);
-        assert_eq!(judge(lock, count(13, 3), Some(PR)), Judgement::Record);
+        assert_eq!(
+            judge(lock, count(7, 0), Some(steward)),
+            Judgement::Record(7)
+        );
+        assert_eq!(judge(lock, count(13, 3), Some(PR)), Judgement::Record(13));
         assert_eq!(judge(lock, count(13, 2), Some(PR)), Judgement::Regressed);
         assert_eq!(
             judge(lock, count(13, 2), Some(steward)),
@@ -234,10 +240,47 @@ mod tests {
             allow_regressions: true,
             ..PR
         };
-        assert_eq!(judge(lock, count(13, 0), Some(allow)), Judgement::Record);
+        assert_eq!(
+            judge(lock, count(13, 0), Some(allow)),
+            Judgement::Record(13)
+        );
         assert_eq!(judge(lock, count(10, 4), Some(PR)), Judgement::Holds);
         // New cases inside the slack below the lock need no write either.
         assert_eq!(judge(lock, count(9, 4), Some(PR)), Judgement::Holds);
+    }
+
+    /// A new-coverage rise keeps main's slack: with 3 cells of slack under a lock of 10, 4 new
+    /// visibly-off cells record 14, not the run's 11, so main may still gain 3 cells after the
+    /// branch was cut without failing the merged check (decision 0214, T-3539).
+    #[test]
+    fn a_new_coverage_rise_keeps_the_slack() {
+        let lock = Lock {
+            visibly_off_cells: 10,
+        };
+        assert_eq!(judge(lock, count(11, 4), Some(PR)), Judgement::Record(14));
+        assert_eq!(
+            judge(
+                Lock {
+                    visibly_off_cells: 14
+                },
+                count(14, 0),
+                None
+            ),
+            Judgement::Holds
+        );
+        let allow = Update {
+            allow_regressions: true,
+            ..PR
+        };
+        // An allowed regression beyond the new coverage records the count, as before.
+        assert_eq!(
+            judge(lock, count(16, 4), Some(allow)),
+            Judgement::Record(16)
+        );
+        assert_eq!(
+            judge(lock, count(11, 4), Some(allow)),
+            Judgement::Record(14)
+        );
     }
 
     #[test]
