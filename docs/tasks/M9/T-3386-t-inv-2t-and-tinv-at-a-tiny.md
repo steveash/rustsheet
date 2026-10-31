@@ -25,6 +25,13 @@ the region is evidenced as committed points; until then Excel's value stays the 
   with an owner ruling (decision 0188 R3); no agent adds one alone.
 - docs/excel-semantics/statistics.md "Two-tailed Student-t quantile with p near 1 is accurate in Excel (T-3349)".
 
+- Another point over 1e-4, at df 1 near p = 1 (gap triage 2026-10-31i): `T.INV.2T(0.999999999999999,1)` is
+  1.6155696572206502E-15 in Excel against the exact 1.5695408241038844E-15 (2.9E-2 relative), from Excel's 1/TAN form
+  (statistics.md "Two-tailed Student-t quantile with p near 1 is accurate in Excel (T-3349)"). T-2858 (branch
+  agent/functions-stat/T-2858-t-inv-df1) takes the cell
+  and matches Excel per directive 1; if the ruling here is the math, its region should say whether df 1 near p = 1
+  is in it.
+
 ## Acceptance criteria
 - [ ] A decision record with the owner's ruling (follow the math, or match Excel) and the region's bounds, from
       committed evidence points (T-3358's tables or a probe on both sides of the bound).

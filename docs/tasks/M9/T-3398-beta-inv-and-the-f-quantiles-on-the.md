@@ -50,6 +50,34 @@ search does not land on our own crossing (A31: ours is 9.5E-15 off the 50-digit 
 The other 12 visibly-off m9-beta-inv cells at small shapes, where Excel's cdf is flat or its search stops off the
 crossing, are T-3388's; the 5 `#NUM!` cells at p = 0.9999999999 are T-3351's.
 
+## Cells added by the gap triage (2026-10-31i)
+`make eval` on origin/main 0c2fbf706 (excel-graph), `scripts/exit_owners.py --all-off` and `--milestone M9`
+(`rate:F.INV`, `rate:F.INV.RT`, `rate:FINV`, `rate:BETAINV`, and four unattributed gen-m9 cells whose only non-glue
+call is an F quantile): 36 visibly-off cells of this task's five functions that no open task names cell by cell. The
+Goal already covers them; these lines make the ownership checkable. Examples, Excel / ours:
+`F.INV(0.5,1,1)` (m9-f-inv A4, t1049-finv A7) 0.9999999999999999 / 1.0000000000000009 (the root is exactly 1);
+`F.INV.RT(0.5,10,10)` (m9-f-inv-rt A25, m9-legacy-finv A38, FINV A37) 0.9999999999999999 / 0.9999999999999991;
+`FINV(0.5,5,50)` (m9-legacy-finv A39, F.INV.RT A40) 0.8821595104705021 / 0.8821595104704987;
+`F.INV.RT(1e-10,5,2)` (m9-f-inv-rt A15) 9999999999.299988 / 9999999999.3;
+`BETAINV(0.1,0.999,30,-0.0001)` (gen-m9/eced4bb6a0234c9e A291) 0.0033963068798590146 / 0.003396306879859034.
+The gen-m9 cell `F.INV.RT(0.5,2,123456789.1229)` (6E-9 relative off the root in Excel) stays T-2555's.
+- gen-m9/320d51765af9b6b7.case.json (2): Calc!A15, A379
+- gen-m9/40425341c5034eed.case.json (1): Calc!A108
+- gen-m9/4ab2ba98d26c8a5e.case.json (1): Calc!A390
+- gen-m9/589f42e67f4b4b8d.case.json (1): Calc!A365
+- gen-m9/60b0b6e69ad35a45.case.json (2): Calc!A150, A197
+- gen-m9/7674c89c824aca43.case.json (1): Calc!A212
+- gen-m9/a63d1c7d6f96c56d.case.json (1): Calc!A320
+- gen-m9/c18dbf21f11093f3.case.json (1): Calc!A92
+- gen-m9/c6cfda6bd10cae93.case.json (1): Calc!A183
+- gen-m9/e6cf3b20a014e6a3.case.json (1): Calc!A135
+- gen-m9/eced4bb6a0234c9e.case.json (1): Calc!A291
+- probes-numeric/m9-f-inv.case.json (5): Calc!A1, A4, A7, A21, A25
+- probes-numeric/m9-f-inv-rt.case.json (4): Calc!A1, A7, A15, A25
+- probes-numeric/m9-legacy-finv.case.json (12): Calc!A1, A2, A3, A4, A9, A10, A37, A38, A39, A40, A47, A48
+- probes-numeric/t1049-finv.case.json (1): Calc!A7
+- probes-numeric/t1049-finvrt.case.json (1): Calc!A14
+
 ## Acceptance criteria
 - [ ] Each of the five functions meets the Phase 1 rate, or the Outcome names every cell still visibly off with an
       owner.

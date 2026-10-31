@@ -35,6 +35,13 @@ almost halfway between two doubles, Excel taking the far one (a tie its own exp/
 probes-numeric t1538-f-inv-huge-df A86 (0.53 units, just past 15 digits after T-1538) and
 t1538-f-quantile-switchover (all 24 cells within 2E-13 relative, none bit-exact, either side of df 1E5).
 
+Cell-list line (gap triage 2026-10-31i: the bare hash above does not name the case to `scripts/exit_owners.py`,
+which needs `gen-m9/<hash>` because the hash is not unique in the report, so A209 read as unowned; the line only
+restates ownership). `F.INV.RT(Data!E7,2,(Data!$C9+Data!E2))` = `F.INV.RT(0.5,2,123456789.1229)`: Excel
+0.6931471803615475, ours 0.6931471872147749; with d1 = 2 the root is (d2/2)(2^(2/d2) - 1), about 0.69314718445
+(mpmath), so Excel is 6E-9 relative off it and ours 4E-9.
+- gen-m9/f34f66fb7f81e673.case.json (1): Calc!A209
+
 ## Visible-parity stage
 Decision 0083: the cells above are visibly off; the target is that each is within half a unit of the 15th
 significant digit of Excel's value, or recorded as a DEVIATION where Excel's value cannot be derived.
