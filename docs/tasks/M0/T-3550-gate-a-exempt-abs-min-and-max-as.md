@@ -3,7 +3,7 @@ id: T-3550
 title: "Gate A: exempt ABS, MIN and MAX as exact and SUMIF and SUMIFS as composite (the M2 functions without a table)"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -39,12 +39,18 @@ After this task, every M2 function that Gate A counts as missing has a table tas
   (exempt.tsv header). So this task must not touch the five functions of T-3548 and T-3549.
 
 ## Acceptance criteria
-- [ ] A decision record justifies each of the five lines, citing the catalog modes and the semantics entries above.
-- [ ] `eval/accuracy/exempt.tsv` gains ABS, MAX and MIN (`exact`) and SUMIF and SUMIFS (`composite`, naming the
+- [x] A decision record justifies each of the five lines, citing the catalog modes and the semantics entries above.
+- [x] `eval/accuracy/exempt.tsv` gains ABS, MAX and MIN (`exact`) and SUMIF and SUMIFS (`composite`, naming the
       suites). `rustsheet-eval accuracy` reports `missing tables` 5 lower than before the change and no stale
       exemption. `scripts/accuracy_governance.py` accepts the change together with the record.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Tables for ROUND, ROUNDUP, ROUNDDOWN, SUM and AVERAGE (T-3548, T-3549).
 - Exemptions for M5–M9 functions (T-3551 handles M5–M7; M9 is not filed yet).
+
+## Outcome
+Decision 0217 records the five lines. `eval/accuracy/exempt.tsv` now lists ABS, MAX and MIN as `exact` and SUMIF and
+SUMIFS as `composite`. `rustsheet-eval accuracy` reports `missing tables` 318, down from 323, with no stale exemption.
+The evidence table in the `make eval` report shows that gen-m2, probes and ironcalc-calc carry Excel cells for both
+SUMIF and SUMIFS. Eval delta: none (no engine change).
