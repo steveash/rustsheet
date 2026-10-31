@@ -7,6 +7,8 @@ mod cell_undo;
 mod clipboard;
 mod common;
 mod conditional_formatting;
+mod diff_undo;
+mod external_diffs;
 pub(crate) mod history;
 mod links;
 mod merged_cells;
