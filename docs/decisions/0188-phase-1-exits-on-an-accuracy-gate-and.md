@@ -100,7 +100,10 @@
       2. NPER at rates below 1e-14 (Excel up to 4% off);
       3. GAMMA.INV at a huge shape (Excel about 2.7e-4 off).
     - Excel's merely imprecise results are still matched: BESSELJ (about 1e-7), XIRR (about 1e-8), CHISQ.INV.RT
-      (about 5e-9), RATE with 1–2 periods, and every other case below G.
+      (about 5e-9), and every other case below G.
+    - The other gaps the assessment names (RATE with 1–2 periods, the WEIBULL.DIST pdf underflow, DURATION negative for
+      very short bonds under basis 2 and 3) are not R3 cases: Excel's value stays the target until a decision record
+      lists one with its evidence.
     - Excel's errors are still matched: R3 never applies to an error against a number.
     - A cell of an eval suite inside a listed region where the engine returns the math (within ε) stays an F line of
       eval/baseline and the CI gate is unchanged; Gate B and R1(c) count it as passing, the way decision 0134 leaves out
@@ -137,7 +140,8 @@
     spec and its implementation slices; the Gate B and R1(c) report measures with R7; the fit-lab hold-out split; the
     `FITTED(...)` tag and ratchet; the reviewer and skill text; the generalization fixes (Excel's t, F and chi-squared
     inverse; accurate math outside the measured range of extrapolated fits; re-validating tuned selectors; POISSON.DIST
-    and BINOM.DIST); NPER below a rate of 1e-14 (R3); an M7 owner for the t3181 collation array cells.
+    and BINOM.DIST); NPER below a rate of 1e-14 (R3). Existing tasks were retagged (the probe-row and text owners to
+    `semantics`), deferred (R5) or given notes, as T-3346's Outcome lists.
   - Until the harness tasks land, the report's Phase 1 line and exit rows read as before; nothing counts as met that
     did not before. No gate, baseline or ratchet changes in this PR, and the CI gate still forbids any bit regression.
   - The fit-lab sweeps keep running and their counts stay in the report: they are Phase 1b's measure.

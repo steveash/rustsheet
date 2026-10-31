@@ -5267,3 +5267,26 @@ Calc!A151 (`PERCENTILE.INC(Data!B11:E12,1E-200)` is 0), Calc!A162 (`PERCENTILE(D
 Status: VERIFIED (excel-graph). Implemented by T-1811; QUARTILE and QUARTILE.INC share `percentile_inc_impl` and show 0 regressions across their oracle cells. One cell is not reproduced (A269 above).
 Ours: `percentile_inc_impl` (functions/statistical/percentile.rs) uses the one-based rank `1 + k*(n-1)` (T-1811). Known miss: gen-m9/5395b8a427764a3f Calc!A269 (Excel -2.499999999999999, rule -2.4999999999999987) stays in the baseline.
 Tasks: T-1811
+
+## Deep-left-tail quantiles: Excel is grossly wrong, RustSheet returns the math (MATH-OVER-EXCEL)
+Rule: T.INV, F.INV, BETA.INV and CHISQ.INV.RT at p < 1e-150 with df ≥ 1e6 are far from the true quantile in Excel;
+RustSheet returns the 50-digit math value there (decision 0188 R3), not Excel's.
+Evidence: the owner's 2026-10-31 assessment (decision 0188), fresh stratified points scored against Excel for the web
+and 50-digit mpmath: `T.INV(1.87E-297,3937)` is -156.96 in Excel and -40.26 in truth, a relative error far above
+G = 1e-4. The committed evidence points are Gate A reference points marked R3 (T-3358 adds them and this entry then
+cites their table).
+Status: MATH-OVER-EXCEL (decision 0188)
+Ours: the engine already returns the true value in this region; such cells stay F lines of eval/baseline and count as
+passing in Gate B and the R1(c) rows once T-3359 lands.
+Tasks: T-3358, T-3359, T-3363
+
+## GAMMA.INV at a huge shape: Excel is about 2.7e-4 off, RustSheet returns the math (MATH-OVER-EXCEL)
+Rule: GAMMA.INV (and CHISQ.INV through it) at a huge shape is about 2.7e-4 relative off the true quantile in Excel,
+above G = 1e-4, so RustSheet returns the math there (decision 0188 R3), not Excel's value.
+Evidence: the owner's 2026-10-31 assessment (decision 0188), 50-digit mpmath against Excel for the web. Committed
+evidence points: T-3358 (Gate A, R3-marked) and T-3364, which states the region (the shapes where Excel's error exceeds
+1e-4) from them. The section "GAMMA.INV and CHISQ.INV at a huge shape" above records Excel's form.
+Status: MATH-OVER-EXCEL (decision 0188)
+Ours: today the engine matches Excel bit for bit with a fitted Wilson-Hilferty spread (incomplete_gamma/huge_shape.rs,
+`WILSON_HILFERTY_SPREAD`, fitted at 1E13 and applied from 2E10); T-3364 moves it to the math in the region.
+Tasks: T-3364, T-3358

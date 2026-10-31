@@ -1,7 +1,7 @@
 # 0052 — Deviations from Excel only for directive 5; decisions 0033 and 0038 reopened
 
 - **Status:** accepted (2026-10-13, T-1030). Supersedes decision 0033 and decision 0038 as
-  deviations, and states decision 0036's scope.
+  deviations, and states decision 0036's scope. Amended by decision 0188 (R3, item 1 below).
 - **Context:**
   - The governing documents disagreed. CLAUDE.md directive 1 says the only exception to "Excel is
     always right" is what directive 5 requires (resource, recursion and allocation limits, no I/O,
@@ -31,7 +31,9 @@
     fidelity reviewer already say this, so only the semantics README and the two records change.
     Chosen.
 - **Decision:**
-  1. RustSheet deviates from Excel only where CLAUDE.md directive 5 requires it. Decision 0014 is
+  1. RustSheet deviates from Excel only where CLAUDE.md directive 5 requires it, or where decision 0188 R3 has it
+     follow the math (Excel's relative error against 50-digit math above 1e-4 on evidenced points, each case a
+     `MATH-OVER-EXCEL` entry listed in decision 0188; amended 2026-10-31 by the owner's ruling). Decision 0014 is
      the standing authority for those deviations, and their semantics entries read
      `Status: DEVIATION (decision 0014)`. No other decision record can authorize a deviation. A
      behavior RustSheet does not match for any other reason is a known gap: its entry is
