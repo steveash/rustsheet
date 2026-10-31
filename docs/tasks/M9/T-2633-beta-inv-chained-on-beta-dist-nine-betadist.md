@@ -100,5 +100,5 @@ part. Re-measured on `main` 95513f6:
   G42 (their BETA.DIST input) is now bit-exact, so the residue is BETA.INV's inversion. With H32 and G65 (T-2506's, 1
   ulp) they go to T-3374 (`defer: phase-1b`, after T-2511's inverse), per this task's Stage. That criterion is not met
   here.
-- `rustsheet-eval check` on the gated suites: no change. No baseline line is removed: H2 and H67 were already off
-  `eval/baseline/ironcalc-calc.txt` (T-2510's run), and the seven left stay listed until T-3374.
+- `rustsheet-eval check` on the gated suites: no change. No baseline line is removed: H2 and H67 were already not listed in
+  `eval/baseline/ironcalc-calc.txt` on `main` 95513f6, and the seven left stay listed until T-3374.
