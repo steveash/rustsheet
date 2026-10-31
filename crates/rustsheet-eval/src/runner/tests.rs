@@ -501,3 +501,52 @@ fn pending_case_with_engine_error_is_reported() {
 fn cell_id_joins_case_and_cell_key() {
     assert_eq!(cell_id("suite/case", "Sheet1!A1"), "suite/case!Sheet1!A1");
 }
+
+/// A math sidecar beside the oracle sidecar attaches each cell's math value when its formula
+/// text matches; a value for another formula (stale) or a missing one leaves `math` unset, and
+/// such a cell's JSON has no `math` key. An unreadable sidecar makes the case invalid
+/// (SPEC-0029 "Math references for eval cells", T-3380).
+#[test]
+fn a_math_sidecar_attaches_math_values_to_matching_cells() {
+    let dir = std::env::temp_dir().join(format!("rs-runner-{}-math", std::process::id()));
+    std::fs::create_dir_all(dir.join("cases")).expect("mkdir");
+    let path = dir.join("cases/a.case.json");
+    std::fs::write(
+        &path,
+        format!(
+            r#"{{"format":"{CASE_FORMAT}","sheets":[{{"name":"S","cells":{{"A1":"=1/3","A2":"=2","A3":"=3"}}}}],
+               "expected":{{"S!A1":{{"t":"n","v":0.3333333}},"S!A2":{{"t":"n","v":2}},"S!A3":{{"t":"n","v":3}}}}}}"#
+        ),
+    )
+    .expect("write case");
+    let (suite, case) = deviations_suite(&dir, path);
+    std::fs::write(dir.join("deviations"), "").expect("write deviations");
+    let math = dir.join("cases/a.math.json");
+    let engine: Arc<dyn Engine + Send> = Arc::new(crate::engine::RustSheetEngine);
+    let run = || run_case(&engine, &suite, &case, Duration::from_secs(60));
+    std::fs::write(
+        &math,
+        r#"{"format":"rustsheet-math/v1","source":{"generator":"rustsheet-accuracy"},
+           "sheets":{"S":{"A1":{"t":"n","v":"0.33333333333333333333333333333333333333333333333333","f":"=1/3"},
+                          "A2":{"t":"n","v":"5","f":"=5"}}}}"#,
+    )
+    .expect("write math");
+    let attached = run();
+    std::fs::write(&math, "{not json").expect("write broken math");
+    let broken = run();
+    let _ = std::fs::remove_dir_all(&dir);
+
+    let maths: Vec<Option<MathValue>> = attached.cells.iter().map(|c| c.math.clone()).collect();
+    assert_eq!(maths, [Some(MathValue::Number(1.0 / 3.0)), None, None]);
+    assert_eq!(attached.status, CaseStatus::Fail); // A1 is still scored against Excel's value
+    let json = serde_json::to_value(&attached.cells).expect("json");
+    assert_eq!(
+        json[0]["math"],
+        serde_json::json!({"t": "n", "v": 1.0 / 3.0})
+    );
+    assert!(json[1].get("math").is_none() && json[2].get("math").is_none());
+    let back: Vec<CellResult> = serde_json::from_value(json).expect("read back");
+    assert_eq!(back[0].math, Some(MathValue::Number(1.0 / 3.0)));
+    assert_eq!(broken.status, CaseStatus::InvalidCase);
+    assert!(broken.message.is_some_and(|m| m.contains("a.math.json")));
+}
