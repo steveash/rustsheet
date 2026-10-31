@@ -1,12 +1,17 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-3003: =[@Col]*2 typed into D2 beside T (A1:C4): refused, grows, or filled.",
+ "description": "T-3003: =[@Col]*2 typed into D2 beside T (A1:C4): refused, grows, or filled. D1 is the header text Excel writes (not a formula, so the sidecar does not record it): `Column1`, as the oracle's J1 (`=D1&\"\"`) and K1 (`TYPE(D1)` 2) read it (T-3274).",
  "tags": [
   "M2",
   "tables",
   "probe"
  ],
- "expected": {},
+ "expected": {
+  "S!D1": {
+   "t": "s",
+   "v": "Column1"
+  }
+ },
  "sheets": [
   {
    "name": "S",

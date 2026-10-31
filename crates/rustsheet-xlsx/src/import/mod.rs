@@ -1,3 +1,4 @@
+mod call_cap;
 mod columns;
 mod conditional_formatting;
 mod external_links;
@@ -5,6 +6,7 @@ mod iso_date;
 mod metadata;
 mod package;
 mod pivots;
+pub(crate) mod relocation_key;
 pub mod rich_errors;
 pub(crate) mod shared_strings;
 mod sheet_data;
@@ -41,6 +43,7 @@ pub use shared_strings::decode_xlsx_escapes;
 use shared_strings::read_shared_strings;
 pub use workbook::date_system_from_attribute;
 
+use call_cap::refuse_too_many_calls;
 use external_links::load_external_books;
 use metadata::load_metadata;
 use package::{resolve_target, Package};
@@ -93,7 +96,11 @@ fn resolve_theme_path(rels: &HashMap<String, Relationship>) -> Option<String> {
 
 // FIXME: This is a bit of a HACK. We basically re-parse all the defined names assuming the context is `A1`
 // and there is no tables or defined names.
-fn reparse_formula_hack(formula: &str, worksheets: &[String]) -> Result<String, XlsxError> {
+fn reparse_formula_hack(
+    name: &str,
+    formula: &str,
+    worksheets: &[String],
+) -> Result<String, XlsxError> {
     let defined_names = Vec::new();
     let tables = HashMap::new();
     let mut parser = new_parser_english(worksheets.to_owned(), defined_names, tables);
@@ -103,6 +110,9 @@ fn reparse_formula_hack(formula: &str, worksheets: &[String]) -> Result<String, 
         row: 1,
     };
     let t = parser.parse(formula, &cell_reference);
+    // A name body is held to the cell formulas' 65 nested calls: Excel refuses a workbook whose
+    // name body nests 66 (probes/t3143-name-body-65, T-3143; syntax.md "Formula nesting depth cap").
+    refuse_too_many_calls(&parser, &format!("definedName {name} body"))?;
 
     Ok(to_english_string(&t, &cell_reference))
 }
@@ -174,7 +184,7 @@ fn load_package<R: Read + Seek>(
         .map(|s| s.name.clone())
         .collect::<Vec<_>>();
     for dn in &mut workbook.defined_names {
-        dn.formula = reparse_formula_hack(&dn.formula, &worksheet_names)?;
+        dn.formula = reparse_formula_hack(&dn.name, &dn.formula, &worksheet_names)?;
     }
     let external_books = load_external_books(archive, &rels, &workbook.external_references);
     let metadata = match load_metadata(archive) {

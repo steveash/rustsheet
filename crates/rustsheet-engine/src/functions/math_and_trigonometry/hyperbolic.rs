@@ -63,10 +63,12 @@ pub(super) fn tanh(x: f64) -> f64 {
 
 /// ATANH takes the series at or below this |x| and the log above it (probes-numeric
 /// t0917-hyperbolic-switchover A58-A78: the series through 1E-4, the log from 1.1E-4 on).
+/// FITTED(T-0917, 21 cells, |x| 6E-5..4.5E-4; cut bracketed 1E-4..1.1E-4)
 const ATANH_SERIES_TO: f64 = 1E-4;
 
 /// ACOTH takes the log below this |x| and the series in 1/x from it on: probes-numeric
 /// t0917-acoth-switch-edge has the log at 3.69662 and the series at 3.69668.
+/// FITTED(T-0917, 303 cells, |x| 3.69..300; cut bracketed 3.69662..3.69668)
 const ACOTH_SERIES_FROM: f64 = 3.69665;
 
 /// The series stops once a term no longer changes the sum; for |y| <= 0.2706 each term is under

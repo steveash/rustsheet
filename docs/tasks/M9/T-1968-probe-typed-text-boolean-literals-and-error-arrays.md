@@ -3,7 +3,7 @@ id: T-1968
 title: "Probe typed text/boolean literals and error arrays vs tails/type in paired statistical functions (COVAR, CORREL, T.TEST)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1401 made a number and a single cell a one-value array; typed text/boolean lit
 
 ## Out of scope
 -
+
+## Outcome
+Probed 20 cells (probes/paired-typed-literals-error-tails, excel-graph); the engine already matched all of them. Findings recorded in statistics.md. No engine change; eval delta: +1 passing probe case, no baseline change.

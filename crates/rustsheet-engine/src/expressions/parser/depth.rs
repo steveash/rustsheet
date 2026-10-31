@@ -41,6 +41,17 @@ pub const MAX_SIGNS: usize = 1023;
 /// `@` or `#` on import (`_xlfn.SINGLE`), or `LAMBDA(...)(...)`.
 pub(super) const PRIMARY_DEPTH: usize = 2;
 
+/// [`Parser::parse_primary`]'s bound on its own recursion counts half levels, so that an operand
+/// can cost one and a half: the most half levels open at once.
+pub(super) const MAX_NESTING: usize = 2 * MAX_FORMULA_DEPTH;
+
+/// Half levels of nesting an operand reserves before descending: [`PRIMARY_DEPTH`].
+pub(super) const OPERAND_NESTING: usize = 2 * PRIMARY_DEPTH;
+
+/// Half levels of nesting the first operand of a group's content reserves, unless it is a group
+/// itself (T-3197).
+const GROUP_HEAD_NESTING: usize = 3;
+
 /// Message of the parse error for a formula deeper than [`MAX_FORMULA_DEPTH`].
 pub const TOO_DEEP_MESSAGE: &str = "Formula is nested too deeply";
 
@@ -58,10 +69,13 @@ pub const TOO_MANY_OPERATORS_MESSAGE: &str = "Formula has too many operators";
 
 /// Most function calls one formula may nest, the outermost included: Excel takes 65 and refuses
 /// 66, stored (createSession 501) and typed (Graph PATCH 400), for built-in functions, LET and a
-/// called LAMBDA alike; parentheses and operators add no level (docs/excel-semantics/syntax.md
-/// "Formula nesting depth cap", probes/t3097-nesting-*, T-3097). Unlike
+/// called LAMBDA alike, and for `SINGLE(` and `ANCHORARRAY(` spelled as calls (as a file stores
+/// `@` and `#`); parentheses and operators, the `@` and `#` operators included, add no level
+/// (docs/excel-semantics/syntax.md "Formula nesting depth cap", probes/t3097-nesting-*,
+/// probes/t3143-*, T-3097, T-3143). Unlike
 /// [`MAX_FORMULA_DEPTH`] this is not a parse error: the API refuses a typed formula past it
-/// ([`Parser::typed_refusal`]) and the xlsx importer refuses the workbook.
+/// ([`Parser::typed_refusal`]) and the xlsx importer refuses the workbook, for a cell formula or a
+/// defined-name body.
 pub const MAX_NESTED_CALLS: usize = 65;
 
 /// Why a formula nesting more than [`MAX_NESTED_CALLS`] calls is refused.
@@ -164,11 +178,11 @@ impl Parser {
     pub(super) fn parse_signs(&mut self) -> (Vec<(bool, Run)>, usize) {
         let mut signs = Vec::new();
         let mut counted = 0;
-        while let TokenType::Addition(op) = self.lexer.peek_token() {
+        while let TokenType::Addition(op) = self.lexer.peek() {
+            let is_minus = *op == token::OpSum::Minus;
             self.lexer.advance_token();
-            let is_minus = op == token::OpSum::Minus;
             let before_number = !self.lexer.whitespace_follows()
-                && matches!(self.lexer.peek_token(), TokenType::Number(_));
+                && matches!(self.lexer.peek(), TokenType::Number(_));
             if !before_number {
                 counted += 1;
             }
@@ -183,23 +197,43 @@ impl Parser {
     /// arguments, array items, LAMBDA bodies) recurse into `parse_expr`, so
     /// this is where the parser's recursion is bounded: every open operand
     /// reserves its share of [`MAX_FORMULA_DEPTH`] before descending.
+    ///
+    /// The first operand of a group's content reserves one and a half levels of nesting, not
+    /// [`PRIMARY_DEPTH`], unless it is a group itself, and there a plain function call adds one
+    /// level to the tree: so a level of `(ABS(` costs three and a half on the way down and three
+    /// on the way up, not four, and Excel's 65 nested calls each wrapped in parentheses
+    /// (probes/t3097-nesting-paren-abs-65) fit, with 72 levels the most (T-3197). Groups directly
+    /// inside groups (`( (`; an unbroken run is one operand, [`Parser::parse_parenthesis_run`])
+    /// still cost two levels each. The at-limit tests measure the stack this takes.
     pub(super) fn parse_primary(&mut self) -> Node {
+        let group_head = std::mem::take(&mut self.group_head);
         if let Some((node, depth)) = self.pending_operand.take() {
             self.depth = depth;
             return node;
         }
-        if self.nesting + PRIMARY_DEPTH > MAX_FORMULA_DEPTH {
+        let cost = if group_head && *self.lexer.peek() != TokenType::LeftParenthesis {
+            GROUP_HEAD_NESTING
+        } else {
+            OPERAND_NESTING
+        };
+        if self.nesting + cost > MAX_NESTING {
             return self.too_deep();
         }
         let outer_depth = std::mem::replace(&mut self.inner_depth, 0);
-        self.nesting += PRIMARY_DEPTH;
+        self.nesting += cost;
         let node = self.parse_operand();
-        self.nesting -= PRIMARY_DEPTH;
+        self.nesting -= cost;
         let inner_depth = std::mem::replace(&mut self.inner_depth, outer_depth);
         if let Node::ParseErrorKind { .. } = node {
             return node;
         }
-        self.depth = inner_depth + PRIMARY_DEPTH;
+        // A call is one node over its arguments; anything else may be two (see PRIMARY_DEPTH).
+        let levels = if cost == GROUP_HEAD_NESTING && matches!(node, Node::FunctionKind { .. }) {
+            1
+        } else {
+            PRIMARY_DEPTH
+        };
+        self.depth = inner_depth + levels;
         if self.depth > MAX_FORMULA_DEPTH {
             return self.too_deep();
         }

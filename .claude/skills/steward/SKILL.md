@@ -253,9 +253,10 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   its `v15.met`. The Phase 1 measure counts the in-scope functions at ≥ 99.9% of their attributed
   Excel cells within 15 digits (decision 0118).
 - **Phase 1 exit** (decision 0114 item 3): add the line `**Phase 1:** exited <YYYY-MM-DD>` to
-  docs/status.md when `v15_checkpoint.phase1_met` in `eval/runs/latest/report.json` is true (the
-  dashboard's `goals` block shows it) and the rest of docs/milestones.md's Phase 1 exit holds; no
-  Phase 1 line in docs/status.md is read for this. In the same PR, remove `defer: phase-1b` from
+  docs/status.md only when `make phase1-exit` exits 0 on a full `make eval` (every suite fetched,
+  clean tree) and you have checked each of its `manual` lines by hand (decision 0187). It measures
+  `v15_checkpoint.phase1_met` and the rest of docs/milestones.md's Phase 1 exit; no Phase 1 line in
+  docs/status.md is read for this. In the same PR, remove `defer: phase-1b` from
   every task.
 - **Time-boxed numeric fits** (decision 0056): a task "Blocked because: time-boxed (decision 0056)"
   is not reopened when its dependencies land, only when a new hypothesis is recorded there.

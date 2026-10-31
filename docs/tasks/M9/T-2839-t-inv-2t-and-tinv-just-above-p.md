@@ -49,6 +49,11 @@ eval/baseline/gen-m9.txt). It counts toward the first criterion.
   - gen-m9/139684e68fb2fc3b.case.json: Calc!A394
   - gen-m9/a4090567758520df.case.json: Calc!A307
 
+Note from T-2724 (2026-10-31): the p in (1, 2) branch reaches T-2724's centre kernel through
+`t_upper_quantile` at c = 1 - 2q = p - 1, so these cells moved from about 1E-8 absolute to last-digit residue
+(`TINV(1+2^-52,2)` -3.14018491736755e-16 against Excel -3.140184917367558e-16; eccd03df42e40006 A159 is now
+bit-exact). Re-measure before working this task.
+
 ## Acceptance criteria
 - [ ] The cells above are within half a unit of the 15th significant digit of Excel's value, or the residue is filed.
 - [ ] statistics.md records the near-1 behavior and the fix.

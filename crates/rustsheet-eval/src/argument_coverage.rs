@@ -215,6 +215,16 @@ pub struct ParamCoverage {
     pub covered: usize,
 }
 
+/// Two catalog parameters and an expected class of each that no Excel-evidence call has passed
+/// together.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UnseenPair {
+    /// The catalog parameter names, in parameter order.
+    pub params: [String; 2],
+    /// The class of each.
+    pub classes: [ArgClass; 2],
+}
+
 /// One in-scope function's coverage.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct FunctionArguments {
@@ -229,6 +239,10 @@ pub struct FunctionArguments {
     /// passes together (T-0083); `None` with fewer than two counted parameters.
     #[serde(default)]
     pub pairwise: Option<f64>,
+    /// The expected pairs [`Self::pairwise`] counts that no call has passed, by parameter then
+    /// [`ALL_CLASSES`] order (T-3277); empty when `pairwise` is `None` or 1.0.
+    #[serde(default)]
+    pub unseen_pairs: Vec<UnseenPair>,
 }
 
 /// A function name, a parameter and a class one call passes it: one entry of the single-argument
@@ -307,11 +321,30 @@ pub fn summarize(catalog: &Catalog, results: &[CaseResult]) -> Vec<FunctionArgum
                 .flat_map(|(i, p)| params[i + 1..].iter().map(|q| p.expected * q.expected))
                 .sum();
             let pairs_covered = pairs.get(name).map_or(0, BTreeSet::len);
+            let unseen_pairs: Vec<UnseenPair> = (0..params.len())
+                .flat_map(|i| (i + 1..params.len()).map(move |j| (i, j)))
+                .flat_map(|(i, j)| {
+                    let (pi, pj) = (&params[i], &params[j]);
+                    let (ci, cj) = (expected_classes(&pi.mode), expected_classes(&pj.mode));
+                    ci.iter()
+                        .flat_map(move |&a| cj.iter().map(move |&b| (i, a, j, b)))
+                })
+                .filter(|&(i, a, j, b)| {
+                    !pairs
+                        .get(name)
+                        .is_some_and(|s| s.contains(&[(i, a), (j, b)]))
+                })
+                .map(|(i, a, j, b)| UnseenPair {
+                    params: [params[i].name.clone(), params[j].name.clone()],
+                    classes: [a, b],
+                })
+                .collect();
             FunctionArguments {
                 name: f.name.clone(),
                 params,
                 single: share(expected, expected - covered),
                 pairwise: share(pairs_expected, pairs_expected - pairs_covered),
+                unseen_pairs,
             }
         })
         .collect()

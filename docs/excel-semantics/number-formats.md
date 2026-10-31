@@ -35,16 +35,35 @@ below, T-1450), non-ASCII letters (only `ü` is probed; the engine treats every 
 - Letters that are date tokens make the section a date one: `TEXT(PI(),"ab")` = "a43" (`b`, Buddhist year), and
   `TEXT(12.3,"a.b")` is `#VALUE!` (a point and a date token). `n`/`N` and a bare `E` are `#VALUE!`.
 - `General` may stand among literals: `TEXT(5,"General x")` = "5 x", `TEXT(5,"x General")` = "x 5".
+- The word `General` is case-insensitive (`"general x"`, `"GENERAL x"` give "5 x"). `%` and `,` beside it
+  print and do not scale: `TEXT(5,"General%")` = "5%", `TEXT(0.5,"General%")` = "0.5%", `TEXT(5,"General,")` = "5,".
+  `General` beside a digit placeholder (`"0 General"`, `"General 0"`, `"General0"`, `"General.0"`, `"0.0 General"`), a
+  point (`"General."`), or a second `General` is `#VALUE!`, as is `TEXT(-5,"x General;y")`; `TEXT(-5,"General x")` =
+  "-5 x"; `TEXT(1234567890123,"x General")` = "x 1.23457E+12". Oddity, unimplemented: `TEXT(5,"d General")` =
+  "5 0.5" (General after a date token appends a value that is not the serial; the engine says `#VALUE!`).
+  Triage probe 2026-10-31 (excel-graph, scratch, not yet a committed case; T-3378 commits it): `"d General"` gives
+  "0 0.5" at 0, "15 0.499999803" at 45000 and at 45000.75, and `#VALUE!` at -5; `"yyyy General"` "1900 0.5",
+  `"General d"` "0.5 5", `"[h] General"` "120 5". UNVERIFIED hypothesis (T-3378): General prints
+  `(fl(x + 0.5/86400) - x) * 86400`, the half-second rounding step measured back in seconds.
+  Evidence: probes/text-format-general-company (excel-graph, 2026-10-31, T-1614).
 - A one-section format holding `@` and other text applies General to a number: `TEXT(5,"x@")` = "5".
 Evidence: probes/text-format-bare-literals A1-A31, A57-A76 (excel-graph, 2026-10-15, T-1262); gen-m6/2c1a6e93a1974f48
 Calc!A15, gen-m6/63012866a9d8b7db Calc!A3 (excel-graph, 2026-10-09, T-1239).
 Status: VERIFIED
 Implemented in: `Lexer::next_token` (formatter/lexer.rs), `Parser::parse_part` (formatter/parser.rs, the implicit `#`
-before a point and `General` among literals), `format_number` (formatter/format.rs). Unprobed: `General` next to digit
-placeholders or date tokens, or twice (the engine says `#VALUE!`; T-1614), a negative's minus for a value that rounds to
-zero under a literal-only format or `.` (`TEXT(-0.4,"x")` is "x" and `TEXT(-0.5,".")` is "-1." here, unprobed; T-1129), and a lowercase
+before a point and `General` among literals), `format_number` (formatter/format.rs). Unprobed: a lowercase
 scientific `0.0e+0` (always the year token here, so `#VALUE!` as before).
-Tasks: T-1262, T-1450
+Tasks: T-1262, T-1450, T-1129
+
+## Sign of a negative that rounds to zero or to one unit (VERIFIED, probes/text-negative-round-sign, excel-graph, 2026-10-30, T-1129)
+Rule: the minus follows the value rounded at the last shown place. A negative that rounds to zero loses it (`TEXT(-0.4,"0")` = "0",
+`TEXT(-0.04,"0.0")` = "0.0", `TEXT(-0.004,"0.00")` = "0.00", `TEXT(-0.004,"0%")` = "0%", `TEXT(-499,"0,")` = "0", `TEXT(-1,"0.00,")`
+= "0.00", `TEXT(-0.4,".")` = ".", `TEXT(-0.04,".0")` = ".0", `TEXT(-0.04,"x.0")` = "x.0") and a negative that rounds to one unit keeps it
+(`TEXT(-0.5,"0")` = "-1", `TEXT(-0.06,"0.0")` = "-0.1", `TEXT(-0.005,"0.00")` = "-0.01", `TEXT(-500,"#,")` = "-1", `TEXT(-500,"0,")` = "-1",
+`TEXT(-0.06,".0")` = "-.1"). `#` formats print nothing for zero (`TEXT(-0.4,"#")` = "", `TEXT(-400,"#,")` = "", `TEXT(-0.004,"#.##")` = ".").
+A format with no digit placeholder and no decimal point rounds nothing, so every negative keeps its minus (`TEXT(-0.4,"x")` and
+`TEXT(-0.0001,"x")` = "-x", `TEXT(-0.4,"x%")` and `TEXT(-0.004,"x%")` = "-x%"). Implemented in `format_number` (formatter/format.rs).
+
 
 ## Buddhist-era year, era and calendar tokens
 Rule: in a date section `b`/`bb` is the two-digit Buddhist-era year (year + 543) and `bbb`+ the four-digit one;
@@ -271,11 +290,11 @@ Evidence: probes/text-format-text-limit A1-A25 (excel-graph, 2026-10-08, T-0935)
 Status: VERIFIED
 Implemented in: `format_text_value` (formatter/format.rs), `MAX_TEXT_FORMAT_CHARS`, checked as the
 result grows so a format of many `@` cannot allocate a huge string (CLAUDE.md directive 5).
-Unprobed (T-0935 follow-up): a text value with a 1-2 section format and no `@` section (the
-engine returns the text unchanged; a 3-section `0;0;0` returns it unchanged in Excel too, T-2975), and a General 4th
-section over a non-empty value. `0;@`-style formats, `_x`/`*x` and
-digit or date tokens beside `@` are now probed: see "TEXT of a text value: `@` with other tokens in
-one section" (T-1656).
+Also probed (T-1130, probes/text-text-value-sections A1-A20, excel-graph, 2026-10-31): a text value or boolean
+with a 1-3 section format and no `@` comes back unchanged (`TEXT("x","0.0")`, `"0;-0"`, `"0;0;0"`, `"0;@"` is "x" via its `@`
+section, `"#,##0.00"` too); a General 4th section prints the text (`"0;0;0;General"`, `";;;General"`,
+`"General;General;General;General"` give "x"/"TRUE"); `"0;0;0;General@"` is `#VALUE!` (General beside `@`); an empty
+4th section (`"0;0;0;"`) gives "". The engine already matched all 20 cells.
 Tasks: T-0935
 
 ## A doubled quote in a format literal is not an escape
@@ -482,6 +501,15 @@ time of day).
 Status: VERIFIED
 Implemented in: `Token::AP` / `Token::AMPM` (formatter/lexer.rs), `TextToken::AP` (formatter/format.rs); tests in formatter/test/test_time.rs.
 Tasks: T-0954
+
+## `mm` after a minute is a month
+Rule: once an `m`/`mm` has been read as a minute, every later `m`/`mm` in the section is a month, whatever time
+token came before it. `h:mm|yyyy-mm-dd` on 0.25 is "6:00|1900-01-00" and on 45000.75 "18:00|2023-03-15"; `hh mm|dd mm`
+is "06 00|00 01"; `mm:ss|yyyy-mm` is "00:00|1900-01". With an hour but no minute yet, `mm` is a minute even after a
+date token: `h|yyyy-mm` is "6|1900-00".
+Evidence: probes/mm-after-time-and-date-token (22 cells, excel-graph 2026-10-30), probes/t2779-hebrew-saka-more E7.
+Status: VERIFIED (excel-graph). Implemented in: `minute_read` (formatter/parser.rs). Unprobed: `h:mm:ss mm`.
+Tasks: T-2961
 
 ## `m`/`mm` directly before `:ss` is minutes, with no hour
 Rule: `m` or `mm` followed by `:` and a plain `s`/`ss` is a minute even when the code has no hour
@@ -801,8 +829,21 @@ TEXT() with the same codes. Points the earlier probes did not show:
 - The accounting formats' text section `_(@_)` pads a text, a boolean or an empty string with one space on each side:
   `_(* #,##0_);_(* \(#,##0\);_(* "-"_);_(@_)` on "text" is " text " (gen-m10 05c1c646c95a2d60 F!M4), on TRUE " TRUE "
   (eec351e03ccedfe0 F!R2) and on `=""` two spaces (5255389143dbcef6 F!H11); the `$` variants do the same
-  (0e3d8eba9432a18d F!A13, F!A20). 27 cells across the four built-in accounting codes (gap triage 2026-10-25). Ours shows
-  the plain value (T-1736).
+  (0e3d8eba9432a18d F!A13, F!A20). 27 cells across the four built-in accounting codes (gap triage 2026-10-25).
+  Implemented (T-1736): `Cell::formatted_value` sends a text or boolean cell through `format_text_value`; an error cell is
+  shown as it is. All 10,400 gen-m10 displayed-text cells pass.
+  Past 255 characters (VERIFIED, probes/displayed-text-long-text A1:A22, B1:B2 and -long-text-b A1:A10, B1,
+  excel-graph, T-3282), where TEXT() is `#VALUE!`: a text section that changes the text shows 255 `#`, like an
+  unshowable date: `"pre "@`, `_(@_)`, the accounting code, `0;0;0;"pre "@`, `@@`, and even `[Red]@`, `[$-409]@`,
+  `@""`, `""@`, `@*-` on a 256-character text; so do shorter texts whose result passes 255 (250 under
+  `"prefix"@`, 254 under `_(@_)`, 128 under `@@`, 252 under `"pre "@`), while 251 under `"pre "@` and 253 under
+  `_(@_)` (255 characters) show in full. A format that leaves the text unchanged shows it whole however long: no
+  text section (`General`, `0.00`) or a section that is exactly `@` (`@`, `0;@`, `0;0;0;@`,
+  `General;General;General;@`; 300 characters shown). `;;;` shows nothing. A literal and a formula text behave
+  the same. Implemented in formatter/format.rs `displayed_text`.
+  Unprobed (T-3314): a workbook whose cell carries a code TEXT() rejects as invalid (`42abc`, `@;0`, `x@0`) is refused whole by
+  excel-graph (`FileCorruptTryRepair`, T-3282 probe attempt), so that displayed text cannot be probed; the engine
+  keeps the plain text for it.
 - A minus goes before a leading literal: `"x"General` on -1.5 is "-x1.5" (implemented, T-2097: the minus leads and the General token prints the absolute value; gen-m10 F!D19 -1E15 is "-x1E+15"). A value that rounds to Unprobed: literals after General on a negative (`General x`, unchanged here).
   nothing shows no minus: `#,` on -0.5 "", `0.0,,` on -1234.5678 "0.0"; `#,` on 1.5 is "" and on
   1000 "1".

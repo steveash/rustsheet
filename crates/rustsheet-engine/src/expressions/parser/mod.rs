@@ -569,8 +569,9 @@ pub struct Parser {
     /// function/name completion even when the surrounding parse succeeds (`SU`,
     /// `A1+F`) or fails for an unrelated reason (`IF(VLOOK`). See that method.
     trailing_name: Option<(String, usize)>,
-    /// Primaries (operands) open on the current parse path. Checked before
-    /// descending so the parser's own recursion stays bounded.
+    /// Half levels reserved by the primaries (operands) open on the current parse path, bounded
+    /// by [`depth::MAX_NESTING`]. Checked before descending so the parser's own recursion stays
+    /// bounded.
     nesting: usize,
     /// Depth of the tree the last `parse_*` call returned.
     depth: usize,
@@ -579,8 +580,14 @@ pub struct Parser {
     /// An operand parsed ahead, with its depth, for the next [`Parser::parse_primary`] to
     /// return: the inner group of a run of parentheses ([`Parser::parse_parenthesis_run`]).
     pending_operand: Option<(Node, usize)>,
+    /// Where the pending operand's text starts (a char index), for the intersection that reads
+    /// it back ([`Parser::parse_intersection`]).
+    pending_start: usize,
     /// Written groups open on the current parse path, bounded by [`MAX_PARENTHESES`].
     open_groups: usize,
+    /// A group's content is about to be parsed: its first operand, unless another group, reserves
+    /// less nesting ([`Parser::parse_primary`], T-3197).
+    group_head: bool,
     /// Unary signs open on the current parse path, bounded by [`MAX_SIGNS`].
     open_signs: usize,
     /// Value operators in the formula so far, bounded by [`MAX_VALUE_OPERATORS`].
@@ -655,7 +662,9 @@ impl Parser {
             depth: 0,
             inner_depth: 0,
             pending_operand: None,
+            pending_start: 0,
             open_groups: 0,
+            group_head: false,
             open_signs: 0,
             value_operators: 0,
             bound_names: Vec::new(),
@@ -677,10 +686,10 @@ impl Parser {
         self.loaded = loaded;
     }
 
-    /// Reads the next formulas as typed (`true`) or as stored (`false`, the default); see
-    /// [`Parser::typed_refusal`].
+    /// Reads the next formulas as typed (`true`) or stored (`false`); see [`Parser::typed_refusal`].
     pub(crate) fn set_typed(&mut self, typed: bool) {
         self.typed = typed;
+        self.lexer.set_typed(typed);
     }
 
     pub fn set_lexer_mode(&mut self, mode: lexer::LexerMode) {
@@ -743,6 +752,7 @@ impl Parser {
         self.inner_depth = 0;
         self.pending_operand = None;
         self.open_groups = 0;
+        self.group_head = false;
         self.open_signs = 0;
         self.value_operators = 0;
         self.bound_names.clear();
@@ -894,7 +904,7 @@ impl Parser {
                 Node::UnaryPlus { child: right }
             };
         }
-        while self.lexer.peek_token() == TokenType::Percent {
+        while *self.lexer.peek() == TokenType::Percent {
             t = t.spaced(Run::default(), self.run_ahead());
             self.lexer.advance_token();
             self.grow(self.depth, 0)?;
