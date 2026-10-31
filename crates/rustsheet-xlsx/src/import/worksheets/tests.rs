@@ -6,6 +6,7 @@ use rustsheet_engine::types::Link;
 
 use crate::import::worksheets::{load_hyperlinks, parse_range, parse_reference};
 use crate::import::xml::XmlNode;
+use rustsheet_engine::expressions::utils::number_to_column;
 
 #[test]
 fn test_parse_range() {
@@ -63,4 +64,125 @@ fn load_hyperlinks_skips_malformed_and_caps_huge_ranges() {
     assert_eq!(links.get(&(3, 2)), None);
     assert_eq!(links.get(&(4, 2)), None);
     assert_eq!(links.get(&(1, 6)), None);
+}
+
+/// Every `<f>` text of a workbook's worksheets with its cell, and the workbook's sheet names.
+fn workbook_formulas(path: &std::path::Path) -> (Vec<String>, Vec<(String, String)>) {
+    use std::io::Read;
+
+    let mut archive = zip::ZipArchive::new(std::fs::File::open(path).unwrap()).unwrap();
+    let mut sheets = Vec::new();
+    let mut formulas = Vec::new();
+    for index in 0..archive.len() {
+        let mut file = archive.by_index(index).unwrap();
+        let name = file.name().unwrap().to_string();
+        if name != "xl/workbook.xml" && !name.starts_with("xl/worksheets/sheet") {
+            continue;
+        }
+        let mut text = String::new();
+        file.read_to_string(&mut text).unwrap();
+        let root = XmlNode::parse_str(&text).unwrap();
+        for node in root.descendants() {
+            if node.has_tag_name("sheet") {
+                sheets.extend(node.attribute("name").map(str::to_string));
+            }
+            if node.has_tag_name("c") {
+                let formula = node.child("f").and_then(XmlNode::text);
+                if let (Some(cell), Some(formula)) = (node.attribute("r"), formula) {
+                    formulas.push((cell.to_string(), formula.to_string()));
+                }
+            }
+        }
+    }
+    (sheets, formulas)
+}
+
+/// The `.xlsx` files under `dir`, recursively.
+fn xlsx_files(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            xlsx_files(&path, out);
+        } else if path.extension().is_some_and(|e| e == "xlsx") {
+            out.push(path);
+        }
+    }
+}
+
+/// `from_a1_to_rc` prints the same R1C1 text through one cache shared by a sheet's formulas as
+/// with none (T-3318), for every formula of the vendored workbooks (the upstream calc tests and
+/// the fixtures suite), as written and copied one row down and one column right (the copy has
+/// the same tree, so it is read from the cache), plain and as an array formula.
+#[test]
+fn rc_text_cache_prints_what_a_fresh_parse_prints() {
+    use rustsheet_engine::expressions::parser::new_parser_english;
+    use rustsheet_engine::expressions::parser::stringify::to_english_string;
+    use rustsheet_engine::expressions::types::CellReferenceRC;
+
+    use crate::import::worksheets::{from_a1_to_rc, RcTextCache};
+
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let mut files = Vec::new();
+    xlsx_files(&root.join("tests/calc_tests"), &mut files);
+    xlsx_files(&root.join("../../eval/suites/fixtures"), &mut files);
+    assert!(files.len() > 200, "vendored workbooks not found");
+    let (mut checked, mut copies) = (0, 0);
+    for path in files {
+        let (sheets, formulas) = workbook_formulas(&path);
+        let Some(sheet) = sheets.first().cloned() else {
+            continue;
+        };
+        let mut copy_parser = new_parser_english(sheets.clone(), vec![], HashMap::new());
+        let mut parser = new_parser_english(sheets, vec![], HashMap::new());
+        parser.set_loaded(true);
+        let mut shared = RcTextCache::default();
+        let mut convert = |formula: &str, context: &str, array: bool, cache: &mut RcTextCache| {
+            from_a1_to_rc(
+                formula.to_string(),
+                &mut parser,
+                cache,
+                context.to_string(),
+                array,
+            )
+            .map_err(|e| e.to_string())
+        };
+        for (cell, formula) in &formulas {
+            let context = format!("{sheet}!{cell}");
+            let Ok(at) = parse_reference(&context) else {
+                continue;
+            };
+            let moved = CellReferenceRC {
+                sheet: sheet.clone(),
+                row: at.row + 1,
+                column: at.column + 1,
+            };
+            let Some(column) = number_to_column(moved.column) else {
+                continue;
+            };
+            let copy = to_english_string(&copy_parser.parse(formula, &at), &moved);
+            let copy_context = format!("{sheet}!{column}{}", moved.row);
+            for array in [false, true] {
+                for (text, context) in
+                    [(formula.as_str(), &context), (copy.as_str(), &copy_context)]
+                {
+                    let fresh = convert(text, context, array, &mut RcTextCache::default());
+                    assert_eq!(
+                        convert(text, context, array, &mut shared),
+                        fresh,
+                        "{} {context}: {text}",
+                        path.display()
+                    );
+                }
+            }
+            checked += 1;
+            copies += usize::from(copy != *formula);
+        }
+    }
+    assert!(
+        checked > 1_000 && copies > 1_000,
+        "{checked} formulas, {copies} copies"
+    );
 }
