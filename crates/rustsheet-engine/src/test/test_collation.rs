@@ -343,7 +343,7 @@ fn probe_data_strings(stem: &str) -> Vec<Text> {
 }
 
 /// The accent strings of the T-3154 and T-3201 probes and the kana strings of T-3275, on which
-/// Excel's own comparison is not transitive (coercion.md "Not a total order"): `cmp_text`, which the sorts use, stays a total
+/// Excel's own comparison is not transitive (coercion.md "Not a total order"): `cmp_text`, which GROUPBY's sort uses, stays a total
 /// order with `CollationKey` equality as its equality, and texts `cmp_text_pairwise` finds equal
 /// share a key (what the criteria index relies on).
 #[test]
@@ -474,4 +474,56 @@ fn exact_match_fold_of_the_marks() {
     assert_eq!(fold("a々"), "a々");
     assert_ne!(fold("か\u{3099}"), fold("が"));
     assert_eq!(fold_exact_lookup(&[0xD800, 0x30FC]), vec![0xD800, 0x30FC]);
+}
+
+/// SORT's sort (`sort_indices_pairwise`) under Excel's intransitive text comparison
+/// (`cmp_text_pairwise`) ends on the data of probes/t3201-collation-wrapped-run-pairs (37 texts,
+/// hundreds of intransitive triples) in several input orders, without panicking, with a
+/// permutation of the input in which no text is directly after one it is below (T-3211).
+#[test]
+fn the_pairwise_sort_ends_on_intransitive_texts() {
+    use crate::functions::util::collation::cmp_text_pairwise;
+    use crate::functions::util::sort_indices_pairwise;
+    let texts = probe_data_strings("t3201-collation-wrapped-run-pairs");
+    assert!(texts.len() > 30);
+    let n = texts.len();
+    // The identity, its reverse, and interleavings that cut the runs differently.
+    let orders: Vec<Vec<usize>> = vec![
+        (0..n).collect(),
+        (0..n).rev().collect(),
+        (0..n).step_by(2).chain((1..n).step_by(2)).collect(),
+        (0..n).map(|i| (i * 7) % n).collect(),
+        (0..n).map(|i| (i * 11 + 5) % n).collect(),
+    ];
+    for order in orders {
+        for descending in [false, true] {
+            let mut indices = order.clone();
+            sort_indices_pairwise(&mut indices, |a, b| {
+                let ordering = cmp_text_pairwise(&texts[a], &texts[b]);
+                if descending {
+                    ordering.reverse()
+                } else {
+                    ordering
+                }
+            });
+            let mut seen = indices.clone();
+            seen.sort_unstable();
+            assert_eq!(seen, (0..n).collect::<Vec<_>>(), "not a permutation");
+            for pair in indices.windows(2) {
+                let ordering = cmp_text_pairwise(&texts[pair[1]], &texts[pair[0]]);
+                let ordering = if descending {
+                    ordering.reverse()
+                } else {
+                    ordering
+                };
+                assert_ne!(
+                    ordering,
+                    Ordering::Less,
+                    "{:?} after {:?}",
+                    texts[pair[1]],
+                    texts[pair[0]]
+                );
+            }
+        }
+    }
 }
