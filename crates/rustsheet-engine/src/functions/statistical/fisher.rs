@@ -212,6 +212,7 @@ const F_QUANTILE_STATRS_P_MIN: f64 = 1e-20;
 /// deep tail of [`f_cdf`] carries exp(a ln y)'s rounding, and refining to its crossing makes
 /// `F.INV(1E-20,5,5)` visibly off Excel's 5.081599921802649E-09 (probes/stat-quantile-lift E12),
 /// which statrs' search matches to 15 digits (T-0974: 0 cells newly visibly off at 1E-15, 4 at 0).
+/// FITTED(T-0974, 1 cell, range unknown)
 const F_QUANTILE_REFINE_P_MIN: f64 = 1e-15;
 
 /// Quantile of the F distribution for `p` (the right tail's when `right_tail`) in [0, 1]: statrs'
