@@ -14,6 +14,7 @@
 
 use super::super::beta_density::ALGDIV_C;
 use super::super::erf::{erf, erfc};
+use super::super::half_integer_beta::FRAC_1_SQRT_PI;
 use crate::x87_exp::{dd_add, dd_div, dd_div_small, dd_exp, dd_mul, dd_sqrt, two_sum};
 use crate::x87_log10::{excel_ln, ln_double_double};
 use crate::x87_log1p::excel_log1p;
@@ -36,13 +37,6 @@ const STOP_TOLERANCE: f64 = 15e-15;
 /// Past this z the prefactor e^-z is past [`dd_exp`]'s double-double range (its tail word turns
 /// subnormal); such points, tails below about 1E-282, keep today's kernel.
 const MAX_Z: f64 = 650.0;
-
-/// 1/sqrt(pi) as a double-double (200-bit mpmath): bgrat's r = b z^b e^-z / Gamma(b + 1) is
-/// z^(1/2) e^-z / sqrt(pi) at b = 1/2.
-const FRAC_1_SQRT_PI: Dd = (
-    f64::from_bits(0x3FE2_0DD7_5042_9B6D),
-    f64::from_bits(0x3C61_AE3A_914F_ED80),
-);
 
 /// TOMS 708 `bgrat(a, 1/2, x, y, w)`: w + `I_x(a, 1/2)` for a large a (bratio calls it for a > 15),
 /// x + y = 1, as Excel computes it (module docs). `None` where the prefactor leaves the double
@@ -68,6 +62,7 @@ pub(super) fn bgrat_half(a: f64, x: f64, y: f64, w: f64) -> Option<f64> {
         0.5 + (0.5 - erf(root))
     };
     // r = b z^b e^-z / Gamma(b + 1) and u = r e^-(algdiv(b, a) + b ln nu), at b = 1/2.
+    // bgrat's r = b z^b e^-z / Gamma(b + 1) is z^(1/2) e^-z / sqrt(pi) at b = 1/2.
     let r = dd_mul(dd_mul(dd_sqrt((z, 0.0)), dd_exp((-z, 0.0))), FRAC_1_SQRT_PI);
     let ln_nu = dd_add(ln_double_double(nu.0), (nu.1 / nu.0, 0.0));
     let exponent = dd_add(algdiv_half(a), (0.5 * ln_nu.0, 0.5 * ln_nu.1));

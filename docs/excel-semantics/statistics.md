@@ -1083,6 +1083,17 @@ Excel's ratio form outside it (below, T-2638); P is the power series below
 x = a + 1, with the geometric sum of the terms it leaves (near x = a they add up to thousands of times the last one:
 7E-15 of P(1E6, 1E6)), and Q the modified-Lentz continued fraction above it; below a shape of 1/2 and x of 1 Q is formed
 directly (TOMS 654's small-shape Q, with ln Gamma(1 + a) from its zeta series); a = 1 is (-expm1(-x), exp(-x)).
+At a half-integer shape below 20 and x >= a, CHISQ.DIST.RT's Q (odd df from 3; df 1 is ERFC, T-1778) is taken in
+double-double and rounded once (T-3285, `incomplete_gamma/half_integer.rs`): the prefactor as sqrt(x) e^-x / sqrt(pi)
+times 2x / (2j - 1), and the continued fraction evaluated backward. The forward (Lentz) fraction had lost 5 to 19 ulp
+there, the prefactor about 1. Excel is correctly rounded at x a few times the shape: `CHISQ.DIST.RT(10,5)` =
+`CHIDIST(10,5)` = Q(2.5, 5) is 0.07523524614651218, +0.3 ulp against 60-digit mpmath (probes-numeric/m9-chisq-dist-rt
+A19, m9-legacy-chidist A45 and A46, t1049-chisqdistrt A19), and `CHISQ.DIST.RT(8,3.34)` = Q(1.5, 4) 0.04601170568923137,
+-0.0 (ironcalc-calc STATISTICAL/CHISQ.xlsx G3, df truncated to 3); the double kernel was 5.7 and 11 ulp off. Excel is
+within about 1.5 ulp but not always correctly rounded nearby: `CHISQ.DIST.RT(6,3)` -0.7 (m9-chisq-dist-rt A14),
+`CHISQ.DIST.RT(12.3,7.2)` = Q(3.5, 6.15) +1.5 (CHISQ.xlsx G4), `CHIDIST(40,3)` +1.2 (gen-m9/85f48d5cdfb24555 A84). Nor is
+it Excel's ERFC plus the finite series e^-x sum x^(j - 1/2) / Gamma(j + 1/2): with Excel's own ERFC and EXP that form
+gives Excel's bits at 75 of 95 half-integer cells with x <= 5 and at 21 of 193 above (T-3285 scratch harness).
 Unit tests (`incomplete_gamma.rs`): within 8 units of 2^-52 of mpmath at a in {0.001, 0.01, 0.3, 0.5, 9, 500}, P + Q = 1
 within 2 of them, the a = 1 identity, the b = 1E6 scale. The 2^19-term cap (section above) is unchanged; the series now
 runs to 2^-54 instead of 1E-15, about 8% more terms near x = a, so an inversion's budget runs out at a somewhat smaller
