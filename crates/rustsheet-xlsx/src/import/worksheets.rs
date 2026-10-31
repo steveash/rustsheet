@@ -112,8 +112,10 @@ fn load_merge_cells(ws: &XmlNode) -> Result<Vec<MergedCell>, XlsxError> {
     // </mergeCells>
     // Malformed, single-cell and overlapping entries are skipped: the engine
     // invariants are that merged ranges span more than one cell and never
-    // intersect each other.
+    // intersect each other. The first of any intersecting ranges is kept, through an index, since
+    // checking each range against every kept one is quadratic (T-3454).
     let mut merged_cells: Vec<MergedCell> = Vec::new();
+    let mut kept = merged_cells::KeptRanges::default();
     let merge_cells_nodes = ws
         .children()
         .filter(|n| n.has_tag_name("mergeCells"))
@@ -132,18 +134,15 @@ fn load_merge_cells(ws: &XmlNode) -> Result<Vec<MergedCell>, XlsxError> {
             if width < 1 || height < 1 || (width == 1 && height == 1) {
                 continue;
             }
-            if merged_cells
-                .iter()
-                .any(|m| m.intersects(row, column, width, height))
-            {
-                continue;
-            }
-            merged_cells.push(MergedCell {
+            let range = MergedCell {
                 row,
                 column,
                 width,
                 height,
-            });
+            };
+            if kept.keep(&range) {
+                merged_cells.push(range);
+            }
         }
     }
     Ok(merged_cells)

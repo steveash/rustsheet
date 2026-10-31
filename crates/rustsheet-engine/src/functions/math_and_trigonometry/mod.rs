@@ -13,6 +13,7 @@ mod random;
 mod sequence;
 mod seriessum;
 mod sum;
+pub(crate) mod sum_prefix;
 pub(crate) use sum::SumParts;
 mod sumproduct;
 mod trig;
