@@ -345,6 +345,70 @@ fn a_padded_column_survives_an_edit_that_rewrites_its_text() {
     assert_eq!(model.get_formatted_cell_value(0, 9, 5).unwrap(), "");
 }
 
+/// probes/t3003-unqualified-structured-d2: `=[@Col]*2` typed into D2, just right of `T` A1:C4,
+/// parses inside the table it grows (rule 7f): `T` becomes A1:D4, the new column `Column1` fills
+/// against each row, and every row prints `=[@Col]*2`. The stored text names the table, so it
+/// reads `T` again after a save and load.
+#[test]
+fn an_unqualified_reference_typed_beside_a_data_row_grows_the_table() {
+    let mut grown = model(false);
+    grown
+        .set_typed_user_input(0, 2, 4, "=[@Col]*2".to_string())
+        .unwrap();
+    grown.evaluate();
+    assert_eq!(column_d(&grown), ["2", "4", "8"]);
+    for row in 2..=4 {
+        assert_eq!(
+            grown.get_cell_formula(0, row, 4).unwrap().as_deref(),
+            Some("=[@Col]*2")
+        );
+    }
+    let stored = &grown.workbook.worksheets[0].shared_formulas;
+    assert!(
+        !stored.is_empty() && stored.iter().all(|f| f.starts_with("[T]")),
+        "{stored:?}"
+    );
+    let mut reloaded = Model::from_bytes(&grown.to_bytes(), "en").unwrap();
+    reloaded.evaluate();
+    assert_eq!(column_d(&reloaded), ["2", "4", "8"]);
+    assert_eq!(
+        reloaded.get_cell_formula(0, 3, 4).unwrap().as_deref(),
+        Some("=[@Col]*2")
+    );
+    assert_eq!(
+        expansion_readout(&mut grown),
+        ["4", "4", "Column1", "FALSE"]
+    );
+
+    // Another column of the grown table resolves too.
+    let mut other = model(false);
+    other
+        .set_typed_user_input(0, 3, 4, "=[@Other]+[@Col]".to_string())
+        .unwrap();
+    other.evaluate();
+    assert_eq!(column_d(&other), ["11", "22", "44"]);
+}
+
+/// Two unprobed shapes keep the parse outside the table: with an occupied neighbour the table
+/// does not grow (rule 7d), so `=[@Col]*2` is outside every table and refused; and an unknown
+/// column `[@Nope]` is refused and the table does not grow. Unprobed in Excel.
+#[test]
+fn unqualified_references_beside_the_table_that_grow_nothing_are_refused() {
+    let mut occupied = model(false);
+    occupied.set_user_input(0, 4, 4, "7".to_string()).unwrap();
+    let refused = occupied.set_typed_user_input(0, 2, 4, "=[@Col]*2".to_string());
+    assert!(refused.is_err());
+    assert_eq!(expansion_readout(&mut occupied)[0], "3");
+    assert_eq!(column_d(&occupied), ["", "", "7"]);
+
+    let mut unknown = model(false);
+    let refused = unknown.set_typed_user_input(0, 2, 4, "=[@Nope]*2".to_string());
+    assert!(refused.is_err());
+    assert_eq!(expansion_readout(&mut unknown)[0], "3");
+    assert_eq!(column_d(&unknown), ["", "", ""]);
+    assert_eq!(unknown.workbook.tables["T"].reference, "A1:C4");
+}
+
 /// `COLUMNS(T[#All])` and `ROWS(T[#All])` after typing `text` into (`row`, `column`) of `model`.
 fn grown_by(mut model: Model, row: i32, column: i32, text: &str) -> Vec<String> {
     model
