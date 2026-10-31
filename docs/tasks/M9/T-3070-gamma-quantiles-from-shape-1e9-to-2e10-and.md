@@ -38,7 +38,7 @@ statrs' search, and the closed form's last digits at 1E11 are Excel's.
     and T-2982's owned gen-m9 cells (the 25 lines listed in
     docs/tasks/M9/T-1891-gamma-dist-poisson-and-the-gamma-inversions-give.md), leaving any small-shape inversion's
     last digits to T-0972. The GAMMA.DIST/GAMMADIST `#NUM!` cells at a huge shape, which T-2982 also handed on here,
-    moved to their own `semantics` task, T-3268 (gap triage 2026-10-30d).
+    moved to their own `semantics` task, T-3390 (gap triage 2026-10-30d).
   - CHIINV at a df far above the cap, by full case id: a bare hash names no case when probes/t2436 reruns that
     hash, and T-3219 had these three listed as unexplained type mismatches (gap triage 2026-10-30d). Excel gives a
     number, ours `#NUM!`:

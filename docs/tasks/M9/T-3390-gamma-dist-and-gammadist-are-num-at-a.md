@@ -1,5 +1,5 @@
 ---
-id: T-3268
+id: T-3390
 title: "GAMMA.DIST and GAMMADIST are #NUM! at a huge shape: the density at a tiny x/beta and the cdf near 1E+76 (8 probe and 2 gen-m9 cells, ours 0)"
 milestone: M9
 lane: functions-stat

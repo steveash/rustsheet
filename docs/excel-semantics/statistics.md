@@ -4448,10 +4448,10 @@ x/beta = 2E-10 but `#NUM!` at 1.85E+76 (`GAMMA.DIST(2,1.85E+76,1E+10,TRUE)`,
 Evidence: probes/t2435-dist-extremes A25:A34, A92:A102 (excel-graph, 2026-10-26); gen-m9
 2801c1c11c21e134 A241 (`GAMMADIST(1E-300,10000000001,3,FALSE)`) and 40425341c5034eed A265
 (`GAMMADIST(2,1.85E+76,1E+10,"TRUE")`).
-Ours: 0 for each `#NUM!` above (T-2982; T-3268 owns the fix); `GAMMA.DIST(1E+10,1E+10,1,TRUE)` is Excel's 0.5000013298076014 since
+Ours: 0 for each `#NUM!` above (T-2982; T-3390 owns the fix); `GAMMA.DIST(1E+10,1E+10,1,TRUE)` is Excel's 0.5000013298076014 since
 T-1891 (Temme's expansion).
 Status: VERIFIED (excel-graph), one cell per shape at the cuts
-Tasks: T-2435, T-1891, T-2982, T-3268 (the cuts: probe and implement)
+Tasks: T-2435, T-1891, T-2982, T-3390 (the cuts: probe and implement)
 
 ## LINEST and LOGEST: shapes, one point, collinear columns, exact fits and check order (T-1741)
 Rule: LINEST and LOGEST line known_x up with known_y as TREND does ("TREND: defaults, shapes, single points and error

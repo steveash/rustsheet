@@ -39,7 +39,7 @@ Cells (from T-2638; run `make eval-show CASE=...` for the values):
 - Type mismatches T-2638 owned by the decision-0159 rule (other causes may own them; check first):
   gen-m9/2801c1c11c21e134 A241, 40425341c5034eed A265, 4e55500bb8ad3cd8 A341, 7bd219ec0c0c5e22 A239,
   a013a45a8fbcab4f A338. Gap triage 2026-10-30d checked them. None is this task's: the two GAMMADIST cells (#NUM! at
-  a huge shape) are T-3268's, and the three CHIINV cells at a df from 1.7E+13 to 1E+16 are T-3070's.
+  a huge shape) are T-3390's, and the three CHIINV cells at a df from 1.7E+13 to 1E+16 are T-3070's.
 - The gen-m9 cells above that no task was credited with, by full case id. A bare hash names no case when probes/t2436 reruns that hash,
   so `scripts/exit_owners.py` did not credit them to this task (gap triage 2026-10-30d):
   - gen-m9/3a25a03eb94fcfbd.case.json (1): Calc!A158
