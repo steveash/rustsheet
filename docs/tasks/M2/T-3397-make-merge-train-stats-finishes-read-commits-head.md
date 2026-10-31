@@ -1,12 +1,12 @@
 ---
 id: T-3397
-title: "make merge-train-stats finishes: read commits, head runs and jobs 16 at a time"
+title: "make merge-train-stats finishes: read commits, head runs and jobs 8 at a time"
 milestone: M2
 lane: harness
 status: done
 priority: P1
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -25,10 +25,13 @@ T-2991's shadow evidence.
   merged head's runs and every run's jobs one at a time.
 
 ## Acceptance criteria
-- [x] `Stats.prefetch` fills the commit-message, head-run and job caches 16 reads at a time,
-      and each object is read once. Commits, a head's runs and a finished run's jobs never change.
-- [x] `make merge-train-stats` completes on main's last 24 h: 6 min 2 s on 2026-10-31, with 135
-      merged PRs and 1,900 lock pushes. Before the change it was killed at 5 min without output.
+- [x] `Stats.prefetch` fills the commit-message, head-run and job caches 8 reads at a time. The
+      caches last one report run, so each object is read once per report. Tests show the
+      read-once rule and that a failed read raises `GhError`
+      (scripts/test_merge_train_stats.py `Prefetch`).
+- [x] `make merge-train-stats` completes on main's last 24 h: 6 min 10 s with 8 readers (6 min 2 s with 16) on
+      2026-10-31, with 135 merged PRs and 1,900 lock pushes. Before the change it printed nothing
+      in 5 min here, and the steward abandoned it at 10 min.
 - [x] scripts/test_merge_train_stats.py passes; `make hygiene` passes.
 
 ## Out of scope

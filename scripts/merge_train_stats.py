@@ -312,10 +312,11 @@ def trains_of(runs: Sequence[tuple[Run, str, frozenset[int]]]) -> list[Train]:
 
 K = TypeVar("K")
 V = TypeVar("V")
-# GitHub reads in flight at once. A day of merge-lock pushes is about 1,900 commits to read (every
-# waiter's refresh is a push) at about 0.3 s each, so one at a time took over 10 minutes and the
-# steward gave up (2026-10-31); 16 at a time stays far inside the API's rate limit.
-READERS = 16
+# GitHub reads in flight at once (decision 0191). A day of merge-lock pushes is about 1,900 commits to
+# read (every waiter's refresh is a push) at about 0.3 s each, so one at a time ran past 10 minutes
+# and the steward gave up (2026-10-31). Eight keeps the burst near 25 requests/s, under GitHub's
+# secondary limit of 900 REST points a minute; a run that still hits it fails loudly (GhError, exit 2).
+READERS = 8
 
 
 class Stats:
@@ -346,33 +347,34 @@ class Stats:
         return found[older[-1] :] if older else found
 
     def prefetch(self, cache: dict[K, V], keys: Iterable[K], read: Callable[[K], V]) -> None:
-        """Fill `cache` with `read(key)` for each key it lacks, READERS reads at a time. Commits, a
-        head's runs and a finished run's jobs never change, so each is read once."""
+        """Fill `cache` with `read(key)` for each key it lacks, READERS reads at a time; only this
+        thread writes the cache. The caches last one report run, so each object is read once per
+        report (a head's runs can change later; this report's view of them does not)."""
         missing = [key for key in dict.fromkeys(keys) if key not in cache]
         if len(missing) > 1:
             with ThreadPoolExecutor(READERS) as pool:
                 cache.update(zip(missing, pool.map(read, missing)))
 
+    @staticmethod
+    def cached(cache: dict[K, V], key: K, read: Callable[[K], V]) -> V:
+        if key not in cache:
+            cache[key] = read(key)
+        return cache[key]
+
     def commit_message(self, sha: str) -> str:
         return text_of(self.client.commit(sha), "message")
 
     def message(self, sha: str) -> str:
-        if sha not in self.messages:
-            self.messages[sha] = self.commit_message(sha)
-        return self.messages[sha]
+        return self.cached(self.messages, sha, self.commit_message)
 
     def read_head_runs(self, sha: str) -> list[Run]:
         return runs_of(self.client.workflow_runs(head_sha=sha))
 
     def runs_of_head(self, sha: str) -> list[Run]:
-        if sha not in self.head_runs:
-            self.head_runs[sha] = self.read_head_runs(sha)
-        return self.head_runs[sha]
+        return self.cached(self.head_runs, sha, self.read_head_runs)
 
     def run_jobs(self, run_id: int) -> list[object]:
-        if run_id not in self.jobs:
-            self.jobs[run_id] = self.client.run_jobs(run_id)
-        return self.jobs[run_id]
+        return self.cached(self.jobs, run_id, self.client.run_jobs)
 
     def runs(self, start: datetime, end: datetime) -> list[Run]:
         return runs_of(self.client.workflow_runs(created=f"{iso(start)}..{iso(end)}"))
