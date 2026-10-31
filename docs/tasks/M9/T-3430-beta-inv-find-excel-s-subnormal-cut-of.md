@@ -25,12 +25,16 @@ subnormal double, instead of T-3351's rule that a subnormal y is `#NUM!`.
   Newton step goes non-finite there. For alpha >= 1 the cut is near 1E-310, which that does not explain.
 - T-3351 treats any subnormal y as `#NUM!`. That mismatches A199, A209, A210, A211 and C199, and the lower tail's
   B199, B209, B210 and B211 (if those are not already right).
+- Same probe, lower tail at a normal y: B197, B198, B206, B207, B208 (`BETA.INV(8E-10,0.03,2)` and its
+  neighbours, y 1E-303 to 1E-307) differ from Excel at about 1E-13 relative. Both sides are close to 50-digit mpmath:
+  Excel is 1.5E-14 to 7.2E-14 off it, ours about 9E-14 (B197). Take these too if the cut's mechanism explains them.
+  Otherwise move them to a Phase 1b follow-up.
 - Code: `upper_quantile_near_one` in crates/rustsheet-engine/src/functions/statistical/beta.rs.
 
 ## Acceptance criteria
 - [ ] A probe that brackets the cut on a grid of alpha and beta (excel-graph), with its mechanism in
       docs/excel-semantics/statistics.md "BETA.INV where the quantile rounds to 1 (T-3351)".
-- [ ] The cells above match. Any threshold chosen by scoring follows decision 0188 R4 (hold-out, fresh sweep,
+- [ ] The cells above match (or the B-column normal-y cells move to a follow-up). Any threshold chosen by scoring follows decision 0188 R4 (hold-out, fresh sweep,
       `FITTED`).
 - [ ] `make check` green; reviewers approve.
 
