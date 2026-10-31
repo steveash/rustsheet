@@ -3,7 +3,7 @@ id: T-3334
 title: "Probe the criteria operand forms criteria.md leaves UNVERIFIED after T-3136: <, > and <= over formatted number text, month names with a time, $1e2, a percent at the 15-digit tie, CHAR(160)-padded operands"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
