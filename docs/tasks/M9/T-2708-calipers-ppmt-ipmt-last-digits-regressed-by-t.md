@@ -3,7 +3,7 @@ id: T-2708
 title: "Calipers PPMT/IPMT last digits regressed by T-2490 (35 cells in pv23_007/008/009/056), plus one CHISQ.INV cell"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -39,11 +39,26 @@ regressions. That blocks recording fixes such as T-0462's 492 add-in cells and t
 main since #1706.
 
 ## Acceptance criteria
-- [ ] Every calipers regression the check reports is listed here and either passes again or is shown to be the cost of
+- [x] Every calipers regression the check reports is listed here and either passes again or is shown to be the cost of
       a change that matches more Excel cells (with the evidence). Then `rustsheet-eval update-baseline --suite calipers`
       is run and committed.
-- [ ] No gated baseline gains a line.
-- [ ] `make check` green; reviewers approve.
+- [x] No gated baseline gains a line.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Making calipers part of `make check`.
+
+## Outcome
+No engine change was needed: the 36 regressions are gone on main. `rustsheet-eval check --suite calipers` at
+origin/main 9453cfb5c (binary rebuilt from the branch head) reports `known failures 3461 -> 598 (fixed 2865,
+new-coverage failures 5, REGRESSIONS 0, new cases 4)`. All 36 listed cells pass, including pv23_056 AH27/AE27 and
+formula_stress_test Statistical!B13, and formulas_financial passes 477/477, so T-3246's E132 passes too. The fix was
+not bisected. Likely sources are the annuity rework after T-2490: T-3014 (#2351, PMT as Excel's discounted
+payment), T-2243 (#2363, IPMT/PPMT split that payment) and T-3205 (#2421, IRR/NPV rounding each operation twice).
+`update-baseline --suite calipers` then ran without `--allow-regressions`. eval/baseline/calipers.txt: 2868 lines
+out, 9 in. The 9 are the new cases pv26_001, pv26_2_001 (with T-2663's `CELL("filename")` F line each), pv26_002,
+pv26_2_002 (T-3230), and changed checked counts for pv26_003, pv26_2_003 and roundtrip/formulas_lookup.
+pv26_003's checked count drops by 554 (37225 -> 36671): those are the `_xll.` add-in cells T-0462 stopped scoring
+(decision 0027; the run reports `skipped_add_in 554`). Of its 262 removed F lines, 243 are add-in cells and 19 are
+real fixes. Eval delta (calipers, not gated): fixed 2865, regressions 0. No gated baseline changed.
+Closes T-0463 (the same 36 cells; its ratchet criteria are met here).
