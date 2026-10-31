@@ -43,6 +43,9 @@ that T-3383 (r4-algdiv, item 2 for the density) left open, so the engine tasks h
      and +6.05 units on r2-bpser-small's runs). Rejected in r4-algdiv: the correctly rounded lnB (34 and 37 of 80
      shapes), fl(GL(a) + CR algdiv) (22, 35), TOMS-d (26, 30), Excel's GAMMALN difference past 8 in either
      association (0-1).
+     - The pins are Excel for the web values, and their -4 to +3 ulp offsets are inside the web/desktop floor of up
+       to 4 ulp (docs/research/oracle-calibration.md). Spot-check a winning model on desktop Excel before freezing it
+       (M14 if only desktop can answer). Rescan (0.4, 8.6) wider: it pins at the scan's edge, j = -16, 3 of 50.
      - At a = 1 or b = 1 the density's lnB is -LN(the other shape) at any size, not algdiv (statistics.md "Beta density
        for min(a,b) <= 1").
   3. **lnΓ(a0 < 1) inside bpser's L** depends on the shape: GL below 0.3, fl(gamln1(v) - LN v) at w2's (0.5, 6.25). On

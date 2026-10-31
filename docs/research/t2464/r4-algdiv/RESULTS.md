@@ -23,7 +23,8 @@ For each shape, M2's exponent path is scored with L = TOMS algdiv in doubles (r2
 | hold | 1,696 of 4,000 | 3,952 | 78 of 80 |
 
 The 4 shapes that do not pin: (0.25, 176.694), where lnB is about 1e-14 (its ulp is tiny, 16 j tie); (0.4, 8.6),
-whose pin lies at the scan's edge (j = -16, 3 of 50); and (0.5, 16) and (0.4, 43.75) at 49 of 50. This confirms
+whose pin lies at the scan's edge (j = -16, 3 of 50; unexplained, T-3468 rescans it wider); and (0.5, 16) and
+(0.4, 43.75) at 49 of 50. This confirms
 T-2513's finding on a fresh sweep at four new a: **for min < 1 < 8 < max the whole density gap is the double lnB; tx,
 ty, the split exponent and EXP are right.**
 
@@ -35,10 +36,11 @@ Pinned minus correctly rounded lnB, in ulps of lnB, over the 156 pinned shapes:
 The implied algdiv, fl(pinned lnB - GL(a)), lies within -1.7 to +2.2 ulp(algdiv) of the accurate
 ln Γ(b) - ln Γ(a+b) on every shape. TOMS algdiv in doubles is within -1.6 to +1.3 ulp(algdiv) of it too, so the two
 differ by a unit or two in either direction. Along the fine b steps (spacing 1/8 and 1/4) the offset has
-lag-1 autocorrelation -0.20, -0.12 (probe a) and +0.21, -0.24 (hold): consecutive b are uncorrelated. **A
-smooth approximation error is ruled out.** (An approximation error of the series or of the Stirling difference
-moves continuously with b.) What is left is rounding noise from a few stored intermediates, which changes from one b
-to the next. This answers T-3383's "next" for item 2: the offset is a storage pattern, not an approximation.
+lag-1 autocorrelation -0.20, -0.12 (probe a) and +0.21, -0.24 (hold), on 15-16 points per a (standard error
+about 0.26). **No large smooth error is visible.** (An approximation error of the series or of the Stirling
+difference moves continuously with b.) The likely cause is rounding noise from a few stored intermediates, which
+changes from one b to the next. This answers T-3383's "next" for item 2 as an inference, not a proof: the offset
+looks like a storage pattern, not an approximation, until a storage model reproduces the pins (T-3468).
 
 ## 3. Fixed candidates, no per-shape freedom (`cands.py`, `cands_a.out`, `cands_hold.out`)
 Shapes whose pinned lnB the candidate equals (and rows):
@@ -57,6 +59,9 @@ The engine keeps TOMS-d until a model reaches most shapes. The hold-out is used 
 reaches a majority on either probe.
 
 ## 4. Next (for the follow-up)
+- The pins are Excel for the web values (excel-graph). Pinned offsets of -4 to +3 ulp are inside the documented
+  web/desktop floor of up to 4 ulp (docs/research/oracle-calibration.md), so a model frozen from them needs a
+  desktop spot-check first.
 - The noise is the rounding of TOMS algdiv's stored intermediates, or of some other routine with the same
   accuracy. Its sign and size change at every b. The next probe is therefore x87 storage variants of algdiv scored
   against these 156 pinned lnB values, *per shape*, as r3-m1-residual's `lnbfit.py` does for its own 52 shapes.
