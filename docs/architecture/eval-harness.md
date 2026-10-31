@@ -221,6 +221,50 @@ Only `pass` counts as passing. Case statuses:
 - `eval/baseline/visible-parity.json`: the visible-parity lock (decision 0088). Task PRs never lower
   it; the steward does, daily, with `make eval-lower-visible-lock` (decision 0093).
 
+## Gate A: the accuracy check
+Normative design: [SPEC-0029](../specs/SPEC-0029-gate-a-accuracy-gate.md) (decision 0188 R2; the
+`make eval-gates` wiring is decision 0193). `rustsheet-eval accuracy` (`accuracy.rs` and
+`accuracy/`) runs in `make eval-gates`, so in `make check` and CI's `eval-gates` job, right after
+`check --evidence-floor`.
+
+- **Tables.** `eval/accuracy/suite.toml` is the `accuracy` suite (`kind = "spec"`, `gate = false`,
+  `baseline = "none"`, root `tables/`). It lives outside `eval/suites/`, so `Suite::load_all`, `make
+  eval`, the eval gate, the evidence floor and every report measure never see it;
+  `Suite::load_named(root, name)` resolves it for `cases accuracy` and `show accuracy/...` (and so the
+  oracle fill), and refuses a suite under `eval/suites/` named `accuracy`. A table is a directory
+  `tables/<FUNCTION>/`, a batch one `<batch>.case.json` there (one formula with literal arguments per
+  `check` cell; every check cell is a point), its oracle sidecar `<batch>.oracle.json` and its
+  `rustsheet-math/v1` sidecar `<batch>.math.json` (`accuracy/math.rs`: per cell a 50-digit value
+  `{"t":"n","v":"<digits>"}` or a domain error `{"t":"e","why":...}`, its formula `f` and stratum
+  `s`). The math sidecar's path is the oracle sidecar's with `.math.json`, so `oracle_dir` mirroring
+  applies to both. A math value whose `f` differs from the cell's formula is stale and never attaches.
+- **Points.** A point's id is `accuracy/<FUNCTION>/<batch>!<Sheet>!<A1>` (`runner::cell_id` of the
+  case id less `.case.json`). Each batch runs once through `runner::run_case_values`, which shares
+  `run_case`'s preparation, panic isolation and timeout and also returns the engine's value of every
+  check cell, pending ones included. A batch that crashes or times out fails every point in it.
+- **Envelope** (`accuracy::envelope::envelope`, the one definition T-3359 and T-3380 reuse): `Both`,
+  `Excel15` (the eval's own scored cell is not `Visible::is_off`: decision 0083's 15-digit rule, the
+  4-ulp precedence of decision 0088, decision 0042's subnormal rule), `Math` (within ε = 1e-9
+  relative of the math, absolute floor 1e-300; a math domain error matched by Excel's error code, or
+  by any error while pending), `Outside`, `ErrorMismatch` (an error against a number either way, or
+  two different error codes; no R3 mark excuses it) and `Table` (no math value, a stale one, or a
+  math domain error against an Excel number). A pending point (no Excel value) is held to the math.
+- **Lists** (`accuracy/lists.rs`). `known-failures.tsv` (`<point id>\t<T-NNNN>\t<note>`) carries a
+  failing point until its owner task lands; a listed point that passes, or that no table holds, is a
+  stale line and fails. `math-over-excel.tsv` (`<point or eval cell id>\tdocs/excel-semantics/<file>.md#<anchor>`)
+  marks R3 points, checked against the math only: its entry must have a `Status: MATH-OVER-EXCEL`
+  line (`deviations::check_entry_status`, the anchor check `deviations` lines use), and a filled
+  marked point must show Excel off the math by more than G = 1e-4 relative. A missing list is empty.
+- **Output.** One summary line (points, tables, pending, in envelope with the Excel-only and
+  math-only counts, known failures by owner, failing, table defects, missing tables, seconds), then
+  `FAIL` lines worst first by relative error against the math, `KNOWN`, `STALE`, `BAD MARK` and
+  `TABLE` lines. `--json PATH` (default `eval/runs/accuracy.json`, git-ignored) holds every point's
+  class, standing and values. Exit 1 on a failing point, a stale known-failure line, a bad mark or a
+  table defect. Budget: 30 s for the whole set on the CI runner.
+- **Not yet.** The missing-table count and `exempt.tsv`, the protected-path and known-failure line
+  rules and ci_changes routing are T-3379's; the generator and the real tables are T-3357's and
+  T-3358's. The end-to-end fixture is `crates/rustsheet-eval/tests/data/accuracy-fixture`.
+
 ## Milestone probe lists
 `eval/milestones/<name>.txt` (decisions 0043, 0044) freezes the cases a milestone's probe criterion
 counts: `#` comment lines, then one case id per line in the form of the baseline files
@@ -343,7 +387,7 @@ Phase 1 line follow them. Coverage (`covered`) still counts every Excel cell tha
 ## CLI
 ```
 rustsheet-eval suites | fetch [--suite S] | run [--suite S] [--filter X] | check [--evidence-floor] | update-baseline [--allow-regressions]
-               | evidence-floor [--update [--allow-increase]]
-               | show <case-id> [--all] | snapshot <file.xlsx>
+               | evidence-floor [--update [--allow-increase]] | accuracy [--json PATH] [--timeout S]
+               | show <case-id> [--all] | cases <suite> | snapshot <file.xlsx>
 ```
 `snapshot` is the **only** xlsx value parser in the repo. Python tools call it.

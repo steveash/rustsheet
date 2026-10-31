@@ -138,6 +138,12 @@ fn an_array_formula_spilling_off_the_grid_is_refused() {
     assert!(e.contains("spills outside"), "{e}");
     let e = refusal(|w| set_cell(w, 1, 2, anchor(0, (-1, 1))));
     assert!(e.contains("spills outside"), "{e}");
+    // Within the grid but past the array limit: a whole column is the most (T-2896).
+    let e = refusal(|w| set_cell(w, 1, 2, anchor(0, (2, LAST_ROW))));
+    assert!(e.contains("too many cells"), "{e}");
+    let mut whole_column = workbook();
+    set_cell(&mut whole_column, 1, 2, anchor(0, (1, LAST_ROW)));
+    Model::from_workbook(whole_column, "en").unwrap();
 }
 
 #[test]

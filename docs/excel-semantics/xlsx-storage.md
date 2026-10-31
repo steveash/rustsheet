@@ -78,7 +78,9 @@ Rule: `Model::from_workbook`, which every load ends in (xlsx import, `Model::fro
 `UserModel::from_bytes`), refuses a workbook whose indices point at nothing the model would later read
 unchecked: a cell, row or column style past `cellXfs` (or no `cellXfs` at all), a style's font, fill or
 border past its list, a negative number format id, a shared-formula index past its list, a spill range
-or anchor off the grid, a row or column record or a merged range off the grid, and cell storage whose
+or anchor off the grid, a spill range of more than 1,048,576 cells (the array limit of arrays.md "Array results above
+1,048,576 cells": a CSE anchor's whole range is filled on evaluation, so a crafted range of the whole sheet would write
+2^34 cells; T-2896; a real file whose cached spill or CSE range is larger is refused too, unprobed), a row or column record or a merged range off the grid, and cell storage whose
 rows or columns are out of order or off the grid. The error names the sheet and the index
 (`Sheet 'Sheet1': cell R1C2 has style 9999, which does not exist`). Indices the model reads with a
 checked lookup that tolerates a dangling value load as before: a shared-string index (it reads as
@@ -90,8 +92,9 @@ Excel: desktop Excel offers to repair a corrupt file and Excel for the web refus
 does with these particular indices is not probed. Without the check the model panicked later (T-2882:
 style 9999 at the next edit, formula index 77 with no shared formula at the next evaluation).
 Evidence: none for Excel; this is the no-panic rule (CLAUDE.md directive 5), not an Excel observation.
-Status: DEVIATION (decision 0014); what Excel does with these indices is UNVERIFIED (probe pending: an
-xlsx with a dangling `s=` and one with a `fontId` past `<fonts>`, on excel-graph)
+Status: DEVIATION (decision 0014); what Excel does with these indices is UNVERIFIED (probe pending, T-3405: an
+xlsx with a dangling `s=` and one with a `fontId` past `<fonts>`, on excel-graph; a spill or CSE range above 2^20
+cells: T-3426)
 Implemented in: crates/rustsheet-engine/src/workbook_check.rs (`check_indices`),
 crates/rustsheet-engine/src/sheet_data.rs (`SheetData::check_layout`)
 
