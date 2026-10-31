@@ -634,8 +634,9 @@ Implemented in: `imcsc`, `imsec`, `imsech`, `imcot` in functions/engineering/com
 Tasks: T-2044, T-2231
 
 ## IMTAN and IMCOT use the double-angle form (T-0907)
-Rule: IMTAN computes tan(x+iy) as `(sin 2x + i·sinh 2y) / (cos 2x + cosh 2y)`, and IMCOT is the
-reciprocal of that value, `conj(t)/|t|²`; the tan/tanh product form loses the last 1-10 digits
+Rule: IMTAN computes tan(x+iy), y nonzero, as `(sin 2x + i·sinh 2y) / (cos 2x + cosh 2y)` (a
+real x is TAN, T-2774), and IMCOT is the reciprocal of that value, `conj(t)/|t|²`; the tan/tanh
+product form loses the last 1-10 digits
 where the real part is small (`IMTAN("1.23+9.5121i")` real part 6.89106871662165E-09, the product
 form 6.89106877738345E-09; `IMCOT("7-12.6i")` real part 2.25273756035673E-11). A fit over every
 row of the workbook: the double-angle IMTAN matches all of them, the reciprocal IMCOT all but one
@@ -666,15 +667,16 @@ and the oracle calibration found IMARGUMENT differing by ulps between Excel for 
   (15 digits), 6.7E-15 below π/2. These are TAN's x87 kernel, reduced by the 64-bit π (numbers.md "SIN / COS at multiples of 90°"): the remainder is
   `(FRAC_PI_2 - x) + 6.1257422745431E-17`, π₆₄/2's tail, and both pairs of values are 1 over the tangent of it to every
   printed digit, while the true π (libm's `tan`) gives 148752623989354 and -286411383293069 from the sixth or seventh
-  digit. Here IMTAN's double-angle denominator `cos 2x + cosh 2y` rounds to 0 (x within about 5.2E-9 of π/2), and IMTAN
-  falls back to TAN's kernel (only these two points are probed; the window's edges and other odd multiples of π/2 are
-  not); IMCOT of a real number is 1 over it anyway (T-2534). Since T-2760 all four match.
+  digit. IMTAN of any real number is TAN's kernel ("IM* trigonometry of a real number is SIN, COS and TAN", T-2774);
+  before that IMTAN reached it only where the double-angle denominator `cos 2x + cosh 2y` rounds to 0 (x within about
+  5.2E-9 of π/2), which is still the fallback for a nonzero imaginary part below about 1E-8 (unprobed). IMCOT of a real
+  number is 1 over it anyway (T-2534). Since T-2760 all four match.
 Evidence: ironcalc-calc/ENGINEERING/COMPLEXs.xlsx (Excel-cached, Microsoft Macintosh Excel) N, O,
 T, U columns; probes/eng-argument-modes Calc!A33 `IMCOT("3+4i")` = "-0.000187587737983659-1.00064439247156i"
 and A51 `IMTAN("3+4i")` = "-0.000187346204629478+0.999355987381473i" (excel-graph), which the
 double-angle form matches too, so the digits are not Mac-only.
 Status: VERIFIED (desktop cached values and excel-graph)
-Tasks: T-0907, T-1966, T-2760, T-2043, T-2044
+Tasks: T-0907, T-1966, T-2760, T-2043, T-2044, T-2774
 
 ## Base conversions read a blank cell and empty text as 0
 Rule: every BIN2*/OCT2*/HEX2* function (with or without `places`) treats a blank cell, `""` and a ref to `=""` as 0: `BIN2DEC("")`, `OCT2DEC(blank)`, `HEX2DEC("")` are 0; the others give "0", or "0000" with `places` 4. None of these is an error.
@@ -854,14 +856,12 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   `sin 2x / (cos 2x + 1)` print different text are all TAN's (`IMTAN("3.14159")` -2.65358979336212E-06, double-angle
   ...207E-06; `IMTAN("-17.2737")` -197.642601323436, ...305; `IMTAN("-17.3011")` 44.7544983375159, ...163; row 3,
   `IMTAN("4")`, prints 1.15782128234958 either way), and so is row 1, COMPLEXs.xlsx row 6's own
-  `IMREAL(IMTAN(COMPLEX(5,0,"i")))`, -3.38051500624659. IMTAN of a real is still CONFLICTING (web vs desktop):
-  COMPLEXs.xlsx N6 (Mac 16.0300) caches that formula as -3.38051500624658, the libm double-angle value (T-1075 item 17). Decision 0188 R6 picks the web value for Phases 1-3 (T-2774 follows it; N6 is an exit and Phase 1 exception, T-1075). IMTAN is one of numbers.md's "Excel for the web and desktop Excel
-  differ in the last digits" functions, so decision 0030 rule 4 (kept by decision 0039) makes the desktop N6 the fitting
-  target and the web cells, which the double-angle form misses by far less than 1e-9 relative, no target for further
-  fitting until T-1075 item 17 is answered (T-3054, dropped into T-2774).
-  Ours (T-2534): IMSIN, IMCOS, IMSEC, IMCSC and IMCOT of a real take SIN, COS and TAN's kernels and the limit
-  (`real_trig`); IMTAN takes the limit but keeps the double-angle form below it, so the desktop N6 still passes and the 35
-  web `IMTAN("5")` cells and the other IMTAN-of-a-real cells stay known failures (T-2774).
+  `IMREAL(IMTAN(COMPLEX(5,0,"i")))`, -3.38051500624659. The desktop disagrees: COMPLEXs.xlsx N6 (Mac 16.0300) caches
+  that formula as -3.38051500624658, the libm double-angle value. Status: VERIFIED (excel-graph), the web value followed
+  under decision 0039 item 4 by decision 0188 R6, which moves N6 off its desktop value: N6 is now a known failure and a
+  line of eval/milestones/exit-exceptions.tsv and phase1-exceptions.tsv, and the desktop check is T-1075 item 17 (M14).
+  Ours (T-2534, T-2774): all six take SIN, COS and TAN's kernels and the limit (`real_trig`; IMTAN since T-2774, which
+  fixed the 40 gen-m9 and 14 probes IMTAN-of-a-real cells and regressed only N6).
 - **sinh and cosh inside IMSIN and IMCOS are (EXP(t) ∓ EXP(-t))/2, also for small t; IMSINH's are not.**
   `IMCOS("1.5E+2-2E-3i")` has imaginary part -0.0014297538124271 (= -SIN(150)·(EXP(-0.002)-EXP(0.002))/2; with libm
   sinh ...242709), and `IMSIN("1E-200+1E-200i")` is "1E-200": the imaginary part cos(x)·sinh(1E-200) is 0 because the
@@ -897,16 +897,19 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   -i·sinh(i·z)), which fixes C2 and keeps every one of the 1,023 IMSIN/IMCOS cells of the suites (excel-graph and desktop
   caches); a mixed argument inside the band is fitted only by those cells, not by a sweep. Ours: `inverse_exp_sinh_cosh` in functions/engineering/complex/trig.rs
   over 0.01 < |x| <= 20, libm outside. Status: VERIFIED (excel-graph) inside the band; the cuts are UNVERIFIED.
-- **IMSQRT of a negative real is polar through COS and ATAN2 on the web (the engine keeps desktop's libm value).** `IMSQRT("-1")` (`IMSQRT(TEXT(-1,"0"))`) is
+- **IMSQRT of a negative real is polar through COS and ATAN2.** `IMSQRT("-1")` (`IMSQRT(TEXT(-1,"0"))`) is
   "6.1257422745431E-17+i" = COS(ATAN2(-1,0)/2) with Excel's COS (libm cos(π/2) 6.12323399573677E-17), `IMSQRT(-2.5)`
-  9.68564897336834E-17+1.58113883008419i, `IMSQRT(-0.0001)` 6.1257422745431E-19+0.01i (516488da78a6b08c A52,
-  59a16b5ab566ee5c A6, 7dc52cfcbc8b4448 A254). Status: CONFLICTING (web vs desktop). Mac desktop 16.0300 caches libm's
-  value for the same formula: ironcalc-calc/ENGINEERING/COMPLEXs.xlsx Sheet1!AL26 `IMREAL(IMSQRT(COMPLEX(-1,0)))` is
-  6.12323399573677E-17 and AL12 (of -12) 2.12115047744981E-16, which the engine matches with libm `atan2`/`cos`/`sin`.
-  T-2536 found that Excel's ATAN2 and SIN/COS give the four web cells but turn AL12 and AL26 into failures. The gap is a
-  near-zero residue (about 2.5E-20 on a 6E-17 part), so under decision 0030 rule 4 and decision 0039 the engine keeps the
-  desktop value and the 5 gen-m9 cells stay known failures. The desktop check is T-1075 item 16. Decision 0188 R6 now picks the web value for Phases 1-3: T-2536 follows it, and AL12 and AL26 are exit and Phase 1
-  exceptions (owner T-1075).
+  9.68564897336834E-17+1.58113883008419i, `IMSQRT(-0.0001)` 6.1257422745431E-19+0.01i, `IMSQRT(-3.85841)`
+  1.20326949922385E-16+1.96428358441443i (516488da78a6b08c A52, 59a16b5ab566ee5c A6, 7dc52cfcbc8b4448 A254,
+  f280df8ba95f96b9 A26, fb73d8163ad87fc6 A398; excel-graph). Mac desktop 16.0300 caches libm's value for the same
+  formula: ironcalc-calc/ENGINEERING/COMPLEXs.xlsx Sheet1!AL26 `IMREAL(IMSQRT(COMPLEX(-1,0)))` is 6.12323399573677E-17
+  and AL12 (of -12) 2.12115047744981E-16. Status: VERIFIED (excel-graph), the web value followed under decision 0039
+  item 4 by decision 0188 R6, which moves AL12 and AL26 off their desktop values: they are now known failures and lines
+  of eval/milestones/exit-exceptions.tsv and phase1-exceptions.tsv, and the desktop check is T-1075 item 16 (M14).
+  Implemented in `imsqrt` (T-2536): the half angle of Excel's ATAN2 kernel through Excel's SIN and COS for every
+  argument, which leaves all the other IMSQRT cells of the suites (about 560 formulas) unchanged. Unprobed: where that
+  kernel errs (a subnormal x, y/x overflowing) ours takes libm `atan2`, and x < 0 with a -0 imaginary part takes
+  +π, where libm's -π gave a negative imaginary part (T-2736, which probes the same kernel in IMPOWER).
 - **IM* kernels still to fit (T-2044, T-2537, T-2538).** New web cells: `IMSECH("3+4i")` (and `" 3+4i"`, `"3 + 4i"`,
   `"3+4j"`) "-0.065294027857947+0.0752249603027732i" (57 cells), `IMSECH("0.1")` 0.995020748953227, `IMCOT("-1.5+0.5i")`
   "-0.0557109884865415-0.463942860183828i", `IMCSC("-1.5+0.5i")` "-0.888092201609111-0.029103639571751i",
