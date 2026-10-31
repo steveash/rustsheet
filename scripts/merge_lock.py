@@ -543,6 +543,9 @@ def leave(holder: str, root: Path = ROOT) -> None:
         if lock is None or all(w.id != holder for w in lock.waiters):
             return
         new = dataclasses.replace(lock, sha="", waiters=tuple(w for w in lock.waiters if w.id != holder))
+        if lock.free and lock.waiters[0].id == holder:
+            # As in drop_head: the next head gets its own HEAD_CLAIM window, not the rest of ours.
+            new = dataclasses.replace(new, freed=int(time.time()))
         try:
             if write(lock, new, root):
                 return
@@ -632,9 +635,9 @@ def main(argv: list[str], root: Path = ROOT) -> int:
             return REFUSED
         prs = None if args.prs is None else [str(p) for p in args.prs]
         if args.command == "wait":
-            refusal = None if pr == TRAIN else (lambda: train_mode_refusal(pr, root))
+            refuse = None if pr == TRAIN else (lambda: train_mode_refusal(pr, root))
             return wait(
-                holder, pr, prs=prs, timeout_minutes=args.timeout, ttl_minutes=args.ttl, root=root, refusal=refusal
+                holder, pr, prs=prs, timeout_minutes=args.timeout, ttl_minutes=args.ttl, root=root, refusal=refuse
             )
         return acquire(holder, pr, args.ttl, root=root, prs=prs, renew=args.renew)
     except (GitError, LockFormatError) as e:
