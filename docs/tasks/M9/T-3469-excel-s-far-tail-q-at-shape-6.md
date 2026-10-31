@@ -68,3 +68,6 @@ Cells this task owns:
 
 ## Out of scope
 - Half-integer shapes on [a + 1, 30] (T-3461). The near-mode window at large shapes (T-3286).
+
+## Second extension (T-3269 rework)
+Owns the 19 ungated probes-numeric cells listed in decision 0203 under "Second extension" (lost bit-exact or newly visibly off when the far-tail form was restricted to shapes 3/2 to 11).

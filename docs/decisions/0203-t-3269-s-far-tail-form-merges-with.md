@@ -4,7 +4,9 @@
   https://claude.ai/code/session_01WTJ7rq9tsQyspbybqNLk1a) covered the first four cells under Decision; the re-run
   against current main then found four more ungated cells newly visibly off and the baseline ratchet one gated
   regression against T-3285's head, and the owner's **extended ruling (b)** ("Extend both rulings", 2026-10-31, same
-  session) covers those five too. Under decision 0111 (an owner ruling may land a change that regresses named cells),
+  session) covers those five too. After review, T-3269 restricted the form to shapes 3/2 to 11; the re-run then found
+  19 more ungated probe cells moved, and the owner's **second extension** ("Ship, extend ruling", 2026-10-31, same
+  session) covers them (listed under Decision). Under decision 0111 (an owner ruling may land a change that regresses named cells),
   for T-3269's PR only.
 - **Context:**
   - Past x = 30 at shapes below 20, Excel's Q(a, x) (POISSON's cdf, CHISQ.DIST.RT, CHIDIST, CHISQ.TEST) is Stirling's
@@ -43,7 +45,20 @@
        both).
   - T-3269's PR may run `rustsheet-eval update-baseline --allow-regressions` for exactly cell 9, the one gated
     regression the ratchet refuses (the owner approved it in the extended ruling).
-  - The shape-6 misses and x / a = 10 go to follow-up T-3469 (`campaign: visible`), which owns all nine cells.
+  - Second extension (19 ungated probes-numeric cells, ulps of Excel's value, T-3285's head to T-3269's head; all
+    within Gate A's envelope, Phase 1b evidence under decision 0188 R1(c)):
+    - lost bit-exact: t2561-chisq-dist-rt-past-edge R!A33 `CHISQ.DIST.RT(261.471102,7)` 0→2, R!A43
+      `CHISQ.DIST.RT(318.525703,8)` 0→1; t3269-gamma-tail-switch A80 `POISSON(2,36.5,TRUE)` 0→1, A100
+      `CHISQ.DIST.RT(64,7)` 0→2, A99 `CHISQ.DIST.RT(63,7)` (main 0, head 1); t3269-shape6-misses A53
+      `POISSON(5,41.5,TRUE)` 0→4; t3269-fresh-sweep-2 A70 `CHISQ.DIST.RT(106.178,14)` 0→3, A205
+      `CHISQ.DIST.RT(74.7132,13)` 0→32;
+    - newly visibly off: t3269-gamma-tail-switch A136 `POISSON(3,35.5,TRUE)` 4→29; t3269-shape6-misses A46
+      `POISSON(5,38,TRUE)` 11→26, A67 `POISSON(5,229.64986,TRUE)` 15→129, A68 `POISSON(5,234.2428575,TRUE)` 13→189,
+      A69 `POISSON(4,42,TRUE)` 3→6; t3285-chisq-dist-rt-half-integer-sweep A65 `CHISQ.DIST.RT(88.58915641,13)` 6→17;
+      t3269-fresh-sweep-2 A165 `POISSON(9,32.2283,TRUE)` 10→25, A173 `CHISQ.DIST.RT(69.988,3)` 5→17, A209
+      `CHISQ.DIST.RT(63.6982,15)` 5→11, A233 `CHISQ.DIST.RT(61.3502,3)` 6→21, A286 `CHISQ.DIST.RT(64.637,22)` 2→8.
+  - The shape-6 misses and x / a = 10 go to follow-up T-3469 (`campaign: visible`), which owns all nine cells and the
+    19 of the second extension.
 - **Consequences:**
   - Re-run (main ea7470e4a, with T-3285's head merged into the branch, against the PR head; full runs on the same suite
     root, per cell). Gated: fixed 8, closer 18, farther 6, lost 1, visibly fixed 13, newly visibly off 0. Of these,
