@@ -27,4 +27,4 @@ T-2065 probed STDEV.S, VAR.S, SUMSQ with single-cell elements only (top-left cel
 -
 
 ## Outcome
-Probed 7 formulas (probes/t2816-lift-*, excel-graph): top-left cell of each element only; AVERAGEA/MAXA count text as 0, skip blank and TRUE. Documented in lookup.md, SPEC-0014, T-2063. Engine (T-2824) follows these rules.
+Probed 7 formulas (probes/t2816-lift-*, excel-graph): top-left cell of each element only; AVERAGEA/MAXA count text as 0, skip blank and TRUE. Documented in lookup.md, SPEC-0014, T-2063. T-2824 is to implement these rules (the 7 cells are known failures until then).
