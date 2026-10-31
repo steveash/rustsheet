@@ -32,7 +32,7 @@
     old interest forms regresses 10 to 42 CUMPRINC cells.
   - Decision 0083's standing allowance does not cover the five visibly-off cells.
 - **Decision:** run `rustsheet-eval update-baseline --suite probes --suite gen-m9 --suite
-  ironcalc-calc --allow-regressions` once in the T-3118 PR for exactly these 7 cells. T-3393
+  ironcalc-calc --allow-regressions` once in the T-3118 PR for exactly these 7 cells. T-3413
   owns them (CUMPRINC's bits on those ranges).
 - **Consequences:** the three baselines gain exactly these 7 lines and lose the 53 fixed ones.
   Reviewers confirm the baseline diff adds no other line. Every later CUMPRINC fix on a short

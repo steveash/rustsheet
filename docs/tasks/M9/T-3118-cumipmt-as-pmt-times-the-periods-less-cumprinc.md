@@ -52,5 +52,5 @@ forms with 5 principal forms fits; financial.md "T-3067 notes").
 - Evidence kind: the identity is measured on Excel's own PMT and CUMPRINC outputs (T-3067 run 4, to the bit on
   60 pairs and 22 period-1 ranges), not chosen by scoring candidates against oracle cells; on the suites that played
   no part in deriving it (gate-edges, gen-m9, ironcalc-calc and the rest of probes) it fixes 53 cells and loses 7.
-- Decision renumbered 0170 to 0190 and the follow-up T-3192 to T-3393 on merging main (both ids were taken there).
-- Follow-up: T-3393.
+- Decision renumbered 0170 to 0190 and the follow-up T-3192 to T-3393, then to T-3413 (main took T-3393) on merging main (both ids were taken there).
+- Follow-up: T-3413.
