@@ -2,7 +2,8 @@ use crate::arithmetic::bcast_get;
 use crate::cast::NumberOrArray;
 use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::ArrayNode;
-use crate::expressions::types::CellReferenceIndex;
+use crate::expressions::token::TableReference;
+use crate::expressions::types::{CellReferenceIndex, CellReferenceRC};
 use crate::expressions::utils::{
     is_indirect_unquoted_sheet, is_out_of_range_r1c1_name, quote_digit_leading_sheet,
     unquote_sheet_prefix,
@@ -30,6 +31,7 @@ mod address_areas;
 mod choosecols_chooserows;
 mod drop_take;
 mod expand;
+mod filter;
 mod formulatext;
 mod getpivotdata;
 mod group_functions;
@@ -154,7 +156,8 @@ impl Model {
         // `MATCH({#N/A;1},A1:A3,"x")` is #N/A in slot 1 (probes/match-lookup-value-lift E17; slot 2,
         // #VALUE!, follows from the per-slot match_type check and is not probed;
         // docs/excel-semantics/lookup.md "MATCH lifts over lookup_value", T-1866).
-        self.lift_values(
+        self.lift_values_keyed(
+            args,
             vec![target, match_type],
             LiftCost::Cells(values.as_ref().map_or(1, SearchVector::scan_cells)),
             &LiftOptions::REUSE_EQUAL_RUNS,
@@ -269,6 +272,7 @@ impl Model {
         // We look for `lookup_value` in the first row of the table
         let search_vector = table.first_row(self, cell);
         let search = LookupSearch {
+            call: args,
             search_vector: &search_vector,
             index: row_index,
             size: table.rows(),
@@ -322,6 +326,7 @@ impl Model {
         // We look for `lookup_value` in the first column of the table
         let search_vector = table.first_column(self, cell);
         let search = LookupSearch {
+            call: args,
             search_vector: &search_vector,
             index: column_index,
             size: table.columns(),
@@ -821,7 +826,10 @@ impl Model {
                 right: reference,
             },
             Ok(ParsedReference::Range(left, right)) => CalcResult::Range { left, right },
-            Err(message) => match self.indirect_defined_name(&ref_text, cell) {
+            Err(message) => match self.indirect_defined_name(&ref_text, cell).or_else(|| {
+                a1.then(|| self.indirect_structured(&ref_text, cell))
+                    .flatten()
+            }) {
                 Some(found) => found,
                 None => CalcResult::Error {
                     error: Error::REF,
@@ -830,6 +838,71 @@ impl Model {
                 },
             },
         }
+    }
+
+    /// INDIRECT of the text of a structured reference (`INDIRECT("Sales[Qty]")`): the area the
+    /// parser lowers the reference to, as for the same text in a formula. A table or column the
+    /// workbook lacks stays `#REF!` (docs/excel-semantics/lookup.md "INDIRECT of a structured
+    /// reference text resolves the table area"; probes/table-edits/table-insert-column-inside-header F!A4:A5, T-2911).
+    fn indirect_structured(&mut self, text: &str, cell: CellReferenceIndex) -> Option<CalcResult> {
+        let sheet = self
+            .workbook
+            .worksheets
+            .get(cell.sheet as usize)?
+            .get_name();
+        let context = CellReferenceRC {
+            sheet,
+            row: cell.row,
+            column: cell.column,
+        };
+        // Only the evidenced `Table[Column]` shape: the specifiers, `@`, an unqualified column,
+        // spacing, a bare table name and `a1` FALSE are unprobed and stay `#REF!` (case is
+        // unprobed but matched ignoring case, as the parser does)
+        // (TODO(T-3394): probe them).
+        let Node::StructuredReferenceKind { reference, lowered } =
+            self.parser.parse(text, &context)
+        else {
+            return None;
+        };
+        let plain_column = reference.specifier.is_none()
+            && !reference.bare
+            && !reference.unqualified
+            && matches!(
+                reference.table_reference,
+                Some(TableReference::ColumnReference(_))
+            );
+        if !plain_column {
+            return None;
+        }
+        let (sheet, row1, column1, row2, column2) = match *lowered {
+            Node::ReferenceKind {
+                sheet_index,
+                row,
+                column,
+                ..
+            } => (sheet_index, row, column, row, column),
+            Node::RangeKind {
+                sheet_index,
+                row1,
+                column1,
+                row2,
+                column2,
+                ..
+            } => (sheet_index, row1, column1, row2, column2),
+            _ => return None,
+        };
+        Some(CalcResult::Range {
+            left: CellReferenceIndex {
+                sheet,
+                row: row1,
+                column: column1,
+            },
+            right: CellReferenceIndex {
+                sheet,
+                row: row2,
+                column: column2,
+            },
+        })
     }
 
     /// INDIRECT of the text of a defined name that stands for a reference (`INDIRECT("RCR")`,
