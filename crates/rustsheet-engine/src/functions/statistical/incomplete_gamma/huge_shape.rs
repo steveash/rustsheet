@@ -12,8 +12,8 @@
 use super::{gamma_density, gamma_quantile, Tail};
 
 /// From this shape on the quantile is [`huge_shape_quantile`]. Below it the refinement from
-/// `wilson_hilferty_start` gives the true quantile, as Excel does at every probed p down to shape 1E8 (T-1634);
-/// at 1E9 Excel is already `#NUM!` at p = 1E-300 (probes/t3070-gamma-inv-band A1).
+/// `wilson_hilferty_start` gives the true quantile, as Excel does at every probed p down to shape
+/// 1E8 (T-1634); at 1E9 Excel is already `#NUM!` at p = 1E-300 (probes/t3070-gamma-inv-band A1).
 /// FITTED(T-3070, 1 cell, shape 1E9, p 1E-300)
 pub(crate) const HUGE_SHAPE_MIN: f64 = 1e9;
 
