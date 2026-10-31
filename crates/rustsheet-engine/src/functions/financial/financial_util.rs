@@ -324,13 +324,13 @@ const IRR_POLISH_STEPS: usize = 3;
 
 /// The last stage, where both secant runs and [`irr_fallback`] fail on conventional flows (one
 /// outlay, then flows of the other sign, so P has one positive root): Newton from v = 1 (r = 0),
-/// then polished. Excel
-/// returns these roots, where the secant drifts for 50+ steps near r = -10% or stalls on a flat
-/// step near r = 0 (financial.md "IRR on conventional flows near 0 and -10%",
-/// probes/t3347-irr-conventional-num, probes-numeric/t3347-irr-conventional-sweep, T-3347), and
-/// is `#NUM!` on the three swept series whose run from v = 1 needs 64 to 159 steps (A111, A115,
-/// A117; the slowest that returns needs 46), the split of [`IRR_FALLBACK_STEPS`]. Fitted, not
-/// Excel's code: the digits are within 2.2e-11 of Excel's and 1.5e-11 of the exact root.
+/// then polished. Excel returns these roots, where the secant drifts for 50+ steps near
+/// r = -10% or stalls on a flat step near r = 0 (financial.md "IRR on conventional flows near 0
+/// and -10%", probes/t3347-irr-conventional-num, probes-numeric/t3347-irr-conventional-sweep,
+/// T-3347), and is `#NUM!` on the three swept series whose run from v = 1 needs 64 to 159 steps
+/// (A111, A115, A117; the slowest that returns needs 46), the split of [`IRR_FALLBACK_STEPS`].
+/// Fitted, not Excel's code: the digits are within 2.2e-11 of Excel's and 1.5e-11 of the exact
+/// root.
 fn irr_conventional(values: &[f64]) -> Option<f64> {
     // Only the probed shape: one outlay, then flows of the other sign (or zero). Other flows with
     // one sign change, such as two outlays first, are unprobed and stay `#NUM!` here.
@@ -491,4 +491,42 @@ pub(crate) fn compute_xirr(
         }
     }
     Err(no_result())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 40 flows of 15 after an outlay of 9998.24, an IRR near -10% (probes/t3347-irr-conventional-num
+    /// A18): both secant runs and the v = 0 fallback fail, the conventional stage returns Excel's
+    /// -0.09999998988243108 to the bit.
+    const LEVEL_NEAR_MINUS_TEN: [f64; 41] = {
+        let mut flows = [15.0; 41];
+        flows[0] = -9998.24;
+        flows
+    };
+
+    #[test]
+    fn the_conventional_stage_returns_a_root_the_other_stages_miss() {
+        let flows = LEVEL_NEAR_MINUS_TEN;
+        assert_eq!(irr_secant(&flows, 0.1), None);
+        assert_eq!(irr_fallback(&flows), None);
+        assert_eq!(irr_conventional(&flows), Some(-0.099_999_989_882_431_08));
+        assert_eq!(
+            compute_irr(&flows, 0.1).ok(),
+            Some(-0.099_999_989_882_431_08)
+        );
+    }
+
+    #[test]
+    fn the_conventional_stage_takes_only_one_outlay_then_the_other_sign() {
+        let mut two_outlays = LEVEL_NEAR_MINUS_TEN;
+        two_outlays[1] = -1.0;
+        assert_eq!(irr_conventional(&two_outlays), None);
+        let mut sign_back = LEVEL_NEAR_MINUS_TEN;
+        sign_back[40] = -1.0;
+        assert_eq!(irr_conventional(&sign_back), None);
+        let negated = LEVEL_NEAR_MINUS_TEN.map(|c| -c);
+        assert_eq!(irr_conventional(&negated), Some(-0.099_999_989_882_431_08));
+    }
 }

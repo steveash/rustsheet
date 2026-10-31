@@ -993,7 +993,7 @@ Rule: Excel's IRR returns the root of conventional cash flows (one outlay, then 
 exact root there: of 162 such series (T-3347; the probe's 42 cells and the sweep's 120) Excel is a number on 159 and
 `#NUM!` on three that have a real root (sweep A111, A115 and A117, r = -0.23, -0.40 and -0.11, long series of tiny
 flows after a large outlay). The secant model fails in two ways, both reproduced by the engine before T-3347:
-- near -10% on long level series (`IRR({-145.84,15,...,15})`, 40 flows of 15, probe A15-A21; also n = 20, A10-A14)
+- near -10% on long level series (`IRR({-9998.24,15,...,15})`, 40 flows of 15, probe A15-A21; also n = 20, A10-A14)
   it drifts for hundreds of steps and reaches its 50-step cap, and from n = 40 its first steps are a flat secant;
 - near 0 with large flows (24 flows of up to 1E9, probe A36-A42) v = 1 - d is the same double for successive d, so
   the secant is flat (f1 = f0) before |NPV| < 1E-7 is reached.
