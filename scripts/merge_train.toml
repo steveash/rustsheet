@@ -1,6 +1,6 @@
 # The merge-train switch (SPEC-0027 "The switch"): lock | shadow | train. It is read only from a
 # freshly fetched origin/main (`make merge-mode`), and anything but a valid mode reads as `lock`.
-mode = "train"
+mode = "lock"
 
 # Verdict records (SPEC-0027 section 2, "Verdict records (v2)"; decision 0178): "warn" reports a
 # reviewer with no record on the marked head, "require" refuses `mark` and fails V4. Read from
