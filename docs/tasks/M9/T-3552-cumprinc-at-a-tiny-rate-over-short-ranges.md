@@ -1,5 +1,5 @@
 ---
-id: T-3534
+id: T-3552
 title: "CUMPRINC at a tiny rate over short ranges (paired probe fin-cumipmt-tiny-rate-structure): 37 visibly-off CUMIPMT cells that amplify our CUMPRINC's 1 to 3 ulps"
 milestone: M9
 lane: functions-financial
@@ -76,7 +76,7 @@ On probes/fin-cumipmt-tiny-rate-structure, our CUMPRINC returns Excel's doubles 
       scoring); a fresh log-uniform sweep (rate 1E-6 to 1E-2, nper 12 to 360, ranges of 1 to 12 periods, both types,
       CUMPRINC with its CUMIPMT) oracle-filled with excel-graph after the form is frozen, committed as a probes-numeric
       case, with its result recorded; the Gate A envelope result on that sweep with every point outside it listed;
-      each fitted cut or form choice tagged `/// FITTED(T-3534, <n> cells, <range>)` and applied only inside that
+      each fitted cut or form choice tagged `/// FITTED(T-3552, <n> cells, <range>)` and applied only inside that
       range; no step that fits differences below the reproducibility floor (4 ulp web against desktop,
       docs/research/oracle-calibration.md); no keep-matched branch (no input-specific table or branch that only
       restores probed bits).
