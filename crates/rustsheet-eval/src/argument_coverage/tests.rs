@@ -57,6 +57,7 @@ fn function(name: &str, params: Vec<CatalogParam>) -> CatalogFunction {
         oracle: None,
         v15: None,
         v15_reason: None,
+        returns: None,
         params,
     }
 }
