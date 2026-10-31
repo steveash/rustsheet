@@ -3,7 +3,7 @@ id: T-1925
 title: "Numeral-system digits in locale tags print native digits"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
