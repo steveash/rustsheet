@@ -1771,7 +1771,8 @@ T-3067 notes (float64 fit, 2026-10-28; nothing changed in the kernel):
   from the old interest forms regresses 10 to 42 CUMPRINC cells. Follow-up: T-3393.
 Status: PARTLY VERIFIED (excel-graph; visibly right but for A7 (= G2) and A10 near period 1E15, fin-cumipmt-period-bound
 A18, fin-cumprinc-near-1e15 E7, and the CUMIPMT cells that amplify our CUMPRINC's last bits (gate-edges A1-A4, A6, A7,
-E3-E10, H3, gen-m9 A352: T-3393; T-3118 moved 7 off the bit, decision 0190) and T-3141 (the
+E3-E10, H3, gen-m9 A352: T-3393; T-3118 moved 7 off the bit, decision 0190: gen-m9 A329,
+`CUMPRINC_CUMIPMT.xlsx` G3, overflow-and-forms A8, A12, A14, gate-edges A1, tiny-rate-structure F2) and T-3141 (the
 underflowed principal's bits); the short sums' last digits in T-1374)
 Tasks: T-1845, T-1890, T-2192, T-2363, T-2514, T-2521, T-3067, T-3118, T-3141, T-3393, T-1374
 

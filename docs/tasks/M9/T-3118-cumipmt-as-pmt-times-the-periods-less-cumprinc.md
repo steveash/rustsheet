@@ -49,5 +49,8 @@ forms with 5 principal forms fits; financial.md "T-3067 notes").
   --allow-regressions` under decision 0190 (accepted 2026-10-31). Net +46 cells.
 - The "No regressions" criterion holds under decision 0190, the ruling that allows these 7 (our
   CUMPRINC's last bits, amplified; financial.md "The interest as `PMT·m - CUMPRINC`, applied").
+- Evidence kind: the identity is measured on Excel's own PMT and CUMPRINC outputs (T-3067 run 4, to the bit on
+  60 pairs and 22 period-1 ranges), not chosen by scoring candidates against oracle cells; on the suites that played
+  no part in deriving it (gate-edges, gen-m9, ironcalc-calc and the rest of probes) it fixes 53 cells and loses 7.
 - Decision renumbered 0170 to 0190 and the follow-up T-3192 to T-3393 on merging main (both ids were taken there).
 - Follow-up: T-3393.

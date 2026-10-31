@@ -139,7 +139,7 @@ fn payment_is_excels_discounted_form() {
 
 /// IPMT and PPMT split Excel's discounted payment (financial.md "IPMT and PPMT split Excel's
 /// discounted payment", T-2243): ironcalc-calc `FINANCIAL/IPMT_PPMT.xlsx` and the cells the earlier
-/// forms left open (T-2667, T-3086); CUMIPMT's type 1 sum keeps the exact split.
+/// forms left open (T-2667, T-3086).
 #[test]
 fn period_payments_split_the_discounted_payment() {
     let split = |r, per, n, pv, fv, t| period_payments(r, per, n, pv, fv, t);

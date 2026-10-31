@@ -111,7 +111,7 @@ fn an_end_period_past_nper_is_num() {
 }
 
 #[test]
-fn up_to_32_periods_are_the_per_period_sum() {
+fn up_to_32_periods_are_close_to_the_per_period_sum() {
     // The interest is PMT times the periods less the principal (T-3118), so within an ulp or so of
     // the IPMT sum, not bit for bit. Type 0's short principal is its own forms (T-2192, below); type
     // 1's is the geometric sum or the closed form, close to the PPMT sum (T-1890). The per-period

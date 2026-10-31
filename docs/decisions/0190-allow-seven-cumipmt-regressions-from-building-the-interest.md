@@ -1,10 +1,11 @@
 # 0190 — Allow seven CUMIPMT regressions from building the interest as PMT times the periods less CUMPRINC (T-3118)
 
-- **Status:** accepted (2026-10-31, T-3118). The repository owner approved regressing some cells when the
-  overall result is a big win (approval given on 2026-10-31 in session
-  https://claude.ai/code/session_018kHzCtGoS4gXMYKAZWDHEd and relayed to the run that applied this record);
-  this change is a net win of 46 cells. Proposed 2026-10-30 as 0170 and renumbered to 0190 on merging main, where
-  0170 was taken.
+- **Status:** accepted (2026-10-31, T-3118): the T-3118 PR's review panel (security, architecture, quality,
+  Excel fidelity) approved this record. The orchestrating session relayed the repository owner's approval of
+  regressing some cells when the overall result is a big win (2026-10-31, session
+  https://claude.ai/code/session_018kHzCtGoS4gXMYKAZWDHEd); the run that applied this record did not see that
+  approval itself. The change is a net win of 46 cells. Proposed 2026-10-30 as 0170; renumbered to 0190 on merging
+  main, where 0170 was taken.
 - **Context:**
   - T-3067 run 4 (probes/fin-cumipmt-tiny-rate-structure, excel-graph) measured that Excel's
     CUMIPMT is `PMT(r,n,pv,0,t)·(e-s+1) - CUMPRINC(r,n,pv,s,e,t)` exactly in doubles, and a type 1
