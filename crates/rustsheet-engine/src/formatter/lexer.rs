@@ -757,10 +757,16 @@ impl Lexer {
                 // `ee` "05" (probes/text-locale-calendars A13).
                 'e' => Token::EraYear(self.consume_run('e') > 1),
                 'g' | 'G' => {
+                    // Excel: the word is case-insensitive (`TEXT(5,"GENERAL x")` = "5 x";
+                    // probes/text-format-general-company A16).
                     if self
                         .chars
-                        .get(self.position..)
-                        .is_some_and(|rest| rest.starts_with(&['e', 'n', 'e', 'r', 'a', 'l']))
+                        .get(self.position..self.position + 6)
+                        .is_some_and(|rest| {
+                            rest.iter()
+                                .collect::<String>()
+                                .eq_ignore_ascii_case("eneral")
+                        })
                     {
                         self.position += 6;
                         return Token::General;
