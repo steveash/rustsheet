@@ -170,7 +170,7 @@ T-3289 landed the sweep: probes-numeric/t3284-gamma-deep-upper-tail.case.json (3
     farther 6, lost 1, newly visibly off 0 (T-3285's `CHIDIST(42,7)` and four `CHIDIST` cells, decision 0202).
   - `update-baseline` (no `--allow-regressions`; cell 9 was recorded in the first version): every suite unchanged,
     gen-m9 2882.
-  - Ungated cells lost or newly visibly off that decision 0203 does not name: listed for an owner ruling (not
+  - Ungated cells lost or newly visibly off outside decision 0203's first nine cells: the owner's second extension (2026-10-31) covers them, and 0203 lists them (was: listed for an owner ruling, not
     claimed): t2561-chisq-dist-rt-past-edge R!A33 0 to 2 and R!A43 0 to 1; t3269-gamma-tail-switch A80, A100, A136
     (and A99 0 to 1 against main, 1 on T-3285); t3269-shape6-misses A46, A53, A67, A68, A69; t3285-chisq-dist-rt-
     half-integer-sweep A65 6 to 17; t3269-fresh-sweep-2 A70 0 to 3, A205 0 to 32, A165 10 to 25, A173 5 to 17, A209 5 to

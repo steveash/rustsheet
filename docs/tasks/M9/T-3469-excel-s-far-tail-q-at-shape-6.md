@@ -71,3 +71,9 @@ Cells this task owns:
 
 ## Second extension (T-3269 rework)
 Owns the 19 ungated probes-numeric cells listed in decision 0203 under "Second extension" (lost bit-exact or newly visibly off when the far-tail form was restricted to shapes 3/2 to 11).
+
+## Review notes carried from T-3269 (fidelity round 3)
+- docs/research/t3269/holdout.py builds the 50-digit reference from the decimal x string, not the double Excel receives; at large x the "correctly rounded" baseline is off by up to about 130 ulp (e.g. (11.5, 553.155)). Recompute with `mpmath.mpf(float(...))` and regenerate holdout-mpmath.json, fresh2-mpmath.json, the .out files and the T-3269/statistics.md tables. Head still wins (test 43 vs 24, sweep 52 vs 16 at the double x).
+- `FAR_TAIL_MAX_SHAPE` = 11 rests on 4 train cells near the cut; above shape 11 at 45 < x <= 600 the form beats the accurate kernel (train 88/16, test 35/2), and the unrestricted form beats head on the hold-out (51 vs 43) and sweep (59 vs 52). Place Excel's switch above shape 11 from that evidence instead of keeping the band.
+- `FAR_TAIL_MIN_X`'s tag says shape 2..4 but the cut applies at 1.5..11; cite the fresh-sweep-2 cells at x 27..34, shapes 5..11, or widen the tag.
+- R4.2: commit the frozen code before filling a fresh sweep (the T-3269 freeze could not be proven from git).
