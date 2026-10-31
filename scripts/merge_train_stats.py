@@ -2,6 +2,8 @@
 """`make merge-train-stats [SINCE=<date>]`: the merge train's metrics (SPEC-0027 "Metrics" and
 "Daily thresholds"), the shadow agreement score (section 4, "When a shadow prediction agrees") and
 T-2991's evidence and load bar (SPEC-0027 "Rollout", "Shadow evidence for T-2991"); T-3076.
+`make merge-train-stats STRANDED=1` prints only the stranded-PR line: a few reads, where the whole
+report reads every run, job and PR of the window and takes minutes (T-3344, decision 0194).
 
 Every read goes through scripts/gh_client.py. Force-pushed branches keep no history, so the train
 and lock histories come from the activity API (each push's `after` commit, read through the commits
@@ -648,6 +650,9 @@ class Stats:
 def main(argv: Sequence[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0] if __doc__ else "")
     parser.add_argument("--since", help="start of the metrics window (ISO date or instant; default 24 h ago)")
+    parser.add_argument(
+        "--stranded", action="store_true", help="print only the stranded-PR line (fast; the steward's sweep)"
+    )
     args = parser.parse_args(argv)
     now = datetime.now(UTC)
     since = now - DAY
@@ -663,7 +668,12 @@ def main(argv: Sequence[str]) -> int:
         print("merge-train-stats: origin is not a github.com remote", file=sys.stderr)
         return 2
     try:
-        print(Stats(client, GitHistory(), now, since).report())
+        stats = Stats(client, GitHistory(), now, since)
+        if args.stranded:
+            stats.stranded()
+            print("\n".join(stats.out))
+        else:
+            print(stats.report())
     except (GhError, subprocess.CalledProcessError) as error:
         print(f"merge-train-stats: {error}", file=sys.stderr)
         return 2
