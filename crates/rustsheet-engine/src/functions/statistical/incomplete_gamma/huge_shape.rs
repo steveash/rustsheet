@@ -11,13 +11,15 @@
 
 use super::{gamma_density, gamma_quantile, Tail};
 
-/// From this shape on the quantile is [`huge_shape_quantile`]. Below it statrs' search and the
-/// refinement give the true quantile, as Excel does at every probed p down to shape 1E8 (T-1634);
-/// at 1E9 Excel is already `#NUM!` at p = 1E-300 (probes/t3070-gamma-inv-band A1).
+/// From this shape on the quantile is [`huge_shape_quantile`]. Below it the refinement from
+/// `wilson_hilferty_start` gives the true quantile, as Excel does at every probed p down to shape
+/// 1E8 (T-1634); at 1E9 Excel is already `#NUM!` at p = 1E-300 (probes/t3070-gamma-inv-band A1).
+/// FITTED(T-3070, 1 cell, shape 1E9, p 1E-300)
 pub(crate) const HUGE_SHAPE_MIN: f64 = 1e9;
 
 /// The offset Excel adds to the Wilson-Hilferty cube root: (1.0002658235505755)^(1/3) - 1 is
 /// 0.0000886 to 13 digits (probes/t2982-gamma-inv-huge-shape A7-A23).
+/// FITTED(T-2982, 17 cells, shape 2E10..1E300, p 0.5)
 const WILSON_HILFERTY_OFFSET: f64 = 0.000_088_6;
 
 /// The effective factor on the z term, fitted (T-3070) to Excel's values with the three terms
@@ -28,6 +30,7 @@ const WILSON_HILFERTY_OFFSET: f64 = 0.000_088_6;
 /// at A112, A152, A179, t2982 A63) and 11 to 33 at p = 1E-100 in the right tail from 5E9 to 2E10
 /// (A229, A214, A371). T-2982's 1 - 2.2106E-5, fitted at 1E13 alone, was 100 to 12,459 ulps off at
 /// 1E11.
+/// FITTED(T-3070, 167 cells, shape 1.5E10..1E300, closed-form cells only)
 const WILSON_HILFERTY_SPREAD: f64 = 0.999_977_894_167;
 
 /// Effective terms in 1/a, z^2/a and z^3/a^(3/2) inside the cube, fitted to Excel's values with
@@ -35,16 +38,20 @@ const WILSON_HILFERTY_SPREAD: f64 = 0.999_977_894_167;
 /// values, not Excel's formula). Together they are the absolute -2.3E-3 + 2.0E-4 z^2 that T-2982
 /// found left at 1E11 (A60-A77).
 /// The 1/a term (fit range: [`WILSON_HILFERTY_SPREAD`]).
+/// FITTED(T-3070, 167 cells, shape 1.5E10..1E300, closed-form cells only)
 const WILSON_HILFERTY_INVERSE_SHAPE: f64 = -7.586_532e-4;
 /// The z^2/a term (fit range: [`WILSON_HILFERTY_SPREAD`]).
+/// FITTED(T-3070, 167 cells, shape 1.5E10..1E300, closed-form cells only)
 const WILSON_HILFERTY_SQUARE: f64 = 6.740_481e-5;
 /// The z^3/a^(3/2) term (fit range: [`WILSON_HILFERTY_SPREAD`]).
+/// FITTED(T-3070, 167 cells, shape 1.5E10..1E300, closed-form cells only)
 const WILSON_HILFERTY_CUBE: f64 = -3.086_760e-3;
 
 /// Excel's Wilson-Hilferty start for a scale of 1, where `z` is the standard normal quantile of
 /// the lower tail's probability: a (1 - 1/(9a) + z/(3 sqrt a))^3 with Excel's offset, spread and
 /// higher terms inside the cube (probes/t2982-gamma-inv-huge-shape, probes/t3070-gamma-inv-band).
-/// Where its density underflows it is Excel's quantile.
+/// Where its density underflows it is Excel's quantile. Below a huge shape the refinement starts
+/// from the textbook form instead (`super::wilson_hilferty_start`, T-3131).
 pub(super) fn wilson_hilferty_quantile(shape: f64, z: f64) -> f64 {
     let root = shape.sqrt();
     let cube_root = 1.0 + WILSON_HILFERTY_OFFSET - 1.0 / (9.0 * shape)
@@ -60,9 +67,11 @@ pub(super) fn wilson_hilferty_quantile(shape: f64, z: f64) -> f64 {
 /// probes/t3070-gamma-inv-band A77 `GAMMA.INV(0.001,7E9,1)` (a value) and
 /// probes/t2982-gamma-inv-huge-shape A45 `GAMMA.INV(1E-16,1E10,1)` (`#NUM!`); slopes 1.30 to 1.41
 /// also separate every probed cell, 1.0 and 1.5 do not.
+/// FITTED(T-3070, 476 cells, shape 1E9..1E300, every probed inversion)
 const BAND_UPPER_SLOPE: f64 = 1.35;
 
 /// The upper edge of the band, for [`BAND_UPPER_SLOPE`].
+/// FITTED(T-3070, 2 cells, shape 7E9..1E10, p 1E-16..0.001)
 const BAND_UPPER_EDGE: f64 = 27.25;
 
 /// The lower edge of the band: offset - z < 39, the offset's slope fixed at 1 (UNVERIFIED: any
@@ -71,6 +80,7 @@ const BAND_UPPER_EDGE: f64 = 27.25;
 /// 9998853641.00538, and one `#NUM!` point, probes/t3070-gamma-inv-band A44 and A370
 /// (`GAMMA.INV(1E-100,5E9,1)`, `CHISQ.INV(1E-100,1E10)`). Near it only p = 1E-30, 1E-100 and
 /// 1E-300 were probed, so it is in effect a cut in p between 1E-30 and 1E-100.
+/// FITTED(T-3070, 3 cells, shape 5E9..1E10, p 1E-100..1E-30)
 const BAND_LOWER_EDGE: f64 = 39.0;
 
 /// Excel's quantile of the gamma distribution of `shape` (at least [`HUGE_SHAPE_MIN`]) and
@@ -89,6 +99,8 @@ const BAND_LOWER_EDGE: f64 = 39.0;
 ///   ([`gamma_quantile`]): `GAMMA.INV(0.5,5E9,1)` = 4999999999.666667, `CHISQ.INV(1E-100,6E9)` =
 ///   5997669910.951994 (A358).
 /// - Else NaN: `GAMMA.INV(0.5,6E9,1)` (A65), `GAMMA.INV(p,1.2E10,1)` at every probed p (A85-A98).
+///
+/// FITTED(T-3070, 2 cells, shape 1.5E10..1.95E10, ln density -708.54..-701.60)
 pub(crate) fn huge_shape_quantile(shape: f64, scale: f64, p: f64, tail: Tail, z: f64) -> f64 {
     let start = wilson_hilferty_quantile(shape, z);
     if gamma_density(shape, start, 1.0).is_none_or(|density| density < f64::MIN_POSITIVE) {

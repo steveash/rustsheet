@@ -3,6 +3,7 @@
 use std::error::Error;
 use std::io::{Cursor, Read, Write};
 
+use rustsheet_xlsx::base::expressions::utils::number_to_column;
 use rustsheet_xlsx::base::Model;
 use rustsheet_xlsx::error::{ImportLimit, XlsxError};
 use rustsheet_xlsx::import::{
@@ -109,8 +110,10 @@ fn sheet_without_relationship_is_an_error() -> TestResult {
     Ok(())
 }
 
+/// The workbook decodes, but its style 0 points at a font that is not there, so the first read of
+/// a cell's style would index past the fonts: the model refuses it (T-2913).
 #[test]
-fn empty_fonts_with_an_xf_pointing_at_a_font_imports() -> TestResult {
+fn empty_fonts_with_an_xf_pointing_at_a_font_is_an_error() -> TestResult {
     let bytes = rewrite(|name, content| {
         if name != "xl/styles.xml" {
             return content;
@@ -123,7 +126,13 @@ fn empty_fonts_with_an_xf_pointing_at_a_font_imports() -> TestResult {
             &content[end..]
         )
     })?;
-    assert_imports(&bytes)
+    let workbook = load_from_xlsx_bytes(&bytes, "case", "en", "UTC")?;
+    let err = Model::from_workbook(workbook, "en").err();
+    assert!(
+        err.as_ref().is_some_and(|e| e.contains("font 0")),
+        "expected a dangling-font error, got {err:?}"
+    );
+    Ok(())
 }
 
 #[test]
@@ -643,4 +652,53 @@ fn string_literal_longer_than_4095_units_refuses_the_workbook() -> TestResult {
         "definedName nm body holds a string literal longer than 4095 UTF-16 code units",
     );
     Ok(())
+}
+
+/// Re-zips `tests/basic_text.xlsx` with the `sheetData` of its first sheet replaced by `rows`.
+fn with_first_sheet_rows(rows: &str) -> Result<Vec<u8>, Box<dyn Error>> {
+    rewrite(|name, content| {
+        if name != "xl/worksheets/sheet1.xml" {
+            return content;
+        }
+        let (Some(start), Some(end)) = (content.find("<sheetData"), content.find("</sheetData>"))
+        else {
+            return content;
+        };
+        format!("{}<sheetData>{rows}{}", &content[..start], &content[end..])
+    })
+}
+
+/// One array formula whose `ref` names two whole columns: the importer would put 2^21 cells in
+/// its map before the load check, so it refuses the formula at once (T-3437).
+#[test]
+fn an_array_formula_ref_past_one_column_is_an_error() -> TestResult {
+    let rows = r#"<row r="1"><c r="A1"><f t="array" ref="A1:B1048576">1</f><v>1</v></c></row>"#;
+    assert_import_error(&with_first_sheet_rows(rows)?, "spills over more than");
+    Ok(())
+}
+
+/// A thousand array formulas of a few bytes each, each naming a whole column the file does not
+/// store: refused before the map takes 2^30 cells (T-3437).
+#[test]
+fn array_formula_refs_naming_more_cells_than_the_sheet_holds_are_an_error() -> TestResult {
+    let mut cells = String::new();
+    for column in 1..=1000 {
+        let name = number_to_column(column).ok_or("column")?;
+        cells.push_str(&format!(
+            r#"<c r="{name}1"><f t="array" ref="{name}1:{name}1048576">1</f><v>1</v></c>"#
+        ));
+    }
+    let rows = format!(r#"<row r="1">{cells}</row>"#);
+    assert_import_error(
+        &with_first_sheet_rows(&rows)?,
+        "more cells than the sheets read so far store",
+    );
+    Ok(())
+}
+
+/// An array formula whose covered cells are all written imports as before.
+#[test]
+fn an_array_formula_with_its_cells_imports() -> TestResult {
+    let rows = r#"<row r="1"><c r="A1"><f t="array" ref="A1:A3">ROW(A1:A3)</f><v>1</v></c></row><row r="2"><c r="A2"><v>2</v></c></row><row r="3"><c r="A3"><v>3</v></c></row>"#;
+    assert_imports(&with_first_sheet_rows(rows)?)
 }

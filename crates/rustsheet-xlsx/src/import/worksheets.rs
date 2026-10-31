@@ -1,12 +1,13 @@
 #![allow(clippy::unwrap_used)]
 
 use rustsheet_engine::expressions::parser::{
-    new_parser_english, static_analysis::add_implicit_intersection, Node, Parser,
+    new_parser_english, static_analysis::add_implicit_intersection, Parser,
 };
 use std::{collections::HashMap, io::Read, num::ParseIntError};
 
 use super::call_cap;
 use super::package::{part_folder_and_rels, resolve_target, Package};
+pub(super) use super::relocation_key::RcTextCache;
 use super::rich_errors::{cached_error_name, load_value_metadata_errors};
 use super::workbook::WorkbookXML;
 use super::xml::XmlNode;
@@ -27,11 +28,12 @@ use thiserror::Error;
 use crate::error::XlsxError;
 
 use super::{
+    array_refs::ArrayClaims,
     columns::load_columns,
     conditional_formatting::load_conditional_formatting,
     iso_date::iso8601_to_date_system_serial,
     shared_strings::{decode_xlsx_escapes, SharedStringTable},
-    sheet_data::{read_sheet_data, SheetDataXml},
+    sheet_data::{read_sheet_data, SheetDataXml, SheetPart},
     tables::load_table,
     util::{get_attribute, get_color, get_number, get_relationship, parse_cell_number},
     Relationship,
@@ -248,41 +250,6 @@ fn parse_reference(s: &str) -> Result<CellReferenceRC, ParseReferenceError> {
     })
 }
 
-/// The R1C1 text of the formulas a sheet's load printed last, by parsed tree (T-3318).
-///
-/// A1 parsing stores a relative reference as its offset from the formula's cell, so the trees of
-/// a formula copied along a row or column are equal, and the R1C1 text is a function of the tree
-/// and of whether the cell holds an array formula alone (`add_implicit_intersection` and
-/// `to_rc_format` read nothing else), up to the sign of a zero, which the derived `PartialEq`
-/// ignores: trees holding a `-0` are not cached. A hit skips both, which were about 40% of loading
-/// corpus-bench/52450's 36,640 copies of one formula. Only the last few trees are kept: copies
-/// come in runs, and comparing a tree that differs stops at the first different node.
-#[derive(Default)]
-pub(super) struct RcTextCache {
-    /// (tree as parsed, array formula, R1C1 text), most recent last.
-    entries: Vec<(Node, bool, String)>,
-}
-
-impl RcTextCache {
-    /// How many trees are kept.
-    const CAPACITY: usize = 8;
-
-    fn get(&self, tree: &Node, is_array_formula: bool) -> Option<&str> {
-        self.entries
-            .iter()
-            .rev()
-            .find(|(t, array, _)| *array == is_array_formula && t == tree)
-            .map(|(.., text)| text.as_str())
-    }
-
-    fn insert(&mut self, tree: Node, is_array_formula: bool, text: String) {
-        if self.entries.len() == Self::CAPACITY {
-            self.entries.remove(0);
-        }
-        self.entries.push((tree, is_array_formula, text));
-    }
-}
-
 pub(super) fn from_a1_to_rc(
     formula: String,
     parser: &mut Parser,
@@ -292,16 +259,34 @@ pub(super) fn from_a1_to_rc(
 ) -> Result<String, XlsxError> {
     let cell_reference =
         parse_reference(&context).map_err(|error| XlsxError::Xml(error.to_string()))?;
+    // A copy of a formula read before (same key) has its tree, so its text: no parse. The copy
+    // read first passed the nesting check below, and the copy's tree nests the same.
+    let key = cache.lexer.key(&formula, &cell_reference);
+    if let Some(text) = key
+        .as_deref()
+        .and_then(|k| cache.get_keyed(k, is_array_formula))
+    {
+        return Ok(text.to_string());
+    }
     let t = parser.parse(&formula, &cell_reference);
+    if t.has_parse_error() {
+        // A formula that does not parse is no template for its copies (relocation_key.rs).
+        cache.lexer.forget_template();
+    }
     // Excel refuses a workbook nesting more function calls than it takes (createSession 501;
     // syntax.md "Formula nesting depth cap", T-3097).
     call_cap::refuse_too_many_calls(parser, &format!("Formula in {context}"))?;
     // Tree equality holds `-0` equal to `0`, which print differently (`{-0}`, `{0}`): such a
     // tree is neither looked up nor kept.
+    let key = key.filter(|_| !t.has_parse_error());
     let cacheable = !t.has_negative_zero();
     if cacheable {
         if let Some(text) = cache.get(&t, is_array_formula) {
-            return Ok(text.to_string());
+            let text = text.to_string();
+            if let Some(key) = key {
+                cache.insert_keyed(key, is_array_formula, text.clone());
+            }
+            return Ok(text);
         }
     }
     let mut rewritten = t.clone();
@@ -309,6 +294,9 @@ pub(super) fn from_a1_to_rc(
         add_implicit_intersection(&mut rewritten, true);
     }
     let text = to_rc_format(&rewritten);
+    if let Some(key) = key {
+        cache.insert_keyed(key, is_array_formula, text.clone());
+    }
     if cacheable {
         cache.insert(t, is_array_formula, text.clone());
     }
@@ -796,6 +784,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     theme: &Theme,
     dxfs: &mut Vec<Dxf>,
     rich_errors: &[Option<&'static str>],
+    array_claims: &mut ArrayClaims,
 ) -> Result<(Worksheet, bool), XlsxError> {
     let sheet_name = &settings.name;
     let sheet_id = settings.id;
@@ -821,8 +810,11 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
         &mut parser,
         shared_strings,
         &limits,
-        rich_errors,
-        settings.date_system,
+        SheetPart {
+            rich_errors,
+            date_system: settings.date_system,
+            array_claims,
+        },
     )?;
     let ws = &worksheet;
     let dimension = load_dimension(ws);
@@ -941,6 +933,8 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
 
     let defined_names = workbook.get_defined_names_with_scope();
     let rich_errors = load_value_metadata_errors(archive)?;
+    // One tally for the whole load: the sheets share its slack (T-3437).
+    let mut array_claims = ArrayClaims::default();
 
     for sheet in &workbook.worksheets {
         let sheet_name = &sheet.name;
@@ -971,6 +965,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
                 theme,
                 dxfs,
                 &rich_errors,
+                &mut array_claims,
             )?;
             if is_selected {
                 selected_sheet = sheet_index;

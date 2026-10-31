@@ -115,14 +115,16 @@ const BETA_INV: ArgKinds = ArgKinds::fixed(
 );
 /// `F.INV(probability, deg_freedom1, deg_freedom2)`, F.INV.RT and FINV.
 const F_INV: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Weighted(QUANTILE_WEIGHT));
-/// What one T.INV or CONFIDENCE.T element is charged. Its quantile is the capped port with at most
-/// 64 Newton steps and 512 step adjustments (`inverse_beta::T_MAX_NEWTON_STEPS`,
-/// `T_MAX_STEP_ADJUSTMENTS`; 27 and 78 were the most seen: 0.21 ms at full cost), a closed form, or
-/// a bisection of at most 264 cdfs (`t_dist::t_quantile`'s 64 doublings and 200 halvings: 0.82 ms,
-/// the bound). The weight caps a lifted call at 2^27 / 2^16 = 2,048 elements: 1.7 s at the bound
-/// (a DEVIATION, statistics.md). Measured cases cost much less (over 65,536 elements in release:
-/// 17.5 us for `T.INV.2T(1E-9,99999)`, the bisection; 1.2 us for `T.INV(0.4,5)`).
-const T_QUANTILE_WEIGHT: u32 = 1 << 16;
+/// What one T.INV or CONFIDENCE.T element is charged. From df 2 its quantile is a crossing of the
+/// tail at y (`t_dist::t_rounded_y_quantile`, T-2511): about 25 to 30 tails seeded by statrs' search,
+/// at most 66 without a seed (q below 1E-8) and about 81 with a poor one, each tail up to about 30 us where it sums the
+/// integer-df series (df up to 1000). Measured in release (T-2511): 1.53 ms for `T.INV(1E-12,999)`,
+/// the worst seen, about 1.0 ms at df 999 and 1000 otherwise, 0.47 ms at df 500, under 0.2 ms at
+/// df 99 and from df 1001. At df 1 it is the capped statrs port (0.21 ms) or a bisection of at most
+/// 264 cdfs (0.82 ms). The weight caps a lifted call at 2^27 / 2^17 = 1,024 elements: about 1.6 s
+/// at the worst case seen (a DEVIATION, statistics.md). It assumes a good seed: a poor one at df
+/// near 1000 would cost about 2.5 ms a call; hoisting the per-df work out of the tail is T-3399's.
+const T_QUANTILE_WEIGHT: u32 = 1 << 17;
 /// `T.INV(probability, deg_freedom)`, T.INV.2T and TINV.
 const T_INV: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift], Weighted(T_QUANTILE_WEIGHT));
 /// `CONFIDENCE.T(alpha, standard_dev, size)`.
@@ -131,19 +133,19 @@ const CONFIDENCE_T: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Weighted(
 
 // --- Incomplete gamma (T-1872) --------------------------------------------------------------
 /// What one GAMMA.DIST, GAMMA.INV, CHISQ.* or POISSON element is charged. Each runs one capped
-/// port of statrs' incomplete gamma (`statistical/incomplete_gamma.rs`): a cdf of at most 2^19
-/// series or continued-fraction terms, or an inversion whose cdfs (at most about 2,250 of them:
-/// 1,075 halvings, 1,025 doublings, 8 bisections, 4 Newton steps, then for GAMMA.INV and
-/// CHISQ.INV* one check and at most 129 more of a refinement, T-1634) share one budget of 2^19
-/// terms. Measured in release (T-1872, load 2 to 5 on 4 cores) over 512 elements at the cap: a
+/// capped incomplete gamma (`statistical/incomplete_gamma`): a cdf of at most 2^19 series or
+/// continued-fraction terms, or an inversion whose cdfs (at most 129 of them, the refinement from
+/// a Wilson-Hilferty start, T-3131; statrs' search ran up to about 2,250 before) share one budget
+/// of 2^19 terms. Measured in release (T-1872, load 2 to 5 on 4 cores) over 512 elements at the cap: a
 /// continued-fraction term costs 4.1 to 4.7 ns on its NaN path (2.4 ms for 2^19,
 /// `GAMMA.DIST(1.0000001E300,1E300,1,TRUE)`, whose terms overflow at once) and 2.4 ns where it
 /// converges and rescales (1.3 ms, `GAMMA.DIST(1000000000000001,1E15,1,TRUE)`, which reaches the
 /// cap at a shape of 1E15 and rescales on about 65% of its terms), a series term 2.5 ns (1.3 ms,
 /// `GAMMA.DIST(1E12,1E12,1,TRUE)`), and a cdf's own work 49 ns (`GAMMA.INV(1E-300,0.001,1E-300)`,
-/// 1,060 cdfs: 52 us). The bound of an element is 2^19 terms at the slowest, 4.7 ns, plus 2,250 cdfs
-/// at 49 ns, about 2.6 ms, so the weight caps a lifted call at 2^27 / 2^18 = 512 elements: 1.3 s
-/// at the bound (a DEVIATION, statistics.md). Measured cases cost less: 2.4 ms for the
+/// 1,060 cdfs: 52 us). The bound of an element is 2^19 terms at the slowest, 4.7 ns, plus 129 cdfs at
+/// 49 ns, about 2.5 ms (2.6 ms with statrs' 2,250 cdfs before T-3131), so the 2^18 weight still
+/// holds: it caps a lifted call at 2^27 / 2^18 = 512 elements, 1.3 s at the bound (a DEVIATION,
+/// statistics.md). Measured cases cost less: 2.4 ms for the
 /// continued fraction at the cap, 1.2 ms for `CHISQ.DIST(1E10,1E10,TRUE)` (481,117 terms),
 /// 1.6 us for `GAMMA.INV(0.4,2,3)`. It is the most an element is charged; each is charged by
 /// its shape below it (`incomplete_gamma`, T-2795, at the 4.7 ns and 49 ns above:

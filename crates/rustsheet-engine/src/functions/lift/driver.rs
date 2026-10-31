@@ -7,6 +7,7 @@ use super::kinds::{ArgKinds, ArgValue, CallResult, KernelWork, ValueWork};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
+use super::keyed::{tally_run, tally_visits};
 use crate::area_budget::{text_units, visit_units};
 use crate::arithmetic::{bcast_get, MISSING};
 use crate::cast::{calc_result_to_array_node, MAX_NUMBER_TEXT_LEN};
@@ -76,6 +77,19 @@ impl LiftedArg {
             CalcResult::Array(grid) => Ok(LiftedArg::Grid(grid)),
             scalar => Ok(LiftedArg::Scalar(scalar)),
         }
+    }
+
+    /// Every argument value read by [`LiftedArg::read`], or the first one's error.
+    pub(crate) fn read_all(
+        model: &mut Model,
+        args: Vec<CalcResult>,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<LiftedArg>, CalcResult> {
+        let mut lifted = Vec::with_capacity(args.len());
+        for arg in args {
+            lifted.push(LiftedArg::read(model, arg, cell)?);
+        }
+        Ok(lifted)
     }
 
     /// The grid slot at output position (`row`, `column`), `None` for a scalar: a dimension of
@@ -563,14 +577,10 @@ impl Model {
         if !args.iter().any(LiftedArg::is_grid) {
             return kernel(self, &args);
         }
-        let mut lifted = Vec::with_capacity(args.len());
-        for arg in args {
-            match LiftedArg::read(self, arg, cell) {
-                Ok(arg) => lifted.push(arg),
-                Err(error) => return error,
-            }
+        match LiftedArg::read_all(self, args, cell) {
+            Ok(lifted) => self.lift_grids(lifted, cost, options, cell, kernel, None),
+            Err(error) => error,
         }
-        self.lift_grids(lifted, cost, options, cell, kernel, None)
     }
 
     /// The broadcast over arguments already read, at least one of them a grid (SPEC-0011
@@ -590,9 +600,27 @@ impl Model {
         kernel: &mut Kernel<'_>,
         numbers: Option<&NumbersKernel<'_>>,
     ) -> CalcResult {
+        self.lift_grids_after(lifted, cost, options, cell, (kernel, numbers), 0)
+            .0
+    }
+
+    /// [`Self::lift_grids`] continuing a lift that charged `prior` visits up front: the per-call
+    /// cap is checked on `prior` and this lift's visits together, and only this lift's are
+    /// charged to the formula's work budget. Also returns this lift's up-front visits (0 when it
+    /// fails before charging them). `kernels` is the kernel and its number shortcut.
+    pub(super) fn lift_grids_after(
+        &mut self,
+        lifted: Vec<LiftedArg>,
+        cost: LiftCost,
+        options: &LiftOptions,
+        cell: CellReferenceIndex,
+        kernels: (&mut Kernel<'_>, Option<&NumbersKernel<'_>>),
+        prior: u64,
+    ) -> (CalcResult, u64) {
+        let (kernel, numbers) = kernels;
         let (rows, columns) = match broadcast_shape(&lifted, cell) {
             Ok(shape) => shape,
-            Err(error) => return error,
+            Err(error) => return (error, 0),
         };
         // Refuse before running anything when the elements would cost too much.
         let (plan, elements) = match options.reuse {
@@ -616,9 +644,13 @@ impl Model {
             LiftCost::Cells(cells) => cells.saturating_mul(units),
             LiftCost::Prepared(cells) => cells.saturating_add(units),
         };
-        if let Some(error) = self.spend_visits(visits, cell) {
-            return error;
+        let up_front = prior.saturating_add(visits);
+        if let Some(error) = too_many_visits(up_front, cell)
+            .or_else(|| self.spend_work(visit_units(visits), cell).err())
+        {
+            return (error, 0);
         }
+        tally_visits(visits);
         let mut grids = lifted
             .iter()
             .enumerate()
@@ -643,8 +675,8 @@ impl Model {
             Later::Kept
         };
         let past_first_column = matches!(later, Later::EmptyPastFirstColumn);
-        let up_front = visits;
-        let mut visits = visits;
+        let charged = visits;
+        let mut visits = up_front;
         let run = Run {
             options,
             visits: &mut visits,
@@ -657,12 +689,15 @@ impl Model {
         };
         // The elements' output charges, past the up-front cost, go to the formula's budget too.
         if let Err(error) = self.spend_work(visit_units(visits.saturating_sub(up_front)), cell) {
-            return error;
+            return (error, charged);
         }
         if past_first_column {
-            return empty_past_first_column(result, options.later_error);
+            return (
+                empty_past_first_column(result, options.later_error),
+                charged,
+            );
         }
-        result
+        (result, charged)
     }
 
     /// The lift of a call whose result is a reference (SPEC-0014 "Producers"): `kernel` runs
@@ -764,6 +799,7 @@ impl Model {
                 if let Some(slot) = values.as_mut_slice().get_mut(grid_index) {
                     *slot = array_node_into_calc_result(element, cell);
                 }
+                tally_run();
                 *node = match run.element(kernel(self, values.as_slice())) {
                     Ok(node) => node,
                     Err(error) => return error,
@@ -842,6 +878,7 @@ impl Model {
                                 *slot = array_element_value(node, cell);
                             }
                         }
+                        tally_run();
                         let value = match run.element(kernel(self, &values)) {
                             Ok(value) => value,
                             Err(error) => return error,

@@ -2,6 +2,7 @@ mod test_add_implicit_intersection;
 mod test_array_valued_shape;
 mod test_arrays;
 mod test_complex_precedence;
+mod test_defined_name_lookup;
 mod test_excel_export_lambda_let;
 mod test_general;
 mod test_group;

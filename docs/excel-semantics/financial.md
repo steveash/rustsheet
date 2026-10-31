@@ -1967,9 +1967,24 @@ workbook-wide state written in Excel's calculation order:
 - An AMORDEGRC or AMORLINC that is an error, or past the asset life (period 20 of a 0.15 rate, value 0), leaves the
   value as it was: an early `#NUM!` (negative salvage, -m), one from the asset-life check (rate 3.1E26, -l) and both
   functions at period 20 (-u, -v) pass the 485 below them through, and alone an asset-life error (rate 1) leaves
-  0 (-h). An error after the arguments are checked (a NaN AMORLINC charge) is unprobed.
-- Lifted over an array, every fractional element is 0: `SUM(AMORDEGRC(..,{0.3,0.5},..))` above the 485 charge is 0
-  (-x). What a lifted call leaves is unprobed.
+  0 (-h). An error after the arguments are checked (a NaN AMORLINC charge) has no reachable input: it needs
+  `LINEAR_STEP_CAP` (1024) single steps of the charge walk, and the walk takes a few steps per binade whatever the
+  inputs (T-2844; no probe).
+- Lifted over an array, a call runs on a state of its own that starts empty and leaves the workbook's state empty.
+  `SUM(AMORDEGRC(..,{0.3,0.5},..))` above the 485 charge is 0 (-x), so the 485 is not read. The elements run in order
+  and a fractional one reads what an earlier element of the same call left: `SUM(AMORDEGRC(2400,39679,39813,300,
+  {1,0.5},0.15,1))` is 1552 (776 + 776, -ae), `{0.5,1}` 776 (0 + 776, -af). A fraction above such a call is 0, not
+  the call's last element (485 for `{1,2}`, 776 for `{2,1}`, 776 for `{1,0.5}`) nor the AMORLINC's 132 below it
+  (-ac to -af: A1 fraction, A2 the lifted SUM, A3 `AMORLINC(2400,39679,39813,300,1,0.15,1)`).
+  An error element inside a lifted call is unprobed (ours: it leaves the value as it was, like a scalar error, so
+  `{1,-1,0.5}` is 776, `#NUM!`, 776; T-3393).
+- Hypothesis from one probe: a dynamic-array formula in the order empties the state, as WEEKNUM's does
+  (excel_order.rs): a fraction above
+  `=SEQUENCE(1,2)` (A2) above the 485 charge (A3) is 0 (-ag; ours 485: emptying the state at the formula's place in
+  `run_excel_order` did not change it, so how the pass reaches a spilling anchor is still to be found). Not fully
+  explained: `=SEQUENCE(1,2)+AMORDEGRC(..485..)` in A2 above an AMORLINC in A3 leaves the 485 for the fraction in A1
+  (-ah, 485; ours 132), where `=SEQUENCE(1,2)*0+AMORDEGRC(..485..)` alone below the fraction leaves it 0 (-ai; ours
+  the same). Known failures: -ag and -ah (T-3393).
 - The order is Excel's fresh-load order (recalc.md "The order Excel calculates a freshly loaded workbook in"): the
   value comes from the cell below (-p: A1 is 776 from A2, not A3's 485), the cell to the right (-q: A1 is B1's 485)
   or a later sheet (-n: Sheet1!A1 is Sheet2!A1's 485); a precedent is evaluated first wherever it sits (-o: A2's
@@ -1983,15 +1998,17 @@ leave the state empty. gen-m9 d912671baa1364aa A76
 (`AMORLINC(92598,36663,39379,343,6,1E-300,3)`), leaves 0 (fraction-state-r), and its other AMORDEGRCs and AMORLINCs are
 errors.
 Evidence: probes/amordegrc-fraction-alone-a to -g (excel-graph, 2026-10-26, T-1895) and
-probes/amordegrc-fraction-state-h to -ab (excel-graph, 2026-10-27, T-2825), with the earlier cells above.
+probes/amordegrc-fraction-state-h to -ab (excel-graph, 2026-10-27, T-2825),
+probes/amordegrc-fraction-state-ac to -ai (excel-graph, 2026-10-30, T-2844), with the earlier cells above.
 Ours: since T-2825 (decision 0131), `OrderState::amor_left_over` in evaluation.rs, set and read by
 `Model::amortization_call` (functions/financial/amortization.rs, `LeftOver`); a read runs the pass in Excel's order
 (`excel_order.rs`, SPEC-0017), whose move budget and its DEVIATION (dates.md) apply here too. gen-m9 d912671baa1364aa
 Calc!A76 stays a known failure.
 Status: VERIFIED (excel-graph) on freshly loaded workbooks; after an edit in a live session the order is not
-reproducible from the file (recalc.md), what a lifted call and a dynamic-array formula's place in the order do to the
-value are unprobed (ours: the last element's value; left as it is), and gen-m9 A76 is UNEXPLAINED
-Tasks: T-1895, T-2825
+reproducible from the file (recalc.md); as for what a lifted call and a dynamic-array formula's place in the order do to the
+value: a lifted call is VERIFIED (ours matches), a dynamic-array formula's place is only partly explained (-ag, -ah known
+failures), and gen-m9 A76 is UNEXPLAINED
+Tasks: T-1895, T-2825, T-2844, T-3393
 
 ## AMORDEGRC past 2^22 periods
 Rule: past 2^22 periods (4,194,304) RustSheet computes AMORDEGRC's decay in closed form, `remain * exp(n *
@@ -2356,9 +2373,25 @@ to 0; the same rule as PRICE. ODDLPRICE is linear in the yield and never overflo
 - ODDLPRICE stays a number at every yield up to 9.99999999999999E+307 (`ODDLPRICE(47300,47484,47119,0.05,9.99999999999999E+307,100,2,0)`
   is -2.5; a few periods, -0.41666666666666663).
 Evidence: probes/odd-bond-huge-yield-overflow (excel-graph, 2026-10-29, T-2659).
-Ours: matches since T-2659 (`OddFirstSchedule::discount_overflows`). ODDFYIELD and ODDLYIELD near the boundary are unprobed (T-3122).
+Ours: matches since T-2659 (`OddFirstSchedule::discount_overflows`). ODDFYIELD and ODDLYIELD near the boundary: see "ODDFYIELD and ODDLYIELD at a price far from par" (T-3122).
 Status: VERIFIED (excel-graph)
 Tasks: T-2659
+
+## ODDFYIELD and ODDLYIELD at a price far from par
+Rule: ODDLYIELD is closed form and returned a number at every price probed, from 1E-300 (82 for one period,
+1264.17391304348 for a few) to 1E15 (-1.99999999999979). ODDFYIELD is a number from 1E-300 up to a price of 3E4 and
+`#NUM!` from 1E5 up (semiannual, 10 years, first coupon half a year after settlement, redemption 100). At a vanishing
+price ODDFYIELD saturates rather than failing: 13.745966692460962 for every price from 1E-20 down to 1E-300 (basis 1:
+13.614800524624842 at 1E-300), so no price of this bond makes ODDFYIELD fail from the low side. Why Excel stops at 13.7
+and where exactly between 3E4 and 1E5 it turns `#NUM!` were not probed. The result at 3E4, -3.5048035053499063, is below
+-2, so `1 + yield / frequency` is negative there, and Excel still returns it as a number (1E4 is -0.40210502794450986).
+- `ODDFYIELD(43831,47484,43800,44013,0.05,P,100,2,0)`: P = 1 is 3.9188814666622176, 150 is 0, 1000 is -0.19969492032817104,
+  3E4 is -3.5048035053499063, 1E5, 3E5, 1E6, 1E10 and 1E15 are `#NUM!`; annual (first coupon 44197) is `#NUM!` from 1E6 and
+  -0.18891309879713358 at 1000; a redemption of 1E300 stays a number (235.9546570552217 at P = 1E15).
+Evidence: probes/odd-yield-far-from-par (102 cells, excel-graph, 2026-10-31, T-3122).
+Ours: matches without a change; the solver is `odd_first_yield` in yield_solver.rs.
+Status: VERIFIED (excel-graph)
+Tasks: T-3122
 
 ## ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD check order
 Rule: the four odd-coupon functions read their arguments in order and check few of them as they read:

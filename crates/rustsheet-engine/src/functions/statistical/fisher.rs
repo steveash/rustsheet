@@ -212,6 +212,10 @@ const F_QUANTILE_STATRS_P_MIN: f64 = 1e-20;
 /// deep tail of [`f_cdf`] carries exp(a ln y)'s rounding, and refining to its crossing makes
 /// `F.INV(1E-20,5,5)` visibly off Excel's 5.081599921802649E-09 (probes/stat-quantile-lift E12),
 /// which statrs' search matches to 15 digits (T-0974: 0 cells newly visibly off at 1E-15, 4 at 0).
+/// Range (T-3385, every suite's calls that reach this test with a statrs estimate): 25 with a
+/// lower-tail p of 1E-20 to 1.1E-16 kept unrefined (df1 1 to 6000, df2 1 to 10) and 36 from 1E-15
+/// to 1E-10 refined (df 1 to 99999); no cell lies strictly between 1.1E-16 and 1E-15.
+/// FITTED(T-0974, 61 cells, p 1E-20..1E-10, df 1..99999; nearest cells either side p 1.1E-16 and 1E-15)
 const F_QUANTILE_REFINE_P_MIN: f64 = 1e-15;
 
 /// Quantile of the F distribution for `p` (the right tail's when `right_tail`) in [0, 1]: statrs'
