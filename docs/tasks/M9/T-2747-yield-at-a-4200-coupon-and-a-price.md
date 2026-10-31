@@ -38,10 +38,12 @@ over rate and price.
 - YIELD above par (T-2391), the Newton start's last digits (T-1592, T-2741).
 
 ## Outcome
-probes/yield-deep-discount-sweep (160 cells, excel-graph 2026-10-31) sweeps `YIELD(39681,45662,R,P,102,4)` over coupon
-rate R = 1 to 100 (20 values) and price P = 1 to 20 (8 values). Excel computes for every R up to 20 and is `#NUM!` for
-every R from 25 at every price: far below par the cut follows the coupon rate, not the price. T-2391's rule (Newton
-from the fitted start, `#NUM!` on a non-finite step) reproduces all 160 in type with no code change; 123 cells are
-bit-exact and 37 are 1 to 5 ulp off, listed in T-2788 (the open owner of YIELD's last digits). The rule is in
-financial.md "YIELD's #NUM! cells and its 100-step cap". Eval delta: +160 probe cells checked, +123 passing, 37 new
-known failures, all in the new case (no change to any existing case's cells).
+probes/yield-deep-discount-sweep (160 cells) sweeps `YIELD(39681,45662,R,P,102,4)` over 20 coupon rates R = 1 to 100
+and 8 prices P = 1 to 20; probes/yield-deep-discount-cut (36 cells) bisects R = 20.5 to 24.5 in steps of 0.5 at P = 1,
+3.14159, 10 and 20 (both excel-graph, 2026-10-31). Excel computes at every sampled R up to 21 and is `#NUM!` from 23.5;
+in between the last R that computes rises with the price (21 at P = 1 to 23 at P = 20), and at three prices it is a
+negative 100th iterate, not a root. T-2391's rule (Newton from the fitted start, `#NUM!` on a non-finite step, the 100th
+iterate after 100 steps) reproduces all 196 cells in type with no code change; 146 are bit-exact, 48 are 1 to 5 ulp off
+and two 100th iterates 5e-14 and 6e-15 relative off, all listed in T-2788 (the open owner of YIELD's last digits). The
+rule is in financial.md "YIELD's #NUM! cells and its 100-step cap". Eval delta: probes +196 checked, +146 passing, 50 new
+known failures, all in the two new cases (no existing case's cells change).

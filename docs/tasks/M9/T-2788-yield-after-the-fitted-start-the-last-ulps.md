@@ -77,5 +77,9 @@ probes/yield-deep-discount-sweep (excel-graph, 2026-10-31): `YIELD(39681,45662,R
 and price P 1 to 20. Every cell matches Excel in type (T-2747's rule); 37 value cells are 1 to 5 ulp off on the same
 fitted start and root as this task's cells. Example: S!B1 `YIELD(39681,45662,1,2,102,4)` 15.009570961865686 vs ours
 15.009570961865677 (5 ulp).
+probes/yield-deep-discount-cut adds 13 more at coupon rates 20.5 to 23, two of them 100th iterates far off the root
+(S!B3 `YIELD(39681,45662,21.5,3.14159,102,4)` -2.6837489023653673 vs ours -2.6837489023654952, 5e-14 relative; S!C4
+6e-15 relative), where the last-digit gap grows over 100 steps.
+- probes/yield-deep-discount-cut.case.json (13): S!A2, B1, B2, B3, C1, C2, C3, C4, D1, D2, D3, D5, D6
 - probes/yield-deep-discount-sweep.case.json (37): S!A1, A2, A5, A9, B1, B2, B4, B6, C1, C2, C3, C4, C5, C6, C8, D5,
   D6, D7, D9, E2, E3, E4, E6, E7, E8, E9, F1, F2, F4, F9, G5, G6, G8, H3, H7, H8, H9

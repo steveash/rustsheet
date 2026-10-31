@@ -3017,12 +3017,16 @@ YIELD `#NUM!`, even where PRICE has a root; after 100 steps the 100th iterate is
   `YIELD(36665,44491,42,106,42,4,0)`, `YIELD(39779,45574,1E+10,86,101,1,3)`, `YIELD(38930,46538,1E+300,116,0.01,1,1)` and
   15 more (roots 5 to 32), while `YIELD(36665,44491,R,106,100,4,0)` computes for R = 0.5 to 30
   (roots 0.47 to 14.3). `YIELD(39681,45662,42,3.14159,102,4)` (a price far below par) is `#NUM!` too.
-- Far below par the cut follows the coupon rate, not the price: `YIELD(39681,45662,R,P,102,4)` (16.4 years,
-  quarterly, redemption 102) computes for every R from 1 to 20 at every P from 1 to 20 (1 to 20 times par's coupon,
-  5% to 1% of par; yields 4.48 at R = 1, P = 20 to 19.10 at R = 20, P = 1) and is `#NUM!` for every R from 25 to 100
-  at every one of those prices (probes/yield-deep-discount-sweep, 160 cells, T-2747). Roots exist on both sides of
-  the cut (PRICE falls from its undiscounted sum toward 0 as the yield grows, so every positive price has one): the
-  `#NUM!` is the solver's, not a missing root. The rule above reproduces all 160 in type.
+- Far below par a coupon rate above 21 to 23 is `#NUM!` at this bond, and the cut moves a little with the price:
+  `YIELD(39681,45662,R,P,102,4)` (16.4 years, quarterly, redemption 102; coupon rate 100% to 10000%, price 1% to 20% of
+  par) computes at every sampled R from 1 to 21 and every sampled P from 1 to 20 (yields 4.48 at R = 1, P = 20 to 19.11
+  at R = 21, P = 1) and is `#NUM!` at every sampled R from 23.5 to 100. Between them the last R that computes rises with
+  the price: 21 at P = 1, 21.5 at 3.14159, 22 at 10, 23 at 20 (R in steps of 0.5). The last one before the cut at P =
+  3.14159, 10 and 20 is a negative yield (`YIELD(39681,45662,21.5,3.14159,102,4)` = -2.6837489023653673, R = 22 at P =
+  10 -0.8519602400469752, R = 23 at P = 20 -2.2823895460582744), which is no root: below a yield of 0 PRICE is above its
+  undiscounted payments, 102 and more, so these are 100th iterates. Every positive price has a root (PRICE falls from
+  its undiscounted sum toward 0 as the yield grows), so the `#NUM!` is the solver's. The rule above reproduces all 196
+  cells of probes/yield-deep-discount-sweep and yield-deep-discount-cut in type (T-2747).
 - A price far above par computes up to 1E4 and is `#NUM!` from 1E5: `YIELD(39448,43831,0.05,P,100,2)` is -0.0222 at
   P = 200, -0.165 at 1000, -0.220 at 2000, -0.340 at 10000, `#NUM!` at 1E5 and 1E6 (roots -0.494 and -0.633). The
   gen-m9 cell `YIELD(39572,45740,1E-10,97,(FISHERINV(Data!$E1)+Data!A2),4.9)` (redemption 1, frequency 4.9 cut to 4)
@@ -3036,13 +3040,17 @@ YIELD `#NUM!`, even where PRICE has a root; after 100 steps the 100th iterate is
 Verified (T-2391, 2026-10-26): with the fitted start of T-1592 this rule matches every one of the 53 cells of
 probes/yield-newton-domain in type, and every value cell within 7 ulp (the 16 C cells bit-exact); the 13 cells left are
 last-digit misses of "YIELD stops short of PRICE's root". It matches the 21 gen-m9 cells T-2391 owned and the two of
-T-2747 (probes/t2475-stat-subexpressions P!A214, gen-m9/44a8841352dc48e9 A318), and all 160 cells of
-probes/yield-deep-discount-sweep in type (123 bit-exact; the other 37 1 to 5 ulp off, last digits that T-2788 owns). The earlier attempt (Newton from the
-coupon rate with no fallback) was `#NUM!` at prices 1500 to 10000: the fitted start, not the stop rule, decides them.
+T-2747 (probes/t2475-stat-subexpressions P!A214, gen-m9/44a8841352dc48e9 A318), and all 196 cells of
+probes/yield-deep-discount-sweep and yield-deep-discount-cut in type (146 bit-exact; 48 of the other 50 1 to 5 ulp off
+and two of the three negative 100th iterates, yield-deep-discount-cut B3 and C4, 5e-14 and 6e-15 relative off; last
+digits that T-2788 owns). The earlier attempt
+(Newton from the coupon rate with no fallback) was `#NUM!` at prices 1500 to 10000: the fitted start, not the stop rule,
+decides them.
 Evidence: probes/yield-newton-domain (53 cells: A price sweep, B coupon-rate sweep, C large redemptions, D low
 redemptions and negative roots; excel-graph, 2026-10-24, T-2391); the gen-m9 cells listed in T-2391.
-probes/yield-deep-discount-sweep (160 cells: coupon rate 1 to 100 by price 1 to 20 at the P!A214 bond; excel-graph,
-2026-10-31, T-2747).
+probes/yield-deep-discount-sweep (160 cells: 20 coupon rates 1 to 100 by 8 prices 1 to 20 at the P!A214 bond) and
+probes/yield-deep-discount-cut (36 cells: R = 20.5 to 24.5 in steps of 0.5 by P = 1, 3.14159, 10, 20); excel-graph,
+2026-10-31, T-2747.
 Ours: matches since T-2391 (`excel_yield_newton` in functions/financial/financial_bonds/yield_solver.rs).
 Status: VERIFIED
 Tasks: T-2391, T-1592, T-2747
