@@ -32,6 +32,7 @@ over rate and price.
 - [x] A probe case locates where Excel's YIELD turns to `#NUM!` over rate and price at this bond, and the rule is in
       docs/excel-semantics/financial.md.
 - [x] P!A214 and gen-m9/44a8841352dc48e9 A318 leave the baselines (`make eval-baseline`), with no new known failures.
+      (Met in T-2391. This PR's new probe cases add new-coverage known failures only; see the Outcome.)
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -49,6 +50,6 @@ over rate and price.
   agrees with ours on the other 12. `compute_yield` now refuses a check-100 stop (`NewtonStop::converged_on`);
   ODDFYIELD, the same Newton, keeps its behavior pending evidence (follow-up T-3485).
 - Rule in financial.md "YIELD's #NUM! cells and its 100-step cap". Eval: the two new probe cases add 199 cells; with
-  the fix every cell matches in type; probes known failures 2201 -> 2270 (69 new-coverage last-ulp cells of "YIELD
-  stops short of PRICE's root", T-1592/T-2741), 0 regressions, 130 new passing cells including all three check-100
-  cells.
+  the fix every cell matches in type; probes known failures 2201 -> 2270, 0 regressions, 130 new passing cells
+  including all three check-100 cells. The 69 new-coverage failures: 60 NumericUlp cells (last ulps, T-2788) and 9
+  NumericClose cells, up to 2.5e-12 relative, all 100th iterates on the negative-yield climb (follow-up T-3486).
