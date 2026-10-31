@@ -30,29 +30,48 @@ use super::gammaln::STIRLING;
 const EXPONENT_FLOOR: f64 = -800.0;
 
 /// Excel's log1p switches from its series to LN(fl(1 + r)) above this r (r3-tdensity `log1p_xl`).
+/// Not a fit: it is the 0.375 of TOMS 708 brcomp's switch, which is Excel's for ln(1 - x) to the
+/// bit (`crate::x87_log1p`'s limit, r2-log1p), applied to r >= 0 as r3-tdensity's `log1p_xl` does,
+/// not chosen by scoring. The F cells agree:
+/// r4-f-brcomp's hold-out hold4 shows LN(fl(1 + r))'s slope of about -h on 15 of 15 runs with
+/// r > 0.375 (RESULTS.md section 1). No cell pins it to the bit for r > 0, so it stays its own
+/// constant rather than sharing the ln(1 - x) one (T-3395).
 const LOG1P_SERIES_LIMIT: f64 = 0.375;
 
 /// From this smaller df on, the offset is the bracket error plus [`LARGE_SHAPE_OFFSET`]
 /// (r5-f-bigconst `bcmodel`: `BIG_MIN`, `C_BIG`).
+/// Not a fit: it is where r5-f-bigconst's probes start (every shape there has min(d) >= 16),
+/// set before any scoring. Its only scan (RESULTS.md section 4.5, `b8_thresh.out`, after the
+/// freeze, no hold-out) prefers 8: on r5-f-combine's 1,920 `ca` cells with 6 <= min(d) < 16 it
+/// gives 799 bit-exact, against 629 at 16, and all 1,920 within 15 digits at every edge tried.
+/// Below it every shape takes r4-f-small-df's constant, also shapes outside those it was fitted
+/// on ([`SMALL_SHAPE_OFFSET`]; T-3395, bounding it is T-3413); moving the edge is Phase 1b work
+/// (decision 0188 R5).
 const LARGE_DF_MIN: f64 = 16.0;
 /// `bcmodel`'s `C_BIG` (units of 2^-53): the mean need over r5-f-bigconst's in-sample x = 1 runs
 /// (+0.09 on its hold-out).
 /// FITTED(T-2586, 3420 cells, F.DIST df 16..1000, x near 1)
 const LARGE_SHAPE_OFFSET: f64 = -0.42;
 
-/// r4-f-small-df `sdmodel`'s fitted constants: `C0`, and e(1/2), e(1) (units of 2^-53).
-/// FITTED(T-2586, 5752 cells, F.DIST df 1..10)
+/// r4-f-small-df `sdmodel`'s fitted constants: `C0`, and e(1/2), e(1) (units of 2^-53). The fit
+/// is `s19_sidefit.py` at MINC 25 (`s19_sidefit.out`, RMS 0.52, 55 of 56 groups within 1 unit)
+/// over the 56 (shape, side) groups with a best count of at least 25 in `s4_kscan.out` (probe
+/// t2586-r4-f-small-df-a, 31 shapes with max(d) <= 10, 3,008 cells) and `s4_kscan_tdens.out`
+/// (r3-tdensity's d1 = 1 runs at d2 3, 4, 5, 7, 10 and 30, 1,938 cells); T-3395 traced the count.
+/// FITTED(T-2586, 4946 cells, F.DIST df 1..10 and d1 1 with d2 up to 30)
 const SMALL_SHAPE_OFFSET: f64 = 5.33;
 /// `sdmodel`'s e(1/2), fitted with [`SMALL_SHAPE_OFFSET`].
-/// FITTED(T-2586, 5752 cells, F.DIST df 1..10)
+/// FITTED(T-2586, 4946 cells, F.DIST df 1..10 and d1 1 with d2 up to 30)
 const STIRLING_ERROR_HALF: f64 = 0.22;
 /// `sdmodel`'s e(1), fitted with [`SMALL_SHAPE_OFFSET`].
-/// FITTED(T-2586, 5752 cells, F.DIST df 1..10)
+/// FITTED(T-2586, 4946 cells, F.DIST df 1..10 and d1 1 with d2 up to 30)
 const STIRLING_ERROR_ONE: f64 = 0.06;
 
 /// r3-loader-const's measured error of Excel's stirlerr at v = 1.5, 2, ..., 28 in units of 2^-53
 /// (`docs/research/t2464/r3-loader-const/grid_e.tsv`; v = 1/2 and 1 are the fitted
-/// [`STIRLING_ERROR_HALF`] and [`STIRLING_ERROR_ONE`]).
+/// [`STIRLING_ERROR_HALF`] and [`STIRLING_ERROR_ONE`]). The cells are `a10_grid.py`'s 529 shapes
+/// with a within-shape sd of at most 1 unit, 8 x each, of probe t2513-r3-loader-const-grid1
+/// (r3-loader-const RESULTS.md "Table"; T-3395 traced the count).
 /// FITTED(T-2513, 4232 cells, BETA.DIST half-integer a, b 1.5..16, v 1.5..28)
 const STIRLING_ERROR: [f64; 54] = [
     -5.144, -5.151, -8.481, -9.05, -11.632, -14.36, -15.081, -18.88, -19.128, -22.94, -25.296,

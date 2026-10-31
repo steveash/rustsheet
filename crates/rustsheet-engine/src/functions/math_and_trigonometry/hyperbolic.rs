@@ -23,7 +23,13 @@ use crate::x87_log10::excel_ln;
 /// exp forms fail up to `TANH(0.995054655025377)` and `TANH(±0.9950546550253772)`; on the 20
 /// control points in (1, 1.5) the exp forms fit all 40 cells and the expm1 forms first miss at
 /// `SINH(1.0375)` (and at 1.0625 and 1.4875, not at 1.0125), so Excel's switch lies in 0.99505..1.0375.
-/// FITTED(T-2134, 2070 cells, SINH and TANH |x| 1E-10..1.49; cut bracketed 0.99505..1.0375)
+/// T-3395's probes-numeric t3395-hyperbolic-form-switch and -2 (214 cells at points where the
+/// two forms differ for SINH, TANH or both) narrow it to 1 - 5 ulp..1 + 2 ulp: the expm1 forms through
+/// 0.9999999999999994, the exp forms from 1.0000000000000004. Between them, 1 included, both forms
+/// give the same double, so no cell can narrow it further (numbers.md "SINH and TANH below 1").
+/// The probes are Excel for the web only, and their cells differ by about 1 ulp, inside the
+/// web-against-desktop floor, so the narrowed bracket awaits a desktop fill.
+/// FITTED(T-2134, 2284 cells, SINH and TANH |x| 1E-10..1.49; cut bracketed 0.9999999999999994..1.0000000000000004)
 const EXPM1_FORM_LIMIT: f64 = 1.0;
 /// |tanh(x)| rounds to 1.0 in f64 beyond this.
 const TANH_SATURATION: f64 = 20.0;
