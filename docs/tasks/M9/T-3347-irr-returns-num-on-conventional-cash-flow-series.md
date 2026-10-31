@@ -56,6 +56,7 @@ near 0 (scales 1e3: A22-A28, 1e6: A29-A35, 1e9: A36-A42; r = 3e-6, 1e-5, 3e-5, 1
 a number on every cell; the engine was `#NUM!` on A10-A21 and A36-A42 (19 cells), bit-exact on the other 23.
 
 ## Remaining (2026-10-31 session stopped at its budget)
+- Resumed 2026-10-31 09:45 UTC by an opus run (idle branch, work-loop resume): filling the hold-out sweep.
 - Main gained the `FITTED(...)` ratchet (T-3361) while this PR was in review. `irr_conventional` now carries
   `FITTED(T-3347, 162 cells, ...)`, and `scripts/check_fitted.py` fails (3 -> 4 tags in financial_util.rs) until a
   PR runs `--update` citing the fit's hold-out result (decision 0188 R4). Owed: a fresh hold-out sweep (a new seed in
