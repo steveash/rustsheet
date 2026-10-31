@@ -634,8 +634,9 @@ Implemented in: `imcsc`, `imsec`, `imsech`, `imcot` in functions/engineering/com
 Tasks: T-2044, T-2231
 
 ## IMTAN and IMCOT use the double-angle form (T-0907)
-Rule: IMTAN computes tan(x+iy), y nonzero, as `(sin 2x + i·sinh 2y) / (cos 2x + cosh 2y)` (a real x is TAN, T-2774), and IMCOT is the
-reciprocal of that value, `conj(t)/|t|²`; the tan/tanh product form loses the last 1-10 digits
+Rule: IMTAN computes tan(x+iy), y nonzero, as `(sin 2x + i·sinh 2y) / (cos 2x + cosh 2y)` (a
+real x is TAN, T-2774), and IMCOT is the reciprocal of that value, `conj(t)/|t|²`; the tan/tanh
+product form loses the last 1-10 digits
 where the real part is small (`IMTAN("1.23+9.5121i")` real part 6.89106871662165E-09, the product
 form 6.89106877738345E-09; `IMCOT("7-12.6i")` real part 2.25273756035673E-11). A fit over every
 row of the workbook: the double-angle IMTAN matches all of them, the reciprocal IMCOT all but one
@@ -907,7 +908,7 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   of eval/milestones/exit-exceptions.tsv and phase1-exceptions.tsv, and the desktop check is T-1075 item 16 (M14).
   Implemented in `imsqrt` (T-2536): the half angle of Excel's ATAN2 kernel through Excel's SIN and COS for every
   argument, which leaves all the other IMSQRT cells of the suites (about 560 formulas) unchanged. Unprobed: where that
-  kernel errs (x zero or subnormal, y/x overflowing) ours takes libm `atan2`, and x < 0 with a -0 imaginary part takes
+  kernel errs (a subnormal x, y/x overflowing) ours takes libm `atan2`, and x < 0 with a -0 imaginary part takes
   +π, where libm's -π gave a negative imaginary part (T-2736, which probes the same kernel in IMPOWER).
 - **IM* kernels still to fit (T-2044, T-2537, T-2538).** New web cells: `IMSECH("3+4i")` (and `" 3+4i"`, `"3 + 4i"`,
   `"3+4j"`) "-0.065294027857947+0.0752249603027732i" (57 cells), `IMSECH("0.1")` 0.995020748953227, `IMCOT("-1.5+0.5i")`

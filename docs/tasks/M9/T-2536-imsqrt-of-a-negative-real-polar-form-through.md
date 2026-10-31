@@ -35,7 +35,7 @@ Cells:
 - [x] Visible parity (gen-m9, T-2258): these 5 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [x] Unit tests for IMSQRT of -1, -2.5 and -0.0001.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The other T-2258 triage families: each has its own task (T-2258 Outcome).

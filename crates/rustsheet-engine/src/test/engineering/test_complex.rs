@@ -524,7 +524,8 @@ fn im_sin_cos_take_sinh_and_cosh_from_exp() {
 // IMSQRT of a negative real is the polar root through Excel's ATAN2, COS and SIN of the half
 // angle: COS(ATAN2(-1,0)/2) is 6.1257422745431E-17, libm's cos(π/2) 6.12323399573677E-17 (gen-m9
 // 59a16b5ab566ee5c A6, 516488da78a6b08c A52, 7dc52cfcbc8b4448 A254, f280df8ba95f96b9 A26;
-// excel-graph, decision 0188 R6, T-2536).
+// excel-graph, decision 0188 R6, T-2536). The libm `atan2` fallback (a subnormal x, an
+// overflowing y/x) and a -0 imaginary part with x < 0 are unprobed and not pinned here (T-2736).
 #[test]
 fn imsqrt_of_a_negative_real_takes_excel_atan2_cos_and_sin() {
     let cases = [

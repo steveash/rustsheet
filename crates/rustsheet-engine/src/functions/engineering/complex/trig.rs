@@ -128,8 +128,8 @@ const INVERSE_EXP_LOW: f64 = 0.01;
 /// See [`INVERSE_EXP_LOW`].
 const INVERSE_EXP_HIGH: f64 = 20.0;
 
-/// IMSIN, IMCOS, IMTAN, IMSEC, IMCSC and IMCOT of a real number `x` (imaginary part 0): `value` of SIN,
-/// COS and TAN's own kernels (the x87 reduction, [`excel_sin_cos`] and [`excel_tan`]), and
+/// IMSIN, IMCOS, IMTAN, IMSEC, IMCSC and IMCOT of a real number `x` (imaginary part 0): `value` of
+/// SIN, COS and TAN's own kernels (the x87 reduction, [`excel_sin_cos`] and [`excel_tan`]), and
 /// `#NUM!` from |x| = 2^27 as SIN is, except IMCOT, which is "0" there (`past_limit`).
 /// probes/t2534-im-trig-real-limit (excel-graph): `IMSIN("710")` is 0.0000602887066915739 and
 /// `IMCOT("123456789.123")` 0.0177255441505541, where libm gave other last digits; at 134217728,

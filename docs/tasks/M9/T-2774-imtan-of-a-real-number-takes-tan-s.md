@@ -48,7 +48,7 @@ Owned cells (54):
 ## Acceptance criteria
 - [x] The owned cells leave the baselines, and N6 is either still passing or recorded per a decision record that reviewers
       approve (with the T-1075 item 17 answer, or a decision to follow the web now).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Complex arguments of IMTAN (the double-angle form stays).
@@ -56,7 +56,7 @@ Owned cells (54):
 ## Cells added by the T-0087 sweep (2026-10-28)
 Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c2b6143a (`python3 scripts/exit_owners.py --all-off`; calipers, poi and corpus-bench not fetched): IMTAN 1. This task now owns them:
 - gen-m9/e85daedce5c2675e: Calc!A109
-The added cell is `IMTAN("5")`, the real-number case this task is blocked on, so the same desktop answer (T-1075 item 17) settles it; it is owned, but not picked, until then.
+The added cell is `IMTAN("5")`, the real-number case this task fixes (TAN's kernel under decision 0188 R6).
 
 ## Decision 0188 note (2026-10-31)
 Unblocked by decision 0188 R6 (2026-10-31): the blocker was only the N6 web-vs-desktop conflict, which R6 settles; the
