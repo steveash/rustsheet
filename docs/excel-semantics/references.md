@@ -2543,8 +2543,14 @@ Right/Left):
   rows, T-3259). Rows 6-7 at once, the last two data rows, shrink the table to rows 4-5 (`ROWS(Sales)` 2,
   `SUM(Sales[Qty])` 3, `S!C4:C7` becomes `S!C4:C5`), a range wholly inside the deleted rows is `=SUM(S!#REF!)`,
   `=SUM(S!C7:C9)` straddling the bottom edge becomes `=SUM(S!C6:C7)`, and `=S!C10` reads `=S!C8`
-  (table-delete-rows-last-two; the engine matches). Still unprobed: a delete on a table without a header row
-  (the case format has none yet, T-3260).
+  (table-delete-rows-last-two; the engine matches). A table without a header row (spec `"header_row": false`,
+  columns `Column1`, `Column2` as the file names them; `Sales` on S!B3:C6, data rows 3-6, Qty 1,2,4,8;
+  excel-graph 2026-10-31, T-3260): `ROWS(Sales)` and `ROWS(Sales[#All])` are both 4, `Sales[Column2]` reads the
+  data, and `ROW(Sales[#Headers])` is `#REF!`, as `#Totals` is on a table without a totals row
+  (table-no-header-baseline). A delete of its first row (row 3, its first data row) shrinks it as a delete of a
+  first data row does: `ROWS(Sales)` 3, `SUM(Sales[Column2])` 14, `INDEX(Sales[Column1],1)` "W", `=SUM(S!C3:C6)`
+  becomes `=SUM(S!C3:C5)`, `=SUM(S!C3:C3)` is `=SUM(S!#REF!)`, `=S!C10` reads `=S!C9`, and a cell above the
+  table stays (table-no-header-delete-first-row). The engine matches both.
 - A plain range, with no table involved, shrinks when a row delete takes its first or last rows but not all
   of them: `=SUM(S!C4:C7)` and `=SUM(S!$C$4:$C$7)` become `S!C4:C6` (`$C$4:$C$6`) for a delete of row 4 and
   of row 7, `=SUM(S!C7:C9)` becomes `=SUM(S!C6:C8)` / `=SUM(S!C7:C8)`, and a range wholly deleted
