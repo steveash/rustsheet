@@ -3,7 +3,7 @@ id: T-3350
 title: "CHISQ.INV and CHISQ.INV.RT return #NUM! at df of 2E7 and above"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P0
 size: M
 tier: opus
