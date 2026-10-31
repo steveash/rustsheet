@@ -66,7 +66,8 @@ fn scientific() {
         Ok(CellValue::Number(0.0003))
     );
     assert_eq!(model._get_text("Sheet1!A1"), "3.00E-04");
-    assert_eq!(model._get_text("Sheet1!A2"), "5.00E-04");
+    // `5e-4$` is text, not a number (probes/t3334-criteria-operand-forms H39).
+    assert_eq!(model._get_text("Sheet1!A2"), "5e-4$");
     assert_eq!(model._get_text("Sheet1!A3"), "6.00E-06");
 }
 

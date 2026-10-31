@@ -3,7 +3,7 @@ id: T-3404
 title: "VALUE and criteria: 1e2$ is text, and VALUE of CHAR(160)-padded number text is #VALUE! (T-3334 probe)"
 milestone: M2
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -38,3 +38,8 @@ Evidence: probes/t3334-criteria-operand-forms (excel-graph), written up in docs/
 
 ## Out of scope
 - Other VALUE forms; locales other than en-US.
+
+## Outcome
+`parse_formatted_number` trims only the space character (was Unicode whitespace) and treats a trailing `$` after
+E-notation as not a number (trailing `€` unprobed, unchanged). All 33 t3334 cells pass and their baseline lines are
+gone; no new failures. Upstream unit tests that typed `5e-4$` / `23e-12$` as numbers now expect text / an error.
