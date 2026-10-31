@@ -3,7 +3,7 @@ id: T-3269
 title: "POISSON cdf: fit Excel's deep upper tail (mean well above k)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
