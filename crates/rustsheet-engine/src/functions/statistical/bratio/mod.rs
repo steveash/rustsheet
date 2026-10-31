@@ -13,7 +13,7 @@ pub(super) mod bpser;
 mod bup;
 pub(super) mod ln_beta;
 
-use super::incomplete_beta::{beta_reg_tails, closed_form_tails};
+use super::incomplete_beta::{beta_reg_tails, closed_form_tails, search_tails};
 use crate::arithmetic::extended_sum;
 use bfrac::bfrac;
 use bgrat::bgrat_half;
@@ -192,9 +192,19 @@ fn small_shape_branch(a0: f64, b0: f64, x0: f64) -> Branch {
 /// table): [`kernel_tails`]'s w, plus bratio's bgrat branches at a0 = 1/2 (T-2509's `bgrat_half`).
 /// Those are a net visible gain for BETA.DIST (T-2510: 30 fewer visibly-off cells, none more), not
 /// for F (see [`t_kernel_tails`]), so F's callers (`fisher.rs`) keep [`kernel_tails`].
-/// BETA.INV's search (`inverse_beta.rs`) crosses this same kernel.
+/// BETA.INV's search (`beta.rs`) crosses it where it is closed or ported ([`beta_search_tails`]).
 pub(crate) fn beta_dist_lower_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
     kernel_tails_with(x, y, a, b, true).0
+}
+
+/// (w, w1) of BETA.DIST's kernel ([`beta_dist_lower_tail`]) where it is closed or ported, the tails
+/// BETA.INV's search crosses (T-3398). On the branches not ported yet BETA.DIST sums the accurate
+/// half-integer series (thousands of double-double terms near x = 1: 0.32 ms a cdf at
+/// a = 170, b = 1.5, x = 0.99), so the search takes the bounded Cephes kernel there instead
+/// (`incomplete_beta::search_tails`, at most two 300-step fractions), as it did before T-3398:
+/// 129 cdfs of the series would cost 8 ms an element, past BETA.INV's lift weight.
+pub(crate) fn beta_search_tails(x: f64, y: f64, a: f64, b: f64) -> (f64, f64) {
+    closed_or_ported_with(x, y, a, b, true).unwrap_or_else(|| search_tails(x, y, a, b))
 }
 
 /// (w, w1) of K(a, b, x, y), x and y formed by the caller per SPEC-0025's caller table:
@@ -206,16 +216,20 @@ pub(crate) fn kernel_tails(x: f64, y: f64, a: f64, b: f64) -> (f64, f64) {
 
 /// [`kernel_tails`], with bratio's bgrat branches at a0 = 1/2 when `half_bgrat`.
 fn kernel_tails_with(x: f64, y: f64, a: f64, b: f64, half_bgrat: bool) -> (f64, f64) {
-    closed_form_tails(x, y, a, b)
-        .or_else(|| ported_tails_with(a, b, x, y, half_bgrat))
-        .unwrap_or_else(|| beta_reg_tails(x, y, a, b))
+    closed_or_ported_with(x, y, a, b, half_bgrat).unwrap_or_else(|| beta_reg_tails(x, y, a, b))
+}
+
+/// Excel's closed forms, then the port's branches (with bgrat at a0 = 1/2 when `half_bgrat`);
+/// `None` where neither applies and the caller picks its fallback kernel.
+fn closed_or_ported_with(x: f64, y: f64, a: f64, b: f64, half_bgrat: bool) -> Option<(f64, f64)> {
+    closed_form_tails(x, y, a, b).or_else(|| ported_tails_with(a, b, x, y, half_bgrat))
 }
 
 /// (w, w1) of K(a, b, x, y), x and y formed by the caller per SPEC-0025's caller table: Excel's
 /// closed forms first (`incomplete_beta::closed_form_tails`, T-2502), then the branches of the
 /// port ([`ported_tails`]). `None` where neither applies, and the caller keeps today's kernel.
 pub(crate) fn closed_or_ported_tails(x: f64, y: f64, a: f64, b: f64) -> Option<(f64, f64)> {
-    closed_form_tails(x, y, a, b).or_else(|| ported_tails(a, b, x, y))
+    closed_or_ported_with(x, y, a, b, false)
 }
 
 /// (w, w1) of K(a, b, x, y) on the branches ported so far, `None` elsewhere. bratio computes one

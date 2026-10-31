@@ -421,6 +421,9 @@ class GitHub(Client):
         self.bad_tree = False
         self.lose_reply = False
         self.mergeable: object = True
+        # Like GitHub, a PR's test merge stays on the `main` it was computed on until the PR
+        # changes, not when `main` moves (decision 0200).
+        self.test_bases: dict[int, str] = {}
         self.refuse: set[int] = set()
         self.unlabelled: set[int] = set()
         self.closed: list[int] = []  # closed PRs still labelled ready-to-merge
@@ -444,7 +447,7 @@ class GitHub(Client):
         return self.git("rev-parse", "refs/heads/main")
 
     def test_merge(self, pr: int) -> str:
-        main, head = self.main(), self.heads[pr]
+        main, head = self.test_bases.get(pr) or self.main(), self.heads[pr]
         if self.bad_tree:  # a test merge on the right parent whose tree is not the train's
             tree = self.git("rev-parse", f"{main}^{{tree}}")
         else:
@@ -748,11 +751,43 @@ class MergeStage(StageFixture):
         self.assertEqual(self.gh.merged, [])
         self.assertIn("P0: main moved without the lock before the first squash", self.stage.log)
 
-    def test_a_merge_ref_that_is_never_recomputed_stops(self) -> None:
+    def test_a_stale_test_merge_is_replaced_by_the_local_merge(self) -> None:
+        # GitHub leaves #2's test merge on the main before #1's squash (decision 0200).
+        self.gh.test_bases[2] = self.gh.main()
+        self.assertEqual(self.run_stage(), 0, self.stage.log)
+        self.assertEqual(self.gh.merged, [1, 2])
+        self.assertTrue(any(line.startswith("#2: GitHub's test merge is stale") for line in self.stage.log))
+        self.assertFalse(any(line.startswith("#1: GitHub's test merge is stale") for line in self.stage.log))
+
+    def test_a_test_merge_still_computing_is_replaced_by_the_local_merge(self) -> None:
         self.gh.mergeable = None
-        self.assertEqual(self.run_stage(), 1)
-        self.assertEqual(self.gh.merged, [])
-        self.assertIn("was not recomputed", self.stage.log[-1])
+        self.assertEqual(self.run_stage(), 0, self.stage.log)
+        self.assertEqual(self.gh.merged, [1, 2])
+
+    def test_a_stale_test_merge_whose_local_merge_has_another_tree_stops_with_a_p0(self) -> None:
+        # #1's test merge is stale. The train's merge for it is deliberately wrong (#2's head), so
+        # the local merge of #1 onto main has another tree.
+        self.git("fetch", "-q", "origin", "refs/pull/1/head", "refs/pull/2/head")
+        self.gh.test_bases[1] = self.heads[2]
+        member = merge_train.Member(1, self.heads[1], merge=self.heads[2])
+        with self.assertRaises(merge_train.Stop) as stop:
+            self.stage.pre_squash(member, self.m0)
+        self.assertTrue(stop.exception.p0)
+        self.assertIn("its merge onto", str(stop.exception))
+
+    def test_a_stale_test_merge_whose_local_merge_conflicts_stops(self) -> None:
+        self.git("fetch", "-q", "origin", "refs/pull/1/head")
+        self.git("checkout", "-q", "-f", "--detach", self.m0)
+        self.write("f1.txt", "other")
+        clash = self.commit("clash")
+        self.git("checkout", "-q", "-f", "main")
+        self.gh.test_bases[1] = self.heads[2]
+        member = merge_train.Member(1, self.heads[1], merge=self.heads[1])
+        with mock.patch.object(merge_train, "remote_sha", return_value=clash):
+            with self.assertRaises(merge_train.Stop) as stop:
+                self.stage.pre_squash(member, clash)
+        self.assertFalse(stop.exception.p0)
+        self.assertIn("does not merge cleanly", str(stop.exception))
 
     def test_a_lost_lock_merges_nothing_more(self) -> None:
         # Renewals: after the push, before step 7, before squash 1, before squash 2.

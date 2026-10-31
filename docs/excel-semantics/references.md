@@ -1831,6 +1831,30 @@ function under SUMPRODUCT (intersected), a nested aggregate under SUMPRODUCT, an
 Status: VERIFIED
 Tasks: T-0293, T-1526, T-1551, T-1555, T-1556
 
+## A legacy formula with a spill reference spills (T-3467)
+Rule: a formula stored without the dynamic-array flag (a plain `<f>`, no `cm`) that holds a spill reference takes no
+automatic `@` and spills like a dynamic formula, on the spill's rows and off them, while a plain range in the same
+position is intersected. With A1 `=SEQUENCE(3)`:
+- the legacy `=SIN(A1#)` in C2 and in C5 spills SIN(1), SIN(2), SIN(3) down C2:C4 and C5:C7, and its FORMULATEXT is
+  `=SIN(A1#)`;
+- the legacy `=SIN(A1:A3)` beside it, in D2 and D5, is SIN(2) and `#VALUE!`, with FORMULATEXT `=SIN(@A1:A3)`.
+It joins the legacy forms with no automatic `@` (SWITCH, the dynamic-array functions, LAMBDA calls; "Legacy formulas
+put `@` on array-valued calls and array constants"). Unprobed, and handled by the engine as it handles SWITCH, with
+the rule applied to the whole formula: a formula mixing a spill reference with a plain range (`=SIN(A1#)+B1:B3`), a
+bare `=A1#`, and a scalar host (`=SUM(A1#)+B1:B3`); probe pending, T-3490.
+Evidence: probes/legacy-formula-spill-ref (excel-graph, 2026-10-31, 19 cells).
+Engine: `removes_automatic_at` (parser/static_analysis/legacy.rs) holds for a spill reference.
+`Model::promote_dynamic_formula_cells` (formula_cells.rs) loads a plain formula cell that has no automatic `@` and a
+non-scalar static result as a dynamic anchor, as typing it does. This covers an xlsx `<f>` without `cm` and a decoded
+`CellFormula`, which before reached evaluation as a scalar cell with an array result (a `debug_assert!`, found by the
+`bitcode_workbook` fuzz target). Until this change, the earlier "ours matches" claims for SWITCH and the dynamic-array functions in a legacy formula
+held only on the harness path (`set_cell_with_legacy_formula`), not for a real xlsx `<f>`. On export, a promoted cell
+is written as a dynamic formula (`cm="1"`, `t="array"`), which Excel reads the same way. A plain-cell formula with a
+spill reference keeps every `@`, so a typed `=@A1#` is written `_xlfn.SINGLE(_xlfn.ANCHORARRAY(A1))`. Whether Excel
+itself re-saves such a cell as a plain `<f>` is unprobed.
+Status: VERIFIED
+Tasks: T-3467
+
 ## Legacy MATCH, VLOOKUP and HLOOKUP intersect an operation in their lookup table (T-1862)
 Rule: in a legacy (no `cm`) formula, arithmetic, a comparison or a concatenation over a range in
 MATCH's `lookup_array` or the table of VLOOKUP and HLOOKUP is a value, intersected like an
@@ -2543,8 +2567,14 @@ Right/Left):
   rows, T-3259). Rows 6-7 at once, the last two data rows, shrink the table to rows 4-5 (`ROWS(Sales)` 2,
   `SUM(Sales[Qty])` 3, `S!C4:C7` becomes `S!C4:C5`), a range wholly inside the deleted rows is `=SUM(S!#REF!)`,
   `=SUM(S!C7:C9)` straddling the bottom edge becomes `=SUM(S!C6:C7)`, and `=S!C10` reads `=S!C8`
-  (table-delete-rows-last-two; the engine matches). Still unprobed: a delete on a table without a header row
-  (the case format has none yet, T-3260).
+  (table-delete-rows-last-two; the engine matches). A table without a header row (spec `"header_row": false`,
+  columns `Column1`, `Column2` as the file names them; `Sales` on S!B3:C6, data rows 3-6, Qty 1,2,4,8;
+  excel-graph 2026-10-31, T-3260): `ROWS(Sales)` and `ROWS(Sales[#All])` are both 4, `Sales[Column2]` reads the
+  data, and `ROW(Sales[#Headers])` is `#REF!`, as `#Totals` is on a table without a totals row
+  (table-no-header-baseline). A delete of its first row (row 3, its first data row) shrinks it as a delete of a
+  first data row does: `ROWS(Sales)` 3, `SUM(Sales[Column2])` 14, `INDEX(Sales[Column1],1)` "W", `=SUM(S!C3:C6)`
+  becomes `=SUM(S!C3:C5)`, `=SUM(S!C3:C3)` is `=SUM(S!#REF!)`, `=S!C10` reads `=S!C9`, and a cell above the
+  table stays (table-no-header-delete-first-row). The engine matches both.
 - A plain range, with no table involved, shrinks when a row delete takes its first or last rows but not all
   of them: `=SUM(S!C4:C7)` and `=SUM(S!$C$4:$C$7)` become `S!C4:C6` (`$C$4:$C$6`) for a delete of row 4 and
   of row 7, `=SUM(S!C7:C9)` becomes `=SUM(S!C6:C8)` / `=SUM(S!C7:C8)`, and a range wholly deleted
