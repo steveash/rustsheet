@@ -14,32 +14,28 @@
 <text x="302.0" y="44.0" class="muted" fill="#59636e" text-anchor="start" dominant-baseline="middle">Parked</text>
 <rect class="grid" fill="#d1d9e0" x="70" y="246.0" width="542" height="1"/>
 <text x="62.0" y="246.0" class="muted num" fill="#59636e" text-anchor="end" dominant-baseline="middle">0</text>
-<rect class="grid" fill="#d1d9e0" x="70" y="210.0" width="542" height="1"/>
-<text x="62.0" y="210.0" class="muted num" fill="#59636e" text-anchor="end" dominant-baseline="middle">10</text>
-<rect class="grid" fill="#d1d9e0" x="70" y="174.0" width="542" height="1"/>
-<text x="62.0" y="174.0" class="muted num" fill="#59636e" text-anchor="end" dominant-baseline="middle">20</text>
-<rect class="grid" fill="#d1d9e0" x="70" y="138.0" width="542" height="1"/>
-<text x="62.0" y="138.0" class="muted num" fill="#59636e" text-anchor="end" dominant-baseline="middle">30</text>
-<rect class="grid" fill="#d1d9e0" x="70" y="102.0" width="542" height="1"/>
-<text x="62.0" y="102.0" class="muted num" fill="#59636e" text-anchor="end" dominant-baseline="middle">40</text>
+<rect class="grid" fill="#d1d9e0" x="70" y="201.0" width="542" height="1"/>
+<text x="62.0" y="201.0" class="muted num" fill="#59636e" text-anchor="end" dominant-baseline="middle">20</text>
+<rect class="grid" fill="#d1d9e0" x="70" y="156.0" width="542" height="1"/>
+<text x="62.0" y="156.0" class="muted num" fill="#59636e" text-anchor="end" dominant-baseline="middle">40</text>
+<rect class="grid" fill="#d1d9e0" x="70" y="111.0" width="542" height="1"/>
+<text x="62.0" y="111.0" class="muted num" fill="#59636e" text-anchor="end" dominant-baseline="middle">60</text>
 <rect class="grid" fill="#d1d9e0" x="70" y="66.0" width="542" height="1"/>
-<text x="62.0" y="66.0" class="muted num" fill="#59636e" text-anchor="end" dominant-baseline="middle">50</text>
+<text x="62.0" y="66.0" class="muted num" fill="#59636e" text-anchor="end" dominant-baseline="middle">80</text>
 <text x="70.0" y="262.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">2026-10-25</text>
-<text x="178.4" y="262.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">2026-10-26</text>
-<text x="286.8" y="262.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">2026-10-27</text>
-<text x="395.2" y="262.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">2026-10-28</text>
-<text x="503.6" y="262.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">2026-10-29</text>
-<text x="612.0" y="262.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">2026-10-30</text>
-<polyline class="s-semantics" stroke="#2a78d6" fill="none" stroke-width="2" stroke-linejoin="round" points="70.0,87.6 178.4,177.6 286.8,224.4 395.2,220.8 503.6,238.8 612.0,242.4"><title>Semantics</title></polyline>
-<circle class="b-semantics" fill="#2a78d6" cx="612.0" cy="242.4" r="3.5"><title>Semantics, 2026-10-30: 1</title></circle>
-<polyline class="s-accuracy" stroke="#1baf7a" fill="none" stroke-width="2" stroke-linejoin="round" points="70.0,199.2 178.4,195.6 286.8,199.2 395.2,188.4 503.6,192.0 612.0,199.2"><title>Accuracy</title></polyline>
-<circle class="b-accuracy" fill="#1baf7a" cx="612.0" cy="199.2" r="3.5"><title>Accuracy, 2026-10-30: 13</title></circle>
-<polyline class="s-visible" stroke="#6250d6" fill="none" stroke-width="2" stroke-linejoin="round" points="70.0,112.8 178.4,134.4 286.8,116.4 395.2,120.0 503.6,94.8 612.0,76.8"><title>Visible</title></polyline>
-<circle class="b-visible" fill="#6250d6" cx="612.0" cy="76.8" r="3.5"><title>Visible, 2026-10-30: 47</title></circle>
-<polyline class="s-parked" stroke="#4b5563" fill="none" stroke-width="2" stroke-linejoin="round" points="70.0,112.8 178.4,105.6 286.8,127.2 395.2,91.2 503.6,87.6 612.0,66.0"><title>Parked</title></polyline>
-<circle class="b-parked" fill="#4b5563" cx="612.0" cy="66.0" r="3.5"><title>Parked, 2026-10-30: 50</title></circle>
-<text x="622.0" y="242.4" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">1</text>
-<text x="622.0" y="199.2" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">13</text>
-<text x="622.0" y="81.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">47</text>
-<text x="622.0" y="66.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">50</text>
+<text x="250.7" y="262.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">2026-10-27</text>
+<text x="431.3" y="262.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">2026-10-29</text>
+<text x="612.0" y="262.0" class="muted num" fill="#59636e" text-anchor="middle" dominant-baseline="middle">2026-10-31</text>
+<polyline class="s-semantics" stroke="#2a78d6" fill="none" stroke-width="2" stroke-linejoin="round" points="70.0,147.0 160.3,203.2 250.7,232.5 341.0,230.2 431.3,241.5 521.7,243.8 612.0,216.8"><title>Semantics</title></polyline>
+<circle class="b-semantics" fill="#2a78d6" cx="612.0" cy="216.8" r="3.5"><title>Semantics, 2026-10-31: 13</title></circle>
+<polyline class="s-accuracy" stroke="#1baf7a" fill="none" stroke-width="2" stroke-linejoin="round" points="70.0,216.8 160.3,214.5 250.7,216.8 341.0,210.0 431.3,212.2 521.7,216.8 612.0,201.0"><title>Accuracy</title></polyline>
+<circle class="b-accuracy" fill="#1baf7a" cx="612.0" cy="201.0" r="3.5"><title>Accuracy, 2026-10-31: 20</title></circle>
+<polyline class="s-visible" stroke="#6250d6" fill="none" stroke-width="2" stroke-linejoin="round" points="70.0,162.8 160.3,176.2 250.7,165.0 341.0,167.2 431.3,151.5 521.7,140.2 612.0,126.8"><title>Visible</title></polyline>
+<circle class="b-visible" fill="#6250d6" cx="612.0" cy="126.8" r="3.5"><title>Visible, 2026-10-31: 53</title></circle>
+<polyline class="s-parked" stroke="#4b5563" fill="none" stroke-width="2" stroke-linejoin="round" points="70.0,162.8 160.3,158.2 250.7,171.8 341.0,149.2 431.3,147.0 521.7,133.5 612.0,104.2"><title>Parked</title></polyline>
+<circle class="b-parked" fill="#4b5563" cx="612.0" cy="104.2" r="3.5"><title>Parked, 2026-10-31: 63</title></circle>
+<text x="622.0" y="216.8" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">13</text>
+<text x="622.0" y="201.0" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">20</text>
+<text x="622.0" y="126.8" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">53</text>
+<text x="622.0" y="104.2" class="ink num" fill="#1f2328" text-anchor="start" dominant-baseline="middle">63</text>
 </g></svg>
