@@ -67,7 +67,8 @@ Done on this branch:
   without the census cache.
 - `cargo bench -p rustsheet --bench import`: before min 380.2 ms, median 386.6 ms; after min 272.3 ms,
   median 295.6 ms.
-Left: callgrind's `from_a1_to_rc` count before and after and the load/census time split; the full
-`make eval` with calipers, corpus-bench and poi fetched (no new known failure, argument census
-unchanged against main); `make check`; reviewers. The census cache (`observe`) is not needed for
+- Full `make eval` on the merged head (030af59, calipers, corpus-bench and poi fetched): `make eval-check`
+  exit 0, no regression and no new-coverage failure in any suite (corpus-bench 3 -> 3, poi 115 -> 115).
+Left: callgrind's `from_a1_to_rc` count before and after and the load/census time split; the argument
+census compared with a main run on the same fetched suites; `make check`; reviewers (draft PR open). The census cache (`observe`) is not needed for
 the 1,500 ms target and is not done.
