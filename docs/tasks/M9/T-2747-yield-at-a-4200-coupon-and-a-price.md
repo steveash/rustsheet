@@ -3,7 +3,7 @@ id: T-2747
 title: "YIELD at a 4200% coupon and a price of 3.14159 is #NUM! in Excel (ours 19.04): the Newton domain below par"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
