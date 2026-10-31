@@ -44,11 +44,14 @@ pub(crate) const RATE_MAX_STEPS: u32 = 200;
 /// twice-rounded `-`, `*` and `/`. It stops at the first iterate with |r2 - r1| < 1e-7 and
 /// |f(r2)| < 1e-7. The iterate of step [`RATE_MAX_STEPS`] is returned unconverged when it passes
 /// a looser test: |r2 - r1|, |f(r2)| and 1 + r2 against 1e-4, all absolute
-/// (probes/rate-cap-return-rule, rate-pmt-zero-cap, rate-step-cap A30). An
-/// iterate at or below -1, a flat secant (f1 = f0), a residual Excel's `^` cannot form and a run
-/// that has not stopped by then are `#NUM!`. Microsoft documents Newton's method and 20 steps;
-/// neither fits. The fit, its scores and the rules not yet probed are in financial.md "RATE is a
-/// secant on the FV residual" (T-2005).
+/// (probes/rate-cap-return-rule, rate-pmt-zero-cap, rate-step-cap A30). A flat secant (f1 = f0)
+/// holds at r1: its step is 0, so r1 is returned when |f1| passes either test and the run is
+/// `#NUM!` otherwise, and a flat secant on a residual of exactly 0 is `#NUM!`. An iterate at or
+/// below -1 runs on; a result at or below -1 is `#NUM!` (T-3348, financial.md "RATE holds on a
+/// flat secant and runs on below -1"). A residual Excel's `^` cannot form and a run that has not
+/// stopped by then are `#NUM!`. Microsoft documents Newton's
+/// method and 20 steps; neither fits. The fit, its scores and the rules not yet probed are in
+/// financial.md "RATE is a secant on the FV residual" (T-2005).
 pub(crate) fn compute_rate(
     pv: f64,
     fv: f64,
@@ -76,30 +79,49 @@ pub(crate) fn compute_rate(
     let mut r1 = r0 - OFFSET.copysign(f0);
     let mut f1 = residual(r1)?;
     for step in 1..=RATE_MAX_STEPS {
-        if f1 == f0 {
-            return Err(Error::NUM);
-        }
-        let r2 = extended_sum(
-            r1,
-            -extended_quotient(
-                extended_product(f1, extended_sum(r1, -r0)),
-                extended_sum(f1, -f0),
-            ),
-        );
-        if !r2.is_finite() || r2 <= -1.0 {
-            return Err(Error::NUM);
-        }
-        let f2 = residual(r2)?;
+        // A flat secant (f1 = f0) holds at r1, where the engine stopped with `#NUM!` before T-3348:
+        // its step is 0 and nothing moves again, so the convergence test decides now and the
+        // cap's test on the same point decides what the 200th iterate would. Near the root of a
+        // long annuity |f| is rounding noise above 1e-7: `RATE(239,-14841.27102594,
+        // 344293.4825124,-155496.6323522,0)` stalls at |f| 3.2e-7 and is 0.04310546919282547 in
+        // Excel; |f| up to 8.3e-5 returns the held iterate and 1.6e-4 and above is `#NUM!`
+        // (probes/t3348-rate-fv-nonzero). A residual of exactly 0 on both sides is `#NUM!`
+        // (`RATE(1,0,0,0)`, probes/rate-zero-residual-guess A1, A2).
+        let flat = f1 == f0;
+        let (r2, f2) = if flat {
+            if f1 == 0.0 {
+                return Err(Error::NUM);
+            }
+            (r1, f1)
+        } else {
+            let r2 = extended_sum(
+                r1,
+                -extended_quotient(
+                    extended_product(f1, extended_sum(r1, -r0)),
+                    extended_sum(f1, -f0),
+                ),
+            );
+            if !r2.is_finite() {
+                return Err(Error::NUM);
+            }
+            // An iterate at or below -1 does not end the run (Excel's `^` takes the negative
+            // base at an integer nper): only the result must be above -1
+            // (probes/t3348-rate-below-minus-one, 50/50; T-3348).
+            (r2, residual(r2)?)
+        };
         let step_size = (r2 - r1).abs();
         if step_size < TOLERANCE && f2.abs() < TOLERANCE {
-            return Ok(r2);
+            return if r2 > -1.0 { Ok(r2) } else { Err(Error::NUM) };
         }
-        if step == RATE_MAX_STEPS
+        if (flat || step == RATE_MAX_STEPS)
             && step_size < RATE_CAP_TOLERANCE
             && f2.abs() < RATE_CAP_TOLERANCE
             && 1.0 + r2 > RATE_CAP_TOLERANCE
         {
             return Ok(r2);
+        }
+        if flat {
+            return Err(Error::NUM);
         }
         (r0, f0, r1, f1) = (r1, f1, r2, f2);
     }
