@@ -3,7 +3,7 @@ id: T-3345
 title: "merge_lock wait survives transient errors instead of exiting 2"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
