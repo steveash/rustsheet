@@ -1,5 +1,5 @@
 ---
-id: T-3253
+id: T-3392
 title: "Loader density at the bit: BETA.DIST(.,FALSE) for min(a,b) > 1 and the BINOM/NEGBINOM pmf, the 55,363 last-digit cells T-2507 left with no owner (T-2513 loader probes, T-2464 density-large)"
 milestone: M9
 lane: functions-stat
