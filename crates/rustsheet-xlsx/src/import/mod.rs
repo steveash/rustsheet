@@ -1,3 +1,4 @@
+mod call_cap;
 mod columns;
 mod conditional_formatting;
 mod external_links;
@@ -27,7 +28,7 @@ use xml::XmlNode;
 
 use rustsheet_engine::{
     expressions::{
-        parser::{new_parser_english, stringify::to_english_string, MAX_NESTED_CALLS},
+        parser::{new_parser_english, stringify::to_english_string},
         types::CellReferenceRC,
     },
     types::{Metadata, Workbook, WorkbookSettings, WorkbookView},
@@ -42,6 +43,7 @@ pub use shared_strings::decode_xlsx_escapes;
 use shared_strings::read_shared_strings;
 pub use workbook::date_system_from_attribute;
 
+use call_cap::refuse_too_many_calls;
 use external_links::load_external_books;
 use metadata::load_metadata;
 use package::{resolve_target, Package};
@@ -110,11 +112,7 @@ fn reparse_formula_hack(
     let t = parser.parse(formula, &cell_reference);
     // A name body is held to the cell formulas' 65 nested calls: Excel refuses a workbook whose
     // name body nests 66 (probes/t3143-name-body-65, T-3143; syntax.md "Formula nesting depth cap").
-    if parser.nests_too_many_calls() {
-        return Err(XlsxError::Workbook(format!(
-            "definedName {name} body nests more than {MAX_NESTED_CALLS} function calls"
-        )));
-    }
+    refuse_too_many_calls(&parser, &format!("definedName {name} body"))?;
 
     Ok(to_english_string(&t, &cell_reference))
 }

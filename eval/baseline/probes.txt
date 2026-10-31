@@ -1683,6 +1683,10 @@ C	probes/t3201-collation-long-mark-runs.case.json	1506
 C	probes/t3201-collation-wrapped-run-pairs.case.json	1406
 C	probes/t3213-typed-parse-errors.case.json	25
 C	probes/t3248-snap-running-total-below-last.case.json	384
+C	probes/t3263-cf-abs-65.case.json	1
+C	probes/t3263-cf-long-299.case.json	1
+C	probes/t3263-dv-abs-65.case.json	1
+C	probes/t3263-dv-long-299.case.json	1
 C	probes/t3275-collation-width-kana-pairs.case.json	1406
 C	probes/t3275-collation-width-kana.case.json	856
 C	probes/t3276-collation-other-scripts.case.json	643
