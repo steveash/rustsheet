@@ -556,6 +556,10 @@ pub struct Parser {
     lexer: lexer::Lexer,
     worksheets: Vec<String>,
     defined_names: Vec<DefinedNameS>,
+    /// Each defined name's position in `defined_names`, by its scope and lower-cased name (the
+    /// key `Model::parsed_defined_names` uses), the first of names that fold alike: a lookup is
+    /// one probe, not a scan with two lower-casings per name (T-3195).
+    name_index: HashMap<(Option<u32>, String), usize>,
     context: CellReferenceRC,
     tables: HashMap<String, Table>,
     locale: &'static Locale,
@@ -623,6 +627,18 @@ pub struct Parser {
     workbook_file: Option<String>,
 }
 
+/// The positions of `names` by scope and lower-cased name, the first of names that fold alike
+/// (`Parser::name_index`).
+fn index_names(names: &[DefinedNameS]) -> HashMap<(Option<u32>, String), usize> {
+    let mut index = HashMap::with_capacity(names.len());
+    for (position, (name, scope, _)) in names.iter().enumerate() {
+        index
+            .entry((*scope, name.to_lowercase()))
+            .or_insert(position);
+    }
+    index
+}
+
 pub fn new_parser_english(
     worksheets: Vec<String>,
     defined_names: Vec<DefinedNameS>,
@@ -647,10 +663,12 @@ impl Parser {
             column: 1,
             row: 1,
         };
+        let name_index = index_names(&defined_names);
         Parser {
             lexer,
             worksheets,
             defined_names,
+            name_index,
             context,
             tables,
             locale,
@@ -712,6 +730,7 @@ impl Parser {
         defined_names: Vec<DefinedNameS>,
     ) {
         self.worksheets = worksheets;
+        self.name_index = index_names(&defined_names);
         self.defined_names = defined_names;
     }
 
@@ -837,17 +856,21 @@ impl Parser {
     //  * Some((Some(index), formula)): If there is a defined name local to that sheet
     //  * Some(None): If there is a global defined name
     fn get_defined_name(&self, name: &str, sheet: u32) -> Option<(Option<u32>, String)> {
-        for (df_name, df_scope, df_formula) in &self.defined_names {
-            if name.to_lowercase() == df_name.to_lowercase() && df_scope == &Some(sheet) {
-                return Some((*df_scope, df_formula.to_owned()));
-            }
+        let lower = name.to_lowercase();
+        if let Some(formula) = self.defined_name_formula(Some(sheet), &lower) {
+            return Some((Some(sheet), formula.to_owned()));
         }
-        for (df_name, df_scope, df_formula) in &self.defined_names {
-            if name.to_lowercase() == df_name.to_lowercase() && df_scope.is_none() {
-                return Some((None, df_formula.to_owned()));
-            }
-        }
-        None
+        self.defined_name_formula(None, &lower)
+            .map(|formula| (None, formula.to_owned()))
+    }
+
+    /// The body of the name `lower` (already lower-cased) in `scope`, the first of the names that
+    /// fold to it; `None` when there is none.
+    pub(super) fn defined_name_formula(&self, scope: Option<u32>, lower: &str) -> Option<&str> {
+        let index = *self.name_index.get(&(scope, lower.to_owned()))?;
+        self.defined_names
+            .get(index)
+            .map(|(_, _, formula)| formula.as_str())
     }
 
     /// An expression at the current level; parentheses and argument lists call
