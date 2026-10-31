@@ -1,5 +1,6 @@
 //! Reading and writing the small JSON ratchet locks the gates commit (the evidence floor,
-//! decision 0062; visible parity, decision 0088).
+//! decision 0062), and the error type the line-oriented visible-parity lock shares with them
+//! (decisions 0088 and 0217).
 
 use std::path::{Path, PathBuf};
 
@@ -24,6 +25,15 @@ pub enum LockError {
         path: &'static str,
         /// The underlying error.
         source: serde_json::Error,
+    },
+    /// A line of a line-oriented lock (visible parity, decision 0217) is malformed or repeats a
+    /// case.
+    #[error("{path}:{line}: malformed line (expected `case<TAB>count`, each case once)")]
+    Line {
+        /// The lock's path relative to the repository root.
+        path: &'static str,
+        /// The 1-based line number.
+        line: usize,
     },
 }
 

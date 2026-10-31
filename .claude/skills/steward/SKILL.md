@@ -80,7 +80,8 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
     mark-ready` removes `merge-train-ejected` when it marks the PR again (decision 0177). A PR
     that conflicts only with another PR of its batch is deferred, not ejected: it stays ready.
     Any session may clear a `conflict with main` ejection whose conflicts are all in the
-    eval-gated, non-fetched suites' `eval/baseline/<suite>.txt` lists: run `make catch-up
+    eval-gated, non-fetched suites' `eval/baseline/<suite>.txt` lists and
+    `eval/baseline/visible-parity.txt` (decision 0217): run `make catch-up
     PR=<n>`, which merges `main` in, re-records the lists and pushes, then `make mark-ready
     PR=<n> CARRY=1` once CI is green (decision 0207). Any other conflict stays with the PR's
     worker.
@@ -219,10 +220,12 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
 - **Sonnet queue buffer** (decision 0021): in the steward's queue step, also run
   `make ready-tasks TIER=sonnet`; below 10 ready, run the gap-triager and/or planner to cut
   sonnet-sized tasks by the tier rubric (never relabel a task to reach the number).
-- **Visible-parity lock** (decision 0093): task PRs never lower `eval/baseline/visible-parity.json`.
-  In the daily steward PR, after `make eval`, run `make eval-lower-visible-lock` and commit the lower
-  lock with the snapshot; "Progress dashboard" below comes next. When an open PR conflicts on the
-  lock, take `main`'s side and re-run `make eval-baseline`.
+- **Visible-parity lock** (decisions 0093, 0217): task PRs never lower the per-case lines of
+  `eval/baseline/visible-parity.txt`; a PR that adds cases records their lines with `make
+  eval-baseline`. In the daily steward PR, after `make eval`, run `make eval-lower-visible-lock` and
+  commit the lowered lines with the snapshot; "Progress dashboard" below comes next. When an open PR
+  conflicts on the lock, `make catch-up PR=<n>` resolves it (each case at its higher count, then a
+  re-record); by hand, keep both sides' lines at the higher count and re-run `make eval-baseline`.
 - **Progress dashboard** (SPEC-0022, decision 0124): the daily run's order is `make eval`, then
   `make eval-lower-visible-lock`, then `make progress-report`, then the `progress-report` skill
   (routine step 2). Run `make progress-report` even when `make eval` failed or a suite was not

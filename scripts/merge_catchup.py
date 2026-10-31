@@ -7,9 +7,10 @@ the eval-gated known-failure lists (decision 0207).
 In this checkout, which must have no local changes, it does the following:
 - merges `main` into the PR's branch without committing;
 - refuses any conflict outside the lists CI's eval gate checks (`Repo.checked_baselines`: the
-  gated suites the eval job runs without a fetch);
-- takes `main`'s side of each conflicted list and runs `make eval-baseline`, which re-records the
-  lists and refuses regressions (decision 0093);
+  gated suites the eval job runs without a fetch, and the visible-parity lock);
+- takes `main`'s side of each conflicted known-failure list, resolves a conflicted visible-parity
+  lock to each case's higher count (`visible_lock.merge_visible`, decision 0217), and runs `make
+  eval-baseline`, which re-records the lists and refuses regressions (decision 0093);
 - refuses if the re-record changed any other file, such as quality/evidence-floor.json;
 - commits everything as one merge commit and pushes it to the PR branch (never forced);
 - returns to the checkout's original branch or commit.
@@ -31,6 +32,7 @@ from pathlib import Path
 
 import gh_client
 import merge_ready
+import visible_lock
 from merge_lock import GitError, git
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -80,7 +82,13 @@ def catch_up(root: Path, branch: str, record: Callable[[Path], int] = rerecord) 
             outside = [p for p in conflicted if p not in lists]
             raise Refused(f"conflicts outside the eval-gated baseline lists: {', '.join(outside)}")
         for path in conflicted:
-            git("checkout", "--theirs", "--", path, root=root)
+            if path == visible_lock.VISIBLE_PARITY:
+                # main's side alone would drop the PR's new cases' lines, which the re-record no
+                # longer counts as new (their suite lists merged cleanly): keep both (decision 0217).
+                sides = [git("show", f":{stage}:{path}", root=root).stdout for stage in (2, 3)]
+                (root / path).write_text(visible_lock.merge_visible(*sides), encoding="utf-8")
+            else:
+                git("checkout", "--theirs", "--", path, root=root)
             git("add", "--", path, root=root)
         if record(root) != 0:
             raise Refused("make eval-baseline refused (a regression, or the eval did not run)")

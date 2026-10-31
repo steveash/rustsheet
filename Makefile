@@ -59,7 +59,7 @@ eval-baseline: build ## Ratchet eval/baseline and quality/evidence-floor.json af
 	$(EVAL_GUARDED) update-baseline
 	$(EVAL) evidence-floor --update
 
-eval-lower-visible-lock: build ## Steward only, daily: also record a drop in eval/baseline/visible-parity.json (decision 0093)
+eval-lower-visible-lock: build ## Steward only, daily: also lower the cases of eval/baseline/visible-parity.txt (decisions 0093, 0217)
 	$(EVAL_GUARDED) update-baseline --lower-visible-lock
 
 evidence-floor: build ## Gate: no more in-scope functions below the evidence floor (T-0056; CI runs it in eval-gates)

@@ -49,6 +49,7 @@ import merge_lock
 import tasks
 from gh_client import Client, GhError
 from merge_lock import GitError, git
+from visible_lock import VISIBLE_PARITY, visible_rises
 
 ROOT = Path(__file__).resolve().parent.parent
 REMOTE = "origin"
@@ -475,11 +476,12 @@ class Repo:
         return [p for p in out.split("\0") if p]
 
     def checked_baselines(self) -> set[str]:
-        """The known-failure lists CI's eval gate checks against the engine: `eval/baseline/<suite>.txt`
-        of every suite on the fetched `main` with `gate = true` and no `[fetch]` (the eval job fetches
-        nothing). Fetched suites (poi, corpus-bench), ungated ones and visible-parity.json are out."""
+        """The lists CI's eval gate checks against the engine: `eval/baseline/<suite>.txt` of every
+        suite on the fetched `main` with `gate = true` and no `[fetch]` (the eval job fetches
+        nothing), and the visible-parity lock (decision 0217). Fetched suites (poi, corpus-bench)
+        and ungated ones are out."""
         main = f"refs/merge-ready/{BASE_BRANCH}"
-        found = set()
+        found = {VISIBLE_PARITY}
         suites = git("ls-tree", "--name-only", f"{main}:eval/suites", root=self.root, check=False)
         for suite in suites.stdout.split() if suites.returncode == 0 else []:
             shown = git("show", f"{main}:eval/suites/{suite}/suite.toml", root=self.root, check=False)
@@ -499,7 +501,8 @@ class Repo:
         "Carry-over"), or None when it is: a merge commit whose first parent is `prev`, whose
         second parent is on `main`, and whose tree is the plain merge of its parents
         (`git merge-tree --write-tree`), except that the content of a list in `checked_baselines`
-        may differ, without a failure line neither parent had: a conflict there resolved and the
+        may differ, without a failure line neither parent had or a visible-parity line above both
+        parents' (decision 0217): a conflict there resolved and the
         lists re-recorded (decision 0093). The eval
         gate on the head, which marking requires green, checks exactly those lists (decision 0207).
         Anything else (another file, an addition, deletion, rename or mode change) breaks the carry."""
@@ -536,14 +539,20 @@ class Repo:
         return None
 
     def new_failures(self, path: str, parents: Sequence[str], head: str) -> list[str]:
-        """The known-failure lines (`F` and `TF`) of list `path` in `head` that no parent's list has.
-        The eval gate only checks that a list matches the engine, so a regression recorded in a
-        merge would pass it; the carry refuses one instead (decision 0207)."""
+        """The known-failure lines (`F` and `TF`) of list `path` in `head` that no parent's list has;
+        for the visible-parity lock, its `visible_rises`. The eval gate only checks that a list
+        matches the engine (and holds each case to the lock), so a regression recorded in a merge
+        would pass it; the carry refuses one instead (decisions 0207 and 0217)."""
+
+        def text(commit: str) -> str:
+            shown = git("show", f"{commit}:{path}", root=self.root, check=False)
+            return shown.stdout if shown.returncode == 0 else ""
+
+        if path == VISIBLE_PARITY:
+            return visible_rises(text(head), [text(c) for c in parents])
 
         def failures(commit: str) -> set[str]:
-            shown = git("show", f"{commit}:{path}", root=self.root, check=False)
-            text = shown.stdout if shown.returncode == 0 else ""
-            return {line for line in text.splitlines() if line.startswith(("F\t", "TF\t"))}
+            return {line for line in text(commit).splitlines() if line.startswith(("F\t", "TF\t"))}
 
         known = set().union(*(failures(c) for c in parents))
         return sorted(failures(head) - known)

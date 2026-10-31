@@ -19,6 +19,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gh_client
 import merge_ready
+import visible_lock
 from gh_client import FakeGh, Reply
 from merge_ready import APPROVE, IGNORE, KEEP, UNLABEL, Marker, MarkerError
 
@@ -709,6 +710,35 @@ class Mark(PrFixture):
         self.write("eval/baseline/probes.txt", "F\tprobes/a\tA1\nTF\tprobes/z\tZ9\n")
         self.finish_merge()
         self.refused("records failures neither parent had \\(TF\tprobes/z\tZ9\\)", review=None, carry=True)
+
+    def test_the_visible_parity_lock_is_a_checked_list(self) -> None:
+        self.baseline_conflict("F\tprobes/a\tA1\n", "F\tprobes/b\tB1\n")
+        self.assertIn(visible_lock.VISIBLE_PARITY, merge_ready.Repo(self.clone).checked_baselines())
+
+    def test_carry_accepts_a_visible_parity_merge_within_both_parents(self) -> None:
+        lock = visible_lock.VISIBLE_PARITY
+        old = self.baseline_conflict(
+            "# h\nprobes/a\t3\nprobes/p\t2\n", "# h\nprobes/a\t1\nprobes/m\t5\n", path=lock
+        )
+        # Each case at the higher parent's count, and a lowered one: what merge_catchup writes.
+        self.write(lock, "# h\nprobes/a\t3\nprobes/m\t4\nprobes/p\t2\n")
+        self.finish_merge()
+        plan = self.plan(review=None, carry=True)
+        self.assertEqual((plan.marker.prev, plan.marker.head), (old, self.head))
+
+    def test_carry_refuses_a_visible_parity_rise_or_a_new_case_line(self) -> None:
+        lock = visible_lock.VISIBLE_PARITY
+        for name, resolved, refused in (
+            ("a rise above both parents", "# h\nprobes/a\t4\nprobes/m\t5\n", "probes/a\t4"),
+            ("a case neither parent has", "# h\nprobes/a\t3\nprobes/new\t1\n", "probes/new\t1"),
+        ):
+            with self.subTest(name):
+                self.baseline_conflict(
+                    f"# h\nprobes/a\t3\n# {name}\n", f"# h\nprobes/a\t1\nprobes/m\t5\n# {name}\n", path=lock
+                )
+                self.write(lock, resolved)
+                self.finish_merge()
+                self.refused(f"records failures neither parent had \\({refused}\\)", review=None, carry=True)
 
     def test_carry_refuses_a_conflict_outside_the_checked_lists(self) -> None:
         self.baseline_conflict("pr side\n", "main side\n", path="scripts/x.py")

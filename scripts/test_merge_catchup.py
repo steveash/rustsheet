@@ -11,6 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import merge_catchup  # noqa: E402 (the sys.path line above must run first)
 import merge_ready  # noqa: E402
+import visible_lock  # noqa: E402
 from merge_catchup import Refused  # noqa: E402
 
 BASELINE = "eval/baseline/probes.txt"
@@ -130,6 +131,22 @@ class CatchUp(unittest.TestCase):
         with self.assertRaisesRegex(Refused, "does not accept: eval/baseline/poi.txt"):
             merge_catchup.catch_up(self.clone, "agent/x", self.record(0, "F\tpoi/x\tX1\n", "eval/baseline/poi.txt"))
         self.assertEqual(self.remote("agent/x"), before)
+
+    def test_a_visible_parity_conflict_keeps_both_sides_lines(self) -> None:
+        # Decision 0217: two PRs add neighbouring cases' lines. main's side alone would drop the
+        # PR's line, which the re-record no longer records (its case is in the merged list).
+        lock = visible_lock.VISIBLE_PARITY
+        self.write(lock, "# h\nprobes/a\t3\nprobes/z\t1\n")
+        self.base = self.commit("lock")
+        self.git("push", "-q", "origin", "main")
+        before = self.branch({lock: "# h\nprobes/a\t3\nprobes/m-pr\t2\nprobes/z\t1\n"})
+        self.move_main({lock: "# h\nprobes/a\t4\nprobes/m-main\t5\nprobes/z\t1\n"})
+        head = merge_catchup.catch_up(self.clone, "agent/x", self.record(0, "F\tprobes/a\tA1\n"))
+        self.assertEqual(
+            run("git", "show", f"{head}:{lock}", cwd=self.origin),
+            "# h\nprobes/a\t4\nprobes/m-main\t5\nprobes/m-pr\t2\nprobes/z\t1",
+        )
+        self.assertIsNone(merge_ready.Repo(self.clone).carry_problem(before, head))
 
     def test_the_checkout_is_returned_to_its_branch(self) -> None:
         self.branch({BASELINE: "F\tprobes/pr\tP1\n"})

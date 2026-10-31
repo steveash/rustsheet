@@ -117,8 +117,8 @@ enum Cmd {
         /// Permit removing previously passing items (requires PR justification).
         #[arg(long)]
         allow_regressions: bool,
-        /// Also record a drop in the visible-parity lock. The steward's daily run only: a PR
-        /// leaves drops to it so fix PRs do not conflict on the lock (decision 0093).
+        /// Also lower the visible-parity lock's cases to their counts and drop their lines at 0.
+        /// The steward's daily run only: a PR leaves drops to it (decisions 0093 and 0217).
         #[arg(long)]
         lower_visible_lock: bool,
     },
@@ -435,34 +435,45 @@ fn baseline_path(root: &Path, suite: &str) -> PathBuf {
 }
 
 /// Holds `count` to the visible-parity lock, recording it on `update` when
-/// [`visible_parity::judge`] allows (T-0061, decisions 0088 and 0093); returns whether the gate
-/// passes.
+/// [`visible_parity::judge`] allows (T-0061, decisions 0088, 0093 and 0217); returns whether the
+/// gate passes.
 fn visible_parity_gate(
     root: &Path,
-    count: VisibleCount,
+    count: &VisibleCount,
     update: Option<visible_parity::Update>,
 ) -> Result<bool> {
-    use visible_parity::{Judgement, Lock, LOCK_PATH};
+    use visible_parity::{Lock, LOCK_PATH};
     let lock = Lock::read(root)?;
     println!(
-        "visible parity: {} in-scope cells visibly off ({} in new cases), lock {}",
-        count.cells, count.new_coverage, lock.visibly_off_cells
+        "visible parity: {} in-scope cells visibly off ({} in new cases), {LOCK_PATH} allows {} in {} cases",
+        count.cells(),
+        count.new_coverage(),
+        lock.total(),
+        lock.cases.len()
     );
-    Ok(match visible_parity::judge(lock, count, update) {
-        Judgement::Holds => true,
-        Judgement::Record => {
-            Lock {
-                visibly_off_cells: count.cells,
-            }
-            .write(root)?;
-            println!("  updated {LOCK_PATH}: commit it");
-            true
-        }
-        Judgement::Regressed => {
-            println!("  REGRESSION: more cells are visibly off than {LOCK_PATH} allows; the report's \"Visibly off\" section names the functions");
-            false
-        }
-    })
+    let judgement = visible_parity::judge(&lock, count, update);
+    for o in &judgement.over {
+        println!(
+            "  REGRESSION visible parity {}: {} cells visibly off, the lock allows {}",
+            o.case, o.off, o.allowed
+        );
+    }
+    if !judgement.holds() {
+        let over: usize = judgement.over.iter().map(|o| o.off - o.allowed).sum();
+        println!(
+            "  {} cases have {over} more visibly-off cells than {LOCK_PATH} allows. A new case needs its line: run `make eval-baseline` and commit eval/baseline/. The report's \"Visibly off\" section names the functions",
+            judgement.over.len()
+        );
+    }
+    if let Some(next) = &judgement.record {
+        next.write(root)?;
+        println!(
+            "  updated {LOCK_PATH} ({} cells in {} cases): commit it",
+            next.total(),
+            next.cases.len()
+        );
+    }
+    Ok(judgement.holds())
 }
 
 /// The baseline gate (`update` `None`) or the baseline ratchet; with `floor`, also the evidence
@@ -560,7 +571,7 @@ fn cmd_check(
         }
     }
     // A partial run (`--suite`) would undercount, so only a full gated run is held to the lock.
-    if sel.suites.is_empty() && !visible_parity_gate(root, visible, update)? {
+    if sel.suites.is_empty() && !visible_parity_gate(root, &visible, update)? {
         failed = true;
     }
     if let Some(floor_results) = floor_results {

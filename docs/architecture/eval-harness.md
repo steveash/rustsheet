@@ -218,8 +218,10 @@ Only `pass` counts as passing. Case statuses:
   Each `argument_coverage[]` row's `unseen_pairs` (T-3277) lists the expected argument-class pairs
   (parameter names and `ArgClass` of each) that its `pairwise` share counts but no Excel-evidence call has passed.
 - `eval/baseline/<suite>.txt`: known failures (see `docs/process/quality-gates.md`).
-- `eval/baseline/visible-parity.json`: the visible-parity lock (decision 0088). Task PRs never lower
-  it; the steward does, daily, with `make eval-lower-visible-lock` (decision 0093).
+- `eval/baseline/visible-parity.txt`: the visible-parity lock (decisions 0088, 0217), one sorted
+  `case<TAB>count` line per case with in-scope visibly-off cells; `check` fails a case above its
+  line, and a case with no line allows none. `update-baseline` writes new cases' lines; task PRs
+  never lower a line; the steward does, daily, with `make eval-lower-visible-lock` (decision 0093).
 
 ## Gate A: the accuracy check
 Normative design: [SPEC-0029](../specs/SPEC-0029-gate-a-accuracy-gate.md) (decision 0188 R2; the
