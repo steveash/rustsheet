@@ -57,3 +57,13 @@ probe stays a hold-out (decision 0188 R4.2).
   Unowned and recorded in the README: GAMMA.DIST at shape 0.5-2.5 and 20-1E3 low x/a (37 cells), POISSON cdf near the
   mean (5).
 - statistics.md: "Gamma family on a blind log-uniform sweep: where Excel is far from the math (T-3509)".
+
+## Handoff
+- Done: probe cases, excel-graph oracle sidecars and mpmath math sidecars under
+  eval/suites/probes-numeric/cases/t3509-blind-*; generator docs/research/t3509/sweep.py (seed 20261031, USED_SEEDS);
+  scorer docs/research/t3509/score.py and its main output score-main-744815d06.out; README with the rules, the
+  refresh procedure and the region owners; Gate A definitions tools/src/rustsheet_tools/accuracy/defs/gamma.py;
+  tasks T-3519 to T-3522 filed and pushed; T-3219 evidence; `make check` and `tasks.py validate` green.
+- Left: the review skill and the PR. T-3412 (on T-3311's unmerged branch) did not get the GAMMA.DIST evidence; add it
+  there or let T-3219 own it (both name each other's region). Unowned regions (README table): GAMMA.DIST at shape
+  0.5-2.5 and 20-1E3 at a low x/a (37 cells), POISSON cdf near the mean (5).
