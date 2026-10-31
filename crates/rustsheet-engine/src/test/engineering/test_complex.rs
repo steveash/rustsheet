@@ -470,8 +470,9 @@ fn impower_angle_is_excels_atan2_kernel() {
     assert_eq!(model._get_text("A1"), "1000+1i");
 }
 
-// IMSIN, IMCOS, IMSEC, IMCSC and IMCOT of a real number take SIN, COS and TAN's kernels and are
-// `#NUM!` from 2^27, IMCOT "0"; IMTAN takes the limit only (probes/t2534-im-trig-real-limit, T-2534).
+// IMSIN, IMCOS, IMTAN, IMSEC, IMCSC and IMCOT of a real number take SIN, COS and TAN's kernels and
+// are `#NUM!` from 2^27, IMCOT "0" (probes/t2534-im-trig-real-limit, T-2534;
+// probes/t3054-imtan-real-tan-kernel, T-2774).
 #[test]
 fn im_trig_of_a_real_number_follows_sin_cos_tan() {
     let cases = [
@@ -490,8 +491,14 @@ fn im_trig_of_a_real_number_follows_sin_cos_tan() {
         (r#"=IMCSC("1E+200")"#, "#NUM!"),
         (r#"=IMCOT("1E+200")"#, "0"),
         (r#"=IMCOT("-134217728")"#, "0"),
-        // The desktop cache of COMPLEXs.xlsx N6; the web gives TAN's -3.38051500624659 (T-2774).
-        (r#"=IMTAN("5")"#, "-3.38051500624658"),
+        // Excel for the web (decision 0188 R6): TAN's kernel. COMPLEXs.xlsx N6, a Mac 16.0300
+        // cache, has the double-angle -3.38051500624658 (T-1075 item 17).
+        (r#"=IMTAN("5")"#, "-3.38051500624659"),
+        ("=IMTAN(123456789.123)", "56.4157574800738"),
+        ("=IMTAN(3.14159)", "-2.65358979336212E-06"),
+        (r#"=IMTAN("-17.2737")"#, "-197.642601323436"),
+        (r#"=IMTAN("-17.3011")"#, "44.7544983375159"),
+        (r#"=IMTAN("1.5707963267949")"#, "-286413440886091"),
     ];
     assert_texts(&cases);
 }
