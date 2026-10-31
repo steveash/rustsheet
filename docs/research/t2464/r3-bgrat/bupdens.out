@@ -1,0 +1,44 @@
+| model | half | n | exact/w4/w15 |
+|---|---|---|---|
+| M0 (model bup + model bgrat) | ALL | 3072 | 102/1973/2162 |
+| M0 (model bup + model bgrat) | hold | 1613 | 55/1053/1156 |
+| M0 (model bup + model bgrat) | tune | 1459 | 47/920/1006 |
+| ablate: x87(Pb*fl(xy)/b0) + F (exact increment) | ALL | 3072 | 1726/3072/3072 |
+| ablate: x87(Pb*fl(xy)/b0) + F (exact increment) | hold | 1613 | 911/1613/1613 |
+| ablate: x87(Pb*fl(xy)/b0) + F (exact increment) | tune | 1459 | 815/1459/1459 |
+| ablate: x87(Pmodel*fl(xy)/b0) + D (model density) | ALL | 3072 | 89/2154/2356 |
+| ablate: x87(Pmodel*fl(xy)/b0) + D (model density) | hold | 1613 | 44/1146/1245 |
+| ablate: x87(Pmodel*fl(xy)/b0) + D (model density) | tune | 1459 | 45/1008/1111 |
+| exact Pa*x*y/b0 + D | ALL | 3072 | 1009/1771/2027 |
+| exact Pa*x*y/b0 + D | hold | 1613 | 541/946/1087 |
+| exact Pa*x*y/b0 + D | tune | 1459 | 468/825/940 |
+| exact Pb*x*y/b0 + D | ALL | 3072 | 1852/3072/3072 |
+| exact Pb*x*y/b0 + D | hold | 1613 | 965/1613/1613 |
+| exact Pb*x*y/b0 + D | tune | 1459 | 887/1459/1459 |
+| fl(fl(Pa*fl(xy))/b0) + D | ALL | 3072 | 1040/1768/1888 |
+| fl(fl(Pa*fl(xy))/b0) + D | hold | 1613 | 553/944/1011 |
+| fl(fl(Pa*fl(xy))/b0) + D | tune | 1459 | 487/824/877 |
+| fl(fl(Pb*fl(xy))/b0) + D | ALL | 3072 | 1998/3072/3072 |
+| fl(fl(Pb*fl(xy))/b0) + D | hold | 1613 | 1046/1613/1613 |
+| fl(fl(Pb*fl(xy))/b0) + D | tune | 1459 | 952/1459/1459 |
+| model W + D | ALL | 3072 | 83/2145/2375 |
+| model W + D | hold | 1613 | 41/1135/1254 |
+| model W + D | tune | 1459 | 42/1010/1121 |
+| x87((Pa*fl(xy)/b0) + D) | ALL | 3072 | 1098/1761/1844 |
+| x87((Pa*fl(xy)/b0) + D) | hold | 1613 | 594/939/992 |
+| x87((Pa*fl(xy)/b0) + D) | tune | 1459 | 504/822/852 |
+| x87((Pb*fl(xy)/b0) + D) | ALL | 3072 | 2126/3072/3072 |
+| x87((Pb*fl(xy)/b0) + D) | hold | 1613 | 1110/1613/1613 |
+| x87((Pb*fl(xy)/b0) + D) | tune | 1459 | 1016/1459/1459 |
+| x87(Pa*fl(xy)/b0) + D | ALL | 3072 | 1267/1767/1815 |
+| x87(Pa*fl(xy)/b0) + D | hold | 1613 | 672/944/975 |
+| x87(Pa*fl(xy)/b0) + D | tune | 1459 | 595/823/840 |
+| x87(Pa*x*y/b0) + D | ALL | 3072 | 1232/1782/2041 |
+| x87(Pa*x*y/b0) + D | hold | 1613 | 662/953/1094 |
+| x87(Pa*x*y/b0) + D | tune | 1459 | 570/829/947 |
+| x87(Pb*fl(xy)/b0) + D | ALL | 3072 | 2515/3072/3072 |
+| x87(Pb*fl(xy)/b0) + D | hold | 1613 | 1306/1613/1613 |
+| x87(Pb*fl(xy)/b0) + D | tune | 1459 | 1209/1459/1459 |
+| x87(Pb*x*y/b0) + D | ALL | 3072 | 2152/3072/3072 |
+| x87(Pb*x*y/b0) + D | hold | 1613 | 1125/1613/1613 |
+| x87(Pb*x*y/b0) + D | tune | 1459 | 1027/1459/1459 |
