@@ -3,7 +3,7 @@ id: T-3424
 title: "RATE's type at the noise floor: Gate A sweep cells where one side errs"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P0
 size: M
 tier: opus
