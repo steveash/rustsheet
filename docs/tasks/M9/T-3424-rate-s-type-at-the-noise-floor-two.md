@@ -61,3 +61,21 @@ cells, so RATE's Gate A fails until they are settled.
 
 ## Out of scope
 - The cells of the right type that are not Excel's bits (T-3389).
+
+## Progress notes (2026-10-31, opus run; in flight, not done)
+- First experiment: the power form inside the residual. The T-3348 hold model (the engine's `compute_rate`) was re-run
+  in Python with P = (1+r)^n from five forms, every other operation Excel's twice-rounded one, on the 1,260 literal
+  RATE cells of t3348-rate-gate-a-sweep, t3348-rate-gate-a-fresh, t3348-rate-fv-nonzero and the fit lab's
+  `RATE_CASES` (number or `#NUM!` type agreement / bit-exact numbers):
+  | P | type | bits |
+  |---|---|---|
+  | Excel's `^` model (`caret_pow`, shipped) | 1211 | 990 |
+  | correctly rounded pow of Excel's 1+r | 1203 | 256 |
+  | correctly rounded (1+r)^n, r exact | 1204 | 201 |
+  | `exp(n*log(1+r))` in doubles | 1234 | 252 |
+  | `exp(n*log1p(r))` in doubles | 1239 | 190 |
+- So the `^` model is Excel's for the bits (990 against at most 256): RATE's noise does not come from a different
+  power routine. The log/exp forms win type on the noise-floor cells only by moving the noise, at the cost of most
+  bits, so they are not Excel's either. Next: per-cell comparison on the 16 cells (the experiment's watch list did not
+  match the cell keys), then the residual's sum order and fused forms (pv·P + pmt·A as one extended sum before + fv,
+  or the 80-bit sum kept across all three terms) under the same hold.
