@@ -22,7 +22,6 @@ use crate::{
 use crate::user_model::history::{
     ColumnData, Diff, DiffList, DiffType, History, QueueDiffs, RowData,
 };
-use crate::workbook_check::SpillTally;
 
 use super::border_utils::is_max_border;
 
@@ -215,8 +214,6 @@ pub struct UserModel {
     history: History,
     pub(super) send_queue: Vec<QueueDiffs>,
     pause_evaluation: bool,
-    /// What the diffs applied by the current undo, redo or external list restore (T-3426).
-    pub(super) restored_spills: SpillTally,
 }
 
 /// Given the index of the currently selected sheet, returns the index that same
@@ -254,7 +251,6 @@ impl UserModel {
             history: History::default(),
             send_queue: vec![],
             pause_evaluation: false,
-            restored_spills: SpillTally::default(),
         }
     }
 
@@ -274,7 +270,6 @@ impl UserModel {
             history: History::default(),
             send_queue: vec![],
             pause_evaluation: false,
-            restored_spills: SpillTally::default(),
         })
     }
 
@@ -289,7 +284,6 @@ impl UserModel {
             history: History::default(),
             send_queue: vec![],
             pause_evaluation: false,
-            restored_spills: SpillTally::default(),
         })
     }
 
@@ -330,7 +324,6 @@ impl UserModel {
     /// * [`UserModel::redo`]
     pub fn undo(&mut self) -> Result<(), String> {
         if let Some(diff_list) = self.history.undo() {
-            self.restored_spills = SpillTally::default();
             self.apply_undo_diff_list(&diff_list)?;
             self.send_queue.push(QueueDiffs {
                 r#type: DiffType::Undo,
@@ -346,7 +339,6 @@ impl UserModel {
     /// * [`UserModel::redo`]
     pub fn redo(&mut self) -> Result<(), String> {
         if let Some(diff_list) = self.history.redo() {
-            self.restored_spills = SpillTally::default();
             self.apply_diff_list(&diff_list)?;
             self.send_queue.push(QueueDiffs {
                 r#type: DiffType::Redo,

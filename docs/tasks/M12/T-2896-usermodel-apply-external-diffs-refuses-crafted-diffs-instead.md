@@ -70,7 +70,7 @@ evaluates the whole workbook. SPEC-0026 decision 4 has an "As built" note on thi
 **Tests.** `test/user_model/test_external_diffs_untrusted.rs`:
 - three real send queues with one index changed (style, sheet, formula);
 - a list that builds on itself and still applies;
-- 31 crafted diffs, reported by index, each refused with the workbook unchanged, after which an edit, an insert, an undo and a
+- 31 crafted diffs, reported by index,, each refused with the workbook unchanged, after which an edit, an insert, an undo and a
   reload all work;
 - whole-sheet areas;
 - a taken sheet id and a NaN width.

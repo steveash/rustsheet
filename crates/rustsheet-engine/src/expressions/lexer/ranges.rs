@@ -1,38 +1,11 @@
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::{
     token::TokenType,
-    utils::{
-        is_valid_column, is_valid_column_number, is_valid_identifier, push_column_letter,
-        quote_name,
-    },
+    utils::{column_to_number, is_valid_column, is_valid_identifier, quote_name},
 };
 
 use super::Lexer;
 use super::{ParsedRange, ParsedReference, Result};
-
-/// A row or column range corner as [`Lexer::corner_parts`] reads it.
-struct CornerParts {
-    /// The letters' column number, `None` past `i32`.
-    column: Option<i32>,
-    letters: usize,
-    /// The digits' row number, `None` past `i32`.
-    row: Option<i32>,
-    digits: usize,
-    /// The position after the corner.
-    end: usize,
-}
-
-impl CornerParts {
-    /// What `column_to_number` gives for the letters.
-    fn column_number(&self) -> std::result::Result<i32, &'static str> {
-        if self.letters == 0 {
-            return Err("Column identifier cannot be empty.");
-        }
-        self.column
-            .filter(|&number| is_valid_column_number(number))
-            .ok_or("Column is not valid.")
-    }
-}
 
 /// The row part of a plain corner (`consume_corner_shape`).
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -163,21 +136,6 @@ impl Lexer {
     /// AS23, $AS23, AS$23, $AS$23, R12
     /// Or returns an error
     fn consume_reference_a1(&mut self) -> Result<ParsedReference> {
-        match self.scan_reference_a1() {
-            Ok((reference, end)) => {
-                self.position = end;
-                Ok(reference)
-            }
-            Err((message, position)) => Err(self.set_error(message, position)),
-        }
-    }
-
-    /// [`Lexer::consume_reference_a1`] without moving the lexer: the reference and the position
-    /// after it, or the error's message and position. A caller that tries a reference and falls
-    /// back on failure (`consume_range_a1` on a column range) builds no error (T-3384).
-    fn scan_reference_a1(
-        &self,
-    ) -> std::result::Result<(ParsedReference, usize), (&'static str, usize)> {
         let mut absolute_column = false;
         let mut absolute_row = false;
         let mut position = self.position;
@@ -186,63 +144,52 @@ impl Lexer {
             absolute_column = true;
             position += 1;
         }
-        // The column and row are folded as they are read, with no text built: `column_to_number`
-        // of the letters and `parse::<i32>` of the digits, which fail exactly where these are
-        // `None`, after every letter and digit is read (T-3384: two allocations per reference
-        // were most of lexing a reference).
-        let mut column = Some(0);
-        let mut letters = 0;
+        let mut column = "".to_string();
         while position < len {
             let x = self.chars[position].to_ascii_uppercase();
             match x {
-                'A'..='Z' => column = column.and_then(|number| push_column_letter(number, x)),
+                'A'..='Z' => column.push(x),
                 _ => break,
             }
-            letters += 1;
             position += 1;
         }
-        if letters == 0 {
-            return Err(("Failed to parse reference", position));
+        if column.is_empty() {
+            return Err(self.set_error("Failed to parse reference", position));
         }
         if position < len && self.chars[position] == '$' {
             absolute_row = true;
             position += 1;
         }
-        let mut row = Some(0i32);
-        let mut digits = 0;
+        let mut row = "".to_string();
         while position < len {
             let x = self.chars[position];
             match x {
-                '0'..='9' => {
-                    row = row
-                        .and_then(|number| number.checked_mul(10))
-                        .and_then(|number| number.checked_add(i32::from(x as u8 - b'0')));
-                }
+                '0'..='9' => row.push(x),
                 _ => break,
             }
-            digits += 1;
             position += 1;
         }
         // Note that row numbers could start with 0 (`H01` is H1), but row 0 itself is off the grid.
-        let column = column
-            .filter(|&number| is_valid_column_number(number))
-            .ok_or(("Column is not valid.", position))?;
-        let row = row
-            .filter(|_| digits > 0)
-            .ok_or(("Failed to parse integer", position))?;
-        if row > LAST_ROW {
-            return Err(("Row too large in reference", position));
+        self.position = position;
+        let column = column_to_number(&column).map_err(|error| self.set_error(&error, position))?;
+
+        match row.parse::<i32>() {
+            Ok(row) => {
+                if row > LAST_ROW {
+                    return Err(self.set_error("Row too large in reference", position));
+                }
+                if row < 1 {
+                    return Err(self.set_error("Row zero in reference", position));
+                }
+                Ok(ParsedReference {
+                    column,
+                    row,
+                    absolute_column,
+                    absolute_row,
+                })
+            }
+            Err(..) => Err(self.set_error("Failed to parse integer", position)),
         }
-        if row < 1 {
-            return Err(("Row zero in reference", position));
-        }
-        let reference = ParsedReference {
-            column,
-            row,
-            absolute_column,
-            absolute_row,
-        };
-        Ok((reference, position))
     }
 
     /// True when the text after the `:` at the current position starts with a sheet name followed
@@ -394,9 +341,8 @@ impl Lexer {
     pub(super) fn consume_range_a1(&mut self) -> Result<ParsedRange> {
         // first let's try to parse a cell
         let mut position = self.position;
-        match self.scan_reference_a1() {
-            Ok((cell, end)) => {
-                self.position = end;
+        match self.consume_reference_a1() {
+            Ok(cell) => {
                 if let Some(cell2) = self.consume_dotted_corner() {
                     return Ok(ParsedRange {
                         left: cell,
@@ -446,9 +392,17 @@ impl Lexer {
                     absolute_left = true;
                     position += 1;
                 }
-                let left_start = position;
-                let left = self.corner_parts(position);
-                position = left.end;
+                let mut column_left = "".to_string();
+                let mut row_left = "".to_string();
+                while position < len {
+                    let x = self.chars[position].to_ascii_uppercase();
+                    match x {
+                        'A'..='Z' => column_left.push(x),
+                        '0'..='9' => row_left.push(x),
+                        _ => break,
+                    }
+                    position += 1;
+                }
                 if position >= len || self.chars[position] != ':' {
                     return Err(self.set_error("Expecting reference in range", self.position));
                 }
@@ -458,24 +412,39 @@ impl Lexer {
                     absolute_right = true;
                     position += 1;
                 }
-                let right_start = position;
-                let right = self.corner_parts(position);
-                position = right.end;
+                let mut column_right = "".to_string();
+                let mut row_right = "".to_string();
+                while position < len {
+                    let x = self.chars[position].to_ascii_uppercase();
+                    match x {
+                        'A'..='Z' => column_right.push(x),
+                        '0'..='9' => row_right.push(x),
+                        _ => break,
+                    }
+                    position += 1;
+                }
                 self.position = position;
                 // At this point either the columns are the empty string or the rows are the empty string
-                if left.digits > 0 {
+                if !row_left.is_empty() {
                     // It is a row range 23:56
-                    if right.digits == 0 || left.letters > 0 || right.letters > 0 {
+                    if row_right.is_empty() || !column_left.is_empty() || !column_right.is_empty() {
                         return Err(self.set_error("Error parsing Range", position));
                     }
                     // Note that row numbers can start with 0
-                    let Some(row_left) = left.row else {
-                        let text = self.corner_digits(left_start, left.end);
-                        return Err(self.set_error(&format!("Failed parsing row {text}"), position));
+                    let row_left = match row_left.parse::<i32>() {
+                        Ok(n) => n,
+                        Err(_) => {
+                            return Err(
+                                self.set_error(&format!("Failed parsing row {row_left}"), position)
+                            )
+                        }
                     };
-                    let Some(row_right) = right.row else {
-                        let text = self.corner_digits(right_start, right.end);
-                        return Err(self.set_error(&format!("Failed parsing row {text}"), position));
+                    let row_right = match row_right.parse::<i32>() {
+                        Ok(n) => n,
+                        Err(_) => {
+                            return Err(self
+                                .set_error(&format!("Failed parsing row {row_right}"), position))
+                        }
                     };
                     if row_left > LAST_ROW {
                         return Err(self.set_error("Row too large in reference", position));
@@ -499,15 +468,13 @@ impl Lexer {
                     });
                 }
                 // It is a column range
-                if right.letters == 0 || right.digits > 0 {
+                if column_right.is_empty() || !row_right.is_empty() {
                     return Err(self.set_error("Error parsing Range", position));
                 }
-                let column_left = left
-                    .column_number()
-                    .map_err(|error| self.set_error(error, position))?;
-                let column_right = right
-                    .column_number()
-                    .map_err(|error| self.set_error(error, position))?;
+                let column_left = column_to_number(&column_left)
+                    .map_err(|error| self.set_error(&error, position))?;
+                let column_right = column_to_number(&column_right)
+                    .map_err(|error| self.set_error(&error, position))?;
                 Ok(ParsedRange {
                     left: ParsedReference {
                         row: 1,
@@ -524,47 +491,6 @@ impl Lexer {
                 })
             }
         }
-    }
-
-    /// The letters and digits of a row or column range corner from `position`, in any order (as
-    /// the corner is read: `A1:B2` reaches here only after failing as cells), folded as they are
-    /// read (T-3384): the letters as `column_to_number` folds them, the digits as `parse::<i32>`.
-    fn corner_parts(&self, mut position: usize) -> CornerParts {
-        let mut parts = CornerParts {
-            column: Some(0),
-            letters: 0,
-            row: Some(0),
-            digits: 0,
-            end: position,
-        };
-        while position < self.len {
-            let x = self.chars[position].to_ascii_uppercase();
-            match x {
-                'A'..='Z' => {
-                    parts.column = parts.column.and_then(|n| push_column_letter(n, x));
-                    parts.letters += 1;
-                }
-                '0'..='9' => {
-                    parts.row = parts
-                        .row
-                        .and_then(|n| n.checked_mul(10))
-                        .and_then(|n| n.checked_add(i32::from(x as u8 - b'0')));
-                    parts.digits += 1;
-                }
-                _ => break,
-            }
-            position += 1;
-        }
-        parts.end = position;
-        parts
-    }
-
-    /// The digits of the corner `start..end`, for the error that quotes them.
-    fn corner_digits(&self, start: usize, end: usize) -> String {
-        self.chars[start..end]
-            .iter()
-            .filter(|c| c.is_ascii_digit())
-            .collect()
     }
 
     /// Consumes a range of references in R1C1 style like:

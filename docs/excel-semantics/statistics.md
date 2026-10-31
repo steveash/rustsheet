@@ -4620,9 +4620,6 @@ BINOM.DIST/BINOMDIST number_s, one in (-1, 0) included (`BINOM.DIST(-0.0125,10,1
 is checked before truncation). Since T-2621 a BETA.INV quantile of 0 or 1 is `#NUM!`, which settles
 `BETAINV(0.025,1E-15,2.5)`, `BETAINV(0.05,0.002,1)`, `BETAINV(1E-200,0.1,1E+5)` and `BETAINV(1-1E-16,2,0.01)`;
 `BETAINV(1E-20,1E-300,30)` stays a number (ours 3.333333333333333E-302, the search's floor rather than an underflow to 0).
-Not every quantile that rounds to 1 is `#NUM!`: `BETA.INV(0.9999999999,a,0.5)` is exactly 1 in Excel for a = 0.5, 1,
-2.5, 10 and 100 (probes-numeric/m9-beta-inv A7, A42, A77, A112, A147; "Incomplete beta sweep (T-1044)"), where ours is
-`#NUM!` since T-2621. What separates them from `BETAINV(1-1E-16,2,0.01)` is unprobed (T-3351).
 Status: VERIFIED (excel-graph), one cell each
 
 ## BINOM.DIST's pmf at k = 0 is #NUM! when p = 1 (T-2435)

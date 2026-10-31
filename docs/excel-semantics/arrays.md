@@ -2121,7 +2121,6 @@ Rule: `Model::set_user_array_formula` (a CSE formula entered over an area) refus
 area that is empty or leaves the grid. Each cell of the area is written, so a whole-sheet area (2^34 cells) would run
 for hours and exhaust memory. An external diff from a peer can carry any area (directive 5).
 Evidence: none for Excel. This is the no-panic and bounded-work rule (CLAUDE.md directive 5), not an Excel observation.
-Status: DEVIATION (decision 0014). Whether Excel accepts a CSE formula over more than a whole column is UNVERIFIED
-(probe pending, T-3436).
+Status: DEVIATION (decision 0014). Whether Excel accepts a CSE formula over more than a whole column is UNVERIFIED.
 Implemented in: crates/rustsheet-engine/src/model.rs (`set_user_array_formula`)
-Tasks: T-2896, T-3436
+Tasks: T-2896

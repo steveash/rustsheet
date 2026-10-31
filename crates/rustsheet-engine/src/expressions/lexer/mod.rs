@@ -130,9 +130,6 @@ pub struct Lexer {
     /// position and the settings, so it is kept by its start position and dropped when the text
     /// or a setting changes: a new setting's setter must drop it too.
     peeked: Option<Peeked>,
-    /// The text of the number being read, reused from number to number (T-3384); it holds
-    /// nothing between tokens.
-    number_text: String,
 }
 
 impl Lexer {
@@ -156,7 +153,6 @@ impl Lexer {
             padded_bare_columns: true,
             double_star_exponent: false,
             peeked: None,
-            number_text: String::new(),
         }
     }
 
@@ -259,12 +255,6 @@ impl Lexer {
             .position(|c| !c.is_whitespace())
             .unwrap_or(rest.len());
         &rest[..end]
-    }
-
-    /// The formula being lexed, as chars: [`Lexer::get_position_index`] indexes it. Public for
-    /// the xlsx import's relocation key, which reads the text of the tokens it keys (T-3384).
-    pub fn chars(&self) -> &[char] {
-        &self.chars[..self.len]
     }
 
     /// The lexer's position as a char index.
