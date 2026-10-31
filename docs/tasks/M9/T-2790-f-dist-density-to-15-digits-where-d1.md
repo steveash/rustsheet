@@ -9,6 +9,7 @@ size: S
 tier: opus
 campaign: accuracy
 depends_on: []
+defer: phase-1b
 ---
 
 ## Goal
@@ -19,6 +20,10 @@ cancels. Its error grows with d1·x/d2: 1E-14 at x = 100, 1E-12 at x = 1E4 and 2
 Excel has no such loss: its worst density error on the whole sweep is 7.8E-14.
 
 ## Context
+- Decision 0188 R5 (owner's 2026-10-31 rulings): parked as Phase 1b. Every cell this task owns is a BETA.DIST or
+  F.DIST density cell or a dense probes-numeric sweep cell, within Gate A's envelope (most agree with Excel to 12 or
+  more digits, and Excel and the engine are both close to the math), so R1(c) counts it as Phase 1b evidence. A
+  point that Gate A's tables show outside the envelope gets its own task without the key.
 Gap triage 2026-10-26 (`make eval` on `main` a8e23e57). No open task owns these cells. T-2219 owns 16
 F cells whose loss it puts down to the Gamma-ratio prefactor growing with a + b, which is a different
 root cause. T-2221 (deferred) owns the sweep's last digits. T-2586 (research) is cracking Excel's own

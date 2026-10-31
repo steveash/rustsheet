@@ -855,7 +855,7 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   ...207E-06; `IMTAN("-17.2737")` -197.642601323436, ...305; `IMTAN("-17.3011")` 44.7544983375159, ...163; row 3,
   `IMTAN("4")`, prints 1.15782128234958 either way), and so is row 1, COMPLEXs.xlsx row 6's own
   `IMREAL(IMTAN(COMPLEX(5,0,"i")))`, -3.38051500624659. IMTAN of a real is still CONFLICTING (web vs desktop):
-  COMPLEXs.xlsx N6 (Mac 16.0300) caches that formula as -3.38051500624658, the libm double-angle value (T-1075 item 17). IMTAN is one of numbers.md's "Excel for the web and desktop Excel
+  COMPLEXs.xlsx N6 (Mac 16.0300) caches that formula as -3.38051500624658, the libm double-angle value (T-1075 item 17). Decision 0188 R6 picks the web value for Phases 1-3 (T-2774 follows it; N6 is an exit and Phase 1 exception, T-1075). IMTAN is one of numbers.md's "Excel for the web and desktop Excel
   differ in the last digits" functions, so decision 0030 rule 4 (kept by decision 0039) makes the desktop N6 the fitting
   target and the web cells, which the double-angle form misses by far less than 1e-9 relative, no target for further
   fitting until T-1075 item 17 is answered (T-3054, dropped into T-2774).
@@ -905,7 +905,8 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   6.12323399573677E-17 and AL12 (of -12) 2.12115047744981E-16, which the engine matches with libm `atan2`/`cos`/`sin`.
   T-2536 found that Excel's ATAN2 and SIN/COS give the four web cells but turn AL12 and AL26 into failures. The gap is a
   near-zero residue (about 2.5E-20 on a 6E-17 part), so under decision 0030 rule 4 and decision 0039 the engine keeps the
-  desktop value and the 5 gen-m9 cells stay known failures. The desktop check is T-1075 item 16.
+  desktop value and the 5 gen-m9 cells stay known failures. The desktop check is T-1075 item 16. Decision 0188 R6 now picks the web value for Phases 1-3: T-2536 follows it, and AL12 and AL26 are exit and Phase 1
+  exceptions (owner T-1075).
 - **IM* kernels still to fit (T-2044, T-2537, T-2538).** New web cells: `IMSECH("3+4i")` (and `" 3+4i"`, `"3 + 4i"`,
   `"3+4j"`) "-0.065294027857947+0.0752249603027732i" (57 cells), `IMSECH("0.1")` 0.995020748953227, `IMCOT("-1.5+0.5i")`
   "-0.0557109884865415-0.463942860183828i", `IMCSC("-1.5+0.5i")` "-0.888092201609111-0.029103639571751i",

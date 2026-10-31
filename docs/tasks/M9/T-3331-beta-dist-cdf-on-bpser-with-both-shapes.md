@@ -9,6 +9,7 @@ size: S
 tier: opus
 depends_on: []
 campaign: visible
+defer: phase-1b
 ---
 
 ## Goal
@@ -17,6 +18,10 @@ the bpser model of docs/excel-semantics/statistics.md ("Incomplete beta bpser", 
 with the forms tried.
 
 ## Context
+- Decision 0188 R5 (owner's 2026-10-31 rulings): parked as Phase 1b. Every cell this task owns is a BETA.DIST or
+  F.DIST density cell or a dense probes-numeric sweep cell, within Gate A's envelope (most agree with Excel to 12 or
+  more digits, and Excel and the engine are both close to the math), so R1(c) counts it as Phase 1b evidence. A
+  point that Gate A's tables show outside the envelope gets its own task without the key.
 Gap triage 2026-10-31 (`make eval` on 1171772e, `python3 scripts/exit_owners.py --all-off`, excel-graph). This is
 the only visibly-off BETA.DIST cell no open task owns. BETA.DIST is below the M9 Phase 1 rate, so the cell counts in
 the M9 exit row as `rate:BETA.DIST`. T-3249's Outcome noted it as predating that task; T-3007 (done) routed the case to
