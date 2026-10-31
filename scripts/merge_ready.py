@@ -53,6 +53,8 @@ from merge_lock import GitError, git
 ROOT = Path(__file__).resolve().parent.parent
 REMOTE = "origin"
 BASE_BRANCH = "main"
+# The known-failure lists (eval/baseline/): a carry-over merge may re-record them (decision 0205).
+BASELINE_DIR = "eval/baseline/"
 
 # Labels of the merge train (SPEC-0027 sections 2, 4 and "The switch").
 READY_LABEL = "ready-to-merge"
@@ -465,19 +467,31 @@ class Repo:
         return [p for p in out.split("\0") if p]
 
     def carry_problem(self, prev: str, head: str) -> str | None:
-        """Why `head` is not a clean merge of `main` into `prev` (SPEC-0027 section 2,
+        """Why `head` is not a carry-over merge of `main` into `prev` (SPEC-0027 section 2,
         "Carry-over"), or None when it is: a merge commit whose first parent is `prev`, whose
-        second parent is on `main`, and whose tree `git merge-tree --write-tree` reproduces."""
+        second parent is on `main`, and whose tree is the plain merge of its parents
+        (`git merge-tree --write-tree`) except in `eval/baseline/`. There a conflict may be resolved
+        and the files re-recorded (decision 0093): the eval gate on the head, which marking
+        requires green, checks those files against the engine exactly (decision 0205)."""
         parents = self.git("rev-list", "--parents", "-n", "1", head).split()[1:]
         if len(parents) != 2 or parents[0] != prev:
             return "the head is not a merge commit whose first parent is the marked head"
         main = f"refs/merge-ready/{BASE_BRANCH}"
         if git("merge-base", "--is-ancestor", parents[1], main, root=self.root, check=False).returncode:
             return f"the merged commit is not on {BASE_BRANCH}"
-        merged = git("merge-tree", "--write-tree", *parents, root=self.root, check=False)
-        tree = merged.stdout.split("\n", 1)[0].strip()
-        if merged.returncode != 0 or tree != self.git("rev-parse", f"{head}^{{tree}}").strip():
-            return "the merge is not clean: its tree differs from a plain merge of its parents"
+        merged = git("merge-tree", "--write-tree", "--name-only", *parents, root=self.root, check=False)
+        if merged.returncode not in (0, 1):
+            return "the merge could not be computed"
+        lines = merged.stdout.split("\n")
+        tree = lines[0].strip()
+        # After the tree: the conflicted paths, a blank line, then informational messages.
+        rest = lines[1:]
+        conflicted = rest[: rest.index("")] if "" in rest else rest
+        if any(not p.startswith(BASELINE_DIR) for p in conflicted):
+            return "the merge is not clean: it conflicts outside eval/baseline/"
+        changed = self.git("diff", "--name-only", "-z", "--no-renames", tree, head, "--").split("\0")
+        if any(p and not p.startswith(BASELINE_DIR) for p in changed):
+            return "the merge is not clean: its tree differs from a plain merge of its parents outside eval/baseline/"
         return None
 
     def task_file(self, head: str, task: str) -> str | None:

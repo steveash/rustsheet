@@ -169,6 +169,10 @@ merge-ready-verify: ## Check a PR's readiness marker, V1-V6 of SPEC-0027 (reads 
 	$(PY) scripts/merge_ready.py verify --pr '$(PR)'
 
 .PHONY: mark-ready merge-labels verdict-record
+catch-up: ## Clear a merge-train ejection for a conflict with main that lies only in eval/baseline/ (decision 0205): make catch-up PR=123 merges main into the PR, re-records the lists and pushes; then make mark-ready PR=123 CARRY=1 once CI is green (exit 0: pushed; 1: refused; 2: error)
+	$(if $(PR),,$(error PR=<number> is required))
+	$(PY) scripts/merge_catchup.py --pr '$(PR)'
+
 mark-ready: ## Mark a green, approved PR ready for the merge train (SPEC-0027 section 2): make mark-ready PR=123, its verdicts from the verdict records on the head [REVIEW="security=APPROVE architecture=APPROVE quality=APPROVE [excel-fidelity=APPROVE]" for a reviewer with no record, while verdict_records = warn] (or CARRY=1 after a clean merge of main) [STEP=1: print the writes as step-mode actions] (exit 0: marked; 1: refused; 2: error)
 	$(if $(PR),,$(error PR=<number> is required))
 	$(PY) scripts/merge_ready.py mark --pr '$(PR)' $(if $(CARRY),--carry) $(if $(REVIEW),--review '$(REVIEW)') $(if $(STEP),--step)
@@ -183,7 +187,7 @@ verdict-record: ## Post one reviewer's verdict record for the local HEAD, which 
 merge-labels: ## Create the merge-train labels that are missing (ready-to-merge, merge-train-ejected, merge-train-stop)
 	$(PY) scripts/merge_ready.py labels --create
 
-.PHONY: merge-mode merge-train merge-train-ack merge-flip-check merge-train-stats
+.PHONY: merge-mode merge-train merge-train-ack merge-flip-check merge-train-stats catch-up
 merge-train: ## The merge train (SPEC-0027): DRY_RUN=1 prints the batch and writes nothing; SHADOW=1 tests and predicts on merge-train/shadow, in shadow mode only; TRAIN=1 merges a green train, in train mode only; STEP=1 (with SHADOW or TRAIN) prints each write as a JSON action for the session to perform and ack
 	$(if $(DRY_RUN)$(TRAIN)$(SHADOW),,$(error DRY_RUN=1 or SHADOW=1 or TRAIN=1 is required))
 	$(PY) scripts/merge_train.py $(if $(DRY_RUN),--dry-run,$(if $(SHADOW),--shadow,--train) $(if $(STEP),--step))

@@ -309,7 +309,9 @@ option records `prev:` and checks mechanically that the PR's own diff did not ch
 - the new head is a merge commit whose first parent is `prev` and whose second parent is on
   `origin/main`;
 - `git merge-tree --write-tree` of those two parents reproduces the new head's tree exactly,
-  which means a clean merge with no edits.
+  which means a clean merge with no edits. *As built (decision 0205):* exactly, except in
+  `eval/baseline/`, where a conflict may be resolved and the lists re-recorded (`make catch-up`),
+  because the eval gate, which marking requires green, checks them against the engine.
 
 Any other push needs the reviewers that the change concerns to run again, as today.
 

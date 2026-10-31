@@ -645,6 +645,52 @@ class Mark(PrFixture):
         verdict, _ = self.verify()
         self.assertTrue(verdict.ready, verdict.failures)
 
+    def baseline_conflict(self, pr_side: str, main_side: str, path: str = "eval/baseline/probes.txt") -> str:
+        """Marks a PR head that edits `path`, then moves `main` with a conflicting edit to it and
+        starts merging `main` into the PR (left conflicted). Returns the marked head."""
+        self.git("checkout", "-q", "pr")
+        self.write(path, pr_side)
+        old = self.commit("pr edits a baseline")
+        self.git("push", "-q", "-f", "origin", "HEAD:refs/pull/7/head")
+        # A PR that edits eval/ needs excel-fidelity's approval, which carries over with the rest.
+        self.comments.append(self.comment(1, marker(old, reviewers={**APPROVED, "excel-fidelity": APPROVE}).render()))
+        self.git("checkout", "-q", "main")
+        self.write(path, main_side)
+        self.commit("main edits the same baseline")
+        self.git("push", "-q", "origin", "main")
+        self.git("checkout", "-q", "pr")
+        merge = subprocess.run(["git", "merge", "-q", "--no-edit", "main"], cwd=self.clone, capture_output=True)
+        self.assertNotEqual(merge.returncode, 0)  # the conflict this fixture is for
+        return old
+
+    def finish_merge(self) -> None:
+        self.git("add", "-A")
+        self.git("commit", "-q", "--no-edit")
+        self.head = self.git("rev-parse", "HEAD")
+        self.git("push", "-q", "-f", "origin", "HEAD:refs/pull/7/head")
+        self.pull["head"]["sha"] = self.head
+
+    def test_carry_accepts_a_merge_that_re_records_baselines(self) -> None:
+        # Decision 0205: a conflict only in eval/baseline/, resolved and re-recorded, carries over.
+        old = self.baseline_conflict("F\tprobes/a\tA1\n", "F\tprobes/b\tB1\n")
+        self.write("eval/baseline/probes.txt", "F\tprobes/c\tC1\n")  # what make eval-baseline wrote
+        self.finish_merge()
+        plan = self.plan(review=None, carry=True)
+        self.assertEqual((plan.marker.prev, plan.marker.head), (old, self.head))
+
+    def test_carry_refuses_a_conflict_or_edit_outside_the_baselines(self) -> None:
+        self.baseline_conflict("pr side\n", "main side\n", path="scripts/x.py")
+        self.write("scripts/x.py", "resolved\n")
+        self.finish_merge()
+        self.refused("conflicts outside eval/baseline/", review=None, carry=True)
+
+    def test_carry_refuses_a_baseline_merge_that_also_edits_code(self) -> None:
+        self.baseline_conflict("F\tprobes/a\tA1\n", "F\tprobes/b\tB1\n")
+        self.write("eval/baseline/probes.txt", "F\tprobes/c\tC1\n")
+        self.write("scripts/x.py", "slipped into the merge\n")
+        self.finish_merge()
+        self.refused("outside eval/baseline/", review=None, carry=True)
+
     def test_carry_refuses_an_edited_merge_or_another_commit(self) -> None:
         self.merge_main()
         self.write("scripts/x.py", "edited in the merge")
