@@ -3,7 +3,7 @@ id: T-3347
 title: "IRR returns #NUM! on conventional cash-flow series whose IRR is near 0 or near -10%"
 milestone: M9
 lane: functions-financial
-status: done
+status: in-progress
 priority: P0
 size: M
 tier: opus
@@ -54,6 +54,14 @@ A1-A21 level annuities near -10% (n = 10 with flows of 15: A1-A7; n = 20 with fl
 flows of 15: A15-A21; r = -0.07, -0.085, -0.095, -0.1, -0.105, -0.115, -0.13 in each group), A22-A42 24 uneven flows
 near 0 (scales 1e3: A22-A28, 1e6: A29-A35, 1e9: A36-A42; r = 3e-6, 1e-5, 3e-5, 1e-4, 3e-4, 1e-3, 1e-2). Excel returns
 a number on every cell; the engine was `#NUM!` on A10-A21 and A36-A42 (19 cells), bit-exact on the other 23.
+
+## Remaining (2026-10-31 session stopped at its budget)
+- Main gained the `FITTED(...)` ratchet (T-3361) while this PR was in review. `irr_conventional` now carries
+  `FITTED(T-3347, 162 cells, ...)`, and `scripts/check_fitted.py` fails (3 -> 4 tags in financial_util.rs) until a
+  PR runs `--update` citing the fit's hold-out result (decision 0188 R4). Owed: a fresh hold-out sweep (a new seed in
+  docs/research/t3347_irr_conventional_sweep.py, filled by excel-graph) showing the v = 1 start and the 50-step split
+  hold out of sample; then `python3 scripts/check_fitted.py --update`, `make check`, re-review, mark ready.
+- Everything else is done and was approved by all four reviewers on c316808 (PR #2529).
 
 ## Outcome
 - Cause: the secant model either reaches its 50-step cap (long level series near -10%: it drifts) or stops on a

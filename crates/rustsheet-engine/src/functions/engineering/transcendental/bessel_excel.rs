@@ -60,6 +60,8 @@ struct Asymptotic {
     shift: f64,
 }
 
+/// J0's asymptotic `P` and `Q`; `P` has Excel's fitted `-0.1098628267e-2` (see [`Asymptotic`]).
+/// FITTED(T-0908, 14 cells, x 8..100; checked bit-exact on 354 cells, orders 0..10)
 const J0_LARGE: Asymptotic = Asymptotic {
     p: &[
         -0.109_862_826_7e-2,
@@ -76,6 +78,8 @@ const J0_LARGE: Asymptotic = Asymptotic {
     ],
     shift: QUARTER_PI,
 };
+/// Y0's asymptotic `P` and `Q`; `Q` has Excel's fitted `-0.934945152e-7` (see [`Asymptotic`]).
+/// FITTED(T-0908, 14 cells, x 8..100; checked bit-exact on 354 cells, orders 0..10)
 const Y0_LARGE: Asymptotic = Asymptotic {
     p: &[
         -0.109_862_862_7e-2,
@@ -92,6 +96,8 @@ const Y0_LARGE: Asymptotic = Asymptotic {
     ],
     shift: QUARTER_PI,
 };
+/// J1's asymptotic `P` and `Q`; `P` repeats Excel's fitted `-0.3516396496e-4` (see [`Asymptotic`]).
+/// FITTED(T-0908, 14 cells, x 8..100; checked bit-exact on 354 cells, orders 0..10)
 const J1_LARGE: Asymptotic = Asymptotic {
     p: &[
         0.183_105e-2,

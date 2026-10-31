@@ -181,6 +181,7 @@ fn accurate_period_split(
 /// Below this |rate| PPMT's `ln(1+rate)` is the atanh series, from it on Excel's LN of `1+rate`:
 /// probes-numeric/ppmt-log-rate-sweep has the series through 0.37 and the log from 0.38 on (0.375
 /// is a round point between them, not pinned).
+/// FITTED(T-2242, 1512 cells, PPMT rate 0.001..2 at nper*L near 30; cut bracketed 0.37..0.38)
 const GROWTH_LOG_SERIES_TO: f64 = 0.375;
 
 /// At or below this rate `1+rate` has no log and PPMT keeps the exact form; above it, Excel's is
@@ -225,6 +226,7 @@ pub(super) fn growth_log(rate: f64) -> f64 {
 /// fitted (`PPMT(1E-10,2,124,191996,822,1)` is -1554.9838614045912, gen-m9 5ded7594e597e31e A49)
 /// before IPMT and PPMT took [`discounted_split`], which matches that cell on its own. It now
 /// only matters for PPMT where that split is not finite (T-2243).
+/// FITTED(T-2242, 1 cell, PPMT rate 1E-10, nper 124, nper*L about 1.2E-8)
 const SHORT_GROWTH: f64 = 1e-6;
 
 /// PPMT (financial.md "PPMT discounts with an atanh-series log"): with `Q(x) = EXP(x*L)` (Excel's
@@ -297,6 +299,7 @@ fn discounted_principal(
 /// amount (about 3 ulp), Excel has the discounted one; below it the exact one matches Excel's bits
 /// more often (financial.md "IPMT follows Excel's own discount where it moves the value"). 3E-16
 /// and 1E-15 each fit fewer cells than 5E-16 to 7E-16 (T-2587).
+/// FITTED(T-2587, 8 cells, IPMT nper 167..1E300, rate -0.05..10)
 const DISCOUNTED_INTEREST_FROM: f64 = 6e-16;
 
 /// IPMT on Excel's own discount, as [`discounted_principal`] has PPMT: `-rate*((pv+fv)*Y - fv)` in
@@ -401,6 +404,7 @@ pub(super) fn payment_overflows(rate: f64, nper: f64, pv: f64, period_start: boo
 
 /// Below this |nper*L| PMT's `1-Q` is Excel's expm1, from it on `1 - EXP(-nper*L)`
 /// (probes/t3014-pmt-fv-type-alone column C: expm1 through |nper*L| 0.9896, `1-Q` from 1.0648).
+/// FITTED(T-3014, 63 cells, PMT |nper*L| 0.5..1.6; cut bracketed 0.9896..1.0648)
 const PAYMENT_EXPM1_TO: f64 = 1.0;
 
 /// `1-Q` for `Q = EXP(x)` as Excel's PMT, IPMT and PPMT take it: `-expm1(x)` (Excel's expm1)

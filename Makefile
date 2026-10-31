@@ -87,10 +87,11 @@ py-bindings: ## Build the PyO3 bindings into bindings/python/.venv and run their
 
 # ---------------------------------------------------------------- Hygiene ratchets
 .PHONY: hygiene deny machete typos
-hygiene: ## Lint-debt, file-size, duplication, tasks and governance ratchets
+hygiene: ## Lint-debt, file-size, duplication, fitted-constant, tasks and governance ratchets
 	$(PY) scripts/check_lint_debt.py
 	$(PY) scripts/check_file_size.py
 	$(PY) scripts/check_duplication.py
+	$(PY) scripts/check_fitted.py
 	$(PY) scripts/tasks.py validate
 	$(PY) scripts/check_decisions.py
 	$(PY) scripts/check_docs_readers.py
