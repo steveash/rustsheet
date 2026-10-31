@@ -1758,7 +1758,7 @@ C	probes/t3283-typed-missing-paren.case.json	12
 C	probes/t3302-text-funcs-arrays.case.json	21
 C	probes/t3304-collation-multi-letter-accents.case.json	1896
 C	probes/t3317-xlookup-scalar-return.case.json	20
-C	probes/t3334-criteria-operand-forms.case.json	811
+C	probes/t3334-criteria-operand-forms.case.json	983
 C	probes/t3335-textbefore-overlapping-instances.case.json	78
 C	probes/t3349-t-inv-2t-near-one.case.json	44
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
