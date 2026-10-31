@@ -3,7 +3,7 @@ id: T-3357
 title: "Gate A slice 2: the mpmath reference generator, the stratified sampler and the oracle fill in tools/"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P0
 size: M
 tier: opus
