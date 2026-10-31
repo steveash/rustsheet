@@ -3,7 +3,7 @@ id: T-3325
 title: "Read Arabic-Indic, Devanagari and Thai digits as numbers in VALUE, arithmetic and numeric criteria (T-3276 probe)"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -33,3 +33,6 @@ a decimal point, as Excel does; full-width digits stay text.
 
 ## Out of scope
 - Collation of these digits (T-3324).
+
+## Outcome
+Mapped Arabic-Indic, Devanagari and Thai digits to ASCII in the shared `parse_number` (one place, used by VALUE, arithmetic coercion and criteria). 14 known failures removed from eval/baseline/probes.txt, no regressions.

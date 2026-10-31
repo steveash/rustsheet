@@ -4217,13 +4217,6 @@ F	probes/t3276-collation-other-scripts.case.json	Calc!A95
 F	probes/t3276-collation-other-scripts.case.json	Calc!A96
 F	probes/t3276-collation-other-scripts.case.json	Calc!A98
 F	probes/t3276-collation-other-scripts.case.json	Calc!A99
-F	probes/t3276-collation-other-scripts.case.json	Calc!E10
-F	probes/t3276-collation-other-scripts.case.json	Calc!E11
-F	probes/t3276-collation-other-scripts.case.json	Calc!E81
-F	probes/t3276-collation-other-scripts.case.json	Calc!E82
-F	probes/t3276-collation-other-scripts.case.json	Calc!E87
-F	probes/t3276-collation-other-scripts.case.json	Calc!E88
-F	probes/t3276-collation-other-scripts.case.json	Calc!E9
 F	probes/t3276-collation-other-scripts.case.json	Calc!G16
 F	probes/t3276-collation-other-scripts.case.json	Calc!G20
 F	probes/t3276-collation-other-scripts.case.json	Calc!G21
@@ -4234,13 +4227,6 @@ F	probes/t3276-collation-other-scripts.case.json	Calc!G28
 F	probes/t3276-collation-other-scripts.case.json	Calc!G31
 F	probes/t3276-collation-other-scripts.case.json	Calc!G32
 F	probes/t3276-collation-other-scripts.case.json	Calc!G6
-F	probes/t3276-collation-other-scripts.case.json	Calc!H1
-F	probes/t3276-collation-other-scripts.case.json	Calc!H2
-F	probes/t3276-collation-other-scripts.case.json	Calc!H3
-F	probes/t3276-collation-other-scripts.case.json	Calc!H4
-F	probes/t3276-collation-other-scripts.case.json	Calc!H5
-F	probes/t3276-collation-other-scripts.case.json	Calc!H7
-F	probes/t3276-collation-other-scripts.case.json	Calc!H8
 F	probes/t3304-collation-multi-letter-accents.case.json	G4!F11
 F	probes/t3304-collation-multi-letter-accents.case.json	G4!F20
 F	probes/t3304-collation-multi-letter-accents.case.json	G4!G11

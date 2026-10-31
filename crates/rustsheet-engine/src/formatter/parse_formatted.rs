@@ -418,6 +418,20 @@ fn parse_plain_number(
     Ok((f, None))
 }
 
+/// Excel reads Arabic-Indic (U+0660..), Devanagari (U+0966..) and Thai (U+0E50..) digits as their
+/// values, alone or mixed with ASCII digits; full-width digits stay text. Evidence:
+/// docs/excel-semantics/coercion.md "Other scripts ... (T-3276)", probes/t3276-collation-other-scripts
+/// Calc!H1:H8 and Calc!E.
+fn script_digit_to_ascii(c: char) -> char {
+    let zero = match c {
+        '\u{0660}'..='\u{0669}' => 0x0660,
+        '\u{0966}'..='\u{096F}' => 0x0966,
+        '\u{0E50}'..='\u{0E59}' => 0x0E50,
+        _ => return c,
+    };
+    char::from_digit(c as u32 - zero, 10).unwrap_or(c)
+}
+
 struct NumberOptions {
     has_commas: bool,
     is_scientific: bool,
@@ -432,7 +446,7 @@ fn parse_number(
     group_separator: char,
 ) -> Result<(f64, NumberOptions), String> {
     let mut position = 0;
-    let characters: Vec<char> = value.chars().collect();
+    let characters: Vec<char> = value.chars().map(script_digit_to_ascii).collect();
     let len = characters.len();
     if len == 0 {
         return Err("Cannot parse number".to_string());
