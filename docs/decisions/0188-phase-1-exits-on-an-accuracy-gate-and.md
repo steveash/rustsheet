@@ -163,3 +163,8 @@
   - Until the harness tasks land, the report's Phase 1 line and exit rows read as before; nothing counts as met that
     did not before. No gate, baseline or ratchet changes in this PR, and the CI gate still forbids any bit regression.
   - The fit-lab sweeps keep running and their counts stay in the report: they are Phase 1b's measure.
+  - R4.5 and R3's acceptance rule are in reviewer-excel-fidelity (checks 6 and 7), the work-loop, steward and
+    gap-triager text, and docs/process/quality-gates.md (T-3362). Until T-3356, T-3357, T-3358, T-3360 and T-3361 land,
+    that text asks for a manual hold-out split, a probes-numeric fresh sweep and mpmath values attached in the task.
+    T-3362's reading of R4.1 with decision 0056 (not a separate ruling): an attempt counts as raising the
+    bit-exact count only if it raises the hold-out bit-exact count.
