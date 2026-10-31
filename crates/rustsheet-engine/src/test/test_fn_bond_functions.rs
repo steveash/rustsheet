@@ -325,8 +325,9 @@ fn fn_yield_newton_domain_and_step_cap() {
 }
 
 // A Newton whose step meets its test on the 100th and last check is #NUM!, one that meets it on
-// the 99th or on none is a value (T-2747; probes/yield-newton-step-cap A2:A4, yield-below-par-sweep
-// H17; financial.md "YIELD's #NUM! cells and its 100-step cap").
+// the 99th or on none is a value (T-2747; financial.md "YIELD's #NUM! cells and its 100-step cap").
+// A1 is probes/yield-newton-step-cap N!A3 (check 100), A2 its N!A2 (check 99), A3 its N!A4
+// (check 101) and A4 probes/yield-below-par-sweep Y!H17 (no check passes: the 100th iterate).
 #[test]
 fn fn_yield_converged_on_the_last_check_is_num() {
     let mut model = new_empty_model();
@@ -346,10 +347,8 @@ fn fn_yield_converged_on_the_last_check_is_num() {
         ("A3", 17.153_559_381_582_642),
         ("A4", -2.282_389_546_058_274_4),
     ] {
-        assert!(
-            (value(c) - excel).abs() <= 4.0 * f64::EPSILON * excel.abs(),
-            "{c}"
-        );
+        let ours = value(c);
+        assert!(ulps(excel, ours) <= 4, "{c}: {ours} vs Excel's {excel}");
     }
 }
 

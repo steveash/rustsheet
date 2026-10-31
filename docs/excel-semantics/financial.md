@@ -3033,15 +3033,17 @@ last-digit misses of "YIELD stops short of PRICE's root". It matches the 21 gen-
 T-2747 (probes/t2475-stat-subexpressions P!A214, gen-m9/44a8841352dc48e9 A318). The earlier attempt (Newton from the
 coupon rate with no fallback) was `#NUM!` at prices 1500 to 10000: the fitted start, not the stop rule, decides them.
 Evidence: probes/yield-newton-domain (53 cells: A price sweep, B coupon-rate sweep, C large redemptions, D low
-redemptions and negative roots; excel-graph, 2026-10-24, T-2391); the gen-m9 cells listed in T-2391.; probes/yield-below-par-sweep
-(184 cells) and probes/yield-newton-step-cap (15 cells) (excel-graph, 2026-10-31, T-2747).
+redemptions and negative roots; excel-graph, 2026-10-24, T-2391); the gen-m9 cells listed in T-2391.
+probes/yield-below-par-sweep (184 cells) and probes/yield-newton-step-cap (15 cells) (excel-graph, 2026-10-31, T-2747).
 - A Newton whose step meets its 1e-10 test on the 100th and last check is `#NUM!`, though one that meets it on the
   99th check is a value and one that meets it on no check returns the 100th iterate: Excel's "out of steps" test is
   one check early. At `YIELD(39681,45662,R,P,102,4)` our uncapped Newton meets its test on checks 98 to 102 at
   R = 22.7375, 22.74375, 22.75, 22.75625 and 22.7625 (P = 20), and at the matching rates for P = 10 and 5; Excel is
   `#NUM!` on exactly the check-100 cell of each column (yield-newton-step-cap A3, B3, C3) and within 3 ulp of ours on
   the other 12. `YIELD(39681,45662,23,20,102,4)`, where no check of the 100 passes (the uncapped Newton would need 166),
-  is -2.2823895460582744, the 100th iterate, far below PRICE's root.
+  is -2.2823895460582744, the 100th iterate, far below PRICE's root. The check counts are our Newton's, whose
+  iterates are within a few ulp of Excel's; the rule is inferred from them, the 12 neighbours on checks 98, 99, 101
+  and 102 bracketing each check-100 cell.
 - Far below par at a huge coupon (T-2747, probes/yield-below-par-sweep: `YIELD(39681,45662,R,P,102,4)`, rates 1 to
   100, prices 1 to 20): the first step from the fitted start jumps to a negative yield where 1 + y/4 is small and
   PRICE is huge, and Newton then climbs back by small steps. Where the climb takes more than 100 steps the value is
