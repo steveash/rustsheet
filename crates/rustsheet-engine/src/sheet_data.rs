@@ -549,6 +549,29 @@ impl SheetData {
         );
     }
 
+    /// The places of the cells that exist in the `height` by `width` block from (`row`, `column`),
+    /// row by row: a walk costs the cells there are, not the area, which can be the whole sheet
+    /// (T-2896).
+    pub(crate) fn places_in_block(
+        &self,
+        (row, column): (i32, i32),
+        (width, height): (i32, i32),
+    ) -> Vec<(i32, i32)> {
+        let (last_row, last_column) = (
+            row.saturating_add(height - 1),
+            column.saturating_add(width - 1),
+        );
+        let mut places = Vec::new();
+        let mut columns = Vec::new();
+        let mut from = row;
+        while let Some(found) = self.next_row_between(from, last_row).row {
+            self.columns_in_row_between(found, column, last_column, &mut columns);
+            places.extend(columns.iter().map(|&c| (found, c)));
+            from = found + 1;
+        }
+        places
+    }
+
     /// The cells of a row with their column, in ascending order of column.
     pub fn cells_in_row(&self, row: i32) -> Vec<(i32, &Cell)> {
         self.reads.rows(row, row);

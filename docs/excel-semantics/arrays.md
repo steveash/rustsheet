@@ -2114,3 +2114,13 @@ Tasks: T-2479, T-3063
 Evidence: probes/blank-elements-iferror-n-arith (11 cells, excel-graph 2026-10-28; D1:D5 = 1, blank, "x", blank, 5). IFERROR and IFNA read a blank element of FILTER, a lifted INDEX (`INDEX(D1:D5,{1,2,3,4,5})`) and VSTACK as 0 (`COUNT(IFERROR(...,-1))` and the IFNA forms are 4, A1:A6; `TEXTJOIN("|",FALSE,IFERROR(FILTER(D1:D5,TRUE),"#"))` is "1|0|x|0|5", A7), while the bare FILTER keeps the blanks (`TEXTJOIN("|",FALSE,FILTER(D1:D5,TRUE))` is "1||x||5", A8). `N` turns a blank and the text "x" into 0 (`COUNT(N(FILTER(...)))` 5, A9), `+0` reads a blank as 0 and "x" is #VALUE! (`COUNT(FILTER(...)+0)` 4, A10), and IF passes a blank through (`COUNT(IF(TRUE,FILTER(...)))` 2, A11). Ours already matches all 11 cells.
 Implemented in: no engine change needed; ours already matched (`if_error_like` in crates/rustsheet-engine/src/functions/logical/mod.rs, T-2854).
 Status: VERIFIED (excel-graph)
+
+## A legacy array formula entered over more than 1,048,576 cells is refused (T-2896)
+Rule: `Model::set_user_array_formula` (a CSE formula entered over an area) refuses an area of more than 1,048,576 cells
+(one whole column), the cell-count limit of "Array results above 1,048,576 cells" (`limits::check_array_cells`), and any
+area that is empty or leaves the grid. Each cell of the area is written, so a whole-sheet area (2^34 cells) would run
+for hours and exhaust memory. An external diff from a peer can carry any area (directive 5).
+Evidence: none for Excel. This is the no-panic and bounded-work rule (CLAUDE.md directive 5), not an Excel observation.
+Status: DEVIATION (decision 0014). Whether Excel accepts a CSE formula over more than a whole column is UNVERIFIED.
+Implemented in: crates/rustsheet-engine/src/model.rs (`set_user_array_formula`)
+Tasks: T-2896

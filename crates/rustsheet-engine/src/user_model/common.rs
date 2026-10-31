@@ -212,7 +212,7 @@ fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Styl
 pub struct UserModel {
     pub(crate) model: Model,
     history: History,
-    send_queue: Vec<QueueDiffs>,
+    pub(super) send_queue: Vec<QueueDiffs>,
     pause_evaluation: bool,
 }
 
@@ -383,41 +383,6 @@ impl UserModel {
     /// * [`UserModel::pause_evaluation`]
     pub fn evaluate(&mut self) {
         self.model.evaluate();
-    }
-
-    /// Returns the list of pending diffs and removes them from the queue
-    ///
-    /// This is used together with [`apply_external_diffs`](UserModel::apply_external_diffs) to keep two remote models
-    /// in sync.
-    ///
-    /// See also:
-    /// * [`UserModel::apply_external_diffs`]
-    pub fn flush_send_queue(&mut self) -> Vec<u8> {
-        // This can never fail :O:
-        let q = bitcode::encode(&self.send_queue);
-        self.send_queue = vec![];
-        q
-    }
-
-    /// This are external diffs that need to be applied to the model
-    ///
-    /// This is used together with [`flush_send_queue`](UserModel::flush_send_queue) to keep two remote models in sync
-    ///
-    /// See also:
-    /// * [`UserModel::flush_send_queue`]
-    pub fn apply_external_diffs(&mut self, diff_list_str: &[u8]) -> Result<(), String> {
-        if let Ok(queue_diffs_list) = bitcode::decode::<Vec<QueueDiffs>>(diff_list_str) {
-            for queue_diff in queue_diffs_list {
-                if matches!(queue_diff.r#type, DiffType::Redo) {
-                    self.apply_diff_list(&queue_diff.list)?;
-                } else {
-                    self.apply_undo_diff_list(&queue_diff.list)?;
-                }
-            }
-        } else {
-            return Err("Error parsing diff list".to_string());
-        }
-        Ok(())
     }
 
     /// Set the input in a cell
