@@ -20,10 +20,6 @@ change it, so how the pass reaches a spilling anchor needs finding) and -ah (`=S
 above an AMORLINC in A3 leaves 485 for A1, ours 132; -ai, the same formula with `*0` and no A3, leaves 0). See
 financial.md "AMORDEGRC below period 1".
 
-Cells (known failures in eval/baseline/probes.txt, still failing in the 2026-10-31c gap triage's `make eval`):
-- probes/amordegrc-fraction-state-ag.case.json (1): Sheet1!A1
-- probes/amordegrc-fraction-state-ah.case.json (1): Sheet1!A1
-
 ## Acceptance criteria
 - [ ] A probe of an error element in a lifted call (`{1,-1,0.5}`) is added. More probes tell where a dynamic-array formula (and the charges inside it) sits in the order; -ag and -ah pass.
 - [ ] `make check` green; reviewers approve.
