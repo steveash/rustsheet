@@ -24,7 +24,7 @@ gen-m7 gains an oracle-filled batch from `rustsheet-gen --policy arg-pairs` (T-3
 - T-3279 is the same batch for the M2 functions (its out of scope: batches for other milestones). GROUPBY (0.11) and PIVOTBY (0.09) are left out: their 2256 and 4964 unseen pairs mostly involve LAMBDA arguments and need their own batch. T-3496 is the M6 lookup batch.
 - Run `make eval` first so the policy reads current unseen pairs, then
   `cd tools && uv run rustsheet-gen --policy arg-pairs --milestone M7 --functions FILTER,SORT,SORTBY,UNIQUE,TAKE,DROP,EXPAND,TOCOL,TOROW,WRAPCOLS,WRAPROWS`
-  (checked on 32c4a203: the policy honours `--functions`; a dry run for SWITCH,IFS,IFNA wrote 5 cases, 702 cells),
+  (the policy honours `--functions`; on 32c4a203 this wrote 41 cases),
   fill with `uv run rustsheet-oracle fill -b excel-graph --suite gen-m7`, and score.
 - M7's exit is gen-m7 at ≥ 99.9% with 0 spill-extent failures, at visible parity (docs/milestones.md, decision
   0140), and the Phase 1 rate counts gen-* cells (decision 0188), so a failing cell here matters: own each one in the same PR (an existing open task that covers the rule, or a new
