@@ -543,3 +543,34 @@ fn a_restored_sheet_with_a_taken_id_or_a_nan_width_is_refused() {
     let error = assert_refused(&mut model, &one(DiffType::Redo, width), "NaN width");
     assert!(error.contains("non-finite width"), "{error}");
 }
+
+/// Each restored anchor is within the one-array limit, but together they claim far more cells
+/// than the list restores: refused before anything walks them (T-3426).
+#[test]
+fn anchors_restored_claiming_more_cells_than_they_bring_are_refused() {
+    use crate::constants::LAST_ROW;
+    let anchor = Cell::ArrayFormula {
+        f: 0,
+        s: 0,
+        r: (1, LAST_ROW),
+        kind: crate::types::ArrayKind::Cse,
+        v: FormulaValue::Unevaluated,
+    };
+    let list = (5..15)
+        .map(|column| Diff::SetCellValue {
+            sheet: 0,
+            row: 1,
+            column,
+            new_value: "1".to_string(),
+            legacy: false,
+            old_value: Box::new(Some(anchor.clone())),
+        })
+        .collect();
+    let bytes = encode(vec![QueueDiffs {
+        r#type: DiffType::Undo,
+        list,
+    }]);
+    let mut model = model();
+    let error = assert_refused(&mut model, &bytes, "anchors");
+    assert!(error.contains("only"), "{error}");
+}

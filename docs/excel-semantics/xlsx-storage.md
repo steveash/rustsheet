@@ -80,7 +80,10 @@ unchecked: a cell, row or column style past `cellXfs` (or no `cellXfs` at all), 
 border past its list, a negative number format id, a shared-formula index past its list, a spill range
 or anchor off the grid, a spill range of more than 1,048,576 cells (the array limit of arrays.md "Array results above
 1,048,576 cells": a CSE anchor's whole range is filled on evaluation, so a crafted range of the whole sheet would write
-2^34 cells; T-2896; a real file whose cached spill or CSE range is larger is refused too, unprobed), a row or column record or a merged range off the grid, and cell storage whose
+2^34 cells; T-2896; a real file whose cached spill or CSE range is larger is refused too, unprobed), anchors that
+together claim more spill cells than the workbook stores, past one whole array (a few bytes per anchor could otherwise
+claim 2^20 cells each; a file Excel or the engine wrote stores every cell of a spill, and a blocked spill claims one
+cell; T-3426), a row or column record or a merged range off the grid, and cell storage whose
 rows or columns are out of order or off the grid. The error names the sheet and the index
 (`Sheet 'Sheet1': cell R1C2 has style 9999, which does not exist`). Indices the model reads with a
 checked lookup that tolerates a dangling value load as before: a shared-string index (it reads as
@@ -94,7 +97,7 @@ style 9999 at the next edit, formula index 77 with no shared formula at the next
 Evidence: none for Excel; this is the no-panic rule (CLAUDE.md directive 5), not an Excel observation.
 Status: DEVIATION (decision 0014); what Excel does with these indices is UNVERIFIED (probe pending, T-3405: an
 xlsx with a dangling `s=` and one with a `fontId` past `<fonts>`, on excel-graph; a spill or CSE range above 2^20
-cells: T-3426)
+cells: T-3436)
 Implemented in: crates/rustsheet-engine/src/workbook_check.rs (`check_indices`),
 crates/rustsheet-engine/src/sheet_data.rs (`SheetData::check_layout`)
 
