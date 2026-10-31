@@ -81,6 +81,7 @@ fn stirling_series(m: Dd) -> Dd {
 /// The ratio cut of Excel's bd0: its series runs while |k - M| < 0.2 (k + M) (statistics.md "Beta
 /// density for min(a,b) > 1 ...": 0.25 drops (5.5, 12.5) from 113 to 13 of 120 exact cells; R's
 /// is 0.1).
+/// FITTED(T-2464, 3072 cells, BETA.DIST a 2.5, b 3.5, v 0.130..0.250)
 const EXCEL_BD0_CUT: f64 = 0.2;
 
 /// Excel's bd0(k, M) = k ln(k / M) + M - k, as the double its beta density sums (model M4 of

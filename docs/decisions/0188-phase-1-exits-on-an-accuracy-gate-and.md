@@ -133,7 +133,8 @@
        task before merge.
     3. Every fitted constant, cut-point or table carries a `FITTED(T-XXXX, n_cells, range)` doc tag, and their count is
        ratcheted. A fitted piece is not applied outside the range it was measured on; outside it, the code falls back to
-       accurate math.
+       accurate math. The tag is `/// FITTED(T-NNNN, <n> cells, <range>)` on its own doc line; `make hygiene` runs
+       scripts/check_fitted.py against the per-file counts in quality/fitted.json (T-3361).
     4. No fitting below the oracle's reproducibility floor (decision 0112; web against desktop up to 4 ulp,
        docs/research/oracle-calibration.md).
     5. The reviewer-excel-fidelity checklist requires the hold-out counts and the Gate A envelope result for any fit.

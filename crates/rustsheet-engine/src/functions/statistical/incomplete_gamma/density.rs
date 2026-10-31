@@ -13,6 +13,7 @@ use super::{
 /// (gen-m9/984cba67bbe6972b A42), at 5 `CHISQ.DIST(40,10,FALSE)` 0 against -8 (probes-numeric/
 /// m9-chisq-dist A50); at 2.5 `CHISQ.DIST(50,5,FALSE)` is 23 against 5 (probes-numeric/
 /// t1049-chisqdist A46).
+/// FITTED(T-3147, 3 cells, shape 2.5..5, y above the mode)
 const SMALL_RATIO_SHAPE_MIN: f64 = 3.0;
 
 /// The gamma density x^(a-1) e^(-x/scale) / (scale^a Gamma(a)) for a > 0, x > 0 and scale > 0,

@@ -53,6 +53,7 @@ const BALANCE_GROWTH_MAX: f64 = 1024.0;
 /// leading exponents 0.4 to 3.6) and within 2 ulps on the rest, where the other forms are exact
 /// on 7 and up to 5 ulps off; between 0.095 and 0.398 the cut is a fit (T-3067). The deepest
 /// discount `(nper-first+1)·L`, the cut before T-3067, misses those near-1E15 cells.
+/// FITTED(T-3067, 36 cells, leading exponent 2E-7..3.6, rate 1E-9..0.1; cut a fit in 0.095..0.398)
 const GEOMETRIC_MIN_LEAD: f64 = 0.3;
 
 /// [`GEOMETRIC_MIN_LEAD`] for a long range (more than 32 periods), where the other form is the
@@ -64,6 +65,7 @@ const GEOMETRIC_MIN_LEAD: f64 = 0.3;
 /// ulp (`CUMPRINC(0.005,100000,1000,2,99999,1)` -990.0745031063589, fin-cumipmt-period-bound A6,
 /// A11, A30; form-boundaries I1-I8, K1-K11, L1-L11). Between 2.9 and 4.3 the cut is a fit, and
 /// [`GEOMETRIC_MIN_LEAD`]'s 0.3 here leaves 5 more probe cells off the bit (T-3067).
+/// FITTED(T-3067, 96 cells, 33..99998 periods, rate 0.005..2; cut a fit in lead 2.9..4.3)
 const LONG_GEOMETRIC_MIN_LEAD: f64 = 3.6;
 
 /// The growth `nper·L` below which type 1's short interest is the payments less the principal
