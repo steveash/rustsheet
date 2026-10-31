@@ -3,7 +3,7 @@ id: T-3131
 title: "Gamma quantiles: T-0972's remaining visibly-off cells and its statrs search start"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
