@@ -250,6 +250,7 @@ const NEAR_MODE: f64 = 0.4;
 /// t2753-gamma-density-ratio-sweep A48, B48 `GAMMA.DIST(0.5,50,1,FALSE)`: 69 ulp against 350;
 /// gen-m9/68d8ffb69ff739d8 A341 `GAMMADIST(0.3,30,1,TRUE)`: 118 against 208) and closer to `rcomp`
 /// at a/500 (A47, B47 `GAMMA.DIST(0.1,50,1,FALSE)`: 114 against 252); 1/200 lies between (T-3252).
+/// FITTED(T-2638, 6 cells, x/a 0.002..0.048, shape 30..50)
 const RATIO_FORM_MIN: f64 = 0.005;
 
 /// The shape below which, for x below 1, Q is not 1 - P but [`small_shape_upper`]: there P runs
@@ -372,6 +373,7 @@ fn lower_series(a: f64, x: f64, terms: &mut Terms) -> f64 {
 /// nearest the cut are at about -23.05 (rows 1, 19, 24) and the excluded ones at -11.54 to
 /// -11.61 (rows 2, 6, 10, 20, 25), so any cut in between scores the same; -16 is the ulp
 /// argument above (T-3242 probes the gap).
+/// FITTED(T-3060, 136 cells, shape 0.05..0.9, a ln x -230..-11.5)
 const EXCEL_EXPONENT_MAX: f64 = -16.0;
 
 /// GAMMA.DIST's cdf P(a, x) at a shape below 1 and a normal x below 1 where a·LN(x) is at most
@@ -419,6 +421,7 @@ fn excel_form_lower(a: f64, x: f64, exponent: f64) -> Option<f64> {
 /// and A34 share p = 1E-16 and nearly the same a·LN(x) (about -36.9), and only A28 is the closed
 /// form. Below it the series' correction (about x / (a + 1)) is far below an ulp, so the closed
 /// form is the quantile of the leading factor alone. T-3265 probes the gap.
+/// FITTED(T-3013, 5 cells, x 4.15E-22..1.6E-18, shape 1/60..0.9)
 const CLOSED_FORM_QUANTILE_MAX: f64 = 1e-21;
 
 /// GAMMA.INV takes one Newton step from the closed form where that step is more than this
@@ -438,6 +441,7 @@ const CLOSED_FORM_QUANTILE_MAX: f64 = 1e-21;
 /// (T-3265 probes it). One step only: at A26 a second would be 3.46E-14 of x and Excel takes none.
 /// A loop under the same test, with the threshold in [3.46E-14, 4.1E-14), fits as well. T-3265
 /// probes steps from 2.9E-14 to 4.0E-14.
+/// FITTED(T-3013, 4 cells, step 1.33E-14..4.4E-14 of x, shape 0.01..0.75)
 const CLOSED_FORM_STEP_MIN: f64 = 3.5e-14;
 
 /// Excel's GAMMA.INV(p, a, 1) at a shape below 1 other than 1/2, where its quantile is tiny
@@ -491,6 +495,7 @@ fn leading_factor_root(a: f64, p: f64) -> f64 {
 /// and caa1eed48b1883fe A282. The test is not Excel's: at shape 25 Excel's
 /// `CHISQ.INV(1E-300,50)` is the root (probes-numeric t1543-inverse-cdf-tiny-p A31) with our cdf
 /// 9.8E-12 off (TODO(T-3294)).
+/// FITTED(T-2561, 13 cells, shape 1.5..5, p 1E-300..1E-100)
 const TINY_QUANTILE_CHECK: f64 = 5e-14;
 
 /// Excel's lower-tail quantile at a shape above 1 (and below [`DIRECT_SHAPE_MAX`]) where it is

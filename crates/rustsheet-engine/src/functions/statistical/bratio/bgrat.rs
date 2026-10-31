@@ -24,6 +24,7 @@ type Dd = (f64, f64);
 
 /// Excel's switch from LN(x) to log1p(-y) for bgrat's ln x: y at or below it takes the series
 /// (r2-tdist probe p1 part B: every cell with y <= 0.01, the double 0.01 included, fits log1p).
+/// FITTED(T-2464, 2000 cells, n 100..3000, z straddling 0.01)
 const LOG1P_MAX_Y: f64 = 0.01;
 
 /// TOMS bgrat's series terms: at most 30.

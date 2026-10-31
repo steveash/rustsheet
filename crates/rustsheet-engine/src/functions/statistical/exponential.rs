@@ -9,6 +9,7 @@ use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 /// lies between 0.999999999999999 (Kahan's digits) and 1.35079141386477 (1 - EXP's), and the two
 /// forms give the same double wherever a search tried in between (probes/t2437-fit-separators
 /// A67:A117, excel-graph).
+/// FITTED(T-2437, 51 cells, t 0.198..8.07)
 const EXPON_EXPM1_CUT: f64 = 1.0;
 
 /// EXPON.DIST's cdf `1 - e^-t` at `t = lambda * x >= 0`: `-expm1(-t)` with Excel's Kahan expm1
