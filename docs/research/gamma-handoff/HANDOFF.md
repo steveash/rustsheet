@@ -44,23 +44,46 @@ The code lives in `crates/rustsheet-engine/src/functions/statistical/`: `gamma.r
   - **A stale `quality/duplication.json` after main moves.** Merge origin/main, run `python3 scripts/check_duplication.py --update`, and commit. This is legitimate only when the merged tree measures no more than main's own lock.
 
 ## In progress when the session ended
-These are in-flight branches. Check each one's latest commit and its task's "Handoff" section.
+All three branches are pushed. Read each task file's "Handoff" section first.
 
-1. **T-3505** (P0, `campaign: semantics`). Branch `claude/hopeful-meitner-5oxf0g-T-3505`.
-   - The bug: `GAMMA.INV(0.5, 7990464.81598859, 1)` returns #NUM!. Excel returns 7990464.482655259. The previous session's held-out sweep found it.
-   - It is a wrong type, so it blocks the Phase 1 exit.
-   - Finish the work, run the 4 reviewers, open a PR, and mark it ready.
-2. **T-3509**: the permanent gamma-family held-out ("blind") probe. Branch `claude/hopeful-meitner-5oxf0g-blind-probe`.
-   - It is a refreshable log-uniform sweep over each function's full domain, Excel-filled, with 50-digit mpmath references and a per-region report.
-   - **It must never be used for fitting.** Score every fit change on it, before and after.
-   - Already filed from its results: T-3519 (GAMMA.INV at the median, shape < 0.5), T-3520 (GAMMA.INV deep lower tail at shape 0.5–20), T-3521 (CHISQ.DIST.RT at shape ≥ 20, x/df 1.4–10), T-3522 (POISSON pmf at k > 1000 near the mean).
-3. **Fit audit**. Branch `claude/hopeful-meitner-5oxf0g-fit-audit`, task id in its commits.
-   - It audits the 12 fitted constants that rest on 6 cells or fewer. List them with `git grep -n 'FITTED(' -- crates/rustsheet-engine/src/functions/statistical/` and look for small cell counts.
-   - Each one gets probed at its bracket edges and then confirmed, narrowed, replaced with accurate math, or recognised as an Excel boundary.
-   - If a change would cost any cell, report it to the owner rather than shipping it.
+1. **T-3509: the permanent gamma-family held-out ("blind") probe.**
+   - Branch `claude/hopeful-meitner-5oxf0g-blind-probe`, head e0cb68119.
+   - **Done; `make check` is green.** Next: run the 4 reviewers, open the PR, and run mark-ready.
+   - What it holds:
+     - 4,100 cells over 6 cases: `eval/suites/probes-numeric/cases/t3509-blind-*`, each with case, oracle and math sidecars.
+     - A generator: `docs/research/t3509/sweep.py`, seed 20261031. `USED_SEEDS` refuses a seed that was already filled.
+     - A per-region report in `docs/research/t3509/score.py`, with its README.
+     - Gate A definitions for the gamma family in `tools/src/rustsheet_tools/accuracy/defs/gamma.py`.
+   - **Never fit on it.** Score every fit change on it before and after. Refresh it with a new seed.
+   - Tasks already filed from its results:
+     - T-3519: GAMMA.INV at p = 0.5, shape < 0.5.
+     - T-3520: GAMMA.INV deep lower tail at shape 0.5–20; it depends on T-3311.
+     - T-3521: CHISQ.DIST.RT at shape ≥ 20, x/df 1.4–10.
+     - T-3522: POISSON pmf at k > 1000 near the mean.
+     - The GAMMA.DIST shape 2.5–20 evidence was added to T-3219.
+   - Regions with no owning task yet: GAMMA.DIST at shapes 0.5–2.5 and 20–1E3 with low x/a (37 cells), and the POISSON cdf near the mean (5 cells). File tasks for them.
+2. **T-3505: GAMMA.INV returns #NUM! at shapes about 7.9E6 to 8.9E7.** P0, `campaign: semantics`.
+   - Branch `claude/hopeful-meitner-5oxf0g-T-3505`, head 714012f93, WIP.
+   - **Root cause:** the shared directive-5 term budget runs out. About 25 power-series cdfs, each about 7.3·sqrt(a) terms, exceed 2^19.
+   - The probe `probes/t3505-gamma-inv-budget-band` is filled (525 cells; 120 are #NUM! on main).
+   - **Duplicate of T-3350** (PR #2597, already in the merge train). Plan: once #2597 merges, merge origin/main and take main's side in `incomplete_gamma/mod.rs` and `special.rs`, dropping this branch's fix. Then keep the probe, run `make eval-baseline`, add the statistics.md note and a unit test for `GAMMA.INV(0.5,7990464.81598859,1)` = 7990464.482655259, review, and open the PR.
+   - If #2597 does not land, finish this branch's own fix instead: a Temme start plus a 2^-50 first step. It changes no other cell.
+   - Also noted: six p = 1E-300 cells where Excel, not we, is off from the math (the T-3294 area).
+3. **T-3530: audit of the 12 thinly evidenced FITTED constants.**
+   - Branch `claude/hopeful-meitner-5oxf0g-fit-audit`, head 47785ed06, WIP. It has no engine changes.
+   - The report is in `docs/research/fit-audit/README.md`. There are 12 probe cases, `probes-numeric/fit-audit-*`, 579 cells.
+   - `fit-audit-t3271-cdf-cut` is still pending an oracle fill, because createSession failed.
+   - **Refuted: four `#NUM!`-boundary rules, which return the wrong type today.**
+     - `HUGE_SHAPE_DENSITY_CUT`: Excel returns 0, not #NUM!, at shapes 1E10–1E15. Its cut is on x/shape, somewhere between 2.17E-309 and 1E-308.
+     - `HUGE_SHAPE_MIN`: Excel is already #NUM! at shapes 6E8–9E8 at tiny p.
+     - `BAND_UPPER_EDGE` and `BAND_LOWER_EDGE`: these misclassify cells both ways in the huge-shape GAMMA.INV band.
+     These are Gate B/semantic errors. Next: file follow-ups for the density cut and for re-fitting the huge-shape GAMMA.INV band, run second-round probes, and fix them.
+   - **Confirmed:** the huge-shape closed-form density cut is Excel's own boundary (verdict d). Its tag should become 61 cells.
+   - **Provisional, not yet scored on both sides of the cut:** `LOG_FORM_SHAPE_MAX`, `LOG_FORM_SHAPE_MIN`, `RATIO_FORM_MIN`, `CLOSED_FORM_QUANTILE_MAX`, `CLOSED_FORM_STEP_MIN` and `SMALL_RATIO_SHAPE_MIN`. Scoring them needs a scratch build that reads its cut-points from the environment; never commit that build.
 
 ## Next work, in priority order
-1. Get the three train PRs merged, then T-3505.
+1. Get the three train PRs merged. Review the T-3509 blind-probe branch and open its PR. Resolve T-3505 against T-3350 (#2597).
+1b. Wrong-type results found by the fit audit (T-3530): the huge-shape GAMMA.DIST density #NUM! vs 0, and the huge-shape GAMMA.INV band edges. These are semantic and count against Gate B, so they are high priority.
 2. **Gate B blockers in the gamma family.** These are visibly-off cells in user-representative suites (gen-*, ironcalc-calc). Recompute them with `make eval`, then attribute cells by formula.
    - CHIINV/CHISQ.INV at p = 0.975 (T-3146 is blocked on the T-3175 re-probe; T-3336 → T-3337 covers df = 1).
    - The leftover CHISQ.INV deep-tail cells (T-3403).
