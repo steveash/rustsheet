@@ -1088,7 +1088,7 @@ Excel's ratio form outside it (below, T-2638); P is the power series below
 x = a + 1, with the geometric sum of the terms it leaves (near x = a they add up to thousands of times the last one:
 7E-15 of P(1E6, 1E6)), and Q the modified-Lentz continued fraction above it; below a shape of 1/2 and x of 1 Q is formed
 directly (TOMS 654's small-shape Q, with ln Gamma(1 + a) from its zeta series); a = 1 is (-expm1(-x), exp(-x)).
-At a half-integer shape from 3/2 to 20 and a + 1 <= x <= 3a, CHISQ.DIST.RT's Q (odd df from 3; df 1 is ERFC, T-1778)
+At a half-integer shape from 3/2 to 20 and a + 1 <= x <= 650, CHISQ.DIST.RT's Q (odd df from 3; df 1 is ERFC, T-1778)
 is taken in double-double and rounded once (T-3285, `incomplete_gamma/half_integer.rs`): the prefactor as
 sqrt(x) e^-x / sqrt(pi) times 2x / (2j - 1), and the continued fraction evaluated backward. The forward (Lentz) fraction
 had lost 5 to 19 ulp there, the prefactor about 1. Excel is correctly rounded at `CHISQ.DIST.RT(10,5)` = `CHIDIST(10,5)`
@@ -1096,16 +1096,24 @@ had lost 5 to 19 ulp there, the prefactor about 1. Excel is correctly rounded at
 m9-legacy-chidist A45 and A46, t1049-chisqdistrt A19), and `CHISQ.DIST.RT(8,3.34)` = Q(1.5, 4), 0.04601170568923137,
 -0.0 (ironcalc-calc STATISTICAL/CHISQ.xlsx G3, df truncated to 3), where the double kernel was 5.7 and 11 ulp off.
 But Excel is not correctly rounded at half-integer shapes in general, only within a few ulp: `CHISQ.DIST.RT(6,3)` -0.7
-(m9-chisq-dist-rt A14), `CHISQ.DIST.RT(12.3,7.2)` = Q(3.5, 6.15) +1.5 (CHISQ.xlsx G4), `CHIDIST(40,3)` +1.2
-(gen-m9/85f48d5cdfb24555 A84), `CHIDIST(42,7)` = Q(3.5, 21) +1 (gen-m9/fec39efaba9284c3 A249, which the double kernel
-has bit for bit), and on the fraction's range up to x = 30 the correctly rounded Q is Excel's at only 9 of 92 cells,
-the double kernel at 7. At x below a + 1 Excel is 1 - P: `CHIDIST(5,5)` = Q(2.5, 2.5) 0.4158801869955078 and
-`CHIDIST(7,7)` are the series' complement bit for bit, 1 ulp from the accurate Q (gen-m9/4250f880ab640c49 A331,
-899f9555e67da2d6 A72). So the accurate Q is applied only on [a + 1, 3a], where on the eval it fixed or improved every
-changed cell; 3a is a measured cut (FITTED). Nor is Excel's form its ERFC plus the finite series
+(m9-chisq-dist-rt A14), `CHISQ.DIST.RT(12.3,7.2)` = Q(3.5, 6.15) +1.5 (CHISQ.xlsx G4), `CHIDIST(9,5)` = Q(2.5, 4.5)
+0.10906415794977233, -2.6 (gen-m9/320d51765af9b6b7 A249 and 7674c89c824aca43 A332; the correctly rounded Q is 3 ulp
+above it, the double kernel was 2), `CHIDIST(40,3)` +1.2 (gen-m9/85f48d5cdfb24555 A84), `CHIDIST(42,7)` = Q(3.5, 21) +1
+(gen-m9/fec39efaba9284c3 A249, which the double kernel has bit for bit). On T-3285's fresh log-uniform sweep
+(probes-numeric/t3285-chisq-dist-rt-half-integer-sweep, a from 1.5 to 19.5, x from a + 1 to 650, 228 cells,
+docs/research/t3285) Excel is the correctly rounded double at only 5 cells and within 15 digits of it at 101, and on the
+fraction's range up to x = 30 of the earlier scratch harness the correctly rounded Q is Excel's at 9 of 92 cells, the
+double kernel at 7. At x below a + 1 Excel is 1 - P: `CHIDIST(5,5)` = Q(2.5, 2.5) 0.4158801869955078 and
+`CHIDIST(7,7)` = Q(3.5, 3.5) 0.4288798575530548 are the series' complement bit for bit, 3 and 1 ulp from the accurate Q
+(gen-m9/4250f880ab640c49 A331, 899f9555e67da2d6 A72), so a + 1 is an evidenced lower bound. Above it the accurate Q
+applies everywhere: an upper cut at 3a, placed to keep `CHIDIST(42,7)` matched, was a keep-matched fit and was removed by
+owner ruling (decision 0202). On the eval it does not fix or improve every changed cell: against main it fixes 4 gated
+cells and moves 4 closer, but loses `CHIDIST(42,7)` (0 to 1 ulp) and moves 4 farther, none visibly: `CHIDIST(9,5)` twice
+(2 to 3), `CHIDIST(37.5,7)` (2 to 3) and `CHIDIST(37.5,5)` (1 to 2, gen-m9/b8ee55934c5b824c A262 and A400); decision
+0202 lists them. Nor is Excel's form its ERFC plus the finite series
 e^-x sum x^(j - 1/2) / Gamma(j + 1/2): with Excel's own ERFC and EXP in plain doubles that form gives Excel's bits at 75
 of 95 half-integer cells with x <= 5 and at 21 of 193 above, and with the series in double-double at 9 of 92 on
-[a + 1, 30] (T-3285 scratch harness).
+[a + 1, 30] (T-3285 scratch harness). Excel's form past x = 30 is T-3269's subject.
 Unit tests (`incomplete_gamma.rs`): within 8 units of 2^-52 of mpmath at a in {0.001, 0.01, 0.3, 0.5, 9, 500}, P + Q = 1
 within 2 of them, the a = 1 identity, the b = 1E6 scale. The 2^19-term cap (section above) is unchanged; the series now
 runs to 2^-54 instead of 1E-15, about 8% more terms near x = a, so an inversion's budget runs out at a somewhat smaller
