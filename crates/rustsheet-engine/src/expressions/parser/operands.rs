@@ -279,12 +279,9 @@ impl Parser {
                 .get_defined_name(bare, sheet)
                 .unwrap_or((scope, String::new())),
             None => {
-                let bare_lower = bare.to_lowercase();
                 let formula = self
-                    .defined_names
-                    .iter()
-                    .find(|(n, s, _)| s.is_none() && n.to_lowercase() == bare_lower)
-                    .map(|(.., formula)| formula.clone())
+                    .defined_name_formula(None, &bare.to_lowercase())
+                    .map(str::to_owned)
                     .unwrap_or_default();
                 (None, formula)
             }

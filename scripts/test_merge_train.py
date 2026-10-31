@@ -10,6 +10,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import tomllib
 import unittest
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -79,8 +80,12 @@ class Mode(unittest.TestCase):
             self.assertEqual(merge_train.read_mode(clone), merge_train.TRAIN)
             self.assertEqual(merge_train.read_mode(base / "nowhere"), merge_train.LOCK)
 
-    def test_the_switch_file_says_shadow(self) -> None:
-        self.assertEqual(merge_train.parse_mode((SCRIPTS / "merge_train.toml").read_text()), merge_train.SHADOW)
+    def test_the_switch_file_names_a_mode(self) -> None:
+        # Not pinned to one mode: a flip PR (decision 0157) changes only merge_train.toml. The raw
+        # value must be a mode that parse_mode reads as itself, never a fail-closed fallback.
+        raw = tomllib.loads((SCRIPTS / "merge_train.toml").read_text()).get("mode")
+        self.assertIn(raw, merge_train.MODES)
+        self.assertEqual(merge_train.parse_mode((SCRIPTS / "merge_train.toml").read_text()), raw)
 
 
 class IdChecks(unittest.TestCase):
