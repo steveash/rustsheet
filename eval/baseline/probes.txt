@@ -1760,6 +1760,8 @@ C	probes/t3304-collation-multi-letter-accents.case.json	1896
 C	probes/t3317-xlookup-scalar-return.case.json	20
 C	probes/t3334-criteria-operand-forms.case.json	983
 C	probes/t3335-textbefore-overlapping-instances.case.json	78
+C	probes/t3348-rate-below-minus-one.case.json	50
+C	probes/t3348-rate-fv-nonzero.case.json	186
 C	probes/t3349-t-inv-2t-near-one.case.json	44
 C	probes/t3354-f-dist-tiny-x-huge-d2.case.json	720
 C	probes/t3410-irr-zero-root-imcos.case.json	13
@@ -4227,6 +4229,13 @@ F	probes/t3334-criteria-operand-forms.case.json	Calc!H47
 F	probes/t3334-criteria-operand-forms.case.json	Calc!H51
 F	probes/t3334-criteria-operand-forms.case.json	Calc!H55
 F	probes/t3334-criteria-operand-forms.case.json	Calc!H59
+F	probes/t3348-rate-fv-nonzero.case.json	Sheet1!A112
+F	probes/t3348-rate-fv-nonzero.case.json	Sheet1!A138
+F	probes/t3348-rate-fv-nonzero.case.json	Sheet1!A153
+F	probes/t3348-rate-fv-nonzero.case.json	Sheet1!A171
+F	probes/t3348-rate-fv-nonzero.case.json	Sheet1!A175
+F	probes/t3348-rate-fv-nonzero.case.json	Sheet1!A180
+F	probes/t3348-rate-fv-nonzero.case.json	Sheet1!A185
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A1
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A10
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A12
