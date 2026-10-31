@@ -747,8 +747,12 @@ mod tests {
             );
         }
         // Excel's values (gen-m9 b9a32ce9a1fd0d71 A58, 334f3dc9ca937f10 A128, probes-numeric
-        // m9-t-inv-2t A117 and A130) to half a unit of the 15th digit.
+        // m9-t-inv-2t A117 and A130; T-3349: probes/t3349-t-inv-2t-near-one A1, decision 0188
+        // item 3's input, once 1.49E-8, and A15, A29) to half a unit of the 15th digit.
         for (df, p, excel) in [
+            (2.0, 0.999_999_999_989_522, 1.481_806_159_731_988e-11),
+            (2.0, 0.999_999_999_999_999, 1.413_083_212_815_401_9e-15),
+            (1000.0, 0.999_999_999_999, 1.253_599_772_570_125_8e-12),
             (5.0, 1.0 - 1e-10, 1.317_152_871_051_845_8e-10),
             (7.0, 0.999_999, 1.298_730_137_860_588_3e-6),
             (1000.0, 0.999_999_999_9, 1.253_627_608_692_531_2e-10),
