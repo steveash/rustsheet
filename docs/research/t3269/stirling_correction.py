@@ -1,9 +1,9 @@
 """T-3269: the Stirling correction of ln Gamma at the shapes a = k/2, k = 1..39, as doubles.
 
 correction(a) = ln Gamma(a) - ((a - 1/2) ln a - a + ln(2 pi) / 2), at 50 digits, rounded once to a
-double and printed as the Rust table `STIRLING_CORRECTION` in
-crates/rustsheet-engine/src/functions/statistical/incomplete_gamma/excel_tail.rs (bit patterns,
-so the table is exactly this output).
+double and printed as the Rust table `STIRLING_CORRECTION` of incomplete_gamma/excel_tail.rs on
+branch claude/hopeful-meitner-5oxf0g-t3269-far-tail (T-3269's unshipped far-tail kernel; bit
+patterns, so the table is exactly this output).
 
 Run: python3 -I docs/research/t3269/stirling_correction.py  (needs mpmath)
 """
