@@ -514,20 +514,23 @@ Verified in text.md (T-3178): `- 5`, `1-1-1` and mixed fractions in a criterion.
 - An operand VALUE rejects is text, and `<` / `>` then compare it as text against the text cells only:
   `Jan 1 2020 12:00` (H19 #VALUE!; rows 19-22: `<Jan 1 2020 12:00` matches all ten text cells, no number) and
   `1e2$` (H39 #VALUE!; rows 39-42: plain and `=` match nothing, `<1e2$` eight text cells, `>1e2$` the two that
-  sort after it). A trailing `$` is not a currency form.
+  sort after it). A trailing `$` is not a currency form. Ours reads `1e2$` as 100 (VALUE and criteria; follow-up T-3404).
 - Month-name dates with a time are numbers when VALUE reads them: `January 1, 2020 0:00` (H27 43831; rows 27-30),
   `>=January 2, 2020 12:00` (row 63), and `1-Jan 6:00 PM`, read in the current year (H23 is its offset 0.75 from
   January 1; rows 23-26).
 - `$1e2`, `$1E+2` (H31, H35 100) and `-$1e2` (H43 -100) are numbers: they match 100 (or -100) among the numbers and
   also the text cell `$1e2` under the plain and `=` operators, as T-3136's `=` operands do (rows 31-38, 43-46).
+- A mixed fraction under `<` is a number: `<1 1/2` (H64 1.5) matches the eight number cells below 1.5 and no text cell
+  (A64 15431, B64 0, E64 8).
 - CHAR(160) padding before or after a formatted number (`$1`+NBSP, NBSP+`50%`, `1,000`+NBSP, `=`+NBSP+`$1`) makes
   the operand text: it matches only the identical text cell (rows 47-62), and VALUE of it is #VALUE! (H47, H51,
   H55, H59). The engine's criteria agree; its VALUE returns the number (follow-up T-3404).
 - The percent tie: `33.3333333333333%` and `33.33333333333335%` both read as 0.333333333333333 (H65, H71) and match
   1/3, its two neighbouring doubles and the 15-digit 0.333333333333333 alike, under plain and `=`, and `<` / `>`
   exclude all four (rows 65-76). So VALUE keeps only 15 significant digits of the operand, dropping the 16th
-  digit 5 rather than rounding it up (whether before or after the division by 100 is not separable here), and the
-  cell side compares at 15 digits.
+  digit 5 rather than rounding it up, and the cell side compares at 15 digits. Whether the cut comes before or after
+  the division by 100 is not separable with these operands (both orders give 0.333333333333333 for every probed row);
+  it stays open.
 UNVERIFIED: non-en-US locales (out of scope).
 Ours: the operand and the text cells read with the plain parser, then VALUE's reader (`criterion_text_number` in
 functions/criteria.rs over `value_number_text` in cast.rs, which VALUE uses too), then the date parser; text padded with a

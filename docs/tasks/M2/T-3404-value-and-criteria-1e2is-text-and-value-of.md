@@ -27,6 +27,9 @@ Evidence: probes/t3334-criteria-operand-forms (excel-graph), written up in docs/
   keeps NBSP-padded text as text), so the gap is in VALUE's reader (`value_number_text` in cast.rs) or its
   trimming. Search for the shared helper before writing a new one.
 
+- Lane: `functions-text`, since both gaps sit in VALUE's reader (`value_number_text_with`, cast.rs), which the criteria
+  operand reader (`criterion_text_number`, functions/criteria.rs) calls; check the criteria cells after the fix too.
+
 ## Acceptance criteria
 - [ ] The 33 cells above pass; their known-failure lines disappear from eval/baseline with no new ones.
 - [ ] No other probes or gen-m2 cell changes verdict (`make eval`).
