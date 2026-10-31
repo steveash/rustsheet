@@ -497,7 +497,22 @@ fn template_keys_match_a_fresh_lex_on_random_text() {
         "%",
         "^",
     ];
-    let cells = [(1, 1), (2, 3), (5, 2), (1, 9), (12, 4), (3, 3)];
+    // Near cells, and far ones whose column names change length (Z to AA, ZZ to AAA), reach
+    // letters such as `LOG`, or sit at the grid's last row and column.
+    let cells = [
+        (1, 1),
+        (2, 3),
+        (5, 2),
+        (1, 9),
+        (12, 4),
+        (3, 3),
+        (1, 27),
+        (1, 703),
+        (2, 8509),
+        (1, 16_384),
+        (1_048_576, 1),
+        (1_048_570, 16_380),
+    ];
     let mut state: u64 = 0x2545_f491_4f6c_dd1d;
     let mut next = |bound: usize| {
         // xorshift: deterministic, so a failure reproduces.
