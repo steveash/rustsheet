@@ -194,7 +194,13 @@ fn small_shape_branch(a0: f64, b0: f64, x0: f64) -> Branch {
 /// for F (see [`t_kernel_tails`]), so F's callers (`fisher.rs`) keep [`kernel_tails`].
 /// BETA.INV's search (`inverse_beta.rs`) crosses this same kernel.
 pub(crate) fn beta_dist_lower_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
-    kernel_tails_with(x, y, a, b, true).0
+    beta_dist_tails(x, y, a, b).0
+}
+
+/// (w, w1) of BETA.DIST's kernel ([`beta_dist_lower_tail`] and its complement), the tails BETA.INV's
+/// search crosses (T-3398).
+pub(crate) fn beta_dist_tails(x: f64, y: f64, a: f64, b: f64) -> (f64, f64) {
+    kernel_tails_with(x, y, a, b, true)
 }
 
 /// (w, w1) of K(a, b, x, y), x and y formed by the caller per SPEC-0025's caller table:

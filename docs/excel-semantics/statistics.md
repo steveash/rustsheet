@@ -3162,6 +3162,13 @@ have no neighbour above. The crossing holds at 155 of the 188:
   Both stay far inside 1E-9 of the math (decision 0188 Gate A). Tasks: T-3387 (sweep), T-3388 (fit).
 Consequence: BETA.INV parity follows BETA.DIST parity (T-1744) plus a solver that usually
 converges to the crossing.
+Which CDF and which end (T-3398, 2026-10-31, scored over gen-m9, ironcalc-calc, probes and probes-numeric against
+main): crossing BETA.DIST's own kernel (`bratio::beta_dist_tails`, the TOMS 708 port BETA.DIST returns) instead of the
+older Cephes-based search tails fixes 11 visibly-off BETA.INV/BETAINV cells and makes none newly visibly off, taking
+the even-significand end of the final bracket. Taking the end whose CDF is nearer p fixes 16 but makes
+`BETA.INV(0.9526182716825916,2,2.5,-1,0.234)` visibly off (ironcalc BETADIST_BETAINV.xlsx H16: Excel
+-2.220446049250313E-16, a cancellation to near 0 where one ulp of t shows). The older search tails with the nearer
+end fix 7 and break 1. Implemented in: functions/statistical/beta.rs `beta_quantile`.
 
 Best candidate: a bisection to adjacent doubles on the correctly rounded I_x, bit-exact on 87 of
 212 cells (202 with numeric arguments). It takes the bracket's "midpoint", which for adjacent doubles

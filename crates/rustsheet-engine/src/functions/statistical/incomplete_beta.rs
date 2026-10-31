@@ -91,8 +91,10 @@ pub(crate) fn beta_reg(x: f64, a: f64, b: f64) -> f64 {
 /// (probes-numeric/m9-legacy-fdist A12), where forming 1 - w from w misses by 2E-14. A shape of 1
 /// takes Excel's closed forms ([`closed_form_tails`], T-2502).
 ///
-/// Like [`beta_reg_upper`] and [`search_tails`] it keeps Cephes' kernel at half-integer shapes,
-/// which the quantile searches (BETA.INV, F.INV) and the Student-t tails still invert.
+/// Like [`beta_reg_upper`] and [`search_tails`] it keeps Cephes' kernel at half-integer shapes.
+/// BETA.INV crosses BETA.DIST's own kernel since T-3398 (`bratio::beta_dist_tails`), so only
+/// tests read this side now.
+#[cfg(test)]
 pub(crate) fn beta_reg_complement(x: f64, y: f64, a: f64, b: f64) -> f64 {
     search_tails(x, y, a, b).0
 }

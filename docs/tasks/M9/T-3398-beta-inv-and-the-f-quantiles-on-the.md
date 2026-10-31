@@ -3,7 +3,7 @@ id: T-3398
 title: "BETA.INV and the F quantiles on the ported CDF (T-2511 remainder)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -58,3 +58,21 @@ crossing, are T-3388's; the 5 `#NUM!` cells at p = 0.9999999999 are T-3351's.
 
 ## Out of scope
 - The Student-t quantiles (T-2511, T-3061, T-3399).
+
+
+## Outcome
+Done 2026-10-31 for BETA.INV and BETAINV; the F quantiles move to T-3485, which owns their cells and carries the
+measurements.
+- BETA.INV's search now crosses BETA.DIST's own kernel (`bratio::beta_dist_tails`, new), not the older Cephes-based
+  search tails it had kept, taking the even-significand end of the final bracket (`beta.rs` `beta_quantile`). A
+  subnormal root flushes to 0, so `BETAINV(0.5,1E-5,1)` stays `#NUM!` (probes/t2435-dist-extremes S!A71).
+  `incomplete_beta::beta_reg_complement` is now test-only.
+- Eval against main (gen-m9, ironcalc-calc, probes, probes-numeric): 11 visibly-off cells fixed (BETA.INV 10, BETAINV 1),
+  0 newly visibly off. Attributed cells within 15 digits: BETA.INV 87.28% -> 89.21%, BETAINV 89.92% -> 90.76%.
+- Gated: 7 known failures fixed (gen-m9/c18dbf21f11093f3 A400; ironcalc BETADIST_BETAINV.xlsx H15, H32, H43, H45, H60,
+  H61). 5 regress, numeric and within 2 ulp, recorded under decision 0083's standing allowance: BETADIST_BETAINV.xlsx
+  H2 (2 ulp), H25 (1), H63 (2), H64 (2), H67 (1). T-3485's Context names them (T-3388 owns Excel's BETA.INV stop rule).
+- Measured and not taken (statistics.md): the nearer end on the same kernel (16 fixed, 1 newly visibly off, H16) and
+  the older tails with the nearer end (7 / 1).
+- Still visibly off: BETA.INV 56, BETAINV 11 (T-3387 and T-3388 own Excel's stop rule; T-2633 the chained cells).
+
