@@ -3,7 +3,7 @@ id: T-3352
 title: "BINOM.DIST and NEGBINOM.DIST lose accuracy (1E-9 to 1E-8) at a very large n or number of failures"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P0
 size: M
 tier: opus
