@@ -3,7 +3,7 @@ id: T-3375
 title: "Probe TEXTBEFORE/TEXTAFTER scan steps: backward step by match length or shortest delimiter; forward step past a short entry inside a longer match"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
