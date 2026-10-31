@@ -1831,6 +1831,25 @@ function under SUMPRODUCT (intersected), a nested aggregate under SUMPRODUCT, an
 Status: VERIFIED
 Tasks: T-0293, T-1526, T-1551, T-1555, T-1556
 
+## A legacy formula with a spill reference spills (T-3467)
+Rule: a formula stored without the dynamic-array flag (a plain `<f>`, no `cm`) that holds a spill reference takes no
+automatic `@` and spills like a dynamic formula, on the spill's rows and off them, while a plain range in the same
+position is intersected. With A1 `=SEQUENCE(3)`:
+- the legacy `=SIN(A1#)` in C2 and in C5 spills SIN(1), SIN(2), SIN(3) down C2:C4 and C5:C7, and its FORMULATEXT is
+  `=SIN(A1#)`;
+- the legacy `=SIN(A1:A3)` beside it, in D2 and D5, is SIN(2) and `#VALUE!`, with FORMULATEXT `=SIN(@A1:A3)`.
+It joins the legacy forms with no automatic `@` (SWITCH, the dynamic-array functions, LAMBDA calls; "Legacy formulas
+put `@` on array-valued calls and array constants"). A formula mixing a spill reference with a plain range is
+unprobed; the engine applies the rule to the whole formula, as it does for SWITCH.
+Evidence: probes/legacy-formula-spill-ref (excel-graph, 2026-10-31, 19 cells).
+Engine: `removes_automatic_at` (parser/static_analysis/legacy.rs) holds for a spill reference.
+`Model::promote_dynamic_formula_cells` (formula_cells.rs) loads a plain formula cell that has no automatic `@` and a
+non-scalar static result as a dynamic anchor, as typing it does. This covers an xlsx `<f>` without `cm` and a decoded
+`CellFormula`, which before reached evaluation as a scalar cell with an array result (a `debug_assert!`, found by the
+`bitcode_workbook` fuzz target).
+Status: VERIFIED
+Tasks: T-3467
+
 ## Legacy MATCH, VLOOKUP and HLOOKUP intersect an operation in their lookup table (T-1862)
 Rule: in a legacy (no `cm`) formula, arithmetic, a comparison or a concatenation over a range in
 MATCH's `lookup_array` or the table of VLOOKUP and HLOOKUP is a value, intersected like an

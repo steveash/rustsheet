@@ -295,11 +295,15 @@ pub(super) fn let_returns_range(args: &[Node]) -> bool {
 /// shows no `@` and spills 2, 3, 4; probes/legacy-at-let-lambda-dynamic-funcs BI, T-2419), the
 /// call of a LET-bound lambda included (`=ABS(Z30:Z32)+LET(f,LAMBDA(x,x),f(1))`, probes/
 /// legacy-at-dynamic-funcs-2 AF, T-2440). A defined-name lambda's call does not: it takes the `@`
-/// itself (`=ABS(@Z30:Z32)+@myId(1)`, AE).
+/// itself (`=ABS(@Z30:Z32)+@myId(1)`, AE). A spill reference does too: a legacy `=SIN(A1#)` over
+/// A1 `=SEQUENCE(3)` shows no `@` and spills SIN(1), SIN(2), SIN(3) on the spill's rows and off
+/// them, while the legacy `=SIN(A1:A3)` beside it is `=SIN(@A1:A3)` (probes/legacy-formula-spill-ref,
+/// excel-graph, 2026-10-31, T-3467).
 pub(super) fn removes_automatic_at(node: &Node) -> bool {
     node.contains_function(&NO_AUTOMATIC_AT)
         || node.contains_lambda_call()
         || calls_bound_variable(node)
+        || node.contains_spill_reference()
 }
 
 /// Whether `node` calls by name a variable that a LET or a LAMBDA in it binds. Scopes are not

@@ -104,6 +104,19 @@ impl Node {
         false
     }
 
+    /// Whether the tree holds a spill reference (`A1#`, [`Node::SpillRangeOperator`]) at any depth.
+    /// Walked with an explicit stack like [`Node::contains_function`].
+    pub(crate) fn contains_spill_reference(&self) -> bool {
+        let mut pending = vec![self];
+        while let Some(node) = pending.pop() {
+            if matches!(node, Node::SpillRangeOperator { .. }) {
+                return true;
+            }
+            node.push_children(&mut pending);
+        }
+        false
+    }
+
     /// Whether the tree holds a legacy N or T (SPEC-0012), the one fact of a legacy formula its
     /// display text does not show, so an edit that re-enters the text must keep it (T-1852).
     pub(crate) fn has_legacy_marker(&self) -> bool {

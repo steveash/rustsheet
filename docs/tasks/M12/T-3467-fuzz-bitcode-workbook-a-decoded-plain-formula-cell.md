@@ -3,7 +3,7 @@ id: T-3467
 title: "Fuzz bitcode_workbook: a decoded plain formula cell whose formula spills trips the scalar-context debug_assert"
 milestone: M12
 lane: engine
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -72,10 +72,41 @@ Then, by what the probe shows:
 Either way, keep the assert for the engine's own formulas.
 
 ## Acceptance criteria
-- [ ] A test builds the minimized case (a `CellFormula` holding a spilling formula) and evaluates it in a debug
+- [x] A test builds the minimized case (a `CellFormula` holding a spilling formula) and evaluates it in a debug
       build without a panic, with the value evidence supports.
-- [ ] `cargo fuzz run bitcode_workbook` on both crash inputs no longer crashes.
-- [ ] `make check` green; reviewers approve.
+- [x] `cargo fuzz run bitcode_workbook` on both crash inputs no longer crashes.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - How formulas typed into the engine are classified (static analysis); only decoded cells are in scope.
+
+## Outcome
+**Probe.** `probes/legacy-formula-spill-ref` on excel-graph (19 cells) settles the question. Excel spills a legacy
+formula with a spill reference. The legacy `=SIN(A1#)` over A1 `=SEQUENCE(3)` spills SIN(1..3) from C2 (on the spill's
+rows) and from C5 (off them), and its FORMULATEXT has no `@`. The legacy `=SIN(A1:A3)` beside it is SIN(2) and
+`#VALUE!`, shown `=SIN(@A1:A3)`. The finding is recorded in docs/excel-semantics/references.md, "A legacy formula
+with a spill reference spills".
+
+**The fix, in two parts.**
+1. `removes_automatic_at` (static_analysis/legacy.rs) now also holds for a formula containing a spill reference
+   (`Node::contains_spill_reference`). So an xlsx import and `set_cell_with_legacy_formula` give it no automatic
+   `@`, as they already did for SWITCH, the dynamic-array functions and LAMBDA calls.
+2. `Model::from_workbook` now runs `promote_dynamic_formula_cells` (formula_cells.rs) after parsing. A plain formula
+   cell whose formula a legacy reading leaves without `@` (`legacy_formula_is_dynamic`) and whose static result is not
+   a scalar becomes a dynamic anchor with r=(1,1), exactly as typing it would. That covers both an xlsx `<f>` without
+   `cm` and a decoded `CellFormula`.
+
+The promotion is limited to formulas with no automatic `@`. Typing `=A1` also gives a non-scalar static result, and
+promoting every such loaded cell would change what the export writes. The `debug_assert!` stays for the engine's own
+formulas.
+
+**Tests.**
+- `test_legacy_dynamic_promotion.rs`:
+  - the fuzz crash's shape, a plain cell holding `SIN(A1#)`, spills on and off the spill's rows;
+  - a plain cell with `SEQUENCE(2)*10` spills;
+  - a scalar plain cell stays plain.
+- `rustsheet-xlsx/tests/dynamic_formula_export.rs`: a plain `<f>SIN(A1#)</f>` imports dynamic and spills.
+- The probe passes (19/19).
+
+**Fuzz inputs.** Both saved crash inputs of `bitcode_workbook` no longer crash; see the PR for the rerun.
+

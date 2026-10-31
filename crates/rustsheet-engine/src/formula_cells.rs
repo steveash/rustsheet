@@ -4,7 +4,9 @@
 
 use std::sync::Arc;
 
-use crate::expressions::parser::static_analysis::{run_static_analysis_on_node, StaticResult};
+use crate::expressions::parser::static_analysis::{
+    legacy_formula_is_dynamic, run_static_analysis_on_node, StaticResult,
+};
 use crate::expressions::parser::stringify::{
     to_localized_string, to_localized_string_this_row_lowered,
 };
@@ -13,6 +15,7 @@ use crate::expressions::types::{CellReferenceIndex, CellReferenceRC};
 use crate::language::Language;
 use crate::locale::Locale;
 use crate::model::Model;
+use crate::types::{ArrayKind, Cell};
 
 /// A printer of a parsed formula in the active locale and language, at a cell.
 type FormulaPrinter = fn(&Node, &CellReferenceRC, &Locale, &Language) -> String;
@@ -150,6 +153,49 @@ impl Model {
         let formula_index = self.shared_formula_index(sheet, node)?;
         self.set_cell_with_formula_index(sheet, row, column, formula_index, style)?;
         Ok(formula_index)
+    }
+
+    /// Makes each plain formula cell whose formula Excel spills even when it is stored without the
+    /// dynamic-array flag ([`legacy_formula_is_dynamic`]) a dynamic anchor, as typing the formula
+    /// would ([`Self::set_cell_with_formula_index`]): an xlsx `<f>` with no `cm`, or a decoded
+    /// `CellFormula`, holding `SIN(A1#)` or `SEQUENCE(3)` (probes/legacy-formula-spill-ref, T-3467).
+    /// Without it such a cell reached evaluation as a scalar cell with an array result.
+    pub(crate) fn promote_dynamic_formula_cells(&mut self) {
+        for (sheet, worksheet) in self.workbook.worksheets.iter_mut().enumerate() {
+            let Some(formulas) = self.parsed_formulas.get(sheet) else {
+                continue;
+            };
+            let dynamic = |f: i32| {
+                usize::try_from(f)
+                    .ok()
+                    .and_then(|f| formulas.get(f))
+                    .is_some_and(|parsed| {
+                        !matches!(parsed.static_result, StaticResult::Scalar)
+                            && legacy_formula_is_dynamic(&parsed.evaluated)
+                    })
+            };
+            let promoted: Vec<(i32, i32)> = worksheet
+                .sheet_data
+                .cells()
+                .filter_map(|(row, column, cell)| match cell {
+                    Cell::CellFormula { f, .. } if dynamic(*f) => Some((row, column)),
+                    _ => None,
+                })
+                .collect();
+            for (row, column) in promoted {
+                if let Some(cell) = worksheet.sheet_data.cell_mut(row, column) {
+                    if let Cell::CellFormula { f, s, v } = cell.clone() {
+                        *cell = Cell::ArrayFormula {
+                            f,
+                            s,
+                            r: (1, 1),
+                            kind: ArrayKind::Dynamic,
+                            v,
+                        };
+                    }
+                }
+            }
+        }
     }
 
     /// Stores the sheet's shared formula `formula_index` in the cell, as a dynamic anchor unless

@@ -82,6 +82,14 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
     node.rewrite_as_unspaced(|node| legacy::add_root_legacy_intersection(node, add));
 }
 
+/// Whether a formula stored without the dynamic-array flag (a legacy `<f>`) is still dynamic in
+/// Excel: one that [`add_implicit_intersection`] leaves with no automatic `@` (a SWITCH, SEQUENCE
+/// or other dynamic-array function, a LAMBDA call, a spill reference), which Excel spills
+/// (docs/excel-semantics/references.md, T-3467).
+pub(crate) fn legacy_formula_is_dynamic(node: &Node) -> bool {
+    legacy::removes_automatic_at(node)
+}
+
 /// [`add_implicit_intersection`] with `arrays`: whether `node` is in a value position of the cell
 /// (every enclosing argument a scalar one, [`legacy_array_context`]), where a legacy formula also
 /// puts the `@` on an array-valued call or array constant: `=@IF(1,{2;3})`, `=N(@{2;3})`, while

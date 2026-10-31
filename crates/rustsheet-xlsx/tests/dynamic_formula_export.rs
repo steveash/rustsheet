@@ -211,3 +211,63 @@ fn a_legacy_and_a_dynamic_twin_are_two_shared_formulas() {
         .collect();
     assert_eq!(values, ["#VALUE!", "", "2", "3"]);
 }
+
+/// Re-zips `bytes` with `edit` applied to the first sheet's XML.
+fn with_sheet1(bytes: &[u8], edit: impl Fn(String) -> String) -> Vec<u8> {
+    let mut archive = zip::ZipArchive::new(Cursor::new(bytes)).unwrap();
+    let mut out = zip::ZipWriter::new(Cursor::new(Vec::new()));
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i).unwrap();
+        let name = file.name().unwrap().into_owned();
+        let mut content = Vec::new();
+        file.read_to_end(&mut content).unwrap();
+        if name == "xl/worksheets/sheet1.xml" {
+            content = edit(String::from_utf8(content).unwrap()).into_bytes();
+        }
+        out.start_file(name, zip::write::SimpleFileOptions::default())
+            .unwrap();
+        std::io::Write::write_all(&mut out, &content).unwrap();
+    }
+    out.finish().unwrap().into_inner()
+}
+
+/// T-3467: a plain `<f>SIN(A1#)</f>` (no `t="array"`, no `cm`) over a spill is still dynamic in
+/// Excel: no `@`, and it spills on the spill's rows and off them (probes/legacy-formula-spill-ref,
+/// excel-graph). The import used to read it as `=@SIN(A1#)`, one value.
+#[test]
+fn a_plain_formula_with_a_spill_reference_imports_dynamic() {
+    let mut model = Model::new_empty("m", "en", "UTC", "en").unwrap();
+    model
+        .set_user_input(0, 1, 1, "=SEQUENCE(3)".to_string())
+        .unwrap();
+    model
+        .set_user_input(0, 10, 4, "=SIN(A1#)".to_string())
+        .unwrap();
+    model.evaluate();
+    // The plain `<f>` a legacy writer stores, without the spill cells a dynamic anchor saves.
+    let bytes = with_sheet1(&save(&model), |mut xml| {
+        for (cell, replacement) in [
+            ("D10", "<c r=\"D10\"><f>SIN(A1#)</f>"),
+            ("D11", ""),
+            ("D12", ""),
+        ] {
+            let start = xml.find(&format!("<c r=\"{cell}\"")).unwrap();
+            let end = start + xml[start..].find("</c>").unwrap();
+            let close = if replacement.is_empty() { end + 4 } else { end };
+            xml = format!("{}{replacement}{}", &xml[..start], &xml[close..]);
+        }
+        xml
+    });
+    assert!(sheet1_xml(&bytes).contains("<c r=\"D10\"><f>SIN(A1#)</f></c>"));
+    let workbook = load_from_xlsx_bytes(&bytes, "m", "en", "UTC").unwrap();
+    let mut model = Model::from_workbook(workbook, "en").unwrap();
+    model.evaluate();
+    let values: Vec<String> = (10..13)
+        .map(|row| model.get_formatted_cell_value(0, row, 4).unwrap())
+        .collect();
+    assert_eq!(values, ["0.841470985", "0.909297427", "0.141120008"]);
+    assert_eq!(
+        model.get_cell_formula(0, 10, 4).unwrap().unwrap(),
+        "=SIN(A1#)"
+    );
+}

@@ -1,0 +1,36 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-3467: a formula stored without the dynamic-array flag (legacy, no cm) that references a spill. A1 =SEQUENCE(3) spills A1:A3. C2 and C5 hold the legacy =SIN(A1#), on and off the spill's rows; D2 and D5 the legacy plain-range control =SIN(A1:A3). Intersection would give SIN(2) on row 2 and #VALUE! on row 5; a spill would fill C3:C4 (resp. C6:C7), read by the ISBLANK cells; plain #VALUE! is #VALUE! in both. The FORMULATEXT cells show whether Excel adds an @.",
+  "tags": [
+    "M7",
+    "arrays",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=SEQUENCE(3)",
+        "C2": "=SIN(A1#)",
+        "C5": "=SIN(A1#)",
+        "D2": "=SIN(A1:A3)",
+        "D5": "=SIN(A1:A3)",
+        "F2": "=FORMULATEXT(C2)",
+        "F5": "=FORMULATEXT(C5)",
+        "G2": "=FORMULATEXT(D2)",
+        "G5": "=FORMULATEXT(D5)",
+        "H2": "=ISBLANK(C3)",
+        "H5": "=ISBLANK(C6)",
+        "I2": "=ISBLANK(D3)",
+        "I5": "=ISBLANK(D6)"
+      },
+      "legacy_formulas": [
+        "C2",
+        "C5",
+        "D2",
+        "D5"
+      ]
+    }
+  ],
+  "expected": {}
+}
