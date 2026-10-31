@@ -205,8 +205,10 @@ fn keyed_lookup(node: &Node) -> Option<&[Node]> {
     counts.contains(&args.len()).then_some(args.as_slice())
 }
 
-/// A keyed lookup's identity while its formula is evaluated: its argument slice's address, which
-/// the lookup function is called with (compared only, as [`address`]).
+/// A keyed lookup's identity while its formula is evaluated: the address of its argument slice,
+/// which the lookup function is called with. As for [`address`], it is only compared, never
+/// dereferenced, and only while a view of the formula's cell holds it (`read_tailed` borrows the
+/// parsed tree meanwhile, so it cannot move or be freed).
 pub(crate) fn call_address(args: &[Node]) -> usize {
     args.as_ptr() as usize
 }
@@ -514,7 +516,7 @@ impl Model {
     /// Where the lift of the keyed lookup `call` (its arguments) of `cell` stands: `None` unless
     /// its argument's head or tail is being evaluated.
     pub(crate) fn keyed_lift(&self, call: &[Node], cell: CellReferenceIndex) -> Option<KeyedLift> {
-        let view = &self.tail_views[self.keyed_view(call, cell)?];
+        let view = self.tail_views.get(self.keyed_view(call, cell)?)?;
         let at = call_address(call);
         Some(match view.head_end {
             Some(_) => KeyedLift::Head,
@@ -534,11 +536,14 @@ impl Model {
         cell: CellReferenceIndex,
         record: LiftRecord,
     ) {
-        let Some(index) = self.keyed_view(call, cell) else {
+        let at = call_address(call);
+        let Some(view) = self
+            .keyed_view(call, cell)
+            .and_then(|index| self.tail_views.get_mut(index))
+        else {
             return;
         };
-        let at = call_address(call);
-        let lifts = &mut self.tail_views[index].lifts;
+        let lifts = &mut view.lifts;
         lifts.retain(|(key, _)| *key != at);
         lifts.push((at, record));
     }

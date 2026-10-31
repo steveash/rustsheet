@@ -196,7 +196,7 @@ Evidence: none needed: these are engine limits, not Excel values (CLAUDE.md dire
 pinned by the equivalence tests of `test_tailed_array.rs` (each formula with the tailed reading and without) and by
 probes/t3096-lookup-value-blank-elements.
 Implemented in: `Model::tailed_leaves`, `Model::keyed_lift` (tailed_array.rs) and `Model::lift_values_keyed`
-(functions/lift/driver.rs).
+(functions/lift/keyed.rs), through `Model::lift_grids_after` (functions/lift/driver.rs).
 Status: DEVIATION (decision 0014)
 
 ## VLOOKUP / HLOOKUP with an array index or range_lookup
