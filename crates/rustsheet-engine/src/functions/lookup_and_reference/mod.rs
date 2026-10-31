@@ -2,7 +2,7 @@ use crate::arithmetic::bcast_get;
 use crate::cast::NumberOrArray;
 use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::ArrayNode;
-use crate::expressions::types::CellReferenceIndex;
+use crate::expressions::types::{CellReferenceIndex, CellReferenceRC};
 use crate::expressions::utils::{
     is_indirect_unquoted_sheet, is_out_of_range_r1c1_name, quote_digit_leading_sheet,
     unquote_sheet_prefix,
@@ -821,7 +821,10 @@ impl Model {
                 right: reference,
             },
             Ok(ParsedReference::Range(left, right)) => CalcResult::Range { left, right },
-            Err(message) => match self.indirect_defined_name(&ref_text, cell) {
+            Err(message) => match self.indirect_defined_name(&ref_text, cell).or_else(|| {
+                a1.then(|| self.indirect_structured(&ref_text, cell))
+                    .flatten()
+            }) {
                 Some(found) => found,
                 None => CalcResult::Error {
                     error: Error::REF,
@@ -829,6 +832,65 @@ impl Model {
                     message,
                 },
             },
+        }
+    }
+
+    /// INDIRECT of the text of a structured reference (`INDIRECT("Sales[Qty]")`): the area the
+    /// parser lowers the reference to, as for the same text in a formula. A table or column the
+    /// workbook lacks stays `#REF!` (docs/excel-semantics/references.md "INDIRECT of a structured
+    /// reference"; probes/table-edits/table-insert-column-inside-header F!A4:A5, T-2911).
+    fn indirect_structured(&mut self, text: &str, cell: CellReferenceIndex) -> Option<CalcResult> {
+        let sheet = self
+            .workbook
+            .worksheets
+            .get(cell.sheet as usize)?
+            .get_name();
+        let context = CellReferenceRC {
+            sheet,
+            row: cell.row,
+            column: cell.column,
+        };
+        let Node::StructuredReferenceKind { lowered, .. } = self.parser.parse(text, &context)
+        else {
+            return None;
+        };
+        match *lowered {
+            Node::ReferenceKind {
+                sheet_index,
+                row,
+                column,
+                ..
+            } => {
+                let reference = CellReferenceIndex {
+                    sheet: sheet_index,
+                    row,
+                    column,
+                };
+                Some(CalcResult::Range {
+                    left: reference,
+                    right: reference,
+                })
+            }
+            Node::RangeKind {
+                sheet_index,
+                row1,
+                column1,
+                row2,
+                column2,
+                ..
+            } => Some(CalcResult::Range {
+                left: CellReferenceIndex {
+                    sheet: sheet_index,
+                    row: row1,
+                    column: column1,
+                },
+                right: CellReferenceIndex {
+                    sheet: sheet_index,
+                    row: row2,
+                    column: column2,
+                },
+            }),
+            _ => None,
         }
     }
 

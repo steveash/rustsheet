@@ -15,6 +15,15 @@ then renamed (T-1608, the unscored cells of probes/sheet-ops/sheet-ops-rename-in
 -add-then-rename and -add-resolves-indirect). Never take oracle values as evidence for references to missing sheets
 (docs/architecture/oracle.md, "Known divergences"; desktop wins per decision 0030).
 
+## INDIRECT of a structured reference text resolves the table area
+Rule: `INDIRECT("Sales[Column2]")` is the area the same structured reference is in a formula: after a column
+insert inside `Sales` (S!B3:C7), `ROWS(INDIRECT("Sales[Column2]"))` is 4 and `COUNTA(INDIRECT("Sales[Column1]"))`
+is 0 (an empty data column). A column the table lacks is `#REF!`. Only the A1 form (`a1` TRUE) reads it; the
+specifiers (`#All`, `#Headers`, `@`), case and spacing of the text are unprobed, so the engine reads whatever the
+parser reads (T-2911).
+Evidence: probes/table-edits/table-insert-column-inside-header F!A4, F!A5; table-insert-two-columns-inside-header
+F!A4, F!A5 (excel-graph 2026-10-27).
+
 ## INDIRECT resolves a defined name that holds a reference
 Rule: `INDIRECT("<name>")` of a defined name whose body is a cell or range reference is that
 reference: `ISREF(INDIRECT("RCR"))` is TRUE with `RCR` = `Sheet1!$B$1`. Text that is neither a

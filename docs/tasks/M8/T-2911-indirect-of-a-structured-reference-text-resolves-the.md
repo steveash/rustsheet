@@ -3,7 +3,7 @@ id: T-2911
 title: "INDIRECT of a structured reference text (INDIRECT(Sales[Qty])) resolves the table column as Excel does"
 milestone: M8
 lane: engine
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -36,3 +36,8 @@ every structured text is `#REF!` (COUNTA counts it: 1). Reuse the parser's struc
 
 ## Out of scope
 - `#This Row` (`Sales[@Qty]`) through INDIRECT, unless probed in the same task.
+
+## Outcome
+`indirect_of` falls back to the parser's structured-reference lowering (`Model::parser`) when the text is
+neither A1 nor a defined name, so `INDIRECT("Sales[Column2]")` is the table column. Documented in lookup.md.
+Probe cells F!A4/F!A5 of both table-insert-*-inside-header cases pass; baseline updated.
