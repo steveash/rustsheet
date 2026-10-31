@@ -3,7 +3,7 @@ id: T-3377
 title: "Move COMBIN, COMBINA, FACT and FACTDOUBLE into a math_and_trigonometry::combinatorics module (mathematical.rs is at 980 of its 1,000 lines)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
