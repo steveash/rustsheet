@@ -226,9 +226,9 @@ Bare parentheses and unary sign runs have caps of their own (T-3172, probes/t317
 2026-10-30, bisected; stored and typed give the same counts): Excel accepts 256 nested parentheses
 around `1` and refuses 257; accepts a run of 1,024 unary minus signs before the number `1` and refuses
 1,025; accepts 1,023 unary plus signs before the text `"a"` and 1,023 alternating `-+` signs before a
-reference (`C1`), and refuses 1,024 of either. The minus run before a number literal is one longer;
-why is unprobed (each sign was probed with one operand kind only: the last minus folding into the
-number, or the operand type, would both explain it). Accepted and evaluated (with sidecars): parentheses
+reference (`C1`), and refuses 1,024 of either. The run before a number literal is one longer because
+of the operand, not the sign: 1,024 plus signs before `1` load too (T-3266's rule above: open signs
+plus the operand's cost at most 1,024, a number literal costing 0). Accepted and evaluated (with sidecars): parentheses
 at 256 (`1`); minus runs of 255 (`-1`), 256 and 1,024 (`1`); plus runs of 255, 256 and 1,023 (`a`);
 alternating runs of 255, 256 and 1,023 (`2`). Refused (createSession 501 `FileCorruptTryRepair`
 stored, Graph PATCH 400 `InvalidArgument` typed; dropped after the run, no sidecar can exist):
