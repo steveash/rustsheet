@@ -170,7 +170,7 @@ fn default_root() -> String {
 fn default_include() -> Vec<String> {
     vec!["**/*".into()]
 }
-fn default_true() -> bool {
+pub(crate) fn default_true() -> bool {
     true
 }
 

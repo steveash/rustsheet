@@ -848,6 +848,11 @@ impl Parser {
                 }
             }
             Some(token::TableSpecifier::Headers) => {
+                // As #Totals: a table without a header row has no #Headers (probes/table-edits
+                // table-no-header-baseline, T-3260; references.md).
+                if header_row_count == 0 {
+                    return Node::ErrorKind(token::Error::REF);
+                }
                 row_end = row_start;
             }
             Some(token::TableSpecifier::Data) => {
