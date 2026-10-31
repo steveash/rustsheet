@@ -1,0 +1,36 @@
+---
+id: T-3539
+title: "A new-coverage rise of the visible-parity lock keeps main's slack"
+milestone: M0
+lane: harness
+status: in-progress
+priority: P1
+size: S
+tier: opus
+depends_on: []
+---
+
+## Goal
+A probe PR that adds visibly-off cells records a lock that stays valid when `main` gains cells
+inside its own slack, so the PR is not ejected from the merge train for a count it did not change.
+
+## Context
+- Decision 0093: `check` fails only a rise above `eval/baseline/visible-parity.json`; a count below
+  the lock is slack the steward takes back daily with `--lower-visible-lock`.
+- `visible_parity::judge` records a new-coverage rise, and `visible_parity_gate`
+  (crates/rustsheet-eval/src/main.rs) then writes the exact count. That throws main's slack away
+  on the PR branch: the PR's lock is `main's count + new cells`, not `main's lock + new cells`.
+- Observed on 2026-10-31 with #2581 (T-3298, 130 new visibly-off cells): main's lock was 2427 with
+  slack; the PR recorded 2556, then 2542, 2544, 2548, 2561 and 2563 as main merged PRs whose new or
+  newly visibly-off cells fit main's slack but not the PR's exact lock. The train ejected it
+  (`ci-red`, visible parity) and every merge of `main` re-ran the re-record.
+
+## Acceptance criteria
+- [ ] A new-coverage rise records `lock + new_coverage` (main's slack kept), not the run's count;
+      `--allow-regressions` and `--lower-visible-lock` keep recording the count.
+- [ ] Unit tests in visible_parity.rs pin the recorded value for each path.
+- [ ] Decision record amending 0093.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+- How the steward lowers the lock.
