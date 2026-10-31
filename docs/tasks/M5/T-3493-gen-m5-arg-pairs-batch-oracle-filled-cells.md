@@ -3,7 +3,7 @@ id: T-3493
 title: "gen-m5 arg-pairs batch: oracle-filled cells for the unseen argument-class pairs of the M5 rounding and integer math functions (TRUNC, MOD, QUOTIENT, MROUND, CEILING.MATH, FLOOR.MATH, ECMA.CEILING, POWER, LOG, ATAN2, COMBIN, COMBINA)"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -47,3 +47,11 @@ gen-m5 gains an oracle-filled batch from `rustsheet-gen --policy arg-pairs` (T-3
 - Fixing the engine for the cells this batch finds (the owning tasks), beyond a one-line coercion fix in the
   function's own module that the PR also tests.
 - Single argument-kind probes (the research tasks named above) and other functions or milestones.
+
+## Outcome
+`rustsheet-gen --policy arg-pairs` for the 12 functions wrote 14 gen-m5 cases; `rustsheet-oracle fill -b excel-graph`
+filled all 14 sidecars (0 failures). After `make eval`, `argument_coverage` pairwise is 1.0 (0 unseen pairs) for
+TRUNC, MOD, QUOTIENT, MROUND, CEILING.MATH, FLOOR.MATH, ECMA.CEILING, POWER, LOG, ATAN2, COMBIN and COMBINA.
+Every new cell passes: no new `F` lines in eval/baseline/gen-m5.txt (only 14 `C` case lines), so no new owners
+are needed; `make exit-owners MILESTONE=M5` reports 0 unowned cells. gen-m5: 47984 cells, 47983 bit-exact
+(the remaining cell is a pre-existing deviation, not from this batch). No new Excel quirk found.
