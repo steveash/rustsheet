@@ -3,7 +3,7 @@ id: T-2633
 title: "BETA.DIST/BETA.INV after T-2119: BETADIST A159 and four probes-numeric cells visibly off, nine chained BETA.INV cells 1-4 ulp"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -58,10 +58,10 @@ too. Code: `functions/statistical/beta.rs`, `inverse_beta.rs`, `special::refine_
 docs/excel-semantics/statistics.md "BETA.INV solves Excel's own CDF to the crossing (T-1745)".
 
 ## Acceptance criteria
-- [ ] Visible parity: gen-m9/35e8168aae2b00f8 A159 and the four probes-numeric cells above are within half a unit of
+- [x] Visible parity: gen-m9/35e8168aae2b00f8 A159 and the four probes-numeric cells above are within half a unit of
       Excel's 15th significant digit.
 - [ ] The nine lines above leave `eval/baseline/ironcalc-calc.txt`, with no new known-failure line in any baseline.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - BETADIST_BETAINV G5 and G26 (the T-1044 sweep).
@@ -89,3 +89,14 @@ docs/excel-semantics/statistics.md "BETA.INV solves Excel's own CDF to the cross
   (`depends_on`, status back to `todo`). The next run starts by re-measuring every cell above on T-2510's kernel.
 - If the nine chained BETA.INV lines are still 1-4 ulp on T-2510's kernel, SPEC-0025 gives them to T-2511 (the inverse
   solved to the crossing); move them there rather than fitting them here.
+
+## Outcome
+No engine change: T-2510's kernel (BETA.DIST takes bratio's bgrat at a0 = 1/2, #2509) settles this task's visible
+part. Re-measured on `main` 95513f6:
+- Visible parity, met: gen-m9/35e8168aae2b00f8 A159 `BETADIST(1E-10,0.5,10000000000.5)` and t0969-beta-prefactor
+  D85 are bit-exact; D86, t0969-t-beta-link E56 and F6 are 1 ulp off (within the 15th digit).
+- The nine BETADIST_BETAINV lines: H2 and H67 pass. H23 (4 ulp) and H42, H44, H46-H49 (1 ulp) are still off, though
+  G42 (their BETA.DIST input) is now bit-exact, so the residue is BETA.INV's inversion. With H32 and G65 (T-2506's, 1
+  ulp) they go to T-3374 (`defer: phase-1b`, after T-2511's inverse), per this task's Stage. That criterion is not met
+  here.
+- `rustsheet-eval check` on the gated suites: no change (nothing to ratchet).
