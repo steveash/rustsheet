@@ -12,9 +12,9 @@ campaign: accuracy
 ---
 
 ## Goal
-RATE returns Excel's value and type where the secant ends in the residual's rounding noise: the cells T-3348 left
-within the Gate A envelope but not within 15 digits of Excel, and the two Gate A sweep points where the noise decides
-the type.
+RATE returns Excel's value where the secant ends in the residual's rounding noise: the cells T-3348 left within the
+Gate A envelope but not within 15 digits of Excel. The two Gate A sweep points where the noise decides the type are
+T-3397 (P0).
 
 ## Context
 - T-3348 made a flat secant hold and let iterates below -1 run on (financial.md "RATE holds on a flat secant and
@@ -25,14 +25,13 @@ the type.
   model 0.0020941704345254896, root 0.002094170434492252. Excel's f at the model's second iterate would have to be
   about -2.71e-7 where the model has -1.67e-7 and the exact value is -2.52e-7, so the residual's rounding at n = 1
   (`(P-1)/r`, Excel's `+` snap) is the first lead.
-- Type misses (Gate A sweep, decision 0188 R2): probes-numeric/t3348-rate-gate-a-sweep Calc!A272
-  (`RATE(4,-70299017520.6175,254784242189.789,-1503672.27062336,0)`, Excel 0.040657819686895275, the model holds at
-  |f| 1.29e-4 and is `#NUM!`) and A296 (Excel `#NUM!`, the model holds at |f| 2.1e-5).
+- The type misses (Gate A sweep Calc!A272 and A296, decision 0188 R2) moved to T-3397 (P0), which has their traces.
+  A residual form found here likely settles them too.
 - Code: `compute_rate` and `rate_residual` in crates/rustsheet-engine/src/functions/financial/financial_util.rs;
   fit lab `rate` (tools/src/rustsheet_tools/fitlab/kernels/solvers.py).
 
 ## Acceptance criteria
-- [ ] The listed cells are within 15 significant digits of Excel with the right type, or the task records why
+- [ ] The listed cells are within 15 significant digits of Excel, or the task records why
       Excel's noise cannot be reproduced (with the residual forms tried) and the cells stay known failures.
 - [ ] No gated cell regresses.
 - [ ] `make check` green; reviewers approve.

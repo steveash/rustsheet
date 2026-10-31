@@ -1088,12 +1088,19 @@ Evidence (excel-graph, 2026-10-31, T-3348):
 - Not reproduced: in the noise floor Excel's iterates differ from the model's. Seven flat-secant cells of
   t3348-rate-fv-nonzero (A112, A138, A153, A171, A175, A180, A185) return a number of the right type, 1 ulp to
   2e-11 relative from Excel's; Excel's own value is that far from the root too (A171: Excel 0.002094170434484841,
-  root 0.002094170434492252, model 0.0020941704345254896). In the Gate A sweep at pv 1e11 to 1e12 (A272, A296)
-  the noise decides the type: Excel returns where the model's |f| is 1.3e-4 (A272), and the reverse (A296).
-  T-3389 owns them.
+  root 0.002094170434492252, model 0.0020941704345254896). T-3389 owns them. In the Gate A sweep at pv 1e11 to
+  1e12 the noise decides the type: Excel returns 0.040657819686895275 where the model holds at |f| 1.29e-4 and is
+  `#NUM!` (A272; Excel's value is about 2 ulps from the model's held iterate, so its last steps differ). Excel is
+  `#NUM!` where the model, after 60 steps bouncing in the noise, holds at step 119 on |f| 2.1e-5 (A296). No bound
+  on the hold explains both, so they are not a second rule. Across the 97 flat secants of the 860 literal
+  RATE oracle cells (gate-a-sweep held |f| 1.144e-4 A231 `#NUM!`; fv-nonzero 7.17e-5 A126 returned), an absolute
+  bound in [7.2e-5, 1.14e-4) fits every other cell. A bound below 2.1e-5 turns 5 gated cells Excel returns
+  (fv-nonzero A113, A117, A126, A167, A183) into `#NUM!`. A bound relative to the residual's largest term does not
+  separate the cells (Excel errs from 5e-20 to 1.4e-16 relative and returns across the same range). T-3397 owns
+  these two.
 Ours: `compute_rate` (functions/financial/financial_util.rs), T-3348.
 Status: VERIFIED (excel-graph) / UNVERIFIED (Excel's residual in the noise floor)
-Tasks: T-3348, T-3389
+Tasks: T-3348, T-3389, T-3397
 
 ## YIELD with one coupon period left is closed form
 Rule: when at most one coupon period is left, Excel evaluates the documented formula
