@@ -375,6 +375,9 @@ Evidence: none for Excel; this is a resource limit, not an Excel observation.
 Status: DEVIATION (decision 0014)
 Implemented in: crates/rustsheet/src/edit.rs (`MAX_FOOTPRINT_CELLS`)
 
+## MMULT: an error value argument is #VALUE!
+Rule: `MMULT` with an error value as an argument gives `#VALUE!`, not that error: `MMULT(Data!H1,#NUM!)` and `MMULT(Data!H2,Data!G9)` with G9 = `#DIV/0!` are `#VALUE!` (excel-graph, 2026-10-31; gen-m5/842a0aebcb17b83d Calc!A463, A466; T-3494). The engine propagates the error; owned by T-3548.
+
 ## MDETERM / MINVERSE: a blank cell in the matrix is #VALUE!
 Rule: MDETERM and MINVERSE return `#VALUE!` when any cell of the matrix range is blank (MMULT
 does the same); a blank does not count as 0. `MDETERM` of a single numeric cell is that number. A boolean is not a
