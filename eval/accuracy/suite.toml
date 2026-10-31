@@ -1,0 +1,12 @@
+# Gate A's reference tables (SPEC-0029, decision 0188 R2). Outside eval/suites/, so `make eval`, the
+# eval gate, the evidence floor and every report measure never see them; `rustsheet-eval accuracy`
+# (run by `make eval-gates`) checks them, and `cases accuracy` / `show accuracy/...` find them.
+name = "accuracy"
+description = "Gate A reference tables: one directory per function, one immutable batch per case, with oracle and math sidecars"
+kind = "spec"
+root = "tables"
+include = ["**/*.case.json"]
+license = "Apache-2.0"
+origin = "generated"
+gate = false
+baseline = "none"

@@ -113,6 +113,14 @@ freeze.
 - a decoded count or dimension (sheets, rows, columns, cells per row, shared strings) past the engine's grid limits,
   checked before anything is allocated from it, so a crafted buffer cannot request a huge allocation.
 
+As built (T-2913): only indices some read trusts unchecked are refused. A shared-string index, a CF dxf id, a defined
+name's sheet id, a view's selected sheet, the frozen panes and a workbook with no sheets are read through checked
+lookups that tolerate them (empty text, no format, a global name, sheet 0), so refusing them would only stop
+workbooks that load today (poi/sample-beta.xlsx, an Office 2007 beta package, imports with no shared strings). The check runs on the decoded `Workbook`, so the
+bitcode decoder has already allocated what the bytes encode (bounded by the input's size); what the check guarantees
+is that nothing the model builds afterwards (row chunks, spill ranges, merged ranges, column records) is sized from a
+count past the grid.
+
 The validator's doc comment lists the invariants, so that what it misses is the fuzz target's to find. Because the
 check sits in `from_workbook`, it covers every decoder: `Model::from_bytes`, `UserModel::from_bytes`,
 `rustsheet_xlsx::import::load_from_icalc`, and the xlsx importer's final step. An xlsx-built workbook that fails it was
@@ -126,6 +134,12 @@ of once per load.
 `UserModel::apply_external_diffs` checks every decoded `Diff` against the model's current sheets, styles and grid
 before applying the first one, and returns `Err` with the model unchanged on any dangling index. It reuses T-2913's
 index checks. The Python package no longer calls it (decision 2), but the Rust API keeps it for the web UI layer.
+
+As built (T-2896): each diff is checked against the model as it is when that diff applies, not before the first one,
+because a list can depend on itself (it can add the sheet a later diff edits, or create the style a later undo
+restores). "Unchanged" comes from a copy of the workbook: the model is rebuilt from it when any diff is refused. The
+structural actions and the range clears also refuse counts and areas off the grid, which overflowed in `i32`, and
+an area costs the cells it holds, not its size.
 
 ### Decision 5. Fuzzing (T-2895)
 A new target, fuzz/fuzz_targets/bitcode_workbook.rs, decodes arbitrary bytes through `Model::from_bytes` and, when the

@@ -19,7 +19,7 @@ model of Excel's start and stop is fitted under decision 0188 R4, or the task re
 ## Context
 - Gap triage 2026-10-31 (`make eval` on a64f963e, excel-graph evidence): `make exit-owners MILESTONE=M9` lists 20
   `rate:BETA.INV` cells of probes-numeric/m9-beta-inv with no open owner. The 5 `#NUM!` cells at p = 0.9999999999
-  are T-3351's; 3 more sit where Excel's x is a crossing of its cdf and ours is not (T-2511's). This task owns the
+  are T-3351's; 3 more sit where Excel's x is a crossing of its cdf and ours is not (T-3398's, from T-2511). This task owns the
   other 12. Excel vs ours, and the relative error of each against a 50-digit mpmath root (scratch, not committed):
   - flat (Excel's BETA.DIST is one double at x and both neighbours, so x is where the search stops):
     - A8 `BETA.INV(1E-10,0.5,1)`: 9.999999999999992E-21 vs 1.0000000000000028E-20 (Excel -8.0E-16, ours +2.8E-15)
@@ -39,7 +39,7 @@ model of Excel's start and stop is fitted under decision 0188 R4, or the task re
   Every point is in Gate A (both sides within 1E-9 of the math), so this is visible-parity work, not accuracy: at the
   miss cells Excel is the inaccurate side, and at the flat cells neither is correctly rounded.
 - The same points are rows 7, 14, 21, 22, 28, 29, 32, 33, 41 (flat) and 91, 98, 133 (miss) of
-  probes-numeric/t1745-beta-inv-roundtrip, which T-2511 owns as a whole; at rows 7, 14, 21, 32, 33 and 41 our
+  probes-numeric/t1745-beta-inv-roundtrip, which T-3398 (T-2511's remainder) owns as a whole; at rows 7, 14, 21, 32, 33 and 41 our
   BETA.DIST already equals Excel's at x and both neighbours, so the gap is in the search, not the cdf.
 - Rule and quirk: docs/excel-semantics/statistics.md "BETA.INV solves Excel's own CDF to the crossing (T-1745)" (the
   22 flat and 11 off-crossing rows; "a tolerance stop, but it is not established").
@@ -69,8 +69,8 @@ model of Excel's start and stop is fitted under decision 0188 R4, or the task re
 - [ ] `make check` green; reviewers approve (reviewer-excel-fidelity sees the hold-out counts and the Gate A result).
 
 ## Out of scope
-- p near 1 where the answer is 1 (T-3351); huge shapes (T-2555); moving the search onto the ported cdf (T-2511);
-  the crossing cells whose miss comes from BETA.DIST's last bits (m9-beta-inv A31, A102, A103, T-2511); bit-level
+- p near 1 where the answer is 1 (T-3351); huge shapes (T-2555); moving the search onto the ported cdf (T-3398);
+  the crossing cells whose miss comes from BETA.DIST's last bits (m9-beta-inv A31, A102, A103, T-3398); bit-level
   residue on cells already within 15 digits (Phase 1b, decision 0188 R5: file it with `defer: phase-1b`).
 
 ## Visible-parity stage

@@ -3,7 +3,7 @@ id: T-2511
 title: "BETA.INV, F.INV, F.INV.RT and T.INV invert the ported incomplete beta to the crossing (T-2464 E8)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -13,6 +13,8 @@ spec: docs/specs/SPEC-0025-incomplete-beta-bratio-port.md
 ---
 
 ## Goal
+Done for the Student-t quantiles; BETA.INV, BETAINV and the F quantiles moved to T-3398 (see the Outcome).
+
 BETA.INV, BETAINV, F.INV, F.INV.RT, FINV, T.INV, T.INV.2T and TINV find the crossing of the engine's ported CDF. The
 crossing is T-1745's rule: Excel's x is a crossing of its own CDF. This replaces statrs' AS 64/109 Newton on statrs'
 `checked_beta_reg`.
@@ -94,11 +96,29 @@ Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c
 - probes-numeric/t1049-finv: Calc!A7
 - probes-numeric/t1049-finvrt: Calc!A14
 
-## Cells added by the gap triage (2026-10-31)
-Visibly-off m9-beta-inv cells no open task owned (`make exit-owners MILESTONE=M9`, `rate:BETA.INV`, eval on a64f963e).
-Each is the same point as a t1745-beta-inv-roundtrip row this task already owns, where Excel's x is a crossing of its
-own cdf (BETA.DIST at x is p, or p lies between x and a neighbour) but our cdf there is a few ulps off Excel's and our
-search does not land on our own crossing (A31: ours is 9.5E-15 off the 50-digit root, Excel 1E-15):
-- probes-numeric/m9-beta-inv: Calc!A31, Calc!A102, Calc!A103 (t1745 rows 30, 99, 100)
-The other 12 visibly-off m9-beta-inv cells at small shapes, where Excel's cdf is flat or its search stops off the
-crossing, are T-3388's; the 5 `#NUM!` cells at p = 0.9999999999 are T-3351's.
+## Outcome
+Done 2026-10-31 for the Student-t quantiles; BETA.INV and the F quantiles move to T-3398, which owns their cells.
+- T.INV, T.INV.2T, TINV and CONFIDENCE.T, from df 2 and outside the centre, are T-3061's rule:
+  t = fl(sqrt(fl(df * fl(fl(1/y) - 1)))) with y the double nearest the crossing of the tail at a rounded y
+  (`student_t_tail_at`, T.TEST's tail), found by `special::nearest_crossing`: at most 67 tails, bounded for every
+  df up to 1E10 (`t_dist::t_rounded_y_quantile`). The deep tail keeps the closed form (`t_tail_closed_form`), the
+  centre T-2724's kernel, and df 1 statrs' search (T-2858 owns its closed form). The A&S 26.7.5 series for df from
+  1E5 and statrs' search from df 2 are gone.
+- Eval against main aa2a9303 (gen-m9, ironcalc-calc, probes, probes-numeric): 294 visibly-off cells fixed, 0 newly
+  visibly off. Attributed cells within 15 digits: T.INV 69.73% -> 92.06%, T.INV.2T 65.94% -> 88.41%, TINV 76.31% ->
+  88.31%, CONFIDENCE.T 63.95% -> 89.27%. T-3061's cells: 65 of 75 within 15 digits (10 left, kept by T-3061).
+- Gated: 139 known failures fixed (gen-m9 82, ironcalc-calc 55, probes 2). 8 regress, all numeric and 1 or 2 ulp,
+  recorded under decision 0083's standing allowance and listed in T-3399: gen-m9 46ac3ef5e61583ca A231,
+  5cebac1f02bf30f2 A60, 6e18550e9fc9c1b9 A3 and A4, c2684066d8df263e A399, d910f000b60e2eac A109 (1 ulp each);
+  ironcalc-calc T_DIST.xlsx `T.DIST T.INV T.DIST.RT`!E66 (2 ulp) and `T.DIST.2T T.INV.2T`!D50 (1 ulp).
+- Measured and not taken (statistics.md has the scores): y from T.DIST's ported kernel (298 fixed, 3 newly visibly
+  off), the other end of the final bracket (285 / 6), AS 109's root (137 fixed), and F.INV on F.DIST's ported tail
+  (17 fixed, 7 newly visibly off; T-3398).
+- BETA.INV, BETAINV, F.INV, F.INV.RT and FINV are unchanged (66, 12, 81, 83 and 32 attributed cells visibly off):
+  T-3398. The Student-t cells still off: df 1, 47 cells (T-2858); df of 99999 or more at p of 1E-200 or below, where
+  Excel is about 79 against a true 37 (T-1542); the q = 0.05 and near-centre cells (T-3061, T-0967); the ulp
+  remainder (T-3399). T-0967 and T-1871 keep their other cells; rescore them on this form.
+- Of the 215 Student-t cells that still fail and changed value, 169 moved closer to Excel and 46 further, none
+  across the visibly-off line; the ungated probes-numeric cells newly failing (1 to 3 ulp) and t1531-t-tiny-p A54
+  (1 -> 11 ulp) are listed in T-3399.
+

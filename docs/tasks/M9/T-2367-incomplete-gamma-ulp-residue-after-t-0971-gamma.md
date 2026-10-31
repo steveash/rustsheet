@@ -47,6 +47,12 @@ budget runs out at a smaller shape than statrs' 3.5E8 (T-1872's 3-million-sample
 is now `#NUM!` (530,000 terms over its cdfs), shape 3E8 still finishes. docs/excel-semantics/statistics.md
 "Incomplete gamma: accurate kernel (T-0971)" and "Incomplete gamma: per-call cap and lifting (T-1872)".
 
+T-3131 (2026-10-31, unit test `a_call_past_its_cap_is_nan`): `gamma_quantile(1E7, 1, 0.5)` and `(3E7, 1E-6, 1E-5)`
+are already NaN on main 1248554ae, before and after T-3131's Wilson-Hilferty start, so the cap binds well below 3E8
+now. The start uses the lower tail's probability, so for a tiny upper-tail p (`CHISQ.INV.RT(1E-300,df)`, the lower tail
+rounding to 1) it is NaN and the refinement halves the whole range, which can spend the budget sooner from about
+shape 2E6 to 1E9 (statrs' search also took the lower tail). The re-run sweep should cover both tails.
+
 Gap triage 2026-10-31c (`make eval` on origin/main 0c917f9fe, excel-graph): 20 more POISSON and POISSON.DIST cdf
 cells, 1 or 2 ulp off and within 15 significant digits, that no open task listed. All have a mean below about
 4(k + 1) (mostly the lower-tail P near 1 at k above the mean, and the centre at k = mean = 100), so not the deep upper

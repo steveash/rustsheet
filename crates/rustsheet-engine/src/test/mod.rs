@@ -142,6 +142,7 @@ mod test_weekday_weeknum_isoweeknum;
 mod test_weeknum_return_types;
 mod test_weeknum_stale_state;
 mod test_workbook;
+mod test_workbook_check;
 mod test_workbook_name_file_prefix;
 mod test_workday_workdayintl;
 mod test_worksheet;
