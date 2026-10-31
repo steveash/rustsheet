@@ -14,7 +14,7 @@ campaign: accuracy
 ## Goal
 RATE returns Excel's value where the secant ends in the residual's rounding noise: the 4 cells T-3348 left inside
 the Gate A envelope (within 1e-9 of the math) but beyond 15 digits of Excel. The Gate A sweep points where the noise
-decides the type are T-3397 (P0), and decision 0192 records the trade.
+decides the type are T-3424 (P0), and decision 0192 records the trade.
 P1 rather than P2: these 4 are visible misses, not bit residue, and visible parity is the accuracy stage's done
 criterion (decisions 0083 and 0114). They rank below the Gate A failures (P0, decision 0188 R2) and above last-digit
 work (R5).
@@ -29,7 +29,7 @@ work (R5).
   model 0.0020941704345254896, root 0.002094170434492252. Excel's f at the model's second iterate would have to be
   about -2.71e-7 where the model has -1.67e-7 and the exact value is -2.52e-7, so the residual's rounding at n = 1
   (`(P-1)/r`, Excel's `+` snap) is the first lead.
-- The type misses (16 Gate A sweep cells, decision 0188 R2) are T-3397 (P0), which has their traces. A residual
+- The type misses (16 Gate A sweep cells, decision 0188 R2) are T-3424 (P0), which has their traces. A residual
   form found here likely settles them too; it will be a structural model under reviewer check 7.
 - Code: `compute_rate` and `rate_residual` in crates/rustsheet-engine/src/functions/financial/financial_util.rs;
   fit lab `rate` (tools/src/rustsheet_tools/fitlab/kernels/solvers.py).

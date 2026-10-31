@@ -86,7 +86,7 @@ pub(crate) fn compute_rate(
         // 344293.4825124,-155496.6323522,0)` is held at |f| 3.2e-7 and is 0.04310546919282547
         // in Excel (probes/t3348-rate-fv-nonzero A1). A residual of exactly 0 on both sides is
         // `#NUM!` (`RATE(1,0,0,0)`, probes/rate-zero-residual-guess A1, A2). Excel errs on 13
-        // holds the rule returns (decision 0192, T-3397).
+        // holds the rule returns (decision 0192, T-3424).
         let flat = f1 == f0;
         let (r2, f2) = if flat {
             if f1 == 0.0 {

@@ -56,11 +56,11 @@ Moved by decision 0192:
 - *Every cell of the probe case within 15 significant digits of Excel* goes to **T-3389 (P1)**. 4 cells are beyond
   15 digits with the right type: fv-nonzero A138, A171, A180 and A185. A112, A153 and A175 are 1 to 2 ulps off,
   which is Phase 1b work (decision 0188 R5).
-- *Gate A: 0 points where one side errs and the other is a number* goes to **T-3397 (P0)**. There are 16 cells:
+- *Gate A: 0 points where one side errs and the other is a number* goes to **T-3424 (P0)**. There are 16 cells:
   - 13 the hold lost (sweep A296; fresh A59, A70, A74, A77, A89, A90, A95, A157, A162, A173, A275, A292);
   - 3 neither model gets right (sweep A272; fresh A251, A272).
 
-  RATE's Gate A stays failed until T-3397 settles them; no exception is claimed.
+  RATE's Gate A stays failed until T-3424 settles them; no exception is claimed.
 - *Ordinary annuities with fv ≠ 0 across rates 1e-6 to 1 and nper 1 to 1,000 match Excel's result* is met except on
   the cells of the two items above, which those tasks own.
 
@@ -87,7 +87,7 @@ Bit-level residue moves to a follow-up with `defer: phase-1b`.
 
 ## Outcome
 Done on the criteria re-scoped by decision 0192 (review round 1). It trades 13 Gate A points for 164 cells of Excel's
-type and is reviewed with this task. RATE's Gate A is not met; T-3397 (P0) owns that.
+type and is reviewed with this task. RATE's Gate A is not met; T-3424 (P0) owns that.
 
 **Cause.** On long annuities with a large balance the residual near the root is rounding noise above 1e-7. The
 secant reaches a zero step and then a flat secant (f1 = f0). The T-2005 model stopped there with `#NUM!`, but Excel
@@ -171,7 +171,7 @@ rule). There the new model has 298/300 of Excel's type against the old model's 2
 and 0 points are a number outside both bounds.
 
 **Disposition (decision 0192).**
-- The 16 type cells go to T-3397 (P0): the 13 the hold lost (sweep A296 and the 12 fresh points above) and 3 that
+- The 16 type cells go to T-3424 (P0): the 13 the hold lost (sweep A296 and the 12 fresh points above) and 3 that
   neither model gets right (sweep A272; fresh A251, A272). A296 is `=RATE(351,-1684985188.67608,607019725001.509,
   -15796156082.0366,0)`: Excel `#NUM!`, engine 1.8814890660971136e-6, math
   0.0000018814890215042125897557712909148668011313466560856. Sweep A272 is `=RATE(4,-70299017520.6175,

@@ -1,7 +1,7 @@
 # 0192 — RATE's flat-secant hold loses 13 Gate A points and T-3348 is re-scoped
 
 - **Status:** accepted (2026-10-31, T-3348). Owner ruling (2026-10-31, in chat with the repository owner): accept the
-  trade (+164 cells of Excel's type, -13 Gate A points) and merge, with the 13 points owned by P0 task T-3397. Takes
+  trade (+164 cells of Excel's type, -13 Gate A points) and merge, with the 13 points owned by P0 task T-3424. Takes
   effect when the T-3348 reviewers approve its PR.
 - **Context:**
   - T-3348 changes `compute_rate` (financial_util.rs) in two ways. A flat secant (f1 = f0) holds at r1 and returns
@@ -42,13 +42,13 @@
     forbid. No general rule from the list above does it.
   - *Keep the hold and disclose the losses.* This decision.
 - **Decision:** keep the flat-secant hold and the run below -1. Accept the 13 lost points as known misses owned by
-  T-3397 (P0). T-3348 closes on what it delivers: the `#NUM!` class fixed, the run below -1, and no gated regression.
-  Its Gate A criterion moves to T-3397 and its 15-digit criterion to T-3389. RATE's Gate A is not met, and no
-  exception is claimed: it stays failed until T-3397 settles it or the owner rules under decision 0188.
+  T-3424 (P0). T-3348 closes on what it delivers: the `#NUM!` class fixed, the run below -1, and no gated regression.
+  Its Gate A criterion moves to T-3424 and its 15-digit criterion to T-3389. RATE's Gate A is not met, and no
+  exception is claimed: it stays failed until T-3424 settles it or the owner rules under decision 0188.
 - **Consequences:**
   - The baselines change additively only. `eval/baseline/probes.txt` gains the T-3348 probe cases and their 7 known
     failures, and no line is removed. The probes-numeric cases are ungated.
-  - T-3397 owns 16 type cells:
+  - T-3424 owns 16 type cells:
     - the 13 above;
     - 3 that neither model gets right: sweep A272, fresh A251 and fresh A272, where Excel returns a number and the
       engine gives `#NUM!`.

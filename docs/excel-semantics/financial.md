@@ -1109,13 +1109,13 @@ Evidence (excel-graph, 2026-10-31, T-3348):
     - a zero step against distinct iterates: Excel errs on 12 of 125 zero-step holds and 1 of 21 distinct ones;
     - a cut on the step count.
 
-    They are the noise floor's path, not a second rule; T-3397 owns them.
+    They are the noise floor's path, not a second rule; T-3424 owns them.
 - Unprobed: no oracle cell has a flat secant with |f1| < 1e-7, so the convergence test on a held point is untested.
   It differs from the cap's test only where 1 + r1 <= 1e-4.
 Ours: `compute_rate` (functions/financial/financial_util.rs), T-3348, decision 0192.
 Status: VERIFIED (excel-graph) / UNVERIFIED (Excel's residual in the noise floor; a non-integer nper below -1; a held
 point with |f1| < 1e-7)
-Tasks: T-3348, T-3389, T-3397
+Tasks: T-3348, T-3389, T-3424
 
 ## YIELD with one coupon period left is closed form
 Rule: when at most one coupon period is left, Excel evaluates the documented formula
