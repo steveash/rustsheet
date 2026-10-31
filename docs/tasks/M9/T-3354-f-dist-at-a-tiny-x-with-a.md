@@ -30,11 +30,14 @@ F.DIST at x ≈ 1e-12 with d2 ≈ 7.8e6 returns Excel's value instead of one 5e-
       within 15 significant digits, with the right type and error, on the oracle-filled cells. The Gate A envelope below
       is only a floor on the fresh sweep; Excel's value is the target where it differs from the math by less than
       G = 1e-4.
+      Met with the right type and error everywhere; the 15th-digit residue on the cdf and density is T-3467's
+      (`defer: phase-1b`, decision 0188 R5).
 - [x] A new public probe case under eval/suites/probes/cases/ (one milestone tag, M9; decision 0057), filled by the
       oracle (excel-graph), reproduces the bug; its cells are listed in this file before the fix. Include the inputs in
       Context and points on both sides of the failing region.
 - [x] After the fix every cell of that case is within 15 significant digits of Excel's value, with the right type and
-      error (decision 0083's rule).
+      error (decision 0083's rule). Met except the 15th-digit residue (222 cells, all inside Gate A), moved to T-3467
+      (`defer: phase-1b`, decision 0188 R5).
 - [x] No gated cell regresses (`make eval-baseline` refuses regressions; decision 0083's ulp allowance only as it
       states).
 - [x] Gate A envelope on a fresh sweep of its own (decision 0188 R2, R4.2): a new probes-numeric case, filled, with
@@ -43,7 +46,7 @@ F.DIST at x ≈ 1e-12 with d2 ≈ 7.8e6 returns Excel's value instead of one 5e-
       the points within 1e-9 relative of the math (absolute 1e-300 near 0): 0 points outside both, and 0 cells where
       one side is an error and the other a number. This is a floor only: the target stays Excel's value.
 - [x] The rule (what Excel does, what was wrong) is in docs/excel-semantics/ in the same PR.
-- [x] `make check` green; reviewers approve.
+- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Last-digit (bit) parity on cells already within 15 digits: Phase 1b (decision 0188 R5).
@@ -58,12 +61,13 @@ Bit-level residue moves to a follow-up with `defer: phase-1b`.
 Not reproducible on main (2026-10-31): F.DIST has no 5e-4 error at a tiny x with a huge d2. No engine change.
 - **Probe:** probes/t3354-f-dist-tiny-x-huge-d2 (excel-graph, 720 cells: F.DIST cdf, density and F.DIST.RT over
   d1 1, 2, 4, 10 and 40, d2 1000 to 1E10 and x 1E-15 to 0.001, the reported region and points on both sides).
-  - Every cell is within 1.5e-13 relative of Excel's value and within 1e-9 of the 50-digit math (the engine's worst is
-    7.8e-14 against the math), with the right type. No cell is an error on either side.
+  - Every cell is within 1.2e-13 relative of Excel's value (worst A193) and within 1e-9 of the 50-digit math (the
+    engine's worst is 1.01e-13 against the math, at A217; Excel's is 1.46e-13, at A193), with the right type. No cell is
+    an error on either side.
   - 222 cells (F.DIST cdf and density, none of F.DIST.RT) are beyond half a unit in Excel's 15th digit: Excel's own
     error against the math is up to 1.5e-13 there. They are inside Gate A, so under decision 0188 R5 they move to
-    T-3467 (`defer: phase-1b`). Criterion 3 is met in this sense: every cell has Excel's value to within 1.5e-13 and
-    none is visibly off by more than that residue; the 15th-digit residue is Phase 1b.
+    T-3467 (`defer: phase-1b`). Criteria 1 and 3 are met except for that residue, which their
+    lines name.
 - **Engine-only scans** (no oracle, against mpmath): 1,200 random points over x 1E-15 to 1E-6, d1 1 to 1E7,
   d2 1E5 to 1E10, and 3,000 dense points at x 1E-13 to 1E-11, d2 3E6 to 1.6E7, with integer and non-integer d1 and d2
   (Excel truncates them). The worst error against the math away from underflow is 8e-13, at a result of 6.6E-300.
@@ -88,4 +92,3 @@ Not reproducible on main (2026-10-31): F.DIST has no 5e-4 error at a tiny x with
   them in the new case; the other 2267 are 162 below the old lock, cells main fixed since it was last written. No other suite changes.
 - **Not a fit:** no engine change, so decision 0188 R4's hold-out and `FITTED` rules do not apply.
 - Follow-up: T-3467 (Phase 1b), the 15th-digit residue in both cases.
-

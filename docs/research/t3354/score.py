@@ -7,6 +7,8 @@ Usage, from the repository root after `cargo build --release -p rustsheet_eval`:
 A point is inside the envelope when the engine is within 15 significant digits of Excel's value (half a unit of the
 15th digit) or within 1e-9 relative of the math (absolute 1e-300 near 0). Excel truncates d1 and d2 to integers.
 Rows group into strata of 80, 60, 40 and 20 for the sweep; the probe case reports as one stratum.
+It is the T-3354 counterpart of docs/research/t2220_f_dist_sweep_stats.py, which scores a different case set; factor a
+shared mpmath F reference if a third scorer appears. Needs mpmath (not in the tools/ uv project).
 """
 
 import re
