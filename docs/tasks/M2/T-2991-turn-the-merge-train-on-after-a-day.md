@@ -55,7 +55,8 @@ Evidence from `make merge-train-stats` at 08:07 UTC (T-3397's parallel reads):
 - PR CI p90 7.8 min against 6.5 min before; queue p90 3 s;
 - agreement 87% (151/174).
 
-The owner approved the switch below the 90% agreement point and before the 24 h mark. The 23 disagreements are explained
+The owner approved the switch below the 90% agreement point and before the
+24 h mark. The 23 disagreements are explained
 in decision 0192: 12 stranded, 6 changed after marking, 5 batch order.
 
 Live trains: none ran during this session. T-2990 checks the first ones at its checkpoint.

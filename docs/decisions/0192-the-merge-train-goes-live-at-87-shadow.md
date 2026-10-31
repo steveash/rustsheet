@@ -9,9 +9,8 @@
     - at least 90% prediction agreement, with every disagreement explained;
     - zero tree-check mismatches;
     - a load bar.
-  - `make merge-train-stats` (decision 0191) reported at 2026-10-31T08:07Z: 42 scored trains over
-    22 h; 151 of 174 scored
-    predictions agree (87%); 0 tree-check failures; 0 red trains in 47; PR CI p90 7.8 min during
+  - `make merge-train-stats` (decision 0191) reported at 2026-10-31T08:07Z: 42 scored trains over 22 h;
+    151 of 174 scored predictions agree (87%); 0 tree-check failures; 0 red trains in 47; PR CI p90 7.8 min during
     shadow against 6.5 min before (+20%, the bar's limit); job queue p90 3 s.
   - The 23 disagreements, explained:
     - **Stranded, 12** (`merge` predicted): #2406 ×2, #2430 ×7, #2436 and #2474 ×2. These PRs
@@ -42,16 +41,18 @@
     - the load bar: PR CI p90 at +20%, the limit, on rounded figures (7.8/6.5 min), and queue p90
       at 3 s;
     - the red-train rate: 0/47 against the spec's p = 0.09.
-  - The counts measure different things. There are 42 scored *predictions* (trains with a
-    prediction), 47 completed shadow *trains* that ran CI, and 51 shadow CI *runs*, of which 50
+  - The counts measure different things. There are 42 scored *trains* (shadow trains with a
+    scored prediction), 47 completed shadow *trains* that ran CI, and 51 shadow CI *runs*, of which 50
     are green and 1 was cancelled.
   - The waivers cover this one flip only. A later re-flip from `lock` to `train`, for example
     after an emergency flip, meets SPEC-0027's full bar again or needs its own owner ruling.
   - Owner step 3 (SPEC-0027 "Owner steps") is done:
     - The owner confirmed on 2026-10-31 that the deployed routine prompts match
       docs/process/routines.md.
-    - The five worker routines' prompts were checked word for word against it, `train`-mode
-      clauses included.
+    - The deployed worker routines' prompts (sonnet, sonnet B, opus, opus B and opus C, which
+      reuse the two worker texts) were checked word for word against it, `train`-mode clauses
+      included. The schedule table in routines.md lists fewer workers; that is a docs gap, not a
+      prompt gap.
   - The rest of SPEC-0027 is unchanged: T-2990 measures the live train for a week, and a
     tree-check mismatch at any time means the emergency flip back to `lock` (decision 0157) with a
     P0 task.
