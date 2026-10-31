@@ -71,3 +71,11 @@ PRICE's root", T-1592 fourth-round paragraph; lab fit `uv run rustsheet-fitlab y
 - probes/yield-newton-domain.case.json (5): P!B6, B10, B11, B12, B13
 - probes/yield-start-one-input.case.json (8): S!A18, A31, A68, A76, B5, B18, B68, B76
 - probes/yield-start-term-basis.case.json (26): S!A3, A5, A8, A15, A21, A29, A47, A48, A53, B3, B5, B8, B15, B18, B21, B29, B47, B48, B53, C2, C8, C21, C30, C44, C46, C48
+
+## Cells added by T-2747 (2026-10-31)
+probes/yield-deep-discount-sweep (excel-graph, 2026-10-31): `YIELD(39681,45662,R,P,102,4)` over coupon rate R 1 to 100
+and price P 1 to 20. Every cell matches Excel in type (T-2747's rule); 37 value cells are 1 to 5 ulp off on the same
+fitted start and root as this task's cells. Example: S!B1 `YIELD(39681,45662,1,2,102,4)` 15.009570961865686 vs ours
+15.009570961865677 (5 ulp).
+- probes/yield-deep-discount-sweep.case.json (37): S!A1, A2, A5, A9, B1, B2, B4, B6, C1, C2, C3, C4, C5, C6, C8, D5,
+  D6, D7, D9, E2, E3, E4, E6, E7, E8, E9, F1, F2, F4, F9, G5, G6, G8, H3, H7, H8, H9
