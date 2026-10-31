@@ -67,8 +67,24 @@ Owned gen-m9 cells (known-failure lines in eval/baseline/gen-m9.txt), each with 
       cells still open move to a follow-up.
 - [ ] The F quantile model (search, stopping rule, kernel calls) is recorded in docs/excel-semantics/statistics.md with
       these cells as evidence.
+- [ ] The 14 cells added by gap triage 2026-10-30 leave eval/baseline/gen-m9.txt, or the Outcome lists each with its ulp distance.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - The visibly-off F quantile cells (T-2500) and the kernel port itself (T-2504 to T-2511).
 - BETA.INV (T-2119, T-2555) and T.INV (T-0967).
+
+## Cells added by gap triage (2026-10-30)
+`make eval` on origin/main 6a26b992a (excel-graph), `scripts/exit_owners.py`'s `owned` rule over every failing cell and the task files of origin/main and every pushed branch: 14 more gen-m9 quantile cells within 15 digits (11 within 4 ulp, 3 further; none visibly off) that no open task names: 11 F.INV, F.INV.RT and FINV cells (some nested inside STDEVA or GAMMALN.PRECISE, the quantile being the only non-glue call that misses) and 3 BETAINV cells, which invert the same incomplete beta. One BETAINV cell looks like a closed form: gen-m9/2a18b2f5a4dc43ac A44 has p = SUMSQ(0.5) = 0.25 and alpha = 0.5 (beta is a MATCH result), and Excel returns exactly 0.0625 = p^(1/alpha), the beta = 1 closed form, where ours is 0.062499999999999986. Check it against statistics.md's BETA.INV closed forms first. Other examples, Excel vs ours: gen-m9/2801c1c11c21e134 A120 `F.INV(T.DIST.2T(0.5,5),5,3)` 1.6458456416597564 vs 1.6458456416597538; gen-m9/165db58d1540f014 A50 `F.INV.RT(0.975,9,DAY(1))` 0.1387100444893355 vs 0.13871004448933555.
+- gen-m9/0a9226016e8f5f33.case.json (1): Calc!A51
+- gen-m9/165db58d1540f014.case.json (1): Calc!A50
+- gen-m9/2801c1c11c21e134.case.json (1): Calc!A120
+- gen-m9/2a18b2f5a4dc43ac.case.json (1): Calc!A44
+- gen-m9/35e8168aae2b00f8.case.json (1): Calc!A117
+- gen-m9/3a25a03eb94fcfbd.case.json (3): Calc!A105, A151, A334
+- gen-m9/3e98b26cf6713e77.case.json (1): Calc!A382
+- gen-m9/91e167cd8d7eb652.case.json (1): Calc!A2
+- gen-m9/a612e89321a6df9c.case.json (1): Calc!A205
+- gen-m9/abc2939ebd1e2365.case.json (1): Calc!A145
+- gen-m9/bbdfc06cae0e0d71.case.json (1): Calc!A269
+- gen-m9/bc40d37cb4d8301d.case.json (1): Calc!A345

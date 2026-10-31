@@ -93,6 +93,7 @@ Cells:
 - [ ] One density helper in `special.rs` used by NORM.S.DIST, NORM.DIST, LOGNORM.DIST and PHI (or a
       comment citing cells that prove a function needs a different order).
 - [ ] The statistics.md entry is updated to VERIFIED or rewritten from the evidence.
+- [ ] The 16 t1048-normdist cells added by gap triage 2026-10-30 are bit-exact (`make eval-show`; probes-numeric is ungated), or they are listed in the bit-level follow-up.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -109,3 +110,7 @@ Gap triage 2026-10-25 (eval on origin/main becefc6f3): the task was deferred by 
 
 ## Phase 1 triage (T-0090, 2026-10-27)
 It owns the 4 visibly-off LOGNORM.DIST cells and alone lifts LOGNORM.DIST. Priority raised so it leads its stage in M9.
+
+## Cells added by gap triage (2026-10-30)
+`make eval` on origin/main 6a26b992a (excel-graph), `scripts/exit_owners.py`'s `owned` rule over every failing cell and the task files of origin/main and every pushed branch: 16 NORM.DIST and NORMDIST density cells of the T-1048 probe, 1 ulp off and none visibly off, that no open task names. Columns A (NORMDIST) and B (NORM.DIST) hold the same arguments and give the same value, so these are 8 points. One of them is the T-1041 lead itself: `NORM.DIST(0,0,1,FALSE)` (A14, B14) is Excel 0.3989422804014327 (the correctly rounded 1/sqrt(2*pi), the multiplier of the best form in "Normal density oracle sweep (T-1041)") and ours 0.39894228040143265. Others, Excel vs ours: A2 `NORMDIST(0.5,0,1,FALSE)` 0.3520653267642995 vs 0.35206532676429947; A6 `NORMDIST(42,40,1.5,FALSE)` 0.10934004978399575 vs 0.10934004978399574. If the visible stage closes first, these cells move to its phase-1b follow-up with the rest of the bit-level residue.
+- probes-numeric/t1048-normdist.case.json (16): Calc!A2, A4, A6, A8, A12, A14, A21, A23, B2, B4, B6, B8, B12, B14, B21, B23
