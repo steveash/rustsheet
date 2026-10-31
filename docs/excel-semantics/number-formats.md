@@ -770,16 +770,23 @@ Evidence: probes/text-locale-lunar-months-1900 (1206 cells), text-locale-lunar-e
 Evidence: probes/text-locale-calendars (145 cells), text-locale-calendars-detail (41), text-locale-japanese-year (20), text-locale-era-gregorian (23) (excel-graph, 2026-10-18).
 Implemented in: formatter/locale_tag.rs (`resolve_lcid`, `Calendar`, `japanese_era`), formatter/lunar_calendar.rs (lunar tables, `lunar_2101.bin` past 2100), format.rs (years, `e`, `g`).
 Status: VERIFIED (excel-graph)
+
 ### Numeral-system digits (bits 24-31 of a locale tag; T-1925)
 
-Evidence: probes/t1925-numeral-digits (cell row = N + 1; A: `yyyy-mm-dd|e|mmmm` of 45000 under `[$-N000409]`, B: the same under `[$-N000411]`, C: `0.00|#,##0` of 1234567.89 under `[$-N000409]`).
+Evidence: probes/t1925-numeral-digits (cell row = N + 1; D: `#,##0.00` of 1020304.05 under `[$-N000409]`; A: `yyyy-mm-dd|e|mmmm` of 45000 under `[$-N000409]`, B: the same under `[$-N000411]`, C: `0.00|#,##0` of 1234567.89 under `[$-N000409]`).
 
-- The byte N changes the digits every date field and plain number prints; month and weekday names are untouched. N = 0, 1 and 20-26 print ASCII digits.
-- Positional digit sets: 2 Arabic-Indic, 3 Persian, 4 Devanagari, 5 Bengali, 6 Gurmukhi, 7 Gujarati, 8 Odia, 9 Tamil, 10 Telugu, 11 Kannada, 12 Malayalam, 13 Thai, 14 Lao, 15 Tibetan, 16 Myanmar, 17 Ethiopic, 18 Khmer, 19 Mongolian. Tamil (9) and Ethiopic (17) have no zero digit, so a zero stays ASCII `0` (N=9: `௨0௨௩-0௩-௧௫`); in the plain number the zero of `0` after `|` also stays `0`.
-- 27-31 are CJK numerals. Date: 27 `二〇二三-〇三-十五` (positional year, day with 十), 28 `弐〇弐参-〇参-壱拾伍`, 29 fullwidth `２０２３-０３-１５`, 30 `二○二三-○三-十五`, 31 `贰零贰叁-零叁-壹拾伍`. Plain numbers are positional (27 `一二三四五六七.八九`, 28 `壱弐参四伍六七.八九`, 31 `壹贰叁肆伍陆柒.捌玖`).
-- Not implemented: `resolve_lcid` returns `Silent` for any N (TODO(T-3467) there). The probe cells are known failures in the baseline; the implementation is filed as a follow-up task.
+- The byte N changes the digits of the probed date fields (`yyyy`, `mm`, `dd`, `e`) and of plain numbers (the grouping `,` and decimal `.` stay ASCII); `mmmm` is untouched. Weekday, time fields and AM/PM are unprobed. With N = 0, 1 or 20-26 the LCID still applies: `[$-1000411]` prints the `5` and `3月` of ja-JP (B column), so a numeral byte must not drop the LCID's names or era. N = 0, 1 and 20-26 print ASCII digits.
+- Positional digit sets: 2 Arabic-Indic, 3 Persian, 4 Devanagari, 5 Bengali, 6 Gurmukhi, 7 Gujarati, 8 Odia, 9 Tamil, 10 Telugu, 11 Kannada, 12 Malayalam, 13 Thai, 14 Lao, 15 Tibetan, 16 Myanmar, 17 Ethiopic, 18 Khmer, 19 Mongolian. Tamil (9) and Ethiopic (17) have no zero digit, so a zero stays ASCII `0` (N=9: `௨0௨௩-0௩-௧௫`); column D confirms it in plain numbers (N=9 `௧,0௨0,௩0௪.0௫`, N=17 `፩,0፪0,፫0፬.0፭`).
+- 27-31 are CJK numerals. Date: 27 `二〇二三-〇三-十五` (positional year, day with 十), 28 `弐〇弐参-〇参-壱拾伍`, 29 fullwidth `２０２３-０３-１５`, 30 `二○二三-○三-十五`, 31 `贰零贰叁-零叁-壹拾伍`. Plain numbers are positional (D, N=27 `一,〇二〇,三〇四.〇五`, N=28 `壱,〇弐〇,参〇四.〇伍`, N=31 `壹,零贰零,叁零肆.零伍`; C, 27 `一二三四五六七.八九`, 28 `壱弐参四伍六七.八九`, 31 `壹贰叁肆伍陆柒.捌玖`).
+- Not implemented: `resolve_lcid` returns `Silent` for any N (TODO(T-3467) there). The probe cells are known failures in the baseline; the implementation is filed as T-3467.
 
-Tasks: T-1859, T-1613, T-1922, T-1923, T-1924, T-1925, T-2759
+**Unrelated quirk the probe found (column C).** `TEXT(1234567.89,"[$-409]0.00|#,##0")` is "1234567.89|0": with a `#,##0` run after the decimal point and a literal, the integer part gets no thousands grouping and the trailing run prints just `0`. We print "1,234,567.89|0". This is why C1 fails with no numeral byte (probes/t1925-numeral-digits C1, C2, C21-C27); filed as a follow-up task.
+
+Status: VERIFIED (excel-graph)
+Implemented in: not implemented (T-3467)
+
+
+Tasks: T-1859, T-1613, T-1922, T-1923, T-1924, T-1925, T-2759, T-3467
 
 ## Displayed text (`Range.text`) of a formatted cell (T-1610)
 Rule: excel-graph's `Range.text` is the cell's value under its number format, and it does not
