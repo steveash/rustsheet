@@ -29,12 +29,12 @@ for the exponent; for shape 50 at y / a below 1/100 (t2753 A46-A48), a third bra
 be needed first (`excel-probe` skill). Decision 0056: this is attempt 2 of the small-shape fit; record each candidate.
 
 Cells (from T-2638; run `make eval-show CASE=...` for the values):
-- gen-m9/05d44f6dd6cfc567 Calc!A178, 3a25a03eb94fcfbd A158 `CHIDIST(100,4)`, bbdfc06cae0e0d71 A125 `CHIDIST(100,5)`,
-  f34f66fb7f81e673 A3 `CHIDIST(Data!A2,8)`, 4bad303d32cc3f46 A293 and 984cba67bbe6972b A49 `CHISQ.DIST(1E-10,8,...)`,
-  984cba67bbe6972b A42 `CHISQ.DIST(37.5,6,FALSE)`, A140, A217, 68d8ffb69ff739d8 A341, a54c738c697617c3 A212,
-  a7bf0d8d81d33ba6 A152, and 0a614cfe974b59c3 A178 (`CHISQ.DIST(AGGREGATE(...),...)`, 3 ulp off before T-2638 and
+- gen-m9/05d44f6dd6cfc567 Calc!A178, gen-m9/3a25a03eb94fcfbd A158 `CHIDIST(100,4)`, gen-m9/bbdfc06cae0e0d71 A125 `CHIDIST(100,5)`,
+  gen-m9/f34f66fb7f81e673 A3 `CHIDIST(Data!A2,8)`, gen-m9/4bad303d32cc3f46 A293 and gen-m9/984cba67bbe6972b A49 `CHISQ.DIST(1E-10,8,...)`,
+  gen-m9/984cba67bbe6972b A42 `CHISQ.DIST(37.5,6,FALSE)`, A140, A217, gen-m9/68d8ffb69ff739d8 A341, gen-m9/a54c738c697617c3 A212,
+  gen-m9/a7bf0d8d81d33ba6 A152, and gen-m9/0a614cfe974b59c3 A178 (`CHISQ.DIST(AGGREGATE(...),...)`, 3 ulp off before T-2638 and
   4 after).
-- CHIINV: gen-m9/285d87cea1aaa73c A261 and 4ab2ba98d26c8a5e A85 `CHIINV(0.975,5)`; 73f053591a54bc43 A108 (MOD of
+- CHIINV: gen-m9/285d87cea1aaa73c A261 and gen-m9/4ab2ba98d26c8a5e A85 `CHIINV(0.975,5)`; gen-m9/73f053591a54bc43 A108 (MOD of
   `CHISQ.INV.RT(0.975,5)`).
 - Type mismatches T-2638 owned by the decision-0159 rule (other causes may own them; check first):
   gen-m9/2801c1c11c21e134 A241, 40425341c5034eed A265, 4e55500bb8ad3cd8 A341, 7bd219ec0c0c5e22 A239,
