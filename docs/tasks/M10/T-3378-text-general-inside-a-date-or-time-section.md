@@ -3,7 +3,7 @@ id: T-3378
 title: "TEXT: General inside a date or time section prints the half-second rounding offset (TEXT(5,\"d General\") is \"5 0.5\")"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
