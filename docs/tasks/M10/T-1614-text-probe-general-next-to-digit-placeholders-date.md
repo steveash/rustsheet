@@ -3,7 +3,7 @@ id: T-1614
 title: "TEXT: probe General next to digit placeholders, date tokens, % and a second General"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
