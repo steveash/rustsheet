@@ -33,7 +33,7 @@ invariants in a doc comment on the validator, so the fuzz target (T-2895) finds 
 - [x] One test per other invariant checked (a dangling font, fill, border, shared-string, sheet index...).
 - [x] Every workbook the engine writes or imports still loads: the xlsx/icalc round-trip tests, the xlsx test corpus
       (crates/rustsheet-xlsx/tests) and the eval suites are unchanged.
-- [x] Decoded counts and dimensions past the grid limits are refused before anything is allocated from them.
+- [x] Decoded counts and dimensions past the grid limits are refused before the model is built from them (decoding itself allocates what the bytes encode, bounded by the input size; see the Outcome note).
 - [x] The check is linear in the workbook's size.
 - [x] `make check` green; reviewers approve.
 

@@ -90,7 +90,7 @@ Excel: desktop Excel offers to repair a corrupt file and Excel for the web refus
 does with these particular indices is not probed. Without the check the model panicked later (T-2882:
 style 9999 at the next edit, formula index 77 with no shared formula at the next evaluation).
 Evidence: none for Excel; this is the no-panic rule (CLAUDE.md directive 5), not an Excel observation.
-Status: DEVIATION (decision 0014); what Excel does with these indices is UNVERIFIED (probe pending: an
+Status: DEVIATION (decision 0014); what Excel does with these indices is UNVERIFIED (probe pending, T-3405: an
 xlsx with a dangling `s=` and one with a `fontId` past `<fonts>`, on excel-graph)
 Implemented in: crates/rustsheet-engine/src/workbook_check.rs (`check_indices`),
 crates/rustsheet-engine/src/sheet_data.rs (`SheetData::check_layout`)

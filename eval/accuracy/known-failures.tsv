@@ -1,0 +1,4 @@
+# Gate A known failures (SPEC-0029 "The check" step 4): a failing point carried until its owner
+# task lands, one per line, tab-separated:
+#   <point id accuracy/<FUNCTION>/<batch>!Calc!A<n>>	<owner task T-NNNN>	<note>
+# A listed point that passes, or that no table holds, is a stale line and fails the check.
