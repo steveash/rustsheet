@@ -34,7 +34,7 @@ literals to 15 significant digits (T-3146's caution); at x near 40 one band is a
 literals resolve it.
 
 ## Acceptance criteria
-- [ ] A spec case `probes-numeric/t3329-chisq-inv-rt-df1-tiny-p`, oracle-filled (excel-graph), no pending cells,
+- [ ] A spec case `probes-numeric/t3339-chisq-inv-rt-df1-tiny-p`, oracle-filled (excel-graph), no pending cells,
       about 300 literal cells:
   - `CHISQ.INV.RT(p,1)` and `CHIINV(p,1)` for p = m E-k, k = 4 to 16, m in 1, 1.5, 2, 3, 5, 7;
   - `CHISQ.INV(q,1)` with q the literal 1 - p for k = 4 to 14 (`0.999999999` for 1E-9), to check whether
