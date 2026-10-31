@@ -1,5 +1,5 @@
 ---
-id: T-3370
+id: T-3378
 title: "Probe the unprobed kana and width collation choices of T-3321"
 milestone: M2
 lane: research
@@ -24,6 +24,11 @@ each one is either confirmed or filed as a fix task.
   `COUNTIF(r,"*ー*")`, `MATCH("aー*",r,0)`, `XMATCH("aー*",r,2)` over `"aa"`, `"aー"`, `"々木"`):
   the engine keeps the plain case fold there (only literal exact MATCH/VLOOKUP/HLOOKUP use
   `collation::fold_exact_lookup`).
+- Exact MATCH's mark fold (`collation::fold_exact_lookup`) generalizes the two probed cases
+  (`MATCH("aー")` finds `"aa"`, a lone iteration mark finds `"ー"`): `ー` after any non-kana
+  letter or digit, a leading mark in a longer text, and the fold on stored values too. Probe e.g.
+  `MATCH("1ー",{"11"},0)`, `MATCH("αー",{"αα"},0)`, `MATCH("aa",{"aー","aa"},0)`,
+  `MATCH("ゝa",{"ーa"},0)`.
 - Code: crates/rustsheet-engine/src/functions/util/collation.rs (`resolve`, `kana`,
   `fold_exact_lookup`).
 
@@ -34,4 +39,4 @@ each one is either confirmed or filed as a fix task.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Implementing fixes beyond trivial ones: file engine tasks for mismatches.

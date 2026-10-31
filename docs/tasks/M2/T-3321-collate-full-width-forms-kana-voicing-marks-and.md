@@ -55,4 +55,4 @@ the letter before them, and `ー` after a non-kana letter loses that letter at t
 of Excel's pairwise comparison, which reproduces the non-transitive `"aー"` cells (matched, not left
 as known failures). Exact MATCH's fold for a lookup value without wildcards (`fold_exact_lookup`) equates `"aー"`
 with `"aa"` and a leading iteration mark with `ー`; wildcards and criteria keep the plain fold. Eval: probes known failures 2792 -> 2262 (530 fixed: every cell of both
-T-3275 cases), 0 regressions. Rules and the unprobed engine choices: coercion.md (T-3275 section); follow-up probe: T-3370.
+T-3275 cases), 0 regressions. Rules and the unprobed engine choices: coercion.md (T-3275 section); follow-up probe: T-3378.
