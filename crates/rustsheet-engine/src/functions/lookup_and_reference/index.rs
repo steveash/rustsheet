@@ -282,6 +282,15 @@ impl Model {
             // and-array-constant-at H1, T-1643), `INDEX(XMATCH(2,{1,2,3}),1,1)` 2 and `INDEX(5,2)`
             // `#REF!` (probes/lookup-argument-modes, m7-argument-modes, index-literal-scalar; T-1645).
             PickedReference::Node(reference) => {
+                if args
+                    .first()
+                    .is_some_and(|first| std::ptr::eq(reference, first))
+                {
+                    if let Some(value) = self.index_tailed(reference, numbers, two_arg, cell, form)
+                    {
+                        return value;
+                    }
+                }
                 scalar_as_one_element_array(self.index_source(reference, cell), cell)
             }
             PickedReference::Read(read) => scalar_as_one_element_array(read, cell),
@@ -312,6 +321,43 @@ impl Model {
             Some((edge, args)) => self.take_drop_reference(args, cell, edge, true),
             None => self.evaluate_reference_arg(reference, cell),
         }
+    }
+
+    /// INDEX with scalar indices into a tailed argument (SPEC-0020 Amendment 2, section 3; T-3222):
+    /// `INDEX(VLOOKUP(Keys!A:A,..),1000)` picks its element from the head or the tail
+    /// ([`Tailed::element_at`](crate::tailed_array::Tailed::element_at)) without building the
+    /// 1,048,576-row array. Only for `area_num` 1 and one column picked, `column_num` 1 or absent:
+    /// the one-row selection of a column (the two-argument form, a 1x1 array) or its one cell (a
+    /// value), converted by [`index_from_array`] as an element of the whole array is. `None` for
+    /// any other index, or an argument that is not tailed, which INDEX then reads the ordinary way.
+    fn index_tailed(
+        &mut self,
+        reference: &Node,
+        numbers: IndexNumbers,
+        two_arg: bool,
+        cell: CellReferenceIndex,
+        form: IndexForm,
+    ) -> Option<CalcResult> {
+        // The array has more than one row, so the two-argument form picks a whole row (column 0).
+        let column = if two_arg { 0 } else { numbers.col };
+        if numbers.area != 1.0 || numbers.row == 0 || !(two_arg || column == 1) {
+            return None;
+        }
+        let element = self
+            .read_tailed(reference, cell, |model| {
+                model.evaluate_reference_arg(reference, cell)
+            })?
+            .element_at(numbers.row)?;
+        let top_left = form == IndexForm::TopLeft;
+        let budget = &mut self.nested_budget;
+        Some(index_from_array(
+            &[vec![element]],
+            1,
+            column,
+            top_left,
+            budget,
+            cell,
+        ))
     }
 
     /// INDEX's `row_num`, `column_num` and `area_num` (`args[1..]`), evaluated and validated, or
