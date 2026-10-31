@@ -3541,8 +3541,15 @@ p from 1.38E-300 to 1.73E-110 and df from 2490 up (42 points, A211-A300; `T.INV.
 100.83724584548176 in Excel, exact 33.047211122914894): the tiny-p pattern of "MATH-OVER-EXCEL" case 1, which lists
 T.INV only and from p 1E-150; whether it extends to T.INV.2T needs an owner ruling (T-3386).
 Ours: the centre crossing of `student_t_centre` (T-2724), within about 5E-16 of the exact value.
+Below 15 digits Excel is not correctly rounded there (gap triage 2026-10-31c, mpmath at 60 digits from the double p):
+on the 34 df >= 2 cells of probes/t3349-t-inv-2t-near-one that are not bit-exact, Excel is 5 to 24 ulp off the exact
+quantile on 16 and 0 to 4 ulp off on the other 18, while the engine is within 3 ulp on all of them. Excel's error grows
+as c = |1 - p| shrinks: A1 `T.INV.2T(0.999999999989522,2)` +5 ulp, A15 `T.INV.2T(0.999999999999999,2)` +22,
+A25 the same p at df 30 +24, A42 `T.INV(0.500000000001,2)` -11. A5 `CONFIDENCE.T(0.999999999989522,1,3)` is A1's
+value over SQRT(3) to the bit (Excel's A1 over SQRT(3) gives Excel's A5), so its visibly-off 15th digit comes from
+those T.INV.2T digits alone. Which quantity Excel's centre solves for is open (T-3421).
 Status: VERIFIED (excel-graph)
-Tasks: T-3349, T-2724, T-2858
+Tasks: T-3349, T-2724, T-2858, T-3421
 
 ## Inverse CDF functions at a tiny or near-1 probability (T-1543)
 Rule: NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and BETA.INV return a value (or `#NUM!`) for p from 1E-300 to 1-1E-16; none panics or hangs in Excel.

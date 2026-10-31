@@ -71,6 +71,12 @@ off are 68, for example gen-m9/5389dd4d5b5739d2 A299 `TINV(1-1E-10,1)`: Excel 1.
 - probes-numeric/t1048-tinv.case.json (2): A5, B5
 - probes-numeric/t1531-t-tiny-p.case.json (37): A1, A2, A3, A4, A6, A7, A10-A21, A25-A28, A30, A31, A34, A35, A37,
   A38, A40, A41, A43, A44, A121, A123, A125, A127, A129
+- probes/t3349-t-inv-2t-near-one.case.json (6): Calc!A3, A6, A7, A8, A9, A10
+
+The t3349-t-inv-2t-near-one cells (excel-graph, 2026-10-31) were added by the 2026-10-31c gap triage: T-3349's
+Outcome gives them to this task (the df 1 cells of its probe; `T.INV.2T(0.999999999999999,1)` is Excel
+1.6155696572206502E-15, ours 1.569540824103884E-15), but no open task listed them. They are visibly off and gated
+(eval/baseline/probes.txt). The df 2 and up cells of the same probe are T-3421's.
 
 These cells are part of T-0967's scope, which waits on T-0969 (blocked, time-boxed); this split needs no new CDF.
 
@@ -80,6 +86,8 @@ T-2724 (the centre); they are this task's, and T-2724 no longer lists them.
 ## Acceptance criteria
 - [ ] The 30 gated known-failure lines above (18 gen-m9, 12 ironcalc-calc) disappear from eval/baseline/gen-m9.txt and
       eval/baseline/ironcalc-calc.txt (`make eval-baseline`), with no new known-failure line in any baseline.
+- [ ] The 6 probes/t3349-t-inv-2t-near-one known-failure lines above (Calc!A3, A6-A10) disappear from
+      eval/baseline/probes.txt, with no new known-failure line.
 - [ ] The 82 probes-numeric cells above pass in `make eval` (ungated suite; name any that do not in the Outcome).
 - [ ] Unit tests in t_dist.rs for `T.INV.2T(0.5,1)` = 1, `T.INV.2T(1.5,1)` = -1, `TINV(1-1E-10,1)` =
       1.570797438519081e-10, `TINV(1+2^-52,1)` = -5.053466325954936e-16, `T.INV(1E-16,1)` = -3183098861837907,
