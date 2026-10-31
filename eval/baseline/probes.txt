@@ -392,6 +392,7 @@ C	probes/eng-base-conv-blank.case.json	46
 C	probes/eng-besselk-underflow-bit-shift.case.json	276
 C	probes/eng-complex-overflow.case.json	21
 C	probes/eng-convert-boolean-unit.case.json	34
+C	probes/eng-dec2base-empty-text.case.json	19
 C	probes/eng-first-vs-second-error.case.json	44
 C	probes/eng-gen-sample-edges.case.json	89
 C	probes/eng-im-large-part.case.json	36
