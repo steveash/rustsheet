@@ -3,7 +3,7 @@ id: T-3345
 title: "merge_lock wait survives transient errors instead of exiting 2"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
@@ -59,7 +59,7 @@ queue is full on first join, retries `GitError`s until its timeout, and retries 
 raising only after `UNREADABLE_POLLS` (5) in a row. `GIT_FAILURES` is gone. Tests cover each case and
 that the waiter keeps its queue place. No eval delta (harness script).
 
-## Handoff
+## Handoff (resumed)
 The implementation is finished and passes `make check` locally. Security, architecture and quality
 all APPROVE head 6e6a75a (verdict records posted on PR #2513). CI `hygiene` fails on
 `scripts/check_governance.py`: `scripts/merge_lock.py` and `scripts/test_merge_lock.py` are
