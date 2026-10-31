@@ -22,11 +22,11 @@ use crate::types::{Cell, Styles, Workbook, Worksheet};
 ///   by the row number); every cell's style (`style_is_quote_prefix`); a formula's index into the
 ///   sheet's shared formulas (evaluation indexes the parsed formulas by it); an array formula's
 ///   spill range and a spill cell's anchor within the grid (`anchor + height` and
-///   `anchor + width` are computed in `i32`, actions.rs);
+///   `anchor + width` are computed in `i32`, `actions.rs`);
 /// - row records within the grid with a style in range, and column records a range within the
 ///   grid with a style in range (a row or column style becomes a new cell's style, and row and
 ///   column inserts shift the records by `+ count` in `i32`); merged ranges at least one cell and
-///   within the grid (merged_cells.rs walks `row..row + height`).
+///   within the grid (`merged_cells.rs` walks `row..row + height`).
 ///
 /// Indices read through a checked lookup that tolerates a dangling value are not checked, so a
 /// workbook that loads today keeps loading: a shared-string index (it reads as empty text), a
