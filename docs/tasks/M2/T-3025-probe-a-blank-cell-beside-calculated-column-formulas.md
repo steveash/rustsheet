@@ -3,7 +3,7 @@ id: T-3025
 title: "Probe a blank cell beside calculated-column formulas (T-2983 follow-up)"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
