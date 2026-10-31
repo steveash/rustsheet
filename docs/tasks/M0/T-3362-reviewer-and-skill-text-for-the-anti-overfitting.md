@@ -3,7 +3,7 @@ id: T-3362
 title: "Reviewer and skill text for the anti-overfitting guards: hold-out counts, Gate A envelope, fresh sweep, reproducibility floor (decision 0188 R4)"
 milestone: M0
 lane: quality
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
