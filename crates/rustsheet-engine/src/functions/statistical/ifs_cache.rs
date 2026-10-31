@@ -90,7 +90,7 @@ const MAX_PARENTS: usize = 16;
 const INDEX_AFTER_MISSES: u32 = 2;
 
 /// A block of one sheet: sheet, top row, left column, bottom row, right column.
-type RectKey = (u32, i32, i32, i32, i32);
+pub(crate) type RectKey = (u32, i32, i32, i32, i32);
 
 /// A criterion, as `build_criteria` reads it: two equal keys build the same predicate.
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -180,7 +180,7 @@ enum IndexState {
 
 /// The cells of a block read from a cached range: `values[offset..offset + len]`, where the
 /// cached range is `rect`.
-pub(super) struct RangeView {
+pub(crate) struct RangeView {
     rect: RectKey,
     values: Arc<[CalcResult]>,
     offset: usize,
@@ -189,7 +189,7 @@ pub(super) struct RangeView {
 
 impl RangeView {
     /// The block's `index`-th value, row by row.
-    pub(super) fn get(&self, index: usize) -> Option<&CalcResult> {
+    pub(crate) fn get(&self, index: usize) -> Option<&CalcResult> {
         if index < self.len {
             self.values.get(self.offset + index)
         } else {
@@ -364,7 +364,7 @@ impl Model {
     /// The values of `rect` row by row, when they can be read without evaluating anything (module
     /// docs), from a cached range that holds it when there is one; `None` when the caller must
     /// walk.
-    fn ifs_range_values(&mut self, rect: RectKey) -> Option<RangeView> {
+    pub(crate) fn ifs_range_values(&mut self, rect: RectKey) -> Option<RangeView> {
         if !self.pass_cache_safe() {
             return None;
         }

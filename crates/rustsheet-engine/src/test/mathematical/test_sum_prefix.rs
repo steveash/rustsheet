@@ -4,94 +4,20 @@
 //! the bit, the first error, the same circular marks and the same work charged, under iteration
 //! too.
 
-use crate::expressions::types::CellReferenceIndex;
-use crate::expressions::utils::{column_to_number, number_to_column};
-use crate::test::util::new_empty_model;
-use crate::types::Iteration;
+use crate::expressions::utils::number_to_column;
+use crate::test::pass_cache_runs::{cell, Runs};
 use crate::Model;
 
-/// Each cell's stored value and circular mark, and the work units the last recalculation spent, after `cells` are set and evaluated (then
-/// `edits` set and evaluated again), with the pass caches on and off; and the states the cached
-/// run kept in its last pass.
-fn cached_and_walked(
-    cells: &[(String, String)],
-    edits: &[(String, String)],
-    iterate: bool,
-) -> (Vec<(String, String, String)>, usize) {
-    let run = |no_pass_caches: bool| {
-        let mut model = new_empty_model();
-        if iterate {
-            model.workbook.settings.iteration = Some(Iteration {
-                max_iterations: 20,
-                max_change: 0.001,
-            });
-        }
-        model.evaluation.no_pass_caches = no_pass_caches;
-        for (cell, value) in cells {
-            model._set(cell, value);
-        }
-        model.evaluate();
-        for (cell, value) in edits {
-            model._set(cell, value);
-        }
-        if !edits.is_empty() {
-            model.evaluate();
-        }
-        let mut values: Vec<String> = cells.iter().map(|(cell, _)| state(&model, cell)).collect();
-        // The work charged: the cached path charges the range node as the walk does.
-        let spent = model
-            .evaluation
-            .last_recalc
-            .as_ref()
-            .map(|last| last.spent());
-        values.push(format!("spent {spent:?}"));
-        (values, model.evaluation.sum_prefixes.kept())
-    };
-    let (cached, kept) = run(false);
-    let (walked, _) = run(true);
-    let names = cells
-        .iter()
-        .map(|(cell, _)| cell.clone())
-        .chain(["(work)".to_string()]);
-    (
-        names
-            .zip(cached.into_iter().zip(walked))
-            .map(|(cell, (cached, walked))| (cell, cached, walked))
-            .collect(),
-        kept,
-    )
+/// The states the cached run kept in its last pass.
+fn kept(model: &Model) -> usize {
+    model.evaluation.sum_prefixes.kept()
 }
 
-/// The stored value of Sheet1's `cell`, exactly, and whether it is marked circular.
-fn state(model: &Model, cell: &str) -> String {
-    let split = cell.find(|c: char| c.is_ascii_digit()).unwrap();
-    let at = CellReferenceIndex {
-        sheet: 0,
-        row: cell[split..].parse().unwrap(),
-        column: column_to_number(&cell[..split]).unwrap(),
-    };
-    let circular = model
-        .evaluation
-        .circular
-        .contains(&crate::evaluation::key(at));
-    format!(
-        "{:?} {} circular={circular}",
-        model._get_cell(cell),
-        model._get_text(cell)
-    )
-}
-
-/// Asserts the cached and walked runs agree everywhere; returns the states kept.
+/// [`crate::test::pass_cache_runs::assert_alike`], counting the states kept.
 fn assert_alike(cells: &[(String, String)], edits: &[(String, String)], iterate: bool) -> usize {
-    let (results, kept) = cached_and_walked(cells, edits, iterate);
-    for (cell, cached, walked) in &results {
-        assert_eq!(cached, walked, "{cell}");
-    }
-    kept
-}
-
-fn cell(name: String, value: &str) -> (String, String) {
-    (name, value.to_string())
+    let Runs { cached, .. } =
+        crate::test::pass_cache_runs::assert_alike(cells, edits, iterate, &kept);
+    cached
 }
 
 /// What column A holds at `row`: numbers that cancel to near zero, text, booleans, numeric text,
