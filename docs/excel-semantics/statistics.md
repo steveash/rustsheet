@@ -3127,6 +3127,12 @@ have no neighbour above. The crossing holds at 155 of the 188:
   BETA.DIST(0.5,10,10,TRUE) is 0.5000000000000002. This suggests a tolerance stop, but it is not
   established.
 - Recomputing BETA.INV from constant inputs reproduces x at all 188 rows.
+- Against a 50-digit root (mpmath, gap triage 2026-10-31) Excel is within about 1E-15 relative at the flat rows,
+  where its cdf cannot resolve x: `BETA.INV(1E-10,1,1)` = 9.999999999999996E-11 (m9-beta-inv A43, row 41), 4E-16
+  below the uniform quantile 1E-10, and `BETA.INV(1E-10,0.5,1)` = 9.999999999999992E-21 (A8, row 7), -8E-16. So the
+  flat-row values are not arbitrary points of a flat band; they look like a start that the steps cannot move. At the
+  off-crossing rows Excel is the inaccurate side: `BETA.INV(0.05,2.5,100)` (A101, row 98) is 1.3E-14 above the root.
+  Both stay far inside 1E-9 of the math (decision 0188 Gate A). Tasks: T-3387 (sweep), T-3388 (fit).
 Consequence: BETA.INV parity follows BETA.DIST parity (T-1744) plus a solver that usually
 converges to the crossing.
 
