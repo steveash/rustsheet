@@ -24,14 +24,15 @@ accuracy stage.
   financial/financial_util.rs (the secant, the far-root bound and `irr_fallback`, a Newton run from v = 0 fitted in
   T-2727). Find which stop or bound refuses the root: near r = 0 the NPV's slope and value are both small, and near
   r = -10% the discount factors grow.
-- Related: T-2131 (IRR's returned iterate to 15 digits), T-2928 (blocked: the fallback's digits), T-3246 (a calipers
+- Related: T-2131 (IRR's returned iterate to 15 digits), T-2928 (blocked: the fallback's digits), T-2927 (done: the
+  fallback-path sweep), T-3205 (done: secant-in-d residues), T-3246 (a calipers
   ulp regression). This task is about the `#NUM!`, not their last digits; name any of their cells this fix moves in
   the Outcome.
 - The IRR fallback is one of the fitted pieces of decision 0188's code audit: if the fix changes it, tag it per R4.3
   (T-3361) and keep it inside its measured range.
 
 ## Acceptance criteria
-- [ ] Conventional series with an IRR between 1e-5 and 3e-4, and near -10%, return Excel's value, not `#NUM!`.
+- [ ] Conventional series with an IRR between 1e-5 and 3e-4, and near -10%, match Excel's result (number or error, within 15 significant digits for a number) on the oracle-filled cells.
 - [ ] A new public probe case under eval/suites/probes/cases/ (one milestone tag, M9; decision 0057), filled by the
       oracle (excel-graph), reproduces the bug; its cells are listed in this file before the fix. Include the inputs in
       Context and points on both sides of the failing region.
@@ -43,7 +44,7 @@ accuracy stage.
       points drawn log-uniform over the function's valid domain and stratified around the failing region, scored
       against a 50-digit mpmath reference. The Outcome reports, per stratum, the points within 15 digits of Excel and
       the points within 1e-9 relative of the math (absolute 1e-300 near 0): 0 points outside both, and 0 cells where
-      one side is an error and the other a number.
+      one side is an error and the other a number. This is a floor only: the target stays Excel's value.
 - [ ] The rule (what Excel does, what was wrong) is in docs/excel-semantics/ in the same PR.
 - [ ] `make check` green; reviewers approve.
 

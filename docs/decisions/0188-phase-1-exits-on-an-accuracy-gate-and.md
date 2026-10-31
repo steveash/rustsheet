@@ -43,9 +43,11 @@
     6. XIRR on two-flow series over long spans is off about 1e-8 to 1e-7 where Excel is close.
     7. F.DIST at x ≈ 1e-12 with d2 ≈ 7.8e6 is off 5e-4.
   - **Where Excel itself is far from the math** (the engine matches Excel bit for bit unless noted):
-    - T.INV, F.INV, BETA.INV and CHISQ.INV.RT deep left tails (p < 1e-150, df ≥ 1e6): Excel is grossly wrong, e.g.
-      `T.INV(1.87E-297,3937)` is −156.96 in Excel and −40.26 in truth. The engine already returns the true value.
-    - NPER at rates below 1e-14: up to 4% off. GAMMA.INV at a huge shape: about 2.7e-4 off.
+    - T.INV, F.INV, BETA.INV and CHISQ.INV.RT at tiny p (p < 1e-150; for CHISQ.INV.RT a tiny p is the right tail):
+      Excel is grossly wrong, e.g. `T.INV(1.87E-297,3937)` is −156.96 in Excel and −40.26 in truth. The assessment
+      reports the engine returns the true value there; that is evidence T-3358 owes as committed points.
+    - NPER at rates 0 < rate < 1e-14: up to 4% off. GAMMA.INV at a huge shape, on its Wilson–Hilferty closed-form
+      branch: about 2.7e-4 off.
     - BESSELJ: about 1e-7 typical, 1.8e-5 at most. XIRR: about 1e-8 (solver tolerance). RATE with 1–2 periods: about
       1e-2 at rates near 1e-8. WEIBULL.DIST pdf underflow; DURATION negative for very short bonds under basis 2 and 3.
   - **Code-audit risks.**
@@ -91,14 +93,29 @@
   - **R3. Excel versus math.**
     - Prime directive 1 still holds: match Excel, its inaccuracy included, except where Excel's relative error against
       50-digit math exceeds **G = 1e-4** on evidenced points. There the engine follows the math.
-    - Each such case is a `MATH-OVER-EXCEL` entry in docs/excel-semantics/ with its evidence, and is listed here. A
-      new case needs a decision record that adds it to this list (eval evidence, the region, Excel's and the math's
-      values); the steward does not add cases on its own.
+    - R3 never overrides directive 5: the math path honours the same resource, recursion and iteration caps as every
+      other path, and may not panic or allocate without bound.
+    - Each such case is a `MATH-OVER-EXCEL` entry in docs/excel-semantics/ with its evidence and a bounded region, and
+      is listed here. A new case needs a decision record **carrying an owner ruling** (the owner sets directive 1;
+      decision 0052's last consequence), with the eval evidence, the region and Excel's and the math's values; no
+      agent, steward included, adds a case on its own.
+    - An engine change that follows the math in a region lands only after the region's evidence points and bounds are
+      committed (T-3358, T-3364, T-3367).
     - Initial cases (statistics.md and financial.md, "MATH-OVER-EXCEL" entries):
-      1. the deep-left-tail quantiles of T.INV, F.INV, BETA.INV and CHISQ.INV.RT with p < 1e-150 and df ≥ 1e6
-         (`T.INV(1.87E-297,3937)`: Excel −156.96, math −40.26);
-      2. NPER at rates below 1e-14 (Excel up to 4% off);
-      3. GAMMA.INV at a huge shape (Excel about 2.7e-4 off).
+      1. **Tiny-p quantiles**, per function and parameter: T.INV(p, df) at p < 1e-150 (left tail); F.INV(p, d1, d2) at
+         p < 1e-150 (left tail); BETA.INV(p, alpha, beta) at p < 1e-150 (left tail); CHISQ.INV.RT(p, df) at
+         p < 1e-150 (the right tail). The parameter bounds (df; d1 and d2; alpha and beta) are not yet evidenced: the
+         assessment's "df ≥ 1e6" does not hold for its own example, `T.INV(1.87E-297,3937)` (Excel −156.96, math
+         −40.26, df 3937). Each function's exact region is fixed from T-3358's R3-marked points and amended into the
+         entry; until then the case covers only the cited point.
+      2. **NPER** at 0 < rate < 1e-14 (Excel up to 4% off), excluding rates where 1 + rate == 1, which are `#DIV/0!` in
+         Excel (financial.md, "NPER divides by ln(1+rate)") and stay so. Negative tiny rates are not covered.
+      3. **GAMMA.INV at a huge shape, the Wilson–Hilferty closed-form branch only**: where the gamma density at
+         Excel's start x0 is below the smallest normal double, Excel returns x0, about 1.000266 times the true quantile
+         (statistics.md "GAMMA.INV and CHISQ.INV at a huge shape"; probes/t3070-gamma-inv-band A110,
+         probes/t2982-gamma-inv-huge-shape A7–A23). The same branch serves GAMMAINV, CHISQ.INV, CHISQ.INV.RT and CHIINV at
+         shape df/2 (t3070 A304–A327, t2982 A92, A93), so they are in the case too. Its `#NUM!` and true-quantile
+         branches still match Excel.
     - Excel's merely imprecise results are still matched: BESSELJ (about 1e-7), XIRR (about 1e-8), CHISQ.INV.RT
       (about 5e-9), and every other case below G.
     - The other gaps the assessment names (RATE with 1–2 periods, the WEIBULL.DIST pdf underflow, DURATION negative for

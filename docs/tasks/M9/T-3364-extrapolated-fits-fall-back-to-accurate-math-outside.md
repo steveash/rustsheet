@@ -7,13 +7,14 @@ status: todo
 priority: P1
 size: M
 tier: opus
-depends_on: [T-3361]
+depends_on: [T-3355, T-3361]
 ---
 
 ## Goal
 The fitted pieces that are applied beyond the inputs they were measured on stop at their measured range and fall back to
-accurate math outside it (decision 0188 R4.3), and GAMMA.INV at a huge shape follows the math where Excel is more than
-G = 1e-4 off it (decision 0188 R3).
+accurate math outside it (decision 0188 R4.3), and GAMMA.INV, GAMMAINV, CHISQ.INV, CHISQ.INV.RT and CHIINV follow the math on
+the huge-shape Wilson-Hilferty closed-form branch, where Excel is about 2.7e-4 off (decision 0188 R3); their `#NUM!`
+and true-quantile branches keep matching Excel.
 
 ## Context
 - Owner's 2026-10-31 assessment (decision 0188, code audit): extrapolated fits.
@@ -29,10 +30,18 @@ G = 1e-4 off it (decision 0188 R3).
 ## Acceptance criteria
 - [ ] Each piece above applies only inside its recorded `FITTED` range; outside it the code computes the accurate value
       (an mpmath-checked unit test on each side of each boundary).
-- [ ] GAMMA.INV and CHISQ.INV at a huge shape return the math (within 1e-9 relative) where the `MATH-OVER-EXCEL` entry
-      says, and Excel's value elsewhere; the entry names the region and its evidence points.
+- [ ] On the closed-form branch (statistics.md's `MATH-OVER-EXCEL` entry; t3070 A110, t2982 A7-A23, t3070 A304-A327)
+      the five functions return the math within 1e-9 relative; the `#NUM!` and true-quantile branches keep Excel's
+      results.
 - [ ] A fresh log-uniform sweep over each affected function's domain (R4.2) shows the Gate A envelope (R2).
 - [ ] No gated cell regresses beyond decision 0083's allowance; cells moved to the math by R3 are listed in the Outcome.
+- [ ] Before any engine change follows the math, the region's evidence points (oracle-filled, with 50-digit math
+      values) and its bounds are committed and the `MATH-OVER-EXCEL` entry cites them; the engine change comes after,
+      in the same PR or a later one.
+- [ ] The math path keeps directive 5's caps (bounded iterations, no panic); decision 0188 R3 never overrides them.
+- [ ] R3 cells are marked as the Gate A spec (T-3355) says. Interim route until T-3359 lands: the cells that leave
+      Excel's value are listed in the Outcome, they still count as visibly off in the report, and their baseline
+      regression is recorded with a decision record citing decision 0188 R3.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

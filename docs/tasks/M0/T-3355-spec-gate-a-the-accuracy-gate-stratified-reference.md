@@ -44,7 +44,9 @@ more, if the design needs it).
   - the check in `make check`: which binary runs it, its runtime budget, its output (failing points with engine,
     Excel and math values), and how it fits the eval gate without hand-edited baselines;
   - how R3 points are marked and how a new R3 case is added (a decision record, decision 0188 R3);
-  - how a math reference is attached to an eval cell so the R1(c) probe rows and Gate B can read it (T-3359);
+  - how a math reference is attached to an eval cell so the R1(c) probe rows and Gate B can read it (T-3359),
+    including the existing probes-numeric sweep cells in bulk (for example an mpmath fill per sweep case keyed by its
+    formulas), so the R5-deferred sweep cells stop counting against the exit once they are within ε of the math;
   - how the tables join the R4 guards: a fresh log-uniform sweep (R4.2) is a table stratum, not a second format.
 - [ ] Implementation slices are filed or amended (T-3356 format and gate, T-3357 generator and fill, T-3358 the first
       tables), each size S or M, with the spec linked.

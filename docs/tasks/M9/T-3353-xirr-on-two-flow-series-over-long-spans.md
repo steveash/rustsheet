@@ -23,10 +23,16 @@ XIRR on two-flow series over long spans returns Excel's rate, which is close to 
   closed form (−v1/v0)^(365/days) − 1; check whether the engine's stopping tolerance or start leaves the iterate early.
 - Excel's XIRR is about 1e-8 off the math in places (solver tolerance; decision 0188 R3): below G, so Excel's value is
   the target where the two differ, and the closed form is a reference, not the answer.
+- Related: T-1583 and T-2328 (done) fitted XIRR's XNPV stop test and bound on long spans, and T-3287 (todo) probes the
+  negative-root stop over spans of several years. The long-span error may be Excel's own stop tolerance, which those
+  tasks reproduce: change the stop only against the new oracle cells, and keep what they reproduce.
 
 ## Acceptance criteria
-- [ ] Two-flow XIRR over spans of 1 to 100 years and rates from -0.9 to 10 is within 15 digits of Excel or within the
-      Gate A envelope.
+- [ ] Two-flow XIRR over spans of 1 to 100 years and rates from -0.9 to 10 matches Excel's value within 15
+      significant digits, with the right type and error, on the oracle-filled cells. The Gate A envelope below is only a
+      floor on the fresh sweep; Excel's value is the target where it differs from the math by less than G = 1e-4.
+- [ ] The Outcome separates engine error from reproduced Excel stop behaviour (cell by cell for the cells that move),
+      and says how this task and T-3287 split the cells.
 - [ ] A new public probe case under eval/suites/probes/cases/ (one milestone tag, M9; decision 0057), filled by the
       oracle (excel-graph), reproduces the bug; its cells are listed in this file before the fix. Include the inputs in
       Context and points on both sides of the failing region.
@@ -38,7 +44,7 @@ XIRR on two-flow series over long spans returns Excel's rate, which is close to 
       points drawn log-uniform over the function's valid domain and stratified around the failing region, scored
       against a 50-digit mpmath reference. The Outcome reports, per stratum, the points within 15 digits of Excel and
       the points within 1e-9 relative of the math (absolute 1e-300 near 0): 0 points outside both, and 0 cells where
-      one side is an error and the other a number.
+      one side is an error and the other a number. This is a floor only: the target stays Excel's value.
 - [ ] The rule (what Excel does, what was wrong) is in docs/excel-semantics/ in the same PR.
 - [ ] `make check` green; reviewers approve.
 

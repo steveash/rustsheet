@@ -26,8 +26,10 @@ the math, instead of 1e-9 to 1e-8 off today.
   is the gross loss at a large n; it does not chase last digits.
 
 ## Acceptance criteria
-- [ ] BINOM.DIST at n from 6e5 to 1e9 and NEGBINOM.DIST with failures from 1e5 to 1e9, pmf and cdf, are within
-      15 digits of Excel or within the Gate A envelope.
+- [ ] BINOM.DIST at n from 6e5 to 1e9 and NEGBINOM.DIST with failures from 1e5 to 1e9, pmf and cdf, match Excel's
+      value within 15 significant digits, with the right type and error, on the oracle-filled cells. The Gate A envelope
+      below is only a floor on the fresh sweep; where Excel differs from the math by less than G = 1e-4, Excel's value
+      is the target, never the math.
 - [ ] A new public probe case under eval/suites/probes/cases/ (one milestone tag, M9; decision 0057), filled by the
       oracle (excel-graph), reproduces the bug; its cells are listed in this file before the fix. Include the inputs in
       Context and points on both sides of the failing region.
@@ -39,7 +41,7 @@ the math, instead of 1e-9 to 1e-8 off today.
       points drawn log-uniform over the function's valid domain and stratified around the failing region, scored
       against a 50-digit mpmath reference. The Outcome reports, per stratum, the points within 15 digits of Excel and
       the points within 1e-9 relative of the math (absolute 1e-300 near 0): 0 points outside both, and 0 cells where
-      one side is an error and the other a number.
+      one side is an error and the other a number. This is a floor only: the target stays Excel's value.
 - [ ] The rule (what Excel does, what was wrong) is in docs/excel-semantics/ in the same PR.
 - [ ] `make check` green; reviewers approve.
 

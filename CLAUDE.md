@@ -14,7 +14,9 @@ same rounding, same quirks — including behavior Excel never documented. The pr
    allocation limits, no I/O, no panics): directive 5 wins over directive 1, and each such
    deviation gets a `DEVIATION` entry (see `docs/excel-semantics/README.md`, decision 0014).
    The only other one is decision 0188 R3: where Excel's relative error against 50-digit math
-   exceeds 1e-4 on evidenced points, follow the math, as a `MATH-OVER-EXCEL` entry it lists.
+   exceeds 1e-4 on evidenced points, follow the math, as a `MATH-OVER-EXCEL` entry it lists;
+   Excel's errors are still matched, directive 5's limits still apply, and a new case needs a
+   decision record carrying an owner ruling.
 2. **Never regress, never weaken gates.** `make check` must pass. Never hand-edit
    `eval/baseline/` or `quality/*.json`, and never commit `docs/tasks/BOARD.md` (generated,
    git-ignored); never add lint-debt entries, blanket `#[allow]`s, skipped/deleted tests, or

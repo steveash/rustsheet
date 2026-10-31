@@ -23,12 +23,15 @@ error of T.INV and T.INV.2T against the math (median 7.5e-15 and 1.5e-14, Excel 
 - Code: `fn_t_inv_2t`, `fn_tinv` in crates/rustsheet-engine/src/functions/statistical/t_dist.rs and the statrs
   inverse-beta port in inverse_beta.rs. Near p = 1 the two-tailed quantile is small, so solve on the centre directly
   (for example through the incomplete beta's complement in its small argument) instead of forming 1 − p/2.
-- Overlap: T-2724 (accuracy, todo) owns the existing visibly-off centre-quantile cells (62 cells in its file); this
-  task adds new probe cells and the fix. Whichever lands first re-triages the other in its Outcome. T-3363 replaces the
+- Overlap: T-2724 (accuracy, todo), T-2839 (T.INV.2T and TINV just above p = 1) and T-2858 (df 1) own existing
+  cells of these functions; T-2724 owns the existing visibly-off centre-quantile cells (62 cells in its file); this
+  task adds new probe cells and the fix. Whichever lands first re-triages the others (T-2724,
+  T-2839, T-2858) in its Outcome. T-3363 replaces the
   inverse algorithm as a whole; this task is the user-visible bug and goes first.
 
 ## Acceptance criteria
-- [ ] `T.INV.2T(0.999999999989522,2)` is within 15 digits of Excel's value (a unit test and a probe cell).
+- [ ] `T.INV.2T(0.999999999989522,2)` is within 15 digits of Excel's value (a unit test and a probe cell). When the
+      probe lands, record Excel's filled value for it in this file's Context and in statistics.md.
 - [ ] A new public probe case under eval/suites/probes/cases/ (one milestone tag, M9; decision 0057), filled by the
       oracle (excel-graph), reproduces the bug; its cells are listed in this file before the fix. Include the inputs in
       Context and points on both sides of the failing region.
@@ -40,7 +43,7 @@ error of T.INV and T.INV.2T against the math (median 7.5e-15 and 1.5e-14, Excel 
       points drawn log-uniform over the function's valid domain and stratified around the failing region, scored
       against a 50-digit mpmath reference. The Outcome reports, per stratum, the points within 15 digits of Excel and
       the points within 1e-9 relative of the math (absolute 1e-300 near 0): 0 points outside both, and 0 cells where
-      one side is an error and the other a number.
+      one side is an error and the other a number. This is a floor only: the target stays Excel's value.
 - [ ] The rule (what Excel does, what was wrong) is in docs/excel-semantics/ in the same PR.
 - [ ] `make check` green; reviewers approve.
 

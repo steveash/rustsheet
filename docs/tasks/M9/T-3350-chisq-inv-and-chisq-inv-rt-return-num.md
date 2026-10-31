@@ -24,11 +24,13 @@ engine returns `#NUM!` today.
   refuses the large shape.
 - Excel's CHISQ.INV.RT is about 5e-9 off the math in places (decision 0188 R3): that is below G, so Excel's value is
   still the target there.
-- Related open tasks: T-3294 (deep lower tail at shape 20 and above), T-3337 (df 1 right tail). Neither covers df ≥ 2e7.
+- Related: T-3294 (deep lower tail at shape 20 and above), T-3337 (df 1 right tail), T-3336 (its df 1 right-tail
+  sweep), T-2860 (done: the df 2 closed forms). Neither covers df ≥ 2e7.
 
 ## Acceptance criteria
 - [ ] CHISQ.INV and CHISQ.INV.RT at df from 2e7 to the documented limit (1e10) with p across (0,1), p near 1
-      included, return numbers within 15 digits of Excel or within the Gate A envelope.
+      included, match Excel's result (number or error, within 15 significant digits for a number) on the oracle-filled cells, with the right type and error. The Gate A envelope below is only a floor on the fresh sweep;
+      where Excel differs from the math by less than G = 1e-4, Excel's value is the target, never the math.
 - [ ] A new public probe case under eval/suites/probes/cases/ (one milestone tag, M9; decision 0057), filled by the
       oracle (excel-graph), reproduces the bug; its cells are listed in this file before the fix. Include the inputs in
       Context and points on both sides of the failing region.
@@ -40,7 +42,7 @@ engine returns `#NUM!` today.
       points drawn log-uniform over the function's valid domain and stratified around the failing region, scored
       against a 50-digit mpmath reference. The Outcome reports, per stratum, the points within 15 digits of Excel and
       the points within 1e-9 relative of the math (absolute 1e-300 near 0): 0 points outside both, and 0 cells where
-      one side is an error and the other a number.
+      one side is an error and the other a number. This is a floor only: the target stays Excel's value.
 - [ ] The rule (what Excel does, what was wrong) is in docs/excel-semantics/ in the same PR.
 - [ ] `make check` green; reviewers approve.
 

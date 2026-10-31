@@ -22,7 +22,8 @@ the answer is 1.0.
 - Code: `fn_beta_inv` in crates/rustsheet-engine/src/functions/statistical/beta.rs and inverse_beta.rs (the statrs
   port: Newton steps, step adjustments and their caps). The quantile rounds to 1 in doubles; the search must return it
   instead of failing.
-- Related: T-1871 (statrs saturation and panics), T-2511 (crossing of the ported CDF). Name any of their cells this
+- Related: T-1871 (statrs saturation and panics), T-2511 (crossing of the ported CDF), T-2555 (BETA.INV's early
+  Newton stop at a huge shape), T-2633 (BETA.INV chained on BETA.DIST). Name any of their cells this
   moves in the Outcome.
 
 ## Acceptance criteria
@@ -38,7 +39,7 @@ the answer is 1.0.
       points drawn log-uniform over the function's valid domain and stratified around the failing region, scored
       against a 50-digit mpmath reference. The Outcome reports, per stratum, the points within 15 digits of Excel and
       the points within 1e-9 relative of the math (absolute 1e-300 near 0): 0 points outside both, and 0 cells where
-      one side is an error and the other a number.
+      one side is an error and the other a number. This is a floor only: the target stays Excel's value.
 - [ ] The rule (what Excel does, what was wrong) is in docs/excel-semantics/ in the same PR.
 - [ ] `make check` green; reviewers approve.
 

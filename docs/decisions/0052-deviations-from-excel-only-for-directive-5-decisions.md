@@ -1,4 +1,4 @@
-# 0052 — Deviations from Excel only for directive 5; decisions 0033 and 0038 reopened
+# 0052 — Deviations from Excel only for directive 5; decisions 0033 and 0038 reopened (amended by 0188)
 
 - **Status:** accepted (2026-10-13, T-1030). Supersedes decision 0033 and decision 0038 as
   deviations, and states decision 0036's scope. Amended by decision 0188 (R3, item 1 below).

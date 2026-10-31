@@ -34,8 +34,9 @@ arbitrary, inconsistent or undocumented ones. RustSheet matches every entry exac
 - **Math over Excel** (decision 0188 R3, the owner's 2026-10-31 ruling) is the one other exception: where Excel's
   relative error against a 50-digit mpmath value exceeds G = 1e-4 on evidenced points, RustSheet returns the math.
   Each such region is an entry with `Status: MATH-OVER-EXCEL (decision 0188)`, giving the region, Excel's values,
-  the math values and the evidence points, and decision 0188 lists it; a new one needs a decision record. Excel's
-  merely imprecise results (below G) and Excel's errors are still matched.
+  the math values and the evidence points, and decision 0188 lists it; a new one needs a decision record carrying an
+  owner ruling. Excel's merely imprecise results (below G) and Excel's errors are still matched, and directive 5's
+  limits still apply on the math path.
 
 Numeric kernels (ERF, GAMMALN, distribution functions, EXP): before trying to match one to the bit, read
 `docs/research/excel-kernel-playbook.md`. It lists the patterns Excel's numeric code follows and the methods that

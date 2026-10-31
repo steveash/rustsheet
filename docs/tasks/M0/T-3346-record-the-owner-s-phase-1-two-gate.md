@@ -63,10 +63,10 @@ New tasks:
 | T-3361 | `FITTED(...)` tag and ratchet (R4.3) | quality | P1 | opus | – | – |
 | T-3362 | Reviewer and skill text (R4.2, R4.4, R4.5) | quality | P1 | opus | – | – |
 | T-3363 | Excel's t, F and chi-squared inverse | functions-stat | P1 | opus | visible | T-3360 |
-| T-3364 | Extrapolated fits fall back to math | functions-stat | P1 | opus | – | T-3361 |
+| T-3364 | Extrapolated fits fall back to math | functions-stat | P1 | opus | – | T-3355, T-3361 |
 | T-3365 | Re-validate tuned form selectors | quality | P2 | opus | – | T-3360, T-3361 |
 | T-3366 | POISSON.DIST and BINOM.DIST generalization | functions-stat | P1 | opus | – | – |
-| T-3367 | NPER below a rate of 1e-14 follows the math (R3) | functions-financial | P2 | opus | – | – |
+| T-3367 | NPER at 0 < rate < 1e-14 follows the math (R3) | functions-financial | P2 | opus | – | T-3355 |
 
 Existing tasks:
 - `campaign: semantics`, priority raised (one Context line each): T-2816 (P2→P1), T-2824 (P0), T-3111, T-3112,
@@ -82,3 +82,7 @@ Existing tasks:
 - T-3006 done: R6 answers it.
 - Not filed: the M7 owner for the t3181-collation-prefix-arrays B cells. At 921ed6ad B3, B4, B5, B7, B8, B11 and B12
   failed; on `main` 0c917f9f all seven pass (T-3210 and T-3317 merged), so no cell is left to own.
+- Review round 1 (2026-10-31): R3 regions bounded per function (the tiny-p quantiles cover only the cited point until
+  T-3358's points fix them; NPER 0 < rate < 1e-14 minus the `#DIV/0!` band; GAMMA.INV's closed-form branch with the
+  chi-squared functions through it), R3 keeps directive 5 and needs an owner ruling per new case, bug-task targets are
+  Excel's results with the Gate A envelope as a floor, and the Related lines name the prior solver and inverse tasks.

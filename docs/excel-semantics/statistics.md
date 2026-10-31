@@ -5268,25 +5268,34 @@ Status: VERIFIED (excel-graph). Implemented by T-1811; QUARTILE and QUARTILE.INC
 Ours: `percentile_inc_impl` (functions/statistical/percentile.rs) uses the one-based rank `1 + k*(n-1)` (T-1811). Known miss: gen-m9/5395b8a427764a3f Calc!A269 (Excel -2.499999999999999, rule -2.4999999999999987) stays in the baseline.
 Tasks: T-1811
 
-## Deep-left-tail quantiles: Excel is grossly wrong, RustSheet returns the math (MATH-OVER-EXCEL)
-Rule: T.INV, F.INV, BETA.INV and CHISQ.INV.RT at p < 1e-150 with df ≥ 1e6 are far from the true quantile in Excel;
-RustSheet returns the 50-digit math value there (decision 0188 R3), not Excel's.
-Evidence: the owner's 2026-10-31 assessment (decision 0188), fresh stratified points scored against Excel for the web
-and 50-digit mpmath: `T.INV(1.87E-297,3937)` is -156.96 in Excel and -40.26 in truth, a relative error far above
-G = 1e-4. The committed evidence points are Gate A reference points marked R3 (T-3358 adds them and this entry then
-cites their table).
+## Tiny-p quantiles: Excel is grossly wrong, RustSheet returns the math (MATH-OVER-EXCEL)
+Rule: at p < 1e-150, T.INV(p, df), F.INV(p, d1, d2) and BETA.INV(p, alpha, beta) in their left tail and
+CHISQ.INV.RT(p, df) in its right tail (a tiny p is the upper tail there) can be far from the true quantile in Excel;
+where Excel's relative error exceeds G = 1e-4 RustSheet returns the 50-digit math value (decision 0188 R3).
+Region: the parameter bounds (df; d1 and d2; alpha and beta) are not yet evidenced. The assessment's "df ≥ 1e6" does
+not hold for its own example (df 3937), so each function's exact region is fixed from T-3358's R3-marked points and
+amended here. Until then this entry covers only the cited point, `T.INV(1.87E-297,3937)`.
+Evidence: the owner's 2026-10-31 assessment (decision 0188), stratified points scored against Excel for the web and
+50-digit mpmath: `T.INV(1.87E-297,3937)` is -156.96 in Excel and -40.26 in truth. Committed evidence points are owed by
+T-3358 (Gate A, R3-marked).
 Status: MATH-OVER-EXCEL (decision 0188)
-Ours: the engine already returns the true value in this region; such cells stay F lines of eval/baseline and count as
-passing in Gate B and the R1(c) rows once T-3359 lands.
+Ours: the assessment reports the engine already returns the true value at the cited point; that, too, is evidence
+T-3358 owes as committed points. Such cells stay F lines of eval/baseline and count as passing in Gate B and the R1(c)
+rows once T-3359 lands. The math path keeps directive 5's caps.
 Tasks: T-3358, T-3359, T-3363
 
-## GAMMA.INV at a huge shape: Excel is about 2.7e-4 off, RustSheet returns the math (MATH-OVER-EXCEL)
-Rule: GAMMA.INV (and CHISQ.INV through it) at a huge shape is about 2.7e-4 relative off the true quantile in Excel,
-above G = 1e-4, so RustSheet returns the math there (decision 0188 R3), not Excel's value.
-Evidence: the owner's 2026-10-31 assessment (decision 0188), 50-digit mpmath against Excel for the web. Committed
-evidence points: T-3358 (Gate A, R3-marked) and T-3364, which states the region (the shapes where Excel's error exceeds
-1e-4) from them. The section "GAMMA.INV and CHISQ.INV at a huge shape" above records Excel's form.
+## GAMMA.INV at a huge shape, closed-form branch: Excel is about 2.7e-4 off, RustSheet returns the math (MATH-OVER-EXCEL)
+Rule: on the Wilson-Hilferty closed-form branch of "GAMMA.INV and CHISQ.INV at a huge shape" above (the gamma density
+at Excel's start x0 is below the smallest normal double), Excel returns x0, about 1.000266 times the true quantile, a
+relative error above G = 1e-4; there RustSheet returns the math (decision 0188 R3). The branch serves GAMMA.INV,
+GAMMAINV, CHISQ.INV, CHISQ.INV.RT and CHIINV (shape df/2, scale 2), so all five are in this case. The branch's `#NUM!`
+cells and its true-quantile band still match Excel.
+Evidence: probes/t3070-gamma-inv-band A110 (`GAMMA.INV(0.999999,1.5E10,1)` = 15004569623.957905) and A304-A327 (CHIINV
+and CHISQ.INV.RT from 2E13 to 1E15 degrees of freedom), probes/t2982-gamma-inv-huge-shape A7-A23 (`GAMMA.INV(0.5,a,1)`
+for a = 1E13 to 1E300), A92 and A93 (`CHIINV(0.5,2E13)`, `CHISQ.INV.RT(0.5,2E13)`), all excel-graph; the factor is
+measured against the accurate cdf (`GAMMA.DIST(1E12,1E12,1,TRUE)` correctly rounded, probes/incomplete-gamma-cap E9).
+The 50-digit math values for these cells are committed with T-3364 before the engine changes.
 Status: MATH-OVER-EXCEL (decision 0188)
-Ours: today the engine matches Excel bit for bit with a fitted Wilson-Hilferty spread (incomplete_gamma/huge_shape.rs,
-`WILSON_HILFERTY_SPREAD`, fitted at 1E13 and applied from 2E10); T-3364 moves it to the math in the region.
+Ours: today the engine matches Excel with a fitted closed form (incomplete_gamma/huge_shape.rs,
+`WILSON_HILFERTY_SPREAD`, fitted at 1E13 and applied from 2E10); T-3364 moves the branch to the math.
 Tasks: T-3364, T-3358
