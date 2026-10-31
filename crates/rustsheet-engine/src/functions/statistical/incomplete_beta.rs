@@ -91,8 +91,10 @@ pub(crate) fn beta_reg(x: f64, a: f64, b: f64) -> f64 {
 /// (probes-numeric/m9-legacy-fdist A12), where forming 1 - w from w misses by 2E-14. A shape of 1
 /// takes Excel's closed forms ([`closed_form_tails`], T-2502).
 ///
-/// Like [`beta_reg_upper`] and [`search_tails`] it keeps Cephes' kernel at half-integer shapes,
-/// which the quantile searches (BETA.INV, F.INV) and the Student-t tails still invert.
+/// Like [`beta_reg_upper`] and [`search_tails`] it keeps Cephes' kernel at half-integer shapes.
+/// BETA.INV crosses BETA.DIST's own kernel since T-3398 (`bratio::beta_dist_tails`), so only
+/// tests read this side now.
+#[cfg(test)]
 pub(crate) fn beta_reg_complement(x: f64, y: f64, a: f64, b: f64) -> f64 {
     search_tails(x, y, a, b).0
 }
@@ -100,7 +102,8 @@ pub(crate) fn beta_reg_complement(x: f64, y: f64, a: f64, b: f64) -> f64 {
 /// (`I_x(a, b)`, 1 - `I_x(a, b)`) with y = 1 - x given: Excel's oriented closed forms
 /// ([`closed_form_tails`]), a shape of 1 outside them ([`shape_one_tails`]), else one evaluation of
 /// the kernel ([`beta_tails`]: the accurate series at half-integer shapes, T-2219, else Cephes).
-/// Not for a quantile search, which crosses [`search_tails`].
+/// Not for a quantile search: F.INV's search crosses [`search_tails`], and BETA.INV's takes it on the
+/// branches the port does not cover (`bratio::beta_search_tails`).
 pub(crate) fn beta_reg_tails(x: f64, y: f64, a: f64, b: f64) -> (f64, f64) {
     reg_tails(x, y, a, b, Kernel::Accurate)
 }
@@ -263,7 +266,7 @@ fn complement_above_half(v: f64, other: f64) -> (f64, f64) {
     }
 }
 
-/// 1 - `I_x(a, b)`, the upper tail of [`beta_reg_complement`], with y = 1 - x given: the other tail
+/// 1 - `I_x(a, b)`, the upper tail of [`search_tails`], with y = 1 - x given: the other tail
 /// of the same evaluation, Excel's closed forms ([`closed_form_tails`]) included.
 pub(crate) fn beta_reg_upper(x: f64, y: f64, a: f64, b: f64) -> f64 {
     search_tails(x, y, a, b).1
