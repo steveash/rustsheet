@@ -775,7 +775,15 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             // (`TEXT(-PI(),"x")` = "-x", `TEXT(-5,"2")` = "-2"; probes/text-format-bare-literals A3, A7;
             // `"x"General` on -1.5 is "-x1.5", General then shows |value|: gen-m10 F!D19).
             let has_general = tokens.iter().any(|t| matches!(t, TextToken::General));
-            if digit_count == 0 && (is_negative || (has_general && general_value < 0.0)) {
+            // Excel: with no decimal point either nothing rounds, so any negative keeps its minus
+            // (`TEXT(-0.4,"x")` is "-x", `TEXT(-0.004,"x%")` "-x%"), while `.` and `.0` drop it
+            // when the value rounds to zero (`TEXT(-0.4,".")` is ".", `TEXT(-0.04,".0")` ".0";
+            // probes/text-negative-round-sign, excel-graph 2026-10-30, T-1129).
+            let has_period = tokens.iter().any(|t| matches!(t, TextToken::Period));
+            let unrounded_negative = !has_period && scaled < 0.0;
+            if digit_count == 0
+                && (is_negative || unrounded_negative || (has_general && general_value < 0.0))
+            {
                 text = format!("-{text}");
             }
 

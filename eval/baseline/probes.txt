@@ -1545,6 +1545,7 @@ C	probes/t3007-beta-dist-ln-x-overflow.case.json	27
 C	probes/t3012-gamma-dist-at-quantile.case.json	136
 C	probes/t3012-gamma-inv-small-shape.case.json	72
 C	probes/t3014-pmt-fv-type-alone.case.json	371
+C	probes/t3023-identical-stored-structured-refill.case.json	8
 C	probes/t3028-b2-taiwan-cuts.case.json	240
 C	probes/t3028-b2-taiwan-years.case.json	165
 C	probes/t3029-b2-calendar-weekday.case.json	128
@@ -1842,6 +1843,7 @@ C	probes/text-modes-dbcs.case.json	3
 C	probes/text-modes-phonetic-number.case.json	1
 C	probes/text-modes-phonetic-range.case.json	1
 C	probes/text-modes-phonetic.case.json	1
+C	probes/text-negative-round-sign.case.json	30
 C	probes/text-negative-serial-elapsed-mixed.case.json	9
 C	probes/text-number-15-digits.case.json	16
 C	probes/text-number-like-text-and-control-chars.case.json	29
@@ -3412,10 +3414,7 @@ F	probes/t2435-dist-extremes.case.json	S!A15
 F	probes/t2435-dist-extremes.case.json	S!A18
 F	probes/t2435-dist-extremes.case.json	S!A23
 F	probes/t2435-dist-extremes.case.json	S!A24
-F	probes/t2435-dist-extremes.case.json	S!A35
-F	probes/t2435-dist-extremes.case.json	S!A36
 F	probes/t2435-dist-extremes.case.json	S!A37
-F	probes/t2435-dist-extremes.case.json	S!A38
 F	probes/t2435-dist-extremes.case.json	S!A40
 F	probes/t2435-dist-extremes.case.json	S!A41
 F	probes/t2435-dist-extremes.case.json	S!A68
@@ -3752,7 +3751,6 @@ F	probes/t2982-gamma-inv-huge-shape.case.json	S!A89
 F	probes/t2982-gamma-inv-huge-shape.case.json	S!A9
 F	probes/t2982-gamma-inv-huge-shape.case.json	S!A92
 F	probes/t2982-gamma-inv-huge-shape.case.json	S!A93
-F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A12
 F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A15
 F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A16
 F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A18
