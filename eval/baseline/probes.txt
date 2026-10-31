@@ -1679,6 +1679,8 @@ C	probes/t3201-collation-long-mark-runs.case.json	1506
 C	probes/t3201-collation-wrapped-run-pairs.case.json	1406
 C	probes/t3213-typed-parse-errors.case.json	25
 C	probes/t3248-snap-running-total-below-last.case.json	384
+C	probes/t3283-typed-double-star.case.json	36
+C	probes/t3283-typed-missing-paren.case.json	12
 C	probes/t3302-text-funcs-arrays.case.json	21
 C	probes/t3317-xlookup-scalar-return.case.json	20
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
@@ -4059,9 +4061,6 @@ F	probes/t3181-collation-prefix-arrays.case.json	Calc!A7
 F	probes/t3181-collation-prefix-arrays.case.json	Calc!A8
 F	probes/t3181-collation-prefix-arrays.case.json	Calc!A9
 F	probes/t3181-collation-prefix-arrays.case.json	Calc!B2
-F	probes/t3213-typed-parse-errors.case.json	S!A5
-F	probes/t3213-typed-parse-errors.case.json	S!B5
-F	probes/t3213-typed-parse-errors.case.json	S!C5
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F10
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F2
 F	probes/table-edits/table-convert-names-this-row.case.json	T!A2
