@@ -125,3 +125,14 @@ def test_cli_scores_each_build_as_a_candidate(monkeypatch: pytest.MonkeyPatch, t
     assert "engine build: alt" in names
     with pytest.raises(SystemExit, match="NAME=PATH"):
         cli.main([*argv, "--build", "no-path"])
+
+
+def test_engine_text_on_an_error_cell_is_a_miss_not_a_crash(monkeypatch: pytest.MonkeyPatch) -> None:
+    shown = {"S!A1": {"actual": '"1+2i"'}, "S!A2": {"actual": '"3-4i"'}}
+    monkeypatch.setattr(fit, "show_cells", lambda _case, _binary=None: shown)
+    engine = fit.engine_candidate(["s/c"])
+    complex_cell = Cell("s/c", "S", "A1", "=F()", (), 1.0, expected_im=2.0)
+    error_cell = Cell("s/c", "S", "A2", "=F()", (), math.nan, "#NUM!")
+    s = score([complex_cell, error_cell], engine)
+    assert s.exact == 1
+    assert next(r for r in s.results if r.cell.address == "A2").note == "returned str"

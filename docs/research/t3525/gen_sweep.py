@@ -108,4 +108,7 @@ def log_band() -> None:
 
 
 if __name__ == "__main__":
-    log_band() if "--log-band" in sys.argv else fresh()
+    if "--log-band" in sys.argv:
+        log_band()
+    else:
+        fresh()

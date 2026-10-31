@@ -23,7 +23,8 @@ engine's `(EXP(t) ∓ EXP(-t))/2` pair (complex/trig.rs `exp_sinh_cosh` via `tri
 - Constraint: `IMSIN("1E-200+1E-200i")` is "1E-200" (sinh 0 from equal EXPs) and `IMCOS("150-0.002i")` matches the EXP
   pair (docs/excel-semantics/engineering.md, T-2535). An extended-precision EXP pair is one candidate to try first.
 - Also C117/D117 (|y| = 183, above the band): one 15th-digit miss of the EXP pair.
-- T-3525's Outcome and engineering.md "The complex hyperbolic selectors on a fresh sweep" have the counts.
+- T-3525's Outcome and engineering.md "IMSIN and IMCOS of a small imaginary part are neither the EXP pair nor exact
+  (T-3525)" have the counts.
 
 ## Acceptance criteria
 - [ ] A candidate kernel for |y| <= 0.01 is fitted through the fit lab (`rustsheet-fitlab im-hyperbolic-fresh` scores

@@ -35,7 +35,8 @@ The complex hyperbolic bands of engineering/complex/trig.rs (`HYPERBOLIC_LOG_CUT
       quality/fitted.json via `scripts/check_fitted.py --update`); otherwise it keeps its `FITTED` tag, with the range
       restated to what was measured, and is not applied outside that range (R4.3).
 - [x] The Gate A envelope (R2: within 1e-9 relative of 50-digit mpmath or within 15 significant digits of Excel) holds
-      on the fresh sweep, with mpmath values recorded in the Outcome or the accuracy tables.
+      on the fresh sweep, with mpmath values recorded in the Outcome or the accuracy tables. (Holds on 1,196 of 1,200
+      cells; the 4 outside are listed in the Outcome and owned by T-3546, an Excel quirk the engine does not match yet.)
 - [x] No gated cell regresses beyond decision 0083's allowance; a replaced selector's lost bit-exact cells are listed.
 - [x] `make check` green; reviewers approve.
 
@@ -57,17 +58,22 @@ Both selectors keep their `FITTED` tags, ranges restated (T-3525); no engine beh
   EXP pair in IMSIN/IMCOS, everywhere) and `no-log-form` (`hyperbolic_log_form` never applies). Hold-out split
   T-3360, margin 5 points, reference `correctly rounded` (50-digit mpmath, parts rounded to 15 digits).
 
-| sweep | candidate | train exact | test exact | verdict |
+| sweep | candidate | train exact / <=4 ulp / <=15 digits | test exact / <=4 ulp / <=15 digits | verdict |
 |---|---|---|---|---|
-| old (1,359; 965 train / 394 test) | engine (selectors) | 965 (100%) | 394 (100%) | accept |
-| | no-band | 805 (83.4%) | 310 (78.7%) | accept, below engine |
-| | no-log-form | 923 (95.6%) | 382 (97.0%) | accept, below engine |
-| | correctly rounded | 741 (76.8%) | 291 (73.9%) | reference |
-| fresh (1,200; 850 / 350) | engine (selectors) | 815 (95.9%) | 336 (96.0%) | accept |
-| | no-band | 798 (93.9%) | 324 (92.6%) | accept, below engine |
-| | no-log-form | 686 (80.7%) | 289 (82.6%) | accept, below engine |
-| | correctly rounded | 603 (70.9%) | 255 (72.9%) | reference |
+| old (1,359; 965 train / 394 test) | engine (selectors) | 965 (100%) / 965 / 965 | 394 (100%) / 394 / 394 | accept |
+| | no-band | 805 (83.4%) / 805 / 805 | 310 (78.7%) / 310 / 310 | accept, below engine |
+| | no-log-form | 923 (95.6%) / 923 / 923 | 382 (97.0%) / 382 / 382 | accept, below engine |
+| | correctly rounded | 741 (76.8%) / 741 / 741 | 291 (73.9%) / 291 / 291 | reference |
+| fresh (1,200; 850 / 350) | engine (selectors) | 815 (95.9%) / 815 / 815 | 336 (96.0%) / 336 / 336 | accept |
+| | no-band | 798 (93.9%) / 798 / 798 | 324 (92.6%) / 324 / 324 | accept, below engine |
+| | no-log-form | 686 (80.7%) / 686 / 686 | 289 (82.6%) / 289 / 289 | accept, below engine |
+| | correctly rounded | 603 (70.9%) / 603 / 603 | 255 (72.9%) / 255 / 255 | reference |
 
+  The three counts coincide because each part is a 15-digit value: a part that differs in the 15th digit is more
+  than 4 ulp away. Reproduce: `rustsheet-fitlab im-hyperbolic[-fresh] --build no-band=<bin> --build
+  no-log-form=<bin>`, where each binary is `rustsheet-eval` built (own `CARGO_TARGET_DIR`) with
+  `docs/research/t3525/no-band.patch` (`in_inverse_exp_band` always false) or `no-log-form.patch`
+  (`hyperbolic_log_form` never applies) applied.
   The selectors' test rate is within the margin of train on both sweeps and beats the accurate form on test and
   on the fresh sweep, so both stay.
 - **By |x|** (exact, engine / no-band / no-log-form). 1/u band: old 0.0105..18.2 1214/1214 vs 970; fresh 388/388 vs
@@ -77,8 +83,16 @@ Both selectors keep their `FITTED` tags, ranges restated (T-3525); no engine beh
 - **Restated tags (R4.3)**: `HYPERBOLIC_LOG_CUT` `FITTED(T-3525, 617 cells, |x| 100..800 …; cut bracketed
   709..709.0000000001 for x > 0)`; `INVERSE_EXP_LOW`/`HIGH` `FITTED(T-3525, 1942 cells, |x| 0.0001..100; cuts
   bracketed …)`. Both apply only inside their measured ranges. `scripts/check_fitted.py`: 86 tags, unchanged.
-- **Gate A envelope (R2)** on the first fresh sweep: all 1,000 cells within 1e-9 relative of 50-digit mpmath (988;
-  worst 4.2e-13) or equal to Excel (12, all Excel's own `#NUM!`).
+- **Gate A envelope (R2)** on both fresh sweeps, by `docs/research/t3525/gate_a.py` (50-digit mpmath values per cell
+  in `docs/research/t3525/gate_a.tsv`; an error against a number is outside whatever the math says, SPEC-0029
+  `ErrorMismatch`). First sweep: 1,000 of 1,000 inside (988 within 1e-9 of the math, worst 4.2e-13; 12 equal to
+  Excel's `#NUM!`). Log band: 196 of 200 inside (56 within 1e-9, 140 equal to Excel, including its `#NUM!` cells),
+  **4 outside**, all an engine number where Excel is `#NUM!`, the negative-side cut of T-3546:
+  `IMSINH` and `IMCOSH("-708.993723853194-0.284042075249253i")` (S!A38, B38) and
+  `IMSINH` and `IMCOSH("-708.952568260886+1.74023049176272i")` (S!A39, B39). So `HYPERBOLIC_LOG_CUT` as it stands
+  fails the envelope at those 4 points until T-3546 implements the cut for x < 0. The other log-band misses against
+  Excel are inside: S!A71/B71 and A84/B84 (product-form digits, within 1e-9 of the math) and the two cells at
+  x = -709.183834084079 (S!A48/B48, 5.1e-14 from the math).
 - **Not matching**: fresh sweep 961/1000, log band 190/200. Findings recorded in docs/excel-semantics/engineering.md:
   (1) for x < 0 Excel takes the log form below |x| = 708.94, not past 709 (8 log-band cells), T-3546;
   (2) IMSIN and IMCOS with 1e-4 < |y| < 0.0085 are neither the EXP pair nor exact (34 cells), T-3545;

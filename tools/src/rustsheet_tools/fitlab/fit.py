@@ -76,8 +76,8 @@ def engine_candidate(case_ids: list[str], binary: Path | None = None, name: str 
             raise KeyError(msg)
         if text.startswith("#"):
             raise ExcelError(code=text)
-        if cell.expected_im is not None:
-            return text.strip('"')  # an IM* text, which the scorer parses
+        if cell.expected_im is not None or text.startswith('"'):
+            return text.strip('"')  # text (an IM* result, which the scorer parses on a complex-text cell)
         try:
             return float(text)  # Rust's `{:?}` of an f64 round-trips exactly
         except ValueError:

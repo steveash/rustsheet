@@ -15,6 +15,7 @@ by part on the IM* text (`Fit.complex_text`).
 from __future__ import annotations
 
 import re
+import sys
 
 import mpmath
 
@@ -25,8 +26,8 @@ from rustsheet_tools.fitlab.sweep import Cell, parse_complex_text
 
 _FUNCTION = re.compile(r"^=(IMSINH|IMCOSH|IMSIN|IMCOS)\(")
 _KERNELS = {"IMSINH": mpmath.sinh, "IMCOSH": mpmath.cosh, "IMSIN": mpmath.sin, "IMCOS": mpmath.cos}
-_DBL_MAX = float.fromhex("0x1.fffffffffffffp+1023")
-_DBL_MIN_NORMAL = float.fromhex("0x1p-1022")
+_DBL_MAX = sys.float_info.max
+_DBL_MIN_NORMAL = sys.float_info.min
 PATTERN = r"^=IM(?:SINH|COSH|SIN|COS)\((.*)\)$"
 
 
@@ -60,7 +61,7 @@ def candidates() -> list[Candidate]:
 
 
 _NOTES = [
-    "Engine builds are the selector's candidates: --build NAME=PATH (T-3525's Outcome names them).",
+    "Engine builds are the selector's candidates: --build NAME=PATH; docs/research/t3525/*.patch make them.",
 ]
 
 FITS = [
