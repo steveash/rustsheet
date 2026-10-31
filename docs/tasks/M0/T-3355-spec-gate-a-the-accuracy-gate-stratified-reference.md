@@ -57,7 +57,8 @@ more, if the design needs it).
 - Changing the CI bit-regression gate or any baseline.
 
 ## Outcome
-- docs/specs/SPEC-0029-gate-a-accuracy-gate.md (draft until the architecture reviewer approves): tables live in
+- docs/specs/SPEC-0029-gate-a-accuracy-gate.md (accepted; the architecture, security and quality reviewers' verdict
+  records are on PR #2522): tables live in
   `eval/accuracy/` (a manifest outside `eval/suites/`, so no eval measure counts them), one directory per function and
   one immutable batch per generation, each batch a `rustsheet-case/v1` case with the oracle sidecar and a new
   `rustsheet-math/v1` math sidecar (50 digits as text, stratum, formula text); `rustsheet-eval accuracy` checks every

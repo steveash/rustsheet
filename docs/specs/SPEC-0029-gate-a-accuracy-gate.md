@@ -1,6 +1,6 @@
 # SPEC-0029 — Gate A, the accuracy gate
 
-- **Status:** accepted (T-3355; architecture, security and quality reviewers approved)
+- **Status:** accepted (T-3355, reviewed in PR #2522)
 - **Milestone / lane:** M0 / harness
 - **Tasks:** T-3355 (this spec); rollout T-3356, T-3357, T-3358, T-3379, T-3380; T-3359 reads the result
 
@@ -55,8 +55,9 @@ The tables are inputs to Excel, so they follow the formula-literal rules Excel i
   error code is Excel's.
 - **Where Excel is far from the math** (R3): only the regions decision 0188 lists, as `MATH-OVER-EXCEL` entries in
   statistics.md and financial.md, are checked against the math alone; everywhere else Excel's imprecise value is a
-  valid target (BESSELJ at 1e-7, XIRR at 1e-8 are within the envelope through the 15-digit side only if the engine
-  matches Excel, or through ε if it matches the math).
+  valid target. For example, Excel's BESSELJ is about 1e-7 from the math and its XIRR about 1e-8 (decision 0188
+  R3). An engine value there is inside the envelope when it is within 15 digits of Excel's value, or within ε of the
+  math.
 
 ## Design
 
@@ -74,8 +75,10 @@ eval/accuracy/
 `eval/accuracy/` is outside `eval/suites/`, `eval/baseline/` and `quality/`. Because `Suite::load_all` scans
 `eval/suites/` only, `make eval`, the eval gate, the evidence floor and every report measure never see the tables.
 `rustsheet-eval cases accuracy` and `rustsheet-eval show accuracy/<FUNCTION>/<batch>.case.json` resolve the manifest
-through one helper in suite.rs beside `Suite::load_all` (`Suite::load_named(root, name)`: `eval/suites/*` first, then `eval/accuracy/suite.toml`), so the
-oracle fill, `make eval-show` and the fit lab's sweep reader work on tables unchanged.
+through one helper in suite.rs beside `Suite::load_all`: `Suite::load_named(root, name)` calls `load_all` on
+`eval/suites/` and returns the suite with that name, and otherwise loads `eval/accuracy/suite.toml` when `name` is
+`accuracy`. `load_all` is unchanged, and a suite under `eval/suites/` named `accuracy` is refused, so the name is
+never ambiguous. With it, the oracle fill, `make eval-show` and the fit lab's sweep reader work on tables unchanged.
 
 **One table per function, one file per batch.** A function's table is every batch in its directory. A batch is
 generated once and never edited (T-3379 makes committed batch files immutable): new points are a new batch (`s1` is
