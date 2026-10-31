@@ -100,6 +100,11 @@ def compute(definition: Definition, args: Sequence[literal.Arg]) -> MathValue:
     except mpmath.libmp.NoConvergence as err:  # e.g. a hypergeometric series at a huge df
         msg = f"mpmath did not converge ({err})"
         raise DroppedError(msg) from err
+    except NoValueError:
+        raise
+    except ValueError as err:  # mpmath's hypercomb gives up near 0 or infinity with a ValueError
+        msg = f"mpmath did not converge ({str(err).strip().splitlines()[0]})"
+        raise DroppedError(msg) from err
     low, high = results
     if isinstance(high, DomainError) or isinstance(low, DomainError):
         if isinstance(high, DomainError) and isinstance(low, DomainError):
@@ -161,8 +166,24 @@ def draw_points(
     return points
 
 
-def _dump(data: dict[str, Any]) -> bytes:
+MATH_FORMAT = "rustsheet-math/v1"
+
+
+def dump_json(data: dict[str, Any]) -> bytes:
+    """A case or sidecar file's bytes: indented JSON, UTF-8, one trailing newline."""
     return (json.dumps(data, indent=1, ensure_ascii=False) + "\n").encode("utf-8")
+
+
+def math_sidecar_bytes(
+    case_bytes: bytes, sheets: dict[str, dict[str, dict[str, str]]], seed: int | None = None
+) -> bytes:
+    """A `rustsheet-math/v1` sidecar for the case file `case_bytes`: the one envelope a table
+    batch (with its `seed`) and an eval case's math references (`eval_math`, no seed) share."""
+    source: dict[str, Any] = {"generator": "rustsheet-accuracy", "version": VERSION, "dps": DPS[-1]}
+    if seed is not None:
+        source["seed"] = seed
+    source["input_sha256"] = hashlib.sha256(case_bytes).hexdigest()
+    return dump_json({"format": MATH_FORMAT, "source": source, "sheets": sheets})
 
 
 def batch_files(definition: Definition, batch: str, points: Sequence[Point]) -> tuple[bytes, bytes]:
@@ -189,19 +210,8 @@ def batch_files(definition: Definition, batch: str, points: Sequence[Point]) -> 
         "check": [f"Calc!{a}" for a in cells],
         "hypotheses": hypotheses,
     }
-    case_bytes = _dump(case)
-    sidecar = {
-        "format": "rustsheet-math/v1",
-        "source": {
-            "generator": "rustsheet-accuracy",
-            "version": VERSION,
-            "dps": DPS[-1],
-            "seed": seed(definition.function, batch),
-            "input_sha256": hashlib.sha256(case_bytes).hexdigest(),
-        },
-        "sheets": {"Calc": math_cells},
-    }
-    return case_bytes, _dump(sidecar)
+    case_bytes = dump_json(case)
+    return case_bytes, math_sidecar_bytes(case_bytes, {"Calc": math_cells}, seed(definition.function, batch))
 
 
 def write_batch(

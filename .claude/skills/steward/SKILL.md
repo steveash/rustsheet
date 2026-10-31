@@ -33,7 +33,8 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   cannot move between a PR's green CI and its merge. On a head that meets (a) and (b):
   1. `make merge-lock-wait PR=<n>`, run in the background (decision 0145): it queues you and exits
      0 once the lock is yours, 3 if the PR is done, 1 after 45 min, 2 on an error (re-run the
-     wait). Do other work (your next task) until it exits, instead of retrying later; never merge
+     wait), 5 in `train` mode for any PR but the emergency-flip PR (decision 0204: mark it ready
+     instead). Do other work (your next task) until it exits, instead of retrying later; never merge
      without the lock.
   2. Holding it: if the branch is behind, merge `origin/main` in and push. For a branch
      without conflicts this is its only merge of `main` (decision 0121). A clean merge needs no
