@@ -3408,6 +3408,26 @@ Tasks: T-1530, T-1538
   about the 6th digit at df 1E10 (`F.INV(0.5,1E10,1E10)` = 1.0000025, Excel 1) and `F.DIST(...,FALSE)` at df 1E10 is
   `#NUM!` (`statrs` pdf) where Excel gives a number. 16 of 58 cells of the case fail (A1-A14, A57, A58); T-1538 closes them.
 
+## F density's small-shape constant past its fit set
+Rule: the F density model's small-shape constants (`SMALL_SHAPE_OFFSET` 5.33 and the Stirling errors 0.22 at 1/2
+and 0.06 at 1, units of 2^-53 in K; r4-f-small-df `sdmodel`) were fitted on shapes with max(d) <= 10 and d1 = 1 with d2
+up to 30, but serve every shape with min(d) below 16 (`LARGE_DF_MIN`). On the shapes outside the fit set they still
+bring the density closer to Excel than the correctly rounded value, so they are kept there (decision 0188 R4.3).
+probes-numeric/t3478-f-density-r4-wide (300 points drawn after the freeze, T-3478: 11 <= min(d) <= 15 with max(d) up
+to 1E+10, and min(d) <= 10 with max(d) 11 to 1E+10, d1 and d2 in either order; x 0.2 to 5, or 1E-3 to 1E+3):
+| Strata | Points | Engine bit-exact | Engine within 4 ulp | Correctly rounded bit-exact | Correctly rounded within 4 ulp | Inside Gate A's envelope |
+|---|---|---|---|---|---|---|
+| 11 <= min(d) <= 15 | 100 | 14 | 70 | 5 | 45 | 100 |
+| min(d) <= 10, max(d) 11..100 | 100 | 29 | 83 | 4 | 56 | 100 |
+| min(d) <= 10, max(d) 100..1E+10 | 100 | 18 | 79 | 6 | 58 | 100 |
+Every point is within 1e-9 of the 50-digit density (most misses against Excel are the large-|P| shortfall of "F
+density is not the beta density" above, not the constant).
+Evidence: probes-numeric/t3478-f-density-r4-wide (excel-graph, 2026-10-31) with its `.math.tsv`; scorer
+docs/research/t3478/.
+Status: VERIFIED (excel-graph)
+Implemented in: `SMALL_SHAPE_OFFSET`, `STIRLING_ERROR_HALF`, `STIRLING_ERROR_ONE` (functions/statistical/f_density.rs)
+Tasks: T-3478
+
 ## F density at large degrees of freedom (T-1864)
 Rule: F.DIST(x,d1,d2,FALSE) is an ordinary number wherever Excel's range steps leave the density positive (round 5
 of "F density is not the beta density, R's df or a GAMMALN formula (T-2513)": Y = density·x is stored, F = fl(Y/x),

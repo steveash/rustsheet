@@ -45,7 +45,7 @@ const LOG1P_SERIES_LIMIT: f64 = 0.375;
 /// freeze, no hold-out) prefers 8: on r5-f-combine's 1,920 `ca` cells with 6 <= min(d) < 16 it
 /// gives 799 bit-exact, against 629 at 16, and all 1,920 within 15 digits at every edge tried.
 /// Below it every shape takes r4-f-small-df's constant, also shapes outside those it was fitted
-/// on ([`SMALL_SHAPE_OFFSET`]; T-3395, bounding it is T-3478); moving the edge is Phase 1b work
+/// on ([`SMALL_SHAPE_OFFSET`]; T-3478 measured it there); moving the edge is Phase 1b work
 /// (decision 0188 R5).
 const LARGE_DF_MIN: f64 = 16.0;
 /// `bcmodel`'s `C_BIG` (units of 2^-53): the mean need over r5-f-bigconst's in-sample x = 1 runs
@@ -58,13 +58,19 @@ const LARGE_SHAPE_OFFSET: f64 = -0.42;
 /// over the 56 (shape, side) groups with a best count of at least 25 in `s4_kscan.out` (probe
 /// t2586-r4-f-small-df-a, 31 shapes with max(d) <= 10, 3,008 cells) and `s4_kscan_tdens.out`
 /// (r3-tdensity's d1 = 1 runs at d2 3, 4, 5, 7, 10 and 30, 1,938 cells); T-3395 traced the count.
-/// FITTED(T-2586, 4946 cells, F.DIST df 1..10 and d1 1 with d2 up to 30)
+/// It serves every shape with min(d) below [`LARGE_DF_MIN`]. T-3478 measured the three constants
+/// on the shapes outside the fit set (fresh 300-point sweep probes-numeric/t3478-f-density-r4-wide:
+/// 11 <= min(d) <= 15, and min(d) <= 10 with max(d) 11 to 1E+10): all 300 inside Gate A's envelope,
+/// 61 bit-exact and 232 within 4 ulp of Excel, against 15 and 159 for the correctly rounded
+/// density, so the model is kept there (statistics.md "F density's small-shape constant past its
+/// fit set").
+/// FITTED(T-2586, 5246 cells, F.DIST min(d) 1..15 with max(d) up to 1E+10)
 const SMALL_SHAPE_OFFSET: f64 = 5.33;
 /// `sdmodel`'s e(1/2), fitted with [`SMALL_SHAPE_OFFSET`].
-/// FITTED(T-2586, 4946 cells, F.DIST df 1..10 and d1 1 with d2 up to 30)
+/// FITTED(T-2586, 5246 cells, F.DIST min(d) 1..15 with max(d) up to 1E+10)
 const STIRLING_ERROR_HALF: f64 = 0.22;
 /// `sdmodel`'s e(1), fitted with [`SMALL_SHAPE_OFFSET`].
-/// FITTED(T-2586, 4946 cells, F.DIST df 1..10 and d1 1 with d2 up to 30)
+/// FITTED(T-2586, 5246 cells, F.DIST min(d) 1..15 with max(d) up to 1E+10)
 const STIRLING_ERROR_ONE: f64 = 0.06;
 
 /// r3-loader-const's measured error of Excel's stirlerr at v = 1.5, 2, ..., 28 in units of 2^-53

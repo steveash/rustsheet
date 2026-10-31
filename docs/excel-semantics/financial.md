@@ -1186,6 +1186,43 @@ Ours: `yield_one_period` returns 0 when DSR is 0 (T-1949).
 Status: VERIFIED (excel-graph)
 Tasks: T-1525, T-1532
 
+## RATE and IRR secant constants past their fit sets
+Rule: the fitted constants of the two secants (RATE's start offset 0.001 toward smaller |f| and residual stop
+|f| < 1e-7; IRR's start offset 1e-3 in d and residual stop |NPV| < 1e-7) are Excel's well past the cells they were
+chosen on. Measured on fresh sweeps drawn after the models were frozen, with one axis outside the fit set per stratum
+(decision 0188 R4.2, R4.3; T-3478):
+- RATE, probes-numeric/t3478-rate-r4-wide (300 points: rate -0.999 to -0.75 and 2 to 100, nper 1000 to 1E+5, |pv|
+  and |fv| 1E-8 to 1E-4 and 1E+8 to 1E+12, guess -0.999 to -0.5 and 10 to 1000, and all at once): the engine is
+  bit-exact on all 100 points where Excel returns a number and gives Excel's `#NUM!` on 186 of its 200. The fit lab's
+  T-2005 model with T-3348's hold reproduces the engine on all 300; in it, offset 1e-4 keeps 8 of the 100 numbers,
+  the offset on the other side 14, residual 1e-6 92 and 1e-8 93. The correctly rounded root matches 9 of the 300.
+  The 14 cells off Excel are the next entry's 13 and Calc!A285 (a noise-floor cell, T-3424's kind).
+- IRR, probes-numeric/t3478-irr-r4-wide (300 conventional series: 42 to 150 flows, |c| 1E-12 to 1E-6 and 1E+9 to
+  1E+15, roots -0.9999 to -0.99 and 99 to 1E+6, guess -0.9999 to -0.99 and 100 to 1E+8, and all at once): the
+  engine is bit-exact on 232. In the fit lab's `irr_secant_d` replica (284 of 300 equal to the engine; the rest
+  reach the fallback) the shipped pair scores 236, offset 1e-4 150, 1e-2 130, residual 1e-6 228 and 1e-8 221. The
+  47 cells off Excel come from the step cap, the fallback and the residual's absolute scale, not these two constants
+  (T-3548).
+Evidence: the two cases (excel-graph, 2026-10-31) with 50-digit roots in their `.math.tsv`; generator and scorers
+docs/research/t3478/.
+Status: VERIFIED (excel-graph)
+Implemented in: `compute_rate` (`OFFSET`, `TOLERANCE`), `irr_secant` (functions/financial/financial_util.rs)
+Tasks: T-3478, T-3548
+
+## RATE is #NUM! at the spurious root r = -1
+Rule: with type 1 and fv = 0 the FV residual is 0 at r = -1 whatever the annuity's real root, and the secant can
+converge there (step and |f| under 1e-7) to an iterate just above -1. Excel is `#NUM!` on such a run. On 13 points
+of probes-numeric/t3478-rate-r4-wide (Calc!A60, A76, A85, A88, A89, A131, A146, A171, A213, A237, A243, A256, A265;
+all type 1, fv 0) the iterate has 1 + r from 2.2E-16 to 3.7E-12 after 5 to 100 steps; for example
+`RATE(109,4.59691021898319,-4.87437591225121,0,1,0.000162862351807913)` is `#NUM!` where the secant stops at
+-0.9999999999999378 (the real root is 16.567...). What Excel tests is not known: it returns 1 + r = 1.19E-7 at
+`RATE(2,0,-100)` (probes/rate-pmt-zero-cap A2), so a threshold on 1 + r would lie between 3.7E-12 and 1.19E-7,
+or the test is on the residual's root at -1 itself.
+Evidence: probes-numeric/t3478-rate-r4-wide (excel-graph, 2026-10-31; T-3478)
+Status: VERIFIED (excel-graph) for the cells; the rule is UNVERIFIED
+Ours: the engine returns the iterate (13 cells)
+Tasks: T-3547
+
 ## RATE: an empty guess is guess 0, not the default 0.1
 Rule: an empty guess argument (`RATE(48,-200,8000,0,1,)`) or a reference to an empty cell behaves as
 guess 0, not the default 0.1: the result has the same bits as an explicit `0` (0.008052981923885287)
@@ -3438,7 +3475,9 @@ docs/research/t3406_irr_num_boundary.py); the candidate counts from docs/researc
 Status: VERIFIED (excel-graph) for the cells; the rule is UNVERIFIED (unknown)
 Ours: the secant, `irr_fallback` (Newton from v = 0) then `#NUM!`: 76 of the 144 probe cells fail (28 + 26 `#NUM!`
 for a number, 22 `#NUM!` for `#DIV/0!`)
-Tasks: T-3406, T-3411 (the model), T-3407 (`#DIV/0!`), T-3347
+Also: probes-numeric/t3478-irr-r4-wide (T-3478) adds 33 conventional series where Excel returns a root and the engine
+is `#NUM!`, 21 of them with 42 to 150 flows; a 1000-step cap recovers 2 of those 21 (T-3548).
+Tasks: T-3406, T-3411 (the model), T-3407 (`#DIV/0!`), T-3347, T-3548
 
 ## IRR over an error element
 Rule: IRR (probes/fin-irr-error-array, T-2390, excel-graph) gives `#VALUE!`, whatever the kind, when its values hold an

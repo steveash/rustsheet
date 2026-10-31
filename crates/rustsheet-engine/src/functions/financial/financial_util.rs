@@ -61,14 +61,17 @@ pub(crate) fn compute_rate(
 ) -> Result<f64, Error> {
     // The start offset was chosen by scoring (T-2005; fit lab `rate_candidates` scores +-1E-3 and
     // 1E-4): on the 782 cells of the fit lab's `rate` set the model is bit-exact on all, with
-    // nper 1..1000, |pmt| 1E-6..1E+6, pv -100..1E+7, guess -0.5..10 and rates -0.75..2.
-    /// FITTED(T-2005, 782 cells, RATE nper 1..1000, |pmt| 1E-6..1E+6, guess -0.5..10, rate -0.75..2)
+    // nper 1..1000, |pmt| 1E-6..1E+6, pv -100..1E+7, guess -0.5..10 and rates -0.75..2. T-3478
+    // measured it past that box on a fresh 300-point sweep (probes-numeric/t3478-rate-r4-wide):
+    // bit-exact on all 100 points where Excel returns a number, where 1E-4 or the other side's
+    // -1E-3 gets 8 and 14 (financial.md "RATE and IRR secant constants past their fit sets").
+    /// FITTED(T-2005, 1082 cells, RATE nper 1..1E+5, |pv| and |fv| 1E-8..1E+12, guess -0.999..1000, rate -0.999..100)
     const OFFSET: f64 = 0.001;
     // Two uses. The step stop is not a fit: Microsoft's RATE documentation gives 0.0000001 as the
     // convergence bound. The residual stop |f| < 1e-7 is not documented and was chosen by scoring
     // (financial.md "RATE is a secant on the FV residual": |f| < 1e-6 scores 188, < 1e-8 181), as
-    // IRR's is (`irr_secant`).
-    /// FITTED(T-2005, 782 cells, RATE nper 1..1000, |pmt| 1E-6..1E+6, guess -0.5..10, rate -0.75..2; the residual stop)
+    // IRR's is (`irr_secant`). On T-3478's sweep 1e-7 keeps 100 of 100, 1e-6 92 and 1e-8 93.
+    /// FITTED(T-2005, 1082 cells, RATE nper 1..1E+5, |pv| and |fv| 1E-8..1E+12, guess -0.999..1000, rate -0.999..100; the residual stop)
     const TOLERANCE: f64 = 1e-7;
     // Excel's looser test at the cap (T-2689): the 200th iterate is returned when its step and
     // |f| are below 1e-4 and it is above -1 + 1e-4. probes/rate-cap-return-rule: steps of 7.3e-5
@@ -219,7 +222,10 @@ fn irr_from_discount(v: f64) -> Option<f64> {
 /// of 1E-3 toward larger |NPV| (+1E-3 on both sides scores 121 of 263) and the 1E-7 residual stop
 /// (1E-6 scores 188, 1E-8 180). Not fits: the 1E-7 step stop is Microsoft's documented 0.00001
 /// percent, and `MAX_STEPS` is a directive-5 cap (financial.md "The IRR and XIRR solver caps").
-/// FITTED(T-1533, 263 cells, IRR of 2..41 flows, |c| 1E-6..1E+9, guess -0.99..100, roots -0.99..99)
+/// T-3478 measured both past the fit set on a fresh 300-point sweep (probes-numeric/t3478-irr-r4-wide):
+/// the shipped pair scores 236 bit-exact, against 150 and 130 for offsets 1E-4 and 1E-2 and 228 and
+/// 221 for residuals 1E-6 and 1E-8 (financial.md "RATE and IRR secant constants past their fit sets").
+/// FITTED(T-1533, 563 cells, IRR of 2..150 flows, |c| 1E-12..1E+15, guess -0.9999..1E+8, roots -0.9999..1E+6)
 /// The zero-step stop's bound (below):
 /// FITTED(T-3120, 36 cells, IRR of {-2.5,-1,123456789.123} over a guess sweep)
 fn irr_secant(values: &[f64], guess: f64) -> Option<f64> {
