@@ -3,7 +3,7 @@ id: T-3347
 title: "IRR returns #NUM! on conventional cash-flow series whose IRR is near 0 or near -10%"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P0
 size: M
 tier: opus
