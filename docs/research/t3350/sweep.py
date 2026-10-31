@@ -20,6 +20,7 @@ import json
 import random
 import re
 import sys
+import time
 from collections import Counter
 
 FUNCTIONS = ("CHISQ.INV", "CHISQ.INV.RT")
@@ -84,19 +85,48 @@ def math_quantile(function: str, p_double: float, df: int) -> object:
     a = mp.mpf(df) / 2
     p = mp.mpf(p_double)
     lower_given = function == "CHISQ.INV"
-    # The smaller tail and its exact probability.
-    lower = p if lower_given else 1 - p
-    use_lower = lower <= mp.mpf("0.5")
-    target = lower if use_lower else 1 - lower
+    # The smaller tail and its exact probability (1 - p is exact for a double p of 1/2 or more).
+    half = mp.mpf("0.5")
+    use_lower = (p <= half) if lower_given else (p >= half)
+    target = p if (p <= half) else 1 - p
+
+    def continued_fraction_q(x: object) -> object:
+        # Q(a, x) for x > a + 1: Legendre's continued fraction (modified Lentz).
+        tiny = mp.mpf(10) ** -400
+        b = x + 1 - a
+        c = 1 / tiny
+        d = 1 / b
+        h = d
+        i = 1
+        while True:
+            an = -i * (i - a)
+            b += 2
+            d = an * d + b
+            d = tiny if d == 0 else d
+            c = b + an / c
+            c = tiny if c == 0 else c
+            d = 1 / d
+            delta = d * c
+            h *= delta
+            if abs(delta - 1) < mp.mpf(10) ** -58:
+                break
+            i += 1
+        return mp.exp(a * mp.log(x) - x - mp.loggamma(a)) * h
 
     def lower_tail(x: object) -> object:
-        # P(a, x) = x^a e^-x / Gamma(a + 1) * 1F1(1; a + 1; x), a convergent series at every x.
+        # P(a, x) = x^a e^-x / Gamma(a + 1) * 1F1(1; a + 1; x) up to a + 1, else 1 - Q.
         x = mp.mpf(x)
+        if x > a + 1:
+            return 1 - continued_fraction_q(x)
         return mp.exp(a * mp.log(x) - x - mp.loggamma(a + 1)) * mp.hyp1f1(1, a + 1, x, maxterms=10**9)
 
     def upper_tail(x: object) -> object:
-        # 1 - P with enough digits for a Q down to 1E-320 (mpmath's own Q does not converge here).
-        with mp.workdps(400):
+        # Q(a, x): for x > a + 1 Legendre's continued fraction (modified Lentz) at the working
+        # precision, else 1 - P with the digits a Q near the target needs.
+        x = mp.mpf(x)
+        if x > a + 1:
+            return continued_fraction_q(x)
+        with mp.workdps(70 + max(0, int(-mp.log10(target)))):
             return +(1 - lower_tail(x))
 
     tail = lower_tail if use_lower else upper_tail
@@ -106,12 +136,12 @@ def math_quantile(function: str, p_double: float, df: int) -> object:
         return (mp.log(value) if value > 0 else mp.mpf(-10) ** 6) - mp.log(target)
 
     # f rises with log x for the lower tail and falls for the upper. Bracket in log x around the
-    # Wilson-Hilferty start, then bisect to 1E-52 relative in x (the value is kept to 50 digits).
+    # Wilson-Hilferty start.
     sign = 1 if use_lower else -1
     z = mp.sqrt(2 * abs(mp.log(target)))
     z = -z if use_lower else z
     cube = 1 - mp.mpf(2) / (9 * df) + z * mp.sqrt(mp.mpf(2) / (9 * df))
-    t0 = mp.log(mp.mpf(df) * cube**3) if cube > 0 else mp.log(mp.mpf(df)) - 10
+    t0 = mp.log(a * cube**3) if cube > 0 else mp.log(a) - 10
     step = mp.mpf("0.01")
     lo = hi = t0
     while sign * f(lo) > 0:
@@ -121,13 +151,32 @@ def math_quantile(function: str, p_double: float, df: int) -> object:
     while sign * f(hi) < 0:
         hi += step
         step *= 2
-    while hi - lo > mp.mpf(10) ** -52:
-        mid = (lo + hi) / 2
-        if sign * f(mid) < 0:
-            lo = mid
+    # Safeguarded Newton in log x: f'(t) = +-x pdf(x) / tail(x), bisecting when a step leaves
+    # the bracket; stops once a step is below 1E-52 (x then has 50 correct digits).
+    def slope(t: object) -> object:
+        x = mp.exp(t)
+        value = tail(x)
+        if not value > 0:
+            return None
+        log_pdf = (a - 1) * mp.log(x) - x - mp.loggamma(a) + mp.log(x)
+        return sign * mp.exp(log_pdf - mp.log(value))
+
+    t = (lo + hi) / 2
+    for _ in range(200):
+        value = f(t)
+        if sign * value < 0:
+            lo = t
         else:
-            hi = mid
-    root = (lo + hi) / 2
+            hi = t
+        derivative = slope(t)
+        candidate = t - value / derivative if derivative else (lo + hi) / 2
+        if not lo < candidate < hi:
+            candidate = (lo + hi) / 2
+        if abs(candidate - t) < mp.mpf(10) ** -52 or hi - lo < mp.mpf(10) ** -52:
+            t = candidate
+            break
+        t = candidate
+    root = t
     return 2 * mp.exp(root)
 
 
@@ -164,10 +213,12 @@ def score(case_path: str, show_path: str) -> None:
         excel_15 = kind in ("Exact", "NumericUlp")
         engine_error = isinstance(engine_value, str) and engine_value.startswith("#")
         excel_error = excel.get("t") == "e"
-        if function == "CHISQ.INV" and df > 10**10:
+        if (function == "CHISQ.INV" and df > 10**10) or (engine_error and excel_error):
             math = None
         else:
+            started = time.monotonic()
             math = math_quantile(function, p_double, df)
+            print(f"# {cell} {time.monotonic() - started:.1f} s", file=sys.stderr, flush=True)
         if engine_error or excel_error:
             if engine_error != excel_error:
                 verdict = "error-vs-number"
@@ -191,7 +242,7 @@ def score(case_path: str, show_path: str) -> None:
                     f"math={mp.nstr(math, 17)} rel(engine)={mp.nstr(rel, 3)} rel(excel)={mp.nstr(excel_rel, 3)}"
                 )
         table[(stratum, verdict)] += 1
-    print()
+    print(flush=True)
     for stratum in sorted({s for s, _ in table}):
         row = {v: n for (s, v), n in table.items() if s == stratum}
         print(stratum, dict(sorted(row.items())))

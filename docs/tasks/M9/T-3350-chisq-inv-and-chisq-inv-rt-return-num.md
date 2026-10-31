@@ -3,7 +3,7 @@ id: T-3350
 title: "CHISQ.INV and CHISQ.INV.RT return #NUM! at df of 2E7 and above"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P0
 size: M
 tier: opus
@@ -24,6 +24,16 @@ engine returns `#NUM!` today.
   refuses the large shape.
 - Excel's CHISQ.INV.RT is about 5e-9 off the math in places (decision 0188 R3): that is below G, so Excel's value is
   still the target there.
+- Probe (filled by excel-graph on 2026-10-31, before the fix): probes/t3350-chisq-inv-huge-df, 372 cells: CHISQ.INV and
+  CHISQ.INV.RT at p of 1E-300, 1E-100, 1E-30, 1E-10, 0.001, 0.1, 0.5, 0.9, 0.999, 1-1E-6, 1-1E-10 and 1-1E-15 and df of
+  1E6, 2E6, 5E6, 1E7, 2E7, 5E7, 1E8, 2E8, 5E8, 1E9, 2E9, 5E9, 1E10, 2E10 and 1E11, and CHIINV at 2E7, 1E8 and 1E9.
+  The engine was `#NUM!` and Excel a number on 46 cells: CHISQ.INV A40, A41, A51-A55, A63-A67, A74-A79;
+  CHISQ.INV.RT A225-A228, A235-A240, A247-A252, A259-A264; CHIINV A362-A364, A366-A368. That is df 1E7 to 1E8 (shape
+  5E6 to 5E7) wherever the smaller tail is the lower one: CHISQ.INV at p up to 0.5, and CHISQ.INV.RT at p of 0.5 and
+  above, the "p near 1" of the assessment. Both sides of the region (df 1E6 to 5E6, and 2E8 up) were already numbers.
+- Also probes/t3350-gamma-inv-band-lower-edge (160 cells: GAMMA.INV(1E-k,a,1), k 40 to 250, at shapes 1E9 to 1E10,
+  and CHISQ.INV at df 2a). Before the fix 26 of them had an error on one side and a number on the other, at the band's
+  lower edge (the old fit `offset - z < 39`). One of them is the same kind of cell as the fresh sweep's A16.
 - Related: T-3294 (deep lower tail at shape 20 and above), T-3337 (df 1 right tail), T-3336 (its df 1 right-tail
   sweep), T-2860 (done: the df 2 closed forms). Neither covers df ≥ 2e7.
 
@@ -54,3 +64,49 @@ engine returns `#NUM!` today.
 Decision 0083 and 0114 (`accuracy`): done when every cell this task owns is within half a unit of the 15th significant
 digit of Excel's value with the right type and error, and the fresh sweep shows the Gate A envelope (decision 0188 R2).
 Bit-level residue moves to a follow-up with `defer: phase-1b`.
+
+## Outcome
+- **Root cause.** One gamma inversion shares one budget of 2^19 series terms (directive 5). From about shape 5E6
+  (df 1E7) to 1E8, statrs' search and the refinement take over 140 cdfs, each about 7.3 sqrt(a) terms near the median.
+  So the budget ran out and the quantile was NaN (`#NUM!`) wherever the smaller tail is the lower one. From shape 1E8
+  every cdf was already Temme's expansion. Fix: from shape 1E5 (`QUANTILE_TEMME_SHAPE_MIN`, incomplete_gamma/mod.rs)
+  the quantile's cdfs are Temme's (one term each) and it halves the whole range, as it already did from 1E9.
+  GAMMA.INV and GAMMAINV share the path.
+- **Band lower edge (same region, df 2E9 to 1E10).** The 2026-10-31 fill of probes/t3350-gamma-inv-band-lower-edge
+  showed the old fit `offset - z < 39` was wrong in 21 of the 549 huge-shape quantile cells in eval/, with an error
+  against a number either way. It is replaced by ln P(a, x0) - ln p < 205.3 (`BAND_LOWER_EDGE`), which reads as
+  Excel's Newton steps giving up after about 200 (UNVERIFIED as the algorithm). That rule separates 548 of the 549;
+  the miss, `GAMMA.INV(1E-80,1E10,1)`, goes to T-3396. The cut was fitted on the probe only, and the fresh sweep is
+  its hold-out: sweep A16, `#NUM!` in Excel, is now `#NUM!` here too.
+- **Probe cells** (probes/t3350-chisq-inv-huge-df): all 46 cells listed in Context are now within 4 ulps of Excel
+  (passed 168 -> 181 bit-exact, `#NUM!` mismatches 46 -> 0). The visibly-off cells left are not this task's bug:
+  - A25 `CHISQ.INV(1E-300,5E6)`, df 5E6: ours is the math, Excel is 1.5E-14 off it. Owner T-3294.
+  - A205-A289 `CHISQ.INV.RT(1E-300,df)`, df 5E6 to 1E9: Excel returns its closed-form start, 2.6E-4 from the math.
+    Ours is the math, which is decision 0188 R3's target on that branch. The owner rules the region in T-3397.
+  - A301-A351, df 2E9 and up: the known closed form, about 1E-13 from Excel's value. Owners T-3272 (the digits) and
+    T-3364 (the move to the math).
+  The lower-edge probe went from 98 to 120 bit-exact and from 26 error-vs-number cells to 1 (A122, T-3396).
+- **Gate A floor on the fresh sweep** (probes-numeric/t3350-r4-chisq-inv-sweep: 240 points, seed 3350; filled by
+  excel-graph and scored by docs/research/t3350/sweep.py against a 50-digit mpmath reference: dps 60, Newton to
+  1E-52 in log x). "Both" is within 15 digits of Excel and within 1E-9 of the math; "math only" is within 1E-9 of
+  the math only.
+
+  | stratum | points | both | both errors | math only | outside |
+  |---|---|---|---|---|---|
+  | CHISQ.INV full | 40 | 35 | 3 | 2 | 0 |
+  | CHISQ.INV region | 50 | 50 | 0 | 0 | 0 |
+  | CHISQ.INV region near 1 | 30 | 30 | 0 | 0 | 0 |
+  | CHISQ.INV.RT full | 40 | 33 | 4 | 0 | 3 |
+  | CHISQ.INV.RT region | 50 | 50 | 0 | 0 | 0 |
+  | CHISQ.INV.RT region near 1 | 30 | 30 | 0 | 0 | 0 |
+
+  - 0 cells have an error on one side and a number on the other.
+  - The 2 "math only" points are small df (A4 at df 7, A38 at df 147), where Excel is 2E-15 off: Phase 1b.
+  - The 3 "outside" points, A122, A127 and A155, are `CHISQ.INV.RT` at about 1E-230 and df 2.4E9 to 7.2E9. They lie
+    on the existing R3 closed-form branch (shape at least 1E9): ours is Excel's closed form, 2.66E-4 from the math.
+    The move to the math is T-3364.
+- **Eval delta.** No regressions and no fixed gated cells (no gated cell covered the region). eval/baseline/probes.txt
+  gains the two new probe cases (231 new-coverage lines, mostly cells within 4 ulps). Baselines were recorded with a
+  release binary verified to hold this branch's engine: touched sources, `-v` build showing this worktree's
+  rustsheet_engine, the binary copied into the worktree, and `show` on the new probes.
+- Follow-ups: T-3396 (lower edge at shape 1E10), T-3397 (owner ruling on the closed-form branch below shape 1E9).
