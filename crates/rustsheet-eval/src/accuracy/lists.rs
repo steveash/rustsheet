@@ -13,6 +13,12 @@
 //! <point or eval cell id>\tdocs/excel-semantics/<file>.md#<anchor>
 //! ```
 //!
+//! `exempt.tsv`, one line per in-scope numeric function that needs no table ("Gate A holds"):
+//!
+//! ```text
+//! <FUNCTION>\t<class exact|composite>\t<reason>
+//! ```
+//!
 //! Blank lines and lines starting with `#` are comments. A file that does not exist is empty.
 
 use std::collections::BTreeMap;
@@ -25,6 +31,30 @@ pub const KNOWN_FAILURES: &str = "known-failures.tsv";
 
 /// The R3 marks, relative to the accuracy manifest's directory.
 pub const MATH_OVER_EXCEL: &str = "math-over-excel.tsv";
+
+/// The table exemptions, relative to the accuracy manifest's directory.
+pub const EXEMPT: &str = "exempt.tsv";
+
+/// Why an in-scope numeric function needs no reference table (SPEC-0029, "Gate A holds").
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExemptClass {
+    /// No floating-point kernel: the result is exact (COUNT, ROW, LEN, MATCH, DATE).
+    Exact,
+    /// A table cannot drive it with scalar literals; the eval suites named in the reason do.
+    Composite,
+}
+
+/// One `exempt.tsv` line.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Exemption {
+    /// The 1-based line number, for messages.
+    pub line: usize,
+    pub class: ExemptClass,
+    pub reason: String,
+}
+
+/// Function name → its exemption.
+pub type Exemptions = BTreeMap<String, Exemption>;
 
 /// One `known-failures.tsv` line.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -167,6 +197,52 @@ pub fn load_r3_marks(dir: &Path) -> Result<R3Marks, ListError> {
     Ok(out)
 }
 
+/// Parses `exempt.tsv` in `dir`.
+///
+/// # Errors
+/// When the file is unreadable, a line is malformed, or a function is listed twice. Whether each
+/// function is an in-scope numeric one without a table is the check's (`crate::accuracy`).
+pub fn load_exemptions(dir: &Path) -> Result<Exemptions, ListError> {
+    let mut out = Exemptions::new();
+    for (line, fields) in data_lines(&dir.join(EXEMPT))? {
+        let bad = |why| ListError::Line {
+            file: EXEMPT,
+            line,
+            why,
+        };
+        let [name, class, reason] = fields.as_slice() else {
+            return Err(bad(
+                "expected 3 tab-separated fields: function, class, reason",
+            ));
+        };
+        // The catalog's names: upper case, digits, `.` and `_` (T.INV.2T, LOG10, ERF.PRECISE).
+        let well_formed = name.starts_with(|c: char| c.is_ascii_uppercase())
+            && name
+                .bytes()
+                .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit() || b == b'.' || b == b'_');
+        if !well_formed {
+            return Err(bad("the function must be an upper-case catalog name"));
+        }
+        let class = match class.as_str() {
+            "exact" => ExemptClass::Exact,
+            "composite" => ExemptClass::Composite,
+            _ => return Err(bad("the class must be exact or composite")),
+        };
+        if reason.trim().is_empty() {
+            return Err(bad("the reason may not be empty"));
+        }
+        let entry = Exemption {
+            line,
+            class,
+            reason: reason.clone(),
+        };
+        if out.insert(name.clone(), entry).is_some() {
+            return Err(bad("the function is listed twice"));
+        }
+    }
+    Ok(out)
+}
+
 /// Checks that the entry a mark cites exists and has a `Status: MATH-OVER-EXCEL` line, with the
 /// anchor check `deviations` lines use.
 ///
@@ -225,6 +301,37 @@ mod tests {
         let dir = std::env::temp_dir().join("rs-accuracy-no-such-dir");
         assert!(load_known_failures(&dir).expect("empty").is_empty());
         assert!(load_r3_marks(&dir).expect("empty").is_empty());
+        assert!(load_exemptions(&dir).expect("empty").is_empty());
+    }
+
+    #[test]
+    fn exemptions_parse_and_refuse_bad_lines() {
+        let dir = dir_with(
+            "ex-ok",
+            EXEMPT,
+            "# comment\nCOUNT\texact\tcounts cells\nT.INV.2T\tcomposite\tprobes-numeric\n",
+        );
+        let ex = load_exemptions(&dir).expect("parses");
+        std::fs::remove_dir_all(&dir).expect("cleanup");
+        assert_eq!(ex["COUNT"].class, ExemptClass::Exact);
+        assert_eq!(ex["COUNT"].line, 2);
+        assert_eq!(ex["T.INV.2T"].class, ExemptClass::Composite);
+        for (i, bad) in [
+            "COUNT\texact",
+            "COUNT\tcheap\treason",
+            "COUNT\texact\t ",
+            "count\texact\treason",
+            "1COUNT\texact\treason",
+            "COUNT\texact\ta\nCOUNT\tcomposite\tb",
+        ]
+        .iter()
+        .enumerate()
+        {
+            let dir = dir_with(&format!("ex-bad{i}"), EXEMPT, bad);
+            let got = load_exemptions(&dir);
+            std::fs::remove_dir_all(&dir).expect("cleanup");
+            assert!(got.is_err(), "{bad:?}");
+        }
     }
 
     #[test]

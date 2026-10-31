@@ -4,6 +4,8 @@
 //! The fixture is not a real table: its Excel and math values are made up to put one point in
 //! each class. SQRT/s1 is filled and inside (an R3 point among them), LN/s1 is pending, and EXP/s1
 //! holds a known failure, a stale known-failure line, a failing point and a stale math value.
+//! Its catalog view lists ABS, an in-scope numeric function with no table and no exemption (the
+//! missing table), and `exempt.tsv` exempts COUNT.
 
 // Helpers live in a test module so clippy's test allowances (clippy.toml) cover them.
 #[cfg(test)]
@@ -72,7 +74,7 @@ mod tests {
         let summary = stdout.lines().next().unwrap_or_default();
         assert!(
             summary.starts_with(
-                "accuracy: 9 points in 3 tables (pending 2): 6 in envelope (Excel 15 digits only 1, math only 3), 1 known failures (T-3356 1), 1 failing, 1 table defects; missing tables n/a (T-3379); "
+                "accuracy: 9 points in 3 tables (pending 2): 6 in envelope (Excel 15 digits only 1, math only 3), 1 known failures (T-3356 1), 1 failing, 1 table defects; missing tables 1; "
             ),
             "{stdout}"
         );
@@ -100,6 +102,8 @@ mod tests {
         assert!(fail < known, "{stdout}");
 
         assert_eq!(json["passes"], false);
+        assert_eq!(json["holds"], false);
+        assert_eq!(json["check"]["missing_tables"], serde_json::json!(["ABS"]));
         let points = json["check"]["points"].as_array().expect("points");
         assert_eq!(points.len(), 9);
         let point = |id: &str| {
@@ -140,11 +144,49 @@ mod tests {
         std::fs::remove_dir_all(&tmp).expect("cleanup");
         assert_eq!(code, Some(0), "{stdout}");
         assert!(
-            stdout.starts_with("accuracy: 5 points in 2 tables (pending 2): 5 in envelope (Excel 15 digits only 0, math only 3), 0 known failures, 0 failing, 0 table defects;"),
+            stdout.starts_with("accuracy: 5 points in 2 tables (pending 2): 5 in envelope (Excel 15 digits only 0, math only 3), 0 known failures, 0 failing, 0 table defects; missing tables 2;"),
             "{stdout}"
         );
         assert_eq!(stdout.lines().count(), 1, "{stdout}");
         assert_eq!(json["passes"], true);
+        // Missing tables (EXP, ABS) and pending points keep Gate A from holding, not the check.
+        assert_eq!(json["holds"], false);
+        assert_eq!(
+            json["check"]["missing_tables"],
+            serde_json::json!(["ABS", "EXP"])
+        );
+    }
+
+    #[test]
+    fn a_stale_exemption_fails_the_gate() {
+        let tmp = scratch("exempt");
+        let root = tmp.join("repo");
+        copy_tree(&fixture(), &root);
+        std::fs::remove_dir_all(root.join("eval/accuracy/tables/EXP")).expect("rm");
+        std::fs::remove_file(root.join("eval/accuracy/known-failures.tsv")).expect("rm");
+        // SQRT has a table, UPPER returns text: neither may be exempt. ABS's line clears it.
+        let exempt = root.join("eval/accuracy/exempt.tsv");
+        let text = std::fs::read_to_string(&exempt).expect("read");
+        std::fs::write(
+            &exempt,
+            format!("{text}SQRT\texact\tx\nUPPER\texact\tx\nABS\tcomposite\tprobes\n"),
+        )
+        .expect("write");
+        let (code, stdout, json) = check(&root, &tmp.join("accuracy.json"));
+        std::fs::remove_dir_all(&tmp).expect("cleanup");
+        assert_eq!(code, Some(1), "{stdout}");
+        assert!(stdout.contains("missing tables 1;"), "{stdout}");
+        assert!(
+            stdout.contains(
+                "STALE exempt.tsv line 3: SQRT: the function has a table: remove the line"
+            ),
+            "{stdout}"
+        );
+        assert!(
+            stdout.contains("STALE exempt.tsv line 4: UPPER: not an in-scope catalog function returning a number"),
+            "{stdout}"
+        );
+        assert_eq!(json["check"]["missing_tables"], serde_json::json!(["EXP"]));
     }
 
     #[test]

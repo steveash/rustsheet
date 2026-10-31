@@ -1,0 +1,48 @@
+# Gate A table exemptions (SPEC-0029 "Gate A holds"): in-scope catalog functions returning a
+# number that need no reference table, one per line, tab-separated:
+#   <FUNCTION>	<class>	<reason>
+# Classes: `exact` (no floating-point kernel: counts, positions, codes, integer date parts) and
+# `composite` (a table of scalar literals cannot drive it; the reason names the eval suites that
+# do). A protected path (T-3379): every change needs a decision record. A line naming a function
+# that has a table, or that is not an in-scope numeric catalog function, fails the check.
+AREAS	exact	counts the areas of a reference
+BITAND	exact	integer bit operation on values below 2^48
+BITLSHIFT	exact	integer bit shift on values below 2^48
+BITOR	exact	integer bit operation on values below 2^48
+BITRSHIFT	exact	integer bit shift on values below 2^48
+BITXOR	exact	integer bit operation on values below 2^48
+CODE	exact	a character code
+COLUMN	exact	a column number
+COLUMNS	exact	a column count
+COUNT	exact	counts cells
+COUNTA	exact	counts cells
+COUNTBLANK	exact	counts cells
+COUNTIF	exact	counts cells
+COUNTIFS	exact	counts cells
+DATE	exact	an integer day serial
+DAY	exact	an integer part of a day serial
+DCOUNT	exact	counts database cells
+DCOUNTA	exact	counts database cells
+DELTA	exact	returns 0 or 1
+ERROR.TYPE	exact	an error code
+FIND	exact	a character position
+FINDB	exact	a byte position
+GESTEP	exact	returns 0 or 1
+ISOWEEKNUM	exact	an integer week number
+LEN	exact	a character count
+LENB	exact	a byte count
+MATCH	exact	a position
+MONTH	exact	an integer part of a day serial
+ROW	exact	a row number
+ROWS	exact	a row count
+SEARCH	exact	a character position
+SEARCHB	exact	a byte position
+SHEET	exact	a sheet number
+SHEETS	exact	a sheet count
+SIGN	exact	returns -1, 0 or 1
+TYPE	exact	a type code
+UNICODE	exact	a code point
+WEEKDAY	exact	an integer day of the week
+WEEKNUM	exact	an integer week number
+XMATCH	exact	a position
+YEAR	exact	an integer part of a day serial

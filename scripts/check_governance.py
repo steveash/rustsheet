@@ -8,7 +8,9 @@ docs/decisions/ explaining why, so rules are never silently weakened. Additional
 case must carry exactly one milestone tag, M2 or later (decisions 0043, 0051, 0057). A diff that
 adds or changes a task filed from a GitHub issue (`issue:` or `issue_origin:` in its front
 matter) may not touch a protected path at all, decision record or not, nor a dependency manifest,
-lockfile or build script, nor add `allow(` or `unsafe` to Rust code (decision 0158).
+lockfile or build script, nor add `allow(` or `unsafe` to Rust code (decision 0158). Gate A's
+reference tables are append-only and its exemption and R3 lists protected, and its known-failure
+lines follow scripts/accuracy_governance.py (SPEC-0029, T-3379).
 
 Usage: scripts/check_governance.py [BASE_REF]   (default: origin/main)
 """
@@ -22,6 +24,7 @@ import sys
 from collections.abc import Callable, Iterable
 from pathlib import Path
 
+import accuracy_governance as accuracy
 import merge_flip
 import tasks
 
@@ -48,7 +51,12 @@ def is_deviations_file(path: str) -> bool:
 
 def is_protected(path: str) -> bool:
     """Whether changing `path` needs a decision record in the same PR."""
-    return path.startswith(PROTECTED) or path in PROTECTED or is_deviations_file(path)
+    return (
+        path.startswith(PROTECTED)
+        or path in PROTECTED
+        or is_deviations_file(path)
+        or path in accuracy.PROTECTED_FILES
+    )
 
 
 PROBE_CASES = "eval/suites/probes/cases/"
@@ -175,13 +183,16 @@ def failures(
     flip: bool,
     has_issue: Callable[[str], bool] = task_has_issue,
     added: Callable[[], list[tuple[str, str]]] = list,
+    known_failures: Iterable[str] = (),
 ) -> list[list[str]]:
     """The failed rules for a diff's `--name-status` lines, each as its report lines. `flip` says
     the diff is a lock flip (decision 0157): it waives the decision-record rule and nothing else.
     `has_issue(path)` says whether a task file on HEAD came from a GitHub issue, and `added()`
-    gives the diff's added Rust lines, read only for such a diff (decision 0158)."""
+    gives the diff's added Rust lines, read only for such a diff (decision 0158). A committed Gate A
+    batch the diff changes, deletes or renames counts as a protected path, and `known_failures`
+    are the problems `accuracy.known_failure_problems` found (SPEC-0029, T-3379)."""
     paths = [line.split("\t")[-1] for line in changed]
-    protected = [p for p in paths if is_protected(p)]
+    protected = [p for p in paths if is_protected(p)] + accuracy.table_edits(changed)
     decisions = [p for p in paths if p.startswith("docs/decisions/") and p.endswith(".md")]
     found = []
     if protected and not decisions and not flip:
@@ -223,6 +234,15 @@ def failures(
                 *(f"  {p}" for p in deleted_tests),
             ]
         )
+    known = list(known_failures)
+    if known:
+        found.append(
+            [
+                "FAIL governance: Gate A known failures (SPEC-0029, T-3379): every line names an open "
+                "task, and a new line only a point whose batch the same diff adds:",
+                *(f"  {problem}" for problem in known),
+            ]
+        )
     probe_problems = probe_tag_problems(changed, read_tags)
     if probe_problems:
         found.append(
@@ -233,6 +253,19 @@ def failures(
             ]
         )
     return found
+
+
+def file_at(rev: str, path: str) -> str | None:
+    """The text of `path` at `rev`, or None when it does not exist there."""
+    try:
+        return git("show", f"{rev}:{path}")
+    except subprocess.CalledProcessError:
+        return None
+
+
+def task_statuses() -> dict[str, str]:
+    """Every task id of the checkout with its status."""
+    return {str(t.get("id")): str(t.get("status")) for t in tasks.load()}
 
 
 def main() -> int:
@@ -249,6 +282,12 @@ def main() -> int:
     found = failures(
         changed, case_tags, flip,
         added=lambda: added_rust_lines(git("diff", "-U0", "--no-color", merge_base, "HEAD", "--", "*.rs")),
+        known_failures=accuracy.known_failure_problems(
+            file_at(merge_base, accuracy.KNOWN_FAILURES),
+            file_at("HEAD", accuracy.KNOWN_FAILURES),
+            changed,
+            task_statuses(),
+        ),
     )
     if deleted_test_files(changed) and any(line.split("\t")[-1].startswith("docs/decisions/") for line in changed):
         print("note: test files deleted with a decision record present: allowed; reviewers must confirm")

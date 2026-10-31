@@ -16,7 +16,7 @@ from rustsheet_tools.gen.generator import Catalog
 REPO = Path(__file__).resolve().parents[3]
 CATALOG = REPO / "eval" / "catalog" / "functions.yaml"
 VIEW = CATALOG.with_name("scope.json")
-FIELDS = ("category", "milestone", "scope", "reason", "oracle", "v15", "v15_reason")
+FIELDS = ("category", "milestone", "scope", "reason", "oracle", "v15", "v15_reason", "returns")
 
 
 def render(catalog: Path = CATALOG) -> str:
@@ -24,7 +24,8 @@ def render(catalog: Path = CATALOG) -> str:
 
     `scope` is always present (an entry without it is in scope); `reason`, `oracle`, `v15` and
     `v15_reason` only when the catalog sets them. `category` groups the evidence-floor report (T-0056);
-    `params` feeds the argument-coverage census (T-0077)."""
+    `params` feeds the argument-coverage census (T-0077); `returns` (when set) Gate A's
+    missing-table count (SPEC-0029)."""
     rows: list[str] = []
     for entry in sorted(Catalog.load(catalog).functions, key=lambda f: str(f["name"])):
         row: dict[str, Any] = {"name": entry["name"]}

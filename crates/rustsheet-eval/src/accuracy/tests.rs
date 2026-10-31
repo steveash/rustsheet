@@ -78,6 +78,8 @@ fn the_check_passes_only_without_failures_stale_lines_marks_or_defects() {
         points,
         stale_known_failures: Vec::new(),
         bad_marks: Vec::new(),
+        bad_exemptions: Vec::new(),
+        missing_tables: Vec::new(),
         seconds: 0.0,
     };
     assert!(check(vec![point("a!S!A1", Standing::Inside)]).passes());
@@ -92,7 +94,95 @@ fn the_check_passes_only_without_failures_stale_lines_marks_or_defects() {
         why: "x".into(),
     });
     assert!(!stale.passes());
+    let mut exempt = check(Vec::new());
+    exempt.bad_exemptions.push(ListProblem {
+        file: lists::EXEMPT,
+        line: 1,
+        id: "COUNT".into(),
+        why: "x".into(),
+    });
+    assert!(!exempt.passes());
     assert!(check(Vec::new())
         .render()
         .starts_with("accuracy: 0 points in 0 tables (pending 0): 0 in envelope"));
+}
+
+fn catalog_entry(
+    name: &str,
+    scope: crate::catalog::Scope,
+    returns: &str,
+) -> crate::catalog::CatalogFunction {
+    crate::catalog::CatalogFunction {
+        name: name.into(),
+        category: "math".into(),
+        milestone: "M2".into(),
+        scope,
+        reason: None,
+        oracle: None,
+        v15: None,
+        v15_reason: None,
+        returns: Some(returns.into()),
+        params: Vec::new(),
+    }
+}
+
+#[test]
+fn missing_tables_are_in_scope_numeric_functions_without_a_table_or_an_exemption() {
+    use crate::catalog::Scope;
+    let catalog = Catalog::from_functions([
+        catalog_entry("SQRT", Scope::In, "number"),
+        catalog_entry("COUNT", Scope::In, "number"),
+        catalog_entry("ABS", Scope::In, "number"),
+        catalog_entry("LEN", Scope::In, "number"),
+        catalog_entry("UPPER", Scope::In, "text"),
+        catalog_entry("RAND", Scope::Out, "number"),
+    ]);
+    let tables: BTreeSet<String> = ["SQRT".to_string()].into();
+    let exemption = |line, class| lists::Exemption {
+        line,
+        class,
+        reason: "r".into(),
+    };
+    let exempt: Exemptions = [
+        ("COUNT".to_string(), exemption(1, lists::ExemptClass::Exact)),
+        ("SQRT".to_string(), exemption(2, lists::ExemptClass::Exact)),
+        ("UPPER".to_string(), exemption(3, lists::ExemptClass::Exact)),
+        (
+            "RAND".to_string(),
+            exemption(4, lists::ExemptClass::Composite),
+        ),
+        (
+            "NOSUCH".to_string(),
+            exemption(5, lists::ExemptClass::Exact),
+        ),
+    ]
+    .into();
+    let (missing, stale) = table_coverage(&catalog, &tables, &exempt);
+    assert_eq!(missing, vec!["ABS".to_string(), "LEN".to_string()]);
+    let stale: Vec<(usize, &str)> = stale.iter().map(|s| (s.line, s.id.as_str())).collect();
+    assert_eq!(
+        stale,
+        vec![(2, "SQRT"), (3, "UPPER"), (4, "RAND"), (5, "NOSUCH")]
+    );
+}
+
+#[test]
+fn gate_a_holds_only_without_known_failures_pending_points_or_missing_tables() {
+    let filled = |standing| Point {
+        excel: Some(Value::Number(1.0)),
+        ..point("a!S!A1", standing)
+    };
+    let check = |points: Vec<Point>, missing: &[&str]| Check {
+        points,
+        stale_known_failures: Vec::new(),
+        bad_marks: Vec::new(),
+        bad_exemptions: Vec::new(),
+        missing_tables: missing.iter().map(|m| (*m).to_string()).collect(),
+        seconds: 0.0,
+    };
+    assert!(check(vec![filled(Standing::Inside)], &[]).holds());
+    assert!(!check(vec![filled(Standing::Inside)], &["ABS"]).holds());
+    assert!(!check(vec![filled(Standing::KnownFailure)], &[]).holds());
+    assert!(!check(vec![point("a!S!A1", Standing::Inside)], &[]).holds());
+    assert!(!check(vec![filled(Standing::Failing)], &[]).holds());
 }

@@ -231,6 +231,7 @@ mod tests {
             oracle,
             v15: None,
             v15_reason: None,
+            returns: None,
             params: Vec::new(),
         }
     }

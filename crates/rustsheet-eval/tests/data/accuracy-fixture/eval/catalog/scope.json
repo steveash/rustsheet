@@ -1,0 +1,12 @@
+{
+ "source": "fixture: the functions the accuracy fixture's tables and exempt.tsv name",
+ "functions": [
+  {"name": "ABS", "category": "math", "milestone": "M2", "scope": "in", "returns": "number", "params": [{"name": "number", "mode": "value"}]},
+  {"name": "COUNT", "category": "stat", "milestone": "M2", "scope": "in", "returns": "number", "params": [{"name": "value1", "mode": "aggregate"}]},
+  {"name": "EXP", "category": "math", "milestone": "M2", "scope": "in", "returns": "number", "params": [{"name": "number", "mode": "value"}]},
+  {"name": "LN", "category": "math", "milestone": "M2", "scope": "in", "returns": "number", "params": [{"name": "number", "mode": "value"}]},
+  {"name": "RAND", "category": "math", "milestone": "M2", "scope": "out", "reason": "volatile", "returns": "number", "params": []},
+  {"name": "SQRT", "category": "math", "milestone": "M2", "scope": "in", "returns": "number", "params": [{"name": "number", "mode": "value"}]},
+  {"name": "UPPER", "category": "text", "milestone": "M2", "scope": "in", "returns": "text", "params": [{"name": "text", "mode": "value"}]}
+ ]
+}
