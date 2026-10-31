@@ -35,4 +35,4 @@ a decimal point, as Excel does; full-width digits stay text.
 - Collation of these digits (T-3324).
 
 ## Outcome
-Mapped Arabic-Indic, Devanagari and Thai digits to ASCII in the shared `parse_number` (one place, used by VALUE, arithmetic coercion and criteria). 14 known failures removed from eval/baseline/probes.txt, no regressions.
+`script_digit_to_ascii` (parse_formatted.rs) is applied in `cast::number_text_in`, the one coercion entry used by VALUE, arithmetic coercion and criteria. Typed cell input, dates and times, and other digit blocks are left out (unprobed). Percent/currency/parenthesis/group/exponent forms inherit the mapping through coercion; a probe follow-up is filed. 14 known failures removed from eval/baseline/probes.txt, no regressions.

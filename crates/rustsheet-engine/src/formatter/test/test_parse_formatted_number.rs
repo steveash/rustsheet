@@ -440,3 +440,17 @@ fn typed_currency_and_percent_formats() {
     assert_eq!(parse("1,000%", &["$"]), Ok((10.0, Some("0%".to_string()))));
     assert_eq!(parse("-1%", &["$"]), Ok((-0.01, Some("0%".to_string()))));
 }
+
+#[test]
+fn script_digits_are_mapped_only_by_the_coercion_helper() {
+    use crate::formatter::format::script_digit_to_ascii;
+    let map = |s: &str| s.chars().map(script_digit_to_ascii).collect::<String>();
+    assert_eq!(map("٣٫"), "3٫");
+    assert_eq!(map("१२३"), "123");
+    assert_eq!(map("๓.๕"), "3.5");
+    assert_eq!(map("1٣"), "13");
+    // Full-width digits stay text (probes/t3276-collation-other-scripts Calc!H6).
+    assert_eq!(map("３"), "３");
+    // The typed-input parser does not map them (unprobed, T-3325).
+    assert!(parse("٣", &[]).is_err());
+}

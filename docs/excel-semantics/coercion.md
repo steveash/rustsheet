@@ -386,7 +386,7 @@ letters (it sorts above `"ab"`, below the kana: U8).
 Evidence: probes/t3276-collation-other-scripts (excel-graph, 2026-10-31): 99 strings in Data!A; Calc!A =
 count less, B = count equal, C = exact MATCH position, D = XMATCH position, E = COUNTIF `"="&x`,
 G1:G36 = `(x<y)+2*(x=y)+4*(x>y)` for chosen pairs, H1:H13 single cells. "Rank" cites Calc!A by Data row.
-The engine fails the collation cells (T-3324); the digit cells pass (T-3325, `script_digit_to_ascii` in parse_formatted.rs). VERIFIED (cells cited):
+The engine fails the collation cells (T-3324); the digit cells pass (T-3325): `cast::number_text_in` maps the three digit blocks, so VALUE, arithmetic coercion and criteria read them. UNPROBED, so not mapped or only by inference: text typed into a cell (stays text), dates and times, other digit blocks; percent, currency, parenthesis, group-separator and exponent forms follow the mapping through coercion without evidence (follow-up probe task). VERIFIED (cells cited):
 - **Block order is not code-point order.** Lowest first: Latin, Greek, Cyrillic, **kana**, Hebrew,
   Arabic, Devanagari, Thai, Lao, the astral `𝐀` (U+1D400) and `😀` (U+1F600), Hangul, CJK ideographs,
   then the astral ideograph `𠀀` (U+20000): `"я" < "ア" < "あ" < "א"` (ranks A18, A20, A19, A21 = 32,

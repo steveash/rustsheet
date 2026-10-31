@@ -14,7 +14,7 @@ use std::collections::BTreeSet;
 pub use super::formatted::Formatted;
 use super::formatted::{unshowable_text, MAX_TEXT_FORMAT_CHARS};
 pub(crate) use super::parse_formatted::{
-    parse_formatted_number, parse_typed_number, rejected_clock_text_format,
+    parse_formatted_number, parse_typed_number, rejected_clock_text_format, script_digit_to_ascii,
 };
 use super::{
     calendar_dates::{calendar_ymd, hebrew_month_name, year_token_text, HEBREW_LAST_NAMED_YEAR},
