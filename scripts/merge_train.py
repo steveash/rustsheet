@@ -245,10 +245,6 @@ MERGE_BUDGET = 150  # per PR a CI run can merge: the pre-squash wait, the merge 
 CI_POLL = 60  # every CI poll is a stop checkpoint
 DISPATCH_AFTER = 3 * 60  # no run by then: dispatch once; still none after as long again: stop
 RENEW_EVERY = 5 * 60
-PRE_SQUASH_POLL = 5
-# GitHub recomputes a PR's test merge when the PR changes, not when `main` moves, so the stage
-# re-sets a stale PR's base once and waits for the recompute, which took about 3 min (decision 0200).
-PRE_SQUASH_TIMEOUT = 5 * 60
 TITLE_MAX = 100
 ZWJ = "\u200d"
 CLOSING_KEYWORD = re.compile(r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\b", re.IGNORECASE)
@@ -566,34 +562,33 @@ class Stage:
         raise CutOff(f"infrastructure: {'; '.join(outcome.jobs)}, twice")
 
     def pre_squash(self, member: Member, expected: str) -> dict[str, object]:
-        """Step 7.2: wait until GitHub's test merge of the PR sits on `expected` (the current
-        `main`), and require its tree to be the train's. Returns the PR read."""
-        deadline = self.clock() + PRE_SQUASH_TIMEOUT
-        refreshed = False
-        while True:
-            pull = self.client.pull(member.pr)
-            merge = merge_ready.text_of(pull, "merge_commit_sha")
-            if pull.get("mergeable") is not None and SHA.fullmatch(merge):
-                commit = self.client.commit(merge)
-                parents = merge_ready.field_of(commit, "parents")
-                first = parents[0] if isinstance(parents, list) and parents else None
-                if merge_ready.text_of(first, "sha") == expected:
-                    if merge_ready.text_of(commit, "tree", "sha") != tree_of(member.merge, self.root):
-                        raise Stop(f"main differs from the tested train at #{member.pr}: GitHub's test merge "
-                                   "has another tree", p0=True, pr=member.pr)
-                    return pull
-                if remote_sha(MAIN_REF, self.root) != expected:
-                    raise Stop(f"main moved without the lock before squashing #{member.pr}", p0=True, pr=member.pr)
-                if not refreshed:  # a test merge on an older main: make GitHub recompute it
-                    self.client.set_base(member.pr, merge_ready.BASE_BRANCH)
-                    self.log.append(f"#{member.pr}: re-set the base to recompute its stale test merge")
-                    refreshed = True
-                    # The recompute starts now; in step mode the session's ack may have taken minutes.
-                    deadline = max(deadline, self.clock() + PRE_SQUASH_TIMEOUT)
-            if self.clock() >= deadline:
-                raise Stop(f"GitHub's test merge of #{member.pr} was not recomputed on {expected[:12]} "
-                           f"within {PRE_SQUASH_TIMEOUT // 60} min")
-            self.sleep(PRE_SQUASH_POLL)
+        """Step 7.2: the PR's merge onto `expected` (the current `main`) must have the train's tree.
+        GitHub's own test merge is checked when it sits on `expected`. GitHub recomputes it only when
+        the PR changes, not when `main` moves, so a stale one (or one still computing) is replaced by
+        the same merge done locally (decision 0200). Returns the PR read."""
+        pull = self.client.pull(member.pr)
+        want = tree_of(member.merge, self.root)
+        merge = merge_ready.text_of(pull, "merge_commit_sha")
+        if pull.get("mergeable") is not None and SHA.fullmatch(merge):
+            commit = self.client.commit(merge)
+            parents = merge_ready.field_of(commit, "parents")
+            first = parents[0] if isinstance(parents, list) and parents else None
+            if merge_ready.text_of(first, "sha") == expected:
+                if merge_ready.text_of(commit, "tree", "sha") != want:
+                    raise Stop(f"main differs from the tested train at #{member.pr}: GitHub's test merge "
+                               "has another tree", p0=True, pr=member.pr)
+                return pull
+        if remote_sha(MAIN_REF, self.root) != expected:
+            raise Stop(f"main moved without the lock before squashing #{member.pr}", p0=True, pr=member.pr)
+        local = git("merge-tree", "--write-tree", expected, member.head, root=self.root, check=False)
+        if local.returncode != 0:
+            raise Stop(f"#{member.pr} does not merge cleanly onto main {expected[:12]}")
+        if local.stdout.split()[0] != want:
+            raise Stop(f"main differs from the tested train at #{member.pr}: its merge onto "
+                       f"{expected[:12]} has another tree", p0=True, pr=member.pr)
+        self.log.append(f"#{member.pr}: GitHub's test merge is stale; its merge onto {expected[:12]} has the "
+                        "train's tree")
+        return pull
 
     def squash(self, member: Member, pull: dict[str, object]) -> str:
         """Step 7.3: squash-merge the PR only at its tested head. A lost reply is read back.

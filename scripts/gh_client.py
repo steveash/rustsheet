@@ -219,11 +219,6 @@ class Client:
         payload = {"title": title, "head": branch_name(head), "base": branch_name(base), "body": body}
         return as_dict(self.call("POST", "pulls", body=payload))
 
-    def set_base(self, pr: int | str, base: str) -> dict[str, object]:
-        """Sets PR `pr`'s base branch to `base`. Setting it to the base it already has is how the
-        merge train makes GitHub recompute a stale test merge (decision 0200)."""
-        return as_dict(self.call("PATCH", f"pulls/{number(pr)}", body={"base": branch_name(base)}))
-
     def delete_branch(self, name: str) -> object:
         """Deletes the branch `name` (never `main`)."""
         if branch_name(name) == "main":

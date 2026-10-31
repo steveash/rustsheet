@@ -44,7 +44,6 @@ VALID: list[dict[str, object]] = [
     },
     {"action": "delete_branch", "branch": "agent/harness/T-0001-x"},
     {"action": "dispatch", "workflow": "ci.yml", "ref": "merge-train/current"},
-    {"action": "set_base", "pr": 7, "base": "main"},
 ]
 
 
@@ -57,7 +56,7 @@ class Schema(unittest.TestCase):
                 merge_step.validate({**action, "seq": 3})
 
     def test_anything_else_is_refused(self) -> None:
-        comment, label, unlabel, merge, pull, delete, dispatch, set_base = VALID
+        comment, label, unlabel, merge, pull, delete, dispatch = VALID
         bad = [
             {"action": "close", "pr": 7},
             {**comment, "extra": 1},
@@ -78,8 +77,6 @@ class Schema(unittest.TestCase):
             {**pull, "head": "../x"},
             {**delete, "branch": "main"},
             {**dispatch, "workflow": "../ci.yml"},
-            {**set_base, "base": "dev"},
-            {**set_base, "base": "../main"},
         ]
         for action in bad:
             with self.subTest(action=action), self.assertRaises(StepError):
@@ -112,7 +109,6 @@ class Hub(Client):
         self.opened: list[dict[str, object]] = []
         self.branches = {"agent/harness/T-0001-x"}
         self.dispatches = 0
-        self.main_sha, self.base_sha = "c" * 40, "d" * 40  # PR 7's base sha is an older main
 
     def send(self, request: Request) -> object:
         return self.send_cursor(request)[0]
@@ -126,7 +122,6 @@ class Hub(Client):
                 "head": {"sha": SHA},
                 "merged": bool(self.merged),
                 "merge_commit_sha": self.merged or None,
-                "base": {"ref": "main", "sha": self.base_sha},
             }, None
         if path == "issues/7/comments":
             return self.comments_, None
@@ -134,8 +129,6 @@ class Hub(Client):
             return {"message": "T-0001: x (#7)\n\nCo-Authored-By: A <a@b.c>\n"}, None
         if path == "pulls":
             return self.opened, None
-        if path == "git/ref/heads/main":
-            return {"ref": "refs/heads/main", "object": {"sha": self.main_sha}}, None
         if m := re.fullmatch(r"git/ref/heads/(.+)", path):
             if m[1] in self.branches:
                 return {"ref": m[1]}, None
@@ -170,8 +163,6 @@ class Hub(Client):
             self.branches.discard(str(action["branch"]))
         elif kind == "dispatch":
             self.dispatches += 1
-        elif kind == "set_base":
-            self.base_sha = self.main_sha  # GitHub re-reads the base and recomputes the test merge
 
 
 class Session:
@@ -206,13 +197,11 @@ class Writes(unittest.TestCase):
         self.assertEqual(pull["number"], 101)
         self.client.delete_branch("agent/harness/T-0001-x")
         self.client.dispatch("ci.yml", "merge-train/current")
-        self.client.set_base(7, "main")
-        self.assertEqual(self.hub.base_sha, self.hub.main_sha)
         self.assertEqual(
             [a["action"] for a in self.session.seen],
-            ["unlabel", "label", "comment", "merge", "create_pull", "delete_branch", "dispatch", "set_base"],
+            ["unlabel", "label", "comment", "merge", "create_pull", "delete_branch", "dispatch"],
         )
-        self.assertEqual([a["seq"] for a in self.session.seen], list(range(1, 9)))
+        self.assertEqual([a["seq"] for a in self.session.seen], list(range(1, 8)))
         self.assertEqual(self.session.seen[0]["labels"], ["bug"])
         self.assertEqual(self.session.seen[3]["expectedHeadSha"], SHA)
 

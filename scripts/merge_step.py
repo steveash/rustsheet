@@ -33,7 +33,6 @@ ROOT = Path(__file__).resolve().parent.parent
 COMMENT, LABEL, UNLABEL = merge_ready.STEP_COMMENT, merge_ready.STEP_LABEL, merge_ready.STEP_UNLABEL
 MERGE = "merge"
 CREATE_PULL, DELETE_BRANCH, DISPATCH = "create_pull", "delete_branch", "dispatch"
-SET_BASE = "set_base"
 # Each action's fields besides `action` and the optional `seq` (the closed enum of the spec).
 FIELDS: Mapping[str, frozenset[str]] = {
     COMMENT: frozenset({"pr", "body"}),
@@ -43,7 +42,6 @@ FIELDS: Mapping[str, frozenset[str]] = {
     CREATE_PULL: frozenset({"title", "head", "base", "body"}),
     DELETE_BRANCH: frozenset({"branch"}),
     DISPATCH: frozenset({"workflow", "ref"}),
-    SET_BASE: frozenset({"pr", "base"}),
 }
 BODY_MAX = 65536  # GitHub's limit on comment and PR bodies, as gh_client enforces it
 TITLE_MAX = 256
@@ -114,8 +112,6 @@ def validate(action: Mapping[str, object]) -> None:
             gh_client.branch_name(str(action["base"]))
         if kind == DELETE_BRANCH and gh_client.branch_name(str(action["branch"])) == merge_ready.BASE_BRANCH:
             raise fail("the base branch is never deleted")
-        if kind == SET_BASE and gh_client.branch_name(str(action["base"])) != merge_ready.BASE_BRANCH:
-            raise fail(f"set_base only re-sets the base to {merge_ready.BASE_BRANCH}")
         if kind == DISPATCH:
             gh_client.checked(gh_client.WORKFLOW, str(action["workflow"]), "workflow")
             gh_client.branch_name(str(action["ref"]))
@@ -224,11 +220,6 @@ class StepClient(Client):
         message = merge_ready.text_of(self.commit(sha), "message").strip() if merged and sha else ""
         return merged, merge_ready.text_of(pull, "head", "sha"), message
 
-    def base_state(self, pr: int, base: str) -> tuple[str, str]:
-        """(PR `pr`'s base sha, the sha of branch `base`): equal once GitHub has re-read the base."""
-        ref = self.call("GET", f"git/ref/heads/{gh_client.branch_name(base)}")
-        return merge_ready.text_of(self.pull(pr), "base", "sha"), merge_ready.text_of(ref, "object", "sha")
-
     def dispatched(self, workflow: str, ref: str) -> int:
         return sum(
             1
@@ -294,15 +285,6 @@ class StepClient(Client):
             {"action": DELETE_BRANCH, "branch": name}, lambda: self.branch_exists(name), lambda _: False
         )
         return None
-
-    def set_base(self, pr: int | str, base: str) -> dict[str, object]:
-        n = gh_client.number(pr)
-        self.step(
-            {"action": SET_BASE, "pr": n, "base": base},
-            lambda: self.base_state(n, base),
-            lambda state: (state[1], state[1]),
-        )
-        return {}
 
     def dispatch(self, workflow: str, ref: str, inputs: Mapping[str, str] | None = None) -> object:
         if inputs:
