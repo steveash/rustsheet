@@ -277,3 +277,10 @@ At the 2026-10-27 eval 302 visibly-off FORECAST.ETS, FORECAST.ETS.SEASONALITY, F
 - probes/forecast-ets-longer-series: Sheet1!K1, Sheet1!K2, Sheet1!K3, Sheet1!K4, Sheet1!K5, Sheet1!K6, Sheet1!K7, Sheet1!K8, Sheet1!K9, Sheet1!K10, Sheet1!K11, Sheet1!K12, Sheet1!K13, Sheet1!K14, Sheet1!K15, Sheet1!K16, Sheet1!K17, Sheet1!K18, Sheet1!K19, Sheet1!K20, Sheet1!K21, Sheet1!K22, Sheet1!K23, Sheet1!K24, Sheet1!K25, Sheet1!K26, Sheet1!K27, Sheet1!K28, Sheet1!K29, Sheet1!K30, Sheet1!K31, Sheet1!K32, Sheet1!K33, Sheet1!K34, Sheet1!K35, Sheet1!K36, Sheet1!K37, Sheet1!K39, Sheet1!K40, Sheet1!K41, Sheet1!K42
 
 T-0085 makes the eval's Phase 1 line treat the cells of this desktop-evidence task as filed rather than as misses, as decision 0114 says.
+
+## Cells added by decision 0188 (2026-10-31)
+The FORECAST.ETS cells of the statistical argument-modes probe below, `#N/A` on excel-graph like every valid call of the family
+(statistics.md "FORECAST.ETS family: excel-graph never computes it"), are this task's. T-0969 had owned the whole case
+through a line naming it without a cell; it now names only its own cells, so these are owned by this M14 task alone
+(decision 0143; R7 of decision 0188 for the M9 probe row):
+- probes/stat-argument-modes.case.json (10): Sheet1!H266, H267, H270, H271, H274, H275, H276, H277, H278, H281

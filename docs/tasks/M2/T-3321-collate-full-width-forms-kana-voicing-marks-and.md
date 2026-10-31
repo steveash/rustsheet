@@ -3,7 +3,7 @@ id: T-3321
 title: "Collate full-width forms, kana, voicing marks and the long-vowel and iteration marks as Excel does (T-3275 probes)"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -37,12 +37,22 @@ XMATCH/XLOOKUP `CollationKey` pass both T-3275 probe cases.
     eval/baseline/probes.txt)
 
 ## Acceptance criteria
-- [ ] Every cell of probes/t3275-collation-width-kana passes, and every cell of
+- [x] Every cell of probes/t3275-collation-width-kana passes, and every cell of
       probes/t3275-collation-width-kana-pairs outside the non-transitive `"aー"` row and column
       (Calc!I1:I37, Calc!B8:AL8) passes; those are either matched or documented as known failures.
-- [ ] No previously passing collation probe regresses (`make eval-baseline`, 0 regressions).
-- [ ] `make check` green; reviewers approve.
+- [x] No previously passing collation probe regresses (`make eval-baseline`, 0 regressions).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Other scripts and CJK ideograph order (T-3276).
 - UPPER/LOWER/ASC/DBCS conversions.
+
+## Outcome
+`collation.rs` gains a kana pass (small kana, `ー`, `ゝ ゞ ヽ ヾ`, `々`) and widens the variant pass
+(full-width forms, kana type); kana weigh as their plain hiragana in syllabary order with voicing as
+an accent; the voicing marks, U+FF07 and U+FF0D are placed; `ー`, `ゝ`, `ゞ`, `々` resolve against
+the letter before them, and `ー` after a non-kana letter loses that letter at the first difference
+of Excel's pairwise comparison, which reproduces the non-transitive `"aー"` cells (matched, not left
+as known failures). Exact MATCH's fold for a lookup value without wildcards (`fold_exact_lookup`) equates `"aー"`
+with `"aa"` and a leading iteration mark with `ー`; wildcards and criteria keep the plain fold. Eval: probes known failures 2792 -> 2262 (530 fixed: every cell of both
+T-3275 cases), 0 regressions. Rules and the unprobed engine choices: coercion.md (T-3275 section); follow-up probe: T-3381.

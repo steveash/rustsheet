@@ -9,6 +9,7 @@ size: M
 tier: opus
 campaign: visible
 depends_on: [T-2586]
+defer: phase-1b
 ---
 
 ## Goal
@@ -18,6 +19,10 @@ M-final still misses, mostly where the power term P = c·ln x has |P| >= 4, move
 identifies Excel's exponential step for this density.
 
 ## Context
+- Decision 0188 R5 (owner's 2026-10-31 rulings): parked as Phase 1b. Every cell this task owns is a BETA.DIST or
+  F.DIST density cell or a dense probes-numeric sweep cell, within Gate A's envelope (most agree with Excel to 12 or
+  more digits, and Excel and the engine are both close to the math), so R1(c) counts it as Phase 1b evidence. A
+  point that Gate A's tables show outside the envelope gets its own task without the key.
 - Gap triage 2026-10-29 (opus refill). `scripts/exit_owners.py --all-off` on the 2026-10-29 report (run on
   5d089378, which predates T-3034's merge 12649586b) lists 35,991 visibly-off F.DIST density cells with no open
   owner, all in the 28 probes-numeric cases below. T-3034 (done) owned them and measured visibly-off F.DIST cells

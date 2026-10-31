@@ -48,9 +48,11 @@ const SERIES_MAX_DF: f64 = 1000.0;
 /// From this shape up to [`LOG_GAMMA_BETA_MAX`] Excel's B(a, 1/2) is a sum of GAMMALNs
 /// ([`log_gamma_ratio`]). Below it (df under 13) the form is not probed and scaling by it loses
 /// probes-numeric cells (statistics.md "Student t prefactor per df").
+/// FITTED(T-0969, 192 cells, df 1..1E6, T.DIST.RT and T.TEST)
 const LOG_GAMMA_BETA_MIN: f64 = 6.5;
 /// Up to this shape Excel's B(a, 1/2) is a sum of GAMMALNs: past 8 GAMMALN is Stirling's series and
 /// Excel's B is accurate.
+/// FITTED(T-0969, 970 cells, BETA.DIST a 0.25..2.5, b 6.5..9.5)
 const LOG_GAMMA_BETA_MAX: f64 = 8.0;
 /// From this shape on, Gamma(a + 1/2)/Gamma(a) comes from its asymptotic series.
 const ASYMPTOTIC_MIN_SHAPE: f64 = 85.0;
@@ -66,9 +68,11 @@ const TAYLOR_TERMS: u32 = 40;
 /// Below this the double-double tail 1/2 - A/2 keeps fewer than 40 of its 106 bits.
 const MIN_SERIES_TAIL: f64 = 1e-12;
 /// df 1 and 2 keep today's path rather than the kernel call ([`kernel_tail`]).
+/// FITTED(T-2509, 67 cells, df 1, t up to 1E6)
 const KERNEL_MIN_DF: f64 = 2.0;
 /// Largest rounded y = n/(n+t^2) at which the tail of a t beyond 1 is taken at that y
 /// ([`unflushed_upper_tail`]).
+/// FITTED(T-0969, 3232 cells, df 2..1000, t 0.0013..8)
 const ROUNDED_Y_MAX: f64 = 0.99;
 /// 1/pi as a double-double.
 const FRAC_1_PI_DD: Dd = (
@@ -273,13 +277,33 @@ fn centre_tail(args: &TailArguments, n: f64, z: f64, ratio: f64) -> f64 {
     let a = 0.5 * n;
     let power = (-a * args.square_over_n.ln_1p()).exp();
     if args.inside_one {
-        // A = z^(1/2) y^a / ((1/2) B(1/2, a)) * w.
-        let centre = 2.0 * z.sqrt() * power * ratio * incbcf(0.5, a, z);
-        0.5 - 0.5 * centre
+        0.5 - 0.5 * centre_fraction(a, z, power, ratio)
     } else {
         // I_y(a, 1/2) = y^a z^(1/2) / (a B(a, 1/2)) * w / z.
         0.5 * power * z.sqrt() * ratio / a * (incbd(a, 0.5, args.n_over_square) / z)
     }
+}
+
+/// The centre A = `I_z(1/2, a)` = z^(1/2) y^a / ((1/2) B(1/2, a)) * w by Cephes' `incbcf` w, with
+/// `power` = y^a and `ratio` = 1/B(1/2, a): [`centre_tail`]'s side up to t = 1.
+fn centre_fraction(a: f64, z: f64, power: f64, ratio: f64) -> f64 {
+    2.0 * z.sqrt() * power * ratio * incbcf(0.5, a, z)
+}
+
+/// A = P(|T| < t) for t in [0, 1] and an integer df n from 1 to 1E10, from [`beta_arguments`]' z
+/// and y^(n/2) = exp(-(n/2) log1p(t^2/n)), never from 1 - y, so a tiny t keeps its digits: within
+/// a few ulp of the exact value (T-2724, the T.INV centre). NaN for a df [`gamma_ratio`] refuses.
+pub(crate) fn student_t_centre(t: f64, n: f64) -> f64 {
+    let Some(ratio) = gamma_ratio(n) else {
+        return f64::NAN;
+    };
+    if t <= 0.0 {
+        return 0.0;
+    }
+    let a = 0.5 * n;
+    let (z, _) = beta_arguments(t, n);
+    let power = (-a * (t * t / n).ln_1p()).exp();
+    centre_fraction(a, z, power, ratio)
 }
 
 /// (t^2/(n+t^2), n/(n+t^2)) for t > 0, each rounded once from double-double arithmetic: forming

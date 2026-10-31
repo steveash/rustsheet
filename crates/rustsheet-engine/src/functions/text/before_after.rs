@@ -147,13 +147,14 @@ impl Model {
                 "instance_num is larger than the text".to_string(),
             );
         }
+        let (n, case, match_end) = (options.instance_num, options.case, options.match_end == 1.0);
         let found = match side {
-            Side::Before => text_before(&text, delimiters, options.instance_num, options.case),
-            Side::After => text_after(&text, delimiters, options.instance_num, options.case),
+            Side::Before => text_before(&text, delimiters, n, case, match_end),
+            Side::After => text_after(&text, delimiters, n, case, match_end),
         };
         match found {
             Some(s) => CalcResult::String(s.into()),
-            None => Self::around_not_found(values, arg_count, text, options, side, cell),
+            None => Self::around_not_found(values, arg_count, cell),
         }
     }
 
@@ -214,29 +215,13 @@ impl Model {
         CalcResult::String(if whole { text } else { String::new() }.into())
     }
 
-    /// The result of an element whose delimiter is not found: with `match_end` the end of the text
-    /// is the missing delimiter, then `if_not_found`, else `#N/A`.
+    /// The result of an element whose delimiter is not found (`match_end` already counted the end
+    /// of the text): `if_not_found`, else `#N/A`.
     fn around_not_found(
         values: &[CalcResult],
         arg_count: usize,
-        text: String,
-        options: AroundOptions,
-        side: Side,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        if options.match_end == 1.0 {
-            // Before the first match from the start is the whole text, after it is empty, and
-            // the other way for a search from the end.
-            let from_start = options.instance_num == 1;
-            let from_end = options.instance_num == -1;
-            match side {
-                Side::Before if from_end => return CalcResult::String("".into()),
-                Side::Before if from_start => return CalcResult::String(text.into()),
-                Side::After if from_start => return CalcResult::String("".into()),
-                Side::After if from_end => return CalcResult::String(text.into()),
-                _ => {}
-            }
-        }
         if arg_count == 6 {
             // An empty cell is converted to empty string (not 0), a number or a boolean comes back
             // as its text (probes/t2314-textbefore-instance-bound A27-A29).

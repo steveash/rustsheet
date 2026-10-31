@@ -19,35 +19,54 @@ whose exit criteria are not met.
 | 3. Release | M12 | after Phase 2 |
 | 4. Desktop oracle | M14 | after Phase 3; not started (decision 0039) |
 
-**Phase 1 exit (decision 0114):** every Excel function is in the catalog with its parity scope
+**Phase 1 exit (decisions 0114, 0188):** every Excel function is in the catalog with its parity scope
 (T-0040). Every in-scope function has oracle-backed cases covering each parameter mode and edge
-pool (decision 0094's coverage: 400 Excel cells, 200 of them generated), and has **≥ 99.9% of its
-Excel cells within 15 significant digits** of Excel's value with the right type, error and text
-(decision 0083's rule: not visibly off). A function's cells are counted as decision 0118 says:
-its attributed Excel cells, those whose formula calls it as the only function outside the harness
-glue list, or every Excel cell that calls it when it has fewer than 20 attributed cells. The
-stricter count over every cell that calls it is reported beside it as information and gates
-nothing. Each remaining failure, attributed to a function or not, has a filed task or a `DEVIATION`
-entry. Percentages here and in every milestone count only scored cells not listed as accepted
-deviations, which are scored in their own column (decision 0036). Accepted deviations are
-directive-5 limits only (decision 0052). The exit criteria of M1, M2, M5–M10 and M11 are met.
+pool (decision 0094's coverage: 400 Excel cells, 200 of them generated). Each remaining failure, attributed to a
+function or not, has a filed task or a `DEVIATION` entry. Percentages here and in every milestone count only scored
+cells not listed as accepted deviations, which are scored in their own column (decision 0036). Accepted deviations
+are directive-5 limits only (decision 0052); cells where the engine follows the math under decision 0188 R3
+(`MATH-OVER-EXCEL`) count as passing where it returns the math. In addition, two gates hold (decision 0188 R1):
+- **Gate A (accuracy, priority 1):** every numeric function in scope has a committed, stratified reference table
+  (about 40% typical inputs, 30% tails and domain edges, 20% extreme-but-valid, 10% log-uniform), each point with a
+  50-digit mpmath value and, where filled, Excel's value. `make check` fails on a point that is neither within
+  1e-9 relative of the math (absolute 1e-300 near 0) nor within 15 significant digits of Excel, and on an error
+  where the other side is a number. Points where decision 0188 R3 follows the math are checked against the math only.
+- **Gate B (user-representative parity):** every in-scope function has **≥ 99.9% of its attributed Excel cells within
+  15 significant digits** of Excel's value with the right type, error and text (decision 0083's rule: not visibly
+  off), counted only on the gen-* suites, ironcalc-calc, corpus-bench, calipers, poi, smoke and fixtures. A
+  function's cells are counted as decision 0118 says: its attributed Excel cells, those whose formula calls it as the
+  only function outside the harness glue list, or every Excel cell that calls it when it has fewer than 20 attributed
+  cells. The stricter count over every cell that calls it, and the count over every suite, are reported beside it as
+  information and gate nothing.
+
+The exit criteria of M1, M2, M5–M10 and M11 are met, read this way (decision 0188 R1(c)): each milestone's probe row
+and ironcalc-calc row counts only visibly-off type, error or text cells, cells whose wrong number comes from a semantic
+rule, and numeric cells outside Gate A's envelope (neither within 15 digits of Excel nor within 1e-9 of the math; a
+cell with no math reference yet counts as outside). The other visibly-off numeric cells of probes and probes-numeric,
+the fit-lab research sweeps included, are measured and reported on every run as **Phase 1b evidence**. The semantic
+probe-row criteria and the ironcalc-calc allowance are unchanged.
 
 Wherever a Phase 1 milestone below says "bit-exact" (including "100% bit-exact" probes and suite
 rates), Phase 1 reads it as "not visibly off"; the eval report's milestone exit rows and its
 "Phase 1" line measure it that way (decision 0114). The bit-level wording stays the target of
 **Phase 1b**: ≥ 99.9% bit-exact and 100% within 4 ulp per function, worked after Phase 1 exits and
-before Phase 3. Tasks that only move cells already within 15 digits carry `defer: phase-1b` and are
+before Phase 3. Tasks that only move cells already within 15 digits, and last-digit work on the BETA.DIST and F.DIST
+densities and on other dense-sweep cells already within Gate A (decision 0188 R5), carry `defer: phase-1b` and are
 not picked before then. The CI gate is unchanged: no cell may regress, bit for bit.
 
 Phase 1 works visibly-off cells in campaign stages (decision 0114): semantic fixes first (wrong
 type, error or text), then accurate kernels where Excel is close to correctly rounded, then
-reproducing Excel's algorithm where Excel is the inaccurate one (time-boxed, decision 0056).
+reproducing Excel's algorithm where Excel is the inaccurate one (time-boxed, decision 0056). Every numeric fit
+follows decision 0188 R4: a hold-out split in the fit lab, a fresh log-uniform sweep before merge, a
+`FITTED(T-XXXX, n_cells, range)` tag and no use outside the measured range, and no fitting below the oracle's
+reproducibility floor.
 
 A failure whose only open question needs desktop Excel evidence has its filed task in M14
 (Phase 4). It never blocks the exit of Phase 1, any other phase or any milestone. excel-graph is
 the oracle of record for Phases 1–3 (decision 0039). Such a visibly-off cell, once a decision names
 it, is a line of `eval/milestones/phase1-exceptions.tsv` and leaves the Phase 1 rate (decision 0134).
-A visibly-off cell that only open M14 tasks own leaves it too, with no line (decision 0143).
+A visibly-off cell that only open M14 tasks own leaves it too, with no line (decision 0143), and it leaves the
+milestone probe rows as well, so it never blocks a milestone exit (decision 0188 R7).
 
 Out of scope: functions whose result depends on systems outside the workbook (web and online
 services, external data servers, code and add-ins; list in decision 0027).

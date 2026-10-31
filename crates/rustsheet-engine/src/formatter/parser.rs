@@ -449,7 +449,8 @@ impl Parser {
                     }
                     // Excel: literals around `General` print around the value (`TEXT(5,"General x")`
                     // = "5 x", `TEXT(5,"x General")` = "x 5"; probes/text-format-bare-literals
-                    // A75, A76). TODO(T-1614): next to placeholders or date tokens it stays an error (unprobed).
+                    // A75, A76). Next to placeholders or a second General it stays an error
+                    // (probes/text-format-general-company).
                     tokens.push(TextToken::General);
                 }
                 Token::Comma => {
@@ -908,9 +909,11 @@ impl Parser {
             let only_literals = tokens
                 .iter()
                 .all(|t| t.is_literal() || matches!(t, TextToken::General));
-            if general_count > 1 || !only_literals || is_date || percent > 0 || comma > 0 {
+            if general_count > 1 || !only_literals || is_date || comma > 0 {
                 return ParsePart::Error(ErrorPart::default());
             }
+            // Excel: `%` beside `General` prints, no scaling (probes/text-format-general-company A3).
+            percent = 0;
         }
         if is_date {
             if is_number {
