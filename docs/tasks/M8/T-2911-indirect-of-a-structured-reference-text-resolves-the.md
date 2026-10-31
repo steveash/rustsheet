@@ -3,7 +3,7 @@ id: T-2911
 title: "INDIRECT of a structured reference text (INDIRECT(Sales[Qty])) resolves the table column as Excel does"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
