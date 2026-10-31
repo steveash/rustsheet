@@ -165,5 +165,5 @@
   - R4.5 and R3's acceptance rule are in reviewer-excel-fidelity (checks 6 and 7), the work-loop, steward and
     gap-triager text, and docs/process/quality-gates.md (T-3362). Until T-3356, T-3357, T-3358, T-3360 and T-3361 land,
     that text asks for a manual hold-out split, a probes-numeric fresh sweep and mpmath values attached in the task.
-    Read with R4.1, a decision 0056 attempt counts as raising the bit-exact count only if it raises the hold-out
-    bit-exact count.
+    T-3362's reading of R4.1 with decision 0056 (not a separate ruling): an attempt counts as raising the
+    bit-exact count only if it raises the hold-out bit-exact count.

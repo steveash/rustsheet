@@ -31,7 +31,7 @@ the `FITTED` tag and its range, and no fitting below the oracle's reproducibilit
       only for directive 5 (`DEVIATION`, decision 0014) or a `MATH-OVER-EXCEL` region listed in decision 0188 R3.
 - [x] The work-loop and steward skills state the same guards where they describe fit work; the gap-triager adds them
       to the acceptance criteria of the fit tasks it files.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The fit lab's split itself (T-3360) and the tag ratchet (T-3361).
