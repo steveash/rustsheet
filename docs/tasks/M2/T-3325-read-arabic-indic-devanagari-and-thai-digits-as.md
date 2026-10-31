@@ -25,7 +25,7 @@ a decimal point, as Excel does; full-width digits stay text.
 - Unprobed, decide by evidence (excel-probe) or leave out: other decimal-digit blocks (Bengali, Lao,
   Tibetan, Myanmar), digits in dates and times, typed input in a cell.
 - Failing cells:
-  - probes/t3276-collation-other-scripts.case.json CELLS_DIGITS
+  - probes/t3276-collation-other-scripts.case.json Calc!E9:E11, Calc!E81:E82, Calc!E87:E88, Calc!H1:H5, Calc!H7:H8
 
 ## Acceptance criteria
 - [ ] The cells above pass; no regression (`make eval-baseline`).

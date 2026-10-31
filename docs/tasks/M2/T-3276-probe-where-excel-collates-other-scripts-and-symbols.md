@@ -3,7 +3,7 @@ id: T-3276
 title: "Probe where Excel collates other scripts and symbols: Hebrew, Arabic, Indic, Thai, Hangul, CJK ideographs, other-script digits and supplementary-plane characters"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -51,19 +51,34 @@ point" rule is either VERIFIED or replaced by an engine task.
   `OTHER_BASE` in collation.rs.
 
 ## Acceptance criteria
-- [ ] A probe case `probes/t3276-collation-other-scripts` (milestone M2) is committed with its
+- [x] A probe case `probes/t3276-collation-other-scripts` (milestone M2) is committed with its
       excel-graph oracle sidecar and answers each of questions 1-6 above with at least two cells.
-- [ ] coercion.md states the result for each question with the case id and cells (VERIFIED, or
+- [x] coercion.md states the result for each question with the case id and cells (VERIFIED, or
       UNVERIFIED with the competing readings where the cells do not settle it), and the "Every other
       character ... UNVERIFIED" sentence is narrowed to what is still unprobed.
-- [ ] Every cell our engine fails is a known failure in eval/baseline/probes.txt (`make eval-baseline`,
+- [x] Every cell our engine fails is a known failure in eval/baseline/probes.txt (`make eval-baseline`,
       0 regressions), and an engine task filed in the same PR (`make new-task`, milestone M2, lane
       engine) lists them (case stem and A1 names in one bullet, decision 0159), so
       `make exit-owners MILESTONE=M2` reports 0.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing collation.rs (the engine task this files).
 - Kana and full-width/half-width forms (T-3275).
 - Right-to-left display, bidi controls (U+200E/U+200F) and zero-width characters: file a follow-up probe
   if the cells above suggest they matter.
+
+## Outcome
+probes/t3276-collation-other-scripts (excel-graph, 2026-10-31; 99 strings ranked, with `=` counts, exact
+MATCH, XMATCH, COUNTIF, 36 chosen pairs and 13 single cells; 643 checked cells). coercion.md gains
+"Other scripts, their marks and digits, symbols and astral characters (T-3276)":
+- Block order is not code-point order: kana sort before Hebrew, and the astral `𝐀`/`😀` sit between
+  Lao and Hangul. Inside each script the order is code-point order.
+- Hebrew points, Arabic harakat and the Thai tone mark are accents; Devanagari matras and the virama
+  are letters.
+- Prevowels are not reordered: Thai `เ`/`แ` sort before the consonants, Lao `ເ` after them.
+- Other-script digits are a tiebreak on their ASCII digit.
+- Symbols above `€` sort among the punctuation.
+- In passing: VALUE reads Arabic-Indic, Devanagari and Thai digits as numbers.
+Eval delta: +1 case; 115 new known failures, 0 regressions. Owners: T-3324 (101 collation cells) and
+T-3325 (14 digit cells).

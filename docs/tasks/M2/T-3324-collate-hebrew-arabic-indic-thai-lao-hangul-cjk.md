@@ -28,7 +28,7 @@ the collation cells of probes/t3276-collation-other-scripts.
 - Ours today: `element` in crates/rustsheet-engine/src/functions/util/collation.rs weighs these
   `OTHER_BASE + code point` and astral characters from `UNIT_BASE`; `punctuation` stops at `€`.
 - Failing cells:
-  - probes/t3276-collation-other-scripts.case.json CELLS_COLLATION
+  - probes/t3276-collation-other-scripts.case.json Calc!A8:A96, Calc!A98:A99, Calc!G6, Calc!G16, Calc!G20:G23, Calc!G27:G28, Calc!G31:G32
 
 ## Acceptance criteria
 - [ ] Every Calc!A, B, D and G cell of probes/t3276-collation-other-scripts passes, and no collation
