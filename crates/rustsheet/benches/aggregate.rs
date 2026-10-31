@@ -12,7 +12,7 @@
 //! expressions (T-0471): 400 `SUMPRODUCT((F:F=A1)*G:G)` over 2,000 rows. Last, the three
 //! consumers the SPEC-0020 amendment tails next (T-0488), each over 2,000 rows: UNIQUE under
 //! TEXTJOIN, LOOKUP's last-non-empty idiom, and SMALL over a 70,000-row range with `ROW()`, and
-//! a count through VLOOKUP over a whole-column key (T-3221).
+//! a count through VLOOKUP over a whole-column key (T-3221) and INDEX of MATCH over one (T-3222).
 //! Then calipers `pv23_042`'s shape (T-0498): 1,000 four-criteria SUMIFS over formula columns of
 //! 20,000 rows that the calls themselves evaluate.
 //! `cargo bench -p rustsheet --bench aggregate` (`-- criteria`, `-- whole_column`, `-- rank`,
@@ -297,7 +297,7 @@ type Build = fn() -> Result<Workbook, Box<dyn Error>>;
 
 /// Times each T-0488 shape.
 fn tailed_consumer_cases() -> Result<(), Box<dyn Error>> {
-    let cases: [(&str, Build); 4] = [
+    let cases: [(&str, Build); 5] = [
         (
             "TEXTJOIN(\",\",TRUE,UNIQUE(IF(A1=Zord!A:A,Zord!C:C,\"\")))",
             unique_textjoin_workbook,
@@ -313,6 +313,10 @@ fn tailed_consumer_cases() -> Result<(), Box<dyn Error>> {
         (
             "SUM(--(VLOOKUP($A:$A,Data!$A$1:$B$51,2,FALSE)=x))",
             vlookup_count_workbook,
+        ),
+        (
+            "INDEX(MATCH($A:$A,Data!$A$1:$A$50,0),n)",
+            index_match_workbook,
         ),
     ];
     for (name, build) in cases {
