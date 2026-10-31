@@ -75,11 +75,19 @@ Done (2026-10-31), on T-3379's governance (built on its branch).
   - T.INV/s1 A89, A93 and A95;
   - F.INV/s1 A112, A126, A146, A160 and A171.
 
-  statistics.md's "Tiny-p quantiles" entry now cites them and states their p and df ranges. Seven further points
-  with Excel more than G off are outside the region and are left for an owner ruling; they pass Gate A through its
-  math side.
+  statistics.md's "Tiny-p quantiles" entry now cites them and states their p and df ranges. The tables have 17
+  points with Excel more than G off the math. The other 9 are left for an owner ruling and pass Gate A through its math
+  side:
+  - T.INV A91, A96 and F.INV A164, A169, at p ≥ 1e-150 (new T-3544);
+  - T.INV.2T A98, A99, A103 and TINV A102 (T-3386);
+  - F.INV A167, inside the region but with a true quantile (3.0E-377) below the double range, where the engine's 0
+    passes only through the 1e-300 floor (T-3544).
 - **New quirks** (statistics.md, "T.DIST's density is #NUM! at a huge x, and T.INV.2T and TINV at p = 2.2E-308"):
-  T.DIST's density is `#NUM!` at a huge x, the two-tailed quantiles are `#NUM!` at p = 2.2E-308, and F.INV(0) is 0.
+  - T.DIST's density is `#NUM!` at |x| from 1.0E+236 and 0 up to 9.9E+137.
+  - The two-tailed quantiles are `#NUM!` at p = 2.2E-308.
+  - F.INV(0) is 0, while the legacy FINV(0) is `#NUM!`.
+  - The table also settles the T-2474 entry's open question: the cumulative T.DIST is `#NUM!` at a huge negative x
+    too, with the cut in (4.0E+136, 5.4E+186).
 - **probes-numeric math sidecars,** regenerated with the new definitions: 109,909 cells in 67 cases, 16 MB, in about
   2 minutes.
   - 32,184 of the 70,286 visibly-off numeric cells now have a math value, up from 588.

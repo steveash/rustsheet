@@ -3,7 +3,7 @@
 #   <point id accuracy/<FUNCTION>/<batch>!Calc!A<n>>	<owner task T-NNNN>	<note>
 # A listed point that passes, or that no table holds, is a stale line and fails the check.
 accuracy/F.INV/s1!Calc!A154	T-1871	deep-tail F quantile: the engine is far off; Excel matches the math
-accuracy/F.INV/s1!Calc!A168	T-1871	deep-tail F quantile: the engine is far off; Excel matches the math
+accuracy/F.INV/s1!Calc!A168	T-1871	F quantile at d1 1 (p 1.04E-20): the engine gives 1.87E-14 against 1.71E-40; Excel matches the math
 accuracy/T.DIST/s1!Calc!A85	T-3533	Excel #NUM! for the density at a huge x; the engine returns 0
 accuracy/T.DIST/s1!Calc!A95	T-3533	Excel #NUM! for the density at a huge x; the engine returns 0
 accuracy/T.DIST/s1!Calc!A105	T-3533	Excel #NUM! for the density at a huge x; the engine returns 0

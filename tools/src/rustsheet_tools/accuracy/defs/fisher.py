@@ -100,7 +100,7 @@ def _tail_x(q: mpmath.mpf, upper: bool, args: Sequence[MathArg]) -> mpmath.mpf:
 def _f_inv(args: Sequence[MathArg]) -> mpmath.mpf:
     p, d1, d2 = args
     assert not isinstance(p, bool) and not isinstance(d1, bool) and not isinstance(d2, bool)
-    # F.INV(0, d1, d2) is 0 in Excel (accuracy/F.INV/s1 A111, A124 of the first fill, excel-graph):
+    # F.INV(0, d1, d2) is 0 in Excel (accuracy/F.INV/s1 A111 and A125, excel-graph):
     # the quantile of probability 0 is the support's lower end.
     return mpmath.mpf(0) if p == 0 else quantile(p, d1, d2)
 

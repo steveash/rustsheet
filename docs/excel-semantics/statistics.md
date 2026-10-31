@@ -5152,7 +5152,10 @@ Rule (gen-m9, excel-graph, 2026-10-23):
   0620505280d2ea6e A280, 5395b8a427764a3f A385), and a number of about 1E+15 or more is `#NUM!` even with number_chosen 0
   (`PERMUTATIONA(1000000000000000,0)`, 775d053de498b8c7 A152; `PERMUTATIONA(FACT(18),2)`, b9a32ce9a1fd0d71 A378).
 Ours (T-2474): as Excel for every T-2474 cell. The cumulative t functions (T.DIST with cumulative TRUE, T.DIST.RT,
-T.DIST.2T, TDIST) are `#NUM!` where `x²` overflows (|x| past about 1.34E+154; the cut, and that a negative x of that size is `#NUM!` too, are UNVERIFIED), the negative mean
+T.DIST.2T, TDIST) are `#NUM!` where `x²` overflows (|x| past about 1.34E+154). T-3358's T.DIST table brackets the cut
+on both sides: the cumulative T.DIST is 0 at x = -4.0E+136 and -2.1E+119 (accuracy/T.DIST/s1 A90, A96) and `#NUM!` at
+x = -2.1E+217 and -4.1E+259 (A103, A91) and at x = 5.4E+186 and 4.4E+221 (A86, A98), so the cut is in (4.0E+136,
+5.4E+186) and a negative x is `#NUM!` too; the exact cut is UNVERIFIED. The negative mean
 follows "POISSON at x 0 with a negative mean", the tiny-p NEGBINOM is 0 (the binomial walk renormalizes before a ratio
 p/q past 2^53 overflows it), and PERMUTATIONA takes PERMUT's limit, a number of 2^31 - 1 or more is `#NUM!` (UNVERIFIED cut).
 Since T-2700 a NEGBINOM.DIST/NEGBINOMDIST number_f in (-1, 0) is `#NUM!` as in Excel (the sign is checked before truncation; bonus cell
@@ -5470,9 +5473,14 @@ Region (T-3358, from its R3-marked points; still bounded by p < 1e-150):
 
 The assessment's "df ≥ 1e6" does not hold for these points. Tables for BETA.INV and CHISQ.INV.RT are T-3529's, and
 their regions are fixed there. Points of these functions outside the region are not covered, even where Excel is off by
-more than G: T.INV, T.INV.2T, TINV and F.INV at p from 1.2E-69 to 1.4E-143 (accuracy/T.INV/s1 A91, A96; T.INV.2T/s1
-A98, A103; TINV/s1 A102; F.INV/s1 A164, A169) need an owner ruling, and T-3386 has the
-two-tailed cases. The engine is within ε of the math on all of them, so they pass Gate A through its math side.
+more than G, and they need an owner ruling:
+- T.INV and F.INV at p from 1.2E-69 to 8.2E-131 (accuracy/T.INV/s1 A91, A96; F.INV/s1 A164, A169), owned by T-3544;
+- T.INV.2T and TINV at any p (T.INV.2T/s1 A98, A99, A103, with A99 at p 4.4E-242; TINV/s1 A102), owned by T-3386.
+
+The engine is within ε of the math on all of them, so they pass Gate A through its math side. One point inside the
+region is not marked either: `F.INV(4.36982683607437E-189,1,1698856)` (F.INV/s1 A167) is 3.85E-145 in Excel, while the
+true quantile, 3.0E-377, is below the double range. The engine returns 0, which passes only through Gate A's 1e-300
+absolute floor; a mark would make 0 the target, so T-3544 leaves it to the owner.
 Evidence: R3-marked points of the Gate A tables (eval/accuracy/math-over-excel.tsv), excel-graph and 50-digit mpmath:
 - T.INV: accuracy/T.INV/s1 A89, A93 and A95. For example, `T.INV(1.68092983773194E-249,10068)` is -77.496 in Excel and
   -34.691 in truth.
@@ -5528,17 +5536,22 @@ Tasks: T-3354, T-3479
 
 ## T.DIST's density is #NUM! at a huge x, and T.INV.2T and TINV at p = 2.2E-308 (T-3358)
 Rule:
-- `T.DIST(x,df,FALSE)` is `#NUM!` in Excel at a huge x where the true density underflows to 0. The observed cells are x
-  from 1.0E+236 to 1.4E+307 at df 2 to 824733515. The engine returns 0.
+- `T.DIST(x,df,FALSE)` is `#NUM!` in Excel at a huge |x|, from 1.0E+236 to 1.4E+307 at df 2 to 824733515. Smaller
+  huge x give 0, not `#NUM!`: `T.DIST(9.93424108915371E+137,24,FALSE)` (A97) and `T.DIST(-3.27346874547497E+59,11,FALSE)`
+  (A94), although the density underflows there too. The cut lies between 9.9E+137 and 1.0E+236, which fits the x²
+  overflow cut (about 1.34E+154) of the cumulative t functions (T-2474 entry above). The engine returns 0.
 - `T.INV.2T(2.22507385850721E-308,df)` and `TINV(2.22507385850721E-308,df)` are `#NUM!` at df 8, 9, 12 and 14, although
   the quantile is a finite double (about 3.2E+22 to 6.9E+38). T.INV accepts p down to 1E-300 (T-1531).
 - `F.INV(0,d1,d2)` is 0, the lower end of the support.
 
-The x where T.DIST's density turns `#NUM!` and the p below which the two-tailed quantile does are not yet probed.
+- The legacy `FINV(0,2,5)` is `#NUM!` (probes-numeric/m9-legacy-finv A65), so the 0 is F.INV's only.
+
+The exact x where T.DIST's density turns `#NUM!` and the p below which the two-tailed quantile does are not yet probed.
 Evidence: Gate A tables, excel-graph:
 - accuracy/T.DIST/s1 A85, A95, A105 and A110;
 - accuracy/T.INV.2T/s1 A68 and A78, and accuracy/TINV/s1 A68 and A78;
-- the first fill of accuracy/F.INV/s1 (`F.INV(0,38,10)`, `F.INV(0,59,38)`).
+- accuracy/T.DIST/s1 A94 and A97 (density 0 below the cut);
+- accuracy/F.INV/s1 A111 (`F.INV(0,38,10)`) and A125 (`F.INV(0,9,50)`), and probes-numeric/t1049-finv A16 (`F.INV(0,3,7)`).
 Status: VERIFIED (excel-graph) for the cited cells; the cut points are UNVERIFIED.
 Ours: T.DIST returns 0 and T.INV.2T and TINV return the quantile. These are Gate A known failures owned by T-3533 and
 T-3386.

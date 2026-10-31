@@ -15,7 +15,7 @@ Decision 0188 R3 decides, with an owner ruling, whether T.INV.2T and TINV at a t
 the region is evidenced as committed points; until then Excel's value stays the target (directive 1).
 
 ## Context
-- Gate A known failures this task owns (T-3358, eval/accuracy/known-failures.tsv): accuracy/T.INV.2T/s1 A68 and A78, and accuracy/TINV/s1 A68 and A78 (Excel #NUM! at p = 2.2E-308; error mismatches, which R3 never excuses). The R3 candidates of this task's region are T.INV.2T/s1 A98 and A103 and TINV/s1 A102, which are not marked (decision 0213). Removing the lines
+- Gate A known failures this task owns (T-3358, eval/accuracy/known-failures.tsv): accuracy/T.INV.2T/s1 A68 and A78, and accuracy/TINV/s1 A68 and A78 (Excel #NUM! at p = 2.2E-308; error mismatches, which R3 never excuses). The R3 candidates of this task's region are T.INV.2T/s1 A98, A99 (p 4.4E-242) and A103 and TINV/s1 A102, which are not marked (decision 0213). Removing the lines
   once they pass is part of this task (a passing listed point fails the check as stale).
 - T-3349's fresh sweep (probes-numeric/t3349-t-inv-2t-sweep, excel-graph 2026-10-31, mpmath 60 digits): 42 of 300
   points have Excel more than 1e-4 relative off the math, every one at p from 1.38E-300 to 1.73E-110 and df from

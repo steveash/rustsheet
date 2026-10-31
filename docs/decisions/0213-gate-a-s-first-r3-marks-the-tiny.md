@@ -12,10 +12,13 @@
     A126, A146, A160 and A171.
   - The entry's region now names their p and df ranges (T.INV and F.INV only; BETA.INV and CHISQ.INV.RT are fixed by
     T-3529's tables).
-  - Points of the same functions with p ≥ 1e-150 where Excel is also more than G off are not marked: T.INV A91 and
-    A96, F.INV A164 and A169, T.INV.2T A98 and A103, and TINV A102. They are outside the approved region and need an
-    owner ruling first (T-3386 has the two-tailed ones). They pass Gate A through its math side, so nothing waits on
-    them.
+  - The tables hold 17 points where Excel is more than G off the math. The other 9 are not marked:
+    - T.INV A91 and A96, and F.INV A164 and A169, at p ≥ 1e-150, are outside the approved region (T-3544).
+    - T.INV.2T A98, A99 and A103, and TINV A102, are functions outside the region at any p (T-3386).
+    - F.INV A167 is inside the region, but its true quantile (3.0E-377) is below the double range. Excel returns
+      3.85E-145 and the engine 0, so a mark would make 0 the target; that is left to the owner (T-3544).
+  - They need an owner ruling first. They pass Gate A through its math side (A167 through the 1e-300 absolute floor),
+    so nothing waits on them.
 - **Consequences:**
   - The marked points are checked against the math only. Each keeps its evidence on the point: the check rejects a
     mark where Excel is not more than G off the math.
