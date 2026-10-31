@@ -3,7 +3,7 @@ id: T-2685
 title: "PV at a rate of -0.9999999999 over many periods: probe whether Excel gives #DIV/0! (two PROB cells left by T-2468)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
