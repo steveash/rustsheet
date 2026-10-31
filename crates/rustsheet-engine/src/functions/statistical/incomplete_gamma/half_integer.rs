@@ -1,8 +1,8 @@
 //! The upper incomplete gamma Q(a, x) at a half-integer shape a = n + 1/2 below
 //! [`DIRECT_SHAPE_MAX`], for x >= a, in double-double and rounded once (T-3285): CHISQ.DIST.RT,
-//! CHIDIST and CHISQ.TEST at an odd df from 3 on.
+//! CHIDIST and CHISQ.TEST at an odd df from 3 on, where x lies in [`half_integer_upper`]'s range.
 //!
-//! There Excel is correctly rounded nearer the bulk (60-digit mpmath, ulps of Excel's value):
+//! There Excel is correctly rounded at the probed points (60-digit mpmath, ulps of Excel's value):
 //! `CHISQ.DIST.RT(10,5)` = Q(2.5, 5) is 0.07523524614651218 (+0.3; probes-numeric/
 //! m9-chisq-dist-rt A19, m9-legacy-chidist A45 and A46, t1049-chisqdistrt A19) and
 //! `CHISQ.DIST.RT(8,3.34)` = Q(1.5, 4) 0.04601170568923137 (-0.0; ironcalc-calc STATISTICAL/
@@ -18,23 +18,13 @@
 //! multiplied.
 
 use super::super::half_integer_beta::{is_half_integer_shape, FRAC_1_SQRT_PI};
-use super::{continued_fraction, Terms, DIRECT_SHAPE_MAX};
-use crate::x87_exp::{dd_add, dd_div, dd_div_small, dd_exp, dd_mul, dd_sqrt, two_sum};
-
-/// A double-double: an unevaluated sum `hi + lo`.
-type Dd = (f64, f64);
+use super::fraction::{accurate_fraction, Dd};
+use super::{Terms, DIRECT_SHAPE_MAX};
+use crate::x87_exp::{dd_div_small, dd_exp, dd_mul, dd_sqrt};
 
 /// Past this x the prefactor's e^-x is past [`dd_exp`]'s double-double range (its tail word turns
 /// subnormal); such points, Q below about 1E-282, keep the double kernel.
 const MAX_X: f64 = 650.0;
-
-/// The backward fraction's depth is this many times the forward fraction's term count, plus
-/// [`DEPTH_MARGIN`]: the forward one stops once a step changes its value by a quarter of 2^-52,
-/// and the omitted tail shrinks geometrically, so twice as deep leaves it far below an ulp.
-const DEPTH_FACTOR: u32 = 2;
-
-/// See [`DEPTH_FACTOR`].
-const DEPTH_MARGIN: u32 = 8;
 
 /// The largest x / a at which CHISQ.DIST.RT takes [`accurate_half_integer_upper`]. Measured on
 /// the gated cells the accurate Q changed when applied from a to 30a (T-3285 attempt 1, x/a from
@@ -67,11 +57,7 @@ pub(super) fn accurate_half_integer_upper(a: f64, x: f64, terms: &mut Terms) -> 
     if !(x >= a && x <= MAX_X) {
         return None;
     }
-    let (_, taken) = continued_fraction(a, x, terms)?;
-    let depth = taken
-        .saturating_mul(DEPTH_FACTOR)
-        .saturating_add(DEPTH_MARGIN);
-    let upper = dd_mul(prefactor(a, x), backward_fraction(a, x, depth));
+    let upper = dd_mul(prefactor(a, x), accurate_fraction(a, x, terms)?);
     upper.0.is_normal().then_some(upper.0)
 }
 
@@ -85,19 +71,4 @@ fn prefactor(a: f64, x: f64) -> Dd {
         odd += 2.0;
     }
     factor
-}
-
-/// The continued fraction of [`continued_fraction`] evaluated from depth `depth` up:
-/// `t(depth) = 0`, `t(i - 1) = i (a - i) / (x + 1 - a + 2i + t(i))`, then
-/// `1 / (x + 1 - a + t(0))`. Each numerator i (a - i) and offset 1 - a + 2i is exact (a
-/// half-integer below 20, i at most twice the fraction's budget); x plus the offset is formed
-/// exactly by `two_sum`.
-fn backward_fraction(a: f64, x: f64, depth: u32) -> Dd {
-    let mut tail: Dd = (0.0, 0.0);
-    for i in (1..=depth).rev() {
-        let i = f64::from(i);
-        let denominator = dd_add(two_sum(x, 1.0 - a + 2.0 * i), tail);
-        tail = dd_div((i * (a - i), 0.0), denominator);
-    }
-    dd_div((1.0, 0.0), dd_add(two_sum(x, 1.0 - a), tail))
 }
