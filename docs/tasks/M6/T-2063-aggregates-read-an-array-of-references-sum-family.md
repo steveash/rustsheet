@@ -47,5 +47,5 @@ MEDIAN, LARGE and SMALL never open on Excel for the web (M14). See SPEC-0014 and
 
 ## T-2816 findings
 Multi-cell elements contribute their top-left cell only (probes/t2816-lift-*, excel-graph 2026-10-31):
-`STDEV.S`/`VAR.S(OFFSET(A1,0,0,{1;2}))` 0, `SUMSQ` 2; `AVERAGEA(OFFSET(A4,{0;3},0))` ("5", 7) 3.5, `MAXA` 7;
+`STDEV.S`/`VAR.S(OFFSET(A1,0,0,{1;2}))` 0, `SUMSQ` 2 (top-left, not implicit intersection: `SUMSQ(OFFSET(A2,0,0,{1;2}))` in E1 is 20000); `AVERAGEA(OFFSET(A4,{0;3},0))` ("5", 7) 3.5, `MAXA` 7;
 `AVERAGEA(OFFSET(A5,{0;1},0))` (blank, TRUE) `#DIV/0!`, `MAXA` 0. Text counts as 0, blank and TRUE are skipped (unlike a reference argument, where TRUE is 1).

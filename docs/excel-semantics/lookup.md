@@ -1386,7 +1386,7 @@ Evidence: probes/t2065-lift-* (one formula per workbook, excel-graph 2026-10-26;
   MAXIFS max_range and every criteria range); forms with only some ranges lifted are unprobed (T-2833).
 - T-2816 (probes/t2816-lift-*, E1, excel-graph 2026-10-31, same data; A4 "5", A5 blank, A6 TRUE, A7 7): multi-cell
   elements contribute their TOP-LEFT cell only. `STDEV.S(OFFSET(A1,0,0,{1;2}))` is 0 and `VAR.S(..)` 0 (the values 1, 1;
-  the whole elements would give 57.3 for {1,1,100}), `SUMSQ(..)` is 2 (not 10002). A text element counts as 0 and a
+  the whole elements would give 57.1577 for {1,1,100}), `SUMSQ(..)` is 2 (not 10002). It is the top-left cell, not implicit intersection with the formula's row: in E1 `SUMSQ(OFFSET(A2,0,0,{1;2}))`, whose element A2:A3 does not cross row 1, is 20000 (100 twice; probes/t2816-lift-sumsq-row2). A text element counts as 0 and a
   blank or TRUE element is skipped, unlike a reference argument (references.md T-1003/T-1211), where TRUE counts as 1: `AVERAGEA(OFFSET(A4,{0;3},0))` ("5", 7) is 3.5,
   `MAXA(OFFSET(A4,{0;3},0))` 7, `AVERAGEA(OFFSET(A5,{0;1},0))` (blank, TRUE) `#DIV/0!` (TRUE not counted as 1) and
   `MAXA(OFFSET(A5,{0;1},0))` 0. This also explains the 0 of the probe below (text 0, blank and TRUE skipped).

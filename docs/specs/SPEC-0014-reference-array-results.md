@@ -77,7 +77,7 @@ b2; E1 holds the formula):
 - Aggregates over all elements: `STDEV.S(OFFSET(A1,{0;1},0))` 70.0035713374682 and `VAR.S(..)` 4900.5 (the values 1 and
   100), `SUMSQ(OFFSET(A1,{0;1},0))` 10001. Every element is one cell there, so top-left cell versus whole element
   was probed by T-2816: only the top-left cell of a multi-cell element counts (`STDEV.S(OFFSET(A1,0,0,{1;2}))` 0,
-  `SUMSQ` 2; AVERAGEA/MAXA: text 0, blank and TRUE skipped, unlike a reference argument where TRUE is 1; docs/excel-semantics/lookup.md).
+  `SUMSQ` 2 (top-left, not row intersection: `SUMSQ(OFFSET(A2,0,0,{1;2}))` in E1 is 20000); AVERAGEA/MAXA: text 0, blank and TRUE skipped, unlike a reference argument where TRUE is 1; docs/excel-semantics/lookup.md).
 - Per-element callers (rule 6), each spilling one value per element: `COUNTIFS(OFFSET(A1,{0;1},0),">0")` 1, 1;
   `AVERAGEIF(OFFSET(A1,0,0,{1;2}),">0")` 1, 50.5; `MAXIFS(OFFSET(A1,{0;1},0),OFFSET(A1,{0;1},0),">0")` 1, 100.
 - `CONCAT(OFFSET(A1,{0;1},0))` is `#VALUE!` (a value view, as TEXTJOIN in rule 2).
