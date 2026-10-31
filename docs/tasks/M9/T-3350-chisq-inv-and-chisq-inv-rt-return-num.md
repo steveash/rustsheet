@@ -82,7 +82,7 @@ Bit-level residue moves to a follow-up with `defer: phase-1b`.
   (passed 168 -> 181 bit-exact, `#NUM!` mismatches 46 -> 0). The visibly-off cells left are not this task's bug:
   - A25 `CHISQ.INV(1E-300,5E6)`, df 5E6: ours is the math, Excel is 1.5E-14 off it. Owner T-3294.
   - A205-A289 `CHISQ.INV.RT(1E-300,df)`, df 5E6 to 1E9: Excel returns its closed-form start, 2.6E-4 from the math.
-    Ours is the math, which is decision 0188 R3's target on that branch. The owner rules the region in T-3397.
+    Ours is the math, which is decision 0188 R3's target on that branch. The owner rules the region in T-3409.
   - A301-A351, df 2E9 and up: the known closed form, about 1E-13 from Excel's value. Owners T-3272 (the digits) and
     T-3364 (the move to the math).
   The lower-edge probe went from 98 to 120 bit-exact and from 26 error-vs-number cells to 1 (A122, T-3396).
@@ -109,4 +109,4 @@ Bit-level residue moves to a follow-up with `defer: phase-1b`.
   gains the two new probe cases (231 new-coverage lines, mostly cells within 4 ulps). Baselines were recorded with a
   release binary verified to hold this branch's engine: touched sources, `-v` build showing this worktree's
   rustsheet_engine, the binary copied into the worktree, and `show` on the new probes.
-- Follow-ups: T-3396 (lower edge at shape 1E10), T-3397 (owner ruling on the closed-form branch below shape 1E9).
+- Follow-ups: T-3396 (lower edge at shape 1E10), T-3409 (owner ruling on the closed-form branch below shape 1E9).

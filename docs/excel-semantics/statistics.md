@@ -4737,7 +4737,7 @@ for df from 5E6 to 1E9 is Excel's start x0, within 3.4E-9 of it with the constan
 `CHISQ.INV.RT(1E-300,1E7)` = 10169279.767968982 against the true 10166595.23034497 (2.6E-4 off; probes/t3350-chisq-inv-huge-df
 A205-A289). At df 2E6 it is the true quantile (A193). Ours returns the math at these cells, which R3's closed-form
 case asks for. Its region starts at shape 1E9 as written, so it is for the owner to say whether the case covers them
-(T-3397). They stay F lines of eval/baseline.
+(T-3409). They stay F lines of eval/baseline.
 From df 1E6 to 1E9, at every other probed p from 1E-300 to 1-1E-15, Excel's CHISQ.INV, CHISQ.INV.RT and CHIINV are the
 true quantile to within 4 ulps (probes/t3350-chisq-inv-huge-df, 372 cells; the fresh sweep
 probes-numeric/t3350-r4-chisq-inv-sweep, 240 cells, log-uniform over df 1 to 1E10).
@@ -4751,7 +4751,7 @@ refinement used up the inversion's shared budget of 2^19 terms near the median, 
 99999999.33333333) and 43 other cells of probes/t3350-chisq-inv-huge-df, for df 1E7 to 1E8 and the smaller tail
 being the lower one.
 Status: VERIFIED (excel-graph) for the cells; the band's edges and the closed form's terms are fits (UNVERIFIED as forms)
-Tasks: T-2982, T-3070, T-3350, T-3396, T-3397
+Tasks: T-2982, T-3070, T-3350, T-3396, T-3409
 
 ## GAMMA.DIST at a huge shape: #NUM! for a density at a tiny x, for the cdf above about 1E+76 (T-2435)
 Rule: GAMMA.DIST's density is `#NUM!`, not 0, where the shape is large and x/beta tiny:
