@@ -30,6 +30,7 @@ fn hyperbolic_exp_overflows(x: f64, y: f64) -> bool {
 /// has real part 6.77493159657354E+307 where `IMSINH("709.5")` is 6.77493159657316E+307
 /// (probes/eng-im-overflow-edges A6, A14; eng-im-overflow-edges-2, T-2231). The exact cut between
 /// 709 and 709.0000000001 is not pinned.
+/// FITTED(T-2231, 84 cells, |x| 100..800 with a nonzero imaginary part; cut bracketed 709..709.0000000001)
 const HYPERBOLIC_LOG_CUT: f64 = 709.0;
 
 /// IMCOSH's (`sinh` false) or IMSINH's value past [`HYPERBOLIC_LOG_CUT`], `None` below the cut or
@@ -121,11 +122,14 @@ fn in_inverse_exp_band(x: f64) -> bool {
 }
 
 /// [`inverse_exp_sinh_cosh`] takes the `1/u` form for `INVERSE_EXP_LOW < |x| <= INVERSE_EXP_HIGH`.
-/// Both ends are unprobed (T-2797): Excel's lower switch lies between 0.01 (libm's digits) and
-/// 0.0105 (the form's), its upper one between 18.2 and 100; 20 is where the worksheet TANH turns
-/// to ±1 (numbers.md).
+/// Neither end is pinned (T-2797): Excel's lower switch lies between 0.01 (libm's digits,
+/// probes/t2535-imsinh-imcosh-kernel-sweep) and 0.0105 (the form's, probes/t2778-imsinh-sign-sweep),
+/// its upper one between 18.2 (t2778) and 100 (t2535); 20 is where the worksheet TANH turns to ±1
+/// (numbers.md).
+/// FITTED(T-2629, 306 cells, |x| 0.00012..100; cuts bracketed 0.01..0.0105 and 18.2..100)
 const INVERSE_EXP_LOW: f64 = 0.01;
 /// See [`INVERSE_EXP_LOW`].
+/// FITTED(T-2629, 306 cells, |x| 0.00012..100; cuts bracketed 0.01..0.0105 and 18.2..100)
 const INVERSE_EXP_HIGH: f64 = 20.0;
 
 /// IMSIN, IMCOS, IMTAN, IMSEC, IMCSC and IMCOT of a real number `x` (imaginary part 0): `value` of

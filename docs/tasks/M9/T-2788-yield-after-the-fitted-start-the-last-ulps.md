@@ -55,6 +55,7 @@ PRICE's root", T-1592 fourth-round paragraph; lab fit `uv run rustsheet-fitlab y
       records the PRICE kernels and stop rules tried with their lab bit-exact counts (decision 0056).
 - [ ] The lab's "Newton, fitted start" family raises its bit-exact count above 240/370, or the task is blocked with
       the candidates tried.
+- [ ] The 40 probe cells added by gap triage 2026-10-30 leave eval/baseline/probes.txt, or the Outcome lists each with its ulp distance and the candidate it was scored with.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -63,3 +64,10 @@ PRICE's root", T-1592 fourth-round paragraph; lab fit `uv run rustsheet-fitlab y
 ## Cells added by gap triage (2026-10-29)
 `make eval` on main a2ecf005b (excel-graph), `python3 scripts/exit_owners.py --all-off`: visibly off, no open task named them, same cause as this task's cells.
 - probes/yield-start-term-basis S!A18 `YIELD(DATE(2013,5,10),DATE(2024,2,29),0.05,98,100.5,2,2)`: Excel 0.05279263039071429, ours 0.05279263039071384 (8.5E-15 relative, the size of this probe's A9, C11, C20, A26 and A38 above)
+
+## Cells added by gap triage (2026-10-30)
+`make eval` on origin/main 6a26b992a (excel-graph), `scripts/exit_owners.py`'s `owned` rule over every failing cell and the task files of origin/main and every pushed branch: 40 YIELD cells 1 to 4 ulp off, none visibly off, that no open task names. T-2391's Outcome left the yield-newton-domain ones to this task ("last-digit misses"); the others sit on the same fitted start and root. Re-run the list after T-3215 before fitting. Examples, Excel vs ours: yield-newton-domain P!B13 `YIELD(36665,44491,30,106,100,4,0)` 14.303206872934162 vs 14.303206872934156; yield-start-term-basis S!A21 `YIELD(DATE(2015,6,10),DATE(2016,5,20),0.05,98,100.5,2,2)` 0.07759929343433138 vs 0.0775992934343314; date-system-1904-financial S!A14 0.05932842042333485 vs 0.05932842042333486.
+- probes/date-system-1904-financial.case.json (1): S!A14
+- probes/yield-newton-domain.case.json (5): P!B6, B10, B11, B12, B13
+- probes/yield-start-one-input.case.json (8): S!A18, A31, A68, A76, B5, B18, B68, B76
+- probes/yield-start-term-basis.case.json (26): S!A3, A5, A8, A15, A21, A29, A47, A48, A53, B3, B5, B8, B15, B18, B21, B29, B47, B48, B53, C2, C8, C21, C30, C44, C46, C48
