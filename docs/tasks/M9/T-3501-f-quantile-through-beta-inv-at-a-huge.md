@@ -62,8 +62,8 @@ Gate A's envelope.
 - [ ] Every point of T-3516's two cases is inside Gate A's envelope (within 15 digits of Excel, or within 1E-9
       relative of 50-digit math); the Outcome lists the counts and any point outside.
 - [ ] R4 guards (reviewer-excel-fidelity check 7, decision 0188): hold-out counts for the chosen model and the
-      correctly rounded candidate side by side, trained on `t3500-f-inv-huge-df-sweep` only and tested on
-      `t3500-f-inv-huge-df-holdout` (never tuned on), the margin stated before scoring; a fresh log-uniform sweep filled
+      correctly rounded candidate side by side, trained on `t3516-f-inv-huge-df-sweep` only and tested on
+      `t3516-f-inv-huge-df-holdout` (never tuned on), the margin stated before scoring; a fresh log-uniform sweep filled
       after the model is frozen, with its result in the Outcome; the Gate A envelope result on that fresh sweep; each
       fitted constant, cut-point or band tagged `FITTED(T-3501, n_cells, range)` and applied only inside its range,
       with accurate math outside it; no step fits differences under the oracle's reproducibility floor (4 ulp, web

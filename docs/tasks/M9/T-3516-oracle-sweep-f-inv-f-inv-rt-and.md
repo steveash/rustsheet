@@ -24,18 +24,18 @@ other is 1 to 10, with BETA.INV at the shapes F.INV maps to.
   99999 at p = 1E-12), and there the engine matches Excel within a few ulps: `F.INV.RT(0.5,2,1E8)` is Excel
   0.6931471826011306, ours 0.6931471826011304 (t1538-f-inv-huge-df A10). An odd df (a half-integer shape d2/2) or a
   df between the probed decades is the untested axis.
-- T-3501 owns the fit and depends on this sweep (gap-triager rule: a numeric fit that needs more Excel points than the
+- T-3501 owns the fit and depends on this sweep (`.claude/agents/gap-triager.md`: a numeric fit that needs more Excel points than the
   cached workbooks give is not attempted blind).
 
 ## Acceptance criteria
-- [ ] A new case `eval/suites/probes-numeric/cases/t3500-f-inv-huge-df-sweep.case.json` (+ `.oracle.json`, filled
+- [ ] A new case `eval/suites/probes-numeric/cases/t3516-f-inv-huge-df-sweep.case.json` (+ `.oracle.json`, filled
       with `cd tools && uv run rustsheet-oracle fill`, excel-graph) with, for each huge df in {99999, 100000, 1000001,
       12345678, 123456789, 123456790, 1E8+1, 987654321, 1E9+1, 4999999999, 1E10} and each partner df in
       {1, 2, 3, 5, 10}: `F.INV(p,d1,d2)` and `F.INV.RT(p,d1,d2)` with the huge df on each side and `FINV(p,·,·)` with
       the huge df second, at p in {1E-6, 0.025, 0.3, 0.5, 0.975, 0.999999}, plus `BETA.INV(p,d1/2,d2/2)` and
       `BETA.INV(p,d2/2,d1/2)` at the same points (about 2,000 cells; keep it under the oracle's per-workbook limit or
       split it into two cases).
-- [ ] A separate hold-out case `t3500-f-inv-huge-df-holdout` of about 300 points with the huge df drawn log-uniform
+- [ ] A separate hold-out case `t3516-f-inv-huge-df-holdout` of about 300 points with the huge df drawn log-uniform
       from 1E5 to 1E10 (a fixed seed, fractional values included) and the partner df from 1 to 10, filled the same way,
       for T-3501's R4 hold-out and fresh-sweep guards. T-3501 must not tune on it.
 - [ ] `make eval` runs both cases (probes-numeric is gate-free, so nothing is added to eval/baseline), and the
