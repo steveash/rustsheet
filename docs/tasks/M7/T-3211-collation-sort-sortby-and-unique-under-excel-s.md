@@ -3,7 +3,7 @@ id: T-3211
 title: "Collation: SORT, SORTBY and UNIQUE under Excel's non-transitive pairwise accent rule, without a panicking sort (t3181 array cells)"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
