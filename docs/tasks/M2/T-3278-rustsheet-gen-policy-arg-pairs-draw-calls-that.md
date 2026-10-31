@@ -3,7 +3,7 @@ id: T-3278
 title: "rustsheet-gen --policy arg-pairs: draw calls that pass the argument-class pairs no Excel cell covers yet"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
