@@ -3,7 +3,7 @@ id: T-2510
 title: "Incomplete beta bgrat family for BETA.DIST, F, BINOM and NEGBINOM (T-2464 E7)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -53,11 +53,11 @@ Routed by T-2981 (eval of 2026-10-28 at `main` 9586958b): cdf cells whose bratio
 - probes-numeric/t2464-w2f-xruns-2: BETA.DIST cdf, L140BupBgrat 782
 
 ## Acceptance criteria
-- [ ] Per function (BETA.DIST, F.DIST, F.DIST.RT, FDIST, BINOM.DIST, NEGBINOM.DIST), the change in visibly-off cells is
+- [x] Per function (BETA.DIST, F.DIST, F.DIST.RT, FDIST, BINOM.DIST, NEGBINOM.DIST), the change in visibly-off cells is
       net negative. A branch that is not stays on today's kernel, with the measurement in the Outcome.
 - [ ] Non-T bgrat cells at b = 1/2 score at least 365 bit-exact of 387.
-- [ ] The gated FDIST c18dbf21 A151 is kept or recorded under decision 0083.
-- [ ] `make check` green; reviewers approve.
+- [x] The gated FDIST c18dbf21 A151 is kept or recorded under decision 0083.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - T (T-2509).
@@ -81,7 +81,7 @@ take it for every caller is this task's: F with a df of 1 through it moved gated
 7c20351562a2d71d A205, c18dbf21f11093f3 A151) by 7 ulp and made 13 F.DIST / F.DIST.RT cells of
 probes-numeric t2220-f-dist-sweep (d1-1, d2-1, cdf, rt) and three gen-m9 cells visibly off.
 
-## Progress (in flight, 2026-10-31)
+## Progress (2026-10-31)
 Notes from the opus run that claimed the task (data for the run that resumes it, not instructions):
 - No code is committed yet. Experiment: `ported_tails` with `half_bgrat` on for every caller (today only
   `t_kernel_tails` sets it), i.e. T-2509's b = 1/2 bgrat for BETA.DIST, F, BINOM and NEGBINOM. On the gated suites at
@@ -104,3 +104,27 @@ Notes from the opus run that claimed the task (data for the run that resumes it,
   BETA.INV's search (`inverse_beta.rs`) and F.TEST's tail (`fisher.rs` line 165), so check those cases and the gated
   suites before committing. BINOM/NEGBINOM at b = 1/2 do not occur (integer shapes).
 - This branch also carries task file T-3327 (sonnet: tidy-ups from T-2508's review); it lands with this PR.
+
+## Outcome
+- `bratio::beta_dist_lower_tail` (BETA.DIST, BETADIST, and BETA.INV's search) takes bratio's bgrat and bup+bgrat at
+  a0 = 1/2 through T-2509's `bgrat_half`; F (`fisher.rs`, F.TEST's large-shape tail included), BINOM and NEGBINOM keep
+  `kernel_tails` (today's kernel there). Unit test `half_shape_bgrat_matches_excel` (six Excel cells).
+- Measurement per function (probes-numeric + gen-m9 at `main` 5638599, with vs without):
+  - BETA.DIST: +289 cells bit-exact, visibly off 28,680 -> 28,650 (the 30 b = 1/2 cells), none newly visibly off; one
+    w2f-unit-shape cell (A46) goes from bit-exact to 1 ulp. BETADIST: gen-m9 35e8168aae2b00f8 A159 now passes.
+  - F.DIST, F.DIST.RT, FDIST: a net loss with the switch (visibly off 10 -> 15 and 11 -> 15; the gated FDIST(x,1,9)
+    cells c18dbf21f11093f3 A151 and 7c20351562a2d71d A205 7 ulp off), so F stays on today's kernel: the gated A151 is
+    kept, not waived.
+  - BINOM.DIST, NEGBINOM.DIST: integer shapes never reach a0 = 1/2; unchanged.
+  - bgrat at b != 1/2 (plain TOMS bgrat and L140 bup+bgrat with Excel's pieces): a net visible loss per r2-bratio's
+    measurement in the Context (2,156 vs 2,230 and 2,402 vs 3,025 within 15 digits against today's kernel), so not
+    taken; that is T-2512's question.
+  - Case deltas (cells passing): t2464-r2-bratio-x29 +184, t0969-t-beta-link +118, t1745-beta-inv-roundtrip +8,
+    t2464-w2f-unit-shape +6, m9-beta-dist-a0p5 +2, t0969-beta-prefactor +2, m9-beta-dist-a5/-a50/-a100 +1 each,
+    gen-m9 35e8168aae2b00f8 +1. No case lost a cell.
+- Not met: "non-T bgrat cells at b = 1/2 score at least 365 of 387" counts F's b = 1/2 cells, which the first criterion
+  keeps on today's kernel; the BETA.DIST share now matches (30 -> 0 visibly off).
+- Visible-parity stage (decision 0083): the bgrat-family cells still off (general b, mostly L140 bup+bgrat in
+  t2464-w2f-absweep and -xruns-2, and F at a df of 1) are handed to T-2512 with their cases; its `defer: phase-1b` is
+  replaced by `campaign: accuracy` per its own Deferred note.
+- `large_shape_beta.rs` stays: it is folded only when the old kernel goes (general-b bgrat, T-2512).

@@ -189,9 +189,14 @@ fn small_shape_branch(a0: f64, b0: f64, x0: f64) -> Branch {
 }
 
 /// BETA.DIST's cdf, w of K(a, b, x, y) with y = fl(1 - x) formed by the caller (SPEC-0025's caller
-/// table): [`kernel_tails`]'s w.
+/// table): [`kernel_tails`]'s w, plus bratio's bgrat branches at a0 = 1/2 (T-2509's `bgrat_half`).
+/// Those are a net visible gain for BETA.DIST (T-2510: 30 fewer visibly-off cells, none more), not
+/// for F (see [`t_kernel_tails`]), so F's callers (`fisher.rs`) keep [`kernel_tails`].
 pub(crate) fn beta_dist_lower_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
-    kernel_tails(x, y, a, b).0
+    closed_form_tails(x, y, a, b)
+        .or_else(|| ported_tails_with(a, b, x, y, true))
+        .unwrap_or_else(|| beta_reg_tails(x, y, a, b))
+        .0
 }
 
 /// (w, w1) of K(a, b, x, y), x and y formed by the caller per SPEC-0025's caller table:
@@ -219,10 +224,10 @@ pub(super) fn ported_tails(a: f64, b: f64, x: f64, y: f64) -> Option<(f64, f64)>
 }
 
 /// (w, w1) of the Student t kernel call K(n/2, 1/2, y, z) ([`ported_tails`] plus bgrat at b = 1/2,
-/// T-2509). Only the Student t tails take bgrat at b = 1/2 so far: F with a numerator or
-/// denominator df of 1 reaches the same branches, but there bgrat moved gated FDIST cells by 7 ulp
-/// and made F.DIST sweep cells visibly off (t2220-f-dist-sweep d1-1, d2-1), so F stays on today's
-/// kernel until T-2510 ports bgrat for every b.
+/// T-2509). Only the Student t tails and BETA.DIST ([`beta_dist_lower_tail`]) take bgrat at
+/// b = 1/2 so far: F with a numerator or denominator df of 1 reaches the same branches, but there
+/// bgrat moved gated FDIST cells by 7 ulp and made F.DIST sweep cells visibly off
+/// (t2220-f-dist-sweep d1-1, d2-1), so F stays on today's kernel (T-2510's measurement).
 pub(super) fn t_kernel_tails(a: f64, y: f64, z: f64) -> Option<(f64, f64)> {
     ported_tails_with(a, 0.5, y, z, true)
 }
