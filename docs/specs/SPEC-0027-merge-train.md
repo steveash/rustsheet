@@ -309,7 +309,12 @@ option records `prev:` and checks mechanically that the PR's own diff did not ch
 - the new head is a merge commit whose first parent is `prev` and whose second parent is on
   `origin/main`;
 - `git merge-tree --write-tree` of those two parents reproduces the new head's tree exactly,
-  which means a clean merge with no edits.
+  which means a clean merge with no edits. *As built (decision 0207):* exactly, except in
+  the content of the eval-gated, non-fetched suites' baseline lists, where a conflict may be
+  resolved and the lists re-recorded (`make catch-up`), because the eval gate, which marking
+  requires green, checks exactly those lists against the engine. A re-recorded list may not
+  add a failure line that neither parent's list has: the gate cannot tell that regression from
+  a correct list (decision 0207).
 
 Any other push needs the reviewers that the change concerns to run again, as today.
 
@@ -559,7 +564,9 @@ flip therefore takes effect within about 1 min of its stop label, or of its merg
 2. **Collect.** List open PRs labelled `ready-to-merge` and run V1–V6 on each. Section 2 gives the
    side effects of each failure, and they apply in `train` mode only; the other modes report
    them. A PR whose `mergeable_state` is `dirty` is ejected with the reason `conflict with main`.
-   Sort the rest by marker time, oldest first, and take up to `BATCH_MAX`. If none is left,
+   Sort the rest by marker time, oldest first, and take up to `BATCH_MAX`. *As built (decision
+   0206):* up to `CANDIDATES_MAX` (20) go to the build, which keeps the first `BATCH_MAX` that
+   merge cleanly, so ejected and deferred candidates make room for later ones. If none is left,
    release and report "no ready PR". Housekeeping in `train` and `shadow` mode: remove
    `ready-to-merge` from closed PRs, because in `shadow` mode a worker merges ready-labelled PRs by
    the per-PR flow.
