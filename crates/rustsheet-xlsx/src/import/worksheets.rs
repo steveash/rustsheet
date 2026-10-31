@@ -32,6 +32,7 @@ use super::{
     columns::load_columns,
     conditional_formatting::load_conditional_formatting,
     iso_date::iso8601_to_date_system_serial,
+    merged_cells,
     shared_strings::{decode_xlsx_escapes, SharedStringTable},
     sheet_data::{read_sheet_data, SheetDataXml, SheetPart},
     tables::load_table,
@@ -824,23 +825,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
 
     let merged_cells = load_merge_cells(ws)?;
 
-    // Covered cells of a merged range must not hold content (an engine
-    // invariant); Excel leaves them empty but third-party producers sometimes
-    // leave values behind, so we clear them here (keeping their styles).
-    for merged_cell in &merged_cells {
-        for row in merged_cell.row..=merged_cell.last_row() {
-            for column in merged_cell.column..=merged_cell.last_column() {
-                if row == merged_cell.row && column == merged_cell.column {
-                    continue;
-                }
-                if let Some(cell) = sheet_data.cell_mut(row, column) {
-                    *cell = Cell::EmptyCell {
-                        s: cell.get_style(),
-                    };
-                }
-            }
-        }
-    }
+    merged_cells::clear_covered_cells(&mut sheet_data, &merged_cells);
 
     let links = load_hyperlinks(ws, &settings.hyperlink_rels)?;
 

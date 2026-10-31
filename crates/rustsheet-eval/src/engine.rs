@@ -224,11 +224,11 @@ impl Engine for RustSheetEngine {
                         if phase == Phase::Stored {
                             spec_pivots::add_pivots(tx, spec, &ids, sheet, id)?;
                             for table in &sheet.tables {
-                                tx.add_table_with_totals(
+                                tx.add_table_with_rows(
                                     range_ref(id, &table.range)?,
                                     &table.name,
                                     table.filter,
-                                    table.totals_row,
+                                    (table.header_row, table.totals_row),
                                 )?;
                             }
                         }
