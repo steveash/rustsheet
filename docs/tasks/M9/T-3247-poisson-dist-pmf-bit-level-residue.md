@@ -47,3 +47,22 @@ Stage: `campaign: visible` like T-2055 (Excel is the inaccurate side for this pm
 
 ## Out of scope
 - The cdf (T-3269).
+
+## Cells added by gap triage (2026-10-31c)
+`make eval` on origin/main 0c917f9fe (excel-graph): 11 gen-m9 pmf cells, each 1 ulp off and within 15 significant
+digits, that no open task listed. They are this task's small-k residue (k = 1 to 10, mean 1E-10 to 7): e.g.
+`POISSON(4,1,FALSE)` Excel 0.015328310048810094, ours 0.015328310048810096 (334f3dc9ca937f10 A257, f82473275380882e
+A151, 5395b8a427764a3f A19); `POISSON(1,2,FALSE)` 0.27067056647322535 vs 0.2706705664732254 (3b7990bd4e3307ba A192);
+`POISSON(10,0.01,FALSE)` 2.7283119316280092E-27 vs 2.7283119316280096E-27 (7fd0a98183c6babf A31). Acceptance: these
+leave eval/baseline/gen-m9.txt with the cells above, or the Outcome lists each still failing.
+- gen-m9/31f09e6c48ca245c.case.json (1): Calc!A279
+- gen-m9/334f3dc9ca937f10.case.json (1): Calc!A257
+- gen-m9/3b7990bd4e3307ba.case.json (1): Calc!A192
+- gen-m9/5395b8a427764a3f.case.json (1): Calc!A19
+- gen-m9/583ca2baea0bb30a.case.json (1): Calc!A27
+- gen-m9/5cebac1f02bf30f2.case.json (1): Calc!A28
+- gen-m9/7fd0a98183c6babf.case.json (1): Calc!A31
+- gen-m9/9735c5ab72fa5ecf.case.json (1): Calc!A328
+- gen-m9/a4090567758520df.case.json (1): Calc!A246
+- gen-m9/d5fd9e05e9e6f466.case.json (1): Calc!A30
+- gen-m9/f82473275380882e.case.json (1): Calc!A151

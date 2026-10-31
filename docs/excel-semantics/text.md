@@ -458,17 +458,32 @@ Status: VERIFIED (web)
 Tasks: T-1361
 
 ## TEXTBEFORE and TEXTAFTER: overlapping delimiter instances
-Rule (inferred): TEXTBEFORE does not count a delimiter match that overlaps an earlier counted one, unlike SUBSTITUTE's
-instance_num ("SUBSTITUTE instances overlap" above): `TEXTBEFORE("-2.5",{"2.5","-2.5"},2)` is `#N/A` in Excel, so
-"-2.5" at unit 0 is the only instance and the "2.5" inside it at unit 1 is not a second one.
-Evidence: gen-m9/cde551ea787f713a Calc!A37 (excel-graph), `=BETADIST(TEXTBEFORE((Data!C11&Data!E3),Data!B11:C11,2),..)`
-with C11 = -2.5, E3 blank and B11:C11 = 2.5, -2.5: Excel `#N/A`. BETADIST's other arguments are `#VALUE!` (NPV at the
-text rate " x ") and `#REF!` (INDEX past its range), so the `#N/A` is TEXTBEFORE's not-found (gap triage 2026-10-31).
-Unprobed: a delimiter overlapping itself (`TEXTBEFORE("aaa","aa",2)`), a negative instance_num, TEXTAFTER, match_mode 1,
-and whether TEXTSPLIT's split points follow the same scan.
-Ours: overlapping (`text_sensitive`, `text_sensitive_reverse` in functions/text/util.rs step one character after a
-match), so `TEXTBEFORE("-2.5",{"2.5","-2.5"},2)` is "-" and the gen-m9 cell is `#VALUE!`.
-Status: UNVERIFIED (probe pending, T-3335)
+Rule: TEXTBEFORE and TEXTAFTER count only disjoint delimiter matches, unlike SUBSTITUTE's instance_num ("SUBSTITUTE
+instances overlap" above). From the start, the scan counts the longest delimiter that starts at a position and resumes
+after its end: `TEXTBEFORE("aaa","aa",2)` is `#N/A`, `TEXTBEFORE("aaaa","aa",2)` "aa", `,3)` `#N/A`, `TEXTAFTER("aaaaa","aa",2)`
+"a"; `TEXTBEFORE("-2.5",{"2.5","-2.5"},2)` is `#N/A` in either list order ("-2.5" at unit 0 hides the "2.5" inside it);
+`TEXTBEFORE("xabcx",{"b","abc"},2)` is `#N/A` ("abc" at unit 1 hides the "b"). With a negative instance_num the scan
+takes start positions from the last back, and after a counted match steps back by that match's length and goes on from
+there, checking the whole rest of the text at each position, so a longer delimiter may still run into the counted match
+(`TEXTAFTER("3.141590.2-0.5x~*",C5:D12,-2)` with "0.2" and "2" among the delimiters counts "2" at unit 9, then "0.2" at
+unit 7, and is "-0.5x~*"; gen-m7/a470dc9e165bdb20 Calc!A1441), while the same delimiter cannot:
+`TEXTBEFORE("aaa","aa",-1)` "a", `-2` `#N/A`; `TEXTBEFORE("aaaaa","aa",-2)` "a"; `TEXTBEFORE("ababa","aba",-1)` "ab",
+`-2` `#N/A`; `TEXTBEFORE("xabcx",{"abc","b"},-1)` is "xa" (the later start wins, even though "abc" ends later);
+`TEXTBEFORE("abcd",{"ab","bc","cd"},-2)` is "" ("cd", then "ab"; "bc" overlaps "cd"). match_mode 1 counts the same way
+(`TEXTBEFORE("AAA","aa",2,1)` `#N/A`, `TEXTBEFORE("aAaA","AA",2,1)` "aA"). With match_end 1 the end of the text (the
+start, from the end) is one more instance after the last disjoint match, not only when nothing matches:
+`TEXTBEFORE("aaa","aa",2,,1)` is "aaa", `TEXTBEFORE("aaa","aa",-2,,1)` "", `TEXTAFTER("aaa","aa",2,,1)` ""; and
+`TEXTBEFORE("aaa","aa",2,,,"nf")` is "nf". The `#VALUE!` bound on instance_num ("instance_num past the text" below)
+counts positions, not disjoint matches: `TEXTBEFORE("aaa","aa",3)` is `#VALUE!` but `TEXTBEFORE("aaaa","aa",3)` `#N/A`.
+TEXTSPLIT splits at the same disjoint matches: `TEXTSPLIT("aaa","aa")` is "","a", `TEXTSPLIT("aaaaa","aa")` "","","a",
+`TEXTSPLIT("-2.5",{"2.5","-2.5"})` "","", `TEXTSPLIT("ababa","aba")` splits only at unit 0, `TEXTSPLIT("xabcx",{"b","abc"})` "x","x".
+Evidence: probes/t3335-textbefore-overlapping-instances A1-A58, C1-E29 (excel-graph, 2026-10-31, T-3335);
+gen-m9/cde551ea787f713a Calc!A37 (`TEXTBEFORE("-2.5",{2.5,-2.5},2)` inside BETADIST, `#N/A`); gen-m7/a470dc9e165bdb20
+Calc!A1441 (excel-graph). The backward step is inferred from these cells: whether it is the match's length or the
+shortest delimiter's (they agree on every cell) is unprobed, as is a forward scan's step past a match whose delimiter
+list holds a shorter entry starting inside it.
+Ours: matches (`Instances::Disjoint` in functions/text/util.rs; TEXTSPLIT's `split_grid` already scanned disjointly).
+Status: VERIFIED (excel-graph)
 Tasks: T-3335
 
 ## TEXTSPLIT of empty text is #VALUE!

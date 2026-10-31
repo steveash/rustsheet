@@ -306,8 +306,8 @@ impl Asset {
             return Ok(Amortized::new(0.0, LeftOver::Read));
         }
         let walk = DegressiveWalk {
-            // Subtracted like every later charge (`DegressiveWalk::charge`), by analogy: the
-            // probes fit the plain and the twice-rounded difference alike.
+            // Rounded twice like every later charge (`DegressiveWalk::charge`): probes/
+            // amordegrc-first-subtraction A1-B6 tell it from the plain difference (T-2917).
             remain: extended_sum(self.cost, -first_depr),
             salvage: self.salvage,
             rate: depr_rate,

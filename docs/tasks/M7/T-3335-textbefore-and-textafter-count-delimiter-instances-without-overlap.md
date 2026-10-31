@@ -3,7 +3,7 @@ id: T-3335
 title: "TEXTBEFORE and TEXTAFTER count delimiter instances without overlap: probe and match Excel (TEXTBEFORE(\"-2.5\",{\"2.5\",\"-2.5\"},2) is #N/A, ours \"-\")"
 milestone: M7
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -49,14 +49,14 @@ Probe first (excel-probe skill, excel-graph), one probe case, e.g. probes/t3335-
   same scan there.
 
 ## Acceptance criteria
-- [ ] The probe is oracle-filled and committed; its findings replace the inferred entry in
+- [x] The probe is oracle-filled and committed; its findings replace the inferred entry in
       docs/excel-semantics/text.md (Status VERIFIED, cells cited).
-- [ ] gen-m9/cde551ea787f713a Calc!A37 passes: this known-failure line disappears from eval/baseline/gen-m9.txt with no
+- [x] gen-m9/cde551ea787f713a Calc!A37 passes: this known-failure line disappears from eval/baseline/gen-m9.txt with no
       new known-failure lines in any baseline (`make eval-baseline`).
-- [ ] Every probe cell passes, or a remaining one is named in a follow-up task.
-- [ ] SUBSTITUTE's overlapping instances (probes/substitute-overlapping-instances) still pass: the change does not
+- [x] Every probe cell passes, or a remaining one is named in a follow-up task.
+- [x] SUBSTITUTE's overlapping instances (probes/substitute-overlapping-instances) still pass: the change does not
       reuse `nth_overlapping_match` for TEXTBEFORE/TEXTAFTER.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Visible-parity stage
 Decision 0083: the cell this task owns is visibly off (wrong error), so the task is in the campaign at the
@@ -65,3 +65,12 @@ Decision 0083: the cell this task owns is visibly off (wrong error), so the task
 ## Out of scope
 - BETADIST, NPV and INDEX themselves: they already give the errors Excel's arguments would.
 - SUBSTITUTE (VERIFIED overlapping, T-1644).
+
+## Outcome
+Probe probes/t3335-textbefore-overlapping-instances (78 cells, excel-graph) shows TEXTBEFORE/TEXTAFTER count disjoint
+matches: forward the scan resumes after a counted match; backward it steps back by the match's length and checks the
+whole rest there (gen-m7/a470dc9e165bdb20 A1441 pins that a longer delimiter may still run into the counted match).
+match_end makes the text's end one more instance after the last disjoint match, not only when nothing matches. TEXTSPLIT
+already split disjointly. `Instances` in functions/text/util.rs keeps SUBSTITUTE's overlapping count; the old
+instance-±1-only match_end branch in `around_not_found` is gone. text.md entry VERIFIED. Eval: gen-m9 known failures
+3030 -> 3029 (cde551ea787f713a A37), probe case 78/78, no regressions.

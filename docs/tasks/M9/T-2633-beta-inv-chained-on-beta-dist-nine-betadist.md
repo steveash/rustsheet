@@ -8,7 +8,7 @@ priority: P1
 size: S
 tier: opus
 campaign: accuracy
-depends_on: [T-2510]
+depends_on: []
 ---
 
 ## Goal
@@ -17,6 +17,8 @@ cells that T-2119 moved from bit-exact to 1-4 ulp match Excel to the bit again. 
 `incomplete_beta`.
 
 ## Context
+- Decision 0188 R5 (owner's 2026-10-31 rulings): T-2510 (the bgrat family) is parked as Phase 1b, since its cells are
+  all dense probes-numeric sweep cells, so it left `depends_on`; work on today's kernel for the bgrat branches.
 T-2119 put BETA.DIST's cdf on `incomplete_beta::beta_reg_complement` and refined BETA.INV to the crossing of that cdf
 (`special::refine_increasing`). That fixed 27 gated lines, and recorded these regressions under decision 0083's
 standing allowance (all numeric, none visibly off). Excel against ours in `ironcalc-calc/STATISTICAL/BETADIST_BETAINV.xlsx`

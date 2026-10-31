@@ -3,7 +3,7 @@ id: T-3006
 title: "Decide whether Mac 16.0300 cached x87-kernel last digits in COMPLEXs.xlsx (IMTAN N6, IMSQRT AL12/AL26) outrank excel-graph, unblocking T-2774 and T-2536 (46 visibly-off cells)"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -53,3 +53,10 @@ open, undeferred owner; these 46 are owned only by blocked tasks whose sole bloc
 ## Out of scope
 - Implementing IMTAN or IMSQRT (T-2774, T-2536).
 - Other ironcalc-calc Mac-cache conflicts (ATAN2_POWER stays under 0086).
+
+## Outcome
+Settled by the owner's ruling R6 of decision 0188 (T-3346, 2026-10-31): IMTAN (COMPLEXs.xlsx Sheet1!N6) and IMSQRT
+(Sheet1!AL12, AL26) follow the Excel-for-the-web value under decision 0039 item 4; the PRs of T-2774 and T-2536 may
+regress those three cells, which are lines of eval/milestones/exit-exceptions.tsv and phase1-exceptions.tsv (owner
+T-1075 items 16 and 17). T-2774 and T-2536 keep `status: blocked` in T-3346's PR by the owner's instruction, with a note
+that the blocker is settled; the next steward or worker unblocks them.

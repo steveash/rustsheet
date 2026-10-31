@@ -113,33 +113,40 @@ impl Delimiters {
     }
 }
 
-/// Finds the text after the occurrence instance of any of the `delimiters` in text
+/// Finds the text after the occurrence instance of any of the `delimiters` in text; with
+/// `match_end` the end of the text (the start, counting from the end) is one more occurrence.
 pub(crate) fn text_after(
     text: &str,
     delimiters: &Delimiters,
     instance_num: i32,
     match_mode: Case,
+    match_end: bool,
 ) -> Option<String> {
     let (_, right) = match_text(
         text,
         delimiters.for_case(match_mode),
         instance_num,
         match_mode,
+        Instances::Disjoint { match_end },
     )?;
     text.get(right..).map(str::to_string)
 }
 
+/// Finds the text before the occurrence instance of any of the `delimiters` in text, as
+/// [`text_after`].
 pub(crate) fn text_before(
     text: &str,
     delimiters: &Delimiters,
     instance_num: i32,
     match_mode: Case,
+    match_end: bool,
 ) -> Option<String> {
     let (left, _) = match_text(
         text,
         delimiters.for_case(match_mode),
         instance_num,
         match_mode,
+        Instances::Disjoint { match_end },
     )?;
     text.get(..left).map(str::to_string)
 }
@@ -189,7 +196,13 @@ pub(crate) fn substitute_exceeds_limit(
 }
 
 pub(crate) fn substitute(text: &str, old_text: &str, new_text: &str, instance_num: i32) -> String {
-    if let Some((left, right)) = match_text(text, &[old_text], instance_num, Case::Sensitive) {
+    if let Some((left, right)) = match_text(
+        text,
+        &[old_text],
+        instance_num,
+        Case::Sensitive,
+        Instances::Overlapping,
+    ) {
         if let (Some(head), Some(tail)) = (text.get(..left), text.get(right..)) {
             return format!("{head}{new_text}{tail}");
         }
@@ -197,10 +210,24 @@ pub(crate) fn substitute(text: &str, old_text: &str, new_text: &str, instance_nu
     text.to_string()
 }
 
+/// How matches are counted towards an instance number.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Instances {
+    /// Every position where a match starts counts, inside an earlier match too: SUBSTITUTE's
+    /// `instance_num` (docs/excel-semantics/text.md "SUBSTITUTE instances overlap").
+    Overlapping,
+    /// A match inside one already counted does not count: TEXTBEFORE and TEXTAFTER
+    /// (docs/excel-semantics/text.md "TEXTBEFORE and TEXTAFTER: overlapping delimiter instances").
+    /// With `match_end` the end of the text (its start, counting from the end) is one more match,
+    /// after the last one (probes/t3335-textbefore-overlapping-instances A27, A48, A49).
+    Disjoint { match_end: bool },
+}
+
 /// Byte range of the `instance_num`-th match of any of `delimiters` (counted from the end when
-/// negative). Every position where some delimiter starts counts once; the longest delimiter
-/// that matches there decides the match length (docs/excel-semantics/text.md "TEXTSPLIT,
-/// TEXTBEFORE, TEXTAFTER and REGEX* lift their text and scalar arguments"; T-1824). With
+/// negative), counted as `instances` says. Every position where some delimiter starts counts
+/// once; the longest delimiter that matches there decides the match length
+/// (docs/excel-semantics/text.md "TEXTSPLIT, TEXTBEFORE, TEXTAFTER and REGEX* lift their text and
+/// scalar arguments"; T-1824). With
 /// `Case::Insensitive` the delimiters are already folded ([`Delimiters`]); only the text is
 /// folded here.
 fn match_text<S: AsRef<str>>(
@@ -208,6 +235,7 @@ fn match_text<S: AsRef<str>>(
     delimiters: &[S],
     instance_num: i32,
     match_mode: Case,
+    instances: Instances,
 ) -> Option<(usize, usize)> {
     // The callers saturate a huge instance number to i32::MIN, whose negation overflows; saturate
     // it to i32::MAX instead, the same count a huge positive instance number gets.
@@ -215,9 +243,9 @@ fn match_text<S: AsRef<str>>(
     match match_mode {
         Case::Sensitive => {
             if instance_num > 0 {
-                text_sensitive(text, delimiters, instance_num)
+                text_sensitive(text, delimiters, instance_num, instances)
             } else {
-                text_sensitive_reverse(text, delimiters, reverse_num)
+                text_sensitive_reverse(text, delimiters, reverse_num, instances)
             }
         }
         Case::Insensitive => {
@@ -226,9 +254,9 @@ fn match_text<S: AsRef<str>>(
             // (T-1796, probes/textbefore-casefold-length).
             let folded_text = fold_for_before_after(text);
             let (left, right) = if instance_num > 0 {
-                text_sensitive(&folded_text, delimiters, instance_num)
+                text_sensitive(&folded_text, delimiters, instance_num, instances)
             } else {
-                text_sensitive_reverse(&folded_text, delimiters, reverse_num)
+                text_sensitive_reverse(&folded_text, delimiters, reverse_num, instances)
             }?;
             let original = char_offsets(text);
             let char_index = |byte: usize| folded_text.get(..byte).map(|s| s.chars().count());
@@ -255,50 +283,76 @@ fn text_sensitive<S: AsRef<str>>(
     text: &str,
     delimiters: &[S],
     instance_num: i32,
+    instances: Instances,
 ) -> Option<(usize, usize)> {
     let mut byte_index = 0;
     let mut local_index = 1;
+    // A disjoint scan resumes after the end of the match it counted.
+    let mut next_start = 0;
     for c in text.chars() {
-        if let Some(len) = text
-            .get(byte_index..)
-            .and_then(|rest| delimiter_at(rest, delimiters))
-        {
-            if local_index == instance_num {
-                return Some((byte_index, byte_index + len));
-            } else {
+        if byte_index >= next_start {
+            if let Some(len) = text
+                .get(byte_index..)
+                .and_then(|rest| delimiter_at(rest, delimiters))
+            {
+                if local_index == instance_num {
+                    return Some((byte_index, byte_index + len));
+                }
                 local_index += 1;
+                if instances != Instances::Overlapping {
+                    next_start = byte_index + len;
+                }
             }
         }
         byte_index += c.len_utf8();
     }
-    None
+    (instances == Instances::Disjoint { match_end: true } && local_index == instance_num)
+        .then_some((text.len(), text.len()))
 }
 
+/// The `instance_num`-th match counted from the end, scanning start positions from the last one
+/// back. A disjoint scan then steps back by the length of the match it counted, in UTF-16 units,
+/// and goes on from there; a longer delimiter starting there may still run into the counted match
+/// (`TEXTAFTER("3.141590.2-0.5x~*",{..,"0.2",..,"2",..},-2)` counts "2" then "0.2",
+/// gen-m7/a470dc9e165bdb20 Calc!A1441), but the same delimiter cannot (probes/
+/// t3335-textbefore-overlapping-instances A21, A22, A33, A42, A55).
 fn text_sensitive_reverse<S: AsRef<str>>(
     text: &str,
     delimiters: &[S],
     instance_num: i32,
+    instances: Instances,
 ) -> Option<(usize, usize)> {
     let mut byte_index = text.len();
     let mut local_index = 1;
-    for c in text.chars().rev() {
+    // UTF-16 units still to step back over before a position is checked again.
+    let mut skip = 0;
+    let mut chars = text.chars().rev();
+    loop {
         if let Some(len) = text
             .get(byte_index..)
             .and_then(|rest| delimiter_at(rest, delimiters))
+            // The empty end of the text matches no delimiter; the start of the text does
+            // (probes/textsplit-lift-guesses A9).
+            .filter(|_| skip == 0 && byte_index < text.len())
         {
             if local_index == instance_num {
                 return Some((byte_index, byte_index + len));
-            } else {
-                local_index += 1;
+            }
+            local_index += 1;
+            if instances != Instances::Overlapping {
+                skip = text
+                    .get(byte_index..byte_index + len)
+                    .map_or(0, |m| m.encode_utf16().count());
             }
         }
-
+        let Some(c) = chars.next() else {
+            return (instances == Instances::Disjoint { match_end: true }
+                && local_index == instance_num)
+                .then_some((0, 0));
+        };
         byte_index -= c.len_utf8();
+        skip = skip.saturating_sub(c.len_utf16());
     }
-    // The loop checks each position before stepping back, so the start of the text is left;
-    // a match there counts (probes/textsplit-lift-guesses A9).
-    let len = delimiter_at(text, delimiters).filter(|_| !text.is_empty())?;
-    (local_index == instance_num).then_some((0, len))
 }
 
 /// Cap on the total bytes of text one broadcast may produce. Excel has no such
@@ -434,12 +488,12 @@ mod tests {
 
     fn text_after(text: &str, delimiters: &[&str], n: i32, case: Case) -> Option<String> {
         let delimiters = Delimiters::new(delimiters.iter().map(|d| (*d).to_string()).collect());
-        super::text_after(text, &delimiters, n, case)
+        super::text_after(text, &delimiters, n, case, false)
     }
 
     fn text_before(text: &str, delimiters: &[&str], n: i32, case: Case) -> Option<String> {
         let delimiters = Delimiters::new(delimiters.iter().map(|d| (*d).to_string()).collect());
-        super::text_before(text, &delimiters, n, case)
+        super::text_before(text, &delimiters, n, case, false)
     }
     #[test]
     fn test_text_after_sensitive() {
@@ -563,5 +617,51 @@ mod tests {
             Some("".to_string())
         );
         assert_eq!(text_before("abc", &[], 1, Case::Sensitive), None);
+    }
+
+    #[test]
+    fn instances_are_disjoint_but_substitute_overlaps() {
+        // probes/t3335-textbefore-overlapping-instances A17, A18, A21, A22, A42, A55.
+        assert_eq!(text_before("aaa", &["aa"], 2, Case::Sensitive), None);
+        assert_eq!(
+            text_before("aaaa", &["aa"], 2, Case::Sensitive),
+            Some("aa".to_string())
+        );
+        assert_eq!(
+            text_before("aaa", &["aa"], -1, Case::Sensitive),
+            Some("a".to_string())
+        );
+        assert_eq!(text_before("aaa", &["aa"], -2, Case::Sensitive), None);
+        assert_eq!(
+            text_before("xabcx", &["abc", "b"], -1, Case::Sensitive),
+            Some("xa".to_string())
+        );
+        assert_eq!(
+            text_before("abcd", &["ab", "bc", "cd"], -2, Case::Sensitive),
+            Some(String::new())
+        );
+        assert_eq!(text_before("AAA", &["aa"], 2, Case::Insensitive), None);
+        // Backwards, a longer delimiter may run into the match counted before it
+        // (gen-m7/a470dc9e165bdb20 Calc!A1441).
+        assert_eq!(
+            text_after("3.141590.2-0.5", &["0.2", "2"], -2, Case::Sensitive),
+            Some("-0.5".to_string())
+        );
+        // SUBSTITUTE still counts the overlapping second "aa" (probes/substitute-overlapping-instances).
+        assert_eq!(super::substitute("aaa", "aa", "x", 2), "ax");
+    }
+
+    #[test]
+    fn match_end_is_one_more_instance() {
+        // probes/t3335-textbefore-overlapping-instances A27, A48, A49.
+        let aa = Delimiters::new(vec!["aa".to_string()]);
+        let before = |n| super::text_before("aaa", &aa, n, Case::Sensitive, true);
+        assert_eq!(before(2), Some("aaa".to_string()));
+        assert_eq!(before(-2), Some(String::new()));
+        assert_eq!(before(3), None);
+        assert_eq!(
+            super::text_after("aaa", &aa, 2, Case::Insensitive, true),
+            Some(String::new())
+        );
     }
 }
