@@ -103,7 +103,8 @@ pub(super) fn yield_start(rate: f64, pr: f64, term: &StartTerm) -> f64 {
 /// value, root or not: with a redemption of 1E+300 Excel returns a yield far below PRICE's root,
 /// what the 100th step reaches (`YIELD(37341,45513,1E-9,105,1E+300,1)` = 78.13551092802992,
 /// bit-exact; probes/yield-newton-domain C, T-2391).
-/// FITTED(T-1592, 370 cells, range unknown)
+/// Range (T-3385): the 370 are the fit lab's `yield` set (basis 0, more than one coupon left).
+/// FITTED(T-1592, 370 cells, basis 0, term 1.3..40.3 years, rate 0..0.5, price 40..160, redemption 50..200, yield -0.081..0.51)
 pub(super) fn excel_yield_newton(
     target: f64,
     start: f64,

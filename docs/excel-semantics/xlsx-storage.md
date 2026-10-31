@@ -73,6 +73,28 @@ Status: DEVIATION (decision 0014)
 Implemented in: crates/rustsheet-xlsx/src/import/package.rs (`ImportLimits`, `Package`),
 crates/rustsheet-xlsx/src/import/xml.rs (`reference_of`)
 
+## A workbook whose indices dangle is refused outright
+Rule: `Model::from_workbook`, which every load ends in (xlsx import, `Model::from_bytes`,
+`UserModel::from_bytes`), refuses a workbook whose indices point at nothing the model would later read
+unchecked: a cell, row or column style past `cellXfs` (or no `cellXfs` at all), a style's font, fill or
+border past its list, a negative number format id, a shared-formula index past its list, a spill range
+or anchor off the grid, a row or column record or a merged range off the grid, and cell storage whose
+rows or columns are out of order or off the grid. The error names the sheet and the index
+(`Sheet 'Sheet1': cell R1C2 has style 9999, which does not exist`). Indices the model reads with a
+checked lookup that tolerates a dangling value load as before: a shared-string index (it reads as
+empty text; poi/sample-beta.xlsx, an Office 2007 beta package, imports with no shared strings), a
+conditional format's dxf id, a named style's `xfId`, a defined name's local sheet id, a view's selected
+sheet, the frozen panes, and a workbook with no sheets.
+Excel: desktop Excel offers to repair a corrupt file and Excel for the web refuses one
+(`FileCorruptTryRepair`, seen for other corruptions in `arrays.md` and `number-formats.md`); what either
+does with these particular indices is not probed. Without the check the model panicked later (T-2882:
+style 9999 at the next edit, formula index 77 with no shared formula at the next evaluation).
+Evidence: none for Excel; this is the no-panic rule (CLAUDE.md directive 5), not an Excel observation.
+Status: DEVIATION (decision 0014); what Excel does with these indices is UNVERIFIED (probe pending: an
+xlsx with a dangling `s=` and one with a `fontId` past `<fonts>`, on excel-graph)
+Implemented in: crates/rustsheet-engine/src/workbook_check.rs (`check_indices`),
+crates/rustsheet-engine/src/sheet_data.rs (`SheetData::check_layout`)
+
 ## Phonetic (furigana) runs are not cell text
 Rule: a shared string's text is its plain `<t>` plus the `<r><t>` rich-text runs. `<rPh><t>` phonetic
 runs (ECMA-376 §18.4.6) are annotations and are not part of the cell value, so they do not count
