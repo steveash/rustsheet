@@ -81,5 +81,6 @@ differs from the engine is stated in docs/excel-semantics/ and owned by a task.
   without raising `eval/baseline/visible-parity.json`, so after main moved the lock no longer counted them as new
   coverage. Re-recorded from main's probes list with `make eval-baseline` (no `--allow-regressions`): the probes list
   comes out identical (130 new-coverage cells, 0 regressions). The lock is the in-scope visibly-off count, written by
-  the tool: main's lock 2427 carried slack from fixes the steward had not yet lowered (decision 0093), so it reads
-  2544 after the last merge of main (main's own count 2414 plus the 130 cells).
+  the tool: main's lock carried slack from fixes the steward had not yet lowered (decision 0093). After merging main
+  at 7a92b8858 (lock 2442) and re-running `make eval-baseline`, it reads 2563 (main's own count 2433 plus the 130
+  cells); `make eval-gates` passes.
