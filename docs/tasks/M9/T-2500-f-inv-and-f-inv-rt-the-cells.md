@@ -50,6 +50,21 @@ Cells:
 - gen-m9/caa1eed48b1883fe.case.json (1): Calc!A359
 - gen-m9/eced4bb6a0234c9e.case.json (2): Calc!A202, A289
 
+Cell lists (gap triage 2026-10-31: the bare hashes above are not unique case names, so `exit_owners.py` saw these
+visibly-off cells as unowned; a63d1c7d6f96c56d A320 `TRIMMEAN(F.INV.RT(0.001,8,1),Data!C$5)` Excel 598144.1562499531,
+ours ...525, and c6cfda6bd10cae93 A183 `F.INV.RT((ATAN(Data!C6)^(Data!$D12+Data!A$1)),4,Data!$B12)` Excel
+562.0832962779946, ours ...953, are the same crossing problem and were named by no task):
+- gen-m9/320d51765af9b6b7.case.json (2): Calc!A15, A379
+- gen-m9/40425341c5034eed.case.json (1): Calc!A108
+- gen-m9/4ab2ba98d26c8a5e.case.json (1): Calc!A390
+- gen-m9/589f42e67f4b4b8d.case.json (1): Calc!A365
+- gen-m9/60b0b6e69ad35a45.case.json (2): Calc!A150, A197
+- gen-m9/7674c89c824aca43.case.json (1): Calc!A212
+- gen-m9/a63d1c7d6f96c56d.case.json (1): Calc!A320
+- gen-m9/c18dbf21f11093f3.case.json (1): Calc!A92
+- gen-m9/c6cfda6bd10cae93.case.json (1): Calc!A183
+- gen-m9/e6cf3b20a014e6a3.case.json (1): Calc!A135
+
 ## Acceptance criteria
 - [ ] The cells above display Excel's 15 significant digits, or the Outcome shows from probes why Excel's value cannot
       be reached without a bit-level model of its kernel (then a follow-up without the campaign key).
