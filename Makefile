@@ -116,7 +116,7 @@ check: fmt-check clippy test eval-gates py-check py-bindings hygiene typos ## Ev
 ci: check deny machete
 
 # ---------------------------------------------------------------- Tasks
-.PHONY: tasks next-task ready-tasks board new-task new-decision exit-owners unowned-off
+.PHONY: tasks next-task ready-tasks board new-task new-decision exit-owners unowned-off phase1-exit
 tasks: ## List tasks (LANE=, STATUS=, MILESTONE= filters)
 	$(PY) scripts/tasks.py list $(if $(LANE),--lane $(LANE)) $(if $(STATUS),--status $(STATUS)) $(if $(MILESTONE),--milestone $(MILESTONE))
 
@@ -138,6 +138,9 @@ exit-owners: ## Failing exit cells of a milestone that no open task of it owns, 
 
 unowned-off: ## Visibly-off cells no open task owns, after make eval: unattributed (decision 0132), or ALL=1 [FUNCTION=NAME] every one by function (T-0086)
 	$(PY) scripts/exit_owners.py $(if $(ALL),--all-off $(if $(FUNCTION),--function $(FUNCTION)),--unattributed) $(if $(STRICT),--strict)
+
+phase1-exit: ## One verdict per Phase 1 exit criterion after a full make eval; exit 1 unless every measured one is met (decision 0187) [JSON=1]
+	$(PY) scripts/phase1_exit.py $(if $(JSON),--json)
 
 board: ## Write docs/tasks/BOARD.md locally (git-ignored; decision 0017)
 	$(PY) scripts/tasks.py board

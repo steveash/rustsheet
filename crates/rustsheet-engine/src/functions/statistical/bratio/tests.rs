@@ -83,6 +83,30 @@ fn bpser_branches_match_excel() {
     }
 }
 
+// bgrat and bup+bgrat at a0 = 1/2 (T-2509's `bgrat_half`): Excel's values, bit-exact since
+// BETA.DIST takes them (T-2510) and 1 to 7 ulp off on today's kernel before.
+#[test]
+fn half_shape_bgrat_matches_excel() {
+    let cells: [(f64, f64, f64, f64); 6] = [
+        // gen-m9 35e8168aae2b00f8 A159: BETADIST(1E-10,0.5,10000000000.5).
+        (1E-10, 0.5, 10_000_000_000.5, 0.842_700_792_965_281_4),
+        // m9-beta-dist-a5, -a50, -a100 A11: swapped, b = 1/2.
+        (0.9, 5.0, 0.5, 0.316_642_915_020_012_35),
+        (0.9, 50.0, 0.5, 0.001_204_149_832_559_813_5),
+        (0.9, 100.0, 0.5, 4.545_254_904_517_027_4e-6),
+        // m9-beta-dist-a0p5 A37, A49: a = 1/2.
+        (0.1, 0.5, 10.0, 0.848_359_090_365_29),
+        (0.1, 0.5, 100.0, 0.999_995_454_745_095_5),
+    ];
+    for (x, a, b, excel) in cells {
+        assert_eq!(
+            cdf(x, a, b).to_bits(),
+            excel.to_bits(),
+            "BETA.DIST({x},{a},{b},TRUE)"
+        );
+    }
+}
+
 // bfrac (b0 >= 40): Excel's values (probes-numeric, excel-graph), bit-exact through the bfrac port
 // and 1 to 3 ulp off on today's kernel before it (T-2508).
 #[test]

@@ -2808,6 +2808,12 @@ m9-t-dist-*; docs/research/t2464/r2-tdist (`hx.py`, `hx_ctl.py`, `xlk.py`, `tsco
 - df 1 is the exception: through the ported bpser at a = b = 1/2 (w3, GL53's ln B) 24 of cells.tsv's 67 df-1 tails are
   bit-exact, against 41 for the double-double series, and `T.DIST.2T(1,1)` (Excel 0.5000000000000001) is 5 ulp low.
   So Excel's bpser at (1/2, 1/2) is not w3's; df 1 keeps the series (T-2930).
+- Other callers at a0 = 1/2 (T-2510, `main` 5638599): BETA.DIST through the same bgrat and bup+bgrat goes from 30
+  visibly-off cells to 0 on probes-numeric (+289 BETA.DIST cells bit-exact; e.g. `BETA.DIST(0.9,5,0.5,TRUE)` Excel
+  0.31664291502001235, `BETADIST(1E-10,0.5,10000000000.5)` 0.8427007929652814), with no cell newly visibly off. F with a
+  df of 1 does not fit it: `FDIST(x,1,9)` at Excel 0.190947117169724 comes out 0.19094711716972382 (7 ulp), and
+  F.DIST/F.DIST.RT on probes-numeric go from 10/11 visibly-off cells to 15/15. So Excel's F at a df of 1 is not this
+  bgrat on the same (x, y); F (and F.TEST's large-shape tail) keeps today's kernel there. UNVERIFIED why.
 Ours: K(n/2, 1/2, y, z) from df 3 (`student_t::kernel_tail`); df 1 and 2 keep `student_t.rs`'s own composite (a
 double-double series, a Cephes deep tail, incbcf/incbd from z, and df 2's closed forms).
 Status: VERIFIED (excel-graph) for the call form and bgrat at b = 1/2; the bup arithmetic and the T density UNVERIFIED

@@ -583,12 +583,26 @@ Rule: Excel refuses a formula typed through the API (Graph PATCH 400 `InvalidArg
 not parse, and the cell keeps its content (blank in the probes): `=1+`, `=(1`, `=1)`, `=+`, `=1 2`,
 `="a`, `=NoSuchTable[Col]` and `=[1]!Table3[#Data]` with no such table or link. A call left open is
 closed instead: `=SUM(1` stores `=SUM(1)` (1) and `=SUM(1,,` stores `=SUM(1,,)` (1); a group left
-open (`=(1`) is not. And `=1**2` is not refused: Excel stores `=100` (100), a reading of `**` nobody
-documents; RustSheet refuses it (TODO(T-3283)). Stored text that does not parse loads as a parse
-error (`#ERROR!`, the text kept), as before.
-Evidence: probes/t3113-entered-refused (`=1+`, A1 and R1C1 mode), probes/t3213-typed-parse-errors
-(excel-graph, 2026-10-30). Only one `)` was probed missing, after a call or a group with nothing
-after it; `=SUM(1+(2`, `=SUM((1`, `=LAMBDA(x,x)(1` and other `**` shapes are unprobed.
-Status: VERIFIED (excel-graph); `=1**2` open (T-3283).
+open (`=(1`) is not, and neither is anything with two `(` open: `=SUM(1+(2`, `=SUM((1`,
+`=SUM(SUM(1`, `=ABS(-(1`, `=SUM(1,(2` and `=LAMBDA(x,x)(1` (the open `(` follows a `)`) are all
+refused. Stored text that does not parse loads as a parse error (`#ERROR!`, the text kept), as
+before. `**` in a typed number is its exponent marker: see "`**` in a typed number is `E`" below.
+Evidence: probes/t3113-entered-refused (`=1+`, A1 and R1C1 mode), probes/t3213-typed-parse-errors,
+probes/t3283-typed-missing-paren (excel-graph, 2026-10-30/31).
+Status: VERIFIED (excel-graph).
 Implemented in: model.rs (`Model::parse_cell_formula`), typed_input.rs (`TYPED_FORMULA_DOES_NOT_PARSE`,
 `open_parenthesis_is_a_call`); rustsheet-eval engine.rs leaves a refused typed cell blank (decision 0179).
+
+## `**` in a typed number is `E`
+Rule: in a typed formula Excel reads `**` written where a number's exponent marker `E` could stand
+as that `E`: `=1**2` stores `=100` (100), `=2**3` `=2000`, `=1.5**2` `=150`, `=2**-1` `=0.2`,
+`=-2**2` `=-200`, `=2**3*2` `=2000*2` (4000), `=SUM(1**2)` `=SUM(100)`. It is not a power operator:
+`**` anywhere an `E` would not be is refused like any other parse error: `=1**` (no exponent),
+`=Z1**2` (after a reference), `=(2)**3` (after `)`), `=2** 3` (a space), `=2**0.5` (a fraction),
+`=1E2**1` and `=2**3**2` (a second exponent), `=1***2`, `="a"**2`.
+Evidence: probes/t3283-typed-double-star, probes/t3213-typed-parse-errors A5 (excel-graph,
+2026-10-31). Unprobed: `**` in stored (file) text, which RustSheet keeps a parse error; `2**+3`
+(read like `2E+3`).
+Status: VERIFIED (excel-graph).
+Implemented in: lexer/number.rs (`Lexer::consume_number`), lexer/mod.rs (`Lexer::set_typed`, set by
+`Parser::set_typed`) (T-3283).
