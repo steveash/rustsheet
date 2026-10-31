@@ -588,6 +588,8 @@ class Stage:
                     self.client.set_base(member.pr, merge_ready.BASE_BRANCH)
                     self.log.append(f"#{member.pr}: re-set the base to recompute its stale test merge")
                     refreshed = True
+                    # The recompute starts now; in step mode the session's ack may have taken minutes.
+                    deadline = max(deadline, self.clock() + PRE_SQUASH_TIMEOUT)
             if self.clock() >= deadline:
                 raise Stop(f"GitHub's test merge of #{member.pr} was not recomputed on {expected[:12]} "
                            f"within {PRE_SQUASH_TIMEOUT // 60} min")

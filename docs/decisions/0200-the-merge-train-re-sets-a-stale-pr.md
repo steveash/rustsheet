@@ -10,13 +10,16 @@
     #2533 on a3df1f16, #2104 and #2373 on b1bdc1c2, #2524 on 1248554a. Polling did not help;
     #2533 stayed stale for over 20 minutes.
   - Re-setting a PR's base to the branch it already has (`PATCH pulls/{n}` with `base: main`)
-    made GitHub recompute #2104's test merge on the current tip within about 3 minutes.
+    made GitHub recompute #2104's test merge on the current tip within about 3 minutes. The
+    PATCH reply already carried the new `base.sha` (4ff408243c5e, the tip), so `set_base`'s
+    read-back of `base.sha` holds at once. Only the test merge takes minutes.
   - The tests' fake GitHub recomputed the test merge on every read, which is why no test caught
     this. Shadow mode never squashes, so step 7.2 had never run live.
 - **Decision:**
   - When step 7.2 finds a test merge on an older `main` while `main` has not moved, the stage
     re-sets the PR's base to `main` once (`Client.set_base`) and keeps polling.
-    `PRE_SQUASH_TIMEOUT` grows from 2 to 5 minutes to cover the recompute.
+    `PRE_SQUASH_TIMEOUT` grows from 2 to 5 minutes and restarts at the refresh, to cover the
+    recompute.
   - Step mode gains an eighth action, `set_base` (fields `pr`, `base`; `base` must be `main`). Its
     read-back checks that the PR's `base.sha` equals the tip of `main`. The merger prompt in
     docs/process/routines.md lists it: the session performs it with `update_pull_request`
@@ -30,6 +33,10 @@
     train's tree, or the stage stops (with a P0 for a different tree).
   - A train now costs up to one extra API write and a few minutes per member whose test merge
     is stale.
+  - When a stale PR's `base.sha` already equals the tip, the read-back cannot tell a performed
+    `set_base` from a skipped one. The stage then times out at that member (a Stop), and tree
+    safety is unaffected.
   - The owner updates the merger routine's prompt to the routines.md text (owner step 3 of
-    SPEC-0027). Until then, a merger run refuses `set_base` (`REFUSED=1`), and the stage stops at
-    that member as it did before this change. Sessions running the stall fallback perform it.
+    SPEC-0027). Until then, a merger run that refuses `set_base` (`REFUSED=1`) ends with a
+    `GhError` (exit 2) at that member, with the lock released, merging nothing after it. Sessions
+    running the stall fallback perform it.
