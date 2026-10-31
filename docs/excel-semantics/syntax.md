@@ -156,8 +156,8 @@ one, so the depth bound admits up to 127 nested function calls; union operand li
 parsed in a loop and is one group node, so it costs no level per parenthesis; a run of up to 256
 parses, as Excel's does, and 257 or more is too deep (`MAX_PARENTHESES`, T-3191, decision 0173;
 `=((...(0.1+0.2-0.3+B1)...))` too, T-1169). Groups split into several runs (`=( ((...)))`,
-`=(1+((...)))`) count together: more than 256 open at once is too deep. Whether Excel counts split
-runs the same way is unprobed (only an unbroken run around `1` was, T-3172). A group holding more than the group inside it
+`=(1+((...)))`) count together: more than 256 open at once is too deep. Excel counts split runs
+the same way: 256 levels of `-(` around `1` load and evaluate, 257 are refused (T-3266, below). A group holding more than the group inside it
 (`((x)+1)`) still costs an operand's two levels. The first operand of a group's content, unless a
 group itself, reserves one and a half levels of the parser's bound instead of two, and a call there
 adds one level to the tree, so a level of `(ABS(` costs three and a half: Excel's 64 and 65 levels
@@ -165,12 +165,27 @@ of `(ABS(` load and match (probes/t3097-nesting-paren-abs-*), up to 72 levels pa
 deep (T-3197, decision 0184). Each unary minus is a node (T-0132), and so is each unary plus kept in the formula text
 (T-2723), but a sign costs no depth level: the evaluator walks a run of them in a loop. Instead at
 most 1,023 signs may be open at once (`MAX_SIGNS`, T-3193), a minus written directly before a number
-literal not counted, so a run matches Excel's caps below (1,024 minus signs before `1`, 1,023 plus
-signs before `"a"`, 1,023 alternating `-+` before `C1`) and one more sign is too deep. That counting
-rule was chosen to fit those three probed caps; the other explanation (a cap that depends on the
-operand's type) is not ruled out, and `-(1)`, `- 1`, 1,024 plus signs before `1` and minus runs
-before `TRUE` or a reference are unprobed (T-3266). Signs in
-several runs on one path (`=-(-(...))`) count together (unprobed in Excel, T-3266); a plus directly before a
+literal not counted, so a run matches Excel's caps before a number literal (1,024 signs), a reference,
+`TRUE` or a string (1,023), and one more sign is too deep. Signs in several runs on one path
+(`=-(-(...))`) count together, as in Excel.
+Excel's rule (T-3266, probes/t3266-*, excel-graph 2026-10-31, stored and typed alike; T-3172 for the
+first three shapes): the signs open at an operand (every unary sign on its path not yet applied,
+across nested runs) plus that operand's cost may be at most 1,024. A number literal written
+directly after the signs costs 0, a reference, `TRUE`, a string or a number after a space costs 1, and a
+parenthesis (a run of them counts once) or a function call costs 2. So 1,024 minus or plus signs
+before `1` load and 1,025 are refused (plus-num-1024, -1025); 1,023 minus signs before `C1`, `TRUE`
+or `- 1` (spaced) load and 1,024 are refused (minus-ref-, minus-true-, minus-spaced-1023, -1024);
+1,022 minus or plus signs before `(1)`, `((1))` or `ABS(1)` load and 1,023 are refused
+(minus-paren-1022, -1023; minus-paren2-, plus-paren-, minus-abs-1022, -1023). In nested runs the
+outer signs stay open and the parentheses add nothing: 200 levels of `-(` around 824 minus signs and `1`
+(1,024 signs) load and 825 are refused (nested-200-824, -825), and likewise 50 levels around 974 and
+975 (nested-50-974, -975); `-(` nests up to the 256-parenthesis cap (nested-paren-256, -257). A
+refused stored formula makes Excel for the web refuse the workbook (createSession 501
+`FileCorruptTryRepair`) and a refused typed one is a 400 `InvalidArgument`; those inputs keep no
+sidecar and were dropped after the run, as T-3172's were. Ours differs in two places (T-3338): a
+sign run before a parenthesis or a call admits 1,023 signs, one more than Excel, and `-(` nesting is
+bounded by `MAX_FORMULA_DEPTH`, so 100 levels of `-(` parse but 128 are too deep (nested-paren-128,
+-200, -255, -256 and nested-200-823, -824 fail as `EngineError`). In ours a plus directly before a
 number literal folds into it and adds no node. Typed whitespace adds no
 level either (SPEC-0023, decision 0127): `=SUM( - SUM( - …` nests as deep as `=SUM(-SUM(-…`. Calls are further capped at 65 (below).
 Excel caps function nesting at 64
