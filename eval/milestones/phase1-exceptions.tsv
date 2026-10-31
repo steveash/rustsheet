@@ -19,3 +19,7 @@ poi/FormulaEvalTestData_Copy.xlsx!EverythingTests!K936	0134	T-1075
 ironcalc-calc/ENGINEERING/COMPLEXs.xlsx!Sheet1!N6	0188	T-1075
 ironcalc-calc/ENGINEERING/COMPLEXs.xlsx!Sheet1!AL12	0188	T-1075
 ironcalc-calc/ENGINEERING/COMPLEXs.xlsx!Sheet1!AL26	0188	T-1075
+# IRR.xlsx Two Values!C4 (IRR at an exact zero root: cached 2^-52, the web 0) and COMPLEXs.xlsx K25 (IMCOS, Mac
+# 16.0300's last digit): the engine follows the web (decision 0196); T-1075 items 23 and 24.
+ironcalc-calc/FINANCIAL/IRR.xlsx!Two Values!C4	0196	T-1075
+ironcalc-calc/ENGINEERING/COMPLEXs.xlsx!Sheet1!K25	0196	T-1075

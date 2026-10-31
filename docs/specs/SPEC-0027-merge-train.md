@@ -627,12 +627,14 @@ flip therefore takes effect within about 1 min of its stop label, or of its merg
    to n:
    1. **Stop checkpoint**, then **renew** the lock with `prs` = the PRs not yet merged. Exit 4
       means stop.
-   2. **Pre-squash check (mandatory).** Poll `GET /pulls/<k>` every 5 s, for at most 2 min, until
-      `mergeable` is non-null and `merge_commit_sha` is a commit whose first parent is the current
-      `main` (`S_{k-1}`, or `M0` for k = 1). GitHub recomputes the test merge after every push to
-      `main`. Read that commit (`GET /git/commits/<merge_commit_sha>`) and require its `tree.sha`
-      to equal `tree(T_k)`: git object ids are the same on both sides, so no fetch is needed. A
-      timeout or a mismatch stops the sequence at k.
+   2. **Pre-squash check (mandatory).** Read `GET /pulls/<k>`. When `mergeable` is non-null and
+      `merge_commit_sha` is a commit whose first parent is the current `main` (`S_{k-1}`, or `M0`
+      for k = 1), read that commit (`GET /git/commits/<merge_commit_sha>`) and require its
+      `tree.sha` to equal `tree(T_k)`: git object ids are the same on both sides, so no fetch is
+      needed. *As built (decision 0200):* GitHub recomputes a PR's test merge only when the PR
+      changes, not after a push to `main`, so it is usually stale here. Then `origin/main` must
+      still be that `main`, and `git merge-tree --write-tree <main> H_k` must succeed with
+      `tree(T_k)`. A mismatch (P0), a moved `main` (P0) or a conflict stops the sequence at k.
    3. **Squash-merge** PR k with `expectedHeadSha = H_k`. The commit text is described under
       "Squash commit text".
    4. **Post-squash check.** Fetch `origin/main` and require that its first parent is the
@@ -803,8 +805,9 @@ CI tested `tree(T_n)`. Intermediate prefixes are discussed at the end of this se
   example).
 
 Neither can be prevented from here, so step 7 detects both:
-- the pre-squash check compares GitHub's own test merge, recomputed on the current `main`, with
-  `tree(T_k)`, and requires its first parent to be the `main` the merger expects;
+- the pre-squash check compares the PR's merge onto the `main` the merger expects with
+  `tree(T_k)`. That is GitHub's own test merge when GitHub has recomputed it on that `main`, and
+  the same merge done locally when it has not (decision 0200);
 - the post-squash check compares the result.
 
 Any mismatch stops the train and files a P0. For a mismatching squash of ours that landed, the
