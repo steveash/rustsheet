@@ -5,7 +5,9 @@ equal doubles (0.0 == -0.0) are exact, finite pairs within 4 ulp (`ulp_distance`
 pairs within 1e-9 relative are `close`, anything else (including a candidate that raises or
 returns a non-number) is a miss. A cell whose Excel value is an error is matched by the same error:
 a candidate signals one by raising `ExcelError` (or returning it); the right error is exact, another
-error or a number is a miss (T-1534).
+error or a number is a miss (T-1534). `digits15` counts the cells within 4 ulp or within half a unit
+in the 15th significant digit (closeness.rs `within_fifteen_digits`, decisions 0083 and 0088), the
+third count of the hold-out report (decision 0188 R4.1).
 """
 
 from __future__ import annotations
@@ -14,6 +16,7 @@ import math
 import struct
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from decimal import Decimal
 from typing import Any
 
 from rustsheet_tools.fitlab.sweep import Cell
@@ -33,6 +36,21 @@ def ulp_distance(a: float, b: float) -> int:
     """Distance between two finite doubles in units in the last place, exactly as the harness
     computes it (value.rs `ulp_distance`): 0.0 and -0.0 are 0 apart, ±min-subnormal 2 apart."""
     return abs(_ordered(a) - _ordered(b))
+
+
+def within_fifteen_digits(expected: float, actual: float) -> bool:
+    """Whether `actual` is within half a unit in the 15th significant digit of `expected`, as
+    the harness decides it (closeness.rs `within_fifteen_digits`): the boundary counts as within,
+    an expected 0 only matches 0, and non-finite values never match. The half unit is the double
+    nearest `5e(E-15)` for the decimal exponent `E` of the shortest round-trip digits of `expected`.
+    """
+    if not (math.isfinite(expected) and math.isfinite(actual)):
+        return False
+    gap = abs(actual - expected)
+    if expected == 0.0:
+        return gap == 0.0
+    exponent = Decimal(repr(abs(expected))).adjusted()
+    return gap <= float(f"5e{exponent - 15}")
 
 
 class ExcelError(ArithmeticError):
@@ -102,6 +120,7 @@ class Score:
     exact: int = 0
     ulp: int = 0  # within 4 ulp, exact included
     close: int = 0  # within 1e-9 relative, ulp included
+    digits15: int = 0  # within 15 significant digits, ulp included (decision 0088)
     errors: int = 0
     exact_keys: set[str] = field(default_factory=set)
     traced: int = 0  # cells where the candidate exposed iterates
@@ -133,6 +152,7 @@ class Score:
             "exact": self.exact,
             "within_4_ulp": self.ulp,
             "within_1e-9": self.close,
+            "within_15_digits": self.digits15,
             "errors": self.errors,
             "traced": self.traced,
             "iterate_hits": self.iterate_hits,
@@ -208,6 +228,10 @@ def score(cells: list[Cell], cand: Candidate, keep: int = 10) -> Score:
             s.exact_keys.add(f"{cell.case} {cell.key}")
         if r.ulps <= ULP_TOLERANCE:
             s.ulp += 1
+        if r.ulps <= ULP_TOLERANCE or (
+            r.actual is not None and within_fifteen_digits(cell.expected, r.actual)
+        ):
+            s.digits15 += 1
         if r.error is not None or (
             r.actual is not None
             and abs(cell.expected - r.actual) <= CLOSE_RELATIVE * max(abs(cell.expected), abs(r.actual))
@@ -217,12 +241,37 @@ def score(cells: list[Cell], cand: Candidate, keep: int = 10) -> Score:
     return s
 
 
+def merged(a: Score, b: Score, keep: int = 10) -> Score:
+    """One candidate's score over the cells of `a` and `b` together (two disjoint sides of a
+    sweep, scored separately), as `score` would give on their union: counts add, the worst cells
+    are the `keep` worst of both."""
+    out = Score(
+        a.name,
+        a.family,
+        a.total + b.total,
+        exact=a.exact + b.exact,
+        ulp=a.ulp + b.ulp,
+        close=a.close + b.close,
+        digits15=a.digits15 + b.digits15,
+        errors=a.errors + b.errors,
+        exact_keys=a.exact_keys | b.exact_keys,
+        traced=a.traced + b.traced,
+        iterate_hits={**a.iterate_hits, **b.iterate_hits},
+        incomparable=a.incomparable + b.incomparable,
+        largest=max(a.largest, b.largest),
+        results=a.results + b.results,
+    )
+    out.results = out.worst(keep)
+    return out
+
+
 def rank(scores: list[Score]) -> list[Score]:
     """Best first: most bit-exact, then most within 4 ulp, within 1e-9, smallest worst ulp."""
     return sorted(scores, key=Score.sort_key)
 
 
-def _pct(part: int, whole: int) -> str:
+def pct(part: int, whole: int) -> str:
+    """`part` as a share of `whole`, right-aligned to six characters."""
     return f"{100 * part / whole:5.1f}%" if whole else "    -"
 
 
@@ -240,8 +289,8 @@ def table(scores: list[Score], top: int) -> str:
         if i > top and not s.name.startswith("engine"):
             continue
         lines.append(
-            f"{i:>4}  {s.name[:44]:<44} {s.exact:>6} {_pct(s.exact, s.total)} {s.ulp:>6} "
-            f"{_pct(s.ulp, s.total)} {s.close:>6} {_pct(s.close, s.total)} {s.errors:>5} "
+            f"{i:>4}  {s.name[:44]:<44} {s.exact:>6} {pct(s.exact, s.total)} {s.ulp:>6} "
+            f"{pct(s.ulp, s.total)} {s.close:>6} {pct(s.close, s.total)} {s.errors:>5} "
             f"{_ulps_text(s.max_ulps):>9}"
         )
     return "\n".join(lines)

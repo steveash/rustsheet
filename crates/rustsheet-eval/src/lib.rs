@@ -27,6 +27,7 @@ pub mod exit_exceptions;
 pub mod fetch;
 pub mod formula_calls;
 pub mod function_scope;
+pub mod gate_b;
 pub mod lift_kinds;
 pub mod lock_file;
 pub mod milestone_exit;

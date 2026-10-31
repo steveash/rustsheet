@@ -21,9 +21,9 @@ docs/excel-semantics/numbers.md "Near-zero snapping" records, with excel-graph e
 - Unprobed positions where the engine now snaps: a LET-bound LAMBDA (`=LET(f,LAMBDA(x,x+0.2-0.3),f(0.1))`), a
   LAMBDA passed as a parameter (`=LAMBDA(g,g(0.1))(LAMBDA(x,x+0.2-0.3))`), a chained call, and a call under a
   picker (`=IF(TRUE,LAMBDA(x,x+0.2-0.3)(0.1))`).
-- Unprobed positions where it does not snap: a call as an aggregate argument or under ISREF
-  (`=SUM(LAMBDA(x,x+0.2-0.3)(0.1))`, which goes through `keeping_references`), a call under `+0`, a grouped
-  body (`=LAMBDA(x,(x+0.2-0.3))(0.1)`), the LAMBDA helpers (MAP, REDUCE, BYROW) and a defined-name LAMBDA.
+- Unprobed positions where it now snaps since T-3111: a call as an aggregate argument
+  (`=SUM(LAMBDA(x,x+0.2-0.3)(0.1))`, which goes through `keeping_references`; a root `+`/`-` body snaps there).
+  A call under `+0`, a grouped body, the helpers and a defined-name LAMBDA are probed since (T-3094, T-3095).
 - Found by the T-3083 reviewers. Use each form at k = 7 (`1+7*2^-52-1`) and k = 8 too, as t3049 does.
 
 ## Acceptance criteria

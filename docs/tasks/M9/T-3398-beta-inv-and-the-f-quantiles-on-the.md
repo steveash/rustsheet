@@ -41,6 +41,15 @@ half a unit of Excel's 15th significant digit, or each one still off is named wi
   which are named above only as the measurement's evidence.
 - Rule: statistics.md "BETA.INV solves Excel's own CDF to the crossing (T-1745)" (155 of 188 rows).
 
+## Cells added by the gap triage (2026-10-31, filed against T-2511 before it closed)
+Visibly-off m9-beta-inv cells no open task owned (`make exit-owners MILESTONE=M9`, `rate:BETA.INV`, eval on a64f963e).
+Each is the same point as a t1745-beta-inv-roundtrip row this task took over from T-2511, where Excel's x is a crossing of its
+own cdf (BETA.DIST at x is p, or p lies between x and a neighbour) but our cdf there is a few ulps off Excel's and our
+search does not land on our own crossing (A31: ours is 9.5E-15 off the 50-digit root, Excel 1E-15):
+- probes-numeric/m9-beta-inv: Calc!A31, Calc!A102, Calc!A103 (t1745 rows 30, 99, 100)
+The other 12 visibly-off m9-beta-inv cells at small shapes, where Excel's cdf is flat or its search stops off the
+crossing, are T-3388's; the 5 `#NUM!` cells at p = 0.9999999999 are T-3351's.
+
 ## Acceptance criteria
 - [ ] Each of the five functions meets the Phase 1 rate, or the Outcome names every cell still visibly off with an
       owner.

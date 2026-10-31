@@ -3,7 +3,7 @@ id: T-3118
 title: "CUMIPMT as PMT times the periods less CUMPRINC (and type 1 from period 1 through period 2), once PMT has Excel's bits"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -31,9 +31,26 @@ from period 1 `CUMPRINC_CUMIPMT.xlsx` G2 (= fin-cumipmt-overflow-and-forms A7, f
 forms with 5 principal forms fits; financial.md "T-3067 notes").
 
 ## Acceptance criteria
-- [ ] CUMIPMT is `PMT·m - CUMPRINC` (with the period-1 rule) wherever that keeps every bit-exact cell, or the cells
+- [x] CUMIPMT is `PMT·m - CUMPRINC` (with the period-1 rule) wherever that keeps every bit-exact cell, or the cells
       it cannot take are documented in financial.md with the cause (PMT or CUMPRINC bits).
-- [ ] No regressions (`make eval-baseline`); `make check` green; reviewers approve.
+- [x] No regressions (`make eval-baseline`); `make check` green; reviewers approve.
 
 ## Out of scope
 - CUMPRINC's own last bits (T-3067, T-1374) and PMT's (T-3014).
+
+## Outcome
+- CUMIPMT is the engine's PMT times the period count less the engine's CUMPRINC (`Periods::interest`,
+  functions/financial/cumulative.rs), a type 1 range from period 1 from the range from period 2; type 0's balance form
+  and payments less principal, type 1's IPMT sum and tiny-rate form are gone (where PMT is `#NUM!`, type 0 keeps the
+  payments less the remaining-balance principal). Engine test `the_interest_is_pmt_times_the_periods_less_cumprinc`.
+- Eval delta (merged with main 2026-10-31, `make eval-baseline`): 53 known failures fixed (probes 39, gen-m9 7,
+  ironcalc-calc 7), CUMIPMT visibly-off cells 102 to 67, no CUMPRINC cell moved; 7 cells regressed, exactly decision
+  0197's list (5 visibly off), recorded once with `update-baseline --suite probes --suite gen-m9 --suite ironcalc-calc
+  --allow-regressions` under decision 0197 (accepted 2026-10-31). Net +46 cells.
+- The "No regressions" criterion holds under decision 0197, the ruling that allows these 7 (our
+  CUMPRINC's last bits, amplified; financial.md "The interest as `PMT·m - CUMPRINC`, applied").
+- Evidence kind: the identity is measured on Excel's own PMT and CUMPRINC outputs (T-3067 run 4, to the bit on
+  60 pairs and 22 period-1 ranges), not chosen by scoring candidates against oracle cells; on the suites that played
+  no part in deriving it (gate-edges, gen-m9, ironcalc-calc and the rest of probes) it fixes 53 cells and loses 7.
+- Decision renumbered 0170 to 0190, then to 0197 (main took 0190), and the follow-up T-3192 to T-3393, then to T-3413 (main took T-3393) on merging main (both ids were taken there).
+- Follow-up: T-3413.
