@@ -1,0 +1,29 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2917: AMORDEGRC's first-period subtraction cost - first_depr, plain or rounded twice (x87 extended, then double). A1-A6: costs where the plain difference is above the twice-rounded one; B1-B6: below it. Each period-1 charge (rate * remain, cut to 15 digits) differs by a unit between the two.",
+ "tags": [
+  "M9",
+  "financial",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=AMORDEGRC(213714414044743E273,39679,39813,300,1,1E-7,1)",
+    "A2": "=AMORDEGRC(924287756913611E146,39679,39813,300,1,1E-7,1)",
+    "A3": "=AMORDEGRC(385096170812349E120,39679,39813,300,1,1E-7,1)",
+    "A4": "=AMORDEGRC(679696404207063E202,39679,39813,300,1,1E-7,1)",
+    "A5": "=AMORDEGRC(230354132882969E275,39679,39813,300,1,1E-7,1)",
+    "A6": "=AMORDEGRC(756749530862116E22,39679,39813,300,1,1E-7,1)",
+    "B1": "=AMORDEGRC(888127241283885E85,39679,39813,300,1,1E-7,1)",
+    "B2": "=AMORDEGRC(150328021351033E171,39679,39813,300,1,1E-7,1)",
+    "B3": "=AMORDEGRC(657951240450035E74,39679,39813,300,1,1E-7,1)",
+    "B4": "=AMORDEGRC(704240822783799E87,39679,39813,300,1,1E-7,1)",
+    "B5": "=AMORDEGRC(584418748484322E221,39679,39813,300,1,1E-7,1)",
+    "B6": "=AMORDEGRC(183658887303435E143,39679,39813,300,1,1E-7,1)"
+   }
+  }
+ ],
+ "expected": {}
+}

@@ -228,3 +228,9 @@ Against a 50-digit reference, Excel is close to correctly rounded for this famil
 
 ## Cells added by the Phase 1 triage (T-0090, 2026-10-27)
 From the parked T-2695: CONFIDENCE.T gen-m9/85f48d5cdfb24555 Calc!A372 `CONFIDENCE.T(0.3,0.3,29)`, 0.0588276537815129 expected, 0.05882765378149652 today.
+
+## Cells back from T-2724 (2026-10-31)
+T-2724's centre kernel (an accurate quantile, never a fit) leaves these owned cells within about 2E-16 of the true
+quantile (mpmath) but more than half a unit of the 15th digit from Excel, whose own last digits are 1E-15 to 3.6E-15
+relative off there (statistics.md "Student t sweep", "Centre quantiles are accurate"): gen-m9/09b47629f54b9817 A40
+`TINV(1-1E-16,8)`, 4bad303d32cc3f46 A5 and A371, 984cba67bbe6972b A128, ecc87f80077959e0 A327 `CONFIDENCE.T(1-1E-10,2.5,16)`.

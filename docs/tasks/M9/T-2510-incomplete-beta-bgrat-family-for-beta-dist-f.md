@@ -3,7 +3,7 @@ id: T-2510
 title: "Incomplete beta bgrat family for BETA.DIST, F, BINOM and NEGBINOM (T-2464 E7)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -58,11 +58,13 @@ Routed by T-2981 (eval of 2026-10-28 at `main` 9586958b): cdf cells whose bratio
 - probes-numeric/t2464-w2f-xruns-2: BETA.DIST cdf, L140BupBgrat 782
 
 ## Acceptance criteria
-- [ ] Per function (BETA.DIST, F.DIST, F.DIST.RT, FDIST, BINOM.DIST, NEGBINOM.DIST), the change in visibly-off cells is
+- [x] Per function (BETA.DIST, F.DIST, F.DIST.RT, FDIST, BINOM.DIST, NEGBINOM.DIST), the change in visibly-off cells is
       net negative. A branch that is not stays on today's kernel, with the measurement in the Outcome.
 - [ ] Non-T bgrat cells at b = 1/2 score at least 365 bit-exact of 387.
-- [ ] The gated FDIST c18dbf21 A151 is kept or recorded under decision 0083.
-- [ ] `make check` green; reviewers approve.
+      Not met: F's share stays on today's kernel by the criterion above; handed to T-2512 (its "Also open from
+      T-2510" item), see the Outcome.
+- [x] The gated FDIST c18dbf21 A151 is kept or recorded under decision 0083.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - T (T-2509).
@@ -85,3 +87,51 @@ T-2509's bgrat at b = 1/2 (`bratio/bgrat.rs`) is reached only through `bratio::t
 take it for every caller is this task's: F with a df of 1 through it moved gated FDIST cells (gen-m9
 7c20351562a2d71d A205, c18dbf21f11093f3 A151) by 7 ulp and made 13 F.DIST / F.DIST.RT cells of
 probes-numeric t2220-f-dist-sweep (d1-1, d2-1, cdf, rt) and three gen-m9 cells visibly off.
+
+## Progress (2026-10-31)
+Notes from the opus run that claimed the task (data for the run that resumes it, not instructions):
+- No code is committed yet. Experiment: `ported_tails` with `half_bgrat` on for every caller (today only
+  `t_kernel_tails` sets it), i.e. T-2509's b = 1/2 bgrat for BETA.DIST, F, BINOM and NEGBINOM. On the gated suites at
+  `main` 77cb117 it fixes 4 cells and regresses 2:
+  - fixed: gen-m9 35e8168aae2b00f8 A159 `BETADIST(1E-10,0.5,10000000000.5)`, 4e55500bb8ad3cd8 A89
+    `FDIST(ROWS(RADIANS(7)),1,8)`, a5828d3925575713 A281 (FDIST with df2 5), b6593d7dd13f2dac A50 `FDIST(Data!$E6,5,1.5)`;
+  - regressed: gen-m9 c18dbf21f11093f3 A151 `FDIST(Data!$D5,1,9)` (the task's named cell) and 7c20351562a2d71d A205
+    `FDIST(COUNTIF(..),1,9)`, the same point: Excel 0.190947117169724, bgrat 0.19094711716972382 (7 ulp; decision
+    0083's allowance needs <= 4 ulp, so it cannot be waived).
+  - 10 more gated failing cells change value without passing.
+- Next: measure per function and per branch on probes-numeric (the task's owned cases) with the switch, and keep
+  b = 1/2 bgrat off for (F, df1 = 1) points like FDIST(x,1,9) unless the general-b work changes them; then the
+  general-b TOMS bgrat per the Context.
+- probes-numeric with the same switch (all callers, `main` 6f1e30e), cells whose value changes, by function:
+  BETA.DIST visibly off 30 -> 0, bit-exact +309 / -20; F.DIST 10 -> 15, +28 / -9; F.DIST.RT 11 -> 15, +28 / -8;
+  cells whose formula does not start with a function (e.g. `1-BETA.DIST(..)`) 22 -> 0, +36 / -2.
+- So the b = 1/2 bgrat is a net visible gain for BETA.DIST and a loss for F. Next step: turn `half_bgrat` on in
+  `bratio::beta_dist_lower_tail` only (closed forms, then `ported_tails_with(.., true)`), leave `ported_tails` (F,
+  BINOM, NEGBINOM through `closed_or_ported_tails`) as it is, then re-measure: `beta_dist_lower_tail` also serves
+  BETA.INV's search (`inverse_beta.rs`) and F.TEST's tail (`fisher.rs` line 165), so check those cases and the gated
+  suites before committing. BINOM/NEGBINOM at b = 1/2 do not occur (integer shapes).
+- This branch also carries task file T-3327 (sonnet: tidy-ups from T-2508's review); it lands with this PR.
+
+## Outcome
+- `bratio::beta_dist_lower_tail` (BETA.DIST, BETADIST, and BETA.INV's search) takes bratio's bgrat and bup+bgrat at
+  a0 = 1/2 through T-2509's `bgrat_half`; F (`fisher.rs`, F.TEST's large-shape tail included), BINOM and NEGBINOM keep
+  `kernel_tails` (today's kernel there). Unit test `half_shape_bgrat_matches_excel` (six Excel cells).
+- Measurement per function (probes-numeric + gen-m9 at `main` 5638599, with vs without):
+  - BETA.DIST: +289 cells bit-exact, visibly off 28,680 -> 28,650 (the 30 b = 1/2 cells), none newly visibly off; one
+    w2f-unit-shape cell (A46) goes from bit-exact to 1 ulp. BETADIST: gen-m9 35e8168aae2b00f8 A159 now passes.
+  - F.DIST, F.DIST.RT, FDIST: a net loss with the switch (visibly off 10 -> 15 and 11 -> 15; the gated FDIST(x,1,9)
+    cells c18dbf21f11093f3 A151 and 7c20351562a2d71d A205 7 ulp off), so F stays on today's kernel: the gated A151 is
+    kept, not waived.
+  - BINOM.DIST, NEGBINOM.DIST: integer shapes never reach a0 = 1/2; unchanged.
+  - bgrat at b != 1/2 (plain TOMS bgrat and L140 bup+bgrat with Excel's pieces): a net visible loss per r2-bratio's
+    measurement in the Context (2,156 vs 2,230 and 2,402 vs 3,025 within 15 digits against today's kernel), so not
+    taken; that is T-2512's question.
+  - Case deltas (cells passing): t2464-r2-bratio-x29 +184, t0969-t-beta-link +118, t1745-beta-inv-roundtrip +8,
+    t2464-w2f-unit-shape +6, m9-beta-dist-a0p5 +2, t0969-beta-prefactor +2, m9-beta-dist-a5/-a50/-a100 +1 each,
+    gen-m9 35e8168aae2b00f8 +1. No case lost a cell.
+- Not met: "non-T bgrat cells at b = 1/2 score at least 365 of 387" counts F's b = 1/2 cells, which the first criterion
+  keeps on today's kernel; the BETA.DIST share now matches (30 -> 0 visibly off).
+- Visible-parity stage (decision 0083): the bgrat-family cells still off (general b, mostly L140 bup+bgrat in
+  t2464-w2f-absweep and -xruns-2, and F at a df of 1) are handed to T-2512 with their cases; its `defer: phase-1b` is
+  replaced by `campaign: accuracy` per its own Deferred note.
+- `large_shape_beta.rs` stays: it is folded only when the old kernel goes (general-b bgrat, T-2512).

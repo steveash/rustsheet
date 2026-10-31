@@ -3,7 +3,7 @@ use statrs::distribution::FisherSnedecor;
 use crate::arithmetic::extended_quotient;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error};
-use crate::functions::statistical::bratio::{beta_dist_lower_tail, closed_or_ported_tails};
+use crate::functions::statistical::bratio::{closed_or_ported_tails, kernel_tails};
 use crate::functions::statistical::f_density::excel_f_density;
 use crate::functions::statistical::f_test_tail::f_test_bratio_p;
 use crate::functions::statistical::half_integer_beta::half_integer_remainder;
@@ -125,7 +125,7 @@ fn f_quantile_tail(df1: f64, df2: f64, x: f64, upper: bool) -> f64 {
 }
 
 /// Above this a + b (half the two df summed) F.TEST's tail is
-/// [`beta_dist_lower_tail`]'s; below it the remainder of [`f_test_upper_tail`] is summed
+/// [`kernel_tails`]'s; below it the remainder of [`f_test_upper_tail`] is summed
 /// in double-double, at most about 30,000 terms (x <= 0.9975 there).
 const F_TEST_SERIES_SHAPE_MAX: f64 = 200.0;
 
@@ -152,7 +152,8 @@ fn f_test_p(x: f64, y: f64, a: f64, b: f64) -> f64 {
 /// file this form is bit-exact on 90 against 53 for the correctly rounded p and visibly off on 6
 /// against 40 (docs/excel-semantics/statistics.md "F.TEST / FTEST: larger variance on top").
 /// A shape of 1 is F.TEST's own form ([`unoriented_shape_one_tail`]), large shapes are the kernel's
-/// ([`beta_dist_lower_tail`]: the bratio port's branches, else today's kernel; T-2977), and
+/// ([`kernel_tails`]: the bratio port's branches, else today's kernel; T-2977; F keeps today's kernel
+/// on the b = 1/2 bgrat branches, T-2510), and
 /// a = b = 1/2 is Excel's closed form 2 asin(sqrt x)/pi (T-2571; current scores in statistics.md).
 fn f_test_upper_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
     if x > 0.0 && y > 0.0 {
@@ -162,7 +163,7 @@ fn f_test_upper_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
     }
     let half_integers = (2.0 * a).fract() == 0.0 && (2.0 * b).fract() == 0.0;
     if !(x > 0.0 && y > 0.0 && half_integers && a + b <= F_TEST_SERIES_SHAPE_MAX) {
-        return beta_dist_lower_tail(x, y, a, b);
+        return kernel_tails(x, y, a, b).0;
     }
     // Bit-exact on 13 of the 16 such cells on file against 3 for the series (T-2571; the
     // committed fit is `uv run rustsheet-fitlab f-test-half`, T-2681).
