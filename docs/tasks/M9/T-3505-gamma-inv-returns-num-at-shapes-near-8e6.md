@@ -57,3 +57,26 @@ huge-shape band (1E9, T-3070) where the engine gives up today.
 
 ## Out of scope
 - The huge-shape band from 1E9 (T-3070) and the last-digit work of T-3269, T-3285 and T-3311.
+
+## Handoff
+- Done: root cause found (see Context: the inversion's one 2^19-term budget runs out on series cdfs from about shape
+  7.9E6 to 8.9E7 where the lower tail is the smaller one, about 25 cdfs from the Wilson-Hilferty start's 2^-30 step).
+  Failing region measured (Context). Probe probes/t3505-gamma-inv-budget-band (525 cells, oracle-filled excel-graph
+  2026-10-31; main: 120 of them `#NUM!`).
+- WIP fix in this branch (incomplete_gamma/mod.rs, special.rs): from shape 3E5 (`NARROW_SEARCH_SHAPE_MIN`, derived:
+  129 cdfs * 7.4 sqrt(a) fits 2^19 below it) to 1E8 the search starts at the crossing of Temme's expansion
+  (`temme_crossing`) with a first step of 2^-50 (`refine_increasing_near`), about 5 cdfs. The budget and cap are
+  unchanged; the result is still the crossing of the accurate series cdf. Measured with release copies (not
+  `make check`): the full eval run main-vs-HEAD changed exactly 120 cells, all in the new probe, `#NUM!` to 50 Pass and
+  70 within 4 ulp; no other cell in any suite changed value. A 3,402-cell local sweep (shapes 1E5-1E9): every cell
+  that was a number on main is bit-identical; every `#NUM!` below 1E9 is fixed. Six probe cells at p = 1E-300
+  (A1, A13, A133, A145, A85, A97) are unchanged from main and up to 2.2E-14 from Excel (the engine is the true
+  quantile per mpmath; Excel is off), visibly off at A13, A85, A97: not caused by this task, a follow-up (T-3294 area).
+- Overlap: T-3350 (PR #2597, ready-to-merge in the train) fixes the same root cause by making the quantile's cdfs
+  Temme's from shape 1E5, and retires the statistics.md DEVIATION. Its binary scores the probe identically (same
+  verdicts; 1 cell, A103, differs by an ulp, both within 4 ulp). Recommended: once #2597 merges, merge origin/main,
+  take main's side in incomplete_gamma/mod.rs and special.rs (drop this WIP fix), keep the probe as added evidence,
+  `make eval-baseline` for its p = 1E-300 cells, note it in statistics.md, then review. If #2597 does not land,
+  finish this fix instead: unit test (`gamma_quantile(7990464.81598859,1.0,0.5,Lower)` = 7990464.482655259 within 4
+  ulp), retire the DEVIATION in statistics.md "Incomplete gamma: per-call cap and lifting", `make check`.
+- Left: statistics.md entry, unit test, `make check`, baseline, Outcome, review.

@@ -47,7 +47,7 @@ use statrs::distribution::{ContinuousCDF, Gamma, Normal};
 
 use super::gammaln::excel_gammaln;
 use super::incomplete_beta::{rlog1, stirling_correction};
-use super::special::refine_increasing;
+use super::special::{refine_increasing_near, REFINE_FIRST_STEP};
 use crate::functions::util::poly;
 use crate::x87_exp::excel_exp;
 use crate::x87_log10::excel_ln;
@@ -820,12 +820,18 @@ pub(crate) fn gamma_quantile(shape: f64, scale: f64, p: f64, tail: Tail) -> f64 
         let probability = |x: f64| quantile_tail(&dist, x, small, &mut terms.borrow_mut());
         // The crossing does not depend on the start, which only saves cdfs: near x = a each
         // costs about 6.8 sqrt(a) terms of the one budget, so from no start (64 halvings of the
-        // whole range) the inversions from a shape of about 2E6 to Temme's would run out of it.
-        let estimate = wilson_hilferty_start(shape, lower) * scale;
-        let crossing = match small {
-            Tail::Lower => refine_increasing(probability, target, estimate, 0.0, f64::MAX),
-            Tail::Upper => refine_increasing(|x| -probability(x), -target, estimate, 0.0, f64::MAX),
+        // whole range) the inversions from a shape of about 2E6 to Temme's would run out of it,
+        // and from the Wilson-Hilferty start (about 25 cdfs) those from about 7E6 (T-3505).
+        let wilson_hilferty = wilson_hilferty_start(shape, lower);
+        let narrow = (NARROW_SEARCH_SHAPE_MIN..TEMME_SHAPE_MIN)
+            .contains(&shape)
+            .then(|| temme_crossing(shape, small, target, wilson_hilferty))
+            .filter(|unit| *unit > 0.0 && unit.is_finite());
+        let (unit, relative_step) = match narrow {
+            Some(unit) => (unit, NARROW_SEARCH_STEP),
+            None => (wilson_hilferty, REFINE_FIRST_STEP),
         };
+        let crossing = crossing_of(probability, small, target, unit * scale, relative_step);
         if terms.borrow().0 == 0 {
             return f64::NAN;
         }
@@ -837,6 +843,63 @@ pub(crate) fn gamma_quantile(shape: f64, scale: f64, p: f64, tail: Tail) -> f64 
         return 0.0;
     }
     x
+}
+
+/// The shape from which [`gamma_quantile`] starts its search at [`temme_crossing`], a step of
+/// [`NARROW_SEARCH_STEP`] wide, up to [`TEMME_SHAPE_MIN`], where every cdf is Temme's and costs
+/// one term (T-3505). Below it the longest search, [`INVERSION_CDFS`] cdfs at the series' slowest,
+/// about 7.4 sqrt(a) terms each (6.8 sqrt(a) in statrs' series, 8% more in the accurate one;
+/// [`MAX_TERMS`]), fits in the budget: 129 * 7.4 * sqrt(3E5) = 522,856 terms, under 2^19. Not a
+/// fit: the bound follows from those counts, and the search ends at the same crossing from either
+/// start wherever the cdf is monotone.
+const NARROW_SEARCH_SHAPE_MIN: f64 = 3e5;
+
+/// The first bracket step of the search from [`temme_crossing`], relative to it: 2^-50 exactly,
+/// 2 to 4 doubles. The expansion's crossing is within a double or two of the series' at these
+/// shapes (its first dropped term is about 1E-22 of the leading one from 3E5), so the bracket
+/// spans a few doubles and the search takes about 5 cdfs, against about 25 from the 2^-30 step
+/// around the Wilson-Hilferty start, whose bracket spans about 2^23 doubles. Further off it only
+/// takes more expansions.
+const NARROW_SEARCH_STEP: f64 = 8.881_784_197_001_252e-16;
+
+/// The crossing at scale 1 of the `tail` probability with `target` in Temme's expansion
+/// ([`temme_pair`]), a fixed amount of work per evaluation and at most [`INVERSION_CDFS`]
+/// evaluations, refined from `estimate` (T-3505). Only a start: [`gamma_quantile`] returns the
+/// crossing of the accurate pair. NaN where the search does not end on a positive finite double.
+fn temme_crossing(a: f64, tail: Tail, target: f64, estimate: f64) -> f64 {
+    let probability = |x: f64| {
+        let (lower, upper) = temme_pair(a, x);
+        match tail {
+            Tail::Lower => lower,
+            Tail::Upper => upper,
+        }
+    };
+    crossing_of(probability, tail, target, estimate, REFINE_FIRST_STEP)
+}
+
+/// The crossing of `probability`, the probability of `tail` (rising in x for the lower tail,
+/// falling for the upper), with `target`, refined from `estimate` by a first step of
+/// `relative_step` times it ([`refine_increasing_near`]).
+fn crossing_of(
+    probability: impl Fn(f64) -> f64,
+    tail: Tail,
+    target: f64,
+    estimate: f64,
+    relative_step: f64,
+) -> f64 {
+    match tail {
+        Tail::Lower => {
+            refine_increasing_near(probability, target, estimate, relative_step, 0.0, f64::MAX)
+        }
+        Tail::Upper => refine_increasing_near(
+            |x| -probability(x),
+            -target,
+            estimate,
+            relative_step,
+            0.0,
+            f64::MAX,
+        ),
+    }
 }
 
 /// The start of [`gamma_quantile`]'s refinement for a scale of 1 (T-3131, in place of statrs'

@@ -65,6 +65,9 @@ pub(crate) fn bisect_increasing(f: impl Fn(f64) -> f64, target: f64, max_doublin
 /// step by 4, so the last one reaches 2^98 times the first step of 2^-30 relative.
 const REFINE_MAX_EXPANSIONS: u32 = 64;
 
+/// [`refine_increasing`]'s first bracket step, relative to its estimate: 2^-30 exactly.
+pub(crate) const REFINE_FIRST_STEP: f64 = 9.313_225_746_154_785e-10;
+
 /// The crossing of a non-decreasing `f` with `target` within `[min, max]` (`0 <= min < max`): a
 /// bracket `f(lo) < target <= f(hi)`, grown around `estimate` when it is finite and otherwise the
 /// whole interval, is halved over the doubles' bit patterns (ordered like the values for
@@ -79,7 +82,23 @@ pub(crate) fn refine_increasing(
     min: f64,
     max: f64,
 ) -> f64 {
-    let (lo, hi) = crossing_bracket(&f, target, estimate, min, max);
+    refine_increasing_near(f, target, estimate, REFINE_FIRST_STEP, min, max)
+}
+
+/// [`refine_increasing`] with the bracket's first step `relative_step` times the estimate in place
+/// of 2^-30: the same crossing for a non-decreasing `f`, in fewer evaluations when the estimate
+/// is known to be within a few of those steps of it, as each halving of a bracket of n doubles
+/// costs one evaluation and the default first step spans about 2^23 doubles. An estimate further
+/// off only costs more expansions (4x each), so the bound of [`refine_increasing`] holds.
+pub(crate) fn refine_increasing_near(
+    f: impl Fn(f64) -> f64,
+    target: f64,
+    estimate: f64,
+    relative_step: f64,
+    min: f64,
+    max: f64,
+) -> f64 {
+    let (lo, hi) = crossing_bracket(&f, target, estimate, relative_step, min, max);
     0.5 * (lo + hi)
 }
 
@@ -103,7 +122,7 @@ pub(crate) fn nearest_crossing_from(
     min: f64,
     max: f64,
 ) -> f64 {
-    let (lo, hi) = crossing_bracket(&f, target, estimate, min, max);
+    let (lo, hi) = crossing_bracket(&f, target, estimate, REFINE_FIRST_STEP, min, max);
     if (f(hi) - target).abs() < (target - f(lo)).abs() {
         hi
     } else {
@@ -112,11 +131,13 @@ pub(crate) fn nearest_crossing_from(
 }
 
 /// The final bracket of [`refine_increasing`]: adjacent doubles `lo < hi` (or the interval's ends)
-/// with `f(lo) < target <= f(hi)`.
+/// with `f(lo) < target <= f(hi)`, the bracket grown from `estimate` by a first step of
+/// `relative_step` times it.
 fn crossing_bracket(
     f: &impl Fn(f64) -> f64,
     target: f64,
     estimate: f64,
+    relative_step: f64,
     min: f64,
     max: f64,
 ) -> (f64, f64) {
@@ -124,7 +145,7 @@ fn crossing_bracket(
     if estimate.is_finite() {
         // + 0.0 turns a -0.0 into +0.0, whose bit pattern orders with the non-negative doubles.
         let x0 = estimate.clamp(min, max) + 0.0;
-        let mut step = (x0 * 2f64.powi(-30)).max(f64::MIN_POSITIVE);
+        let mut step = (x0 * relative_step).max(f64::MIN_POSITIVE);
         (lo, hi) = (x0, x0);
         // An expansion that never brackets the crossing leaves the rest of the interval on its
         // side to the halving.
