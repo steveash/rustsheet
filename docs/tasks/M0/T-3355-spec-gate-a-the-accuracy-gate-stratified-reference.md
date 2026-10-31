@@ -3,7 +3,7 @@ id: T-3355
 title: "SPEC: Gate A, the accuracy gate: stratified reference tables with 50-digit math and Excel values, checked by make check"
 milestone: M0
 lane: harness
-status: todo
+status: done
 priority: P0
 size: M
 tier: opus
@@ -33,7 +33,7 @@ more, if the design needs it).
   (docs/process/agent-workflow.md, "Specs before architecture"). The architecture reviewer reviews it.
 
 ## Acceptance criteria
-- [ ] The spec (docs/specs/TEMPLATE.md) decides:
+- [x] The spec (docs/specs/TEMPLATE.md) decides:
   - the reference-table format and location (one file per function, a committed directory outside eval/baseline/ and
     quality/), the fields of a point (formula or arguments, 50-digit math value as text, Excel value and its fill
     metadata, stratum, an R3 mark naming its `MATH-OVER-EXCEL` entry);
@@ -48,10 +48,24 @@ more, if the design needs it).
     including the existing probes-numeric sweep cells in bulk (for example an mpmath fill per sweep case keyed by its
     formulas), so the R5-deferred sweep cells stop counting against the exit once they are within ε of the math;
   - how the tables join the R4 guards: a fresh log-uniform sweep (R4.2) is a table stratum, not a second format.
-- [ ] Implementation slices are filed or amended (T-3356 format and gate, T-3357 generator and fill, T-3358 the first
+- [x] Implementation slices are filed or amended (T-3356 format and gate, T-3357 generator and fill, T-3358 the first
       tables), each size S or M, with the spec linked.
-- [ ] `make check` green; architecture reviewer approves.
+- [x] `make check` green; architecture reviewer approves.
 
 ## Out of scope
 - Implementing the gate (T-3356 to T-3358).
 - Changing the CI bit-regression gate or any baseline.
+
+## Outcome
+- docs/specs/SPEC-0029-gate-a-accuracy-gate.md (accepted; the architecture, security and quality reviewers' verdict
+  records are on PR #2522): tables live in
+  `eval/accuracy/` (a manifest outside `eval/suites/`, so no eval measure counts them), one directory per function and
+  one immutable batch per generation, each batch a `rustsheet-case/v1` case with the oracle sidecar and a new
+  `rustsheet-math/v1` math sidecar (50 digits as text, stratum, formula text); `rustsheet-eval accuracy` checks every
+  point through one `envelope` definition (Excel side `!Visible::is_off`, math side ε = 1e-9 with the 1e-300 floor),
+  `known-failures.tsv` carries failing points with open owner tasks, `math-over-excel.tsv` holds R3 marks (protected,
+  Excel off by > 1e-4 checked); Gate A holds when no known failure, no pending point and no missing table remain.
+- Slices: amended T-3356 (format, reader, check), T-3357 (generator, sampler), T-3358 (first tables, now after
+  T-3379), T-3359 (reads `envelope`, now after T-3356); filed T-3379 (scope and governance, S) and T-3380 (math
+  sidecars for eval cells and the probes-numeric fill, M).
+- Eval delta: none (docs and task files only).

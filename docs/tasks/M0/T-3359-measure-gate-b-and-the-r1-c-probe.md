@@ -7,7 +7,7 @@ status: todo
 priority: P0
 size: M
 tier: opus
-depends_on: [T-3355]
+depends_on: [T-3355, T-3356]
 ---
 
 ## Goal
@@ -25,6 +25,9 @@ visibly-off numeric probe cells reported as Phase 1b evidence, and R7 applied to
   (tools/src/rustsheet_tools/progress_report/, SPEC-0022, the `progress-report` skill).
 - The math reference a probe cell needs for R1(c)'s envelope comes through the Gate A spec (T-3355). Until a cell has
   one, a visibly-off numeric cell counts as failing the envelope (decision 0188 R1(c)), so nothing reads as met early.
+- SPEC-0029 (T-3355): use `envelope` (crates/rustsheet-eval/src/accuracy.rs, T-3356) for R1(c), the eval-cell lines
+  of `eval/accuracy/math-over-excel.tsv` for R3's cells, `eval/runs/accuracy.json` for the Gate A line, and the math
+  values T-3380 attaches to eval cells (until T-3380 lands, every visibly-off numeric cell counts as outside).
 
 ## Acceptance criteria
 - [ ] Gate B: `v15_checkpoint` gains a per-function rate over the attributed cells (decision 0118, its fallback and the
