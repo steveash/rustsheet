@@ -3646,3 +3646,13 @@ with a large even nper too, `#NUM!` before), and NPER's LN of a non-positive rat
 Status: VERIFIED for the probed cells; DB's boolean month beyond the FALSE pair and the inferred lines are UNVERIFIED
 (T-2749 probes them).
 Tasks: T-2620, T-2698, T-2749
+
+## NPER at a tiny positive rate: Excel is up to 4% off, RustSheet returns the math (MATH-OVER-EXCEL)
+Rule: NPER at 0 < rate < 1e-14 is up to 4% off the true period count in Excel, above G = 1e-4, so RustSheet returns the
+math there (decision 0188 R3). Excluded: rates so small that 1 + rate == 1, which are `#DIV/0!` in Excel ("NPER divides
+by ln(1+rate)" above, VERIFIED) and stay `#DIV/0!`. Negative tiny rates are not covered.
+Evidence: the owner's 2026-10-31 assessment (decision 0188), 50-digit mpmath against Excel for the web. The committed
+probe case and the bounded region come with T-3367, before the engine changes.
+Status: MATH-OVER-EXCEL (decision 0188)
+Ours: today the engine matches Excel bit for bit; T-3367 moves it to the math in the region.
+Tasks: T-3367
