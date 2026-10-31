@@ -3,7 +3,7 @@ id: T-3427
 title: "R1(c) milestone probe and ironcalc-calc rows count only semantic and outside-envelope cells, with Phase 1b counts, R3 and R7 (decision 0188)"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P0
 size: M
 tier: opus
