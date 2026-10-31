@@ -368,13 +368,16 @@ def ci_state(
     check_runs: Sequence[object],
     docs_only: bool | None,
     events: Sequence[str] = ("pull_request",),
+    early: bool = False,
 ) -> tuple[str, list[str]]:
     """GREEN, PENDING or RED for a PR head, with the jobs that are not green.
 
     `runs` are the head's workflow runs, `check_runs` its check runs, and `docs_only` whether the
     PR's diff is docs-only (`run_heavy=false`; None when it cannot be told, which counts as no).
     `events` are the run events that count: a PR head's `pull_request`, a train's `push` and
-    `workflow_dispatch` (SPEC-0027 section 4, step 6).
+    `workflow_dispatch` (SPEC-0027 section 4, step 6). With `early` (the merge train, decision
+    0212), a run still in progress is already RED once one of its jobs has concluded `failure`:
+    the run can only end red, and waiting for its slowest job costs the train minutes per red run.
     """
     ci = [
         r
@@ -385,7 +388,8 @@ def ci_state(
         return PENDING, ["no ci.yml run yet"]
     run = max(ci, key=lambda r: int_of(r, "id"))
     if text_of(run, "status") != "completed":
-        return PENDING, ["the ci.yml run is still running"]
+        failed = early_failures(run, check_runs) if early else []
+        return (RED, failed) if failed else (PENDING, ["the ci.yml run is still running"])
     if text_of(run, "conclusion") != "success":
         return RED, [f"the ci.yml run concluded {text_of(run, 'conclusion') or 'nothing'}"]
     suite = field_of(run, "check_suite_id")
@@ -411,6 +415,21 @@ def ci_state(
     if red:
         return RED, red
     return (PENDING, pending) if pending else (GREEN, [])
+
+
+def early_failures(run: object, check_runs: Sequence[object]) -> list[str]:
+    """The jobs of `run`'s check suite that already concluded `failure`, as "name: failure".
+    Only `failure` counts: a `cancelled` job can be a superseded run's, and the merger reads
+    `cancelled` and `timed_out` as infrastructure (merge_train.INFRA_CONCLUSIONS)."""
+    suite = field_of(run, "check_suite_id")
+    return sorted(
+        f"{text_of(check, 'name')}: failure"
+        for check in check_runs
+        if field_of(check, "app", "id") == ACTIONS_APP_ID
+        and field_of(check, "check_suite", "id") == suite
+        and text_of(check, "status") == "completed"
+        and text_of(check, "conclusion") == "failure"
+    )
 
 
 @dataclass(frozen=True)
