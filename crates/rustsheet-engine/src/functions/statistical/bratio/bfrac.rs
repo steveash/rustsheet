@@ -12,7 +12,7 @@ const BFRAC_MAX_TERMS: f64 = 1_000.0;
 /// is Excel's own density times x·y"):
 /// - brcomp = fl(P·fl(x·y)) with P Excel's BETA.DIST density at x (T-2507's Loader form);
 /// - the fraction is the 1992 Fortran's, w = n·(b - n)·x and β = n + w/s + e·(c + n·(y + 1)), in
-///   doubles (its own arithmetic is not found, T-3383).
+///   doubles (its own arithmetic is not found, T-3468).
 ///
 /// λ is bratio's |λ| after its swap. `None` where the density is not formed or the fraction has
 /// not settled within [`BFRAC_MAX_TERMS`] terms.
