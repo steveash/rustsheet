@@ -57,7 +57,7 @@ gen-m7 gains an oracle-filled batch from `rustsheet-gen --policy arg-pairs` (T-3
 - **Batch**: 41 new gen-m7 cases from `--policy arg-pairs --functions FILTER,SORT,SORTBY,UNIQUE,TAKE,DROP,EXPAND,TOCOL,TOROW,WRAPCOLS,WRAPROWS`, excel-graph sidecars, 0 fill failures.
   - After `make eval`, each of the 11 functions has a pairwise share of 1.0 with 0 unseen pairs (before: 0.05 to 0.32, 3648 unseen pairs).
 - **Eval delta**:
-  - gen-m7 grows from 55 to 96 cases and from 99.9x% to 99.78% (50,476 cells, 111 new-coverage failures, 0 regressions; baseline updated by `make eval-baseline`).
+  - gen-m7 grows from 55 to 96 cases and from 100% (0 known failures) to 99.78% (50,476 cells, 111 new-coverage failures, 0 regressions; baseline updated by `make eval-baseline`).
   - Visible-parity lock 2427 to 2536 (+109, all new cases).
   - This puts gen-m7 under its M7 exit bar of 99.9% until the three owning tasks land.
 - **Owners**: `make exit-owners MILESTONE=M7` reports 0 unowned. The failures are three Excel rules, each recorded in docs/excel-semantics/arrays.md:
