@@ -3,7 +3,7 @@ id: T-3455
 title: "Merge tooling unshallows its clone so docs-only PRs are not ejected as CI red"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P0
 size: S
 tier: opus
@@ -30,15 +30,26 @@ head)` give `True` (code) while the clone is shallow. After `git fetch --unshall
 (3 s, about 6 MB) both give `False` (docs-only).
 
 ## Acceptance criteria
-- [ ] `merge_ready.Repo.fetch_base` turns a shallow clone into a full one before it fetches `main`.
+- [x] `merge_ready.Repo.fetch_base` turns a shallow clone into a full one before it fetches `main`.
   The V3 check in `verify`, `mark`, the train (whose `collect` reads through the same `Repo` and
   root) and merge-train-stats then classify with full history. A full clone is left as it is.
-- [ ] A test builds a shallow clone of a fixture origin. It shows that a docs-only diff with skipped
+- [x] A test builds a shallow clone of a fixture origin. It shows that a docs-only diff with skipped
   heavy jobs is GREEN after `fetch_base`, and that the clone is no longer shallow.
-- [ ] `ci_changes.classify_range` keeps answering "code" in a shallow clone (CI's classifier is
+- [x] `ci_changes.classify_range` keeps answering "code" in a shallow clone (CI's classifier is
   unchanged).
-- [ ] Decision record for the protected `scripts/` change.
-- [ ] `make check` green; reviewers approve.
+- [x] Decision record for the protected `scripts/` change.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Re-marking the PRs the bug already ejected. Their owners re-run `make mark-ready` once this lands.
+
+## Outcome
+Done. `merge_ready.Repo.fetch_base` now adds `--unshallow` to its fetch of `main` when the clone
+is shallow (decision 0201). The new test `test_a_shallow_clone_is_deepened_before_the_docs_only_check`
+clones the fixture origin `--depth 1`. Before the fix, the docs-only PR with skipped heavy jobs
+failed V3 (unlabel). Now it is ready, and the clone ends up non-shallow. A second `verify` on the
+full clone also passes, because `--unshallow` is not repeated. The 102 tests in
+`test_merge_ready`, `test_merge_train*` and `test_merge_step` pass. In a session clone,
+`classify_range` on #2574 and #2577 gave code while the clone was shallow and docs-only after
+unshallowing it. The docs-only PRs ejected since 10:20 UTC (#2574, #2577 and the other task-only
+PRs without the label) need `make mark-ready` again.

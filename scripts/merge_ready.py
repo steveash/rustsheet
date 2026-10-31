@@ -451,8 +451,16 @@ class Repo:
         return self.git("rev-parse", "--verify", f"{ref}^{{commit}}").strip()
 
     def fetch_base(self) -> None:
+        """Fetches `main`, first turning a shallow clone into a full one (T-3455, decision 0201).
+
+        `ci_changes.classify_range` counts every diff in a shallow clone as code, because the
+        merge base cannot be trusted there. Cloud sessions clone shallow, so without this step
+        every docs-only PR with skipped heavy jobs read as CI red and was ejected (#2574,
+        #2577). Every docs-only check in the merge tooling runs after this fetch."""
+        shallow = self.git("rev-parse", "--is-shallow-repository").strip() == "true"
+        deepen = ("--unshallow",) if shallow else ()
         self.git(
-            "fetch", "-q", "--no-tags", REMOTE, f"+refs/heads/{BASE_BRANCH}:refs/merge-ready/{BASE_BRANCH}"
+            "fetch", "-q", "--no-tags", *deepen, REMOTE, f"+refs/heads/{BASE_BRANCH}:refs/merge-ready/{BASE_BRANCH}"
         )
 
     def changed_paths(self, base: str, head: str) -> list[str] | None:

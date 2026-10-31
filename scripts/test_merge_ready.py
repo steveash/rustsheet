@@ -394,6 +394,20 @@ class Verify(PrFixture):
         self.comments = [self.comment(1, marker(self.head).render())]
         self.assertEqual(self.failures(), [("V3", UNLABEL)])
 
+    def test_a_shallow_clone_is_deepened_before_the_docs_only_check(self) -> None:
+        # Cloud sessions clone shallow, where `classify_range` counts every diff as code: before
+        # T-3455 each docs-only PR with skipped heavy jobs was ejected as CI red (#2574, #2577).
+        self.checks = green_checks(**dict.fromkeys(merge_ready.HEAVY_JOBS, "skipped"))
+        base = Path(self.tmp.name)
+        origin = (base / "origin.git").as_uri()
+        run("git", "clone", "-q", "--depth", "1", origin, str(base / "shallow"), cwd=base)
+        self.clone = base / "shallow"
+        self.assertEqual(self.git("rev-parse", "--is-shallow-repository"), "true")
+        self.assertEqual(self.failures(), [])
+        self.assertEqual(self.git("rev-parse", "--is-shallow-repository"), "false")
+        # A full clone is left as it is (a second `--unshallow` would fail).
+        self.assertEqual(self.failures(), [])
+
     def test_verdicts_must_cover_the_applicable_reviewers(self) -> None:
         self.comments = [
             self.comment(1, marker(self.head, reviewers={**APPROVED, "quality": "REQUEST_CHANGES"}).render())
