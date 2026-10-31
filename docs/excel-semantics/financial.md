@@ -1762,7 +1762,7 @@ T-3067 notes (float64 fit, 2026-10-28; nothing changed in the kernel):
   the remaining-balance principal, fin-cumipmt-period-bound A24). On probes, gen-m9 and ironcalc-calc it fixes 53
   CUMIPMT cells (gate-edges A5, A8, E1, E2, H2, H4; 31 of tiny-rate-structure; period-bound A3, A5; `CUMPRINC_CUMIPMT.xlsx` G6, G7, G12,
   G16, G17, G22, G25; gen-m9 e168be7f6d3f84c2 A379 and 6 more) and CUMIPMT's visibly-off cells go from 102 to 67.
-  Every CUMIPMT cell still off, and the 7 it moves off the bit (decision 0190: gen-m9 6e18550e9fc9c1b9 A329,
+  Every CUMIPMT cell still off, and the 7 it moves off the bit (decision 0197: gen-m9 6e18550e9fc9c1b9 A329,
   `CUMPRINC_CUMIPMT.xlsx` G3, overflow-and-forms A8, A12, A14, gate-edges A1, tiny-rate-structure F2), is our
   CUMPRINC's last bits, amplified: with our PMT, Excel's value is `PMT·m - x` for an x 1 to 4 ulps from our CUMPRINC
   (`CUMIPMT(2E-6,100,100000,4,4,1)`'s x is Excel's own probed CUMPRINC -999.9050029410097, ours ...096). The old
@@ -1771,7 +1771,7 @@ T-3067 notes (float64 fit, 2026-10-28; nothing changed in the kernel):
   from the old interest forms regresses 10 to 42 CUMPRINC cells. Follow-up: T-3413.
 Status: PARTLY VERIFIED (excel-graph; visibly right but for A7 (= G2) and A10 near period 1E15, fin-cumipmt-period-bound
 A18, fin-cumprinc-near-1e15 E7, and the CUMIPMT cells that amplify our CUMPRINC's last bits (gate-edges A1-A4, A6, A7,
-E3-E10, H3, gen-m9 A352: T-3413; T-3118 moved 7 off the bit, decision 0190: gen-m9 A329,
+E3-E10, H3, gen-m9 A352: T-3413; T-3118 moved 7 off the bit, decision 0197: gen-m9 A329,
 `CUMPRINC_CUMIPMT.xlsx` G3, overflow-and-forms A8, A12, A14, gate-edges A1, tiny-rate-structure F2) and T-3141 (the
 underflowed principal's bits); the short sums' last digits in T-1374)
 Tasks: T-1845, T-1890, T-2192, T-2363, T-2514, T-2521, T-3067, T-3118, T-3141, T-3413, T-1374

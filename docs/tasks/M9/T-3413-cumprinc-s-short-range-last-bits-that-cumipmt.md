@@ -22,7 +22,7 @@ A6, A7 (type 0, rates 6E-5 to 1.5E-4, periods 3-10; x is -3 to +1 ulps from ours
 8E-6 to 1E-4; -4 to +2 ulps), H3; fin-cumipmt-overflow-and-forms A8, A12 (x one ulp below our
 -1570.8656559792591), A14 (+2 ulps); fin-cumipmt-tiny-rate-structure F2 (x is Excel's own probed
 CUMPRINC G2); CUMPRINC_CUMIPMT.xlsx G2, G3; gen-m9 6e18550e9fc9c1b9 A329, 79d87fc527927626 A352.
-T-3118's regressed cells are listed in decision 0190. The probes that pair the two functions
+T-3118's regressed cells are listed in decision 0197. The probes that pair the two functions
 (tiny-rate-structure) carry CUMPRINC's own expected values for the fit.
 
 ## Acceptance criteria

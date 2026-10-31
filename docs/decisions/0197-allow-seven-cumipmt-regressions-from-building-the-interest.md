@@ -1,10 +1,10 @@
-# 0190 — Allow seven CUMIPMT regressions from building the interest as PMT times the periods less CUMPRINC (T-3118)
+# 0197 — Allow seven CUMIPMT regressions from building the interest as PMT times the periods less CUMPRINC (T-3118)
 
 - **Status:** accepted (2026-10-31, T-3118): the T-3118 PR's review panel (security, architecture, quality,
   Excel fidelity) approved this record. The orchestrating session relayed the repository owner's approval of
   regressing some cells when the overall result is a big win (2026-10-31, session
   https://claude.ai/code/session_018kHzCtGoS4gXMYKAZWDHEd); the run that applied this record did not see that
-  approval itself. The change is a net win of 46 cells. Proposed 2026-10-30 as 0170; renumbered to 0190 on merging
+  approval itself. The change is a net win of 46 cells. Proposed 2026-10-30 as 0170; renumbered to 0190, then to 0197 (main took 0190) on merging
   main, where 0170 was taken.
 - **Context:**
   - T-3067 run 4 (probes/fin-cumipmt-tiny-rate-structure, excel-graph) measured that Excel's
