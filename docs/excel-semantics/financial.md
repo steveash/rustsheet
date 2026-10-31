@@ -2008,7 +2008,7 @@ Status: VERIFIED (excel-graph) on freshly loaded workbooks; after an edit in a l
 reproducible from the file (recalc.md); as for what a lifted call and a dynamic-array formula's place in the order do to the
 value: a lifted call is VERIFIED (ours matches), a dynamic-array formula's place is only partly explained (-ag, -ah known
 failures), and gen-m9 A76 is UNEXPLAINED
-Tasks: T-1895, T-2825, T-2844, T-3393, T-3420 (gen-m9 A76)
+Tasks: T-1895, T-2825, T-2844, T-3393
 
 ## AMORDEGRC past 2^22 periods
 Rule: past 2^22 periods (4,194,304) RustSheet computes AMORDEGRC's decay in closed form, `remain * exp(n *

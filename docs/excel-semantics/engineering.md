@@ -656,7 +656,7 @@ and the oracle calibration found IMARGUMENT differing by ulps between Excel for 
   IMARGUMENT H2, H3, H10 and IMCOS K25 are desktop/web differences (docs/research/oracle-calibration.md), not fitting
   targets until the desktop oracle exists. Excel for the web gives the engine's values there (IMCOS K25
   7.58155274274654 against the Mac cache's 7.58155274274655, the visibly-off one; IMARGUMENT H2 0.4636476090008061,
-  H3 -1.1071487177940904, H10 1.1071487177940904); T-3422 records the conflict and K25's exit exception.
+  H3 -1.1071487177940904, H10 1.1071487177940904; gap triage 2026-10-31c); T-3410 names K25 a desktop-only cell.
 - Where `cosh 2y` overflows (|y| above about 355) IMTAN gives `i` (`-i` for a negative imaginary part) and
   IMCOT `-i`, never `#NUM!`: IMTAN("1+400i") = "i", IMTAN("1-400i") = "-i", IMCOT("1+400i") = "-i",
   IMTAN/IMCOT("1+355i") and ("1+356i") the same; at y = 354 the real part is still the tiny
