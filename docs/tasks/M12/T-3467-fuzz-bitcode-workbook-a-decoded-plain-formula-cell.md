@@ -23,9 +23,19 @@ in 2.5M runs.
 `debug_assert!(false, "Larger-than-1x1 array reached scalar-context cell ...")` that holds only for formulas the
 engine parsed and classified itself. A typed `=SIN(A1#)` next to a spill becomes a dynamic `ArrayFormula`. Decoded
 bytes can store it as a `CellFormula` instead. Release builds give `#VALUE!` there (no panic), but the assert fires
-in debug builds and under the fuzzer, and the `#VALUE!` is probably not Excel's answer either.
+in debug builds and under the fuzzer.
 
-The minimized input (427 bytes) is a workbook where A1 holds `SEQUENCE(3,2)` (a 2x3 spill) and D1, a
+What Excel does here is open, and narrower than "is `#VALUE!` right":
+- A formula stored without the dynamic-array flag (no `cm`) is a legacy formula. In it, a range in a value argument
+  takes the implicit `@`: the intersected value on the range's rows, `#VALUE!` off them. See
+  docs/excel-semantics/references.md "Legacy formulas intersect the ranges in value arguments" and arrays.md (legacy
+  `=PMT(C1:C60,10,100)` shows `=PMT(@C1:C60,10,100)`).
+- For this cell, D1 against a 3-row, 2-column A1:B3, that rule predicts `#VALUE!`, since column D is outside A:B. That
+  is the release-build answer.
+- What is not covered is a spill reference `A1#` in a formula stored without `cm`. Spill references postdate the legacy
+  format, and no entry in docs/excel-semantics covers this case.
+
+The minimized input (427 bytes) is a workbook where A1 holds `SEQUENCE(3,2)` (3 rows, 2 columns) and D1, a
 `CellFormula`, holds `SIN(R[0]C[-3]#)`. Reproduce with `cargo fuzz run bitcode_workbook <file>`, the file being
 this base64 decoded:
 
@@ -38,14 +48,23 @@ Cg8EAQQBBAEEAQEAAAAAAQAAAAAEDAIFSW50ZXIEAgACCAEAAAAAAAAAAQQABAAEAAQAAQEBAQEBAQQA
 AAEGbm9ybWFsBAAEAAAEc2VlZANVVEMCZW4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
 ```
 
-Options:
-- At load, have `Model::from_workbook` reclassify a `CellFormula` whose parsed formula is array-shaped, as a dynamic
-  anchor with r=(1,1), the way a typed formula is classified.
-- Or apply implicit intersection in that arm.
+Probe first with the `excel-probe` skill.
+- **The file:** an xlsx with A1 `=SEQUENCE(3,2)`, and the same plain `<f>` (no `t="array"`, no `cm`) holding
+  `SIN(A1#)` in cells on the spill's rows and columns and off them. For example B2 is inside, D2 is on its rows but
+  off its columns, and D5 is off both.
+- **What to capture:** each cell's value, its FORMULATEXT (does Excel add an `@`?), and the plain-range form
+  `SIN(A1:B3)` in the same cells for comparison.
+- **What it decides:** spill, intersection and `#VALUE!` then give different results.
 
-Which one Excel matches for a stored non-array formula with such a result is a question for the `excel-probe` skill
-(an xlsx with a `<f>` without `t="array"` whose result is an array). Either way, keep the assert for the engine's own
-formulas.
+Then, by what the probe shows:
+- **Excel intersects.** Treat a decoded `CellFormula` as a legacy formula and reuse the engine's existing
+  legacy-formula `@` path, the one the xlsx importer uses for formulas stored without the dynamic-array flag
+  (references.md, legacy-import workbooks). Do not add a new intersection in `evaluate_cell` (directive 3).
+- **Excel spills.** Reclassify such a cell at load as a dynamic anchor with r=(1,1), the way a typed formula is
+  classified. Limit this to what the probe shows for `#` references, since plain ranges in legacy formulas
+  intersect.
+
+Either way, keep the assert for the engine's own formulas.
 
 ## Acceptance criteria
 - [ ] A test builds the minimized case (a `CellFormula` holding a spilling formula) and evaluates it in a debug
@@ -54,4 +73,4 @@ formulas.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- How formulas typed into the engine are classified (static analysis); only decoded cells are in scope.

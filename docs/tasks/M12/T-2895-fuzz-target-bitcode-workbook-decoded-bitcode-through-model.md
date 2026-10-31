@@ -57,4 +57,3 @@ nightly matrix in `.github/workflows/fuzz.yml` with `-max_len=65536`.
 **Left out.** `fuzz/Cargo.lock` is stale: it pins `zip` 0.6.6 against the workspace's 9.0.3, so every fuzz build
 re-resolves it. Refreshing it would pull in `zip` 9.2.0, newer than the workspace's, so it is left out of this task's
 change.
-

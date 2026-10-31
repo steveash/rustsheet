@@ -84,7 +84,7 @@ def bitcode_seeds(directory: Path) -> int:
     directory.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as written:
         subprocess.run(
-            ["cargo", "run", "--quiet", "--bin", "bitcode_seeds", "--", written],
+            ["cargo", "run", "--quiet", "--release", "--bin", "bitcode_seeds", "--", written],
             cwd=FUZZ,
             check=True,
         )

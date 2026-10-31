@@ -42,7 +42,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if edits.iter().any(|(sheet, ..)| *sheet == 1) {
             model.new_sheet();
         }
-        for (sheet, row, column, input) in edits.iter() {
+        for (sheet, row, column, input) in *edits {
             model.set_user_input(*sheet, *row, *column, (*input).to_string())?;
         }
         model.evaluate();
