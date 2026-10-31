@@ -65,7 +65,7 @@ pub(crate) fn excel_small_shape_quantile(a: f64, p: f64) -> Option<f64> {
     if x < f64::MIN_POSITIVE {
         return Some(x);
     }
-    let step = (excel_form_lower(a, x, a * excel_ln(x))? - p) / gamma_density(a, x, 1.0)?;
+    let (_, step) = form_step(a, x, p)?;
     // A subnormal step is no step. The only evidence is one cell (A9, and B9 at scale 1E+15):
     // `GAMMA.INV(1E-30,0.1,1)` = 6.073048362407713E-301 is the closed form though its step, 8.5E-14
     // of x, is about 5E-314, as if Excel flushed it to zero. A NaN step fails both tests, so it
@@ -122,28 +122,43 @@ pub(super) fn excel_tiny_quantile(a: f64, p: f64) -> Option<f64> {
     ((cdf / p - 1.0).abs() <= TINY_QUANTILE_CHECK).then_some(x)
 }
 
+/// The leading-factor series form ([`excel_form_lower`]) at x and the Newton step on it toward p,
+/// (F - p) / f with f the density, for [`excel_small_shape_quantile`] and
+/// [`excel_newton_quantile`]. `None` where the form or the density fails.
+fn form_step(a: f64, x: f64, p: f64) -> Option<(f64, f64)> {
+    let cdf = excel_form_lower(a, x, a * excel_ln(x))?;
+    Some((cdf, (cdf - p) / gamma_density(a, x, 1.0)?))
+}
+
 /// How far, relative to p, the leading-factor series form ([`excel_form_lower`]) at
 /// [`leading_factor_root`] may be from p for [`excel_newton_quantile`] to apply. A region cut, not
 /// an Excel constant: Newton steps from the root reproduce Excel better than the search only where
 /// the root is already close, and that distance is about x a / (a + 1) at a quantile x. Chosen on a
-/// 30% hold-out split by cell over the 153 distinct (shape, p) points of gen-m9, probes and
-/// probes-numeric at shapes 1 to 20 (T-3311 Outcome): every cut from 1E-8 to 1E-6 ties on the train
-/// part, and this is the narrowest. The wider cuts move gen-m9/c18dbf21f11093f3 A107
-/// `CHISQ.INV(POISSON.DIST(9,100,FALSE),8)` (p = 1.03E-31, shape 4, 3.2E-8 from p at the root) one
-/// ulp off Excel, a gated regression (decisions 0083, 0111). So `CHISQ.INV(1E-20,6)` (a612e89321a6df9c
-/// A169, 2.9E-7) and `GAMMAINV(1E-16,2.5,TRUE)` (a5828d3925575713 A338, 4.6E-7), which the steps
-/// make Excel's within 15 digits, stay on the search, visibly off (T-3311 Outcome).
-/// FITTED(T-3311, 13 cells, shape 1.5..5, p 1E-200..1E-12)
-const NEWTON_START_MAX: f64 = 1e-8;
+/// 30% hold-out split by cell over 153 distinct (shape, p) points of gen-m9, probes and
+/// probes-numeric at shapes 1 to 20 (T-3311 Outcome; docs/research/t3311): ranked by visible
+/// parity, then within 4 ulp, then bit-exact, the train part ties 3E-7 and 1E-6 at its best
+/// (98, 93 and 32 of 100), and this is the wider. On the test part it is 22, 53 and 53 of 53
+/// bit-exact, within 4 ulp and visible, against 16, 48 and 50 for the search and 10, 42 and 46 for
+/// the correctly rounded quantile. From 1E-6 to 1E-4 the steps lose: `GAMMA.INV(1E-8,1.5,1)` 7 ulp
+/// off, where the search is within 15 digits. The 23 cells in the tag are the measured points
+/// where the steps apply (the cut admits them and T-2561's root does not take them); the range is
+/// theirs.
+/// FITTED(T-3311, 23 cells, shape 1.5..7.5, p 1E-200..1.0000000827E-10)
+const NEWTON_START_MAX: f64 = 1e-6;
 
 /// The shapes [`NEWTON_START_MAX`] was measured on (decision 0188 R4.3: a fit applies only inside
 /// its range). Outside them the search, the accurate crossing, applies.
-const NEWTON_SHAPES: std::ops::RangeInclusive<f64> = 1.5..=5.0;
+const NEWTON_SHAPES: std::ops::RangeInclusive<f64> = 1.5..=7.5;
 
 /// The probabilities [`NEWTON_START_MAX`] was measured on, from `CHISQ.INV(1E-200,5)` to
-/// `GAMMA.INV(1E-12,1.5,1)`.
-const NEWTON_PROBABILITIES: std::ops::RangeInclusive<f64> = 1e-200..=1e-12;
+/// `CHISQ.INV.RT(0.9999999999,3)`, whose lower tail 1 - p is 1.000000082740371E-10
+/// (probes/m9-chisq-inv-rt A21).
+const NEWTON_PROBABILITIES: std::ops::RangeInclusive<f64> = 1e-200..=1.000_000_082_740_371e-10;
 
+/// The most Newton steps [`excel_newton_quantile`] takes: a bound, not a fit. The value at every
+/// probed point is the same for any count from 15 to 50, because the steps soon cycle between a
+/// few levels of Excel's staircase cdf (below) and no later iterate is nearer p; 50 leaves that
+/// margin, and each step is one series of a shape below 7.5 at x below 1.
 const NEWTON_STEPS: u32 = 50;
 
 /// Excel's lower-tail quantile at a shape above 1 where the leading-factor root is close but not
@@ -161,8 +176,7 @@ const NEWTON_STEPS: u32 = 50;
 /// crossing, on the level 2.29E-14 above p. The steps from the root reach it (one ulp below it,
 /// the form's own residue) as their second iterate, and `CHISQ.INV(1E-200,10)` and
 /// `CHISQ.INV.RT(1-1E-16,3)` as their first. Which iterate Excel returns once the steps cycle is
-/// not known: the nearest-to-p rule is the best of the rules tried (T-3311 Outcome), bit-exact at
-/// 10 of the 13 in-region points and one ulp off at the other 3.
+/// not known: the nearest-to-p rule is the best of the rules tried (T-3311 Outcome).
 ///
 /// `None` outside [`NEWTON_SHAPES`] and [`NEWTON_PROBABILITIES`], where the root is not normal or
 /// not below 1, where the form at it is more than [`NEWTON_START_MAX`] from p, and where a cdf or
@@ -175,19 +189,21 @@ pub(super) fn excel_newton_quantile(a: f64, p: f64) -> Option<f64> {
     if !(f64::MIN_POSITIVE..1.0).contains(&x) {
         return None;
     }
-    let mut cdf = excel_form_lower(a, x, a * excel_ln(x))?;
-    if (cdf - p).abs() > NEWTON_START_MAX * p {
+    let (mut cdf, mut step) = form_step(a, x, p)?;
+    let miss = (cdf - p).abs();
+    // A NaN cdf fails the cut too.
+    if miss.is_nan() || miss > NEWTON_START_MAX * p {
         return None;
     }
-    let mut best = (x, (cdf - p).abs());
+    let mut best = (x, miss);
     for _ in 0..NEWTON_STEPS {
-        x -= (cdf - p) / gamma_density(a, x, 1.0)?;
+        x -= step;
         // The cdf is convex below the mode a - 1, so the steps stay near the root; this only
         // guards the form's domain.
         if !(f64::MIN_POSITIVE..1.0).contains(&x) {
             break;
         }
-        cdf = excel_form_lower(a, x, a * excel_ln(x))?;
+        (cdf, step) = form_step(a, x, p)?;
         let miss = (cdf - p).abs();
         if miss < best.1 {
             best = (x, miss);
