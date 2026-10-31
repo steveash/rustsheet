@@ -54,12 +54,12 @@ reach.
   missed twice); record negatives (decision 0056); truncate formula literals to 15 digits as Excel does.
 
 ## Acceptance criteria
-- [ ] Each item above has a recorded result in a RESULTS.md: a model with counts on a held-out probe, or the
-      negatives tried with their counts.
-- [ ] New oracle probes are committed under eval/suites/probes-numeric/cases/ with their sidecars.
-- [ ] statistics.md's T-2464 entries are updated with what is found.
-- [ ] Engine follow-ups are filed for any solved piece, or the owning engine task's criteria are amended.
-- [ ] `make check` green; reviewers approve.
+- [x] Each item above has a recorded result in a RESULTS.md: a model with counts on a held-out probe, or the
+      negatives tried with their counts. Amended at the split (see Outcome): item 1 only; items 2-6 moved to T-3383.
+- [x] New oracle probes are committed under eval/suites/probes-numeric/cases/ with their sidecars.
+- [x] statistics.md's T-2464 entries are updated with what is found.
+- [x] Engine follow-ups are filed for any solved piece, or the owning engine task's criteria are amended.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine changes.

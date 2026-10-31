@@ -27,6 +27,9 @@ that T-2512 round 1 (r3-bgrat, item 1 only) left open, so the engine tasks have 
     fraction in x87 with Excel's EXP for r.
   - **n > 1 bup terms** (2 <= b < 40, a > 15, x > 0.7) and the F, BINOM and NEGBINOM callers of L140 bup+bgrat: probe
     them and check that RN(W + D) holds, with W the n-term bup on Excel's density in bup's orientation.
+  - **Excel's GAMMA.DIST at fractional b < 1 near P = 1**: probe t2512-r3-bgrat-qgamma column A is 1,268 of 4,980
+    cells off in the engine, mostly 1-2 ulp, 117 at the 15th digit. Record it in the incomplete-gamma entries, or file
+    an engine task if it is not one the existing incomplete-gamma tasks own.
   - **F at a df of 1** reaches bgrat at b = 1/2. T-2509's `bgrat_half` on F's (x, y) misses Excel
     (`FDIST(x,1,9)`: Excel 0.190947117169724, bgrat 0.19094711716972382, 7 ulp), so find what F does differently
     (statistics.md "Student t tails are one kernel call").

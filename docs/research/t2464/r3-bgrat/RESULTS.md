@@ -26,10 +26,11 @@ not scored here.
                                            orientation (y; b0, a), not the caller's (x; a, b0)
    D = Excel's BETA.DIST(x, a, b0, TRUE): bratio's direct bgrat branch, w = 0, the same increment alone
    ```
-   (`bupdens.py` → `bupdens.out`; shared helpers in `common.py`). The orientation matters: with P = BETA.DIST(x, a, b0, FALSE) it is 1,267/1,767/1,815.
-   The two densities differ on 1,355 of 2,908 points, by up to ±8 ulp. M2's LN / log1p switch on its own argument
-   predicts that. With fl(fl(P·fl(xy))/b0) (two stored ops) it is 1,998/3,072/3,072, and with the sum also kept
-   extended it is 2,126/3,072/3,072.
+   (`bupdens.py` → `bupdens.out`; shared helpers in `common.py`). The orientation matters: with
+   P = BETA.DIST(x, a, b0, FALSE) it is 1,267/1,767/1,815. The two densities differ on 1,355 of 2,908 points, by up
+   to ±8 ulp (`orient.py` → `orient.out`). M2 takes LN or log1p by its own x, so the two orientations take different
+   paths (not scored further here). With fl(fl(P·fl(xy))/b0) (two stored ops) it is 1,998/3,072/3,072, and with the
+   sum also kept extended it is 2,126/3,072/3,072.
 2. **The visible error on these cells is the density, not bgrat.** Ablations of the best form (`bupdens.out`,
    `engdens.out`):
 
