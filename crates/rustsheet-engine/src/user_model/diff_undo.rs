@@ -16,9 +16,10 @@ use crate::{
 type Block = ((i32, i32), (i32, i32));
 
 impl UserModel {
-    /// Checks `cell` before an undo restores it at (`row`, `column`) of `sheet`.
+    /// Checks `cell` before an undo restores it at (`row`, `column`) of `sheet`, and counts it
+    /// into the cells this call restores (`restored_spills`, T-3426).
     pub(super) fn check_restored_cell(
-        &self,
+        &mut self,
         sheet: u32,
         row: i32,
         column: i32,
@@ -31,7 +32,9 @@ impl UserModel {
             cell,
             self.model.workbook.styles.cell_xfs.len(),
             formulas,
-        )
+        )?;
+        self.restored_spills.add(cell);
+        Ok(())
     }
 
     /// Undoes an array formula entered over the block: clears it and restores `old_values`.

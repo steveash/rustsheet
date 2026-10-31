@@ -16,6 +16,8 @@ impl UserModel {
     pub(super) fn apply_undo_diff_list(&mut self, diff_list: &DiffList) -> Result<(), String> {
         let mut needs_evaluation = false;
         for diff in diff_list.iter().rev() {
+            // What earlier diffs restored bounds what this one may walk (T-3426).
+            self.restored_spills.check()?;
             match diff {
                 Diff::SetCellValue {
                     sheet,
@@ -308,7 +310,7 @@ impl UserModel {
                 } => {
                     needs_evaluation = true;
                     let styles = self.model.workbook.styles.cell_xfs.len();
-                    check_worksheet(old_data, styles)
+                    check_worksheet(old_data, styles, &mut self.restored_spills)
                         .map_err(|e| format!("Sheet '{}': {e}", old_data.name))?;
                     let (name, id) = (old_data.name.clone(), old_data.sheet_id);
                     self.model.insert_sheet(&name, *sheet, Some(id))?;
@@ -529,6 +531,7 @@ impl UserModel {
                 }
             }
         }
+        self.restored_spills.check()?;
         if needs_evaluation {
             self.evaluate_if_not_paused();
         }
@@ -539,6 +542,8 @@ impl UserModel {
     pub(super) fn apply_diff_list(&mut self, diff_list: &DiffList) -> Result<(), String> {
         let mut needs_evaluation = false;
         for diff in diff_list {
+            // What earlier diffs restored bounds what this one may walk (T-3426).
+            self.restored_spills.check()?;
             match diff {
                 Diff::SetCellValue {
                     sheet,
@@ -989,6 +994,7 @@ impl UserModel {
             }
         }
 
+        self.restored_spills.check()?;
         if needs_evaluation {
             self.evaluate_if_not_paused();
         }

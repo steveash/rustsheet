@@ -8,7 +8,7 @@
 
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::utils::{is_valid_block, is_valid_column_number, is_valid_row};
-use crate::limits::check_array_cells;
+use crate::limits::{check_array_cells, MAX_SIZE};
 use crate::types::{Cell, MergedCell, Row, Styles, Workbook, Worksheet};
 
 /// Checks every index of `workbook` that a later read trusts unchecked, in one pass linear in its
@@ -36,11 +36,53 @@ use crate::types::{Cell, MergedCell, Row, Styles, Workbook, Worksheet};
 pub(crate) fn check_indices(workbook: &Workbook) -> Result<(), String> {
     check_styles(&workbook.styles)?;
     let styles = workbook.styles.cell_xfs.len();
+    let mut spills = SpillTally::default();
     for worksheet in &workbook.worksheets {
-        check_worksheet(worksheet, styles)
+        check_worksheet(worksheet, styles, &mut spills)
             .map_err(|e| format!("Sheet '{}': {e}", worksheet.name))?;
     }
-    Ok(())
+    spills.check()
+}
+
+/// The cells the array anchors among some stored cells claim through their spill ranges, against
+/// the cells stored (T-3426). Evaluation fills a CSE anchor's whole range and the clears and
+/// structural edits walk an anchor's range, so their work follows what the anchors claim, not
+/// what the input holds: a few bytes per anchor could claim 2^20 cells each. A workbook the
+/// engine or Excel wrote stores every cell of a spill, and an anchor whose spill is blocked
+/// claims one cell, so claiming more than is stored, past one whole array's worth
+/// ([`MAX_SIZE`]), only comes from crafted input, and is refused.
+#[derive(Default, Clone, Copy, Debug)]
+pub(crate) struct SpillTally {
+    claimed: u64,
+    cells: u64,
+}
+
+impl SpillTally {
+    /// Counts `cell`, and the cells it claims if it is an array anchor.
+    pub(crate) fn add(&mut self, cell: &Cell) {
+        self.cells += 1;
+        if let Cell::ArrayFormula {
+            r: (width, height), ..
+        } = *cell
+        {
+            let side = |n: i32| u64::try_from(n).unwrap_or(0);
+            self.claimed = self
+                .claimed
+                .saturating_add(side(width).saturating_mul(side(height)));
+        }
+    }
+
+    /// Refuses anchors claiming more cells than are counted, past one whole array.
+    pub(crate) fn check(&self) -> Result<(), String> {
+        if self.claimed <= self.cells.saturating_add(MAX_SIZE as u64) {
+            Ok(())
+        } else {
+            Err(format!(
+                "array formulas spill over {} cells, but only {} cells are stored",
+                self.claimed, self.cells
+            ))
+        }
+    }
 }
 
 /// Whether `index` is a position in a list of `len` entries.
@@ -86,13 +128,18 @@ fn check_styles(styles: &Styles) -> Result<(), String> {
 }
 
 /// Checks one worksheet of a workbook whose styles have `styles` cell formats: what
-/// [`check_indices`] checks of a sheet. An external diff that restores a deleted sheet
-/// passes it too (T-2896).
-pub(crate) fn check_worksheet(worksheet: &Worksheet, styles: usize) -> Result<(), String> {
+/// [`check_indices`] checks of a sheet, counting its cells into `spills`. An external diff that
+/// restores a deleted sheet passes it too (T-2896).
+pub(crate) fn check_worksheet(
+    worksheet: &Worksheet,
+    styles: usize,
+    spills: &mut SpillTally,
+) -> Result<(), String> {
     worksheet.sheet_data.check_layout()?;
     let formulas = worksheet.shared_formulas.len();
     for (row, column, cell) in worksheet.sheet_data.cells() {
         check_cell(row, column, cell, styles, formulas)?;
+        spills.add(cell);
     }
     for record in &worksheet.rows {
         check_row_record(record, styles)?;
