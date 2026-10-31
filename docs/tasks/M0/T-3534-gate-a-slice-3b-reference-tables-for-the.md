@@ -1,5 +1,5 @@
 ---
-id: T-3527
+id: T-3534
 title: "Gate A slice 3b: reference tables for the discrete distributions (BINOM.DIST, NEGBINOM.DIST, POISSON.DIST)"
 milestone: M0
 lane: harness
