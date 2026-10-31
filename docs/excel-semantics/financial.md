@@ -649,6 +649,18 @@ Evidence (excel-graph, 2026-10-14, T-1525; from `tools/`: `uv run rustsheet-fitl
   the positive-root exemption: A8 and T-1591's cells are positive roots. Not separated by any cell: whether the switch is
   the midpoint's sign, the bracket's side (the downward chain) or a bound that grows fast with 1 + m; and whether a
   negative-root cell spanning years scales the bound (none is probed).
+- T-3353 (probes/xirr-two-flow-long-span, excel-graph, 2026-10-31; 270 two-flow cells `XIRR({-1000, v1}, {2000-01-01,
+  +round(years·365.25)})`, years 1 to 100 and roots -0.9 to 10, default guess; probes-numeric/xirr-two-flow-gate-a-sweep,
+  120 fresh log-uniform cells with a 50-digit closed-form column): the negative-root XNPV bound does not scale with the
+  span. T-3268's unscaled rule is bit-exact on all 270 cells (and on all 120 of the sweep). The span-scaled bound of
+  T-1583 and T-2328 (the engine until T-3268, and the engine at the commit the owner's 2026-10-31 assessment ran on)
+  misses 49 of the 270 (a scratch replay of both rules with libm's `pow`, which itself gives all 270 under T-3268's rule).
+  Every miss is a negative root over 3 to 100 years (rows 37, 55, 73, 75, 91-93, ... 253-257: roots -0.9 to -0.01). It
+  stops early there, 2.3e-10 to 2.8e-7 off Excel's value (row 239, root -0.01 over 90 years: 2.8e-7), and
+  that was item 6 of decision 0188's list. Excel's own XIRR is about 1e-8 off the math at a root away from 0, and
+  1e-7 to 2.4e-6 off at roots near 1e-3 (row 6: 2.0e-6). That is the step test's absolute 5e-9 term, and below G it
+  stays Excel's value. Near a zero root (|root| below about 2e-5) the same term puts Excel 1e-4 to 2.1e-3 off the
+  math (9 sweep cells, rows 94-104): an R3 candidate waiting on an owner ruling (T-3484).
 Ours: this model (`xirr_bracket`, `compute_xirr`, functions/financial/financial_util.rs,
 T-0916), with T-3268's stop (the XNPV bound on a negative midpoint only, unscaled): 227/227 on the fit set and 80/81 on
 the 81-cell `xirr-oos` (T-1583's span-scaled form before it: 69/81; the Newton code it replaced: 9/22 and 11/22 on the
@@ -658,7 +670,7 @@ caps" below). A trial rate where a power overflows or underflows to 0 has no XNP
 Status: VERIFIED (excel-graph) for the bracket, the midpoint and the step test. The XNPV part of the stop test
 (T-3268's form: unscaled, on a negative midpoint only) fits every numeric cell probed once XNPV uses Excel's `^`
 (T-2328), flows dated before the first included. It is a fitted rule, not a known mechanism.
-Tasks: T-1525, T-0916, T-1533, T-1583, T-1591, T-2328, T-2329, T-2728, T-2045, T-3268 (the negative-root stop)
+Tasks: T-1525, T-0916, T-1533, T-1583, T-1591, T-2328, T-2329, T-2728, T-2045, T-3268 (the negative-root stop), T-3353 (unscaled over long spans), T-3484 (near-zero roots, R3 candidate)
 
 ## IRR is a secant in d = 1 - v = r/(1 + r) from d0 and d0 -+ 0.001 (fitted, 263/263 bit-exact)
 Rule: IRR runs the secant method on NPV as a function of d = 1 - v = r/(1 + r), v = 1/(1 + r) (T-3120 moved
@@ -3017,6 +3029,16 @@ YIELD `#NUM!`, even where PRICE has a root; after 100 steps the 100th iterate is
   `YIELD(36665,44491,42,106,42,4,0)`, `YIELD(39779,45574,1E+10,86,101,1,3)`, `YIELD(38930,46538,1E+300,116,0.01,1,1)` and
   15 more (roots 5 to 32), while `YIELD(36665,44491,R,106,100,4,0)` computes for R = 0.5 to 30
   (roots 0.47 to 14.3). `YIELD(39681,45662,42,3.14159,102,4)` (a price far below par) is `#NUM!` too.
+- Far below par a coupon rate above 21 to 23 is `#NUM!` at this bond, and the cut moves a little with the price:
+  `YIELD(39681,45662,R,P,102,4)` (16.4 years, quarterly, redemption 102; coupon rate 100% to 10000%, price 1% to 20% of
+  par) computes at every sampled R from 1 to 21 and every sampled P from 1 to 20 (yields 4.48 at R = 1, P = 20 to 19.11
+  at R = 21, P = 1) and is `#NUM!` at every sampled R from 23.5 to 100. Between them the last R that computes rises with
+  the price: 21 at P = 1, 21.5 at 3.14159, 22 at 10, 23 at 20 (R in steps of 0.5). The last one before the cut at P =
+  3.14159, 10 and 20 is a negative yield (`YIELD(39681,45662,21.5,3.14159,102,4)` = -2.6837489023653673, R = 22 at P =
+  10 -0.8519602400469752, R = 23 at P = 20 -2.2823895460582744), which is no root: below a yield of 0 PRICE is above its
+  undiscounted payments, 102 and more, so these are 100th iterates. Every positive price has a root (PRICE falls from
+  its undiscounted sum toward 0 as the yield grows), so the `#NUM!` is the solver's. The rule above reproduces all 196
+  cells of probes/yield-deep-discount-sweep and yield-deep-discount-cut in type (T-2747).
 - A price far above par computes up to 1E4 and is `#NUM!` from 1E5: `YIELD(39448,43831,0.05,P,100,2)` is -0.0222 at
   P = 200, -0.165 at 1000, -0.220 at 2000, -0.340 at 10000, `#NUM!` at 1E5 and 1E6 (roots -0.494 and -0.633). The
   gen-m9 cell `YIELD(39572,45740,1E-10,97,(FISHERINV(Data!$E1)+Data!A2),4.9)` (redemption 1, frequency 4.9 cut to 4)
@@ -3030,13 +3052,20 @@ YIELD `#NUM!`, even where PRICE has a root; after 100 steps the 100th iterate is
 Verified (T-2391, 2026-10-26): with the fitted start of T-1592 this rule matches every one of the 53 cells of
 probes/yield-newton-domain in type, and every value cell within 7 ulp (the 16 C cells bit-exact); the 13 cells left are
 last-digit misses of "YIELD stops short of PRICE's root". It matches the 21 gen-m9 cells T-2391 owned and the two of
-T-2747 (probes/t2475-stat-subexpressions P!A214, gen-m9/44a8841352dc48e9 A318). The earlier attempt (Newton from the
-coupon rate with no fallback) was `#NUM!` at prices 1500 to 10000: the fitted start, not the stop rule, decides them.
+T-2747 (probes/t2475-stat-subexpressions P!A214, gen-m9/44a8841352dc48e9 A318), and all 196 cells of
+probes/yield-deep-discount-sweep and yield-deep-discount-cut in type (146 bit-exact; 48 of the other 50 1 to 5 ulp off
+and two of the three negative 100th iterates, yield-deep-discount-cut B3 and C4, 5e-14 and 6e-15 relative off; last
+digits that T-2788 owns). The earlier attempt
+(Newton from the coupon rate with no fallback) was `#NUM!` at prices 1500 to 10000: the fitted start, not the stop rule,
+decides them.
 Evidence: probes/yield-newton-domain (53 cells: A price sweep, B coupon-rate sweep, C large redemptions, D low
 redemptions and negative roots; excel-graph, 2026-10-24, T-2391); the gen-m9 cells listed in T-2391.
+probes/yield-deep-discount-sweep (160 cells: 20 coupon rates 1 to 100 by 8 prices 1 to 20 at the P!A214 bond) and
+probes/yield-deep-discount-cut (36 cells: R = 20.5 to 24.5 in steps of 0.5 by P = 1, 3.14159, 10, 20); excel-graph,
+2026-10-31, T-2747.
 Ours: matches since T-2391 (`excel_yield_newton` in functions/financial/financial_bonds/yield_solver.rs).
 Status: VERIFIED
-Tasks: T-2391, T-1592
+Tasks: T-2391, T-1592, T-2747
 
 ## T-bill settlement below serial 1
 Rule: TBILLEQ, TBILLPRICE and TBILLYIELD floor both dates to whole days before they count days, so a

@@ -8,6 +8,7 @@ use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::constants::MINIMUM_DATE_SERIAL_NUMBER;
 use crate::types::DateSystem;
 
+use super::elapsed::is_elapsed;
 use super::parser::TextToken;
 
 pub const DATE_OUT_OF_RANGE_MESSAGE: &str = "Out of range parameters for date";
@@ -206,7 +207,8 @@ impl DateSystem {
 /// `[s]`, ...) is, whatever literals surround it (`TEXT(-1.5,"[h]"" h""")` is "-36 h"), while
 /// `[h]:mm`, `[h] d` or `[s].00` are `#VALUE!`. Evidence: docs/excel-semantics/dates.md "The 1904
 /// date system" and "Negative serials under an explicit negative section". `_x` and `*x` count as
-/// literals by extrapolation (unprobed, T-1366).
+/// literals by extrapolation (unprobed, T-1366). A `General` beside the elapsed token does not count
+/// either (`TEXT(-5,"[h] General")` is "-120 5"; probes/t3378-general-in-date-section A49, T-3378).
 pub fn negative_serial_allowed(tokens: &[TextToken], date_system: DateSystem) -> bool {
     if date_system == DateSystem::Excel1904 {
         return true;
@@ -215,12 +217,8 @@ pub fn negative_serial_allowed(tokens: &[TextToken], date_system: DateSystem) ->
     for token in tokens {
         match token {
             token if token.is_literal() => {}
-            TextToken::ElapsedHour
-            | TextToken::ElapsedHourPadded
-            | TextToken::ElapsedMinute
-            | TextToken::ElapsedMinutePadded
-            | TextToken::ElapsedSecond
-            | TextToken::ElapsedSecondPadded => elapsed += 1,
+            TextToken::General => {}
+            token if is_elapsed(token) => elapsed += 1,
             _ => return false,
         }
     }
