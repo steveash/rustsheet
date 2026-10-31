@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used)]
+use super::half_integer::accurate_half_integer_upper;
 use super::huge_shape::{huge_shape_quantile, wilson_hilferty_quantile};
 use super::{
     cdf_terms_bound, continued_fraction_budget, excel_small_shape_lower,
@@ -741,4 +742,55 @@ fn a_tiny_quantile_above_shape_one_is_the_leading_factor_root() {
     // Outside the shapes it covers.
     assert_eq!(excel_tiny_quantile(1.0, 1e-300), None);
     assert_eq!(excel_tiny_quantile(25.0, 1e-300), None);
+}
+
+/// Units in the last place between two positive doubles.
+fn ulp_distance(a: f64, b: f64) -> u64 {
+    a.to_bits().abs_diff(b.to_bits())
+}
+
+// Q at the half-integer shapes 1/2, 3/2, 5/2 and 7/2 for x from a to 30a, by the accurate kernel
+// (`accurate_half_integer_upper`; CHISQ.DIST.RT takes it from a + 1 on), against mpmath's
+// `gammainc(a, x, inf, regularized=True)` at 50 digits rounded to a double (T-3285): within 1
+// ulp. The forward fraction was up to 19 ulp off here.
+#[test]
+fn half_integer_upper_tail_is_within_an_ulp_of_the_reference() {
+    // x = a * m for each multiplier m, and Q there for a = 1/2, 3/2, 5/2, 7/2.
+    const MULTIPLIERS: [f64; 11] = [1.0, 1.25, 1.5, 2.0, 3.0, 4.0, 6.0, 10.0, 15.0, 20.0, 30.0];
+    #[rustfmt::skip]
+    let reference: [(f64, [f64; 11]); 4] = [
+        (0.5, [0.3173105078629141, 0.2635524772829727, 0.2206713619198468, 0.15729920705028513, 0.0832645166635504, 0.04550026389635842,
+               0.01430587843542964, 0.0015654022580025497, 0.00010751117672950056, 7.744216431044084e-06, 4.3204630578274975e-08]),
+        (1.5, [0.39162517627108895, 0.28975578119338335, 0.21229028736013333, 0.11161022509471256, 0.029290886534888233, 0.007383160505359769,
+               0.000439849652838829, 1.3800570312932547e-06, 9.252702104537279e-10, 5.878230727906912e-13, 2.190570119285311e-19]),
+        (2.5, [0.41588018699550794, 0.28264729659406723, 0.186029833602867, 0.07523524614651218, 0.010362337915786437, 0.0012497305630313753,
+               1.4748581038443052e-05, 1.3857973367009593e-09, 9.302951809402614e-15, 5.28514836094324e-20, 1.3351378873003131e-30]),
+        (3.5, [0.42887985755305474, 0.2711068782822825, 0.16196449307942817, 0.05118135341306545, 0.0037701500511461666, 0.00021989245684579634,
+               5.199964130736563e-07, 1.4774294932825123e-12, 9.980081872157244e-20, 5.082977510439578e-27, 8.726509144840552e-42]),
+    ];
+    let mut exact = 0;
+    let points = reference
+        .iter()
+        .flat_map(|&(a, qs)| MULTIPLIERS.iter().zip(qs).map(move |(&m, q)| (a, a * m, q)));
+    for (a, x, q) in points {
+        let ours = accurate_half_integer_upper(a, x, &mut Terms(MAX_TERMS)).unwrap();
+        assert!(
+            ulp_distance(ours, q) <= 1,
+            "Q({a}, {x}) = {ours:e}, reference {q:e}"
+        );
+        exact += usize::from(ours == q);
+    }
+    // Rounded once from about 2^-100: every point is the correctly rounded double.
+    assert_eq!(exact, 44);
+    // Through CHISQ.DIST.RT's path, Excel's bits: `CHISQ.DIST.RT(10,5)` (probes-numeric/
+    // m9-chisq-dist-rt A19) and `CHISQ.DIST.RT(8,3.34)` (ironcalc-calc CHISQ.xlsx G3).
+    let sf = |a: f64, x: f64| gamma_sf(&Gamma::new(a, 1.0).unwrap(), x);
+    assert_eq!(
+        sf(2.5, 5.0).to_bits(),
+        0.075_235_246_146_512_18_f64.to_bits()
+    );
+    assert_eq!(
+        sf(1.5, 4.0).to_bits(),
+        0.046_011_705_689_231_37_f64.to_bits()
+    );
 }
