@@ -22,6 +22,9 @@ does, which is below |x| = 708.94, not at |x| > 709 as for x > 0; and the log fo
   For x > 0, `"708.959727…+1.343…i"` keeps the product form and the T-2231 bracket (709, 709.0000000001] stands.
   8 of the sweep's 10 engine misses are these; the other 2 are `IMSINH`/`IMCOSH("-709.183834084079+1.0222540398548i")`,
   one 15th-digit miss of the log form's imaginary part at x < 0.
+- The rule may depend on y, not on a single |x| cut: S!A84 (x = -708.931) has the log form's digits, S!A38
+  (x = -708.9937) is `#NUM!`, while S!A71 (x = -708.9941, both factors positive) is a number that differs from the
+  math in the 13th digit (docs/research/t3525/gate_a.tsv). Design the probe to separate x from y.
 - One hypothesis to probe (not evidence): the negative side cuts where EXP(x) leaves the normal range
   (ln DBL_MIN = -708.3964).
 - docs/excel-semantics/engineering.md "IMCOSH and IMSINH past |x| = 709 work in log space (T-2231)" has the notes.

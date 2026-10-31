@@ -1091,7 +1091,8 @@ Rule: for |x| > 709 and a nonzero imaginary part, IMCOSH and IMSINH compute `exp
   `IMSINH("-708.993723853194-0.284042075249253i")` and `IMCOSH` of it are `#NUM!` (sin y < 0), so is
   `"-708.952568260886+1.74023049176272i"` (cos y < 0), and `IMSINH("-708.931415280617+0.631619003955773i")` is
   `-3.09659439784082E+307+2.26546023028534E+307i`, the log form's digits (product form ...096E+307+...528E+307i), while
-  `"708.959727…+1.343…i"` keeps the product form. Not yet implemented, and the negative-side cut is not bracketed
+  `"708.959727…+1.343…i"` keeps the product form. The negative-side rule may depend on y rather than on one |x| (the
+  three cells above sit within 0.07 of each other). Not yet implemented, and the negative-side cut is not bracketed
   (T-3546); `IMSINH("-709.183834084079+1.0222540398548i")` also differs from ours in the 15th digit of the imaginary part.
 - On that fresh sweep the log form gives 178 of the 180 cells with 709 < |x| < 710.5 (both misses are x < 0, above),
   the product form alone 2 (T-3525, decision 0188 R4).

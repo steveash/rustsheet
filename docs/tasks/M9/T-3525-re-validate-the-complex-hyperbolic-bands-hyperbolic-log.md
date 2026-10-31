@@ -89,8 +89,9 @@ Both selectors keep their `FITTED` tags, ranges restated (T-3525); no engine beh
   Excel's `#NUM!`). Log band: 196 of 200 inside (56 within 1e-9, 140 equal to Excel, including its `#NUM!` cells),
   **4 outside**, all an engine number where Excel is `#NUM!`, the negative-side cut of T-3546:
   `IMSINH` and `IMCOSH("-708.993723853194-0.284042075249253i")` (S!A38, B38) and
-  `IMSINH` and `IMCOSH("-708.952568260886+1.74023049176272i")` (S!A39, B39). So `HYPERBOLIC_LOG_CUT` as it stands
-  fails the envelope at those 4 points until T-3546 implements the cut for x < 0. The other log-band misses against
+  `IMSINH` and `IMCOSH("-708.952568260886+1.74023049176272i")` (S!A39, B39). The cut never applies at those |x|, so the
+  engine is outside there with or without it (the no-log-form build returns the same numbers): the failure is
+  Excel's unmatched negative-side `#NUM!`, not the fit, and stays until T-3546. The other log-band misses against
   Excel are inside: S!A71/B71 and A84/B84 (product-form digits, within 1e-9 of the math) and the two cells at
   x = -709.183834084079 (S!A48/B48, 5.1e-14 from the math).
 - **Not matching**: fresh sweep 961/1000, log band 190/200. Findings recorded in docs/excel-semantics/engineering.md:
