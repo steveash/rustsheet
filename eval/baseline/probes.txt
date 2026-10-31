@@ -647,6 +647,7 @@ C	probes/legacy-at-dynamic-funcs-2.case.json	116
 C	probes/legacy-at-let-lambda-dynamic-funcs.case.json	163
 C	probes/legacy-choose-arm-aggregate-and-array-constant-at.case.json	27
 C	probes/legacy-choose-array-index.case.json	12
+C	probes/legacy-formula-spill-ref.case.json	19
 C	probes/legacy-if-arm-other-references.case.json	52
 C	probes/legacy-if-arm-range-argument-b.case.json	43
 C	probes/legacy-if-arm-range-argument.case.json	73
