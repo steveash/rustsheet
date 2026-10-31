@@ -13,6 +13,12 @@ use rustsheet_engine::types::{Cell, MergedCell, SheetData};
 /// column: a range can name the whole sheet in a few bytes, so walking each one's area would cost
 /// 2^34 lookups. `load_merge_cells` drops intersecting ranges, so the open ones never overlap, and
 /// the one with the largest first column at or before a cell is the only one that can cover it.
+///
+/// # Preconditions
+/// - The ranges never intersect, as `load_merge_cells` (worksheets.rs) guarantees by dropping any
+///   that intersects one already kept. With intersecting ranges some covered cells stay as they
+///   were; nothing panics.
+/// - `SheetData::cells` yields the cells by row, then by column, as it documents.
 pub(super) fn clear_covered_cells(sheet_data: &mut SheetData, merged_cells: &[MergedCell]) {
     let mut by_row: Vec<&MergedCell> = merged_cells.iter().collect();
     by_row.sort_by_key(|merged| merged.row);

@@ -53,9 +53,8 @@ rows x ranges for many tall merges, so it is not used.
 - Unit tests:
   - covered cells are emptied and the rest kept;
   - closed and later ranges do not mix up.
-- `tests/malformed_import.rs`: 1,000 whole-column merges, about 2^30 cells named. They import in 0.08 s, with
+- `tests/malformed_import.rs`: 1,000 whole-column merges, about 2^30 cells named. They import in about 0.1 s (the test bounds it at 10 s), with
   covered cells cleared and the anchor kept. The old loop made about 10^9 lookups.
 
 **Found while working.** `load_merge_cells` itself is quadratic in the number of ranges (its intersection check). That
 is T-3454.
-

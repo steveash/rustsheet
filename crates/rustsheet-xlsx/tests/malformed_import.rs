@@ -657,15 +657,21 @@ fn string_literal_longer_than_4095_units_refuses_the_workbook() -> TestResult {
 /// Re-zips `tests/basic_text.xlsx` with the `sheetData` of its first sheet replaced by `rows`.
 fn with_first_sheet_rows(rows: &str) -> Result<Vec<u8>, Box<dyn Error>> {
     rewrite(|name, content| {
-        if name != "xl/worksheets/sheet1.xml" {
-            return content;
+        if name == "xl/worksheets/sheet1.xml" {
+            replace_sheet_data(&content, rows)
+        } else {
+            content
         }
-        let (Some(start), Some(end)) = (content.find("<sheetData"), content.find("</sheetData>"))
-        else {
-            return content;
-        };
-        format!("{}<sheetData>{rows}{}", &content[..start], &content[end..])
     })
+}
+
+/// A worksheet part `content` with its `sheetData` holding `rows`.
+fn replace_sheet_data(content: &str, rows: &str) -> String {
+    let (Some(start), Some(end)) = (content.find("<sheetData"), content.find("</sheetData>"))
+    else {
+        return content.to_string();
+    };
+    format!("{}<sheetData>{rows}{}", &content[..start], &content[end..])
 }
 
 /// One array formula whose `ref` names two whole columns: the importer would put 2^21 cells in
@@ -706,35 +712,26 @@ fn an_array_formula_with_its_cells_imports() -> TestResult {
 /// Re-zips `tests/basic_text.xlsx` with its first sheet holding `rows` and the merged ranges
 /// `refs`.
 fn with_first_sheet_merges(rows: &str, refs: &[String]) -> Result<Vec<u8>, Box<dyn Error>> {
-    let merges: String = refs
-        .iter()
-        .map(|r| format!(r#"<mergeCell ref="{r}"/>"#))
-        .collect();
-    let bytes = with_first_sheet_rows(rows)?;
-    let mut src = zip::ZipArchive::new(Cursor::new(bytes))?;
-    let mut parts = Vec::new();
-    for i in 0..src.len() {
-        let mut file = src.by_index(i)?;
-        let mut content = String::new();
-        file.read_to_string(&mut content)?;
-        let name = file.name()?.into_owned();
-        if name == "xl/worksheets/sheet1.xml" {
-            content = content.replacen(
-                "</sheetData>",
-                &format!(
-                    r#"</sheetData><mergeCells count="{}">{merges}</mergeCells>"#,
-                    refs.len()
-                ),
-                1,
-            );
-        }
-        parts.push((name, content));
+    let mut merge_cells = format!(r#"</sheetData><mergeCells count="{}">"#, refs.len());
+    for r in refs {
+        merge_cells.push_str(r#"<mergeCell ref=""#);
+        merge_cells.push_str(r);
+        merge_cells.push_str(r#""/>"#);
     }
-    zip_of(&parts)
+    merge_cells.push_str("</mergeCells>");
+    rewrite(|name, content| {
+        if name == "xl/worksheets/sheet1.xml" {
+            replace_sheet_data(&content, rows).replacen("</sheetData>", &merge_cells, 1)
+        } else {
+            content
+        }
+    })
 }
 
 /// Whole-column merged ranges, a thousand of them: clearing their covered cells walks the cells
-/// stored, not the 2^30 cells the ranges name, and still empties the ones covered (T-3442).
+/// stored, not the 2^30 cells the ranges name, and still empties the ones covered (T-3442). It
+/// takes about 0.1 s; the bound of 10 s leaves room for a slow runner, while the old walk, about
+/// 10^9 lookups, took minutes.
 #[test]
 fn many_whole_column_merges_import_quickly_and_clear_covered_cells() -> TestResult {
     let refs: Vec<String> = (1..=1000)
@@ -748,13 +745,13 @@ fn many_whole_column_merges_import_quickly_and_clear_covered_cells() -> TestResu
     let workbook =
         load_from_xlsx_bytes(&with_first_sheet_merges(rows, &refs)?, "case", "en", "UTC")?;
     assert!(
-        started.elapsed().as_secs() < 30,
+        started.elapsed().as_secs() < 10,
         "took {:?}",
         started.elapsed()
     );
     let model = Model::from_workbook(workbook, "en")?;
     assert_eq!(model.get_formatted_cell_value(0, 1, 1)?, "1");
-    assert_eq!(model.get_formatted_cell_value(0, 500000, 1)?, "");
-    assert_eq!(model.get_formatted_cell_value(0, 500000, 2)?, "");
+    assert_eq!(model.get_formatted_cell_value(0, 500_000, 1)?, "");
+    assert_eq!(model.get_formatted_cell_value(0, 500_000, 2)?, "");
     Ok(())
 }
