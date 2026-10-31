@@ -3,7 +3,7 @@ id: T-3493
 title: "gen-m5 arg-pairs batch: oracle-filled cells for the unseen argument-class pairs of the M5 rounding and integer math functions (TRUNC, MOD, QUOTIENT, MROUND, CEILING.MATH, FLOOR.MATH, ECMA.CEILING, POWER, LOG, ATAN2, COMBIN, COMBINA)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
