@@ -47,6 +47,13 @@ C	probes/amordegrc-fraction-alone-f.case.json	2
 C	probes/amordegrc-fraction-alone-g.case.json	3
 C	probes/amordegrc-fraction-state-aa.case.json	3
 C	probes/amordegrc-fraction-state-ab.case.json	3
+C	probes/amordegrc-fraction-state-ac.case.json	3
+C	probes/amordegrc-fraction-state-ad.case.json	3
+C	probes/amordegrc-fraction-state-ae.case.json	3
+C	probes/amordegrc-fraction-state-af.case.json	3
+C	probes/amordegrc-fraction-state-ag.case.json	4
+C	probes/amordegrc-fraction-state-ah.case.json	4
+C	probes/amordegrc-fraction-state-ai.case.json	3
 C	probes/amordegrc-fraction-state-h.case.json	2
 C	probes/amordegrc-fraction-state-i.case.json	2
 C	probes/amordegrc-fraction-state-j.case.json	2
@@ -2096,6 +2103,8 @@ C	probes/yield-start-one-input.case.json	192
 C	probes/yield-start-rate-term.case.json	150
 C	probes/yield-start-sweep.case.json	100
 C	probes/yield-start-term-basis.case.json	159
+F	probes/amordegrc-fraction-state-ag.case.json	Sheet1!A1
+F	probes/amordegrc-fraction-state-ah.case.json	Sheet1!A1
 F	probes/bond-extreme-coupon-yield.case.json	Calc!A1
 F	probes/bond-extreme-coupon-yield.case.json	Calc!A10
 F	probes/bond-extreme-coupon-yield.case.json	Calc!A100
