@@ -61,7 +61,8 @@ docs/excel-semantics/statistics.md "BETA.INV solves Excel's own CDF to the cross
 - [x] Visible parity: gen-m9/35e8168aae2b00f8 A159 and the four probes-numeric cells above are within half a unit of
       Excel's 15th significant digit.
 - [ ] The nine lines above leave `eval/baseline/ironcalc-calc.txt`, with no new known-failure line in any baseline.
-- [x] `make check` green; reviewers approve.
+      Not met: H2 and H67 left; the other seven moved to T-3374 (Outcome).
+- [x] `make check` green; reviewers approve (PR #2518).
 
 ## Out of scope
 - BETADIST_BETAINV G5 and G26 (the T-1044 sweep).

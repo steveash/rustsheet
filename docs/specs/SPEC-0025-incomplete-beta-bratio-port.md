@@ -190,7 +190,7 @@ The full port moves cells that pass today (r2-impact `branches.out`):
 | gen-m9 FDIST c18dbf21 A151 | bup+bgrat | T-2510 | 7 ulp |
 | gen-m9 F.DIST.RT 60b0b6e6 A151 | (r2-impact) | by branch | 6 ulp at 6.6e-44, visibly off |
 | gen-m9 FDIST 2801c1c1 A374 | (r2-impact) | by branch | 6 ulp, visibly off |
-| ironcalc-calc BETADIST_BETAINV.xlsx, T-2119's nine chained BETA.INV cells | any kernel change | T-2505 on | 1-4 ulp (decision 0111, owned by T-2633) |
+| ironcalc-calc BETADIST_BETAINV.xlsx, T-2119's nine chained BETA.INV cells | any kernel change | T-2505 on | 1-4 ulp (decision 0111, owned by T-3374, from T-2633) |
 
 How each kind is handled:
 - **Cells within 4 ulp with no cell going visibly off.** These use decision 0083's standing allowance: the task is
@@ -198,8 +198,8 @@ How each kind is handled:
 - **The two visibly-off cells.** These are outside 0083's condition 2. The task whose branch moves them carries a
   decision record (`make new-decision`) naming exactly those cells and a follow-up task that owns them, as decisions
   0111 did. Without that record the branch stays delegated for F.
-- **The chained BETA.INV cells.** These stay under decision 0111 and T-2633 until T-2511 solves the inverse to the
-  crossing.
+- **The chained BETA.INV cells.** These stay under decision 0111 and T-3374 (from T-2633) until T-2511 solves the
+  inverse to the crossing.
 
 ### Test fixtures
 - Each task adds a Rust unit test of its branch on rows taken from the research data. The rows are copied into a
