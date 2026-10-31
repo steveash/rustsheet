@@ -3,7 +3,8 @@ use super::huge_shape::{huge_shape_quantile, wilson_hilferty_quantile};
 use super::{
     cdf_terms_bound, continued_fraction_budget, excel_small_shape_lower,
     excel_small_shape_quantile, excel_tiny_quantile, gamma_cdf, gamma_density, gamma_quantile,
-    gamma_sf, gamma_ur, incomplete_gamma_pair, temme_pair, Tail, Terms, MAX_TERMS, TEMME_C,
+    gamma_quantile_within, gamma_sf, gamma_ur, incomplete_gamma_pair, temme_pair, Tail, Terms,
+    MAX_TERMS, TEMME_C,
 };
 use statrs::distribution::{ChiSquared, ContinuousCDF, DiscreteCDF, Gamma, Poisson};
 use statrs::function::gamma::{gamma_lr as statrs_lr, gamma_ur as statrs_ur};
@@ -183,9 +184,10 @@ fn the_pair_is_near_statrs() {
             near_upper(gamma_sf(&dist, x), dist.sf(x), shape, x * rate, scale),
             "sf Gamma({shape},{rate}) at {x}"
         );
-        // The quantile is the crossing of the cdf: wherever statrs' search (halve and double, 8
-        // bisections, 4 Newton steps, the start until T-3131) gets near p, ours is a number
-        // whose cdf is p. statrs' can stop far from the quantile (at p = 1.26E-291 and shape
+        // The quantile is the crossing of the cdf, refined from a Wilson-Hilferty start (T-3131).
+        // statrs' `inverse_cdf` (halve and double, 8 bisections, 4 Newton steps) is only the
+        // reference here: wherever it gets near p, ours is a number whose cdf is p. It can stop
+        // far from the quantile (at p = 1.26E-291 and shape
         // 14.3 it ends where the cdf is about 1E-88; 3E-8 off at shape 5.25, p = 0.0149).
         let theirs = dist.inverse_cdf(p);
         if (dist.cdf(theirs) / p - 1.0).abs() < 1e-6 {
@@ -342,6 +344,12 @@ fn a_call_past_its_cap_is_nan() {
         (median / 9_999_999.666_666_668 - 1.0).abs() <= 1e-15,
         "{median}"
     );
+    // Past the shared budget the whole inversion is NaN (directive 5), on the series cdfs and on
+    // Temme's: one series cdf near the median at shape 1E4 takes about 730 terms, and the
+    // refinement needs more than three cdfs at any shape.
+    assert!(gamma_quantile_within(1e4, 1.0, 0.5, Tail::Lower, 1_000).is_nan());
+    assert!(gamma_quantile_within(1e4, 1.0, 0.5, Tail::Lower, MAX_TERMS).is_finite());
+    assert!(gamma_quantile_within(1e7, 1.0, 0.5, Tail::Upper, 3).is_nan());
 }
 
 // The continued fraction's own budget (T-2795) is at least twice the terms it needs at
@@ -375,7 +383,7 @@ fn the_continued_fraction_stays_within_half_its_budget() {
     assert_eq!(cdf_terms_bound(2.5), 256 + 44);
 }
 
-// Excel's quantiles in the tails and at a small shape, where statrs' search is off or NaN
+// Excel's quantiles in the tails and at a small shape, where statrs' `inverse_cdf` is off or NaN
 // (T-1543 probes-numeric/t1543-inverse-cdf-tiny-p; T-2255 gen-m9 triage). Each is within
 // half a unit of Excel's 15th significant digit.
 #[test]

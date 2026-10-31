@@ -25,6 +25,9 @@ crossing is 2,484 ulp off, visibly off. The T-2561 rule does not cover this cell
 
 So Excel's own test for when it takes the root is not the check. The candidates and counts are in
 docs/excel-semantics/statistics.md, in the T-2561 entry.
+- From T-3350 (2026-10-31): probes/t3350-chisq-inv-huge-df A25 `CHISQ.INV(1E-300,5E6)`: Excel 4883759.33683749,
+  ours 4883759.3368374165, the 50-digit math 4883759.3368374156 (Excel 1.5E-14 off it; the same deep lower tail at a
+  larger shape).
 
 ## Acceptance criteria
 - [ ] A31 is within half a unit of Excel's 15th digit, or the Outcome records why it cannot be reached.

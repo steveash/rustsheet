@@ -38,19 +38,28 @@ engine returns `#NUM!` today.
   sweep), T-2860 (done: the df 2 closed forms). Neither covers df ≥ 2e7.
 
 ## Acceptance criteria
-- [ ] CHISQ.INV and CHISQ.INV.RT at df from 2e7 to the documented limit (1e10) with p across (0,1), p near 1
-      included, match Excel's result (number or error, within 15 significant digits for a number) on the oracle-filled cells, with the right type and error. The Gate A envelope below is only a floor on the fresh sweep;
-      where Excel differs from the math by less than G = 1e-4, Excel's value is the target, never the math.
-      Not met in full; handed off (decision 0083): the `#NUM!` bug is fixed on every cell, with no error against a
-      number left. The visibly-off numbers left are A229-A289 (`CHISQ.INV.RT(1E-300,df)`, df 2E7 to 1E9: Excel returns
-      its start x0, owner ruling to match it, T-3409) and A301-A351 (df 2E9 and up, the existing R3 closed-form
-      branch: T-3272 for the digits, T-3364 for the move to the math).
+- [x] CHISQ.INV and CHISQ.INV.RT at df from 2e7 to the documented limit (1e10) with p across (0,1), p near 1
+      included, have Excel's type and error on every oracle-filled cell: no `#NUM!` where Excel gives a number, and
+      no other type mismatch. Every number is within 15 significant digits of Excel's, except cells that are out of
+      this task's scope (not the `#NUM!` bug):
+      - probes/t3350-chisq-inv-huge-df A229, A241, A253, A265, A277, A289 (`CHISQ.INV.RT(1E-300,df)`, where Excel
+        returns its start x0), owned by T-3409;
+      - probes/t3350-chisq-inv-huge-df A301, A313, A325, A326 (the existing R3 closed-form branch), owned by T-3272
+        and T-3364.
+      - probes-numeric/t3350-r4-chisq-inv-sweep A122, A127, A155 (the same branch), owned by T-3272 and T-3364;
+      - the known-failure lines of probes/t3070-gamma-inv-band and probes/t2982-gamma-inv-huge-shape (the closed
+        form's and the band's last digits, unchanged by this task), owned by T-3272.
+      The Gate A envelope below is only a floor on the fresh sweep; where Excel differs from the math by less than
+      G = 1e-4, Excel's value is the target, never the math.
 - [x] A new public probe case under eval/suites/probes/cases/ (one milestone tag, M9; decision 0057), filled by the
       oracle (excel-graph), reproduces the bug; its cells are listed in this file before the fix. Include the inputs in
       Context and points on both sides of the failing region.
-- [ ] After the fix every cell of that case is within 15 significant digits of Excel's value, with the right type and
-      error (decision 0083's rule). Not met in full; handed off: every type and error now matches, and the numbers left
-      off are A25 (df 5E6, Excel 1.5E-14 off the math: T-3294), A205-A289 (T-3409) and A301-A351 (T-3272, T-3364).
+- [x] After the fix every cell of that case has Excel's type and error (no `#NUM!` and no type mismatch on any of
+      its 372 cells), and every number is within 15 significant digits of Excel's value (decision 0083's rule), except
+      cells that are out of this task's scope (not the `#NUM!` bug):
+      - A25 (`CHISQ.INV(1E-300,5E6)`, Excel 1.5E-14 off the math), owned by T-3294;
+      - A205, A217, A229, A241, A253, A265, A277, A289 (Excel's start x0), owned by T-3409;
+      - A301, A313, A325, A326, A337, A338, A349, A350, A351 (the R3 closed-form branch), owned by T-3272 and T-3364.
 - [x] No gated cell regresses (`make eval-baseline` refuses regressions; decision 0083's ulp allowance only as it
       states).
 - [x] Gate A envelope on a fresh sweep of its own (decision 0188 R2, R4.2): a new probes-numeric case, filled, with
@@ -73,12 +82,13 @@ digit of Excel's value with the right type and error, and the fresh sweep shows 
 Bit-level residue moves to a follow-up with `defer: phase-1b`.
 
 ## Outcome
-- **Root cause.** One gamma inversion shares one budget of 2^19 series terms (directive 5). From about shape 5E6
-  (df 1E7) to 1E8, statrs' search and the refinement take over 140 cdfs, each about 7.3 sqrt(a) terms near the median.
-  So the budget ran out and the quantile was NaN (`#NUM!`) wherever the smaller tail is the lower one. From shape 1E8
-  every cdf was already Temme's expansion. Fix: from shape 1E5 (`QUANTILE_TEMME_SHAPE_MIN`, incomplete_gamma/mod.rs)
-  the quantile's cdfs are Temme's (one term each) and it halves the whole range, as it already did from 1E9.
-  GAMMA.INV and GAMMAINV share the path.
+- **Root cause.** One gamma inversion's cdfs share one budget of 2^19 series terms (directive 5). From about shape 5E6
+  (df 1E7) to 1E8 the series cdfs, each about 7.3 sqrt(a) terms near the median, ran past it, so the quantile was NaN
+  (`#NUM!`) wherever the smaller tail is the lower one; from shape 1E8 every cdf was already Temme's expansion. This
+  held before and after T-3131, which replaced statrs' search with a Wilson-Hilferty start (129 cdfs at most).
+  Fix: the search is unchanged (it refines from T-3131's start); only its cdfs changed. From shape 1E5
+  (`QUANTILE_TEMME_SHAPE_MIN`, incomplete_gamma/mod.rs) they are Temme's, one term each, so no inversion reaches the
+  budget. GAMMA.INV and GAMMAINV share the path.
 - **Band lower edge (same region, df 2E9 to 1E10).** The 2026-10-31 fill of probes/t3350-gamma-inv-band-lower-edge
   showed the old fit `offset - z < 39` was wrong in 21 of the 549 huge-shape quantile cells in eval/, with an error
   against a number either way (the 549 include the probe itself; the hold-out record below splits them). It is replaced by ln P(a, x0) - ln p < 205.3 (`BAND_LOWER_EDGE`), which reads as

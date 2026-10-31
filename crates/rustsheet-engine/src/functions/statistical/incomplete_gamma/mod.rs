@@ -795,6 +795,11 @@ pub(crate) enum Tail {
 /// tiny x, so `CHISQ.INV(1E-100,1)` is Excel's 1.5707963267948966E-200 (T-1543, T-1634). All cdfs
 /// share one budget of [`MAX_TERMS`] terms; NaN once it is spent.
 pub(crate) fn gamma_quantile(shape: f64, scale: f64, p: f64, tail: Tail) -> f64 {
+    gamma_quantile_within(shape, scale, p, tail, MAX_TERMS)
+}
+
+/// [`gamma_quantile`] with its cdfs sharing a budget of `budget` terms (NaN once it is spent).
+fn gamma_quantile_within(shape: f64, scale: f64, p: f64, tail: Tail, budget: u32) -> f64 {
     let rate = 1.0 / scale;
     if !((0.0..=1.0).contains(&p) && rate > 0.0 && rate.is_finite()) {
         return f64::NAN;
@@ -830,7 +835,7 @@ pub(crate) fn gamma_quantile(shape: f64, scale: f64, p: f64, tail: Tail) -> f64 
         };
         // One budget for every cdf below. Each `borrow_mut` lasts one cdf call and none nests
         // (`probability` calls no cdf of its own), so no borrow can overlap.
-        let terms = RefCell::new(Terms(MAX_TERMS));
+        let terms = RefCell::new(Terms(budget));
         let probability = |x: f64| quantile_tail(&dist, x, small, &mut terms.borrow_mut());
         // The crossing does not depend on the start, which only saves cdfs: near x = a each
         // series cdf costs about 6.8 sqrt(a) terms of the one budget, so from no start (64

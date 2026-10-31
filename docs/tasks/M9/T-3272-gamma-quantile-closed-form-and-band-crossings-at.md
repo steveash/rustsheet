@@ -34,6 +34,11 @@ digits: the Wilson-Hilferty closed form's and the band's true-quantile crossings
   in p between 1E-30 and 1E-100; probe p = 1E-40 to 1E-90 at shapes 3E9 to 1E10) and its slope.
 - Finding Excel's actual search (the band's edges are fitted too: `BAND_UPPER_*`, `BAND_LOWER_EDGE`) would settle
   both; the probes give the cells to check it against.
+- From T-3350 (2026-10-31): probes/t3350-chisq-inv-huge-df A301:A351 (visibly off: A301, A313, A325, A326, A337,
+  A338, A349, A350, A351; `CHISQ.INV.RT` at p 1E-300 to 1E-30 and df 2E9 to 1E11, the closed form about 1E-13 from
+  Excel's value).
+- probes-numeric/t3350-r4-chisq-inv-sweep A122, A127, A155 (`CHISQ.INV.RT` at about 1E-230, df 2.4E9 to 7.2E9, the
+  same branch; also T-3364).
 
 ## Acceptance criteria
 - [ ] A371 within half a unit of the 15th digit; the other cells pass or are named with their ulp in the Outcome; no
