@@ -76,6 +76,10 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     and the oracle backend reads the cell's text after recalculating. A sheet's
     `"column_widths": {"B": 4}` sets those columns' widths in characters (desktop `.Text` depends on the
     width; excel-graph's `text` does not).
+  * A sheet's `"conditional_formats": [{"ref": "A1:A3", "formula": "=A1>0"}]` writes formula conditional
+    formats (`<cfRule type="expression">`) and `"data_validations": [{"ref": "A1", "formula": "=A1>0"}]`
+    custom data validations, their formulas prefixed like cell formulas (T-3263). The engine adapter
+    ignores both.
 """
 
 from __future__ import annotations
@@ -373,6 +377,7 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
             patches.calculated.append(_calculated_columns(sheet, table, tables))
         formats = _number_formats(wb, sheet)
         _set_column_widths(ws, sheet)
+        _add_range_formulas(ws, sheet, tables)
         legacy = _listed_formula_cells(sheet, "legacy_formulas")
         bare = _listed_formula_cells(sheet, "bare_function_names")
         if both := legacy & bare:
@@ -435,6 +440,21 @@ def _set_column_widths(ws: Any, sheet: dict[str, Any]) -> None:
     for column, width in sheet.get("column_widths", {}).items():
         _, col = xlsxwriter.utility.xl_cell_to_rowcol(f"{column}1")
         ws.set_column(col, col, float(width))
+
+
+def _add_range_formulas(ws: Any, sheet: dict[str, Any], tables: frozenset[str]) -> None:
+    """Writes a sheet's `conditional_formats` (type formula) and `data_validations` (type custom; T-3263).
+    XlsxWriter returns a negative status instead of raising when it refuses one; that is an error here."""
+    for rule in sheet.get("conditional_formats", ()):
+        options = {"type": "formula", "criteria": _formula_text(rule["formula"], tables)}
+        if ws.conditional_format(rule["ref"], options) != 0:
+            msg = f"conditional format on {rule['ref']} was not written"
+            raise ValueError(msg)
+    for rule in sheet.get("data_validations", ()):
+        options = {"validate": "custom", "value": _formula_text(rule["formula"], tables)}
+        if ws.data_validation(rule["ref"], options) != 0:
+            msg = f"data validation on {rule['ref']} was not written"
+            raise ValueError(msg)
 
 
 def _record_backend_steps(wb: xlsxwriter.Workbook, spec: dict[str, Any], entered: list[Entered]) -> None:
