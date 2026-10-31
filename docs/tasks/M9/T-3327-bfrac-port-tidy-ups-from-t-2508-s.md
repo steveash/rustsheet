@@ -36,6 +36,11 @@ every path and its hand-offs are tracked by the tasks that receive them.
 - [ ] `binom.rs` carries `TODO(T-3323)` at the walk-first rule (re-check it when T-3323 scores bfrac) and a one-line
       pointer at the second `ported_tails` call; T-3323 names the re-check in its Context.
 - [ ] `bratio/mod.rs`'s module doc is re-wrapped.
+- [ ] An excel-probe case (the `excel-probe` skill) asks NEGBINOM.DIST's cdf at about 20 more bfrac points (b0 >= 40,
+      small integer a0) beside BETA.DIST at the same (x, a, b), so whether Excel's NEGBINOM cdf is bfrac's complement is
+      settled by evidence (the case can stay pending until the oracle fills it; T-3323 then reads it).
+- [ ] Once T-2512 lands, the bfrac skip in `bratio/tests.rs` `ported_tails_rise_with_x_where_excel_does` is narrowed to
+      the pairs where Excel itself is non-monotone (note it in T-2512 if T-2512 is still open).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
