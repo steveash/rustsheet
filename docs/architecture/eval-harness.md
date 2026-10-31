@@ -384,6 +384,16 @@ Phase 1 line follow them. Coverage (`covered`) still counts every Excel cell tha
 (decision 0094). The stricter share, `cells` against the blamed `visible`, stays as information:
 `strict.meets_rate`, `at_strict_rate` and a line labelled "Information, gates nothing".
 
+**Gate B** (`gate_b.rs`, decision 0188 R1(b), T-3359) is the same rate counted on user-representative
+evidence only: the gen-* suites, ironcalc-calc, corpus-bench, calipers, poi, smoke and fixtures.
+Per function it rebuilds the decision 0118 counts (`FunctionStat::add_attributed`, `counted`) from those
+suites' cells, leaves out the decisions 0134 and 0143 cells of those suites, and meets the rate when the
+function is covered (decision 0094, every suite) and at most one counted cell in a thousand is visibly off.
+A function with no counted cell has no rate and does not meet it. A run that did not score calipers, poi
+or corpus-bench reports Gate B as `n/a` (`measured: false`, `missing`), never met. `v15_checkpoint.gate_b`
+holds the result; `phase1_met` is `gate_b.met`, and the Phase 1 line prints Gate B with the every-suite
+`at_rate` beside it as information. The report lists the worst functions below Gate B's rate under that line.
+
 ## CLI
 ```
 rustsheet-eval suites | fetch [--suite S] | run [--suite S] [--filter X] | check [--evidence-floor] | update-baseline [--allow-regressions]
