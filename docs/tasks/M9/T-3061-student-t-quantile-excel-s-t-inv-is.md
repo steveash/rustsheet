@@ -89,6 +89,15 @@ of Excel's value. Time-boxed (decision 0056).
   - `t_upper_quantile` serves T.INV.2T/TINV. CONFIDENCE.T is `fn_confidence_t` in normal.rs.
   - Keep directive 5: the work stays bounded, and the lift table charges `T_QUANTILE_WEIGHT`.
 
+T-3349's fresh sweep (gap triage 2026-10-31; mpmath 1.4.1 at 60+ digits at the double p): 26 visibly-off cells of
+probes-numeric/t3349-t-inv-2t-sweep, df 2 to 9.0E9, have Excel itself off the true quantile by more than 5E-15 or by
+more than ours: 18 typical inputs (A1 `T.INV.2T(1.11037971429202,44)`: Excel 1.2E-13 off, ours 1.4E-13; A58 at df 10:
+Excel 2.8E-15, ours 4.7E-16) and 8 tail points at a huge df where ours is on the math and Excel is 5E-14 to 9.6E-10 off
+(A231 `T.INV.2T(2.22736378790306E-87,9000443112)`: Excel 19.81460810908602, ours 19.814608090116455, Excel 9.6E-10
+off; A226 at df 1.3E9: 3.8E-10). This is the rounded-y form's signature (T-3349's Outcome counted these 10-odd points).
+Where both are off (A1, A17, A50, A62 and others), T-2859's accurate kernel alone does not reach Excel's value.
+- probes-numeric/t3349-t-inv-2t-sweep.case.json (26): Calc!A1, A5, A17, A19, A22, A43, A47, A50, A56, A58, A62, A64, A93, A99, A104, A111, A114, A115, A220, A226, A231, A245, A275, A276, A278, A297
+
 ## Acceptance criteria
 - [ ] At least the 60 cells that fit with the correctly rounded y are within half a unit of the 15th significant
       digit of Excel's value in `make eval`, bit-exact where the fit says 0 ulp. The 15 that need Excel's own y pass

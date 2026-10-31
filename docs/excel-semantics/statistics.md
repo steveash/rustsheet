@@ -3540,9 +3540,15 @@ counts are in T-3349's Outcome). In that sweep Excel is more than 1E-4 off the e
 p from 1.38E-300 to 1.73E-110 and df from 2490 up (42 points, A211-A300; `T.INV.2T(6.68863396408457E-199,2490)` is
 100.83724584548176 in Excel, exact 33.047211122914894): the tiny-p pattern of "MATH-OVER-EXCEL" case 1, which lists
 T.INV only and from p 1E-150; whether it extends to T.INV.2T needs an owner ruling (T-3386).
+The same sweep shows the centre is not always within 15 digits (gap triage 2026-10-31, mpmath 1.4.1 at 60+ digits, at
+the double p): at 21 of its points with p from 0.99943 to 1.0000000006 and df from 2 to 5.7E9, Excel is 0.8E-15 to
+3.7E-15 relative off the true quantile while the engine is within 4E-16 of it, for example
+`T.INV.2T(0.999999999999996,402)` = 5.0123657350064685E-15 in Excel, true 5.01236573500648...E-15 (A187), and
+`T.INV.2T(0.999999999999998,2)` = 2.8261664256307887E-15, 2.2E-15 off (A122). The probe cells above happen to sit
+within 15 digits; Excel's centre form is still unidentified (T-3414 sweeps it, T-3415 fits it, both Phase 1b).
 Ours: the centre crossing of `student_t_centre` (T-2724), within about 5E-16 of the exact value.
 Status: VERIFIED (excel-graph)
-Tasks: T-3349, T-2724, T-2858
+Tasks: T-3349, T-2724, T-2858, T-3414, T-3415
 
 ## Inverse CDF functions at a tiny or near-1 probability (T-1543)
 Rule: NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and BETA.INV return a value (or `#NUM!`) for p from 1E-300 to 1-1E-16; none panics or hangs in Excel.

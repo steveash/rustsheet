@@ -122,6 +122,14 @@ df is a sub-expression (classify them after the change; any still visibly off go
 These cells are also listed in T-0967, which keeps the bit-level target and waits on T-0969; this task is its
 accuracy stage and needs no new CDF.
 
+T-3349's fresh sweep (gap triage 2026-10-31; scored against mpmath 1.4.1 at 60+ digits, T.INV.2T at the double p by
+bisection on the regularized incomplete beta): 63 visibly-off cells of probes-numeric/t3349-t-inv-2t-sweep, df 2 to
+18731, have Excel within 5E-15 relative of the true quantile and ours 2E-15 to 5E-13 off (A110 `T.INV.2T(0.0910820637844564,100)`:
+Excel 5.2E-16 off, ours 4.8E-13; A100 at df 85: Excel 1.3E-15, ours 5.0E-13). They are this task's general-region loss.
+A241, A251 and A299 have p below 2E-5 (1.1E-16 to 4E-79), outside the Goal's range: extend the range to them or name
+the task that takes them in the Outcome.
+- probes-numeric/t3349-t-inv-2t-sweep.case.json (63): Calc!A4, A6, A7, A9, A10, A12, A15, A16, A18, A20, A21, A23, A25, A27, A28, A29, A31, A32, A36, A38, A39, A41, A45, A46, A49, A60, A63, A69, A70, A72, A73, A74, A79, A81, A82, A83, A84, A85, A86, A89, A90, A91, A92, A94, A95, A96, A97, A98, A100, A101, A105, A107, A108, A109, A110, A112, A113, A117, A119, A235, A241, A251, A299
+
 ## Acceptance criteria
 - [ ] At least 75 of the 91 gated visibly-off cells above leave eval/baseline (`make eval-baseline`), and every
       owned cell still visibly off is listed in the Outcome with its high-precision reference showing that Excel is
