@@ -7,8 +7,9 @@
 //! first and refuses such a workbook instead.
 
 use crate::constants::{LAST_COLUMN, LAST_ROW};
-use crate::expressions::utils::{is_valid_column_number, is_valid_row};
-use crate::types::{Cell, Styles, Workbook, Worksheet};
+use crate::expressions::utils::{is_valid_block, is_valid_column_number, is_valid_row};
+use crate::limits::{check_array_cells, MAX_SIZE};
+use crate::types::{Cell, MergedCell, Row, Styles, Workbook, Worksheet};
 
 /// Checks every index of `workbook` that a later read trusts unchecked, in one pass linear in its
 /// size. Each invariant names the read that panics without it:
@@ -35,11 +36,59 @@ use crate::types::{Cell, Styles, Workbook, Worksheet};
 pub(crate) fn check_indices(workbook: &Workbook) -> Result<(), String> {
     check_styles(&workbook.styles)?;
     let styles = workbook.styles.cell_xfs.len();
+    let mut spills = SpillTally::default();
     for worksheet in &workbook.worksheets {
-        check_worksheet(worksheet, styles)
+        check_worksheet(worksheet, styles, &mut spills)
             .map_err(|e| format!("Sheet '{}': {e}", worksheet.name))?;
     }
-    Ok(())
+    spills.check()
+}
+
+/// The cells the array anchors among some stored cells claim through their spill ranges, against
+/// the cells stored (T-3426). Evaluation fills a CSE anchor's whole range and the clears and
+/// structural edits walk an anchor's range, so their work follows what the anchors claim, not
+/// what the input holds: a few bytes per anchor could claim 2^20 cells each. The engine stores
+/// every cell of a spill and resets a blocked spill's range to its anchor (and the xlsx files
+/// in the repository store every cell they claim; Excel's range for a #SPILL! anchor is
+/// unprobed, T-3436), so claiming more than is stored, past one whole array's worth
+/// ([`MAX_SIZE`]), comes from crafted input, and is refused. The slack is per tally: per load,
+/// and per undo, redo or external diff call.
+#[derive(Default, Clone, Copy, Debug)]
+pub(crate) struct SpillTally {
+    claimed: u64,
+    cells: u64,
+}
+
+impl SpillTally {
+    /// Counts `cell`, and the cells it claims if it is an array anchor.
+    pub(crate) fn add(&mut self, cell: &Cell) {
+        self.cells += 1;
+        if let Cell::ArrayFormula {
+            r: (width, height), ..
+        } = *cell
+        {
+            let side = |n: i32| u64::try_from(n).unwrap_or(0);
+            self.claimed = self
+                .claimed
+                .saturating_add(side(width).saturating_mul(side(height)));
+        }
+    }
+
+    /// Refuses anchors claiming more cells than are counted, past one whole array.
+    pub(crate) fn check(&self) -> Result<(), String> {
+        if self.claimed
+            <= self
+                .cells
+                .saturating_add(u64::try_from(MAX_SIZE).unwrap_or(u64::MAX))
+        {
+            Ok(())
+        } else {
+            Err(format!(
+                "array formulas spill over {} cells, but only {} cells are stored",
+                self.claimed, self.cells
+            ))
+        }
+    }
 }
 
 /// Whether `index` is a position in a list of `len` entries.
@@ -84,69 +133,22 @@ fn check_styles(styles: &Styles) -> Result<(), String> {
     Ok(())
 }
 
-fn check_worksheet(worksheet: &Worksheet, styles: usize) -> Result<(), String> {
+/// Checks one worksheet of a workbook whose styles have `styles` cell formats: what
+/// [`check_indices`] checks of a sheet, counting its cells into `spills`. An external diff that
+/// restores a deleted sheet passes it too (T-2896).
+pub(crate) fn check_worksheet(
+    worksheet: &Worksheet,
+    styles: usize,
+    spills: &mut SpillTally,
+) -> Result<(), String> {
     worksheet.sheet_data.check_layout()?;
     let formulas = worksheet.shared_formulas.len();
     for (row, column, cell) in worksheet.sheet_data.cells() {
-        let style = match *cell {
-            Cell::EmptyCell { s }
-            | Cell::BooleanCell { s, .. }
-            | Cell::NumberCell { s, .. }
-            | Cell::ErrorCell { s, .. }
-            | Cell::SharedString { s, .. } => s,
-            Cell::CellFormula { f, s, .. } => {
-                if !in_range(f, formulas) {
-                    return Err(format!(
-                        "cell R{row}C{column} points to formula {f}, which does not exist"
-                    ));
-                }
-                s
-            }
-            Cell::ArrayFormula {
-                f,
-                s,
-                r: (width, height),
-                ..
-            } => {
-                if !in_range(f, formulas) {
-                    return Err(format!(
-                        "cell R{row}C{column} points to formula {f}, which does not exist"
-                    ));
-                }
-                // An anchor's spill range may be empty, but it may not leave the grid.
-                if !(0..=LAST_COLUMN - column + 1).contains(&width)
-                    || !(0..=LAST_ROW - row + 1).contains(&height)
-                {
-                    return Err(format!("cell R{row}C{column} spills outside the sheet"));
-                }
-                s
-            }
-            Cell::SpillCell {
-                s,
-                a: (anchor_row, anchor_column),
-                ..
-            } => {
-                if !is_valid_row(anchor_row) || !is_valid_column_number(anchor_column) {
-                    return Err(format!(
-                        "cell R{row}C{column} spills from outside the sheet"
-                    ));
-                }
-                s
-            }
-        };
-        if !in_range(style, styles) {
-            return Err(format!(
-                "cell R{row}C{column} has style {style}, which does not exist"
-            ));
-        }
+        check_cell(row, column, cell, styles, formulas)?;
+        spills.add(cell);
     }
     for record in &worksheet.rows {
-        if !is_valid_row(record.r) || !in_range(record.s, styles) {
-            return Err(format!(
-                "the record of row {} is outside the sheet or has no style",
-                record.r
-            ));
-        }
+        check_row_record(record, styles)?;
     }
     for record in &worksheet.cols {
         if !is_valid_column_number(record.min)
@@ -160,17 +162,100 @@ fn check_worksheet(worksheet: &Worksheet, styles: usize) -> Result<(), String> {
             ));
         }
     }
-    for merged in &worksheet.merged_cells {
-        if !is_valid_row(merged.row)
-            || !is_valid_column_number(merged.column)
-            || !(1..=LAST_ROW - merged.row + 1).contains(&merged.height)
-            || !(1..=LAST_COLUMN - merged.column + 1).contains(&merged.width)
-        {
+    check_merged_cells(&worksheet.merged_cells)
+}
+
+/// Checks `cell`, to be stored at (`row`, `column`) of a sheet with `formulas` shared formulas in
+/// a workbook with `styles` cell formats: the place is in the grid, the style and the formula
+/// exist, and an array formula's spill range and a spill cell's anchor are in the grid.
+pub(crate) fn check_cell(
+    row: i32,
+    column: i32,
+    cell: &Cell,
+    styles: usize,
+    formulas: usize,
+) -> Result<(), String> {
+    if !is_valid_row(row) || !is_valid_column_number(column) {
+        return Err(format!("cell R{row}C{column} is outside the sheet"));
+    }
+    let style = match *cell {
+        Cell::EmptyCell { s }
+        | Cell::BooleanCell { s, .. }
+        | Cell::NumberCell { s, .. }
+        | Cell::ErrorCell { s, .. }
+        | Cell::SharedString { s, .. } => s,
+        Cell::CellFormula { f, .. } | Cell::ArrayFormula { f, .. } if !in_range(f, formulas) => {
             return Err(format!(
-                "the merged range at R{}C{} is outside the sheet",
-                merged.row, merged.column
+                "cell R{row}C{column} points to formula {f}, which does not exist"
             ));
         }
+        Cell::CellFormula { s, .. } => s,
+        Cell::ArrayFormula {
+            s,
+            r: (width, height),
+            ..
+        } => {
+            // An anchor's spill range may be empty, but it may not leave the grid, nor hold more
+            // cells than any array may (evaluation fills a CSE anchor's whole range, and the clears
+            // walk it; T-2896).
+            if !(0..=LAST_COLUMN - column + 1).contains(&width)
+                || !(0..=LAST_ROW - row + 1).contains(&height)
+            {
+                return Err(format!("cell R{row}C{column} spills outside the sheet"));
+            }
+            let cells = |n: i32| usize::try_from(n).unwrap_or(usize::MAX);
+            if check_array_cells(cells(height), cells(width)).is_some() {
+                return Err(format!("cell R{row}C{column} spills over too many cells"));
+            }
+            s
+        }
+        Cell::SpillCell {
+            s,
+            a: (anchor_row, anchor_column),
+            ..
+        } => {
+            if !is_valid_row(anchor_row) || !is_valid_column_number(anchor_column) {
+                return Err(format!(
+                    "cell R{row}C{column} spills from outside the sheet"
+                ));
+            }
+            s
+        }
+    };
+    check_style(style, styles).map_err(|e| format!("cell R{row}C{column} {e}"))
+}
+
+/// Checks that `style` is one of the `styles` cell formats of the workbook.
+pub(crate) fn check_style(style: i32, styles: usize) -> Result<(), String> {
+    if in_range(style, styles) {
+        Ok(())
+    } else {
+        Err(format!("has style {style}, which does not exist"))
     }
-    Ok(())
+}
+
+/// Checks a row record: the row is in the grid and its style exists.
+pub(crate) fn check_row_record(record: &Row, styles: usize) -> Result<(), String> {
+    if is_valid_row(record.r) && in_range(record.s, styles) {
+        Ok(())
+    } else {
+        Err(format!(
+            "the record of row {} is outside the sheet or has no style",
+            record.r
+        ))
+    }
+}
+
+/// Checks that every merged range is at least one cell and lies within the grid.
+pub(crate) fn check_merged_cells(merged_cells: &[MergedCell]) -> Result<(), String> {
+    match merged_cells
+        .iter()
+        .find(|merged| !is_valid_block(merged.row, merged.column, merged.width, merged.height))
+    {
+        Some(merged) => Err(format!(
+            "the merged range at R{}C{} is outside the sheet",
+            merged.row, merged.column
+        )),
+        None => Ok(()),
+    }
 }

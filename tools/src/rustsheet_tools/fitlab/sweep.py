@@ -448,15 +448,36 @@ def select(
             sweep.cells.append(cell)
 
 
+class RefusedSweepError(ValueError):
+    """A sweep the fit lab may not tune on (Gate A's tables, SPEC-0029 "The R4 guards")."""
+
+
+def refuse_accuracy(case_ids: list[str], holdout_only: bool) -> None:
+    """Gate A's reference tables (`accuracy/*`) never feed a fit: a table used to tune a constant
+    would stop measuring generalization (decision 0188 R4, SPEC-0029). They may be read only to
+    measure a frozen fit (`holdout_only`)."""
+    tables = [c for c in case_ids if c.split("/", 1)[0] == "accuracy"]
+    if tables and not holdout_only:
+        msg = (
+            f"refusing Gate A tables as a sweep ({', '.join(tables)}): they are a hold-out, never "
+            "fit data (SPEC-0029, decision 0188 R4); pass --holdout-only to measure a frozen fit"
+        )
+        raise RefusedSweepError(msg)
+
+
 def load_sweep(
     case_ids: list[str],
     pattern: str,
     where: Any = None,
     errors: bool = False,
     calls: list[str] | None = None,
+    *,
+    holdout_only: bool = False,
 ) -> Sweep:
     """The matching cells of every case in `case_ids` (`suite/name`); a nested call in an argument
-    reads Excel's value of the same call from the `calls` cases (`call_values`)."""
+    reads Excel's value of the same call from the `calls` cases (`call_values`). Gate A tables are
+    refused unless `holdout_only` (`refuse_accuracy`)."""
+    refuse_accuracy([*case_ids, *(calls or [])], holdout_only)
     regex = re.compile(pattern)
     sweep = Sweep()
     known = call_values(calls) if calls else {}
