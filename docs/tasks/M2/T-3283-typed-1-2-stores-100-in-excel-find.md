@@ -3,7 +3,7 @@ id: T-3283
 title: "Typed =1**2 stores =100 in Excel: match Excel's reading of ** and of unprobed missing-) shapes in a typed formula"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
