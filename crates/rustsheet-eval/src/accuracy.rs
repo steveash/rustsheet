@@ -8,7 +8,10 @@
 //! The check evaluates each batch once through the runner (panic isolation, per-case timeout),
 //! classifies every point with [`envelope::envelope`], applies the known-failure list and the R3
 //! marks ([`lists`]), and fails on a failing point, a stale known-failure line, an R3 mark without
-//! evidence or a table defect.
+//! evidence, a stale exemption or a table defect. It also counts the missing tables: in-scope
+//! catalog functions returning a number with neither a table directory nor an `exempt.tsv` line
+//! (SPEC-0029, "Gate A holds"); a missing table does not fail the check, it keeps Gate A from
+//! holding.
 
 pub mod envelope;
 pub mod lists;
@@ -23,12 +26,13 @@ use std::time::{Duration, Instant};
 use rayon::prelude::*;
 use serde::Serialize;
 
+use crate::catalog::Catalog;
 use crate::engine::Engine;
 use crate::runner::{cell_id, run_case_values, CaseValues, CellKind};
 use crate::suite::{CaseFile, Suite, ACCURACY_SUITE};
 use crate::value::Value;
 use envelope::{envelope, excel_off_math, relative_error, Envelope, MathValue};
-use lists::{check_mark, KnownFailures, ListError, R3Marks};
+use lists::{check_mark, Exemptions, KnownFailures, ListError, R3Marks};
 use math::{math_sidecar, Attached, MathTable, Stratum};
 
 /// Where the check writes every point by default, relative to the repository root (git-ignored).
@@ -40,6 +44,12 @@ pub enum AccuracyError {
     /// The accuracy manifest is missing or invalid, or its cases cannot be listed.
     #[error("accuracy suite: {0}")]
     Suite(String),
+    /// The catalog view, which names the functions that need a table, cannot be read.
+    #[error(transparent)]
+    Catalog(#[from] crate::catalog::CatalogError),
+    /// The tables directory cannot be listed.
+    #[error("{path}: {message}")]
+    Tables { path: String, message: String },
     /// A committed list is unreadable or malformed.
     #[error(transparent)]
     List(#[from] ListError),
@@ -117,6 +127,12 @@ pub struct Check {
     pub stale_known_failures: Vec<ListProblem>,
     /// R3 marks citing no MATH-OVER-EXCEL entry, naming no point, or without evidence.
     pub bad_marks: Vec<ListProblem>,
+    /// `exempt.tsv` lines naming a function that has a table or is not an in-scope numeric
+    /// catalog function (stale: remove them).
+    pub bad_exemptions: Vec<ListProblem>,
+    /// In-scope numeric catalog functions with neither a table directory nor an exemption, by
+    /// name. They do not fail the check; Gate A does not hold while any is listed.
+    pub missing_tables: Vec<String>,
     /// Wall time of the whole check, in seconds.
     pub seconds: f64,
 }
@@ -135,6 +151,10 @@ pub fn run(
         .map_err(|e| AccuracyError::Suite(format!("{e:#}")))?;
     let known = lists::load_known_failures(&suite.dir)?;
     let marks = lists::load_r3_marks(&suite.dir)?;
+    let exempt = lists::load_exemptions(&suite.dir)?;
+    let catalog = Catalog::load(root)?;
+    let tables = table_dirs(&suite.dir.join(&suite.manifest.root))?;
+    let (missing_tables, bad_exemptions) = table_coverage(&catalog, &tables, &exempt);
     let cases = suite
         .cases()
         .map_err(|e| AccuracyError::Suite(format!("{e:#}")))?;
@@ -152,8 +172,69 @@ pub fn run(
         points,
         stale_known_failures,
         bad_marks,
+        bad_exemptions,
+        missing_tables,
         seconds: start.elapsed().as_secs_f64(),
     })
+}
+
+/// The names of the table directories under `dir` (one per function); none when `dir` does not
+/// exist.
+fn table_dirs(dir: &Path) -> Result<BTreeSet<String>, AccuracyError> {
+    let fail = |e: std::io::Error| AccuracyError::Tables {
+        path: dir.display().to_string(),
+        message: e.to_string(),
+    };
+    if !dir.exists() {
+        return Ok(BTreeSet::new());
+    }
+    let mut out = BTreeSet::new();
+    for entry in std::fs::read_dir(dir).map_err(fail)? {
+        let entry = entry.map_err(fail)?;
+        if entry.file_type().map_err(fail)?.is_dir() {
+            out.insert(entry.file_name().to_string_lossy().into_owned());
+        }
+    }
+    Ok(out)
+}
+
+/// The missing tables (in-scope numeric catalog functions with neither a table directory nor an
+/// exemption) and the stale exemptions (a function with a table, or not an in-scope numeric
+/// catalog function), each sorted.
+fn table_coverage(
+    catalog: &Catalog,
+    tables: &BTreeSet<String>,
+    exempt: &Exemptions,
+) -> (Vec<String>, Vec<ListProblem>) {
+    let numeric: BTreeSet<&str> = catalog
+        .in_scope_numeric()
+        .map(|f| f.name.as_str())
+        .collect();
+    let missing = numeric
+        .iter()
+        .filter(|name| !tables.contains(**name) && !exempt.contains_key(**name))
+        .map(|name| (*name).to_string())
+        .collect();
+    let mut stale: Vec<ListProblem> = exempt
+        .iter()
+        .filter_map(|(name, e)| {
+            let why = if !numeric.contains(name.as_str()) {
+                "not an in-scope catalog function returning a number: remove the line"
+            } else if tables.contains(name) {
+                "the function has a table: remove the line"
+            } else {
+                return None;
+            };
+            Some(ListProblem {
+                file: lists::EXEMPT,
+                line: e.line,
+                id: name.clone(),
+                why: why.into(),
+            })
+        })
+        .collect();
+    stale.sort_by_key(|p| p.line);
+    (missing, stale)
 }
 
 /// The table (function) and batch of a case id `accuracy/<FUNCTION>/<batch>.case.json`.
@@ -374,16 +455,29 @@ fn show_math(m: Option<&MathValue>) -> String {
 }
 
 impl Check {
-    /// Whether the gate passes: no failing point, stale known-failure line, bad R3 mark or table
-    /// defect.
+    /// Whether the gate passes: no failing point, stale known-failure line, bad R3 mark, stale
+    /// exemption or table defect. Missing tables do not fail it ([`Check::holds`] counts them).
     #[must_use]
     pub fn passes(&self) -> bool {
         self.stale_known_failures.is_empty()
             && self.bad_marks.is_empty()
+            && self.bad_exemptions.is_empty()
             && self
                 .points
                 .iter()
                 .all(|p| matches!(p.standing, Standing::Inside | Standing::KnownFailure))
+    }
+
+    /// Whether Gate A holds (R1(a)): the check passes with no known failure, no pending point and
+    /// no missing table (SPEC-0029, "Gate A holds").
+    #[must_use]
+    pub fn holds(&self) -> bool {
+        self.passes()
+            && self.missing_tables.is_empty()
+            && self
+                .points
+                .iter()
+                .all(|p| p.standing == Standing::Inside && p.excel.is_some())
     }
 
     fn count(&self, f: impl Fn(&Point) -> bool) -> usize {
@@ -409,7 +503,7 @@ impl Check {
         let owners: Vec<String> = owners.iter().map(|(o, n)| format!("{o} {n}")).collect();
         let known = self.count(|p| p.standing == Standing::KnownFailure);
         let mut out = format!(
-            "accuracy: {} points in {} tables (pending {}): {} in envelope (Excel 15 digits only {}, math only {}), {} known failures{}, {} failing, {} table defects; missing tables n/a (T-3379); {:.2} s\n",
+            "accuracy: {} points in {} tables (pending {}): {} in envelope (Excel 15 digits only {}, math only {}), {} known failures{}, {} failing, {} table defects; missing tables {}; {:.2} s\n",
             self.points.len(),
             tables.len(),
             self.count(|p| p.excel.is_none()),
@@ -424,6 +518,7 @@ impl Check {
             },
             self.count(|p| p.standing == Standing::Failing),
             self.count(|p| p.standing == Standing::TableDefect),
+            self.missing_tables.len(),
             self.seconds,
         );
         let mut listed: Vec<&Point> = self
@@ -474,6 +569,9 @@ impl Check {
                 m.file, m.line, m.id, m.why
             );
         }
+        for e in &self.bad_exemptions {
+            let _ = writeln!(out, "STALE {} line {}: {}: {}", e.file, e.line, e.id, e.why);
+        }
         for p in self
             .points
             .iter()
@@ -499,6 +597,7 @@ impl Check {
         #[derive(Serialize)]
         struct Out<'a> {
             passes: bool,
+            holds: bool,
             check: &'a Check,
         }
         let fail = |e: &dyn std::fmt::Display| AccuracyError::Write {
@@ -512,6 +611,7 @@ impl Check {
         let mut writer = std::io::BufWriter::new(file);
         let out = Out {
             passes: self.passes(),
+            holds: self.holds(),
             check: self,
         };
         serde_json::to_writer(&mut writer, &out).map_err(|e| fail(&e))?;

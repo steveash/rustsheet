@@ -1,4 +1,4 @@
-use super::elapsed::{elapsed_text, DisplayClock, ElapsedUnit};
+use super::elapsed::{elapsed_text, general_in_date_section, DisplayClock, ElapsedUnit};
 use super::fraction::{comma_exponent, format_fraction};
 use super::general::{format_general, lead_abs};
 use crate::{
@@ -451,6 +451,8 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             {
                 return invalid_date(value_original);
             }
+            // What `General` prints here (T-3378; number-formats.md "`General` in a date section").
+            let general_value = general_in_date_section(value, tokens, fraction_digits);
             let clock = DisplayClock::new(value, fraction_digits);
             let (hours, minutes, seconds) = clock.hms;
             let elapsed_fraction = clock.elapsed.as_ref();
@@ -496,7 +498,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                     }
                     TextToken::Digit(_) => {}
                     TextToken::Period => {}
-                    TextToken::General => {}
+                    TextToken::General => text.push_str(&general_text(general_value, locale)),
                     TextToken::Day => {
                         if !date_valid {
                             return invalid_date(value);
