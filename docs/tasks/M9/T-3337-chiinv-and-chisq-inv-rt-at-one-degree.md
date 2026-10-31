@@ -35,8 +35,13 @@ visibly-off pair below is within 15 digits of Excel (or the time-box outcome lis
   cdf, as T-3146 suspects at p = 0.999 for other shapes), or bisect to a bracket width in x. Excel's lower cdf near 1 is
   1 - Q with Q from the complement (ERFC at df 1), so the band edges follow ERFC's last digits: check
   `CHISQ.DIST(x,1,TRUE)` bit-exactness at the landing points first (T-3336's CHISQ.DIST cells).
+- Gap triage 2026-10-31 (100-digit mpmath): Excel's A1 value is, to the bit, the exact quantile of the lower cdf
+  value one double below q = fl(1 - 1E-9) (tail 2·(1 - fl((1 + q)/2)) = 1.0000000827E-9 against q's 9.999999717E-10);
+  ours is the exact quantile of q. So the lead "stops where the cdf first rounds to 1 - p" fits A1 with the stop one
+  cdf ulp outside q's band, on the smaller-x side. `NORM.S.INV((1+q)/2)^2` also matches A1 but is 114 to 134,935 ulp
+  off Excel at p = 0.001, 0.995, 0.999 and 0.99999, so a df-1 normal closed form is ruled out.
 - The 1-to-4-ulp df-1 cells (m9-chisq-inv-rt A1-A7, m9-legacy-chiinv A11-A62, t1049-chisqinvrt, t3148-gamma-quantile-flat-band
-  A64-A112) are owned by T-3232 and T-3146; if the landing rule moves them, record which (they may pass with it).
+  A64-A112) are owned by T-3340 (m9-legacy-chiinv) and T-3146 (T-3232 is not a task id); if the landing rule moves them, record which (they may pass with it).
 
 Cells:
 - probes-numeric/m9-legacy-chiinv.case.json (2): Calc!A1, A2

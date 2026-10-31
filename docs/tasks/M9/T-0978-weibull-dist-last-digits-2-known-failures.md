@@ -33,6 +33,9 @@ Moved from T-0973 (2026-10-23): gen-m9/c468f5046aadfbbc Calc!A294
 226.0604663149069. The density is 6.6555952475332895e-99 here, so GAMMALN returns -LN(density) exactly, and the 3-ulp miss is
 the density's (statrs `pdf`, see T-2239's exp(k*ln(x/l)) lead).
 
+Gap triage 2026-10-31 (`make eval`, excel-graph): no open task named these cells (their probe's task is done); same function and kernel as this task, 1 ulp each. Calc!A14 `WEIBULL(4,2,4,FALSE)` and B14 (WEIBULL.DIST): Excel 0.18393972058572117, ours 0.1839397205857212.
+- probes-numeric/t1048-weibull.case.json (2): Calc!A14, B14
+
 ## Acceptance criteria
 - [ ] Both lines leave `eval/baseline/ironcalc-calc.txt`, the T-1046 Weibull probe cells pass (or the
       PR lists the residue), no new lines in any baseline.

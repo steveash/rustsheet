@@ -83,6 +83,12 @@ Cells:
 - gen-m9/afc00c8b70e78baf.case.json (1): Calc!A177
 - gen-m9/bbab6562e88b70e8.case.json (1): Calc!A239
 
+Gap triage 2026-10-31 (`make eval`, excel-graph): the T-1048 legacy probe's NORMDIST and NORM.DIST densities had no
+open owner; same kernel, all 1 ulp, none visibly off. Bit-level targets for this task's density helper: they need not
+pass for the visible-parity stage. Example: Calc!A14 `NORMDIST(0,0,1,FALSE)` Excel 0.3989422804014327, ours
+0.39894228040143265 (the `NORM.S.DIST(0,FALSE)` value above).
+- probes-numeric/t1048-normdist.case.json (16): Calc!A2, A4, A6, A8, A12, A14, A21, A23, B2, B4, B6, B8, B12, B14, B21, B23
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 17 known-failure lines (1 from T-2255, 16 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
