@@ -1684,18 +1684,21 @@ C	probes/t3213-typed-parse-errors.case.json	25
 C	probes/t3248-snap-running-total-below-last.case.json	384
 C	probes/t3266-minus-abs-1022-stored.case.json	2
 C	probes/t3266-minus-abs-1022-typed.case.json	2
+C	probes/t3266-minus-abs-1023-typed.case.json	1
 C	probes/t3266-minus-paren-1000-stored.case.json	2
 C	probes/t3266-minus-paren-1000-typed.case.json	2
 C	probes/t3266-minus-paren-1021-stored.case.json	2
 C	probes/t3266-minus-paren-1021-typed.case.json	2
 C	probes/t3266-minus-paren-1022-stored.case.json	2
 C	probes/t3266-minus-paren-1022-typed.case.json	2
+C	probes/t3266-minus-paren-1023-typed.case.json	1
 C	probes/t3266-minus-paren-512-stored.case.json	2
 C	probes/t3266-minus-paren-512-typed.case.json	2
 C	probes/t3266-minus-paren2-1021-stored.case.json	2
 C	probes/t3266-minus-paren2-1021-typed.case.json	2
 C	probes/t3266-minus-paren2-1022-stored.case.json	2
 C	probes/t3266-minus-paren2-1022-typed.case.json	2
+C	probes/t3266-minus-paren2-1023-typed.case.json	1
 C	probes/t3266-minus-ref-1023-stored.case.json	2
 C	probes/t3266-minus-ref-1023-typed.case.json	2
 C	probes/t3266-minus-spaced-1023-stored.case.json	2
@@ -1732,6 +1735,7 @@ C	probes/t3266-plus-num-1024-stored.case.json	2
 C	probes/t3266-plus-num-1024-typed.case.json	2
 C	probes/t3266-plus-paren-1022-stored.case.json	2
 C	probes/t3266-plus-paren-1022-typed.case.json	2
+C	probes/t3266-plus-paren-1023-typed.case.json	1
 C	probes/t3275-collation-width-kana-pairs.case.json	1406
 C	probes/t3275-collation-width-kana.case.json	856
 C	probes/t3276-collation-other-scripts.case.json	643
@@ -4102,6 +4106,9 @@ F	probes/t3181-collation-prefix-arrays.case.json	Calc!B2
 F	probes/t3213-typed-parse-errors.case.json	S!A5
 F	probes/t3213-typed-parse-errors.case.json	S!B5
 F	probes/t3213-typed-parse-errors.case.json	S!C5
+F	probes/t3266-minus-abs-1023-typed.case.json	S!B1
+F	probes/t3266-minus-paren-1023-typed.case.json	S!B1
+F	probes/t3266-minus-paren2-1023-typed.case.json	S!B1
 F	probes/t3266-nested-200-823-stored.case.json	!EngineError
 F	probes/t3266-nested-200-823-typed.case.json	!EngineError
 F	probes/t3266-nested-200-824-stored.case.json	!EngineError
@@ -4114,6 +4121,7 @@ F	probes/t3266-nested-paren-255-stored.case.json	!EngineError
 F	probes/t3266-nested-paren-255-typed.case.json	!EngineError
 F	probes/t3266-nested-paren-256-stored.case.json	!EngineError
 F	probes/t3266-nested-paren-256-typed.case.json	!EngineError
+F	probes/t3266-plus-paren-1023-typed.case.json	S!B1
 F	probes/t3275-collation-width-kana-pairs.case.json	Calc!AA13
 F	probes/t3275-collation-width-kana-pairs.case.json	Calc!AA15
 F	probes/t3275-collation-width-kana-pairs.case.json	Calc!AA16

@@ -24,7 +24,8 @@ docs/excel-semantics/syntax.md "Formula nesting depth cap", in the T-3266 paragr
   matches Excel before literals, references, booleans and strings.
   - Before `(` or a call, ours admits 1,023 signs where Excel admits 1,022. Excel refuses
     `"-"*1023 & "(1)"`, `"-"*1023 & "((1))"`, `"+"*1023 & "(1)"` and `"-"*1023 & "ABS(1)"`, stored and
-    typed. Those inputs keep no sidecar, so pin them in parser unit tests (test_nesting_depth.rs).
+    typed. The stored ones keep no sidecar, so pin them in parser unit tests (test_nesting_depth.rs);
+    the typed ones are probes whose sidecar records the refusal (A1 blank, `ISFORMULA` FALSE).
   - Ours bounds `-(` nesting by `MAX_FORMULA_DEPTH`: each group holding `-(...)` costs an operand's
     two levels, so 128 levels are too deep. Excel accepts `-(` up to 256 levels (the parenthesis cap)
     and refuses 257.
@@ -39,6 +40,9 @@ docs/excel-semantics/syntax.md "Formula nesting depth cap", in the T-3266 paragr
     probes/t3266-nested-paren-256-stored.case.json, probes/t3266-nested-paren-256-typed.case.json,
     probes/t3266-nested-200-823-stored.case.json, probes/t3266-nested-200-823-typed.case.json,
     probes/t3266-nested-200-824-stored.case.json, probes/t3266-nested-200-824-typed.case.json: S!A1, S!B1
+  - Excel refuses, ours accepts: probes/t3266-minus-paren-1023-typed.case.json,
+    probes/t3266-minus-paren2-1023-typed.case.json, probes/t3266-plus-paren-1023-typed.case.json,
+    probes/t3266-minus-abs-1023-typed.case.json: S!B1
 
 ## Acceptance criteria
 - [ ] Every probes/t3266-* case passes; `make eval-baseline` records them with 0 regressions.

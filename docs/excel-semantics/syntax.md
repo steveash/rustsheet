@@ -181,9 +181,14 @@ outer signs stay open and the parentheses add nothing: 200 levels of `-(` around
 (1,024 signs) load and 825 are refused (nested-200-824, -825), and likewise 50 levels around 974 and
 975 (nested-50-974, -975); `-(` nests up to the 256-parenthesis cap (nested-paren-256, -257). A
 refused stored formula makes Excel for the web refuse the workbook (createSession 501
-`FileCorruptTryRepair`) and a refused typed one is a 400 `InvalidArgument`; those inputs keep no
-sidecar and were dropped after the run, as T-3172's were. Ours differs in two places (T-3338): a
-sign run before a parenthesis or a call admits 1,023 signs, one more than Excel, and `-(` nesting is
+`FileCorruptTryRepair`), so it keeps no sidecar and was dropped after the run, as T-3172's were. A
+refused typed one is a PATCH 400 `InvalidArgument` that leaves A1 blank, so its sidecar has no A1 and
+`ISFORMULA(A1)` FALSE. Four such typed cases are kept, the ones where ours disagrees:
+minus-paren-, minus-paren2-, plus-paren- and minus-abs-1023-typed. The typed refusals ours shares
+(the 1,024 and 1,025 sign runs, nested-200-825, nested-50-975, nested-paren-257) were dropped, because
+the harness scores a typed input the engine refuses as an engine error, not as a blank cell. Ours differs in two places (T-3338): a
+sign run before a parenthesis or a call admits 1,023 signs, one more than Excel (the four typed
+cases above fail on S!B1), and `-(` nesting is
 bounded by `MAX_FORMULA_DEPTH`, so 100 levels of `-(` parse but 128 are too deep (nested-paren-128,
 -200, -255, -256 and nested-200-823, -824 fail as `EngineError`). In ours a plus directly before a
 number literal folds into it and adds no node. Typed whitespace adds no
