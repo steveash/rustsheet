@@ -108,6 +108,26 @@ this task), no regressions in any suite. All 30 gated lines listed above are gon
 cell by cell with `rustsheet-eval show`), including the three moved from T-2724 (gen-m9/5389dd4d5b5739d2 A299, probes-numeric/
 m9-t-inv-2t A12, A13).
 
+R4 guards (decision 0188; the form is a structural model chosen from ranked candidates, reviewer-excel-fidelity check 7(c)).
+Cells: every top-level T.INV, T.INV.2T, TINV and CONFIDENCE.T cell with a numeric Excel value in gen-m9, probes and
+probes-numeric whose arguments (evaluated by the engine) give df truncating to 1 (size truncating to 2): 122 cells, plus the 18
+df 1 points of the fresh sweep; 352 nested calls and the 12 ironcalc xlsx cells are not in the split. Hold-out: the cells with
+sha256("suite/case!sheet!cell")[0] mod 10 < 3, fixed before scoring, margin 10 points on the bit-exact rate. Counts are bit-exact /
+within 4 ulp / within 15 digits; "correctly rounded" is the exact quantile at the double p (mpmath, 60 digits) rounded to a double:
+| set | 1/TAN form | correctly rounded |
+|---|---|---|
+| train (84) | 84 / 84 / 84 | 30 / 69 / 70 |
+| hold-out (38) | 38 / 38 / 38 | 14 / 33 / 33 |
+| fresh sweep, df 1 (18) | 18 / 18 / 18 | 8 / 15 / 14 |
+The hold-out exact rate equals the train rate (100%), and the form beats the correctly rounded quantile on hold-out (38 against 14
+bit-exact). Fresh sweep: probes-numeric/t3349-t-inv-2t-sweep (300 points, seed 3349, filled by T-3349 after this form was frozen
+on 2026-10-27), its 18 df 1 points (A24, A37, A44, A71, ...). Gate A envelope: 18 of 18 inside (all within 15 digits of Excel and
+within 1E-9 relative of the math), none outside, no error against a number. Scored with a scratch script, not committed.
+
+Review follow-ups: T-3396 probes `T.INV(0.5,1)`, two-tailed p in (0.999999999999999, 1) at df 1, and the error kind for a
+CONFIDENCE.T margin past the double range (now `#NUM!`, never an infinity: `confidence_t_of` checks the final product on both
+branches; test `test_fn_confidence_t_df_one`).
+
 Note from T-2724 (2026-10-31): two-tailed p near 1 at df 1 now reaches T-2724's centre kernel (the true quantile,
 `t_centre_quantile` in t_dist.rs) before any df-1 rule; this task's 1/TAN form has to take df 1 ahead of it. The
 T-2724 unit test `centre_quantiles_keep_their_digits` leaves df 1 out for this task to pin. Done: `t_inv_of` takes df 1 first, and

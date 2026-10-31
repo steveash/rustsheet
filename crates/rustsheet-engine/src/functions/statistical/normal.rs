@@ -314,18 +314,23 @@ impl Model {
         if df > T_DF_MAX {
             return Err(num_error(cell));
         }
-        if df == 1.0 {
+        let t_crit = if df == 1.0 {
             // Excel's 1/TAN closed form at one degree of freedom (T-2858).
-            return Ok(cauchy_two_tail_quantile(alpha) * std_dev / size.sqrt());
-        }
-        let t_dist = StudentsT::new(0.0, 1.0, df)
-            .map_err(|_| CalcResult::new_error(Error::ERROR, cell, String::new()))?;
-        // Two-sided CI => use 1 - alpha/2
-        let t_crit = t_upper_quantile(&t_dist, df, alpha / 2.0);
-        if !t_crit.is_finite() {
+            cauchy_two_tail_quantile(alpha)
+        } else {
+            let t_dist = StudentsT::new(0.0, 1.0, df)
+                .map_err(|_| CalcResult::new_error(Error::ERROR, cell, String::new()))?;
+            // Two-sided CI => use 1 - alpha/2
+            t_upper_quantile(&t_dist, df, alpha / 2.0)
+        };
+        // A cell never holds an infinity: a quantile or product past the double range
+        // (`CONFIDENCE.T(1E-10,1E307,2)`) is `#NUM!`, Excel's overflow error. The error kind for
+        // the overflowing product is UNVERIFIED (TODO(T-3396)).
+        let margin = t_crit * std_dev / size.sqrt();
+        if !margin.is_finite() {
             return Err(num_error(cell));
         }
-        Ok(t_crit * std_dev / size.sqrt())
+        Ok(margin)
     }
 
     /// `NORMSDIST(z)`: NORM.S.DIST with `cumulative` TRUE.

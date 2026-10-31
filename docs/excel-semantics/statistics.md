@@ -3464,6 +3464,9 @@ Ours before T-2858: `statrs`' inverse or the tail asymptotic (`t_quantile`, `t_t
 digit off (`TINV(0.5,1)` 1.0000000000000016), and to 100% off near p = 1 (`TINV(1-1E-10,1)` 1.05E-8).
 Implemented in: T-2858 (`cauchy_two_tail_quantile` in t_dist.rs, used by `t_inv_of` and `confidence_t_of`). Two-tailed p = 1 is
 exactly 0 (`TINV(1,1)`, `TINV(1-1E-17,1)`: gen-m9 0620505280d2ea6e A90, 7f7ca726c3f68554 A166), not `1/TAN(π/2)` = 6.1E-17.
+Unprobed (T-3396): `T.INV(0.5,1)` (ours 0, kept from before T-2858), two-tailed p strictly between
+0.999999999999999 and 1 (ours the 1/TAN form, 0 only at p = 1 exactly), and the error for a CONFIDENCE.T margin past
+the double range (ours `#NUM!`).
 Status: VERIFIED (excel-graph and Excel-cached; the formula is a fit that every evidence cell matches)
 Tasks: T-2858
 

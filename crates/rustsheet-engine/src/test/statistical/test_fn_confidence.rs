@@ -19,9 +19,20 @@ fn test_fn_confidence_norm_smoke() {
 
     assert_eq!(model._get_text("A1"), *"0.692951912");
 
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(
+        model._get_text("A2"),
+        *"#NUM!",
+        "{:?}",
+        ["A2", "A3", "A4", "A5", "A6"].map(|c| model._get_text(c))
+    );
     assert_eq!(model._get_text("A3"), *"#NUM!");
-    assert_eq!(model._get_text("A4"), *"#NUM!");
+    assert_eq!(
+        model._get_text("A4"),
+        *"#NUM!",
+        "{} {}",
+        model._get_text("A5"),
+        model._get_text("A6")
+    );
     assert_eq!(model._get_text("A5"), *"4.899909961");
     assert_eq!(model._get_text("A6"), *"#NUM!");
 }
@@ -43,9 +54,20 @@ fn test_fn_confidence_t_smoke() {
 
     assert_eq!(model._get_text("A1"), *"9921.084758");
 
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(
+        model._get_text("A2"),
+        *"#NUM!",
+        "{:?}",
+        ["A2", "A3", "A4", "A5", "A6"].map(|c| model._get_text(c))
+    );
     assert_eq!(model._get_text("A3"), *"#NUM!");
-    assert_eq!(model._get_text("A4"), *"#NUM!");
+    assert_eq!(
+        model._get_text("A4"),
+        *"#NUM!",
+        "{} {}",
+        model._get_text("A5"),
+        model._get_text("A6")
+    );
     assert_eq!(model._get_text("A5"), *"#DIV/0!");
     assert_eq!(model._get_text("A6"), *"#DIV/0!");
 }
@@ -79,4 +101,23 @@ fn test_fn_confidence_arguments() {
     assert_eq!(model._get_text("B3"), *"#ERROR!");
     assert_eq!(model._get_text("B4"), *"0.693887599");
     assert_eq!(model._get_text("B5"), *"#ERROR!");
+}
+
+// T-2858: the df 1 branch through the formula path (ironcalc CONFIDENCE.xlsx E22), and a margin past
+// the double range is an error, never an infinity (TODO(T-3396): the error kind is unverified).
+#[test]
+fn test_fn_confidence_t_df_one() {
+    let mut model = new_empty_model();
+    model._set("A1", "=CONFIDENCE.T(0.05,1,2)");
+    model._set("A2", "=CONFIDENCE.T(1E-10,1E307,2)");
+    model._set("A3", "=CONFIDENCE.T(1E-300,1E300,2.9)");
+    model._set("A4", "=CONFIDENCE.T(1E-15,1E307,3)");
+    model.evaluate();
+    assert_eq!(
+        model.get_cell_value_by_ref("Sheet1!A1"),
+        Ok(crate::cell::CellValue::Number(8.984643532093761))
+    );
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
 }
