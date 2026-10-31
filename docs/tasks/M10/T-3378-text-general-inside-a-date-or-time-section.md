@@ -76,7 +76,7 @@ every user of the format.
 - The triage hypothesis `(fl(x + 0.5/86400) - x) * 86400` held only at whole serials. The committed probes show the
   real rule: General prints the seconds within the minute of `x + 0.5/86400`, in units of the shown second fraction.
   Beside elapsed tokens only, it prints the value's magnitude. All 44 date and clock cells match to the digit, in
-  doubles, with General's 11-character printer (`general_clock_residue` in formatter/elapsed.rs). This is a structural
+  doubles, with General's 11-character printer (`general_in_date_section` in formatter/elapsed.rs). This is a structural
   rule read off the probes, not a fitted constant.
 - The parser accepts one `General` in a date section. A `General` beside a lone elapsed token keeps a negative
   formattable in 1900 mode (`TEXT(-5,"[h] General")` = "-120 5").

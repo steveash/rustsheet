@@ -33,8 +33,15 @@ formats like Excel. `TEXT(5,"d [h] General")` is "5 12 0.5" in Excel, and the en
   - `"d [h] General"` at 45000 and at 12345.678.
   - `"General d [h]"`.
   These separate "after a split" from "with General in the section".
+- Also probe the unprobed extrapolations T-3378 left in place. These are the excel-fidelity review minors on PR #2565:
+  - `TEXT(3000000,"[h] General")` and `TEXT(-5,"[s] General")`, `TEXT(-5,"[m] General")`. A General beside a lone
+    elapsed token keeps a past-max or negative serial formattable; only A49 `TEXT(-5,"[h] General")` is probed.
+  - `"[s].0 General"`: an elapsed token with fraction digits counts as elapsed-only, so General prints the value.
+  - `TEXT(5,"d 0 General")`: the engine and a unit test say `#VALUE!` (a digit beside a date token), with no oracle
+    cell yet.
+  - `TEXT(45000,"mmm d, yyyy General")`: a literal comma in a date section.
 - Code: the `ParsePart::Date` arm of `format_number` (crates/rustsheet-engine/src/formatter/format.rs) and
-  `general_clock_residue` in elapsed.rs.
+  `general_in_date_section` in elapsed.rs.
 
 ## Acceptance criteria
 - [ ] Probe cells for the questions above are committed with excel-graph sidecars. The finding goes into

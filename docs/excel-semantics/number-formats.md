@@ -59,7 +59,9 @@ below, T-1450), non-ASCII letters (only `ü` is probed; the engine treats every 
       `TEXT(5,"s.00 General")` = "0.00 0.500000003", `TEXT(45000,"s.000 General")` = "0.000 0.499770977".
   - With only elapsed tokens (`[h]`, `[m]`, `[s]`), General prints the value's magnitude. `TEXT(5.25,"[h] General")` =
     "126 5.25", `TEXT(0.001,"[s] General")` = "86 0.001", `TEXT(-5,"[h] General")` = "-120 5". A negative stays
-    formattable in the 1900 system, as with a lone elapsed token.
+    formattable in the 1900 system, as with a lone elapsed token. Unprobed extrapolations, implemented this way and
+    probed by T-3419: `[m]` and `[s]` beside General on a negative, a serial past 9999-12-31 (`"[h] General"` on
+    3000000), and `"[s].0 General"`, which counts as elapsed-only.
   - Otherwise as other date sections: `TEXT(-5,"d General")` and `TEXT(3000000,"d General")` are `#VALUE!`, text
     and booleans print as themselves (`TEXT("abc","d General")` = "abc"). In a 1904 workbook the day reads the 1904
     epoch and the residue is the same (`TEXT(0,"d General")` = "1 0.5").
