@@ -433,7 +433,7 @@ Visibly-off cells on the 2026-10-20 eval run (`main` 35a5e71), blamed on this fu
 - T.DIST: 161 cells (13-14 digits right 87, 10-12 45, 6-9 29, fewer or 0 vs nonzero 0); most in `probes-numeric/m9-t-dist-pdf.case.json` 96; `probes-numeric/m9-t-dist-cdf.case.json` 42. e.g. `T.DIST(1,2,TRUE)` Excel 0.7886751345948129, ours 0.7886751345948135
 - T.DIST.RT: 114 cells (13-14 digits right 47, 10-12 28, 6-9 16, fewer or 0 vs nonzero 23); most in `probes-numeric/m9-t-dist-rt.case.json` 93; `ironcalc-calc/STATISTICAL/T_DIST.xlsx` 10. e.g. `T.DIST.RT(1,2)` Excel 0.21132486540518708, ours 0.21132486540518647
 - T.DIST.2T: 108 cells (13-14 digits right 43, 10-12 27, 6-9 15, fewer or 0 vs nonzero 23); most in `probes-numeric/m9-t-dist-2t.case.json` 88; `ironcalc-calc/STATISTICAL/T_DIST.xlsx` 10. e.g. `T.DIST.2T(1,2)` Excel 0.42264973081037416, ours 0.42264973081037294
-- TDIST: 12 cells (13-14 digits right 9, 10-12 2, 6-9 0, fewer or 0 vs nonzero 1); most in `probes-numeric/t1048-tdist.case.json` 11; `probes/stat-argument-modes.case.json` 1. e.g. `TDIST(2,10,1)` Excel 0.0366940173853702, ours 0.03669401738537015
+- TDIST: 12 cells (13-14 digits right 9, 10-12 2, 6-9 0, fewer or 0 vs nonzero 1); most in `probes-numeric/t1048-tdist.case.json` 11; `probes/stat-argument-modes.case.json` 1 (Sheet1!H530 `TDIST(1.5,5,1)`, passing since). e.g. `TDIST(2,10,1)` Excel 0.0366940173853702, ours 0.03669401738537015
 - T.TEST: 46 cells (13-14 digits right 37, 10-12 9, 6-9 0, fewer or 0 vs nonzero 0); most in `probes-numeric/t1048-ttest.case.json` 28; `probes-numeric/t1049-ttest.case.json` 9. e.g. `T.TEST(C1:C6,B1:B8,1,2)` Excel 0.07941923058217022, ours 0.07941923058217071
 - TTEST: 29 cells (13-14 digits right 20, 10-12 9, 6-9 0, fewer or 0 vs nonzero 0); most in `probes-numeric/t1048-ttest.case.json` 28; `probes/stat-argument-modes.case.json` 1. e.g. `TTEST(C1:C6,B1:B8,1,2)` Excel 0.07941923058217022, ours 0.07941923058217071
 
@@ -443,3 +443,8 @@ Gap triage 2026-10-30: at df 1, and at df 2 below the closed-form cut (y < 0.1),
 tail and ours is 5 to 24 ulp off. That is an accuracy gap, not Excel's noise, so T-3187 takes it (campaign: accuracy).
 It covers gen-m9 46ac3ef5e61583ca A236, 11eb3ab4f4f8104c A174, 5395b8a427764a3f A125, a5342a7e24fd803e A230 and
 91e167cd8d7eb652 A292, and probes-numeric m9-t-dist-rt and m9-t-dist-2t.
+
+## Decision 0188 note (2026-10-31)
+Owner's 2026-10-31 rulings, R5 and R1(c): the remaining visibly-off cells here are dense probes-numeric sweep cells
+where the engine is within a few ulp of the exact value and Excel is not, so they are Phase 1b evidence, not Phase 1
+exit cells; the gen-m9 cells listed above still count (Gate B). Status unchanged. T-0967 no longer depends on this task.
