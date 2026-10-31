@@ -8,7 +8,7 @@
 /// (docs/excel-semantics/text.md "VALUE reads a mixed fraction", probes/value-sign-space-mixed-
 /// fraction-dash-date A7-A12, A24-A35, probes/eng-inumber-date-boundary B22).
 /// A currency symbol and a `%` together are `#VALUE!` (`"$3 1/2%"`, probes/typed-input-sign-space-
-/// mixed-fraction F8); the signed `"-$3 1/2%"` is the same by extrapolation (UNVERIFIED).
+/// mixed-fraction F8); the signed `"-$3 1/2%"` is text too (probes/typed-mixed-fraction-number-format A15).
 pub(crate) fn mixed_fraction(text: &str, currencies: &[&str]) -> Option<f64> {
     let (sign, rest) = match text.as_bytes().first()? {
         b'-' => (-1.0, text[1..].trim_start_matches(' ')),
