@@ -61,3 +61,11 @@ over formatted number operands, VALUE forms beyond T-3136's set, a percent opera
 - The engine fix (the follow-up task).
 - Bare `"<="`/`">="` against empty text, `$(1)`-style number text and USDOLLAR (T-3119).
 - Locales other than en-US.
+
+## Progress (2026-10-31, opus run; not a handoff)
+Done on this branch: the probe case and its excel-graph sidecar (76 operand rows; H23 scores the
+current-year `1-Jan 6:00 PM` as its offset from January 1 so the cell does not depend on the run date),
+criteria.md's UNVERIFIED sentence replaced by the verified rules, follow-up T-3404 filed for the 33
+failing cells (1e2$ rows 39-42 and H39; VALUE of CHAR(160)-padded text H47, H51, H55, H59), and
+`make eval-baseline` run. Left: `make eval` then `make exit-owners MILESTONE=M2` (expect 0),
+`make check`, the review skill, PR and merge.

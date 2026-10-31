@@ -2180,7 +2180,7 @@
    },
    "H23": {
     "t": "n",
-    "v": 46023.75
+    "v": 0.75
    },
    "H27": {
     "t": "n",
@@ -3256,10 +3256,10 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "a6cfcff03edd66ba005cec2123ae2178ef6380a012b13fabc34b39469232cd60",
+  "input_sha256": "12cd1c443e260be1a36422b5f097bf1f9a667a91df50ed18ba12421a0a5d0f7d",
   "kind": "excel-graph",
-  "produced_at": "2026-10-31T09:15:04+00:00",
+  "produced_at": "2026-10-31T09:18:19+00:00",
   "version": null,
-  "workbook_name": "e23939232b55aab7d47a325cf70e268bdcfb4aec97ea84e209eab262ca24c731.xlsx"
+  "workbook_name": "08ceb4365b16d32d089899606da7d17593e99051bfc97a3e52a2a561492c9a67.xlsx"
  }
 }
