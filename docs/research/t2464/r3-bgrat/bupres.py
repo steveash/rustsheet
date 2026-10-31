@@ -4,7 +4,6 @@ Excel's own increment, so w_xl is known to about ulp(G)/2 + ulp(D)/2), against t
 (w_ex - w_xl)."""
 from __future__ import annotations
 
-import json
 import pickle
 import statistics as st
 from collections import defaultdict
@@ -14,14 +13,10 @@ import mpmath
 
 import bscore as score
 
+from common import split_d
+
 HERE = Path(__file__).resolve().parent
-NAME = "t2512-r3-bgrat-split"
-out = json.load(open(HERE.parents[3] / "eval/suites/probes-numeric/cases" / f"{NAME}.oracle.json"))["sheets"]["Calc"]
-D = {}
-for k, a, b0, x, case, cell in json.load(open(HERE / f"{NAME}.meta.json")):
-    v = out.get(f"A{k}")
-    if v and v.get("t") == "n":
-        D[(a, b0, x)] = v["v"]
+D = split_d()
 exl = pickle.load(open(HERE / "exact_l140.pkl", "rb"))
 mpmath.mp.dps = 40
 g = defaultdict(list)

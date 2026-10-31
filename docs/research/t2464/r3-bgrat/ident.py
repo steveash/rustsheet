@@ -7,27 +7,15 @@ candidate for the Q Excel's bgrat uses:
 Also rho = D/F - 1 in units of 2^-53 against z, split at grat1's series/CF switch z = 1.1."""
 from __future__ import annotations
 
-import json
 import statistics as st
-import sys
 from collections import defaultdict
-from pathlib import Path
 
 import mpmath
 
-HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE.parent / "r2-tdist"))
-import xlk  # noqa: E402
+import bscore as score
+from common import split_kernel, table
 
-import branches  # noqa: E402
-import bscore as score  # noqa: E402
-import score_lib as sl  # noqa: E402
-
-NAME = "t2512-r3-bgrat-split"
-out = json.load(open(HERE.parents[3] / "eval/suites/probes-numeric/cases" / f"{NAME}.oracle.json"))["sheets"]["Calc"]
-meta = json.load(open(HERE / f"{NAME}.meta.json"))
-xlk.run([(a, b0, x, 1.0 - x) for _k, a, b0, x, _c, _e in meta], branches.FINAL)
-K = xlk.bx._KERNELS[branches.FINAL]
+K, rows = split_kernel()
 C = {(c["a"], c["b"], c["x"]): c for c in score.cells()}
 
 
@@ -40,12 +28,9 @@ def toms_r(a, b, lnx, z):
 mpmath.mp.dps = 40
 g = defaultdict(list)
 rho = defaultdict(list)
-for k, a, b0, x, case, _cell in meta:
-    v = out.get(f"A{k}")
-    if not v or v.get("t") != "n":
-        continue
+for a, b0, x, _case, dx in rows:
     c = C[(a, b0, x)]
-    dx, F, Q, z = v["v"], c["F"], c["Q"], c["z"]
+    F, Q, z = c["F"], c["Q"], c["z"]
     band = "z<1.1" if z < 1.1 else "z>=1.1"
     cand = {"exact": Q}
     for e in (15e-15, 1e-15):
@@ -55,10 +40,6 @@ for k, a, b0, x, case, _cell in meta:
         g[(band, m)].append((mv, dx))
         g[("ALL", m)].append((mv, dx))
     rho[band].append(float((mpmath.mpf(dx) / F - 1) * 2**53))
-print("| z band | Qm | n | exact/w4/w15 |")
-print("|---|---|---|---|")
-for k in sorted(g):
-    n, e, f, w = sl.tally(g[k])
-    print(f"| {k[0]} | {k[1]} | {n} | {e}/{f}/{w} |")
+table(g, ("z band", "Qm"))
 for b, v in sorted(rho.items()):
     print(f"rho {b}: n {len(v)} median {st.median(v):.1f} sd {st.pstdev(v):.1f}")

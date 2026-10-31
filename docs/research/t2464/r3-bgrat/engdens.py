@@ -5,24 +5,18 @@ Excel's (probe -bupdens column B); inc = exact F (an accurate bgrat) or Excel's 
 at the L140 cell (today's kernel) for reference."""
 from __future__ import annotations
 
-import json
 from collections import defaultdict
-from pathlib import Path
 
 import mpmath
 import numpy as np
 import rustsheet as ic
 
 import bscore as score
-import score_lib as sl
+from common import bupdens_p, split_d, table
 
-HERE = Path(__file__).resolve().parent
-CASES = HERE.parents[3] / "eval/suites/probes-numeric/cases"
 LD = np.longdouble
-s2 = json.load(open(CASES / "t2512-r3-bgrat-split.oracle.json"))["sheets"]["Calc"]
-s3 = json.load(open(CASES / "t2512-r3-bgrat-bupdens.oracle.json"))["sheets"]["Calc"]
-D = {(a, b0, x): s2.get(f"A{k}", {}).get("v") for k, a, b0, x, _c, _e in json.load(open(HERE / "t2512-r3-bgrat-split.meta.json"))}
-PX = {(a, b0, x): s3.get(f"B{k}", {}).get("v") for k, a, b0, x in json.load(open(HERE / "t2512-r3-bgrat-bupdens.meta.json"))}
+D = split_d()
+PX = {k: v[1] for k, v in bupdens_p().items()}
 cs = [c for c in score.cells() if c["br"] == "L140 bup+bgrat" and (c["a"], c["b"], c["x"]) in PX]
 
 
@@ -56,8 +50,4 @@ for i, c in enumerate(cs):
         g[f"{pn} + exact F"].append((float(mpmath.mpf(W) + c["F"]), ex))
         if D.get(k) is not None:
             g[f"{pn} + Excel D"].append((float(mpmath.mpf(W) + D[k]), ex))
-print("| model | n | exact/w4/w15 |")
-print("|---|---|---|")
-for k in sorted(g):
-    n, e, f, w = sl.tally(g[k])
-    print(f"| {k} | {n} | {e}/{f}/{w} |")
+table({(k,): v for k, v in g.items()}, ("model",))

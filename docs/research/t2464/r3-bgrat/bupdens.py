@@ -7,39 +7,19 @@ rounding) and RN(W_exact_from_P + D) with W and the sum exact; two ablations of 
 the model density r2-bratio uses for Pb). Scored against Excel's L140 cell, by hold-out half."""
 from __future__ import annotations
 
-import json
-import sys
 from collections import defaultdict
-from pathlib import Path
 
 import mpmath
 import numpy as np
 
 import bscore as score
-import score_lib as sl
+from common import bupdens_p, split_d, table, xlk
 
-HERE = Path(__file__).resolve().parent
-CASES = HERE.parents[3] / "eval/suites/probes-numeric/cases"
 LD = np.longdouble
-
-
-def sheet(name):
-    return json.load(open(CASES / f"{name}.oracle.json"))["sheets"]["Calc"]
-
-
-def num(c):
-    return c["v"] if c and c.get("t") == "n" else None
-
-
-s2, s3 = sheet("t2512-r3-bgrat-split"), sheet("t2512-r3-bgrat-bupdens")
-D = {(a, b0, x): num(s2.get(f"A{k}")) for k, a, b0, x, _c, _e in json.load(open(HERE / "t2512-r3-bgrat-split.meta.json"))}
-P = {(a, b0, x): (num(s3.get(f"A{k}")), num(s3.get(f"B{k}")))
-     for k, a, b0, x in json.load(open(HERE / "t2512-r3-bgrat-bupdens.meta.json"))}
+D, P = split_d(), bupdens_p()
 mpmath.mp.dps = 40
 g = defaultdict(list)
-sys.path.insert(0, str(HERE.parent / "r2-tdist"))
 import branches  # noqa: E402
-import xlk  # noqa: E402
 
 xlk.run([(b0, a, 1.0 - x, x) for (a, b0, x) in P], branches.FINAL)
 K = xlk.bx._KERNELS[branches.FINAL]
@@ -67,8 +47,4 @@ for c in score.cells():
     for m, v in cands.items():
         g[(m, half)].append((v, r["excel"]))
         g[(m, "ALL")].append((v, r["excel"]))
-print("| model | half | n | exact/w4/w15 |")
-print("|---|---|---|---|")
-for k in sorted(g):
-    n, e, f, w = sl.tally(g[k])
-    print(f"| {k[0]} | {k[1]} | {n} | {e}/{f}/{w} |")
+table(g, ("model", "half"))

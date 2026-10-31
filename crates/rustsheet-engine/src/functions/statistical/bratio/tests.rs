@@ -386,7 +386,7 @@ fn ported_tails_rise_with_x_where_excel_does() {
             continue;
         };
         // bfrac's fraction is a few ulp of noise in Excel and in the port, uncorrelated (its own
-        // arithmetic is not found, T-2512): (10, 100) at x = 0.08843223023126127 is ours 2 ulp
+        // arithmetic is not found, T-3383): (10, 100) at x = 0.08843223023126127 is ours 2 ulp
         // above the next double's, Excel's 2 below.
         if (p.a, p.b) != (q.a, q.b) || p.branch == Branch::Bfrac {
             continue;

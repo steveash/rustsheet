@@ -26,7 +26,7 @@ not scored here.
                                            orientation (y; b0, a), not the caller's (x; a, b0)
    D = Excel's BETA.DIST(x, a, b0, TRUE): bratio's direct bgrat branch, w = 0, the same increment alone
    ```
-   (`bupdens.py` → `bupdens.out`). The orientation matters: with P = BETA.DIST(x, a, b0, FALSE) it is 1,267/1,767/1,815.
+   (`bupdens.py` → `bupdens.out`; shared helpers in `common.py`). The orientation matters: with P = BETA.DIST(x, a, b0, FALSE) it is 1,267/1,767/1,815.
    The two densities differ on 1,355 of 2,908 points, by up to ±8 ulp. M2's LN / log1p switch on its own argument
    predicts that. With fl(fl(P·fl(xy))/b0) (two stored ops) it is 1,998/3,072/3,072, and with the sum also kept
    extended it is 2,126/3,072/3,072.
@@ -101,7 +101,7 @@ the increment is a small part of a tail near 1 and its error does not reach the 
 
 Per shape (`direct.py` → `direct.out`, `bupres.py` → `bupres.out`): D - F is a median -3, -4 and -1 ulp of D on
 (30.7, 0.7) absweep, xruns-1 and (40, 0.03) xruns-2. The bup sum Excel implies (Excel - D) is offset from r2-bratio's bup
-by a per-shape constant (-5.5, +3.25 and -2.1 ulp of w), and from the exact sum by -2.75, +0.88 and -0.03. That is the
+by a per-shape constant (-5.5, +3.25 and -2.1 ulp of w), and from the exact sum by -2.61, +0.82 and -0.15. That is the
 density prefactor finding 2 isolates.
 
 ## 5. What is left (handed on)

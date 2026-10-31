@@ -7,18 +7,12 @@ enc). Meta: t2512-r3-bgrat-qgamma.meta.json = [[row, b, z], ...].
 usage: make_probe.py [--write]"""
 from __future__ import annotations
 
-import importlib.util
-import json
 import pickle
 import sys
-from pathlib import Path
 
+from common import HERE, w2p, write_probe
 from exact import zdouble
 
-HERE = Path(__file__).resolve().parent
-spec = importlib.util.spec_from_file_location("w2probes", HERE.parent / "w2-forensics" / "make_probes.py")
-w2p = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(w2p)
 NAME = "t2512-r3-bgrat-qgamma"
 
 d = pickle.load(open(HERE / "calls.pkl", "rb"))
@@ -28,13 +22,4 @@ for i, (b, z) in enumerate(pairs, 1):
     cells[f"A{i}"] = f"=GAMMA.DIST({w2p.num(z)},{w2p.num(b)},1,TRUE)"
     cells[f"B{i}"] = f"=CHISQ.DIST.RT({w2p.num(2 * z)},{w2p.num(2 * b)})"
     meta.append((i, b, z))
-case = {"format": "rustsheet-case/v1",
-        "description": "T-2512 r3-bgrat: Excel's incomplete gamma P and Q at the (b, z) of every bgrat call with b != 1/2",
-        "tags": ["M9", "probe", "statistics", "T-2512", "incomplete-beta", "incomplete-gamma"],
-        "sheets": [{"name": "Calc", "cells": cells}], "expected": {}}
-assert len(cells) <= 16384
-p = w2p.CASES / f"{NAME}.case.json"
-print(len(pairs), "pairs", len(cells), "cells", p)
-if "--write" in sys.argv:
-    p.write_text(json.dumps(case, indent=1) + "\n")
-    json.dump(meta, open(HERE / f"{NAME}.meta.json", "w"))
+write_probe(NAME, "T-2512 r3-bgrat: Excel's incomplete gamma P and Q at the (b, z) of every bgrat call with b != 1/2", cells, meta, "--write" in sys.argv, extra_tags=("incomplete-gamma",))

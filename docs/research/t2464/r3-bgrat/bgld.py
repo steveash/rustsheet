@@ -7,25 +7,15 @@ continued fraction in longdouble (all z here are >= 1.1) at eps. Stop rule |dj| 
 1e-15 and 1e-17. r = z^b e^-z / Gamma(b) (exact Gamma; u * j0 = E * Q, so r cancels in the leading term)."""
 from __future__ import annotations
 
-import json
-import sys
 from collections import defaultdict
-from pathlib import Path
 
 import mpmath
 import numpy as np
 
-HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE.parent / "r2-tdist"))
-import xlk  # noqa: E402
-
-import bscore as score  # noqa: E402
-import score_lib as sl  # noqa: E402
+import bscore as score
+from common import split_cells, table, xlk
 
 LD = np.longdouble
-NAME = "t2512-r3-bgrat-split"
-out = json.load(open(HERE.parents[3] / "eval/suites/probes-numeric/cases" / f"{NAME}.oracle.json"))["sheets"]["Calc"]
-meta = json.load(open(HERE / f"{NAME}.meta.json"))
 C = {(c["a"], c["b"], c["x"]): c for c in score.cells()}
 
 
@@ -84,19 +74,12 @@ def bgrat_ld(a, b, lnx, qmode, eps):
 
 
 g = defaultdict(list)
-for k, a, b0, x, case, _cell in meta:
-    v = out.get(f"A{k}")
-    if not v or v.get("t") != "n":
-        continue
+for a, b0, x, _case, d in split_cells():
     c = C[(a, b0, x)]
     half = "hold" if c["row"]["hold"] else "tune"
     for qm in ("exact", "cf"):
         for e in (15e-15, 1e-15, 1e-17):
             m = bgrat_ld(a, b0, c["lnx"], qm, e)
-            g[(f"Q {qm}, eps {e:g}", half)].append((m, v["v"]))
-            g[(f"Q {qm}, eps {e:g}", "ALL")].append((m, v["v"]))
-print("| model | half | n | exact/w4/w15 |")
-print("|---|---|---|---|")
-for k in sorted(g):
-    n, e, f, w = sl.tally(g[k])
-    print(f"| {k[0]} | {k[1]} | {n} | {e}/{f}/{w} |")
+            g[(f"Q {qm}, eps {e:g}", half)].append((m, d))
+            g[(f"Q {qm}, eps {e:g}", "ALL")].append((m, d))
+table(g, ("model", "half"))

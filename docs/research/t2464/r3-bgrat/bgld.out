@@ -1,8 +1,20 @@
 | model | half | n | exact/w4/w15 |
 |---|---|---|---|
 | Q cf, eps 1.5e-14 | ALL | 2908 | 1/27/41 |
+| Q cf, eps 1.5e-14 | hold | 1536 | 0/16/22 |
+| Q cf, eps 1.5e-14 | tune | 1372 | 1/11/19 |
 | Q cf, eps 1e-15 | ALL | 2908 | 206/1672/2158 |
+| Q cf, eps 1e-15 | hold | 1536 | 101/871/1136 |
+| Q cf, eps 1e-15 | tune | 1372 | 105/801/1022 |
 | Q cf, eps 1e-17 | ALL | 2908 | 196/1548/2030 |
+| Q cf, eps 1e-17 | hold | 1536 | 112/826/1090 |
+| Q cf, eps 1e-17 | tune | 1372 | 84/722/940 |
 | Q exact, eps 1.5e-14 | ALL | 2908 | 202/1592/2075 |
+| Q exact, eps 1.5e-14 | hold | 1536 | 100/840/1106 |
+| Q exact, eps 1.5e-14 | tune | 1372 | 102/752/969 |
 | Q exact, eps 1e-15 | ALL | 2908 | 191/1587/2069 |
+| Q exact, eps 1e-15 | hold | 1536 | 100/842/1105 |
+| Q exact, eps 1e-15 | tune | 1372 | 91/745/964 |
 | Q exact, eps 1e-17 | ALL | 2908 | 191/1587/2069 |
+| Q exact, eps 1e-17 | hold | 1536 | 100/842/1105 |
+| Q exact, eps 1e-17 | tune | 1372 | 91/745/964 |

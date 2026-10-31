@@ -6,36 +6,22 @@ Models of D = BETA.DIST(x, a, b0) (direct bgrat branch, w = 0):
 And the error distribution of D against F in ulps of D, per (a, b0) shape group."""
 from __future__ import annotations
 
-import json
+import math
 import statistics as st
-import sys
 from collections import defaultdict
-from pathlib import Path
 
 import mpmath
 
-HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE.parent / "r2-tdist"))
-import xlk  # noqa: E402
+import bscore as score
+from common import sl, split_kernel, xlk
 
-import branches  # noqa: E402
-import bscore as score  # noqa: E402
-import score_lib as sl  # noqa: E402
-
-NAME = "t2512-r3-bgrat-split"
-out = json.load(open(HERE.parents[3] / "eval/suites/probes-numeric/cases" / f"{NAME}.oracle.json"))["sheets"]["Calc"]
-meta = json.load(open(HERE / f"{NAME}.meta.json"))
-pts = [(a, b0, x, 1.0 - x) for _k, a, b0, x, _c, _e in meta]
-res = xlk.run(pts, branches.FINAL)
+K, rows = split_kernel()
+res = [xlk.bx.kernel(a, b0, x, 1.0 - x, K.c) for a, b0, x, _c, _d in rows]
 F = {(c["a"], c["b"], c["x"]): c["F"] for c in score.cells()}
 grp = defaultdict(list)
-for (k, a, b0, x, case, cell), (w, w1, br) in zip(meta, res):
-    v = out.get(f"A{k}")
-    if not v or v.get("t") != "n":
-        continue
-    dx = v["v"]
+for (a, b0, x, case, dx), (w, _w1, _br) in zip(rows, res):
     f = F[(a, b0, x)]
-    u = float((mpmath.mpf(dx) - f) / mpmath.mpf(sl.math.ulp(dx)))
+    u = float((mpmath.mpf(dx) - f) / mpmath.mpf(math.ulp(dx)))
     grp[(case.replace("t2464-", ""), round(a, 1), round(b0, 3))].append((w, dx, float(f), u))
 print("| case | a~ | b0~ | n | M0 ex/w4/w15 | CR ex/w4/w15 | D - F (ulp of D) median, sd |")
 print("|---|---|---|---|---|---|---|")
