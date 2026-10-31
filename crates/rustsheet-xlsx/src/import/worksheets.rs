@@ -1,10 +1,11 @@
 #![allow(clippy::unwrap_used)]
 
 use rustsheet_engine::expressions::parser::{
-    new_parser_english, static_analysis::add_implicit_intersection, Parser, MAX_NESTED_CALLS,
+    new_parser_english, static_analysis::add_implicit_intersection, Node, Parser,
 };
 use std::{collections::HashMap, io::Read, num::ParseIntError};
 
+use super::call_cap;
 use super::package::{part_folder_and_rels, resolve_target, Package};
 use super::rich_errors::{cached_error_name, load_value_metadata_errors};
 use super::workbook::WorkbookXML;
@@ -247,27 +248,71 @@ fn parse_reference(s: &str) -> Result<CellReferenceRC, ParseReferenceError> {
     })
 }
 
+/// The R1C1 text of the formulas a sheet's load printed last, by parsed tree (T-3318).
+///
+/// A1 parsing stores a relative reference as its offset from the formula's cell, so the trees of
+/// a formula copied along a row or column are equal, and the R1C1 text is a function of the tree
+/// and of whether the cell holds an array formula alone (`add_implicit_intersection` and
+/// `to_rc_format` read nothing else), up to the sign of a zero, which the derived `PartialEq`
+/// ignores: trees holding a `-0` are not cached. A hit skips both, which were about 40% of loading
+/// corpus-bench/52450's 36,640 copies of one formula. Only the last few trees are kept: copies
+/// come in runs, and comparing a tree that differs stops at the first different node.
+#[derive(Default)]
+pub(super) struct RcTextCache {
+    /// (tree as parsed, array formula, R1C1 text), most recent last.
+    entries: Vec<(Node, bool, String)>,
+}
+
+impl RcTextCache {
+    /// How many trees are kept.
+    const CAPACITY: usize = 8;
+
+    fn get(&self, tree: &Node, is_array_formula: bool) -> Option<&str> {
+        self.entries
+            .iter()
+            .rev()
+            .find(|(t, array, _)| *array == is_array_formula && t == tree)
+            .map(|(.., text)| text.as_str())
+    }
+
+    fn insert(&mut self, tree: Node, is_array_formula: bool, text: String) {
+        if self.entries.len() == Self::CAPACITY {
+            self.entries.remove(0);
+        }
+        self.entries.push((tree, is_array_formula, text));
+    }
+}
+
 pub(super) fn from_a1_to_rc(
     formula: String,
     parser: &mut Parser,
+    cache: &mut RcTextCache,
     context: String,
     is_array_formula: bool,
 ) -> Result<String, XlsxError> {
     let cell_reference =
         parse_reference(&context).map_err(|error| XlsxError::Xml(error.to_string()))?;
-    let mut t = parser.parse(&formula, &cell_reference);
+    let t = parser.parse(&formula, &cell_reference);
     // Excel refuses a workbook nesting more function calls than it takes (createSession 501;
     // syntax.md "Formula nesting depth cap", T-3097).
-    if parser.nests_too_many_calls() {
-        return Err(XlsxError::Workbook(format!(
-            "Formula in {context} nests more than {MAX_NESTED_CALLS} function calls"
-        )));
+    call_cap::refuse_too_many_calls(parser, &format!("Formula in {context}"))?;
+    // Tree equality holds `-0` equal to `0`, which print differently (`{-0}`, `{0}`): such a
+    // tree is neither looked up nor kept.
+    let cacheable = !t.has_negative_zero();
+    if cacheable {
+        if let Some(text) = cache.get(&t, is_array_formula) {
+            return Ok(text.to_string());
+        }
     }
+    let mut rewritten = t.clone();
     if !is_array_formula {
-        add_implicit_intersection(&mut t, true);
+        add_implicit_intersection(&mut rewritten, true);
     }
-
-    Ok(to_rc_format(&t))
+    let text = to_rc_format(&rewritten);
+    if cacheable {
+        cache.insert(t, is_array_formula, text.clone());
+    }
+    Ok(text)
 }
 
 /// The index of a formula among the shared formulas of the sheet being read,
@@ -808,6 +853,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     let links = load_hyperlinks(ws, &settings.hyperlink_rels)?;
 
     let conditional_formatting = load_conditional_formatting(ws, theme, dxfs)?;
+    call_cap::check_rule_formulas(ws, &mut parser, sheet_name)?;
     // pageSetup
     // <pageSetup orientation="portrait" r:id="rId1"/>
 

@@ -202,9 +202,17 @@ Defined names (T-3143): a name body of 65 nested ABS calls loads and evaluates
 (probes/t3143-name-body-65, tagged M8 as defined-name bodies are, decision 0051), and one of 66 makes Excel refuse the workbook (createSession 501). The
 importer refuses both workbooks Excel refuses, cell formulas and name bodies (`reparse_formula_hack`).
 `Input::StoredFormula` through the API is not checked (it keeps 66 calls, as it keeps `=SUM()`):
-Excel has no per-cell stored entry to probe, only the whole file. Unprobed: conditional-format and
-data-validation formulas past 65 calls (the case format cannot express them yet, T-3263), names
-defined through the API, and whether a name's use counts its body's calls toward the using formula (T-3264).
+Excel has no per-cell stored entry to probe, only the whole file.
+Conditional formats and data validation (T-3263, probes/t3263-*, excel-graph 2026-10-31): a formula
+conditional format (`<cfRule type="expression">`) and a custom data validation (`<dataValidation
+type="custom">`, `<formula1>`) on S!A1 whose formula nests 65 ABS calls load (t3263-cf-abs-65,
+t3263-dv-abs-65), and the same at 66 make Excel refuse the workbook (createSession 501
+`FileCorruptTryRepair`; those two cases were dropped after the run). Rule formulas have no 255-character
+file limit (the UI's): a 299-character `1+1+...+1` loads in both (t3263-cf-long-299, t3263-dv-long-299),
+as do the 326-character 65-call formulas. The importer refuses the same workbooks
+(`check_rule_formulas`). Unprobed: other rule types (`cellIs` formulas, whole/decimal/list/date data
+validation, whose formulas are not checked), the x14 `extLst` forms, names defined through the API, and
+whether a name's use counts its body's calls toward the using formula (T-3264).
 The refused T-3143 inputs (`single-inner-65-stored`, `single-mid-65-stored`, `anchor-inner-65-stored`,
 `single-spelled-65-typed`, `name-body-66`) were dropped after the run.
 Bare parentheses and unary sign runs have caps of their own (T-3172, probes/t3172-*, excel-graph
@@ -273,7 +281,7 @@ re-measured against these limits (the at-limit tests run on a 1 MiB stack in rel
 must walk operator chains with `expressions/parser/chain.rs`.
 Evidence: probes/operator-chain-limit (chains at and one character past the published limit), the T-1091 refusals above and probes/t3097-nesting-* (Excel's 65-call cap; all of them match since T-3191 and T-3197) and probes/t3172-* (Excel's 256-parenthesis and 1,023/1,024-sign caps, T-3172); this is a resource limit.
 Status: DEVIATION (decision 0014)
-Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `MAX_VALUE_OPERATORS`, `MAX_NESTED_CALLS`, `MAX_PARENTHESES`, `MAX_SIGNS`, `Parser::in_call`, `Parser::parse_primary`, `Parser::grow`, `Parser::grow_chain`); expressions/parser/mod.rs (`Parser::parse_signs`); expressions/parser/chain.rs; expressions/parser/reference_operators.rs (`Parser::parse_parenthesis_run`); model.rs (`Model::parse_cell_formula`, `Model::evaluate_operator_chain`); rustsheet-xlsx `import::worksheets::from_a1_to_rc` (the call cap on load)
+Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `MAX_VALUE_OPERATORS`, `MAX_NESTED_CALLS`, `MAX_PARENTHESES`, `MAX_SIGNS`, `Parser::in_call`, `Parser::parse_primary`, `Parser::grow`, `Parser::grow_chain`); expressions/parser/mod.rs (`Parser::parse_signs`); expressions/parser/chain.rs; expressions/parser/reference_operators.rs (`Parser::parse_parenthesis_run`); model.rs (`Model::parse_cell_formula`, `Model::evaluate_operator_chain`); rustsheet-xlsx `import::worksheets::from_a1_to_rc` and `import::call_cap` (`refuse_too_many_calls`, `check_rule_formulas`) (the call cap on load: cells, name bodies, rule formulas)
 
 ## Input left over after a complete formula is a syntax error
 Rule: text after a complete expression (`=1 2`, `=1+2 3`, `=SUM(A1:A2))`, `="a" "b"`, `=SIN(1)(3)`,
