@@ -166,6 +166,26 @@ class Routed(FakeGh):
         return self.routes[path], None
 
 
+class Prefetch(unittest.TestCase):
+    """Stats.prefetch (decision 0191): parallel reads, each object read once, errors surface."""
+
+    def stats_of(self, routes: dict[str, object]) -> tuple[stats.Stats, Routed]:
+        client = Routed(routes)
+        return stats.Stats(client, NoGit(), at(4), at(0)), client
+
+    def test_each_commit_is_read_once(self) -> None:
+        report, client = self.stats_of({f"git/commits/{sha(n)}": {"message": f"m{n}"} for n in (1, 2, 3)})
+        report.prefetch(report.messages, [sha(1), sha(2), sha(1), sha(3)], report.commit_message)
+        self.assertEqual([report.message(sha(n)) for n in (1, 2, 3, 1)], ["m1", "m2", "m3", "m1"])
+        paths = [r.path.removeprefix(client.base + "/") for r in client.requests]
+        self.assertEqual(sorted(paths), [f"git/commits/{sha(n)}" for n in (1, 2, 3)])
+
+    def test_a_failed_read_surfaces(self) -> None:
+        report, _ = self.stats_of({f"git/commits/{sha(1)}": {"message": "m1"}})
+        with self.assertRaises(GhError):
+            report.prefetch(report.messages, [sha(1), sha(2)], report.commit_message)
+
+
 class NoGit:
     def clean_merge(self, pr: int, prev: str, head: str) -> bool:
         return True
