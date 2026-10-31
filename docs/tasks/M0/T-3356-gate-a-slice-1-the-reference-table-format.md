@@ -3,7 +3,7 @@ id: T-3356
 title: "Gate A slice 1: the reference-table format, its reader and the make check gate (from the Gate A spec)"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P0
 size: M
 tier: opus
