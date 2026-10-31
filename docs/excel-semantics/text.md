@@ -483,7 +483,7 @@ Calc!A1441 (excel-graph). The backward step is inferred from these cells: whethe
 shortest delimiter's (they agree on every cell) is unprobed, as is a forward scan's step past a match whose delimiter
 list holds a shorter entry starting inside it.
 Ours: matches (`Instances::Disjoint` in functions/text/util.rs; TEXTSPLIT's `split_grid` already scanned disjointly).
-Status: VERIFIED (web)
+Status: VERIFIED (excel-graph)
 Tasks: T-3335
 
 ## TEXTSPLIT of empty text is #VALUE!
