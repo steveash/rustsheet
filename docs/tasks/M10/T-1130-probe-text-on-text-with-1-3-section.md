@@ -3,7 +3,7 @@ id: T-1130
 title: "Probe TEXT on text with 1-3 section formats, _x/*x and digit/date tokens in the text section"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
