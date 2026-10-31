@@ -1,10 +1,11 @@
 #![allow(clippy::unwrap_used)]
 
 use rustsheet_engine::expressions::parser::{
-    new_parser_english, static_analysis::add_implicit_intersection, Node, Parser, MAX_NESTED_CALLS,
+    new_parser_english, static_analysis::add_implicit_intersection, Node, Parser,
 };
 use std::{collections::HashMap, io::Read, num::ParseIntError};
 
+use super::call_cap;
 use super::package::{part_folder_and_rels, resolve_target, Package};
 use super::rich_errors::{cached_error_name, load_value_metadata_errors};
 use super::workbook::WorkbookXML;
@@ -294,11 +295,7 @@ pub(super) fn from_a1_to_rc(
     let t = parser.parse(&formula, &cell_reference);
     // Excel refuses a workbook nesting more function calls than it takes (createSession 501;
     // syntax.md "Formula nesting depth cap", T-3097).
-    if parser.nests_too_many_calls() {
-        return Err(XlsxError::Workbook(format!(
-            "Formula in {context} nests more than {MAX_NESTED_CALLS} function calls"
-        )));
-    }
+    call_cap::refuse_too_many_calls(parser, &format!("Formula in {context}"))?;
     // Tree equality holds `-0` equal to `0`, which print differently (`{-0}`, `{0}`): such a
     // tree is neither looked up nor kept.
     let cacheable = !t.has_negative_zero();
@@ -856,6 +853,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     let links = load_hyperlinks(ws, &settings.hyperlink_rels)?;
 
     let conditional_formatting = load_conditional_formatting(ws, theme, dxfs)?;
+    call_cap::check_rule_formulas(ws, &mut parser, sheet_name)?;
     // pageSetup
     // <pageSetup orientation="portrait" r:id="rId1"/>
 
