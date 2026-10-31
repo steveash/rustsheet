@@ -3,7 +3,7 @@ id: T-2512
 title: "Crack the open incomplete-beta pieces: general-b bgrat, algdiv for b0 >= 8, bfrac noise, the b < 1 bpser ceiling (T-2464 follow-up)"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -54,12 +54,12 @@ reach.
   missed twice); record negatives (decision 0056); truncate formula literals to 15 digits as Excel does.
 
 ## Acceptance criteria
-- [ ] Each item above has a recorded result in a RESULTS.md: a model with counts on a held-out probe, or the
-      negatives tried with their counts.
-- [ ] New oracle probes are committed under eval/suites/probes-numeric/cases/ with their sidecars.
-- [ ] statistics.md's T-2464 entries are updated with what is found.
-- [ ] Engine follow-ups are filed for any solved piece, or the owning engine task's criteria are amended.
-- [ ] `make check` green; reviewers approve.
+- [x] Each item above has a recorded result in a RESULTS.md: a model with counts on a held-out probe, or the
+      negatives tried with their counts. Amended at the split (see Outcome): item 1 only; items 2-6 moved to T-3383.
+- [x] New oracle probes are committed under eval/suites/probes-numeric/cases/ with their sidecars.
+- [x] statistics.md's T-2464 entries are updated with what is found.
+- [x] Engine follow-ups are filed for any solved piece, or the owning engine task's criteria are amended.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine changes.
@@ -92,3 +92,21 @@ Also open from T-2510: F at a df of 1 reaches bgrat at b = 1/2, but T-2509's `bg
 (`FDIST(x,1,9)` Excel 0.190947117169724, bgrat 0.19094711716972382, 7 ulp; F.DIST/F.DIST.RT visibly off 10/11 -> 15/15 on
 probes-numeric with it), so F keeps today's kernel there; find what Excel's F does differently (statistics.md "Student t
 tails are one kernel call").
+
+## Outcome
+Split for size: this round answered item 1 (bgrat for b ≠ 1/2). Items 2-6 and item 1's leftovers moved unchanged to
+T-3383 (research, opus), so the "each item has a recorded result" criterion is met here for item 1 only.
+- docs/research/t2464/r3-bgrat/RESULTS.md, three new probes-numeric cases with sidecars (t2512-r3-bgrat-qgamma 9,960
+  cells, -split 2,908, -bupdens 5,816), statistics.md's integrated-model entry updated (three new bullets, Open line).
+- L140 bup+bgrat at 1 < b < 2 is RN(fl(x87(P·fl(xy)/b0)) + D), with P Excel's density in bup's orientation
+  (y; b0, a) and D Excel's direct bgrat increment: 2,515/3,072/3,072 of 3,072 (M0 102/1,973/2,162). With the exact
+  increment it is 1,726/3,072/3,072, so the visible gap is the density's algdiv lnB (item 2), not bgrat.
+- TOMS bgrat lost because it passes 15·eps to grat1's continued fraction: 13/142/162 on 2,908 direct bgrat cells
+  against 206/1,672/2,158 in x87 at eps 1e-15 (CR 208/1,598/2,091). Excel's D to the bit stays open (best
+  246/1,881/2,357).
+- The "first test" (b = 1/2 identity with Excel's Q(b, z)) cannot be run through the worksheet: CHISQ.DIST.RT truncates
+  its df (2b < 1 is `#NUM!`) and 1 - GAMMA.DIST loses the digits (Q < 0.01 on 5,196 of 5,228 points). Recorded as a
+  negative for the method.
+- Engine follow-up T-3382 (opus): the composition with the engine's own density and an accurate increment scores
+  282/2,824/3,042 of 3,072 against today's 26/113/344, about 2,700 cells to within 15 digits.
+- Eval delta: none (research only; new probe cases have no engine change).

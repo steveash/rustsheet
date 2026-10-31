@@ -106,6 +106,14 @@ Items (add one in the PR that implements a rule on web-only evidence, or that fi
    workbook (`Book1`) with workbook `loc` and no `Feb!loc`, type `=Feb!loc`: does FORMULATEXT show `=Feb!loc`,
    `=Book1!loc` or something else, and what after the first save? Ours keeps the typed `Feb!loc` until a
    re-parse shows `[0]!loc`.
+23. **IRR at an exact zero root** (T-3410, decision 0196; financial.md "IRR at an exact zero root").
+   ironcalc-calc/FINANCIAL/IRR.xlsx Two Values!C4 `IRR(A4:B4)` on {-4, 4} caches 2.220446049250313E-16 (2^-52; app.xml
+   names Excel Online 16.0300), but Excel for the web gives 0 today, and so does the engine (probes/t3410-irr-zero-root-imcos
+   C1, C2, C4, C5, C8). Type `=IRR({-4,4})`, `=IRR({4,-4})` and `=IRR({-2,1,1})` in Windows desktop Excel: 0, -2^-52 and
+   -2.886801908630332E-12 as on the web (probe C3, C6), or 2^-52 for the first?
+24. **IMCOS of 4+3i** (T-3410, decision 0196; engineering.md, the COMPLEXs.xlsx residue). ironcalc-calc/ENGINEERING/COMPLEXs.xlsx
+   Sheet1!K25 `IMAGINARY(IMCOS(D25))`, D25 = "4+3i", caches Mac 16.0300's 7.58155274274655; the web and the engine give
+   7.58155274274654 (probe C9, C11, C12). Does Windows desktop give the Mac digit?
 
 ## Acceptance criteria
 - [ ] Each item above has its desktop value(s) in docs/excel-semantics/ with the probe or workbook

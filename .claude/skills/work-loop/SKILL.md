@@ -141,8 +141,9 @@ file and its acceptance criteria.
      under the lock moves the head, so the marker goes stale on its own; that is expected. After
      your merge, remove `ready-to-merge` from the PR (GitHub MCP tools). The shadow merger only
      builds and tests trains on `merge-train/shadow` and merges nothing.
-   - **`train`**: mark ready and move on to the next task; do not take the lock, do not merge
-     `main` in just to be current, and do not wait. The merger tests the PR on a train built on
+   - **`train`**: mark ready and move on to the next task; do not take the lock (`make
+     merge-lock-acquire` and `merge-lock-wait` refuse a PR with exit 5, decision 0204), do not
+     merge `main` in just to be current, and do not wait. The merger tests the PR on a train built on
      current `main` and squash-merges it. Stay subscribed: an ejection or an invalidation arrives
      as a PR comment. Stall fallback (`train` mode only): when a ready PR has waited more than
      45 min by its marker, the last CI run on `merge-train/current` started more than 45 min ago,

@@ -3,7 +3,7 @@ id: T-3228
 title: "test_to_from_bytes::errors asserts bitcode's debug-only error text: fails in release builds"
 milestone: M12
 lane: quality
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -33,9 +33,15 @@ The second option changes a public error string, so check the Python bindings an
 T-2895 (bitcode fuzz target) and T-2897 (dropping the Python bitcode loader).
 
 ## Acceptance criteria
-- [ ] `cargo test --release -p rustsheet_engine --lib test_to_from_bytes` and the debug run both pass.
-- [ ] No test asserts text that bitcode writes only under `debug_assertions`.
-- [ ] `make check` green; reviewers approve.
+- [x] `cargo test --release -p rustsheet_engine --lib test_to_from_bytes` and the debug run both pass.
+- [x] No test asserts text that bitcode writes only under `debug_assertions`.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Replacing bitcode or changing the byte format.
+
+## Outcome
+Took the first option: `errors` now asserts only the `Error parsing workbook: ` prefix, which `Model::from_bytes`
+writes itself. Nothing else matches on the message (`rg "Error parsing workbook"` finds only `model.rs` and this
+test), so `from_bytes`'s public error string is unchanged. `cargo test -p rustsheet_engine --lib
+test_to_from_bytes` passes in both debug and `--release` builds.

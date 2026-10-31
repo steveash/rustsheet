@@ -352,6 +352,7 @@ mod tests {
                 listed_deviation: verdict == Verdict::Deviation,
                 graph_subnormal: false,
                 kind: crate::runner::CellKind::Scored,
+                math: None,
             })
             .collect();
         CaseResult {
