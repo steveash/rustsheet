@@ -4,7 +4,7 @@ title: "Bound the spill area a workbook's array anchors claim in total, not only
 milestone: M12
 lane: engine
 status: todo
-priority: P2
+priority: P1
 size: M
 tier: opus
 depends_on: []

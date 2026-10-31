@@ -93,7 +93,8 @@ does with these particular indices is not probed. Without the check the model pa
 style 9999 at the next edit, formula index 77 with no shared formula at the next evaluation).
 Evidence: none for Excel; this is the no-panic rule (CLAUDE.md directive 5), not an Excel observation.
 Status: DEVIATION (decision 0014); what Excel does with these indices is UNVERIFIED (probe pending, T-3405: an
-xlsx with a dangling `s=` and one with a `fontId` past `<fonts>`, on excel-graph)
+xlsx with a dangling `s=` and one with a `fontId` past `<fonts>`, on excel-graph; a spill or CSE range above 2^20
+cells: T-3426)
 Implemented in: crates/rustsheet-engine/src/workbook_check.rs (`check_indices`),
 crates/rustsheet-engine/src/sheet_data.rs (`SheetData::check_layout`)
 
