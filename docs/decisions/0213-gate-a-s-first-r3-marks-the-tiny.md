@@ -15,7 +15,7 @@
   - The tables hold 17 points where Excel is more than G off the math. The other 9 are not marked:
     - T.INV A91 and A96, and F.INV A164 and A169, at p ≥ 1e-150, are outside the approved region (T-3544).
     - T.INV.2T A98, A99 and A103, and TINV A102, are functions outside the region at any p (T-3386).
-    - - F.INV A167 (p 4.4E-189, d1 1, d2 1698856) is inside decision 0188's p < 1e-150 bound but outside the region
+    - F.INV A167 (p 4.4E-189, d1 1, d2 1698856) is inside decision 0188's p < 1e-150 bound but outside the region
       the entry names. Its true quantile (3.0E-377) is below the double range. Excel returns 3.85E-145 and the engine
       0, so a mark would make 0 the target; that is left to the owner (T-3544).
   - They need an owner ruling first. They pass Gate A through its math side (A167 through the 1e-300 absolute floor),

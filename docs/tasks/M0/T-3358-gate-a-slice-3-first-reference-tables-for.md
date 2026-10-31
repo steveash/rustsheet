@@ -80,7 +80,7 @@ Done (2026-10-31), on T-3379's governance (built on its branch).
   side:
   - T.INV A91, A96 and F.INV A164, A169, at p ≥ 1e-150 (new T-3544);
   - T.INV.2T A98, A99, A103 and TINV A102 (T-3386);
-  - - F.INV A167, inside 0188's p < 1e-150 bound but outside the named region, with a true quantile (3.0E-377) below
+  - F.INV A167, inside 0188's p < 1e-150 bound but outside the named region, with a true quantile (3.0E-377) below
     the double range, where the engine's 0 passes only through the 1e-300 floor (T-3544).
 - **New quirks** (statistics.md, "T.DIST's density is #NUM! at a huge x, and T.INV.2T and TINV at p = 2.2E-308"):
   - T.DIST's density is `#NUM!` at a positive x from 1.0E+236 and 0 up to 9.9E+137; the negative side is probed

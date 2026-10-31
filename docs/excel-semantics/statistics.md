@@ -5157,8 +5157,7 @@ per sign: for a negative x the cumulative T.DIST is 0 at x = -4.0E+136 and -2.1E
 `#NUM!` at x = -2.1E+217 and -4.1E+259 (A103, A91), so a negative x is `#NUM!` too, with its cut in (4.0E+136,
 2.1E+217); for a positive x the table has only `#NUM!`, at 5.4E+186 and 4.4E+221 (A86, A98). The exact cuts are
 UNVERIFIED. The negative mean follows "POISSON at x 0 with a negative mean", the tiny-p NEGBINOM is 0 (the binomial
-walk renormalizes before a ratio
-p/q past 2^53 overflows it), and PERMUTATIONA takes PERMUT's limit, a number of 2^31 - 1 or more is `#NUM!` (UNVERIFIED cut).
+walk renormalizes before a ratio p/q past 2^53 overflows it), and PERMUTATIONA takes PERMUT's limit, a number of 2^31 - 1 or more is `#NUM!` (UNVERIFIED cut).
 Since T-2700 a NEGBINOM.DIST/NEGBINOMDIST number_f in (-1, 0) is `#NUM!` as in Excel (the sign is checked before truncation; bonus cell
 b9a32ce9a1fd0d71 A195, `NEGBINOMDIST(Data!$D$6,7,..)` with D6 = -0.5). The PERMUTATIONA truncation cells are T-2701's. Probe of the cuts: T-2752.
 Status: VERIFIED (excel-graph), the cuts UNVERIFIED
