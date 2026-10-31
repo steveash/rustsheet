@@ -1370,7 +1370,7 @@ def test_arg_pairs_skips_hard_domain_pairs_and_is_deterministic(tmp_path: Path) 
 
 def test_arg_pairs_spaces_dynamic_array_calls_by_the_tallest_result(tmp_path: Path) -> None:
     # T-3497: TOCOL over the whole Data block is DATA_ROWS x DATA_COLS rows tall; a scalar function keeps the
-    # short stride.
+    # short stride and its anchors as `check`.
     path = tmp_path / "report.json"
     rows = [
         {
@@ -1388,5 +1388,6 @@ def test_arg_pairs_spaces_dynamic_array_calls_by_the_tallest_result(tmp_path: Pa
         specs, _ = generate_arg_pairs(cat, load_unseen_pairs(path), 0, milestone=milestone, functions=[name])
         anchors = list(specs[0]["sheets"][1]["cells"])
         assert anchors[:2] == ["A1", f"A{1 + stride}"], name
-        assert specs[0]["check"] == [f"Calc!{a1}" for a1 in anchors]
+        # A spilling function lists no `check`, so every oracle-recorded cell (spill members too) is scored.
+        assert specs[0]["check"] == ([] if stride == SPILL_ROW_STRIDE else [f"Calc!{a1}" for a1 in anchors])
     assert SPILL_ROW_STRIDE > 12 * 5

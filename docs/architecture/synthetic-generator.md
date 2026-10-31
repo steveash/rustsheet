@@ -686,8 +686,9 @@ and coercion order live, and random draws rarely hit a given pair. The policy se
   formula. The Data sheet is a 12 × 5 block of generator values plus the class cells. A `dynamic_array`
   function's formulas are 61 rows apart instead (T-3497): its result can be as tall as all 60 Data cells
   in one column (TOCOL, or WRAPROWS with a count of 1, over the whole block), so a spill never lands on
-  the next formula. Only the anchors are in `check`: the oracle records every cell Excel's formulas fill,
-  and the spill-extent check (T-1660) scores any other cell the engine fills.
+  the next formula. Such a case has no `check` list, so every cell the oracle records is scored: each
+  anchor and every spill member Excel fills. The spill-extent check (T-1660) scores any other cell the
+  engine fills.
 - **Determinism.** Each function draws from its own stream seeded by the seed and its name: the same
   seed and report give the same cases, and adding a function does not shift another's draws.
 
