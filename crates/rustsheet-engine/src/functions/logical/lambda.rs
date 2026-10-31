@@ -98,6 +98,16 @@ impl LambdaCaller {
         self.trimrange_references = true;
         self
     }
+
+    /// This caller with the body read as a formula root: a near-zero `+`/`-` there snaps
+    /// (`Model::evaluate_formula_root`), at every call. An in-place call snaps
+    /// (`Model::call_lambda`), and so does each call MAP, MAKEARRAY, BYROW, BYCOL, REDUCE and
+    /// SCAN make, REDUCE's and SCAN's at every step, so `REDUCE(0,{0.1,0.2,-0.3,1E-16},
+    /// LAMBDA(a,x,a+x))` is 1E-16 (probes/t3095-snap-lambda-helpers, T-3111).
+    pub(crate) fn snapping_root(mut self) -> Self {
+        self.root_snap = true;
+        self
+    }
 }
 
 /// What a function value is, for the callers that choose how many arguments to pass (GROUPBY
@@ -206,7 +216,8 @@ impl Model {
         }
         let mut caller = self
             .lambda_caller(&callee, call_args.len())
-            .keeping_references();
+            .keeping_references()
+            .snapping_root();
         self.call_lambda_caller_with_nodes_arg(&mut caller, call_args, cell)
     }
 
@@ -278,7 +289,7 @@ impl Model {
         // A reference is passed as a reference, a single cell too, so that
         // `LAMBDA(x, MAX(x))(A2)` ignores the text in A2 (upstream MAX_MIN.xlsx H54).
         let provided = call_args.len();
-        let mut caller = self.lambda_caller(&lambda_result, provided);
+        let mut caller = self.lambda_caller(&lambda_result, provided).snapping_root();
         // A defined-name LAMBDA starts from the body its last call patched (`NamedLambdas`). It
         // is taken out while this call runs, so a call inside it (recursion, `MyFn(MyFn(x))`)
         // patches its own. No LAMBDA created since it was put back reads its ids: only an
@@ -294,8 +305,7 @@ impl Model {
         // (docs/excel-semantics/numbers.md "Near-zero snapping", probes/t3049-snap-under-pickers
         // B17, C17). A defined-name LAMBDA snaps alike, also when another named LAMBDA calls it
         // (probes/t3094-snap-lambda-call-forms C2-F5, J2-J5). The helpers' calls (MAP, REDUCE,
-        // ...) are unprobed.
-        caller.root_snap = true;
+        // ...) snap alike (`LambdaCaller::snapping_root`).
         if let Some(key) = named {
             caller.prepared = self
                 .named_lambdas
@@ -476,14 +486,18 @@ impl Model {
                 // ISREF is TRUE, SUM skips its text and GROUPBY makes it `#VALUE!`
                 // (probes/lambda-body-picked-references, take-drop-over-ifs-switch-picks A78).
                 let result = match body.ungrouped() {
+                    // A root `+`/`-` is never a reference, so a reference-keeping in-place call
+                    // snaps it too: an in-place call passed to another one is bound in reference
+                    // context (`bind_argument`), and `LAMBDA(a,x,a+x)(LAMBDA(a,x,a+x)(..),..)`
+                    // snaps at each level (probes/t3095-snap-lambda-helpers B94, B117).
+                    _ if caller.root_snap && matches!(body, Node::OpSumKind { .. }) => {
+                        RefArg::Value(self.evaluate_formula_root(body, cell, false))
+                    }
                     _ if caller.references => self.evaluate_picked_reference_arg(body, cell),
                     Node::FunctionKind {
                         kind: Function::Trimrange,
                         args,
                     } if caller.trimrange_references => self.trimrange_reference(args, cell, true),
-                    _ if caller.root_snap => {
-                        RefArg::Value(self.evaluate_formula_root(body, cell, false))
-                    }
                     _ => RefArg::Value(self.evaluate_node_in_context(body, cell)),
                 };
                 // A LAMBDA the body made may read the parameters and the captures bound here.
