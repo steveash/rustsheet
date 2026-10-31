@@ -3,7 +3,7 @@ id: T-2510
 title: "Incomplete beta bgrat family for BETA.DIST, F, BINOM and NEGBINOM (T-2464 E7)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
