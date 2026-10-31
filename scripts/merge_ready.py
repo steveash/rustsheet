@@ -53,6 +53,8 @@ from merge_lock import GitError, git
 ROOT = Path(__file__).resolve().parent.parent
 REMOTE = "origin"
 BASE_BRANCH = "main"
+# The known-failure lists; a carry-over merge may re-record the eval-gated ones (decision 0207).
+BASELINE_DIR = "eval/baseline/"
 
 # Labels of the merge train (SPEC-0027 sections 2, 4 and "The switch").
 READY_LABEL = "ready-to-merge"
@@ -464,21 +466,79 @@ class Repo:
         out = self.git("diff", "-z", "--no-renames", "--name-only", bases[0], head, "--")
         return [p for p in out.split("\0") if p]
 
+    def checked_baselines(self) -> set[str]:
+        """The known-failure lists CI's eval gate checks against the engine: `eval/baseline/<suite>.txt`
+        of every suite on the fetched `main` with `gate = true` and no `[fetch]` (the eval job fetches
+        nothing). Fetched suites (poi, corpus-bench), ungated ones and visible-parity.json are out."""
+        main = f"refs/merge-ready/{BASE_BRANCH}"
+        found = set()
+        suites = git("ls-tree", "--name-only", f"{main}:eval/suites", root=self.root, check=False)
+        for suite in suites.stdout.split() if suites.returncode == 0 else []:
+            shown = git("show", f"{main}:eval/suites/{suite}/suite.toml", root=self.root, check=False)
+            if shown.returncode != 0:
+                continue
+            try:
+                meta = tomllib.loads(shown.stdout)
+            except tomllib.TOMLDecodeError:
+                continue
+            name = meta.get("name", suite)  # CI names the list after the suite's `name`
+            if meta.get("gate") is True and "fetch" not in meta and isinstance(name, str):
+                found.add(f"{BASELINE_DIR}{name}.txt")
+        return found
+
     def carry_problem(self, prev: str, head: str) -> str | None:
-        """Why `head` is not a clean merge of `main` into `prev` (SPEC-0027 section 2,
+        """Why `head` is not a carry-over merge of `main` into `prev` (SPEC-0027 section 2,
         "Carry-over"), or None when it is: a merge commit whose first parent is `prev`, whose
-        second parent is on `main`, and whose tree `git merge-tree --write-tree` reproduces."""
+        second parent is on `main`, and whose tree is the plain merge of its parents
+        (`git merge-tree --write-tree`), except that the content of a list in `checked_baselines`
+        may differ, without a failure line neither parent had: a conflict there resolved and the
+        lists re-recorded (decision 0093). The eval
+        gate on the head, which marking requires green, checks exactly those lists (decision 0207).
+        Anything else (another file, an addition, deletion, rename or mode change) breaks the carry."""
         parents = self.git("rev-list", "--parents", "-n", "1", head).split()[1:]
         if len(parents) != 2 or parents[0] != prev:
             return "the head is not a merge commit whose first parent is the marked head"
         main = f"refs/merge-ready/{BASE_BRANCH}"
         if git("merge-base", "--is-ancestor", parents[1], main, root=self.root, check=False).returncode:
             return f"the merged commit is not on {BASE_BRANCH}"
-        merged = git("merge-tree", "--write-tree", *parents, root=self.root, check=False)
-        tree = merged.stdout.split("\n", 1)[0].strip()
-        if merged.returncode != 0 or tree != self.git("rev-parse", f"{head}^{{tree}}").strip():
-            return "the merge is not clean: its tree differs from a plain merge of its parents"
+        merged = git("merge-tree", "--write-tree", "--name-only", *parents, root=self.root, check=False)
+        if merged.returncode not in (0, 1):
+            return "the merge could not be computed"
+        lines = merged.stdout.split("\n")
+        tree = lines[0].strip()
+        # After the tree: the conflicted paths, a blank line, then informational messages.
+        rest = lines[1:]
+        conflicted = rest[: rest.index("")] if "" in rest else rest
+        lists = self.checked_baselines()
+        if any(p not in lists for p in conflicted):
+            return "the merge is not clean: it conflicts outside the eval-gated baseline lists"
+        raw = self.git("diff-tree", "-r", "-z", "--no-renames", tree, head).split("\0")
+        # `-z --raw`: ":<old mode> <new mode> <old sha> <new sha> <status>" then the path, per entry.
+        for meta, path in zip(raw[0::2], raw[1::2], strict=False):
+            if not meta:
+                continue
+            old_mode, new_mode, *_, status = meta.lstrip(":").split()
+            if path not in lists or status != "M" or old_mode != "100644" or new_mode != "100644":
+                return (f"the merge is not clean: {path} differs from a plain merge of its parents, "
+                        "and only the content of an eval-gated baseline list may")
+            added = self.new_failures(path, parents, head)
+            if added:
+                return (f"{path} records failures neither parent had ({added[0]}): a regression "
+                        "needs the reviewers again, not a carry")
         return None
+
+    def new_failures(self, path: str, parents: Sequence[str], head: str) -> list[str]:
+        """The known-failure lines (`F` and `TF`) of list `path` in `head` that no parent's list has.
+        The eval gate only checks that a list matches the engine, so a regression recorded in a
+        merge would pass it; the carry refuses one instead (decision 0207)."""
+
+        def failures(commit: str) -> set[str]:
+            shown = git("show", f"{commit}:{path}", root=self.root, check=False)
+            text = shown.stdout if shown.returncode == 0 else ""
+            return {line for line in text.splitlines() if line.startswith(("F\t", "TF\t"))}
+
+        known = set().union(*(failures(c) for c in parents))
+        return sorted(failures(head) - known)
 
     def task_file(self, head: str, task: str) -> str | None:
         """The text of task `task`'s file in `head`'s tree, or None when it has none."""
@@ -628,7 +688,7 @@ def record_check(
 LABEL_STYLES = {
     READY_LABEL: ("0e8a16", "Marked ready for the merge train (make mark-ready, SPEC-0027)"),
     EJECTED_LABEL: ("d93f0b", "Ejected from a merge train; mark again after fixing (SPEC-0027)"),
-    STOP_LABEL: ("b60205", "Stops the merge train while any open PR carries it (SPEC-0027)"),
+    STOP_LABEL: ("b60207", "Stops the merge train while any open PR carries it (SPEC-0027)"),
 }
 # The step-mode actions `mark` prints (SPEC-0027 section 4, "GitHub access"); scripts/merge_step.py
 # holds the whole schema, the merger's actions included, and validates these (decision 0169).
@@ -826,7 +886,7 @@ def main(argv: list[str], root: Path = ROOT) -> int:
     mark = sub.add_parser("mark", help="mark a green, approved PR ready (the marker and the label)")
     mark.add_argument("--pr", required=True)
     mark.add_argument("--review", help='"security=APPROVE architecture=APPROVE quality=APPROVE ..."')
-    mark.add_argument("--carry", action="store_true", help="carry the verdicts over a clean merge of main")
+    mark.add_argument("--carry", action="store_true", help="carry the verdicts over a merge of main (clean, or re-recording eval-gated baseline lists)")
     mark.add_argument("--by", default=os.environ.get("CLAUDE_CODE_SESSION_ID", ""), help="the marker id")
     mark.add_argument("--step", action="store_true", help="print the writes as step-mode actions")
     record = sub.add_parser("record", help="post a reviewer's verdict record for the local HEAD")
