@@ -3,7 +3,7 @@ id: T-3525
 title: "Re-validate the complex hyperbolic bands (HYPERBOLIC_LOG_CUT, INVERSE_EXP_LOW, INVERSE_EXP_HIGH) on a fresh hold-out sweep (decision 0188 R4)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
