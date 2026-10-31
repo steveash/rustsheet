@@ -3,7 +3,7 @@ id: T-2724
 title: "Student-t quantile near the centre: TINV, T.INV.2T and CONFIDENCE.T at alpha near 1 lose the small quantile to cancellation (accuracy, split from T-0967)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
