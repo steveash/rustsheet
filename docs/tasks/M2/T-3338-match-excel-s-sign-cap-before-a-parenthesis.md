@@ -33,13 +33,21 @@ docs/excel-semantics/syntax.md "Formula nesting depth cap", in the T-3266 paragr
   walk. Each walk must be iterative or explicitly bounded; check
   expressions/parser/stringify/wrapped.rs, which already claims "`-(-(...))` nests as deep as
   `((...))`", and the evaluator's recursion budget. A Rust-stack test at 256 levels is required.
-- Failing cells (Excel accepts, ours refuses with EngineError):
-  - probes/t3266-nested-paren-128-stored.case.json, probes/t3266-nested-paren-128-typed.case.json,
-    probes/t3266-nested-paren-200-stored.case.json, probes/t3266-nested-paren-200-typed.case.json,
-    probes/t3266-nested-paren-255-stored.case.json, probes/t3266-nested-paren-255-typed.case.json,
-    probes/t3266-nested-paren-256-stored.case.json, probes/t3266-nested-paren-256-typed.case.json,
-    probes/t3266-nested-200-823-stored.case.json, probes/t3266-nested-200-823-typed.case.json,
-    probes/t3266-nested-200-824-stored.case.json, probes/t3266-nested-200-824-typed.case.json: S!A1, S!B1
+- Failing cells (Excel accepts, ours refuses with EngineError). Each case fails whole (`!EngineError` in
+  eval/baseline/probes.txt), so its scored cells S!A1 and S!B1 are listed here once, and each case below on a
+  line of its own owns that whole-case failure (T-3438):
+  - probes/t3266-nested-paren-128-stored.case.json
+  - probes/t3266-nested-paren-128-typed.case.json
+  - probes/t3266-nested-paren-200-stored.case.json
+  - probes/t3266-nested-paren-200-typed.case.json
+  - probes/t3266-nested-paren-255-stored.case.json
+  - probes/t3266-nested-paren-255-typed.case.json
+  - probes/t3266-nested-paren-256-stored.case.json
+  - probes/t3266-nested-paren-256-typed.case.json
+  - probes/t3266-nested-200-823-stored.case.json
+  - probes/t3266-nested-200-823-typed.case.json
+  - probes/t3266-nested-200-824-stored.case.json
+  - probes/t3266-nested-200-824-typed.case.json
   - Excel refuses, ours accepts: probes/t3266-minus-paren-1023-typed.case.json,
     probes/t3266-minus-paren2-1023-typed.case.json, probes/t3266-plus-paren-1023-typed.case.json,
     probes/t3266-minus-abs-1023-typed.case.json: S!B1
