@@ -3,7 +3,7 @@ id: T-3354
 title: "F.DIST at a tiny x with a huge d2 is off 5E-4"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P0
 size: M
 tier: opus
