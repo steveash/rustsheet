@@ -3,7 +3,7 @@ id: T-2748
 title: "PMT's last digit at a rate of 1E-15 with type 1 (PMT(1E-15,346,96301,42,1)), visibly off through COSH in gen-m9"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
