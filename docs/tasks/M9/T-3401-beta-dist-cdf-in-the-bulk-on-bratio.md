@@ -28,7 +28,7 @@ Where T-3400 shows Excel close to correctly rounded, that means an accurate kern
 - Root cause (suspected): a0 = 600, b0 = 3, x0 = 1 - t ≈ 0.994 send the cell to L140 (`bratio/mod.rs`
   `Branch::L140BupBgrat`), which runs bup for n = 2 terms with b0 = 1 and then bgrat. T-2512's research (branch
   agent/research/T-2512-incomplete-beta-open-pieces, docs/research/t2464/r3-bgrat/RESULTS.md) found that TOMS bgrat
-  passes 15·eps to grat1, whose continued fraction stops tens of ulps short. Its follow-up T-3382 adds an accurate
+  passes 15·eps to TOMS's incomplete-gamma ratio under bgrat, whose continued fraction stops tens of ulps short. Its follow-up T-3382 adds an accurate
   increment for one bup term only and leaves "n > 1 bup terms (2 <= b < 40)" out of scope, unprobed. The same
   inaccurate increment is the likely cause here.
 - Engine scale (triager's scratch grid; T-3400 commits the evidence): 212 of 300 bulk points (p 0.05 to 0.95, a 1.5 to
