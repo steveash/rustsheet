@@ -527,9 +527,8 @@ def _range(ref: str, *, header_row: bool = True) -> tuple[int, int, int, int]:
     first, _, last = ref.partition(":")
     (r1, c1), (r2, c2) = parse_a1(first), parse_a1(last or first)
     if r1 + int(header_row) > r2 or c1 > c2:
-        msg = f"table ref {ref!r} needs a header row and at least one data row"
-        if not header_row:
-            msg = f"table ref {ref!r} needs at least one data row"
+        rows = "a header row and at least one data row" if header_row else "at least one data row"
+        msg = f"table ref {ref!r} needs {rows}"
         raise ValueError(msg)
     return r1, c1, r2, c2
 
@@ -573,8 +572,8 @@ def _add_table(
         if table.get("filter") or table.get("calculated"):
             msg = f"table {name}: a table without a header row takes no filter or calculated column"
             raise ValueError(msg)
-        # The file names the columns though no cell shows them: `Column1`, ... as Excel's own
-        # default names (the engine adapter uses the same; probes/table-edits table-no-header-*).
+        # The file names the columns though no cell shows them: `Column1`, ... (the engine adapter
+        # uses the same; probes/table-edits table-no-header-* show Excel resolves these names).
         headers = [f"Column{i}" for i in range(1, c2 - c1 + 2)]
     # XlsxWriter warns and returns a negative code (-1, -2, ...) instead of raising.
     columns: list[dict[str, Any]] = [{"header": h} for h in headers]
