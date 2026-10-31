@@ -110,6 +110,7 @@ mod user_model;
 mod utils;
 mod variable_stack;
 mod workbook;
+mod workbook_check;
 mod x87_exp;
 mod x87_log10;
 mod x87_log1p;
