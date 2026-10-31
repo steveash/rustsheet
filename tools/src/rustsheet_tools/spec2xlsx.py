@@ -42,9 +42,8 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     oracle backend replays them in Excel; the engine adapter applies them through its edit API.
   * A sheet may list `"hidden_rows": [3, 5]` (1-based rows written with `hidden="1"`) and
     `"tables": [{"name": "T1", "ref": "A1:B6", "filter": true}]` (T-1036). A table's header row is the
-    first row of `ref` and its cells must be literal text; with `"header_row": false` the table has none
-    (its data starts on that row, its columns are `Column1`, `Column2`, ...; no filter or calculated column,
-    T-3260). With `"filter": true` the table's autoFilter
+    first row of `ref` and its cells must be literal text; `"header_row": false` makes a table without one
+    (data from its first row, columns `Column1`, ...; no filter or calculated column, T-3260). With `"filter": true` the table's autoFilter
     gets a values filter on its first column that keeps exactly the visible data rows, so the hidden rows
     inside the table are the rows the filter hides; that column's data cells must be literal numbers or
     text, and no value may be both kept and hidden. The engine adapter loads both. With
@@ -106,6 +105,7 @@ from rustsheet_tools.oracle.package import patch_parts, read_parts
 from rustsheet_tools.pivot import PivotParts, pivot_tables, relationships_xml
 from rustsheet_tools.sheetop import column_number, sheet_op
 from rustsheet_tools.spec_sheet_extras import add_range_formulas, set_column_widths
+from rustsheet_tools.spec_tables import filter_value, has_header_row
 
 # XlsxWriter stamps docProps/core.xml with the wall clock; a fixed instant keeps identical specs
 # byte-identical so `input_sha256` (sidecars, eval/.cache/oracle) is stable across runs (T-0015).
@@ -522,8 +522,7 @@ def _hidden_rows(sheet: dict[str, Any]) -> set[int]:
 
 
 def _range(ref: str, *, header_row: bool = True) -> tuple[int, int, int, int]:
-    """'A1:B6' → zero-based (first row, first col, last row, last col). Without a header row one
-    data row is enough (T-3260)."""
+    """'A1:B6' → zero-based (first row, first col, last row, last col); see `has_header_row`."""
     first, _, last = ref.partition(":")
     (r1, c1), (r2, c2) = parse_a1(first), parse_a1(last or first)
     if r1 + int(header_row) > r2 or c1 > c2:
@@ -533,21 +532,6 @@ def _range(ref: str, *, header_row: bool = True) -> tuple[int, int, int, int]:
     return r1, c1, r2, c2
 
 
-def _has_header_row(table: dict[str, Any]) -> bool:
-    """Whether a spec table has a header row: unless it says `"header_row": false` (T-3260)."""
-    return table.get("header_row", True) is not False
-
-
-def _filter_value(raw: Any, a1: str) -> str:
-    """The text a values filter lists for a first-column cell (General format: 3 → "3")."""
-    if isinstance(raw, str) and raw and not raw.startswith("="):
-        return raw
-    if isinstance(raw, int | float) and not isinstance(raw, bool) and float(raw).is_integer():
-        return str(int(raw))
-    msg = f"filtered table column cell {a1} must be literal text or a whole number, not {raw!r}"
-    raise ValueError(msg)
-
-
 def _add_table(
     ws: Any, sheet: dict[str, Any], table: dict[str, Any], hidden: set[int], tables: frozenset[str]
 ) -> tuple[str, str]:
@@ -555,7 +539,7 @@ def _add_table(
     With `"totals_row": true` the last row of `ref` is the table's totals row, written by
     `_totals_column`."""
     name, ref = str(table["name"]), str(table["ref"])
-    header_row = _has_header_row(table)
+    header_row = has_header_row(table)
     r1, c1, r2, c2 = _range(ref, header_row=header_row)
     totals = bool(table.get("totals_row"))
     if totals and r2 - r1 < 1 + int(header_row):
@@ -572,8 +556,7 @@ def _add_table(
         if table.get("filter") or table.get("calculated"):
             msg = f"table {name}: a table without a header row takes no filter or calculated column"
             raise ValueError(msg)
-        # The file names the columns though no cell shows them: `Column1`, ... (the engine adapter
-        # uses the same; probes/table-edits table-no-header-* show Excel resolves these names).
+        # Named in the file only, as the engine adapter names them (Excel resolves them: T-3260).
         headers = [f"Column{i}" for i in range(1, c2 - c1 + 2)]
     # XlsxWriter warns and returns a negative code (-1, -2, ...) instead of raising.
     columns: list[dict[str, Any]] = [{"header": h} for h in headers]
@@ -591,7 +574,7 @@ def _add_table(
     last_data = r2 - 1 if totals else r2
     for row in range(r1 + 1, last_data + 1):
         a1 = cell(row, c1)
-        (dropped if row + 1 in hidden else kept).add(_filter_value(cells.get(a1), a1))
+        (dropped if row + 1 in hidden else kept).add(filter_value(cells.get(a1), a1))
     if kept & dropped:
         msg = f"table {name}: values {sorted(kept & dropped)} are both kept and hidden by the filter"
         raise ValueError(msg)
@@ -606,7 +589,7 @@ def _calculated_columns(
 ) -> tuple[str, dict[str, str]]:
     """The table's `"calculated"` option as `{header text: file-form formula}` (T-2969)."""
     name, ref = str(table["name"]), str(table["ref"])
-    r1, c1, _, c2 = _range(ref, header_row=_has_header_row(table))
+    r1, c1, _, c2 = _range(ref, header_row=has_header_row(table))
     found: dict[str, str] = {}
     for letter, formula in table.get("calculated", {}).items():
         col = parse_a1(f"{letter}1")[1]
@@ -666,7 +649,7 @@ def _totals_cells(sheet: dict[str, Any]) -> set[str]:
     found: set[str] = set()
     for table in sheet.get("tables", ()):
         if table.get("totals_row"):
-            _, c1, r2, c2 = _range(str(table["ref"]), header_row=_has_header_row(table))
+            _, c1, r2, c2 = _range(str(table["ref"]), header_row=has_header_row(table))
             found.update(xlsxwriter.utility.xl_rowcol_to_cell(r2, c) for c in range(c1, c2 + 1))
     return found
 
