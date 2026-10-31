@@ -67,3 +67,7 @@
   - Cells 3 and 4 stay F lines of eval/baseline/gen-m9.txt (they failed before), cell 9 gains one; the ungated cells are
     probes-numeric, which has no baseline, and count as Phase 1b evidence (decision 0188 R1(c)).
   - Excel's value stays the expected one; T-3469 owns the shape-6 and x / a = 10 misses.
+  - Rework after review (decision 0188 R4.3): the form is applied only at shapes 3/2 to 11 (`FAR_TAIL_MAX_SHAPE`);
+    above 11 the accurate kernel stays. The Context's R4 numbers are superseded by T-3269's Outcome (hold-out of 1058
+    cells, fresh sweep probes-numeric/t3269-fresh-sweep-2). The nine cells above are unchanged; T-3269's Outcome lists
+    the ungated cells outside them, which this record does not cover.

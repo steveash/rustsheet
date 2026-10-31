@@ -17,27 +17,44 @@ from pathlib import Path
 CASE = Path(__file__).resolve().parents[3] / (
     "eval/suites/probes-numeric/cases/t3269-fresh-sweep.case.json"
 )
-rng = random.Random(3269)
-cells, hypotheses = {}, {}
-for n in range(1, 241):
-    x = float(f"{math.exp(rng.uniform(0.0, math.log(1000.0))):.6g}")
-    if n % 2:
-        k = rng.randint(1, 21)
-        formula, label = f"=POISSON({k},{x:g},TRUE)", f"fresh/poisson/k={k}/mean={x:g}"
-    else:
-        df = rng.randrange(3, 42, 2)
-        formula, label = f"=CHISQ.DIST.RT({2 * x:g},{df})", f"fresh/chisq/df={df}/x={2 * x:g}"
-    cells[f"A{n}"] = formula
-    hypotheses[f"Calc!A{n}"] = label
-case = {
-    "format": "rustsheet-case/v1",
-    "description": "T-3269 fresh log-uniform sweep after the far-tail model was frozen (decision 0188 R4.2): "
-    "POISSON(k,x,TRUE), k 1 to 21, and CHISQ.DIST.RT(2x,df), odd df 3 to 41, x log-uniform from 1 to 1000 "
-    "(240 cells; docs/research/t3269/fresh_sweep.py).",
-    "tags": ["M9", "probe", "statistics", "T-3269", "poisson", "chisq", "sweep"],
-    "expected": {},
-    "hypotheses": hypotheses,
-    "sheets": [{"name": "Calc", "cells": cells}],
-}
-CASE.write_text(json.dumps(case, indent=1) + "\n", encoding="utf-8")
-print(len(cells))
+
+
+def write_case(path: Path, description: str, cells: dict[str, str], hypotheses: dict[str, str]) -> None:
+    """Write a one-sheet (Calc) probes-numeric case; fresh_sweep_2.py shares it."""
+    case = {
+        "format": "rustsheet-case/v1",
+        "description": description,
+        "tags": ["M9", "probe", "statistics", "T-3269", "poisson", "chisq", "sweep"],
+        "expected": {},
+        "hypotheses": hypotheses,
+        "sheets": [{"name": "Calc", "cells": cells}],
+    }
+    path.write_text(json.dumps(case, indent=1) + "\n", encoding="utf-8")
+
+
+def main() -> None:
+    rng = random.Random(3269)
+    cells, hypotheses = {}, {}
+    for n in range(1, 241):
+        x = float(f"{math.exp(rng.uniform(0.0, math.log(1000.0))):.6g}")
+        if n % 2:
+            k = rng.randint(1, 21)
+            formula, label = f"=POISSON({k},{x:g},TRUE)", f"fresh/poisson/k={k}/mean={x:g}"
+        else:
+            df = rng.randrange(3, 42, 2)
+            formula, label = f"=CHISQ.DIST.RT({2 * x:g},{df})", f"fresh/chisq/df={df}/x={2 * x:g}"
+        cells[f"A{n}"] = formula
+        hypotheses[f"Calc!A{n}"] = label
+    write_case(
+        CASE,
+        "T-3269 fresh log-uniform sweep after the far-tail model was frozen (decision 0188 R4.2): "
+        "POISSON(k,x,TRUE), k 1 to 21, and CHISQ.DIST.RT(2x,df), odd df 3 to 41, x log-uniform from 1 to 1000 "
+        "(240 cells; docs/research/t3269/fresh_sweep.py).",
+        cells,
+        hypotheses,
+    )
+    print(len(cells))
+
+
+if __name__ == "__main__":
+    main()

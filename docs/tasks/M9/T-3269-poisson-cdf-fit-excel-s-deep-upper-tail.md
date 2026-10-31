@@ -124,42 +124,57 @@ T-3289 landed the sweep: probes-numeric/t3284-gamma-deep-upper-tail.case.json (3
   and R!A75 13 to 189; gen-m9/5919660b7bb4d195 A80 `POISSON(9,100,..)` 44 to 72 and 43c6227e0ff368c7 A108
   `POISSON(5,42,..)` 5 to 25; t3284-gamma-deep-upper-tail A165 / A166 (9 to 90) and A183 / A184 (5 to 79) at x / a = 10;
   gen-m9/caa1eed48b1883fe A59 `CHIDIST(100,9)` 0 to 1 against T-3285's head. T-3469 owns all nine.
-- Engine (merged from the side branch `claude/hopeful-meitner-5oxf0g-t3269-far-tail` at d74097f8c, which sits on
-  T-3285's final head):
-  `incomplete_gamma/excel_tail.rs` (the Stirling ratio prefactor with the exact correction at each multiple of 1/2,
-  times T-3285's double-double fraction, for 30 < x <= 600), `poisson_upper` for POISSON's cdf, and CHISQ.DIST.RT's
-  `accurate_tail` taking it before T-3285's half-integer kernel. Fitted pieces: `FAR_TAIL_MIN_X` (the switch at 30)
-  carries `FITTED(T-3269, 145 cells, x 26..40)`, ratcheted in quality/fitted.json; `FAR_TAIL_MAX_X` (600) is the measured
-  range's end, past which the accurate kernel stays (R4.3), and `STIRLING_CORRECTION` is exact 50-digit math, not fitted.
-- Decision 0188 R4 (attempt 1, unchanged since the freeze):
-  - R4.1 hold-out (502 literal cells with a < 20 and x >= a + 1, 30% by hash of (a, x), split fixed before scoring):
-    bit-exact test 52 / 157 (33.1%) against 22 / 157 for the correctly rounded Q (old kernel 19); train 79 / 345
-    (22.9%) against 50 / 345 (old 32). Within 4 ulp on test: 147 against 46.
-  - R4.2 fresh sweep after the freeze (probes-numeric/t3269-fresh-sweep, 240 cells, x log-uniform 1 to 1000,
-    docs/research/t3269/fresh_sweep.py): far range 20 / 88 bit-exact (old kernel 1, correctly rounded 2), 72 / 88
-    within 4 ulp; elsewhere 74 / 152 (old 73).
-  - Gate A envelope: every value of the hold-out and the sweep within 1e-9 relative of the 50-digit math (the form is at
-    most a few hundred ulp from it); `make check`'s accuracy gate passes.
-- Eval, main ea7470e4a vs the side branch (T-3285 included), full runs on the same suite root, per cell (main's later
-  engine changes touch no statistical code):
-  - gated: fixed 8 (gen-m9 09b47629f54b9817 A349, 583ca2baea0bb30a A399, 8fec7b207f4dd753 A349, bbdfc06cae0e0d71 A125,
-    d208bbafc3bc1997 A169, and T-3285's 2a18b2f5a4dc43ac A383, b8ee55934c5b824c A216, ironcalc-calc CHISQ.xlsx G3);
-    closer 18; visibly fixed 13; farther 6 (T-3269's: 5919660b7bb4d195 A80 `POISSON(9,100,..)` 44 to 72,
-    43c6227e0ff368c7 A108 `POISSON(5,42,..)` 5 to 25, both already visibly off; T-3285's four `CHIDIST` cells, decision
-    0202); lost 1 (T-3285's `CHIDIST(42,7)`); newly visibly off 0. Against T-3285's head, one more lost:
-    caa1eed48b1883fe A59 (0 to 1 ulp, still within 15 digits).
-  - ungated, cases on main: fixed 96, closer 290, visibly fixed 309, farther 34, lost 4 (t2561-chisq-dist-rt-past-edge
-    R!A33 0 to 2 and R!A43 0 to 1; T-3285's t3284 A245 and A252), newly visibly off 7: R!A73, R!A75, t3284 A165, A166,
-    A183, A184 (decision 0203) and T-3285's A246 (2 to 3; decision 0202).
-  - ungated, the branches' new probe cases: t3269-fresh-sweep fixed 21, visibly fixed 51, newly visibly off 3;
-    t3269-gamma-tail-switch fixed 18, visibly fixed 44, newly visibly off 2; t3269-shape6-misses fixed 14, visibly fixed
-    50, newly visibly off 4 (the shape-6 misses); t3285-chisq-dist-rt-half-integer-sweep fixed 25, visibly fixed 113,
-    newly visibly off 3.
-  - `update-baseline --allow-regressions` (approved for caa1eed A59 by the extended ruling; release binary rebuilt from
-    this worktree after `cargo clean --release -p rustsheet_engine -p rustsheet_eval`, on main b9558688e plus T-3285
-    d23e971b8): gen-m9 known failures 2886 to 2882 (fixed 5: 09b47629f54b9817 A349, 583ca2baea0bb30a A399,
-    8fec7b207f4dd753 A349, bbdfc06cae0e0d71 A125, d208bbafc3bc1997 A169; regression 1: caa1eed48b1883fe A59); every
-    other suite unchanged. Visible parity 2191 in-scope cells visibly off against the lock of 2462 (the drop is left to
-    the steward, decision 0093).
-- Follow-up T-3469 (`campaign: visible`): the shape-6 misses (x = 38, 42, 229.64986, 234.2428575), x / a = 10
-  (`POISSON(9,100)` and the four t3284 cells) and caa1eed A59.
+- Engine (reworked after review): `incomplete_gamma/excel_tail.rs`, the Stirling ratio prefactor with the exact
+  Stirling error (`loader::stirlerr_exact`, gated by `is_half_integer_shape`) times T-3285's double-double fraction,
+  at shapes 3/2 to 11 and 30 < x <= 600; `poisson_upper` for POISSON's cdf and CHISQ.DIST.RT's `accurate_tail` take
+  it, else the accurate kernel. Fitted pieces (quality/fitted.json, 1 to 2 in the file): `FAR_TAIL_MIN_X` (the switch
+  at 30), `FITTED(T-3269, 145 cells, x 26..40, shape 2..4)`, and `FAR_TAIL_MAX_SHAPE` (11),
+  `FITTED(T-3269, 153 cells, shape 1.5..19.5, x 30..45)`: next to the cut, on train cells, gaps above 4 ulp, the form
+  beats the accurate kernel 80 to 12 at shapes 3/2 to 11 (test 8 to 1) and loses 1 to 3 above (test 2 to 1).
+  `FAR_TAIL_MAX_X` (600) is the measured end, UNVERIFIED (T-3469). Rework against the first version: shapes above 11
+  go back to T-3285's kernel (bit-identical to T-3285's head there and to the first version at shapes up to 11, on all
+  1058 hold-out cells).
+- Decision 0188 R4 (docs/research/t3269/: holdout.py, its split holdout-split.tsv, the mpmath values, each binary's
+  values and the output holdout.out / fresh2.out):
+  - R4.1 hold-out: 1058 literal cells with 1 < a < 20 and x >= a + 1 (the first fresh sweep included, the new one
+    not), 30% by `sha256("a,x")` (first 8 hex digits mod 100 < 30), the 145 tail-switch cells forced to train (0 in
+    test). Margin: test exact rate within 5 points of train.
+
+    | candidate | train exact | train <=4 ulp | train 15 digits | test exact | test <=4 ulp | test 15 digits |
+    |---|---|---|---|---|---|---|
+    | head (form at 1.5..11) | 157 / 792 (19.8%) | 591 | 661 | 43 / 266 (16.2%) | 202 | 216 |
+    | correctly rounded Q | 89 (11.2%) | 238 | 334 | 24 (9.0%) | 74 | 105 |
+    | T-3285 head | 75 | 246 | 369 | 17 | 69 | 110 |
+    | main | 73 | 240 | 359 | 17 | 65 | 107 |
+
+    Test against train: 3.6 points, inside the margin; test beats the correctly rounded Q (43 to 24). In the form's
+    range alone: test 27 / 157 bit-exact, 150 within 4 ulp (correctly rounded 1 and 19).
+  - R4.2 fresh sweep after the freeze: probes-numeric/t3269-fresh-sweep-2 (300 cells, docs/research/t3269/
+    fresh_sweep_2.py: a log-uniform 1.5 to 19.5 in halves, x log-uniform 20 to 600, plus 40 cells at x 27 to 34 and
+    20 at shapes 10 to 13), filled by excel-graph after the code was final, scored with copied binaries:
+
+    | | exact (all 300) | <=4 ulp | 15 digits | form's range exact (188) | <=4 ulp | 15 digits |
+    |---|---|---|---|---|---|---|
+    | head | 52 | 207 | 242 | 40 | 163 | 177 |
+    | T-3285 head | 15 | 64 | 125 | 3 | 20 | 60 |
+    | main | 15 | 64 | 123 | 4 | 20 | 57 |
+    | correctly rounded | 3 | 48 | 101 | 1 | 19 | 44 |
+
+    Outside the range (67 cells with x > 30) the unrestricted form would have had 9 bit-exact against the head's 2
+    (T-3469 owns finding Excel's switch above shape 11).
+  - Gate A: every hold-out and sweep value in the envelope; largest relative error against the 50-digit math 9.8e-14
+    (hold-out) and 1.1e-13 (sweep).
+- Eval (copied binaries; main 8406c606b, T-3285 head d23e971b8, this head; full runs, per cell):
+  - against T-3285's head, gated: fixed 5, closer 14, visibly fixed 11, farther 2 (decision 0203 cells 3 and 4), lost
+    1 (cell 9, caa1eed48b1883fe A59), newly visibly off 0. Against main, gated: fixed 8, closer 18, visibly fixed 13,
+    farther 6, lost 1, newly visibly off 0 (T-3285's `CHIDIST(42,7)` and four `CHIDIST` cells, decision 0202).
+  - `update-baseline` (no `--allow-regressions`; cell 9 was recorded in the first version): every suite unchanged,
+    gen-m9 2882.
+  - Ungated cells lost or newly visibly off that decision 0203 does not name: listed for an owner ruling (not
+    claimed): t2561-chisq-dist-rt-past-edge R!A33 0 to 2 and R!A43 0 to 1; t3269-gamma-tail-switch A80, A100, A136
+    (and A99 0 to 1 against main, 1 on T-3285); t3269-shape6-misses A46, A53, A67, A68, A69; t3285-chisq-dist-rt-
+    half-integer-sweep A65 6 to 17; t3269-fresh-sweep-2 A70 0 to 3, A205 0 to 32, A165 10 to 25, A173 5 to 17, A209 5 to
+    11, A233 6 to 21, A286 2 to 8 (ulps of Excel's value, T-3285's head to this head). The first review's A61, A157,
+    A8, A10 of t3269-fresh-sweep and A167, A196 of the half-integer sweep are back on the accurate kernel.
+- Follow-up T-3469 (`campaign: visible`): the shape-6 misses, x / a = 10, caa1eed A59, the give-up probe cells, and
+  where Excel switches to the form above shape 11.

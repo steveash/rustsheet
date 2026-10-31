@@ -39,6 +39,19 @@ x / a = 10 exactly, so the nine cells decision 0203 names as moved farther (six 
 - Lead: a dense probe of adjacent doubles around x = 42 and 229.64986 at shape 6, and around x = 10a, to find where
   Excel's exponent rounds differently (an x87 extended step, or a branch at x = 10a).
 
+- T-3269's rework (decision 0188 R4.3) applies the form only at shapes 3/2 to 11: above 11 the hold-out's cells next
+  to x = 30 are not the form (docs/research/t3269/holdout.out), yet far from the cut the form still beats the accurate
+  kernel there (hold-out, x > 30 outside the form's range: 55 bit-exact of 164 train cells against 27; fresh sweep
+  probes-numeric/t3269-fresh-sweep-2: 9 of 67 against 2, 54 within 4 ulp against 10). Find where Excel switches to it
+  above shape 11 (and past x = 600, where `FAR_TAIL_MAX_X` is UNVERIFIED), with a probe like t3269-gamma-tail-switch
+  at shapes 12 to 19.5; any widening passes R4 again.
+- Probe cells the form gives up against T-3285's accurate kernel (ungated, ulps of Excel's value, T-3285's head to
+  T-3269's), recorded here as T-3269's reviewers asked: t3269-gamma-tail-switch Calc!A80 `POISSON(2,36.5,TRUE)` 0 to 1,
+  A100 `CHISQ.DIST.RT(64,7)` 0 to 2, A136 `POISSON(3,35.5,TRUE)` 4 to 29; t3269-shape6-misses Calc!A46
+  `POISSON(5,38,TRUE)` 11 to 26, A53 `POISSON(5,41.5,TRUE)` 0 to 4, A67 `POISSON(5,229.64986,TRUE)` 15 to 129, A68
+  `POISSON(5,234.2428575,TRUE)` 13 to 189 (the POISSON twins of R!A73 and R!A75), and A69 `POISSON(4,42,TRUE)` 3 to 6,
+  which is shape 5, not 6.
+
 Cells this task owns:
 - probes-numeric/t2561-chisq-dist-rt-past-edge.case.json (2): R!A73, A75
 - gen-m9/5919660b7bb4d195.case.json (1): Calc!A80

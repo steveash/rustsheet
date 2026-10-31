@@ -1205,33 +1205,43 @@ bit for bit (111 of 111), and Excel's error grows with x, not with x / a (at mos
 about 50 near 100 and 317 at `POISSON(16,510,TRUE)`). Over the 32 adjacent doubles of `POISSON(2,100+j*2^-46,TRUE)` it
 drifts about 2 ulp a step and jumps by 64 ulp, one ulp of a number near |ln Q| = 92.
 
-Excel's far upper tail (T-3269). Rule: at a shape below 20 (POISSON's cdf at k up to 18, CHISQ.DIST.RT and CHIDIST at
-df up to 39), for x > 30, Excel's Q(a, x) is Stirling's ratio prefactor, sqrt(a / 2 pi) exp(a ln(x/a) + (a - x) -
-correction(a)), the form T-2638 found above shape 20 away from the mode, times the continued fraction; at and below x
-= 30 it is the accurate Q at integer shapes.
+Excel's far upper tail (T-3269). Rule: at shapes 3/2 to 11 (POISSON's cdf at k from 1 to 10, CHISQ.DIST.RT and
+CHIDIST at df 3 to 22), for 30 < x <= 600, Excel's Q(a, x) is Stirling's ratio prefactor, sqrt(a / 2 pi) exp(a ln(x/a)
++ (a - x) - correction(a)), the form T-2638 found above shape 20 away from the mode, times the continued fraction; at
+and below x = 30 it is the accurate Q at integer shapes. Above shape 11 Excel is not this form next to x = 30 (where it
+switches there is open, T-3469), and past x = 600 it is unmeasured.
 - The switch: probes-numeric/t3269-gamma-tail-switch (x from 26 to 40 by 0.5 at shapes 2 to 4) has Excel correctly
   rounded at every x up to 30 at shapes 2, 3 and 4, and the ratio form (within 2 ulp at most cells) from 30.5 on:
   `POISSON(2,30,TRUE)` is exact, `POISSON(2,30.5,TRUE)` 32 ulp from it and 3 from the form.
+- The shape range: next to the cut (30 < x <= 45), on the R4 hold-out's train cells and counting only gaps above the
+  oracle's 4-ulp floor, the form is closer to Excel than the accurate kernel at 80 cells and farther at 12 for shapes 3/2
+  to 11 (test 8 and 1), but closer at 1 and farther at 3 above 11 (`CHISQ.DIST.RT(63.1168,23)` 19 ulp against 10,
+  `CHISQ.DIST.RT(68.6972159,27)` 10 against 2, `POISSON(17,31.4903,TRUE)` 36 against 28;
+  docs/research/t3269/holdout.out). Far from the cut the form is still closer at most cells above 11 (train 55
+  bit-exact of 164 against 27 for the accurate kernel), so Excel takes it there from some x above 30 that no probe
+  places yet (T-3469).
 - In the engine (T-3269, `incomplete_gamma/excel_tail.rs`, POISSON's cdf and CHISQ.DIST.RT / CHIDIST / CHISQ.TEST,
-  decision 0203): that prefactor with the exact correction at each multiple of 1/2
-  (`docs/research/t3269/stirling_correction.py`; TOMS's series is only good from 8) times the fraction in double-double
-  (T-3285's backward evaluation) for 30 < x <= 600; past 600 (unmeasured) the accurate kernel stays. With the exact
-  fraction ratio, ln(Excel / exact) minus the form's rounding stays at -0.32 of the exponent's ulp (+-0.03) along the
-  whole POISSON ulp run: its jumps are the exponent's.
-- Fit (decision 0188 R4): the form is a structural choice, the switch at 30 a FITTED cut. On the 502 literal cells
-  with a < 20 and x >= a + 1, split 30% by (a, x) hash: bit-exact train 79 of 345 (22.9%) and test 52 of 157 (33.1%),
-  against 50 / 345 and 22 / 157 for the correctly rounded Q and 32 / 345 and 19 / 157 for the old kernel; within 4
-  ulp, test 147 of 157 (correctly rounded 46). Fresh log-uniform sweep after the freeze
-  (probes-numeric/t3269-fresh-sweep, 240 cells, x from 1 to 1000): in the far range 20 of 88 bit-exact (old kernel 1,
-  correctly rounded 2) and 72 within 4 ulp; elsewhere 74 of 152 (old 73).
-- On the eval (main ea7470e4a against the branch with T-3285, per cell) the gated cells: fixed 8, closer 18, visibly
+  decision 0203): that prefactor with the exact Stirling error at the shape (`loader::stirlerr_exact`; TOMS's series is
+  only good from 8) times the fraction in double-double (T-3285's backward evaluation), at multiples of 1/2 from 3/2 to
+  11 and 30 < x <= 600; elsewhere the accurate kernel stays. With the exact fraction ratio, ln(Excel / exact) minus the
+  form's rounding stays at -0.32 of the exponent's ulp (+-0.03) along the whole POISSON ulp run: its jumps are the
+  exponent's.
+- Fit (decision 0188 R4; docs/research/t3269/holdout.py, its split, values and output): the form is a structural
+  choice, the switch at 30 and the shape limit 11 FITTED cuts. 1058 literal cells with 1 < a < 20 and x >= a + 1,
+  split 30% by a hash of (a, x), the 145 switch-probe cells all train: bit-exact train 157 of 792 (19.8%) and test 43
+  of 266 (16.2%), against 89 / 792 and 24 / 266 for the correctly rounded Q; within 4 ulp, test 202 (correctly rounded
+  74). In the form's range, test 27 of 157 bit-exact (correctly rounded 1). Fresh log-uniform sweep after the freeze
+  (probes-numeric/t3269-fresh-sweep-2, 300 cells, a 1.5 to 19.5, x 20 to 600, extra cells at the cuts;
+  docs/research/t3269/fresh2.out): in the form's range 40 of 188 bit-exact and 163 within 4 ulp (main 4 and 20,
+  T-3285 3 and 20, correctly rounded 1 and 19); every value within 1.2e-13 relative of the 50-digit math (Gate A).
+- On the eval (main 8406c606b against the branch with T-3285, per cell) the gated cells: fixed 8, closer 18, visibly
   fixed 13 (gen-m9 POISSON and CHIDIST at mean or x 100, ironcalc-calc CHISQ.xlsx G3 and G4 with T-3285), farther 6,
-  lost 1 (five of them T-3285's, decision 0202), newly visibly off 0. Two gated cells already visibly off went
-  farther: `POISSON(9,100,TRUE)` (x / a = 10; 44 to 72 ulp) and `POISSON(5,42,TRUE)` (5 to 25). Ungated cells newly
-  visibly off: `CHISQ.DIST.RT(459.29972,12)` and `(468.485715,12)` (probes-numeric/t2561-chisq-dist-rt-past-edge
-  R!A73, A75: 15 and 13 ulp to 129 and 189), and at x / a = 10 exactly `POISSON(10,110,TRUE)` and
-  `CHISQ.DIST.RT(220,22)` (9 to 90) and `POISSON(13,140,TRUE)` and `CHISQ.DIST.RT(280,28)` (5 to 79)
-  (t3284-gamma-deep-upper-tail A165, A166, A183, A184). The shape-6 cells are where the form misses at isolated points
+  lost 1 (five of them T-3285's, decision 0202), newly visibly off 0; against T-3285's head, lost 1 (`CHIDIST(100,9)`,
+  below). Two gated cells already visibly off went farther: `POISSON(9,100,TRUE)` (x / a = 10; 44 to 72 ulp) and
+  `POISSON(5,42,TRUE)` (5 to 25). Ungated cells newly visibly off: `CHISQ.DIST.RT(459.29972,12)` and
+  `(468.485715,12)` (probes-numeric/t2561-chisq-dist-rt-past-edge R!A73, A75: 15 and 13 ulp to 129 and 189), and at
+  x / a = 10 exactly `POISSON(10,110,TRUE)` and `CHISQ.DIST.RT(220,22)` (9 to 90; t3284-gamma-deep-upper-tail A165,
+  A166). The shape-6 cells are where the form misses at isolated points
   by 1.5 to 3 ulp of its exponent while the points 0.5 away fit within 4 ulp (probes-numeric/t3269-shape6-misses:
   `POISSON(5,x,TRUE)` for x 220 to 240 and 36 to 48; misses at x = 38, 42, 229.64986, 234.2428575; shapes 5, 7, 8 fit
   at the same x). `POISSON(5,229.64986,TRUE)` is `CHISQ.DIST.RT(459.29972,12)` bit for bit, so it is the kernel, not

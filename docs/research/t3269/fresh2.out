@@ -1,0 +1,66 @@
+300 cells; fit set 0, of which in test: 0
+all: label | sweep: n exact <=4ulp 15dig envelope max-rel-err
+   correctly rounded |  300    3   48  101  300  1.01e-16
+                main |  300   15   64  123  300  5.45e-14
+               t3285 |  300   15   64  125  300  5.45e-14
+        unrestricted |  300   59  251  278  300  1.11e-13
+                head |  300   52  207  242  300  1.11e-13
+x <= 30: label | sweep: n exact <=4ulp 15dig envelope max-rel-err
+   correctly rounded |   45    1   24   38   45  9.34e-17
+                main |   45   10   32   42   45  2.03e-15
+               t3285 |   45   10   34   41   45  2.03e-15
+        unrestricted |   45   10   34   41   45  2.03e-15
+                head |   45   10   34   41   45  2.03e-15
+form's range (30 < x <= 600, a <= 11): label | sweep: n exact <=4ulp 15dig envelope max-rel-err
+   correctly rounded |  188    1   19   44  188  1.01e-16
+                main |  188    4   20   57  188  5.45e-14
+               t3285 |  188    3   20   60  188  5.45e-14
+        unrestricted |  188   40  163  177  188  1.11e-13
+                head |  188   40  163  177  188  1.11e-13
+x > 30 outside it: label | sweep: n exact <=4ulp 15dig envelope max-rel-err
+   correctly rounded |   67    1    5   19   67  9.68e-17
+                main |   67    1   12   24   67  2.49e-14
+               t3285 |   67    2   10   24   67  2.47e-14
+        unrestricted |   67    9   54   60   67  6.79e-14
+                head |   67    2   10   24   67  2.47e-14
+x > 30, bit-exact per shape (all splits)
+   a    n correctly        main      t3285 unrestrict       head
+  1.5   18          0          0          0          1          1
+  2.0   24          1          1          1          9          9
+  2.5   17          0          0          0          3          3
+  3.0   22          0          0          0          6          6
+  3.5    9          0          0          0          1          1
+  4.0   10          0          0          0          7          7
+  4.5    7          0          0          0          1          1
+  5.0    9          0          0          0          3          3
+  5.5    6          0          0          0          1          1
+  6.0    9          0          0          0          1          1
+  6.5    7          0          1          1          0          0
+  7.0    6          0          1          1          1          1
+  7.5    7          0          1          0          0          0
+  8.0    5          0          0          0          0          0
+  8.5    4          0          0          0          0          0
+  9.0    9          0          0          0          4          4
+  9.5    3          0          0          0          1          1
+ 10.0    4          0          0          0          0          0
+ 10.5    5          0          0          0          0          0
+ 11.0    7          0          0          0          1          1
+ 11.5    8          1          0          0          1          0
+ 12.0    7          0          0          0          2          0
+ 12.5    3          0          0          1          0          1
+ 13.0    5          0          1          1          0          1
+ 13.5    3          0          0          0          0          0
+ 14.0    3          0          0          0          0          0
+ 14.5    5          0          0          0          1          0
+ 15.0    4          0          0          0          0          0
+ 15.5    8          0          0          0          2          0
+ 16.0    6          0          0          0          1          0
+ 16.5    3          0          0          0          0          0
+ 17.0    2          0          0          0          0          0
+ 17.5    2          0          0          0          1          0
+ 18.0    3          0          0          0          1          0
+ 18.5    2          0          0          0          0          0
+ 19.0    2          0          0          0          0          0
+ 19.5    1          0          0          0          0          0
+sweep shapes 1.5..11: 49 cells, closer 19, farther 9
+sweep shapes 11.5..19.5: 22 cells, closer 4, farther 3
