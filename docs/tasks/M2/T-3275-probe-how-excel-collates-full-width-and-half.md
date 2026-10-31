@@ -3,7 +3,7 @@ id: T-3275
 title: "Probe how Excel collates full-width and half-width forms and kana (width, hiragana/katakana, small kana, voicing marks, the long-vowel mark)"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -53,19 +53,29 @@ rule (or rules) precisely enough for an engine task to implement, replacing toda
   in collation.rs, `DECOMPOSED` in collation_tables.rs.
 
 ## Acceptance criteria
-- [ ] A probe case `probes/t3275-collation-width-kana` (milestone M2) is committed with its
+- [x] A probe case `probes/t3275-collation-width-kana` (milestone M2) is committed with its
       excel-graph oracle sidecar and answers each of questions 1-5 above with at least two cells.
-- [ ] coercion.md gains a section stating the width and kana rules with the case id and cells, each
+- [x] coercion.md gains a section stating the width and kana rules with the case id and cells, each
       marked VERIFIED or, where the cells do not settle it, UNVERIFIED with the competing readings; the
       "Every other character ... UNVERIFIED" sentence is narrowed to what is still unprobed.
-- [ ] Every cell our engine fails is a known failure in eval/baseline/probes.txt (`make eval-baseline`,
+- [x] Every cell our engine fails is a known failure in eval/baseline/probes.txt (`make eval-baseline`,
       0 regressions), and an engine task filed in the same PR (`make new-task`, milestone M2, lane
       engine) lists them (case stem and A1 names in one bullet, decision 0159), so
       `make exit-owners MILESTONE=M2` reports 0.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing collation.rs (the engine task this files).
 - Scripts other than kana and the full-width/half-width block (T-3276: Hebrew, Arabic, Indic, Thai,
   Hangul, CJK ideograph order, symbols and supplementary-plane characters).
 - Case mapping in UPPER/LOWER/PROPER and ASC/DBCS conversions (text.md).
+
+## Outcome
+Two excel-graph probe cases (2026-10-30): probes/t3275-collation-width-kana (137 strings ranked,
+with `=` counts, exact MATCH, XMATCH, COUNTIF and 34 chosen pairs; 856 checked cells) and
+probes/t3275-collation-width-kana-pairs (37 strings, every pair; 1,406 cells). coercion.md gains
+"Full-width and half-width forms, kana, voicing and the long-vowel mark (T-3275)": width, kana type,
+small kana and voicing are tiebreaks on a shared letter, kana sort in syllabary order between
+Cyrillic and the ideographs, `ー`/`ゝ`/`ゞ`/`々` repeat the preceding character, and `ー` after a Latin
+letter is not transitive. Eval delta: +2 cases; 530 new known failures (172 + 358), 0 regressions;
+owned by T-3321 (engine).
