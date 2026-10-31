@@ -207,7 +207,10 @@ impl Model {
         }
         let source = self.by_slices_source(&args[0], cell, false, false)?;
         let lambda_result = self.by_slices_lambda(&args[1], cell)?;
-        Ok((source, self.lambda_caller(&lambda_result, 1)))
+        Ok((
+            source,
+            self.lambda_caller(&lambda_result, 1).snapping_root(),
+        ))
     }
 
     /// One BYROW or BYCOL call of `lambda` on the row or column `slice`, bound as a reference.
@@ -465,7 +468,7 @@ impl Model {
             return lambda_result.clone();
         }
 
-        let mut caller = self.lambda_caller(lambda_result, 2);
+        let mut caller = self.lambda_caller(lambda_result, 2).snapping_root();
         let mut result = Vec::with_capacity(rows);
         for r in 1..=rows {
             let mut row = Vec::with_capacity(cols);

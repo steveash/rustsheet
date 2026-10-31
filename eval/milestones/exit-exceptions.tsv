@@ -17,3 +17,7 @@ ironcalc-calc/MATH_AND_TRIGONOMETRY/ATAN2_POWER.xlsx!Sheet1!D26	M5	0086	T-1075
 ironcalc-calc/ENGINEERING/COMPLEXs.xlsx!Sheet1!N6	M9	0188	T-1075
 ironcalc-calc/ENGINEERING/COMPLEXs.xlsx!Sheet1!AL12	M9	0188	T-1075
 ironcalc-calc/ENGINEERING/COMPLEXs.xlsx!Sheet1!AL26	M9	0188	T-1075
+# IRR.xlsx Two Values!C4 (IRR at an exact zero root) and COMPLEXs.xlsx K25 (IMCOS) cache digits Excel for the web
+# no longer gives; the engine gives the web's (decision 0196). Their M14 items are T-1075 items 23 and 24.
+ironcalc-calc/FINANCIAL/IRR.xlsx!Two Values!C4	M9	0196	T-1075
+ironcalc-calc/ENGINEERING/COMPLEXs.xlsx!Sheet1!K25	M9	0196	T-1075
