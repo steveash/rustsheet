@@ -93,6 +93,6 @@ Bit-level residue moves to a follow-up with `defer: phase-1b`.
   Excel's median relative error against the math is 2.2e-8. 0 points are outside both envelopes, and no cell is an
   error on one side and a number on the other.
 - **Found:** near a zero root (|root| below about 2e-5) Excel is 1e-4 to 2.1e-3 off the math, over G, on 9 of
-  the 15 near-zero sweep cells (rows 94-104). That is an R3 candidate, filed as T-3442 (blocked on an owner ruling). The engine still matches Excel there.
+  the 15 near-zero sweep cells (rows 94-104). That is an R3 candidate, filed as T-3484 (blocked on an owner ruling). The engine still matches Excel there.
 - Eval delta: +2 cases, +1050 passing cells (probes 810, probes-numeric 240), 0 regressions. Docs: financial.md T-3353
   bullet.

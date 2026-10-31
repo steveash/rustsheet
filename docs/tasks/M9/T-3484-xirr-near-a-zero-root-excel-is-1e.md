@@ -1,5 +1,5 @@
 ---
-id: T-3442
+id: T-3484
 title: "XIRR near a zero root: Excel is 1e-4 to 2e-3 off the math (R3 candidate, owner ruling)"
 milestone: M9
 lane: functions-financial
