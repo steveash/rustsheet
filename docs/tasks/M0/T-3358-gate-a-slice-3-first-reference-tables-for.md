@@ -33,6 +33,8 @@ the decision 0188 R3 points marked, and `make check` running them.
 - [ ] Tables for the batch are committed and filled; each failing point is named with its owner task in the Outcome.
 - [ ] The `MATH-OVER-EXCEL` entries cite their committed evidence points.
 - [ ] Further slices for the remaining numeric functions are filed.
+- [ ] `rustsheet-accuracy math --suite probes-numeric` (T-3380) is rerun after the new definitions land, and its
+      math sidecars are committed, so R1(c) sees the math value of every probes-numeric cell of those functions.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

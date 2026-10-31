@@ -634,6 +634,7 @@ mod tests {
             listed_deviation: verdict == Verdict::Deviation,
             graph_subnormal: false,
             kind: CellKind::Scored,
+            math: None,
         }
     }
 

@@ -244,6 +244,7 @@ mod tests {
             listed_deviation: false,
             graph_subnormal: false,
             kind: crate::runner::CellKind::Scored,
+            math: None,
         };
         CaseResult {
             cells: vec![cell],
