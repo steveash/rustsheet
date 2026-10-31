@@ -64,6 +64,19 @@ a number on every cell; the engine was `#NUM!` on A10-A21 and A36-A42 (19 cells)
   hold out of sample; then `python3 scripts/check_fitted.py --update`, `make check`, re-review, mark ready.
 - Everything else is done and was approved by all four reviewers on c316808 (PR #2529).
 
+## Hold-out (decision 0188 R4.1, R4.2; fixed before any scoring)
+- Train: the 162 cells the stage was fitted on (probes/t3347-irr-conventional-num, 42, and
+  probes-numeric/t3347-irr-conventional-sweep, 120). Hold-out: probes-numeric/t3347-irr-conventional-holdout,
+  144 cells drawn after the freeze with a new seed (334702): the sweep's five strata plus 24 long series at -0.5
+  to -0.1, where the 50-step split falls. No cell of it is used to change the code.
+- Counts reported for both, side by side: bit-exact, within 4 ulp, within 15 digits of Excel, and type
+  mismatches, for the engine and for the correctly rounded 50-digit root (with `#NUM!` where Excel is `#NUM!`
+  counted as a mismatch for the root).
+- Margin: the hold-out within-15-digits rate is within 10 percentage points of the train rate, the hold-out has 0
+  type mismatches (number against `#NUM!` either way) and 0 Gate A points outside both bounds, and the engine's
+  hold-out bit-exact count is not below the correctly rounded root's (within-4-ulp breaking a tie). A miss blocks
+  the `--update` of quality/fitted.json.
+
 ## Outcome
 - Cause: the secant model either reaches its 50-step cap (long level series near -10%: it drifts) or stops on a
   flat step (near 0 with large flows, v = 1 - d is the same double for successive d), and the v = 0 Newton fallback

@@ -6,7 +6,10 @@ Usage (from tools/, mpmath is not a tools dependency yet; T-3357 adds it):
 
 Writes, deterministically (fixed seeds), the cells of
 eval/suites/probes/cases/t3347-irr-conventional-num.case.json and
-eval/suites/probes-numeric/cases/t3347-irr-conventional-sweep.case.json and each case's
+eval/suites/probes-numeric/cases/t3347-irr-conventional-sweep.case.json, the R4 hold-out sweep
+eval/suites/probes-numeric/cases/t3347-irr-conventional-holdout.case.json (a new seed drawn after the
+fit was frozen, plus a sixth stratum of long series at -0.5 to -0.1 where the 50-step split falls),
+and each case's
 `.roots.tsv`: the 50-digit root of the flows as written (one outlay, then positive flows, so
 exactly one root with 1 + r > 0) and Excel's value from the case's oracle sidecar when it exists.
 """
@@ -53,8 +56,8 @@ def probe_points() -> list[tuple[str, list[float], float]]:
     return points
 
 
-def sweep_points() -> list[tuple[str, list[float], float]]:
-    rng = random.Random(33470)
+def sweep_points(seed: int = 33470, long_negative: bool = False) -> list[tuple[str, list[float], float]]:
+    rng = random.Random(seed)
 
     def log_uniform(lo: float, hi: float) -> float:
         return float(10 ** rng.uniform(lo, hi))
@@ -73,7 +76,39 @@ def sweep_points() -> list[tuple[str, list[float], float]]:
             n = int(10 ** rng.uniform(0.3, 1.78))
             scale = 10 ** rng.uniform(0, 10)
             points.append((name, flows(rng, rate, n, scale, rng.random() >= 0.7), rate))
+    if long_negative:
+        # Where the fitted 50-step cap splits returning series from `#NUM!` ones (sweep A111,
+        # A115, A117 are -0.11 to -0.40 and need 64 to 159 steps from v = 1).
+        for _ in range(24):
+            rate = rng.uniform(-0.5, -0.1)
+            n = int(10 ** rng.uniform(1.3, 1.78))
+            scale = 10 ** rng.uniform(0, 10)
+            points.append(("neg-long", flows(rng, rate, n, scale, rng.random() >= 0.7), rate))
     return points
+
+
+HOLDOUT_DESCRIPTION = (
+    "T-3347 hold-out sweep (decision 0188 R4.1, R4.2), drawn with a new seed after irr_conventional was frozen: "
+    "the five strata of t3347-irr-conventional-sweep (A1-A120, 24 each, same samplers) and A121-A144 long series "
+    "(20-60 flows) at a rate uniform in -0.5 to -0.1, where the fitted 50-step cap splits numbers from #NUM!. "
+    "50-digit mpmath roots in t3347-irr-conventional-holdout.roots.tsv (docs/research/t3347_irr_conventional_sweep.py)."
+)
+
+
+def create(case: Path, points: list[tuple[str, list[float], float]], description: str) -> None:
+    """Write a new case for `points` (no-op when it exists; `write` then checks it)."""
+    if case.exists():
+        return
+    cells = {f"A{i + 1}": "=IRR({" + ",".join(map(number, v)) + "})" for i, (_, v, _) in enumerate(points)}
+    spec = {
+        "format": "rustsheet-case/v1",
+        "description": description,
+        "tags": ["M9", "probe", "financial", "irr", "sweep"],
+        "sheets": [{"name": "P", "cells": cells}],
+        "expected": {},
+        "check": [f"P!{c}" for c in cells],
+    }
+    case.write_text(json.dumps(spec, indent=1) + "\n")
 
 
 def write(case: Path, points: list[tuple[str, list[float], float]]) -> None:
@@ -94,3 +129,6 @@ def write(case: Path, points: list[tuple[str, list[float], float]]) -> None:
 if __name__ == "__main__":
     write(ROOT / "eval/suites/probes/cases/t3347-irr-conventional-num.case.json", probe_points())
     write(ROOT / "eval/suites/probes-numeric/cases/t3347-irr-conventional-sweep.case.json", sweep_points())
+    holdout = ROOT / "eval/suites/probes-numeric/cases/t3347-irr-conventional-holdout.case.json"
+    create(holdout, sweep_points(334702, long_negative=True), HOLDOUT_DESCRIPTION)
+    write(holdout, sweep_points(334702, long_negative=True))
