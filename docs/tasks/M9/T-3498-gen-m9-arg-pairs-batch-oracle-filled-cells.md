@@ -3,7 +3,7 @@ id: T-3498
 title: "gen-m9 arg-pairs batch: oracle-filled cells for the unseen argument-class pairs of the 26 M9 engineering functions below 0.3 pairwise (base conversions, BIT*, BESSEL*, COMPLEX, IM*, CONVERT, ERF, DELTA, GESTEP)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
