@@ -455,8 +455,8 @@ fn discounted_payment(rate: f64, nper: f64, pv: f64, fv: f64, period_start: bool
 /// principal. Bit-exact on every IPMT cell with constant arguments of probes-numeric/m9-fin-pmt,
 /// probes/fin-ipmt-ppmt-huge-rate, probes/t2665-ipmt-fractional-nper-past-range, gen-m9 and
 /// ironcalc-calc `FINANCIAL/IPMT_PPMT.xlsx` (1495 cells), and on 2552 of the 2556 PPMT ones
-/// (T-2243). A discount `Q(x)` below the normal range
-/// makes PPMT 0, as Excel's is (`PPMT(10,1,296,1)`, financial.md "IPMT cancels on fv").
+/// (T-2243). An `A*Q(x)` below the normal range makes PPMT 0, as Excel's is (`PPMT(10,1,296,1)`,
+/// financial.md "IPMT cancels on fv"; T-2666).
 /// `None` where a factor declines or a value is not finite: [`period_payments`]' earlier forms
 /// decide there.
 fn discounted_split(
@@ -470,11 +470,16 @@ fn discounted_split(
     let factor = payment_factor(rate, period_start)?;
     let x = (period - 1.0 - nper) * log;
     let interest = -((balance * discount_complement(x) - fv) * factor);
-    let discount = excel_exp(x);
-    let principal = if discount.is_normal() {
-        -(balance * discount * factor)
-    } else {
+    // The discounted balance `A*Q(x)` below the normal range is 0, whatever the period: a subnormal
+    // discount alone is kept where `A` lifts the product (`PPMT(7,1,341,1.9999)` is 0,
+    // `PPMT(7,1,341,2)` and `PPMT(7,10,350,2)` -1.5575517009551696E-307, the discount 8^-341 =
+    // 2^-1023; probes/fin-ppmt-subnormal-discount-by-size B3, B4, B17).
+    // An overflowing product stays non-finite, so the caller's rescaled forms decide it.
+    let held = balance * excel_exp(x);
+    let principal = if held.is_finite() && !held.is_normal() {
         0.0
+    } else {
+        -(held * factor)
     };
     (interest.is_finite() && principal.is_finite()).then_some((interest, principal))
 }

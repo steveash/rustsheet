@@ -484,6 +484,7 @@ C	probes/fin-mirr-overflow-positive.case.json	4
 C	probes/fin-mirr-overflow-underflow.case.json	7
 C	probes/fin-odd-date-before-error-arg.case.json	17
 C	probes/fin-ppmt-discount-underflow.case.json	81
+C	probes/fin-ppmt-subnormal-discount-by-size.case.json	80
 C	probes/fin-remaining-later-argument-ranges.case.json	197
 C	probes/fin-rri-vdb-edges.case.json	24
 C	probes/fin-rri.case.json	16
@@ -2785,7 +2786,6 @@ F	probes/fin-cumprinc-underflow-ends.case.json	Sheet1!J5
 F	probes/fin-cumprinc-underflow-ends.case.json	Sheet1!J6
 F	probes/fin-cumprinc-underflow-ends.case.json	Sheet1!J7
 F	probes/fin-cumprinc-underflow-ends.case.json	Sheet1!J9
-F	probes/fin-ppmt-discount-underflow.case.json	Sheet1!F8
 F	probes/fin-remaining-later-argument-ranges.case.json	Sheet1!I75
 F	probes/fin-remaining-later-argument-ranges.case.json	Sheet1!I77
 F	probes/fin-remaining-later-argument-ranges.case.json	Sheet1!I79
