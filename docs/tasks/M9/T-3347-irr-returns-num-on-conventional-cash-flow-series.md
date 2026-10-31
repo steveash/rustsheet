@@ -3,11 +3,11 @@ id: T-3347
 title: "IRR returns #NUM! on conventional cash-flow series whose IRR is near 0 or near -10%"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: blocked
 priority: P0
 size: M
 tier: opus
-depends_on: []
+depends_on: [T-3406]
 campaign: accuracy
 ---
 
@@ -32,11 +32,11 @@ accuracy stage.
   (T-3361) and keep it inside its measured range.
 
 ## Acceptance criteria
-- [x] Conventional series with an IRR between 1e-5 and 3e-4, and near -10%, match Excel's result (number or error, within 15 significant digits for a number) on the oracle-filled cells. (Type and error: all 162. Digits: 141 of 162; the 21 others are 2e-15 to 2.2e-11 off, deferred to T-3385.)
+- [x] Conventional series with an IRR between 1e-5 and 3e-4, and near -10%, match Excel's result (number or error, within 15 significant digits for a number) on the oracle-filled cells. (Type and error: all 162. Digits: 141 of 162; the 21 others are 2e-15 to 2.2e-11 off, deferred to T-3408.)
 - [x] A new public probe case under eval/suites/probes/cases/ (one milestone tag, M9; decision 0057), filled by the
       oracle (excel-graph), reproduces the bug; its cells are listed in this file before the fix. Include the inputs in
       Context and points on both sides of the failing region.
-- [ ] (deferred to T-3385: 11 cells are 7e-15 to 2.2e-11 off) After the fix every cell of that case is within 15 significant digits of Excel's value, with the right type and
+- [ ] (deferred to T-3408: 11 cells are 7e-15 to 2.2e-11 off) After the fix every cell of that case is within 15 significant digits of Excel's value, with the right type and
       error (decision 0083's rule).
 - [x] No gated cell regresses (`make eval-baseline` refuses regressions; decision 0083's ulp allowance only as it
       states).
@@ -64,6 +64,14 @@ a number on every cell; the engine was `#NUM!` on A10-A21 and A36-A42 (19 cells)
   hold out of sample; then `python3 scripts/check_fitted.py --update`, `make check`, re-review, mark ready.
 - Everything else is done and was approved by all four reviewers on c316808 (PR #2529).
 
+## Blocked because
+Blocked because: the R4 hold-out misses its margin (stated below before scoring). On
+probes-numeric/t3347-irr-conventional-holdout the fitted stage has 4 type mismatches of its own (A26, A70 and A142 a
+number where Excel is `#NUM!`; A61 `#NUM!` where Excel is a number), so `scripts/check_fitted.py --update` is not
+allowed and hygiene stays red. It fixes 29 hold-out cells, so the stage is still a net gain; merging it as it is
+needs either the rule T-3406 looks for or an owner ruling that accepts a fit with known wrong-type cells. Unblock
+when T-3406 lands a rule (then re-fill a fresh sweep, R4.2) or the owner rules.
+
 ## Hold-out (decision 0188 R4.1, R4.2; fixed before any scoring)
 - Train: the 162 cells the stage was fitted on (probes/t3347-irr-conventional-num, 42, and
   probes-numeric/t3347-irr-conventional-sweep, 120). Hold-out: probes-numeric/t3347-irr-conventional-holdout,
@@ -76,6 +84,25 @@ a number on every cell; the engine was `#NUM!` on A10-A21 and A36-A42 (19 cells)
   type mismatches (number against `#NUM!` either way) and 0 Gate A points outside both bounds, and the engine's
   hold-out bit-exact count is not below the correctly rounded root's (within-4-ulp breaking a tie). A miss blocks
   the `--update` of quality/fitted.json.
+- Result (docs/research/t3347_irr_holdout_score.py; bit-exact / within 4 ulp / within 15 digits / type mismatches /
+  outside both Gate A bounds):
+
+  | split | candidate | n | bit | <=4 ulp | 15 dig | type | outside |
+  |---|---|---|---|---|---|---|---|
+  | train | engine | 162 | 136 | 137 | 141 | 0 | 0 |
+  | train | rounded root | 162 | 4 | 17 | 35 | 3 | 3 |
+  | hold-out | engine | 144 | 116 | 116 | 117 | 13 | 13 |
+  | hold-out | rounded root | 144 | 8 | 17 | 30 | 26 | 26 |
+
+  Within 15 digits: 87% train, 81% hold-out (inside the 10-point margin). Bit-exact: the engine beats the rounded
+  root. Type mismatches: 13, against a margin of 0, so the hold-out fails. Of the 13, 9 are Excel `#DIV/0!` where the
+  engine was and is `#NUM!` (not the stage's doing; T-3407) and 4 are the stage's: A26, A70, A142 (Excel `#NUM!`; 3,
+  17 and 24 Newton steps from v = 1) and A61 (Excel -0.0983; 54 steps, past the cap). Per stratum (engine, hold-out,
+  15 dig / type): near0 17/0, near0-neg 21/1, near-10pct 20/2, pos-log 24/0, neg-log 21/0, neg-long 14/10. With the
+  stage off, the hold-out passes 101 of 144 cells; with it on, 116.
+- A Python replica of the secant (not committed; T-3406 reruns it) shows the failure kind does not separate the two
+  groups: A26 reaches the secant's 50-step cap like A44 and A45, which Excel returns; A70 and A142 go flat at step 3
+  like A54, A66, A67, A69 and A71, which Excel returns.
 
 ## Outcome
 - Cause: the secant model either reaches its 50-step cap (long level series near -10%: it drifts) or stops on a
@@ -94,7 +121,7 @@ a number on every cell; the engine was `#NUM!` on A10-A21 and A36-A42 (19 cells)
   mismatches): near0 (1e-5..3e-4) 23/24/0/0, near0-neg 22/24/0/0, near-10pct 22/24/0/0, pos-log 20/24/0/0,
   neg-log 23/24/0/0 (24 points each). The probe: near-10pct 14/21/0/0, near0 17/21/0/0.
 - Not met: 15-digit parity on 21 cells (Excel's own stop is looser than a converged Newton; it is within 2.1e-11 of
-  the root there, the engine within 1.5e-11). Follow-up T-3385.
+  the root there, the engine within 1.5e-11). Follow-up T-3408.
 - Found in passing: sweep A106 (root -1.3e-17) is -2.220446049250313e-16 in Excel and the engine, one ulp of v;
   noted as a candidate `MATH-OVER-EXCEL` region for T-3358.
 

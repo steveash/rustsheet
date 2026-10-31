@@ -1014,14 +1014,26 @@ on the sweep, per stratum (points within 15 digits of Excel / within 1e-9 of the
 mismatches): near0 23/24/0/0, near0-neg 22/24/0/0, near-10pct 22/24/0/0, pos-log 20/24/0/0, neg-log 23/24/0/0.
 Also seen: `IRR` of sweep A106 (a root of -1.3E-17) is -2.220446049250313E-16 in Excel and in the engine, the secant's
 one-ulp-of-v resolution (16 times the root; a candidate `MATH-OVER-EXCEL` region for T-3358, not followed here).
-Evidence: probes/t3347-irr-conventional-num, probes-numeric/t3347-irr-conventional-sweep (excel-graph, 2026-10-31;
-exact roots in each case's `.roots.tsv`, docs/research/t3347_irr_conventional_sweep.py)
+Hold-out (decision 0188 R4, 144 series drawn after the stage was frozen: the sweep's five strata and 24 long series
+at r = -0.5 to -0.1): the step split does not hold. The stage turns 29 `#NUM!` cells into Excel's numbers, but it
+returns a number on three where Excel is `#NUM!` (A26, A70, A142: 3, 17 and 24 steps from v = 1) and leaves A61
+`#NUM!` where Excel returns -0.0983 (54 steps). Neither the step count nor the way the secant fails (its 50-step cap
+or a flat secant at step 3) separates the two groups, so which conventional series Excel leaves `#NUM!` is not known
+(T-3406).
+Also on the hold-out: Excel's IRR is `#DIV/0!`, not `#NUM!`, on 9 long series (36 to 60 flows, exact roots -0.23 to
+-0.47; A123, A126, A130-A132, A134, A135, A138, A143). In a replica of the secant, the first step of 7 of them lands
+where NPV overflows, and on the other two both Newton runs overflow; the stratum's `#NUM!` series never overflow. The
+engine is `#NUM!` there (T-3407).
+Evidence: probes/t3347-irr-conventional-num, probes-numeric/t3347-irr-conventional-sweep and
+t3347-irr-conventional-holdout (excel-graph, 2026-10-31; exact roots in each case's `.roots.tsv`,
+docs/research/t3347_irr_conventional_sweep.py; scores from docs/research/t3347_irr_holdout_score.py)
 Scope: the engine applies the stage to one outlay, then flows of the other sign or zero. The probed series all start
 with a negative outlay and have no zero flows; the mirrored sign (a positive first flow, then negative ones) and zero
-flows after the outlay are UNVERIFIED (P(v) only changes sign or gains zero terms there; T-3385 probes them).
-Status: VERIFIED (excel-graph) for which flows return; UNVERIFIED for the method and the digits (fitted, T-3347)
-Implemented in: `irr_conventional`, `irr_newton` (functions/financial/financial_util.rs)
-Tasks: T-3347
+flows after the outlay are UNVERIFIED (P(v) only changes sign or gains zero terms there; T-3408 probes them).
+Status: VERIFIED (excel-graph) for which probed flows return and for the `#DIV/0!` cells; UNVERIFIED for the method
+and the digits (fitted, T-3347; the method fails its hold-out)
+Implemented in: `irr_conventional`, `irr_newton` (functions/financial/financial_util.rs), on T-3347's unmerged branch
+Tasks: T-3347, T-3406, T-3407
 
 ## RATE is a secant on the FV residual
 Rule: RATE is a secant, not Newton's method, on the residual f(r) = ((pv·P) + (pmt·(k·((P-1)/r)))) + fv:
