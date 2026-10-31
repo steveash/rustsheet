@@ -995,9 +995,10 @@ r1 = r0 - 0.001·sign(f(r0)), steps r2 = r1 - f1·(r1-r0)/(f1-f0) with Excel's t
 and stops at the first iterate with |r2 - r1| < 1e-7 and |f(r2)| < 1e-7, returning r2. The cap is 200
 steps, not the documented 20: guesses whose run needs 172 to 200 steps converge, those needing 201 to 216 are
 `#NUM!`. The 200th iterate, unconverged, is returned when it passes a looser test: |r200 - r199| < 1e-4,
-|f(r200)| < 1e-4 and 1 + r200 > 1e-4, all three absolute (T-2689, below). Otherwise the run is `#NUM!`. An
-iterate at or below -1 is `#NUM!` (m9-fin-irr-rate A236, A352, A371-A378: the secant's root is
-below -1 there). Guess 0 therefore converges (rate-empty-arguments A1, A3, A8), and Excel's guess-sweep
+|f(r200)| < 1e-4 and 1 + r200 > 1e-4, all three absolute (T-2689, below). Otherwise the run is `#NUM!`. A
+result at or below -1 is `#NUM!` (m9-fin-irr-rate A236, A352, A371-A378: the secant's root is
+below -1 there); an iterate there runs on, and a flat secant holds (T-3348, "RATE holds on a flat secant and runs
+on below -1" below, which amends this model). Guess 0 therefore converges (rate-empty-arguments A1, A3, A8), and Excel's guess-sweep
 errors on R!C1:C31 are the secant's last step, whose sign and size depend on where the run lands.
 Evidence: scratch fit harness (T-2005; the RATE arguments evaluated by the engine, nested
 `RATE(n,PMT(..),..)` cells included) over the 464 literal RATE cells of probes-numeric/m9-fin-irr-rate,
@@ -1055,6 +1056,66 @@ step count, so the cap's position is measured in model steps (A30's exact unconv
 Ours: `compute_rate` (functions/financial/financial_util.rs), this model.
 Status: VERIFIED (method, f's evaluation to the last ulp, stop rule, cap and its return test, a zero residual at the guess; excel-graph) / UNVERIFIED (the rules above)
 Tasks: T-1525, T-0916, T-1533, T-2005, T-2689, T-2527
+
+## RATE holds on a flat secant and runs on below -1
+Rule: two amendments to "RATE is a secant on the FV residual" above, the rest of that model unchanged.
+- **Flat secant.** When f1 = f0 the secant has no finite step: 0/0 after a zero-step stall (r1 = r0), and a
+  nonzero number over 0 when the two iterates differ. The modelled outcome, which fits the evidence below, is that
+  Excel holds at r1 instead of failing. The held point is judged by the convergence test (|f1| < 1e-7) and, as the
+  200th iterate would be, by the cap's test (|f1| < 1e-4 and 1 + r1 > 1e-4); otherwise the run is `#NUM!`. A flat
+  secant on a residual of exactly 0 stays `#NUM!` (`RATE(1,0,0,0)`, rate-zero-residual-guess A1, A2). Whether
+  that rule is "f = 0", "every argument 0" or "a flat first step" is not separated.
+- **Below -1.** An iterate at or below -1 does not end the run: the residual is evaluated there (Excel's `^` takes
+  a negative base at an integer nper) and the secant carries on. Only the result is judged: a converged iterate at or
+  below -1 is `#NUM!`, as the cap's 1 + r > 1e-4 already was. UNVERIFIED: an iterate below -1 at a non-integer
+  nper. The engine's `^` errs on the negative base there and the run is `#NUM!`; Excel is unprobed.
+Why it matters: near the root of a long annuity with a large balance, the residual is rounding noise bigger than
+1e-7 (|pv·P| about 1e10 has an ulp near 1e-6), so the secant reaches a zero step, then a flat secant, before |f|
+can pass 1e-7. Excel returns that iterate; the engine returned `#NUM!` (decision 0188's item 2,
+`RATE(239,-14841.27102594,344293.4825124,-155496.6323522,0)` = 0.04310546919282547, stalled at |f| 3.2e-7).
+Evidence (excel-graph, 2026-10-31, T-3348):
+- probes/t3348-rate-fv-nonzero (186 cells: the example scaled by 2^-40 to 2^20, nper 200 to 300, type 1, five
+  guesses, and a sweep of annuities with fv ≠ 0 stratified by the old model's outcome). The flat secants split on
+  |f| at the cap's bound: held values at |f| from 1.1e-7 to 8.3e-5 are returned (A10 at 2^8 the example's scale,
+  8.3e-5), |f| 1.56e-4 and above is `#NUM!` (A99 1.56e-4, A11-A12 and others to 5e27), whether the stall is a
+  zero step (r1 = r0) or two distinct iterates with one residual (A182, A183, A184). The amended model gives
+  Excel's type on 186/186 and Excel's bits on 179; the old one 126/126 (all 60 misses `#NUM!` against a number).
+- probes/t3348-rate-below-minus-one (50 runs whose old-model iterate leaves -1): 50/50 bit-exact with the run
+  continued (30 come back above -1 and return Excel's value, e.g. `RATE(3,3735.938842325,-6629.520726773,
+  4839.177771065,1)` = 1.2149215363749337; 10 converge below -1 and 10 err later, all `#NUM!`); the old model
+  gives 20/50. Found on probes-numeric/t3348-rate-gate-a-sweep A171 (`RATE(5,1650044.83915129,...)` =
+  0.7069774195050786, first step at -1.48).
+- The fit set of "RATE is a secant on the FV residual" (960 literal cells with the cap probes) is unchanged:
+  960/960 bit-exact under the amended model; m9-fin-irr-rate A236, A352, A371-A378 converge below -1 (`#NUM!`).
+- probes-numeric/t3348-rate-gate-a-fresh (300 points drawn log-uniform after the model was frozen, T-3348 review
+  round 1; Gate A envelope in T-3348's Outcome): the amended model has Excel's type on 286 and Excel's bits on 269,
+  against the old model's 249 and 249. Its hold-out (T-3348's Outcome) is 367/367 bit-exact against 33 for the
+  correctly rounded root.
+- Not reproduced: in the noise floor Excel's iterates differ from the model's.
+  - Right type, not Excel's bits: seven flat-secant cells of t3348-rate-fv-nonzero (A112, A138, A153, A171, A175,
+    A180, A185) are 1 ulp to 2e-11 relative from Excel's. Excel's own value is that far from the root too (A171:
+    Excel 0.002094170434484841, root 0.002094170434492252, model 0.0020941704345254896). T-3389 owns the 4 beyond
+    15 digits (A138, A171, A180, A185).
+  - Wrong type: at |pv| and |fv| 1e6 to 1e12 the noise decides the type. 13 holds the model returns are `#NUM!` in
+    Excel (gate-a-sweep A296; gate-a-fresh A59, A70, A74, A77, A89, A90, A95, A157, A162, A173, A275, A292), at held
+    |f| 2.4e-7 to 5.5e-5 and steps 11 to 119. The old model's `#NUM!` matched Excel on these 13; decision 0198
+    records the trade. 3 more are `#NUM!` in the model where Excel returns a number (gate-a-sweep A272; gate-a-fresh
+    A251, A272). Excel's A272 value is about 2 ulps from the model's held iterate, so its last steps differ.
+  - Across the 1,796 RATE oracle cells (the fit set, both probes and both sweeps), Excel returns 133 holds and
+    errs on 13 below the 1e-4 bound, and errs on 95 and returns 3 above it. No rule on the hold gives all 244
+    Excel's type:
+    - an absolute bound on |f|: Excel errs at 2.4e-7 and returns up to 9.5e-4;
+    - a bound relative to the residual's largest term: errors and returns overlap from 5e-20 to 1.4e-16;
+    - a zero step against distinct iterates: Excel errs on 12 of 125 zero-step holds and 1 of 21 distinct ones;
+    - a cut on the step count.
+
+    They are the noise floor's path, not a second rule; T-3424 owns them.
+- Unprobed: no oracle cell has a flat secant with |f1| < 1e-7, so the convergence test on a held point is untested.
+  It differs from the cap's test only where 1 + r1 <= 1e-4.
+Ours: `compute_rate` (functions/financial/financial_util.rs), T-3348, decision 0198.
+Status: VERIFIED (excel-graph) / UNVERIFIED (Excel's residual in the noise floor; a non-integer nper below -1; a held
+point with |f1| < 1e-7)
+Tasks: T-3348, T-3389, T-3424
 
 ## YIELD with one coupon period left is closed form
 Rule: when at most one coupon period is left, Excel evaluates the documented formula
