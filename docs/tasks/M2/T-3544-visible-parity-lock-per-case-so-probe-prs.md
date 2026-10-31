@@ -37,6 +37,9 @@ on the visible-parity lock: the lock holds each case to its own count instead of
 - [x] `merge_ready` checks the file as an eval-gated list and refuses a carry whose line is above
       both parents or that no parent has. `make catch-up` resolves a conflict on the file to each
       case's higher count. Python tests cover both.
+- [x] `update-baseline --new-cases <file>` treats only the listed cases (ids or case file paths)
+      as new. `make catch-up` passes the case files the PR adds. A carry may add or raise a
+      line only for a case whose case file `main` lacks. Tests cover both.
 - [x] Rust unit tests: a rise in an existing case fails; a new case without a line fails; update
       records a new case; lowering happens only with the flag; the format is one line per case.
 - [x] Docs: quality-gates.md, eval-harness.md, the steward skill, Makefile help; decision 0217.
@@ -53,4 +56,10 @@ every suite baseline showed 0 regressions. The old cap was 2,509. `judge` return
 their lines, plus the lock to write. Lines of removed cases are dropped on update. The merge
 tooling treats the file as an eval-gated list: `merge_ready.visible_rises` refuses a raised or
 new line in a carry, and `merge_ready.merge_visible` resolves conflicts in `make catch-up`.
+After the owner's follow-up, `update-baseline --new-cases <file>` (`make eval-baseline
+NEW_CASES=`) makes the listed cases the only new ones. `make catch-up` lists the files the PR adds
+(`visible_lock.added_case_files`), so the five queued pre-lock probe PRs can record their cases'
+lines after merging `main`. The carry check (`visible_lock.visible_rises` with `case_on`) accepts
+a new or higher line only for a case whose case file `main` lacks. The merge tooling's lock
+helpers live in `scripts/visible_lock.py`, which keeps `merge_ready.py` under the file-size limit.
 Decision 0217 amends 0088, 0093 and 0207.

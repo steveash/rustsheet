@@ -42,6 +42,7 @@ class CatchUp(unittest.TestCase):
         self.base = self.commit("base")
         self.git("push", "-q", "origin", "main")
         self.recorded: list[Path] = []
+        self.listed: list[str] = []
 
     def git(self, *args: str) -> str:
         return run("git", *args, cwd=self.clone)
@@ -71,8 +72,9 @@ class CatchUp(unittest.TestCase):
         self.git("push", "-q", "origin", "main")
 
     def record(self, code: int, text: str = "F\tprobes/main\tM1\n", path: str = BASELINE):  # type: ignore[no-untyped-def]
-        def fake(root: Path) -> int:
+        def fake(root: Path, new_cases: Path) -> int:
             self.recorded.append(root)
+            self.listed.append(new_cases.read_text())
             (root / path).write_text(text)
             return code
 
@@ -147,6 +149,14 @@ class CatchUp(unittest.TestCase):
             "# h\nprobes/a\t4\nprobes/m-main\t5\nprobes/m-pr\t2\nprobes/z\t1",
         )
         self.assertIsNone(merge_ready.Repo(self.clone).carry_problem(before, head))
+
+    def test_the_re_record_lists_only_the_case_files_the_pr_adds(self) -> None:
+        # Decision 0217: after the merge the PR's cases are in the tree's baseline, so only this
+        # list lets the re-record write their visible-parity lines, and never main's.
+        self.branch({BASELINE: "F\tprobes/pr\tP1\n", "eval/suites/probes/cases/pr.case.json": "{}\n"})
+        self.move_main({BASELINE: "F\tprobes/main\tM1\n", "eval/suites/probes/cases/main.case.json": "{}\n"})
+        merge_catchup.catch_up(self.clone, "agent/x", self.record(0))
+        self.assertEqual(self.listed, ["eval/suites/probes/cases/pr.case.json\n"])
 
     def test_the_checkout_is_returned_to_its_branch(self) -> None:
         self.branch({BASELINE: "F\tprobes/pr\tP1\n"})

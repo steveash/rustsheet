@@ -10,21 +10,29 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import visible_lock  # noqa: E402 (the sys.path line above must run first)
 
 
+def on_main(case: str) -> bool:
+    """Every case is on main except `p/pr-*`, which the PR adds."""
+    return not case.startswith("p/pr-")
+
+
 class VisibleLock(unittest.TestCase):
     def test_visible_rises(self) -> None:
         parents = ["# h\np/a\t3\np/b\t1\n", "p/a\t1\np/c\t2\n"]
-        self.assertEqual(visible_lock.visible_rises("# x\np/a\t3\np/b\t1\np/c\t2\n", parents), [])
-        self.assertEqual(visible_lock.visible_rises("p/a\t2\np/c\t1\n", parents), [])  # lower is fine
+        self.assertEqual(visible_lock.visible_rises("# x\np/a\t3\np/b\t1\np/c\t2\n", parents, on_main), [])
+        self.assertEqual(visible_lock.visible_rises("p/a\t2\np/c\t1\n", parents, on_main), [])  # lower is fine
         self.assertEqual(
-            visible_lock.visible_rises("p/a\t4\np/b\t1\np/d\t1\np/c\tx\np/b\t1\n", parents),
+            visible_lock.visible_rises("p/a\t4\np/b\t1\np/d\t1\np/c\tx\np/b\t1\n", parents, on_main),
             sorted(["p/a\t4", "p/d\t1", "p/c\tx", "p/b\t1"]),
         )
-        self.assertEqual(visible_lock.visible_rises("p/a\t1\n", []), ["p/a\t1"])
+        self.assertEqual(visible_lock.visible_rises("p/a\t1\n", [], on_main), ["p/a\t1"])
+        # A case the PR adds may have any line: main has none for it to hide a regression behind.
+        self.assertEqual(visible_lock.visible_rises("p/pr-x\t9\n", parents, on_main), [])
+        self.assertEqual(visible_lock.visible_rises("p/pr-x\t9\np/pr-x\t9\n", parents, on_main), ["p/pr-x\t9"])
 
     def test_merge_visible_keeps_each_cases_higher_count(self) -> None:
         merged = visible_lock.merge_visible("# old\np/a\t3\np/p\t2\n", "# new\np/a\t1\np/m\t5\np/z\t0\n")
         self.assertEqual(merged, "# new\np/a\t3\np/m\t5\np/p\t2\n")
-        self.assertEqual(visible_lock.visible_rises(merged, ["p/a\t3\np/p\t2\n", "p/a\t1\np/m\t5\n"]), [])
+        self.assertEqual(visible_lock.visible_rises(merged, ["p/a\t3\np/p\t2\n", "p/a\t1\np/m\t5\n"], on_main), [])
 
 
 if __name__ == "__main__":

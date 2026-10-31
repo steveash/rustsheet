@@ -10,7 +10,8 @@ In this checkout, which must have no local changes, it does the following:
   gated suites the eval job runs without a fetch, and the visible-parity lock);
 - takes `main`'s side of each conflicted known-failure list, resolves a conflicted visible-parity
   lock to each case's higher count (`visible_lock.merge_visible`, decision 0217), and runs `make
-  eval-baseline`, which re-records the lists and refuses regressions (decision 0093);
+  eval-baseline NEW_CASES=<the case files the PR adds>`, which re-records the lists, refuses
+  regressions (decision 0093) and records visible-parity lines only for those cases (0217);
 - refuses if the re-record changed any other file, such as quality/evidence-floor.json;
 - commits everything as one merge commit and pushes it to the PR branch (never forced);
 - returns to the checkout's original branch or commit.
@@ -27,6 +28,7 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
+import tempfile
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
@@ -51,12 +53,15 @@ def checked_only(paths: Sequence[str], lists: set[str]) -> bool:
     return bool(paths) and all(p in lists for p in paths)
 
 
-def rerecord(root: Path) -> int:
-    """`make eval-baseline` in `root`: re-records eval/baseline/ and refuses regressions."""
-    return subprocess.run(RERECORD, cwd=root, stdin=subprocess.DEVNULL, check=False).returncode
+def rerecord(root: Path, new_cases: Path) -> int:
+    """`make eval-baseline` in `root`: re-records eval/baseline/ and refuses regressions. Only the
+    cases `new_cases` lists (the PR's added case files) may get a new visible-parity line or a
+    higher one (`update-baseline --new-cases`, decision 0217)."""
+    command = (*RERECORD, f"NEW_CASES={new_cases}")
+    return subprocess.run(command, cwd=root, stdin=subprocess.DEVNULL, check=False).returncode
 
 
-def catch_up(root: Path, branch: str, record: Callable[[Path], int] = rerecord) -> str:
+def catch_up(root: Path, branch: str, record: Callable[[Path, Path], int] = rerecord) -> str:
     """Merges `main` into `branch` as the module docstring says, as one merge commit that the carry
     rule accepts, and pushes it; returns the pushed head. Raises Refused when it cannot (nothing
     pushed). The checkout's branch, or detached HEAD, is restored either way."""
@@ -83,14 +88,21 @@ def catch_up(root: Path, branch: str, record: Callable[[Path], int] = rerecord) 
             raise Refused(f"conflicts outside the eval-gated baseline lists: {', '.join(outside)}")
         for path in conflicted:
             if path == visible_lock.VISIBLE_PARITY:
-                # main's side alone would drop the PR's new cases' lines, which the re-record no
-                # longer counts as new (their suite lists merged cleanly): keep both (decision 0217).
+                # main's side alone would drop the PR's lines: keep each case's higher count, which
+                # the carry accepts as a parent's value (decision 0217).
                 sides = [git("show", f":{stage}:{path}", root=root).stdout for stage in (2, 3)]
                 (root / path).write_text(visible_lock.merge_visible(*sides), encoding="utf-8")
             else:
                 git("checkout", "--theirs", "--", path, root=root)
             git("add", "--", path, root=root)
-        if record(root) != 0:
+        # The PR's own case files, from before the merge: after it, the tree's baseline lists the
+        # PR's cases too, so only this list tells them from main's (decision 0217).
+        added = visible_lock.added_case_files(root, main, HEAD_REF)
+        with tempfile.TemporaryDirectory() as tmp:
+            listed = Path(tmp) / "new-cases.txt"
+            listed.write_text("".join(f"{p}\n" for p in added), encoding="utf-8")
+            code = record(root, listed)
+        if code != 0:
             raise Refused("make eval-baseline refused (a regression, or the eval did not run)")
         recorded = git("diff", "--name-only", root=root).stdout.split()
         others = sorted(p for p in recorded if p not in lists)

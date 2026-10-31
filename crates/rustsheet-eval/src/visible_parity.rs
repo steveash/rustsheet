@@ -6,9 +6,9 @@
 //! `--lower-visible-lock` (the steward, daily). One line per case, like the known-failure lists,
 //! so parallel PRs that add or fix different cases merge cleanly (T-3544, decision 0217).
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
-use std::path::Path;
+use std::path::{Component, Path, PathBuf};
 
 use crate::catalog::Catalog;
 use crate::closeness::{self, Visible};
@@ -229,6 +229,74 @@ pub fn judge(lock: &Lock, count: &VisibleCount, update: Option<Update>) -> Judge
     let record = (update.is_some() && over.is_empty() && next != *lock).then_some(next);
     Judgement { over, record }
 }
+/// Whether `update-baseline` treats case `id` as new, so it records the case's line whatever its
+/// count. Without `--new-cases` (`listed` is `None`), a case is new when its suite's committed
+/// baseline does not list it (`in_baseline` false). With `--new-cases`, only the listed cases
+/// are new. After `make catch-up` merges `main` into a PR, the PR's cases are already in the
+/// tree's baseline, and a case absent from it may be one of `main`'s, so the list of case files
+/// the PR adds is the only safe notion (decision 0217).
+#[must_use]
+pub fn is_new_case(listed: Option<&BTreeSet<String>>, in_baseline: bool, id: &str) -> bool {
+    match listed {
+        Some(ids) => ids.contains(id),
+        None => !in_baseline,
+    }
+}
+
+/// The `--new-cases` file's entries: one case id (`<suite>/<case>`) or repository-relative case
+/// file path per line, as `git diff --diff-filter=A --name-only` prints them. Blank lines and
+/// `#` comments are skipped.
+///
+/// # Errors
+/// When the file cannot be read.
+pub fn read_listed(path: &Path) -> Result<BTreeSet<String>, LockError> {
+    let text = std::fs::read_to_string(path).map_err(|source| LockError::Io {
+        path: path.to_path_buf(),
+        source,
+    })?;
+    Ok(text
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty() && !l.starts_with('#'))
+        .map(str::to_string)
+        .collect())
+}
+
+/// The ids of `cases` (id, case file path) that `listed` names by id or by path relative to the
+/// repository `root`. Paths compare lexically (`..` resolved), since a suite's root may climb out
+/// of its directory (ironcalc-calc). Other entries, such as oracle sidecars, match nothing.
+pub fn listed_ids<'a>(
+    root: &Path,
+    cases: impl IntoIterator<Item = (&'a str, &'a Path)>,
+    listed: &BTreeSet<String>,
+) -> BTreeSet<String> {
+    let root = lexical(root);
+    cases
+        .into_iter()
+        .filter(|(id, path)| {
+            let rel = lexical(path);
+            let rel = rel.strip_prefix(&root).unwrap_or(&rel);
+            listed.contains(*id) || listed.contains(&rel.to_string_lossy().replace('\\', "/"))
+        })
+        .map(|(id, _)| id.to_string())
+        .collect()
+}
+
+/// `path` with `.` dropped and each `..` taking off the component before it.
+fn lexical(path: &Path) -> PathBuf {
+    let mut out = PathBuf::new();
+    for c in path.components() {
+        match c {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                out.pop();
+            }
+            other => out.push(other),
+        }
+    }
+    out
+}
+
 /// The report's visibly-off section: cells per suite, then the functions they are blamed on,
 /// worst first (decision 0083).
 pub fn write_markdown(report: &RunReport, md: &mut String) {
@@ -407,6 +475,85 @@ mod tests {
         assert_eq!(judge(&l, &fixed, Some(ALLOW)).record, None);
         let j = judge(&l, &fixed, Some(STEWARD));
         assert_eq!(j.record, Some(lock(&[("p/b", 2)])));
+    }
+
+    /// With `--new-cases`, only the listed cases are new (decision 0217): after a catch-up
+    /// merge, an unlisted case without a line or with a rise is refused even when the tree's
+    /// baseline lacks it, and a listed case's line is written whatever its count.
+    #[test]
+    fn new_cases_list_alone_decides_what_is_new() {
+        let listed: BTreeSet<String> = ["p/pr-added".to_string()].into();
+        assert!(is_new_case(Some(&listed), true, "p/pr-added"));
+        assert!(!is_new_case(Some(&listed), false, "p/main-case"));
+        assert!(is_new_case(None, false, "p/main-case"));
+        assert!(!is_new_case(None, true, "p/main-case"));
+        let l = lock(&[("p/a", 3)]);
+        let count = |cases: &[(&str, usize)]| VisibleCount {
+            cases: cases
+                .iter()
+                .map(|(c, off)| {
+                    let in_baseline = !c.contains("absent");
+                    let new_case = is_new_case(Some(&listed), in_baseline, c);
+                    (
+                        (*c).to_string(),
+                        CaseCount {
+                            off: *off,
+                            new_case,
+                        },
+                    )
+                })
+                .collect(),
+        };
+        let j = judge(&l, &count(&[("p/a", 3), ("p/pr-added", 7)]), Some(PR));
+        assert!(j.holds());
+        assert_eq!(j.record, Some(lock(&[("p/a", 3), ("p/pr-added", 7)])));
+        let j = judge(
+            &l,
+            &count(&[("p/a", 4), ("p/main-absent", 2), ("p/pr-added", 7)]),
+            Some(PR),
+        );
+        assert_eq!(j.over, vec![over("p/a", 4, 3), over("p/main-absent", 2, 0)]);
+        assert_eq!(j.record, None);
+    }
+
+    /// `--new-cases` entries name cases by id or by repository-relative case file path, `..`
+    /// in a suite root resolved; other files of the diff match nothing.
+    #[test]
+    fn listed_ids_match_ids_and_case_file_paths() {
+        let root = Path::new("/repo");
+        let calc = Path::new("/repo/eval/suites/ironcalc-calc/../../../crates/x/tests/A.xlsx");
+        let probe = Path::new("/repo/eval/suites/probes/cases/b.case.json");
+        let other = Path::new("/repo/eval/suites/probes/cases/c.case.json");
+        let cases = [
+            ("ironcalc-calc/A.xlsx", calc),
+            ("probes/b.case.json", probe),
+            ("probes/c.case.json", other),
+        ];
+        let listed: BTreeSet<String> = [
+            "crates/x/tests/A.xlsx",
+            "eval/suites/probes/cases/b.oracle.json",
+            "probes/c.case.json",
+        ]
+        .map(str::to_string)
+        .into();
+        let ids = listed_ids(root, cases, &listed);
+        let want: BTreeSet<String> = ["ironcalc-calc/A.xlsx", "probes/c.case.json"]
+            .map(str::to_string)
+            .into();
+        assert_eq!(ids, want);
+        let listed: BTreeSet<String> = ["eval/suites/probes/cases/b.case.json".to_string()].into();
+        assert_eq!(
+            listed_ids(
+                Path::new("."),
+                [(
+                    "probes/b.case.json",
+                    Path::new("./eval/suites/probes/cases/b.case.json")
+                )],
+                &listed
+            )
+            .len(),
+            1
+        );
     }
 
     /// The lines of cases the run no longer has go with the case; `check` ignores them, since

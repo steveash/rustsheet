@@ -726,11 +726,23 @@ class Mark(PrFixture):
         plan = self.plan(review=None, carry=True)
         self.assertEqual((plan.marker.prev, plan.marker.head), (old, self.head))
 
-    def test_carry_refuses_a_visible_parity_rise_or_a_new_case_line(self) -> None:
+    def main_has_cases(self, *cases: str) -> None:
+        """Commits case files `eval/suites/probes/cases/<case>` to `main` (the suite's root)."""
+        self.git("checkout", "-q", "main")
+        self.write("eval/suites/probes/suite.toml", 'name = "probes"\ngate = true\n')
+        for case in cases:
+            self.write(f"eval/suites/probes/cases/{case}", "{}\n")
+        self.commit("main has cases")
+        self.git("push", "-q", "origin", "main")
+        self.git("checkout", "-q", "pr")
+
+    def test_carry_refuses_a_visible_parity_rise_or_a_new_line_for_a_case_on_main(self) -> None:
+        # Decision 0217: for a case main has, a re-record may only keep a parent's line or lower it.
+        self.main_has_cases("a", "m", "old")
         lock = visible_lock.VISIBLE_PARITY
         for name, resolved, refused in (
             ("a rise above both parents", "# h\nprobes/a\t4\nprobes/m\t5\n", "probes/a\t4"),
-            ("a case neither parent has", "# h\nprobes/a\t3\nprobes/new\t1\n", "probes/new\t1"),
+            ("a line neither parent has", "# h\nprobes/a\t3\nprobes/old\t1\n", "probes/old\t1"),
         ):
             with self.subTest(name):
                 self.baseline_conflict(
@@ -739,6 +751,17 @@ class Mark(PrFixture):
                 self.write(lock, resolved)
                 self.finish_merge()
                 self.refused(f"records failures neither parent had \\({refused}\\)", review=None, carry=True)
+
+    def test_carry_accepts_a_line_for_a_case_the_pr_adds(self) -> None:
+        # A PR from before the per-case lock has no lines for its cases; the catch-up's re-record
+        # writes them (`--new-cases`), and main has no case file, so no line, to hide behind.
+        self.main_has_cases("a")
+        lock = visible_lock.VISIBLE_PARITY
+        old = self.baseline_conflict("# h\nprobes/a\t3\n", "# h\nprobes/a\t1\n", path=lock)
+        self.write(lock, "# h\nprobes/a\t3\nprobes/pr-added.case.json\t9\n")
+        self.finish_merge()
+        plan = self.plan(review=None, carry=True)
+        self.assertEqual((plan.marker.prev, plan.marker.head), (old, self.head))
 
     def test_carry_refuses_a_conflict_outside_the_checked_lists(self) -> None:
         self.baseline_conflict("pr side\n", "main side\n", path="scripts/x.py")

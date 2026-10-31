@@ -121,6 +121,11 @@ enum Cmd {
         /// The steward's daily run only: a PR leaves drops to it (decisions 0093 and 0217).
         #[arg(long)]
         lower_visible_lock: bool,
+        /// A file listing the cases to treat as new for the visible-parity lock, one case id or
+        /// repository-relative case file path per line (the case files a PR adds); only these
+        /// then get a line recorded whatever their count (decision 0217).
+        #[arg(long, value_name = "FILE")]
+        new_cases: Option<PathBuf>,
     },
     /// Fail if more in-scope functions are below the evidence floor than
     /// quality/evidence-floor.json allows, or if the lock is stale (T-0056, decision 0062).
@@ -434,6 +439,26 @@ fn baseline_path(root: &Path, suite: &str) -> PathBuf {
     root.join("eval/baseline").join(format!("{suite}.txt"))
 }
 
+/// The ids of the cases of `suites` that the `--new-cases` file names (decision 0217).
+fn listed_new_cases(root: &Path, suites: &[Suite], file: &Path) -> Result<BTreeSet<String>> {
+    let listed = visible_parity::read_listed(file)?;
+    let mut cases = Vec::new();
+    for suite in suites.iter().filter(|s| s.manifest.fetch.is_none()) {
+        cases.extend(suite.cases()?);
+    }
+    let ids = visible_parity::listed_ids(
+        root,
+        cases.iter().map(|c| (c.id.as_str(), c.path.as_path())),
+        &listed,
+    );
+    println!(
+        "visible parity: {} of the {} --new-cases entries name a case of the gated suites; only those are new",
+        ids.len(),
+        listed.len()
+    );
+    Ok(ids)
+}
+
 /// Holds `count` to the visible-parity lock, recording it on `update` when
 /// [`visible_parity::judge`] allows (T-0061, decisions 0088, 0093 and 0217); returns whether the
 /// gate passes.
@@ -483,6 +508,7 @@ fn cmd_check(
     root: &Path,
     sel: &Selection,
     update: Option<visible_parity::Update>,
+    new_cases: Option<&Path>,
     floor: bool,
 ) -> Result<ExitCode> {
     if sel.filter.is_some() {
@@ -521,6 +547,10 @@ fn cmd_check(
     print_summary(&report);
     let mut failed = false;
     let mut visible = VisibleCount::default();
+    let listed = match new_cases {
+        Some(file) => Some(listed_new_cases(root, suites, file)?),
+        None => None,
+    };
     for suite in suites {
         if suite.manifest.baseline == BaselineMode::None {
             continue;
@@ -532,7 +562,12 @@ fn cmd_check(
         let old = Baseline::read(&path)?;
         if suite.manifest.fetch.is_none() {
             for r in &mine {
-                visible.add(&catalog, r, !old.checked.contains_key(&r.id));
+                let new_case = visible_parity::is_new_case(
+                    listed.as_ref(),
+                    old.checked.contains_key(&r.id),
+                    &r.id,
+                );
+                visible.add(&catalog, r, new_case);
             }
         }
         let delta = baseline::diff(&old, &current);
@@ -832,11 +867,12 @@ fn run() -> Result<ExitCode> {
         Cmd::Check {
             sel,
             evidence_floor,
-        } => cmd_check(&root, &sel, None, evidence_floor),
+        } => cmd_check(&root, &sel, None, None, evidence_floor),
         Cmd::UpdateBaseline {
             sel,
             allow_regressions,
             lower_visible_lock,
+            new_cases,
         } => cmd_check(
             &root,
             &sel,
@@ -844,6 +880,7 @@ fn run() -> Result<ExitCode> {
                 allow_regressions,
                 lower: lower_visible_lock,
             }),
+            new_cases.as_deref(),
             false,
         ),
         Cmd::EvidenceFloor {

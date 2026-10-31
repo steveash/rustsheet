@@ -49,7 +49,7 @@ import merge_lock
 import tasks
 from gh_client import Client, GhError
 from merge_lock import GitError, git
-from visible_lock import VISIBLE_PARITY, visible_rises
+from visible_lock import VISIBLE_PARITY, case_on, visible_rises
 
 ROOT = Path(__file__).resolve().parent.parent
 REMOTE = "origin"
@@ -501,8 +501,8 @@ class Repo:
         "Carry-over"), or None when it is: a merge commit whose first parent is `prev`, whose
         second parent is on `main`, and whose tree is the plain merge of its parents
         (`git merge-tree --write-tree`), except that the content of a list in `checked_baselines`
-        may differ, without a failure line neither parent had or a visible-parity line above both
-        parents' (decision 0217): a conflict there resolved and the
+        may differ, without a failure line neither parent had or a visible-parity line that
+        `visible_rises` refuses (decision 0217): a conflict there resolved and the
         lists re-recorded (decision 0093). The eval
         gate on the head, which marking requires green, checks exactly those lists (decision 0207).
         Anything else (another file, an addition, deletion, rename or mode change) breaks the carry."""
@@ -540,16 +540,16 @@ class Repo:
 
     def new_failures(self, path: str, parents: Sequence[str], head: str) -> list[str]:
         """The known-failure lines (`F` and `TF`) of list `path` in `head` that no parent's list has;
-        for the visible-parity lock, its `visible_rises`. The eval gate only checks that a list
-        matches the engine (and holds each case to the lock), so a regression recorded in a merge
-        would pass it; the carry refuses one instead (decisions 0207 and 0217)."""
+        for the visible-parity lock, its `visible_rises` against `main` (the last parent). The eval
+        gate only checks that a list matches the engine (and holds each case to the lock), so a
+        regression recorded in a merge would pass it; the carry refuses one (decisions 0207, 0217)."""
 
         def text(commit: str) -> str:
             shown = git("show", f"{commit}:{path}", root=self.root, check=False)
             return shown.stdout if shown.returncode == 0 else ""
 
         if path == VISIBLE_PARITY:
-            return visible_rises(text(head), [text(c) for c in parents])
+            return visible_rises(text(head), [text(c) for c in parents], case_on(self.root, parents[-1]))
 
         def failures(commit: str) -> set[str]:
             return {line for line in text(commit).splitlines() if line.startswith(("F\t", "TF\t"))}
