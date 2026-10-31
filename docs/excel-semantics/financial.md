@@ -786,6 +786,22 @@ Status: VERIFIED for the method (secant in d, offset, both stop tests, retry, le
 twice-rounded; 263/263 bit-exact); UNVERIFIED for the zero-step stop's bound and the step cap
 Tasks: T-1525, T-1533, T-0916, T-2131, T-2565, T-3120, T-3205
 
+## IRR at an exact zero root
+Rule: on flows whose exact root is 0, Excel for the web returns exactly 0 for `IRR({-4,4})` (with or without a
+guess of 0.1 or -0.5), `IRR(A4:B4)` on -4 and 4, and `IRR({-1,1})`, but -2^-52 for `IRR({4,-4})` and
+-2.886801908630332E-12 for `IRR({-2,1,1})` (probes/t3410-irr-zero-root-imcos Calc!C1 to C8, excel-graph,
+2026-10-31; C7 `IRR({-4,4})=0` is TRUE). The engine gives all eight.
+- The secant of "IRR is a secant in d = 1 - v" stops at d2 = 8.326672684688674E-17 on {-4,4}. Its final
+  1/(1 - d2) - 1 in plain doubles is 2^-52; with Excel's twice-rounded division (numbers.md "Division rounds
+  twice") 1/(1 - d2) is a tie that rounds to 1, so the result is 0, the web's value. On {4,-4} and {-2,1,1} plain
+  and twice-rounded arithmetic agree (a scratch run of the rule in plain doubles, T-3410).
+- ironcalc-calc/FINANCIAL/IRR.xlsx Two Values!C4, the same formula on the same cells, caches 2^-52, though its
+  app.xml names Excel Online 16.0300. docs/research/oracle-calibration.md (T-0004) recorded the web's 0 there too.
+  So the build that computed the cache rounded the final quotient once. Decision 0196 names the cell M14
+  desktop-only evidence (T-1075 item 23); it stays a known failure.
+Status: VERIFIED (web); the desktop value is T-1075 item 23
+Tasks: T-3410
+
 ## The IRR and XIRR solver caps
 Rule: Excel's caps on its IRR secant, XIRR's bracket walk and XIRR's bisection are unknown: no probe
 reaches them. The engine bounds each loop itself, so an untrusted workbook cannot make one cell iterate
