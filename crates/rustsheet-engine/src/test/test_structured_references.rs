@@ -915,3 +915,26 @@ fn convert_to_range_lowers_this_row_at_each_row() {
     assert_eq!(model.get_localized_cell_content(0, 3, 4).unwrap(), "=$A3*2");
     assert_eq!(value(&model, 1, 5, 4), "#VALUE!");
 }
+
+/// INDIRECT of structured-reference text is the table area; a column the table lacks, a table
+/// the workbook lacks are `#REF!` (docs/excel-semantics/lookup.md, T-2911).
+#[test]
+fn indirect_of_structured_reference_text() {
+    let mut model = model();
+    for (row, formula) in [
+        "=SUM(INDIRECT(\"Sales[Val]\"))",
+        "=ROWS(INDIRECT(\"Sales[Val]\"))",
+        "=INDIRECT(\"Sales[Nope]\")",
+        "=INDIRECT(\"Nope[Val]\")",
+    ]
+    .iter()
+    .enumerate()
+    {
+        model
+            .set_user_input(1, row as i32 + 1, 5, formula.to_string())
+            .unwrap();
+    }
+    model.evaluate();
+    let got: Vec<String> = (1..=4).map(|row| value(&model, 1, row, 5)).collect();
+    assert_eq!(got, ["30", "2", "#REF!", "#REF!"]);
+}
