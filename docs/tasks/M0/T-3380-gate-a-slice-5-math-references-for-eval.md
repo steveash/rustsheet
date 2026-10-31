@@ -3,7 +3,7 @@ id: T-3380
 title: "Gate A slice 5: math references for eval cells (.math.json sidecars read by the runner, the mpmath fill for probes-numeric sweeps)"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P0
 size: M
 tier: opus
