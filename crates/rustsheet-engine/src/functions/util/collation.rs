@@ -774,9 +774,16 @@ fn accent_units(elements: impl Iterator<Item = Element>) -> impl Iterator<Item =
         letter: true,
     };
     let mut started = false;
+    // A mark right after a hyphen or apostrophe belongs to that skipped character and adds
+    // nothing here (it is weighed by [`skipped`]; probes/t3304-collation-multi-letter-accents G4).
+    let mut after_skipped = false;
     elements
         .flat_map(move |element| match element {
-            Element::Skipped(_) => [None, None],
+            Element::Skipped(_) => {
+                after_skipped = true;
+                [None, None]
+            }
+            Element::Mark(_) if after_skipped => [None, None],
             Element::Mark(weight) => {
                 let mark = Some(AccentUnit {
                     weight,
@@ -792,6 +799,7 @@ fn accent_units(elements: impl Iterator<Item = Element>) -> impl Iterator<Item =
                 primary, accent, ..
             } => {
                 started = true;
+                after_skipped = false;
                 let second = (primary[1] != 0).then(|| letter(NO_ACCENT));
                 [Some(letter(accent)), second]
             }
@@ -897,13 +905,26 @@ fn letter_weights(
 
 /// The last pass: each hyphen or apostrophe as (position, weight), a later position first.
 /// Positions count letters and skipped characters, not combining marks, so a decomposed letter
-/// keeps the position of its precomposed form.
+/// keeps the position of its precomposed form. The marks right after a skipped character raise
+/// its weight by theirs (`"a'b" < "a-b" < "a'"&UNICHAR(769)&"b" < "a-"&UNICHAR(769)&"b"`:
+/// probes/t3304-collation-multi-letter-accents G4). That is the smallest fit for the probed
+/// U+0301; other marks and runs of several are unprobed.
 fn skipped(elements: impl Iterator<Item = Element>) -> impl Iterator<Item = (Reverse<usize>, u8)> {
-    elements
-        .filter(|element| !matches!(element, Element::Mark(_)))
-        .enumerate()
-        .filter_map(|(position, element)| match element {
-            Element::Skipped(weight) => Some((Reverse(position), weight)),
-            Element::Weights { .. } | Element::Mark(_) => None,
-        })
+    let mut elements = elements.peekable();
+    let mut position = 0;
+    std::iter::from_fn(move || loop {
+        match elements.next()? {
+            Element::Skipped(mut weight) => {
+                while let Some(Element::Mark(mark)) =
+                    elements.next_if(|element| matches!(element, Element::Mark(_)))
+                {
+                    weight = weight.wrapping_add(mark);
+                }
+                position += 1;
+                return Some((Reverse(position - 1), weight));
+            }
+            Element::Weights { .. } => position += 1,
+            Element::Mark(_) => {}
+        }
+    })
 }

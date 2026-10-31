@@ -3,7 +3,7 @@ id: T-3329
 title: "Attach a combining mark after a hyphen or apostrophe to that skipped character, not to the letter before it (t3304 multi-letter-accents G4)"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -41,3 +41,8 @@ apostrophe as Excel does: the mark belongs to that skipped character, not to the
 ## Out of scope
 - Other marks or several marks after a skipped character, and marks after the en/em dash or control
   characters (unprobed; a probe task if needed).
+
+## Outcome
+`accent_units` drops a mark that follows a skipped character; `skipped` adds the marks after a skipped
+character to its weight (U+0301 only probed). Unit test `mark_after_skipped_character_raises_it`.
+Eval: 47 known failures fixed in probes (47 lines removed from eval/baseline/probes.txt), 0 regressions.

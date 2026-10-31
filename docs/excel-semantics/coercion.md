@@ -294,8 +294,8 @@ Microsoft's Windows sorting weight table (`Windows Server 2022 Sorting Weight Ta
     `"a'"&UNICHAR(769)&"b"` and below `"áb"`, `"á-b"`, `"a"&UNICHAR(769)&"-b"` and `"á'b"` (G4 row 11;
     COUNTIF 1, Rank!H11), and `"a'"&UNICHAR(769)&"b"` is above `"a-b"` (G4!J20): `"a'b"` < `"a-b"` <
     `"a'"&UNICHAR(769)&"b"` < `"a-"&UNICHAR(769)&"b"` < `"áb"`. One mark (U+0301) was probed: how
-    other marks or several marks weigh there is open. Ours attaches the mark to the letter before
-    the hyphen (so `"a-"&UNICHAR(769)&"b"` = `"á-b"`) and fails these 47 cells (T-3329).
+    other marks or several marks weigh there is open. Ours (T-3329) drops the mark from the
+    accent pass and adds its weight to the skipped character's last-pass weight (`skipped`).
   - Open, UNVERIFIED: marks after `æ`/`ß` (T-3203).
   Ours (T-3181): `cmp_text_pairwise` applies this rule for the operators and criteria, so every
   cell of the four accent cases passes. The rule is not transitive (wrapped-run-pairs has 554

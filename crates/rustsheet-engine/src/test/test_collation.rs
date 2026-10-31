@@ -415,6 +415,16 @@ fn pairwise_prefix_rule() {
     assert_eq!(cmp("á", "a\u{301}"), Ordering::Equal);
 }
 
+/// A mark after a hyphen or apostrophe goes with that skipped character
+/// (probes/t3304-collation-multi-letter-accents G4; only U+0301 probed).
+#[test]
+fn mark_after_skipped_character_raises_it() {
+    assert_increasing(&["a'b", "a-b", "a'\u{301}b", "a-\u{301}b", "\u{e1}b"]);
+    // The mark adds nothing to the accent pass: "a-" + U+0301 + "b" is below "á-b".
+    assert_eq!(cmp_text_excel("a-\u{301}b", "\u{e1}-b"), Ordering::Less);
+    assert_eq!(cmp_text_excel("a-\u{301}b", "\u{e1}'b"), Ordering::Less);
+}
+
 /// Full-width forms, kana, voicing and the long-vowel and iteration marks
 /// (probes/t3275-collation-width-kana, probes/t3275-collation-width-kana-pairs; coercion.md
 /// "Full-width and half-width forms, kana, voicing and the long-vowel mark").
