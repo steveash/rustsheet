@@ -71,3 +71,12 @@ PRICE's root", T-1592 fourth-round paragraph; lab fit `uv run rustsheet-fitlab y
 - probes/yield-newton-domain.case.json (5): P!B6, B10, B11, B12, B13
 - probes/yield-start-one-input.case.json (8): S!A18, A31, A68, A76, B5, B18, B68, B76
 - probes/yield-start-term-basis.case.json (26): S!A3, A5, A8, A15, A21, A29, A47, A48, A53, B3, B5, B8, B15, B18, B21, B29, B47, B48, B53, C2, C8, C21, C30, C44, C46, C48
+
+## Cells added by gap triage (2026-10-31)
+`make eval` on origin/main 4ff408243 (excel-graph), `scripts/exit_owners.py`'s `owned` rule over every failing cell: 3 YIELD
+cells 1 to 2 ulp off, none visibly off, that no open task names. They are the probe's residue after T-3215's start
+(financial.md "YIELD stops short of PRICE's root"; 357 of its 360 one-step cells are bit-exact).
+- probes/yield-one-step-start.case.json (3): S!A162, B19, B24
+  - A162 `YIELD(DATE(2024,3,1),DATE(2027,6,30),0.1,95,99.976694,2,0)`: Excel 0.11842330011243947, ours 0.11842330011243941
+  - B19 `YIELD(DATE(2024,3,1),DATE(2053,10,1),0.06,112,105.779438,1,0)`: Excel 0.05272923315300489, ours 0.052729233153004894
+  - B24 `YIELD(DATE(2024,3,1),DATE(2033,1,10),0.06,112,100.352852,1,0)`: Excel 0.04368660877095412, ours 0.04368660877095414
