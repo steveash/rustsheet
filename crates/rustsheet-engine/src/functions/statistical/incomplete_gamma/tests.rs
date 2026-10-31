@@ -718,19 +718,15 @@ fn newton_steps_from_the_leading_factor_root_reach_excel_deep_lower_tail() {
         excel_newton_quantile(3.0, 1e-100),
         excel_tiny_quantile(3.0, 1e-100)
     );
-    // The second step: a5828d3925575713 A338 `GAMMAINV(1E-16,2.5,TRUE)`, and within 15 digits
-    // a612e89321a6df9c A169 `CHISQ.INV(1E-20,6)`.
-    assert_eq!(
-        gamma_quantile(2.5, 1.0, 1e-16, Tail::Lower),
-        6.436_215_297_435_573e-7
-    );
-    let x = gamma_quantile(3.0, 2.0, 1e-20, Tail::Lower);
-    assert!(within_15_digits(x, 7.829_736_048_647_269e-7), "{x:e}");
-    // The cdf at the root is 3.4E-6 off p at `GAMMA.INV(1E-8,1.5,1)`, past the cut: the search.
+    // Past the cut while it is held at 1E-8 (T-3311 review round 1): the cdf at the root is
+    // 3.2E-8 off p at gen-m9/c18dbf21f11093f3 A107, 4.6E-7 at a5828d3925575713 A338
+    // `GAMMAINV(1E-16,2.5,TRUE)` and 3.4E-6 at `GAMMA.INV(1E-8,1.5,1)`: the search.
+    assert_eq!(excel_newton_quantile(4.0, 1.025_153_212_086_874e-31), None);
+    assert_eq!(excel_newton_quantile(2.5, 1e-16), None);
     assert_eq!(excel_newton_quantile(1.5, 1e-8), None);
     // Outside the measured shapes and probabilities.
     assert_eq!(excel_newton_quantile(1.2, 1e-30), None);
-    assert_eq!(excel_newton_quantile(8.0, 1e-100), None);
+    assert_eq!(excel_newton_quantile(6.0, 1e-100), None);
     assert_eq!(excel_newton_quantile(2.5, 1e-250), None);
-    assert_eq!(excel_newton_quantile(1.5, 1e-9), None);
+    assert_eq!(excel_newton_quantile(1.5, 1e-11), None);
 }

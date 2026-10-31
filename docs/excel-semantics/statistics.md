@@ -3794,11 +3794,14 @@ Tasks: T-1543, T-1634, T-2561, T-3336, T-3337
 
   Ours (T-3311, `incomplete_gamma::closed_form::excel_newton_quantile`): after T-2561's root, the nearest-F rule over
   50 steps where the form at the root is within 1E-8 of p, at shapes 1.5 to 5 and p 1E-200 to 1E-12 (the measured
-  range of that cut; the search elsewhere), times the scale. The cut is a fit: every cut from 1E-8 to 1E-6 ties on a
-  30% hold-out's train part, and the wider ones move A107 one ulp off. Bit-exact now: A212, A301, gen-m9
+  range of that cut; the search elsewhere), times the scale. The cut is a fit. On a 30% hold-out (docs/research/t3311) the
+  train part is best at 3E-7 and 1E-6, and 1E-6 leads on test and on the second fresh sweep (filled after it was
+  frozen: 23 of its 30 in-region cells bit-exact, against 1 for the search). 1E-6 moves gen-m9/c18dbf21f11093f3 A107
+  `CHISQ.INV(POISSON.DIST(9,100,FALSE),8)` from bit-exact to 1 ulp off; the branch holds 1E-8 until that is ruled on
+  (T-3311 review round 1, T-3403). Bit-exact now: A212, A301, gen-m9
   4e55500bb8ad3cd8 A111, 58e3253bbd3a7a82 A287, a7bf0d8d81d33ba6 A216; within 15 digits: A128 and A98 (2 ulp).
-  Still visibly off: A169 and A338 (the form at the root is 2.9E-7 and 4.6E-7 off p, past the cut; the steps reach
-  Excel's within 15 digits there), and A355 (`CHISQ.INV(1E-20,10)`, 2.2E-4 off at the root, where the steps are
+  Still visibly off at 1E-8: A169 and A338 (the form at the root is 2.9E-7 and 4.6E-7 off p; at 1E-6 A338 is
+  bit-exact and A169 within 15 digits), and A355 (`CHISQ.INV(1E-20,10)`, 2.2E-4 off at the root, where the steps are
   no better than the search).
 
 - `1-1E-16` is a different double from 1 (`NORM.INV(1-1E-16,0,1)` = 8.209536151601386), but `1-1E-17` is 1 and gives `#NUM!`.

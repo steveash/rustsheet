@@ -34,7 +34,9 @@ T-3311's rule (the first iterate whose cdf is nearest p, `incomplete_gamma::clos
 applied without its cut or range, is bit-exact at 50 and within 15 digits at 62. T-3311 ships it only at shapes 1.5 to
 5 and p 1E-200 to 1E-12, after T-2561's root. So the root test this task looks for may be "the root is the nearest
 iterate", which would replace `TINY_QUANTILE_CHECK` and widen that range; the fresh sweep is not a hold-out for it
-any more, so a new sweep is owed (decision 0188 R4).
+any more, so a new sweep is owed (decision 0188 R4). Note the two tests measure the root on different cdfs:
+`TINY_QUANTILE_CHECK` on the accurate pair, `excel_newton_quantile` on `excel_form_lower` (Excel's form); a unified
+root test should use one (T-3403 has the same note).
 
 ## Acceptance criteria
 - [ ] A31 is within half a unit of Excel's 15th digit, or the Outcome records why it cannot be reached.

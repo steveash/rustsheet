@@ -42,6 +42,21 @@ Leads:
 - The step's density may not be the engine's `gamma_density`: T-3311 tried the form's own derivative and
   `EXP((a-1)*LN(x)-x-GAMMALN(a))`, with the same iterates at the probe points.
 
+Root test, to unify here or in T-3294: T-2561's `TINY_QUANTILE_CHECK` tests the root on the accurate pair
+(`pair_with(.., Exponent::Excel)`, which below shape 20 is the accurate cdf), while `excel_newton_quantile` measures the
+same root on `excel_form_lower`, Excel's staircase form. On the form, "the root is the nearest iterate" may be the test
+the root check only approximates.
+
+Cut held (T-3311 review round 1): the hold-out picks `NEWTON_START_MAX` = 1E-6, which makes A338 bit-exact and A169
+visible but moves A107 (above) from bit-exact to 1 ulp off (Excel 7.92099982566666E-8, ours 7.920999825666661E-8).
+Recording A107 under decision 0083's ulp allowance is pending a ruling, and the cut stays at 1E-8 until then. If the
+allowance is recorded, this task owns A107's 1-ulp miss as its ulp follow-up (decision 0083 condition 4).
+
+## Visible-parity stage
+Decision 0083: the cells this task owns are visibly off, so it is in the campaign. Its target is that every visibly-off
+cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value;
+bit-level misses left then go to a `defer: phase-1b` follow-up.
+
 ## Acceptance criteria
 - [ ] A169, A338 and A355 are within half a unit of Excel's 15th digit, or the Outcome lists the rules tried with
       their bit-exact and visible counts on a hold-out split (decision 0188 R4).

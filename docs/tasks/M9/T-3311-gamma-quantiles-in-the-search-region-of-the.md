@@ -58,8 +58,9 @@ reproduce Excel's landing, never a more accurate kernel.
 - Shape 20 and above (T-3294); the p = 0.999 band (T-3146).
 
 ## Outcome
-Two attempts (decision 0056); the second ships. Four of the seven targets now match Excel (A212 and A301 bit for
-bit, A128 and A98 within 15 digits); A169, A338 and A355 stay visibly off and go to T-3403.
+Two attempts (decision 0056). At the cut the branch holds (1E-8), four of the seven targets match Excel (A212 and
+A301 bit for bit, A128 and A98 within 15 digits). At the hold-out's cut (1E-6, pending the A107 ruling below), six do
+(A338 bit-exact, A169 within 15 digits too). A355 stays visibly off at both (T-3403).
 
 **Finding** (docs/excel-semantics/statistics.md, T-3311 paragraphs of "Deep lower tail at a shape above 1"; new
 probes-numeric cases t3311-gamma-inv-lower-tail-cdf, 899 cells, and t3311-fresh-sweep, 240 cells, excel-graph):
@@ -92,63 +93,80 @@ Rules tried for the iterate, on the 97 points of the first probe (exact / within
 For Excel's cdf, 17 orderings of the form were tried: T-3060's is within an ulp at 304 of 330 cells (the engine's
 pair: 46), and one variant reaches 307.
 
-**R4 guards** (decision 0188). The model is structural (an algorithm family); `NEWTON_START_MAX` is a fit, tagged
-`FITTED(T-3311, 13 cells, shape 1.5..5, p 1E-200..1E-12)`, and quality/fitted.json goes from 80 to 81 tags.
-- Hold-out, disclosed: the split was fixed after an all-data exploration that chose the model, so it is not a clean
-  hold-out. Split: FNV-1a of the cell key mod 100 < 30, giving 53 test and 100 train of 153 distinct (shape, p)
-  points from gen-m9, probes, probes-numeric and the first probe. Margin: 15 points of exact rate, stated with the
-  split. Oracle values are parsed with correct rounding; a first pass through serde_json without `float_roundtrip`
-  misread some by an ulp, and its counts are discarded.
-- Cut choice: lexicographic (within 15 digits, within 4 ulp, exact) on train. Cuts from 1E-8 to 1E-6 tie at
-  (98, 97, 31) of 100. Within the tie, gated no-regression (A107) picks 1E-8; a reviewer may read that as a
-  keep-matched choice. On test, 1E-6 would score 23 / 53 / 53.
-- Frozen function (exact / within 4 ulp / within 15 digits):
+**Review round 1 (fidelity REQUEST_CHANGES), state: cut held at 1E-8 pending a ruling.**
+- The cut: 1E-8 was a keep-matched tie-break (it dodged gen-m9/c18dbf21f11093f3 A107); the review asked for the
+  hold-out's choice, 1E-6, with A107 taken under decision 0083's standing ulp allowance. Its record (A107 as an F line
+  via `update-baseline --allow-regressions`, listed in a decision record) was refused by this session's permission
+  classifier ("[CI Bypass]") when committing the record, before any baseline change. Per the review's instruction
+  for a refusal, the branch holds 1E-8 and the doc comment now says why (no longer that 0083/0111 forbid 1E-6). The
+  1E-6 model is frozen and measured below; switching is one constant, its range and two tests, plus the baseline.
+- A107 at 1E-6: Excel 7.92099982566666E-8, ours 7.920999825666661E-8, +1 ulp, within 15 digits. All four 0083
+  conditions hold (numeric and within 4 ulp; nothing newly visibly off; 6 visibly fixed against 1 regression; T-3403
+  names A107).
+
+**R4 guards** (decision 0188). The model is structural (an algorithm family); `NEWTON_START_MAX` is a fit with a
+`FITTED` tag (at 1E-8: 13 points where the steps apply, shape 1.5..5, p 1E-200..1E-12; at 1E-6: 23 points, shape
+1.5..7.5, p 1E-200..1.0000000827E-10). quality/fitted.json rises by one (decision 0197).
+- Hold-out (R4.1), disclosed as contaminated: the 100/53 split (FNV-1a of the cell key mod 100 < 30, 153 distinct
+  (shape, p) points, docs/research/t3311/split_points.json) was fixed after the model family was chosen on all the
+  data. Margin 15 points of exact rate. Fallback is main with T-3131's search. Exact / within 4 ulp / within 15 digits:
 
   | candidate | train (100) | test (53) |
   |---|---|---|
-  | HEAD (T-3311) | 31 / 97 / 98 | 21 / 51 / 51 |
-  | correctly rounded (mpmath) | 20 / 88 / 94 | 10 / 44 / 46 |
-  | main (engine) | 27 / 93 / 97 | 17 / 49 / 50 |
+  | cut 1E-6 | 32 / 93 / 98 | 22 / 53 / 53 |
+  | cut 3E-7 | 32 / 93 / 98 | 21 / 51 / 51 |
+  | cut 1E-8 (held) | 32 / 92 / 98 | 20 / 50 / 51 |
+  | main | 28 / 88 / 97 | 16 / 48 / 50 |
+  | correctly rounded (mpmath) | 20 / 83 / 94 | 10 / 42 / 46 |
 
-  Exact rate: train 31%, test 39.6%, within the margin. HEAD beats correctly rounded on test (21 vs 10 exact) and
-  main (17). It changes 10 points and loses none: each is now bit-exact or 1 ulp closer.
-- In-region (13 points): 10 bit-exact, 3 at 1 ulp.
-  Over all points with the form at the root within 1E-6 of p (37): main 23 exact / 33 within 15 digits, the
-  unrestricted steps 26 / 37. From 1E-6 to 1E-4 (14 points), the steps lose: 0 exact and 12 within 15 digits,
-  against main's 2 and 14.
-- Fresh sweep (R4.2): probes-numeric/t3311-fresh-sweep, 240 cells, generated and filled after the freeze. Shapes
-  log-uniform 1 to 20 (df 3 to 39), lower-tail p log-uniform 1E-300 to 1E-3 (1E-15 to 1E-3 as `1-q` for
-  CHISQ.INV.RT), 30 scaled.
-  - Main: 97 exact / 156 within 4 ulp / 172 within 15 digits. HEAD: 102 / 160 / 176.
-  - 5 cells changed, all to bit-exact, 4 of them visibly fixed (A46, A119, A212, A238; A11 was 2 ulp off); none
-    worse.
-  - Gate A envelope (within 15 digits of Excel, or 1E-9 of 50-digit mpmath): 240 of 240, main and HEAD; none
-    outside.
-  - Beyond the shipped range: of the 64 cells still visibly off, 58 are an exact Newton iterate, and the unrestricted
-    rule would be bit-exact at 50 and within 15 digits at 62. That evidence is in T-3294's Context.
-- Reproducibility floor: the cut is set against a 1-ulp regression (A107). That is below the 4-ulp web/desktop floor,
-  so it is not fitted toward any target there; it only stops a loss.
+  Ranked by within 15 digits, then within 4 ulp, then exact, the train part is best at 3E-7 and 1E-6; 1E-6 is the
+  wider and leads on test. Exact rate at 1E-6: train 32%, test 41.5%, within the margin.
+- Fresh sweep 2 (R4.2, the clean check): probes-numeric/t3311-fresh-sweep-2, 360 cells, generated after the 1E-6
+  model was frozen (commit 63d859826, 2026-10-31T10:18:08Z) and filled 10:22:43Z to 10:22:55Z. A1-A240 span the full
+  domain as sweep 1; A241-A360 are log-uniform over the 1E-6 fit's box. Region = where the steps apply, judged with
+  mpmath (docs/research/t3311/score.py). Exact / within 4 ulp / within 15 digits / Gate A:
 
-**Eval comparison, main (c5c53f914 + claim) against HEAD, every cell:**
-- Gated suites (only gen-m9 changes):
+  | candidate | all 360 | region 30 |
+  |---|---|---|
+  | HEAD, cut 1E-6 (frozen) | 179 / 261 / 285 / 360 | 23 / 28 / 30 / 30 |
+  | HEAD, cut 1E-8 (held) | 165 / 249 / 278 / 360 | 11 / 18 / 25 / 30 |
+  | main | 148 / 231 / 268 / 360 | 1 / 9 / 23 / 30 |
+  | correctly rounded (mpmath) | 19 / 122 / 191 / 360 | 1 / 9 / 22 / 30 |
+
+  At 1E-6, 40 cells change against main, one of them farther: A346 `CHISQ.INV.RT(1-1.30E-14,4)`, -1 to -3 ulp
+  (within 15 digits). At 1E-8, 22 change, none farther.
+- Fresh sweep 1 (probes-numeric/t3311-fresh-sweep, 240 cells, filled after round 0's freeze), the same columns:
+  HEAD at 1E-6 106 / 162 / 177 / 240, at 1E-8 102 / 160 / 176 / 240, main 97 / 156 / 172 / 240, correctly rounded
+  20 / 90 / 125 / 240; region 5: 5 / 5 / 5 / 5, 2 / 4 / 5 / 5, 0 / 3 / 4 / 5, 1 / 3 / 4 / 5. None worse than main
+  at either cut. Beyond the range: of its 64 cells visibly off at 1E-8, 58 are an exact Newton iterate and the
+  unrestricted rule is bit-exact at 50 (T-3294's Context).
+- Gate A envelope: 240 of 240 and 360 of 360 for HEAD at both cuts, main and the correctly rounded quantile; none
+  outside. The 50-digit references and scripts are docs/research/t3311/reference.py (reference_split.json,
+  reference_fresh-sweep.json, reference_fresh-sweep-2.json) and score.py (score_cut1e-6.out, score_cut1e-8.out).
+- Reproducibility floor: the cut is not fitted toward any difference below 4 ulp; the 1E-6 choice rests on cells 2 to
+  36 ulp apart and on visible parity.
+
+**Eval comparison, main (origin/main bf7db78fb, with T-3131's search) against HEAD, every cell.**
+- At the held 1E-8, gated suites (only gen-m9 changes):
   - 5 fixed to bit-exact: A212 (-36 ulp), A301 (-11), 4e55500bb8ad3cd8 A111 `CHIINV(NPV(..),3)` (+5),
     58e3253bbd3a7a82 A287 and a7bf0d8d81d33ba6 A216 `CHISQ.INV(1E-16,3)` (-1 each).
   - 3 closer: A128 and A98 (-20 to -2 ulp, now within 15 digits), caa1eed48b1883fe A282 (-10 to -1).
   - Visibly fixed: 4 (A128, A98, A212, A301).
   - Lost bit-exact, farther, newly visibly off, type or error changed: 0.
+- At 1E-6, gated: 6 fixed (the 5 above and A338, -5 to 0), 4 closer (A128, A98, A282, A169 -5 to -4), 6 visibly fixed
+  (A128, A98, A169, A212, A301, A338), 1 lost bit-exact (A107, +1 ulp, within 15 digits), nothing else.
 - eval/baseline/gen-m9.txt: 5 F lines removed (`make eval-baseline`), none added.
-- New t3311 probes (ungated, new in this PR):
-  - Quantile cells: all improve.
-  - Changes against main's engine on the same new cells: 26 bit-exact, 63 closer, 20 visibly fixed, 11 farther and
-    5 newly visibly off. The farther and newly-off cells are all GAMMA.DIST/CHISQ.DIST evaluated at the changed
-    quantiles; the engine's GAMMA.DIST is not Excel's staircase there.
+- New t3311-gamma-inv-lower-tail-cdf probe (ungated, new in this PR), at 1E-8: quantile cells all improve; its
+  GAMMA.DIST/CHISQ.DIST cells, evaluated at the moved quantiles, show 26 bit-exact, 63 closer, 20 visibly fixed,
+  11 farther, of which 5 newly visibly off: W!C56, W!D56, W!E56, W!F56 and W!F31 (the 11 are listed in T-3412, which
+  owns Excel's staircase GAMMA.DIST at shapes above 1).
 - Other ungated suites: no change.
 
 **Targets:**
 - A212 `CHISQ.INV(1E-200,10)`: bit-exact.
 - A301 `CHISQ.INV.RT(1-1E-16,3)`: bit-exact.
 - A128 and A98 `CHISQ.INV(1E-200,5)`: 2 ulp, within 15 digits.
-- Not reached (T-3403), each still visibly off at its main value:
+- Not reached at 1E-8 (T-3403), each still visibly off at its main value (A169 and A338 are reached at 1E-6):
   - A169 `CHISQ.INV(1E-20,6)`: 2.9E-7 at the root, past the cut.
   - A338 `GAMMAINV(1E-16,2.5,TRUE)`: 4.6E-7, past the cut; the second iterate is Excel's bit for bit.
   - A355 `CHISQ.INV(1E-20,10)`: 2.2E-4, where the steps are no better than the search.
@@ -161,5 +179,6 @@ pair: 46), and one variant reaches 307.
   (sheet S row 7), as for the p = 0.999 band. Excel's value is never a Newton iterate at right-tail p above 1E-5
   (0 of 14 cells), so it stays with T-3146.
 
-Follow-ups: T-3403 (which iterate Excel returns; A169, A338, A355, A107). T-3294 gets the deep-tail evidence in its
-Context.
+Follow-ups: T-3403 (which iterate Excel returns; A169, A338, A355, A107; Visible-parity stage), T-3412 (Excel's
+GAMMA.DIST/CHISQ.DIST at shapes above 1 is the leading-factor form; the 11 probe cells). T-3294 gets the deep-tail
+evidence and the pair-vs-form root-test note in its Context.

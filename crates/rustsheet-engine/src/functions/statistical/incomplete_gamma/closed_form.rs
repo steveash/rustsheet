@@ -133,32 +133,31 @@ fn form_step(a: f64, x: f64, p: f64) -> Option<(f64, f64)> {
 /// How far, relative to p, the leading-factor series form ([`excel_form_lower`]) at
 /// [`leading_factor_root`] may be from p for [`excel_newton_quantile`] to apply. A region cut, not
 /// an Excel constant: Newton steps from the root reproduce Excel better than the search only where
-/// the root is already close, and that distance is about x a / (a + 1) at a quantile x. Chosen on a
-/// 30% hold-out split by cell over 153 distinct (shape, p) points of gen-m9, probes and
-/// probes-numeric at shapes 1 to 20 (T-3311 Outcome; docs/research/t3311): ranked by visible
-/// parity, then within 4 ulp, then bit-exact, the train part ties 3E-7 and 1E-6 at its best
-/// (98, 93 and 32 of 100), and this is the wider. On the test part it is 22, 53 and 53 of 53
-/// bit-exact, within 4 ulp and visible, against 16, 48 and 50 for the search and 10, 42 and 46 for
-/// the correctly rounded quantile. From 1E-6 to 1E-4 the steps lose: `GAMMA.INV(1E-8,1.5,1)` 7 ulp
-/// off, where the search is within 15 digits. The 23 cells in the tag are the measured points
-/// where the steps apply (the cut admits them and T-2561's root does not take them); the range is
-/// theirs.
-/// FITTED(T-3311, 23 cells, shape 1.5..7.5, p 1E-200..1.0000000827E-10)
-const NEWTON_START_MAX: f64 = 1e-6;
+/// the root is already close, and that distance is about x a / (a + 1) at a quantile x. On a 30%
+/// hold-out split by cell over 153 distinct (shape, p) points of gen-m9, probes and probes-numeric
+/// at shapes 1 to 20 (T-3311 Outcome; docs/research/t3311), ranked by visible parity, then within 4
+/// ulp, then bit-exact, the train part is best at 3E-7 and 1E-6 (98, 93 and 32 of 100) and 1E-6
+/// leads on test (22, 53 and 53 of 53). This 1E-8 (train 98, 92 and 32) is not that choice: it is
+/// held until a ruling on gen-m9/c18dbf21f11093f3 A107 `CHISQ.INV(POISSON.DIST(9,100,FALSE),8)`
+/// (T-3311 review round 1), which 1E-6 moves from bit-exact to 1 ulp off Excel, a gated baseline
+/// change that needs decision 0083's ulp allowance recorded. The 13 cells in the tag are the
+/// measured points where the steps apply at this cut (the cut admits them and T-2561's root does
+/// not take them); the range is theirs.
+/// FITTED(T-3311, 13 cells, shape 1.5..5, p 1E-200..1E-12)
+const NEWTON_START_MAX: f64 = 1e-8;
 
 /// The shapes [`NEWTON_START_MAX`] was measured on (decision 0188 R4.3: a fit applies only inside
 /// its range). Outside them the search, the accurate crossing, applies.
-const NEWTON_SHAPES: std::ops::RangeInclusive<f64> = 1.5..=7.5;
+const NEWTON_SHAPES: std::ops::RangeInclusive<f64> = 1.5..=5.0;
 
 /// The probabilities [`NEWTON_START_MAX`] was measured on, from `CHISQ.INV(1E-200,5)` to
-/// `CHISQ.INV.RT(0.9999999999,3)`, whose lower tail 1 - p is 1.000000082740371E-10
-/// (probes/m9-chisq-inv-rt A21).
-const NEWTON_PROBABILITIES: std::ops::RangeInclusive<f64> = 1e-200..=1.000_000_082_740_371e-10;
+/// `GAMMA.INV(1E-12,1.5,1)`.
+const NEWTON_PROBABILITIES: std::ops::RangeInclusive<f64> = 1e-200..=1e-12;
 
 /// The most Newton steps [`excel_newton_quantile`] takes: a bound, not a fit. The value at every
 /// probed point is the same for any count from 15 to 50, because the steps soon cycle between a
 /// few levels of Excel's staircase cdf (below) and no later iterate is nearer p; 50 leaves that
-/// margin, and each step is one series of a shape below 7.5 at x below 1.
+/// margin, and each step is one series of a shape of at most 5 at x below 1.
 const NEWTON_STEPS: u32 = 50;
 
 /// Excel's lower-tail quantile at a shape above 1 where the leading-factor root is close but not
