@@ -3,7 +3,7 @@ id: T-3329
 title: "Attach a combining mark after a hyphen or apostrophe to that skipped character, not to the letter before it (t3304 multi-letter-accents G4)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
