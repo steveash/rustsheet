@@ -2073,6 +2073,7 @@ C	probes/xirr-irr-empty-guess.case.json	22
 C	probes/xirr-mismatched-empties.case.json	14
 C	probes/xirr-size-mismatch-empty-guess.case.json	36
 C	probes/xirr-span-zero-first.case.json	30
+C	probes/xirr-two-flow-long-span.case.json	810
 C	probes/xirr-xnpv-whole-column-nogaps.case.json	8
 C	probes/xirr-zero-first-bracket.case.json	16
 C	probes/xlookup-array-lookup-value-args.case.json	57

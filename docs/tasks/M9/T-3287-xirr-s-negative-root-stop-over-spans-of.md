@@ -22,6 +22,9 @@ side? Correct the wording in docs/excel-semantics/financial.md that the T-3268 r
 - The m9-fin-irr-rate cells with negative roots over longer spans (Calc!A603-A609, 2.43 years; A639-A645, 5.00 years)
   stop at the first step-test pass at |XNPV| <= 1.67e-8·max|value|. They pass whether or not the bound is scaled, so they
   do not discriminate (excel-fidelity review of #2441).
+- T-3353 answers question (1) for two-flow series: probes/xirr-two-flow-long-span has negative roots -0.9 to -0.01
+  over 3 to 100 years where the scaled bound misses 49 cells and the unscaled bound (the engine) matches all 270
+  (financial.md, T-3353 bullet). Three-flow and negative-guess cells and question (2) remain here.
 - Doc fixes (reviews of #2441):
   - financial.md's T-3268 bullet says "every negative-root cell has a latest date within a year of the first" and
     "(none is probed)". Narrow both to the cells where the bound binds.
