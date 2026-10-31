@@ -12,7 +12,8 @@ spec: docs/specs/SPEC-0027-merge-train.md
 ---
 
 ## Goal
-A PR ejected for a conflict with `main` that lies only in `eval/baseline/` can be caught up and
+A PR ejected for a conflict with `main` that lies only in the eval-gated, non-fetched suites'
+baseline lists can be caught up and
 re-marked by any session, without a new review and without its original worker.
 
 ## Context
@@ -21,16 +22,17 @@ re-marked by any session, without a new review and without its original worker.
   so they stranded. Decision 0205 has the rule.
 
 ## Acceptance criteria
-- [x] `carry_problem` accepts a merge of main whose tree differs from the plain merge only in
-      `eval/baseline/`, and refuses a conflict or edit anywhere else (scripts/test_merge_ready.py).
+- [x] `carry_problem` accepts a merge of main whose tree differs from the plain merge only in the
+      content of the lists CI's eval gate checks, with no failure line neither parent had, and
+      refuses a conflict or edit anywhere else (scripts/test_merge_ready.py).
 - [x] `make catch-up PR=<n>` merges main in, refuses non-baseline conflicts, takes main's side of
       the lists, runs `make eval-baseline` (refusing regressions), pushes without force and
-      restores the checkout (scripts/test_merge_catchup.py, 7 tests).
+      restores the checkout's branch (scripts/test_merge_catchup.py).
 - [x] SPEC-0027 "Carry-over", the steward skill's "Ejections" and decision 0205 record it.
 - [x] The scripts tests pass.
 
 ## Out of scope
-- Conflicts outside `eval/baseline/` (code, docs, task files): still the PR's worker's.
+- Conflicts outside those lists (code, docs, task files, fetched or ungated suites' lists): still the PR's worker's.
 - Running catch-ups automatically from the merger routine (`make eval-baseline` takes minutes).
 
 ## Outcome

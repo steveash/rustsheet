@@ -481,8 +481,9 @@ class Repo:
                 meta = tomllib.loads(shown.stdout)
             except tomllib.TOMLDecodeError:
                 continue
-            if meta.get("gate") is True and "fetch" not in meta:
-                found.add(f"{BASELINE_DIR}{suite}.txt")
+            name = meta.get("name", suite)  # CI names the list after the suite's `name`
+            if meta.get("gate") is True and "fetch" not in meta and isinstance(name, str):
+                found.add(f"{BASELINE_DIR}{name}.txt")
         return found
 
     def carry_problem(self, prev: str, head: str) -> str | None:
@@ -490,7 +491,8 @@ class Repo:
         "Carry-over"), or None when it is: a merge commit whose first parent is `prev`, whose
         second parent is on `main`, and whose tree is the plain merge of its parents
         (`git merge-tree --write-tree`), except that the content of a list in `checked_baselines`
-        may differ: a conflict there resolved and the lists re-recorded (decision 0093). The eval
+        may differ, without a failure line neither parent had: a conflict there resolved and the
+        lists re-recorded (decision 0093). The eval
         gate on the head, which marking requires green, checks exactly those lists (decision 0205).
         Anything else (another file, an addition, deletion, rename or mode change) breaks the carry."""
         parents = self.git("rev-list", "--parents", "-n", "1", head).split()[1:]
@@ -519,7 +521,24 @@ class Repo:
             if path not in lists or status != "M" or old_mode != "100644" or new_mode != "100644":
                 return (f"the merge is not clean: {path} differs from a plain merge of its parents, "
                         "and only the content of an eval-gated baseline list may")
+            added = self.new_failures(path, parents, head)
+            if added:
+                return (f"{path} records failures neither parent had ({added[0]}): a regression "
+                        "needs the reviewers again, not a carry")
         return None
+
+    def new_failures(self, path: str, parents: Sequence[str], head: str) -> list[str]:
+        """The known-failure lines (`F` and `TF`) of list `path` in `head` that no parent's list has.
+        The eval gate only checks that a list matches the engine, so a regression recorded in a
+        merge would pass it; the carry refuses one instead (decision 0205)."""
+
+        def failures(commit: str) -> set[str]:
+            shown = git("show", f"{commit}:{path}", root=self.root, check=False)
+            text = shown.stdout if shown.returncode == 0 else ""
+            return {line for line in text.splitlines() if line.startswith(("F\t", "TF\t"))}
+
+        known = set().union(*(failures(c) for c in parents))
+        return sorted(failures(head) - known)
 
     def task_file(self, head: str, task: str) -> str | None:
         """The text of task `task`'s file in `head`'s tree, or None when it has none."""
@@ -867,7 +886,7 @@ def main(argv: list[str], root: Path = ROOT) -> int:
     mark = sub.add_parser("mark", help="mark a green, approved PR ready (the marker and the label)")
     mark.add_argument("--pr", required=True)
     mark.add_argument("--review", help='"security=APPROVE architecture=APPROVE quality=APPROVE ..."')
-    mark.add_argument("--carry", action="store_true", help="carry the verdicts over a clean merge of main")
+    mark.add_argument("--carry", action="store_true", help="carry the verdicts over a merge of main (clean, or re-recording eval-gated baseline lists)")
     mark.add_argument("--by", default=os.environ.get("CLAUDE_CODE_SESSION_ID", ""), help="the marker id")
     mark.add_argument("--step", action="store_true", help="print the writes as step-mode actions")
     record = sub.add_parser("record", help="post a reviewer's verdict record for the local HEAD")

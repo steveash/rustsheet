@@ -19,7 +19,10 @@
     mode-changed file). Fetched suites (poi, corpus-bench), ungated suites and
     `visible-parity.json` are excluded because CI does not check them against the engine. A
     conflict or edit anywhere else still breaks the carry. The eval gate, which marking requires
-    green on the head, checks the accepted lists exactly, so a wrong list cannot be marked.
+    green on the head, checks that the accepted lists match the engine. That gate cannot tell a
+    regression recorded in the merge from a correct list, so the carry also refuses any `F` or
+    `TF` line in the head's list that neither parent's list has: a regression needs the
+    reviewers again.
   - **`make catch-up PR=<n>`** (scripts/merge_catchup.py), in the caller's checkout:
     - merges `origin/main` into the PR branch;
     - refuses any conflict outside those checked lists;

@@ -682,10 +682,19 @@ class Mark(PrFixture):
     def test_carry_accepts_a_merge_that_re_records_baselines(self) -> None:
         # Decision 0205: a conflict only in eval/baseline/, resolved and re-recorded, carries over.
         old = self.baseline_conflict("F\tprobes/a\tA1\n", "F\tprobes/b\tB1\n")
-        self.write("eval/baseline/probes.txt", "F\tprobes/c\tC1\n")  # what make eval-baseline wrote
+        # What make eval-baseline wrote: main's failure kept, the PR's fixed, a check line added.
+        self.write("eval/baseline/probes.txt", "C\tprobes/b\t1\nF\tprobes/b\tB1\n")
         self.finish_merge()
         plan = self.plan(review=None, carry=True)
         self.assertEqual((plan.marker.prev, plan.marker.head), (old, self.head))
+
+    def test_carry_refuses_a_failure_neither_parent_had(self) -> None:
+        # The eval gate accepts any list that matches the engine, so a regression recorded in the
+        # merge (decision 0205) must go back to the reviewers.
+        self.baseline_conflict("F\tprobes/a\tA1\n", "F\tprobes/b\tB1\n")
+        self.write("eval/baseline/probes.txt", "F\tprobes/a\tA1\nTF\tprobes/z\tZ9\n")
+        self.finish_merge()
+        self.refused("records failures neither parent had \\(TF\tprobes/z\tZ9\\)", review=None, carry=True)
 
     def test_carry_refuses_a_conflict_outside_the_checked_lists(self) -> None:
         self.baseline_conflict("pr side\n", "main side\n", path="scripts/x.py")
@@ -708,7 +717,7 @@ class Mark(PrFixture):
         for name, edit in cases.items():
             with self.subTest(name):
                 self.baseline_conflict(f"F\tprobes/{name}-pr\tA1\n", f"F\tprobes/{name}-main\tB1\n")
-                self.write("eval/baseline/probes.txt", f"F\tprobes/{name}\tC1\n")
+                self.write("eval/baseline/probes.txt", f"F\tprobes/{name}-main\tB1\n")
                 edit()
                 self.finish_merge()
                 self.refused("only the content of an eval-gated baseline list may", review=None, carry=True)

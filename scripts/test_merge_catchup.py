@@ -69,7 +69,7 @@ class CatchUp(unittest.TestCase):
         self.commit("main moves")
         self.git("push", "-q", "origin", "main")
 
-    def record(self, code: int, text: str = "F\tprobes/c\tC1\n", path: str = BASELINE):  # type: ignore[no-untyped-def]
+    def record(self, code: int, text: str = "F\tprobes/main\tM1\n", path: str = BASELINE):  # type: ignore[no-untyped-def]
         def fake(root: Path) -> int:
             self.recorded.append(root)
             (root / path).write_text(text)
@@ -88,7 +88,7 @@ class CatchUp(unittest.TestCase):
         self.assertEqual(self.remote("agent/x"), head)
         self.assertEqual(self.git("rev-parse", "HEAD"), start)  # the checkout is put back
         self.assertEqual(self.recorded, [self.clone])
-        self.assertEqual(run("git", "show", f"{head}:{BASELINE}", cwd=self.origin), "F\tprobes/c\tC1")
+        self.assertEqual(run("git", "show", f"{head}:{BASELINE}", cwd=self.origin), "F\tprobes/main\tM1")
         # One merge commit of main into the PR's old head, which the carry rule accepts.
         self.assertEqual(run("git", "rev-parse", f"{head}^1", cwd=self.origin), before)
         self.assertEqual(run("git", "rev-parse", f"{head}^2", cwd=self.origin), self.remote("main"))

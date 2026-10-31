@@ -73,6 +73,8 @@ def catch_up(root: Path, branch: str, record: Callable[[Path], int] = rerecord) 
             raise Refused(f"{branch} already contains {merge_ready.BASE_BRANCH}")
         git("checkout", "-q", "--detach", HEAD_REF, root=root)
         git("merge", "-q", "--no-ff", "--no-commit", main, root=root, check=False)
+        if git("rev-parse", "-q", "--verify", "MERGE_HEAD", root=root, check=False).returncode:
+            raise Refused(f"git could not start merging {merge_ready.BASE_BRANCH} into {branch}")
         conflicted = git("diff", "--name-only", "--diff-filter=U", root=root).stdout.split()
         if conflicted and not checked_only(conflicted, lists):
             outside = [p for p in conflicted if p not in lists]
