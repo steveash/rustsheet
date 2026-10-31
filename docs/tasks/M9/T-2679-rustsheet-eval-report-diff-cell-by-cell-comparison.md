@@ -15,9 +15,9 @@ spec: docs/specs/SPEC-0019-toms-708-bratio-incomplete-beta-port.md
 `rustsheet-eval report-diff <base report.json> <head report.json> [--suite S]` compares two eval runs cell by cell and
 prints what a SPEC-0019 port task needs for decision 0115's check, per function (the specialised function the report
 blames):
-- fixed cells;
-- lost cells (bit-exact before, not now), with their ulp distance;
-- cells that changed but fail both times, with both ulp distances, flagging the ones that moved further from Excel;
+- fixed and lost cells, exactly as decision 0115 defines them. Fixed: bit-exact now and not before; or visibly off
+  before and within 15 digits now; or failing and moved closer to Excel. Lost: bit-exact before and not now; or
+  failing and moved further from Excel. Each cell is listed with both ulp distances;
 - cells newly visibly off, or whose type or error changed;
 - the fixed / lost ratio and the net change in visibly-off cells.
 
@@ -35,7 +35,10 @@ blames):
       `--check-0115` exits non-zero when any function breaks decision 0115's thresholds.
 - [ ] Its output, run on T-2502's merge (`main` before and after #1749), reproduces that Outcome's counts (154 fixed,
       0 newly failing).
-- [ ] Unit tests cover each bucket and the per-function thresholds.
+- [ ] The ratio and `--check-0115` use exactly decision 0115's definitions of fixed and lost.
+- [ ] Unit tests cover each bucket and the per-function thresholds, including a cell that was already failing and moved
+      further from Excel (lost, not "changed"), one that moved closer (fixed), and a function with zero fixes and one
+      loss (fails `--check-0115`).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

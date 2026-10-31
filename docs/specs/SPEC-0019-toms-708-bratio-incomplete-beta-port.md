@@ -94,13 +94,26 @@ evidence for each piece.
   - λ's form for a > b, at the swap and in bfrac: T-2508.
   - Whether F.TEST, T.TEST and the inverses' crossings call this kernel at all: their rows below are UNVERIFIED.
     T-2509 probes T.TEST; T-2511 probes F.TEST and the crossings.
-- **Relation to decision 0114** (adopted on main while this spec was in review). It tags these port tasks
-  `campaign: accuracy`, whose rule is an accurate kernel scored against a high-precision reference and not fitted to
-  Excel's last bits. This spec instead ports Excel's measured pieces, because on this family they beat the correctly
-  rounded value on visible cells: BEST is visibly off on 3,070 of 40,014 cdf cells against CR's 3,396 (r2-bratio), and
-  on T, BINOM and NEGBINOM, decision 0114 itself puts Excel among the inaccurate ones. This is open for the owner. The
-  port rules hold either way: the migration rule lets a caller take an accurate piece in place of Excel's, where it
-  scores better on visible cells. Its Outcome then names the choice and both scores.
+- **Per-caller best (decision 0115, refining decision 0114 for the beta family).** The owner ruled on 2026-10-25,
+  in session https://claude.ai/code/session_01WTJ7rq9tsQyspbybqNLk1a: port Excel's pieces, and let each caller take a
+  correctly rounded or accurate piece wherever that scores better on the oracle's visible cells. The port tasks keep
+  `campaign: accuracy`. The committed data shows why one rule for all callers would be wrong. r2-bratio's
+  `report_best.out` (worker literals; the verifier's truncated-literal rescore moves the totals slightly) splits
+  BETA.DIST's sets from the other callers'. ix holds the F, T, BINOM and NEGBINOM cells, pooled.
+
+  | cells | n | BEST visibly off | CR visibly off |
+  |---|---|---|---|
+  | BETA.DIST sets (be, w2f, w4p1, x29) | 30,257 | 2,615 | 2,449 |
+  | other callers (ix: F, T, BINOM, NEGBINOM pooled) | 9,757 | 455 | 947 |
+  | all | 40,014 | 3,070 | 3,396 |
+
+  - On BETA.DIST's sets CR is visibly off on fewer cells. Most of the gap is w2f's direct cells and L140 bup+bgrat,
+    where BEST fails 974 cells against CR's 387.
+  - On the other callers BEST halves CR's count.
+  - F alone is not separable from committed files: ix pools F with T, BINOM and NEGBINOM, and the per-cell model
+    values (`impact.pkl`) are git-ignored. T-2505's `report-diff` measures F, and BETA.DIST, per function.
+  - Decision 0114 names BINOM.DIST and T.DIST as functions where Excel is the inaccurate one, so there Excel's pieces
+    are the only route to visible parity.
 
 ## Design
 
@@ -221,9 +234,15 @@ From statistics.md "Incomplete beta is TOMS 708 `bratio`" and "Student t tails a
   W1Bpser, Bgrat, BupBgrat) in one step, because r2-tdist's rule is one call for all of them.
 
 ### The migration rule
-**A branch moves only together with its Excel piece. Everything else delegates to today's code.**
+**A branch moves only together with its Excel piece, or with an accurate piece that scores better for that caller.
+Everything else delegates to today's code.**
 - **Implemented.** A branch's Excel arithmetic lands in its file, and `evaluate` uses it. Until then `evaluate`
   returns `legacy::tails` for that branch. So `bratio` is total at every step.
+- **Accurate pieces, per (caller, branch).** A caller may take a correctly rounded or accurate piece for a branch,
+  in place of Excel's, when it scores better on the oracle's visible cells for that caller and passes decision 0115's
+  per-function thresholds. The task's Outcome gives both scores (Excel's piece and the accurate one, from
+  `report-diff`). The accurate piece sits in the branch's file beside Excel's, and the port table records which one
+  the caller takes (decision 0115, refining decision 0114).
 - **Taken.** A caller takes a branch (a new `Caller::takes` arm) only in the task that implements the branch, or in a
   later one, and only where port rule 2 below holds for that caller. One branch can be taken by BETA.DIST and not
   yet by BINOM. For example, r2-impact finds BINOM's bpser(a,b>1) breaks 8 cells and leaves 48 visibly off.
@@ -352,8 +371,10 @@ are measured, so there is no umbrella record.
    - Every port task runs `rustsheet-eval run` over probes-numeric on origin/main (the merge base) and on HEAD, and
      compares the two with `rustsheet-eval report-diff` (T-2679).
    - Per function (the specialised function the report blames, which is per `Caller`), a port is allowed only if:
-     - its fixed cells are at least 2 × its lost cells. A lost cell is one that was bit-exact and is not now, or one
-       already off that moved further from Excel's value;
+     - its fixed cells are at least 2 × its lost cells, with decision 0115's definitions. A cell is fixed when it is
+       bit-exact now and was not before, or was visibly off and is now within 15 digits, or was failing and moved
+       closer to Excel's value. It is lost when it was bit-exact and is not now, or was already off and moved further
+       from Excel's value;
      - its visibly-off count goes down, net;
      - a function with no fixed cell has no lost cell.
    - No cell may become visibly off (beyond half a unit in the 15th significant digit), and no cell may change type or
@@ -381,7 +402,11 @@ are measured, so there is no umbrella record.
 4. **Gated regressions:** the table above; 0083's allowance or a decision record, nothing silent.
 5. **Evidence.** Every piece cites its statistics.md entry in its doc comment. A quirk found while porting goes into
    that entry in the same PR (directive 6). The entry gains an "Implemented in" line, and its "Ours" line is updated.
-6. **Tests do not read docs/** (decision 0066). Fixture rows go under `crates/rustsheet-engine/src/test/fixtures/`, in
+6. **Bit-exact floors are Phase 1b and positive-control evidence.** A floor that counts only bit-exact cells on cells
+   already within 15 digits (T-2505's x29 "at least 284 bit-exact", its bpser bit-exact counts, and the like) is
+   reported in the Outcome. It does not block a port that is visibly net-positive in Phase 1 and passes decision
+   0115 (decision 0114 rule 3). Unmet bit-exact floors move to the task's `defer: phase-1b` follow-up.
+7. **Tests do not read docs/** (decision 0066). Fixture rows go under `crates/rustsheet-engine/src/test/fixtures/`, in
    the T-2645 format (bits in hex, a header naming the source data, the generating script and its configuration).
    Counts over research data (cells.tsv, beta_exact.tsv) come from the eval, or from an `#[ignore]` test that reads a
    path from an environment variable (T-2645's `RUSTSHEET_T2464_LOG1P`), never from a docs literal.
@@ -402,7 +427,7 @@ are measured, so there is no umbrella record.
 - **Accurate (correctly rounded) pieces instead of Excel's, as the default.** On this family's cdf cells the
   correctly rounded value is visibly off on 3,396 of 40,014, against BEST's 3,070 (r2-bratio). TOMS's own pieces lose
   to Excel's in every one-piece ablation (bpser +961 against +1,395). Not adopted as the default. A caller may still
-  take an accurate piece where it scores better on visible cells (see "Relation to decision 0114").
+  take an accurate piece where it scores better on visible cells (see "Per-caller best").
 - **Densities in their own top-level module.** They are the bup and bfrac prefactors, so they sit with the kernel
   (`incomplete_beta/density.rs`). The Loader pieces stay in `loader.rs`, which three density tasks share. Rejected.
 
@@ -462,8 +487,8 @@ task, one PR" requires.
 | done | T-2645 | `x87_log1p.rs`, `excel_exp_extended`; BINOM k = 0 / k = n | BINOM | — |
 | done | T-2502 | `closed_form_tails` | BetaDist, F, Binom, NegBinom; T df 2 | — |
 | 1 | **T-2504** (this spec) | — | — | — |
-| 2 | T-2503 (in progress) | `density.rs` M2 (min <= 1); `ln_beta.rs` if first | BETA.DIST(.,FALSE) | T-2645 |
-| 2 | T-2507 (in progress) | `density.rs` Loader (min > 1); `excel_bd0` in `loader.rs` | BETA.DIST(.,FALSE) | T-2645 |
+| 2 | T-2503 (implemented, review pending) | `density.rs` M2 (min <= 1); `ln_beta.rs` if first | BETA.DIST(.,FALSE) | T-2645 |
+| blocked | T-2507 (blocked on T-2586) | `density.rs` Loader (min > 1); `excel_bd0` in `loader.rs` | BETA.DIST(.,FALSE) | T-2645 |
 | 2 | T-2679 | `rustsheet-eval report-diff` (harness) | — | T-2504 |
 | 3 | T-2505 | directory module, `dispatch`, `legacy.rs`, `bpser.rs`, `ln_beta.rs`; Edge, Bpser, W1Bpser, BpserLarge; the entry points deleted | BetaDist, F, Binom, NegBinom, where rule 2 holds | T-2645, T-2502, T-2504, T-2679 |
 | 3 | T-2585 | T density (`student_t.rs`) on `loader.rs`'s `excel_bd0` and `stirlerr` | T.DIST(.,FALSE) | T-2645, T-2507 |
@@ -495,6 +520,11 @@ task, one PR" requires.
   - gen-m9/35e8168aae2b00f8 A159, `BETADIST(1E-10,0.5,10000000000.5)`, is Bgrat (T-2510).
   So a fit made first would be moved again. After T-2505, T-2633 fits the ported kernel or names the cells T-2510
   owns.
+
+T-2507's Loader model fixes 36,410 visibly-off probes-numeric cells. It also makes 677 newly visibly off without
+Excel's agreement, and puts one gated cell 1 ulp off (ironcalc `BETADIST_BETAINV.xlsx` G3). Both come from the
+model's open residuals, so T-2507 waits on T-2586. Until then the min > 1 density, and with it bfrac's prefactor
+(T-2508), stays on today's form, and T-2508 and T-2585 wait with it.
 
 What stays on the old path until when:
 - each (caller, branch) pair stays on its delegate until a task takes it, per the table above;
