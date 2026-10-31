@@ -45,7 +45,7 @@ const LOG1P_SERIES_LIMIT: f64 = 0.375;
 /// freeze, no hold-out) prefers 8: on r5-f-combine's 1,920 `ca` cells with 6 <= min(d) < 16 it
 /// gives 799 bit-exact, against 629 at 16, and all 1,920 within 15 digits at every edge tried.
 /// Below it every shape takes r4-f-small-df's constant, also shapes outside those it was fitted
-/// on ([`SMALL_SHAPE_OFFSET`]; T-3395, bounding it is T-3413); moving the edge is Phase 1b work
+/// on ([`SMALL_SHAPE_OFFSET`]; T-3395, bounding it is T-3478); moving the edge is Phase 1b work
 /// (decision 0188 R5).
 const LARGE_DF_MIN: f64 = 16.0;
 /// `bcmodel`'s `C_BIG` (units of 2^-53): the mean need over r5-f-bigconst's in-sample x = 1 runs

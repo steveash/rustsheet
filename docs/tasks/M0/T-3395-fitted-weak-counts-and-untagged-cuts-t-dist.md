@@ -69,10 +69,10 @@ near each cut.
   stop (782 cells of the fit lab's `rate` set), RATE's cap tolerance (178 cap-probe cells, one cut inside all three brackets,
   9.4E-5..1.02E-4), IRR's start offset and residual stop (263 cells of the `irr` set) and `IRR_FAR_ROOT_BOUND` (35
   probe cells, 9999999.994..1E+7). These and f_density's small-shape constant apply past their tagged ranges:
-  T-3413. Not fits, now said in the comments: RATE's and IRR's 1E-7 step stops (Microsoft's documented bounds), `RATE_MAX_STEPS` and `IRR_GUESS_BOUND` (pinned exactly), the loop caps (directive 5).
-- R4 guards: no value changed, so no hold-out or fresh sweep is owed; the in-sample scores above are why T-3410 owns
+  T-3478. Not fits, now said in the comments: RATE's and IRR's 1E-7 step stops (Microsoft's documented bounds), `RATE_MAX_STEPS` and `IRR_GUESS_BOUND` (pinned exactly), the loop caps (directive 5).
+- R4 guards: no value changed, so no hold-out or fresh sweep is owed; the in-sample scores above are why T-3477 owns
   moving the t cuts under R4.
 - Not done: a committed range script (the T-3385 review's optional point); the cut-moving method needs an override
   hook the engine must not carry, so it stays a recipe here.
-Follow-ups: T-3410 (move `T_CENTRE_C` and `T_TAIL_P` under R4), T-3413 (fits applied past their tagged ranges). Eval delta: +214 cells (the two new probe cases, all bit-exact); no
+Follow-ups: T-3477 (move `T_CENTRE_C` and `T_TAIL_P` under R4), T-3478 (fits applied past their tagged ranges). Eval delta: +214 cells (the two new probe cases, all bit-exact); no
 other change.

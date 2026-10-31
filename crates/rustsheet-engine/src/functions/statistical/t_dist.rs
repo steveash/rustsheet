@@ -297,7 +297,7 @@ fn t_x_overflows(x: f64) -> bool {
 /// df 1.5, truncated), q 5E-11..5E-3. A lower cut makes them worse (1E-8: 3 cells, 1E-11: 15
 /// worse, 4 better), 1E-4 changes none, 1E-3 brings one closer (`T.INV.2T(0.001,1)`) and 1E-2
 /// makes 4 worse and 2 better. So the cells place the cut in 1E-5..1E-3, leaning to the top;
-/// T-3410 owns any move.
+/// T-3477 owns any move.
 /// FITTED(T-1531, 25 cells, q 5E-11..5E-3 at df 1..2; cells place the cut in 1E-5..1E-3)
 const T_TAIL_P: f64 = 1e-5;
 
@@ -360,7 +360,7 @@ fn t_tail_quantile(dist: &StudentsT, df: f64, q: f64) -> f64 {
 /// (`TINV(0.95,3)`, `TINV(0.95,5)`, `T.INV.2T(0.95,12)`, `CONFIDENCE.T(0.95,..,20)`) and takes 5
 /// more at c 0.05..0.057 further off; a cut of 0.0999 brings two failing t3349 sweep cells closer,
 /// `T.INV.2T(0.921314149721905,4)` (c 0.0787) and `T.INV.2T(0.90147488203954,8)` (c 0.0985). So
-/// on net the cells favour a cut in 0.0985..0.1; T-3410 owns any move.
+/// on net the cells favour a cut in 0.0985..0.1; T-3477 owns any move.
 /// FITTED(T-2724, 13 cells, c 0.05..0.1, df 3..1E10; cut bracketed 0.05..0.1, cells favour 0.0985..0.1)
 const T_CENTRE_C: f64 = 0.075;
 

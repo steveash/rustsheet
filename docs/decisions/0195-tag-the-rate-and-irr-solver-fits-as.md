@@ -27,5 +27,5 @@
   path changes, so R4.1's hold-out and R4.2's fresh sweep owe nothing new.
 - **Consequences:** R4.3's range check is visible for these fits: RATE's offset and IRR's secant
   constants apply to every call, past the ranges their tags name, as does f_density.rs's small-shape
-  constant below `LARGE_DF_MIN`; measuring or bounding them is T-3413. The ratchet stays one-way
+  constant below `LARGE_DF_MIN`; measuring or bounding them is T-3478. The ratchet stays one-way
   for new fits; tagging an existing, untagged fit still needs a decision record (decisions 0190 and this one are the pattern).

@@ -3455,7 +3455,7 @@ Tasks: T-1531, T-1542
   scored in ulps): our tail path's cut at q = 1E-5 moves 25 cells, all df 1 or 2. Lowering it makes them worse and
   raising it to 1E-3 brings `T.INV.2T(0.001,1)` closer, while 1E-2 is worse on net, so Excel's cells place it in
   1E-5..1E-3. Our bisection cut at 1E-8 moves no cell anywhere from 1E-20 to 1E-7: it guards statrs' failures, and
-  Excel says nothing about it. Any move is T-3410.
+  Excel says nothing about it. Any move is T-3477.
 - `T.INV.2T` with p in (1,2) is `T.INV(1 - p/2)`, a negative number (`T.INV.2T(1.5,1)` = -1, cells A121-A128); ours implements it since T-2096 (`t_inv_of`), see the entry above. Near p = 1 the quantile has an absolute error of about 1e-8 (`TINV(1+2^-52,2)` is -1.49e-8, Excel -3.14e-16): T-2839.
 
 ## Student-t quantile at one degree of freedom is 1/TAN(π·p/2) through Excel's TAN (T-2858)
@@ -3527,7 +3527,7 @@ within 1E-15 of the exact quantile, and the form is thousands of ulps off. The s
 A100, A113), p = 0.95 (q = 0.475) the exact quantile (T-2724 review; T-2724's centre kernel starts at c = 1 - 2q
 below 0.075, inside that bracket; gen-m9's six cells at q = 0.475, df 3 to 19, break when it starts below 0.05, and
 t3349-t-inv-2t-sweep A98 and A195, at q 0.4607 and 0.4507, come closer to Excel from the centre kernel, so on net the
-cells favour a switch near q = 0.45: T-3395, measured after T-2511; T-3410). At df 30 and q = 5E-17 (`T.INV.2T(1E-16,30)`, gen-m9 583ca2baea0bb30a A147) Excel's t is 2E-12
+cells favour a switch near q = 0.45: T-3395, measured after T-2511; T-3477). At df 30 and q = 5E-17 (`T.INV.2T(1E-16,30)`, gen-m9 583ca2baea0bb30a A147) Excel's t is 2E-12
 off (its y about 4E-12; T-1542).
 Which y (T-2511, 2026-10-31, scored over gen-m9, ironcalc-calc, probes and probes-numeric against main): y as the
 double nearest the crossing of the Student-t tail evaluated at a rounded y (`I_y(df/2, 1/2)/2`, the tail T.TEST

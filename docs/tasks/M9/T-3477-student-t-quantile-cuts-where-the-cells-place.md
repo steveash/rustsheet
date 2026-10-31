@@ -1,5 +1,5 @@
 ---
-id: T-3410
+id: T-3477
 title: "Student-t quantile cuts where the cells place them: T_CENTRE_C and T_TAIL_P (R4 guards)"
 milestone: M9
 lane: functions-stat

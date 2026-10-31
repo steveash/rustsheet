@@ -1,5 +1,5 @@
 ---
-id: T-3413
+id: T-3478
 title: "Fits applied past their tagged range: RATE and IRR secant constants, F density SMALL_SHAPE_OFFSET below LARGE_DF_MIN (R4.3)"
 milestone: M9
 lane: quality
@@ -36,4 +36,4 @@ T-3364 covers other extrapolated fits (GAMMA.INV, the Stirling error past df 56,
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- The Student-t cuts (T-3410) and T-3364's fits.
+- The Student-t cuts (T-3477) and T-3364's fits.
