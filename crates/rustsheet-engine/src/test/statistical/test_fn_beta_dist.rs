@@ -85,3 +85,38 @@ fn test_fn_beta_inv_tiny_probability_is_bounded() {
     assert_eq!(model._get_text("A4"), "0.458650995");
     assert_eq!(model._get_text("A5"), "7.8736E-203");
 }
+
+// BETA.INV whose quantile rounds to 1 (T-3351, probes/t3351-beta-inv-p-near-1, excel-graph): exactly 1
+// while the flipped tail's quantile y is a normal double, #NUM! once it underflows.
+#[test]
+fn beta_inv_quantile_rounding_to_one() {
+    let cases = [
+        // y = 3.9E-81, 3.5E-60 and 5E-17: 1.
+        ("=BETA.INV(1-1E-8,2,0.1)=1", "TRUE"),    // A102
+        ("=BETA.INV(1-1E-6,0.5,0.3)=1", "TRUE"),  // A46
+        ("=BETA.INV(1-1E-16,2,1)=1", "TRUE"),     // A126
+        ("=BETAINV(1-1E-12,2,0.1)=1", "TRUE"),    // A195
+        ("=BETA.INV(1-7E-10,10,0.03)=1", "TRUE"), // C198: y = 4.1E-307
+        ("=BETA.INV(1-1E-9,10,0.03,3,5)", "5"),
+        // y underflows (3.7E-801, 1.7E-334, 3.4E-311): #NUM!.
+        ("=BETA.INV(1-1E-8,2,0.01)", "#NUM!"),  // A84
+        ("=BETA.INV(1-1E-10,2,0.03)", "#NUM!"), // A95
+        ("=BETA.INV(1-5E-10,2,0.03)", "#NUM!"), // A200
+        ("=BETAINV(1-1E-16,2,0.01)", "#NUM!"),
+        ("=BETA.INV(1-1E-8,2,0.01,3,5)", "#NUM!"), // A196
+        // Away from 1 the quantile is unchanged: 0.99999999 (A57).
+        ("=BETA.INV(1-1E-8,0.5,1)=0.99999998", "TRUE"),
+    ];
+    let mut model = new_empty_model();
+    for (row, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, expected)) in cases.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("A{}", row + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
+}

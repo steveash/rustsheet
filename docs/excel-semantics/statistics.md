@@ -4617,10 +4617,32 @@ FALSE)` and `GAMMADIST(2,1.85E+76,1E+10,"TRUE")` are `#NUM!` (2801c1c11c21e134 A
 Ours: matches since T-2435, except the GAMMA.DIST density and cdf at a huge shape (T-2982) and the
 F.INV.RT far tail (T-2808); the rules T-2435 settled are the four sections below. A negative
 BINOM.DIST/BINOMDIST number_s, one in (-1, 0) included (`BINOM.DIST(-0.0125,10,1E-16,FALSE)`), is `#NUM!` since T-2700 (the sign
-is checked before truncation). Since T-2621 a BETA.INV quantile of 0 or 1 is `#NUM!`, which settles
+is checked before truncation). Since T-2621 a BETA.INV quantile of 0 or 1 is `#NUM!` (since T-3351 one that rounds to 1 is 1 while
+Excel's flipped search finds its y, "BETA.INV where the quantile rounds to 1 (T-3351)"), which settles
 `BETAINV(0.025,1E-15,2.5)`, `BETAINV(0.05,0.002,1)`, `BETAINV(1E-200,0.1,1E+5)` and `BETAINV(1-1E-16,2,0.01)`;
 `BETAINV(1E-20,1E-300,30)` stays a number (ours 3.333333333333333E-302, the search's floor rather than an underflow to 0).
 Status: VERIFIED (excel-graph), one cell each
+
+## BETA.INV where the quantile rounds to 1 (T-3351)
+Rule: for p above 1/2, BETA.INV(p, alpha, beta) is 1 - y, where y is the lower quantile of Beta(beta, alpha) at
+1 - p (AS 109's flip). Where y is below half an ulp of 1 the answer is exactly 1, not `#NUM!`: `BETA.INV(1-1E-8,2,0.1)`
+= 1 (y = 3.9E-81), `BETA.INV(1-1E-6,0.5,0.3)` = 1, `BETA.INV(1-1E-16,2,1)` = 1 (y = 5E-17). Where y underflows, Excel's
+search for it fails and the answer is `#NUM!`: `BETA.INV(1-1E-8,2,0.01)` (y = 3.7E-801), `BETA.INV(1-1E-10,2,0.03)`
+(y = 1.7E-334), `BETAINV(1-1E-16,2,0.01)`. So whether a quantile that rounds to 1 is a number depends on
+beta and on p, not on the rounding: with beta = 0.03 it is 1 down to 1 - 6E-10 and `#NUM!` from 1 - 5E-10 (alpha
+2 or 10). The `#NUM!` starts inside the subnormal range of y, at a point that depends on alpha. With beta = 0.03 Excel
+still answers 1 at y = 2.4E-309 (alpha 10), 1.5E-308 (alpha 2) and 1.4E-317 (alpha 0.5), and gives `#NUM!` at
+5.6E-312, 3.4E-311 and 3.3E-320. The lower tail mirrors it: `BETA.INV(6E-10,0.03,2)` is 0 (a subnormal y shown as
+0) and `BETA.INV(5E-10,0.03,2)` is `#NUM!`. y values are from 50-digit mpmath.
+Evidence: probes/t3351-beta-inv-p-near-1 (excel-graph, 2026-10-31): 240 cells, alpha 0.5, 2 and 10, beta 1E-3 to 1,
+p = 1 - 1E-6 to 1 - 1E-16, the underflow boundary at beta 0.03 (rows 197-214), the lower-tail mirror (column B).
+Ours: until T-3351 every quantile that rounded to 1 was `#NUM!` (statrs' search stops near y = 1E-17 whatever the true y,
+and the refinement on the upper tail lands on 1). Since T-3351, when the quantile rounds to 1, the flipped tail is solved
+on Excel's BETA.DIST kernel (`beta.rs` `upper_quantile_near_one`). The answer is 1 - y for a normal y and `#NUM!` for
+a y of 0 or a subnormal one. That is wrong on the 5 probe cells where Excel still answers 1 at a subnormal y (A199,
+A209-A211, C199; T-3430 owns Excel's cut).
+Status: VERIFIED (excel-graph)
+Tasks: T-3351, T-3430
 
 ## BINOM.DIST's pmf at k = 0 is #NUM! when p = 1 (T-2435)
 Rule: `BINOM.DIST(0,n,1,FALSE)` and `BINOMDIST(0,n,1,FALSE)` are `#NUM!` from one trial on, while the
