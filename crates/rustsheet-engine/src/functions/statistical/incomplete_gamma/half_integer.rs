@@ -36,10 +36,29 @@ const DEPTH_FACTOR: u32 = 2;
 /// See [`DEPTH_FACTOR`].
 const DEPTH_MARGIN: u32 = 8;
 
+/// The largest x / a at which CHISQ.DIST.RT takes [`accurate_half_integer_upper`]. Measured on
+/// the eval (T-3285): up to 3a the accurate Q fixed or moved closer every changed cell
+/// (`CHISQ.DIST.RT(10,5)` four times, ironcalc-calc CHISQ.xlsx G3 and G4,
+/// `CHISQ.DIST.RT(6,3)`), while past it Excel is not correctly rounded either and the accurate Q
+/// lost `CHIDIST(42,7)` = Q(3.5, 21) (gen-m9/fec39efaba9284c3 A249), where Excel is 1 ulp above it.
+/// FITTED(T-3285, 12 cells, x/a 1.76..6)
+const ACCURATE_MAX_RATIO: f64 = 3.0;
+
+/// CHISQ.DIST.RT's Q(a, x) at a half-integer shape from 3/2 up to [`DIRECT_SHAPE_MAX`] for
+/// `a + 1 <= x <= 3a` ([`ACCURATE_MAX_RATIO`]): the accurate Q there, `None` elsewhere. Below a + 1
+/// Excel is 1 - P (`CHIDIST(5,5)` = Q(2.5, 2.5) and `CHIDIST(7,7)` are its bits, 1 ulp from the
+/// accurate Q: gen-m9/4250f880ab640c49 A331, 899f9555e67da2d6 A72), so the caller keeps its pair.
+pub(super) fn half_integer_upper(a: f64, x: f64, terms: &mut Terms) -> Option<f64> {
+    if a < 1.5 || !(x >= a + 1.0 && x <= ACCURATE_MAX_RATIO * a) {
+        return None;
+    }
+    accurate_half_integer_upper(a, x, terms)
+}
+
 /// Q(a, x) for a half-integer `a` from 1/2 up to [`DIRECT_SHAPE_MAX`] and `a <= x <= MAX_X`, to
 /// within about half an ulp; `None` elsewhere, where Q is not a normal double, or past `terms`
 /// (the forward fraction that sets the depth draws on them), so the caller keeps its kernel.
-pub(super) fn half_integer_upper(a: f64, x: f64, terms: &mut Terms) -> Option<f64> {
+pub(super) fn accurate_half_integer_upper(a: f64, x: f64, terms: &mut Terms) -> Option<f64> {
     if !(is_half_integer_shape(a) && a.fract() != 0.0 && a < DIRECT_SHAPE_MAX) {
         return None;
     }
