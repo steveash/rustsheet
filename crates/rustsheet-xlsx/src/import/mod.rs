@@ -4,6 +4,7 @@ mod columns;
 mod conditional_formatting;
 mod external_links;
 mod iso_date;
+mod merged_cells;
 mod metadata;
 mod package;
 mod pivots;

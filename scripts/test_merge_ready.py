@@ -6,6 +6,7 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import os
 import re
 import subprocess
 import sys
@@ -394,6 +395,20 @@ class Verify(PrFixture):
         self.comments = [self.comment(1, marker(self.head).render())]
         self.assertEqual(self.failures(), [("V3", UNLABEL)])
 
+    def test_a_shallow_clone_is_deepened_before_the_docs_only_check(self) -> None:
+        # Cloud sessions clone shallow, where `classify_range` counts every diff as code: before
+        # T-3499 each docs-only PR with skipped heavy jobs was ejected as CI red (#2574, #2577).
+        self.checks = green_checks(**dict.fromkeys(merge_ready.HEAVY_JOBS, "skipped"))
+        base = Path(self.tmp.name)
+        origin = (base / "origin.git").as_uri()
+        run("git", "clone", "-q", "--depth", "1", origin, str(base / "shallow"), cwd=base)
+        self.clone = base / "shallow"
+        self.assertEqual(self.git("rev-parse", "--is-shallow-repository"), "true")
+        self.assertEqual(self.failures(), [])
+        self.assertEqual(self.git("rev-parse", "--is-shallow-repository"), "false")
+        # A full clone is left as it is (a second `--unshallow` would fail).
+        self.assertEqual(self.failures(), [])
+
     def test_verdicts_must_cover_the_applicable_reviewers(self) -> None:
         self.comments = [
             self.comment(1, marker(self.head, reviewers={**APPROVED, "quality": "REQUEST_CHANGES"}).render())
@@ -644,6 +659,82 @@ class Mark(PrFixture):
         self.perform(again.actions()[0])
         verdict, _ = self.verify()
         self.assertTrue(verdict.ready, verdict.failures)
+
+    def baseline_conflict(self, pr_side: str, main_side: str, path: str = "eval/baseline/probes.txt") -> str:
+        """Marks a PR head that edits `path`, then moves `main` with a conflicting edit to it and
+        starts merging `main` into the PR (left conflicted). `main` holds a gated suite `probes`
+        and a fetched one `poi`. Returns the marked head."""
+        self.git("checkout", "-q", "main")
+        self.write("eval/suites/probes/suite.toml", 'name = "probes"\ngate = true\n')
+        self.write("eval/suites/poi/suite.toml", 'name = "poi"\ngate = true\n[fetch]\nurl = "x"\n')
+        if self.git("status", "--porcelain"):  # once per test
+            self.commit("suites")
+            self.git("push", "-q", "origin", "main")
+        self.git("checkout", "-q", "pr")
+        self.git("merge", "-q", "--no-edit", "main")
+        self.write(path, pr_side)
+        old = self.commit("pr edits a baseline")
+        self.git("push", "-q", "-f", "origin", "HEAD:refs/pull/7/head")
+        # A PR that edits eval/ needs excel-fidelity's approval, which carries over with the rest.
+        self.comments.append(self.comment(1, marker(old, reviewers={**APPROVED, "excel-fidelity": APPROVE}).render()))
+        self.git("checkout", "-q", "main")
+        self.write(path, main_side)
+        self.commit("main edits the same baseline")
+        self.git("push", "-q", "origin", "main")
+        self.git("checkout", "-q", "pr")
+        merge = subprocess.run(["git", "merge", "-q", "--no-edit", "main"], cwd=self.clone, capture_output=True)
+        self.assertNotEqual(merge.returncode, 0)  # the conflict this fixture is for
+        return old
+
+    def finish_merge(self) -> None:
+        self.git("add", "-A")
+        self.git("commit", "-q", "--no-edit")
+        self.head = self.git("rev-parse", "HEAD")
+        self.git("push", "-q", "-f", "origin", "HEAD:refs/pull/7/head")
+        self.pull["head"]["sha"] = self.head
+
+    def test_carry_accepts_a_merge_that_re_records_baselines(self) -> None:
+        # Decision 0207: a conflict only in eval/baseline/, resolved and re-recorded, carries over.
+        old = self.baseline_conflict("F\tprobes/a\tA1\n", "F\tprobes/b\tB1\n")
+        # What make eval-baseline wrote: main's failure kept, the PR's fixed, a check line added.
+        self.write("eval/baseline/probes.txt", "C\tprobes/b\t1\nF\tprobes/b\tB1\n")
+        self.finish_merge()
+        plan = self.plan(review=None, carry=True)
+        self.assertEqual((plan.marker.prev, plan.marker.head), (old, self.head))
+
+    def test_carry_refuses_a_failure_neither_parent_had(self) -> None:
+        # The eval gate accepts any list that matches the engine, so a regression recorded in the
+        # merge (decision 0207) must go back to the reviewers.
+        self.baseline_conflict("F\tprobes/a\tA1\n", "F\tprobes/b\tB1\n")
+        self.write("eval/baseline/probes.txt", "F\tprobes/a\tA1\nTF\tprobes/z\tZ9\n")
+        self.finish_merge()
+        self.refused("records failures neither parent had \\(TF\tprobes/z\tZ9\\)", review=None, carry=True)
+
+    def test_carry_refuses_a_conflict_outside_the_checked_lists(self) -> None:
+        self.baseline_conflict("pr side\n", "main side\n", path="scripts/x.py")
+        self.write("scripts/x.py", "resolved\n")
+        self.finish_merge()
+        self.refused("conflicts outside the eval-gated baseline lists", review=None, carry=True)
+        # A fetched suite's list is not checked by CI's eval gate, so it is not carried either.
+        self.baseline_conflict("F\tpoi/a\tA1\n", "F\tpoi/b\tB1\n", path="eval/baseline/poi.txt")
+        self.write("eval/baseline/poi.txt", "F\tpoi/c\tC1\n")
+        self.finish_merge()
+        self.refused("conflicts outside the eval-gated baseline lists", review=None, carry=True)
+
+    def test_carry_refuses_any_other_change_in_a_baseline_merge(self) -> None:
+        cases = {
+            "code": lambda: self.write("scripts/x.py", "slipped into the merge\n"),
+            "a new list": lambda: self.write("eval/baseline/extra.txt", "F\tx\tA1\n"),
+            "a fetched list": lambda: self.write("eval/baseline/poi.txt", "F\tpoi/x\tA1\n"),
+            "a mode change": lambda: os.chmod(self.clone / "eval/baseline/probes.txt", 0o755),
+        }
+        for name, edit in cases.items():
+            with self.subTest(name):
+                self.baseline_conflict(f"F\tprobes/{name}-pr\tA1\n", f"F\tprobes/{name}-main\tB1\n")
+                self.write("eval/baseline/probes.txt", f"F\tprobes/{name}-main\tB1\n")
+                edit()
+                self.finish_merge()
+                self.refused("only the content of an eval-gated baseline list may", review=None, carry=True)
 
     def test_carry_refuses_an_edited_merge_or_another_commit(self) -> None:
         self.merge_main()

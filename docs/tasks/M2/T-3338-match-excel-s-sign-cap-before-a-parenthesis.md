@@ -40,6 +40,9 @@ docs/excel-semantics/syntax.md "Formula nesting depth cap", in the T-3266 paragr
     probes/t3266-nested-paren-256-stored.case.json, probes/t3266-nested-paren-256-typed.case.json,
     probes/t3266-nested-200-823-stored.case.json, probes/t3266-nested-200-823-typed.case.json,
     probes/t3266-nested-200-824-stored.case.json, probes/t3266-nested-200-824-typed.case.json: S!A1, S!B1
+  - The whole of probes/t3266-nested-200-824-stored and probes/t3266-nested-200-824-typed: neither case runs today
+    (EngineError "Formula is nested too deeply"), so the owner check reads them as one failing item each, which a
+    line naming their cells does not cover (gap triage 2026-10-31).
   - Excel refuses, ours accepts: probes/t3266-minus-paren-1023-typed.case.json,
     probes/t3266-minus-paren2-1023-typed.case.json, probes/t3266-plus-paren-1023-typed.case.json,
     probes/t3266-minus-abs-1023-typed.case.json: S!B1

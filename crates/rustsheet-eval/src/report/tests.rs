@@ -78,6 +78,7 @@ pub(crate) fn cell(formula: &str, verdict: Verdict) -> CellResult {
         listed_deviation: false,
         graph_subnormal: false,
         kind: crate::runner::CellKind::Scored,
+        math: None,
     }
 }
 
@@ -251,6 +252,7 @@ fn out_of_scope_functions_leave_parity_counts_and_list_with_their_reason() {
         oracle,
         v15: None,
         v15_reason: None,
+        returns: None,
         params: Vec::new(),
     };
     let catalog = Catalog::from_functions([
