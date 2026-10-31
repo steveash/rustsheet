@@ -69,9 +69,10 @@ fn beta_quantile(alpha: f64, beta: f64, p: f64) -> f64 {
 /// t3351-beta-inv-p-near-1: `BETA.INV(1-1E-8,2,0.1)` is 1, y = 3.9E-81; `BETA.INV(1-1E-10,2,0.03)`
 /// is `#NUM!`, y = 1.7E-334), so a `y` of 0 or a subnormal is `None` (`#NUM!`). Excel's own cut
 /// lies inside the subnormals and depends on alpha (1 at y = 1.5E-308 with alpha 2, 1.4E-317 with
-/// alpha 0.5): TODO(T-3430). The crossing is of Excel's BETA.DIST kernel
-/// (`inverse_beta::beta_lower_crossing`, at most 67 cdfs), since statrs' search there stops near
-/// 1E-17 whatever the true `y` (docs/excel-semantics/statistics.md "BETA.INV where the quantile
+/// alpha 0.5), and Excel's search sometimes still answers 1 far below it
+/// (probes-numeric/t3351-beta-inv-sweep A122, y about 1E-700): TODO(T-3430). The crossing is of
+/// Excel's BETA.DIST kernel (`inverse_beta::beta_lower_crossing`, at most 67 cdfs), since statrs'
+/// search there stops near 1E-17 whatever the true `y` (docs/excel-semantics/statistics.md "BETA.INV where the quantile
 /// rounds to 1 (T-3351)").
 fn upper_quantile_near_one(alpha: f64, beta: f64, p: f64) -> Option<f64> {
     let y = beta_lower_crossing(beta, alpha, 1.0 - p);

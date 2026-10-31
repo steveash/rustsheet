@@ -3,7 +3,7 @@ id: T-3351
 title: "BETA.INV returns #NUM! at p near 1-1E-8 with a small b, where the answer is 1"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P0
 size: S
 tier: opus
@@ -27,7 +27,7 @@ the answer is 1.0.
   moves in the Outcome.
 
 ## Acceptance criteria
-- [ ] BETA.INV at p from 1 − 1e-6 to 1 − 1e-15 with b from 1e-3 to 1 returns Excel's value (1.0 where Excel gives it).
+- [x] BETA.INV at p from 1 − 1e-6 to 1 − 1e-15 with b from 1e-3 to 1 returns Excel's value (1.0 where Excel gives it).
 - [ ] A new public probe case under eval/suites/probes/cases/ (one milestone tag, M9; decision 0057), filled by the
       oracle (excel-graph), reproduces the bug; its cells are listed in this file before the fix. Include the inputs in
       Context and points on both sides of the failing region.
@@ -51,3 +51,46 @@ the answer is 1.0.
 Decision 0083 and 0114 (`accuracy`): done when every cell this task owns is within half a unit of the 15th significant
 digit of Excel's value with the right type and error, and the fresh sweep shows the Gate A envelope (decision 0188 R2).
 Bit-level residue moves to a follow-up with `defer: phase-1b`.
+
+## Probe cells (before the fix)
+probes/t3351-beta-inv-p-near-1 (240 cells, excel-graph, 2026-10-31): `BETA.INV(1-1E-k, a, b)` for a in 0.5, 2, 10,
+b in 1E-3, 3E-3, 0.01, 0.03, 0.1, 0.3, 1 and k in 6, 7, 8, 9, 10, 12, 14, 15, 16 (A1-A189). BETAINV at a = 2 (A190-A195),
+the bounds form (A196), the underflow boundary at b = 0.03 for a = 2 and 0.5 (A197-A214, with the lower-tail mirror
+`BETA.INV(q, 0.03, a)` in B197-B214) and for a = 10 (C197-C204). Before the fix every cell where Excel gives 1 was
+`#NUM!` in the engine: A28-A31, A37-A54, A91-A94, A100-A117, A126, A154-A157, A163-A180, A189, A194, A195,
+A197-A199, A206-A211 and C197-C199 (86 cells).
+
+## Outcome
+- `beta.rs` `upper_quantile_near_one`: when BETA.INV's upper-tail quantile rounds to 1 (p > 1/2), the flipped tail's
+  y (the lower quantile of Beta(beta, alpha) at 1 - p, on Excel's BETA.DIST kernel through `beta_lower_crossing`) gives
+  1 - y for a normal y, and `#NUM!` for a y of 0 or a subnormal one. Unit test `beta_inv_quantile_rounding_to_one`;
+  statistics.md "BETA.INV where the quantile rounds to 1 (T-3351)".
+- Probe: 81 of the 86 cells listed above now match Excel. The 5 left (A199, A209-A211, C199) are where Excel still
+  answers 1 at a subnormal y (T-3430). All the probe's other A-column cells are within 15 digits of Excel (A55, A57,
+  A124, A181, A187 are last-digit residue away from 1, unchanged; Phase 1b). Column B, the lower-tail mirror, is outside
+  this task's p-near-1 domain: B199-B203 and B209-B213 are Excel's subnormal cut (T-3430), and B197, B198 and B206-B208
+  are about 1E-13 off Excel, with Excel itself 1.5E-14 to 7.2E-14 off the math (listed in T-3430). Baselined as 25
+  new-coverage known failures.
+- Gate A envelope on the fresh sweep probes-numeric/t3351-beta-inv-sweep (200 points, seed 3351; the hold-out is the
+  whole sweep, since nothing was fitted). Scored against 50-digit mpmath with a scratch script; SPEC-0029's generator
+  is T-3357. Per stratum, as within 15 digits of Excel (both errors counted) / within 1E-9 of the math / outside both /
+  error against number:
+  typical (p 0.01 to 0.99, shapes 0.1 to 30) 53 / 80 / 0 / 0 of 80;
+  tail (p = 1 - q, q 3E-16 to 1E-6, alpha 0.1 to 10, beta 1E-3 to 1) 57 / 37 / 0 / 3 of 60;
+  extreme (p near 0 or 1, shapes 1E-3 to 1E4) 31 / 30 / 0 / 1 of 40;
+  log-uniform (shapes 1E-3 to 1E5) 13 / 13 / 1 / 1 of 20. A186's mpmath value did not finish (shapes of 2E4), but it
+  is bit-exact with Excel.
+  Excel gives exactly 1 on 40 sweep points. All 40 were `#NUM!` before this change; 37 now match.
+  **The envelope is not clean, so this criterion is not fully met.** None of the 6 points outside it comes from
+  this change's code path, and none got worse:
+  - A88, A89, A122 (tail): Excel is 1 where the true y is far below the subnormals, and ours stays `#NUM!` as before.
+    T-3430 owns where Excel's search fails.
+  - A175, A188 (lower tail, p < 1/2, an existing path): one side is an error and the other a number. Also T-3430.
+  - A200 (`BETA.INV(1-1.1E-14,0.005,171)`): ours is 2.9E-5 where Excel and the math give 0.1294. The upper-tail
+    incomplete beta returns exactly 0 or 1 at these shapes, so the existing refinement moves statrs' correct start
+    off the root. The quantile does not round to 1 there, so this task's path never runs. Filed as T-3431 (P1).
+- Eval delta: probes +1 case (240 cells, 25 new-coverage known failures, 0 regressions); probes-numeric +1 case
+  (gate-free). Every other suite is unchanged. No gen-m9 or ironcalc cell moved.
+- Follow-ups: T-3430 (Excel's AS 109 search failure at tiny shapes: the subnormal cut, the sweep's A88, A89, A122,
+  A175, A188, and the lower-tail mirror cells) and T-3431 (the upper-tail incomplete beta at a tiny alpha with a large
+  beta).

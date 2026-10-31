@@ -4633,14 +4633,18 @@ beta and on p, not on the rounding: with beta = 0.03 it is 1 down to 1 - 6E-10 a
 2 or 10). The `#NUM!` starts inside the subnormal range of y, at a point that depends on alpha. With beta = 0.03 Excel
 still answers 1 at y = 2.4E-309 (alpha 10), 1.5E-308 (alpha 2) and 1.4E-317 (alpha 0.5), and gives `#NUM!` at
 5.6E-312, 3.4E-311 and 3.3E-320. The lower tail mirrors it: `BETA.INV(6E-10,0.03,2)` is 0 (a subnormal y shown as
-0) and `BETA.INV(5E-10,0.03,2)` is `#NUM!`. y values are from 50-digit mpmath.
-Evidence: probes/t3351-beta-inv-p-near-1 (excel-graph, 2026-10-31): 240 cells, alpha 0.5, 2 and 10, beta 1E-3 to 1,
+0) and `BETA.INV(5E-10,0.03,2)` is `#NUM!`. y values are from 50-digit mpmath. "Underflows" is only approximate:
+the fresh sweep has Excel at 1 where the true y is far below the subnormals (`BETA.INV(1-4.7838841265984E-10,
+2.52340266710761,0.0133219075721009)`, y about 1E-700; probes-numeric/t3351-beta-inv-sweep A88, A89, A122), while
+`BETA.INV(1-1E-8,2,0.01)` is `#NUM!`. So where Excel's AS 109 Newton search gives up decides between 1 and `#NUM!`
+(T-3430).
+Evidence: probes/t3351-beta-inv-p-near-1 and probes-numeric/t3351-beta-inv-sweep (excel-graph, 2026-10-31). The probe has 240 cells: alpha 0.5, 2 and 10, beta 1E-3 to 1,
 p = 1 - 1E-6 to 1 - 1E-16, the underflow boundary at beta 0.03 (rows 197-214), the lower-tail mirror (column B).
 Ours: until T-3351 every quantile that rounded to 1 was `#NUM!` (statrs' search stops near y = 1E-17 whatever the true y,
 and the refinement on the upper tail lands on 1). Since T-3351, when the quantile rounds to 1, the flipped tail is solved
 on Excel's BETA.DIST kernel (`beta.rs` `upper_quantile_near_one`). The answer is 1 - y for a normal y and `#NUM!` for
 a y of 0 or a subnormal one. That is wrong on the 5 probe cells where Excel still answers 1 at a subnormal y (A199,
-A209-A211, C199; T-3430 owns Excel's cut).
+A209-A211, C199) and on the sweep's A88, A89 and A122. T-3430 owns where Excel's search fails.
 Status: VERIFIED (excel-graph)
 Tasks: T-3351, T-3430
 
