@@ -49,14 +49,14 @@ runs by the owner's merger routine, provided the shadow evidence meets SPEC-0027
 2026-10-31: the merge train is live (`mode = "train"`, decision 0192).
 
 Evidence from `make merge-train-stats` at 08:07 UTC (T-3397's parallel reads):
-- 42 scored shadow trains over 22 h, with 24 h reached before this merged;
+- 42 scored shadow trains over 22 h (the owner waived the remaining 2 h of the 24 h span);
 - newest shadow run https://github.com/steveash/rustsheet/actions/runs/41181616335; 50 of 51
   shadow CI runs green, 1 cancelled;
 - 0 tree-check failures; 0 red trains in 47;
 - PR CI p90 7.8 min against 6.5 min before; queue p90 3 s;
 - agreement 87% (151/174).
 
-The owner approved the switch below the 90% agreement point. The 23 disagreements are explained
+The owner approved the switch below the 90% agreement point and before the 24 h mark. The 23 disagreements are explained
 in decision 0192: 12 stranded, 6 changed after marking, 5 batch order.
 
 Live trains: none ran during this session. T-2990 checks the first ones at its checkpoint.

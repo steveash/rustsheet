@@ -1,7 +1,7 @@
 # 0192 — The merge train goes live at 87% shadow agreement (owner ruling)
 
-- **Status:** accepted (2026-10-31, T-2991; owner ruling: the owner approved switching at 87% in
-  the session that filed this record)
+- **Status:** accepted (2026-10-31, T-2991; owner ruling: the owner approved switching at 87%, and
+  then without waiting for the 24 h mark, in the session that filed this record)
 - **Context:**
   - SPEC-0027's rollout bar for `mode = "train"` asks for:
     - at least 10 scored shadow trains over at least 24 h;
@@ -9,7 +9,7 @@
     - zero tree-check mismatches;
     - a load bar.
   - `make merge-train-stats` (decision 0191) reported at 2026-10-31T08:07Z: 42 scored trains over
-    22 h (the 24 h mark falls at about 10:50 UTC, before this PR merges); 151 of 174 scored
+    22 h; 151 of 174 scored
     predictions agree (87%); 0 tree-check failures; 0 red trains in 47; PR CI p90 7.8 min during
     shadow against 6.5 min before (+20%, the bar's limit); job queue p90 3 s.
   - The 23 disagreements, explained:
@@ -30,8 +30,12 @@
   - None of the 23 is a wrong tree. The disagreements come from how shadow mode differs from the
     real flow, not from the train's logic.
 - **Decision:** `scripts/merge_train.toml` moves to `mode = "train"`.
-  - The owner waived the 90% agreement point of the bar, given the explanations above.
-  - Every other point holds, the 24 h span included.
+  - The owner waived two points of the bar:
+    - the 90% agreement point, given the explanations above;
+    - the 24 h span. The 42 scored trains cover 22 h, and the owner judged that evidence enough
+      to leave shadow mode now.
+  - Every other point holds: at least 10 scored trains with the newest fresh, zero tree-check
+    mismatches, and the load bar.
   - The rest of SPEC-0027 is unchanged: T-2990 measures the live train for a week, and a
     tree-check mismatch at any time means the emergency flip back to `lock` (decision 0157) with a
     P0 task.
