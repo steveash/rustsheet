@@ -30,4 +30,4 @@ probes/t1924-locale-tag-extended-hex A26, B26.
 -
 
 ## Outcome
-Added probes/t1925-numeral-digits (32 numeral bytes x en-US/ja-JP dates and a plain number), filled from excel-graph; findings in number-formats.md. Implementation filed as T-3467 (cells are known failures). Eval delta: new probe cells added as known failures, no regressions.
+Added probes/t1925-numeral-digits (32 numeral bytes x en-US/ja-JP dates and a plain number), filled from excel-graph; findings in number-formats.md. Implementation filed as T-3532 (cells are known failures). Eval delta: new probe cells added as known failures, no regressions.

@@ -1,5 +1,5 @@
 ---
-id: T-3467
+id: T-3532
 title: "Implement numeral-system digits of locale tags (probe t1925)"
 milestone: M10
 lane: functions-text

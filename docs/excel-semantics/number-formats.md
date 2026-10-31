@@ -778,14 +778,14 @@ Evidence: probes/t1925-numeral-digits (cell row = N + 1; D: `#,##0.00` of 102030
 - The byte N changes the digits of the probed date fields (`yyyy`, `mm`, `dd`, `e`) and of plain numbers (the grouping `,` and decimal `.` stay ASCII); `mmmm` is untouched, and so is the month number of ja-JP's `3月` (the `3` stays ASCII under every numeral byte in the B column) while `e` in the same cell becomes native. Weekday, time fields and AM/PM are unprobed. With N = 0, 1 or 20-26 the LCID still applies: `[$-1000411]` prints the `5` and `3月` of ja-JP (B column), so a numeral byte must not drop the LCID's names or era. N = 0, 1 and 20-26 print ASCII digits.
 - Positional digit sets: 2 Arabic-Indic, 3 Persian, 4 Devanagari, 5 Bengali, 6 Gurmukhi, 7 Gujarati, 8 Odia, 9 Tamil, 10 Telugu, 11 Kannada, 12 Malayalam, 13 Thai, 14 Lao, 15 Tibetan, 16 Myanmar, 17 Ethiopic, 18 Khmer, 19 Mongolian. Tamil (9) and Ethiopic (17) have no zero digit, so a zero stays ASCII `0` (N=9: `௨0௨௩-0௩-௧௫`); column D confirms it in plain numbers (N=9 `௧,0௨0,௩0௪.0௫`, N=17 `፩,0፪0,፫0፬.0፭`).
 - 27-31 are CJK numerals. Date: 27 `二〇二三-〇三-十五` (positional year, day with 十), 28 `弐〇弐参-〇参-壱拾伍`, 29 fullwidth `２０２３-０３-１５`, 30 `二○二三-○三-十五` (N=27 uses 〇 U+3007, N=30 uses ○ U+25CB), 31 `贰零贰叁-零叁-壹拾伍`. Plain numbers are positional (D, N=27 `一,〇二〇,三〇四.〇五`, N=28 `壱,〇弐〇,参〇四.〇伍`, N=31 `壹,零贰零,叁零肆.零伍`; C, 27 `一二三四五六七.八九`, 28 `壱弐参四伍六七.八九`, 31 `壹贰叁肆伍陆柒.捌玖`).
-- Not implemented. Ours: a nonzero numeral byte drops the LCID entirely, so we also lose the ja-JP era and month names (B2 expects "2023-03-15|5|3月", we print "2023-03-15|2023|March"). `resolve_lcid` returns `Silent` for any N (TODO(T-3467) there). The probe cells are known failures in the baseline; the implementation is filed as T-3467.
+- Not implemented. Ours: a nonzero numeral byte drops the LCID entirely, so we also lose the ja-JP era and month names (B2 expects "2023-03-15|5|3月", we print "2023-03-15|2023|March"). `resolve_lcid` returns `Silent` for any N (TODO(T-3532) there). The probe cells are known failures in the baseline; the implementation is filed as T-3532.
 
 **Unrelated quirk the probe found (column C). Rule:** `TEXT(1234567.89,"[$-409]0.00|#,##0")` is "1234567.89|0": with a `#,##0` run after the decimal point and a literal, the integer part gets no thousands grouping and the trailing run prints just `0`. We print "1,234,567.89|0". This is why C1 fails with no numeral byte (probes/t1925-numeral-digits C1, C2, C21-C27); filed as T-3470.
 
 Status: VERIFIED (excel-graph)
-Implemented in: not implemented (T-3467)
+Implemented in: not implemented (T-3532)
 
-Tasks: T-1859, T-1613, T-1922, T-1923, T-1924, T-1925, T-2759, T-3467, T-3470
+Tasks: T-1859, T-1613, T-1922, T-1923, T-1924, T-1925, T-2759, T-3532, T-3470
 
 ## Displayed text (`Range.text`) of a formatted cell (T-1610)
 Rule: excel-graph's `Range.text` is the cell's value under its number format, and it does not
