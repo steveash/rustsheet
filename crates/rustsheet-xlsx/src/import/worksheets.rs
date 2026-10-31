@@ -1,10 +1,11 @@
 #![allow(clippy::unwrap_used)]
 
 use rustsheet_engine::expressions::parser::{
-    new_parser_english, static_analysis::add_implicit_intersection, Node, Parser, MAX_NESTED_CALLS,
+    new_parser_english, static_analysis::add_implicit_intersection, Node, Parser,
 };
 use std::{collections::HashMap, io::Read, num::ParseIntError};
 
+use super::call_cap;
 use super::package::{part_folder_and_rels, resolve_target, Package};
 use super::rich_errors::{cached_error_name, load_value_metadata_errors};
 use super::workbook::WorkbookXML;
@@ -282,64 +283,6 @@ impl RcTextCache {
     }
 }
 
-/// The workbook error for a formula (`what`, e.g. `Formula in Sheet1!A1`) whose last parse by
-/// `parser` nests more function calls than Excel takes ([`MAX_NESTED_CALLS`]): Excel refuses such
-/// a workbook wherever the formula is stored (syntax.md "Formula nesting depth cap").
-pub(super) fn refuse_too_many_calls(parser: &Parser, what: &str) -> Result<(), XlsxError> {
-    if parser.nests_too_many_calls() {
-        return Err(XlsxError::Workbook(format!(
-            "{what} nests more than {MAX_NESTED_CALLS} function calls"
-        )));
-    }
-    Ok(())
-}
-
-/// Refuses the workbook when a formula conditional format (`<cfRule type="expression">`) or a
-/// custom data validation (`<dataValidation type="custom">`) on the sheet nests more than
-/// [`MAX_NESTED_CALLS`] calls: Excel loads 65 and refuses the workbook at 66 for both
-/// (createSession 501; probes/t3263-cf-abs-65, t3263-dv-abs-65, T-3263). Other rule types and the
-/// x14 `extLst` forms are unprobed and not checked. Data validations are read for this only.
-fn check_rule_formulas(
-    ws: &XmlNode,
-    parser: &mut Parser,
-    sheet_name: &str,
-) -> Result<(), XlsxError> {
-    let origin = CellReferenceRC {
-        sheet: sheet_name.to_string(),
-        row: 1,
-        column: 1,
-    };
-    let rules = ws
-        .children()
-        .filter(|n| n.has_tag_name("conditionalFormatting"))
-        .flat_map(|cf| cf.children().map(move |r| (cf, r)))
-        .filter(|(_, r)| r.has_tag_name("cfRule") && r.attribute("type") == Some("expression"))
-        .map(|(cf, r)| ("conditional format", cf, r, "formula"));
-    let validations = ws
-        .children()
-        .filter(|n| n.has_tag_name("dataValidations"))
-        .flat_map(|dv| dv.children())
-        .filter(|v| v.has_tag_name("dataValidation") && v.attribute("type") == Some("custom"))
-        .map(|v| ("data validation", v, v, "formula1"));
-    // `sqref` is on the `<conditionalFormatting>` around a rule, and on the `<dataValidation>`.
-    for (kind, scope, rule, tag) in rules.chain(validations) {
-        let Some(formula) = rule
-            .children()
-            .find(|n| n.has_tag_name(tag))
-            .and_then(|n| n.text())
-        else {
-            continue;
-        };
-        parser.parse(formula, &origin);
-        let range = scope.attribute("sqref").unwrap_or_default();
-        refuse_too_many_calls(
-            parser,
-            &format!("Formula of a {kind} on {sheet_name}!{range}"),
-        )?;
-    }
-    Ok(())
-}
-
 pub(super) fn from_a1_to_rc(
     formula: String,
     parser: &mut Parser,
@@ -352,7 +295,7 @@ pub(super) fn from_a1_to_rc(
     let t = parser.parse(&formula, &cell_reference);
     // Excel refuses a workbook nesting more function calls than it takes (createSession 501;
     // syntax.md "Formula nesting depth cap", T-3097).
-    refuse_too_many_calls(parser, &format!("Formula in {context}"))?;
+    call_cap::refuse_too_many_calls(parser, &format!("Formula in {context}"))?;
     // Tree equality holds `-0` equal to `0`, which print differently (`{-0}`, `{0}`): such a
     // tree is neither looked up nor kept.
     let cacheable = !t.has_negative_zero();
@@ -910,7 +853,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     let links = load_hyperlinks(ws, &settings.hyperlink_rels)?;
 
     let conditional_formatting = load_conditional_formatting(ws, theme, dxfs)?;
-    check_rule_formulas(ws, &mut parser, sheet_name)?;
+    call_cap::check_rule_formulas(ws, &mut parser, sheet_name)?;
     // pageSetup
     // <pageSetup orientation="portrait" r:id="rId1"/>
 

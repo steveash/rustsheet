@@ -1,3 +1,4 @@
+mod call_cap;
 mod columns;
 mod conditional_formatting;
 mod external_links;
@@ -41,6 +42,7 @@ pub use shared_strings::decode_xlsx_escapes;
 use shared_strings::read_shared_strings;
 pub use workbook::date_system_from_attribute;
 
+use call_cap::refuse_too_many_calls;
 use external_links::load_external_books;
 use metadata::load_metadata;
 use package::{resolve_target, Package};
@@ -48,7 +50,7 @@ use pivots::{load_pivots, PivotSheet};
 use styles::load_styles;
 use util::get_attribute;
 use workbook::load_workbook;
-use worksheets::{load_sheets, refuse_too_many_calls};
+use worksheets::load_sheets;
 
 /// A `<Relationship>` of a relationships part.
 pub(crate) struct Relationship {

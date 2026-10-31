@@ -103,6 +103,7 @@ from rustsheet_tools.custom_properties import json_properties, set_json_property
 from rustsheet_tools.oracle.package import patch_parts, read_parts
 from rustsheet_tools.pivot import PivotParts, pivot_tables, relationships_xml
 from rustsheet_tools.sheetop import column_number, sheet_op
+from rustsheet_tools.spec_sheet_extras import add_range_formulas, set_column_widths
 
 # XlsxWriter stamps docProps/core.xml with the wall clock; a fixed instant keeps identical specs
 # byte-identical so `input_sha256` (sidecars, eval/.cache/oracle) is stable across runs (T-0015).
@@ -376,8 +377,8 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
             patches.filters.append(_add_table(ws, sheet, table, hidden, tables))
             patches.calculated.append(_calculated_columns(sheet, table, tables))
         formats = _number_formats(wb, sheet)
-        _set_column_widths(ws, sheet)
-        _add_range_formulas(ws, sheet, tables)
+        set_column_widths(ws, sheet)
+        add_range_formulas(ws, sheet, lambda f: _formula_text(f, tables))
         legacy = _listed_formula_cells(sheet, "legacy_formulas")
         bare = _listed_formula_cells(sheet, "bare_function_names")
         if both := legacy & bare:
@@ -433,28 +434,6 @@ def _entered(sheet: str, a1: str, raw: dict[str, Any], formatted: bool) -> Enter
     r1c1 = "entered_r1c1" in raw
     text = str(raw["entered_r1c1" if r1c1 else "entered"])
     return Entered(sheet, xlsxwriter.utility.xl_rowcol_to_cell(*parse_a1(a1)), text, r1c1)
-
-
-def _set_column_widths(ws: Any, sheet: dict[str, Any]) -> None:
-    """Applies a sheet's `column_widths` (column letter -> width in characters; T-1610)."""
-    for column, width in sheet.get("column_widths", {}).items():
-        _, col = xlsxwriter.utility.xl_cell_to_rowcol(f"{column}1")
-        ws.set_column(col, col, float(width))
-
-
-def _add_range_formulas(ws: Any, sheet: dict[str, Any], tables: frozenset[str]) -> None:
-    """Writes a sheet's `conditional_formats` (type formula) and `data_validations` (type custom; T-3263).
-    XlsxWriter returns a negative status instead of raising when it refuses one; that is an error here."""
-    for rule in sheet.get("conditional_formats", ()):
-        options = {"type": "formula", "criteria": _formula_text(rule["formula"], tables)}
-        if ws.conditional_format(rule["ref"], options) != 0:
-            msg = f"conditional format on {rule['ref']} was not written"
-            raise ValueError(msg)
-    for rule in sheet.get("data_validations", ()):
-        options = {"validate": "custom", "value": _formula_text(rule["formula"], tables)}
-        if ws.data_validation(rule["ref"], options) != 0:
-            msg = f"data validation on {rule['ref']} was not written"
-            raise ValueError(msg)
 
 
 def _record_backend_steps(wb: xlsxwriter.Workbook, spec: dict[str, Any], entered: list[Entered]) -> None:
