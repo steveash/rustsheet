@@ -702,3 +702,59 @@ fn an_array_formula_with_its_cells_imports() -> TestResult {
     let rows = r#"<row r="1"><c r="A1"><f t="array" ref="A1:A3">ROW(A1:A3)</f><v>1</v></c></row><row r="2"><c r="A2"><v>2</v></c></row><row r="3"><c r="A3"><v>3</v></c></row>"#;
     assert_imports(&with_first_sheet_rows(rows)?)
 }
+
+/// Re-zips `tests/basic_text.xlsx` with its first sheet holding `rows` and the merged ranges
+/// `refs`.
+fn with_first_sheet_merges(rows: &str, refs: &[String]) -> Result<Vec<u8>, Box<dyn Error>> {
+    let merges: String = refs
+        .iter()
+        .map(|r| format!(r#"<mergeCell ref="{r}"/>"#))
+        .collect();
+    let bytes = with_first_sheet_rows(rows)?;
+    let mut src = zip::ZipArchive::new(Cursor::new(bytes))?;
+    let mut parts = Vec::new();
+    for i in 0..src.len() {
+        let mut file = src.by_index(i)?;
+        let mut content = String::new();
+        file.read_to_string(&mut content)?;
+        let name = file.name()?.into_owned();
+        if name == "xl/worksheets/sheet1.xml" {
+            content = content.replacen(
+                "</sheetData>",
+                &format!(
+                    r#"</sheetData><mergeCells count="{}">{merges}</mergeCells>"#,
+                    refs.len()
+                ),
+                1,
+            );
+        }
+        parts.push((name, content));
+    }
+    zip_of(&parts)
+}
+
+/// Whole-column merged ranges, a thousand of them: clearing their covered cells walks the cells
+/// stored, not the 2^30 cells the ranges name, and still empties the ones covered (T-3442).
+#[test]
+fn many_whole_column_merges_import_quickly_and_clear_covered_cells() -> TestResult {
+    let refs: Vec<String> = (1..=1000)
+        .map(|column| {
+            let name = number_to_column(column).unwrap_or_default();
+            format!("{name}1:{name}1048576")
+        })
+        .collect();
+    let rows = r#"<row r="1"><c r="A1"><v>1</v></c></row><row r="500000"><c r="A500000"><v>2</v></c><c r="B500000"><v>3</v></c></row>"#;
+    let started = std::time::Instant::now();
+    let workbook =
+        load_from_xlsx_bytes(&with_first_sheet_merges(rows, &refs)?, "case", "en", "UTC")?;
+    assert!(
+        started.elapsed().as_secs() < 30,
+        "took {:?}",
+        started.elapsed()
+    );
+    let model = Model::from_workbook(workbook, "en")?;
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1)?, "1");
+    assert_eq!(model.get_formatted_cell_value(0, 500000, 1)?, "");
+    assert_eq!(model.get_formatted_cell_value(0, 500000, 2)?, "");
+    Ok(())
+}
