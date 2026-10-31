@@ -22,6 +22,13 @@ the answer is 1.0.
 - Code: `fn_beta_inv` in crates/rustsheet-engine/src/functions/statistical/beta.rs and inverse_beta.rs (the statrs
   port: Newton steps, step adjustments and their caps). The quantile rounds to 1 in doubles; the search must return it
   instead of failing.
+- Existing Excel evidence (gap triage 2026-10-31e, `make eval` on main 8a14b8b): probes-numeric/m9-beta-inv already has
+  five such cells, Excel exactly 1, ours `#NUM!`: A7 `BETA.INV(0.9999999999,0.5,0.5)`, A42 `(..,1,0.5)`, A77
+  `(..,2.5,0.5)`, A112 `(..,10,0.5)`, A147 `(..,100,0.5)` (statistics.md "Incomplete beta sweep (T-1044)" records A7).
+  They went `#NUM!` with T-2621's "a quantile of 0 or 1 is `#NUM!`" (beta.rs `beta_inv_of`), which settled
+  `BETAINV(1-1E-16,2,0.01)` (`#NUM!` in Excel, gen-m9/a5828d3925575713 A315); probes-numeric is ungated, so no gate
+  saw it. The rule that tells the two apart is the open question (statistics.md "Scalar distributions at extreme
+  arguments (T-2255)"); probe between them (p from 1-1E-10 to 1-1E-16, b from 0.01 to 0.5) before changing the check.
 - Related: T-1871 (statrs saturation and panics), T-2511 (crossing of the ported CDF), T-2555 (BETA.INV's early
   Newton stop at a huge shape), T-2633 (BETA.INV chained on BETA.DIST). Name any of their cells this
   moves in the Outcome.
