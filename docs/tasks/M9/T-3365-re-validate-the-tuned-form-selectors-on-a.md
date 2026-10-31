@@ -3,7 +3,7 @@ id: T-3365
 title: "Re-validate the tuned form selectors on a fresh hold-out sweep and simplify the ones that do not generalize"
 milestone: M9
 lane: quality
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
