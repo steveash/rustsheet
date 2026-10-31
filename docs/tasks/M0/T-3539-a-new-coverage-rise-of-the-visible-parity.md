@@ -3,7 +3,7 @@ id: T-3539
 title: "A new-coverage rise of the visible-parity lock keeps main's slack"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -30,7 +30,14 @@ inside its own slack, so the PR is not ejected from the merge train for a count 
       `--allow-regressions` and `--lower-visible-lock` keep recording the count.
 - [x] Unit tests in visible_parity.rs pin the recorded value for each path.
 - [x] Decision record amending 0093 (0214).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - How the steward lowers the lock.
+
+## Outcome
+- `visible_parity::judge` returns `Judgement::Record(lock)`. A new-coverage rise records the old
+  lock plus the new cases' visibly-off cells. A drop (`--lower-visible-lock`) and a rise beyond the
+  new coverage under `--allow-regressions` record the count. `visible_parity_gate` writes the value.
+  The unit test `a_new_coverage_rise_keeps_the_slack` pins it. Decision 0214 amends 0093.
+- Eval delta: none (recording logic only; no case, baseline or lock change in this PR).

@@ -1,8 +1,8 @@
 //! The visible-parity ratchet (T-0061, decision 0088): the in-scope cells of the vendored gated
 //! suites that are visibly off from Excel (decision 0083) may not grow. `rustsheet-eval check`
 //! holds a full gated run to [`LOCK_PATH`] with [`judge`]; `update-baseline` records a rise that
-//! new cases account for (keeping main's slack, decision 0214), and only `update-baseline --lower-visible-lock` (the steward, daily)
-//! records a drop. A PR that only fixes cells leaves the lock alone, so parallel fix PRs do not
+//! new cases account for (keeping main's slack, decision 0214), and only `update-baseline
+//! --lower-visible-lock` (the steward, daily) records a drop. A PR that only fixes cells leaves the lock alone, so parallel fix PRs do not
 //! all conflict on its one number (T-2245, decision 0093).
 
 use std::fmt::Write as _;
