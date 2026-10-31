@@ -1,7 +1,8 @@
 #![allow(clippy::unwrap_used)]
 
 //! Running totals from the prefix cache (T-3456) give what SUM's walk gives: the same values to
-//! the bit, the first error, the same circular marks, under iteration too.
+//! the bit, the first error, the same circular marks and the same work charged, under iteration
+//! too.
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::expressions::utils::{column_to_number, number_to_column};
@@ -9,7 +10,7 @@ use crate::test::util::new_empty_model;
 use crate::types::Iteration;
 use crate::Model;
 
-/// Each cell's stored value and circular mark after `cells` are set and evaluated (then
+/// Each cell's stored value and circular mark, and the work units the last recalculation spent, after `cells` are set and evaluated (then
 /// `edits` set and evaluated again), with the pass caches on and off; and the states the cached
 /// run kept in its last pass.
 fn cached_and_walked(
@@ -36,16 +37,26 @@ fn cached_and_walked(
         if !edits.is_empty() {
             model.evaluate();
         }
-        let values: Vec<String> = cells.iter().map(|(cell, _)| state(&model, cell)).collect();
+        let mut values: Vec<String> = cells.iter().map(|(cell, _)| state(&model, cell)).collect();
+        // The work charged: the cached path charges the range node as the walk does.
+        let spent = model
+            .evaluation
+            .last_recalc
+            .as_ref()
+            .map(|last| last.spent());
+        values.push(format!("spent {spent:?}"));
         (values, model.evaluation.sum_prefixes.kept())
     };
     let (cached, kept) = run(false);
     let (walked, _) = run(true);
+    let names = cells
+        .iter()
+        .map(|(cell, _)| cell.clone())
+        .chain(["(work)".to_string()]);
     (
-        cells
-            .iter()
+        names
             .zip(cached.into_iter().zip(walked))
-            .map(|((cell, _), (cached, walked))| (cell.clone(), cached, walked))
+            .map(|(cell, (cached, walked))| (cell, cached, walked))
             .collect(),
         kept,
     )

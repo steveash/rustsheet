@@ -431,6 +431,18 @@ impl Model {
         })
     }
 
+    /// The view whose head or tail is being evaluated with `node`, of the formula at `cell`, as one
+    /// of its leaves; reads and records nothing.
+    pub(crate) fn tailed_leaf_view(&self, node: &Node, cell: CellReferenceIndex) -> Option<usize> {
+        if self.tail_views.is_empty() {
+            return None;
+        }
+        let at = address(node);
+        self.tail_views
+            .iter()
+            .rposition(|view| view.cell == cell && view.leaves.contains(&at))
+    }
+
     /// What the whole-column operand `node` evaluates to (`range` at `cell`) while the head or
     /// the tail of its argument is evaluated; `None` when neither is.
     pub(crate) fn tailed_operand(
@@ -439,14 +451,7 @@ impl Model {
         cell: CellReferenceIndex,
         range: &CalcResult,
     ) -> Option<CalcResult> {
-        if self.tail_views.is_empty() {
-            return None;
-        }
-        let at = address(node);
-        let index = self
-            .tail_views
-            .iter()
-            .rposition(|view| view.cell == cell && view.leaves.contains(&at))?;
+        let index = self.tailed_leaf_view(node, cell)?;
         let CalcResult::Range { left, right } = range else {
             return None;
         };

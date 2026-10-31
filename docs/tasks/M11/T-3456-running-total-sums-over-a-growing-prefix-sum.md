@@ -55,12 +55,16 @@ The running state after each cell of a prefix is therefore all a longer prefix f
 axis, consulted by `sum_with_last_addition` for a lone 1-D range inside the used area. A cell read that is not
 inert drops the start's entry and lets the walk run; a running total read while extending its own start (`B5 =
 SUM($B$1:B4)+1` reached out of order) leaves the entry as the inner read left it. At most 4,000,000 states per
-pass, as the criteria caches.
+pass, as the criteria caches. The range node is charged one node (SPEC-0024) as the walk's
+`evaluate_node_in_context` charges it, before any read, and from then on the call never falls back: a read
+that is not inert drops the entry and the call reads on as the walk does, keeping nothing (CI caught the
+missing charge in `test_recalc_budget`'s data-table units). A range that is a leaf of a tailed argument
+(`tailed_leaf_view`, split out of `tailed_operand`, which records) is left to the walk.
 
 Tests (`test/mathematical/test_sum_prefix.rs`) compare stored values (bit for bit) and circular marks with
-`no_pass_caches` down, up and across, over near-zero cancellation, text, booleans, numeric text, blanks,
+`no_pass_caches`, with the work units the recalculation spent, down, up and across, over near-zero cancellation, text, booleans, numeric text, blanks,
 formulas evaluated on first read, an error cell, self-referencing and circular totals, and a cycle member under
-iterative calculation with a recalculating edit. Mutations caught: no inert check, `== Some(false)` for the
+iterative calculation with a recalculating edit. Mutations caught: no node charge, no inert check, `== Some(false)` for the
 inert check, an off-by-one hit, extending an entry an inner read already extended. Equivalent: dropping the
 cached-error shortcut (falls back to the walk).
 

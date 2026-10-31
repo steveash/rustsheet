@@ -4,7 +4,8 @@
 //!
 //! SUM of one range walks it row by row within the used area, adds each cell's number
 //! (`cell_number`), skips everything else, and ends at the first error cell, whose error is the
-//! result (`walk_areas`); one range draws on no walk budget. So the state after each cell, a
+//! result (`walk_areas`); one range draws on no walk budget, and its node is charged as one node
+//! (SPEC-0024), which this path charges too. So the state after each cell, a
 //! [`SumParts`], is all a longer range from the same start needs, and a range that reaches an
 //! error cell gives that error. The cache keeps, for a start cell and an axis, the state after
 //! each cell read so far, and the error cell where reading stopped.
@@ -13,8 +14,8 @@
 //! would: the reads that can evaluate anything are the walk's own. Each cell read must then be
 //! readable without effect (`read_is_inert`: evaluated, not circular, not a cycle member): a later
 //! call skips reading it, which is the walk's read only when reading it does nothing. If one is
-//! not, the cache for that start is dropped and the walk runs, reading again what was read, as it
-//! would have. As for the criteria caches (`ifs_cache.rs`), the first read of a cell records what
+//! not, the cache for that start is dropped and the call goes on reading as the walk does, keeping
+//! nothing. As for the criteria caches (`ifs_cache.rs`), the first read of a cell records what
 //! it saw, so a spill into it restarts the pass, the cache lives for one pass, and only where
 //! `pass_cache_safe`. Directive 5: at most [`MAX_KEPT_STATES`] states per pass; past it the walk
 //! runs.
@@ -78,6 +79,10 @@ impl Model {
             return None;
         }
         let (left, right) = range_corners(arg, cell)?;
+        // A range operand of a tailed argument reads as its view says (`tailed_operand`).
+        if self.tailed_leaf_view(arg, cell).is_some() {
+            return None;
+        }
         let on_grid =
             |at: CellReferenceIndex| is_valid_row(at.row) && is_valid_column_number(at.column);
         if !on_grid(left) || !on_grid(right) {
@@ -91,34 +96,41 @@ impl Model {
         if !along_row && left.column != right.column {
             return None;
         }
-        let length = usize::try_from(if along_row {
+        let span = if along_row {
             right.column - left.column + 1
         } else {
             right.row - left.row + 1
-        })
-        .ok()?;
+        };
+        let length = usize::try_from(span).ok()?;
         let key = (left.sheet, left.row, left.column, along_row);
-        let (mut read, stopped) = match self.evaluation.sum_prefixes.prefixes.get(&key) {
+        let cached = self.evaluation.sum_prefixes.prefixes.get(&key);
+        let read = cached.map_or(0, |prefix| prefix.states.len());
+        let fits =
+            |kept: usize| kept.saturating_add(length.saturating_sub(read)) <= MAX_KEPT_STATES;
+        if !fits(self.evaluation.sum_prefixes.kept) {
+            return None;
+        }
+        let first = i32::try_from(read).ok()?;
+        // The walk evaluates the range node first, which charges one node (SPEC-0024); from here
+        // on this call is the walk, so a read that cannot be cached is still this call's read.
+        if self.spend_node(cell).is_err() {
+            // The walk's own charge fails the same way.
+            return None;
+        }
+        let (mut state, mut caching) = match self.evaluation.sum_prefixes.prefixes.get(&key) {
             Some(prefix) if prefix.states.len() >= length => {
                 return prefix.states.get(length - 1).map(|state| Ok(*state));
             }
             Some(Prefix {
                 error: Some(error), ..
             }) => return Some(Err(error.clone())),
-            Some(prefix) => (prefix.states.len(), prefix.states.last().copied()),
-            None => (0, None),
+            Some(prefix) => (prefix.states.last().copied().unwrap_or_default(), true),
+            None => (SumParts::default(), true),
         };
-        let budget = &self.evaluation.sum_prefixes;
-        if budget.kept.saturating_add(length - read) > MAX_KEPT_STATES {
-            return None;
-        }
         let start = read;
-        let mut state = stopped.unwrap_or_default();
         let mut states = Vec::with_capacity(length - read);
         let mut error = None;
-        while read < length {
-            // `read` is below `length`, a length on the grid.
-            let offset = i32::try_from(read).ok()?;
+        for offset in first..span {
             let at = if along_row {
                 CellReferenceIndex {
                     column: left.column + offset,
@@ -131,9 +143,10 @@ impl Model {
                 }
             };
             let value = self.evaluate_cell(at);
-            if self.read_is_inert(at) != Some(true) || !self.pass_cache_safe() {
+            if caching && (self.read_is_inert(at) != Some(true) || !self.pass_cache_safe()) {
+                // A later call could not skip this read: nothing from this start is kept.
                 self.evaluation.sum_prefixes.prefixes.remove(&key);
-                return None;
+                caching = false;
             }
             match value {
                 error_value @ CalcResult::Error { .. } => {
@@ -144,10 +157,18 @@ impl Model {
                     if let Some(number) = cell_number(&value) {
                         state.add(number);
                     }
-                    states.push(state);
+                    if caching {
+                        states.push(state);
+                    }
                 }
             }
-            read += 1;
+        }
+        let answer = match &error {
+            Some(error) => Err(error.clone()),
+            None => Ok(state),
+        };
+        if !caching {
+            return Some(answer);
         }
         // A cell read may itself be a running total from this start (`B5 = SUM($B$1:B4)` reads
         // B4), which extended or dropped the entry meanwhile: the states are kept only where they
@@ -161,20 +182,11 @@ impl Model {
                 cache.kept += kept;
             }
             None if start == 0 => {
-                cache.prefixes.insert(
-                    key,
-                    Prefix {
-                        states,
-                        error: error.clone(),
-                    },
-                );
+                cache.prefixes.insert(key, Prefix { states, error });
                 cache.kept += kept;
             }
             _ => {}
         }
-        Some(match error {
-            Some(error) => Err(error),
-            None => Ok(state),
-        })
+        Some(answer)
     }
 }
