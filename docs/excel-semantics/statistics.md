@@ -1474,7 +1474,7 @@ are `#N/A` and one point is `#DIV/0!` (COVAR of one pair is 0): `TTEST(A7:C7,<nu
 `FORECAST.LINEAR(x,C2:D7,<number>)` and `FORECAST.LINEAR(x,0.2,D11:D12)` are `#N/A`; `SLOPE(123456789.123,<number>)`,
 `INTERCEPT(1.005,2.5)`, `FORECAST.LINEAR(x,0.2,1)` and `FORECAST.LINEAR(x,7,137.5)` are `#DIV/0!`; `COVAR(0,D6)` is a number (inferred 0;
 `(B6-0.5)>COVAR(0,D6)` is TRUE). `PEARSON(D5,SEQUENCE(0))` is `#CALC!`. `T.TEST(B11,A8:B9,0.1,0.3)` with B11 = FALSE (one value, no number) is `#NUM!` (tails/type before
-the paired unequal-size `#N/A`; whether an error array argument beats a bad tails/type is unprobed). GROWTH of one value is a number (`GROWTH(GAMMA(100))` =
+the paired unequal-size `#N/A`; an error array argument beats a bad tails/type, see below). GROWTH of one value is a number (`GROWTH(GAMMA(100))` =
 9.332621544394404E+155), `TREND(#NUM!)` is `#NUM!`, and `GROWTH(B2:B3,<number>,..)` with B2:B3 = "?b", 0 is `#REF!` (the size
 check before the text check). LARGE of an error is that error (`LARGE(<#VALUE!>,k)`, `LARGE(<#REF!>,0.1)`), and so is
 PERCENTRANK (`PERCENTRANK(<#N/A>,100)` is `#N/A`). A single cell holding text is no number, like text inside a range: `QUARTILE(A1,1)`, `QUARTILE(A1,7)`, `QUARTILE.INC/.EXC`,
@@ -1491,6 +1491,13 @@ A33; b58b6d7cd39d195f A2, A31; bc0901ce6193d576 A12; d244411dd90f7fbd A10, A17, 
 are read from the cases' Data sheets; each cell's other operands were checked not to decide the result.
 Ours: GROWTH and TREND match the single-value, error and size-before-text rules (T-1402); the paired functions match (T-1401), a single cell holding text, a boolean or nothing being one value that is no number (a typed text or boolean literal too, for the regression functions and CHISQ.TEST: T-1723); `LARGE(#N/A,1)` is that error (gen-m9/1782efcecd5d4b1b A25); PERCENTILE.EXC reports k's error before the empty-data `#NUM!` (T-1403; PERCENTILE.INC's order is unprobed);
 `PERCENTRANK.EXC` of a single value equal to x is 1, not 0.5 (probes/percentrank-single-value B6). `PERCENTRANK` and `PERCENTRANK.INC` of a single value equal to x are 1 (probes/legacy-value-argument-intersection-c T2, U2); with one value, x below or above it is `#N/A` for all three, an error x (`#DIV/0!`, text `#VALUE!`) beats that `#N/A`, and any numeric significance (0, negative, fractional) gives 1 rather than `#NUM!` (a text significance is `#VALUE!`) (probes/percentrank-single-value B2-B20); an empty array is `#N/A`.
+Typed literals and error arrays (probes/paired-typed-literals-error-tails, excel-graph 2026-10-30, T-1968): `COVAR("x",B1:B2)`,
+`COVAR(B1:B2,"x")`, `COVAR(TRUE,B1:B2)`, `CORREL("x",B1:B2)`, `CORREL(TRUE,B1:B2)` and `CORREL(B1:B2,TRUE)` are `#N/A` (a literal is one
+value, so the sizes differ); `COVAR("x","x")`, `COVAR("x",5)`, `COVAR(TRUE,5)`, `COVAR("1",B1)` and `CORREL(TRUE,TRUE)` are `#DIV/0!`
+(a literal is no number, so no pair remains). T.TEST reads an error array before tails and type: `T.TEST(#DIV/0!,A1:A2,0.1,3)`,
+`T.TEST(#DIV/0!,A1:A2,1,0.3)`, `T.TEST(#DIV/0!,A1:A2,3,2)` and `T.TEST(#DIV/0!,A1:A2,"x",2)` are `#DIV/0!`, `T.TEST(A1:A2,#DIV/0!,0.1,3)` too,
+and the first error wins (`T.TEST(#N/A,#DIV/0!,1,1)` is `#N/A`); without an error array a bad type is `#NUM!` (`T.TEST(A1:A2,B1:B2,0.1,3)`).
+The engine already matches all 20 cells.
 Status: VERIFIED (web) for the listed cells
 Tasks: T-1401, T-1402, T-1403
 
@@ -2726,6 +2733,18 @@ bfrac (min(a,b) >= 40) takes the same brcomp = density·x·y, with λ = fl(a - f
   on the full eval ("Incomplete beta bpser" above: 116 cells bit-exact, 28 moved 1 to 4 ulp off).
 - Rejected: stored, extended, Horner or reverse W; the (P·y0)·x order; an extended P; every CF × prefactor on 15,657
   direct cells (best 2,931, CR 2,920); bfrac's λ from y.
+- bfrac as ported (T-2508, b0 >= 40, the 1992 fraction in doubles, eps 15·1e-15, brcomp = fl(P·fl(x·y)) with the
+  engine's T-2507 density): the (100, 120) run is 47 of 1,024 bit-exact (23 on the Cephes kernel before). The engine's
+  density is 33 of 1,024 there, so w4's 185 (Excel's own pdf read off the sheet) waits on that density (T-3244); an
+  x87-extended fraction scores 42, no better. bratio_beta_dist.fixture's 82 bfrac rows: 39 bit-exact.
+- Excel's bfrac-branch values are not correctly rounded, and the port follows the sign of Excel's error: on the t2220
+  F sweep at df 100 Excel sits up to 82 ulp from a 50-digit reference (F.DIST.RT(100,100,50) +82.4); F.DIST(0.1,50,100,
+  TRUE) is Excel +26.4 ulp, the port +24.4, the Cephes kernel -9.6 (T-2508 PR, mpmath betainc at 50 digits).
+- `NEGBINOM.DIST(1,100,0.99,TRUE)` = 0.7320646825464586 (ironcalc-calc BINOM.xlsx NEGBINOM.DIST!E39) is the correctly
+  rounded I_0.99(100, 2), -0.4998 ulp from the exact x^100·(101 - 100x). bratio takes bfrac there ((2, 100, 0.01) after
+  the swap); bfrac's w = 0.26793531745354133 is correctly rounded (-0.0004 ulp), so (0.5 - w) + 0.5 is an exact tie
+  and rounds to ...587. Excel's w there is an ulp above, or its NEGBINOM cdf is not bfrac's complement; the engine keeps
+  NEGBINOM.DIST's double-double pmf walk at bfrac points, which hits it.
 Evidence: probes-numeric t2464-w2f-xruns-1, -xruns-2, -absweep; w4's probe w4p1 (w4-fractions/probe, not in
 eval/suites); docs/research/t2464/w4-fractions (`tomsx.py`, `ideal_bup.py`, `t4_lambda.py`, `t25_old.py`), r2-bratio
 (`bratio_excel.py` `pdf_xy`, `_bup_term`), verify-w4-fractions, verify-r2-bratio; docs/research/t2506.
