@@ -282,6 +282,13 @@ pub struct RunReport {
     /// How the `probes` cases assigned to each milestone scored (decision 0051); filled by caller.
     #[serde(default)]
     pub probe_milestones: Vec<MilestoneRow>,
+    /// Every visibly-off cell's decision 0188 R1(c) class, which the probe rows, the ironcalc-calc
+    /// exit rows and Gate B read (T-3427); not written to the JSON.
+    #[serde(skip)]
+    pub r1c: crate::r1c::R1cCells,
+    /// R1(c)'s classes per probes, probes-numeric and ironcalc-calc: the Phase 1b evidence counts.
+    #[serde(default)]
+    pub phase1b_evidence: crate::r1c::Phase1bEvidence,
     /// How the M0–M2-only `ironcalc-calc` cells scored (M2 exit); `None` if the suite did not run.
     #[serde(default)]
     pub function_scope: Option<FunctionScope>,
@@ -624,6 +631,9 @@ impl RunReport {
         run_meta::write_markdown(&self.run, &mut md);
         self.write_suites_table(&mut md);
         crate::milestone_exit::write_markdown(&self.milestone_exit, &mut md);
+        if let Some(line) = self.phase1b_evidence.line() {
+            let _ = writeln!(md, "\n{line}");
+        }
         visible_parity::write_markdown(self, &mut md);
         v15_checkpoint::write_markdown(&self.v15_checkpoint, &mut md);
         attribution::write_markdown(self, &mut md);

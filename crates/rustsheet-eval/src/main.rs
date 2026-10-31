@@ -24,6 +24,7 @@ use anyhow::{anyhow, bail, Context, Result};
 use clap::{Parser, Subcommand};
 
 use rustsheet_eval::accuracy;
+use rustsheet_eval::accuracy::lists::{load_r3_marks, R3Marks};
 use rustsheet_eval::baseline::{self, Baseline};
 use rustsheet_eval::calibrate::compare_snapshots;
 use rustsheet_eval::catalog::Catalog;
@@ -38,10 +39,11 @@ use rustsheet_eval::milestone_exit;
 use rustsheet_eval::milestone_lists::{self, MilestoneList};
 use rustsheet_eval::phase1_exceptions::Phase1Exceptions;
 use rustsheet_eval::probe_milestones::{self, Mapping, Rules};
+use rustsheet_eval::r1c::R1cCells;
 use rustsheet_eval::report::RunReport;
 use rustsheet_eval::run_meta::RunMeta;
 use rustsheet_eval::runner::{run_suites, CaseResult, RunOptions};
-use rustsheet_eval::suite::{BaselineMode, FetchState, Suite, SuiteKind};
+use rustsheet_eval::suite::{BaselineMode, FetchState, Suite, SuiteKind, ACCURACY_MANIFEST};
 use rustsheet_eval::text_expect;
 use rustsheet_eval::v15_checkpoint;
 use rustsheet_eval::visible_parity::{self, VisibleCount};
@@ -293,6 +295,9 @@ struct Milestones {
     rules: Rules,
     exceptions: ExitExceptions,
     phase1_exceptions: Phase1Exceptions,
+    /// `eval/accuracy/math-over-excel.tsv`: the R3 cells R1(c) and Gate B count as passing
+    /// where the engine returns the math (decision 0188 R3).
+    r3: R3Marks,
 }
 
 /// Loads the frozen lists and the probe-milestone mapping, and fails when a line of either names
@@ -302,6 +307,8 @@ fn load_milestones(root: &Path, catalog: &Catalog) -> Result<Milestones> {
     let lists = milestone_lists::load_all(root)?;
     let exceptions = ExitExceptions::load(root)?;
     let phase1_exceptions = Phase1Exceptions::load(root)?;
+    let accuracy_dir = root.join(ACCURACY_MANIFEST);
+    let r3 = load_r3_marks(accuracy_dir.parent().unwrap_or(root))?;
     let mapping = Mapping::load(root)?;
     if !lists.is_empty() || mapping != Mapping::default() {
         let mut files = BTreeMap::new();
@@ -328,6 +335,7 @@ fn load_milestones(root: &Path, catalog: &Catalog) -> Result<Milestones> {
         rules,
         exceptions,
         phase1_exceptions,
+        r3,
     })
 }
 
@@ -352,7 +360,10 @@ fn score_milestones(
         .get(probe_milestones::SUITE)
         .copied()
         .unwrap_or(BaselineMode::Cells);
-    report.probe_milestones = probe_milestones::summarize(&milestones.rules, results, probes_mode);
+    report.r1c = R1cCells::build(results, &milestones.r3, &milestones.phase1_exceptions);
+    report.phase1b_evidence = report.r1c.phase1b();
+    report.probe_milestones =
+        probe_milestones::summarize(&milestones.rules, results, probes_mode, &report.r1c);
     if let Some(scope) = report.function_scope.as_mut() {
         scope.apply_exceptions(&milestones.exceptions);
     }

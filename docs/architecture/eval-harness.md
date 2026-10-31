@@ -405,6 +405,26 @@ or corpus-bench reports Gate B as `n/a` (`measured: false`, `missing`), never me
 holds the result; `phase1_met` is `gate_b.met`, and the Phase 1 line prints Gate B with the every-suite
 `at_rate` beside it as information. The report lists the worst functions below Gate B's rate under that line.
 
+**R1(c)** (`r1c.rs`, decision 0188 R1(c), R3 and R7, T-3427) decides which visibly-off cells the probe
+rows and the ironcalc-calc exit rows count. `R1cCells::build` classifies every visibly-off cell of the run
+once (`main.rs` `score_milestones`, kept on the report but not in its JSON) as one of four classes:
+- `m14_owned`: a cell in decision 0143's generated desktop-owned list (R7). It leaves the row.
+- `r3_pass`: a cell `eval/accuracy/math-over-excel.tsv` marks, where Gate A's `envelope` puts the engine
+  within ε of the cell's math value. It passes, and Gate B attributes it as a pass.
+- `phase1b`: a number inside the envelope (within ε of its math value, T-3380), whose Excel value is within
+  G = 1e-4 of the math.
+- `counts`: everything else. That covers a type, error or text cell; a number outside the envelope or with
+  no math value; and a number within ε of the math where Excel is more than G off it with no R3 mark, which
+  is R1(c)'s semantic-rule case.
+
+A cell the run did not classify counts too, so nothing reads as met early. Each probe row carries
+`r1c_off`, `r1c_off_cells`, `phase1b`, `r3_pass` and `m14_owned` beside `visibly_off`. The exit rows
+carry `probe_r1c_off`, `probe_phase1b` and `calc_r1c_off`, and `probes_met` and `calc_met` read them. The
+table prints the R1(c) count with the visibly-off total in parentheses when that is larger. M1's frozen
+probe list still counts every visibly-off cell. `phase1b_evidence` holds the classes per probes,
+probes-numeric and ironcalc-calc, and its line is printed under the exit table. The Phase 1 exit script and
+`exit_owners.py` read these fields from T-3428.
+
 ## CLI
 ```
 rustsheet-eval suites | fetch [--suite S] | run [--suite S] [--filter X] | check [--evidence-floor] | update-baseline [--allow-regressions]

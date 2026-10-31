@@ -18,6 +18,11 @@ depends_on: [T-3427]
 - Split out of T-3359 (criterion 5). Since T-3359, `v15_checkpoint.phase1_met` is `gate_b.met`, so phase1-exit's
   function-rate verdict already follows Gate B; it should also print `gate_b.measured` / `missing` and say `n/a`
   rather than `not met` when Gate B was not measured.
+- T-3427 added the R1(c) fields these scripts should read. Each probe row (`probe_milestones[]`) has `r1c_off_cells`,
+  which is never more than `visibly_off_cells`, and each exit row (`milestone_exit[]`) has `probe_r1c_off`,
+  `calc_r1c_off` and the `probes_met` / `calc_met` that follow them. The ironcalc-calc cells R1(c) counts are the
+  `visibly_off` cells of the function-scope row that `phase1b_evidence`'s classes do not exclude. The simplest way to
+  give the script those cells is an `r1c_off_cells` list on the scope row, added in Rust.
 - `scripts/` is a protected path: the PR needs a decision record (`make new-decision`).
 
 ## Acceptance criteria

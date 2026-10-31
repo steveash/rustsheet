@@ -136,6 +136,7 @@ fn probe_failure_fails_alone() {
         "a bit-level probe failure is Phase 1b's (decision 0114)"
     );
     r.probe_milestones[0].visibly_off = 1;
+    r.probe_milestones[0].r1c_off = 1; // unclassified: R1(c) counts it
     let row = m5(&r);
     assert_eq!(row.probes_met, Some(false));
     assert!(!row.exit);
@@ -276,6 +277,7 @@ fn m2_needs_ten_thousand_gen_cells_none_visibly_off_and_no_coverage() {
     // A visibly-off probe of the M0-M2 row is not met.
     let mut r = m2_report((M2_MIN_SCORED, 0));
     r.probe_milestones[1].visibly_off = 1;
+    r.probe_milestones[1].r1c_off = 1; // unclassified: R1(c) counts it
     assert_eq!(row(&r, "M2").probes_met, Some(false));
 }
 
@@ -444,6 +446,7 @@ fn m7_needs_ten_thousand_gen_cells_at_the_rate_and_no_extent_failure() {
     // A visibly-off M7 probe cell is not met.
     let mut r = m7_report((M7_MIN_SCORED, 0));
     r.probe_milestones[1].visibly_off = 1;
+    r.probe_milestones[1].r1c_off = 1; // unclassified: R1(c) counts it
     assert!(!row(&r, "M7").exit);
 }
 
@@ -746,6 +749,7 @@ fn m9_a_function_below_the_rate_fails_alone() {
 fn m9_a_visibly_off_probe_fails_alone() {
     let mut r = m9_report(73_160, 0, false);
     r.probe_milestones.last_mut().unwrap().visibly_off = 1;
+    r.probe_milestones.last_mut().unwrap().r1c_off = 1; // unclassified: R1(c) counts it
     let row = m9(&r);
     assert_eq!(row.probes_met, Some(false));
     assert_eq!((row.calc_met, row.rate_met), (Some(true), Some(true)));
@@ -851,6 +855,7 @@ fn m8_a_blocked_subset_case_fails_alone() {
 fn m8_a_visibly_off_probe_fails_alone() {
     let mut r = m8_report(0, Some((2_000, 0)));
     r.probe_milestones.last_mut().unwrap().visibly_off = 1;
+    r.probe_milestones.last_mut().unwrap().r1c_off = 1; // unclassified: R1(c) counts it
     let row = m8(&r);
     assert_eq!(row.probes_met, Some(false));
     assert!(row.more_suites.iter().all(|s| s.met == Some(true)));
@@ -895,6 +900,7 @@ fn m10_report(
     r.probe_milestones.push(MilestoneRow {
         milestone: "M10".into(),
         visibly_off: probe_off,
+        r1c_off: probe_off,
         text_items: 415,
         text_failing: probe_text_failing,
         ..MilestoneRow::default()
@@ -985,4 +991,48 @@ fn m10_without_gen_m10_is_not_applicable() {
     let row = m10(&r);
     assert_eq!((row.gen_met, row.gen_text_items), (None, None));
     assert!(!row.exit);
+}
+
+/// Decision 0188 R1(c): the probe row counts only the cells R1(c) names; the visibly-off total
+/// stays beside it (T-3427).
+#[test]
+fn the_probe_measure_reads_the_r1c_count() {
+    let mut r = m9_report(73_160, 0, false);
+    let probe = r.probe_milestones.last_mut().unwrap();
+    probe.visibly_off = 3;
+    probe.phase1b = 2;
+    probe.m14_owned = 1;
+    let row = m9(&r);
+    assert_eq!(
+        (row.probe_visibly_off, row.probe_r1c_off, row.probe_phase1b),
+        (Some(3), Some(0), Some(2))
+    );
+    assert_eq!(row.probes_met, Some(true));
+    let mut md = String::new();
+    write_markdown(&summarize(&r), &mut md);
+    assert!(md.contains("| 0 (of 3 visibly off) [0] met |"), "{md}");
+    r.probe_milestones.last_mut().unwrap().r1c_off = 1;
+    assert_eq!(m9(&r).probes_met, Some(false));
+}
+
+/// The ironcalc-calc measure counts a visibly-off cell unless R1(c) classes it otherwise; an
+/// unclassified cell counts, so nothing reads as met early (T-3427).
+#[test]
+fn the_ironcalc_calc_measure_reads_the_r1c_count() {
+    // 1,005 cells less 5 deviations: the allowance is floor(0.0005 * 1,000) = 0.
+    let mut r = m9_report(1_005, 3, false);
+    let row = m9(&r);
+    assert_eq!((row.calc_visibly_off, row.calc_r1c_off), (Some(3), Some(3)));
+    assert_eq!(row.calc_met, Some(false));
+    r.r1c = crate::r1c::R1cCells::from_classes([
+        ("x!S!A1", crate::r1c::R1c::Phase1b),
+        ("x!S!A2", crate::r1c::R1c::R3Pass),
+        ("x!S!A3", crate::r1c::R1c::M14Owned),
+    ]);
+    let row = m9(&r);
+    assert_eq!((row.calc_visibly_off, row.calc_r1c_off), (Some(3), Some(0)));
+    assert_eq!(row.calc_met, Some(true));
+    let mut md = String::new();
+    write_markdown(&summarize(&r), &mut md);
+    assert!(md.contains("0/0 of 1000 (of 3 visibly off)"), "{md}");
 }
