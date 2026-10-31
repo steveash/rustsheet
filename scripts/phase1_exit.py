@@ -40,8 +40,11 @@ PHASE1_MILESTONES = ("M1", "M2", "M5", "M6", "M7", "M8", "M9", "M10", "M11")
 # Decision 0146: exit criteria measured outside the report's rows, with where they are written.
 MANUAL_ITEMS = (
     ("M1 parity bugs and API v0", "docs/milestones.md, M1 exit criteria (decision 0146 item 1)"),
-    ("M2 one walker, one matcher", "docs/milestones.md, M2 exit criteria (met at 11592ab5, decision 0137)"),
+    ("M2 one walker, one matcher", "docs/milestones.md, M2 exit criteria (decision 0137)"),
 )
+# scripts/ is stdlib-only (no YAML reader), so the catalog is read by these line patterns; they
+# follow functions.yaml's two entry shapes, and test_phase1_exit.py runs them on the real files so
+# a layout change fails there (tools/tests/test_catalog.py checks the same sets through PyYAML).
 # A functions.yaml entry, block style (`  - name: SUM`, `  - name: "N"`) or flow style
 # (`  - { name: NOW, ..., scope: in, ... }`), and a block entry's `scope:` line.
 CATALOG_NAME = re.compile(r'^  - (?:\{ )?name: "?([^",\s}]+)"?')
@@ -91,9 +94,13 @@ def catalog_scopes(path: Path) -> dict[str, str]:
     return scopes
 
 
-def catalog_line(catalog_dir: Path) -> Line:
+def catalog_line(catalog_dir: Path, report: dict[str, Any] | None = None) -> Line:
+    """The catalog against Microsoft's list and, given a report, its out-of-scope set against the
+    report's `out_of_scope` list (the functions the run left out)."""
     excel = excel_function_names(catalog_dir / "excel-functions.tsv")
     scopes = catalog_scopes(catalog_dir / "functions.yaml")
+    out_names = {n for n, sc in scopes.items() if sc == "out"}
+    reported = None if report is None else {str(o.get("name")) for o in report.get("out_of_scope") or []}
     missing = sorted(excel - set(scopes))
     extra = sorted(set(scopes) - excel)
     bad_scope = sorted(n for n, s in scopes.items() if s not in ("in", "out"))
@@ -101,10 +108,15 @@ def catalog_line(catalog_dir: Path) -> Line:
         ([f"not in the catalog: {', '.join(missing)}"] if missing else [])
         + ([f"not an Excel function: {', '.join(extra)}"] if extra else [])
         + ([f"no parity scope: {', '.join(bad_scope)}"] if bad_scope else [])
+        + (
+            [f"report out_of_scope differs: {', '.join(sorted(reported ^ out_names))}"]
+            if reported is not None and reported != out_names
+            else []
+        )
     )
-    out = sum(1 for s in scopes.values() if s == "out")
     if problems:
         return Line("catalog", NOT_MET, "; ".join(problems))
+    out = len(out_names)
     return Line("catalog", MET, f"{len(excel)} Excel functions, {len(excel) - out} in scope, {out} out")
 
 
@@ -161,7 +173,7 @@ def verdicts(report: dict[str, Any], tasks_dir: Path, catalog_dir: Path) -> list
     off, deferred, per = owner_counts(report, tasks_dir, milestones)
     return [
         run_line(report),
-        catalog_line(catalog_dir),
+        catalog_line(catalog_dir, report),
         rate_line(report),
         owners_line(off, deferred, per),
         *milestone_lines(report, per),

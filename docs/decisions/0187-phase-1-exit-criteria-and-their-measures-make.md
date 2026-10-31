@@ -17,7 +17,8 @@
      Otherwise every other measured line is unreliable, and the overall verdict is `not met`.
   2. **Catalog.** Every Excel function is in the catalog with its parity scope (T-0040): the names of
      eval/catalog/excel-functions.tsv equal the `name:` entries of eval/catalog/functions.yaml, and each
-     entry has `scope: in` or `scope: out`, or no scope key, which means `in`.
+     entry has `scope: in` or `scope: out`, or no scope key, which means `in`. The out-of-scope
+     entries must also equal the report's `out_of_scope` list.
   3. **Function rate.** Coverage and rate per function: `v15_checkpoint.phase1_met` is true, and both
      `stale_exceptions` and `unchecked_exceptions` are empty. A stale or unchecked exception line means
      the rate was computed against the wrong exception list.

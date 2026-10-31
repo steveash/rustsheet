@@ -35,6 +35,7 @@ def report(**over: Any) -> dict[str, Any]:
             "unchecked_exceptions": [],
         },
         "milestone_exit": [{"milestone": m, "exit": True} for m in phase1_exit.PHASE1_MILESTONES],
+        "out_of_scope": [{"name": "CALL", "reason": "add-in"}],
         "cases": [],
         "attributed_off": [],
         "unattributed_off": [],
@@ -165,6 +166,20 @@ class Phase1Exit(unittest.TestCase):
         code, text = self.run_main(report())
         self.assertEqual(code, 1)
         self.assertIn("catalog\tnot met\tnot in the catalog: ABS", text)
+
+    def test_a_report_out_of_scope_list_that_differs(self) -> None:
+        code, text = self.run_main(report(out_of_scope=[]))
+        self.assertEqual(code, 1)
+        self.assertIn("catalog\tnot met\treport out_of_scope differs: CALL", text)
+
+    def test_the_real_catalog_parses_completely(self) -> None:
+        # The line parser must keep up with functions.yaml's layout: a reformat that hides an entry
+        # or its scope shows here, not as a silent `met` (tools/tests/test_catalog.py holds the
+        # same set equality through PyYAML).
+        line = phase1_exit.catalog_line(phase1_exit.CATALOG)
+        self.assertEqual(line.verdict, "met", line.detail)
+        scopes = phase1_exit.catalog_scopes(phase1_exit.CATALOG / "functions.yaml")
+        self.assertIn("out", scopes.values())
 
     def test_json_output(self) -> None:
         path = Path(self.tmp.name) / "report.json"
