@@ -241,6 +241,8 @@ fn relocation_key_gives_equal_trees_for_equal_keys() {
         row,
         column,
     };
+    // The key's own marker in a sheet name could alias another formula's key.
+    assert_eq!(lexer.key("'X\u{1}'!A1+1", &at(3, 3)), None);
     for formula in [
         "COUNTIFS($A$2:$A$9,B3,C$1:C3,\">0\")",
         "SUM(C$3:$B5)",

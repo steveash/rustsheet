@@ -52,28 +52,6 @@ references per cell, since its shapes are a function of the tree and the cell.
 ## Out of scope
 - Defined-name parsing on load (T-3195); calculation time; the harness's snapshot and volatile scan (untimed).
 
-## Progress (2026-10-31, opus run; work in flight)
-Done on this branch:
-- `import/relocation_key.rs`: `KeyLexer::key` (the formula text with each reference token replaced by
-  its offsets, or values when `$`, plus the corner comparisons of a range; only called stored
-  functions other than LET/LAMBDA as identifiers; structured references, other identifiers and a
-  reference called as `A1(` are not keyed). Soundness is argued in the module docs against the T-3318
-  audit list. `RcTextCache` moved there and gained a keyed list: a key hit skips the parse; a tree
-  with a parse error (`Node::has_parse_error`, new in the engine) is never keyed.
-- Test `relocation_key_gives_equal_trees_for_equal_keys` (mixed-`$` ranges, intersections, LET
-  names, dotted ranges, defined names, `A1(2)`, a parse error) and the extended T-3318 copy test pass.
-- corpus-bench/52450 (`rustsheet-eval run --suite corpus-bench --filter 52450`, release): before
-  1,776 / 1,795 / 1,944 ms, after 1,330 / 1,342 / 1,393 ms (three runs each), so at most 1,500 ms
-  without the census cache.
-- `cargo bench -p rustsheet --bench import`: before min 380.2 ms, median 386.6 ms; after min 272.3 ms,
-  median 295.6 ms.
-- Full `make eval` on the merged head (030af59, calipers, corpus-bench and poi fetched): `make eval-check`
-  exit 0, no regression and no new-coverage failure in any suite (corpus-bench 3 -> 3, poi 115 -> 115).
-Left: callgrind's `from_a1_to_rc` count before and after and the load/census time split; the argument
-census compared with a main run on the same fetched suites; `make check`; reviewers (draft PR open). The census cache (`observe`) is not needed for
-the 1,500 ms target and is not done.
-
-Resumed 2026-10-31 by an opus run (stale-branch rule, step 2 of the routine).
 
 ## Outcome
 Copies of a stored formula are no longer parsed on import: `import/relocation_key.rs` lexes each
@@ -96,6 +74,6 @@ for the target and is not done.
   T.INV / BETA.DIST / typed-parse cases main changed since this branch's base (T-2724, T-2510,
   T-3283), none in an xlsx-import path. `make eval-check`: 0 regressions in every suite
   (corpus-bench 3 -> 3, poi 115 -> 115). Eval delta: none.
-- `make check` green.
-- Follow-up idea, not filed: `KeyLexer::key` is now the load's hot spot (about 110k instructions
+- `make check` green. Review hardening: a formula holding the key's marker U+0001 is not keyed.
+- Follow-up T-3384: `KeyLexer::key` is now the load's hot spot (about 110k instructions
   per formula, a full re-lex plus a `peek_token` per identifier).

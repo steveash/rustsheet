@@ -82,6 +82,11 @@ impl KeyLexer {
     /// The relocation key of `formula` at `at`, or `None` when the formula holds something whose
     /// parse is not a function of the key alone (module docs).
     pub(crate) fn key(&mut self, formula: &str, at: &CellReferenceRC) -> Option<String> {
+        // The key marks references with U+0001 and writes sheet names raw: a formula holding the
+        // marker (which XML 1.0 cannot carry anyway) could alias another's key, so it is not keyed.
+        if formula.contains('\u{1}') {
+            return None;
+        }
         let language = get_default_language();
         self.lexer.set_formula(formula);
         let chars: Vec<char> = formula.chars().collect();
