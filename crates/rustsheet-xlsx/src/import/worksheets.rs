@@ -268,6 +268,10 @@ pub(super) fn from_a1_to_rc(
         return Ok(text.to_string());
     }
     let t = parser.parse(&formula, &cell_reference);
+    if t.has_parse_error() {
+        // A formula that does not parse is no template for its copies (relocation_key.rs).
+        cache.lexer.forget_template();
+    }
     // Excel refuses a workbook nesting more function calls than it takes (createSession 501;
     // syntax.md "Formula nesting depth cap", T-3097).
     call_cap::refuse_too_many_calls(parser, &format!("Formula in {context}"))?;

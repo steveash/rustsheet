@@ -6,7 +6,7 @@
 use crate::{
     constants::COLUMN_WIDTH_FACTOR,
     expressions::utils::check_block,
-    types::{Cell, Style},
+    types::{ArrayKind, Cell, Style},
     user_model::history::{ColumnData, RowData},
     workbook_check::{check_cell, check_row_record, check_style},
     UserModel,
@@ -16,14 +16,19 @@ use crate::{
 type Block = ((i32, i32), (i32, i32));
 
 impl UserModel {
-    /// Checks `cell` before an undo restores it at (`row`, `column`) of `sheet`.
-    pub(super) fn check_restored_cell(
-        &self,
+    /// The cell an undo restores at (`row`, `column`) of `sheet` for `cell`, once checked, and
+    /// counted into the cells this call restores (`restored_spills`, T-3426).
+    ///
+    /// A dynamic anchor comes back claiming only itself, as `Model::reset_dynamic_array_spills`
+    /// leaves one: its spill cells are not in the diff, since evaluation rebuilds them, so the
+    /// range it had when the diff was made claims cells nobody restores, and nothing must walk it.
+    pub(super) fn restored_cell(
+        &mut self,
         sheet: u32,
         row: i32,
         column: i32,
         cell: &Cell,
-    ) -> Result<(), String> {
+    ) -> Result<Cell, String> {
         let formulas = self.model.workbook.worksheet(sheet)?.shared_formulas.len();
         check_cell(
             row,
@@ -31,7 +36,18 @@ impl UserModel {
             cell,
             self.model.workbook.styles.cell_xfs.len(),
             formulas,
-        )
+        )?;
+        let mut cell = cell.clone();
+        if let Cell::ArrayFormula {
+            kind: ArrayKind::Dynamic,
+            r,
+            ..
+        } = &mut cell
+        {
+            *r = (1, 1);
+        }
+        self.restored_spills.add(&cell);
+        Ok(cell)
     }
 
     /// Undoes an array formula entered over the block: clears it and restores `old_values`.
@@ -42,9 +58,9 @@ impl UserModel {
         old_values: &[Vec<Option<Cell>>],
     ) -> Result<(), String> {
         check_block(corner.0, corner.1, size.0, size.1)?;
-        let restored = restored_cells((corner, size), old_values);
-        for &(r, c, cell) in &restored {
-            self.check_restored_cell(sheet, r, c, cell)?;
+        let mut restored = Vec::new();
+        for (r, c, cell) in restored_cells((corner, size), old_values) {
+            restored.push((r, c, self.restored_cell(sheet, r, c, cell)?));
         }
         // Clear the cells of the array formula (anchor and spill cells); only those that exist,
         // since the block can be the whole sheet.
@@ -54,7 +70,7 @@ impl UserModel {
         }
         // Restore all cells that existed before the array formula was placed.
         for (r, c, cell) in restored {
-            ws.update_cell(r, c, cell.clone())?;
+            ws.update_cell(r, c, cell)?;
         }
         Ok(())
     }
@@ -71,7 +87,7 @@ impl UserModel {
         check_block(corner.0, corner.1, size.0, size.1)?;
         let mut restored = Vec::new();
         for (r, c, cell) in restored_cells((corner, size), old_value) {
-            self.check_restored_cell(sheet, r, c, cell)?;
+            let cell = self.restored_cell(sheet, r, c, cell)?;
             let style = match old_style {
                 // The offsets are not negative: `restored_cells` starts at the corner.
                 Some(styles) => Some(
@@ -87,7 +103,7 @@ impl UserModel {
         }
         for (r, c, cell, style) in restored {
             let worksheet = self.model.workbook.worksheet_mut(sheet)?;
-            worksheet.update_cell(r, c, cell.clone())?;
+            worksheet.update_cell(r, c, cell)?;
             if let Some(style) = style {
                 self.model.set_cell_style(sheet, r, c, style)?;
             }
@@ -105,21 +121,24 @@ impl UserModel {
         let count = restored_count(old_data.len())?;
         check_block(row, 1, 1, count)?;
         let styles = self.model.workbook.styles.cell_xfs.len();
+        let mut restored = Vec::with_capacity(old_data.len());
         for (r, row_data) in (row..row + count).zip(old_data) {
             if let Some(record) = &row_data.row {
                 check_row_record(record, styles)?;
             }
+            let mut cells = Vec::with_capacity(row_data.data.len());
             for (c, cell) in &row_data.data {
-                self.check_restored_cell(sheet, r, *c, cell)?;
+                cells.push((*c, self.restored_cell(sheet, r, *c, cell)?));
             }
+            restored.push((r, row_data.row.clone(), cells));
         }
         self.model.insert_rows(sheet, row, count)?;
         let worksheet = self.model.workbook.worksheet_mut(sheet)?;
-        for (r, row_data) in (row..row + count).zip(old_data) {
-            if let Some(row_style) = row_data.row.clone() {
-                worksheet.rows.push(row_style);
+        for (r, record, cells) in restored {
+            if let Some(record) = record {
+                worksheet.rows.push(record);
             }
-            worksheet.sheet_data.set_row(r, row_data.data.clone());
+            worksheet.sheet_data.set_row(r, cells);
         }
         Ok(())
     }
@@ -134,20 +153,21 @@ impl UserModel {
         let count = restored_count(old_data.len())?;
         check_block(1, column, count, 1)?;
         let styles = self.model.workbook.styles.cell_xfs.len();
+        let mut restored = Vec::new();
         for (c, col_data) in (column..column + count).zip(old_data) {
             if let Some(style) = col_data.column.as_ref().and_then(|col| col.style) {
                 check_style(style, styles).map_err(|e| format!("column {c} {e}"))?;
             }
             for (r, cell) in &col_data.data {
-                self.check_restored_cell(sheet, *r, c, cell)?;
+                restored.push((*r, c, self.restored_cell(sheet, *r, c, cell)?));
             }
         }
         self.model.insert_columns(sheet, column, count)?;
         let worksheet = self.model.workbook.worksheet_mut(sheet)?;
+        for (r, c, cell) in restored {
+            worksheet.update_cell(r, c, cell)?;
+        }
         for (c, col_data) in (column..column + count).zip(old_data) {
-            for (row, cell) in &col_data.data {
-                worksheet.update_cell(*row, c, cell.clone())?;
-            }
             if let Some(col) = &col_data.column {
                 let width = col.width * COLUMN_WIDTH_FACTOR;
                 worksheet.set_column_width_and_style(c, width, col.hidden, col.style)?;
