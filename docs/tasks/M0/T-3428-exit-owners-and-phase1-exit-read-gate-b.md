@@ -3,7 +3,7 @@ id: T-3428
 title: "exit_owners and phase1-exit read Gate B and the R1(c) rows (decision 0188)"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P0
 size: S
 tier: opus
