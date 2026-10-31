@@ -16,6 +16,7 @@ use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 /// probed mean from 1.100001 to 1.2 it is the saddle point's to the bit at all five, so the switch
 /// lies in [1.1, 1.100001); no mean in between is probed yet (T-3247 lists the probe;
 /// probes-numeric/t2055-poisson-pmf-switch).
+/// FITTED(T-2055, 133 cells, mean 1.1..1.2, k 5..20)
 const CLOSED_FORM_MAX_MEAN: f64 = 1.1;
 
 /// A POISSON-only fit for k = 2 to 5 of the saddle point's stirlerr: 13, 12, 29 and 34 ulp below
@@ -33,6 +34,7 @@ const CLOSED_FORM_MAX_MEAN: f64 = 1.1;
 /// ironcalc-calc POISSON.xlsx D9 (k = 5).
 /// At k = 6 no offset beats the exact value (21 of 25), so it takes it.
 // TODO(T-3247): replace this proxy with the identified cause.
+/// FITTED(T-2055, 119 cells, k 2..5, half of t2055-poisson-pmf-sweep and gated cells)
 const POISSON_STIRLERR_2_TO_5: [f64; 4] = [
     f64::from_bits(0x3FA5_2A9B_923E_A63C), // 0.04134069595540921
     f64::from_bits(0x3F9C_579A_268D_80A7), // 0.027677925684998297

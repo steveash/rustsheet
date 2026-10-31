@@ -3,7 +3,7 @@ id: T-3274
 title: "An unqualified [@Col] formula typed just right of a table resolves against the table it grows, fills and prints [@Col] (rule 7f, t3003-unqualified-structured-d2)"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -22,8 +22,9 @@ Evidence: docs/excel-semantics/references.md "Calculated columns" rule 7(f) (T-3
 joins.
 
 Case owned (decision 0096; every failing cell, split from T-3218 at planning 2026-10-30):
-- probes/t3003-unqualified-structured-d2 S!D2, S!D3, S!D4, S!F3, S!F4, S!H1, S!H4, S!J1, S!J2, S!J3, S!J4, S!K1, S!K2
-  (13 visibly-off cells; D2 is `#ERROR!`, D3:D4 are blank, and `COLUMNS(T[#All])` is 3).
+- probes/t3003-unqualified-structured-d2 S!D2, S!D3, S!D4, S!F2 (decision 0186), S!F3, S!F4, S!H1, S!H4, S!J1, S!J2, S!J3, S!J4, S!K1
+  (13 visibly-off cells; D2:D4 are blank, since T-3213 refuses the typed entry, and `COLUMNS(T[#All])` is 3).
+  S!K2 (`=TYPE(D2)`, 1) passes by coincidence since T-3213: a blank D2 also gives 1.
 
 Why it fails (crates/rustsheet-engine/src/calculated_columns.rs, `Model::table_expansion`):
 - `table_expansion` grows the table only when `parses_as_typed` accepts the formula in its cell.
@@ -44,11 +45,11 @@ Neighbouring tasks:
 - T-3213 changes what a typed formula that does not parse leaves behind. After this task, this entry parses.
 
 ## Acceptance criteria
-- [ ] All 13 listed cells of probes/t3003-unqualified-structured-d2 pass bit-exact. Its F lines leave
+- [x] All 13 listed cells of probes/t3003-unqualified-structured-d2 pass bit-exact. Its F lines leave
       eval/baseline/probes.txt via `make eval-baseline`, with 0 regressions in every suite.
-- [ ] Every passing t2957-* and t3003-* case keeps passing. That includes expand-right-data/-header, occupied-*
+- [x] Every passing t2957-* and t3003-* case keeps passing. That includes expand-right-data/-header, occupied-*
       (rule 7d: an occupied neighbour still stops the growth) and header-formula-*.
-- [ ] Engine tests:
+- [x] Engine tests:
       - `=[@Col]*2` typed beside a table grows it and fills the column.
       - The stored formula carries the `[T]` prefix (`StructuredReference::stored_text`), so it re-parses
         unqualified after a save/load round trip.
@@ -56,8 +57,8 @@ Neighbouring tasks:
       - Two unprobed shapes keep today's behavior, with a comment in each test saying it is unprobed: with an
         occupied neighbour (rule 7d, no growth) `=[@Col]*2` is refused as it is outside any table, and an unknown
         column `[@Nope]` beside the table is refused and the table does not grow.
-- [ ] Facade test: undo of the edit restores the table and clears D2:D4.
-- [ ] references.md rule 7(f) drops "The engine refuses this entry as a parse error (T-2979)" and states what we
+- [x] Facade test: undo of the edit restores the table and clears D2:D4.
+- [x] references.md rule 7(f) drops "The engine refuses this entry as a parse error (T-2979)" and states what we
       do. `make check` green; reviewers approve.
 
 ## Out of scope
@@ -65,3 +66,13 @@ Neighbouring tasks:
   if needed.
 - Unqualified references typed beside a table that another table overlaps (unprobed).
 - Constants and a totals row (T-3218), and row growth (T-3273).
+
+## Outcome
+`Model::table_expansion` now parses a formula typed beside a data row against the table as it would be grown
+(`parses_inside`: a provisional table swapped into the parser's list for that one parse, then put back), so an
+unqualified `=[@Col]*2` in D2 names `T`, grows it and fills D2:D4. The grown range comes from one helper,
+`grown_reference`, which `expand_table` uses too. Beside the header or totals row, and when the new column is
+occupied, the parse context is unchanged (unprobed). The probe case gained the hand expectation D1 = `Column1`
+(the oracle's J1 and K1 read it; the sidecar records formula cells only, as in t2957-expand-right-data).
+Eval: probes known failures 2137 -> 2124 (13 fixed: every listed cell of t3003-unqualified-structured-d2), 0
+regressions in every suite.

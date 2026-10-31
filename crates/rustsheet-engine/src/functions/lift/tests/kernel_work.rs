@@ -795,9 +795,9 @@ fn amortization_elements_refused_before_the_walk_are_charged_one() {
         (Function::Amordegrc, [300.0, 300.0, 1.0, 0.15]),
         (Function::Amordegrc, [2400.0, 300.0, -1.0, 0.15]),
         (Function::Amordegrc, [2400.0, 300.0, 1.0, 0.0]),
-        // AMORDEGRC's asset life: 1 / 0.5 is 2, 1 / 0.22 about 4.5.
+        // AMORDEGRC's asset life of 2 or less: 1 / 0.5 is 2, 1 / 0.6 about 1.7.
         (Function::Amordegrc, [2400.0, 300.0, 1.0, 0.5]),
-        (Function::Amordegrc, [2400.0, 300.0, 1.0, 0.22]),
+        (Function::Amordegrc, [2400.0, 300.0, 1.0, 0.6]),
         (Function::Amorlinc, [2400.0, 300.0, 1.0, -0.5]),
     ];
     for (function, values) in refused {

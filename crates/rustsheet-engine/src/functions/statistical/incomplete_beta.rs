@@ -56,12 +56,14 @@ const RLOG1_TERMS: u32 = 20;
 /// every suite (T-2219) a + b below 10 moved 35 cells off Excel's bit and 75 onto it with 6 cells
 /// fixed visibly, among them the gated `FDIST(2,1,9)` and `F.DIST(1,3,8,1)` (gen-m9/c18dbf21f11093f3
 /// A151, c6cfda6bd10cae93 A348) 1 ulp off, while from 10 up it fixes 122 visibly-off cells.
+/// FITTED(T-2219, 232 cells, range unknown)
 const SERIES_MIN_SHAPE_SUM: f64 = 10.0;
 
 /// Below this x an a = 1 tail outside Excel's closed forms is -expm1(b ln1p(-x)), which keeps the
 /// digits 1 - exp(b ln(1 - x)) cancels (T-0974): always so in [`shape_one_tails`] (x0 < 0.1 there),
 /// and the cut of F.TEST's and the F quantile's unswapped form (`fisher.rs`
 /// `unoriented_shape_one_tail`).
+/// FITTED(T-0974, 11 cells, x 1E-11..4E-4 and 0.1)
 pub(crate) const A1_EXPM1_MAX_X: f64 = 0.1;
 
 /// The largest oriented complement y0 at which a0 = 1 takes Excel's closed form
@@ -71,6 +73,7 @@ pub(crate) const A1_EXPM1_MAX_X: f64 = 0.1;
 /// x0 = fl(1 - 0.9), `BETA.DIST(0.9,0.5,1,TRUE)`, m9-beta-dist-a0p5 A17). A cut at x0 >= 0.1 instead
 /// scores 1,258 of the 1,286 closed-form cells against 1,286 (T-2464 w5-triangulation
 /// `closed_variants.py`).
+/// FITTED(T-2464, 803 cells, T.DIST.RT df 2 t 2..6, BETA.DIST y0 0.9)
 const A1_CLOSED_FORM_MAX_Y: f64 = 0.9;
 
 /// `I_x(a, b)` for shapes a, b > 0; 0 at x <= 0 and 1 at x >= 1. NaN in, NaN out.

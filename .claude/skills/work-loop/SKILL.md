@@ -51,6 +51,13 @@ If the task is bigger than size M, split it (planner) instead of doing it.
 - `make fmt` then `make check`. Fix everything. Never weaken a gate to get green.
 - If eval cells newly pass: `make eval-baseline` and commit `eval/baseline/`.
 - If you paid down lint debt / duplication / oversized files: run the script with `--update`.
+- **Numeric fits** (decisions 0056 and 0188 R4): a value or selection chosen by scoring candidates
+  against oracle cells is a fit; a structural model chosen from ranked candidates (operation order,
+  rounding model, algorithm family) owes the hold-out and fresh sweep but no `FITTED` tag; a
+  constant copied verbatim from a cited source is not a fit. Meet the R4 guards of
+  reviewer-excel-fidelity check 7 (hold-out split fixed before scoring, fresh sweep after the
+  freeze, Gate A envelope result, `FITTED` tag and range, reproducibility floor, no keep-matched
+  branch) and record them in the Outcome; check 7 says what to use until their tools land.
 - A decision record (needed for any protected-path change) is created with
   `make new-decision TITLE="..."` (collision-free number; decision 0029); commit and push it with
   the first commit after the claim so other sessions see the number.

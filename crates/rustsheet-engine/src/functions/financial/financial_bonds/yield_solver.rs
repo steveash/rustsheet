@@ -83,6 +83,7 @@ pub(super) fn yield_start_term(settlement: i64, maturity: i64, basis: u32) -> Op
 /// cells allow: `pr T + 2 fl(100 T) - 100 T`, the rounding error of `100 T` taken twice, which
 /// is what `100 T - q T/2` leaves (financial.md "YIELD stops short of PRICE's root", T-3215). A
 /// zero term keeps the unscaled formula (a NaN start, so `#NUM!`).
+/// FITTED(T-1592, 74 cells, price 90.5..99.5, rate 0..0.12, term 2.3..30.3 years)
 pub(super) fn yield_start(rate: f64, pr: f64, term: &StartTerm) -> f64 {
     let years = term.whole_years + term.days / term.year_days;
     let discount = 100.0 - pr;
@@ -102,6 +103,7 @@ pub(super) fn yield_start(rate: f64, pr: f64, term: &StartTerm) -> f64 {
 /// value, root or not: with a redemption of 1E+300 Excel returns a yield far below PRICE's root,
 /// what the 100th step reaches (`YIELD(37341,45513,1E-9,105,1E+300,1)` = 78.13551092802992,
 /// bit-exact; probes/yield-newton-domain C, T-2391).
+/// FITTED(T-1592, 370 cells, range unknown)
 pub(super) fn excel_yield_newton(
     target: f64,
     start: f64,
