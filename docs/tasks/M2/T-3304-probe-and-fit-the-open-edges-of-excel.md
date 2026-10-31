@@ -3,7 +3,7 @@ id: T-3304
 title: "Probe and fit the open edges of Excel's pairwise accent rule: marks on several letters, equal-sum units that share a prefix, and the accent pass against the case and skipped-character passes"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
