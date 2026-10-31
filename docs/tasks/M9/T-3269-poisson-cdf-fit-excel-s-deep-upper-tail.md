@@ -84,10 +84,17 @@ gen-m9/43c6227e0ff368c7 A108 `=POISSON(5,Data!A8,(-1))` with Data!A8 = 42: Excel
 T-3289 landed the sweep: probes-numeric/t3284-gamma-deep-upper-tail.case.json (343 cells, filled by excel-graph).
 
 ## Blocked because
-Blocked because: the far-tail form found here (below) is a large net gain but makes two ungated cells newly visibly
-off, so it may land only with an owner ruling naming them (decision 0111) or once their cause is found. Decision 0056's
-two attempts are spent; this branch ships the evidence only, and the engine change waits on
-`claude/hopeful-meitner-5oxf0g-t3269-far-tail` (637fcf8dd, on top of T-3285).
+Blocked because: owner ruling (b) (2026-10-31, decision 0203) lets the far-tail form land with four named cells moved
+farther, two of them newly visibly off (t2561-chisq-dist-rt-past-edge R!A73, A75). The re-run against current main
+(ea7470e4a) finds four more ungated cells newly visibly off that the ruling did not name, all at x / a = 10 exactly:
+probes-numeric/t3284-gamma-deep-upper-tail A165 `POISSON(10,110,TRUE)` and A166 `CHISQ.DIST.RT(220,22)` (9 to 90 ulp),
+A183 `POISSON(13,140,TRUE)` and A184 `CHISQ.DIST.RT(280,28)` (5 to 79). The earlier comparison used main 1248554a, which
+predates T-3289's sweep, so it could not see them. And `update-baseline` refuses one gated regression against T-3285's
+head: gen-m9/caa1eed48b1883fe A59 `CHIDIST(100,9)` = Q(4.5, 50), which T-3285's correctly rounded Q fixed (Excel's bits)
+and the form puts back 1 ulp off (it appears only since ruling (a) removed T-3285's 3a cut). The engine change is on
+`claude/hopeful-meitner-5oxf0g-t3269-far-tail` (on top of T-3285's final head), so this branch stays green; it waits for
+the owner to extend the ruling to these five cells (decision 0203 stays proposed until then), or for T-3469 to find
+their cause.
 
 ## Findings (attempts 1 and 2)
 - Excel's far upper tail is Stirling's ratio prefactor sqrt(a / 2 pi) exp(a ln(x/a) + (a - x) - correction(a)) (T-2638's
@@ -122,3 +129,37 @@ two attempts are spent; this branch ships the evidence only, and the engine chan
   misses (16 to 245 ulp at some shapes).
 - Next: an owner ruling (decision 0111) to land the side branch with R!A73 and R!A75 named, or a probe that resolves
   Excel's exponent at shape 6 (dense adjacent doubles around x = 42 and 229.64986).
+
+## Outcome
+- Engine, on the side branch `claude/hopeful-meitner-5oxf0g-t3269-far-tail` (ported from 637fcf8dd onto T-3285's final
+  head 2f3e3c76f, adapted to its `fraction.rs`; not on this branch until the ruling covers the cells above):
+  `incomplete_gamma/excel_tail.rs` (the Stirling ratio prefactor with the exact correction at each multiple of 1/2,
+  times T-3285's double-double fraction, for 30 < x <= 600), `poisson_upper` for POISSON's cdf, and CHISQ.DIST.RT's
+  `accurate_tail` taking it before T-3285's half-integer kernel. Fitted pieces: `FAR_TAIL_MIN_X` (the switch at 30)
+  carries `FITTED(T-3269, 145 cells, x 26..40)`, ratcheted in quality/fitted.json; `FAR_TAIL_MAX_X` (600) is the measured
+  range's end, past which the accurate kernel stays (R4.3), and `STIRLING_CORRECTION` is exact 50-digit math, not fitted.
+- Decision 0188 R4 (attempt 1, unchanged since the freeze):
+  - R4.1 hold-out (502 literal cells with a < 20 and x >= a + 1, 30% by hash of (a, x), split fixed before scoring):
+    bit-exact test 52 / 157 (33.1%) against 22 / 157 for the correctly rounded Q (old kernel 19); train 79 / 345
+    (22.9%) against 50 / 345 (old 32). Within 4 ulp on test: 147 against 46.
+  - R4.2 fresh sweep after the freeze (probes-numeric/t3269-fresh-sweep, 240 cells, x log-uniform 1 to 1000,
+    docs/research/t3269/fresh_sweep.py): far range 20 / 88 bit-exact (old kernel 1, correctly rounded 2), 72 / 88
+    within 4 ulp; elsewhere 74 / 152 (old 73). Gate A envelope: every value within 1e-9 of the math.
+- Eval, main ea7470e4a vs the side branch (T-3285 included), full runs on the same suite root, per cell:
+  - gated: fixed 8 (gen-m9 09b47629f54b9817 A349, 583ca2baea0bb30a A399, 8fec7b207f4dd753 A349, bbdfc06cae0e0d71 A125,
+    d208bbafc3bc1997 A169, and T-3285's 2a18b2f5a4dc43ac A383, b8ee55934c5b824c A216, ironcalc-calc CHISQ.xlsx G3);
+    closer 18; visibly fixed 13; farther 6 (T-3269's: 5919660b7bb4d195 A80 `POISSON(9,100,..)` 44 to 72,
+    43c6227e0ff368c7 A108 `POISSON(5,42,..)` 5 to 25, both already visibly off; T-3285's four `CHIDIST` cells, decision
+    0202); lost 1 (T-3285's `CHIDIST(42,7)`); newly visibly off 0.
+  - ungated, cases on main: fixed 96, closer 290, visibly fixed 309, farther 34, lost 4 (t2561-chisq-dist-rt-past-edge
+    R!A33 0 to 2 and R!A43 0 to 1; T-3285's t3284 A245 and A252), newly visibly off 7: R!A73 15 to 129 and R!A75 13 to
+    189 (named by ruling (b)), t3284-gamma-deep-upper-tail A165, A166 (9 to 90) and A183, A184 (5 to 79) at x / a = 10
+    (not named; see Blocked because), and T-3285's A246 (2 to 3).
+  - ungated, the branches' new probe cases: t3269-fresh-sweep fixed 21, visibly fixed 51, newly visibly off 3;
+    t3269-gamma-tail-switch fixed 18, visibly fixed 44, newly visibly off 2; t3269-shape6-misses fixed 14, visibly fixed
+    50, newly visibly off 4 (the shape-6 misses); t3285-chisq-dist-rt-half-integer-sweep fixed 25, visibly fixed 113,
+    newly visibly off 3.
+  - `update-baseline` on the side branch: gen-m9 fixed 5, refused 1 regression against T-3285's head
+    (caa1eed48b1883fe A59, above); not recorded, as the ruling does not cover it.
+- Follow-up T-3469 (`campaign: visible`): the shape-6 misses (x = 38, 42, 229.64986, 234.2428575) and x / a = 10
+  (`POISSON(9,100)` and the four t3284 cells).
