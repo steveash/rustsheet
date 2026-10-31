@@ -212,6 +212,29 @@ fn vlookup_count_workbook() -> Result<Workbook, Box<dyn Error>> {
     })
 }
 
+/// SPEC-0020 Amendment 2's INDEX consumer (T-3222): the keys of `vlookup_count_workbook` in A
+/// and the 50 keys in Data!A1:A50, with `TAILED_CONSUMER_CALLS` copies of
+/// `INDEX(MATCH($A:$A,Data!$A$1:$A$50,0),n)` in C, n running down the head and into the tail.
+fn index_match_workbook() -> Result<Workbook, Box<dyn Error>> {
+    common::filled_workbook(|tx| {
+        tx.add_sheet("Data")?;
+        for r in 1..=50 {
+            tx.set(format!("Data!A{r}").as_str(), format!("k{r}").as_str())?;
+        }
+        for r in 1..=WHOLE_COLUMN_ROWS {
+            tx.set(
+                format!("A{r}").as_str(),
+                format!("k{}", r % 50 + 1).as_str(),
+            )?;
+        }
+        for r in 1..=TAILED_CONSUMER_CALLS {
+            let formula = format!("=INDEX(MATCH($A:$A,Data!$A$1:$A$50,0),{})", r * 150);
+            tx.set(format!("C{r}").as_str(), Input::Formula(formula))?;
+        }
+        Ok(())
+    })
+}
+
 /// Corpus-bench 59969's shape: two keys in Report!A and Report!B (one of 5 and one of 4) and an
 /// amount in Report!G, the two keys wanted in X1 and X2, and in Z the k-th matching amount for
 /// k = 1 to `TAILED_CONSUMER_CALLS`, through SMALL over `ROW()` of 70,000-row ranges.

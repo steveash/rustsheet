@@ -282,7 +282,10 @@ impl Model {
             // and-array-constant-at H1, T-1643), `INDEX(XMATCH(2,{1,2,3}),1,1)` 2 and `INDEX(5,2)`
             // `#REF!` (probes/lookup-argument-modes, m7-argument-modes, index-literal-scalar; T-1645).
             PickedReference::Node(reference) => {
-                if std::ptr::eq(reference, &args[0]) {
+                if args
+                    .first()
+                    .is_some_and(|first| std::ptr::eq(reference, first))
+                {
                     if let Some(value) = self.index_tailed(reference, numbers, two_arg, cell, form)
                     {
                         return value;
