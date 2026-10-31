@@ -8,6 +8,7 @@ priority: P3
 size: S
 tier: opus
 depends_on: [T-2508, T-3244]
+defer: phase-1b
 ---
 
 ## Goal
@@ -16,6 +17,10 @@ The bfrac port reaches the bit-level scores T-2508 carried: at least 185 of 1,02
 15 digits of r2-bratio's 1,316 bfrac cells.
 
 ## Context
+- Decision 0188 R5 (owner's 2026-10-31 rulings): parked as Phase 1b. Every cell this task owns is a BETA.DIST or
+  F.DIST density cell or a dense probes-numeric sweep cell, within Gate A's envelope (most agree with Excel to 12 or
+  more digits, and Excel and the engine are both close to the math), so R1(c) counts it as Phase 1b evidence. A
+  point that Gate A's tables show outside the envelope gets its own task without the key.
 - T-2508 (Outcome) ported bfrac with the engine's T-2507 density: 47 of 1,024 on the (100, 120) run (23 before). The
   engine's density is only 33 of 1,024 bit-exact on that run's FALSE cells, and w4's 185 used Excel's own pdf read off
   the sheet, so the score waits on the large-shape density (T-3244, a + b - 2 >= 90). An x87-extended fraction scored

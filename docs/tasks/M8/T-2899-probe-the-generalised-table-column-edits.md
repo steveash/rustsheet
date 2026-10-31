@@ -4,10 +4,11 @@ title: "Probe the table column edits T-2339 generalised: ColumnN naming with gap
 milestone: M8
 lane: research
 status: todo
-priority: P3
+priority: P1
 size: S
 tier: sonnet
 depends_on: []
+campaign: semantics
 ---
 
 ## Goal
@@ -15,6 +16,8 @@ Excel evidence for the table column-edit shapes T-2339 implemented by generalisa
 filed as an engine fix.
 
 ## Context
+- Decision 0188 (owner's 2026-10-31 rulings, R1(c)): this task owns probe-row or text cells of its milestone's exit,
+  which Phase 1 still counts in full, so it is in the semantics stage at P1 (was P3).
 T-2339 (excel-graph probes/table-edits table-insert-column-inside, -inside-header, table-insert-two-columns-inside-header,
 table-delete-column-qty, -region) grows `Sales` on a column insert inside it, names the new column `Column1` (then
 `Column2` on a second insert at C) in its header cell, and shrinks it on a delete inside, printing a reference to the

@@ -867,6 +867,7 @@ C	probes/numbervalue-default-group.case.json	14
 C	probes/numbervalue-separator-edges.case.json	20
 C	probes/odd-bond-argument-check-order.case.json	1091
 C	probes/odd-bond-huge-yield-overflow.case.json	53
+C	probes/odd-yield-far-from-par.case.json	102
 C	probes/oddfyield-solver-sweep.case.json	547
 C	probes/oddl-accrint-february-day.case.json	49
 C	probes/off-grid-corners.case.json	6
@@ -1696,6 +1697,7 @@ C	probes/t3283-typed-missing-paren.case.json	12
 C	probes/t3302-text-funcs-arrays.case.json	21
 C	probes/t3304-collation-multi-letter-accents.case.json	1896
 C	probes/t3317-xlookup-scalar-return.case.json	20
+C	probes/t3335-textbefore-overlapping-instances.case.json	78
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
 C	probes/table-edits/plain-range-delete-rows-across-edge.case.json	10

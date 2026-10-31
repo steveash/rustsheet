@@ -8,7 +8,7 @@ priority: P1
 size: M
 tier: opus
 campaign: visible
-depends_on: [T-0969, T-1043, T-2511]
+depends_on: [T-1043, T-2511]
 ---
 
 ## Goal
@@ -16,6 +16,9 @@ T.INV, T.INV.2T and CONFIDENCE.T return Excel's values from one Student-t quanti
 the T-0969 CDF kernel.
 
 ## Context
+- Decision 0188 (owner's 2026-10-31 rulings): T-0969 left `depends_on`. It is blocked under decision 0056's time-box and
+  reopens only on a new hypothesis, so it would hold this task forever; the quantile route no longer needs its CDF
+  (T-3061: SQRT(df*(1/y-1)) of the rounded beta quantile). T-2511 stays (same inverse code, sequencing of T-0098).
 Kernel map (T-1522, decision 0056): rank 5 in `docs/research/numeric-kernel-map.md`; fit with the fit lab (T-1523).
 Triage T-0903. Kernel: `statrs::distribution::StudentsT::inverse_cdf`, which calls statrs'
 `inv_beta_reg(df/2, 0.5, 2p)` and back-transforms (`sqrt(df(1-y)/y)`), losing precision near p = 0.5.

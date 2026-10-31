@@ -2356,9 +2356,25 @@ to 0; the same rule as PRICE. ODDLPRICE is linear in the yield and never overflo
 - ODDLPRICE stays a number at every yield up to 9.99999999999999E+307 (`ODDLPRICE(47300,47484,47119,0.05,9.99999999999999E+307,100,2,0)`
   is -2.5; a few periods, -0.41666666666666663).
 Evidence: probes/odd-bond-huge-yield-overflow (excel-graph, 2026-10-29, T-2659).
-Ours: matches since T-2659 (`OddFirstSchedule::discount_overflows`). ODDFYIELD and ODDLYIELD near the boundary are unprobed (T-3122).
+Ours: matches since T-2659 (`OddFirstSchedule::discount_overflows`). ODDFYIELD and ODDLYIELD near the boundary: see "ODDFYIELD and ODDLYIELD at a price far from par" (T-3122).
 Status: VERIFIED (excel-graph)
 Tasks: T-2659
+
+## ODDFYIELD and ODDLYIELD at a price far from par
+Rule: ODDLYIELD is closed form and returned a number at every price probed, from 1E-300 (82 for one period,
+1264.17391304348 for a few) to 1E15 (-1.99999999999979). ODDFYIELD is a number from 1E-300 up to a price of 3E4 and
+`#NUM!` from 1E5 up (semiannual, 10 years, first coupon half a year after settlement, redemption 100). At a vanishing
+price ODDFYIELD saturates rather than failing: 13.745966692460962 for every price from 1E-20 down to 1E-300 (basis 1:
+13.614800524624842 at 1E-300), so no price of this bond makes ODDFYIELD fail from the low side. Why Excel stops at 13.7
+and where exactly between 3E4 and 1E5 it turns `#NUM!` were not probed. The result at 3E4, -3.5048035053499063, is below
+-2, so `1 + yield / frequency` is negative there, and Excel still returns it as a number (1E4 is -0.40210502794450986).
+- `ODDFYIELD(43831,47484,43800,44013,0.05,P,100,2,0)`: P = 1 is 3.9188814666622176, 150 is 0, 1000 is -0.19969492032817104,
+  3E4 is -3.5048035053499063, 1E5, 3E5, 1E6, 1E10 and 1E15 are `#NUM!`; annual (first coupon 44197) is `#NUM!` from 1E6 and
+  -0.18891309879713358 at 1000; a redemption of 1E300 stays a number (235.9546570552217 at P = 1E15).
+Evidence: probes/odd-yield-far-from-par (102 cells, excel-graph, 2026-10-31, T-3122).
+Ours: matches without a change; the solver is `odd_first_yield` in yield_solver.rs.
+Status: VERIFIED (excel-graph)
+Tasks: T-3122
 
 ## ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD check order
 Rule: the four odd-coupon functions read their arguments in order and check few of them as they read:
@@ -3630,3 +3646,13 @@ with a large even nper too, `#NUM!` before), and NPER's LN of a non-positive rat
 Status: VERIFIED for the probed cells; DB's boolean month beyond the FALSE pair and the inferred lines are UNVERIFIED
 (T-2749 probes them).
 Tasks: T-2620, T-2698, T-2749
+
+## NPER at a tiny positive rate: Excel is up to 4% off, RustSheet returns the math (MATH-OVER-EXCEL)
+Rule: NPER at 0 < rate < 1e-14 is up to 4% off the true period count in Excel, above G = 1e-4, so RustSheet returns the
+math there (decision 0188 R3). Excluded: rates so small that 1 + rate == 1, which are `#DIV/0!` in Excel ("NPER divides
+by ln(1+rate)" above, VERIFIED) and stay `#DIV/0!`. Negative tiny rates are not covered.
+Evidence: the owner's 2026-10-31 assessment (decision 0188), 50-digit mpmath against Excel for the web. The committed
+probe case and the bounded region come with T-3367, before the engine changes.
+Status: MATH-OVER-EXCEL (decision 0188)
+Ours: today the engine matches Excel bit for bit; T-3367 moves it to the math in the region.
+Tasks: T-3367
