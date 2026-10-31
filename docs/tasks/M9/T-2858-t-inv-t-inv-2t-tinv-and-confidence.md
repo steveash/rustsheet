@@ -3,7 +3,7 @@ id: T-2858
 title: "T.INV, T.INV.2T, TINV and CONFIDENCE.T at one degree of freedom are 1/TAN(pi*p/2) through Excel's TAN (68 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -78,13 +78,13 @@ Three of the df = 1 cells below (gen-m9/5389dd4d5b5739d2 A299, probes-numeric/m9
 T-2724 (the centre); they are this task's, and T-2724 no longer lists them.
 
 ## Acceptance criteria
-- [ ] The 30 gated known-failure lines above (18 gen-m9, 12 ironcalc-calc) disappear from eval/baseline/gen-m9.txt and
+- [x] The 30 gated known-failure lines above (18 gen-m9, 12 ironcalc-calc) disappear from eval/baseline/gen-m9.txt and
       eval/baseline/ironcalc-calc.txt (`make eval-baseline`), with no new known-failure line in any baseline.
-- [ ] The 82 probes-numeric cells above pass in `make eval` (ungated suite; name any that do not in the Outcome).
-- [ ] Unit tests in t_dist.rs for `T.INV.2T(0.5,1)` = 1, `T.INV.2T(1.5,1)` = -1, `TINV(1-1E-10,1)` =
+- [x] The 82 probes-numeric cells above pass in `make eval` (ungated suite; name any that do not in the Outcome).
+- [x] Unit tests in t_dist.rs for `T.INV.2T(0.5,1)` = 1, `T.INV.2T(1.5,1)` = -1, `TINV(1-1E-10,1)` =
       1.570797438519081e-10, `TINV(1+2^-52,1)` = -5.053466325954936e-16, `T.INV(1E-16,1)` = -3183098861837907,
       `T.INV(0.9,1)` = 3.0776835371752544 and `CONFIDENCE.T(0.05,1,2)` = 8.984643532093761.
-- [ ] statistics.md's T-2858 entry gets an "Implemented in" line.
+- [x] statistics.md's T-2858 entry gets an "Implemented in" line.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -96,6 +96,39 @@ Decision 0083: done when every cell this task owns is within half a unit of the 
 value. The closed form is expected to be bit-exact on all of them; any cell left only at the ulp level moves to a
 `defer: phase-1b` follow-up named in the Outcome.
 
+## Outcome
+`cauchy_two_tail_quantile` (`extended_quotient(1, excel_tan(PI*q/2))`; the worksheet `/` rounds twice, which decides the round points
+p = 0.5, 1.5) now serves df = 1 in T.INV, T.INV.2T, TINV and CONFIDENCE.T. Two-tailed p = 1 returns 0 (Excel evidence, see
+statistics.md). The df = 1 branch in `t_inv_of` and `confidence_t_of` returns before T-2724's centre kernel and T-3061's
+SQRT(df*(1/y-1)) path, which serve df 2 up unchanged.
+
+Eval, re-baselined on main after merging it (2026-10-31): gen-m9 known failures 3015 -> 2989 (26 fixed), ironcalc-calc
+394 -> 382 (12 fixed), probes 2316 -> 2310 (6 fixed: probes/t3349-t-inv-2t-near-one A3, A6-A10, the df 1 cells T-3349 handed to
+this task), no regressions in any suite. All 30 gated lines listed above are gone. Every listed probes-numeric cell passes (checked
+cell by cell with `rustsheet-eval show`), including the three moved from T-2724 (gen-m9/5389dd4d5b5739d2 A299, probes-numeric/
+m9-t-inv-2t A12, A13).
+
+R4 guards (decision 0188; the form is a structural model chosen from ranked candidates, reviewer-excel-fidelity check 7(c)).
+Cells: every top-level T.INV, T.INV.2T, TINV and CONFIDENCE.T cell with a numeric Excel value in gen-m9, probes and
+probes-numeric whose arguments (evaluated by the engine) give df truncating to 1 (size truncating to 2): 122 cells, plus the 18
+df 1 points of the fresh sweep; 352 nested calls and the 12 ironcalc xlsx cells are not in the split. Hold-out: the cells with
+sha256("suite/case!sheet!cell")[0] mod 10 < 3, fixed before scoring, margin 10 points on the bit-exact rate. Counts are bit-exact /
+within 4 ulp / within 15 digits; "correctly rounded" is the exact quantile at the double p (mpmath, 60 digits) rounded to a double:
+| set | 1/TAN form | correctly rounded |
+|---|---|---|
+| train (84) | 84 / 84 / 84 | 30 / 69 / 70 |
+| hold-out (38) | 38 / 38 / 38 | 14 / 33 / 33 |
+| fresh sweep, df 1 (18) | 18 / 18 / 18 | 8 / 15 / 14 |
+The hold-out exact rate equals the train rate (100%), and the form beats the correctly rounded quantile on hold-out (38 against 14
+bit-exact). Fresh sweep: probes-numeric/t3349-t-inv-2t-sweep (300 points, seed 3349, filled by T-3349 after this form was frozen
+in c31c9fae1 on 2026-10-30; the sweep landed in a3df1f163 on 2026-10-31), its 18 df 1 points (A24, A37, A44, A71, ...). Gate A envelope: 18 of 18 inside (all within 15 digits of Excel and
+within 1E-9 relative of the math), none outside, no error against a number. Scored with a scratch script, not committed.
+
+Review follow-ups: T-3396 probes `T.INV(0.5,1)`, two-tailed p in (0.999999999999999, 1) at df 1, and the error kind for a
+CONFIDENCE.T margin past the double range (now `#NUM!`, never an infinity: `confidence_t_of` checks the final product on both
+branches; test `test_fn_confidence_t_df_one`).
+
 Note from T-2724 (2026-10-31): two-tailed p near 1 at df 1 now reaches T-2724's centre kernel (the true quantile,
 `t_centre_quantile` in t_dist.rs) before any df-1 rule; this task's 1/TAN form has to take df 1 ahead of it. The
-T-2724 unit test `centre_quantiles_keep_their_digits` leaves df 1 out for this task to pin.
+T-2724 unit test `centre_quantiles_keep_their_digits` leaves df 1 out for this task to pin. Done: `t_inv_of` takes df 1 first, and
+`df_one_quantile_is_one_over_excel_tan` pins t3349 A3 and A10 (`T.INV.2T(0.999999999999999,1)` = 1.6155696572206502E-15) bit for bit.

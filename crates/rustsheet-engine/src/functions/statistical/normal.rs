@@ -12,7 +12,7 @@ use crate::functions::lift::{div_error, num_error, number_or_error};
 use crate::functions::statistical::special::{
     normal_cdf, normal_density_overflows, normal_pdf, standard_normal_pdf,
 };
-use crate::functions::statistical::t_dist::{t_upper_quantile, T_DF_MAX};
+use crate::functions::statistical::t_dist::{cauchy_two_tail_quantile, t_upper_quantile, T_DF_MAX};
 use crate::functions::util::poly;
 use crate::functions::Function;
 use crate::{
@@ -314,14 +314,23 @@ impl Model {
         if df > T_DF_MAX {
             return Err(num_error(cell));
         }
-        let t_dist = StudentsT::new(0.0, 1.0, df)
-            .map_err(|_| CalcResult::new_error(Error::ERROR, cell, String::new()))?;
-        // Two-sided CI => use 1 - alpha/2
-        let t_crit = t_upper_quantile(&t_dist, df, alpha / 2.0);
-        if !t_crit.is_finite() {
+        let t_crit = if df == 1.0 {
+            // Excel's 1/TAN closed form at one degree of freedom (T-2858).
+            cauchy_two_tail_quantile(alpha)
+        } else {
+            let t_dist = StudentsT::new(0.0, 1.0, df)
+                .map_err(|_| CalcResult::new_error(Error::ERROR, cell, String::new()))?;
+            // Two-sided CI => use 1 - alpha/2
+            t_upper_quantile(&t_dist, df, alpha / 2.0)
+        };
+        // A cell never holds an infinity: a quantile or product past the double range
+        // (`CONFIDENCE.T(1E-10,1E307,2)`) is `#NUM!`, Excel's overflow error. The error kind for
+        // the overflowing product is UNVERIFIED (TODO(T-3396)).
+        let margin = t_crit * std_dev / size.sqrt();
+        if !margin.is_finite() {
             return Err(num_error(cell));
         }
-        Ok(t_crit * std_dev / size.sqrt())
+        Ok(margin)
     }
 
     /// `NORMSDIST(z)`: NORM.S.DIST with `cumulative` TRUE.

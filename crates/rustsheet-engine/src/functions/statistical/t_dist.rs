@@ -1,7 +1,9 @@
 use statrs::distribution::{Continuous, ContinuousCDF, Normal, StudentsT};
 
+use crate::arithmetic::extended_quotient;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error, LiftCost};
+use crate::functions::math_and_trigonometry::excel_tan;
 use crate::functions::statistical::inverse_beta::t_inverse_cdf;
 use crate::functions::statistical::paired::{MarkedSample, PairedSamplesError, PairedValues};
 use crate::functions::statistical::special::{bisect_increasing, ln_gamma, refine_increasing};
@@ -12,6 +14,15 @@ use crate::functions::Function;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
+
+/// Student-t quantile at one degree of freedom for the two-tailed probability `q` in (0, 1]:
+/// `1/TAN(PI()*q/2)` through Excel's own TAN, not the true Cauchy quantile (statistics.md
+/// "Student-t quantile at one degree of freedom is 1/TAN(π·p/2) through Excel's TAN", T-2858).
+pub(crate) fn cauchy_two_tail_quantile(q: f64) -> f64 {
+    // The worksheet `/` rounds twice (numbers.md "Division rounds twice"), which matters at the
+    // round points: TINV(0.5,1) is 1, not 1.0000000000000002.
+    extended_quotient(1.0, excel_tan(std::f64::consts::PI * q / 2.0))
+}
 
 fn mean(xs: &[f64]) -> f64 {
     let n = xs.len();
@@ -280,6 +291,29 @@ fn t_test_p(
 /// quantile search does not finish for a huge df (fuzz hang on `T.INV(0.9,5E10)`).
 /// Excel: see docs/excel-semantics/statistics.md#student-t-sweep-df-truncation-df-limits-tinv2t-above-1-t-1043
 pub(crate) const T_DF_MAX: f64 = 1e10;
+
+/// T.INV (`two_tailed` false, p in (0, 1)) and T.INV.2T / TINV (p in (0, 2)) at one degree of
+/// freedom: Excel's closed form (T-2858) through [`cauchy_two_tail_quantile`]. T.INV(0.5) is 0,
+/// unprobed (T-3396).
+fn df_one_quantile(p: f64, two_tailed: bool) -> f64 {
+    if two_tailed {
+        if p == 1.0 {
+            // 1/TAN(PI/2) would be 6.1E-17; Excel returns 0 (gen-m9 0620505280d2ea6e A90
+            // `TINV(1,1)`, 7f7ca726c3f68554 A166 `TINV(1-1E-17,1)`).
+            0.0
+        } else if p > 1.0 {
+            -cauchy_two_tail_quantile(2.0 - p)
+        } else {
+            cauchy_two_tail_quantile(p)
+        }
+    } else if p < 0.5 {
+        -cauchy_two_tail_quantile(2.0 * p)
+    } else if p > 0.5 {
+        cauchy_two_tail_quantile(2.0 * (1.0 - p))
+    } else {
+        0.0
+    }
+}
 
 /// Whether the cumulative Student-t functions refuse `x`: Excel's T.DIST (cumulative), T.DIST.RT,
 /// T.DIST.2T and TDIST of 1E+300 and 1E+307 are `#NUM!`, not 0, while `T.DIST.2T(1E+15,1)` is a number
@@ -565,6 +599,14 @@ impl Model {
         if p_out || !(1.0..=T_DF_MAX).contains(&df) {
             return Err(num_error(cell));
         }
+        if df == 1.0 {
+            let x = df_one_quantile(p, two_tailed);
+            return if x.is_finite() {
+                Ok(x)
+            } else {
+                Err(num_error(cell))
+            };
+        }
         let dist = StudentsT::new(0.0, 1.0, df).map_err(|_| num_error(cell))?;
         let x = if two_tailed && p > 1.0 {
             // T.INV.2T(p) = T.INV(1 - p/2), the negative quantile, for p in (1, 2) (m9-t-edges A2
@@ -662,7 +704,9 @@ impl Model {
 
 #[cfg(test)]
 mod tests {
-    use super::{t_centre_quantile, t_quantile, t_upper_quantile};
+    use super::{
+        cauchy_two_tail_quantile, df_one_quantile, t_centre_quantile, t_quantile, t_upper_quantile,
+    };
     use crate::test::util::within_fifteen_digits;
     use statrs::distribution::StudentsT;
 
@@ -729,7 +773,8 @@ mod tests {
         // T-2724: two-tailed quantiles with p near 1, against the true quantile at the double p
         // (mpmath, 40 digits, `I_w(1/2, df/2) = 1 - p`), within 1E-15 relative; statrs' 1 - y lost
         // most digits (`TINV(1-1E-10,5)` was 2.36E-8) and gave 0 at 1-1E-16.
-        // df 1 is Excel's 1/TAN form, not the true quantile, so it is left out (TODO(T-2858)).
+        // df 1 is Excel's 1/TAN form, not the true quantile: `t_inv_of` takes it before this path
+        // (`df_one_quantile_is_one_over_excel_tan`, T-2858).
         for (df, p, exact) in [
             (2.0, 0.999_999, 1.414_213_562_414_469e-6),
             (2.0, 1.0 - 1e-10, 1.414_213_679_385_65e-10),
@@ -804,5 +849,51 @@ mod tests {
                 assert!(t.is_finite() && t < 0.0, "df {df} q {q}: {t}");
             }
         }
+    }
+
+    // T-2858: Excel's df = 1 doubles (eval cells TINV/T.INV/T.INV.2T), bit for bit.
+    #[test]
+    fn df_one_quantile_is_one_over_excel_tan() {
+        // T.INV.2T(0.5,1) = 1 and T.INV.2T(1.5,1) = -1 (round points, double-rounded division)
+        assert_eq!(df_one_quantile(0.5, true), 1.0);
+        assert_eq!(df_one_quantile(1.5, true), -1.0);
+        assert_eq!(df_one_quantile(1.0, true), 0.0);
+        assert_eq!(df_one_quantile(0.9, false), 3.0776835371752544);
+        assert_eq!(df_one_quantile(1e-16, false), -3183098861837907.0);
+        assert_eq!(
+            df_one_quantile(1.0 + f64::EPSILON, true),
+            -5.053466325954936e-16
+        );
+        assert_eq!(cauchy_two_tail_quantile(0.5), 1.0);
+        assert_eq!(-cauchy_two_tail_quantile(2.0 - 1.5), -1.0);
+        // TINV(1-1E-10,1)
+        assert_eq!(cauchy_two_tail_quantile(1.0 - 1e-10), 1.570797438519081e-10);
+        // Near p = 1, ahead of T-2724's centre kernel (probes/t3349-t-inv-2t-near-one A3, A10):
+        // Excel is the 1/TAN form, not the true quantile (1.5695408241038844E-15 at A10).
+        assert_eq!(
+            cauchy_two_tail_quantile(0.999_999_999_989_522),
+            1.645_889_555_288_576_6e-11
+        );
+        assert_eq!(
+            cauchy_two_tail_quantile(0.999_999_999_999_999),
+            1.615_569_657_220_650_2e-15
+        );
+        // TINV(1+2^-52,1) = -t2(2 - p)
+        assert_eq!(
+            -cauchy_two_tail_quantile(2.0 - (1.0 + f64::EPSILON)),
+            -5.053466325954936e-16
+        );
+        // T.INV(1E-16,1) = -t2(2p)
+        assert_eq!(-cauchy_two_tail_quantile(2.0 * 1e-16), -3183098861837907.0);
+        // T.INV(0.9,1)
+        assert_eq!(
+            cauchy_two_tail_quantile(2.0 * (1.0 - 0.9)),
+            3.0776835371752544
+        );
+        // CONFIDENCE.T(0.05,1,2)
+        assert_eq!(
+            cauchy_two_tail_quantile(0.05) * 1.0 / 2.0_f64.sqrt(),
+            8.984643532093761
+        );
     }
 }
