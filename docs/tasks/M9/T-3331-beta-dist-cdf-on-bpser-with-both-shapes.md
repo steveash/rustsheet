@@ -28,6 +28,13 @@ the M9 exit row as `rate:BETA.DIST`. T-3249's Outcome noted it as predating that
 its bpser item but did not reach it.
 - probes-numeric/m9-beta-dist-a2p5.case.json (1): Calc!A31
 
+Also owned (gap triage 2026-10-30, moved here from a duplicate filed by the same triage; same bpser path,
+last digits only, not required by the criteria below): Excel is within a unit of ours on each against a
+60-digit value, so they follow A31's fix of the bpser sum (its term count, stop or stored z).
+- probes-numeric/m9-beta-dist-a2p5.case.json (5): Calc!A3, A5, A7, A9, A37
+- probes-numeric/m9-beta-dist-a2.case.json (5): Calc!A1, A3, A5, A37, A49
+- probes-numeric/m9-legacy-betadist.case.json (2): Calc!A17, A18
+
 `BETA.DIST(0.1,2.5,5,TRUE)`: Excel 0.05533381860850995, ours 0.055333818608509895. Ours is 8 ulp below Excel. The
 true value (mpmath, 50 digits, gap triage) is 0.0553338186085098323, about 17 ulp below Excel and 9 below ours, so
 Excel is the less accurate side.

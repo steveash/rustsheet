@@ -95,6 +95,7 @@ They are test points for the engine swap of `gamma_kernels.rs`.
 - [ ] Every new probe case is filled and committed. Coefficient files and scripts are under `docs/research/t1941/`.
 - [ ] Quirks recorded in `docs/excel-semantics/statistics.md` ("GAMMA, GAMMALN and LN kernels"). Lessons added
       to `docs/research/excel-kernel-playbook.md`. An engine task is filed to swap `gamma_kernels.rs`'s arrays.
+- [ ] The K3 model's score includes the two gen-m9 GAMMALN.PRECISE cells added by gap triage 2026-10-30.
 - [ ] `make check` green; reviewers approve. Land notes, coefficient files and verifiers on main in a slim PR, as the T-1941
       close-out did. Bulk probe data (`kmyst-gam-*`, gigabytes) stays on the research branch.
 
@@ -104,3 +105,8 @@ They are test points for the engine swap of `gamma_kernels.rs`.
 
 ## Deferred (decision 0114)
 `defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).
+
+## Cells added by gap triage (2026-10-30)
+`make eval` on origin/main 6a26b992a (excel-graph), `scripts/exit_owners.py`'s `owned` rule over every failing cell and the task files of origin/main and every pushed branch: two gen-m9 GAMMALN.PRECISE cells, 1 to 3 ulp off and none visibly off, that no open task names. Both arguments fall in K3's range: gen-m9/b8ee55934c5b824c A153 `GAMMALN.PRECISE((SQRTPI(Data!C3)-0.1))` with Data!C3 = 0.3 (argument about 0.871), Excel 0.08924278597232677, ours 0.08924278597232672; gen-m9/f2bd5f380ec002bf A241 `GAMMALN.PRECISE(ERF(Data!C4))` with Data!C4 = 1.005 (argument about 0.845), Excel 0.11110042471843157, ours 0.11110042471843155. Score K3 candidates on them too; the engine task this one files to swap `gamma_kernels.rs`'s arrays closes them.
+- gen-m9/b8ee55934c5b824c.case.json (1): Calc!A153
+- gen-m9/f2bd5f380ec002bf.case.json (1): Calc!A241
