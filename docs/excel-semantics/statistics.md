@@ -3492,7 +3492,7 @@ Status: VERIFIED (excel-graph, 2026-10-15; probes-numeric case `t1543-inverse-cd
 
 Implemented in: functions/statistical/beta.rs `beta_quantile`, functions/statistical/inverse_beta.rs `beta_quantile_crossing` (BETA.INV); functions/statistical/incomplete_gamma.rs `gamma_quantile` and chisq.rs `chisq_inv_of` (CHISQ.INV, CHISQ.INV.RT, CHIINV, GAMMA.INV, GAMMAINV; T-1634)
 
-Tasks: T-1543, T-1634, T-2561
+Tasks: T-1543, T-1634, T-2561, T-3336, T-3337
 
 - CHISQ.INV.RT and CHIINV quirks (T-1634; the literal-argument cells of gen-m9, this probe and m9-legacy-chiinv):
   - At one degree of freedom (df is truncated, so 1.5 too) the right-tail quantile is the left one of 1 - p:
@@ -3501,7 +3501,9 @@ Tasks: T-1543, T-1634, T-2561
     (`CHISQ.INV.RT(1E-20,1)`; p between 5.55E-17 and 1E-16 is unprobed). The rule is exact only to Excel's search
     on its double-valued lower cdf: `CHIINV(1E-9,1)` (probes-numeric/m9-legacy-chiinv A1, A2) is 37.324892889999234
     in Excel, about 2.2E-7 (one step of the cdf's resolution near 1) below the complement crossing
-    37.324893106518715 (ours) and the true quantile 37.32489305136234 (T-2561).
+    37.324893106518715 (ours) and the true quantile 37.32489305136234 (T-2561), while at 1E-10 and 1E-4 Excel is within
+    2 ulp of the crossing (m9-chisq-inv-rt A1, m9-legacy-chiinv A12), so the step is not taken at every p. Where it is
+    taken is unprobed: T-3336 sweeps p at df 1, T-3337 fits the landing.
   - Excel's search gives up in the far right tail. Below an edge that depends on df, CHISQ.INV.RT and CHIINV are
     `#NUM!`, though the quantile exists and CHISQ.DIST.RT past it is a plain number. With p = 1E-k, the last k that
     is still a value is, for df 3 to 42: 20, 27, 35, 43, 52, 62, 72, 81, 87, 90, 94, 99, 104, 110, 116, 121, 127,
@@ -4837,8 +4839,8 @@ then goes through the probability checks (`#NUM!` for a probability outside [0, 
 `PROB(COLUMNS(Data!C5:E10),0.1,-1,-1)` is `#NUM!`, 0bbab6206b5c9a07 A322; `PROB(Data!B3:E3,Data!E7:E10,1,Data!E7)`, 4
 against 4, 873f30d2bf76f8db A72). The `#DIV/0!` of `PROB((ERF(1E-10)+(-0.5)),EFFECT(10,11),PV((-0.9999999999),161,..))`
 (6e18550e9fc9c1b9 A394) and `PROB(Data!C6:C9,..,PV((-0.9999999999),78,..))` (92d4fa29e5510f1e A70) is then the lower
-limit's: Excel's PV at a rate of -0.9999999999 over 78 or 161 periods would be `#DIV/0!` (ours `#NUM!`; inferred,
-UNVERIFIED, the PV itself is not probed). These are direct error values; an error inside a range still loses to a
+limit's: Excel's PV at a rate of -0.9999999999 over 78 or 161 periods is `#DIV/0!`, its `(1+rate)^nper` below the
+normal range (probes/fin-pv-power-underflow A1, A2; financial.md "Annuity and DB argument domains at their limits"). These are direct error values; an error inside a range still loses to a
 lower/upper error (T-1813, section "RANK, FORECAST, PROB, Z.TEST and T.TEST: lifted scalar arguments"). Whether a
 lower_limit error beats unequal counts rests on a cell whose lower_limit is an inner YIELD (d37313406b9f6e55 A142,
 `#NUM!`, which ours now matches); no probe cell separates them (t2707 A57 has the same error on both sides): UNVERIFIED.
