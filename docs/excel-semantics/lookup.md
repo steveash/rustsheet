@@ -1378,12 +1378,18 @@ Tasks: T-2669, T-2680
 
 ### Statistical aggregates over a lifted OFFSET (an array of references)
 Evidence: probes/t2065-lift-* (one formula per workbook, excel-graph 2026-10-26; data as probes/reference-lift-consumers-b2).
-- `STDEV.S(OFFSET(A1,{0;1},0))` is 70.0035713374682, `VAR.S` 4900.5, `SUMSQ` 10001: single-cell elements read as their values (multi-cell elements unprobed).
+- `STDEV.S(OFFSET(A1,{0;1},0))` is 70.0035713374682, `VAR.S` 4900.5, `SUMSQ` 10001: single-cell elements read as their values (multi-cell elements: top-left cell, T-2816 below).
 - COUNTIFS, AVERAGEIF and MAXIFS lift per element, spilling one value each (1, 1; 1, 50.5; 1, 100). CONCAT is `#VALUE!`.
   The engine implements these three since T-2823 (`Function::per_reference_element`, each element charged as
   COUNTIF/SUMIFS are, with the same bound DEVIATION); AVERAGEIFS and MINIFS are unprobed and read the value view.
   Which arguments lift is inferred from SUMIF/SUMIFS (COUNTIFS every criteria range, AVERAGEIF range and average_range,
   MAXIFS max_range and every criteria range); forms with only some ranges lifted are unprobed (T-2833).
+- T-2816 (probes/t2816-lift-*, E1, excel-graph 2026-10-31, same data; A4 "5", A5 blank, A6 TRUE, A7 7): multi-cell
+  elements contribute their TOP-LEFT cell only. `STDEV.S(OFFSET(A1,0,0,{1;2}))` is 0 and `VAR.S(..)` 0 (the values 1, 1;
+  the whole elements would give 57.3 for {1,1,100}), `SUMSQ(..)` is 2 (not 10002). A text element counts as 0 and a
+  blank or TRUE element is skipped, as for a reference argument: `AVERAGEA(OFFSET(A4,{0;3},0))` ("5", 7) is 3.5,
+  `MAXA(OFFSET(A4,{0;3},0))` 7, `AVERAGEA(OFFSET(A5,{0;1},0))` (blank, TRUE) `#DIV/0!` (TRUE not counted as 1) and
+  `MAXA(OFFSET(A5,{0;1},0))` 0. This also explains the 0 of the probe below (text 0, blank and TRUE skipped).
 - `AVERAGEA` and `MAXA(OFFSET(A4,{0;1;2},0))` over "5", blank, TRUE are 0: the text is not read as 5 and TRUE not as 1; which elements count is open (the data holds no number).
 Status: VERIFIED (excel-graph) for the values above. COUNTIFS, AVERAGEIF and MAXIFS implemented (T-2823); the rest
 not yet (T-2824).
