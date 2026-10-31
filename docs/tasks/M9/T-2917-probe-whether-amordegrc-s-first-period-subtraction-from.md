@@ -3,7 +3,7 @@ id: T-2917
 title: "Probe whether AMORDEGRC's first-period subtraction from the cost rounds twice"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -31,3 +31,10 @@ probes/amordegrc-walk-drift D1-D12 did for the final rounding). Search for such 
 
 ## Out of scope
 - The walk after period 1 (T-2849) and past 2^20 periods (T-2918).
+
+## Outcome
+A scratch search (random 15-digit costs, rate 1E-7, basis 1) found costs where `cost - first_depr` differs between the
+plain and the x87 twice-rounded difference and the period-1 charge's 15-digit cut differs by a unit. Twelve of them,
+six each way, are probes/amordegrc-first-subtraction; Excel gives the twice-rounded value in all twelve, which is what
+`extended_sum` already did. No engine change; financial.md and the code comment now cite the evidence instead of
+"by analogy".
