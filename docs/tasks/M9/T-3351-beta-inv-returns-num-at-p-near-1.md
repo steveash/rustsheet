@@ -3,7 +3,7 @@ id: T-3351
 title: "BETA.INV returns #NUM! at p near 1-1E-8 with a small b, where the answer is 1"
 milestone: M9
 lane: functions-stat
-status: todo
+status: blocked
 priority: P0
 size: S
 tier: opus
@@ -60,6 +60,15 @@ the bounds form (A196), the underflow boundary at b = 0.03 for a = 2 and 0.5 (A1
 `#NUM!` in the engine: A28-A31, A37-A54, A91-A94, A100-A117, A126, A154-A157, A163-A180, A189, A194, A195,
 A197-A199, A206-A211 and C197-C199 (86 cells), and D197-D202, D204, D205 and D210, where Excel gives
 0.9999999999999999 (9 cells).
+
+## Blocked because
+Blocked because: the fix in PR #2573 cannot merge until this task is done, and it cannot be done until T-3430 and
+T-3431 land. All four reviewers approved PR #2573 on 78d90067c and CI is green there, but `make mark-ready` refuses
+it (V5: the branch's task must be `status: done`). The architecture review (round 1) rejected `done` while the Gate A
+criterion and the 15-digit match are unmet, and no decision narrows them. Owner's call: (a) rule that this partial
+fix may land, by splitting the met part into its own task or relaxing V5 for it, or (b) keep the PR as a draft until
+T-3431 (P0) and T-3430 (P1) land, then merge `origin/main` in, re-score the probe and sweep, tick the criteria and
+finish here.
 
 ## Status: partial (PR #2573)
 PR #2573 lands the fix for every point where the flipped tail's y is a normal double (81 of the 86 probe cells that
