@@ -7,7 +7,8 @@ P back (T-1123). T-3502 found that fit does not generalize and replaced it by th
 here: the split roots, the snaps, plain r, and the correctly rounded root of P and of the exact
 product, on the in-range probes of T-1113/T-1123 whose arguments are literals (the SEQUENCE cells
 are scored in T-3502's Outcome) and on the fresh log-uniform sweep
-`probes-numeric/t3502-geomean-fresh` (R4.2). Results: numbers.md "GEOMEAN in-range root".
+`probes-numeric/t3502-geomean-fresh` (R4.2 for the snap), and on `t3502-geomean-postfreeze`, generated
+with a new seed after the split root was frozen (R4.2 for the split root). Results: numbers.md "GEOMEAN in-range root".
 """
 
 from __future__ import annotations
@@ -29,6 +30,8 @@ _OLD = [
     "probes/geomean-stored-3ulps-low",
 ]
 _FRESH = ["probes-numeric/t3502-geomean-fresh"]
+# Generated with a new seed after the split root was frozen (R4.2 for the split root itself).
+_POSTFREEZE = ["probes-numeric/t3502-geomean-postfreeze"]
 
 
 def _values(args: tuple[Arg, ...]) -> list[float]:
@@ -176,6 +179,22 @@ FITS = [
         name="geomean-snap-fresh",
         description="GEOMEAN in-range root on the fresh log-uniform sweep (T-3502, R4.2)",
         cases=_FRESH,
+        pattern=_PATTERN,
+        candidates=_candidates,
+        where=_in_range,
+    ),
+    Fit(
+        name="geomean-postfreeze",
+        description="GEOMEAN in-range root on the post-freeze sweep (T-3502, R4.2 for the split root)",
+        cases=_POSTFREEZE,
+        pattern=_PATTERN,
+        candidates=_candidates,
+        where=_in_range,
+    ),
+    Fit(
+        name="geomean-all",
+        description="GEOMEAN in-range root over the T-1123 probes and both T-3502 sweeps, pooled",
+        cases=_OLD + _FRESH + _POSTFREEZE,
         pattern=_PATTERN,
         candidates=_candidates,
         where=_in_range,

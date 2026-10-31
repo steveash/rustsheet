@@ -48,7 +48,7 @@ The 15-digit snap does not generalize and is gone (`FITTED` tags 81 to 80). In i
 no fitted constant: P = m·2^E is rooted as `exp(ln(m·2^r)/n)·2^q`, E = q·n + r, q truncated toward zero
 (geomean.rs `split_root`). Where |E| < n it is the old `exp(ln(P)/n)`. Past that, it keeps ln's error at large
 |ln P| out of the root.
-- **Fresh sweep (R4.2):** probes-numeric/t3502-geomean-fresh, 180 cells, seed 3502, log-uniform counts 2..200 and
+- **First fresh sweep (R4.2 for the snap; it also chose the replacement):** probes-numeric/t3502-geomean-fresh, 180 cells, seed 3502, log-uniform counts 2..200 and
   magnitudes 1E-150..1E+150, plus 60 exact-power sets (excel-graph, 2026-10-31). Fit lab `geomean-snap-fresh`
   (hold-out split as T-3360, margin 5 points; 119 train cells, 61 test):
 
@@ -64,9 +64,34 @@ no fitted constant: P = m·2^E is rooted as `exp(ln(m·2^r)/n)·2^q`, E = q·n +
 - **Old cells:** fit lab `geomean-snap` (69 literal in-range probe cells, 49 train, 20 test): split root 62
   (43/49, 19/20, accept), snap 36 (25/49, 11/20, refuse: does not beat the correctly rounded 31/49, 16/20).
   SEQUENCE cells, scored by hand: in-range-many 71/72 (snap 71), Copies 34/35 (snap 34).
-- **Gate A envelope (R2):** the split root is within 1 ulp of Excel on all 180 fresh cells, so within 15 digits.
-  It is also within 1 ulp of the 50-digit mpmath root, as the correctly rounded candidate shows. GEOMEAN has no
-  eval/accuracy table yet.
+- **Model choice:** made on the T-1123 probes and the train side of the first sweep only. q toward zero beat q
+  floored there: in-range-many 71 against 53, and train 110 against 104.
+- **Post-freeze sweep (R4.2 for the split root):** probes-numeric/t3502-geomean-postfreeze. It uses the same
+  strata with a new seed (35020) and was generated and filled after `split_root` was frozen (excel-graph,
+  2026-10-31). Fit lab `geomean-postfreeze`, 124 train and 56 test cells:
+
+  | candidate | exact | <=4 ulp | <=15 digits | train | test |
+  |---|---|---|---|---|---|
+  | split root (engine) | 172 | 180 | 180 | 118/124 (95.2%) | 54/56 (96.4%) |
+  | correctly rounded (reference) | 165 | 180 | 180 | 110/124 (88.7%) | 55/56 (98.2%) |
+  | correctly rounded root of P | 165 | 180 | 180 | 111/124 | 54/56 |
+  | 15-digit snap (T-1123) | 70 | 98 | 115 | 45/124 | 25/56 |
+  | plain `exp(ln(P)/n)` | 25 | 84 | 115 | 17/124 | 8/56 |
+
+  The split root leads overall and on train. On this sweep's 56 test cells it is one cell behind the reference,
+  so the per-sweep rule reads "refuse". Pooled over every scored cell (fit lab `geomean-all`: the T-1123 probes and
+  both sweeps, with the same per-cell hash split), it is accepted: train 271/292 (92.8%), test 132/137 (96.4%),
+  against the reference's 242/292 and 120/137. The correctly rounded mean cannot be the engine's form in any case:
+  it breaks gated ironcalc-calc GEOMEAN C23 and G27.
+- **Gate A envelope (R2):** holds on both sweeps. Every split-root cell is within 1 ulp of Excel, and within
+  1.3E-16 relative of the 50-digit mpmath root of P (the bound is 1E-9). Per miss, Excel / engine / mpmath:
+  - post-freeze A5: 1.1257931344394546E-52 / ...544E-52 / 1.1257931344394544661E-52
+  - post-freeze A79: 6.130873813628597E-07 / ...598E-07 / 6.130873813628597051E-7
+  - post-freeze A99: 1.4231555564608051E+32 / ...053E+32 / 1.4231555564608051535E+32
+  - post-freeze A115: 1939982650394.7751 / ...775 / 1939982650394.7750115
+  - post-freeze A47, A50, A70, A74 and the 11 first-sweep misses are likewise below 1.2E-16 relative.
+
+  GEOMEAN has no eval/accuracy table yet.
 - **Eval delta:** gen-m9 known failures 2887 -> 2861 (26 fixed). probes 2661 -> 2633 (32 fixed, 4 one-ulp
   regressions: geomean-root-refinement A23, A33, A34, A44, allowed by decision 0211). ironcalc-calc unchanged.
   In-scope visibly-off cells 2427 -> 2423.

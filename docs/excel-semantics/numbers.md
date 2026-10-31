@@ -1844,6 +1844,14 @@ failures and moves 4 probes cells one ulp off the bit: geomean-root-refinement A
 sets of 5 to 12 values in [0.3, 9] (|E| >= n there), where Excel gives r. Excel's root is still not
 exactly any model in doubles (see below, a library root of up to about 0.8 ulp); T-3526 owns the
 remaining misses (decision 0211).
+The model was chosen on the T-1123 probes and the fit lab's train side of the fresh sweep (q toward zero against
+q floored: in-range-many 71 against 53, train 110 against 104). After it was frozen, a second sweep with a new seed,
+probes-numeric/t3502-geomean-postfreeze (same strata, seed 35020), gives the split root 172 of 180 (train 118/124,
+test 54/56), the correctly rounded geometric mean 165 (110/124, 55/56), the 15-digit snap 70 and r 25. Pooled
+over the T-1123 probes and both sweeps (fit lab `geomean-all`) the split root is 271/292 on train and 132/137 on
+test, the correctly rounded mean 242/292 and 120/137. Every split-root miss on both sweeps is within 1.3E-16
+relative of the 50-digit mpmath root, inside Gate A's envelope.
+
 Before T-3502: GEOMEAN was taken as closest to `r = exp(ln(P) / n)` in doubles, with two exceptions: a single value is returned as is, and when
 r's 15-digit value c differs from r and c multiplied by itself n times (left to right, as P is
 formed) gives P back, the result is c. So an exact root is exact: GEOMEAN(3,3), GEOMEAN(1,9),
@@ -1920,10 +1928,12 @@ copies of one value, 50-1100; T-1113), probes/geomean-single-and-copies (Single:
 n copies with Excel's PRODUCT, EXP(LN(P)/n), P^(1/n), LN(P); T-1123), probes/geomean-root-refinement
 (T-1123), probes/geomean-same-product (T-0288), ironcalc-calc GEOMEAN C23, B27, G27, probes/geomean-overflow-count H1,
 probes/geomean-overflow-cut-3 C1, C5, C11, E1. Oracle: excel-graph, 2026-10-07 and 2026-10-08.
-Status: VERIFIED for the probed cells; the formulation is a best fit (26 one-ulp misses in the 159 cells
-scored above, plus 8 in geomean-same-product and subtotal-reference-operands-d H28).
-Implemented in: functions/statistical/geomean.rs
-Tasks: T-1113, T-1108, T-1123, T-0288, T-1284, T-2794
+probes-numeric/t3502-geomean-fresh and t3502-geomean-postfreeze (180 cells each, excel-graph, 2026-10-31, T-3502).
+Status: VERIFIED for the probed cells; the split root is a structural model, not exact: one-ulp misses on 11 of
+180 fresh cells, 8 of 180 post-freeze cells, 7 of the 69 literal in-range probe cells (geomean-root-refinement
+A17, A23, A28, A33, A34, A37, A44), geomean-in-range-many A2 and Copies A35 (T-3526).
+Implemented in: functions/statistical/geomean.rs (`split_root`)
+Tasks: T-1113, T-1108, T-1123, T-0288, T-1284, T-2794, T-3502, T-3526
 
 ## GCD / LCM argument bound
 Rule: GCD and LCM accept arguments up to and including 2^53 (as doubles) and `#NUM!` above:
