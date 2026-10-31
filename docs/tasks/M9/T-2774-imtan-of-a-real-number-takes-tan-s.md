@@ -1,13 +1,13 @@
 ---
 id: T-2774
-title: "IMTAN of a real number takes TAN's kernel (blocked: COMPLEXs.xlsx N6 desktop cache, T-1075 item 17)"
+title: "IMTAN of a real number takes TAN's kernel"
 milestone: M9
 lane: functions-engineering
-status: blocked
+status: in-progress
 priority: P2
 size: S
 tier: opus
-depends_on: [T-1075]
+depends_on: []
 campaign: visible
 ---
 
@@ -53,16 +53,15 @@ Owned cells (54):
 ## Out of scope
 - Complex arguments of IMTAN (the double-angle form stays).
 
-## Blocked because
-Web-vs-desktop conflict on IMTAN(5): see Context. Unblocks when T-1075 item 17 is answered, or a decision record
-authorizes following the web for N6.
-
 ## Cells added by the T-0087 sweep (2026-10-28)
 Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c2b6143a (`python3 scripts/exit_owners.py --all-off`; calipers, poi and corpus-bench not fetched): IMTAN 1. This task now owns them:
 - gen-m9/e85daedce5c2675e: Calc!A109
 The added cell is `IMTAN("5")`, the real-number case this task is blocked on, so the same desktop answer (T-1075 item 17) settles it; it is owned, but not picked, until then.
 
 ## Decision 0188 note (2026-10-31)
+Unblocked by decision 0188 R6 (2026-10-31): the blocker was only the N6 web-vs-desktop conflict, which R6 settles; the
+T-1075 dependency stood only for it and is dropped (item 17 stays open on T-1075).
+
 Decision 0188 R6 settles the blocker: IMTAN of a real follows the Excel-for-the-web value under decision 0039 item 4,
 and this task's PR may regress ironcalc-calc/ENGINEERING/COMPLEXs.xlsx Sheet1!N6 (lines added to
 eval/milestones/exit-exceptions.tsv and phase1-exceptions.tsv, owner T-1075 item 17). Status left as is by the owner's
