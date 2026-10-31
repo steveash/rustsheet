@@ -3,7 +3,7 @@ id: T-3495
 title: "gen-m6 arg-pairs batch: oracle-filled cells for the unseen argument-class pairs of the 14 M6 date functions (WEEKDAY, NETWORKDAYS.INTL, YEARFRAC, DATEDIF, DAYS360, WORKDAY.INTL, ...)"
 milestone: M6
 lane: functions-date
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -48,3 +48,7 @@ gen-m6 gains an oracle-filled batch from `rustsheet-gen --policy arg-pairs` (T-3
 - Fixing the engine for the cells this batch finds (the owning tasks), beyond a one-line coercion fix in the
   function's own module that the PR also tests.
 - Single argument-kind probes (the research tasks named above) and other functions or milestones.
+
+## Outcome
+38 arg-pairs cases added to gen-m6 with excel-graph sidecars; gen-m6 now 31998/32014 bit-exact (16 known failures, all new).
+Failures owned by T-3536 (DAYS, 10 cells) and T-3537 (NETWORKDAYS.INTL, 6 cells); recorded in dates.md.

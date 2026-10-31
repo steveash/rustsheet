@@ -1312,3 +1312,10 @@ Rule: `NETWORKDAYS.INTL(31,4886,<blank>,{1,2;#N/A,""})` is `#NUM!`, the blank we
 Ours: implemented (T-2271's weekend read comes before the holidays' error; T-2583 pins it with a unit test).
 Status: VERIFIED (excel-graph), one cell
 Tasks: T-2583
+
+## gen-m6 arg-pairs batch (T-3495): unresolved DAYS and NETWORKDAYS.INTL cells
+Status: VERIFIED (excel-graph oracle cells; engine fix pending)
+Excel's DAYS returns the error of an argument pair, not #VALUE!: `DAYS(-1,"abc")` and `DAYS(-1,"")` are #NUM!,
+`DAYS("abc",#NAME?)` is #NAME?, and a #DIV/0! cell paired with text gives #DIV/0! (gen-m6 a4a301d00b46acf3, T-3536).
+NETWORKDAYS.INTL with a fractional or serial-0 start/end and weekend codes 3, 13-15 is one day different from the
+engine (gen-m6 ade135f51e0b7a36 A31, b91dcfba0176956e A493; T-3537).
