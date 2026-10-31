@@ -37,6 +37,7 @@ C	probes/aggregate-range-args.case.json	38
 C	probes/aggregate-range-function-num-grid.case.json	22
 C	probes/aggregate-range-k-first-cell.case.json	48
 C	probes/amor-argument-check-order.case.json	866
+C	probes/amordegrc-first-subtraction.case.json	12
 C	probes/amordegrc-fraction-alone-a.case.json	1
 C	probes/amordegrc-fraction-alone-b.case.json	1
 C	probes/amordegrc-fraction-alone-c.case.json	1
@@ -1695,6 +1696,7 @@ C	probes/t3283-typed-missing-paren.case.json	12
 C	probes/t3302-text-funcs-arrays.case.json	21
 C	probes/t3304-collation-multi-letter-accents.case.json	1896
 C	probes/t3317-xlookup-scalar-return.case.json	20
+C	probes/t3335-textbefore-overlapping-instances.case.json	78
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
 C	probes/table-edits/plain-range-delete-rows-across-edge.case.json	10

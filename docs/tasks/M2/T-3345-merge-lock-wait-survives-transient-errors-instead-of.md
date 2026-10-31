@@ -3,10 +3,10 @@ id: T-3345
 title: "merge_lock wait survives transient errors instead of exiting 2"
 milestone: M2
 lane: harness
-status: todo
+status: done
 priority: P1
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -52,3 +52,13 @@ T-3010 built `wait`.
 
 ## Out of scope
 - Lock throughput and the merge train (SPEC-0027).
+
+## Outcome
+`merge_lock.py wait` now checks the claim up front (bad id/PR exits 2), exits 2 at once when the
+queue is full on first join, retries `GitError`s until its timeout, and retries an unreadable marker,
+raising only after `UNREADABLE_POLLS` (5) in a row. `GIT_FAILURES` is gone. Tests cover each case and
+that the waiter keeps its queue place. No eval delta (harness script). Decision 0189 records the rule.
+
+## Handoff (resumed)
+Resolved by the opus resume: decision 0189 records the protected-path change, the panel re-ran on
+the new head, and the structured-status follow-up is T-3376.

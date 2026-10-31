@@ -8,6 +8,7 @@ priority: P0
 size: S
 tier: opus
 depends_on: [T-2816]
+campaign: semantics
 ---
 
 ## Goal
@@ -15,6 +16,8 @@ STDEV.S, VAR.S, SUMSQ, AVERAGEA and MAXA over an array of references (a lifted O
 owned M6 exit cells pass.
 
 ## Context
+- Decision 0188 (owner's 2026-10-31 rulings, R1(c)): this task owns probe-row or text cells of its milestone's exit,
+  which Phase 1 still counts in full, so it is in the semantics stage (priority stays P0).
 T-2065 (#1944) probed these on excel-graph (2026-10-26) and appended the values to T-2063, which was already done, so
 the cells had no open owner (`make exit-owners MILESTONE=M6`, steward run 2026-10-26 18:47 UTC). Excel, with
 single-cell elements: `STDEV.S(OFFSET(A1,{0;1},0))` 70.0035713374682, `VAR.S(..)` 4900.5, `SUMSQ(..)` 10001;

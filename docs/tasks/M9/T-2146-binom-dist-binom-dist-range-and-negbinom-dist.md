@@ -8,7 +8,7 @@ priority: P1
 size: M
 tier: opus
 campaign: visible
-depends_on: [T-2145, T-2510]
+depends_on: [T-2145]
 ---
 
 ## Goal
@@ -17,6 +17,8 @@ BINOM.DIST, BINOMDIST, BINOM.DIST.RANGE, NEGBINOM.DIST and NEGBINOMDIST give Exc
 and points back to T-0927, which is done.
 
 ## Context
+- Decision 0188 R5 (owner's 2026-10-31 rulings): T-2510 (the bgrat family) is parked as Phase 1b, since its cells are
+  all dense probes-numeric sweep cells, so it left `depends_on`; work on today's kernel for the bgrat branches.
 - The oracle sweep (T-2145) is landed: probes-numeric/t2145-binomial-sweep, t2145-negbinom-sweep
   and t2145-binom-range-sweep (statistics.md "Discrete distributions"). T-0927 tried and ruled out the exact sum, Loader's saddle-point pmf (R's
   `dbinom_raw`: 49 of 122) and `exp(a*ln x)` times the exact remaining factor, all on the cached cells alone.
