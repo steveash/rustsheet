@@ -1,5 +1,5 @@
 ---
-id: T-3396
+id: T-3540
 title: "Probe the df 1 Student-t edges T-2858 left unprobed: T.INV(0.5,1), TINV at 1-2^-53 and 1-2^-52, CONFIDENCE.T overflow"
 milestone: M9
 lane: functions-stat
@@ -25,12 +25,12 @@ Follow-up from T-2858's review (PR #2437, reviewer-excel-fidelity and reviewer-s
   functions/statistical/t_dist.rs).
 - `CONFIDENCE.T` with a product past the double range, e.g. `CONFIDENCE.T(1E-10,1E307,2)` and
   `CONFIDENCE.T(1E-15,1E307,3)`: the engine returns `#NUM!` (`confidence_t_of` in functions/statistical/normal.rs,
-  `TODO(T-3396)`); the error kind is unverified.
+  `TODO(T-3540)`); the error kind is unverified.
 Use the `excel-probe` skill; one new probes case (M9).
 
 ## Acceptance criteria
 - [ ] A filled probe case covers the points above; statistics.md's T-2858 entry records the results.
-- [ ] The engine matches every probed cell (or a follow-up task owns the difference), and `TODO(T-3396)` is gone.
+- [ ] The engine matches every probed cell (or a follow-up task owns the difference), and `TODO(T-3540)` is gone.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

@@ -296,7 +296,7 @@ pub(crate) const T_DF_MAX: f64 = 1e10;
 
 /// T.INV (`two_tailed` false, p in (0, 1)) and T.INV.2T / TINV (p in (0, 2)) at one degree of
 /// freedom: Excel's closed form (T-2858) through [`cauchy_two_tail_quantile`]. T.INV(0.5) is 0,
-/// unprobed (T-3396).
+/// unprobed (T-3540).
 fn df_one_quantile(p: f64, two_tailed: bool) -> f64 {
     if two_tailed {
         if p == 1.0 {

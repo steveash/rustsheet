@@ -325,7 +325,7 @@ impl Model {
         };
         // A cell never holds an infinity: a quantile or product past the double range
         // (`CONFIDENCE.T(1E-10,1E307,2)`) is `#NUM!`, Excel's overflow error. The error kind for
-        // the overflowing product is UNVERIFIED (TODO(T-3396)).
+        // the overflowing product is UNVERIFIED (TODO(T-3540)).
         let margin = t_crit * std_dev / size.sqrt();
         if !margin.is_finite() {
             return Err(num_error(cell));

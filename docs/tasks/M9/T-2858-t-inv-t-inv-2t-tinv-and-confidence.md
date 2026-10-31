@@ -127,7 +127,7 @@ bit-exact). Fresh sweep: probes-numeric/t3349-t-inv-2t-sweep (300 points, seed 3
 in c31c9fae1 on 2026-10-30; the sweep landed in a3df1f163 on 2026-10-31), its 18 df 1 points (A24, A37, A44, A71, ...). Gate A envelope: 18 of 18 inside (all within 15 digits of Excel and
 within 1E-9 relative of the math), none outside, no error against a number. Scored with a scratch script, not committed.
 
-Review follow-ups: T-3396 probes `T.INV(0.5,1)`, two-tailed p in (0.999999999999999, 1) at df 1, and the error kind for a
+Review follow-ups: T-3540 probes `T.INV(0.5,1)`, two-tailed p in (0.999999999999999, 1) at df 1, and the error kind for a
 CONFIDENCE.T margin past the double range (now `#NUM!`, never an infinity: `confidence_t_of` checks the final product on both
 branches; test `test_fn_confidence_t_df_one`).
 

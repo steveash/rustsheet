@@ -82,7 +82,7 @@ fn test_fn_confidence_arguments() {
 }
 
 // T-2858: the df 1 branch through the formula path (ironcalc CONFIDENCE.xlsx E22), and a margin past
-// the double range is an error, never an infinity (TODO(T-3396): the error kind is unverified).
+// the double range is an error, never an infinity (TODO(T-3540): the error kind is unverified).
 #[test]
 fn test_fn_confidence_t_df_one() {
     let mut model = new_empty_model();
