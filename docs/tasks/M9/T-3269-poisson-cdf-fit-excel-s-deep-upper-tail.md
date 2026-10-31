@@ -43,7 +43,10 @@ ulps of Excel's value against 60-digit mpmath, Excel / ours:
   deep-tail cells with it (record the split in both).
 - Needs an oracle sweep: these points have "no shared pattern" (above) and 48 storage orders already failed, so the
   fit waits for T-3289's dense sweep (POISSON k 0 to 19 at mean 4(k + 1) to 100(k + 1), the CHISQ.DIST.RT twins,
-  half-integer shapes and ulp runs).
+  half-integer shapes and ulp runs). That sweep is probes-numeric/t3284-gamma-deep-upper-tail (T-3289, 343 cells,
+  excel-graph); per-cell ulps against 60-digit mpmath are docs/research/t3284/reference.out, and statistics.md
+  "Incomplete gamma: accurate kernel (T-0971)" summarizes it (Excel within 1 ulp at 64 cells; an exp of a log-sum
+  rounded at about |ln Q| in the ulp runs).
 
 Cells (the gen-m9 and probe cells above):
 - gen-m9/097af1ca33638670.case.json (1): Calc!A214
