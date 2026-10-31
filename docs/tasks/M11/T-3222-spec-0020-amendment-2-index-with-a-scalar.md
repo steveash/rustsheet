@@ -49,3 +49,5 @@ Code: `functions/lookup_and_reference/index.rs` (`index_impl`, `index_source`, `
   2.07 s with T-3221 alone and 15.2 ms after. The other lines are unchanged.
 - Eval: `rustsheet-eval check` shows 0 regressions and 0 fixes in every suite. lookup.md's head-and-tail limits
   entry now names INDEX.
+- Resumed by an opus run after the branch sat idle 2 h with a conflicted merge of `main` (T-3221 squashed): the one
+  `impl Tailed<RefArg>` block now holds `element_at` (the review's MINOR), and the panel re-reviewed the new head.

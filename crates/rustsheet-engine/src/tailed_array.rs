@@ -113,9 +113,7 @@ impl Tailed<RefArg> {
             _ => None,
         })
     }
-}
 
-impl Tailed<RefArg> {
     /// The `row`-th element (from 1) of a tailed argument read as one column of `head` rows and
     /// `tail_len` copies of the tail ([`Tailed::elements`]): INDEX's pick with a scalar row
     /// (SPEC-0020 Amendment 2, section 3). `None` when the argument is not such a column, or
