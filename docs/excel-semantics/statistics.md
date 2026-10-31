@@ -3127,6 +3127,12 @@ have no neighbour above. The crossing holds at 155 of the 188:
   BETA.DIST(0.5,10,10,TRUE) is 0.5000000000000002. This suggests a tolerance stop, but it is not
   established.
 - Recomputing BETA.INV from constant inputs reproduces x at all 188 rows.
+- Two bounded ironcalc-calc cells show the same two landings (gap triage 2026-10-31, against mpmath; T-3402):
+  - BETADIST_BETAINV.xlsx H5 `BETA.INV(G5,3,600,2000,5489582)` is 33587.000000000226. The math cdf there is 42 ulps
+    of p above p, while Excel's G5 is correctly rounded: a miss.
+  - H26 `BETA.INV(G26,1E-4,1E-4,0.15,1.2)` is 0.2339999999999406, 1.3E-11 relative off the math quantile of its p
+    (0.234000000002938). Excel's G26 is 34 ulps above the math, so Excel lands on its own flat crossing near the
+    input 0.234.
 Consequence: BETA.INV parity follows BETA.DIST parity (T-1744) plus a solver that usually
 converges to the crossing.
 
