@@ -479,12 +479,20 @@ TEXTSPLIT splits at the same disjoint matches: `TEXTSPLIT("aaa","aa")` is "","a"
 `TEXTSPLIT("-2.5",{"2.5","-2.5"})` "","", `TEXTSPLIT("ababa","aba")` splits only at unit 0, `TEXTSPLIT("xabcx",{"b","abc"})` "x","x".
 Evidence: probes/t3335-textbefore-overlapping-instances A1-A58, C1-E29 (excel-graph, 2026-10-31, T-3335);
 gen-m9/cde551ea787f713a Calc!A37 (`TEXTBEFORE("-2.5",{2.5,-2.5},2)` inside BETADIST, `#N/A`); gen-m7/a470dc9e165bdb20
-Calc!A1441 (excel-graph). The backward step is inferred from these cells: whether it is the match's length or the
-shortest delimiter's (they agree on every cell) is unprobed, as is a forward scan's step past a match whose delimiter
-list holds a shorter entry starting inside it.
+Calc!A1441 (excel-graph). The backward step is the counted match's own length in UTF-16 units, not the shortest or
+longest delimiter's nor a count of characters: `TEXTAFTER("abcab",{"ab","c"},-2)` is "cab" in either list order (a
+shortest-delimiter step would reach the "c" and give "ab"), `TEXTAFTER("abcab",{"ab","c","zzzz"},-2)` still "cab",
+`TEXTBEFORE("abcc",{"c","bc"},-2)` "ab", `TEXTAFTER("abcab",{"ab","c"},-3)` `#N/A` (the "c" is stepped over, never
+counted) and with match_end 1 the whole text; `TEXTBEFORE("abzab😀c",{"b😀c","abz","bz"},-2)` is "" (four units back
+from "b😀c" reach "abz"; three characters back would reach "bz" and give "a"). match_mode 1 steps the same
+(`TEXTAFTER("ABCAB",{"ab","c"},-2,1)` "CAB"). Forward, the scan resumes after the counted match even when a shorter
+list entry starts inside it: `TEXTBEFORE("abcb",{"abc","b"},2)` is "abc" in either list order (not "a"),
+`TEXTBEFORE("😀bcb",{"😀bc","b"},2)` "😀bc", `TEXTBEFORE("abcbc",{"abc","c"},2)` "abcb"; TEXTSPLIT agrees
+(`TEXTSPLIT("abcb",{"abc","b"})` is "","",""). Evidence: probes/t3375-textbefore-scan-steps A1-A14, B1-B10
+(excel-graph, 2026-10-31, T-3375).
 Ours: matches (`Instances::Disjoint` in functions/text/util.rs; TEXTSPLIT's `split_grid` already scanned disjointly).
 Status: VERIFIED (excel-graph)
-Tasks: T-3335
+Tasks: T-3335, T-3375
 
 ## TEXTSPLIT of empty text is #VALUE!
 Rule: TEXTSPLIT of empty text is `#VALUE!` whatever its valid other arguments: a literal `""`, a blank cell and an empty-string cell,

@@ -1,0 +1,111 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Calc": {
+   "A1": {
+    "t": "s",
+    "v": "cab"
+   },
+   "A10": {
+    "t": "s",
+    "v": "ab\ud83d\ude00c"
+   },
+   "A11": {
+    "t": "s",
+    "v": "x"
+   },
+   "A12": {
+    "t": "s",
+    "v": "abcab"
+   },
+   "A13": {
+    "t": "s",
+    "v": ""
+   },
+   "A14": {
+    "t": "s",
+    "v": "za"
+   },
+   "A2": {
+    "t": "s",
+    "v": "cab"
+   },
+   "A3": {
+    "t": "s",
+    "v": ""
+   },
+   "A4": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "A5": {
+    "t": "s",
+    "v": "cab"
+   },
+   "A6": {
+    "t": "s",
+    "v": "ab"
+   },
+   "A7": {
+    "t": "s",
+    "v": "CAB"
+   },
+   "A8": {
+    "t": "s",
+    "v": ""
+   },
+   "A9": {
+    "t": "s",
+    "v": ""
+   },
+   "B1": {
+    "t": "s",
+    "v": "abc"
+   },
+   "B10": {
+    "t": "s",
+    "v": "|||"
+   },
+   "B2": {
+    "t": "s",
+    "v": "abc"
+   },
+   "B3": {
+    "t": "s",
+    "v": ""
+   },
+   "B4": {
+    "t": "s",
+    "v": ""
+   },
+   "B5": {
+    "t": "s",
+    "v": "ABC"
+   },
+   "B6": {
+    "t": "s",
+    "v": "\ud83d\ude00bc"
+   },
+   "B7": {
+    "t": "s",
+    "v": "abcb"
+   },
+   "B8": {
+    "t": "s",
+    "v": "abcb"
+   },
+   "B9": {
+    "t": "s",
+    "v": "||"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "84b8bccdcae6ca37fe03f88ed922516ae027388ff92dd5d46711cf216a5d29bc",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-31T13:31:07+00:00",
+  "version": null,
+  "workbook_name": "8ee7526c11e2a2d6abbe0b722f7688abacbe0b20b1b896ee801133aea858408b.xlsx"
+ }
+}

@@ -1,0 +1,42 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3375 probe: TEXTBEFORE/TEXTAFTER disjoint-instance scan steps - the backward step after a counted match (match length vs shortest or longest delimiter, UTF-16 units vs chars, match_mode 1, match_end 1) and the forward resume after a match whose list holds a shorter entry starting inside it.",
+ "tags": [
+  "M7",
+  "probe",
+  "text",
+  "T-3375"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=TEXTAFTER(\"abcab\",{\"ab\",\"c\"},-2)",
+    "A2": "=TEXTAFTER(\"abcab\",{\"c\",\"ab\"},-2)",
+    "A3": "=TEXTBEFORE(\"abcab\",{\"ab\",\"c\"},-2)",
+    "A4": "=TEXTAFTER(\"abcab\",{\"ab\",\"c\"},-3)",
+    "A5": "=TEXTAFTER(\"abcab\",{\"ab\",\"c\",\"zzzz\"},-2)",
+    "A6": "=TEXTBEFORE(\"abcc\",{\"c\",\"bc\"},-2)",
+    "A7": "=TEXTAFTER(\"ABCAB\",{\"ab\",\"c\"},-2,1)",
+    "A8": "=TEXTBEFORE(\"ABCAB\",{\"ab\",\"C\"},-2,1)",
+    "A9": "=TEXTBEFORE(\"abzab\ud83d\ude00c\",{\"b\ud83d\ude00c\",\"abz\",\"bz\"},-2)",
+    "A10": "=TEXTAFTER(\"abzab\ud83d\ude00c\",{\"b\ud83d\ude00c\",\"abz\",\"bz\"},-2)",
+    "A11": "=TEXTBEFORE(\"x\ud83d\ude00\ud83d\ude00\",{\"\ud83d\ude00\"},-2)",
+    "A12": "=TEXTAFTER(\"abcab\",{\"ab\",\"c\"},-3,,1)",
+    "A13": "=TEXTBEFORE(\"abcab\",{\"ab\",\"c\"},-3,,1)",
+    "A14": "=TEXTBEFORE(\"zab\ud83d\ude00q\ud83d\ude00c\",{\"\ud83d\ude00c\",\"ab\ud83d\ude00q\",\"b\ud83d\ude00q\"},-2)",
+    "B1": "=TEXTBEFORE(\"abcb\",{\"abc\",\"b\"},2)",
+    "B2": "=TEXTBEFORE(\"abcb\",{\"b\",\"abc\"},2)",
+    "B3": "=TEXTAFTER(\"abcbc\",{\"abc\",\"bc\"},2)",
+    "B4": "=TEXTAFTER(\"abcb\",{\"abc\",\"b\"},2)",
+    "B5": "=TEXTBEFORE(\"ABCB\",{\"abc\",\"b\"},2,1)",
+    "B6": "=TEXTBEFORE(\"\ud83d\ude00bcb\",{\"\ud83d\ude00bc\",\"b\"},2)",
+    "B7": "=TEXTBEFORE(\"abcbc\",{\"abc\",\"c\"},2)",
+    "B8": "=TEXTBEFORE(\"abcb\",{\"abc\",\"b\"},3,,1)",
+    "B9": "=TEXTJOIN(\"|\",FALSE,TEXTSPLIT(\"abcb\",{\"abc\",\"b\"}))",
+    "B10": "=TEXTJOIN(\"|\",FALSE,TEXTSPLIT(\"abcab\",{\"ab\",\"c\"}))"
+   }
+  }
+ ],
+ "expected": {}
+}

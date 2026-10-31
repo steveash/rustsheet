@@ -3,7 +3,7 @@ id: T-3375
 title: "Probe TEXTBEFORE/TEXTAFTER scan steps: backward step by match length or shortest delimiter; forward step past a short entry inside a longer match"
 milestone: M7
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -27,9 +27,16 @@ Discriminating cells to probe (excel-graph), e.g.:
 - the same with match_mode 1 and with a surrogate pair inside the counted match (UTF-16 step vs char step).
 
 ## Acceptance criteria
-- [ ] One probe case (M7 tag) oracle-filled and committed; the text.md entry's Unprobed line is replaced by the finding.
-- [ ] Every probe cell passes, or a remaining one is named in a follow-up task.
-- [ ] `make check` green; reviewers approve.
+- [x] One probe case (M7 tag) oracle-filled and committed; the text.md entry's Unprobed line is replaced by the finding.
+- [x] Every probe cell passes, or a remaining one is named in a follow-up task.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Probe probes/t3375-textbefore-scan-steps (24 cells, excel-graph, 2026-10-31). Excel steps back by the counted match's
+own length in UTF-16 units (not the shortest or longest delimiter, not characters: A1, A5, A6, A9) and a forward scan
+resumes after the counted match even when a shorter entry starts inside it (B1-B8). text.md's Unprobed line is replaced
+by the finding. Ours (`text_sensitive` / `text_sensitive_reverse`) already did both: every probe cell passes, no code
+change. Eval delta: +24 passing probe cells (new case), no regressions.
