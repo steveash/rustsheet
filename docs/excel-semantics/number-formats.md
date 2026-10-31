@@ -280,11 +280,11 @@ Evidence: probes/text-format-text-limit A1-A25 (excel-graph, 2026-10-08, T-0935)
 Status: VERIFIED
 Implemented in: `format_text_value` (formatter/format.rs), `MAX_TEXT_FORMAT_CHARS`, checked as the
 result grows so a format of many `@` cannot allocate a huge string (CLAUDE.md directive 5).
-Unprobed (T-0935 follow-up): a text value with a 1-2 section format and no `@` section (the
-engine returns the text unchanged; a 3-section `0;0;0` returns it unchanged in Excel too, T-2975), and a General 4th
-section over a non-empty value. `0;@`-style formats, `_x`/`*x` and
-digit or date tokens beside `@` are now probed: see "TEXT of a text value: `@` with other tokens in
-one section" (T-1656).
+Also probed (T-1130, probes/text-text-value-sections A1-A20, excel-graph, 2026-10-31): a text value or boolean
+with a 1-3 section format and no `@` comes back unchanged (`TEXT("x","0.0")`, `"0;-0"`, `"0;0;0"`, `"0;@"` is "x" via its `@`
+section, `"#,##0.00"` too); a General 4th section prints the text (`"0;0;0;General"`, `";;;General"`,
+`"General;General;General;General"` give "x"/"TRUE"); `"0;0;0;General@"` is `#VALUE!` (General beside `@`); an empty
+4th section (`"0;0;0;"`) gives "". The engine already matched all 20 cells.
 Tasks: T-0935
 
 ## A doubled quote in a format literal is not an escape
