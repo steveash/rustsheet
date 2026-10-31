@@ -24,7 +24,7 @@ Found by the T-3495 arg-pairs batch (oracle excel-graph). Excel returns #NUM!, #
 - Other functions; the unrelated cells of these cases.
 
 ## Visible-parity stage
-Decision 0083: the cells below are wrong errors or values off by one day. Only some count as visibly off in the visible-parity metric (the batch raised the lock by 1, decision 0088 new coverage); the acceptance criteria are the stage.
+Decision 0083: every cell below is visibly off (the batch's 16 failures are all counted in the visible-parity lock). The acceptance criteria are the stage.
 Cells:
 - a4a301d00b46acf3 A79
 - a4a301d00b46acf3 A82

@@ -54,4 +54,4 @@ gen-m6 gains an oracle-filled batch from `rustsheet-gen --policy arg-pairs` (T-3
 Failures owned by T-3536 (DAYS, 10 cells) and T-3537 (NETWORKDAYS.INTL, 6 cells); recorded in dates.md.
 
 Pairwise share is 1.0 (0 unseen pairs) for all 14 functions in report.json `argument_coverage`.
-eval/baseline/visible-parity.json moved 2427 -> 2428, written by `make eval-baseline` as new coverage (decision 0088): one cell of the batch is visibly off; eval-check fails at 2427.
+eval/baseline/visible-parity.json lock recorded by `make eval-baseline` as new coverage (decision 0088): all 16 new failures are visibly off (6 numeric, 10 other); after merging main the lock went 2442 -> 2449.

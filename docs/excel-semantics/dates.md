@@ -1313,9 +1313,12 @@ Ours: implemented (T-2271's weekend read comes before the holidays' error; T-258
 Status: VERIFIED (excel-graph), one cell
 Tasks: T-2583
 
-## gen-m6 arg-pairs batch (T-3495): unresolved DAYS and NETWORKDAYS.INTL cells
-Status: observed in oracle cells; the general rule is still to be probed (T-3536, T-3537)
-Excel's DAYS returns the error of an argument pair, not #VALUE!: `DAYS(-1,"abc")` and `DAYS(-1,"")` are #NUM!,
-`DAYS("abc",#NAME?)` is #NAME?, and a #DIV/0! cell paired with text gives #DIV/0! (gen-m6 a4a301d00b46acf3, T-3536).
-NETWORKDAYS.INTL with a fractional or serial-0 start/end and weekend codes 3, 13-15 is one day different from the
-engine (gen-m6 ade135f51e0b7a36 A31, b91dcfba0176956e A493; T-3537).
+## gen-m6 arg-pairs batch (T-3495): DAYS error order and NETWORKDAYS.INTL on day 0
+Rule: DAYS: an error-valued argument wins in either position (`DAYS("abc",#NAME?)` is #NAME?, `DAYS("",#NAME?)` is #NAME?);
+the end date's range check comes before the start date's text check (`DAYS(-1,"abc")` and `DAYS(-1,"")` are #NUM!,
+`DAYS(Data!A1:B2,"abc")` is #NUM! at A493). NETWORKDAYS.INTL: every failing cell has a start or end on serial day 0
+(0 <= x < 1, including a blank cell): `NETWORKDAYS.INTL(0.5,54115,3,0.5)` is 38654, `NETWORKDAYS.INTL(39539,0,3,2)` is -28241.
+Evidence: gen-m6 a4a301d00b46acf3 (A79 A82 A85 A88 A241 A244 A307 A310 A493 A499) and the six NETWORKDAYS.INTL cells of T-3537.
+Ours: DAYS returns #VALUE! in all ten; NETWORKDAYS.INTL is one day off in the other direction.
+Status: UNVERIFIED (probe pending; cells are oracle values, the general rule is not probed)
+Tasks: T-3536, T-3537
