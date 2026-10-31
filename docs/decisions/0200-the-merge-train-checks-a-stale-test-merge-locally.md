@@ -17,6 +17,16 @@
   - Re-setting the PR's base to `main` (`PATCH pulls/{n}`) updated the PR's `base.sha` at once.
     It recomputed #2104's test merge within about 3 minutes once. It did not recompute #2528's in
     more than 10 minutes. It is not a reliable trigger.
+  - `git merge-tree --write-tree <squash^1> <PR head>` gives exactly the tree of GitHub's squash
+    for the last four squashes on main. Two of them were on PRs whose test merge was stale, so
+    GitHub merges afresh at squash time:
+
+    | PR | squash | GitHub's squash tree | local merge tree |
+    |---|---|---|---|
+    | #2533 | bc8d263e | 210676dc | 210676dc |
+    | #2524 | 06c142a2 | 25f50995 | 25f50995 |
+    | #2532 | 625d27be | daa1ff73 | daa1ff73 |
+    | #2588 | d4c03854 | 61205076 | 61205076 |
   - The tests' fake GitHub recomputed on every read, and shadow mode never squashes, so step 7.2
     never ran against real GitHub before T-2991 turned the train on.
 - **Decision:** step 7.2 no longer waits for GitHub's test merge.
@@ -38,5 +48,7 @@
   - Before, the pre-squash check used GitHub's own merge of the PR. Now, when GitHub's copy is
     stale, it uses the same merge computed by git locally. If GitHub's squash ever produced a
     different tree from git's merge, only the post-squash check would see it. That check is
-    mandatory, so main would still be detected and reverted, never kept with an untested tree.
+    mandatory, so at most one squash with an untested tree reaches `main`. The train then stops
+    with a P0 and opens a revert PR, which stays open (the train never merges it) until someone
+    merges it.
   - No new GitHub write and no change to the merger routine's prompt.

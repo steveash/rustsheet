@@ -241,7 +241,7 @@ TRAIN_EVENTS = ("push", "workflow_dispatch")
 WINDOW = 40 * 60  # a merger run's polling window; the lock wait is capped at what is left of it
 HOLD_BUDGET = 40 * 60  # counted from the lock's acquisition
 CI_TIMEOUT = 10 * 60
-MERGE_BUDGET = 150  # per PR a CI run can merge: the pre-squash wait, the merge call, the checks
+MERGE_BUDGET = 150  # per PR a CI run can merge: the pre-squash check, the merge call, the post-squash check
 CI_POLL = 60  # every CI poll is a stop checkpoint
 DISPATCH_AFTER = 3 * 60  # no run by then: dispatch once; still none after as long again: stop
 RENEW_EVERY = 5 * 60
@@ -581,8 +581,10 @@ class Stage:
         if remote_sha(MAIN_REF, self.root) != expected:
             raise Stop(f"main moved without the lock before squashing #{member.pr}", p0=True, pr=member.pr)
         local = git("merge-tree", "--write-tree", expected, member.head, root=self.root, check=False)
-        if local.returncode != 0:
+        if local.returncode == 1:
             raise Stop(f"#{member.pr} does not merge cleanly onto main {expected[:12]}")
+        if local.returncode != 0:
+            raise Stop(f"git merge-tree failed for #{member.pr} (exit {local.returncode}): {local.stderr.strip()[:200]}")
         if local.stdout.split()[0] != want:
             raise Stop(f"main differs from the tested train at #{member.pr}: its merge onto "
                        f"{expected[:12]} has another tree", p0=True, pr=member.pr)

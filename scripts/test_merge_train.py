@@ -765,7 +765,8 @@ class MergeStage(StageFixture):
         self.assertEqual(self.gh.merged, [1, 2])
 
     def test_a_stale_test_merge_whose_local_merge_has_another_tree_stops_with_a_p0(self) -> None:
-        # #1's test merge is stale, and the train's merge for it (here #2's head) has another tree.
+        # #1's test merge is stale. The train's merge for it is deliberately wrong (#2's head), so
+        # the local merge of #1 onto main has another tree.
         self.git("fetch", "-q", "origin", "refs/pull/1/head", "refs/pull/2/head")
         self.gh.test_bases[1] = self.heads[2]
         member = merge_train.Member(1, self.heads[1], merge=self.heads[2])
