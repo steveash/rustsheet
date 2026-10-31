@@ -37,7 +37,7 @@ eval/baseline/gen-m9.txt (excel-graph, 2026-10-24), expected value in brackets:
   gen-m9/4bad303d32cc3f46 Calc!A364 (LOGNORM.INV over XIRR), gen-m9/530c636749a85209 Calc!A338 (HYPGEOM.DIST over IRR),
   gen-m9/58e3253bbd3a7a82 Calc!A189 (EXPONDIST over XNPV), gen-m9/5919660b7bb4d195 Calc!A144 (WEIBULL over XIRR),
   gen-m9/8f2ac25945af87da Calc!A137 (LOGNORMDIST over XNPV), gen-m9/a4090567758520df Calc!A277 (PEARSON over LOGEST over XNPV),
-  gen-m9/b72d952c5f52cb4d Calc!A38 (ODDLYIELD over XIRR(MONTH(59085),Data!$B2)), gen-m9/cde551ea787f713a Calc!A37 (BETADIST over NPV).
+  gen-m9/b72d952c5f52cb4d Calc!A38 (ODDLYIELD over XIRR(MONTH(59085),Data!$B2)); the BETADIST-over-NPV cell of cde551ea787f713a (A37) is T-3335's (TEXTBEFORE).
 - Values, not orders: 1b60bf99d71424e7 Calc!A181 (CUMPRINC, -90.53126715278742), 89f0aee953a55a45 Calc!A349
   (`FVSCHEDULE(5916,{-1E+300,1E+300})` is 0, ours `#DIV/0!`), 984cba67bbe6972b Calc!A141 (GAMMA.INV over FVSCHEDULE),
   a91bad4e84f49739 Calc!A158 (PPMT, -4.581304695604488e-303, an underflow).

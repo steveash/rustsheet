@@ -32,6 +32,15 @@ Leads:
   form (T-3013's step rule), but that rule is 71 ulp off at A169.
 - A probe of GAMMA.DIST at Excel's quantiles would show whether Excel lands on a crossing of its own cdf there.
 
+Cells (the seven above, listed so `scripts/exit_owners.py` credits them; gap triage 2026-10-31):
+- gen-m9/06b4e8f5de409d5e.case.json (1): Calc!A128
+- gen-m9/623663cacea53bbc.case.json (1): Calc!A98
+- gen-m9/d8266bc15533702a.case.json (1): Calc!A212
+- gen-m9/a612e89321a6df9c.case.json (1): Calc!A169
+- gen-m9/c2974c061384fdd9.case.json (1): Calc!A355
+- gen-m9/a5828d3925575713.case.json (1): Calc!A338
+- gen-m9/ecc87f80077959e0.case.json (1): Calc!A301
+
 ## Acceptance criteria
 - [ ] The seven cells reach visible parity, or the Outcome lists the candidates with their bit-exact and visible
       counts (decision 0056).
