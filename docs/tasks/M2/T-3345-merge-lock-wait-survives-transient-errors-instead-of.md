@@ -60,17 +60,5 @@ raising only after `UNREADABLE_POLLS` (5) in a row. `GIT_FAILURES` is gone. Test
 that the waiter keeps its queue place. No eval delta (harness script). Decision 0189 records the rule.
 
 ## Handoff (resumed)
-The implementation is finished and passes `make check` locally. Security, architecture and quality
-all APPROVE head 6e6a75a (verdict records posted on PR #2513). CI `hygiene` fails on
-`scripts/check_governance.py`: `scripts/merge_lock.py` and `scripts/test_merge_lock.py` are
-protected paths and need a decision record in `docs/decisions/`. A sonnet run does not write
-protected-path decisions (work-loop 5b), so what is left is:
-1. `make new-decision TITLE="merge_lock wait retries transient errors"`, covering the
-   behaviour change: `wait` exits 2 at once on a bad claim or a full queue at first join, retries
-   `GitError` until the timeout, and retries an unreadable marker, raising after `UNREADABLE_POLLS`
-   (5) in a row; `GIT_FAILURES` removed.
-2. Set `status: done` again (Outcome note is already present), push, re-run reviewers if the head
-   moves, then mark ready/merge per `make merge-mode`.
-Optional follow-up from all reviewers: have `attempt` return a structured place/status instead of
-`wait` matching `QUEUE_FULL` / `IN_QUEUE` in the message text. Retries use the fixed POLL interval,
-not a growing backoff.
+Resolved by the opus resume: decision 0189 records the protected-path change, the panel re-ran on
+the new head, and the structured-status follow-up is T-3376.
