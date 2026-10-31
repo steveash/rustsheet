@@ -161,6 +161,13 @@ pub enum FetchState {
     NotFetched,
 }
 
+/// The name of Gate A's reference-table suite, resolved by [`Suite::load_named`] (SPEC-0029).
+pub const ACCURACY_SUITE: &str = "accuracy";
+
+/// Its manifest, relative to the repository root: outside `eval/suites/`, so `make eval`, the
+/// eval gate and every report measure never see the tables (SPEC-0029).
+pub const ACCURACY_MANIFEST: &str = "eval/accuracy/suite.toml";
+
 /// File inside a fetched suite recording the pin it was fetched at.
 pub const FETCH_MARKER: &str = ".rustsheet-fetched";
 
@@ -219,49 +226,79 @@ impl Suite {
         for entry in WalkDir::new(suites_dir).min_depth(2).max_depth(2) {
             let entry = entry?;
             if entry.file_name() == "suite.toml" {
-                let text = std::fs::read_to_string(entry.path())?;
-                let manifest: SuiteManifest = toml::from_str(&text)
-                    .with_context(|| format!("parsing {}", entry.path().display()))?;
-                let dir = entry
-                    .path()
-                    .parent()
-                    .map(Path::to_path_buf)
-                    .unwrap_or_default();
-                // The name becomes a cache directory that `fetch` replaces wholesale.
-                if manifest.name.is_empty()
-                    || !manifest
-                        .name
-                        .bytes()
-                        .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
-                {
-                    bail!(
-                        "{}: suite name must match [A-Za-z0-9_-]+",
-                        entry.path().display()
-                    );
-                }
-                if let Some(d) = &manifest.oracle_dir {
-                    if d.is_empty() || Path::new(d).is_absolute() || d.split('/').any(|c| c == "..")
-                    {
-                        bail!(
-                            "{}: oracle_dir must be a relative path inside the suite directory",
-                            entry.path().display()
-                        );
-                    }
-                }
-                if let Some(f) = &manifest.fetch {
-                    f.validate()
-                        .with_context(|| format!("{}: [fetch]", entry.path().display()))?;
-                }
-                let cache_dir = suites_dir.join("../.cache/suites").join(&manifest.name);
-                suites.push(Suite {
-                    manifest,
-                    dir,
-                    cache_dir,
-                });
+                suites.push(Self::load_manifest(entry.path(), suites_dir)?);
             }
         }
         suites.sort_by(|a, b| a.manifest.name.cmp(&b.manifest.name));
         Ok(suites)
+    }
+
+    /// The suite called `name`: one of `eval/suites/` under `root`, or Gate A's reference tables
+    /// (`eval/accuracy/suite.toml`) for [`ACCURACY_SUITE`], which no measure of `load_all` sees
+    /// (SPEC-0029). A suite under `eval/suites/` may not take that name, so it is never ambiguous.
+    ///
+    /// # Errors
+    /// When no suite has the name, a manifest is unreadable, or `eval/suites/` holds a suite
+    /// named [`ACCURACY_SUITE`].
+    pub fn load_named(root: &Path, name: &str) -> Result<Suite> {
+        let suites_dir = root.join("eval/suites");
+        let mut all = if suites_dir.is_dir() {
+            Self::load_all(&suites_dir)?
+        } else {
+            Vec::new()
+        };
+        if let Some(i) = all.iter().position(|s| s.manifest.name == name) {
+            if name == ACCURACY_SUITE {
+                bail!(
+                    "{}: the suite name {ACCURACY_SUITE} is reserved for eval/accuracy (SPEC-0029)",
+                    all[i].dir.display()
+                );
+            }
+            return Ok(all.swap_remove(i));
+        }
+        if name == ACCURACY_SUITE {
+            let suite = Self::load_manifest(&root.join(ACCURACY_MANIFEST), &suites_dir)?;
+            if suite.manifest.name != ACCURACY_SUITE {
+                bail!("{ACCURACY_MANIFEST}: the suite must be named {ACCURACY_SUITE}");
+            }
+            return Ok(suite);
+        }
+        bail!("suite {name} not found")
+    }
+
+    /// Reads and validates the manifest at `path`; `suites_dir` places a fetched suite's cache.
+    fn load_manifest(path: &Path, suites_dir: &Path) -> Result<Suite> {
+        let text = std::fs::read_to_string(path).with_context(|| path.display().to_string())?;
+        let manifest: SuiteManifest =
+            toml::from_str(&text).with_context(|| format!("parsing {}", path.display()))?;
+        let dir = path.parent().map(Path::to_path_buf).unwrap_or_default();
+        // The name becomes a cache directory that `fetch` replaces wholesale.
+        if manifest.name.is_empty()
+            || !manifest
+                .name
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+        {
+            bail!("{}: suite name must match [A-Za-z0-9_-]+", path.display());
+        }
+        if let Some(d) = &manifest.oracle_dir {
+            if d.is_empty() || Path::new(d).is_absolute() || d.split('/').any(|c| c == "..") {
+                bail!(
+                    "{}: oracle_dir must be a relative path inside the suite directory",
+                    path.display()
+                );
+            }
+        }
+        if let Some(f) = &manifest.fetch {
+            f.validate()
+                .with_context(|| format!("{}: [fetch]", path.display()))?;
+        }
+        let cache_dir = suites_dir.join("../.cache/suites").join(&manifest.name);
+        Ok(Suite {
+            manifest,
+            dir,
+            cache_dir,
+        })
     }
 
     #[must_use]
@@ -485,6 +522,48 @@ mod tests {
                 PathBuf::from("a.oracle.json")
             );
         }
+    }
+
+    fn write_manifest(dir: &Path, name: &str) {
+        std::fs::create_dir_all(dir).expect("mkdir");
+        std::fs::write(
+            dir.join("suite.toml"),
+            format!("name = \"{name}\"\nkind = \"spec\"\nlicense = \"MIT\"\nroot = \"tables\"\n"),
+        )
+        .expect("manifest");
+    }
+
+    #[test]
+    fn load_named_finds_eval_suites_and_the_accuracy_tables() {
+        let root = std::env::temp_dir().join(format!("rs-suite-named-{}", std::process::id()));
+        write_manifest(&root.join("eval/suites/smoke"), "smoke");
+        write_manifest(&root.join("eval/accuracy"), ACCURACY_SUITE);
+        let smoke = Suite::load_named(&root, "smoke").map(|s| s.dir);
+        let accuracy = Suite::load_named(&root, ACCURACY_SUITE).map(|s| s.root());
+        let missing = Suite::load_named(&root, "nope");
+        // `load_all` never sees the tables.
+        let all = Suite::load_all(&root.join("eval/suites")).map(|v| v.len());
+        // A suite under eval/suites may not take the reserved name.
+        write_manifest(&root.join("eval/suites/acc"), ACCURACY_SUITE);
+        let ambiguous = Suite::load_named(&root, ACCURACY_SUITE);
+        std::fs::remove_dir_all(&root).expect("cleanup");
+        assert_eq!(smoke.expect("smoke"), root.join("eval/suites/smoke"));
+        assert_eq!(
+            accuracy.expect("accuracy"),
+            root.join("eval/accuracy/tables")
+        );
+        assert!(missing.is_err());
+        assert_eq!(all.expect("all"), 1);
+        assert!(ambiguous.is_err());
+    }
+
+    #[test]
+    fn the_accuracy_manifest_must_be_named_accuracy() {
+        let root = std::env::temp_dir().join(format!("rs-suite-acc-name-{}", std::process::id()));
+        write_manifest(&root.join("eval/accuracy"), "other");
+        let got = Suite::load_named(&root, ACCURACY_SUITE);
+        std::fs::remove_dir_all(&root).expect("cleanup");
+        assert!(got.is_err());
     }
 
     #[test]

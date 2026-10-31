@@ -615,9 +615,9 @@ impl Model {
             );
         }
         self.refuse_table_off_sheet(sheet, column, column_count, false)?;
-        // check if it is possible:
-        let last_column = self.workbook.worksheet(sheet)?.dimension().max_column + column_count;
-        if last_column > LAST_COLUMN {
+        // Written so it cannot overflow: `column_count` can be any `i32` (T-2896).
+        let max_column = self.workbook.worksheet(sheet)?.dimension().max_column;
+        if !utils::is_valid_column_number(column) || column_count > LAST_COLUMN - max_column {
             return Err(
                 "Cannot shift cells because that would delete cells at the end of a row"
                     .to_string(),
@@ -730,7 +730,7 @@ impl Model {
         if !(1..=LAST_COLUMN).contains(&column) {
             return Err(format!("Column number '{column}' is not valid."));
         }
-        if column + column_count - 1 > LAST_COLUMN {
+        if column_count > LAST_COLUMN - column + 1 {
             return Err("Cannot delete columns beyond the last column of the sheet".to_string());
         }
         if !self.can_delete_columns(sheet, column, column_count)? {
@@ -1000,9 +1000,9 @@ impl Model {
             return Err("Cannot insert rows because that would break an array formula".to_string());
         }
         self.refuse_table_off_sheet(sheet, row, row_count, true)?;
-        // Check if it is possible:
-        let last_row = self.workbook.worksheet(sheet)?.dimension().max_row + row_count;
-        if last_row > LAST_ROW {
+        // Written so it cannot overflow: `row_count` can be any `i32` (T-2896).
+        let max_row = self.workbook.worksheet(sheet)?.dimension().max_row;
+        if !utils::is_valid_row(row) || row_count > LAST_ROW - max_row {
             return Err(
                 "Cannot shift cells because that would delete cells at the end of a column"
                     .to_string(),
@@ -1101,7 +1101,7 @@ impl Model {
         if !(1..=LAST_ROW).contains(&row) {
             return Err(format!("Row number '{row}' is not valid."));
         }
-        if row + row_count - 1 > LAST_ROW {
+        if row_count > LAST_ROW - row + 1 {
             return Err("Cannot delete rows beyond the last row of the sheet".to_string());
         }
         if !self.can_delete_rows(sheet, row, row_count)? {
@@ -1678,14 +1678,10 @@ impl Model {
         if column_count <= 0 || delta == 0 {
             return Ok(());
         }
-        let target_first = column + delta;
-        let target_last = column + column_count - 1 + delta;
-        if !(1..=LAST_COLUMN).contains(&target_first) || !(1..=LAST_COLUMN).contains(&target_last) {
+        if !utils::moved_span_in_grid(column, column_count, delta, LAST_COLUMN) {
             return Err("Target column out of boundaries".to_string());
         }
-        if !(1..=LAST_COLUMN).contains(&column)
-            || !(1..=LAST_COLUMN).contains(&(column + column_count - 1))
-        {
+        if !utils::moved_span_in_grid(column, column_count, 0, LAST_COLUMN) {
             return Err("Initial column out of boundaries".to_string());
         }
         if !self.can_move_columns_action(sheet, column, column_count, delta)? {
@@ -1758,12 +1754,10 @@ impl Model {
         if row_count <= 0 || delta == 0 {
             return Ok(());
         }
-        let target_first = row + delta;
-        let target_last = row + row_count - 1 + delta;
-        if !(1..=LAST_ROW).contains(&target_first) || !(1..=LAST_ROW).contains(&target_last) {
+        if !utils::moved_span_in_grid(row, row_count, delta, LAST_ROW) {
             return Err("Target row out of boundaries".to_string());
         }
-        if !(1..=LAST_ROW).contains(&row) || !(1..=LAST_ROW).contains(&(row + row_count - 1)) {
+        if !utils::moved_span_in_grid(row, row_count, 0, LAST_ROW) {
             return Err("Initial row out of boundaries".to_string());
         }
         if !self.can_move_rows_action(sheet, row, row_count, delta)? {

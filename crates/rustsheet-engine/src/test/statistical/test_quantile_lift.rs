@@ -171,14 +171,14 @@ fn quantile_searches_that_hung_or_panicked_are_bounded() {
 fn quantile_kernels_are_charged_their_weight() {
     // BETA.INV and F.INV are charged 2^18 an element (the bound of their caps at a full-cost cdf,
     // about 4 ms): 2^27 / 2^18 = 512 elements, so a lifted call of 513 is refused before it runs;
-    // T.INV and CONFIDENCE.T are charged 2^16 (about 0.82 ms): 2,048 elements.
+    // T.INV and CONFIDENCE.T are charged 2^17 (about 1.5 ms at df 999, T-2511): 1,024 elements.
     let mut model = new_empty_model();
     model._set("A1", "=ROWS(BETA.INV(SEQUENCE(513)/514,2,3))");
     model._set("A2", "=ROWS(BETA.INV(SEQUENCE(512)/513,2,3))");
     model._set("A3", "=ROWS(F.INV.RT(0.4,5,SEQUENCE(513)))");
-    model._set("A4", "=ROWS(T.INV(0.4,SEQUENCE(2049)))");
-    model._set("A5", "=ROWS(CONFIDENCE.T(0.4,2,SEQUENCE(2049)+1))");
-    model._set("A6", "=ROWS(T.INV(0.4,SEQUENCE(2048)))");
+    model._set("A4", "=ROWS(T.INV(0.4,SEQUENCE(1025)))");
+    model._set("A5", "=ROWS(CONFIDENCE.T(0.4,2,SEQUENCE(1025)+1))");
+    model._set("A6", "=ROWS(T.INV(0.4,SEQUENCE(1024)))");
     model._set("A7", "=ROWS(F.INV(0.4,5,SEQUENCE(512)))");
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"#ERROR!");
@@ -186,7 +186,7 @@ fn quantile_kernels_are_charged_their_weight() {
     assert_eq!(model._get_text("A3"), *"#ERROR!");
     assert_eq!(model._get_text("A4"), *"#ERROR!");
     assert_eq!(model._get_text("A5"), *"#ERROR!");
-    assert_eq!(model._get_text("A6"), *"2048");
+    assert_eq!(model._get_text("A6"), *"1024");
     assert_eq!(model._get_text("A7"), *"512");
 }
 
