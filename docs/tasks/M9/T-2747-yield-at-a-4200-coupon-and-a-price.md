@@ -3,7 +3,7 @@ id: T-2747
 title: "YIELD at a 4200% coupon and a price of 3.14159 is #NUM! in Excel (ours 19.04): the Newton domain below par"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -29,10 +29,25 @@ T-2391 (2026-10-26): YIELD's Newton lost its fallback, so an iterate off PRICE's
 over rate and price.
 
 ## Acceptance criteria
-- [ ] A probe case locates where Excel's YIELD turns to `#NUM!` over rate and price at this bond, and the rule is in
+- [x] A probe case locates where Excel's YIELD turns to `#NUM!` over rate and price at this bond, and the rule is in
       docs/excel-semantics/financial.md.
 - [x] P!A214 and gen-m9/44a8841352dc48e9 A318 leave the baselines (`make eval-baseline`), with no new known failures.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - YIELD above par (T-2391), the Newton start's last digits (T-1592, T-2741).
+
+## Outcome
+- probes/yield-below-par-sweep (184 cells: `YIELD(39681,45662,R,P,102,4)`, rates 1 to 100, prices 1 to 20; excel-graph,
+  2026-10-31): T-2391's Newton already matched 183 in type (values within 2.5e-12 relative). Excel is `#NUM!` from
+  rate 24 up at every price and from about 21.5 (price 1) to 23 (price 20); between, the first step jumps to a
+  negative yield and the climb back can outlast 100 steps, so the value is the 100th iterate, a negative non-root
+  (A10 -1.853, F13 -0.852, H17 -2.282).
+- The 184th, H16 (`YIELD(39681,45662,22.75,20,102,4)`), is `#NUM!` in Excel where our Newton meets its step test on
+  the 100th and last check. probes/yield-newton-step-cap (15 cells, three prices, rates where our uncapped Newton
+  converges on checks 98 to 102) confirms it: Excel is `#NUM!` on exactly the check-100 cell of each column and
+  agrees with ours on the other 12. `compute_yield` now refuses a check-100 stop (`NewtonStop::converged_on`);
+  ODDFYIELD, the same Newton, keeps its behavior pending evidence (follow-up T-3479).
+- Rule in financial.md "YIELD's #NUM! cells and its 100-step cap". Eval: the two new probe cases add 199 cells; with
+  the fix every cell matches in type; probes known failures 2201 -> 2270 (69 new-coverage last-ulp cells of "YIELD stops short of PRICE's root", T-1592/T-2741), 0 regressions, 130 new passing cells including all three check-100 cells.
+

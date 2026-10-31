@@ -110,20 +110,36 @@ pub(super) fn excel_yield_newton(
     start: f64,
     price: impl Fn(f64) -> f64,
     dprice: impl Fn(f64) -> f64,
-) -> Option<f64> {
+) -> Option<NewtonStop> {
     let mut y = start;
-    for _ in 0..100 {
+    for check in 1..=NEWTON_CHECKS {
         let step = (price(y) - target) / dprice(y);
         if !step.is_finite() {
             return None;
         }
         if step.abs() < 1e-10 {
-            return Some(y);
+            return Some(NewtonStop {
+                value: y,
+                converged_on: Some(check),
+            });
         }
         y -= step;
     }
     // The 100th step can still overflow the iterate; inside the loop the next step catches that.
-    y.is_finite().then_some(y)
+    y.is_finite().then_some(NewtonStop {
+        value: y,
+        converged_on: None,
+    })
+}
+
+/// The most steps [`excel_yield_newton`] takes: it tests a step at most this many times.
+pub(super) const NEWTON_CHECKS: u32 = 100;
+
+/// Where [`excel_yield_newton`] stopped: its value, and the check (1 to [`NEWTON_CHECKS`]) whose
+/// step met the 1e-10 test, `None` when no check did and the value is the 100th iterate.
+pub(super) struct NewtonStop {
+    pub(super) value: f64,
+    pub(super) converged_on: Option<u32>,
 }
 
 /// ODDFYIELD: [`excel_yield_newton`] on ODDFPRICE from YIELD's start over the settlement-to-maturity
@@ -138,6 +154,7 @@ pub(super) fn odd_first_yield(odd: &OddArgs<4>, schedule: &OddFirstSchedule) -> 
         |y| schedule.price(y, discount_growth),
         |y| schedule.dprice(y),
     )
+    .map(|stop| stop.value)
 }
 
 impl OddFirstSchedule {

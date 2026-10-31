@@ -1,0 +1,33 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2747: YIELD's Newton step cap at the bond of yield-below-par-sweep (YIELD(39681,45662,R,P,102,4)). Each column is one price (A 20, B 10, C 5); rows 1-5 are coupon rates at which RustSheet's Newton from the fitted start, run without a cap, meets its step test on check 98, 99, 100, 101 and 102.",
+  "tags": [
+    "M9",
+    "probe",
+    "financial",
+    "T-2747"
+  ],
+  "sheets": [
+    {
+      "name": "N",
+      "cells": {
+        "A1": "=YIELD(39681,45662,22.7375,20,102,4)",
+        "A2": "=YIELD(39681,45662,22.74375,20,102,4)",
+        "A3": "=YIELD(39681,45662,22.75,20,102,4)",
+        "A4": "=YIELD(39681,45662,22.75625,20,102,4)",
+        "A5": "=YIELD(39681,45662,22.7625,20,102,4)",
+        "B1": "=YIELD(39681,45662,21.871875,10,102,4)",
+        "B2": "=YIELD(39681,45662,21.88125,10,102,4)",
+        "B3": "=YIELD(39681,45662,21.885937,10,102,4)",
+        "B4": "=YIELD(39681,45662,21.890625,10,102,4)",
+        "B5": "=YIELD(39681,45662,21.895312,10,102,4)",
+        "C1": "=YIELD(39681,45662,21.434375,5,102,4)",
+        "C2": "=YIELD(39681,45662,21.4375,5,102,4)",
+        "C3": "=YIELD(39681,45662,21.44375,5,102,4)",
+        "C4": "=YIELD(39681,45662,21.45,5,102,4)",
+        "C5": "=YIELD(39681,45662,21.453125,5,102,4)"
+      }
+    }
+  ],
+  "expected": {}
+}
