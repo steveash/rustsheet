@@ -3,7 +3,7 @@ id: T-3454
 title: "load_merge_cells checks each merged range against every earlier one, quadratic in the ranges"
 milestone: M12
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -24,10 +24,38 @@ kept one" in log time, for example a sweep over rows with an interval tree of op
 ranges bucketed by row block.
 
 ## Acceptance criteria
-- [ ] A test imports a sheet with 10^5 merged ranges, overlapping ones among them, in well under a second, and keeps
+- [x] A test imports a sheet with 10^5 merged ranges, overlapping ones among them, in well under a second, and keeps
       exactly the ranges the current rule keeps.
-- [ ] `make eval-check` shows no regressions.
-- [ ] `make check` green; reviewers approve.
+- [x] `make eval-check` shows no regressions.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+`load_merge_cells` files the kept ranges in `KeptRanges` (import/merged_cells.rs). This is a segment tree over the
+columns `1..=LAST_COLUMN` (depth 15). Each node holds two merged unions of row spans: `whole` holds the ranges
+canonical at that node, and `within` holds the ranges canonical at or under it. A new range intersects a kept one
+exactly when its rows overlap either `within` at one of its canonical nodes, or `whole` at one of their ancestors.
+Each range costs O(log^2) and its spans merge amortized. The first-wins result is unchanged, which T-3442's sweep
+relies on.
+
+Tests:
+- Unit tests compare the index with the old pairwise rule on edge shapes and on 4,000 pseudo-random ranges on a
+  small grid. The edge shapes are crossing ranges, whole rows and columns, shared corners, and touching but disjoint
+  ranges.
+- `many_merged_ranges_import_quickly_and_keep_the_first_of_intersecting_ones` (tests/malformed_import.rs) imports
+  10^5 disjoint ranges, then 10^4 that each intersect them, then three whole rows. It asserts the kept list exactly.
+
+Timings on that sheet:
+
+| Build | Old pairwise checks | Index (merges) | Whole load |
+|---|---|---|---|
+| Debug | 46 s | 1.5 s | 2.2 s |
+| Release | | 0.17 s | 0.29 s |
+
+The test's bound is 20 s, which the old code fails.
+
+The tree's nodes are allocated on the first range kept: 2^15 empty nodes, about 1.5 MB, dropped after the sheet.
+No Excel behavior changed, so there is no new `excel-semantics` entry.
+
