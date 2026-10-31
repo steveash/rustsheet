@@ -38,7 +38,8 @@ sweep drawn after it is frozen. It unblocks T-3347, whose `irr_conventional` sta
 ## Acceptance criteria
 - [x] (time box: no rule found; candidates and counts below and in financial.md) A rule that gives the right type (number or `#NUM!`) on all 306 cells of the three t3347 cases (the 9 `#DIV/0!` cells of T-3407 aside), or, if none is
       found within the time box, the candidates tried and their counts in this file and in
-      docs/excel-semantics/financial.md "IRR on conventional flows near 0 and -10%".
+      docs/excel-semantics/financial.md (written as the new entry "IRR on conventional flows where the secant fails:
+      which return is path-sensitive"; T-3347's entry "near 0 and -10%" is on its branch and should point to it).
 - [ ] (moved to T-3411: no rule to freeze) A fresh probes-numeric sweep filled after the rule is frozen, scored per stratum (Gate A envelope, type
       mismatches), with 0 type mismatches.
 - [ ] (moved to T-3411) T-3347's PR (#2529) updated to the rule, or T-3347 re-scoped with an owner ruling.
@@ -62,6 +63,14 @@ sweep drawn after it is frozen. It unblocks T-3347, whose `irr_conventional` sta
   from any of 17 fixed guesses in -0.9 to 2. Recorded in docs/excel-semantics/financial.md "IRR on conventional flows
   where the secant fails: which return is path-sensitive".
 - Eval: the new case adds 76 known failures to probes (28 + 26 `#NUM!` where Excel returns the root, 22 `#NUM!` where
-  Excel is `#DIV/0!`); no other cell moves (no engine change).
+  Excel is `#DIV/0!`); no other cell moves (no engine change). eval/baseline/visible-parity.json rises from 2429 to
+  2449 (`make eval-baseline`: "2449 in-scope cells visibly off (76 in new cases), lock 2429"): the 76 new-case cells,
+  less 56 cells main already fixed below the old lock before the daily lowering (decision 0093) caught up. A rise that
+  new cases account for is what decision 0093 lets `eval-baseline` record; no existing cell got worse
+  (REGRESSIONS 0). The probes-numeric hold-out copy is ungated (no baseline) and is not in the count.
+- Candidate scores: docs/research/t3406_irr_secant_candidates.py (a double replica of the secant; pass T-3347's probe
+  and sweep cases from its branch as extra arguments to get the 450-cell counts).
+- The hold-out case files (t3347-irr-conventional-holdout.*) are byte-identical to PR #2529's. Whichever of the two
+  PRs merges second must keep them identical (an add/add of the same content merges cleanly).
 - Follow-up: T-3411 (the model; owns the remaining criteria and unblocks T-3347). T-3407 gains 22 `#DIV/0!` cells
   (A66-A72, A81, A82, A84-A96) of this probe.

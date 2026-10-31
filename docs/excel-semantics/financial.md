@@ -3301,7 +3301,7 @@ converge from some negative guesses, many returning ones from none). In a double
 annuities lands at d ~ -1.2 to -14 on its first step, comes back to d1 = 0.0919 and goes flat at step 3, the same on
 A11 (returns) and A12 (`#NUM!`).
 Evidence: probes/t3406-irr-num-boundary (inputs and 50-digit roots in its `.roots.tsv`;
-docs/research/t3406_irr_num_boundary.py)
+docs/research/t3406_irr_num_boundary.py); the candidate counts from docs/research/t3406_irr_secant_candidates.py
 Status: VERIFIED (excel-graph) for the cells; the rule is UNVERIFIED (unknown)
 Ours: the secant, `irr_fallback` (Newton from v = 0) then `#NUM!`: 76 of the 144 probe cells fail (28 + 26 `#NUM!`
 for a number, 22 `#NUM!` for `#DIV/0!`)
