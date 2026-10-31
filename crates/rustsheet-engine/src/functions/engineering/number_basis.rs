@@ -100,26 +100,25 @@ impl Model {
         i64::from_str_radix(&digits, radix).map_err(|_| num_error(cell))
     }
 
-    /// The `number` of a BIN2* call as a number, with a blank cell or empty text read as 0 (same
-    /// probe as `base_digits`).
-    fn binary_digits(
-        &self,
-        value: &CalcResult,
-        cell: CellReferenceIndex,
-    ) -> Result<f64, CalcResult> {
-        if matches!(value, CalcResult::String(s) if s.is_empty()) {
-            return Ok(0.0);
+    /// The `number` of a BIN2* call as a number. A blank cell or empty text is 0 (same probe as
+    /// `base_digits`); text that is not a number is `#NUM!`, not `#VALUE!` (T-2544;
+    /// engineering.md "Base conversions"). A boolean stays `#VALUE!`.
+    fn bin_digits(&self, value: &CalcResult, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
+        match value {
+            CalcResult::String(s) if s.is_empty() => Ok(0.0),
+            CalcResult::String(_) => self
+                .cast_number_no_bools_ref(value, cell)
+                .map_err(|_| num_error(cell)),
+            _ => self.cast_number_no_bools_ref(value, cell),
         }
-        self.cast_number_no_bools_ref(value, cell)
     }
 
-    /// `binary_digits` for BIN2*: text that is not a number is `#NUM!`, not `#VALUE!` (T-2544;
-    /// engineering.md "Base conversions"). A boolean stays `#VALUE!`; DEC2* keep `#VALUE!` for text.
-    fn bin_digits(&self, value: &CalcResult, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
-        match self.binary_digits(value, cell) {
-            Err(_) if matches!(value, CalcResult::String(_)) => Err(num_error(cell)),
-            other => other,
-        }
+    /// The `number` of a DEC2* call as a number. Unlike BIN2*, empty text (typed or a ref to
+    /// `=""`) is `#VALUE!`, as is other non-numeric text; a blank cell is 0
+    /// (probes/eng-dec2base-empty-text, excel-graph; engineering.md "DEC2BIN, DEC2HEX and DEC2OCT
+    /// reject empty text", T-3498).
+    fn dec_digits(&self, value: &CalcResult, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
+        self.cast_number_no_bools_ref(value, cell)
     }
 
     // BIN2DEC(number)
@@ -226,7 +225,7 @@ impl Model {
             Ok(parts) => parts,
             Err(e) => return e,
         };
-        let value_raw = match self.binary_digits(number, cell) {
+        let value_raw = match self.dec_digits(number, cell) {
             Ok(f) => f,
             Err(s) => return s,
         };
@@ -259,7 +258,7 @@ impl Model {
             Ok(parts) => parts,
             Err(e) => return e,
         };
-        let value_raw = match self.binary_digits(number, cell) {
+        let value_raw = match self.dec_digits(number, cell) {
             Ok(f) => f.trunc(),
             Err(s) => return s,
         };
@@ -292,7 +291,7 @@ impl Model {
             Ok(parts) => parts,
             Err(e) => return e,
         };
-        let value_raw = match self.binary_digits(number, cell) {
+        let value_raw = match self.dec_digits(number, cell) {
             Ok(f) => f,
             Err(s) => return s,
         };

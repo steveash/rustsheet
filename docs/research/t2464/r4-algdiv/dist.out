@@ -1,0 +1,6 @@
+a pinned - CR lnB (ulps of lnB) over 78 shapes: {-4: 1, -3: 3, -2: 5, -1: 12, 0: 33, 1: 16, 2: 6, 3: 2}
+  a=0.25: fine-step offsets [0, 0, 1, 0, 0, 0, 0, -1, 0, 1, 0, -1, 1, 0, 0, 1]  lag-1 autocorrelation -0.20
+  a=0.5: fine-step offsets [-2, 0, 1, 0, 0, 1, 1, -2, 1, 2, 0, 1, 0, 1, 1]  lag-1 autocorrelation -0.12
+hold pinned - CR lnB (ulps of lnB) over 78 shapes: {-3: 1, -2: 6, -1: 15, 0: 35, 1: 16, 2: 3, 3: 1, 6: 1}
+  a=0.4: fine-step offsets [-2, -2, 0, 0, -1, 1, 1, -1, -1, 2, 0, 0, 1, 1, 3]  lag-1 autocorrelation +0.21
+  a=0.75: fine-step offsets [2, 0, 1, 1, 0, 0, 1, 0, 1, -1, 0, 0, 2, 0, 0, 0]  lag-1 autocorrelation -0.24

@@ -688,6 +688,12 @@ Evidence: probes/eng-base-conv-blank (excel-graph, 2026-10-18, T-1413); gen-m9/d
 Status: VERIFIED (excel-graph)
 Tasks: T-1413
 
+## DEC2BIN, DEC2HEX and DEC2OCT reject empty text
+Rule: unlike BIN2*/OCT2*/HEX2* (above), DEC2BIN, DEC2HEX and DEC2OCT give `#VALUE!` for an empty-text `number`, typed (`DEC2BIN("")`) or a ref to `=""`, with or without `places`. A blank cell is still 0 ("0", or "0000" with `places` 4). An invalid `places` still wins over it, since places is read first (`DEC2BIN("",0)` and `DEC2BIN("",-1)` are `#NUM!`; "The second argument's error wins" below).
+Evidence: probes/eng-dec2base-empty-text A1:A18 (excel-graph, 2026-10-31); gen-m9/da91e1e314ee3255 A289, A292, A310, A313, gen-m9/778da09d73211d90 A301, A304, A322, A325 and gen-m9/ca16553eec1d491c A307, A310, A328, A331 (excel-graph, arg-pairs batch).
+Status: VERIFIED (excel-graph); implemented (`dec_digits` in number_basis.rs).
+Tasks: T-3498
+
 ## The second argument's error wins in the two-argument base conversions, DELTA and GESTEP
 Rule: DEC2BIN, DEC2HEX, DEC2OCT, BIN2OCT, BIN2HEX, HEX2BIN, HEX2OCT, OCT2BIN, OCT2HEX, DELTA and GESTEP read the second argument (`places`, `number2`, `step`) before the first, scalar or inside one array element. `DEC2BIN("x",NA())` is `#N/A` and `DEC2BIN(NA(),"x")` is `#VALUE!`; the same for all eleven. BESSELJ, BITLSHIFT, CONVERT, COMPLEX, IMPOWER and ERF instead report the first argument's error. In the nine base conversions an invalid places value wins too, not only its error: `DEC2BIN(NA(),0)` is `#NUM!` (gen-m9 sweep, "Base conversions" below; T-2545). Whether DELTA's and GESTEP's second argument also wins by value is unprobed.
 Evidence: probes/eng-first-vs-second-error A1:D11 (excel-graph, 2026-10-19); probes/eng-later-argument-lift M2, M8.

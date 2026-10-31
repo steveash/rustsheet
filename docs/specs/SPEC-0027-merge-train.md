@@ -309,7 +309,12 @@ option records `prev:` and checks mechanically that the PR's own diff did not ch
 - the new head is a merge commit whose first parent is `prev` and whose second parent is on
   `origin/main`;
 - `git merge-tree --write-tree` of those two parents reproduces the new head's tree exactly,
-  which means a clean merge with no edits.
+  which means a clean merge with no edits. *As built (decision 0207):* exactly, except in
+  the content of the eval-gated, non-fetched suites' baseline lists, where a conflict may be
+  resolved and the lists re-recorded (`make catch-up`), because the eval gate, which marking
+  requires green, checks exactly those lists against the engine. A re-recorded list may not
+  add a failure line that neither parent's list has: the gate cannot tell that regression from
+  a correct list (decision 0207).
 
 Any other push needs the reviewers that the change concerns to run again, as today.
 
@@ -559,7 +564,9 @@ flip therefore takes effect within about 1 min of its stop label, or of its merg
 2. **Collect.** List open PRs labelled `ready-to-merge` and run V1–V6 on each. Section 2 gives the
    side effects of each failure, and they apply in `train` mode only; the other modes report
    them. A PR whose `mergeable_state` is `dirty` is ejected with the reason `conflict with main`.
-   Sort the rest by marker time, oldest first, and take up to `BATCH_MAX`. If none is left,
+   Sort the rest by marker time, oldest first, and take up to `BATCH_MAX`. *As built (decision
+   0206):* up to `CANDIDATES_MAX` (20) go to the build, which keeps the first `BATCH_MAX` that
+   merge cleanly, so ejected and deferred candidates make room for later ones. If none is left,
    release and report "no ready PR". Housekeeping in `train` and `shadow` mode: remove
    `ready-to-merge` from closed PRs, because in `shadow` mode a worker merges ready-labelled PRs by
    the per-PR flow.
@@ -621,18 +628,25 @@ flip therefore takes effect within about 1 min of its stop label, or of its merg
 
    A `cancelled`, `timed_out` or superseded run is **never** green. The same rule judges V3 on PR
    heads (event `pull_request`).
+
+   **Red early** (train runs only, decision 0212): a run still in progress is red as soon as the
+   newest check run of one of its jobs (Actions app, the run's check suite) concluded `failure`,
+   except the summary job `rust (fmt, clippy, test)`, which also fails for cancelled shards. A
+   `cancelled` or `timed_out` job is read only once the run completes, as an infrastructure failure.
 7. **Green: merge in order** (`train` mode only). Renew the lock first; exit 4 means stop with
    nothing merged. Check that `origin/main` is still `M0`. If not, someone merged without the
    lock: release, report, file a P0 and stop. No merge lands on an untested tree. Then, for k = 1
    to n:
    1. **Stop checkpoint**, then **renew** the lock with `prs` = the PRs not yet merged. Exit 4
       means stop.
-   2. **Pre-squash check (mandatory).** Poll `GET /pulls/<k>` every 5 s, for at most 2 min, until
-      `mergeable` is non-null and `merge_commit_sha` is a commit whose first parent is the current
-      `main` (`S_{k-1}`, or `M0` for k = 1). GitHub recomputes the test merge after every push to
-      `main`. Read that commit (`GET /git/commits/<merge_commit_sha>`) and require its `tree.sha`
-      to equal `tree(T_k)`: git object ids are the same on both sides, so no fetch is needed. A
-      timeout or a mismatch stops the sequence at k.
+   2. **Pre-squash check (mandatory).** Read `GET /pulls/<k>`. When `mergeable` is non-null and
+      `merge_commit_sha` is a commit whose first parent is the current `main` (`S_{k-1}`, or `M0`
+      for k = 1), read that commit (`GET /git/commits/<merge_commit_sha>`) and require its
+      `tree.sha` to equal `tree(T_k)`: git object ids are the same on both sides, so no fetch is
+      needed. *As built (decision 0200):* GitHub recomputes a PR's test merge only when the PR
+      changes, not after a push to `main`, so it is usually stale here. Then `origin/main` must
+      still be that `main`, and `git merge-tree --write-tree <main> H_k` must succeed with
+      `tree(T_k)`. A mismatch (P0), a moved `main` (P0) or a conflict stops the sequence at k.
    3. **Squash-merge** PR k with `expectedHeadSha = H_k`. The commit text is described under
       "Squash commit text".
    4. **Post-squash check.** Fetch `origin/main` and require that its first parent is the
@@ -803,8 +817,9 @@ CI tested `tree(T_n)`. Intermediate prefixes are discussed at the end of this se
   example).
 
 Neither can be prevented from here, so step 7 detects both:
-- the pre-squash check compares GitHub's own test merge, recomputed on the current `main`, with
-  `tree(T_k)`, and requires its first parent to be the `main` the merger expects;
+- the pre-squash check compares the PR's merge onto the `main` the merger expects with
+  `tree(T_k)`. That is GitHub's own test merge when GitHub has recomputed it on that `main`, and
+  the same merge done locally when it has not (decision 0200);
 - the post-squash check compares the result.
 
 Any mismatch stops the train and files a P0. For a mismatching squash of ours that landed, the
@@ -889,7 +904,7 @@ a cut-off resumes rather than restarting (below).
   That is still 5 runs, now over **two holds**, with no third rebuild.
 
 **Infrastructure failures** (a cancelled or timed-out job, a runner that never started, no run for
-the sha) are not a PR's fault. Retry the same train once. If it fails again, release and stop the
+the sha) are not a PR's fault; the early red read of step 6 never counts one as red. Retry the same train once. If it fails again, release and stop the
 run without ejecting anyone.
 
 **Budget cut-off.** No CI wait starts unless `CI_TIMEOUT + n × MERGE_BUDGET` remains of
