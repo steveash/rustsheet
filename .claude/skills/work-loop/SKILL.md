@@ -59,8 +59,8 @@ If the task is bigger than size M, split it (planner) instead of doing it.
   freeze, Gate A envelope result, `FITTED` tag and range, reproducibility floor, no keep-matched
   branch) and record them in the Outcome; check 7 says what to use until their tools land.
 - A decision record (needed for any protected-path change) is created with
-  `make new-decision TITLE="..."` (collision-free number; decision 0029); commit and push it with
-  the first commit after the claim so other sessions see the number.
+  `make new-decision TITLE="..."`: the number is reserved in the id registry when it is written
+  (decisions 0029, 0215). Never pick or change a number by hand, including in a renumber.
 
 ## 5. Review
 Open the PR as a draft (step 6.2's template) if none exists, so the reviewers' verdict records have

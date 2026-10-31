@@ -270,11 +270,11 @@ def lock_commit(lock: Lock, root: Path = ROOT) -> str:
     return git(*IDENTITY, "commit-tree", tree, "-m", message, root=root).stdout.strip()
 
 
-def push_lease(expected: str, new: str, root: Path = ROOT) -> bool:
-    """Sets the lock to the commit `new` only if origin still has `expected` there ("" for absent).
-    False when another agent moved it first."""
-    lease = f"--force-with-lease={LOCK_REF}:{expected}"
-    result = git("push", "-q", lease, REMOTE, f"{new}:{LOCK_REF}", root=root, check=False)
+def push_lease(expected: str, new: str, root: Path = ROOT, ref: str = LOCK_REF) -> bool:
+    """Sets `ref` (the lock) to the commit `new` only if origin still has `expected` there ("" for
+    absent). False when another agent moved it first. id_registry.py shares this CAS."""
+    lease = f"--force-with-lease={ref}:{expected}"
+    result = git("push", "-q", lease, REMOTE, f"{new}:{ref}", root=root, check=False)
     return result.returncode == 0
 
 
