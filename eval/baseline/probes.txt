@@ -1474,6 +1474,13 @@ C	probes/t2800-stored-ws-2.case.json	2
 C	probes/t2800-stored-ws-3.case.json	2
 C	probes/t2800-this-row-whitespace.case.json	10
 C	probes/t2812-currency-tag-cost.case.json	54
+C	probes/t2816-lift-averagea-bool.case.json	1
+C	probes/t2816-lift-averagea-num.case.json	1
+C	probes/t2816-lift-maxa-bool.case.json	1
+C	probes/t2816-lift-maxa-num.case.json	1
+C	probes/t2816-lift-stdevs.case.json	1
+C	probes/t2816-lift-sumsq.case.json	1
+C	probes/t2816-lift-vars.case.json	1
 C	probes/t2829-ftest-a306-shapes.case.json	12
 C	probes/t2829-ftest-ln-beta-grid.case.json	99
 C	probes/t2829-ftest-tail-over-b.case.json	22
@@ -3627,6 +3634,13 @@ F	probes/t2753-gamma-density-switch.case.json	S!B40
 F	probes/t2753-gamma-density-switch.case.json	S!B42
 F	probes/t2753-gamma-density-switch.case.json	S!B5
 F	probes/t2779-hebrew-saka-names.case.json	S!E18
+F	probes/t2816-lift-averagea-bool.case.json	Sheet1!E1
+F	probes/t2816-lift-averagea-num.case.json	Sheet1!E1
+F	probes/t2816-lift-maxa-bool.case.json	Sheet1!E1
+F	probes/t2816-lift-maxa-num.case.json	Sheet1!E1
+F	probes/t2816-lift-stdevs.case.json	Sheet1!E1
+F	probes/t2816-lift-sumsq.case.json	Sheet1!E1
+F	probes/t2816-lift-vars.case.json	Sheet1!E1
 F	probes/t2829-ftest-a306-shapes.case.json	S!A1
 F	probes/t2829-ftest-a306-shapes.case.json	S!A10
 F	probes/t2829-ftest-a306-shapes.case.json	S!A11
