@@ -23,7 +23,7 @@ from rustsheet_tools.accuracy.model import (
     NoValueError,
     Param,
     register,
-    solve_bracket,
+    solve_log_bracket,
 )
 
 DF_SOURCE = "statistics.md#f-distribution-df-limit-t-1530"
@@ -76,12 +76,7 @@ def quantile(p: mpmath.mpf, d1: mpmath.mpf, d2: mpmath.mpf) -> mpmath.mpf:
         # the lower tail grows with s and the upper falls: f has opposite signs on the bracket ends
         return (mpmath.log(tail) - target) if lower else (target - mpmath.log(tail))
 
-    try:
-        s = solve_bracket(f, mpmath.mpf(-1500), mpmath.mpf(710))
-    except NoValueError as err:
-        msg = f"quantile outside the double range ({err})"
-        raise NoValueError(msg) from err
-    return mpmath.exp(s)
+    return mpmath.exp(solve_log_bracket(f, -1500, 710))
 
 
 def _df(name: str) -> Param:

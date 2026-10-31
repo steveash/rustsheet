@@ -17,15 +17,7 @@ from collections.abc import Sequence
 
 import mpmath
 
-from rustsheet_tools.accuracy.model import (
-    Definition,
-    Interval,
-    MathArg,
-    NoValueError,
-    Param,
-    register,
-    solve_bracket,
-)
+from rustsheet_tools.accuracy.model import Definition, Interval, MathArg, Param, register, solve_log_bracket
 
 DF_SOURCE = "statistics.md#student-t-sweep-df-truncation-df-limits-tinv2t-above-1-t-1043"
 TINY_P_SOURCE = "statistics.md#student-t-quantile-at-a-tiny-probability-t-1531"
@@ -70,12 +62,7 @@ def lower_quantile(p: mpmath.mpf, df: mpmath.mpf) -> mpmath.mpf:
 
     # e^-60 ≈ 9E-27 is closer to 0 than any 15-digit p below 1/2 puts the quantile; e^710 is past
     # the double range, where the quantile would overflow.
-    try:
-        s = solve_bracket(f, mpmath.mpf(-60), mpmath.mpf(710))
-    except NoValueError as err:
-        msg = f"quantile outside the double range ({err})"
-        raise NoValueError(msg) from err
-    return -mpmath.exp(s)
+    return -mpmath.exp(solve_log_bracket(f, -60, 710))
 
 
 def quantile(p: mpmath.mpf, df: mpmath.mpf) -> mpmath.mpf:
