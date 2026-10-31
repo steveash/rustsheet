@@ -3,7 +3,7 @@ id: T-3332
 title: "make phase1-exit: one verdict per Phase 1 exit criterion of docs/milestones.md, from report.json and the task board"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
