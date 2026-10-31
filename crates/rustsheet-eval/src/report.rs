@@ -331,6 +331,25 @@ fn failing_only(r: &CaseResult) -> CaseResult {
     r
 }
 
+/// Adds `cell` to decision 0118's counts (`excel`, `attributed`) of each function in `called`, its
+/// formula's calls: the one place a cell is attributed, for the report and for Gate B.
+pub(crate) fn attribute_cell(
+    functions: &mut BTreeMap<String, FunctionStat>,
+    called: &BTreeSet<String>,
+    cell: &CellResult,
+) {
+    let sole = closeness::sole_call(called);
+    for f in called {
+        functions
+            .entry(f.clone())
+            .or_insert_with(|| FunctionStat {
+                name: f.clone(),
+                ..FunctionStat::default()
+            })
+            .add_attributed(cell, sole == Some(f));
+    }
+}
+
 impl RunReport {
     /// Aggregates `results`; `implemented` lists the engine's functions and `catalog` every
     /// Excel function, so that functions without any Excel evidence show up too. Functions the
@@ -390,9 +409,8 @@ impl RunReport {
                         st.visible.merge(visible);
                     }
                 }
-                let sole = closeness::sole_call(&called).cloned();
+                attribute_cell(&mut functions, &called, c);
                 for f in called {
-                    let is_sole = sole.as_ref() == Some(&f);
                     if c.from_excel {
                         let ev = evidence
                             .entry(f.clone())
@@ -413,7 +431,6 @@ impl RunReport {
                     }
                     *st.verdicts.entry(c.verdict).or_default() += 1;
                     st.closeness.add(c);
-                    st.add_attributed(c, is_sole);
                 }
             }
             s.workbooks.add(&book);

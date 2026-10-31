@@ -2955,8 +2955,28 @@ Rule: the entries above assembled in one TOMS 708 port (Excel's EXP, LN, GAMMALN
   neither, see bpser).
 - r2-bratio's "Excel-only noise of sd 47 units" on the (30.7, 1.7, 0.81) a-sweep was the same literal artefact: with
   truncated literals the sd is 2.9 and the model sits a median -6 ulp off (verify-r2-bratio/misparse.out).
-- Open: bgrat for b ≠ 1/2 (L140 bup+bgrat; 600 x29 BETA.DIST/F bgrat cells), first test the b = 1/2 identity with Q(b,z)
-  from Excel's incomplete gamma; algdiv for b0 >= 8 (about 1 unit off TOMS, in bpser and the density); lnΓ(a0 < 1) in L
+- **L140 bup+bgrat at 1 < b < 2 is RN(W + D) (T-2512; within 4 ulp on all 3,072 cells, bit-exact on 2,515).**
+  With b0 = b - 1, a > 15, x > 0.7, the cell is RN(W + D). Here W = fl(x87(P·fl(x·y)/b0)), with P Excel's density in bup's own orientation,
+  BETA.DIST(y, b0, a, FALSE), and D = BETA.DIST(x, a, b0, TRUE), the direct bgrat branch's increment with w = 0.
+  It scores 2,515/3,072/3,072 of 3,072 (hold-out 1,306/1,613/1,613). The caller's orientation BETA.DIST(x, a, b0, FALSE)
+  gives 1,267/1,767/1,815: the two densities differ on 1,355 of 2,908 points by up to ±8 ulp (`orient.out`; M2 takes
+  LN or log1p by its own x, so the two orientations take different paths). With the exact increment in place of D it is still 1,726/3,072/3,072. With r2-bratio's density
+  and D it falls to 89/2,154/2,356, so the visible gap there is the density's algdiv lnB, not bgrat. The engine's
+  density with an accurate increment scores 282/2,824/3,042, against today's kernel at 26/113/344 (T-3382).
+- **Why TOMS bgrat lost at b ≠ 1/2 (T-2512).** TOMS passes bgrat's 15·eps = 15e-15 to grat1, whose continued fraction
+  (z >= 1.1 on every such cell) stops tens of ulps short. On 2,908 direct bgrat cells (t2512-r3-bgrat-split):
+  - TOMS in doubles with Excel's pieces scores 13/142/162, and 139/1,263/1,834 at eps 1e-15.
+  - x87 extended with the stored lnx and z and the CF at 1e-15 scores 206/1,672/2,158.
+  - CR scores 208/1,598/2,091. The best tried, RN(F·Q(b, z_s)/Q(b, z_e)), scores 246/1,881/2,357.
+  - Excel's D is a median 4 units of 2^-53 below the true value. It is not TOMS in any precision tried, so D to the
+    bit is open (T-3383).
+- **The b = 1/2 identity cannot be tested at generic b through the worksheet (T-2512).** No worksheet function
+  returns Q(b, z) there. CHISQ.DIST.RT truncates its df to an integer (2b < 1 is `#NUM!`). 1 - GAMMA.DIST loses the
+  digits, because Q < 0.01 on 5,196 of the 5,228 BETA.DIST cells that reach bgrat (probe t2512-r3-bgrat-qgamma).
+  The same probe's GAMMA.DIST(z, b, 1, TRUE) column (fractional b < 1, P near 1) is one the engine misses on 1,268 of
+  4,980 cells, mostly by 1-2 ulp and on 117 at the 15th digit (T-3383 records it for the incomplete-gamma work).
+- Open: D to the bit, n > 1 bup terms and F/BINOM/NEGBINOM callers of L140 bup+bgrat (T-3383); F's bgrat at a df
+  of 1 (b = 1/2); algdiv for b0 >= 8 (about 1 unit off TOMS, in bpser and the density); lnΓ(a0 < 1) in L
   and the 55-84% ceiling of b < 1 bpser shapes; bfrac's fraction (sd 3.8 units) and bup's arithmetic in bup+bgrat;
   a0 < 1e-15 at 0.04 <= y < 0.25 (Excel 1e-14 to 3.8e-13 relative off the truth, in bgrat's incomplete-gamma ratio);
   the densities after T-2513's round 3 (each in its entry): Loader's constant residual of 2-4 units and bd0's series,
@@ -2978,9 +2998,10 @@ Rule: the entries above assembled in one TOMS 708 port (Excel's EXP, LN, GAMMALN
 Evidence: probes-numeric t2464-*; docs/research/t2464/README.md, r2-bratio (`score.py`, `report_best.out`,
 `report_ladder.out`), r2-impact (`impact.out`, `ladder.out`, `branches.out`, `offcells_pre.tsv`), w2-forensics
 `tie_response.py`, w4-fractions `t1_pdfshare.py`, w6-literature (source survey), verify-r2-bratio/analyze.out,
-verify-r2-impact/v2_plan.out.
+verify-r2-impact/v2_plan.out; T-2512: probes-numeric t2512-r3-bgrat-qgamma, -split, -bupdens and r3-bgrat (RESULTS.md,
+`bupdens.out`, `engdens.out`, `epsscan.out`, `bgld.out`, `ident.out`, `zstore.out`, `split.out`, `qsize.out`).
 Status: PARTIAL (excel-graph)
-Tasks: T-2464, T-2504 to T-2511, T-2512, T-2513, T-2585, T-2586
+Tasks: T-2464, T-2504 to T-2511, T-2512, T-2513, T-2585, T-2586, T-3382, T-3383
 
 ## Incomplete beta in the ironcalc-calc workbooks: F tails and densities (T-0970)
 Rule (VERIFIED on the cells named): Excel's F.DIST.RT is the upper tail of the incomplete beta,
@@ -3159,6 +3180,12 @@ have no neighbour above. The crossing holds at 155 of the 188:
   BETA.DIST(0.5,10,10,TRUE) is 0.5000000000000002. This suggests a tolerance stop, but it is not
   established.
 - Recomputing BETA.INV from constant inputs reproduces x at all 188 rows.
+- Against a 50-digit root (mpmath, gap triage 2026-10-31) Excel is within about 1E-15 relative at the flat rows,
+  where its cdf cannot resolve x: `BETA.INV(1E-10,1,1)` = 9.999999999999996E-11 (m9-beta-inv A43, row 41), 4E-16
+  below the uniform quantile 1E-10, and `BETA.INV(1E-10,0.5,1)` = 9.999999999999992E-21 (A8, row 7), -8E-16. So the
+  flat-row values are not arbitrary points of a flat band; they look like a start that the steps cannot move. At the
+  off-crossing rows Excel is the inaccurate side: `BETA.INV(0.05,2.5,100)` (A101, row 98) is 1.3E-14 above the root.
+  Both stay far inside 1E-9 of the math (decision 0188 Gate A). Tasks: T-3387 (sweep), T-3388 (fit).
 Consequence: BETA.INV parity follows BETA.DIST parity (T-1744) plus a solver that usually
 converges to the crossing.
 
@@ -3569,12 +3596,14 @@ Ours: this form from df 2 (T-2511); 10 of T-3061's cells and the bit-level remai
 Tasks: T-3061, T-2511, T-3399
 
 ## Two-tailed Student-t quantile with p near 1 is accurate in Excel (T-3349)
-Rule: for df from 2 up, `T.INV.2T(p,df)`, `TINV(p,df)` and `CONFIDENCE.T(p,sd,n)` with p just below or above 1 return
-the small quantile to the 15th digit of the exact value: Excel solves the centre directly, never forming 1 - p/2.
+Rule: for df from 2 up, `T.INV.2T(p,df)` with p just below or above 1 returns the small quantile to the 15th digit of
+the exact value: Excel's result shows no 1 - p/2 cancellation. TINV and CONFIDENCE.T were probed at df 2 (n = 3) only:
+TINV matches there, and CONFIDENCE.T is 1.1E-15 relative off the exact value (A5 below).
 `T.INV.2T(0.999999999989522,2)` is 1.481806159731988E-11 (exact 1.48180615973198...E-11; decision 0188 item 3,
 where the engine gave 1.49E-8 before T-2724), `T.INV.2T(0.999999999999999,2)` 1.4130832128154019E-15 (c = 1 - p is 9.99E-16 in doubles), and so on for c from
 1E-3 to 1E-15 at df 2, 5, 30, 1000 and 1E6 and for p = 1.001 and 1.000000001 at df 2 (the negative quantile,
-`T.INV.2T(1.000000001,2)` = -1.4142136793856508E-9; the literal 1.000000000000001 has 16 digits and reads as 1, giving 0).
+`T.INV.2T(1.000000001,2)` = -1.4142136793856508E-9; A38 is `T.INV.2T(1,2)` = 0, since 1+1E-15 needs 16 digits, which a
+formula literal cannot carry: numbers.md "Formula number literals are read at 15 significant digits").
 At df 1 Excel is the 1/TAN form instead (T-2858's entry above), up to 2.9% off the exact value at
 `T.INV.2T(0.999999999999999,1)` (Excel 1.6155696572206502E-15, exact 1.5695408241038844E-15).
 Evidence: probes/t3349-t-inv-2t-near-one A1-A44 (excel-graph, 2026-10-31): every cell from df 2 up is within 15
