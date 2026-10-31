@@ -50,6 +50,18 @@ T-3347 (IRR) this is the first task of the accuracy stage.
 - [ ] The rule (what Excel does, what was wrong) is in docs/excel-semantics/ in the same PR.
 - [ ] `make check` green; reviewers approve.
 
+## Probe cells (before the fix)
+probes/t3348-rate-fv-nonzero (excel-graph, 2026-10-31), Sheet1!A1:A186, 111 numbers and 75 `#NUM!`:
+- A1, A2: the Context example (type 0 and omitted), Excel 0.04310546919282547; the engine gave `#NUM!`.
+- A3-A12: the same inputs times 2^-40 ... 2^20 (the secant's trajectory is unchanged, f scales); A13-A23 nper 200 to
+  300; A24 type 1; A25-A29 guesses 0, 0.04, 0.05, 0.2, -0.5.
+- A30-A186: a seeded sweep of annuities (rate 1E-6 to 1, nper 1 to 1000, both signs of pv and fv, type 0/1, guess
+  omitted, 13-digit or cent inputs), stratified by the T-2005 model's outcome (labels in the case's hypotheses): 70
+  zero-step stalls, 15 other flat secants, 40 converged, 15 iterates below -1, 12 past the cap, 4 returned at the
+  cap, 1 power past the double range.
+- Before the fix 60 cells were `#NUM!` in the engine and numbers in Excel (every one a flat secant); the other 126
+  matched Excel bit for bit, including the 39 flat secants and the le-1 and cap runs that are `#NUM!` in Excel too.
+
 ## Out of scope
 - Last-digit (bit) parity on cells already within 15 digits: Phase 1b (decision 0188 R5).
 - Fitting to Excel's bits; if a fit is needed it follows decision 0188 R4 (hold-out split, fresh sweep, `FITTED` tag).
