@@ -33,6 +33,31 @@ the result generalizes to fresh points.
   tasks (closing what it settles). The deep-tail quantiles are `MATH-OVER-EXCEL` (decision 0188 R3): keep the math there.
 - T-3349 (P0) fixes the T.INV.2T cancellation first; build on it.
 
+Cells owned (gap triage 2026-10-31, `make eval` on main b9558688e): visibly-off quantile cells no other open task names.
+All are inside Gate A (ours within 3E-15 of the 50-digit math; Excel's own error is 1E-16 to 6E-15), so the 15th-digit
+miss is Excel's inverse, not our accuracy. Examples: probes-numeric/m9-f-inv A4 `F.INV(0.5,1,1)` Excel
+0.9999999999999999, ours 1.0000000000000009; m9-legacy-finv A48 `F.INV.RT(0.95,5,50)` Excel 0.22500196558777094, ours
+0.22500196558776958. CONFIDENCE.T A5 of t3349 is Excel's own `T.INV.2T(0.999999999989522,2)` (1.481806159731988E-11)
+divided by SQRT(3), bit for bit (checked in triage), so it follows the df-2 quantile. The four gen-m9 cells listed
+last are unattributed in the report (an F quantile over a COUNTIFS, CHITEST, ATAN power or inside TRIMMEAN); the F
+quantile is the suspected cause, so check the inner value first.
+- probes-numeric/m9-f-inv.case.json (5): Calc!A1, A4, A7, A21, A25
+- probes-numeric/m9-f-inv-rt.case.json (4): Calc!A1, A7, A15, A25
+- probes-numeric/m9-legacy-finv.case.json (12): Calc!A1, A2, A3, A4, A9, A10, A37, A38, A39, A40, A47, A48
+- probes-numeric/t1049-finv.case.json (1): Calc!A7
+- probes-numeric/t1049-finvrt.case.json (1): Calc!A14
+- probes/t3349-t-inv-2t-near-one.case.json (1): Calc!A5
+- gen-m9/320d51765af9b6b7.case.json (2): Calc!A15, A379
+- gen-m9/4ab2ba98d26c8a5e.case.json (1): Calc!A390
+- gen-m9/589f42e67f4b4b8d.case.json (1): Calc!A365
+- gen-m9/60b0b6e69ad35a45.case.json (2): Calc!A150, A197
+- gen-m9/c18dbf21f11093f3.case.json (1): Calc!A92
+- gen-m9/e6cf3b20a014e6a3.case.json (1): Calc!A135
+- gen-m9/7674c89c824aca43.case.json (1): Calc!A212
+- gen-m9/40425341c5034eed.case.json (1): Calc!A108
+- gen-m9/a63d1c7d6f96c56d.case.json (1): Calc!A320
+- gen-m9/c6cfda6bd10cae93.case.json (1): Calc!A183
+
 ## Acceptance criteria
 - [ ] The algorithm (start, iteration, stop rule) is identified with evidence and recorded in statistics.md; no statrs
       inversion or probe-tuned threshold is left for these functions (`rg` shows it), or each one left carries a

@@ -59,6 +59,11 @@ The TSV's rows that are still visibly off on main 40ca52179 (558 of the 661), na
 - probes-numeric/t2513-verify-r3-loader-bd0-hold.case.json (27): Calc!A6, A7, A54, A79, A80, A102, A125, A126, A127, A396, A399, A405, A408, A428, A439, A465, A471, A474, A477, A488, A491, A497, A1034, A1040, A1098, A1129, A1139
 - probes-numeric/t2513-verify-r3-loader-const-hold.case.json (21): Calc!A15, A333, A477, A559, A619, A730, A736, A878, A879, A897, A1019, A1090, A1101, A1103, A1145, A1174, A1181, A1182, A1253, A1374, A1577
 
+Added by gap triage 2026-10-31: visibly-off BETA.DIST densities (min(a,b) > 1, a + b - 2 < 90) no open task names,
+inside Gate A (ours within 2E-14 of the 50-digit math in triage), so Phase 1b under decision 0188 R5:
+- probes-numeric/m9-beta-dist-a10.case.json (3): Calc!A20, A32, A48
+- probes-numeric/m9-beta-dist-a5.case.json (1): Calc!A42
+
 ## Acceptance criteria
 - [ ] The TSV's cells are within 15 digits (or each one left is named with the reason), with no new visibly-off cell.
 - [ ] The cells under "More cells" are within 15 digits too, or each one left is named with the reason.

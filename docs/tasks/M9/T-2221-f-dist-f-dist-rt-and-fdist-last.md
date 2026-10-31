@@ -107,6 +107,15 @@ cells of T-2464 w5-triangulation (t2220-f-dist-sweep-cdf, -rt, -d1-1, -d2-1: 70 
 bratio's dispatch, not the mean (statistics.md "Incomplete beta is TOMS 708 `bratio`"); the other shapes' last digits
 need bratio's branches (T-2505 onwards).
 
+Added by gap triage 2026-10-31 (main b9558688e): visibly-off F.DIST and F.DIST.RT cells on the T-2220 sweeps (and one
+t1538 cell) that no open task names after T-2981's owners closed. All 116 are inside Gate A: scored against 50-digit
+mpmath in triage, ours is at most 7E-14 relative off the math, so they are Phase 1b last digits (decision 0188 R5:
+F.DIST densities and dense-sweep cells within Gate A): 70 densities (`FALSE`) and 6 cdfs at a df of 1, and 40 F.DIST.RT.
+- probes-numeric/t1538-beta-dist-at-excel-inv.case.json (1): Calc!A15
+- probes-numeric/t2220-f-dist-sweep-d1-1.case.json (42): Calc!A176, A179, A338, A443, A501, A518, A530, A536, A596, A608, A614, A620, A626, A686, A689, A692, A701, A707, A710, A713, A716, A766, A768, A779, A785, A788, A794, A803, A809, A861, A867, A869, A872, A875, A878, A881, A884, A887, A890, A893, A896, A899
+- probes-numeric/t2220-f-dist-sweep-d2-1.case.json (40): Calc!A2, A188, A278, A316, A318, A400, A455, A458, A464, A473, A479, A545, A548, A554, A557, A566, A575, A632, A635, A638, A641, A644, A647, A650, A659, A662, A664, A673, A675, A722, A725, A728, A731, A734, A737, A740, A743, A746, A749, A760
+- probes-numeric/t2220-f-dist-sweep-rt.case.json (33): Calc!A84, A97, A98, A399, A467, A504, A567, A579, A589, A594, A596, A669, A680, A697, A795, A800, A804, A868, A878, A879, A885, A890, A897, A900, A954, A960, A978, A984, A990, A994, A997, A999, A1000
+
 ## Acceptance criteria
 - [ ] The F_DIST.xlsx Sheet1!F3 line disappears from eval/baseline/ironcalc-calc.txt
       (`make eval-baseline`), with no new line in any baseline.

@@ -77,6 +77,10 @@ These cells are part of T-0967's scope, which waits on T-0969 (blocked, time-box
 Three of the df = 1 cells below (gen-m9/5389dd4d5b5739d2 A299, probes-numeric/m9-t-inv-2t A12, A13) were listed in
 T-2724 (the centre); they are this task's, and T-2724 no longer lists them.
 
+Added by gap triage 2026-10-31 (T-3349's Outcome assigns these df = 1 cells here, Excel's 1/TAN form; up to 2.9%
+off the math at A10, e.g. A10 `T.INV.2T(0.999999999999999,1)`: Excel 1.6155696572206502e-15, ours 1.569540824103884e-15):
+- probes/t3349-t-inv-2t-near-one.case.json (6): Calc!A3, A6, A7, A8, A9, A10
+
 ## Acceptance criteria
 - [ ] The 30 gated known-failure lines above (18 gen-m9, 12 ironcalc-calc) disappear from eval/baseline/gen-m9.txt and
       eval/baseline/ironcalc-calc.txt (`make eval-baseline`), with no new known-failure line in any baseline.

@@ -58,6 +58,12 @@ Cells (gap triage 2026-10-30c; 3,417 cells, all BETA.DIST(.,FALSE) with a + b - 
 - probes-numeric/t2513-verify-r3-loader-bd0-hold.case.json (38): Calc!A1537, A1547, A1548, A1549, A1550, A1552, A1553, A1554, A1564, A1574, A1575, A1578, A1579, A1580, A1590, A1591, A1592, A1593, A1595, A1596, A1597, A1614, A1616, A1617, A1618, A1635, A1636, A1649, A1650, A1663, A1664, A1801, A1802, A1828, A1834, A1861, A1862, A1883
 - probes-numeric/t2513-verify-r3-loader-const-hold.case.json (6): Calc!A322, A324, A327, A336, A1148, A1150
 
+Added by gap triage 2026-10-31: visibly-off BETA.DIST densities with a + b - 2 >= 90 no open task names, inside Gate A
+(ours within 3.2E-14 of the 50-digit math in triage), so Phase 1b under decision 0188 R5:
+- probes-numeric/m9-beta-dist-a100.case.json (10): Calc!A20, A26, A28, A30, A32, A34, A38, A44, A46, A48
+- probes-numeric/m9-beta-dist-a10.case.json (1): Calc!A54
+- probes-numeric/m9-beta-dist-a5.case.json (2): Calc!A52, A54
+
 ## Acceptance criteria
 - [ ] The listed cells are within 15 digits of Excel's value, or each one left over is named here with its reason
       and an owner.

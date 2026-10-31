@@ -50,6 +50,9 @@ search does not land on our own crossing (A31: ours is 9.5E-15 off the 50-digit 
 The other 12 visibly-off m9-beta-inv cells at small shapes, where Excel's cdf is flat or its search stops off the
 crossing, are T-3388's; the 5 `#NUM!` cells at p = 0.9999999999 are T-3351's.
 
+Added by gap triage 2026-10-31: one visibly-off BETAINV cell no task names, a shape just below 1 on a shifted interval:
+- gen-m9/eced4bb6a0234c9e.case.json (1): Calc!A291 `BETAINV(0.1,0.999,30,(-0.0001))`, Excel 0.0033963068798590146, ours 0.003396306879859034
+
 ## Acceptance criteria
 - [ ] Each of the five functions meets the Phase 1 rate, or the Outcome names every cell still visibly off with an
       owner.
