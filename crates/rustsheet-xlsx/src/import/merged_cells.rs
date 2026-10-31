@@ -277,21 +277,48 @@ mod tests {
         assert_eq!(kept_by_index(&ranges).len(), 6);
     }
 
-    /// Pseudo-random ranges on a small grid, so that many intersect, give the same kept list.
-    #[test]
-    fn the_index_keeps_what_pairwise_checks_keep_on_random_ranges() {
+    /// A xorshift generator of values below a bound, so the random tests are reproducible.
+    fn pseudo_random() -> impl FnMut(u64) -> i32 {
         let mut state: u64 = 0x2545_f491_4f6c_dd1d;
-        let mut next = |bound: u64| {
+        move |bound| {
             state ^= state << 13;
             state ^= state >> 7;
             state ^= state << 17;
             i32::try_from(state % bound).unwrap_or(0)
-        };
+        }
+    }
+
+    /// Pseudo-random ranges on a small grid, so that many intersect, give the same kept list.
+    #[test]
+    fn the_index_keeps_what_pairwise_checks_keep_on_random_ranges() {
+        let mut next = pseudo_random();
         let ranges: Vec<MergedCell> = (0..4_000)
             .map(|_| merged(1 + next(200), 1 + next(300), 1 + next(12), 1 + next(12)))
             .collect();
         let kept = kept_by_pairwise_checks(&ranges);
         assert!(kept.len() > 100 && kept.len() < 3_000, "{}", kept.len());
+        assert_eq!(kept_by_index(&ranges), kept);
+    }
+
+    /// Pseudo-random ranges over all the columns, some thousands of columns wide, so that the
+    /// tree's upper levels hold ranges too, give the same kept list.
+    #[test]
+    fn the_index_keeps_what_pairwise_checks_keep_on_wide_random_ranges() {
+        let mut next = pseudo_random();
+        let ranges: Vec<MergedCell> = (0..4_000)
+            .map(|i| {
+                let width = if i % 4 == 0 {
+                    1 + next(8_000)
+                } else {
+                    1 + next(40)
+                };
+                let column = 1 + next(u64::from((16_385 - width).unsigned_abs()));
+                merged(1 + next(2_000), column, width, 1 + next(30))
+            })
+            .collect();
+        let kept = kept_by_pairwise_checks(&ranges);
+        assert!(kept.len() > 100 && kept.len() < 3_900, "{}", kept.len());
+        assert!(kept.iter().any(|m| m.width > 1_000), "no wide range kept");
         assert_eq!(kept_by_index(&ranges), kept);
     }
 }
