@@ -3,7 +3,7 @@ id: T-2536
 title: "IMSQRT of a negative real: polar form through Excel's ATAN2, COS and SIN (gen-m9, 5 cells)"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -32,9 +32,9 @@ Cells:
 - gen-m9/fb73d8163ad87fc6.case.json (1): Calc!A398
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2258): these 5 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2258): these 5 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Unit tests for IMSQRT of -1, -2.5 and -0.0001.
+- [x] Unit tests for IMSQRT of -1, -2.5 and -0.0001.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -51,3 +51,14 @@ Excel-for-the-web value under decision 0039 item 4, and this task's PR may regre
 Sheet1!AL12 and AL26 (lines added to eval/milestones/exit-exceptions.tsv and phase1-exceptions.tsv, owner T-1075 item
 16). Status left as is by the owner's instruction for this PR; T-2117 is done, so the next steward or worker can unblock
 it (docs/process/agent-workflow.md, "Unblocking").
+
+## Outcome
+`imsqrt` (crates/rustsheet-engine/src/functions/engineering/complex/mod.rs) takes its half angle from Excel's ATAN2
+kernel (`excel_atan2`, with libm `atan2` where it errs, as IMPOWER does) through Excel's SIN and COS (`excel_sin_cos`);
+T-2117's `sqrt(x²+y²)` modulus is unchanged. Unit test `imsqrt_of_a_negative_real_takes_excel_atan2_cos_and_sin` pins
+-1, `TEXT(-1,"0")`, -2.5, -0.0001 and -3.85841. Eval: gen-m9 known failures 2975 -> 2970 (the 5 owned cells); every
+other IMSQRT cell of the suites is unchanged. The regressions are exactly ironcalc-calc/ENGINEERING/COMPLEXs.xlsx
+Sheet1!AL12 and AL26 (Mac 16.0300 libm digits), which decision 0188 R6 allows; they are lines of
+eval/milestones/exit-exceptions.tsv and phase1-exceptions.tsv (owner T-1075 item 16). engineering.md "IMSQRT of a
+negative real is polar through COS and ATAN2" moves from CONFLICTING to VERIFIED (excel-graph), web value followed under
+decision 0039 item 4. The kernel's unprobed edges (a zero or subnormal real part, x < 0 with -0i) are added to T-2736.

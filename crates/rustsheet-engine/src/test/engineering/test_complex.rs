@@ -521,6 +521,26 @@ fn im_sin_cos_take_sinh_and_cosh_from_exp() {
     assert_texts(&cases);
 }
 
+// IMSQRT of a negative real is the polar root through Excel's ATAN2, COS and SIN of the half
+// angle: COS(ATAN2(-1,0)/2) is 6.1257422745431E-17, libm's cos(π/2) 6.12323399573677E-17 (gen-m9
+// 59a16b5ab566ee5c A6, 516488da78a6b08c A52, 7dc52cfcbc8b4448 A254, f280df8ba95f96b9 A26;
+// excel-graph, decision 0188 R6, T-2536).
+#[test]
+fn imsqrt_of_a_negative_real_takes_excel_atan2_cos_and_sin() {
+    let cases = [
+        (r#"=IMSQRT("-1")"#, "6.1257422745431E-17+i"),
+        (r#"=IMSQRT(TEXT(-1,"0"))"#, "6.1257422745431E-17+i"),
+        ("=IMSQRT(-2.5)", "9.68564897336834E-17+1.58113883008419i"),
+        ("=IMSQRT(-0.0001)", "6.1257422745431E-19+0.01i"),
+        (
+            "=IMSQRT(-3.85841)",
+            "1.20326949922385E-16+1.96428358441443i",
+        ),
+        ("=IMSQRT(4)", "2"),
+    ];
+    assert_texts(&cases);
+}
+
 /// Each `(formula, text)` in its own cell of column A: the formula prints that text.
 fn assert_texts(cases: &[(&str, &str)]) {
     let mut model = new_empty_model();

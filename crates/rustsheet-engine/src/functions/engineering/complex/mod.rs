@@ -964,6 +964,13 @@ fn imreal((x, _, _): ComplexParts, _: CellReferenceIndex) -> CalcResult {
 /// eng-imsqrt-large-b; docs/excel-semantics/engineering.md, T-1996). Not `modulus`: a subnormal
 /// square is 0 ([`flushed_square`]), so `IMSQRT("1E-154+1E-154i")` and `IMSQRT("1E-160+0i")` are
 /// "0" (probes/eng-imln-modulus A18, A20; eng-imln-modulus-range A51-A56, A80; T-2572).
+/// The half angle is Excel's ATAN2 kernel (IMARGUMENT's [`excel_atan2`]) through Excel's SIN and
+/// COS: `IMSQRT("-1")` is "6.1257422745431E-17+i", COS(ATAN2(-1,0)/2), where libm's cos(π/2) gives
+/// 6.12323399573677E-17 (gen-m9 59a16b5ab566ee5c A6, 516488da78a6b08c A52; excel-graph, T-2536).
+/// Decision 0188 R6 follows the web over the Mac 16.0300 cache of ironcalc-calc COMPLEXs.xlsx
+/// AL12 and AL26, which has libm's digits (T-1075 item 16). Every other IMSQRT cell of the suites
+/// prints the same either way. Where that kernel errs (x zero, subnormal or y/x overflowing) libm
+/// `atan2` stands in, and a -0 imaginary part with x < 0 takes +π, as in IMPOWER (unprobed, T-2736).
 fn imsqrt((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     let (xx, yy) = (flushed_square(x), flushed_square(y));
     if !xx.is_finite() || !yy.is_finite() {
@@ -973,8 +980,9 @@ fn imsqrt((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult 
         return complex_result(0.0, 0.0, suffix);
     }
     let r = f64::sqrt(xx + yy).sqrt();
-    let a = f64::atan2(y, x);
-    complex_result(r * f64::cos(a / 2.0), r * f64::sin(a / 2.0), suffix)
+    let a = excel_atan2(x, y).unwrap_or_else(|_| f64::atan2(y, x));
+    let (sin, cos) = excel_sin_cos(a / 2.0);
+    complex_result(r * cos, r * sin, suffix)
 }
 
 #[cfg(test)]
