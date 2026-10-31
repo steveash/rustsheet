@@ -1690,6 +1690,8 @@ C	probes/t3263-dv-long-299.case.json	1
 C	probes/t3275-collation-width-kana-pairs.case.json	1406
 C	probes/t3275-collation-width-kana.case.json	856
 C	probes/t3276-collation-other-scripts.case.json	643
+C	probes/t3283-typed-double-star.case.json	36
+C	probes/t3283-typed-missing-paren.case.json	12
 C	probes/t3302-text-funcs-arrays.case.json	21
 C	probes/t3304-collation-multi-letter-accents.case.json	1896
 C	probes/t3317-xlookup-scalar-return.case.json	20
@@ -4056,9 +4058,6 @@ F	probes/t3181-collation-prefix-arrays.case.json	Calc!A7
 F	probes/t3181-collation-prefix-arrays.case.json	Calc!A8
 F	probes/t3181-collation-prefix-arrays.case.json	Calc!A9
 F	probes/t3181-collation-prefix-arrays.case.json	Calc!B2
-F	probes/t3213-typed-parse-errors.case.json	S!A5
-F	probes/t3213-typed-parse-errors.case.json	S!B5
-F	probes/t3213-typed-parse-errors.case.json	S!C5
 F	probes/t3275-collation-width-kana-pairs.case.json	Calc!AA13
 F	probes/t3275-collation-width-kana-pairs.case.json	Calc!AA15
 F	probes/t3275-collation-width-kana-pairs.case.json	Calc!AA16
