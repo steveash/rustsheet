@@ -3543,12 +3543,14 @@ Ours: this form from df 2 (T-2511); 10 of T-3061's cells and the bit-level remai
 Tasks: T-3061, T-2511, T-3399
 
 ## Two-tailed Student-t quantile with p near 1 is accurate in Excel (T-3349)
-Rule: for df from 2 up, `T.INV.2T(p,df)`, `TINV(p,df)` and `CONFIDENCE.T(p,sd,n)` with p just below or above 1 return
-the small quantile to the 15th digit of the exact value: Excel solves the centre directly, never forming 1 - p/2.
+Rule: for df from 2 up, `T.INV.2T(p,df)` with p just below or above 1 returns the small quantile to the 15th digit of
+the exact value: Excel's result shows no 1 - p/2 cancellation. TINV and CONFIDENCE.T were probed at df 2 (n = 3) only:
+TINV matches there, and CONFIDENCE.T is 1.1E-15 relative off the exact value (A5 below).
 `T.INV.2T(0.999999999989522,2)` is 1.481806159731988E-11 (exact 1.48180615973198...E-11; decision 0188 item 3,
 where the engine gave 1.49E-8 before T-2724), `T.INV.2T(0.999999999999999,2)` 1.4130832128154019E-15 (c = 1 - p is 9.99E-16 in doubles), and so on for c from
 1E-3 to 1E-15 at df 2, 5, 30, 1000 and 1E6 and for p = 1.001 and 1.000000001 at df 2 (the negative quantile,
-`T.INV.2T(1.000000001,2)` = -1.4142136793856508E-9; the literal 1.000000000000001 has 16 digits and reads as 1, giving 0).
+`T.INV.2T(1.000000001,2)` = -1.4142136793856508E-9; A38 is `T.INV.2T(1,2)` = 0, since 1+1E-15 needs 16 digits, which a
+formula literal cannot carry: numbers.md "Formula number literals are read at 15 significant digits").
 At df 1 Excel is the 1/TAN form instead (T-2858's entry above), up to 2.9% off the exact value at
 `T.INV.2T(0.999999999999999,1)` (Excel 1.6155696572206502E-15, exact 1.5695408241038844E-15).
 Evidence: probes/t3349-t-inv-2t-near-one A1-A44 (excel-graph, 2026-10-31): every cell from df 2 up is within 15
