@@ -75,7 +75,7 @@ fn beta_quantile(alpha: f64, beta: f64, p: f64) -> f64 {
 /// rounds to 1 (T-3351)").
 fn upper_quantile_near_one(alpha: f64, beta: f64, p: f64) -> Option<f64> {
     let y = beta_lower_crossing(beta, alpha, 1.0 - p);
-    (y >= f64::MIN_POSITIVE && y < 0.5).then(|| 1.0 - y)
+    (f64::MIN_POSITIVE..0.5).contains(&y).then_some(1.0 - y)
 }
 
 /// BETA.DIST's `cumulative`: a boolean, a number (TRUE unless 0), "TRUE" or "FALSE" in any case,
