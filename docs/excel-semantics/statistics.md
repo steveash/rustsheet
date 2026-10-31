@@ -1212,28 +1212,33 @@ correction(a)), the form T-2638 found above shape 20 away from the mode, times t
 - The switch: probes-numeric/t3269-gamma-tail-switch (x from 26 to 40 by 0.5 at shapes 2 to 4) has Excel correctly
   rounded at every x up to 30 at shapes 2, 3 and 4, and the ratio form (within 2 ulp at most cells) from 30.5 on:
   `POISSON(2,30,TRUE)` is exact, `POISSON(2,30.5,TRUE)` 32 ulp from it and 3 from the form.
-- Not in the engine yet (T-3269 blocked): the form as a kernel, that prefactor with the exact correction at each
-  multiple of 1/2 (`docs/research/t3269/stirling_correction.py`; TOMS's series is only good from 8) times the fraction
-  in double-double (T-3285's backward evaluation) for 30 < x <= 600, is on branch
-  `claude/hopeful-meitner-5oxf0g-t3269-far-tail` (637fcf8dd). With the exact fraction ratio, ln(Excel / exact) minus
-  the form's rounding stays at -0.32 of the exponent's ulp (+-0.03) along the whole POISSON ulp run: its jumps are the
-  exponent's.
+- Not in the engine yet (T-3269 blocked, decision 0203 proposed): the form as a kernel is on branch
+  `claude/hopeful-meitner-5oxf0g-t3269-far-tail` (d74097f8c, on top of T-3285), `incomplete_gamma/excel_tail.rs`
+  for POISSON's cdf and CHISQ.DIST.RT / CHIDIST / CHISQ.TEST: that prefactor with the exact correction at each multiple of 1/2
+  (`docs/research/t3269/stirling_correction.py`; TOMS's series is only good from 8) times the fraction in double-double
+  (T-3285's backward evaluation) for 30 < x <= 600; past 600 (unmeasured) the accurate kernel would stay. With the exact
+  fraction ratio, ln(Excel / exact) minus the form's rounding stays at -0.32 of the exponent's ulp (+-0.03) along the
+  whole POISSON ulp run: its jumps are the exponent's.
 - Fit (decision 0188 R4): the form is a structural choice, the switch at 30 a FITTED cut. On the 502 literal cells
   with a < 20 and x >= a + 1, split 30% by (a, x) hash: bit-exact train 79 of 345 (22.9%) and test 52 of 157 (33.1%),
   against 50 / 345 and 22 / 157 for the correctly rounded Q and 32 / 345 and 19 / 157 for the old kernel; within 4
   ulp, test 147 of 157 (correctly rounded 46). Fresh log-uniform sweep after the freeze
   (probes-numeric/t3269-fresh-sweep, 240 cells, x from 1 to 1000): in the far range 20 of 88 bit-exact (old kernel 1,
   correctly rounded 2) and 72 within 4 ulp; elsewhere 74 of 152 (old 73).
-- On the eval that kernel fixed 6 gated cells and moved 13 from visibly off to within 15 digits (gen-m9 POISSON and
-  CHIDIST at mean or x 100, ironcalc-calc CHISQ.xlsx G3 and G4 with T-3285), with no gated cell lost; but two ungated
-  cells became visibly off, `CHISQ.DIST.RT(459.29972,12)` and `(468.485715,12)` (probes-numeric/
-  t2561-chisq-dist-rt-past-edge R!A73, A75: 15 and 13 ulp to 129 and 189), so it needs an owner ruling (decision 0111)
-  or the cause. Two gated cells already visibly off went farther: `POISSON(9,100,TRUE)` (x / a = 10, below; 44 to 72
-  ulp) and `POISSON(5,42,TRUE)` (5 to 25). The two ungated cells and the latter are shape 6, where the form misses at
-  isolated points by 1.5 to 3 ulp of its exponent while the points 0.5 away fit within 4 ulp
-  (probes-numeric/t3269-shape6-misses: `POISSON(5,x,TRUE)` for x 220 to 240 and 36 to 48; misses at x = 38, 42,
-  229.64986, 234.2428575; shapes 5, 7, 8 fit at the same x). `POISSON(5,229.64986,TRUE)` is
-  `CHISQ.DIST.RT(459.29972,12)` bit for bit, so it is the kernel, not CHISQ.DIST.RT's scaling.
+- On the eval (main ea7470e4a against that branch with T-3285, per cell) the gated cells: fixed 8, closer 18, visibly
+  fixed 13 (gen-m9 POISSON and CHIDIST at mean or x 100, ironcalc-calc CHISQ.xlsx G3 and G4 with T-3285), farther 6,
+  lost 1 (five of them T-3285's, decision 0202), newly visibly off 0. Two gated cells already visibly off went
+  farther: `POISSON(9,100,TRUE)` (x / a = 10; 44 to 72 ulp) and `POISSON(5,42,TRUE)` (5 to 25). Ungated cells newly
+  visibly off: `CHISQ.DIST.RT(459.29972,12)` and `(468.485715,12)` (probes-numeric/t2561-chisq-dist-rt-past-edge
+  R!A73, A75: 15 and 13 ulp to 129 and 189), and at x / a = 10 exactly `POISSON(10,110,TRUE)` and
+  `CHISQ.DIST.RT(220,22)` (9 to 90) and `POISSON(13,140,TRUE)` and `CHISQ.DIST.RT(280,28)` (5 to 79)
+  (t3284-gamma-deep-upper-tail A165, A166, A183, A184). The shape-6 cells are where the form misses at isolated points
+  by 1.5 to 3 ulp of its exponent while the points 0.5 away fit within 4 ulp (probes-numeric/t3269-shape6-misses:
+  `POISSON(5,x,TRUE)` for x 220 to 240 and 36 to 48; misses at x = 38, 42, 229.64986, 234.2428575; shapes 5, 7, 8 fit
+  at the same x). `POISSON(5,229.64986,TRUE)` is `CHISQ.DIST.RT(459.29972,12)` bit for bit, so it is the kernel, not
+  CHISQ.DIST.RT's scaling (T-3469). And at `CHIDIST(100,9)` = Q(4.5, 50) (gen-m9/caa1eed48b1883fe A59) Excel is
+  the correctly rounded Q, 1.5735176303753944E-17, which T-3285's kernel has and the form misses by 1 ulp: past x = 30
+  Excel is not the form everywhere at half-integer shapes either (T-3469).
 - Not yet Excel's: the remaining 1 to 3 ulp (the fraction or the correction is not Excel's to the bit), and x / a = 10
   exactly, where the form is 16 to 245 ulp from Excel at some shapes (`POISSON(10,110,TRUE)` +90,
   `CHISQ.DIST.RT(390,39)` +245) though within 5 at others (shapes 1.5, 4.5, 6, 7.5, 9, 10.5, 15.5); no ln(x/a) variant
