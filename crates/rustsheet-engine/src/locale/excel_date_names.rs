@@ -695,6 +695,7 @@ pub(crate) static LOCALES: [(u16, &str, &DateNames); 43] = [
     (0x5C0A, "es-419", &ES_419),
     (0x1007, "de-LU", &DE_LU),
     (0x1407, "de-LI", &DE_LU),
+    // 0x1000 is only a placeholder key so the BCP-47 tag `pt-AO` resolves; Excel has no pt-AO LCID here.
     (0x1000, "pt-AO", &PT_AO),
     (0x408, "el-GR", &EL),
     (0x41E, "th-TH", &TH),

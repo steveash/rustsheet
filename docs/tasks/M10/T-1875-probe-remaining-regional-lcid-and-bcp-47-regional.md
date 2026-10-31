@@ -40,4 +40,4 @@ Exit owners (decision 0096; the 2026-10-27 planner run names each cell the range
 -
 
 ## Outcome
-New probe probes/text-locale-regional-lcids-2 (294 cells, oracle-filled). Added tables for es-CO, es-CL, es-419, de-LU, de-LI and pt-AO; the other probed variants already matched. 273 of 294 cells pass; the 21 cells for `[$-2412]` (Excel prints English, ours Korean) are open in T-3382. Findings in number-formats.md. The t1924 cells B10/B28/B29 and the extended-hex ones were not re-probed here.
+New probe probes/text-locale-regional-lcids-2 (294 cells, oracle-filled). Added tables for es-CO, es-CL, es-419, de-LU, de-LI and pt-AO; the other probed variants already matched. 273 of 294 cells pass; the 21 cells for `[$-2412]` (Excel prints English, ours Korean) are open in T-3382. Findings in number-formats.md. The t1924 exit cells (A2, A3, B2, B3, B10, B22, B28, B29) were not re-probed here; T-3382 takes them with the `[$-2412]` rule.
