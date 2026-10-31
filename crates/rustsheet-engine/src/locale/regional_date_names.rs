@@ -146,7 +146,7 @@ pub(super) static ES_AR: DateNames = DateNames {
 };
 
 /// es-CL (T-1875; es-CO equals es-AR): the es-AR names, except that it prints "sept." for September.
-/// Excel: probes/text-locale-regional-lcids-2 A1-A21, B1-B21.
+/// Excel: probes/text-locale-regional-lcids-2 B1-B21.
 pub(super) static ES_CL: DateNames = DateNames {
     months_short: [
         "ene.", "feb.", "mar.", "abr.", "may.", "jun.", "jul.", "ago.", "sept.", "oct.", "nov.",

@@ -87,6 +87,25 @@ pub struct Localized {
     pub names_after_mmm: Option<&'static DateNames>,
 }
 
+impl Localized {
+    /// The common case: no era-year doubling and no names after `mmm`.
+    fn new(
+        names: &'static DateNames,
+        day_half: Option<&'static DateNames>,
+        calendar: Calendar,
+        japanese_lcid: bool,
+    ) -> Self {
+        Self {
+            names,
+            day_half,
+            calendar,
+            japanese_lcid,
+            year_twice: false,
+            names_after_mmm: None,
+        }
+    }
+}
+
 /// What a `[$-...]` tag (with no currency symbol) does to its section.
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum LocaleTag {
@@ -270,14 +289,12 @@ fn resolve_lcid(value: u32) -> LocaleTag {
     };
     let japanese = lcid & 0x3FF == 0x11;
     let with_names = |calendar_names: &'static DateNames, calendar| {
-        LocaleTag::Names(Localized {
-            names: calendar_names,
-            day_half: Some(names),
+        LocaleTag::Names(Localized::new(
+            calendar_names,
+            Some(names),
             calendar,
-            japanese_lcid: japanese,
-            year_twice: false,
-            names_after_mmm: None,
-        })
+            japanese,
+        ))
     };
     match value >> 16 {
         0 | 0x15.. if japanese => with_names(names, Calendar::Japanese { explicit: false }),
@@ -379,14 +396,7 @@ fn without_locale(calendar: u32) -> LocaleTag {
         0x10 => (EN_US, Calendar::Saka),
         _ => return LocaleTag::Silent,
     };
-    LocaleTag::Names(Localized {
-        names,
-        day_half: None,
-        calendar,
-        japanese_lcid: false,
-        year_twice: false,
-        names_after_mmm: None,
-    })
+    LocaleTag::Names(Localized::new(names, None, calendar, false))
 }
 
 /// The table of exactly `lcid`.
@@ -413,19 +423,16 @@ fn by_language(lcid: u16) -> Option<&'static DateNames> {
 /// Hijri after a `B2` prefix.
 fn resolve_bcp47(tag: &str, hijri_prefix: bool) -> LocaleTag {
     let resolve_id = |id: u16| resolve_lcid(hijri_default(u32::from(id), hijri_prefix));
-    if let Some((_, names)) = BCP47_ONLY
-        .iter()
-        .find(|(t, _)| t.eq_ignore_ascii_case(tag))
-        .filter(|_| !hijri_prefix)
-    {
-        return LocaleTag::Names(Localized {
-            names,
-            day_half: Some(names),
-            calendar: Calendar::Gregorian,
-            japanese_lcid: false,
-            year_twice: false,
-            names_after_mmm: None,
-        });
+    // A tag with no LCID has no Hijri default, so a `B2` prefix skips it.
+    if !hijri_prefix {
+        if let Some((_, names)) = BCP47_ONLY.iter().find(|(t, _)| t.eq_ignore_ascii_case(tag)) {
+            return LocaleTag::Names(Localized::new(
+                names,
+                Some(names),
+                Calendar::Gregorian,
+                false,
+            ));
+        }
     }
     if let Some((id, _, _)) = LOCALES.iter().find(|(_, t, _)| t.eq_ignore_ascii_case(tag)) {
         return resolve_id(*id);
