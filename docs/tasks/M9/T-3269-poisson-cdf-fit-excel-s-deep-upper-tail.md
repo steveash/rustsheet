@@ -80,3 +80,5 @@ gen-m9/43c6227e0ff368c7 A108 `=POISSON(5,Data!A8,(-1))` with Data!A8 = 42: Excel
 
 ## Out of scope
 - The pmf (T-3247).
+
+T-3289 landed the sweep: probes-numeric/t3284-gamma-deep-upper-tail.case.json (343 cells, filled by excel-graph).

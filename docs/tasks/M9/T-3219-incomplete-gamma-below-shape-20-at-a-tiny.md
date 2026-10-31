@@ -38,7 +38,17 @@ Cells (from T-2638; run `make eval-show CASE=...` for the values):
   `CHISQ.INV.RT(0.975,5)`).
 - Type mismatches T-2638 owned by the decision-0159 rule (other causes may own them; check first):
   gen-m9/2801c1c11c21e134 A241, 40425341c5034eed A265, 4e55500bb8ad3cd8 A341, 7bd219ec0c0c5e22 A239,
-  a013a45a8fbcab4f A338.
+  a013a45a8fbcab4f A338. Gap triage 2026-10-30d checked them. None is this task's: the two GAMMADIST cells (#NUM! at
+  a huge shape) are T-3271's, and the three CHIINV cells at a df from 1.7E+13 to 1E+16 are T-3070's.
+- The gen-m9 cells above that no task was credited with, by full case id. A bare hash names no case when probes/t2436 reruns that hash,
+  so `scripts/exit_owners.py` did not credit them to this task (gap triage 2026-10-30d):
+  - gen-m9/3a25a03eb94fcfbd.case.json (1): Calc!A158
+  - gen-m9/bbdfc06cae0e0d71.case.json (1): Calc!A125
+  - gen-m9/f34f66fb7f81e673.case.json (1): Calc!A3
+  - gen-m9/984cba67bbe6972b.case.json (4): Calc!A42, A49, A140, A217
+  - gen-m9/a54c738c697617c3.case.json (1): Calc!A212
+  - gen-m9/a7bf0d8d81d33ba6.case.json (1): Calc!A152
+  - gen-m9/4ab2ba98d26c8a5e.case.json (1): Calc!A85
 - ironcalc-calc STATISTICAL/BETA_GAMMA.xlsx BETA_DIST!L3, CHISQ.xlsx Sheet1!G3 and G4, GAMMA.xlsx
   'GAMMA.DIST GAMMA.INV'!E16.
 - probes-numeric/m9-gamma-dist-a9 Calc!A1, A2, A11, A21, A22; t1049-chisqdist Calc!A16, A46, A48;
