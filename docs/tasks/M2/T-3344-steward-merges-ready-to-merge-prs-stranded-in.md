@@ -47,8 +47,9 @@ decision record the governance gate asks for.
         `scripts/merge_train_stats.py` `stranded()` (`make merge-train-stats` lists these PRs),
         so the 2 h threshold has one source. When `make merge-train-stats` cannot run (no `gh`
         authentication in the container, as on the 2026-10-31 05:47 UTC run, #2523), the steward
-        builds the same list from the GitHub MCP tools: open PRs labelled `ready-to-merge` whose
-        head commit is older than `STRANDED_AFTER`. The skill names both ways.
+        builds the same list from the GitHub MCP tools, by `stranded()`'s own definition: open PRs
+        labelled `ready-to-merge`, not labelled `merge-train-ejected`, whose newest merge-ready
+        marker comment is older than `STRANDED_AFTER`. A PR with no marker comment is not on the list.
       - **Verdicts on the current head:** `make merge-ready-verify PR=<n>` passes on the PR's
         current head, so the steward does not rely on the PR body's table. When the marker is
         stale or missing, the steward runs the reviewers on that head itself, as in the
@@ -66,6 +67,8 @@ decision record the governance gate asks for.
       - remove the label.
 
       In `train` mode the rule does not apply, because the train merges these PRs.
+- [ ] The `steward` skill documents both ways of finding the stranded PRs: `make merge-train-stats`,
+      and the GitHub-tools fallback above.
 - [ ] The steward's daily report names each PR it merged this way.
 - [ ] A decision record amends 0050 and 0157 for `shadow` mode. It reconciles the skill's line
       "A PR whose worker already marked it ready, on its current head, is not orphaned" with this
