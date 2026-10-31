@@ -5,7 +5,9 @@
 //! (excel-graph, 2026-10-18; regional variants and more languages from probes/text-locale-regional-lcids), except the morning "AM" of locales whose afternoon is "PM", which
 //! is probed for fr, de, de-AT, th, sk, uk and he only.
 
-use super::regional_date_names::{AR, DE_AT, EL, ES_AR, ES_MX, HE, HI, SK, TH, UK, ZH_SG};
+use super::regional_date_names::{
+    AR, DE_AT, DE_LU, EL, ES_419, ES_AR, ES_CL, ES_MX, HE, HI, PT_AO, SK, TH, UK, ZH_SG,
+};
 
 /// The date names and day-half strings of one locale.
 #[derive(PartialEq, Eq, Debug)]
@@ -340,7 +342,7 @@ static RU: DateNames = DateNames {
     pm: "PM",
 };
 
-static PT: DateNames = DateNames {
+pub(super) static PT: DateNames = DateNames {
     months_short: [
         "jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez",
     ],
@@ -657,7 +659,7 @@ static TR: DateNames = DateNames {
 
 /// The probed locales: LCID, BCP-47 tag and names. For a fallback by language the first entry
 /// of the language wins, so the order matters: `[$-zh]` and `[$-4]` are Traditional Chinese.
-pub(crate) static LOCALES: [(u16, &str, &DateNames); 37] = [
+pub(crate) static LOCALES: [(u16, &str, &DateNames); 43] = [
     (0x409, "en-US", &EN),
     (0x809, "en-GB", &EN),
     (0x40C, "fr-FR", &FR),
@@ -688,6 +690,12 @@ pub(crate) static LOCALES: [(u16, &str, &DateNames); 37] = [
     (0xC04, "zh-HK", &ZH_TW),
     (0x80A, "es-MX", &ES_MX),
     (0x2C0A, "es-AR", &ES_AR),
+    (0x240A, "es-CO", &ES_AR),
+    (0x340A, "es-CL", &ES_CL),
+    (0x5C0A, "es-419", &ES_419),
+    (0x1007, "de-LU", &DE_LU),
+    (0x1407, "de-LI", &DE_LU),
+    (0x1000, "pt-AO", &PT_AO),
     (0x408, "el-GR", &EL),
     (0x41E, "th-TH", &TH),
     (0x41B, "sk-SK", &SK),
