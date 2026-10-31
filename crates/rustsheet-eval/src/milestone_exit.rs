@@ -521,6 +521,47 @@ fn function_rate(report: &RunReport, row: &mut ExitRow) {
     row.below_rate_functions = below;
 }
 
+/// Fills `row`'s ironcalc-calc measure for milestone `m` from the function-scope row: the
+/// visibly-off cells less the exit exceptions, of which `calc_met` reads the ones decision 0188
+/// R1(c) counts (T-3427); `rule` is the milestone's criterion and `shows` whether it has one to
+/// show.
+fn calc_measure(
+    report: &RunReport,
+    rule: Option<CalcRule>,
+    shows: bool,
+    m: &str,
+    row: &mut ExitRow,
+) {
+    let scope = report.function_scope.as_ref().filter(|_| shows);
+    if let Some(s) = scope {
+        row.calc_blocked_cases.clone_from(&s.blocked_cases);
+    }
+    let calc_ran = row.calc_blocked_cases.is_empty();
+    let Some(r) = scope.and_then(|s| s.rows.iter().find(|r| r.milestone == m)) else {
+        return;
+    };
+    let failing = r.failing.len().saturating_sub(r.excepted.len());
+    let visible: Vec<&String> = r
+        .visibly_off
+        .iter()
+        .filter(|c| !r.excepted.contains(c))
+        .collect();
+    let counted = visible.iter().filter(|c| report.r1c.counts(c)).count();
+    row.calc_failing = Some(failing);
+    row.calc_visibly_off = Some(visible.len());
+    row.calc_r1c_off = Some(counted);
+    row.calc_met = match rule {
+        None => None,
+        Some(CalcRule::NoneOff) => Some(calc_ran && counted == 0),
+        Some(CalcRule::Rate(num)) => {
+            let scored = r.cells.saturating_sub(r.deviations + r.excepted.len());
+            row.calc_scored = Some(scored);
+            row.calc_allowance = Some(allowance(scored, num));
+            Some(calc_ran && meets_rate(scored.saturating_sub(counted), scored, num))
+        }
+    };
+}
+
 /// One row per milestone of [`MILESTONES`].
 #[must_use]
 pub fn summarize(report: &RunReport) -> Vec<ExitRow> {
@@ -559,36 +600,7 @@ pub fn summarize(report: &RunReport) -> Vec<ExitRow> {
             row.gen_blocked_cases = first.blocked_cases;
             row.gen_suite = first.name;
             let suite = row.gen_suite.clone();
-            let scope = report
-                .function_scope
-                .as_ref()
-                .filter(|_| need.shows_scope());
-            if let Some(s) = scope {
-                row.calc_blocked_cases.clone_from(&s.blocked_cases);
-            }
-            let calc_ran = row.calc_blocked_cases.is_empty();
-            if let Some(r) = scope.and_then(|s| s.rows.iter().find(|r| r.milestone == m)) {
-                let failing = r.failing.len().saturating_sub(r.excepted.len());
-                let visible: Vec<&String> = r
-                    .visibly_off
-                    .iter()
-                    .filter(|c| !r.excepted.contains(c))
-                    .collect();
-                let counted = visible.iter().filter(|c| report.r1c.counts(c)).count();
-                row.calc_failing = Some(failing);
-                row.calc_visibly_off = Some(visible.len());
-                row.calc_r1c_off = Some(counted);
-                row.calc_met = match need.calc {
-                    None => None,
-                    Some(CalcRule::NoneOff) => Some(calc_ran && counted == 0),
-                    Some(CalcRule::Rate(num)) => {
-                        let scored = r.cells.saturating_sub(r.deviations + r.excepted.len());
-                        row.calc_scored = Some(scored);
-                        row.calc_allowance = Some(allowance(scored, num));
-                        Some(calc_ran && meets_rate(scored.saturating_sub(counted), scored, num))
-                    }
-                };
-            }
+            calc_measure(report, need.calc, need.shows_scope(), m, &mut row);
             if need.function_rate {
                 function_rate(report, &mut row);
             }
