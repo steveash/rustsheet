@@ -1839,14 +1839,19 @@ position is intersected. With A1 `=SEQUENCE(3)`:
   `=SIN(A1#)`;
 - the legacy `=SIN(A1:A3)` beside it, in D2 and D5, is SIN(2) and `#VALUE!`, with FORMULATEXT `=SIN(@A1:A3)`.
 It joins the legacy forms with no automatic `@` (SWITCH, the dynamic-array functions, LAMBDA calls; "Legacy formulas
-put `@` on array-valued calls and array constants"). A formula mixing a spill reference with a plain range is
-unprobed; the engine applies the rule to the whole formula, as it does for SWITCH.
+put `@` on array-valued calls and array constants"). Unprobed, and handled by the engine as it handles SWITCH, with
+the rule applied to the whole formula: a formula mixing a spill reference with a plain range (`=SIN(A1#)+B1:B3`), a
+bare `=A1#`, and a scalar host (`=SUM(A1#)+B1:B3`); probe pending, T-3490.
 Evidence: probes/legacy-formula-spill-ref (excel-graph, 2026-10-31, 19 cells).
 Engine: `removes_automatic_at` (parser/static_analysis/legacy.rs) holds for a spill reference.
 `Model::promote_dynamic_formula_cells` (formula_cells.rs) loads a plain formula cell that has no automatic `@` and a
 non-scalar static result as a dynamic anchor, as typing it does. This covers an xlsx `<f>` without `cm` and a decoded
 `CellFormula`, which before reached evaluation as a scalar cell with an array result (a `debug_assert!`, found by the
-`bitcode_workbook` fuzz target).
+`bitcode_workbook` fuzz target). Until this change, the earlier "ours matches" claims for SWITCH and the dynamic-array functions in a legacy formula
+held only on the harness path (`set_cell_with_legacy_formula`), not for a real xlsx `<f>`. On export, a promoted cell
+is written as a dynamic formula (`cm="1"`, `t="array"`), which Excel reads the same way. A plain-cell formula with a
+spill reference keeps every `@`, so a typed `=@A1#` is written `_xlfn.SINGLE(_xlfn.ANCHORARRAY(A1))`. Whether Excel
+itself re-saves such a cell as a plain `<f>` is unprobed.
 Status: VERIFIED
 Tasks: T-3467
 

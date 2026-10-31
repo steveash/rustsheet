@@ -231,7 +231,7 @@ fn with_sheet1(bytes: &[u8], edit: impl Fn(String) -> String) -> Vec<u8> {
     out.finish().unwrap().into_inner()
 }
 
-/// T-3467: a plain `<f>SIN(A1#)</f>` (no `t="array"`, no `cm`) over a spill is still dynamic in
+/// T-3467: a plain `<f>SIN(_xlfn.ANCHORARRAY(A1))</f>`, the file form of `SIN(A1#)` (no `t="array"`, no `cm`), over a spill is still dynamic in
 /// Excel: no `@`, and it spills on the spill's rows and off them (probes/legacy-formula-spill-ref,
 /// excel-graph). The import used to read it as `=@SIN(A1#)`, one value.
 #[test]
@@ -247,7 +247,7 @@ fn a_plain_formula_with_a_spill_reference_imports_dynamic() {
     // The plain `<f>` a legacy writer stores, without the spill cells a dynamic anchor saves.
     let bytes = with_sheet1(&save(&model), |mut xml| {
         for (cell, replacement) in [
-            ("D10", "<c r=\"D10\"><f>SIN(A1#)</f>"),
+            ("D10", "<c r=\"D10\"><f>SIN(_xlfn.ANCHORARRAY(A1))</f>"),
             ("D11", ""),
             ("D12", ""),
         ] {
@@ -259,7 +259,7 @@ fn a_plain_formula_with_a_spill_reference_imports_dynamic() {
         }
         xml
     });
-    assert!(sheet1_xml(&bytes).contains("<c r=\"D10\"><f>SIN(A1#)</f></c>"));
+    assert!(sheet1_xml(&bytes).contains("<c r=\"D10\"><f>SIN(_xlfn.ANCHORARRAY(A1))</f></c>"));
     let workbook = load_from_xlsx_bytes(&bytes, "m", "en", "UTC").unwrap();
     let mut model = Model::from_workbook(workbook, "en").unwrap();
     model.evaluate();
