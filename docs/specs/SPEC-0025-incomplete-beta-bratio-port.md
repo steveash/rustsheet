@@ -232,7 +232,7 @@ How each kind is handled:
 | T-2508 | E6 | bratio/bfrac.rs | bfrac and basym (min(a,b) >= 40) |
 | T-2509 | r2-tdist | bratio/bgrat.rs | bgrat at b = 1/2 in extended precision; T.DIST* through K(n/2, 1/2, y, z) for the branches T-2505/T-2506 ported |
 | T-2510 | E7 | bratio/bgrat.rs | bup+bgrat, bgrat, L140 bup+bgrat, L140 bup+bup+bgrat for BETA.DIST, F, BINOM and NEGBINOM. T stays delegated in this family |
-| T-2511 | E8 | inverse_beta.rs, fisher.rs, student_t.rs | BETA.INV, F.INV, F.INV.RT and T.INV* solve the ported CDF to the crossing; settles T-2633 |
+| T-2511 | E8 | inverse_beta.rs, fisher.rs, student_t.rs | BETA.INV, F.INV, F.INV.RT and T.INV* solve the ported CDF to the crossing; settles T-3374 (from T-2633) |
 
 After T-2511, a cleanup task deletes the old kernel's unused paths and `t2464_harness.rs`. It is filed when T-2511
 lands.

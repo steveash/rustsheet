@@ -2050,7 +2050,8 @@ small (a few x 2^-53) elsewhere. Its algorithm is unknown.
   Ours (since T-2119, BETA.DIST's cdf on the T-0970 incomplete beta): four of these cells are visibly off, past
   half a unit of the 15th digit. They are t0969-beta-prefactor D85 (Excel 1.6851260494385718E-11, 18 ulp) and D86
   (Excel 8.417666830127187E-07, 33 ulp; bit-exact on statrs' cdf), and t0969-t-beta-link E56 `BETA.DIST(D56,B56/2,0.5,TRUE)`
-  (Excel 9.114921170875367E-05, 4 ulp) and F6 `=E6/2` (Excel 0.07797913037736931, 6 ulp). T-2633 owns them.
+  (Excel 9.114921170875367E-05, 4 ulp) and F6 `=E6/2` (Excel 0.07797913037736931, 6 ulp). Since T-2510 (bgrat at a0 = 1/2
+  for BETA.DIST) D85 is bit-exact and D86, E56 and F6 are 1 ulp off, within the 15th digit (T-2633's Outcome).
 - The algorithm, for a < 1 and b <= 8 (T-0969 attempt 10): B(a,b) = EXP(GAMMALN(a) + (GAMMALN(b) - GAMMALN(a+b))),
   with Excel's own GAMMALN and in that grouping. probes-numeric `t0969-beta-switch` (excel-graph, 2026-10-21) has
   `BETA.DIST(x,a,b,FALSE)` at x = 0.01 and 0.03 for a in {0.25, 0.5, 0.75, 1.5, 2.5} and b = 6.5 to 9.5 by 1/32, with
@@ -3836,7 +3837,7 @@ Tasks: T-1543, T-1634, T-2561, T-3336, T-3337
     the plain-product rule is not general and is not implemented.
 - Excel's BETA.INV is erratic where the shape is extreme: `BETA.INV(1E-300,0.5,100)` = `BETA.INV(1E-200,0.5,100)` = 2.7050408442680296E-151 (the true quantile underflows to 0, ours 0); `BETA.INV(p,0.01,0.01)` is `#NUM!` for every p; `BETA.INV(1E-200,1000,1)` = 0.2064 and `BETA.INV(1E-20,1000,1)` = `#NUM!`, neither near the true quantile 0.9549925860214368. Ours is 0.9632618940201478 since T-3007 (the crossing of a cdf whose w1 is now the complement of w, "Incomplete beta at a shape of 1 outside the closed forms"). These are not implemented.
 - Open (inferred, not probed directly): Excel's `BETAINV(1E-15,1E+8,1)` is not the closed form `p^(1/alpha)`. gen-m9 5ded7594e597e31e A177, `IPMT(BETAINV(1E-15,1E+8,1),1.5,77,75622)`, is -75621.97390807692 in Excel, which implies a quantile of about 1-3.45031E-7 against the closed form's 0.9999996546122957 (1-3.45388E-7), 3.6E-10 relative apart (T-2587). Probe and fix: T-2936.
-- Ours: `statrs`' `Beta::inverse_cdf` panics from p about 1E-200 and does not finish for `BETA.INV(1E-100,1000,1)` or for any shape of 1E8 or more, at any p. Since T-2119, `BETA.INV` uses the capped search only as the start for shapes up to 1E5 and p of 1E-15 or more. It then refines to the crossing of BETA.DIST's own cdf (the T-0970 incomplete beta), and with no start it bisects that cdf. Nine BETADIST_BETAINV.xlsx cells are 1-4 ulp off on it (T-2633). A sweep of NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and CONFIDENCE.NORM over the same p found no panic or slow case.
+- Ours: `statrs`' `Beta::inverse_cdf` panics from p about 1E-200 and does not finish for `BETA.INV(1E-100,1000,1)` or for any shape of 1E8 or more, at any p. Since T-2119, `BETA.INV` uses the capped search only as the start for shapes up to 1E5 and p of 1E-15 or more. It then refines to the crossing of BETA.DIST's own cdf (the T-0970 incomplete beta), and with no start it bisects that cdf. Nine BETADIST_BETAINV.xlsx cells were 1-4 ulp off on it (T-2633); after T-2510, H2 and H67 pass and seven are still 1-4 ulp off (T-3374). A sweep of NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and CONFIDENCE.NORM over the same p found no panic or slow case.
 
 ## NORM.S.INV is AS 241 PPND16 in the tails; the central region is unfitted (T-1746)
 Rule: for |p - 0.5| > 0.425, NORM.S.INV(p) (and NORMSINV, NORM.INV(p,0,1)) equals Wichura's

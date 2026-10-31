@@ -62,7 +62,7 @@ docs/excel-semantics/statistics.md "BETA.INV solves Excel's own CDF to the cross
       Excel's 15th significant digit.
 - [ ] The nine lines above leave `eval/baseline/ironcalc-calc.txt`, with no new known-failure line in any baseline.
       Not met: H2 and H67 left; the other seven moved to T-3374 (Outcome).
-- [x] `make check` green; reviewers approve (PR #2518).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - BETADIST_BETAINV G5 and G26 (the T-1044 sweep).
@@ -100,4 +100,5 @@ part. Re-measured on `main` 95513f6:
   G42 (their BETA.DIST input) is now bit-exact, so the residue is BETA.INV's inversion. With H32 and G65 (T-2506's, 1
   ulp) they go to T-3374 (`defer: phase-1b`, after T-2511's inverse), per this task's Stage. That criterion is not met
   here.
-- `rustsheet-eval check` on the gated suites: no change (nothing to ratchet).
+- `rustsheet-eval check` on the gated suites: no change. No baseline line is removed: H2 and H67 were already off
+  `eval/baseline/ironcalc-calc.txt` (T-2510's run), and the seven left stay listed until T-3374.
