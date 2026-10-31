@@ -1762,6 +1762,8 @@ C	probes/t3334-criteria-operand-forms.case.json	983
 C	probes/t3335-textbefore-overlapping-instances.case.json	78
 C	probes/t3349-t-inv-2t-near-one.case.json	44
 C	probes/t3354-f-dist-tiny-x-huge-d2.case.json	720
+C	probes/t3378-general-in-date-section-1904.case.json	7
+C	probes/t3378-general-in-date-section.case.json	64
 C	probes/t3410-irr-zero-root-imcos.case.json	13
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
@@ -4694,6 +4696,7 @@ F	probes/t3354-f-dist-tiny-x-huge-d2.case.json	S!B98
 F	probes/t3354-f-dist-tiny-x-huge-d2.case.json	S!B99
 F	probes/t3354-f-dist-tiny-x-huge-d2.case.json	S!C40
 F	probes/t3354-f-dist-tiny-x-huge-d2.case.json	S!C48
+F	probes/t3378-general-in-date-section.case.json	Sheet1!A59
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F10
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F2
 F	probes/table-edits/table-convert-names-this-row.case.json	T!A2
@@ -4743,7 +4746,6 @@ F	probes/table-edits/table-insert-row-this-row-inside-data.case.json	F!G4
 F	probes/table-edits/table-insert-row-this-row-inside-data.case.json	F!G5
 F	probes/table-edits/table-insert-row-this-row-inside-data.case.json	F!G6
 F	probes/text-elapsed-two-tokens.case.json	S!A13
-F	probes/text-format-general-company.case.json	Sheet1!A5
 F	probes/text-locale-calendars.case.json	S!A140
 F	probes/text-locale-calendars.case.json	S!A26
 F	probes/typed-mixed-fraction-number-format.case.json	Sheet1!B15
