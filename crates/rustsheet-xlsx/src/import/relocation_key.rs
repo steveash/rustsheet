@@ -30,20 +30,26 @@
 //! the cell's offset, every other character equal, has the template's key: outside the
 //! references its text is the template's, every relative coordinate keeps its offset from the
 //! cell, every absolute one its value, and the corner comparisons of a range whose corners agree
-//! on `$` per axis cannot change. Its tokens are the template's: only the digits and letters of
-//! a coordinate change, and the characters around each are equal, so each reference still ends
-//! where it did. A template is kept only when that reading is certain: ASCII text, every
-//! reference written `[prefix]$?LETTERS$?DIGITS` (or two such corners joined by `:`, or two
-//! column or row corners `$?LETTERS:$?LETTERS`, `$?DIGITS:$?DIGITS`) with the values and `$`s of
-//! its token, and no range whose corners differ in `$` on an axis. A moved
-//! coordinate must stay on the grid, and is compared as written canonically (upper case, no
-//! leading zero); anything else is lexed as before.
+//! on `$` per axis cannot change. Its tokens are the template's: only the letters and digits of
+//! a coordinate change, and the lexer reads those by what surrounds them as well as by what they
+//! are (after a digit or `.`, `E1` is part of a number; before `!`, `R:B` is a span of sheets),
+//! so every reference must stand between characters that end a token whatever its letters and
+//! digits (`BEFORE_REFERENCE`, `AFTER_REFERENCE`). A template is kept only when that reading is
+//! certain: ASCII text, every reference so bounded and written `[prefix]$?LETTERS$?DIGITS` (or
+//! two such corners joined by `:`, or two column or row corners `$?LETTERS:$?LETTERS`,
+//! `$?DIGITS:$?DIGITS`) with the values and `$`s of its token, no range whose corners differ in
+//! `$` on an axis, and a formula that parsed (the import drops the template of one that did not,
+//! `KeyLexer::forget_template`). A moved coordinate must stay on the grid (offsets are taken in
+//! `i64`: a cell's row comes from the file unchecked), and is compared as written canonically
+//! (upper case, no leading zero); anything else is lexed as before. Any change to the A1 lexer's
+//! reading of references must be checked against this reader:
+//! `template_keys_match_a_fresh_lex_on_random_text` compares the two on random text.
 
 use rustsheet_engine::expressions::lexer::{Lexer, LexerMode};
 use rustsheet_engine::expressions::parser::Node;
 use rustsheet_engine::expressions::token::TokenType;
 use rustsheet_engine::expressions::types::{CellReferenceRC, ParsedReference};
-use rustsheet_engine::expressions::utils::{is_valid_column_number, is_valid_row};
+use rustsheet_engine::expressions::utils::{column_letters, is_valid_row};
 use rustsheet_engine::language::get_default_language;
 use rustsheet_engine::locale::get_default_locale;
 
@@ -98,65 +104,51 @@ struct Template {
 }
 
 impl Template {
-    /// The key of `formula` at `at` when it is this template shifted to `at`.
-    fn key_of_copy(&self, formula: &str, at: &CellReferenceRC) -> Option<String> {
-        if !formula.is_ascii() {
-            return None;
-        }
-        let (rows, columns) = (at.row - self.row, at.column - self.column);
-        let (text, copy) = (self.text.as_bytes(), formula.as_bytes());
-        let (mut read, mut written) = (0, 0);
-        let mut digits = [0u8; 10];
+    /// The template's text as written at `at`: each relative coordinate moved by the offset from
+    /// its cell to `at` and written canonically, everything else as is; `None` when a coordinate
+    /// moves off the grid. Offsets are taken in `i64`: a cell's row is read from the file
+    /// unchecked, and could be anything in `i32`.
+    fn shifted(&self, at: &CellReferenceRC) -> Option<String> {
+        let rows = i64::from(at.row) - i64::from(self.row);
+        let columns = i64::from(at.column) - i64::from(self.column);
+        let mut copy = String::with_capacity(self.text.len() + 8);
+        let mut read = 0;
+        let (mut digits, mut letters) = ([0u8; 20], [0u8; 3]);
         for coordinate in &self.relative {
-            let same = text.get(read..coordinate.start)?;
-            copy.get(written..written + same.len())
-                .filter(|part| *part == same)?;
-            written += same.len();
+            copy.push_str(self.text.get(read..coordinate.start)?);
+            let moved = i64::from(coordinate.value) + if coordinate.row { rows } else { columns };
+            let moved = i32::try_from(moved).ok()?;
             let shown = if coordinate.row {
-                let row = coordinate.value + rows;
-                if !is_valid_row(row) {
-                    return None;
-                }
-                decimal(row, &mut digits)
+                is_valid_row(moved).then_some(())?;
+                decimal(u64::try_from(moved).ok()?, &mut digits)
             } else {
-                let column = coordinate.value + columns;
-                if !is_valid_column_number(column) {
-                    return None;
-                }
-                letters(column, &mut digits)
+                column_letters(moved, &mut letters)?
             };
-            copy.get(written..written + shown.len())
-                .filter(|part| *part == shown)?;
-            written += shown.len();
+            copy.extend(shown.iter().map(|&b| char::from(b)));
             read = coordinate.end;
         }
-        (copy.get(written..)? == text.get(read..)?).then(|| self.key.clone())
+        copy.push_str(self.text.get(read..)?);
+        Some(copy)
+    }
+
+    /// The key of `formula` at `at` when it is this template as written at `at`.
+    fn key_of_copy(&self, formula: &str, at: &CellReferenceRC) -> Option<String> {
+        (self.shifted(at)? == formula).then(|| self.key.clone())
     }
 }
 
-/// `n` (positive) in decimal, written at the end of `buffer`.
-fn decimal(mut n: i32, buffer: &mut [u8; 10]) -> &[u8] {
+/// `n` in decimal, written at the end of `buffer`, as `to_string` writes it but with no
+/// allocation or formatting machinery: those were a sixth of the key's cost (T-3384).
+fn decimal(mut n: u64, buffer: &mut [u8; 20]) -> &[u8] {
     let mut start = buffer.len();
     loop {
         start -= 1;
         // A digit is below 10, so the cast keeps it.
         buffer[start] = b'0' + (n % 10) as u8;
         n /= 10;
-        if n == 0 {
+        if n == 0 || start == 0 {
             break;
         }
-    }
-    &buffer[start..]
-}
-
-/// The column `n` (a valid column number) in letters, written at the end of `buffer`.
-fn letters(mut n: i32, buffer: &mut [u8; 10]) -> &[u8] {
-    let mut start = buffer.len();
-    while n > 0 {
-        start -= 1;
-        // Below 26, so the cast keeps it.
-        buffer[start] = b'A' + ((n - 1) % 26) as u8;
-        n = (n - 1) / 26;
     }
     &buffer[start..]
 }
@@ -185,6 +177,24 @@ impl Corner {
     fn is_cell(&self) -> bool {
         self.form() == (true, true)
     }
+}
+
+/// What may come right before a template's reference: the lexer reads a reference's letters and
+/// digits differently after a digit (`1E1` is a number), a letter, `.` or `_` (`1.E1`), `:` (a
+/// sheet span `R:B!`), a quote or `$`, so a template allows only these. `!` ends a sheet prefix.
+const BEFORE_REFERENCE: &str = "!(,;{=<>+-*/^&% ";
+
+/// What may come right after a template's reference: not `!` (`R:B!C1` is a span of sheets),
+/// `:` (a range joined later), `(` (a call), `.`, `#` (a spill), a letter or a digit.
+const AFTER_REFERENCE: &str = "),;}=<>+-*/^&% ";
+
+/// Whether the reference text `chars[start..end]` stands between characters after and before
+/// which the lexer ends a token whatever the reference's letters and digits are (T-3384).
+fn bounded(chars: &[char], start: usize, end: usize) -> bool {
+    let before = start.checked_sub(1).and_then(|at| chars.get(at));
+    let after = chars.get(end);
+    before.is_none_or(|c| BEFORE_REFERENCE.contains(*c))
+        && after.is_none_or(|c| AFTER_REFERENCE.contains(*c))
 }
 
 /// The corner whose text ends at `end` in `chars`, or `None` when it is not written as one.
@@ -226,19 +236,21 @@ fn corner_coordinates(
     reference: &ParsedReference,
     relative: &mut Vec<Coordinate>,
 ) -> Option<()> {
-    let mut buffer = [0u8; 10];
     let shown = |range: (usize, usize)| chars[range.0..range.1].iter().map(|&c| c as u8);
     let has_row = corner.digits.0 < corner.digits.1;
     let has_column = corner.letters.0 < corner.letters.1;
-    let row_text = decimal(reference.row, &mut buffer).to_vec();
-    let column_text = letters(reference.column, &mut buffer).to_vec();
+    let (mut digits, mut letters) = ([0u8; 20], [0u8; 3]);
     let row_exact = if has_row {
-        corner.absolute_row == reference.absolute_row && shown(corner.digits).eq(row_text)
+        let written = u64::try_from(reference.row).map(|row| decimal(row, &mut digits));
+        corner.absolute_row == reference.absolute_row
+            && written.is_ok_and(|written| shown(corner.digits).eq(written.iter().copied()))
     } else {
         reference.absolute_row
     };
     let column_exact = if has_column {
-        corner.absolute_column == reference.absolute_column && shown(corner.letters).eq(column_text)
+        corner.absolute_column == reference.absolute_column
+            && column_letters(reference.column, &mut letters)
+                .is_some_and(|written| shown(corner.letters).eq(written.iter().copied()))
     } else {
         reference.absolute_column
     };
@@ -282,7 +294,7 @@ fn range_coordinates(
         return None;
     }
     let first = corner_before(chars, colon)?;
-    if first.form() != second.form() {
+    if first.form() != second.form() || !bounded(chars, first.start, end) {
         return None;
     }
     corner_coordinates(chars, &first, left, relative)?;
@@ -301,27 +313,17 @@ fn push_coordinate(key: &mut String, value: i32, at: i32, absolute: bool) {
     }
 }
 
-/// Writes `n` in decimal, as `to_string` would, without its allocation or formatting machinery:
-/// they were a sixth of the key's cost (T-3384).
+/// Writes `n` in decimal, as `to_string` would (`decimal`).
 fn push_integer(key: &mut String, n: i64) {
     if n < 0 {
         key.push('-');
     }
     let mut digits = [0u8; 20];
-    let mut rest = n.unsigned_abs();
-    let mut start = digits.len();
-    loop {
-        start -= 1;
-        // A digit is below 10, so the cast keeps it.
-        digits[start] = b'0' + (rest % 10) as u8;
-        rest /= 10;
-        if rest == 0 {
-            break;
-        }
-    }
-    for &digit in &digits[start..] {
-        key.push(char::from(digit));
-    }
+    key.extend(
+        decimal(n.unsigned_abs(), &mut digits)
+            .iter()
+            .map(|&b| char::from(b)),
+    );
 }
 
 fn push_reference(
@@ -342,6 +344,18 @@ fn push_reference(
 }
 
 impl KeyLexer {
+    /// The formula the template would take as its copy at `at`, for the tests of T-3384.
+    #[cfg(test)]
+    pub(crate) fn template_copy(&self, at: &CellReferenceRC) -> Option<String> {
+        self.template.as_ref()?.shifted(at)
+    }
+
+    /// Forgets the template, for a formula that did not parse: its reading is not the one the
+    /// module docs reason about, so its copies are keyed by lexing them (T-3384).
+    pub(crate) fn forget_template(&mut self) {
+        self.template = None;
+    }
+
     /// How many identifiers [`KeyLexer::is_stored_function`] remembers.
     const FUNCTIONS: usize = 8;
 
@@ -428,6 +442,7 @@ impl KeyLexer {
                     if let Some(coordinates) = relative.as_mut() {
                         let written = corner_before(chars, end)
                             .filter(Corner::is_cell)
+                            .filter(|corner| bounded(chars, corner.start, end))
                             .and_then(|corner| corner_coordinates(chars, &corner, &r, coordinates));
                         if written.is_none() {
                             relative = None;

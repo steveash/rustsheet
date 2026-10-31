@@ -5,7 +5,6 @@ pub mod shift;
 #[cfg(test)]
 mod test;
 
-/// Converts column letter identifier to number.
 /// The column number `column_number` (the letters read so far) becomes with the upper-case letter
 /// `letter` after it, or `None` past `i32`. Checked: a long letter run (e.g. `ISERROR` after a
 /// sheet prefix) overflows i32, and a wrapped value could land back in range and lex as a valid
@@ -16,6 +15,7 @@ pub(crate) fn push_column_letter(column_number: i32, letter: char) -> Option<i32
         .and_then(|n| n.checked_add((letter as i32) - 64))
 }
 
+/// Converts column letter identifier to number.
 pub fn column_to_number(column: &str) -> Result<i32, String> {
     if column.is_empty() {
         return Err("Column identifier cannot be empty.".to_string());
@@ -41,17 +41,25 @@ pub fn column_to_number(column: &str) -> Result<i32, String> {
 }
 
 /// If input number is outside valid range `None` is returned.
-pub fn number_to_column(mut i: i32) -> Option<String> {
+pub fn number_to_column(i: i32) -> Option<String> {
+    let mut buffer = [0u8; 3];
+    column_letters(i, &mut buffer).map(|letters| letters.iter().map(|&b| char::from(b)).collect())
+}
+
+/// The letters of column `i` (`A` to `XFD`, at most three), written at the end of `buffer`, with
+/// no allocation (T-3384); `None` outside the valid range.
+pub fn column_letters(mut i: i32, buffer: &mut [u8; 3]) -> Option<&[u8]> {
     if !is_valid_column_number(i) {
         return None;
     }
-    let mut column = "".to_string();
-    while i > 0 {
-        let r = ((i - 1) % 26) as u8;
-        column.insert(0, (65 + r) as char);
+    let mut start = buffer.len();
+    while i > 0 && start > 0 {
+        start -= 1;
+        // Below 26, so the cast keeps it.
+        buffer[start] = b'A' + ((i - 1) % 26) as u8;
         i = (i - 1) / 26;
     }
-    Some(column)
+    Some(&buffer[start..])
 }
 
 /// Checks if column number is in valid range.

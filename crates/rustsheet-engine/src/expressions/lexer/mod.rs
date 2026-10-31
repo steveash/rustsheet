@@ -261,7 +261,8 @@ impl Lexer {
         &rest[..end]
     }
 
-    /// The formula being lexed, as chars: [`Lexer::get_position_index`] indexes it.
+    /// The formula being lexed, as chars: [`Lexer::get_position_index`] indexes it. Public for
+    /// the xlsx import's relocation key, which reads the text of the tokens it keys (T-3384).
     pub fn chars(&self) -> &[char] {
         &self.chars[..self.len]
     }

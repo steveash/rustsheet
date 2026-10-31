@@ -54,7 +54,16 @@ formula's text shifted (a cheaper pre-check). Soundness arguments in the module 
     No range may have corners that differ in `$` on an axis.
   - Moved coordinates must stay on the grid. Anything else is lexed as before.
   - 52450's 36,640 copies of one formula, filled across columns over `'[1]XA Data Pull'!$J:$J`, now lex once.
-- **Lexer allocations** (engine, every A1 parse benefits), each with the same tokens, error messages and positions:
+- **Review fixes (round 1):**
+  - The Excel-fidelity review found texts where shifting the letters changes the tokens. `1A1` copied to `1E1`
+    becomes a number. `R:B!C1` copied to `Q:A!B1` becomes a span of sheets.
+  - A template now needs every reference to stand between token-ending characters (`BEFORE_REFERENCE`,
+    `AFTER_REFERENCE`), and its formula must parse: `from_a1_to_rc` calls `forget_template` otherwise.
+  - Shifts are taken in `i64`: a cell's row comes from the file unchecked, and `A2147483647` overflowed `i32`.
+  - The template's copy is built once (`Template::shifted`) and compared, rather than streamed.
+  - The column letters now come from the engine's new `column_letters`, which `number_to_column` uses too. There
+    is one decimal writer.
+- - **Lexer allocations** (engine, every A1 parse benefits), each with the same tokens, error messages and positions:
   - `consume_reference_a1` folds the column and row as it reads them, instead of building two strings. It is
     split into a non-moving `scan_reference_a1`, so `consume_range_a1`'s try at a cell builds no error before
     falling back to a column range.
@@ -71,6 +80,12 @@ formula's text shifted (a cheaper pre-check). Soundness arguments in the module 
   - `shifted_copies_take_the_keys_a_fresh_lexer_gives`: 12 formulas copied over 11 cells, plus text the engine
     never prints and off-grid moves. Each template key is compared with a fresh lexer's key, and a counter checks
     that templates served the copies;
+  - `template_keys_match_a_fresh_lex_on_random_text`: 20,000 random texts built from the characters the lexer
+    reads by context. Every copy a template takes must get the key a fresh lexer gives, and the review's two
+    counterexamples are fixed cases. The test was also run once at 200,000 texts on three other seeds. Removing
+    the boundary guard or the parse check alone still passes, since each stops these cases; removing both fails
+    on `1A1` → `1E1`;
+  - `templates_at_extreme_rows_do_not_overflow`: templates moved to and from rows `i32::MIN` and `i32::MAX`;
   - `relocation_key_gives_equal_trees_for_equal_keys` and `rc_text_cache_prints_what_a_fresh_parse_prints` pass
     unchanged.
 - **Mutations that fail a test:** dropping the mixed-`$` check, the row bounds, or the column validity check; the

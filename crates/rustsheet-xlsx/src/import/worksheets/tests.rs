@@ -398,3 +398,152 @@ fn shifted_copies_take_the_keys_a_fresh_lexer_gives() {
         shared.copies
     );
 }
+
+/// Templates over random text built from the characters the lexer reads by context (digits and
+/// `E` before a column, `.`, `_`, `R` and `C`, `:` and `!` around column and row ranges, `$`,
+/// quotes and prefixes): every copy a template takes gets the key a fresh lexer gives it. The
+/// template is dropped for a formula that does not parse, as `from_a1_to_rc` drops it (T-3384).
+/// It holds the two texts the Excel-fidelity review found: `1A1` copied to `1E1` (a number) and
+/// `R:B!C1` copied to `Q:A!B1` (a span of sheets).
+#[test]
+fn template_keys_match_a_fresh_lex_on_random_text() {
+    use rustsheet_engine::expressions::parser::new_parser_english;
+    use rustsheet_engine::expressions::types::CellReferenceRC;
+
+    use crate::import::relocation_key::KeyLexer;
+
+    let sheets = vec!["Sheet1".to_string(), "My Data".to_string()];
+    let mut parser = new_parser_english(sheets, vec![], HashMap::new());
+    parser.set_loaded(true);
+    let at = |row, column| CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row,
+        column,
+    };
+    // A template keyed, dropped if its formula does not parse, then each copy it takes keyed
+    // through it and fresh. Returns how many copies it took.
+    let mut check = |text: &str, from: &CellReferenceRC, cells: &[(i32, i32)]| -> usize {
+        let mut lexer = KeyLexer::default();
+        if lexer.key(text, from).is_none() {
+            return 0;
+        }
+        if parser.parse(text, from).has_parse_error() {
+            lexer.forget_template();
+        }
+        let mut taken = 0;
+        for &(row, column) in cells {
+            let cell = at(row, column);
+            let Some(copy) = lexer.template_copy(&cell) else {
+                continue;
+            };
+            let through_template = lexer.key(&copy, &cell);
+            assert_eq!(
+                through_template,
+                KeyLexer::default().key(&copy, &cell),
+                "{text} at {},{} copied as {copy} at {row},{column}",
+                from.row,
+                from.column
+            );
+            taken += 1;
+        }
+        taken
+    };
+    // The review's counterexamples: no template, so nothing taken.
+    assert_eq!(check("1A1", &at(1, 3), &[(1, 7)]), 0);
+    assert_eq!(check("R:B!C1", &at(1, 3), &[(1, 2)]), 0);
+    assert_eq!(check("1.A1", &at(1, 3), &[(1, 7)]), 0);
+    // A plain template is taken (the check can pass).
+    assert!(check("A1+B$2", &at(3, 3), &[(4, 3), (3, 4)]) == 2);
+
+    const PIECES: [&str; 40] = [
+        "A1",
+        "$A$1",
+        "B$2",
+        "$C3",
+        "E1",
+        "R1",
+        "C1",
+        "D9",
+        "1",
+        "1.",
+        "2E",
+        "E",
+        "R",
+        "C",
+        ":",
+        "!",
+        "$",
+        "'My Data'!",
+        "Sheet1!",
+        "(",
+        ")",
+        ",",
+        "+",
+        "*",
+        "&",
+        " ",
+        "\"x\"",
+        "SUM(",
+        "A:A",
+        "$J:$J",
+        "3:5",
+        "R:B",
+        "1E1",
+        ".",
+        "_",
+        "#",
+        "{1}",
+        "-",
+        "%",
+        "^",
+    ];
+    let cells = [(1, 1), (2, 3), (5, 2), (1, 9), (12, 4), (3, 3)];
+    let mut state: u64 = 0x2545_f491_4f6c_dd1d;
+    let mut next = |bound: usize| {
+        // xorshift: deterministic, so a failure reproduces.
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        usize::try_from(state % bound as u64).unwrap_or(0)
+    };
+    let mut taken = 0;
+    for _ in 0..20_000 {
+        let length = 1 + next(7);
+        let text: String = (0..length).map(|_| PIECES[next(PIECES.len())]).collect();
+        let from = at(
+            1 + i32::try_from(next(8)).unwrap(),
+            1 + i32::try_from(next(8)).unwrap(),
+        );
+        taken += check(&text, &from, &cells);
+    }
+    assert!(taken > 1_000, "only {taken} copies taken");
+}
+
+/// A cell's row is read from the file unchecked (`A2147483647`, `A-5`): moving a template's
+/// coordinates to such a cell neither overflows nor takes the template (T-3384).
+#[test]
+fn templates_at_extreme_rows_do_not_overflow() {
+    use rustsheet_engine::expressions::types::CellReferenceRC;
+
+    use crate::import::relocation_key::KeyLexer;
+
+    let at = |row, column| CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row,
+        column,
+    };
+    for (from, to) in [
+        ((1, 1), (i32::MAX, 1)),
+        ((i32::MAX, 1), (1, 1)),
+        ((1, 1), (i32::MIN, 1)),
+        ((i32::MIN, 1), (i32::MAX, 1)),
+        ((1, i32::MAX), (1, i32::MIN)),
+    ] {
+        let mut lexer = KeyLexer::default();
+        lexer.key("A5+B$2+$C3", &at(from.0, from.1));
+        let cell = at(to.0, to.1);
+        assert_eq!(lexer.template_copy(&cell), None, "{from:?} to {to:?}");
+        let text = "A2147483647+B$2+$C3";
+        assert_eq!(lexer.key(text, &cell), KeyLexer::default().key(text, &cell));
+    }
+}
