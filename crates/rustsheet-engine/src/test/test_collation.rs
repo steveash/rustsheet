@@ -342,8 +342,8 @@ fn probe_data_strings(stem: &str) -> Vec<Text> {
         .collect()
 }
 
-/// The accent strings of the T-3154 and T-3201 probes and the kana strings of T-3275, on which Excel's own comparison is not
-/// transitive (coercion.md "Not a total order"): `cmp_text`, which the sorts use, stays a total
+/// The accent strings of the T-3154 and T-3201 probes and the kana strings of T-3275, on which
+/// Excel's own comparison is not transitive (coercion.md "Not a total order"): `cmp_text`, which the sorts use, stays a total
 /// order with `CollationKey` equality as its equality, and texts `cmp_text_pairwise` finds equal
 /// share a key (what the criteria index relies on).
 #[test]
@@ -461,11 +461,17 @@ fn width_and_kana_tiebreaks() {
 /// (probes/t3275-collation-width-kana Calc!C127:C129, C136), and does not decompose voicing.
 #[test]
 fn exact_match_fold_of_the_marks() {
-    use crate::functions::util::collation::fold_lookup;
-    assert_eq!(fold_lookup("Aー"), "aa");
-    assert_eq!(fold_lookup("ゝ"), "ー");
-    assert_eq!(fold_lookup("々"), "ー");
-    assert_eq!(fold_lookup("かー"), "かー");
-    assert_eq!(fold_lookup("かゝ"), "かゝ");
-    assert_ne!(fold_lookup("か\u{3099}"), fold_lookup("が"));
+    use crate::functions::util::collation::fold_exact_lookup;
+    let fold = |text: &str| {
+        let units: Vec<u16> = text.encode_utf16().collect();
+        String::from_utf16_lossy(&fold_exact_lookup(&units))
+    };
+    assert_eq!(fold("aー"), "aa");
+    assert_eq!(fold("ゝ"), "ー");
+    assert_eq!(fold("々"), "ー");
+    assert_eq!(fold("かー"), "かー");
+    assert_eq!(fold("かゝ"), "かゝ");
+    assert_eq!(fold("a々"), "a々");
+    assert_ne!(fold("か\u{3099}"), fold("が"));
+    assert_eq!(fold_exact_lookup(&[0xD800, 0x30FC]), vec![0xD800, 0x30FC]);
 }

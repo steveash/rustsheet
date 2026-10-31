@@ -50,8 +50,11 @@
 use std::cmp::{Ordering, Reverse};
 use std::iter::Peekable;
 
+mod kana;
+
 use super::collation_tables::{COMBINING_LETTERS, DECOMPOSED, MARK_WEIGHT};
 use crate::text::{Char, Text};
+use kana::{kana, vowel};
 
 /// Orders two texts by the module's five passes, the accents by their wrapped sums: a total
 /// order, the one sorts, the sorted lookups and the collation key use. Excel's own `<`, `=`, `>`
@@ -259,9 +262,9 @@ const PUNCTUATION: [char; 59] = [
 ];
 
 /// Weight of the first UTF-16 unit of an astral character or of a lone surrogate: above every BMP
-/// character ([`other`] stays below `OTHER_BASE + 0x2_0000`). An astral character weighs its two units, so a lone high surrogate sorts before a
-/// pair starting with it and a lone low one after it (`H<"😀"`, `"😀"<L`, `H<L` TRUE, `L<H` FALSE;
-/// probes/text-lone-surrogates A18-A22). A lone surrogate is above U+FFFD (A23, A24 FALSE).
+/// character ([`other`] stays below `OTHER_BASE + 0x2_0000`). An astral character weighs its two
+/// units, so a lone high surrogate sorts before a pair starting with it and a lone low one after
+/// it (`H<"😀"`, `"😀"<L`, `H<L` TRUE, `L<H` FALSE; probes/text-lone-surrogates A18-A22). A lone surrogate is above U+FFFD (A23, A24 FALSE).
 const UNIT_BASE: u32 = OTHER_BASE + 0x11_0000;
 
 /// What one case-folded character contributes to each pass.
@@ -455,34 +458,45 @@ pub(crate) fn fold_case(text: &str) -> String {
     text.chars().map(fold_char).collect()
 }
 
-/// [`fold_case`] plus the two long-vowel and iteration mark equalities of exact MATCH: a `ー` after
-/// a letter or digit that is neither kana nor an ideograph is that character again, and a text
+/// The two long-vowel and iteration mark equalities of exact MATCH, VLOOKUP and HLOOKUP with a
+/// literal lookup value, applied to case-folded UTF-16 `units` ([`fold_case`]): a `ー` after a
+/// letter or digit that is neither kana nor an ideograph is that character again, and a text
 /// starting with `ゝ`, `ゞ`, `ヽ`, `ヾ` or `々` starts with `ー`. Excel: `MATCH("aー",r,0)` finds
-/// `"aa"` and `MATCH` of each lone mark finds `"ー"`, though `=` says `"aー"` equals only itself
-/// (probes/t3275-collation-width-kana Calc!B136, C127:C129, C136). The fold of the exact-match
-/// lookups and of [`crate::functions::criteria::WildcardPattern`]: one character to one, like
-/// [`fold_case`]; how the marks fold inside a wildcard pattern is unprobed.
-pub(crate) fn fold_lookup(text: &str) -> String {
+/// `"aa"` and `MATCH` of each lone mark finds `"ー"`, though `=`, COUNTIF and XMATCH find `"aー"`
+/// equal only to itself (probes/t3275-collation-width-kana Calc!B136:E136, C127:C129). One unit
+/// to one; wildcard patterns and criteria keep [`fold_case`] (how the marks match there is
+/// unprobed).
+pub(crate) fn fold_exact_lookup(units: &[u16]) -> Vec<u16> {
     let mut previous: Option<char> = None;
-    text.chars()
-        .map(|c| {
-            let folded = match (fold_char(c), previous) {
-                ('\u{30fc}', Some(letter))
-                    if letter.is_alphanumeric()
-                        && !('\u{3005}'..='\u{9fff}').contains(&letter)
-                        && !('\u{ff66}'..='\u{ff9f}').contains(&letter) =>
-                {
-                    letter
-                }
-                ('\u{309d}' | '\u{309e}' | '\u{30fd}' | '\u{30fe}' | '\u{3005}', None) => {
-                    '\u{30fc}'
-                }
-                (folded, _) => folded,
-            };
-            previous = Some(folded);
-            folded
-        })
-        .collect()
+    let mut folded = Vec::with_capacity(units.len());
+    for decoded in char::decode_utf16(units.iter().copied()) {
+        let c = decoded.clone().ok();
+        let c = match (c, previous) {
+            (Some('\u{30fc}'), Some(letter))
+                if letter.is_alphanumeric()
+                    && !('\u{3005}'..='\u{9fff}').contains(&letter)
+                    && !('\u{ff66}'..='\u{ff9f}').contains(&letter) =>
+            {
+                Some(letter)
+            }
+            (Some('\u{309d}' | '\u{309e}' | '\u{30fd}' | '\u{30fe}' | '\u{3005}'), None)
+                if folded.is_empty() =>
+            {
+                Some('\u{30fc}')
+            }
+            _ => c,
+        };
+        match (c, decoded) {
+            (Some(c), _) => {
+                let mut buffer = [0u16; 2];
+                folded.extend_from_slice(c.encode_utf16(&mut buffer));
+            }
+            (None, Err(lone)) => folded.push(lone.unpaired_surrogate()),
+            (None, Ok(_)) => {}
+        }
+        previous = c;
+    }
+    folded
 }
 
 /// [`fold_case`] for one character: always exactly one character out. A character whose full
@@ -730,109 +744,6 @@ fn full_width(element: Element) -> Element {
         },
         other => other,
     }
-}
-
-/// The hiragana each half-width katakana U+FF66 to U+FF9D is (U+FF70, the half-width `ｰ`, is a
-/// long-vowel mark, [`resolve`]).
-const HALF_WIDTH_HIRAGANA: [char; 56] = [
-    'を', 'ぁ', 'ぃ', 'ぅ', 'ぇ', 'ぉ', 'ゃ', 'ゅ', 'ょ', 'っ', 'ー', 'あ', 'い', 'う', 'え', 'お',
-    'か', 'き', 'く', 'け', 'こ', 'さ', 'し', 'す', 'せ', 'そ', 'た', 'ち', 'つ', 'て', 'と', 'な',
-    'に', 'ぬ', 'ね', 'の', 'は', 'ひ', 'ふ', 'へ', 'ほ', 'ま', 'み', 'む', 'め', 'も', 'や', 'ゆ',
-    'よ', 'ら', 'り', 'る', 'れ', 'ろ', 'わ', 'ん',
-];
-
-/// The weights of a kana letter: hiragana, katakana and half-width katakana of one syllable share
-/// the primary weight of its plain hiragana, in syllabary order (code-point order of the plain
-/// hiragana; `"ア" < "い"`); voicing is an accent ([`VOICED`]), a small kana is [`SMALL_KANA`] and
-/// the kana type a variant (probes/t3275-collation-width-kana Calc!G12:G23, ranks A63:A117).
-fn kana(c: char) -> Option<Element> {
-    let (hiragana, variant) = match c {
-        '\u{3041}'..='\u{3096}' => (c, HIRAGANA),
-        '\u{30a1}'..='\u{30f6}' => (char::from_u32(u32::from(c) - 0x60)?, KATAKANA),
-        // ヷ ヸ ヹ ヺ: わ ゐ ゑ を voiced.
-        '\u{30f7}'..='\u{30fa}' => {
-            let base = char::from_u32(u32::from(c) - 0x30f7 + 0x308f)?;
-            return Some(Element::Weights {
-                primary: [other(base), 0],
-                accent: NO_ACCENT + VOICED,
-                kana: NORMAL_KANA,
-                variant: KATAKANA,
-            });
-        }
-        '\u{ff66}'..='\u{ff9d}' => (
-            *HALF_WIDTH_HIRAGANA.get(usize::try_from(u32::from(c) - 0xff66).ok()?)?,
-            HALF_WIDTH_KANA,
-        ),
-        _ => return None,
-    };
-    let code = u32::from(hiragana);
-    // (offset to the plain letter, small, voicing)
-    let (offset, small, voicing) = match code {
-        0x3041..=0x304a | 0x3083..=0x3088 => (code % 2, code % 2 == 1, 0),
-        0x304b..=0x3062 => ((code - 0x304b) % 2, false, (code - 0x304b) % 2),
-        0x3063 => (0, true, 0),
-        0x3064..=0x3069 => ((code - 0x3064) % 2, false, (code - 0x3064) % 2),
-        0x306f..=0x307d => ((code - 0x306f) % 3, false, (code - 0x306f) % 3),
-        0x308e => (0, true, 0),
-        _ => (0, false, 0),
-    };
-    let plain = match code {
-        // ゔ is う voiced; ゕ ゖ are small か け.
-        0x3094 => return Some(voiced_kana(0x3046, 1, variant)),
-        0x3095 => 0x304b,
-        0x3096 => 0x3051,
-        0x3063 => 0x3064,
-        0x308e => 0x308f,
-        _ if small => code + 1,
-        _ => code - offset,
-    };
-    let small = small || matches!(code, 0x3095 | 0x3096);
-    let mut element = voiced_kana(plain, u8::try_from(voicing).ok()?, variant);
-    if small {
-        if let Element::Weights { kana, .. } = &mut element {
-            *kana = SMALL_KANA;
-        }
-    }
-    Some(element)
-}
-
-/// The plain hiragana `plain` with `voicing` (0 plain, 1 voiced, 2 semi-voiced) and the variant
-/// weight of its kana type.
-fn voiced_kana(plain: u32, voicing: u8, variant: u8) -> Element {
-    Element::Weights {
-        primary: [OTHER_BASE + 2 * plain, 0],
-        accent: NO_ACCENT + voicing,
-        kana: NORMAL_KANA,
-        variant,
-    }
-}
-
-/// The primary weight of the vowel of the kana weighing `primary` (`あ` for `か`, `い` for `き`),
-/// `None` for a letter that is not a kana. A `ー` after `ん` repeats it (unprobed).
-fn vowel(primary: u32) -> Option<u32> {
-    const VOWELS: [u32; 5] = [0x3042, 0x3044, 0x3046, 0x3048, 0x304a];
-    let code = primary.checked_sub(OTHER_BASE)? / 2;
-    if primary % 2 != 0 || !(0x3042..=0x3093).contains(&code) {
-        return None;
-    }
-    let index = match code {
-        0x3042..=0x304a => (code - 0x3042) / 2,
-        0x304b..=0x3062 => (code - 0x304b) / 2 % 5,
-        0x3064..=0x3069 => 2 + (code - 0x3064) / 2,
-        0x306a..=0x306e => code - 0x306a,
-        0x306f..=0x307d => (code - 0x306f) / 3,
-        0x307e..=0x3082 => code - 0x307e,
-        0x3084..=0x3088 => code - 0x3084,
-        0x3089..=0x308d => code - 0x3089,
-        0x308f => 0,
-        0x3090 => 1,
-        0x3091 => 3,
-        0x3092 => 4,
-        _ => return Some(primary),
-    };
-    VOWELS
-        .get(usize::try_from(index).ok()?)
-        .map(|&vowel| OTHER_BASE + 2 * vowel)
 }
 
 /// The first pass: letter weights, hyphens, apostrophes and combining marks skipped.

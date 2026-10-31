@@ -367,13 +367,15 @@ they are one weight after the ideographs. `ー` after any other letter is that l
 `"aー"` sorts and hashes as `"aa"`, and `"aー" < "Ａa"`), except in Excel's `<`/`=` at the first
 character where the two texts differ (case-insensitively), where it has no letter before it and is
 the lone weight: `"aー" > "ab"`, `"aー" > "AＢ"`, `"aー" <> "aa"`. That reproduces the six cyclic
-triangles; the collation key and the sorts keep the total order (`"aー"` = `"aa"`). Exact MATCH,
-VLOOKUP/HLOOKUP exact and the wildcard patterns fold `ー` after a letter or digit that is not kana or
-an ideograph to that character and a leading `ゝ ゞ ヽ ヾ 々` to `ー` (`collation::fold_lookup`).
+triangles; the collation key and the sorts keep the total order (`"aー"` = `"aa"`). Exact MATCH and
+VLOOKUP/HLOOKUP exact with a lookup value without wildcards fold `ー` after a letter or digit that
+is not kana or an ideograph to that character and a leading `ゝ ゞ ヽ ヾ 々` to `ー`
+(`collation::fold_exact_lookup`); wildcard patterns and criteria keep the plain case fold.
 Engine choices, UNVERIFIED: the voicing weights against the Latin marks; the full-width variant
 against the superscript one; `ー` after `ん`, after an ideograph or after a digit or symbol; `ゝ`
 and `々` after a Latin letter; the katakana-only `ヷ ヸ ヹ ヺ` (voiced `わ ゐ ゑ を`), `ゕ ゖ` (small
-`か け`) and `ヽ ヾ`; the marks in wildcard patterns.
+`か け`) and `ヽ ヾ`; the marks in wildcard patterns and criteria (plain case fold, so `COUNTIF(r,"aー*")`
+does not count `"aa"`).
 UNVERIFIED: whether full-width punctuation other than `！＃＄％＆（，．／：＠＿＋＜＝＞` and digits other
 than the probed `０ １ ９` (not `２`-`８`) follow the same rule (only these were probed); the order of the kana-type, small-kana
 and long-vowel tiebreaks against the Latin width tiebreak (different scripts never tie on letters in

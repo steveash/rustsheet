@@ -7,7 +7,7 @@ use crate::{
     cast::value_number_text_with,
     expressions::token::{is_english_error_string, Error},
     formatter::date_text::{parse_date, CurrentYear},
-    functions::util::collation::{cmp_text_pairwise, fold_case, fold_lookup},
+    functions::util::collation::{cmp_text_pairwise, fold_case},
     locale::Locale,
     number_format::{cmp_excel_precision, parse_excel_number, parse_finite_number},
     text::Text,
@@ -589,7 +589,7 @@ fn operand_text(criterion: &Text, prefix: &str) -> Text {
 }
 
 /// `text` case-folded unit by unit as a [`WildcardPattern`] compares it: each run folded by
-/// [`fold_lookup`], one character to one, then read as UTF-16 units (for ASCII text, each byte
+/// [`fold_case`], one character to one, then read as UTF-16 units (for ASCII text, each byte
 /// lower-cased).
 pub(crate) fn folded_units(text: &Text) -> Vec<u16> {
     match text {
@@ -597,7 +597,7 @@ pub(crate) fn folded_units(text: &Text) -> Vec<u16> {
             .bytes()
             .map(|byte| u16::from(byte.to_ascii_lowercase()))
             .collect(),
-        _ => text.map_runs(fold_lookup).units().collect(),
+        _ => text.map_runs(fold_case).units().collect(),
     }
 }
 
@@ -632,7 +632,7 @@ pub(crate) struct WildcardPattern {
 impl WildcardPattern {
     /// Compiles `pattern`.
     pub(crate) fn new(pattern: &Text) -> WildcardPattern {
-        Self::from_units(pattern.map_runs(fold_lookup).units())
+        Self::from_units(pattern.map_runs(fold_case).units())
     }
 
     /// Compiles a pattern whose units the caller has already case-folded (SEARCH folds the whole
