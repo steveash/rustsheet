@@ -821,6 +821,35 @@ fn table_with_totals_row_reads_totals_and_all() {
 }
 
 #[test]
+fn table_without_a_header_row_names_its_columns_and_has_no_headers() {
+    let mut wb = keyed_book();
+    let range = wb.range_ref("A2:B4").unwrap();
+    wb.edit(|tx| {
+        tx.add_table_with_rows(range, "Data", false, (false, false))?;
+        tx.set("D1", Input::Formula("=ROWS(Data)".into()))?;
+        tx.set("D2", Input::Formula("=ROWS(Data[Column2])".into()))?;
+        tx.set("D3", Input::Formula("=ROW(Data[#Headers])".into()))
+    })
+    .unwrap();
+    // probes/table-edits table-no-header-baseline (T-3260): every row is data, no #Headers.
+    assert_eq!(wb.value(cell(&wb, "D1")).unwrap(), Value::Number(3.0));
+    assert_eq!(wb.value(cell(&wb, "D2")).unwrap(), Value::Number(3.0));
+    assert_eq!(
+        wb.value(cell(&wb, "D3")).unwrap(),
+        Value::Error(ErrorKind::Ref.into())
+    );
+    // One data row is enough; a filter is not.
+    let one_row = wb.range_ref("F1:G1").unwrap();
+    wb.edit(|tx| tx.add_table_with_rows(one_row, "One", false, (false, false)))
+        .unwrap();
+    let other = wb.range_ref("F5:G6").unwrap();
+    let err = wb
+        .edit(|tx| tx.add_table_with_rows(other, "Filtered", true, (false, false)))
+        .unwrap_err();
+    assert!(matches!(err, EditError::Table(_)));
+}
+
+#[test]
 fn a_failed_edit_removes_the_table() {
     let mut wb = keyed_book();
     let range = wb.range_ref("A1:B4").unwrap();
