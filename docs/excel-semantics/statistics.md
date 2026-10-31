@@ -3523,7 +3523,10 @@ Evidence: probes/t3349-t-inv-2t-near-one A1-A44 (excel-graph, 2026-10-31): every
 significant digits of the exact quantile (mpmath at 60 digits) and of the engine; the df 1 cells A3, A6-A10 match the
 1/TAN form, and A5 (`CONFIDENCE.T(0.999999999989522,1,3)` = 8.555211852081089E-12, exact 8.5552118520810793E-12) is
 Excel's last digits, 1.1E-15 relative off. Fresh sweep: probes-numeric/t3349-t-inv-2t-sweep (300 stratified points; the
-counts are in T-3349's Outcome).
+counts are in T-3349's Outcome). In that sweep Excel is more than 1E-4 off the exact value at a tiny p and a large df,
+p from 1.38E-300 to 1.73E-110 and df from 2490 up (42 points, A211-A300; `T.INV.2T(6.68863396408457E-199,2490)` is
+100.83724584548176 in Excel, exact 33.047211122914894): the tiny-p pattern of "MATH-OVER-EXCEL" case 1, which lists
+T.INV only and from p 1E-150; whether it extends to T.INV.2T needs an owner ruling (T-3386).
 Ours: the centre crossing of `student_t_centre` (T-2724), within about 5E-16 of the exact value.
 Status: VERIFIED (excel-graph)
 Tasks: T-3349, T-2724, T-2858
