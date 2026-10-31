@@ -1168,6 +1168,10 @@ and Q keep the direct form below 20 (T-3219). The bounds are fits inside their b
 unbracketed below 20 (UNVERIFIED: no probed density between a and 1.5a changes with the form).
 Status: VERIFIED (excel-graph)
 Tasks: T-0971, T-0972, T-2638, T-3147, T-3219
+Deep upper tail sweep (T-3289): probes-numeric/t3284-gamma-deep-upper-tail (343 cells: POISSON cdf at mean 4(k+1) to 100(k+1),
+its CHISQ.DIST.RT twin, half-integer shapes at x = 4 to 100 df, and 32-double ulp runs at POISSON(2,100) and CHISQ.DIST.RT(200,5)).
+Excel is within 1 ulp of the 50-digit value in 64 of the 343 cells (docs/research/t3284/ulp_vs_exact.py), and today's engine is
+bit-exact on 53 (`rustsheet-eval show --all`); T-3269 fits the rest.
 
 ## HYPGEOM.DIST: per-call cap and lifting (T-1873)
 Rule: HYPGEOM.DIST and HYPGEOMDIST lift every argument over an array and over a two-cell range on the formula's own rows,
@@ -2642,6 +2646,11 @@ z = fl64(fl(a·LN(x)) - L)  (extended);   I = fl(EXP(z)·s)  (Excel's EXP of the
   1 < b0 < 8 cells this L loses to r2-bratio's (3,365 against 4,038 of 7,455, verifier); b < 1 shapes top out at 55-84%
   bit-exact for any constant L (one stored intermediate, unidentified). The port needs Excel's GAMMALN exact at the shape
   arguments; the engine model is exact on 274 of 771 in [1, 2) and 1,738 of 2,585 below 1 (t2464-r2-bpser-small-gl).
+- An isolated miss at 1 < b0 < 8 (gap triage 2026-10-30, T-3331): `BETA.DIST(0.1,2.5,5,TRUE)` (probes-numeric/
+  m9-beta-dist-a2p5 Calc!A31, a bpser point: b0·x0 = 0.5) is 0.05533381860850995 in Excel and 0.055333818608509895 in
+  the engine, visibly off. Against a 60-digit mpmath value, 0.055333818608509839059, Excel is 16.1 ulp high and the
+  engine 8.1 ulp high, so here Excel is the inaccurate one, and by more than the shapes probe's sub-branch suggests
+  (all 4,602 of its 1 < b0 < 8 cells within 15 digits).
 Evidence: probes-numeric t2464-r2-bpser-small-shapes, -runs, -tiny, -tiny2, -gl, t2464-w2f-*; docs/research/t2464/
 w3-series (`model.py`, `accum2.py`, `control2.py`), r2-bpser-small (`lib.py`, `zforms.py`, `bscore.py`,
 `tiny_noapser.py`), verify-r2-bpser-small/verify.out, old_sets.out.
@@ -2687,7 +2696,7 @@ TOMS `betaln` at every shape (half-integers included) scores bit-exact +150, vis
 A9 (A18 is now within 4 ulp): T-2924's k plus whole fl(a·LN x) steps, as above.
 Status: PARTIAL (excel-graph): within 15 digits in every bpser sub-branch of the shapes probe (2,861 of 2,868 at
 b0 >= 8, all others); bit-exact 52-75%; both > 1 with max > 8 a provisional form (T-3007)
-Tasks: T-2505, T-2512, T-2122, T-3007
+Tasks: T-2505, T-2512, T-2122, T-3007, T-3331
 
 ## Incomplete beta at a shape near the double range: no overflowing fl(a LN x), and bpser is #NUM! once 1/B overflows (T-3007)
 Rule: Excel never evaluates a bpser whose fl(a·LN x) overflows: Excel for the web refuses a workbook that holds

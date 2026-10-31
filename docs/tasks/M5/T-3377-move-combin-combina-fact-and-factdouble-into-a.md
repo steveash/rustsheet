@@ -3,7 +3,7 @@ id: T-3377
 title: "Move COMBIN, COMBINA, FACT and FACTDOUBLE into a math_and_trigonometry::combinatorics module (mathematical.rs is at 980 of its 1,000 lines)"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -41,3 +41,8 @@ The new module is declared in `math_and_trigonometry/mod.rs` next to `gcd_lcm` a
 ## Out of scope
 - Any change to what COMBIN, COMBINA, FACT or FACTDOUBLE compute (T-2789 probes COMBINA's number_chosen).
 - Moving the trig kernels (T-3018, T-3020 and T-2651 have open work in them).
+
+## Outcome
+COMBIN, COMBINA, FACT, FACTDOUBLE, `combin`, `descending_product` and `COMBIN_MAX_NUMBER` moved unchanged into
+`math_and_trigonometry/combinatorics.rs`; `Model::number_fn` is now `pub(super)`. mathematical.rs went 980 -> 813
+lines. `make check` green; `make eval-check` shows every suite unchanged (0 fixed, 0 regressions).
