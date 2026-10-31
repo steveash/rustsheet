@@ -1760,6 +1760,7 @@ C	probes/t3304-collation-multi-letter-accents.case.json	1896
 C	probes/t3317-xlookup-scalar-return.case.json	20
 C	probes/t3335-textbefore-overlapping-instances.case.json	78
 C	probes/t3349-t-inv-2t-near-one.case.json	44
+C	probes/t3375-textbefore-scan-steps.case.json	24
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
 C	probes/table-edits/plain-range-delete-rows-across-edge.case.json	10

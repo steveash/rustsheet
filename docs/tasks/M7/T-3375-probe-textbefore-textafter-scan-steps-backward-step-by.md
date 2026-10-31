@@ -37,6 +37,6 @@ Discriminating cells to probe (excel-graph), e.g.:
 ## Outcome
 Probe probes/t3375-textbefore-scan-steps (24 cells, excel-graph, 2026-10-31). Excel steps back by the counted match's
 own length in UTF-16 units (not the shortest or longest delimiter, not characters: A1, A5, A6, A9) and a forward scan
-resumes after the counted match even when a shorter entry starts inside it (B1-B8). text.md's Unprobed line is replaced
+resumes after the counted match even when a shorter entry starts inside it (B1-B8; TEXTSPLIT agrees, B9-B10). text.md's Unprobed line is replaced
 by the finding. Ours (`text_sensitive` / `text_sensitive_reverse`) already did both: every probe cell passes, no code
 change. Eval delta: +24 passing probe cells (new case), no regressions.
