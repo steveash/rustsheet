@@ -240,16 +240,23 @@ ulp of 315), `IPMT(1E+10,10,10,0,315)` is 315.00007935392205 (exact 314.99999996
 are the exact payment" has it. The form needs no `(1+rate)^nper`, so past its overflow IPMT keeps
 its value, about `-pv*rate` for huge rates: `IPMT(1E+300,3,2000,452017,905)` is -4.52017E+305,
 `IPMT(123456789.123,3,156,64486)` -7961234503385.777, `IPMT(2,1100,1100,1,5)` 2. PPMT past the
-overflow is the discounted form of "PPMT discounts with an atanh-series log", with a discount
-`Q(per-1-nper)` below the normal range read as 0 (so PPMT is 0): `PPMT(r,1,300,1)` keeps a discount of
-2^-1022 and is 0 from 2^-1022.5 on, `PPMT(10,1,296,1)` is 0 though its value, 5.6E-308, is normal, `PPMT(42,10,303,8292,1,1)` and `PPMT(1E+300,1.5,180,194733,-1E+300)`
+overflow is the discounted form of "PPMT discounts with an atanh-series log", and it is 0 where `pv+fv` times the
+discount `Q(per-1-nper)` is below the normal range (a flush to zero of that product, not of the discount): `PPMT(r,1,300,1)`
+keeps a discount of 2^-1022 and is 0 from 2^-1022.5 on, `PPMT(10,1,296,1)` is 0 though its value, 5.6E-308, is normal,
+`PPMT(7,1,341,1.9999)` is 0 and `PPMT(7,1,341,2)` -1.5575517009551696E-307 (the discount 8^-341 = 2^-1023), as are
+`PPMT(7,1,341,1,1)`, `PPMT(7,1,341,3,-1)` and `PPMT(7,10,350,2)`; the period does not matter (`PPMT(7,k,340+k,1)` is 0 and
+`PPMT(7,k,340+k,2)` kept for k 2, 10 and 100), and a deeper discount is kept once `pv+fv` lifts the product (`PPMT(7,1,353,2^36)`
+is 0, `PPMT(7,1,353,2^37)` kept, the discount 2^-1059; `PPMT(10,1,300,1E10)` -3.821153221973863E-302).
+`PPMT(42,10,303,8292,1,1)` and `PPMT(1E+300,1.5,180,194733,-1E+300)`
 0, `PPMT(10,11,304,44626,826)` -3.0768304255991313E-301, `PPMT(2,1100,1100,1,5)` -4. Neither needs
 PMT's value: `PPMT(1E+307,7,292,176644,89)` is 0 where `pv*rate` overflows, and
 `IPMT(-0.5,1,2000,1,0,1)` is 0 where PMT is `#NUM!` (PPMT of it `#NUM!`, as PMT).
 Evidence: probes/fin-ipmt-ppmt-huge-rate (excel-graph, 2026-10-25, T-2490): column A, 1152 cells
 over rates 0.5 to 1E+300, nper 10 to 2000, period 2, nper/2 and nper, pv/fv (1000,0), (0,315),
 (1000,315), (1000,-1000) and both types; column B the edges above. probes/fin-ppmt-discount-underflow
-(excel-graph, 2026-10-25): `PPMT(r,1,300,1)` with `(1+r)^300 = 2^k`, k from 1021.5 to 1074, and power-of-two bases. Fit (exact rationals, then the
+(excel-graph, 2026-10-25): `PPMT(r,1,300,1)` with `(1+r)^300 = 2^k`, k from 1021.5 to 1074, and power-of-two bases.
+probes/fin-ppmt-subnormal-discount-by-size (excel-graph, 2026-10-30, T-2666): subnormal discounts by pv and fv size, period
+(1 to 100), base (4, 8, 10.5, 11) and type. Fit (exact rationals, then the
 rounding named): on its 595 IPMT cells the cancelling form is within 15 digits on 590, the exact
 balance on 521 (all its misses pv-0 cells); on m9-fin-pmt's 286 IPMT cells the doubles-everywhere
 form misses 38 to the bit and 2 to 15 digits (`IPMT(0.05/12,2,3,10000,0,1)`), so the switch on
@@ -274,9 +281,6 @@ rates; `-expm1` 586. The gen-m9 cells of T-2257 that motivated it: 31474c20fc1da
 - Open: at rate 1000, type 1 matches neither form, on all 48 such cells of the probe: `IPMT(1000,7,1E+5,1000,0,1)` is
   -999.0009990009992, where the double form gives ...991 and the exact value ...990. `-(rate*B)*EXP(-LN(1+rate))` with
   libm fits these cells but misses the rate-1.005 cells (T-3086).
-- Open: `PPMT(7,10,350,58827)` is -4.581304695604488E-303, its discount 8^-341 = 2^-1023 kept, where
-  `PPMT(7,1,341,1)` with the same discount is 0 (probes/fin-ppmt-discount-underflow F1, F8; gen-m9
-  a91bad4e84f49739 A158; T-2666).
 - Open: the fit's rational model is within 15 digits on 590 of 595, the engine on 588: 7 pv-0 cells keep
   their cancellation's last bits unexplained: `IPMT(10,2,10,0,315)` (Excel 1.2144607808295405E-6, ours
   1.214461349263729E-6), `IPMT(10,5,10,0,315)` and `IPMT(10,10,10,0,315)` (one ulp of 315 in B; Excel
@@ -354,7 +358,7 @@ plus ironcalc-calc FINANCIAL/IPMT_PPMT.xlsx, Mac Excel cached values):
   - three are one ulp (`PPMT(0.21,1,160,10000)`, `PPMT(1,1,44,10000)`, `PPMT(0.1,1,320,10000)`); the old form
     matched the first. On each of those rows Excel's PMT cell (ppmt-log-rate-sweep B371, B742,
     ppmt-first-period-sweep B320) is an ulp off our PMT too, so the misses are PMT's, not the split's (T-3186);
-  - the fourth is `PPMT(7,10,350,58827)`, whose subnormal discount Excel keeps (T-2666, still open).
+  - the fourth was `PPMT(7,10,350,58827)`, whose subnormal discount Excel keeps since `pv+fv` times it is normal (T-2666).
   `-(A*d*Q)`, `-(A*(Q*d))` and `-(A*Q*rate)/(1+rate)` score 21 to 71 points lower on the sweeps.
 - CUMIPMT does not sum this IPMT. Its type-1 per-period sum still takes the exact split ("PMT, IPMT and PPMT are the
   exact payment"), which is bit-exact on CUMPRINC_CUMIPMT.xlsx G3, G4, G15 and fin-cumipmt-overflow-and-forms A8. With
