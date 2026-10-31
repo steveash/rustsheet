@@ -66,4 +66,7 @@ directive 5: no panics) with accepted-deviation entries.
   G4:I4); 0 regressions.
 - Unit test `the_pairwise_sort_ends_on_intransitive_texts` (test_collation.rs): the t3201 wrapped-run texts in five
   input orders, both directions.
-- Follow-ups: T-3418 (fit the eight-text orders and UNIQUE's sort-order grouping), T-3419 (bound UNIQUE's pairwise bucket scan; reviewers).
+- UNIQUE's pairwise walk of a bucket is charged to the formula's work budget (`text_units` of the texts compared
+  per comparison), so texts that share a key but are unequal cannot make it run quadratically (security review
+  round 2; unit test `unique_charges_the_pairwise_walk_of_a_shared_key_bucket`).
+- Follow-up: T-3418 (fit the eight-text orders and UNIQUE's sort-order grouping).

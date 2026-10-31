@@ -239,7 +239,8 @@ Microsoft's Windows sorting weight table (`Windows Server 2022 Sorting Weight Ta
   with `sort_indices_pairwise`, a stable natural merge sort that cannot panic on a non-total order (`slice::sort_by`
   may): every t3181 array cell passes, and every three-text cycle of t3211, but 40 cells of its eight-text rows do not
   (T-3418). UNIQUE keys a text by its `CollationKey` and keeps a line unless `cmp_text_pairwise` finds it equal to
-  a kept line of its bucket: all t3211 UNIQUE cells but G4:I4 pass (T-3418). GROUPBY and PIVOTBY still sort with
+  a kept line of its bucket, each comparison charged to the formula's work budget (texts can share a key and be
+  unequal): all t3211 UNIQUE cells but G4:I4 pass (T-3418). GROUPBY and PIVOTBY still sort with
   the total `cmp_text`. Open: T-3418.
 - **Shared leading units are skipped before the sum (T-3201).** Evidence:
   probes/t3201-collation-long-mark-runs (1,000 cells: a ladder of 246 texts `"a"` plus up to three

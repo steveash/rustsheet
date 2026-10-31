@@ -1,3 +1,4 @@
+use crate::area_budget::text_units;
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::util::near_integer::near_integer_whole;
 use std::cmp::Ordering;
@@ -109,7 +110,14 @@ fn unique_flags_are_literals(args: &[Node]) -> bool {
 /// rule finds equal shares, and a line joins the first kept line of its bucket the rule finds
 /// equal to it. On an intransitive cycle Excel's grouping follows its sort order instead (G4);
 /// that is unmatched (T-3211 Outcome).
+///
+/// Texts can share a key and still be unequal (`"a"` plus 16, 32, 48 ... U+0302), so a bucket may
+/// hold many kept lines and the walk may compare each line with all of them: every comparison is
+/// charged to the formula's work budget ([`text_units`] of the texts compared, at least one unit),
+/// so a crafted column ends as the budget's `#VALUE!` instead of running quadratically
+/// (directive 5; SPEC-0024).
 fn unique_of(
+    model: &mut Model,
     data: &[Vec<ArrayNode>],
     by_col: bool,
     exactly_once: bool,
@@ -137,14 +145,33 @@ fn unique_of(
             _ => true,
         })
     };
+    let compare_units = |a: usize, b: usize| {
+        (0..length)
+            .map(|k| match (at(a, k), at(b, k)) {
+                (ArrayNode::String(x), ArrayNode::String(y)) => text_units(x.len() + y.len()),
+                _ => 0,
+            })
+            .fold(1, u64::saturating_add)
+    };
     // The kept lines, in order, with how many lines each stands for.
     let mut kept: Vec<(usize, usize)> = Vec::new();
     let mut buckets: HashMap<Vec<CellKey>, Vec<usize>> = HashMap::with_capacity(count);
     for line in 0..count {
         let key: Vec<CellKey> = (0..length).map(|k| unique_cell_key(at(line, k))).collect();
         let bucket = buckets.entry(key).or_default();
-        match bucket.iter().find(|&&slot| same_texts(kept[slot].0, line)) {
-            Some(&slot) => kept[slot].1 += 1,
+        let mut found = None;
+        for &slot in bucket.iter() {
+            let first = kept[slot].0;
+            if let Err(error) = model.spend_work(compare_units(first, line), cell) {
+                return error;
+            }
+            if same_texts(first, line) {
+                found = Some(slot);
+                break;
+            }
+        }
+        match found {
+            Some(slot) => kept[slot].1 += 1,
             None => {
                 bucket.push(kept.len());
                 kept.push((line, 1));
@@ -753,7 +780,7 @@ impl Model {
             args,
             LiftCost::Cells(cells),
             cell,
-            &mut |_, values| {
+            &mut |model, values| {
                 let data = match &data {
                     Ok(data) => data,
                     Err(error) => return error.clone(),
@@ -763,7 +790,9 @@ impl Model {
                     Some(value) => Self::cast_bool_ref(value, cell),
                 };
                 match (flag(1), flag(2)) {
-                    (Ok(by_col), Ok(exactly_once)) => unique_of(data, by_col, exactly_once, cell),
+                    (Ok(by_col), Ok(exactly_once)) => {
+                        unique_of(model, data, by_col, exactly_once, cell)
+                    }
                     (Err(error), _) | (_, Err(error)) => error,
                 }
             },
@@ -805,5 +834,50 @@ impl Model {
             .as_ref()
             .map_or(0, |data| data.iter().map(Vec::len).sum::<usize>());
         (data, cells)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::unique_of;
+    use crate::{
+        calc_result::CalcResult, expressions::parser::ArrayNode,
+        expressions::types::CellReferenceIndex, test::util::new_empty_model,
+    };
+
+    const CELL: CellReferenceIndex = CellReferenceIndex {
+        sheet: 0,
+        row: 1,
+        column: 1,
+    };
+
+    /// `"a"` plus 16·k U+0302 all share one collation key (the marks' wrapped sum is 0) and are
+    /// pairwise unequal (the prefix rule), so UNIQUE keeps every one and compares each with all the
+    /// earlier ones: those comparisons are charged to the formula's work budget (T-3211), and a
+    /// budget too small for them ends the call with its error.
+    #[test]
+    fn unique_charges_the_pairwise_walk_of_a_shared_key_bucket() {
+        let n = 100;
+        let data: Vec<Vec<ArrayNode>> = (0..n)
+            .map(|k| {
+                vec![ArrayNode::String(
+                    format!("a{}", "\u{302}".repeat(16 * k)).into(),
+                )]
+            })
+            .collect();
+        let mut model = new_empty_model();
+        let before = model.area_budget.work;
+        let CalcResult::Array(kept) = unique_of(&mut model, &data, false, false, CELL) else {
+            panic!("UNIQUE of distinct texts is an array");
+        };
+        assert_eq!(kept.len(), n);
+        let comparisons = (n * (n - 1) / 2) as u64;
+        assert!(before - model.area_budget.work >= comparisons);
+
+        let mut model = new_empty_model();
+        model.area_budget.work = comparisons / 2;
+        let result = unique_of(&mut model, &data, false, false, CELL);
+        assert!(matches!(result, CalcResult::Error { .. }));
+        assert!(model.work_exceeded());
     }
 }
