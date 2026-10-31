@@ -25,7 +25,9 @@ fills a CSE anchor's whole range, and the clears walk it.
 What Excel does is UNVERIFIED in both cases. Use the `excel-probe` skill (excel-graph). Probe:
 - a CSE formula entered over A:B (2^21 cells);
 - an xlsx whose `<f t="array" ref="A1:B1048576">` holds every cell;
-- the same file with the spill cells left out.
+- the same file with the spill cells left out;
+- the `ref` Excel writes for a dynamic array anchor that shows #SPILL! (the engine resets its range to the anchor, and
+  the load check assumes Excel writes no larger range).
 
 ## Acceptance criteria
 - [ ] Each probe is recorded, and arrays.md and xlsx-storage.md cite the result in their Status lines (the refusal

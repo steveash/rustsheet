@@ -574,3 +574,39 @@ fn anchors_restored_claiming_more_cells_than_they_bring_are_refused() {
     let error = assert_refused(&mut model, &bytes, "anchors");
     assert!(error.contains("only"), "{error}");
 }
+
+/// Two dynamic arrays spilling 600,000 cells each are cleared and the clear undone: the undo
+/// restores the anchors without their spill cells, which evaluation rebuilds, so it must not be
+/// refused, locally or when a peer applies it (T-3426 review).
+#[test]
+fn undoing_the_clear_of_large_dynamic_spills_still_works() {
+    let mut peer = UserModel::new_empty("model", "en", "UTC", "en").unwrap();
+    let mut model = UserModel::new_empty("model", "en", "UTC", "en").unwrap();
+    for user in [&mut peer, &mut model] {
+        user.set_user_input(0, 1, 1, "=SEQUENCE(600000)").unwrap();
+        user.set_user_input(0, 1, 2, "=SEQUENCE(600000)").unwrap();
+    }
+    model.flush_send_queue();
+    peer.flush_send_queue();
+    let area = Area {
+        sheet: 0,
+        row: 1,
+        column: 1,
+        width: 2,
+        height: 1,
+    };
+    peer.range_clear_contents(&area).unwrap();
+    peer.undo().unwrap();
+    assert_eq!(
+        peer.get_formatted_cell_value(0, 600000, 2).unwrap(),
+        "600000"
+    );
+
+    model
+        .apply_external_diffs(&peer.flush_send_queue())
+        .unwrap();
+    assert_eq!(
+        model.get_formatted_cell_value(0, 600000, 2).unwrap(),
+        "600000"
+    );
+}

@@ -27,10 +27,11 @@ impl UserModel {
                     ..
                 } => {
                     needs_evaluation = true;
-                    if let Some(cell) = old_value.as_ref() {
-                        self.check_restored_cell(*sheet, *row, *column, cell)?;
-                    }
-                    self.undo_set_cell_value(*sheet, *row, *column, old_value.as_ref().as_ref())?;
+                    let restored = match old_value.as_ref() {
+                        Some(cell) => Some(self.restored_cell(*sheet, *row, *column, cell)?),
+                        None => None,
+                    };
+                    self.undo_set_cell_value(*sheet, *row, *column, restored.as_ref())?;
                 }
                 Diff::SetArrayValue {
                     sheet,

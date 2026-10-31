@@ -47,10 +47,12 @@ pub(crate) fn check_indices(workbook: &Workbook) -> Result<(), String> {
 /// The cells the array anchors among some stored cells claim through their spill ranges, against
 /// the cells stored (T-3426). Evaluation fills a CSE anchor's whole range and the clears and
 /// structural edits walk an anchor's range, so their work follows what the anchors claim, not
-/// what the input holds: a few bytes per anchor could claim 2^20 cells each. A workbook the
-/// engine or Excel wrote stores every cell of a spill, and an anchor whose spill is blocked
-/// claims one cell, so claiming more than is stored, past one whole array's worth
-/// ([`MAX_SIZE`]), only comes from crafted input, and is refused.
+/// what the input holds: a few bytes per anchor could claim 2^20 cells each. The engine stores
+/// every cell of a spill and resets a blocked spill's range to its anchor (and the xlsx files
+/// in the repository store every cell they claim; Excel's range for a #SPILL! anchor is
+/// unprobed, T-3436), so claiming more than is stored, past one whole array's worth
+/// ([`MAX_SIZE`]), comes from crafted input, and is refused. The slack is per tally: per load,
+/// and per undo, redo or external diff call.
 #[derive(Default, Clone, Copy, Debug)]
 pub(crate) struct SpillTally {
     claimed: u64,
@@ -74,7 +76,11 @@ impl SpillTally {
 
     /// Refuses anchors claiming more cells than are counted, past one whole array.
     pub(crate) fn check(&self) -> Result<(), String> {
-        if self.claimed <= self.cells.saturating_add(MAX_SIZE as u64) {
+        if self.claimed
+            <= self
+                .cells
+                .saturating_add(u64::try_from(MAX_SIZE).unwrap_or(u64::MAX))
+        {
             Ok(())
         } else {
             Err(format!(
