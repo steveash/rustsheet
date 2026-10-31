@@ -3,7 +3,7 @@ id: T-3221
 title: "SPEC-0020 Amendment 2: VLOOKUP, HLOOKUP and MATCH over a tailed key as tailed interior nodes, with the continued lift"
 milestone: M11
 lane: perf
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
