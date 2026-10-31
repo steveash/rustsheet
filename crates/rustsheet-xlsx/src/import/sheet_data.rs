@@ -16,6 +16,7 @@ use rustsheet_engine::expressions::utils::{is_valid_row, number_to_column};
 use rustsheet_engine::language::get_language;
 use rustsheet_engine::locale::get_locale;
 use rustsheet_engine::types::{Cell, DataTable, DataTableInput, DateSystem, Row, SheetData};
+use rustsheet_engine::LAST_ROW;
 
 use crate::error::XlsxError;
 
@@ -172,6 +173,8 @@ struct SheetDataReader<'a> {
     index_map: HashMap<i32, i32>,
     /// Cells covered by an array formula, with the anchor cell of the formula.
     array_cell: HashMap<(i32, i32), (i32, i32)>,
+    /// How many more cells `array_cell` may take (T-3437, [`array_cell_budget`]).
+    array_budget: u64,
     /// The sheet's what-if data tables; their result cells load as plain values.
     data_tables: Vec<DataTable>,
 
@@ -617,6 +620,11 @@ impl SheetDataReader<'_> {
                             "The first cell of the range of an array formula must be the anchor cell".to_string(),
                         ));
                     }
+                    claim_array_cells(
+                        &mut self.array_budget,
+                        &range,
+                        (row1, column1, row2, column2),
+                    )?;
                     for r in row1..=row2 {
                         for c in column1..=column2 {
                             if r == row1 && c == column1 {
@@ -664,7 +672,7 @@ impl SheetDataReader<'_> {
                 }
             }
         }
-        let anchor_cell = self.array_cell.get(&(r_index, column_index)).cloned();
+        let anchor_cell = self.array_cell.get(&(r_index, column_index)).copied();
         let rich_error = cell
             .value_metadata
             .as_deref()
@@ -689,6 +697,55 @@ impl SheetDataReader<'_> {
     }
 }
 
+/// Takes the cells of the array formula `range`, (`row1`, `column1`, `row2`, `column2`), out
+/// of `budget` before `array_cell` gets one entry for each: a `ref` is a few bytes
+/// that can name the whole sheet, and this map is filled before the model checks anything
+/// (T-3437, directive 5). An array of more cells than the engine builds (a whole column) is
+/// refused, as the load check would refuse it later (T-2896).
+fn claim_array_cells(
+    budget: &mut u64,
+    range: &str,
+    (row1, column1, row2, column2): (i32, i32, i32, i32),
+) -> Result<(), XlsxError> {
+    let side = |first: i32, last: i32| u64::try_from(i64::from(last) - i64::from(first) + 1);
+    let cells = match (side(row1, row2), side(column1, column2)) {
+        (Ok(rows), Ok(columns)) => rows.saturating_mul(columns),
+        _ => return Err(XlsxError::Xml(format!("Invalid range: {range}"))),
+    };
+    if cells > u64::from(LAST_ROW.unsigned_abs()) {
+        return Err(XlsxError::Xml(format!(
+            "The array formula at {range} spills over more than {LAST_ROW} cells"
+        )));
+    }
+    *budget = budget.checked_sub(cells).ok_or_else(|| {
+        XlsxError::Xml(format!(
+            "The array formulas up to {range} spill over more cells than the sheet stores"
+        ))
+    })?;
+    Ok(())
+}
+
+/// The cells the array formulas of a worksheet part of `part_bytes` may cover in total, beyond
+/// one whole column (the most one array formula may cover): one per 16 bytes of the part. A file
+/// stores every cell its arrays cover, as a `<c>` element in a `<row>`, which past the first
+/// rows takes more than 16 bytes a cell (`<c r="A10000"/>` is 16 alone), so such a file fits,
+/// and a few-byte `ref` naming far more cells than the part holds is refused before each is put
+/// in the map (T-3437).
+fn array_cell_budget(part_bytes: u64) -> u64 {
+    (part_bytes / 16).saturating_add(u64::from(LAST_ROW.unsigned_abs()))
+}
+
+/// What a worksheet part is read with besides the shared tables: the workbook's rich-value
+/// errors and date system, and the size the part declares.
+pub(super) struct SheetPart<'a> {
+    /// The rich-value error of each value-metadata entry (`vm` is 1-based into it).
+    pub(super) rich_errors: &'a [Option<&'static str>],
+    /// The workbook's date system, for `t="d"` cells.
+    pub(super) date_system: DateSystem,
+    /// The size the part declares it inflates to, which bounds its array formulas (T-3437).
+    pub(super) bytes: u64,
+}
+
 /// Reads a worksheet part: its cells into a `SheetData`, and everything else
 /// into a copy of the XML without them.
 pub(super) fn read_sheet_data<R: BufRead>(
@@ -697,9 +754,13 @@ pub(super) fn read_sheet_data<R: BufRead>(
     parser: &mut Parser,
     shared_strings: &mut SharedStringTable,
     limits: &ImportLimits,
-    rich_errors: &[Option<&'static str>],
-    date_system: DateSystem,
+    part: SheetPart<'_>,
 ) -> Result<SheetDataXml, XlsxError> {
+    let SheetPart {
+        rich_errors,
+        date_system,
+        bytes: part_bytes,
+    } = part;
     let mut reader = quick_xml::Reader::from_reader(reader);
     let mut tree = XmlTreeBuilder::new();
     let mut buffer = Vec::new();
@@ -718,6 +779,7 @@ pub(super) fn read_sheet_data<R: BufRead>(
         formula_lookup: HashMap::new(),
         index_map: HashMap::new(),
         array_cell: HashMap::new(),
+        array_budget: array_cell_budget(part_bytes),
         data_tables: Vec::new(),
         stack: Vec::new(),
         row: None,
@@ -839,8 +901,11 @@ mod tests {
             &mut parser,
             &mut SharedStringTable::default(),
             &ImportLimits::default(),
-            &[],
-            DateSystem::Excel1900,
+            SheetPart {
+                rich_errors: &[],
+                date_system: DateSystem::Excel1900,
+                bytes: xml.len() as u64,
+            },
         )?;
         let mut positions: Vec<(i32, i32)> = read
             .sheet_data
@@ -863,8 +928,11 @@ mod tests {
             &mut parser,
             &mut SharedStringTable::default(),
             &ImportLimits::default(),
-            &[],
-            date_system,
+            SheetPart {
+                rich_errors: &[],
+                date_system,
+                bytes: xml.len() as u64,
+            },
         )?;
         let cell = read
             .sheet_data

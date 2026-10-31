@@ -32,7 +32,7 @@ use super::{
     conditional_formatting::load_conditional_formatting,
     iso_date::iso8601_to_date_system_serial,
     shared_strings::{decode_xlsx_escapes, SharedStringTable},
-    sheet_data::{read_sheet_data, SheetDataXml},
+    sheet_data::{read_sheet_data, SheetDataXml, SheetPart},
     tables::load_table,
     util::{get_attribute, get_color, get_number, get_relationship, parse_cell_number},
     Relationship,
@@ -790,6 +790,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
 
     let limits = *archive.limits();
     let file = archive.open(path)?;
+    let part_bytes = file.get_ref().declared_size();
     // One parser for the whole sheet: building one clones the defined names
     // and tables, which is far too much to do once per formula cell.
     let mut parser = new_parser_english(worksheets.to_owned(), defined_names, tables.clone());
@@ -808,8 +809,11 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
         &mut parser,
         shared_strings,
         &limits,
-        rich_errors,
-        settings.date_system,
+        SheetPart {
+            rich_errors,
+            date_system: settings.date_system,
+            bytes: part_bytes,
+        },
     )?;
     let ws = &worksheet;
     let dimension = load_dimension(ws);

@@ -84,8 +84,9 @@ or anchor off the grid, a spill range of more than 1,048,576 cells (the array li
 together claim more spill cells than the workbook stores, past one whole array (a few bytes per anchor could otherwise
 claim 2^20 cells each; the engine stores every cell of a spill and resets a blocked spill's range to its anchor, and the
 622 array formulas in the repository's xlsx files store all 3,447 cells they claim, but what range Excel writes for a
-#SPILL! anchor is UNVERIFIED, T-3436; the bound is the cells stored plus 2^20 per load, and the importer's own expansion
-of each `ref` is bounded separately, T-3437; T-3426), a row or column record or a merged range off the grid, and cell storage whose
+#SPILL! anchor is UNVERIFIED, T-3436; the bound is the cells stored plus 2^20 per load; T-3426), array formula `ref`s in an xlsx sheet that together cover
+more than one cell per 16 bytes of the sheet's part plus 2^20 (the importer maps every covered cell before the model
+exists; a file that writes the cells it covers spends more than 16 bytes on each; T-3437), a row or column record or a merged range off the grid, and cell storage whose
 rows or columns are out of order or off the grid. The error names the sheet and the index
 (`Sheet 'Sheet1': cell R1C2 has style 9999, which does not exist`). Indices the model reads with a
 checked lookup that tolerates a dangling value load as before: a shared-string index (it reads as
