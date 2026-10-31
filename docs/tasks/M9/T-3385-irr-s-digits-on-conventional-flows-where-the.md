@@ -30,6 +30,8 @@ IRR returns Excel's value to 15 significant digits on the conventional cash-flow
 ## Acceptance criteria
 - [ ] Every cell of the two T-3347 cases is within 15 significant digits of Excel's value, with the right type.
 - [ ] A fresh hold-out sweep (decision 0188 R4.1) shows the same, and the Gate A floor still holds.
+- [ ] Oracle cells for the shapes the stage takes but T-3347 did not probe: the mirrored sign (a positive first flow,
+      then negative ones) and zero flows after the outlay; the stage is narrowed if Excel differs there.
 - [ ] No gated cell regresses.
 - [ ] `make check` green; reviewers approve.
 

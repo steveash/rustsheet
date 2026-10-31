@@ -1016,6 +1016,9 @@ Also seen: `IRR` of sweep A106 (a root of -1.3E-17) is -2.220446049250313E-16 in
 one-ulp-of-v resolution (16 times the root; a candidate `MATH-OVER-EXCEL` region for T-3358, not followed here).
 Evidence: probes/t3347-irr-conventional-num, probes-numeric/t3347-irr-conventional-sweep (excel-graph, 2026-10-31;
 exact roots in each case's `.roots.tsv`, docs/research/t3347_irr_conventional_sweep.py)
+Scope: the engine applies the stage to one outlay, then flows of the other sign or zero. The probed series all start
+with a negative outlay and have no zero flows; the mirrored sign (a positive first flow, then negative ones) and zero
+flows after the outlay are UNVERIFIED (P(v) only changes sign or gains zero terms there; T-3385 probes them).
 Status: VERIFIED (excel-graph) for which flows return; UNVERIFIED for the method and the digits (fitted, T-3347)
 Implemented in: `irr_conventional`, `irr_newton` (functions/financial/financial_util.rs)
 Tasks: T-3347
