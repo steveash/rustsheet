@@ -2,9 +2,8 @@
 use super::huge_shape::{huge_shape_quantile, wilson_hilferty_quantile};
 use super::{
     cdf_terms_bound, continued_fraction_budget, excel_small_shape_lower,
-    excel_small_shape_quantile, excel_tiny_quantile, gamma_cdf, gamma_density, gamma_inverse_cdf,
-    gamma_quantile, gamma_sf, gamma_ur, incomplete_gamma_pair, inverse_cdf_within, temme_pair,
-    Tail, Terms, MAX_TERMS, TEMME_C,
+    excel_small_shape_quantile, excel_tiny_quantile, gamma_cdf, gamma_density, gamma_quantile,
+    gamma_sf, gamma_ur, incomplete_gamma_pair, temme_pair, Tail, Terms, MAX_TERMS, TEMME_C,
 };
 use statrs::distribution::{ChiSquared, ContinuousCDF, DiscreteCDF, Gamma, Poisson};
 use statrs::function::gamma::{gamma_lr as statrs_lr, gamma_ur as statrs_ur};
@@ -184,20 +183,22 @@ fn the_pair_is_near_statrs() {
             near_upper(gamma_sf(&dist, x), dist.sf(x), shape, x * rate, scale),
             "sf Gamma({shape},{rate}) at {x}"
         );
-        // statrs' search (halve and double, 8 bisections, 4 Newton steps) can stop far from
-        // the quantile in the far tail (at p = 1.26E-291 and shape 14.3 both searches end
-        // where the cdf is about 1E-88), so the two are compared only where statrs' quantile
-        // reproduces p.
+        // The quantile is the crossing of the cdf: wherever statrs' search (halve and double, 8
+        // bisections, 4 Newton steps, the start until T-3131) gets near p, ours is a number
+        // whose cdf is p. statrs' can stop far from the quantile (at p = 1.26E-291 and shape
+        // 14.3 it ends where the cdf is about 1E-88; 3E-8 off at shape 5.25, p = 0.0149).
         let theirs = dist.inverse_cdf(p);
         if (dist.cdf(theirs) / p - 1.0).abs() < 1e-6 {
-            // A cdf's relative error e moves a quantile by e / shape where the shape is small.
+            let ours = gamma_quantile(shape, 1.0 / rate, p, Tail::Lower);
+            let back = if p <= 0.5 {
+                gamma_cdf(&dist, ours) / p
+            } else {
+                gamma_sf(&dist, ours) / (1.0 - p)
+            };
+            // One ulp of x moves the cdf by up to about a ulps of p in a far tail.
             assert!(
-                near_at(
-                    gamma_inverse_cdf(&dist, p),
-                    theirs,
-                    (shape + 10.0) / shape.min(1.0)
-                ),
-                "Gamma({shape},{rate}) at {p:e}"
+                near_at(back, 1.0, shape),
+                "Gamma({shape},{rate}) at {p:e}: {ours:e}"
             );
         }
     }
@@ -205,10 +206,13 @@ fn the_pair_is_near_statrs() {
         let chi = ChiSquared::new(df).unwrap();
         let dist = Gamma::new(df / 2.0, 0.5).unwrap();
         for p in [1e-10, 0.05, 0.4, 0.5, 0.95, 0.999_999_999_9] {
-            assert!(
-                near_at(gamma_inverse_cdf(&dist, p), chi.inverse_cdf(p), df),
-                "ChiSquared({df}) at {p}"
-            );
+            let ours = gamma_quantile(df / 2.0, 2.0, p, Tail::Lower);
+            let back = if p <= 0.5 {
+                gamma_cdf(&dist, ours) / p
+            } else {
+                gamma_sf(&dist, ours) / (1.0 - p)
+            };
+            assert!(near_at(back, 1.0, df), "ChiSquared({df}) at {p}: {ours:e}");
             let x = df * (0.5 + p);
             let scale = df * x.ln().abs() + x;
             assert!(
@@ -258,13 +262,11 @@ fn statrs_panics_and_hangs_end_as_nan() {
     assert_eq!(gamma_sf(&Gamma::new(2.0, 1e-100).unwrap(), 1e-300), 1.0);
     assert_eq!(gamma_cdf(&Gamma::new(1e-16, 1e-100).unwrap(), 1e-300), 0.0);
     assert_eq!(gamma_sf(&Gamma::new(1e-300, 1e-100).unwrap(), 1e-300), 1.0);
-    // A shape of 1E300 and a mean of 1: the inversion's cdfs never finish.
-    assert!(gamma_inverse_cdf(&Gamma::new(1e300, 1e300).unwrap(), 0.5).is_nan());
-    // The ends and invalid arguments are statrs' (its panics outside [0, 1] are NaN).
+    // The quantile's ends and invalid arguments (statrs panicked outside [0, 1]).
+    assert_eq!(gamma_quantile(2.0, 1.0, 0.0, Tail::Lower), 0.0);
+    assert_eq!(gamma_quantile(2.0, 1.0, 1.0, Tail::Lower), f64::INFINITY);
+    assert!(gamma_quantile(2.0, 1.0, 1.5, Tail::Lower).is_nan());
     let dist = Gamma::new(2.0, 1.0).unwrap();
-    assert_eq!(gamma_inverse_cdf(&dist, 0.0), 0.0);
-    assert_eq!(gamma_inverse_cdf(&dist, 1.0), f64::INFINITY);
-    assert!(gamma_inverse_cdf(&dist, 1.5).is_nan());
     assert_eq!(gamma_cdf(&dist, 0.0), 0.0);
     assert_eq!(gamma_sf(&dist, 0.0), 1.0);
     assert!(gamma_ur(0.0, 1.0).is_nan());
@@ -326,14 +328,14 @@ fn a_call_past_its_cap_is_nan() {
         pair(1e10, 1e10).0.to_bits(),
         0.500_001_329_807_601_4_f64.to_bits()
     );
-    // An inversion shares one budget over its cdfs.
-    let dist = Gamma::new(3e7, 1e6).unwrap();
-    assert!(near_at(
-        inverse_cdf_within(&dist, 1e-5, &mut Terms(MAX_TERMS)),
-        dist.inverse_cdf(1e-5),
-        dist.shape()
-    ));
-    assert!(inverse_cdf_within(&dist, 1e-5, &mut Terms(1_000)).is_nan());
+    // An inversion's cdfs share one budget: within it at shape 2E6 even at p = 1E-300 (from
+    // the Wilson-Hilferty start, T-3131), past it at 1E7 (NaN, `#NUM!`; also before T-3131).
+    let back = gamma_cdf(
+        &Gamma::new(2e6, 1.0).unwrap(),
+        gamma_quantile(2e6, 1.0, 1e-300, Tail::Lower),
+    );
+    assert!((back / 1e-300 - 1.0).abs() < 1e-11);
+    assert!(gamma_quantile(1e7, 1.0, 0.5, Tail::Lower).is_nan());
 }
 
 // The continued fraction's own budget (T-2795) is at least twice the terms it needs at
