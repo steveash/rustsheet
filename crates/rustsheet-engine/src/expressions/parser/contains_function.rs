@@ -48,6 +48,21 @@ impl Node {
         false
     }
 
+    /// Whether the tree holds a parse error at any depth. Such a tree carries the formula's own
+    /// text and positions, so the import never reuses its printed form for another copy of the
+    /// formula (T-3326). An explicit stack, as above.
+    #[must_use]
+    pub fn has_parse_error(&self) -> bool {
+        let mut pending = vec![self];
+        while let Some(node) = pending.pop() {
+            if matches!(node, Node::ParseErrorKind { .. }) {
+                return true;
+            }
+            node.push_children(&mut pending);
+        }
+        false
+    }
+
     /// Whether the tree holds a call of one of `kinds` at any depth. SUBTOTAL and AGGREGATE skip
     /// every cell whose formula does (docs/excel-semantics/numbers.md "SUBTOTAL and AGGREGATE
     /// over hidden and filtered rows", probes/subtotal-hidden-filtered Nest sheet). An explicit

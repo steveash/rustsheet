@@ -133,7 +133,8 @@
        task before merge.
     3. Every fitted constant, cut-point or table carries a `FITTED(T-XXXX, n_cells, range)` doc tag, and their count is
        ratcheted. A fitted piece is not applied outside the range it was measured on; outside it, the code falls back to
-       accurate math.
+       accurate math. The tag is `/// FITTED(T-NNNN, <n> cells, <range>)` on its own doc line; `make hygiene` runs
+       scripts/check_fitted.py against the per-file counts in quality/fitted.json (T-3361).
     4. No fitting below the oracle's reproducibility floor (decision 0112; web against desktop up to 4 ulp,
        docs/research/oracle-calibration.md).
     5. The reviewer-excel-fidelity checklist requires the hold-out counts and the Gate A envelope result for any fit.
@@ -162,3 +163,8 @@
   - Until the harness tasks land, the report's Phase 1 line and exit rows read as before; nothing counts as met that
     did not before. No gate, baseline or ratchet changes in this PR, and the CI gate still forbids any bit regression.
   - The fit-lab sweeps keep running and their counts stay in the report: they are Phase 1b's measure.
+  - R4.5 and R3's acceptance rule are in reviewer-excel-fidelity (checks 6 and 7), the work-loop, steward and
+    gap-triager text, and docs/process/quality-gates.md (T-3362). Until T-3356, T-3357, T-3358, T-3360 and T-3361 land,
+    that text asks for a manual hold-out split, a probes-numeric fresh sweep and mpmath values attached in the task.
+    T-3362's reading of R4.1 with decision 0056 (not a separate ruling): an attempt counts as raising the
+    bit-exact count only if it raises the hold-out bit-exact count.
