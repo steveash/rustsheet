@@ -7,7 +7,7 @@ use crate::{calc_result::CalcResult, model::Model};
 use super::array_node_to_calc_result;
 use crate::functions::binary_search::Sequence;
 use crate::functions::criteria::{folded_units, WildcardPattern};
-use crate::functions::util::collation::{collation_key, CollationKey};
+use crate::functions::util::collation::{collation_key, fold_exact_lookup, CollationKey};
 use crate::functions::util::{compare_values, compare_values_pairwise};
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -176,7 +176,8 @@ const MIN_INDEXED: usize = 16;
 
 /// A value's key under MATCH, VLOOKUP and HLOOKUP's exact match (`exact_position`, and
 /// `WildcardPattern` for text without wildcards): numbers equal exactly (-0 is 0, NaN equals
-/// nothing), text by its case-folded units, booleans by value. Blanks and errors have none.
+/// nothing), text by its case-folded units with the marks folded as [`fold_exact_lookup`] does,
+/// booleans by value. Blanks and errors have none.
 #[derive(PartialEq, Eq, Hash)]
 enum ExactKey {
     Number(u64),
@@ -188,9 +189,24 @@ impl ExactKey {
     fn of(value: &CalcResult) -> Option<ExactKey> {
         match value {
             CalcResult::Number(x) if !x.is_nan() => Some(ExactKey::Number((x + 0.0).to_bits())),
-            CalcResult::String(s) => Some(ExactKey::Text(folded_units(s))),
+            CalcResult::String(s) => Some(ExactKey::Text(fold_exact_lookup(&folded_units(s)))),
             CalcResult::Boolean(b) => Some(ExactKey::Boolean(*b)),
             _ => None,
+        }
+    }
+
+    /// Whether `value` is a text whose key is `ExactKey::Text(units)`, without folding ASCII
+    /// text into a copy (ASCII has no marks to fold).
+    fn text_is(units: &[u16], value: &CalcResult) -> bool {
+        match value {
+            CalcResult::String(crate::text::Text::Utf8(s)) if s.is_ascii() => {
+                s.len() == units.len()
+                    && s.bytes()
+                        .zip(units)
+                        .all(|(byte, &unit)| u16::from(byte.to_ascii_lowercase()) == unit)
+            }
+            CalcResult::String(s) => fold_exact_lookup(&folded_units(s)) == units,
+            _ => false,
         }
     }
 }
@@ -274,14 +290,20 @@ impl SearchVector {
     /// matched as a wildcard pattern (`WildcardPattern`), anything else by `exact_position`.
     /// From the second search on, a pattern without wildcards and a non-text value are looked up
     /// in an index with the same equality instead of walked (T-0448).
+    /// A pattern without wildcards compares [`ExactKey`]s, whose fold equates `"aー"` with `"aa"`
+    /// as Excel's exact MATCH does ([`fold_exact_lookup`]).
     pub(super) fn exact_match(&self, target: &CalcResult) -> Option<usize> {
         let pattern = match target {
             CalcResult::String(s) => Some(WildcardPattern::new(s)),
             _ => None,
         };
+        let literal = pattern
+            .as_ref()
+            .and_then(WildcardPattern::literal_units)
+            .map(|units| fold_exact_lookup(&units));
         if self.index_worthwhile() {
             let key = match &pattern {
-                Some(pattern) => pattern.literal_units().map(ExactKey::Text),
+                Some(_) => literal.clone().map(ExactKey::Text),
                 None => ExactKey::of(lookup_key(target)),
             };
             if let Some(key) = key {
@@ -292,9 +314,10 @@ impl SearchVector {
                 return index.find(&key, true);
             }
         }
-        match pattern {
-            Some(pattern) => self.position(|value| pattern.matches_result(value)),
-            None => self.exact_position(target),
+        match (literal, pattern) {
+            (Some(units), _) => self.position(|value| ExactKey::text_is(&units, value)),
+            (None, Some(pattern)) => self.position(|value| pattern.matches_result(value)),
+            (None, None) => self.exact_position(target),
         }
     }
 
