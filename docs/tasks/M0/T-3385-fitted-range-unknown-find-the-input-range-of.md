@@ -27,6 +27,16 @@ Every `FITTED(...)` tag in the engine names the input range its cells cover: non
 - Weak counts noted while tagging (worth correcting in the same pass if the evidence allows): `T_TAIL_P` and
   `T_STATRS_MIN_P` (t_dist.rs; probe t1531-t-tiny-p covers p 1E-300..1E-10, which does not reach the cuts at 1E-5 and
   1E-8), `HUGE_SHAPE_MIN` (only the 1E9 side counted), `T_CENTRE_C` (only the c = 0.1 cells listed).
+- T-3361 review (excel-fidelity, MINOR) asked for the same pass to:
+  - decide whether statistical/f_density.rs `LARGE_DF_MIN` (16, r5-f-bigconst `BIG_MIN`) is a fitted cut and tag it
+    (the probe design edge per r5-f-bigconst §4.5, or the bcmodel switch);
+  - trace the f_density.rs counts to a named file: 5752 cells on `SMALL_SHAPE_OFFSET`, `STIRLING_ERROR_HALF`,
+    `STIRLING_ERROR_ONE` and 4232 on `STIRLING_ERROR` and its slope and intercept (docs/research/t2464/r4-f-small-df
+    says both max(d) <= 10 and "fitted at max(d) <= 30");
+  - name the bracketing probe (probes/t2778-imsinh-sign-sweep, T-2797) on engineering/complex/trig.rs
+    `INVERSE_EXP_LOW` and `INVERSE_EXP_HIGH`;
+  - settle f_density.rs `LOG1P_SERIES_LIMIT` (0.375) and the RATE secant tolerances and IRR model in
+    financial/financial_util.rs (T-2005, T-1525, T-1533): tag them or record why they are not fits.
 - math_and_trigonometry/hyperbolic.rs `EXPM1_FORM_LIMIT` (1.0) is a form switch the T-2134 evidence does not bracket
   (its sweep covers only |x| < 1): it may be an untagged fit.
 

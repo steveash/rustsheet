@@ -19,6 +19,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import tasks
+
 ROOT = Path(__file__).resolve().parent.parent
 LOCK = ROOT / "quality" / "fitted.json"
 MARK = "FITTED("
@@ -26,10 +28,10 @@ TAG = re.compile(r"^\s*//[/!]?\s*FITTED\(T-(\d{4,}), (\d+) cells?, (\S(?:.*\S)?)
 
 
 def task_ids() -> set[str]:
-    return {p.name.split("-")[1] for p in (ROOT / "docs" / "tasks").glob("*/T-*.md")}
+    return {str(t.get("id", "")) for t in tasks.load()}
 
 
-def scan(files: dict[str, str], tasks: set[str]) -> tuple[dict[str, int], list[str]]:
+def scan(files: dict[str, str], task_set: set[str]) -> tuple[dict[str, int], list[str]]:
     """Per-file tag counts and the problems (malformed tags, unknown tasks) in `files` (path -> text)."""
     counts: dict[str, int] = {}
     problems: list[str] = []
@@ -40,7 +42,7 @@ def scan(files: dict[str, str], tasks: set[str]) -> tuple[dict[str, int], list[s
             m = TAG.match(line)
             if m is None:
                 problems.append(f"{path}:{n}: malformed tag, want `/// FITTED(T-NNNN, <n> cells, <range>)`")
-            elif m.group(1) not in tasks:
+            elif f"T-{m.group(1)}" not in task_set:
                 problems.append(f"{path}:{n}: FITTED cites T-{m.group(1)}, which has no task file")
             else:
                 counts[path] = counts.get(path, 0) + 1

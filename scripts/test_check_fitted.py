@@ -5,9 +5,9 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import check_fitted as fit  # noqa: E402
+import check_fitted as fit  # noqa: E402 (import after sys.path setup)
 
-TASKS = {"2587", "3067"}
+TASKS = {"T-2587", "T-3067"}
 
 
 class FittedTags(unittest.TestCase):
