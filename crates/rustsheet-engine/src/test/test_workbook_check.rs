@@ -4,8 +4,10 @@
 
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::test::util::new_empty_model;
-use crate::types::{ArrayKind, Cell, Col, FormulaValue, MergedCell, Row, SpillValue, Workbook};
-use crate::Model;
+use crate::types::{
+    ArrayKind, Cell, Col, FormulaValue, MergedCell, Row, SpillValue, Workbook, WorkbookView,
+};
+use crate::{Model, UserModel};
 
 /// A one-sheet workbook with a number in A1 and a formula in A2.
 fn workbook() -> Workbook {
@@ -39,6 +41,32 @@ fn a_dangling_shared_string_still_loads() {
     set_cell(&mut workbook, 1, 2, Cell::SharedString { si: 40, s: 0 });
     let model = Model::from_workbook(workbook, "en").unwrap();
     assert_eq!(model._get_text("B1"), "");
+}
+
+/// The selected sheet of a view, the frozen panes and the sheet list are read through checked
+/// lookups, so none of them is refused: the model loads and answers as it did before T-2913.
+#[test]
+fn a_view_past_the_sheets_frozen_panes_off_the_grid_and_no_sheets_still_load() {
+    let mut w = workbook();
+    let view = WorkbookView {
+        sheet: 3,
+        window_width: 800,
+        window_height: 600,
+    };
+    w.views.insert(0, view);
+    w.worksheets[0].frozen_rows = i32::MAX;
+    w.worksheets[0].frozen_columns = -5;
+    let mut user = UserModel::from_model(Model::from_workbook(w, "en").unwrap());
+    assert_eq!(user.get_selected_view().sheet, 0);
+    // Navigation on the missing selected sheet is an error, not a panic.
+    assert!(user.on_arrow_down().is_err());
+    assert!(user.on_page_down().is_err());
+
+    let mut w = workbook();
+    w.worksheets.clear();
+    let mut model = Model::from_workbook(w, "en").unwrap();
+    model.evaluate();
+    assert!(model.set_user_input(0, 1, 1, "1".to_string()).is_err());
 }
 
 #[test]
