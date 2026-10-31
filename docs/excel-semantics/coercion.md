@@ -229,8 +229,10 @@ Microsoft's Windows sorting weight table (`Windows Server 2022 Sorting Weight Ta
   marks, one per weight 2, 5, 8, 11 and 14 to 255, self-ranked in order (Calc!A1:A246); `"a"` with
   1 to 40 of U+0301, U+030A, U+0323, U+0342 ranked against it (Data!B1:B160), mixes, `"e"` runs
   and `"a"`&run&`"b"`) and probes/t3201-collation-wrapped-run-pairs (37 texts whose sums wrap to
-  2 to 22, every pair, 1,369 cells), excel-graph 2026-10-30. Status: VERIFIED for one accented
-  letter, and for it followed by `"b"`. Compare a letter's accent as a sequence of units, the
+  2 to 22, every pair, 1,369 cells), excel-graph 2026-10-30, and probes/t3304-collation-multi-letter-accents
+  (four groups of texts, every pair within a group, 1,653 cells, plus ranks and COUNTIF `"="&x`;
+  excel-graph 2026-10-31). Status: VERIFIED, for texts with several accented letters, marks on
+  either side of a letter boundary and equal-sum runs that share a prefix too. Compare a letter's accent as a sequence of units, the
   letter itself (weight 2, or a precomposed letter's whole weight, `á` 14) and then each mark (its
   weight above): first drop the leading units the two texts share with equal weights (a mark matches
   any mark of the same weight: U+0341 matches U+0301, U+0352 matches U+0323, but precomposed `á` is
@@ -255,9 +257,46 @@ Microsoft's Windows sorting weight table (`Windows Server 2022 Sorting Weight Ta
   - Per letter: `"a"`, 22 U+0301, `"b"` beats `"a"&UNICHAR(833)&"b"` on its 21 acutes left
     (Calc!B242); `"e"` runs rank as `"a"` runs (Calc!B181:B220).
   - A model of this rule (and the weights above) reproduces all 3,391 cells of the four t3154 and
-    t3201 accent cases (pairs, weights, long-mark-runs, wrapped-run-pairs). Open, UNVERIFIED: units
-    shared across letters (`"áb"` against `"a"&UNICHAR(769)&"c"`), two units with equal sums that
-    share a prefix, and marks after `æ`/`ß`.
+    t3201 accent cases (pairs, weights, long-mark-runs, wrapped-run-pairs).
+  - **Letter by letter, the first difference decides** (multi-letter-accents sheet G1, Data!A): a
+    letter whose units are left equal after the skip (equal sums) passes the decision to the next
+    letter, and the first letter that differs decides, whatever the later letters do. So
+    `"áe" > "aé"` (G1!D4) and `"áe" > "aè"` (G1!J4) although the second text's accents sum higher; a
+    text-wide sum or a text-wide skip would make them equal or less. `"áé"` = `"a"&UNICHAR(769)&"e"&UNICHAR(769)`
+    = `"a"&UNICHAR(769)&"é"` = `"á"&"e"&UNICHAR(769)` (G1!F2:H2; COUNTIF 4, Rank!E2). `"a"` plus 16
+    U+0302 (wrapped sum 2, as plain `"a"`) then `"é"` is above `"aé"` (G1!D11): `"a"` is the first
+    letter's proper prefix, so the second letter is never reached. `"a"&UNICHAR(781)&UNICHAR(768)&"e"`
+    = `"a"&UNICHAR(770)&"e"` (16 = 3 + 13; G1!O12) and `"a"&UNICHAR(781)&UNICHAR(768)&"e"` <
+    `"a"&UNICHAR(770)&"é"` (G1!P12).
+  - **The skip stops at the letter**: units are never shared across a letter boundary (sheet G2,
+    Data!B). `"a"&UNICHAR(769)&"b"` > `"ab"&UNICHAR(769)` (G2!E3: the first letter has units left
+    against none), where a text-wide unit stream would make them equal; `"a"&UNICHAR(769)&UNICHAR(769)&"b"`
+    > `"a"&UNICHAR(769)&"b"&UNICHAR(769)&UNICHAR(769)` (G2!J8). Letters themselves come first: `"áb"`
+    < `"a"&UNICHAR(769)&"c"` (G2!L2, decided by `b < c`). `"a"&UNICHAR(769)&"b"&UNICHAR(769)` =
+    `"á"&"b"&UNICHAR(769)` = `"a"&UNICHAR(833)&"b"&UNICHAR(769)` = `"a"&UNICHAR(769)&"b"&UNICHAR(833)`
+    (G2!F5, O5, P5; COUNTIF 4, Rank!F5).
+  - **Equal sums sharing a prefix are equal** (sheet G3, Data!C): after the shared units, only the
+    sums of the rest count, however many units and in whatever order. `"a"&UNICHAR(769)&UNICHAR(770)`
+    = `"a"&UNICHAR(769)&UNICHAR(768)&UNICHAR(781)` = `"a"&UNICHAR(769)&UNICHAR(781)&UNICHAR(768)` =
+    `"a"&UNICHAR(833)&UNICHAR(770)` = `"á"&UNICHAR(770)` = `"á"&UNICHAR(768)&UNICHAR(781)` (G3!G5:H5,
+    K5, Q5, R5; COUNTIF 6, Rank!G5); `"a"&UNICHAR(769)&UNICHAR(768)&UNICHAR(768)` =
+    `"a"&UNICHAR(769)&UNICHAR(807)` (26 = 13 + 13; G3!T18); `"a"&UNICHAR(769)&UNICHAR(833)&UNICHAR(768)`
+    = `"a"&UNICHAR(833)&UNICHAR(769)&UNICHAR(768)` (G3!P14); `"a"&UNICHAR(833)&UNICHAR(833)` =
+    `"a"&UNICHAR(769)&UNICHAR(769)` (G3!M11) and both < `"a"&UNICHAR(769)&UNICHAR(770)` (G3!F11:
+    after the shared acute, 12 against 16).
+  - **Accents come before case and before skipped characters**, and case never counts (sheet G4,
+    Data!D): `"ab"` = `"Ab"` = `"aB"` = `"AB"` and `"áb"` = `"Áb"` = `"áB"` = `"ÁB"` (G4!B1:E1,
+    F5:I5; COUNTIF 4); `"Áb"` > `"aB"` (G4!D6); `"á-b"` > `"a-b"` (G4!J10), `"a-b"` < `"áb"`
+    (G4!F9), `"á-b"` > `"áb"` (G4!F10) and `"a"&UNICHAR(769)&"-b"` = `"á-b"` (G4!K12).
+  - **A mark after a hyphen or apostrophe goes with that skipped character, not with the letter
+    before it**: it adds nothing to the accent pass and raises the skipped character in the last
+    pass. `"a-"&UNICHAR(769)&"b"` is above `"a-b"`, `"ab-"`, `"a'b"` and
+    `"a'"&UNICHAR(769)&"b"` and below `"áb"`, `"á-b"`, `"a"&UNICHAR(769)&"-b"` and `"á'b"` (G4 row 11;
+    COUNTIF 1, Rank!H11), and `"a'"&UNICHAR(769)&"b"` is above `"a-b"` (G4!J20): `"a'b"` < `"a-b"` <
+    `"a'"&UNICHAR(769)&"b"` < `"a-"&UNICHAR(769)&"b"` < `"áb"`. One mark (U+0301) was probed: how
+    other marks or several marks weigh there is open. Ours attaches the mark to the letter before
+    the hyphen (so `"a-"&UNICHAR(769)&"b"` = `"á-b"`) and fails these 47 cells (T-3329).
+  - Open, UNVERIFIED: marks after `æ`/`ß` (T-3203).
   Ours (T-3181): `cmp_text_pairwise` applies this rule for the operators and criteria, so every
   cell of the four accent cases passes. The rule is not transitive (wrapped-run-pairs has 554
   intransitive triples), so the sorts keep the wrapped total with nothing skipped (`cmp_text`, a

@@ -7,7 +7,7 @@ status: todo
 priority: P3
 size: M
 tier: opus
-depends_on: [T-3310, T-3146]
+depends_on: [T-3310, T-3146, T-3337]
 defer: phase-1b
 ---
 
@@ -35,10 +35,10 @@ crates/rustsheet-engine/src/functions/statistical/chisq.rs `chisq_inv_of`):
   exact lower quantile of the double 1 - p 2 ulp from Excel at both p, so the engine's df-1 path itself loses
   5 to 8 ulp there.
 
-Not here: the p = 0.999 cells of m9-legacy-chiinv (A65, A66, A69, A70) and the visibly-off `CHIINV(1E-9,1)` pair
-(A1, A2), which are Excel's landing point in the flat band of its double cdf (T-3146); the visibly-off far-tail
+Not here: the p = 0.999 cells of m9-legacy-chiinv (A65, A66, A69, A70; T-3146) and the visibly-off `CHIINV(1E-9,1)`
+pair (A1, A2; T-3337), which are Excel's landing point in the flat band of its double cdf; the visibly-off far-tail
 CHISQ.DIST.RT cells and the 3 quantiles of t2561-chisq-inv-rt-num-edge and -num-large-df (T-3310). Re-run the cell
-list after T-3310 and T-3146 land: both change this kernel.
+list after T-3310, T-3146 and T-3337 land: both change this kernel.
 
 Cells (probes-numeric is ungated, so these are the failing cells of the run, not baseline lines):
 - probes-numeric/t2561-chisq-inv-rt-num-boundary.case.json (159): R!B1, B2, C4, D2, D3, D4, E1, E3, E5, F2, F3, F5, F6, F7, F8, F9, G1, G3, G5, G7, G10, H1, H3, H4, H6, H7, H8, H9, H10, H13, I1, I2, I3, I5, I6, I7, I8, I9, I10, I11, I12, J3, J5, J9, J11, J12, J13, J15, K2, K3, K4, K5, K6, K7, K9, K11, K12, K13, K15, L1, L2, L3, L4, L5, L6, L7, L9, L10, L11, L13, L15, M2, M3, M4, M9, M11, M12, M13, M14, N3, N4, N6, N7, N9, N11, N12, N13, N18, O1, O2, O3, O5, O7, O8, O9, O10, O12, O13, O15, P1, P2, P4, P5, P7, P8, P10, P11, P12, P13, P15, P18, P19, Q2, Q4, Q5, Q7, Q9, Q10, Q11, Q12, Q14, Q16, Q17, Q18, Q19, R5, R10, R11, R13, R14, R15, R16, R18, R19, S1, S2, S4, S5, S7, S8, S9, S10, S11, S13, S14, S15, S17, S19, T1, T2, T4, T5, T6, T8, T9, T12, T14, T15, T17

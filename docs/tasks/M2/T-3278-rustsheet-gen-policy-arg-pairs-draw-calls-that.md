@@ -3,7 +3,7 @@ id: T-3278
 title: "rustsheet-gen --policy arg-pairs: draw calls that pass the argument-class pairs no Excel cell covers yet"
 milestone: M2
 lane: harness
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -43,17 +43,28 @@ function's `pairwise` share instead of hoping random draws hit the pair.
   determinism contract (same seed and report give the same cases).
 
 ## Acceptance criteria
-- [ ] `rustsheet-gen --policy arg-pairs --milestone M2 --seed 0` writes cases under a gen suite whose
+- [x] `rustsheet-gen --policy arg-pairs --milestone M2 --seed 0` writes cases under a gen suite whose
       formulas, once scored by `rustsheet-eval run` with the engine (no oracle needed for this check),
       cover at least 90% of the unseen pairs listed for the M2 functions in the input report; the
       skipped pairs are named in each case's description. Shown in the PR.
-- [ ] tools/tests/test_generator.py: over a fixture report.json, every generated call passes its target
+- [x] tools/tests/test_generator.py: over a fixture report.json, every generated call passes its target
       pair (asserted by the forced argument texts and Data values), a hard-domain pair is skipped, and
       the output is deterministic for a seed.
-- [ ] docs/architecture/synthetic-generator.md documents the policy and the design choices above.
-- [ ] `make py-check` (ruff, mypy strict, pytest) green; `make check` green; reviewers approve.
+- [x] docs/architecture/synthetic-generator.md documents the policy and the design choices above.
+- [x] `make py-check` (ruff, mypy strict, pytest) green; `make check` green; reviewers approve.
 
 ## Out of scope
 - Committing an oracle-filled batch (T-3279 for gen-m2; other milestones file their own).
 - Changing the classifier or the pair definition (T-3277, T-0083).
 - Pairs of three or more arguments.
+
+## Outcome
+`rustsheet-gen --policy arg-pairs` (tools/src/rustsheet_tools/gen/arg_pairs.py) reads
+`argument_coverage[].unseen_pairs` from a report.json (`--report`, default eval/runs/latest/report.json)
+and writes, per function of exactly `--milestone` (or `--functions`), two calls per unseen pair: both
+classes forced as literals, then as references to Data cells holding other values of the classes;
+every other argument is a plain in-domain value. Hard-domain pairs are skipped and named in the case
+descriptions and on stderr. Design choices: docs/architecture/synthetic-generator.md §6.7.
+`--milestone M2 --seed 0` against main's report gives 17 cases, 2220 calls over the 1110 unseen pairs of
+12 M2 functions; scored by `rustsheet-eval run` with the engine standing in for Excel, 1110/1110 (100%)
+of them are covered. No eval delta (no cases committed; the oracle-filled batch is T-3279).

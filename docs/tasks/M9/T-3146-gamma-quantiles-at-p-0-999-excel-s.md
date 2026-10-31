@@ -72,27 +72,18 @@ across neighbouring p doubles, with one break at 0.999" in statistics.md is an a
 x = q + k ulp series of the cdf cells (A141 on) collapse onto 15-digit x for small k too. T-3175 re-probes them with
 exact-piece literals; do not fit the landing rule to A120 to A140's p as doubles.
 
-### Also owned: m9-legacy-chiinv's flat-band cells (gap triage 2026-10-31)
-`make eval` on 2026-10-31, excel-graph: these cells had no open owner (T-2561, done, named A1 and A2 as a lead only).
-Same cause, the landing point in the flat band of Excel's double cdf:
-- probes-numeric/m9-legacy-chiinv.case.json (6): Calc!A1, A2, A65, A66, A69, A70
-- A1 `CHIINV(1e-09,1)` and A2 `CHISQ.INV.RT(1e-09,1)` (visibly off): Excel 37.324892889999234, ours
-  37.324893106518715, true quantile of p 37.32489305136234. At df 1 both solve the lower cdf at q = fl(1 - 1E-9),
-  whose tail is 9.999999717E-10. Ours is the exact quantile of that q (the tail at our x, from erfc, is
-  9.999999717180673E-10). Excel's x is, to the bit, the exact quantile of the tail 1.0000000827E-9 =
-  2·(1 - fl((1 + q)/2)), which is q's neighbour below (2^-53 lower). So Excel lands one cdf ulp outside the band
-  that rounds to q, on the side of smaller x. A 100-digit check (mpmath erfinv) also matches
-  `NORM.S.INV((1+q)/2)^2` there, but that closed form is 114 to 134,935 ulp off Excel at p = 0.001, 0.995, 0.999 and
-  0.99999, so it is a coincidence of this landing point, not Excel's df-1 algorithm. At p = 1E-10 and 1E-4, Excel is
-  within 4 ulp of the exact quantile of q itself.
-- A65/A66 `CHIINV(0.999,5)` (Excel 0.210212602629218, ours 45 ulp off) and A69/A70 `CHIINV(0.999,200)` (8 ulp) are
-  within 15 digits. They are the p = 0.999 cells above under CHIINV's name, so the landing rule should move them too.
+### Also owned: m9-legacy-chiinv's p = 0.999 cells (gap triage 2026-10-31)
+`make eval` on 2026-10-31, excel-graph: these cells had no open owner. They are the p = 0.999 cells above under
+CHIINV's name, so the landing rule should move them too; both are within 15 digits:
+- probes-numeric/m9-legacy-chiinv.case.json (4): Calc!A65, A66 `CHIINV(0.999,5)` (Excel 0.210212602629218, ours
+  45 ulp off) and A69, A70 `CHIINV(0.999,200)` (8 ulp).
+The visibly-off df-1 pair A1, A2 `CHIINV(1e-09,1)` is T-3337's (the same flat-band landing, at df 1).
 
 ## Acceptance criteria
 - [ ] The t3148 cells listed above are within half a unit of Excel's 15th significant digit, or the ones the landing
       rule cannot reach are named in the Outcome with their ulps.
 - [ ] The 12 cells above are within half a unit of Excel's 15th significant digit (`python3 scripts/exit_owners.py
-      --all-off` no longer lists them), and so are m9-legacy-chiinv A1 and A2, with no new known-failure line in any eval/baseline file
+      --all-off` no longer lists them), with no new known-failure line in any eval/baseline file
       (`make eval-baseline`) and no p = 0.999 cell of T-3016 or T-3131 made worse.
 - [ ] The landing rule and the forms tried, with their bit-exact and visible-parity counts on T-3148's case and the
       cached probes, are in docs/excel-semantics/statistics.md (decision 0056: two attempts, then time-box).
