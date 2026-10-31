@@ -37,6 +37,7 @@ the density's (statrs `pdf`, see T-2239's exp(k*ln(x/l)) lead).
 - [ ] Both lines leave `eval/baseline/ironcalc-calc.txt`, the T-1046 Weibull probe cells pass (or the
       PR lists the residue), no new lines in any baseline.
 - [ ] The matched formulation is recorded in `docs/excel-semantics/statistics.md`.
+- [ ] The two t1048-weibull cells added by gap triage 2026-10-30 are bit-exact (`make eval-show`; probes-numeric is ungated), or the Outcome lists the forms tried.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -44,3 +45,7 @@ EXPON.DIST (done in T-0928).
 
 ## Deferred (decision 0114)
 `defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).
+
+## Cells added by gap triage (2026-10-30)
+`make eval` on origin/main 6a26b992a (excel-graph), `scripts/exit_owners.py`'s `owned` rule over every failing cell and the task files of origin/main and every pushed branch: T-2239's Outcome left these two cells to this task ("Left for T-0978") but this file never listed them, so no open task owned them. `WEIBULL(4,2,4,FALSE)` and its WEIBULL.DIST twin: Excel 0.18393972058572117, ours 0.1839397205857212 (1 ulp; bit-exact before T-2239's exp(k ln(x/lambda)) form, and no tested form fits them).
+- probes-numeric/t1048-weibull.case.json (2): Calc!A14, B14

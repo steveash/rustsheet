@@ -1164,6 +1164,10 @@ and Q keep the direct form below 20 (T-3219). The bounds are fits inside their b
 unbracketed below 20 (UNVERIFIED: no probed density between a and 1.5a changes with the form).
 Status: VERIFIED (excel-graph)
 Tasks: T-0971, T-0972, T-2638, T-3147, T-3219
+Deep upper tail sweep (T-3289): probes-numeric/t3284-gamma-deep-upper-tail (343 cells: POISSON cdf at mean 4(k+1) to 100(k+1),
+its CHISQ.DIST.RT twin, half-integer shapes at x = 4 to 100 df, and 32-double ulp runs at POISSON(2,100) and CHISQ.DIST.RT(200,5)).
+Excel is within 1 ulp of the 50-digit value in 64 of the 343 cells (docs/research/t3284/ulp_vs_exact.py), and today's engine is
+bit-exact on 53 (`rustsheet-eval show --all`); T-3269 fits the rest.
 
 ## HYPGEOM.DIST: per-call cap and lifting (T-1873)
 Rule: HYPGEOM.DIST and HYPGEOMDIST lift every argument over an array and over a two-cell range on the formula's own rows,
@@ -1842,6 +1846,22 @@ down to 1E-10 / up to 0.9999999999. The values are the targets for T-0969 and T-
   exact tail is 8 to 23 ulp off, but 29 and 97 ulp off at `T.DIST.RT(0.5,100)` and (0.5,1000), where the exact
   tail is within 1. No (df, t) cut on the swept cells separates the two (superseded: the denser grid of T-0969 attempt 7
   finds the cut, see "T.DIST.RT follows the rounded y beyond t = 1").
+- **Centre quantiles are accurate** (T-2724): from df 2 (df 1 is Excel's 1/TAN form, T-2858), TINV, T.INV.2T and
+  CONFIDENCE.T with p near 1 (and T.INV with p near 1/2), whose quantile is a tiny t, keep their digits down to
+  p = 1-1E-16, from two-tailed p = 0.95 on (at p = 0.9 Excel is the rounded-y form instead; "Student-t quantile is
+  SQRT(df*(1/y-1)) of the rounded beta quantile, away from the centre"); T.INV.2T's negative branch, p in (1, 2), is
+  the exact quantile further out, at c = p - 1 = 0.0986 (`T.INV.2T(LN(3),7)` = -0.12847323195087978, gen-m9
+  c2684066d8df263e A64; d910f000b60e2eac A357 at df 8, c = 0.0991): `TINV(1-1E-10,5)` =
+  1.3171528710518458E-10, `TINV(1-1E-16,6)` = 1.4503892858778844E-16, `T.INV.2T(0.999999,7)` =
+  1.2987301378605883E-6, `T.INV.2T(0.9999999999,1E6)` = 1.2533145543437745E-10 (gen-m9 b9a32ce9a1fd0d71 A58,
+  cb61169f4c033d4b A71, 334f3dc9ca937f10 A128; probes-numeric m9-t-inv-2t A130). Each is within about 2E-15
+  relative of the true quantile at the double p (mpmath `betainc(1/2, df/2, 0, w) = 1 - p`), so a solver on
+  y = df/(df+t^2) near 1 that back-transforms through 1 - y (statrs; ours before T-2724 gave 2.36E-8 and 0
+  for the first two) is wrong. The central probability c = 1 - p (or |2p - 1|, or 1 - 2q for an upper tail q) is
+  exact by Sterbenz while 1 - q is not for q just below 1/2, so it has to be formed that way. Excel's own last
+  digits are noise of up to 3.6E-15 relative around the true value (`TINV(1-1E-16,8)` = 1.4355131050823135E-16,
+  true 1.4355131050823086E-16; `CONFIDENCE.T(1-1E-10,2.5,16)` = 7.964763775429037E-11, true
+  7.964763775429023E-11), which an accurate kernel does not reproduce (T-0967).
 Evidence: probes-numeric cases `m9-t-dist-cdf`, `m9-t-dist-pdf`, `m9-t-dist-rt`, `m9-t-dist-2t`, `m9-t-inv`,
 `m9-t-inv-2t`, `m9-confidence-t`, `m9-t-nonint-df`, `m9-t-edges`. Oracle: excel-graph, 2026-10-13. Exact reference values for
 the T.DIST accuracy bullets: mpmath `betainc` at 60 digits (T-0969 attempt 2, 2026-10-20).
@@ -2034,7 +2054,8 @@ small (a few x 2^-53) elsewhere. Its algorithm is unknown.
   Ours (since T-2119, BETA.DIST's cdf on the T-0970 incomplete beta): four of these cells are visibly off, past
   half a unit of the 15th digit. They are t0969-beta-prefactor D85 (Excel 1.6851260494385718E-11, 18 ulp) and D86
   (Excel 8.417666830127187E-07, 33 ulp; bit-exact on statrs' cdf), and t0969-t-beta-link E56 `BETA.DIST(D56,B56/2,0.5,TRUE)`
-  (Excel 9.114921170875367E-05, 4 ulp) and F6 `=E6/2` (Excel 0.07797913037736931, 6 ulp). T-2633 owns them.
+  (Excel 9.114921170875367E-05, 4 ulp) and F6 `=E6/2` (Excel 0.07797913037736931, 6 ulp). Since T-2510 (bgrat at a0 = 1/2
+  for BETA.DIST) D85 is bit-exact and D86, E56 and F6 are 1 ulp off, within the 15th digit (T-2633's Outcome).
 - The algorithm, for a < 1 and b <= 8 (T-0969 attempt 10): B(a,b) = EXP(GAMMALN(a) + (GAMMALN(b) - GAMMALN(a+b))),
   with Excel's own GAMMALN and in that grouping. probes-numeric `t0969-beta-switch` (excel-graph, 2026-10-21) has
   `BETA.DIST(x,a,b,FALSE)` at x = 0.01 and 0.03 for a in {0.25, 0.5, 0.75, 1.5, 2.5} and b = 6.5 to 9.5 by 1/32, with
@@ -2621,6 +2642,11 @@ z = fl64(fl(a·LN(x)) - L)  (extended);   I = fl(EXP(z)·s)  (Excel's EXP of the
   1 < b0 < 8 cells this L loses to r2-bratio's (3,365 against 4,038 of 7,455, verifier); b < 1 shapes top out at 55-84%
   bit-exact for any constant L (one stored intermediate, unidentified). The port needs Excel's GAMMALN exact at the shape
   arguments; the engine model is exact on 274 of 771 in [1, 2) and 1,738 of 2,585 below 1 (t2464-r2-bpser-small-gl).
+- An isolated miss at 1 < b0 < 8 (gap triage 2026-10-30, T-3331): `BETA.DIST(0.1,2.5,5,TRUE)` (probes-numeric/
+  m9-beta-dist-a2p5 Calc!A31, a bpser point: b0·x0 = 0.5) is 0.05533381860850995 in Excel and 0.055333818608509895 in
+  the engine, visibly off. Against a 60-digit mpmath value, 0.055333818608509839059, Excel is 16.1 ulp high and the
+  engine 8.1 ulp high, so here Excel is the inaccurate one, and by more than the shapes probe's sub-branch suggests
+  (all 4,602 of its 1 < b0 < 8 cells within 15 digits).
 Evidence: probes-numeric t2464-r2-bpser-small-shapes, -runs, -tiny, -tiny2, -gl, t2464-w2f-*; docs/research/t2464/
 w3-series (`model.py`, `accum2.py`, `control2.py`), r2-bpser-small (`lib.py`, `zforms.py`, `bscore.py`,
 `tiny_noapser.py`), verify-r2-bpser-small/verify.out, old_sets.out.
@@ -2666,7 +2692,7 @@ TOMS `betaln` at every shape (half-integers included) scores bit-exact +150, vis
 A9 (A18 is now within 4 ulp): T-2924's k plus whole fl(a·LN x) steps, as above.
 Status: PARTIAL (excel-graph): within 15 digits in every bpser sub-branch of the shapes probe (2,861 of 2,868 at
 b0 >= 8, all others); bit-exact 52-75%; both > 1 with max > 8 a provisional form (T-3007)
-Tasks: T-2505, T-2512, T-2122, T-3007
+Tasks: T-2505, T-2512, T-2122, T-3007, T-3331
 
 ## Incomplete beta at a shape near the double range: no overflowing fl(a LN x), and bpser is #NUM! once 1/B overflows (T-3007)
 Rule: Excel never evaluates a bpser whose fl(a·LN x) overflows: Excel for the web refuses a workbook that holds
@@ -2792,6 +2818,12 @@ m9-t-dist-*; docs/research/t2464/r2-tdist (`hx.py`, `hx_ctl.py`, `xlk.py`, `tsco
 - df 1 is the exception: through the ported bpser at a = b = 1/2 (w3, GL53's ln B) 24 of cells.tsv's 67 df-1 tails are
   bit-exact, against 41 for the double-double series, and `T.DIST.2T(1,1)` (Excel 0.5000000000000001) is 5 ulp low.
   So Excel's bpser at (1/2, 1/2) is not w3's; df 1 keeps the series (T-2930).
+- Other callers at a0 = 1/2 (T-2510, `main` 5638599): BETA.DIST through the same bgrat and bup+bgrat goes from 30
+  visibly-off cells to 0 on probes-numeric (+289 BETA.DIST cells bit-exact; e.g. `BETA.DIST(0.9,5,0.5,TRUE)` Excel
+  0.31664291502001235, `BETADIST(1E-10,0.5,10000000000.5)` 0.8427007929652814), with no cell newly visibly off. F with a
+  df of 1 does not fit it: `FDIST(x,1,9)` at Excel 0.190947117169724 comes out 0.19094711716972382 (7 ulp), and
+  F.DIST/F.DIST.RT on probes-numeric go from 10/11 visibly-off cells to 15/15. So Excel's F at a df of 1 is not this
+  bgrat on the same (x, y); F (and F.TEST's large-shape tail) keeps today's kernel there. UNVERIFIED why.
 Ours: K(n/2, 1/2, y, z) from df 3 (`student_t::kernel_tail`); df 1 and 2 keep `student_t.rs`'s own composite (a
 double-double series, a Cephes deep tail, incbcf/incbd from z, and df 2's closed forms).
 Status: VERIFIED (excel-graph) for the call form and bgrat at b = 1/2; the bup arithmetic and the T density UNVERIFIED
@@ -3480,10 +3512,33 @@ stat-argument-modes H518, and gen-m9 1b31092a0d79e5f1 A275, 2138b909d8f810ea A24
 5919660b7bb4d195 A53, 775d053de498b8c7 A176. The full cell list is in T-3061.
 It does not hold near the centre. At two-tailed p = 0.99 and 0.999 (q = 0.495, 0.4995; m9-t-inv-2t A10-A115) Excel is
 within 1E-15 of the exact quantile, and the form is thousands of ulps off. The switch lies between q = 0.45 and
-0.495 (T-2724). At df 30 and q = 5E-17 (`T.INV.2T(1E-16,30)`, gen-m9 583ca2baea0bb30a A147) Excel's t is 2E-12
+0.475: p = 0.9 (q = 0.45) is the form bit for bit at df 2, 3, 5, 10, 100 and 1000 (mpmath, m9-t-inv-2t A22, A35, A61,
+A100, A113), p = 0.95 (q = 0.475) the exact quantile (T-2724 review; T-2724's centre kernel starts at c = 1 - 2q
+below 0.075, inside that bracket). At df 30 and q = 5E-17 (`T.INV.2T(1E-16,30)`, gen-m9 583ca2baea0bb30a A147) Excel's t is 2E-12
 off (its y about 4E-12; T-1542).
 Ours: the exact quantile (A&S 26.7.5 from df 1E5, statrs' inverse below), so up to 2.2E-7 relative away at huge df:
 T-3061.
+
+## Two-tailed Student-t quantile with p near 1 is accurate in Excel (T-3349)
+Rule: for df from 2 up, `T.INV.2T(p,df)`, `TINV(p,df)` and `CONFIDENCE.T(p,sd,n)` with p just below or above 1 return
+the small quantile to the 15th digit of the exact value: Excel solves the centre directly, never forming 1 - p/2.
+`T.INV.2T(0.999999999989522,2)` is 1.481806159731988E-11 (exact 1.48180615973198...E-11; decision 0188 item 3,
+where the engine gave 1.49E-8 before T-2724), `T.INV.2T(0.999999999999999,2)` 1.4130832128154019E-15 (c = 1 - p is 9.99E-16 in doubles), and so on for c from
+1E-3 to 1E-15 at df 2, 5, 30, 1000 and 1E6 and for p = 1.001 and 1.000000001 at df 2 (the negative quantile,
+`T.INV.2T(1.000000001,2)` = -1.4142136793856508E-9; the literal 1.000000000000001 has 16 digits and reads as 1, giving 0).
+At df 1 Excel is the 1/TAN form instead (T-2858's entry above), up to 2.9% off the exact value at
+`T.INV.2T(0.999999999999999,1)` (Excel 1.6155696572206502E-15, exact 1.5695408241038844E-15).
+Evidence: probes/t3349-t-inv-2t-near-one A1-A44 (excel-graph, 2026-10-31): every cell from df 2 up is within 15
+significant digits of the exact quantile (mpmath at 60 digits) and of the engine; the df 1 cells A3, A6-A10 match the
+1/TAN form, and A5 (`CONFIDENCE.T(0.999999999989522,1,3)` = 8.555211852081089E-12, exact 8.5552118520810793E-12) is
+Excel's last digits, 1.1E-15 relative off. Fresh sweep: probes-numeric/t3349-t-inv-2t-sweep (300 stratified points; the
+counts are in T-3349's Outcome). In that sweep Excel is more than 1E-4 off the exact value at a tiny p and a large df,
+p from 1.38E-300 to 1.73E-110 and df from 2490 up (42 points, A211-A300; `T.INV.2T(6.68863396408457E-199,2490)` is
+100.83724584548176 in Excel, exact 33.047211122914894): the tiny-p pattern of "MATH-OVER-EXCEL" case 1, which lists
+T.INV only and from p 1E-150; whether it extends to T.INV.2T needs an owner ruling (T-3386).
+Ours: the centre crossing of `student_t_centre` (T-2724), within about 5E-16 of the exact value.
+Status: VERIFIED (excel-graph)
+Tasks: T-3349, T-2724, T-2858
 
 ## Inverse CDF functions at a tiny or near-1 probability (T-1543)
 Rule: NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and BETA.INV return a value (or `#NUM!`) for p from 1E-300 to 1-1E-16; none panics or hangs in Excel.
@@ -3812,7 +3867,7 @@ Tasks: T-1543, T-1634, T-2561, T-3336, T-3337
     the plain-product rule is not general and is not implemented.
 - Excel's BETA.INV is erratic where the shape is extreme: `BETA.INV(1E-300,0.5,100)` = `BETA.INV(1E-200,0.5,100)` = 2.7050408442680296E-151 (the true quantile underflows to 0, ours 0); `BETA.INV(p,0.01,0.01)` is `#NUM!` for every p; `BETA.INV(1E-200,1000,1)` = 0.2064 and `BETA.INV(1E-20,1000,1)` = `#NUM!`, neither near the true quantile 0.9549925860214368. Ours is 0.9632618940201478 since T-3007 (the crossing of a cdf whose w1 is now the complement of w, "Incomplete beta at a shape of 1 outside the closed forms"). These are not implemented.
 - Open (inferred, not probed directly): Excel's `BETAINV(1E-15,1E+8,1)` is not the closed form `p^(1/alpha)`. gen-m9 5ded7594e597e31e A177, `IPMT(BETAINV(1E-15,1E+8,1),1.5,77,75622)`, is -75621.97390807692 in Excel, which implies a quantile of about 1-3.45031E-7 against the closed form's 0.9999996546122957 (1-3.45388E-7), 3.6E-10 relative apart (T-2587). Probe and fix: T-2936.
-- Ours: `statrs`' `Beta::inverse_cdf` panics from p about 1E-200 and does not finish for `BETA.INV(1E-100,1000,1)` or for any shape of 1E8 or more, at any p. Since T-2119, `BETA.INV` uses the capped search only as the start for shapes up to 1E5 and p of 1E-15 or more. It then refines to the crossing of BETA.DIST's own cdf (the T-0970 incomplete beta), and with no start it bisects that cdf. Nine BETADIST_BETAINV.xlsx cells are 1-4 ulp off on it (T-2633). A sweep of NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and CONFIDENCE.NORM over the same p found no panic or slow case.
+- Ours: `statrs`' `Beta::inverse_cdf` panics from p about 1E-200 and does not finish for `BETA.INV(1E-100,1000,1)` or for any shape of 1E8 or more, at any p. Since T-2119, `BETA.INV` uses the capped search only as the start for shapes up to 1E5 and p of 1E-15 or more. It then refines to the crossing of BETA.DIST's own cdf (the T-0970 incomplete beta), and with no start it bisects that cdf. Nine BETADIST_BETAINV.xlsx cells were 1-4 ulp off on it (T-2633); after T-2510, H2 and H67 pass and seven are still 1-4 ulp off (T-3374). A sweep of NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and CONFIDENCE.NORM over the same p found no panic or slow case.
 
 ## NORM.S.INV is AS 241 PPND16 in the tails; the central region is unfitted (T-1746)
 Rule: for |p - 0.5| > 0.425, NORM.S.INV(p) (and NORMSINV, NORM.INV(p,0,1)) equals Wichura's
@@ -5267,3 +5322,37 @@ Calc!A151 (`PERCENTILE.INC(Data!B11:E12,1E-200)` is 0), Calc!A162 (`PERCENTILE(D
 Status: VERIFIED (excel-graph). Implemented by T-1811; QUARTILE and QUARTILE.INC share `percentile_inc_impl` and show 0 regressions across their oracle cells. One cell is not reproduced (A269 above).
 Ours: `percentile_inc_impl` (functions/statistical/percentile.rs) uses the one-based rank `1 + k*(n-1)` (T-1811). Known miss: gen-m9/5395b8a427764a3f Calc!A269 (Excel -2.499999999999999, rule -2.4999999999999987) stays in the baseline.
 Tasks: T-1811
+
+## Tiny-p quantiles: Excel is grossly wrong, RustSheet returns the math (MATH-OVER-EXCEL)
+Rule: at p < 1e-150, T.INV(p, df), F.INV(p, d1, d2) and BETA.INV(p, alpha, beta) in their left tail and
+CHISQ.INV.RT(p, df) in its right tail (a tiny p is the upper tail there) can be far from the true quantile in Excel;
+where Excel's relative error exceeds G = 1e-4 RustSheet returns the 50-digit math value (decision 0188 R3).
+Region: the parameter bounds (df; d1 and d2; alpha and beta) are not yet evidenced. The assessment's "df ≥ 1e6" does
+not hold for its own example (df 3937), so each function's exact region is fixed from T-3358's R3-marked points and
+amended here. Until then this entry covers only the cited point, `T.INV(1.87E-297,3937)`.
+Evidence: the owner's 2026-10-31 assessment (decision 0188), stratified points scored against Excel for the web and
+50-digit mpmath: `T.INV(1.87E-297,3937)` is -156.96 in Excel and -40.26 in truth. Committed evidence points are owed by
+T-3358 (Gate A, R3-marked).
+Status: MATH-OVER-EXCEL (decision 0188)
+Ours: the assessment reports the engine already returns the true value at the cited point; that, too, is evidence
+T-3358 owes as committed points. Such cells stay F lines of eval/baseline and count as passing in Gate B and the R1(c)
+rows once T-3359 lands. The math path keeps directive 5's caps.
+Tasks: T-3358, T-3359, T-3363
+
+## GAMMA.INV at a huge shape, closed-form branch: Excel is about 2.7e-4 off, RustSheet returns the math (MATH-OVER-EXCEL)
+Rule: on the Wilson-Hilferty closed-form branch of "GAMMA.INV and CHISQ.INV at a huge shape" above (the gamma density
+at Excel's start x0 is below the smallest normal double), Excel returns x0, about 1.000266 times the true quantile, a
+relative error above G = 1e-4; there RustSheet returns the math (decision 0188 R3). The branch serves GAMMA.INV,
+GAMMAINV, CHISQ.INV, CHISQ.INV.RT and CHIINV (shape df/2, scale 2), so all five are in this case. The branch's `#NUM!`
+cells and its true-quantile band still match Excel.
+Evidence: probes/t3070-gamma-inv-band A110 (`GAMMA.INV(0.999999,1.5E10,1)` = 15004569623.957905) and the
+closed-form numeric cells of the five functions among A304-A327 (not A315-A317, which are CHISQ.DIST and
+CHISQ.DIST.RT and stay `#NUM!` in Excel; CHIINV
+and CHISQ.INV.RT from 2E13 to 1E15 degrees of freedom), probes/t2982-gamma-inv-huge-shape A7-A23 (`GAMMA.INV(0.5,a,1)`
+for a = 1E13 to 1E300), A92 and A93 (`CHIINV(0.5,2E13)`, `CHISQ.INV.RT(0.5,2E13)`), all excel-graph; the factor is
+measured against the accurate cdf (`GAMMA.DIST(1E12,1E12,1,TRUE)` correctly rounded, probes/incomplete-gamma-cap E9).
+The 50-digit math values for these cells are committed with T-3364 before the engine changes.
+Status: MATH-OVER-EXCEL (decision 0188)
+Ours: today the engine matches Excel with a fitted closed form (incomplete_gamma/huge_shape.rs,
+`WILSON_HILFERTY_SPREAD`, fitted at 1E13 and applied from 2E10); T-3364 moves the branch to the math.
+Tasks: T-3364, T-3358

@@ -317,6 +317,10 @@ verdict is `n/a` and `exit` ignores it), needs 10,000 scored `gen-m2` cells with
 and reads the `M0-M2` probe row (`probe_row`). Each row lists its gen suite's visibly-off cells
 (`gen_visibly_off_cells`) and each probe row its own (`visibly_off_cells`), so
 `scripts/exit_owners.py` lists exactly the visibly-off exit cells without re-deriving closeness.
+`make phase1-exit` (`scripts/phase1_exit.py`, decision 0187) prints one verdict per Phase 1 exit
+criterion (run completeness, catalog, function rate, owners, each Phase 1 milestone row, and the
+`manual` items) from report.json, the catalog and the task tree, and exits 1 unless every measured
+one is met; `--json` prints the same lines for other tools.
 The M9 row (decision 0146 item 3, T-0095) requires no suite (`gen_suite` is empty and prints `none
 required`); its ironcalc-calc measure is a rate: the function-scope row less its deviations and exit
 exceptions (`calc_scored`) with at most `floor(0.0005 * calc_scored)` visibly off (`calc_allowance`),

@@ -9,6 +9,7 @@ size: M
 tier: opus
 campaign: accuracy
 depends_on: []
+defer: phase-1b
 ---
 
 ## Goal
@@ -17,6 +18,10 @@ Excel to 15 significant digits, or the Outcome records, per group, the candidate
 files the group that stays off as a Phase 1b task with that evidence.
 
 ## Context
+- Decision 0188 R5 (owner's 2026-10-31 rulings): parked as Phase 1b. Every cell this task owns is a BETA.DIST or
+  F.DIST density cell or a dense probes-numeric sweep cell, within Gate A's envelope (most agree with Excel to 12 or
+  more digits, and Excel and the engine are both close to the math), so R1(c) counts it as Phase 1b evidence. A
+  point that Gate A's tables show outside the envelope gets its own task without the key.
 - Filed by T-2981 (eval of 2026-10-28 at `main` 9586958b). T-2503 shipped model M2 for min(a,b) <= 1
   (`functions/statistical/beta_density.rs` `beta_density_small_shape`) and T-2645 Excel's log1p; T-2821, the
   bit-level residue, is `defer: phase-1b`, so these visibly-off cells had no open owner. They are in three groups:

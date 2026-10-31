@@ -9,6 +9,7 @@ size: S
 tier: opus
 depends_on: []
 campaign: visible
+defer: phase-1b
 ---
 
 ## Goal
@@ -17,11 +18,22 @@ the bpser model of docs/excel-semantics/statistics.md ("Incomplete beta bpser", 
 with the forms tried.
 
 ## Context
+- Decision 0188 R5 (owner's 2026-10-31 rulings): parked as Phase 1b. Every cell this task owns is a BETA.DIST or
+  F.DIST density cell or a dense probes-numeric sweep cell, within Gate A's envelope (most agree with Excel to 12 or
+  more digits, and Excel and the engine are both close to the math), so R1(c) counts it as Phase 1b evidence. A
+  point that Gate A's tables show outside the envelope gets its own task without the key.
 Gap triage 2026-10-31 (`make eval` on 1171772e, `python3 scripts/exit_owners.py --all-off`, excel-graph). This is
 the only visibly-off BETA.DIST cell no open task owns. BETA.DIST is below the M9 Phase 1 rate, so the cell counts in
 the M9 exit row as `rate:BETA.DIST`. T-3249's Outcome noted it as predating that task; T-3007 (done) routed the case to
 its bpser item but did not reach it.
 - probes-numeric/m9-beta-dist-a2p5.case.json (1): Calc!A31
+
+Also owned (gap triage 2026-10-30, moved here from a duplicate filed by the same triage; same bpser path,
+last digits only, not required by the criteria below): Excel is within a unit of ours on each against a
+60-digit value, so they follow A31's fix of the bpser sum (its term count, stop or stored z).
+- probes-numeric/m9-beta-dist-a2p5.case.json (5): Calc!A3, A5, A7, A9, A37
+- probes-numeric/m9-beta-dist-a2.case.json (5): Calc!A1, A3, A5, A37, A49
+- probes-numeric/m9-legacy-betadist.case.json (2): Calc!A17, A18
 
 `BETA.DIST(0.1,2.5,5,TRUE)`: Excel 0.05533381860850995, ours 0.055333818608509895. Ours is 8 ulp below Excel. The
 true value (mpmath, 50 digits, gap triage) is 0.0553338186085098323, about 17 ulp below Excel and 9 below ours, so

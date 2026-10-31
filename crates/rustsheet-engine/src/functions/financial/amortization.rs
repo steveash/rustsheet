@@ -28,7 +28,10 @@ use crate::{
     arithmetic::extended_sum,
     calc_result::CalcResult,
     decimal_round::{round_decimal, RoundMode},
-    expressions::{parser::Node, types::CellReferenceIndex},
+    expressions::{
+        parser::{ArrayNode, Node},
+        types::CellReferenceIndex,
+    },
     formatter::dates::from_excel_date,
     functions::lift::num_error,
     functions::Function,
@@ -88,9 +91,9 @@ impl Model {
     /// period 1, which returns the value the last AMORDEGRC or AMORLINC Excel ran before it left
     /// (`LeftOver`; financial.md "AMORDEGRC below period 1", decision 0131). Such a scalar call
     /// reads that state, so its cell's value depends on Excel's calculation order
-    /// (`excel_order.rs`). Lifted over an array its elements are 0, whatever was left
-    /// (probes/amordegrc-fraction-state-x); what a lifted call leaves is the last element's
-    /// (unprobed).
+    /// (`excel_order.rs`). Lifted over an array it starts from an empty state of its own (a fraction
+    /// before any charge in it is 0, whatever was left: probes/amordegrc-fraction-state-x) and
+    /// leaves the state empty (-ac to -af).
     fn amortization_call(
         &mut self,
         function: Function,
@@ -98,25 +101,44 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let mut left = None;
-        let mut read = false;
-        let result = self.lift_call(function, args, cell, &mut |model, values| {
+        let mut calls = Vec::new();
+        let mut result = self.lift_call(function, args, cell, &mut |model, values| {
             number_or_error(model.amortization_of(values, kind, cell).map(|amortized| {
-                match amortized.left_over {
-                    LeftOver::Keep => {}
-                    LeftOver::Set(value) => left = Some(value),
-                    LeftOver::Read => read = true,
-                }
+                calls.push(amortized.left_over);
                 amortized.charge
             }))
         });
         let state = &mut self.evaluation;
-        if read && !matches!(result, CalcResult::Array(_)) {
-            state.order_state_read = true;
-            return CalcResult::Number(state.order_state.amor_left_over);
+        if let CalcResult::Array(rows) = &mut result {
+            // A lifted call runs on a state of its own, which starts empty and runs the elements in
+            // order (`{1,0.5}` is 776 + 776, `{0.5,1}` 0 + 776: probes/amordegrc-fraction-state-ae,
+            // -af), and leaves the workbook's state empty whatever its elements left (-ac to -af).
+            // `calls` has an entry per element that is not an error, and only those are numbers: an
+            // error element, or one the lift did not run (a broadcast's padding), has none.
+            let mut left = 0.0;
+            let numbers = rows
+                .iter_mut()
+                .flatten()
+                .filter(|node| matches!(node, ArrayNode::Number(_)));
+            for (call, node) in calls.iter().zip(numbers) {
+                match call {
+                    LeftOver::Keep => {}
+                    LeftOver::Set(value) => left = *value,
+                    LeftOver::Read => *node = ArrayNode::Number(left),
+                }
+            }
+            state.order_state.amor_left_over = 0.0;
+            return result;
         }
-        if let Some(value) = left {
-            state.order_state.amor_left_over = value;
+        for call in calls {
+            match call {
+                LeftOver::Keep => {}
+                LeftOver::Set(value) => state.order_state.amor_left_over = value,
+                LeftOver::Read => {
+                    state.order_state_read = true;
+                    return CalcResult::Number(state.order_state.amor_left_over);
+                }
+            }
         }
         result
     }
@@ -306,8 +328,8 @@ impl Asset {
             return Ok(Amortized::new(0.0, LeftOver::Read));
         }
         let walk = DegressiveWalk {
-            // Subtracted like every later charge (`DegressiveWalk::charge`), by analogy: the
-            // probes fit the plain and the twice-rounded difference alike.
+            // Rounded twice like every later charge (`DegressiveWalk::charge`): probes/
+            // amordegrc-first-subtraction A1-B6 tell it from the plain difference (T-2917).
             remain: extended_sum(self.cost, -first_depr),
             salvage: self.salvage,
             rate: depr_rate,

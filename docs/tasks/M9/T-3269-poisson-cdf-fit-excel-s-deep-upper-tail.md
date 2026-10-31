@@ -57,10 +57,28 @@ Cells (the gen-m9 and probe cells above):
 - probes-numeric/m9-legacy-chidist.case.json (4): Calc!A61, A62, A69, A70
 - probes-numeric/t1049-chisqdistrt.case.json (3): Calc!A27, A28, A39
 
+Gap triage 2026-10-31c (`make eval` on origin/main 0c917f9fe, excel-graph): eight more deep-tail cdf cells that no open
+task listed (each mean is at or near 4(k + 1) or above; the cumulative flag is truthy in each). One is visibly off,
+gen-m9/43c6227e0ff368c7 A108 `=POISSON(5,Data!A8,(-1))` with Data!A8 = 42: Excel 7.083529869768314E-13, ours
+7.083529869768309E-13 (-5 ulp). The others are 3 to 7 ulp off: `POISSON.DIST(4,100,TRUE)` 1.6139305336977313E-37 vs
+1.6139305336977303E-37 (-5); `POISSON.DIST(5,100,TRUE)` (-7); `POISSON(4,30,TRUE)` 3.6243009520614882E-09 vs
+3.624300952061487E-09 (-3); `POISSON(8,35,TRUE)` (2138b909d8f810ea A62, mean Data!C12/Data!E2 = 7/0.2) (-7);
+`POISSON.DIST(5,105.14159,TRUE)` (201d67f1d59436ed A173) (+4).
+- gen-m9/201d67f1d59436ed.case.json (1): Calc!A173
+- gen-m9/2138b909d8f810ea.case.json (1): Calc!A62
+- gen-m9/43c6227e0ff368c7.case.json (1): Calc!A108
+- gen-m9/46ac3ef5e61583ca.case.json (1): Calc!A240
+- gen-m9/5389dd4d5b5739d2.case.json (1): Calc!A394
+- gen-m9/5919660b7bb4d195.case.json (1): Calc!A316
+- gen-m9/7980ffb6095a340d.case.json (1): Calc!A289
+- gen-m9/afc00c8b70e78baf.case.json (1): Calc!A304
+
 ## Acceptance criteria
-- [ ] The POISSON, CHISQ.DIST.RT and CHIDIST cells above are within 15 digits of Excel, and no Excel-computed cell of POISSON, POISSON.DIST,
+- [ ] The POISSON, CHISQ.DIST.RT and CHIDIST cells above are within 15 digits of Excel (gen-m9/43c6227e0ff368c7 A108 included), and no Excel-computed cell of POISSON, POISSON.DIST,
       CHISQ.DIST.RT, CHIDIST, GAMMA.DIST or GAMMADIST goes from pass to fail (main-vs-HEAD per cell).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - The pmf (T-3247).
+
+T-3289 landed the sweep: probes-numeric/t3284-gamma-deep-upper-tail.case.json (343 cells, filled by excel-graph).

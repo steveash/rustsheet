@@ -458,17 +458,32 @@ Status: VERIFIED (web)
 Tasks: T-1361
 
 ## TEXTBEFORE and TEXTAFTER: overlapping delimiter instances
-Rule (inferred): TEXTBEFORE does not count a delimiter match that overlaps an earlier counted one, unlike SUBSTITUTE's
-instance_num ("SUBSTITUTE instances overlap" above): `TEXTBEFORE("-2.5",{"2.5","-2.5"},2)` is `#N/A` in Excel, so
-"-2.5" at unit 0 is the only instance and the "2.5" inside it at unit 1 is not a second one.
-Evidence: gen-m9/cde551ea787f713a Calc!A37 (excel-graph), `=BETADIST(TEXTBEFORE((Data!C11&Data!E3),Data!B11:C11,2),..)`
-with C11 = -2.5, E3 blank and B11:C11 = 2.5, -2.5: Excel `#N/A`. BETADIST's other arguments are `#VALUE!` (NPV at the
-text rate " x ") and `#REF!` (INDEX past its range), so the `#N/A` is TEXTBEFORE's not-found (gap triage 2026-10-31).
-Unprobed: a delimiter overlapping itself (`TEXTBEFORE("aaa","aa",2)`), a negative instance_num, TEXTAFTER, match_mode 1,
-and whether TEXTSPLIT's split points follow the same scan.
-Ours: overlapping (`text_sensitive`, `text_sensitive_reverse` in functions/text/util.rs step one character after a
-match), so `TEXTBEFORE("-2.5",{"2.5","-2.5"},2)` is "-" and the gen-m9 cell is `#VALUE!`.
-Status: UNVERIFIED (probe pending, T-3335)
+Rule: TEXTBEFORE and TEXTAFTER count only disjoint delimiter matches, unlike SUBSTITUTE's instance_num ("SUBSTITUTE
+instances overlap" above). From the start, the scan counts the longest delimiter that starts at a position and resumes
+after its end: `TEXTBEFORE("aaa","aa",2)` is `#N/A`, `TEXTBEFORE("aaaa","aa",2)` "aa", `,3)` `#N/A`, `TEXTAFTER("aaaaa","aa",2)`
+"a"; `TEXTBEFORE("-2.5",{"2.5","-2.5"},2)` is `#N/A` in either list order ("-2.5" at unit 0 hides the "2.5" inside it);
+`TEXTBEFORE("xabcx",{"b","abc"},2)` is `#N/A` ("abc" at unit 1 hides the "b"). With a negative instance_num the scan
+takes start positions from the last back, and after a counted match steps back by that match's length and goes on from
+there, checking the whole rest of the text at each position, so a longer delimiter may still run into the counted match
+(`TEXTAFTER("3.141590.2-0.5x~*",C5:D12,-2)` with "0.2" and "2" among the delimiters counts "2" at unit 9, then "0.2" at
+unit 7, and is "-0.5x~*"; gen-m7/a470dc9e165bdb20 Calc!A1441), while the same delimiter cannot:
+`TEXTBEFORE("aaa","aa",-1)` "a", `-2` `#N/A`; `TEXTBEFORE("aaaaa","aa",-2)` "a"; `TEXTBEFORE("ababa","aba",-1)` "ab",
+`-2` `#N/A`; `TEXTBEFORE("xabcx",{"abc","b"},-1)` is "xa" (the later start wins, even though "abc" ends later);
+`TEXTBEFORE("abcd",{"ab","bc","cd"},-2)` is "" ("cd", then "ab"; "bc" overlaps "cd"). match_mode 1 counts the same way
+(`TEXTBEFORE("AAA","aa",2,1)` `#N/A`, `TEXTBEFORE("aAaA","AA",2,1)` "aA"). With match_end 1 the end of the text (the
+start, from the end) is one more instance after the last disjoint match, not only when nothing matches:
+`TEXTBEFORE("aaa","aa",2,,1)` is "aaa", `TEXTBEFORE("aaa","aa",-2,,1)` "", `TEXTAFTER("aaa","aa",2,,1)` ""; and
+`TEXTBEFORE("aaa","aa",2,,,"nf")` is "nf". The `#VALUE!` bound on instance_num ("instance_num past the text" below)
+counts positions, not disjoint matches: `TEXTBEFORE("aaa","aa",3)` is `#VALUE!` but `TEXTBEFORE("aaaa","aa",3)` `#N/A`.
+TEXTSPLIT splits at the same disjoint matches: `TEXTSPLIT("aaa","aa")` is "","a", `TEXTSPLIT("aaaaa","aa")` "","","a",
+`TEXTSPLIT("-2.5",{"2.5","-2.5"})` "","", `TEXTSPLIT("ababa","aba")` splits only at unit 0, `TEXTSPLIT("xabcx",{"b","abc"})` "x","x".
+Evidence: probes/t3335-textbefore-overlapping-instances A1-A58, C1-E29 (excel-graph, 2026-10-31, T-3335);
+gen-m9/cde551ea787f713a Calc!A37 (`TEXTBEFORE("-2.5",{2.5,-2.5},2)` inside BETADIST, `#N/A`); gen-m7/a470dc9e165bdb20
+Calc!A1441 (excel-graph). The backward step is inferred from these cells: whether it is the match's length or the
+shortest delimiter's (they agree on every cell) is unprobed, as is a forward scan's step past a match whose delimiter
+list holds a shorter entry starting inside it.
+Ours: matches (`Instances::Disjoint` in functions/text/util.rs; TEXTSPLIT's `split_grid` already scanned disjointly).
+Status: VERIFIED (excel-graph)
 Tasks: T-3335
 
 ## TEXTSPLIT of empty text is #VALUE!
@@ -997,8 +1012,13 @@ Typed input, criteria and coercion (probes/typed-input-sign-space-mixed-fraction
 coercion reads `"€3 1/2"` 3.5, `"-$3 1/2"`, `"-3 1/2%"` and `"+ 3 1/2"` too, but `"$3 1/2%"` is `#VALUE!`, and so is `VALUE("$3 1/2%")` (J1): a currency
 symbol and a `%` do not combine in a mixed fraction. A criterion operand reads `- 5`, `+ 5`, both dates, `-$3 1/2`,
 `-3 1/2%` and `+ 3 1/2` but not `€3 1/2` or `$3 1/2%` (`COUNTIF(3.5,"€3 1/2")` is 0), while a text cell `€3 1/2` does read
-as 3.5 (`COUNTIF(A5,A5+0)` is 1). UNVERIFIED: the number format a typed mixed fraction gets (`CELL("format")` is `#VALUE!` on
-excel-graph; ours General, T-3237).
+as 3.5 (`COUNTIF(A5,A5+0)` is 1). A typed mixed fraction gets the number format `# ?/?` when its denominator is a single digit (`3 1/2`, `-$3 1/2`,
+`+ 3 1/2`, `$3 1/2`, `-3 1/2`, `1 3/2`, `3 01/02`, `3 001/2`, `3 1/002`; no currency format even with `$`) and `# ??/??` when
+it is 10 or more (`3 1/10`, `3 1/12`, `1 1/16`, `-$1 7/16`, `3 1/99`, `3 1/999`, `3 1/10000`), leading zeros not counted, the typed denominator not the reduced one (`3 5/10` is `??/??`, `3 2/4` `?/?`) and the numerator's width not at all (`3 12/5` displays `5 2/5`, `3 10/5` displays `5`);
+one with a `%` gets `0.00%` whatever the denominator (`3 1/2%`, `-3 1/2%`, `2 5/16%`). Displayed, `3 1/12` is `3  1/12`
+and `3 1/200` (three digits fit no `??/??`) is `3` plus six spaces. Typed `-$3 1/2%` stays text, like `$3 1/2%`, but the cell still gets `0.00%` (A15 ENTERED numberFormat)
+(probes/typed-mixed-fraction-number-format, excel-graph, 2026-10-30, T-3237; raw ENTERED lines and displayed text in
+docs/research/typed-mixed-fraction-number-format-2026-10-30.md).
 Ours: all implemented (`mixed_fraction`, mixed_fraction.rs, read through `value_number_text_with`, cast.rs; `parse_number`, parse_formatted.rs; `parse_separated`, date_text.rs).
 Status: VERIFIED (excel-graph); implemented (T-3151, T-2646).
 Tasks: T-2646, T-3151, T-3178
