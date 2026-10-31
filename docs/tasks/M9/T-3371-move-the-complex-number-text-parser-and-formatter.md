@@ -3,7 +3,7 @@ id: T-3371
 title: "Move the complex-number text parser and formatter into engineering::complex::parse (complex/mod.rs is at 981 of its 1,000 lines)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
