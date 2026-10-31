@@ -3,7 +3,7 @@ id: T-3379
 title: "Gate A slice 4: scope and governance of the reference tables (exempt list, missing-table count, append-only batches, known-failure rules)"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P0
 size: S
 tier: opus
