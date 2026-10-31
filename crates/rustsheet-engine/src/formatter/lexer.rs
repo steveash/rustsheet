@@ -759,15 +759,7 @@ impl Lexer {
                 'g' | 'G' => {
                     // Excel: the word is case-insensitive (`TEXT(5,"GENERAL x")` = "5 x";
                     // probes/text-format-general-company A16).
-                    if self
-                        .chars
-                        .get(self.position..self.position + 6)
-                        .is_some_and(|rest| {
-                            rest.iter()
-                                .collect::<String>()
-                                .eq_ignore_ascii_case("eneral")
-                        })
-                    {
+                    if self.looks_at("eneral") {
                         self.position += 6;
                         return Token::General;
                     }
