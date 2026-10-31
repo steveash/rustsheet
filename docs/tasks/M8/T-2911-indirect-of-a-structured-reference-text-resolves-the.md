@@ -4,10 +4,11 @@ title: "INDIRECT of a structured reference text (INDIRECT(Sales[Qty])) resolves 
 milestone: M8
 lane: engine
 status: todo
-priority: P3
+priority: P1
 size: S
 tier: sonnet
 depends_on: []
+campaign: semantics
 ---
 
 ## Goal
@@ -15,6 +16,8 @@ INDIRECT of a text that is a structured reference (`INDIRECT("Sales[Qty]")`) ret
 instead of `#REF!`.
 
 ## Context
+- Decision 0188 (owner's 2026-10-31 rulings, R1(c)): this task owns probe-row or text cells of its milestone's exit,
+  which Phase 1 still counts in full, so it is in the semantics stage at P1 (was P3).
 Found by T-2339. Excel resolves a structured reference written as INDIRECT text: after a column insert inside
 `Sales` (S!B3:C7), `=ROWS(INDIRECT("Sales[Column2]"))` is 4 and `=COUNTA(INDIRECT("Sales[Column1]"))` is 0 (an
 empty data column), while a name the table lacks is `#REF!` (probes/table-edits/table-insert-column-inside-header
