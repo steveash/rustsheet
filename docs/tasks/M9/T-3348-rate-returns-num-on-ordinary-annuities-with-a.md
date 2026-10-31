@@ -3,7 +3,7 @@ id: T-3348
 title: "RATE returns #NUM! on ordinary annuities with a nonzero fv"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P0
 size: M
 tier: opus
