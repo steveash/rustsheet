@@ -41,6 +41,10 @@ below, T-1450), non-ASCII letters (only `ü` is probed; the engine treats every 
   point (`"General."`), or a second `General` is `#VALUE!`, as is `TEXT(-5,"x General;y")`; `TEXT(-5,"General x")` =
   "-5 x"; `TEXT(1234567890123,"x General")` = "x 1.23457E+12". Oddity, unimplemented: `TEXT(5,"d General")` =
   "5 0.5" (General after a date token appends a value that is not the serial; the engine says `#VALUE!`).
+  Triage probe 2026-10-31 (excel-graph, scratch, not yet a committed case; T-3378 commits it): `"d General"` gives
+  "0 0.5" at 0, "15 0.499999803" at 45000 and at 45000.75, and `#VALUE!` at -5; `"yyyy General"` "1900 0.5",
+  `"General d"` "0.5 5", `"[h] General"` "120 5". UNVERIFIED hypothesis (T-3378): General prints
+  `(fl(x + 0.5/86400) - x) * 86400`, the half-second rounding step measured back in seconds.
   Evidence: probes/text-format-general-company (excel-graph, 2026-10-31, T-1614).
 - A one-section format holding `@` and other text applies General to a number: `TEXT(5,"x@")` = "5".
 Evidence: probes/text-format-bare-literals A1-A31, A57-A76 (excel-graph, 2026-10-15, T-1262); gen-m6/2c1a6e93a1974f48
