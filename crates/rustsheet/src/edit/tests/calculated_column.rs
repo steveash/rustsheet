@@ -158,6 +158,30 @@ fn rollback_restores_the_table_a_typed_formula_grew() {
     assert_eq!(wb.value("H1").unwrap(), Value::Number(4.0));
 }
 
+/// probes/t3003-unqualified-structured-d2: `=[@Col]*2` typed just right of the table names the
+/// table it grows (rule 7f, T-3274); rolling the edit back restores the table and clears D1:D4.
+#[test]
+fn an_unqualified_reference_typed_beside_the_table_grows_it_and_rolls_back() {
+    let mut wb = table_book();
+    wb.set("H1", "=COLUMNS(T[#All])").unwrap();
+    let before = dump(&wb);
+    let result: Result<((), ChangeSet), _> = wb.edit(|tx| {
+        tx.set("D2", "=[@Col]*2")?;
+        Err(EditError::Engine("abort".into()))
+    });
+    assert!(result.is_err());
+    assert_eq!(dump(&wb), before);
+    assert_eq!(wb.value("H1").unwrap(), Value::Number(3.0));
+    for a1 in ["D1", "D2", "D3", "D4"] {
+        assert_eq!(wb.value(a1).unwrap(), Value::Empty, "{a1}");
+    }
+    let changes = wb.set("D2", "=[@Col]*2").unwrap();
+    assert_eq!(wb.value("H1").unwrap(), Value::Number(4.0));
+    assert_eq!(formula(&wb, "D4").as_deref(), Some("=[@Col]*2"));
+    assert_eq!(wb.value("D4").unwrap(), Value::Number(8.0));
+    assert_eq!(changes.inputs.len(), 4);
+}
+
 /// probes/t3003-const-*: a constant typed just right of the table grows it too, but fills nothing;
 /// typed into the header cell it becomes the header text, `5` as the text `5` (rule 7a, T-3218).
 #[test]
