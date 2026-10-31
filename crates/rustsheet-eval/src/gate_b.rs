@@ -13,8 +13,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::formula_calls::functions_in;
 use crate::phase1_exceptions::Phase1Exceptions;
+use crate::r1c::{R1c, R1cCells};
 use crate::report::{attribute_cell, FunctionStat};
-use crate::runner::CaseResult;
+use crate::runner::{cell_id, CaseResult, CellResult};
 use crate::v15_checkpoint::{excepted_cells, rate_count, share, V15Function};
 use crate::value::Verdict;
 
@@ -111,13 +112,15 @@ impl GateB {
     }
 }
 
-/// Gate B over `results`: `functions` are the all-suite rows (their names and coverage), and
-/// `exceptions` the cells the rate leaves out (decisions 0134 and 0143).
+/// Gate B over `results`: `functions` are the all-suite rows (their names and coverage),
+/// `exceptions` the cells the rate leaves out (decisions 0134 and 0143), and `r1c` the run's
+/// R1(c) classes, whose R3 passes count as within 15 digits (decision 0188 R3).
 #[must_use]
 pub fn summarize(
     results: &[CaseResult],
     exceptions: &Phase1Exceptions,
     functions: &[V15Function],
+    r1c: &R1cCells,
 ) -> GateB {
     let mut stats: BTreeMap<String, FunctionStat> = BTreeMap::new();
     let scored: BTreeSet<&str> = results.iter().map(|r| r.suite.as_str()).collect();
@@ -125,7 +128,16 @@ pub fn summarize(
         // A by-design value says nothing about how well a function matches Excel.
         for c in r.cells.iter().filter(|c| c.verdict != Verdict::Deviation) {
             let called = c.formula.as_deref().map(functions_in).unwrap_or_default();
-            attribute_cell(&mut stats, &called, c);
+            if r1c.class(&cell_id(&r.id, &c.key())) == R1c::R3Pass {
+                // An R3 cell where the engine returns the math passes (decision 0188 R3).
+                let passing = CellResult {
+                    verdict: Verdict::Pass,
+                    ..c.clone()
+                };
+                attribute_cell(&mut stats, &called, &passing);
+            } else {
+                attribute_cell(&mut stats, &called, c);
+            }
         }
     }
     let (left_out, _, _) = excepted_cells(results, exceptions, counts);

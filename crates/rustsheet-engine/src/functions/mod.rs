@@ -21,7 +21,7 @@ pub(crate) mod math_and_trigonometry;
 mod spill_functions;
 pub(crate) mod statistical;
 mod subtotal;
-mod text;
+pub(crate) mod text;
 pub(crate) mod util;
 mod xlookup;
 mod xlsx_names;
