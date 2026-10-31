@@ -16,6 +16,7 @@ from collections.abc import Sequence
 
 import mpmath
 
+from rustsheet_tools.accuracy.defs.student_t import DF_CUT, bounded_df
 from rustsheet_tools.accuracy.model import (
     Definition,
     Interval,
@@ -28,7 +29,6 @@ from rustsheet_tools.accuracy.model import (
 
 DF_SOURCE = "statistics.md#f-distribution-df-limit-t-1530"
 INV_SOURCE = "statistics.md#finv-is-a-crossing-of-fdists-tails-t-0974"
-DF_CUT = 1e10
 
 
 def lower_tail(x: mpmath.mpf, d1: mpmath.mpf, d2: mpmath.mpf) -> mpmath.mpf:
@@ -80,15 +80,7 @@ def quantile(p: mpmath.mpf, d1: mpmath.mpf, d2: mpmath.mpf) -> mpmath.mpf:
 
 
 def _df(name: str) -> Param:
-    return Param(
-        name,
-        "int",
-        Interval(1, DF_CUT, lo_open=False, hi_open=False),
-        typical=(1, 60),
-        extreme=(1e3, DF_CUT),
-        edges=(DF_CUT,),
-        source=DF_SOURCE,
-    )
+    return bounded_df(name, (1, 60), DF_SOURCE, edges=(DF_CUT,))
 
 
 def _f_dist(args: Sequence[MathArg]) -> mpmath.mpf:

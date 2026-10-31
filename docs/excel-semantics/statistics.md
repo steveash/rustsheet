@@ -5483,8 +5483,9 @@ Evidence: R3-marked points of the Gate A tables (eval/accuracy/math-over-excel.t
 The owner's 2026-10-31 assessment (decision 0188) gives `T.INV(1.87E-297,3937)` as -156.96 in Excel and -40.26 in
 truth.
 Status: MATH-OVER-EXCEL (decision 0188)
-Ours: the engine returns the math within ε at every marked point (Gate A's R3 check). Such cells stay F lines of eval/baseline and count as passing in Gate B and the R1(c)
-rows once T-3359 lands. The math path keeps directive 5's caps.
+Ours: the engine returns the math within ε at every marked point (Gate A's R3 check). Such cells stay F
+lines of eval/baseline and count as passing in Gate B and the R1(c) rows (T-3359, T-3427). The math path
+keeps directive 5's caps.
 Tasks: T-3358, T-3359, T-3363
 
 ## GAMMA.INV at a huge shape, closed-form branch: Excel is about 2.7e-4 off, RustSheet returns the math (MATH-OVER-EXCEL)
@@ -5542,4 +5543,3 @@ Status: VERIFIED (excel-graph) for the cited cells; the cut points are UNVERIFIE
 Ours: T.DIST returns 0 and T.INV.2T and TINV return the quantile. These are Gate A known failures owned by T-3533 and
 T-3386.
 Tasks: T-3533, T-3386, T-3358
-

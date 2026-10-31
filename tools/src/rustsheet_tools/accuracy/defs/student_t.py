@@ -99,6 +99,21 @@ def _t_inv(args: Sequence[MathArg]) -> mpmath.mpf:
     return quantile(p, df)
 
 
+def bounded_df(name: str, typical: tuple[float, float], source: str, edges: tuple[float, ...] = ()) -> Param:
+    """A df parameter the function rejects above DF_CUT, so tables stay inside [1, DF_CUT]: the
+    inverses here and every F function (statistics.md, "Student-t sweep" and "F-distribution df
+    limit")."""
+    return Param(
+        name,
+        "int",
+        Interval(1, DF_CUT, lo_open=False, hi_open=False),
+        typical=typical,
+        extreme=(1e3, DF_CUT),
+        edges=edges,
+        source=source,
+    )
+
+
 _DF = Param(
     "deg_freedom",
     "int",
@@ -145,22 +160,12 @@ T_INV = register(
                 extreme=(1e-300, 1e-15),
                 source=TINY_P_SOURCE,
             ),
-            Param(
-                "deg_freedom",
-                "int",
-                Interval(1, DF_CUT, lo_open=False, hi_open=False),
-                typical=(1, 30),
-                extreme=(1e3, DF_CUT),
-                source=DF_SOURCE,
-            ),
+            bounded_df("deg_freedom", (1, 30), DF_SOURCE),
         ),
         value=_t_inv,
         sources=(DF_SOURCE, TINY_P_SOURCE, "Abramowitz and Stegun 26.7.1"),
     )
 )
-
-
-TWO_TAILED_SOURCE = "statistics.md#student-t-sweep-df-truncation-df-limits-tinv2t-above-1-t-1043"
 
 
 def two_tailed_quantile(p: mpmath.mpf, df: mpmath.mpf) -> mpmath.mpf:
@@ -188,19 +193,12 @@ def _two_tailed(function: str) -> Definition:
                 typical=(0.001, 1.999),
                 extreme=(1e-300, 1e-15),
                 edges=(1.0,),
-                source=TWO_TAILED_SOURCE,
-            ),
-            Param(
-                "deg_freedom",
-                "int",
-                Interval(1, DF_CUT, lo_open=False, hi_open=False),
-                typical=(1, 30),
-                extreme=(1e3, DF_CUT),
                 source=DF_SOURCE,
             ),
+            bounded_df("deg_freedom", (1, 30), DF_SOURCE),
         ),
         value=_t_inv_2t,
-        sources=(TWO_TAILED_SOURCE, DF_SOURCE, TINY_P_SOURCE, "Abramowitz and Stegun 26.7.1"),
+        sources=(DF_SOURCE, TINY_P_SOURCE, "Abramowitz and Stegun 26.7.1"),
     )
 
 

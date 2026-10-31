@@ -12,7 +12,8 @@ mp = mpmath.mpf
 
 
 def close(value: mpmath.mpf, published: str, digits: int) -> bool:
-    return bool(abs(value - mp(published)) <= mp(10) ** -digits * max(abs(mp(published)), 1))
+    # within 10^-digits, relative above 1 and absolute below
+    return bool(mpmath.almosteq(value, mp(published), mp(10) ** -digits, mp(10) ** -digits))
 
 
 @pytest.fixture(autouse=True)
