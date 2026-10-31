@@ -3,7 +3,7 @@ id: T-3298
 title: "Sweep UPPER, LOWER and the exact-match case fold over every cased character, to find where Excel's case tables differ from the Rust std Unicode mappings the engine uses"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -47,15 +47,15 @@ differs from the engine is stated in docs/excel-semantics/ and owned by a task.
 - Expected values that look wrong are still Excel's. A block Excel leaves unmapped is a quirk to record, not a bug.
 
 ## Acceptance criteria
-- [ ] A new probes case (or a few, by plane) `probes/t3298-case-mapping-sweep*` with excel-graph oracle sidecars. It
+- [x] A new probes case (or a few, by plane) `probes/t3298-case-mapping-sweep*` with excel-graph oracle sidecars. It
       covers every BMP and supplementary character whose Rust simple lowercase or uppercase differs from itself, for
       UPPER, LOWER and the MATCH exact fold.
-- [ ] text.md (UPPER/LOWER) and lookup.md (the T-3133 section) state Excel's tables by block, citing cells, and the
+- [x] text.md (UPPER/LOWER) and lookup.md (the T-3133 section) state Excel's tables by block, citing cells, and the
       lookup.md UNVERIFIED line is replaced by the observed rule.
-- [ ] Every cell the engine fails is a known failure in eval/baseline/probes.txt (`make eval-baseline`,
+- [x] Every cell the engine fails is a known failure in eval/baseline/probes.txt (`make eval-baseline`,
       0 regressions). Each is owned by a task filed in this PR (`functions-text` for UPPER/LOWER, `engine` for
       `fold_char`), and `make exit-owners MILESTONE=M2` reports 0.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Collation order (coercion.md; T-3275, T-3276 cover other scripts and width or kana).
@@ -63,3 +63,17 @@ differs from the engine is stated in docs/excel-semantics/ and owned by a task.
 - SEARCH, TEXTBEFORE and TEXTSPLIT folds beyond what the shared `fold_char` gives (follow-ups if the sweep shows
   that they differ).
 - Fixing the engine (the owning tasks).
+
+## Outcome
+- probes/t3298-case-mapping-sweep (excel-graph, 2026-10-31): 193 cells over the 3037 code points Rust 1.97's
+  `to_lowercase`/`to_uppercase` change, 32 characters or pairs per cell. Calc!A UPPER, B LOWER, C and D MATCH's exact
+  fold both ways. The candidate list came from a one-off rustc program over `char::to_lowercase`/`to_uppercase`; the
+  case description records the layout.
+- Findings: Excel's UPPER/LOWER table is old. It leaves 847 UPPER and 826 LOWER characters unchanged, drops the
+  Greek tonos in UPPER and lowers Asomtavruli to Mkhedruli. MATCH's fold is wider than that table: it folds
+  Glagolitic, Coptic and Greek Extended. It never folds a surrogate pair. Letters missing from Excel's table compare
+  equal to one another. The findings are in text.md and lookup.md (the UNVERIFIED line is replaced).
+- Eval delta: new coverage 193 cells, 63 pass, 130 new known failures (eval/baseline/probes.txt), 0 regressions.
+  Owners: T-3443 (UPPER/LOWER, functions-text, sonnet) and T-3445 (fold_char, engine, opus, after T-3444, a research
+  probe of the per-character fold and the weightless-equality rule). `make exit-owners MILESTONE=M2` reports no
+  t3298 cell. Its 3 remaining cells (t3266 nested, typed-mixed-fraction B15) predate this PR and are unrelated.
