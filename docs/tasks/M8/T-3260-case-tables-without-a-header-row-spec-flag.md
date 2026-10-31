@@ -3,7 +3,7 @@ id: T-3260
 title: "Case tables without a header row: spec flag, engine and facade support, and the header-less row-delete probe"
 milestone: M8
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
