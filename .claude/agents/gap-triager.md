@@ -30,7 +30,13 @@ are still picked whenever nothing earlier is ready.
 A numeric-fitting group (last-digit or ulp differences whose formulation must be fitted) that
 needs more Excel points than the cached workbooks give is not attempted blind: its task says
 "Needs an oracle sweep" and depends on a research-lane sweep task (create one with `make new-task`
-if none covers it, e.g. T-0942).
+if none covers it, e.g. T-0942). Every fit task you file carries the decision 0188 R4 guards as
+acceptance criteria (the work-loop's "Numeric fits", reviewer-excel-fidelity check 7): train and
+hold-out counts side by side, beating the correctly rounded candidate on hold-out; a fresh
+log-uniform sweep filled after the freeze, with its result and Gate A envelope result recorded;
+each fitted piece tagged `FITTED(T-XXXX, n_cells, range)` and not applied outside its range; no
+fitting below the oracle's reproducibility floor (decision 0112); no branch kept only to keep old
+cells matched.
 When the Excel values in a group reveal a quirk (expected values that look wrong, arbitrary or
 inconsistent are still correct: Excel is always right), add or update its entry in
 `docs/excel-semantics/` citing the cells, and link it from the task.

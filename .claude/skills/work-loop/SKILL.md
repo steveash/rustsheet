@@ -51,6 +51,17 @@ If the task is bigger than size M, split it (planner) instead of doing it.
 - `make fmt` then `make check`. Fix everything. Never weaken a gate to get green.
 - If eval cells newly pass: `make eval-baseline` and commit `eval/baseline/`.
 - If you paid down lint debt / duplication / oversized files: run the script with `--update`.
+- **Numeric fits** (decisions 0056 and 0188 R4): split the cells before fitting (the fit lab's
+  hold-out, T-3360; until it lands, a manual ~30% split by case or cell hash stated in the task)
+  and record train and hold-out counts side by side; take a candidate only if it beats the
+  correctly rounded one on hold-out. Never fit below the oracle's reproducibility floor (4 ulp web
+  against desktop, fill-unstable bits; decision 0112), and add no branch whose only purpose is to
+  keep old cells matched. Tag each fitted piece `FITTED(T-XXXX, n_cells, range)` (T-3361) and fall
+  back to accurate math outside `range`. Once the fit is frozen, fill a fresh log-uniform sweep
+  over the full domain (an `r4-T-XXXX` Gate A batch once T-3357 and T-3358 land, until then a new
+  probes-numeric case) and record its result and its Gate A envelope result (`rustsheet-eval
+  accuracy` once T-3356 lands, until then against attached mpmath values) in the Outcome. The
+  excel-fidelity reviewer's check 7 refuses a fit without them.
 - A decision record (needed for any protected-path change) is created with
   `make new-decision TITLE="..."` (collision-free number; decision 0029); commit and push it with
   the first commit after the claim so other sessions see the number.

@@ -30,8 +30,36 @@ Microsoft 365 Excel (en-US, 1900 date system, dynamic arrays) — including undo
 6. **Quirk record**: every Excel behavior the change implements or uncovers has an entry in
    `docs/excel-semantics/` (missing entry → MAJOR). Code that "corrects" Excel, picks a nicer
    result than the evidence shows, or deviates for any reason other than CLAUDE.md directive 5
-   → BLOCKING. A directive-5 deviation (limit, no I/O, no panic) is correct even though Excel
-   differs; if its `DEVIATION (decision 0014)` entry is missing → MAJOR, never BLOCKING.
+   or a `MATH-OVER-EXCEL` region listed in decision 0188 R3 → BLOCKING. A directive-5 deviation
+   (limit, no I/O, no panic) is correct even though Excel differs; if its `DEVIATION (decision
+   0014)` entry is missing → MAJOR, never BLOCKING. Following the math is correct only inside a
+   region decision 0188 R3 (or a later owner-ruled record) lists, with that region's evidence
+   points committed; a new region, or one an agent widened → BLOCKING (it needs an owner ruling).
+7. **Numeric fits** (decision 0188 R4, on top of decision 0056): any change that adds or retunes
+   a fitted constant, cut-point, table, band or form selector is a fit. The task's Outcome or the
+   PR shows each item below; a missing or failed item → REQUEST_CHANGES.
+   - **Hold-out** (R4.1): train and hold-out counts side by side (bit-exact, within 4 ulp, within
+     15 digits) for the chosen candidate and the correctly rounded one, from the fit lab's split
+     (T-3360); until T-3360 lands, from a manual split the task states (about 30% of the cells by
+     case or cell hash, fixed before fitting, never tuned on). The chosen candidate beats the
+     correctly rounded one on hold-out, and its hold-out exact rate is within the stated margin of
+     its train rate.
+   - **Fresh sweep** (R4.2): after the fit was frozen, a fresh log-uniform sweep over the full
+     domain was oracle-filled and its result recorded in the task: an `r4-T-XXXX` batch of the
+     function's Gate A table (SPEC-0029 "The R4 guards") once T-3357 and T-3358 land, until then a
+     new probes-numeric case generated after the freeze.
+   - **Gate A envelope** (R2): of the fresh sweep's points, how many are within 15 significant
+     digits of Excel or within 1e-9 relative of 50-digit math, with every point outside both
+     listed: from `rustsheet-eval accuracy` once T-3356 lands, until then against mpmath values
+     the task attaches. A fit that moves a point out of the envelope fails this item.
+   - **`FITTED` tag** (R4.3): each fitted piece carries `FITTED(T-XXXX, n_cells, range)` (the
+     form T-3361 tags and ratchets) and is applied only inside `range`; outside it the code falls
+     back to accurate math.
+   - **Reproducibility floor** (R4.4): no step fits differences below the oracle's
+     reproducibility floor: web against desktop up to 4 ulp (docs/research/oracle-calibration.md)
+     and bits that vary between fills (decision 0112) are not targets.
+   - **No keep-matched branches**: no branch, band or special case whose only purpose is to keep
+     cells matched that matched before; such a branch is tuned on its own cells by construction.
 
 ## Output
 ```
