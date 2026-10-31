@@ -45,22 +45,12 @@ const AVERAGE_ARGS: AggregatePolicy = AggregatePolicy {
     nested: NestedReading::NotAvailable,
 };
 
-/// AVERAGE, VAR.S and STDEV.S: [`AVERAGE_ARGS`], but an array of references is read by its
-/// elements' top-left cells (SPEC-0014 rule 4: `AVERAGE(OFFSET(A1,{0;1},0))` is 50.5;
-/// probes/reference-lift-consumers E21, E133, -b2 E137, E165, E181; `STDEV.S(..)` 70.0035713374682
-/// and `STDEV.S(OFFSET(A1,0,0,{1;2}))` 0: probes/t2065-lift-stdevs, probes/t2816-lift-stdevs,
-/// T-2824). The rest of the family is unprobed there and keeps the value view.
-const AVERAGE_TOP_LEFT_ARGS: AggregatePolicy = AggregatePolicy {
-    grids: GridReading::TopLeft,
-    ..AVERAGE_ARGS
-};
-
 /// SUMSQ: an empty argument is skipped (unprobed: `SUMSQ(1,)`, T-1748 left it), errors rank as in
 /// the AVERAGE family: a direct error beats a referenced or array error whichever comes first
 /// (probes/aggregate-error-precedence-stat-family rows 10-12, T-1439), and an array of
 /// references is read by its elements' top-left cells (`SUMSQ(OFFSET(A1,{0;1},0))` is 10001;
 /// probes/t2065-lift-sumsq, probes/t2816-lift-sumsq*, T-2824).
-const SKIP_EMPTY_ARGS: AggregatePolicy = AggregatePolicy {
+const SUMSQ_ARGS: AggregatePolicy = AggregatePolicy {
     reading: ArgReading::Aggregate,
     errors: ErrorRule::Ranked,
     skip_empty_args: true,
@@ -99,22 +89,32 @@ impl Model {
         self.for_each_aggregate_number(args, cell, AVERAGE_ARGS, AVERAGE_NUMBERS, f)
     }
 
-    /// [`Self::for_each_value`], but an array of references is read by its elements' top-left
-    /// cells ([`AVERAGE_TOP_LEFT_ARGS`]: VAR.S and STDEV.S).
-    pub(crate) fn for_each_value_top_left<F>(
+    /// [`Self::for_each_value`] with an array of references read as `grids` says: AVERAGE,
+    /// VAR.S and STDEV.S read its elements' top-left cells (SPEC-0014 rule 4:
+    /// `AVERAGE(OFFSET(A1,{0;1},0))` is 50.5, probes/reference-lift-consumers E21, E133, -b2 E137,
+    /// E165, E181; `STDEV.S(..)` 70.0035713374682 and `STDEV.S(OFFSET(A1,0,0,{1;2}))` 0,
+    /// probes/t2065-lift-stdevs, probes/t2816-lift-stdevs, T-2824). The rest of the family is
+    /// unprobed there and keeps the value view ([`Self::for_each_value`]).
+    pub(crate) fn for_each_value_with<F>(
         &mut self,
         args: &[Node],
+        grids: GridReading,
         cell: CellReferenceIndex,
         f: F,
     ) -> Result<(), CalcResult>
     where
         F: FnMut(f64),
     {
-        self.for_each_aggregate_number(args, cell, AVERAGE_TOP_LEFT_ARGS, AVERAGE_NUMBERS, f)
+        let policy = AggregatePolicy {
+            grids,
+            ..AVERAGE_ARGS
+        };
+        self.for_each_aggregate_number(args, cell, policy, AVERAGE_NUMBERS, f)
     }
 
-    /// `for_each_value` that skips empty arguments (`SUMSQ(1, )`) instead of counting them as 0;
-    /// errors rank as in `for_each_value` (T-1439). Excel counts the empty argument of AVEDEV and
+    /// `for_each_value` that skips empty arguments (`SUMSQ(1, )`) instead of counting them as 0
+    /// and reads an array of references by top-left cells ([`SUMSQ_ARGS`]); errors rank as in
+    /// `for_each_value` (T-1439). Excel counts the empty argument of AVEDEV and
     /// DEVSQ as 0 (probes/stat-order-floor-batch A274, A299, T-1748), so those use
     /// `for_each_value`; SUMSQ is unprobed and keeps the skip.
     pub(crate) fn for_each_value_skip_empty<F>(
@@ -126,7 +126,7 @@ impl Model {
     where
         F: FnMut(f64),
     {
-        self.for_each_aggregate_number(args, cell, SKIP_EMPTY_ARGS, AVERAGE_NUMBERS, f)
+        self.for_each_aggregate_number(args, cell, SUMSQ_ARGS, AVERAGE_NUMBERS, f)
     }
 
     /// The values AVERAGEA, MAXA and MINA read from `args`: a reference's cells and a direct
@@ -204,16 +204,10 @@ impl Model {
         }
         let mut count = 0.0;
         let mut sum = SumParts::default();
-        if let Err(e) = self.for_each_aggregate_number(
-            args,
-            cell,
-            AVERAGE_TOP_LEFT_ARGS,
-            AVERAGE_NUMBERS,
-            |f| {
-                count += 1.0;
-                sum.add(f);
-            },
-        ) {
+        if let Err(e) = self.for_each_value_with(args, GridReading::TopLeft, cell, |f| {
+            count += 1.0;
+            sum.add(f);
+        }) {
             return e;
         }
 

@@ -78,8 +78,10 @@ pub(crate) enum GridReading {
     TopLeft,
     /// Each element's top-left cell read as an array element, so text follows the consumer's
     /// array rule and booleans are skipped, unlike a referenced cell (AVERAGEA, MAXA:
-    /// `AVERAGEA(OFFSET(A4,{0;3},0))` over "5" and 7 is 3.5, over a blank and TRUE `#DIV/0!`;
-    /// probes/t2816-lift-averagea-*, -maxa-*, T-2824). Blanks and errors are as under `TopLeft`.
+    /// `AVERAGEA(OFFSET(A4,{0;3},0))` over "5" and 7 is 3.5, over a blank and TRUE `#DIV/0!`, and
+    /// `MAXA(..)` over a blank and TRUE 0; probes/t2816-lift-averagea-*, -maxa-*, T-2824). For
+    /// MAXA, whose array rule skips text, no probe yet tells skipped text from text as 0
+    /// (UNVERIFIED, T-3533). Blanks and errors are as under `TopLeft`.
     TopLeftElements,
 }
 

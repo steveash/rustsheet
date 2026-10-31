@@ -212,8 +212,8 @@ fn fn_offset_lifted_into_top_left_aggregates() {
 }
 
 // STDEV.S, VAR.S and SUMSQ read each element of an array of references by its top-left cell, as
-// SUM does; AVERAGEA and MAXA read that cell as an array element, so text is 0 and a blank or TRUE
-// is skipped (T-2824; probes/t2065-lift-*, probes/t2816-lift-*, excel-graph). The data is the
+// SUM does; AVERAGEA and MAXA read that cell as an array element, so a blank or TRUE is skipped
+// and AVERAGEA counts text as 0 (MAXA's text reading is unprobed, T-3533) (T-2824; probes/t2065-lift-*, probes/t2816-lift-*, excel-graph). The data is the
 // probes': A1:A3 1, 100, 10000, B1:B3 2, 200, 20000, A4 "5", A5 blank, A6 TRUE, A7 7.
 #[test]
 fn fn_offset_lifted_into_the_statistical_aggregates_reads_top_left_cells() {
@@ -263,8 +263,8 @@ fn fn_offset_lifted_into_the_statistical_aggregates_reads_top_left_cells() {
 }
 
 // The aggregates no probe has read an array of references with keep the value view, every
-// reference element `#VALUE!`: MEDIAN (Excel for the web cannot open it, M14), and VAR.P,
-// STDEV.P and MINA, which are unprobed (T-2824 left them).
+// reference element `#VALUE!`: MEDIAN, as Excel (probes/t2065-lift-median, lookup.md "MEDIAN,
+// LARGE and SMALL over a lifted OFFSET"), and VAR.P, STDEV.P and MINA, which are unprobed (T-3533).
 #[test]
 fn fn_offset_lifted_into_other_aggregates_is_its_value_view() {
     let mut model = new_empty_model();
