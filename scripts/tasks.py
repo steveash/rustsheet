@@ -41,6 +41,7 @@ import subprocess
 import sys
 import time
 from collections import Counter
+from collections.abc import Callable
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -611,6 +612,22 @@ TODO(fill): why; failing case ids; semantics notes; code paths.
 """
 
 
+def reserve_id(pick: Callable[[set[str]], str], fetch: bool) -> tuple[str, str]:
+    """(id, note): the id `pick` chooses, reserved in the id registry when it can be (decision
+    0215). tasks.py stays usable alone (the merger copies it into a scratch tree and runs it with
+    `python -I`): without id_registry beside it, the plain scan decides, unreserved."""
+    here = str(Path(__file__).resolve().parent)
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    try:
+        import id_registry  # here, not at the top: id_registry imports merge_lock, which imports tasks
+    except ImportError:
+        print("warning: no id registry beside tasks.py; the id is not reserved", file=sys.stderr)
+        return pick(set()), "NOT reserved: commit and push it now to claim it"
+    chosen, reserved = id_registry.allocate(pick, fetch)
+    return chosen, id_registry.note(reserved)
+
+
 def new_task(tasks: list[dict[str, object]], fetch: bool = True) -> int:
     """Writes a task file with the next free id (`--no-fetch` skips `git fetch`, e.g. offline)."""
     milestone, lane, title = arg("--milestone"), arg("--lane"), arg("--title")
@@ -622,19 +639,13 @@ def new_task(tasks: list[dict[str, object]], fetch: bool = True) -> int:
     if priority not in PRIORITIES or size not in SIZES or size == "L" or tier not in TIERS:
         print(f"priority must be one of {PRIORITIES}; size one of S, M (split L tasks); tier one of {TIERS}")
         return 2
-    # Here, not at the top: id_registry imports merge_lock, which imports tasks. `python -I` (the
-    # merger's filing, decision 0066) leaves this directory off sys.path, so add it.
-    if str(Path(__file__).resolve().parent) not in sys.path:
-        sys.path.insert(0, str(Path(__file__).resolve().parent))
-    import id_registry
-
     taken = {str(t["id"]) for t in tasks} | git_task_ids(fetch)
-    tid, reserved = id_registry.allocate(lambda claimed: next_id(milestone, tasks, taken | claimed), fetch)
+    tid, note = reserve_id(lambda claimed: next_id(milestone, tasks, taken | claimed), fetch)
     path = TASKS / milestone / f"{tid}-{slug(title)}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(TEMPLATE.format(id=tid, title=quote(title), milestone=milestone,
                                     lane=lane, priority=priority, size=size, tier=tier))
-    print(f"wrote {path.relative_to(ROOT)}: {tid} is {id_registry.note(reserved)}; fill in the TODO(fill) lines")
+    print(f"wrote {path.relative_to(ROOT)}: {tid} is {note}; fill in the TODO(fill) lines")
     return 0
 
 
