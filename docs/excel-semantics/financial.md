@@ -2265,7 +2265,8 @@ within 15 digits by display):
 The 43 PRICE cells left are last-digit residue (T-2972), among them the redemption term alone: `PRICE(38136,44737,0,
 42,100,2,0)` (Parts!B3) is 3.0121596882492917e-47, while 100 over the worksheet's
 `(1+42/2)^(COUPDAYSNC/COUPDAYS+COUPNUM-1)` (Parts!D3, Excel's own value) is 3.012159688249292e-47, so PRICE's
-internal power differs from `^` at some exponents. YIELD prices with the same sum and moved by an ulp in one cell
+internal power differs from `^` at some exponents. YIELD prices with the same sum: on top of T-3215's start it
+fixes 16 cells of the yield-* probes and moves none. DURATION and MDURATION moved by 1 or 2 ulp in five cells
 (T-2973).
 Evidence: probes/bond-extreme-coupon-yield (579 cells, excel-graph, 2026-10-26, T-2732); gen-m9/0a957119475760c5
 Calc!A279, a91bad4e84f49739 Calc!A142, 30e20ba3302fea8b Calc!A90 (excel-graph, 2026-10-23).

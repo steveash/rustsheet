@@ -3,7 +3,7 @@ id: T-2733
 title: "PRICE and MDURATION at extreme coupon rates and yields: the 3 visibly-off gen-m9 cells parked in deferred T-1374"
 milestone: M9
 lane: functions-financial
-status: blocked
+status: done
 priority: P2
 size: S
 tier: opus
@@ -59,11 +59,11 @@ Code: crates/rustsheet-engine/src/functions/financial/financial_bonds.rs (PRICE,
 in numbers.md "Integer exponents: right-to-left square-and-multiply" and "Non-integer exponents: exp(y·ln x)".
 
 ## Acceptance criteria
-- [ ] Visible parity: the three gen-m9 lines above disappear from eval/baseline/gen-m9.txt, and so do T-2732's PRICE,
+- [x] Visible parity: the three gen-m9 lines above disappear from eval/baseline/gen-m9.txt, and so do T-2732's PRICE,
       DURATION and MDURATION lines in eval/baseline/probes.txt that are visibly off, with no new known-failure lines in
       any baseline (`make eval-baseline`).
-- [ ] financial.md records the rule found (or the candidates scored, if time-boxed) and cites the cells above.
-- [ ] `make check` green; reviewers approve.
+- [x] financial.md records the rule found (or the candidates scored, if time-boxed) and cites the cells above.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Last-digit residue of these functions (T-1374), PRICEMAT (above), YIELD and ODDFYIELD (T-1592, T-2007).
@@ -75,26 +75,25 @@ follow-up task (no campaign key, `defer: phase-1b`), named in the Outcome. Regre
 decision 0083's allowance. Set the stage to `accuracy` instead of `visible` if T-2732's mpmath comparison shows Excel
 close to correctly rounded and the engine not.
 
-## Blocked because
-Blocked because: the baseline update needs `rustsheet-eval update-baseline --allow-regressions` under decision
-0083's standing ulp-regression allowance, and this run's permission policy refused that command. The code, the
-semantics entry and the follow-ups are on the branch; nothing else is left. To finish: on this branch run
-`target/release/rustsheet-eval update-baseline --allow-regressions` and `rustsheet-eval evidence-floor --update`,
-check that the baseline diff only drops lines apart from the six cells below, commit `eval/baseline/`, then review and merge.
-Decision 0083's four conditions: (1) the six newly failing cells are numeric and 1 to 3 ulp off; (2) none is visibly
-off and no non-numeric cell regresses; (3) 395 known-failure lines fixed, including every visibly-off cell of the
-task, against 6 regressed; (4) all six are listed below and in T-2973.
-
-## Outcome (pending the baseline update)
+## Outcome
 - `CouponSchedule::price` (PRICE, and YIELD's Newton): accrued `rate/f·(A/E)·100`, and coupon k discounted at
   `k + DSC/E` from k = 0. `duration_of` (DURATION, MDURATION): the same coupon exponent. Rule and fit table:
   financial.md "PRICE, DURATION and MDURATION sum order at a huge coupon rate and yield".
 - Fit (239 PRICE cells of probes/bond-extreme-coupon-yield): bit-exact 63 → 196, within 15 digits 176 → 238; the
   candidates scored are in the financial.md entry.
-- Eval (`rustsheet-eval check`): probes known failures 2621 → 2250 (376 fixed), gen-m9 3630 → 3612 (19 fixed,
-  among them the three gen-m9 cells of this task). Every cell of probes/bond-extreme-coupon-yield and the three gen-m9
-  cells is now within half a unit of Excel's 15th significant digit (C118 and C35 differ by 1 ulp at a display
-  rounding boundary).
-- Regressed (1 to 3 ulp, none visibly off), owned by T-2973: probes/yield-newton-domain P!B7,
-  probes/bond-extreme-coupon-yield Calc!B7, B43, C7, C43, gen-m9/5ded7594e597e31e Calc!A123.
-- Follow-ups: T-2972 (bit-exact residue, `defer: phase-1b`), T-2973 (the six regressed cells).
+- Eval (`update-baseline` after merging `main` at 1248554ae): probes known failures 2316 → 1933 (387 fixed: 371 in
+  bond-extreme-coupon-yield, 16 in the yield-* probes), gen-m9 3015 → 2999 (17 fixed, among them the three gen-m9
+  cells of this task). Every failing cell of probes/bond-extreme-coupon-yield (47, all numeric) is within half a unit
+  of Excel's 15th significant digit; no baseline gained a non-numeric or visibly-off line.
+- Regressed, recorded with `update-baseline --allow-regressions --suite probes --suite gen-m9` under decision 0083's
+  standing ulp-regression allowance (numeric, ≤ 4 ulp, none visibly off, 404 fixed against 5 regressed), owned by
+  T-2973 (Excel vs ours, ulp):
+  - probes/bond-extreme-coupon-yield Calc!B7 `DURATION(38136,44737,100,1,1,0)`: 1.0721863067796484 vs
+    1.0721863067796482, 1 ulp;
+  - Calc!B43 `DURATION(38136,44737,100,1,2,0)`: 1.0722166274036073 vs 1.0722166274036076, 1 ulp;
+  - Calc!C7 `MDURATION(38136,44737,100,1,1,0)`: 0.5360931533898242 vs 0.5360931533898241, 1 ulp;
+  - Calc!C43 `MDURATION(38136,44737,100,1,2,0)`: 0.7148110849357382 vs 0.7148110849357384, 2 ulp;
+  - gen-m9/5ded7594e597e31e Calc!A123 `DURATION(37952,44607,123456789.123,Data!$C3,1,2)`: 2.1997586986000424 vs
+    2.199758698600043, 1 ulp.
+  probes/yield-newton-domain P!B7, which regressed by an ulp before the merge, passes on top of T-3215's YIELD start.
+- Follow-ups: T-2972 (bit-exact residue, `defer: phase-1b`), T-2973 (the five regressed cells).
