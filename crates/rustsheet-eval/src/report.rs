@@ -289,6 +289,10 @@ pub struct RunReport {
     /// R1(c)'s classes per probes, probes-numeric and ironcalc-calc: the Phase 1b evidence counts.
     #[serde(default)]
     pub phase1b_evidence: crate::r1c::Phase1bEvidence,
+    /// The visibly-off cells R1(c) leaves out of the count, by `case!Sheet!A1`, with their class
+    /// (`phase1b`, `r3_pass`, `m14_owned`): what `scripts/exit_owners.py` drops (T-3428).
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub r1c_left_out: std::collections::BTreeMap<String, crate::r1c::R1c>,
     /// How the M0–M2-only `ironcalc-calc` cells scored (M2 exit); `None` if the suite did not run.
     #[serde(default)]
     pub function_scope: Option<FunctionScope>,
