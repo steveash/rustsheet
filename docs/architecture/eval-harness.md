@@ -261,6 +261,17 @@ Normative design: [SPEC-0029](../specs/SPEC-0029-gate-a-accuracy-gate.md) (decis
   `TABLE` lines. `--json PATH` (default `eval/runs/accuracy.json`, git-ignored) holds every point's
   class, standing and values. Exit 1 on a failing point, a stale known-failure line, a bad mark or a
   table defect. Budget: 30 s for the whole set on the CI runner.
+- **Math references for eval cells** (T-3380, SPEC-0029 "Math references for eval cells"). Any eval
+  case may carry the same `rustsheet-math/v1` sidecar, `<case>.math.json` beside its oracle sidecar
+  (no stratum `s`). `run_case` reads it when present and puts each cell's value on
+  `CellResult::math` (absent from the JSON when there is none), through `MathTable::attach`, so a
+  value whose `f` differs from the cell's formula is dropped. An unreadable sidecar makes the case
+  `InvalidCase`. `rustsheet-accuracy math --suite S` (tools/, `accuracy/eval_math.py`) writes the
+  sidecars for a suite's spec cases: every scored cell that is one call of a function with a Gate A
+  definition and whose arguments the fit lab's sweep reader reads without a formula cell (literals,
+  constant cells, `DATE`, arithmetic over literals), with integer parameters given integers and the
+  definition's argument count. R1(c)'s report rows (T-3427) count a visibly-off numeric cell inside
+  the envelope through it; a cell with no math value counts as outside.
 - **Not yet.** The missing-table count and `exempt.tsv`, the protected-path and known-failure line
   rules and ci_changes routing are T-3379's; the generator and the real tables are T-3357's and
   T-3358's. The end-to-end fixture is `crates/rustsheet-eval/tests/data/accuracy-fixture`.
@@ -393,6 +404,31 @@ A function with no counted cell has no rate and does not meet it. A run that did
 or corpus-bench reports Gate B as `n/a` (`measured: false`, `missing`), never met. `v15_checkpoint.gate_b`
 holds the result; `phase1_met` is `gate_b.met`, and the Phase 1 line prints Gate B with the every-suite
 `at_rate` beside it as information. The report lists the worst functions below Gate B's rate under that line.
+
+**R1(c)** (`r1c.rs`, decision 0188 R1(c), R3 and R7, T-3427) decides which visibly-off cells the probe
+rows and the ironcalc-calc exit rows count. `R1cCells::build` classifies every visibly-off cell of the run
+once (`main.rs` `score_milestones`, kept on the report but not in its JSON) as one of four classes:
+- `m14_owned`: a probe-row cell (suite `probes`) in decision 0143's generated desktop-owned list (R7). It
+  leaves the row. R7 names the probe rows only, so an M14-owned ironcalc-calc cell is classified like any
+  other and still counts in the calc rows, which keep decision 0146's exit exceptions for such cells.
+- `r3_pass`: a cell `eval/accuracy/math-over-excel.tsv` marks, where Excel is more than G = 1e-4 off its math
+  value (R3's evidence, checked per cell; a mark without it is ignored) and Gate A's `envelope` puts the
+  engine within ε of the math. It passes, and Gate B attributes it as a pass.
+- `phase1b`: a number inside the envelope (within ε of its math value, T-3380) whose Excel value is within ε
+  of the math too, so the engine and Excel differ by at most about 2ε: last-digit residue, Phase 1b work.
+- `counts`: everything else. That covers a type, error or text cell; a number outside the envelope or with
+  no math value; and a number within ε of the math whose Excel value is more than ε off it with no R3 mark.
+  That last gap may be a rule Excel applies that the engine misses (R1(c)'s semantic-rule cells) or an Excel
+  inaccuracy (an R3 candidate); the values cannot tell them apart, so it counts, which is the strictest
+  reading of R1(c).
+
+A cell the run did not classify counts too, so nothing reads as met early. Each probe row carries
+`r1c_off`, `r1c_off_cells`, `phase1b`, `r3_pass` and `m14_owned` beside `visibly_off`. The exit rows
+carry `probe_r1c_off`, `probe_phase1b` and `calc_r1c_off`, and `probes_met` and `calc_met` read them. The
+table prints the R1(c) count with the visibly-off total in parentheses when that is larger. M1's frozen
+probe list still counts every visibly-off cell. `phase1b_evidence` holds the classes per probes,
+probes-numeric and ironcalc-calc, and its line is printed under the exit table. The Phase 1 exit script and
+`exit_owners.py` read these fields from T-3428.
 
 ## CLI
 ```

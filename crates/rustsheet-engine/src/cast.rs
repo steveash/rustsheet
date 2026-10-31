@@ -13,7 +13,7 @@ use crate::{
         token::{Error, OpUnary},
         types::CellReferenceIndex,
     },
-    formatter::format::parse_formatted_number,
+    formatter::format::{parse_formatted_number, script_digit_to_ascii},
     limits::check_range_size,
     model::Model,
     text::Text,
@@ -178,8 +178,16 @@ pub(crate) fn number_text_in(
     year: CurrentYear,
     date_system: DateSystem,
 ) -> Option<f64> {
+    // Script digits are read as numbers by coercion, VALUE and criteria (T-3325), not by typed input.
+    let mapped: String;
+    let digits = if text.is_ascii() {
+        text
+    } else {
+        mapped = text.chars().map(script_digit_to_ascii).collect();
+        &mapped
+    };
     if let Ok((v, _number_format)) =
-        parse_formatted_number(text, currencies, locale, year, date_system)
+        parse_formatted_number(digits, currencies, locale, year, date_system)
     {
         return Some(flush_subnormal(v));
     }

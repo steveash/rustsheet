@@ -33,7 +33,8 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   cannot move between a PR's green CI and its merge. On a head that meets (a) and (b):
   1. `make merge-lock-wait PR=<n>`, run in the background (decision 0145): it queues you and exits
      0 once the lock is yours, 3 if the PR is done, 1 after 45 min, 2 on an error (re-run the
-     wait). Do other work (your next task) until it exits, instead of retrying later; never merge
+     wait), 5 in `train` mode for any PR but the emergency-flip PR (decision 0204: mark it ready
+     instead). Do other work (your next task) until it exits, instead of retrying later; never merge
      without the lock.
   2. Holding it: if the branch is behind, merge `origin/main` in and push. For a branch
      without conflicts this is its only merge of `main` (decision 0121). A clean merge needs no
@@ -78,6 +79,11 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
     work-loop step 6.3; an idle ejected branch is resumed like any idle agent branch. `make
     mark-ready` removes `merge-train-ejected` when it marks the PR again (decision 0177). A PR
     that conflicts only with another PR of its batch is deferred, not ejected: it stays ready.
+    Any session may clear a `conflict with main` ejection whose conflicts are all in the
+    eval-gated, non-fetched suites' `eval/baseline/<suite>.txt` lists: run `make catch-up
+    PR=<n>`, which merges `main` in, re-records the lists and pushes, then `make mark-ready
+    PR=<n> CARRY=1` once CI is green (decision 0207). Any other conflict stays with the PR's
+    worker.
   - **Stall fallback** (`train` mode only): any session may run one `make merge-train TRAIN=1`
     pass when a PR has been ready for more than 45 min (by its marker's `updated_at`), the last
     CI run on `merge-train/current` was created more than 45 min ago (workflow-runs
