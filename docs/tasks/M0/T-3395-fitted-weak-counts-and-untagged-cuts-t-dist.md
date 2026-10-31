@@ -25,6 +25,9 @@ Still open from the T-3385 task context (crates/rustsheet-engine/src/functions/)
   section 4.5)? Tag it if fitted. Trace the 5752 / 4232 counts on the Stirling constants to a named file
   (docs/research/t2464/r4-f-small-df gives both max(d) <= 10 and max(d) <= 30). `LOG1P_SERIES_LIMIT` (0.375): tag or
   record why it is not a fit.
+- T-3385 review (excel-fidelity, MINOR): `EXPM1_FORM_LIMIT`'s bracket 0.99505..1.0375 has no cell inside it; a probe
+  there would pin the cut. The T-3385 ranges came from a reverted `eprintln!` run: a committed range script (or a
+  fit-lab listing) would make them reproducible.
 - financial/financial_util.rs RATE secant tolerances and the IRR model (T-2005, T-1525, T-1533): tag or record why not.
 
 ## Acceptance criteria
