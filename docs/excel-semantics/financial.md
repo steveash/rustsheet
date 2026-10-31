@@ -793,7 +793,8 @@ without end (CLAUDE.md directive 5). XIRR walks at most 100 points per chain and
 steps. IRR's secant takes at most 50 steps per run, with one retry from 0.1, and then the fallback's Newton search
 at most 50 steps ("IRR's fallback when the secant fails"; Excel's own cap there lies between 29 and 119). A run that reaches its
 cap gives `#NUM!` (or, for IRR, moves on to the next stage). Every oracle cell of the fit sets finishes
-well inside the caps.
+well inside the caps, except the IRR secant runs on the conventional flows of "IRR on conventional flows near 0 and
+-10%", which reach the secant's cap and are answered by the next stage.
 Evidence: none for Excel; this is a resource limit, not an Excel observation. Probing Excel's caps, the
 fallback path and overflowing trial rates is T-1686.
 Status: DEVIATION (decision 0014)
@@ -983,8 +984,40 @@ Evidence: probes/irr-fallback-roots A1-A24 (excel-graph, 2026-10-26); the gen-m9
 probes-numeric/t2927-irr-fallback-sweep (excel-graph, 2026-10-27).
 Status: VERIFIED (excel-graph) for which flows return; UNVERIFIED for the method (not Newton, finding 6) and the step cap
 (between 29 and 119)
-Implemented in: `irr_fallback`, `IRR_FALLBACK_STEPS` (functions/financial/financial_util.rs)
+Implemented in: `irr_fallback`, `irr_newton`, `IRR_FALLBACK_STEPS` (functions/financial/financial_util.rs)
 Tasks: T-2727, T-1686, T-2131, T-2927 (sweep), T-2928 (returned digits), T-3117 (power-of-two probe)
+
+## IRR on conventional flows near 0 and -10%
+Rule: Excel's IRR returns the root of conventional cash flows (one outlay, then positive flows) whose IRR is near 0
+(1e-6 to 3e-4, either sign) or near -10%, where the secant model fails, and its value is within about 2e-11 of the
+exact root there: of 162 such series (T-3347; the probe's 42 cells and the sweep's 120) Excel is a number on 159 and
+`#NUM!` on three that have a real root (sweep A111, A115 and A117, r = -0.23, -0.40 and -0.11, long series of tiny
+flows after a large outlay). The secant model fails in two ways, both reproduced by the engine before T-3347:
+- near -10% on long level series (`IRR({-145.84,15,...,15})`, 40 flows of 15, probe A15-A21; also n = 20, A10-A14)
+  it drifts for hundreds of steps and reaches its 50-step cap, and from n = 40 its first steps are a flat secant;
+- near 0 with large flows (24 flows of up to 1E9, probe A36-A42) v = 1 - d is the same double for successive d, so
+  the secant is flat (f1 = f0) before |NPV| < 1E-7 is reached.
+Neither raising the secant's cap nor any stop variant (|dd| alone, |NPV| relative to the largest flow, a zero step)
+reproduces Excel's digits. What does fit which flows return: Newton on P(v) = sum c_i v^i from v = 1 (r = 0), capped
+at 50 steps like the fallback: the 159 returning series need 1 to 46 steps, the three `#NUM!` ones 64 to 159 (from
+v = 0 they would need 61 to 416, overlapping). The engine runs it as a last stage, on conventional flows only, after
+the fallback from v = 0 (which it does not change: starting that one at v = 1 instead breaks 60 cells of
+t2927-irr-fallback-sweep and irr-fallback-roots), then polishes the root with up to three Newton steps. Where the
+secant does converge on these series the engine matches Excel bit for bit.
+Digits: where the new stage answers, the engine's value is the exact root to within 1.4e-15 near -10% and 1.5e-11
+near 0 (there r = 1/v - 1 resolves only one ulp of v, 1.1e-16 absolute); Excel's is within 1.9e-12 and 2.1e-11, but
+not the same double: 21 of the 162 cells are more than 15 digits from Excel, by up to 2.2e-11 relative on the stage's
+cells (probe A37) and 8.7e-11 on a secant cell that did not change (sweep A82). Where the secant converges,
+Excel's value can be 2.8e-8 from the exact root (probe A23) and the engine has the same bits. Gate A floor (decision 0188 R2)
+on the sweep, per stratum (points within 15 digits of Excel / within 1e-9 of the exact root / outside both / type
+mismatches): near0 23/24/0/0, near0-neg 22/24/0/0, near-10pct 22/24/0/0, pos-log 20/24/0/0, neg-log 23/24/0/0.
+Also seen: `IRR` of sweep A106 (a root of -1.3E-17) is -2.220446049250313E-16 in Excel and in the engine, the secant's
+one-ulp-of-v resolution (16 times the root; a candidate `MATH-OVER-EXCEL` region for T-3358, not followed here).
+Evidence: probes/t3347-irr-conventional-num, probes-numeric/t3347-irr-conventional-sweep (excel-graph, 2026-10-31;
+exact roots in each case's `.roots.tsv`, docs/research/t3347_irr_conventional_sweep.py)
+Status: VERIFIED (excel-graph) for which flows return; UNVERIFIED for the method and the digits (fitted, T-3347)
+Implemented in: `irr_conventional`, `irr_newton` (functions/financial/financial_util.rs)
+Tasks: T-3347
 
 ## RATE is a secant on the FV residual
 Rule: RATE is a secant, not Newton's method, on the residual f(r) = ((pv·P) + (pmt·(k·((P-1)/r)))) + fv:
