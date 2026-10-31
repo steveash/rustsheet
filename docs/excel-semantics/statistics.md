@@ -2913,8 +2913,26 @@ Rule: the entries above assembled in one TOMS 708 port (Excel's EXP, LN, GAMMALN
   neither, see bpser).
 - r2-bratio's "Excel-only noise of sd 47 units" on the (30.7, 1.7, 0.81) a-sweep was the same literal artefact: with
   truncated literals the sd is 2.9 and the model sits a median -6 ulp off (verify-r2-bratio/misparse.out).
-- Open: bgrat for b ≠ 1/2 (L140 bup+bgrat; 600 x29 BETA.DIST/F bgrat cells), first test the b = 1/2 identity with Q(b,z)
-  from Excel's incomplete gamma; algdiv for b0 >= 8 (about 1 unit off TOMS, in bpser and the density); lnΓ(a0 < 1) in L
+- **L140 bup+bgrat at 1 < b < 2 is RN(W + D) (T-2512, VERIFIED on 3,072 cells).** With b0 = b - 1, a > 15, x > 0.7,
+  the cell is RN(W + D). Here W = fl(x87(P·fl(x·y)/b0)), with P Excel's density in bup's own orientation,
+  BETA.DIST(y, b0, a, FALSE), and D = BETA.DIST(x, a, b0, TRUE), the direct bgrat branch's increment with w = 0.
+  It scores 2,515/3,072/3,072 of 3,072 (hold-out 1,306/1,613/1,613). The caller's orientation BETA.DIST(x, a, b0, FALSE)
+  gives 1,267/1,767/1,815: the two densities differ on 1,355 of 2,908 points by up to ±8 ulp (M2's LN / log1p switch
+  on its own argument). With the exact increment in place of D it is still 1,726/3,072/3,072. With r2-bratio's density
+  and D it falls to 89/2,154/2,356, so the visible gap there is the density's algdiv lnB, not bgrat. The engine's
+  density with an accurate increment scores 282/2,824/3,042, against today's kernel at 26/113/344 (T-3382).
+- **Why TOMS bgrat lost at b ≠ 1/2 (T-2512).** TOMS passes bgrat's 15·eps = 15e-15 to grat1, whose continued fraction
+  (z >= 1.1 on every such cell) stops tens of ulps short. On 2,908 direct bgrat cells (t2512-r3-bgrat-split):
+  - TOMS in doubles with Excel's pieces scores 13/142/162, and 139/1,263/1,834 at eps 1e-15.
+  - x87 extended with the stored lnx and z and the CF at 1e-15 scores 206/1,672/2,158.
+  - CR scores 208/1,598/2,091. The best tried, RN(F·Q(b, z_s)/Q(b, z_e)), scores 246/1,881/2,357.
+  - Excel's D is a median 4 units of 2^-53 below the true value. It is not TOMS in any precision tried, so D to the
+    bit is open (T-3383).
+- **The b = 1/2 identity cannot be tested at generic b through the worksheet (T-2512).** No worksheet function
+  returns Q(b, z) there. CHISQ.DIST.RT truncates its df to an integer (2b < 1 is `#NUM!`). 1 - GAMMA.DIST loses the
+  digits, because Q < 0.01 at 5,196 of the 5,228 bgrat (b, z) points (probe t2512-r3-bgrat-qgamma).
+- Open: D to the bit, n > 1 bup terms and F/BINOM/NEGBINOM callers of L140 bup+bgrat (T-3383); F's bgrat at a df
+  of 1 (b = 1/2); algdiv for b0 >= 8 (about 1 unit off TOMS, in bpser and the density); lnΓ(a0 < 1) in L
   and the 55-84% ceiling of b < 1 bpser shapes; bfrac's fraction (sd 3.8 units) and bup's arithmetic in bup+bgrat;
   a0 < 1e-15 at 0.04 <= y < 0.25 (Excel 1e-14 to 3.8e-13 relative off the truth, in bgrat's incomplete-gamma ratio);
   the densities after T-2513's round 3 (each in its entry): Loader's constant residual of 2-4 units and bd0's series,
@@ -2936,9 +2954,10 @@ Rule: the entries above assembled in one TOMS 708 port (Excel's EXP, LN, GAMMALN
 Evidence: probes-numeric t2464-*; docs/research/t2464/README.md, r2-bratio (`score.py`, `report_best.out`,
 `report_ladder.out`), r2-impact (`impact.out`, `ladder.out`, `branches.out`, `offcells_pre.tsv`), w2-forensics
 `tie_response.py`, w4-fractions `t1_pdfshare.py`, w6-literature (source survey), verify-r2-bratio/analyze.out,
-verify-r2-impact/v2_plan.out.
+verify-r2-impact/v2_plan.out; T-2512: probes-numeric t2512-r3-bgrat-qgamma, -split, -bupdens and r3-bgrat (RESULTS.md,
+`bupdens.out`, `engdens.out`, `epsscan.out`, `bgld.out`, `ident.out`, `zstore.out`, `split.out`, `qsize.out`).
 Status: PARTIAL (excel-graph)
-Tasks: T-2464, T-2504 to T-2511, T-2512, T-2513, T-2585, T-2586
+Tasks: T-2464, T-2504 to T-2511, T-2512, T-2513, T-2585, T-2586, T-3382, T-3383
 
 ## Incomplete beta in the ironcalc-calc workbooks: F tails and densities (T-0970)
 Rule (VERIFIED on the cells named): Excel's F.DIST.RT is the upper tail of the incomplete beta,
