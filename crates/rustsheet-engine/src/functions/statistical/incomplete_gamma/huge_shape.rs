@@ -11,9 +11,9 @@
 
 use super::{gamma_density, gamma_quantile, Tail};
 
-/// From this shape on the quantile is [`huge_shape_quantile`]. Below it statrs' search and the
-/// refinement give the true quantile, as Excel does at every probed p down to shape 1E8 (T-1634);
-/// at 1E9 Excel is already `#NUM!` at p = 1E-300 (probes/t3070-gamma-inv-band A1).
+/// From this shape on the quantile is [`huge_shape_quantile`]. Below it the refinement from
+/// `wilson_hilferty_start` gives the true quantile, as Excel does at every probed p down to shape
+/// 1E8 (T-1634); at 1E9 Excel is already `#NUM!` at p = 1E-300 (probes/t3070-gamma-inv-band A1).
 /// Only the 1E9 side has discriminating cells (T-3395, the cut moved in a full eval run with a
 /// temporary override): a cut of 2E9 breaks t3070 A1 and A335 (`CHISQ.INV.RT(1E-100,2E9)`, shape
 /// 1E9). A cut of 1E8 changes no cell: the 13 GAMMA.INV and CHISQ.INV calls at shapes 1E8 to 7E8
@@ -54,7 +54,8 @@ const WILSON_HILFERTY_CUBE: f64 = -3.086_760e-3;
 /// Excel's Wilson-Hilferty start for a scale of 1, where `z` is the standard normal quantile of
 /// the lower tail's probability: a (1 - 1/(9a) + z/(3 sqrt a))^3 with Excel's offset, spread and
 /// higher terms inside the cube (probes/t2982-gamma-inv-huge-shape, probes/t3070-gamma-inv-band).
-/// Where its density underflows it is Excel's quantile.
+/// Where its density underflows it is Excel's quantile. Below a huge shape the refinement starts
+/// from the textbook form instead (`super::wilson_hilferty_start`, T-3131).
 pub(super) fn wilson_hilferty_quantile(shape: f64, z: f64) -> f64 {
     let root = shape.sqrt();
     let cube_root = 1.0 + WILSON_HILFERTY_OFFSET - 1.0 / (9.0 * shape)
