@@ -7,7 +7,7 @@ from collections.abc import Callable
 
 import pytest
 
-from rustsheet_tools.spec2xlsx import build_xlsx, entered_cells
+from rustsheet_tools.spec2xlsx import Entered, build_xlsx, entered_cells
 
 
 def test_entered_cells_are_blank_and_listed_in_order() -> None:
@@ -17,7 +17,7 @@ def test_entered_cells_are_blank_and_listed_in_order() -> None:
     xlsx = build_xlsx(spec)
     sheet = zipfile.ZipFile(io.BytesIO(xlsx)).read("xl/worksheets/sheet1.xml").decode()
     assert '<c r="A1"' not in sheet
-    assert entered_cells(xlsx) == [("S", "A1", "(1)"), ("S", "A2", "($1)")]
+    assert entered_cells(xlsx) == [Entered("S", "A1", "(1)"), Entered("S", "A2", "($1)")]
 
 
 def test_workbook_without_entries_lists_none() -> None:
@@ -57,7 +57,7 @@ def test_long_entry_is_split_over_properties_and_read_back() -> None:
     values = re.findall(r"<vt:lpwstr>(.*?)</vt:lpwstr>", custom, re.S)
     assert len(values) == 4  # A1 in three pieces, A2 in one
     assert all(len(v) <= 255 for v in values)
-    assert entered_cells(xlsx) == [("S", "A1", formula), ("S", "A2", "=1")]
+    assert entered_cells(xlsx) == [Entered("S", "A1", formula), Entered("S", "A2", "=1")]
 
 
 def test_split_never_cuts_a_surrogate_pair() -> None:
@@ -67,7 +67,7 @@ def test_split_never_cuts_a_surrogate_pair() -> None:
     xlsx = build_xlsx({"sheets": [{"name": "S", "cells": {"A1": {"entered": formula}}}]})
     custom = zipfile.ZipFile(io.BytesIO(xlsx)).read("docProps/custom.xml").decode()
     assert re.findall(r"<vt:lpwstr>(.*?)</vt:lpwstr>", custom, re.S)[0].endswith("a" * 238)
-    assert entered_cells(xlsx) == [("S", "A1", formula)]
+    assert entered_cells(xlsx) == [Entered("S", "A1", formula)]
 
 
 def test_missing_piece_is_a_value_error() -> None:
@@ -82,3 +82,25 @@ def test_missing_piece_is_a_value_error() -> None:
 def test_overlong_entry_is_refused() -> None:
     with pytest.raises(ValueError, match="too long"):
         build_xlsx({"sheets": [{"name": "S", "cells": {"A1": {"entered": "x" * 20_000}}}]})
+
+
+def test_r1c1_entries_carry_their_mode_and_a1_entries_keep_three_elements() -> None:
+    # T-3113, decision 0179: an A1 entry's property is unchanged, so older workbooks stay byte-identical.
+    spec = {"sheets": [{"name": "S", "cells": {"A1": {"entered": "=1"}, "B2": {"entered_r1c1": "=R1C1+1"}}}]}
+    xlsx = build_xlsx(spec)
+    custom = zipfile.ZipFile(io.BytesIO(xlsx)).read("docProps/custom.xml").decode()
+    values = re.findall(r"<vt:lpwstr>(.*?)</vt:lpwstr>", custom, re.S)
+    assert values == ['["S", "A1", "=1"]', '["S", "B2", "=R1C1+1", "r1c1"]']
+    assert entered_cells(xlsx) == [Entered("S", "A1", "=1"), Entered("S", "B2", "=R1C1+1", r1c1=True)]
+
+
+def test_a_cell_cannot_be_entered_in_both_modes() -> None:
+    with pytest.raises(ValueError, match="both"):
+        build_xlsx({"sheets": [{"name": "S", "cells": {"A1": {"entered": "1", "entered_r1c1": "1"}}}]})
+
+
+def test_an_unknown_entry_mode_is_a_value_error() -> None:
+    xlsx = build_xlsx({"sheets": [{"name": "S", "cells": {"A1": {"entered_r1c1": "=R1C1"}}}]})
+    broken = _rewrite_custom(xlsx, lambda data: data.replace(b'"r1c1"]', b'"a1"]'))
+    with pytest.raises(ValueError, match="unknown entry mode"):
+        entered_cells(broken)

@@ -19,7 +19,7 @@ no known failure left that is not a rule of T-1891 or T-2808.
 T-2435 settled five argument-range rules of the gen-m9 extremes sweep; its probe,
 probes/t2435-dist-extremes (142 formulas, excel-graph, 2026-10-26), also records these last-digit
 and accuracy gaps, which no other task names. They are the cells of that case left in
-eval/baseline/probes.txt once T-1891 (A21, A22, A25, A26, A33, A34, A101, A102), T-2808 (A68, A69,
+eval/baseline/probes.txt once T-1891 (A21, A22, A33, A34), T-3271 (the #NUM! rules, A25, A26, A101, A102), T-2808 (A68, A69,
 A72, A73, A77:A81, A108:A112, A115:A118) and T-2809 (A15, A18) take theirs:
 - A14 `BINOM.DIST(1,2,0.9999999999999999,FALSE)`: Excel 1.998401444325278E-15, ours ...2798 (the
   pmf walk at a p that is 1 - 1 ulp; see "BINOM.DIST pmf: closed forms at k = 0 and k = n").
@@ -28,6 +28,10 @@ A72, A73, A77:A81, A108:A112, A115:A118) and T-2809 (A15, A18) take theirs:
 - A35:A38, A40, A41: the F cdf, its density and F.INV.RT at a df2 of 1E+10 or 10000000000.5, where
   `F.DIST(1,10000000000.5,6,TRUE)` is 0.4231900476583052 against Excel's 0.4231900811940569 (the
   6th digit; statistics.md "F-distribution df limit (T-1530)" and T-1538's huge-df entries).
+  The same group, at a huge df1 (gap triage 2026-10-30, the only visibly-off cell no open task named):
+  probes-numeric/m9-legacy-fdist A86 `FDIST(1,10000000000,5)`: Excel 0.5841198129434723, ours 0.5841198129434715.
+  mpmath (50 digits) gives 0.584119812943471319..., so ours is 1.5 ulp and Excel 8.5 ulp from the true value. This is
+  the `visible` stage: reproduce Excel's form, do not make ours more accurate.
 - A66 `BETA.DIST(1E-300,0.5,1E+5,FALSE)`: Excel 1.784121885998999E+152, ours 1.7841218857004317E+152
   (the 10th digit, the beta density at a tiny x and a huge shape).
 Each group is an accuracy question about an existing kernel, so take the groups one at a time and

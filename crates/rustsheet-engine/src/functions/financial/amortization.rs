@@ -211,12 +211,13 @@ pub(crate) fn amortization_values_valid(cost: f64, salvage: f64, period: f64, ra
     cost >= 0.0 && salvage >= 0.0 && salvage < cost && period >= 0.0 && rate > 0.0
 }
 
-/// Whether AMORDEGRC refuses the asset life `1 / rate` of a positive rate: it must not fall in
-/// [0, 3] or strictly between 4 and 5. Excel accepts a life of exactly 4 and 5 (rates 0.25, 0.2;
-/// probes/fin-amordegrc A10, A11, A13, A14), unlike the library this was ported from ([4, 5]).
+/// Whether AMORDEGRC refuses the asset life `1 / rate` of a positive rate: only a life of 2 or
+/// less (a rate of 0.5 or more). Lives 2.000001, 2.01, 2.99, 3, 4.01, 4.5 and 4.99 all return a
+/// number, with no gap at 3 or between 4 and 5 as the documentation and the library this was ported
+/// from have; 2 and 1.99 are #NUM! (probes/fin-vdb-amordegrc-edges A60-A143, T-1978).
 pub(crate) fn asset_life_refused(rate: f64) -> bool {
     let life = 1.0 / rate;
-    (0.0..=3.0).contains(&life) || (life > 4.0 && life < 5.0)
+    (0.0..=2.0).contains(&life)
 }
 
 /// The stand-in date of a 1900 serial from 0 to 9999-12-31 (`from_excel_date`, whose serial 1 is
@@ -327,8 +328,8 @@ impl Asset {
             return Ok(Amortized::new(0.0, LeftOver::Read));
         }
         let walk = DegressiveWalk {
-            // Subtracted like every later charge (`DegressiveWalk::charge`), by analogy: the
-            // probes fit the plain and the twice-rounded difference alike.
+            // Rounded twice like every later charge (`DegressiveWalk::charge`): probes/
+            // amordegrc-first-subtraction A1-B6 tell it from the plain difference (T-2917).
             remain: extended_sum(self.cost, -first_depr),
             salvage: self.salvage,
             rate: depr_rate,
@@ -579,16 +580,17 @@ fn amor_fix_29_february(d: NaiveDate, basis: i32) -> NaiveDate {
     }
 }
 
-// Depreciation coefficient as a function of asset life (in years).
+// Depreciation coefficient of the whole asset life `ceil(1/rate)` in years. A refused life is 2
+// or less (`asset_life_refused`), so the whole life is at least 3: 3 and 4 give 1.5, 5 and 6 give
+// 2, longer lives 2.5: lives above 2 up to 4 take 1.5, above 4 up to 6 take 2
+// (probes/fin-vdb-amordegrc-edges A60-A143, T-1978).
 fn amor_depr_coeff(asset_life: f64) -> f64 {
-    if (3.0..=4.0).contains(&asset_life) {
+    if asset_life <= 4.0 {
         1.5
-    } else if (5.0..=6.0).contains(&asset_life) {
+    } else if asset_life <= 6.0 {
         2.0
-    } else if asset_life > 6.0 {
-        2.5
     } else {
-        1.0
+        2.5
     }
 }
 

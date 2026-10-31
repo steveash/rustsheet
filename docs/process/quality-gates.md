@@ -19,8 +19,9 @@ On docs-only PRs (decision 0049) CI skips the rust, eval and python jobs; hygien
 | Python tools | `make py-check` | ruff, mypy `--strict`, pytest |
 | Python bindings | `make py-bindings` | maturin build + pytest |
 | Duplication | `scripts/check_duplication.py` | duplicated lines (10-line normalized windows) may not increase; `quality/duplication.json` |
+| Fitted constants | `scripts/check_fitted.py` | every empirically fitted constant, cut-point or table carries one `/// FITTED(T-NNNN, <n> cells, <range>)` doc line (`range unknown` when the evidence does not say); malformed tags and tags citing a task with no file fail; the count per source file may only fall, and a rise needs `--update` in a PR citing the fit task and its hold-out result; `quality/fitted.json` (decision 0188 R4.3) |
 | File size | `scripts/check_file_size.py` | new source files ≤ 1000 lines; inherited oversized files may not grow; `quality/oversized-files.json` |
-| Tasks | `scripts/tasks.py validate` | task schema, ids, dependencies, no unsplit L tasks; every `TODO(T-XXXX)` under crates/, bindings/, tools/, scripts/ names an open task (decision 0072) |
+| Tasks | `scripts/tasks.py validate` | task schema, ids, dependencies, no unsplit L tasks; every `TODO(T-XXXX)` under crates/, bindings/, tools/, scripts/ names an open task (decision 0072); a task the branch adds lists no cell another open task lists unless one names the other (T-3229, decision 0182) |
 | Dependencies | `cargo deny check` | license allow-list, RustSec advisories, sources, no wildcard versions |
 | Unused deps | `cargo machete` | none |
 | Spelling | `typos` | clean (Excel names allow-listed in `_typos.toml`) |
@@ -51,6 +52,12 @@ On docs-only PRs (decision 0049) CI skips the rust, eval and python jobs; hygien
   - Changing the file is a protected change (`scripts/check_governance.py` asks for a decision
     record): the DEVIATION entry lands in the same PR, and the
     Excel-fidelity reviewer confirms the limit is a directive-5 limit.
+  - A difference from Excel is accepted only for directive 5 (a `DEVIATION` entry, decision 0014)
+    or inside a `MATH-OVER-EXCEL` case listed in decision 0188 R3, or in a later decision record
+    carrying an owner ruling (a new region needs one). `MATH-OVER-EXCEL` cells are not lines of
+    this file: they stay F lines of eval/baseline, which Gate B and R1(c) count as passing when
+    the engine returns the math within ε.
+    Anything else is a CI failure (an F line in eval/baseline, or a regression the gate refuses).
 - **Evidence floor** (`quality/evidence-floor.json`, decision 0062): `rustsheet-eval
   evidence-floor` runs the vendored suites (fetched external suites do not count) and counts the
   in-scope catalog functions the oracle can evaluate with fewer than 20 Excel-evidence cells. It
@@ -65,7 +72,7 @@ On docs-only PRs (decision 0049) CI skips the rust, eval and python jobs; hygien
   drop, so fix PRs do not conflict on the file, and the steward lowers the lock daily with `make
   eval-lower-visible-lock` (decision 0093). Any other rise needs `--allow-regressions` and a
   decision record.
-- **Lint debt / duplication / oversized files:** the scripts fail on increases. When you reduce
+- **Lint debt / duplication / oversized files / fitted constants:** the scripts fail on increases. When you reduce
   them, run the script with `--update` and commit the JSON in the same PR.
 
 ## What reviewers check that tools cannot

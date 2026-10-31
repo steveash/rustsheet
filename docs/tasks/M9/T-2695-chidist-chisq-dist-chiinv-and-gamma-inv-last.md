@@ -32,6 +32,16 @@ Examples (`make eval-show CASE=gen-m9/<id>.case.json`), Excel vs ours:
 Code: crates/rustsheet-engine/src/functions/statistical/ (the incomplete gamma behind CHISQ.DIST and GAMMA.DIST, and the
 inversion behind CHISQ.INV and GAMMA.INV). docs/excel-semantics/statistics.md has the current models.
 
+Cells added by gap triage 2026-10-30d. `make eval` on origin/main ran, then the owner rule of
+`scripts/exit_owners.py` was applied to every failing cell, with the task files of origin/main and of the pushed task
+branches. These three gen-m9 known-failure lines are 1 to 4 ulp off, not visibly off, and no open task names them:
+- gen-m9/3e98b26cf6713e77.case.json (1): Calc!A268 `CHISQ.DIST(1E-300,COUNTA(Data!$D2),"FALSE")` (shape 0.5, density):
+  3.9894228040142567E+149 vs 3.9894228040142563E+149 (-1 ulp)
+- gen-m9/c2974c061384fdd9.case.json (1): Calc!A13 `CHISQ.DIST(SUM(ROUND(Data!B$1,-6),Data!E5:E11),10,BYCOL(..))` (cdf):
+  0.09849448946078171 vs 0.09849448946078165 (-4 ulp)
+- gen-m9/68d8ffb69ff739d8.case.json (1): Calc!A325 `CHIDIST(COUPNUM(39311,44972,2,"1"),5)`: 9.367248705398532E-06 vs
+  9.367248705398537E-06 (+3 ulp)
+
 Owned gen-m9 cells (gap triage 2026-10-25, excel-graph): 86 known-failure lines in eval/baseline/gen-m9.txt, none visibly off.
 Cells:
 - gen-m9/05d44f6dd6cfc567.case.json (1): Calc!A231
@@ -46,7 +56,6 @@ Cells:
 - gen-m9/3e98b26cf6713e77.case.json (1): Calc!A329
 - gen-m9/40425341c5034eed.case.json (2): Calc!A75, A224
 - gen-m9/4250f880ab640c49.case.json (1): Calc!A125
-- gen-m9/4ab2ba98d26c8a5e.case.json (1): Calc!A315
 - gen-m9/4bad303d32cc3f46.case.json (2): Calc!A279, A354
 - gen-m9/4e55500bb8ad3cd8.case.json (1): Calc!A249
 - gen-m9/530c636749a85209.case.json (3): Calc!A12, A90, A150
@@ -57,7 +66,6 @@ Cells:
 - gen-m9/7c20351562a2d71d.case.json (1): Calc!A316
 - gen-m9/85f48d5cdfb24555.case.json (1): Calc!A84
 - gen-m9/899f9555e67da2d6.case.json (2): Calc!A51, A118
-- gen-m9/8d3588d8df0812df.case.json (1): Calc!A130
 - gen-m9/8dd2312c96effb1b.case.json (1): Calc!A374
 - gen-m9/8f2ac25945af87da.case.json (2): Calc!A108, A352
 - gen-m9/8fec7b207f4dd753.case.json (2): Calc!A105, A349
@@ -67,7 +75,7 @@ Cells:
 - gen-m9/a54c738c697617c3.case.json (2): Calc!A49, A104
 - gen-m9/a612e89321a6df9c.case.json (3): Calc!A173, A181, A227
 - gen-m9/a61e547a1cab994c.case.json (2): Calc!A117, A362
-- gen-m9/abc2939ebd1e2365.case.json (3): Calc!A57, A107, A337
+- gen-m9/abc2939ebd1e2365.case.json (2): Calc!A57, A107
 - gen-m9/b6593d7dd13f2dac.case.json (2): Calc!A253, A265
 - gen-m9/b8ee55934c5b824c.case.json (4): Calc!A32, A216, A262, A400
 - gen-m9/bbdfc06cae0e0d71.case.json (1): Calc!A268

@@ -12,7 +12,7 @@ use crate::{
 use std::collections::BTreeSet;
 
 pub use super::formatted::Formatted;
-use super::formatted::MAX_TEXT_FORMAT_CHARS;
+use super::formatted::{unshowable_text, MAX_TEXT_FORMAT_CHARS};
 pub(crate) use super::parse_formatted::{
     parse_formatted_number, parse_typed_number, rejected_clock_text_format,
 };
@@ -20,6 +20,7 @@ use super::{
     calendar_dates::{calendar_ymd, hebrew_month_name, year_token_text, HEBREW_LAST_NAMED_YEAR},
     date_names::NameTokens,
     dates::negative_serial_allowed,
+    lexer::last_section_is_bare_at,
     locale_tag::Calendar,
     parser::{
         conditional_section, is_text_section, numeric_section_count, section_condition,
@@ -184,6 +185,31 @@ pub fn format_text_value(text: &str, format: &str) -> Formatted {
         }
     }
     capped_text(out)
+}
+
+/// The text a cell shows for a text or boolean value under `format`. `TEXT()` is `#VALUE!` past 255
+/// characters, where Excel shows the text whole when the format leaves it unchanged (no text
+/// section, or a bare `@`) and 255 `#` when a text section changes it (`"pre "@`, `_(@_)`,
+/// `[Red]@`; probes/displayed-text-long-text, -b; number-formats.md "Displayed text"). Any other
+/// `TEXT()` error keeps the plain text: Excel refuses to open a workbook with an invalid code (T-3282).
+#[must_use]
+pub fn displayed_text(text: &str, format: &str) -> String {
+    let formatted = format_text_value(text, format);
+    match formatted.error.as_deref() {
+        None => formatted.displayed(),
+        Some(TEXT_TOO_LONG) if text_section_changes_text(format) => unshowable_text(),
+        Some(_) => text.to_string(),
+    }
+}
+
+/// Whether `format` has a text section other than a bare `@`.
+fn text_section_changes_text(format: &str) -> bool {
+    let mut parser = Parser::new(format);
+    parser.parse();
+    match parser.parts.last() {
+        Some(last) if is_text_section(last) => !last_section_is_bare_at(format),
+        _ => false,
+    }
 }
 
 /// The private-use characters [`format_text_value_exact`] picks its stand-in from.
@@ -700,15 +726,20 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                     // exponent carries no minus (`0.00E+00` on 1.5 is "1.50E+00").
                     let group = f64::from(p.digit_count.max(1));
                     let exponent;
+                    let mut shifted = false;
                     if group > 1.0 {
                         // The mantissa rounds after the shift (`##0.0E+0` on 1/3: "333.3E-3"; T-2226).
                         (value, exponent) = round_engineering(scaled, group, p.precision);
                     } else {
                         (value, exponent) = round_scientific(scaled, p.precision);
+                        // The mantissa is already shifted; engineering below is not.
+                        shifted = true;
                     }
                     exponent_is_negative = exponent < 0.0;
                     exponent_part = format!("{}", exponent.abs()).chars().collect();
-                    value /= 10.0_f64.powf(exponent);
+                    if !shifted {
+                        value /= 10.0_f64.powf(exponent);
+                    }
                     value = to_precision(value, 15);
                     value_abs = value.abs();
                 }
@@ -744,7 +775,15 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             // (`TEXT(-PI(),"x")` = "-x", `TEXT(-5,"2")` = "-2"; probes/text-format-bare-literals A3, A7;
             // `"x"General` on -1.5 is "-x1.5", General then shows |value|: gen-m10 F!D19).
             let has_general = tokens.iter().any(|t| matches!(t, TextToken::General));
-            if digit_count == 0 && (is_negative || (has_general && general_value < 0.0)) {
+            // Excel: with no decimal point either nothing rounds, so any negative keeps its minus
+            // (`TEXT(-0.4,"x")` is "-x", `TEXT(-0.004,"x%")` "-x%"), while `.` and `.0` drop it
+            // when the value rounds to zero (`TEXT(-0.4,".")` is ".", `TEXT(-0.04,".0")` ".0";
+            // probes/text-negative-round-sign, excel-graph 2026-10-30, T-1129).
+            let has_period = tokens.iter().any(|t| matches!(t, TextToken::Period));
+            let unrounded_negative = !has_period && scaled < 0.0;
+            if digit_count == 0
+                && (is_negative || unrounded_negative || (has_general && general_value < 0.0))
+            {
                 text = format!("-{text}");
             }
 
@@ -904,7 +943,11 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                                     text = format!("{text}{c}");
                                 }
                             } else {
-                                for i in 0..number_index + 1 {
+                                // Overflowing digits join the first exponent placeholder; later
+                                // placeholders take one digit each (`0.00E+00` on DBL_MAX is
+                                // "1.80E+308", probes/dbl-max-text-b, T-2106).
+                                let first = if index == 0 { 0 } else { number_index };
+                                for i in first..number_index + 1 {
                                     text = format!("{}{}", text, exponent_part[i as usize]);
                                 }
                                 digit_index += number_index + 1;

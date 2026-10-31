@@ -156,3 +156,33 @@ def test_bare_function_names_cell_must_exist_and_be_a_formula() -> None:
         build_xlsx({"sheets": [{"name": "S", "cells": {"A1": "=1"}, "bare_function_names": ["B1"]}]})
     with pytest.raises(ValueError, match="not a formula"):
         build_xlsx({"sheets": [{"name": "S", "cells": {"A1": 5}, "bare_function_names": ["A1"]}]})
+
+
+def test_conditional_formats_and_data_validations_are_written_with_prefixed_formulas() -> None:
+    """T-3263: a formula conditional format and a custom data validation, formulas prefixed like cells'."""
+    spec = {
+        "sheets": [
+            {
+                "name": "S",
+                "cells": {"A1": 1},
+                "conditional_formats": [{"ref": "A1:A3", "formula": "=XLOOKUP(1,{1},{1})=A1"}],
+                "data_validations": [{"ref": "B2", "formula": "=LET(x,1,x)=1"}],
+            }
+        ]
+    }
+    sheet = zipfile.ZipFile(io.BytesIO(build_xlsx(spec))).read("xl/worksheets/sheet1.xml").decode()
+    assert (
+        '<conditionalFormatting sqref="A1:A3"><cfRule type="expression" priority="1">'
+        "<formula>_xlfn.XLOOKUP(1,{1},{1})=A1</formula></cfRule></conditionalFormatting>"
+    ) in sheet
+    assert re.search(
+        r'<dataValidation type="custom"[^>]* sqref="B2"><formula1>_xlfn.LET\(_xlpm.x,1,_xlpm.x\)=1</formula1>',
+        sheet,
+    )
+
+
+def test_a_rule_xlsxwriter_refuses_is_an_error() -> None:
+    with pytest.raises(ValueError, match="conditional format on A0"):
+        build_xlsx(
+            {"sheets": [{"name": "S", "cells": {}, "conditional_formats": [{"ref": "A0", "formula": "=1"}]}]}
+        )
