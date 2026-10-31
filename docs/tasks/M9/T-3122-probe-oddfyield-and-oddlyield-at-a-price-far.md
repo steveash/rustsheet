@@ -3,7 +3,7 @@ id: T-3122
 title: "Probe ODDFYIELD and ODDLYIELD at a price far from par where the solver nears the discount overflow"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
