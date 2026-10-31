@@ -36,8 +36,9 @@ half a unit of Excel's 15th significant digit, or each one still off is named wi
   (T.TEST's tail), not of T.DIST's ported kernel, then back-transforms (statistics.md "Student-t quantile is
   SQRT(df*(1/y-1)) of the rounded beta quantile"). F.INV may likewise solve for the beta argument and map it,
   x = df2 y / (df1 (1 - y)), as `f_quantile_through_beta` does above a df of 1E5.
-- Split: T-1871 (statrs saturation and panics) also lists gen-m9/4ab2ba98d26c8a5e A110, and T-3225 lists
-  probes-numeric/m9-f-inv A31; they keep those cells, which are named above only as the measurement's evidence.
+- Split: T-1871 (statrs saturation and panics) also lists gen-m9/4ab2ba98d26c8a5e A110, T-3225 lists
+  probes-numeric/m9-f-inv A31, and T-3233 lists gen-m9/4e55500bb8ad3cd8 A332 and m9-f-inv A31; they keep those cells,
+  which are named above only as the measurement's evidence.
 - Rule: statistics.md "BETA.INV solves Excel's own CDF to the crossing (T-1745)" (155 of 188 rows).
 
 ## Acceptance criteria

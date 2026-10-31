@@ -292,6 +292,7 @@ fn t_x_overflows(x: f64) -> bool {
 }
 
 /// Probabilities below this take the tail path of [`t_tail_quantile`] instead of `statrs`.
+/// FITTED(T-1531, 105 cells, p 1E-300..1E-10, df 1..1E5)
 const T_TAIL_P: f64 = 1e-5;
 
 /// Below this `x = df / (df + t^2)` the incomplete beta `I_x(df/2, 1/2)` equals its leading term and
@@ -301,6 +302,7 @@ const T_TAIL_X: f64 = 1e-8;
 /// Below this probability the df-1 quantile comes from bisection on the cdf, not `statrs`'
 /// `inverse_cdf`, which hangs at 1E-100 for df = 1000 and panics from about 1E-200. Only df 1
 /// reaches it (every other df takes [`t_rounded_y_quantile`]).
+/// FITTED(T-1531, 105 cells, p 1E-300..1E-10, df 1..1E5)
 const T_STATRS_MIN_P: f64 = 1e-8;
 
 /// The tail quantile's closed form: `t` with `P(T < -t) = q` from the leading term and first
@@ -346,11 +348,13 @@ fn t_tail_quantile(dist: &StudentsT, df: f64, q: f64) -> f64 {
 /// rounded-y form to the exact quantile between two-tailed p = 0.9 (c = 0.1) and 0.95 (c = 0.05)
 /// (statistics.md "Student-t quantile is SQRT(df*(1/y-1)) of the rounded beta quantile, away from
 /// the centre"), so the cut sits inside that bracket.
+/// FITTED(T-2724, 5 cells, c 0.1, df 2..1000)
 const T_CENTRE_C: f64 = 0.075;
 
 /// The centre cut of T.INV.2T's negative branch, p in (1, 2), with c = p - 1: Excel is the exact
 /// quantile there at c = 0.0986 and 0.0991, past [`T_CENTRE_C`] (`T.INV.2T(LN(3),7)` =
 /// -0.12847323195087978, gen-m9 c2684066d8df263e A64; d910f000b60e2eac A357 at df 8).
+/// FITTED(T-2724, 2 cells, c 0.0986..0.0991, df 7..8)
 const T_NEGATIVE_CENTRE_C: f64 = 0.1;
 
 /// Magnitude `t >= 0` with `P(|T| < t) = c` for a central probability `c` below [`T_CENTRE_C`]
@@ -835,8 +839,12 @@ mod tests {
             );
         }
         // Excel's values (gen-m9 b9a32ce9a1fd0d71 A58, 334f3dc9ca937f10 A128, probes-numeric
-        // m9-t-inv-2t A117 and A130) to half a unit of the 15th digit.
+        // m9-t-inv-2t A117 and A130; T-3349: probes/t3349-t-inv-2t-near-one A1, decision 0188
+        // item 3's input, once 1.49E-8, and A15, A29) to half a unit of the 15th digit.
         for (df, p, excel) in [
+            (2.0, 0.999_999_999_989_522, 1.481_806_159_731_988e-11),
+            (2.0, 0.999_999_999_999_999, 1.413_083_212_815_401_9e-15),
+            (1000.0, 0.999_999_999_999, 1.253_599_772_570_125_8e-12),
             (5.0, 1.0 - 1e-10, 1.317_152_871_051_845_8e-10),
             (7.0, 0.999_999, 1.298_730_137_860_588_3e-6),
             (1000.0, 0.999_999_999_9, 1.253_627_608_692_531_2e-10),

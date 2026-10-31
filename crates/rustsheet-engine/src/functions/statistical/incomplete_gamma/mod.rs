@@ -7,9 +7,10 @@
 //! correctly rounded for this family, docs/excel-semantics/statistics.md "Incomplete gamma:
 //! accurate kernel"): the prefactor of TOMS 654, the power series for P below x = a + 1
 //! and a continued fraction for Q above it, Q computed directly for a small shape, and a = 1 as
-//! `-expm1(-x)`. `inverse_cdf_within` is statrs 0.18.0's `Gamma::inverse_cdf` (halve and double
-//! a bracket, then 8 bisections and 4 Newton steps) over that cdf; the quantile the functions
-//! call is [`gamma_quantile`], which refines it to the crossing in the tails (T-1634). Neither loop is open: the
+//! `-expm1(-x)`. The quantile is [`gamma_quantile`], the crossing of that cdf, refined from a
+//! Wilson-Hilferty start or from the whole range where that start is NaN, in at most 129 cdfs
+//! (T-1634, T-3131; statrs 0.18.0's `Gamma::inverse_cdf` search was its start until T-3131).
+//! Neither loop is open: the
 //! series needs about 6.8 * sqrt(a) terms where x is near a (6.4 million at a = 1E12), and never
 //! converges once `a + 1 == a` (a of 2^53 or more: `GAMMA.DIST(1E16,1E16,1,TRUE)`), so every
 //! call is NaN, which its callers turn into `#NUM!` (docs/excel-semantics/statistics.md
@@ -42,8 +43,7 @@
 
 use std::cell::RefCell;
 
-use statrs::distribution::{Continuous, ContinuousCDF, Gamma};
-use statrs::prec;
+use statrs::distribution::{ContinuousCDF, Gamma, Normal};
 
 use super::gammaln::excel_gammaln;
 use super::incomplete_beta::{rlog1, stirling_correction};
@@ -109,10 +109,10 @@ pub(crate) fn cdf_terms_bound(a: f64) -> u32 {
     series.max(continued_fraction_budget(a)).min(MAX_TERMS)
 }
 
-/// The cdfs one inversion ([`gamma_quantile`]) runs at most: statrs' search (1,075 halvings,
-/// 1,025 doublings, 8 bisections, 4 Newton steps), then one check and at most 129 more of the
-/// refinement (T-1634, T-1872). The lifting table charges an inversion by it (T-2795).
-pub(crate) const INVERSION_CDFS: u32 = 2_250;
+/// The cdfs one inversion ([`gamma_quantile`]) runs at most: the refinement's
+/// `REFINE_MAX_EXPANSIONS` (64) + 65 (`special::refine_increasing`; T-3131, which dropped statrs'
+/// search of up to 2,120 cdfs before it). The lifting table charges an inversion by it (T-2795).
+pub(crate) const INVERSION_CDFS: u32 = 129;
 
 /// The terms a cdf or an inversion has left. Once spent, the cdf in progress is NaN.
 struct Terms(u32);
@@ -250,6 +250,7 @@ const NEAR_MODE: f64 = 0.4;
 /// t2753-gamma-density-ratio-sweep A48, B48 `GAMMA.DIST(0.5,50,1,FALSE)`: 69 ulp against 350;
 /// gen-m9/68d8ffb69ff739d8 A341 `GAMMADIST(0.3,30,1,TRUE)`: 118 against 208) and closer to `rcomp`
 /// at a/500 (A47, B47 `GAMMA.DIST(0.1,50,1,FALSE)`: 114 against 252); 1/200 lies between (T-3252).
+/// FITTED(T-2638, 6 cells, x/a 0.002..0.048, shape 30..50)
 const RATIO_FORM_MIN: f64 = 0.005;
 
 /// The shape below which, for x below 1, Q is not 1 - P but [`small_shape_upper`]: there P runs
@@ -372,6 +373,7 @@ fn lower_series(a: f64, x: f64, terms: &mut Terms) -> f64 {
 /// nearest the cut are at about -23.05 (rows 1, 19, 24) and the excluded ones at -11.54 to
 /// -11.61 (rows 2, 6, 10, 20, 25), so any cut in between scores the same; -16 is the ulp
 /// argument above (T-3242 probes the gap).
+/// FITTED(T-3060, 136 cells, shape 0.05..0.9, a ln x -230..-11.5)
 const EXCEL_EXPONENT_MAX: f64 = -16.0;
 
 /// GAMMA.DIST's cdf P(a, x) at a shape below 1 and a normal x below 1 where a·LN(x) is at most
@@ -419,6 +421,7 @@ fn excel_form_lower(a: f64, x: f64, exponent: f64) -> Option<f64> {
 /// and A34 share p = 1E-16 and nearly the same a·LN(x) (about -36.9), and only A28 is the closed
 /// form. Below it the series' correction (about x / (a + 1)) is far below an ulp, so the closed
 /// form is the quantile of the leading factor alone. T-3265 probes the gap.
+/// FITTED(T-3013, 5 cells, x 4.15E-22..1.6E-18, shape 1/60..0.9)
 const CLOSED_FORM_QUANTILE_MAX: f64 = 1e-21;
 
 /// GAMMA.INV takes one Newton step from the closed form where that step is more than this
@@ -438,6 +441,7 @@ const CLOSED_FORM_QUANTILE_MAX: f64 = 1e-21;
 /// (T-3265 probes it). One step only: at A26 a second would be 3.46E-14 of x and Excel takes none.
 /// A loop under the same test, with the threshold in [3.46E-14, 4.1E-14), fits as well. T-3265
 /// probes steps from 2.9E-14 to 4.0E-14.
+/// FITTED(T-3013, 4 cells, step 1.33E-14..4.4E-14 of x, shape 0.01..0.75)
 const CLOSED_FORM_STEP_MIN: f64 = 3.5e-14;
 
 /// Excel's GAMMA.INV(p, a, 1) at a shape below 1 other than 1/2, where its quantile is tiny
@@ -491,6 +495,7 @@ fn leading_factor_root(a: f64, p: f64) -> f64 {
 /// and caa1eed48b1883fe A282. The test is not Excel's: at shape 25 Excel's
 /// `CHISQ.INV(1E-300,50)` is the root (probes-numeric t1543-inverse-cdf-tiny-p A31) with our cdf
 /// 9.8E-12 off (TODO(T-3294)).
+/// FITTED(T-2561, 13 cells, shape 1.5..5, p 1E-300..1E-100)
 const TINY_QUANTILE_CHECK: f64 = 5e-14;
 
 /// Excel's lower-tail quantile at a shape above 1 (and below [`DIRECT_SHAPE_MAX`]) where it is
@@ -750,84 +755,6 @@ pub(crate) fn gamma_sf(dist: &Gamma, x: f64) -> f64 {
     accurate_tail(dist.shape(), scaled, true)
 }
 
-/// statrs' `Gamma::inverse_cdf` (and `ChiSquared::inverse_cdf`) for `p` in [0, 1]: the quantile,
-/// or NaN where statrs panics, would not finish, or its cdfs together pass [`MAX_TERMS`] terms.
-/// It evaluates at most about 2,120 cdfs (about 1,075 halvings, 1,025 doublings, 8 bisections,
-/// 4 Newton steps), all of them sharing the one budget. The functions call [`gamma_quantile`],
-/// which adds at most 130 more cdfs of refinement to that same budget; this is its test shim.
-#[cfg(test)]
-fn gamma_inverse_cdf(dist: &Gamma, p: f64) -> f64 {
-    inverse_cdf_within(dist, p, &mut Terms(MAX_TERMS))
-}
-
-fn inverse_cdf_within(dist: &Gamma, p: f64, terms: &mut Terms) -> f64 {
-    // statrs panics outside [0, 1]; its callers never pass such a p.
-    if !(0.0..=1.0).contains(&p) {
-        return f64::NAN;
-    }
-    if p == 0.0 {
-        return 0.0;
-    }
-    if p == 1.0 {
-        return f64::INFINITY;
-    }
-    // A NaN cdf is where statrs panicked or the budget ran out: the search ends there.
-    let mut cdf = |x: f64| -> Option<f64> {
-        let value = cdf_within(dist, x, terms, Exponent::Accurate);
-        (!value.is_nan()).then_some(value)
-    };
-
-    let mut high = 2.0;
-    let mut low = 1.0;
-    // Each loop ends within about 1,075 steps: `low` reaches 0, where the cdf is 0, and `high`
-    // infinity, where it is 1.
-    loop {
-        let Some(at_low) = cdf(low) else {
-            return f64::NAN;
-        };
-        if at_low <= p {
-            break;
-        }
-        low /= 2.0;
-    }
-    loop {
-        let Some(at_high) = cdf(high) else {
-            return f64::NAN;
-        };
-        if at_high >= p {
-            break;
-        }
-        high *= 2.0;
-    }
-    let mut x_0 = (high + low) / 2.0;
-
-    for _ in 0..8 {
-        let Some(at_x) = cdf(x_0) else {
-            return f64::NAN;
-        };
-        if at_x >= p {
-            high = x_0;
-        } else {
-            low = x_0;
-        }
-        if prec::convergence(&mut x_0, (high + low) / 2.0) {
-            break;
-        }
-    }
-
-    for _ in 0..4 {
-        let Some(at_x) = cdf(x_0) else {
-            return f64::NAN;
-        };
-        let x_next = x_0 - (at_x - p) / dist.pdf(x_0);
-        if prec::convergence(&mut x_0, x_next) {
-            break;
-        }
-    }
-
-    x_0
-}
-
 /// Which tail's probability a quantile is given: CHISQ.INV and GAMMA.INV the lower,
 /// CHISQ.INV.RT (and CHIINV) the upper.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -845,11 +772,10 @@ pub(crate) enum Tail {
 /// (`GAMMA.INV(0.95,1,1000000)` = 2995732.27355399, probes-numeric m9-gamma-inv A26).
 ///
 /// Other shapes take the crossing of the smaller tail of the cdf of rate 1 / scale
-/// (`special::refine_increasing`: below [`HUGE_SHAPE_MIN`] at most 129 cdfs, from statrs' search,
-/// [`inverse_cdf_within`], when it has a result; from it at most 65, halving the whole range).
-/// Excel is close to the true quantile (against mpmath, 509 of 545
-/// literal-argument quantile cells are within half a unit of the 15th digit), so statrs' result
-/// is never kept as it is: it can be 7E-15 off (`GAMMA.INV(0.5,9,1)`). The smaller tail is `p` or
+/// (`special::refine_increasing` from [`wilson_hilferty_start`], or halving the bit patterns of
+/// the whole range where that start is NaN: at most 129 cdfs). Excel is close to the true quantile (against mpmath, 509 of 545
+/// literal-argument quantile cells are within half a unit of the 15th digit); statrs' search,
+/// the start until T-3131, could be 7E-15 off it (`GAMMA.INV(0.5,9,1)`). The smaller tail is `p` or
 /// its exact complement `1 - p`, so a tiny right-tail `p` keeps the digits `1 - p` loses, as in
 /// F.INV (T-0974), and the lower tail is the accurate pair's series, which has no shortcut at a
 /// tiny x, so `CHISQ.INV(1E-100,1)` is Excel's 1.5707963267948966E-200 (T-1543, T-1634). All cdfs
@@ -892,15 +818,10 @@ pub(crate) fn gamma_quantile(shape: f64, scale: f64, p: f64, tail: Tail) -> f64 
         // (`probability` calls no cdf of its own), so no borrow can overlap.
         let terms = RefCell::new(Terms(MAX_TERMS));
         let probability = |x: f64| quantile_tail(&dist, x, small, &mut terms.borrow_mut());
-        // From a huge shape statrs' search is NaN or far off (its 8 bisections leave Newton too
-        // far out: 4714346327.59633 for `CHISQ.INV(5.6221E-26,4715100000)`, whose quantile is
-        // Excel's 4714082845.627977, probes/incomplete-gamma-cap E15), so the refinement halves
-        // the whole range instead: at most 65 cdfs, each one Temme term.
-        let estimate = if shape >= HUGE_SHAPE_MIN {
-            f64::NAN
-        } else {
-            inverse_cdf_within(&dist, lower, &mut terms.borrow_mut())
-        };
+        // The crossing does not depend on the start, which only saves cdfs: near x = a each
+        // costs about 6.8 sqrt(a) terms of the one budget, so from no start (64 halvings of the
+        // whole range) the inversions from a shape of about 2E6 to Temme's would run out of it.
+        let estimate = wilson_hilferty_start(shape, lower) * scale;
         let crossing = match small {
             Tail::Lower => refine_increasing(probability, target, estimate, 0.0, f64::MAX),
             Tail::Upper => refine_increasing(|x| -probability(x), -target, estimate, 0.0, f64::MAX),
@@ -916,6 +837,26 @@ pub(crate) fn gamma_quantile(shape: f64, scale: f64, p: f64, tail: Tail) -> f64 
         return 0.0;
     }
     x
+}
+
+/// The start of [`gamma_quantile`]'s refinement for a scale of 1 (T-3131, in place of statrs'
+/// search): the textbook Wilson and Hilferty a (1 - 1/(9a) + z / (3 sqrt a))^3, z the standard
+/// normal quantile of `lower` by statrs' closed form, relative error about 1E-3 / a in the body.
+/// NaN where it is not a positive finite number (a small shape in a far tail, or `lower` rounded
+/// to 1), where the refinement halves the whole range instead. It is not
+/// [`huge_shape::wilson_hilferty_quantile`], Excel's fitted form with an offset, a spread and higher
+/// terms, which is Excel's value from a huge shape: this one only places the bracket, and since
+/// the doubles next to a crossing are not always monotone in the cdf, changing it can move a
+/// landing by an ulp.
+fn wilson_hilferty_start(shape: f64, lower: f64) -> f64 {
+    let z = Normal::standard().inverse_cdf(lower);
+    let cube_root = 1.0 - 1.0 / (9.0 * shape) + z / (3.0 * shape.sqrt());
+    let start = shape * cube_root * cube_root * cube_root;
+    if start > 0.0 && start.is_finite() {
+        start
+    } else {
+        f64::NAN
+    }
 }
 
 /// The quantile of the unit exponential (shape 1, rate 1) where the probability of `tail` is `t`

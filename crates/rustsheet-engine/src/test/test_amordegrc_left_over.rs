@@ -116,3 +116,33 @@ fn it_shares_the_order_with_weeknum_but_not_the_state() {
     assert_eq!(model._get_text("A1"), "776");
     assert_eq!(model._get_text("B1"), "16");
 }
+
+/// A1 holds a lifted AMORDEGRC over `periods`.
+fn lifted(periods: &str) -> Model {
+    let formula = format!("=AMORDEGRC(2400,39679,39813,300,{periods},0.15,1)");
+    let mut model = new_empty_model();
+    model._set("A1", &formula);
+    model.evaluate();
+    model
+}
+
+#[test]
+fn a_lifted_call_reads_what_its_own_earlier_elements_left() {
+    // probes/amordegrc-fraction-state-ae and -af: {1,0.5} is 776 + 776, {0.5,1} is 0 + 776.
+    let model = evaluated(&[("A1", "=SUM(AMORDEGRC(2400,39679,39813,300,{1,0.5},0.15,1))")]);
+    assert_eq!(model._get_text("A1"), "1552");
+    let model = evaluated(&[("A1", "=SUM(AMORDEGRC(2400,39679,39813,300,{0.5,1},0.15,1))")]);
+    assert_eq!(model._get_text("A1"), "776");
+}
+
+/// Our behaviour, not Excel's: an error element inside a lifted call is unprobed (T-3393).
+#[test]
+fn an_error_element_stays_an_error_beside_a_fraction() {
+    let model = lifted("{-1,0.5}");
+    assert_eq!(model._get_text("A1"), "#NUM!");
+    assert_eq!(model._get_text("B1"), "0");
+    let model = lifted("{1,-1,0.5}");
+    assert_eq!(model._get_text("A1"), "776");
+    assert_eq!(model._get_text("B1"), "#NUM!");
+    assert_eq!(model._get_text("C1"), "776");
+}

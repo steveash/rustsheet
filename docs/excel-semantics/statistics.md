@@ -1017,16 +1017,17 @@ Evidence: probes/incomplete-gamma-cap (38 formula cells, excel-graph, 2026-10-18
 H27-H50; probes/stat-argument-modes H132-H156, H293-H314, H476-H485.
 Ours: matches the lift and element cells (T-1872), each kernel reading its arguments in its scalar order. The
 incomplete gamma is the accurate pair of T-0971 ("Incomplete gamma: accurate kernel" below; it replaced the port of
-statrs 0.18's `gamma_lr` and `gamma_ur` that T-1872 capped) and its quantile statrs' `Gamma::inverse_cdf` (halve and
-double a bracket, 8 bisections, 4 Newton steps), ported line for line to `statistical/incomplete_gamma.rs`, with a
+statrs 0.18's `gamma_lr` and `gamma_ur` that T-1872 capped) and its quantile the crossing of that cdf
+(`incomplete_gamma::gamma_quantile`; until T-3131 from statrs' `Gamma::inverse_cdf`, halve and double a bracket, 8
+bisections, 4 Newton steps, ported line for line, and since T-3131 from a Wilson-Hilferty start), with a
 per-call cap of its own: at most 2^19 terms in one cdf, and in one whole inversion over all its cdfs (unit test
 `a_call_past_its_cap_is_nan`). The series needs about 6.8 * sqrt(a) terms at x = a: 481,117 at
 the largest chi-squared shape (df 1E10, a = 5E9), so every chi-squared cdf is kept. CHISQ.TEST uses the same capped
 cdf (a sheet's cell count keeps its shape under 2^33, where the series can need about 630,000 terms: past the cap, see
 the DEVIATION below). The lifting table charges every entry 2^18 units an element: the bound of the cap at the slowest
 term, the continued fraction's NaN path (4.1 to 4.7 ns in release; a converging fraction at the cap, which rescales on
-about 65% of its terms at a shape of 1E15, costs 2.4 ns, and a series term 2.5 ns), plus the inversion's 2,120 cdfs,
-about 2.6 ms (lift/kinds/statistical.rs `INCOMPLETE_GAMMA_WEIGHT` has the measurements; 1.2 ms for `CHISQ.DIST(1E10,1E10,TRUE)`).
+about 65% of its terms at a shape of 1E15, costs 2.4 ns, and a series term 2.5 ns), plus the inversion's cdfs (2,120 for statrs' search,
+about 2.6 ms; at most 129 since T-3131) (lift/kinds/statistical.rs `INCOMPLETE_GAMMA_WEIGHT` has the measurements; 1.2 ms for `CHISQ.DIST(1E10,1E10,TRUE)`).
 Where x / beta underflows to 0 (statrs panicked) the cdf is 0 at every shape, as Excel's `GAMMA.DIST(1E-300,a,1E100,TRUE)` is for a = 2 (E7) and for a = 1, 0.5, 0.01, 1E-17 and 1E-300 (probes/t2982-gamma-inv-huge-shape A117-A122), although the true P(1E-17, 1E-400) is 1 - 9E-15; its density is `#NUM!` (A124, A125), and so is the density where x / beta overflows (`GAMMA.DIST(1E300,1,1E-10,FALSE)`, E18), as the cdf there is (E6; T-2982). At a statistic of 5E-324, whose half underflows, `CHISQ.DIST(x,2,TRUE)` is 0 and `CHISQ.DIST.RT(x,2)` and
 `CHIDIST(x,2)` 1 where main panicked (Excel unprobed). CHISQ.TEST cannot reach that statistic: its sum of
 `diff*diff/exp` is never 2^-1074.
@@ -1037,8 +1038,11 @@ a = x = 1E10 and never ended at 2^53. It is bit-exact on Excel's E1-E4, E8-E12, 
 cdfs at df 1E10, 0.4999982128217492 on statrs and main, are now Excel's 0.5000018806319452) and 1 ulp off at E13; a
 shape of 1E8 needs no term past C_3 (they fall by 1/a each). The cap of 2^19 terms now binds a cdf nowhere (below 1E8
 the series takes at most about 68,000 terms) and still binds an inversion's cdfs together below that shape.
-DEVIATION (decision 0014, CLAUDE.md directive 5): an inversion whose cdfs together need more than 2^19 terms, or that
-statrs' search cannot finish, is `#NUM!` where Excel gives a number. From a shape of 1E9 the quantile is
+DEVIATION (decision 0014, CLAUDE.md directive 5): an inversion whose cdfs together need more than 2^19 terms is `#NUM!`
+where Excel gives a number (from shape 1E7 to Temme's 1E8: `GAMMA.INV(0.5,1E7,1)`, before and after T-3131; Excel
+unprobed there, its numbers are probed from 1E9). For a tiny upper-tail p the lower tail rounds to 1 and the
+Wilson-Hilferty start is NaN, so the refinement halves the whole range and can spend the budget sooner from about
+shape 2E6 to 1E9 (statrs' search also took the lower tail; T-2367 measures it). From a shape of 1E9 the quantile is
 `huge_shape_quantile` (section "GAMMA.INV and CHISQ.INV at a huge shape"; T-3070), so `GAMMA.INV(0.5,1E300,1E-300)`
 (E5) and `CHISQ.INV(5.6221E-26,4715100000)` (E15) are Excel's values; E5, E14 and E19 are 1 ulp off. A CHISQ.TEST's
 cdf is never past the cap. Unit tests `incomplete_gammas_that_hung_or_panicked_are_bounded` and
@@ -1052,7 +1056,7 @@ the power series a + 58 (it runs for x < a + 1, where every ratio x / (a + n) is
 the small-shape Q series 20 more, and the continued fraction a budget of 256 + 32 * cbrt(a) terms, enforced by the kernel
 (NaN past it). A sweep of shapes 1E-3 to 1.6E15 needed at most about 10 * cbrt(a) terms (110 below a = 10), so the budget
 is at least twice the need and changes no value (unit test `the_continued_fraction_stays_within_half_its_budget`). An
-inversion is charged 2,250 cdfs of that bound, within its one budget of 2^19 terms. The shape comes from the shape
+inversion is charged 129 cdfs of that bound (2,250 before T-3131), within its one budget of 2^19 terms. The shape comes from the shape
 argument (alpha, df / 2, or POISSON's x + 1); an element with an error argument, or an inversion whose probability is
 outside (0, 1), a logical or a blank, is charged 1, as the kernel returns before any cdf; a text shape or probability is
 charged 2^18. So `CHIDIST(x,5)` costs 150 units an element and a CHIDIST over a 731-element PIVOTBY runs (gen-m9/
@@ -1165,6 +1169,10 @@ and Q keep the direct form below 20 (T-3219). The bounds are fits inside their b
 unbracketed below 20 (UNVERIFIED: no probed density between a and 1.5a changes with the form).
 Status: VERIFIED (excel-graph)
 Tasks: T-0971, T-0972, T-2638, T-3147, T-3219
+Deep upper tail sweep (T-3289): probes-numeric/t3284-gamma-deep-upper-tail (343 cells: POISSON cdf at mean 4(k+1) to 100(k+1),
+its CHISQ.DIST.RT twin, half-integer shapes at x = 4 to 100 df, and 32-double ulp runs at POISSON(2,100) and CHISQ.DIST.RT(200,5)).
+Excel is within 1 ulp of the 50-digit value in 64 of the 343 cells (docs/research/t3284/ulp_vs_exact.py), and today's engine is
+bit-exact on 53 (`rustsheet-eval show --all`); T-3269 fits the rest.
 
 ## HYPGEOM.DIST: per-call cap and lifting (T-1873)
 Rule: HYPGEOM.DIST and HYPGEOMDIST lift every argument over an array and over a two-cell range on the formula's own rows,
@@ -2640,6 +2648,11 @@ z = fl64(fl(a·LN(x)) - L)  (extended);   I = fl(EXP(z)·s)  (Excel's EXP of the
   1 < b0 < 8 cells this L loses to r2-bratio's (3,365 against 4,038 of 7,455, verifier); b < 1 shapes top out at 55-84%
   bit-exact for any constant L (one stored intermediate, unidentified). The port needs Excel's GAMMALN exact at the shape
   arguments; the engine model is exact on 274 of 771 in [1, 2) and 1,738 of 2,585 below 1 (t2464-r2-bpser-small-gl).
+- An isolated miss at 1 < b0 < 8 (gap triage 2026-10-30, T-3331): `BETA.DIST(0.1,2.5,5,TRUE)` (probes-numeric/
+  m9-beta-dist-a2p5 Calc!A31, a bpser point: b0·x0 = 0.5) is 0.05533381860850995 in Excel and 0.055333818608509895 in
+  the engine, visibly off. Against a 60-digit mpmath value, 0.055333818608509839059, Excel is 16.1 ulp high and the
+  engine 8.1 ulp high, so here Excel is the inaccurate one, and by more than the shapes probe's sub-branch suggests
+  (all 4,602 of its 1 < b0 < 8 cells within 15 digits).
 Evidence: probes-numeric t2464-r2-bpser-small-shapes, -runs, -tiny, -tiny2, -gl, t2464-w2f-*; docs/research/t2464/
 w3-series (`model.py`, `accum2.py`, `control2.py`), r2-bpser-small (`lib.py`, `zforms.py`, `bscore.py`,
 `tiny_noapser.py`), verify-r2-bpser-small/verify.out, old_sets.out.
@@ -2685,7 +2698,7 @@ TOMS `betaln` at every shape (half-integers included) scores bit-exact +150, vis
 A9 (A18 is now within 4 ulp): T-2924's k plus whole fl(a·LN x) steps, as above.
 Status: PARTIAL (excel-graph): within 15 digits in every bpser sub-branch of the shapes probe (2,861 of 2,868 at
 b0 >= 8, all others); bit-exact 52-75%; both > 1 with max > 8 a provisional form (T-3007)
-Tasks: T-2505, T-2512, T-2122, T-3007
+Tasks: T-2505, T-2512, T-2122, T-3007, T-3331
 
 ## Incomplete beta at a shape near the double range: no overflowing fl(a LN x), and bpser is #NUM! once 1/B overflows (T-3007)
 Rule: Excel never evaluates a bpser whose fl(a·LN x) overflows: Excel for the web refuses a workbook that holds
@@ -3529,6 +3542,27 @@ Implemented in: functions/statistical/t_dist.rs `t_rounded_y_quantile` (every df
 Ours: this form from df 2 (T-2511); 10 of T-3061's cells and the bit-level remainder are T-3061 and T-3399.
 Tasks: T-3061, T-2511, T-3399
 
+## Two-tailed Student-t quantile with p near 1 is accurate in Excel (T-3349)
+Rule: for df from 2 up, `T.INV.2T(p,df)`, `TINV(p,df)` and `CONFIDENCE.T(p,sd,n)` with p just below or above 1 return
+the small quantile to the 15th digit of the exact value: Excel solves the centre directly, never forming 1 - p/2.
+`T.INV.2T(0.999999999989522,2)` is 1.481806159731988E-11 (exact 1.48180615973198...E-11; decision 0188 item 3,
+where the engine gave 1.49E-8 before T-2724), `T.INV.2T(0.999999999999999,2)` 1.4130832128154019E-15 (c = 1 - p is 9.99E-16 in doubles), and so on for c from
+1E-3 to 1E-15 at df 2, 5, 30, 1000 and 1E6 and for p = 1.001 and 1.000000001 at df 2 (the negative quantile,
+`T.INV.2T(1.000000001,2)` = -1.4142136793856508E-9; the literal 1.000000000000001 has 16 digits and reads as 1, giving 0).
+At df 1 Excel is the 1/TAN form instead (T-2858's entry above), up to 2.9% off the exact value at
+`T.INV.2T(0.999999999999999,1)` (Excel 1.6155696572206502E-15, exact 1.5695408241038844E-15).
+Evidence: probes/t3349-t-inv-2t-near-one A1-A44 (excel-graph, 2026-10-31): every cell from df 2 up is within 15
+significant digits of the exact quantile (mpmath at 60 digits) and of the engine; the df 1 cells A3, A6-A10 match the
+1/TAN form, and A5 (`CONFIDENCE.T(0.999999999989522,1,3)` = 8.555211852081089E-12, exact 8.5552118520810793E-12) is
+Excel's last digits, 1.1E-15 relative off. Fresh sweep: probes-numeric/t3349-t-inv-2t-sweep (300 stratified points; the
+counts are in T-3349's Outcome). In that sweep Excel is more than 1E-4 off the exact value at a tiny p and a large df,
+p from 1.38E-300 to 1.73E-110 and df from 2490 up (42 points, A211-A300; `T.INV.2T(6.68863396408457E-199,2490)` is
+100.83724584548176 in Excel, exact 33.047211122914894): the tiny-p pattern of "MATH-OVER-EXCEL" case 1, which lists
+T.INV only and from p 1E-150; whether it extends to T.INV.2T needs an owner ruling (T-3386).
+Ours: the centre crossing of `student_t_centre` (T-2724), within about 5E-16 of the exact value.
+Status: VERIFIED (excel-graph)
+Tasks: T-3349, T-2724, T-2858
+
 ## Inverse CDF functions at a tiny or near-1 probability (T-1543)
 Rule: NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and BETA.INV return a value (or `#NUM!`) for p from 1E-300 to 1-1E-16; none panics or hangs in Excel.
 
@@ -3686,8 +3720,12 @@ Tasks: T-1543, T-1634, T-2561, T-3336, T-3337
   lower tail's `powf * exp(-x - ln Gamma(a + 1))` form is used only at x * rate up to 1 (T-1634 used it up to the
   shape: at shape 50 its exponent's rounding is 1E-14 of the tail). With `x^a` by `powf`, `GAMMA.INV(1E-300,1,1)` is
   9.999999999999999E-301, one ulp under Excel's 1E-300: the crossing is exact, and the ulp is lost to
-  `refine_increasing`'s midpoint (`special::nearest_crossing` would return 1E-300, a lead for T-2561). Above shape 1E9
-  it stays statrs' search alone: Excel is `#NUM!` for `GAMMAINV(0.999999,10000000000.5,1E+10)`.
+  `refine_increasing`'s midpoint (`special::nearest_crossing` would return 1E-300, a lead for T-2561). Since T-3131
+  the refinement starts from Wilson and Hilferty's a (1 - 1/(9a) + z/(3 sqrt a))^3, not statrs' search (at most 129
+  cdfs, was about 2,250). The crossing does not depend on the start where the cdf is monotone, but the doubles near it
+  are not always: four eval cells moved, GAMMA.xlsx F7 to Excel's 1.9999999999999996, gen-m9 ecc87f80077959e0 A231 to
+  within 15 digits, and two `GAMMAINV(0.5,...)` cells (35e8168aae2b00f8 A196, 4bad303d32cc3f46 A289) from 1 ulp under
+  Excel's 3.6720607488508965 to 1 ulp over. From shape 1E9 the quantile is `huge_shape_quantile` (T-3070).
   The crossing is not always the correctly rounded quantile: on 49 gated cells it lands 1 to 3 ulps off Excel where
   Excel is the correctly rounded closed form (`CHISQ.INV(0.5,2)` is 1.3862943611198906 = 2 ln 2 in Excel, ours
   1.3862943611198908; `CHISQ.INV.RT(0.5,2)` ours 1.3862943611198904; GAMMA.xlsx F75 Excel 0.6931471805599453 = ln 2,
@@ -4744,7 +4782,7 @@ d8266bc15533702a A296. excel-graph refused (FileCorruptTryRepair) workbooks hold
 from 1E40 to 1E100 and `GAMMA.DIST(x,1E10..1E11,1,FALSE)` at a tiny x, so those cells were dropped from the probe (T-2982).
 Ours: `incomplete_gamma/huge_shape.rs` `huge_shape_quantile` for GAMMA.INV, GAMMAINV, CHISQ.INV, CHISQ.INV.RT and CHIINV
 from shape 1E9, its true quantile the crossing of the accurate cdf (Temme's expansion), halved over the whole range
-(65 cdfs) since statrs' search is NaN or far off there; `chisq.rs` lets CHISQ.INV.RT and CHIINV past
+(65 cdfs) since statrs' search (used before T-3131) was NaN or far off there; `chisq.rs` lets CHISQ.INV.RT and CHIINV past
 `MAX_DEGREES_OF_FREEDOM`.
 Status: VERIFIED (excel-graph) for the cells; the band's edges and the closed form's terms are fits (UNVERIFIED as forms)
 Tasks: T-2982, T-3070
