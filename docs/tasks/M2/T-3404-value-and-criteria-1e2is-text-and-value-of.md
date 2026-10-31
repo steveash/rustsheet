@@ -3,7 +3,7 @@ id: T-3404
 title: "VALUE and criteria: 1e2$ is text, and VALUE of CHAR(160)-padded number text is #VALUE! (T-3334 probe)"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
