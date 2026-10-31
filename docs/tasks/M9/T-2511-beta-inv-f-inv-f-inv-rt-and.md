@@ -13,6 +13,8 @@ spec: docs/specs/SPEC-0025-incomplete-beta-bratio-port.md
 ---
 
 ## Goal
+Done for the Student-t quantiles; BETA.INV, BETAINV and the F quantiles moved to T-3398 (see the Outcome).
+
 BETA.INV, BETAINV, F.INV, F.INV.RT, FINV, T.INV, T.INV.2T and TINV find the crossing of the engine's ported CDF. The
 crossing is T-1745's rule: Excel's x is a crossing of its own CDF. This replaces statrs' AS 64/109 Newton on statrs'
 `checked_beta_reg`.
@@ -116,4 +118,7 @@ Done 2026-10-31 for the Student-t quantiles; BETA.INV and the F quantiles move t
   T-3398. The Student-t cells still off: df 1, 47 cells (T-2858); df of 99999 or more at p of 1E-200 or below, where
   Excel is about 79 against a true 37 (T-1542); the q = 0.05 and near-centre cells (T-3061, T-0967); the ulp
   remainder (T-3399). T-0967 and T-1871 keep their other cells; rescore them on this form.
+- Of the 215 Student-t cells that still fail and changed value, 169 moved closer to Excel and 46 further, none
+  across the visibly-off line; the ungated probes-numeric cells newly failing (1 to 3 ulp) and t1531-t-tiny-p A54
+  (1 -> 11 ulp) are listed in T-3399.
 

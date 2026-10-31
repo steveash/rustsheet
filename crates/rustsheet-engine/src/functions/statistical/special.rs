@@ -88,7 +88,21 @@ pub(crate) fn refine_increasing(
 /// accurate, as Excel's converged BETA.INV search returns it (docs/excel-semantics/statistics.md
 /// "BETA.INV at a huge shape is AS 109's Newton search (T-1538)"). At most 65 + 2 evaluations.
 pub(crate) fn nearest_crossing(f: impl Fn(f64) -> f64, target: f64, min: f64, max: f64) -> f64 {
-    let (lo, hi) = crossing_bracket(&f, target, f64::NAN, min, max);
+    nearest_crossing_from(f, target, f64::NAN, min, max)
+}
+
+/// [`nearest_crossing`] with the bracket grown around `estimate` when it is finite (as
+/// [`refine_increasing`] does): the same final bracket for a monotone `f`, in fewer evaluations
+/// when the estimate is close (about 25 within 2^-30 relative). At most
+/// [`REFINE_MAX_EXPANSIONS`] + 65 + 2 evaluations.
+pub(crate) fn nearest_crossing_from(
+    f: impl Fn(f64) -> f64,
+    target: f64,
+    estimate: f64,
+    min: f64,
+    max: f64,
+) -> f64 {
+    let (lo, hi) = crossing_bracket(&f, target, estimate, min, max);
     if (f(hi) - target).abs() < (target - f(lo)).abs() {
         hi
     } else {

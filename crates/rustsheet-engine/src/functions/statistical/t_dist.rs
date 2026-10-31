@@ -2,10 +2,10 @@ use statrs::distribution::{Continuous, ContinuousCDF, StudentsT};
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error, LiftCost};
-use crate::functions::statistical::inverse_beta::t_inverse_cdf;
+use crate::functions::statistical::inverse_beta::{t_inverse_cdf, t_quantile_beta_root};
 use crate::functions::statistical::paired::{MarkedSample, PairedSamplesError, PairedValues};
 use crate::functions::statistical::special::{
-    bisect_increasing, ln_gamma, nearest_crossing, refine_increasing,
+    bisect_increasing, ln_gamma, nearest_crossing_from, refine_increasing,
 };
 use crate::functions::statistical::student_t::{
     student_t_centre, student_t_density, student_t_tail_at, student_t_tails,
@@ -298,15 +298,16 @@ const T_TAIL_P: f64 = 1e-5;
 /// the first correction to better than 1E-16, so the tail quantile has a closed form.
 const T_TAIL_X: f64 = 1e-8;
 
-/// Below this probability the quantile comes from bisection on the cdf, not `statrs`' `inverse_cdf`,
-/// which hangs at 1E-100 for df = 1000 and panics from about 1E-200 (the sweep test covers df 2 to
-/// 9E4). Only df 1 reaches it (every other df takes [`t_rounded_y_quantile`]).
+/// Below this probability the df-1 quantile comes from bisection on the cdf, not `statrs`'
+/// `inverse_cdf`, which hangs at 1E-100 for df = 1000 and panics from about 1E-200. Only df 1
+/// reaches it (every other df takes [`t_rounded_y_quantile`]).
 const T_STATRS_MIN_P: f64 = 1e-8;
 
 /// The tail quantile's closed form: `t` with `P(T < -t) = q` from the leading term and first
 /// correction of `I_x(df/2, 1/2)`, where `x = df / (df + t^2)` is below [`T_TAIL_X`] (`None`
-/// otherwise). Excel's deep-tail quantiles carry this form's rounding, not the rounded-y
-/// back-transform's (`TINV(1E-200,2)` = 1.0000000000000101E+100, gen-m9/7980ffb6095a340d A312; T-2511).
+/// otherwise). In the deep tail Excel's quantile is within an ulp or so of this form where the
+/// rounded-y back-transform is visibly off (`TINV(1E-200,2)` = 1.0000000000000101E+100, this form
+/// 1.0000000000000103E+100, the back-transform 9.99999999999996E+99; gen-m9/7980ffb6095a340d A312, T-2511).
 fn t_tail_closed_form(df: f64, q: f64) -> Option<f64> {
     let a = 0.5 * df;
     // P(T < -t) = I_x(a, 1/2) / 2 with I_x ~ x^a / (a B(a, 1/2)) * (1 + a / (2 (a + 1)) x).
@@ -364,6 +365,10 @@ fn t_centre_quantile(df: f64, c: f64) -> f64 {
     refine_increasing(|t| student_t_centre(t, df), c, estimate, 0.0, 1.0)
 }
 
+/// Below this df statrs' search is bounded and accurate enough to seed [`t_rounded_y_quantile`]'s
+/// bracket (seconds per call at 1E7, no finish at 1E8).
+const T_STATRS_MAX_DF: f64 = 1e5;
+
 /// From this df the quantile away from the centre is [`t_rounded_y_quantile`]; df 1 keeps statrs'
 /// search and the tail forms below (its closed form is T-2858's).
 const T_ROUNDED_Y_MIN_DF: f64 = 2.0;
@@ -375,7 +380,9 @@ const T_ROUNDED_Y_MIN_DF: f64 = 2.0;
 /// T-3061; the crossing is T-2511's). The ported kernel's tail at y (`bratio::t_kernel_tails`,
 /// as T.DIST takes it) fixes 4 more cells but makes 3 newly visibly off (`T.INV(0.2,5)`,
 /// gen-m9/0bbab6206b5c9a07 A67, 6 ulp). L rises with y, so the search is `nearest_crossing` over
-/// [0, 1]: at most 67 tails, for every df up to [`T_DF_MAX`]. A deep tail keeps
+/// [0, 1], seeded by AS 109's root where statrs is reliable: about 25 to 30 tails seeded, at most
+/// about 81 unseeded, for every df up to [`T_DF_MAX`] (the cost is in lift/kinds/statistical.rs
+/// `T_QUANTILE_WEIGHT`). A deep tail keeps
 /// [`t_tail_closed_form`].
 fn t_rounded_y_quantile(df: f64, q: f64) -> f64 {
     if q < T_TAIL_P {
@@ -383,8 +390,28 @@ fn t_rounded_y_quantile(df: f64, q: f64) -> f64 {
             return t;
         }
     }
-    let y = nearest_crossing(|y| student_t_tail_at(y, df), q, 0.0, 1.0);
+    // AS 109's root (statrs' search, a few microseconds where it is reliable) seeds the bracket:
+    // about 25 tails instead of 64, which matters where one tail sums the integer-df series
+    // (about 30 us at df 1000; T-2511's performance review).
+    let estimate = if df < T_STATRS_MAX_DF && q >= T_STATRS_MIN_P {
+        t_quantile_beta_root(df, q)
+    } else {
+        f64::NAN
+    };
+    let y = nearest_crossing_from(|y| student_t_tail_at(y, df), q, estimate, 0.0, 1.0);
+    // A y of 0 gives an infinite t, which the callers turn into #NUM! (`is_finite` checks in
+    // `t_inv_of` and CONFIDENCE.T).
     (df * (1.0 / y - 1.0)).sqrt()
+}
+
+/// The signed quantile with `P(T > t) = q` from [`t_rounded_y_quantile`], for q outside the centre.
+fn t_rounded_y_upper(df: f64, q: f64) -> f64 {
+    // 1 - q is exact for q in [1/2, 1] (Sterbenz).
+    if q < 0.5 {
+        t_rounded_y_quantile(df, q)
+    } else {
+        -t_rounded_y_quantile(df, 1.0 - q)
+    }
 }
 
 /// Quantile `t` with `P(T > t) = q`. For a tiny `q`, `1 - q` rounds to 1, so the tail is asked for
@@ -396,12 +423,7 @@ pub(crate) fn t_upper_quantile(dist: &StudentsT, df: f64, q: f64) -> f64 {
         return t_centre_quantile(df, c.abs()).copysign(c);
     }
     if df >= T_ROUNDED_Y_MIN_DF {
-        // 1 - q is exact for q in [1/2, 1] (Sterbenz).
-        return if q < 0.5 {
-            t_rounded_y_quantile(df, q)
-        } else {
-            -t_rounded_y_quantile(df, 1.0 - q)
-        };
+        return t_rounded_y_upper(df, q);
     }
     if q < T_TAIL_P {
         -t_quantile(dist, df, q)
@@ -421,12 +443,8 @@ pub(crate) fn t_quantile(dist: &StudentsT, df: f64, p: f64) -> f64 {
         return t_centre_quantile(df, c.abs()).copysign(c);
     }
     if df >= T_ROUNDED_Y_MIN_DF {
-        // 1 - p is exact for p in [1/2, 1] (Sterbenz).
-        return if p < 0.5 {
-            -t_rounded_y_quantile(df, p)
-        } else {
-            t_rounded_y_quantile(df, 1.0 - p)
-        };
+        // P(T < t) = p is P(T > t) = 1 - p, i.e. -t has the upper tail p.
+        return -t_rounded_y_upper(df, p);
     }
     // df 1: below the tail threshold `statrs` is fine; above it its inverse saturates
     // (T.INV(1E-10,1) gives -8.9E7, Excel -3.18E9) and panics from p about 1E-200 (T-1531).
@@ -550,10 +568,10 @@ impl Model {
     }
 
     /// `T.INV(probability, deg_freedom)`: both arguments lift over an array and a range
-    /// (SPEC-0011; probes/stat-argument-modes, probes/stat-quantile-lift). The quantile is the
-    /// capped port of statrs' inversion, a closed form, or a bisection of at most 264 cdfs
-    /// (`t_quantile`), which the lifting table charges (lift/kinds/statistical.rs
-    /// `T_QUANTILE_WEIGHT`).
+    /// (SPEC-0011; probes/stat-argument-modes, probes/stat-quantile-lift). The quantile is a
+    /// crossing of the tail at y from df 2 (`t_rounded_y_quantile`) or a closed form, and at df 1 the capped port of
+    /// statrs' inversion or a bisection of at most 264 cdfs (`t_quantile`), which the lifting
+    /// table charges (lift/kinds/statistical.rs `T_QUANTILE_WEIGHT`).
     pub(crate) fn fn_t_inv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::TInv, args, cell, &mut |model, values| {
             number_or_error(model.t_inv_of(values, false, cell))
@@ -733,6 +751,30 @@ mod tests {
             t_upper_quantile(&dist(1.0), 1.0, 5e-301) / 2.0_f64.sqrt(),
             4.501_581_580_785_53e299,
         );
+    }
+
+    #[test]
+    fn rounded_y_quantile_is_finite_and_ordered_on_a_sweep() {
+        // Every df the worksheet accepts from 2 up, and p from the smallest to the largest double
+        // below 1: a finite quantile of the right sign (bounded: at most about 81 tails per call).
+        for df in [2.0, 3.0, 30.0, 99_999.0, 1e5, 1e10] {
+            for p in [
+                1e-300,
+                1e-100,
+                1e-15,
+                1e-5,
+                0.01,
+                0.3,
+                0.7,
+                0.99,
+                1.0 - 1e-10,
+                1.0 - 1e-16,
+            ] {
+                let t = t_quantile(&dist(df), df, p);
+                assert!(t.is_finite(), "T.INV({p},{df}) = {t}");
+                assert_eq!(t < 0.0, p < 0.5, "T.INV({p},{df}) = {t}");
+            }
+        }
     }
 
     #[test]

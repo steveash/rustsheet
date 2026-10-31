@@ -29,6 +29,12 @@ the nearest crossing.
     12.492209688254745, ours 12.492209688254748, 2 ulp
   - ironcalc-calc/STATISTICAL/T_DIST.xlsx `T.DIST.2T T.INV.2T`!D50: Excel 2.2281388519862744, ours
     2.228138851986275, 1 ulp
+- Ungated (probes-numeric) cells newly failing, all within 15 digits: m9-t-inv-2t A56 `T.INV.2T(0.01,5)` (1 ulp),
+  A57 `T.INV.2T(0.1,5)` (3 ulp); m9-t-inv A55 `T.INV(0.001,5)` (1), A57 `T.INV(0.1,5)` (1), A61 `T.INV(0.9,5)` (2);
+  t1048-tinv A2 `TINV(0.1,5)` and B2 `T.INV.2T(0.1,5)` (3 each). Known failures that moved further, still within
+  15 digits: t1531-t-tiny-p A54 `T.INV(1E-15,5)` 1 -> 11 ulp (q below 1E-5 with x about 5E-6, so the crossing
+  rather than the closed form), A64 and A65 and gen-m9/cb61169f4c033d4b A45, 8fec7b207f4dd753 A2 (df 5 at 1E-20)
+  4 -> 5 ulp, `CONFIDENCE.T(0.1,1,3)` 5 -> 6 ulp.
 - Variants T-2511 measured on gen-m9, ironcalc-calc, probes and probes-numeric (visibly-off cells against main):
   - the crossing of the ported kernel's tail at y (`bratio::t_kernel_tails`, as T.DIST takes it): 298 fixed, 3 new
     (`T.INV(0.2,5)` = -0.9195437802408258, ours -0.9195437802408264, gen-m9/0bbab6206b5c9a07 A67; probes

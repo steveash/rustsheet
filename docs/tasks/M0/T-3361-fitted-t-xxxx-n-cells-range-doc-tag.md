@@ -23,7 +23,7 @@ Every empirically fitted constant, cut-point or table in the engine carries a `F
   - financial/cumulative.rs `GEOMETRIC_MIN_LEAD` and `LONG_GEOMETRIC_MIN_LEAD`;
   - financial/financial_util.rs the IRR fallback (`irr_fallback`, T-2727);
   - statistical/student_t.rs `LOG_GAMMA_BETA_MIN` (6.5) and `LOG_GAMMA_BETA_MAX`, and the df bands;
-  - statistical/t_dist.rs `T_QUANTILE_SERIES_DF`, `T_TAIL_P`, `T_TAIL_X`, `T_STATRS_MIN_P`;
+  - statistical/t_dist.rs `T_TAIL_P`, `T_TAIL_X`, `T_STATRS_MIN_P`;
   - statistical/inverse_beta.rs the probe-tuned thresholds of the statrs port;
   - statistical/incomplete_gamma/huge_shape.rs `WILSON_HILFERTY_SPREAD` and its 1/a, z²/a, z³/a^(3/2) terms (fitted
     at 1E13, applied from 2E10);
