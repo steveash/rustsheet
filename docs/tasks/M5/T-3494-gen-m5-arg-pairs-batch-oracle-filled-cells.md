@@ -3,7 +3,7 @@ id: T-3494
 title: "gen-m5 arg-pairs batch: oracle-filled cells for the unseen argument-class pairs of the M5 array, subtotal and base-conversion math functions (SUMX2MY2, SUMX2PY2, SUMXMY2, SERIESSUM, MMULT, PERCENTOF, SUBTOTAL, AGGREGATE, BASE, DECIMAL, ROMAN)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
