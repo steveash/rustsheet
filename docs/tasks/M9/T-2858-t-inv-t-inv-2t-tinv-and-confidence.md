@@ -78,13 +78,13 @@ Three of the df = 1 cells below (gen-m9/5389dd4d5b5739d2 A299, probes-numeric/m9
 T-2724 (the centre); they are this task's, and T-2724 no longer lists them.
 
 ## Acceptance criteria
-- [ ] The 30 gated known-failure lines above (18 gen-m9, 12 ironcalc-calc) disappear from eval/baseline/gen-m9.txt and
+- [x] The 30 gated known-failure lines above (18 gen-m9, 12 ironcalc-calc) disappear from eval/baseline/gen-m9.txt and
       eval/baseline/ironcalc-calc.txt (`make eval-baseline`), with no new known-failure line in any baseline.
-- [ ] The 82 probes-numeric cells above pass in `make eval` (ungated suite; name any that do not in the Outcome).
-- [ ] Unit tests in t_dist.rs for `T.INV.2T(0.5,1)` = 1, `T.INV.2T(1.5,1)` = -1, `TINV(1-1E-10,1)` =
+- [x] The 82 probes-numeric cells above pass in `make eval` (ungated suite; name any that do not in the Outcome).
+- [x] Unit tests in t_dist.rs for `T.INV.2T(0.5,1)` = 1, `T.INV.2T(1.5,1)` = -1, `TINV(1-1E-10,1)` =
       1.570797438519081e-10, `TINV(1+2^-52,1)` = -5.053466325954936e-16, `T.INV(1E-16,1)` = -3183098861837907,
       `T.INV(0.9,1)` = 3.0776835371752544 and `CONFIDENCE.T(0.05,1,2)` = 8.984643532093761.
-- [ ] statistics.md's T-2858 entry gets an "Implemented in" line.
+- [x] statistics.md's T-2858 entry gets an "Implemented in" line.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -99,10 +99,16 @@ value. The closed form is expected to be bit-exact on all of them; any cell left
 ## Outcome
 `cauchy_two_tail_quantile` (`extended_quotient(1, excel_tan(PI*q/2))`; the worksheet `/` rounds twice, which decides the round points
 p = 0.5, 1.5) now serves df = 1 in T.INV, T.INV.2T, TINV and CONFIDENCE.T. Two-tailed p = 1 returns 0 (Excel evidence, see
-statistics.md). Eval: gen-m9 known failures 3151 -> 3125 (26 fixed), ironcalc-calc 403 -> 391 (12 fixed): all 30 gated lines are gone, no
-regressions. The ungated probes-numeric cells were not itemised cell by cell; the reviewer's list of round-point cells (m9-t-inv A6/A8,
-m9-t-inv-2t A7, m9-t-edges A9, t1531 A127) is covered by the same fix.
+statistics.md). The df = 1 branch in `t_inv_of` and `confidence_t_of` returns before T-2724's centre kernel and T-3061's
+SQRT(df*(1/y-1)) path, which serve df 2 up unchanged.
+
+Eval, re-baselined on main after merging it (2026-10-31): gen-m9 known failures 3015 -> 2989 (26 fixed), ironcalc-calc
+394 -> 382 (12 fixed), probes 2316 -> 2310 (6 fixed: probes/t3349-t-inv-2t-near-one A3, A6-A10, the df 1 cells T-3349 handed to
+this task), no regressions in any suite. All 30 gated lines listed above are gone. Every listed probes-numeric cell passes (checked
+cell by cell with `rustsheet-eval show`), including the three moved from T-2724 (gen-m9/5389dd4d5b5739d2 A299, probes-numeric/
+m9-t-inv-2t A12, A13).
 
 Note from T-2724 (2026-10-31): two-tailed p near 1 at df 1 now reaches T-2724's centre kernel (the true quantile,
 `t_centre_quantile` in t_dist.rs) before any df-1 rule; this task's 1/TAN form has to take df 1 ahead of it. The
-T-2724 unit test `centre_quantiles_keep_their_digits` leaves df 1 out for this task to pin.
+T-2724 unit test `centre_quantiles_keep_their_digits` leaves df 1 out for this task to pin. Done: `t_inv_of` takes df 1 first, and
+`df_one_quantile_is_one_over_excel_tan` pins t3349 A3 and A10 (`T.INV.2T(0.999999999999999,1)` = 1.6155696572206502E-15) bit for bit.

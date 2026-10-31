@@ -765,7 +765,8 @@ mod tests {
         // T-2724: two-tailed quantiles with p near 1, against the true quantile at the double p
         // (mpmath, 40 digits, `I_w(1/2, df/2) = 1 - p`), within 1E-15 relative; statrs' 1 - y lost
         // most digits (`TINV(1-1E-10,5)` was 2.36E-8) and gave 0 at 1-1E-16.
-        // df 1 is Excel's 1/TAN form, not the true quantile, so it is left out (TODO(T-2858)).
+        // df 1 is Excel's 1/TAN form, not the true quantile: `t_inv_of` takes it before this path
+        // (`df_one_quantile_is_one_over_excel_tan`, T-2858).
         for (df, p, exact) in [
             (2.0, 0.999_999, 1.414_213_562_414_469e-6),
             (2.0, 1.0 - 1e-10, 1.414_213_679_385_65e-10),
@@ -850,6 +851,16 @@ mod tests {
         assert_eq!(-cauchy_two_tail_quantile(2.0 - 1.5), -1.0);
         // TINV(1-1E-10,1)
         assert_eq!(cauchy_two_tail_quantile(1.0 - 1e-10), 1.570797438519081e-10);
+        // Near p = 1, ahead of T-2724's centre kernel (probes/t3349-t-inv-2t-near-one A3, A10):
+        // Excel is the 1/TAN form, not the true quantile (1.5695408241038844E-15 at A10).
+        assert_eq!(
+            cauchy_two_tail_quantile(0.999_999_999_989_522),
+            1.645_889_555_288_576_6e-11
+        );
+        assert_eq!(
+            cauchy_two_tail_quantile(0.999_999_999_999_999),
+            1.615_569_657_220_650_2e-15
+        );
         // TINV(1+2^-52,1) = -t2(2 - p)
         assert_eq!(
             -cauchy_two_tail_quantile(2.0 - (1.0 + f64::EPSILON)),

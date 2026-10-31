@@ -3460,7 +3460,7 @@ and D15/D37 (p = 0.5000000000000001) = 0.9999999999999996; probes-numeric/t1531-
 m9-t-inv-2t A1-A13, m9-t-inv A1-A13; gen-m9 334f3dc9ca937f10 A23 `TINV(1E-300,1)`, 5389dd4d5b5739d2 A299
 `TINV(1-1E-10,1)`, a4090567758520df A307 `TINV(1+2^-52,1)`. The full cell list is in T-2858. At df = 1 this closed form takes precedence over the general
 SQRT(df*(1/y-1)) form below (T-3061), which gives the same cells only to 0 or 1 ulp.
-Ours: `statrs`' inverse or the tail asymptotic (`t_quantile`, `t_tail_quantile` in t_dist.rs), from 1 ulp to the 14th
+Ours before T-2858: `statrs`' inverse or the tail asymptotic (`t_quantile`, `t_tail_quantile` in t_dist.rs), from 1 ulp to the 14th
 digit off (`TINV(0.5,1)` 1.0000000000000016), and to 100% off near p = 1 (`TINV(1-1E-10,1)` 1.05E-8).
 Implemented in: T-2858 (`cauchy_two_tail_quantile` in t_dist.rs, used by `t_inv_of` and `confidence_t_of`). Two-tailed p = 1 is
 exactly 0 (`TINV(1,1)`, `TINV(1-1E-17,1)`: gen-m9 0620505280d2ea6e A90, 7f7ca726c3f68554 A166), not `1/TAN(π/2)` = 6.1E-17.
