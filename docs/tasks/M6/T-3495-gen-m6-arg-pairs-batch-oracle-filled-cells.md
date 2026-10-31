@@ -3,7 +3,7 @@ id: T-3495
 title: "gen-m6 arg-pairs batch: oracle-filled cells for the unseen argument-class pairs of the 14 M6 date functions (WEEKDAY, NETWORKDAYS.INTL, YEARFRAC, DATEDIF, DAYS360, WORKDAY.INTL, ...)"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
