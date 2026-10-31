@@ -3,7 +3,7 @@ id: T-3406
 title: "IRR on conventional flows: find which series Excel leaves #NUM! where the secant fails (the v = 1 Newton split misses 4 hold-out cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
