@@ -57,6 +57,8 @@ below, T-1450), non-ASCII letters (only `ü` is probed; the engine treats every 
     - With fraction digits `s.0`, `s.00` or `s.000`, the step is half of the last shown digit and General prints in
       units of that digit. `TEXT(5,"s.0 General")` = "0.0 0.5", `TEXT(45000,"s.0 General")` = "0.0 0.499997288",
       `TEXT(5,"s.00 General")` = "0.00 0.500000003", `TEXT(45000,"s.000 General")` = "0.000 0.499770977".
+      These are all whole serials. That the value is the seconds within the minute in those units when the time of day
+      has seconds (`TEXT(12345.678,"s.0 General")`) is an unprobed extrapolation; T-3419 probes it.
   - With only elapsed tokens (`[h]`, `[m]`, `[s]`), General prints the value's magnitude. `TEXT(5.25,"[h] General")` =
     "126 5.25", `TEXT(0.001,"[s] General")` = "86 0.001", `TEXT(-5,"[h] General")` = "-120 5". A negative stays
     formattable in the 1900 system, as with a lone elapsed token. Unprobed extrapolations, implemented this way and

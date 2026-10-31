@@ -40,6 +40,8 @@ formats like Excel. `TEXT(5,"d [h] General")` is "5 12 0.5" in Excel, and the en
   - `TEXT(5,"d 0 General")`: the engine and a unit test say `#VALUE!` (a digit beside a date token), with no oracle
     cell yet.
   - `TEXT(45000,"mmm d, yyyy General")`: a literal comma in a date section.
+  - `TEXT(12345.678,"s.0 General")` and `TEXT(0.99999,"s.00 General")`: the fraction-digit residue when the time of
+    day has seconds (only whole serials are probed).
 - Code: the `ParsePart::Date` arm of `format_number` (crates/rustsheet-engine/src/formatter/format.rs) and
   `general_in_date_section` in elapsed.rs.
 
