@@ -11,8 +11,8 @@ use crate::locale::calendar_date_names::{
 };
 pub use crate::locale::excel_date_names::DateNames;
 use crate::locale::excel_date_names::{
-    ARABIC, ARABIC_LEVANT, EN_US, HIJRI_ARABIC, HIJRI_ENGLISH, HIJRI_FRENCH, HIJRI_TURKISH,
-    LOCALES, LUNAR_JA, LUNAR_KO, LUNAR_ZH,
+    ARABIC, ARABIC_LEVANT, BCP47_ONLY, EN_US, HIJRI_ARABIC, HIJRI_ENGLISH, HIJRI_FRENCH,
+    HIJRI_TURKISH, LOCALES, LUNAR_JA, LUNAR_KO, LUNAR_ZH,
 };
 
 /// The calendar a locale tag selects: what `yy`, `yyyy`, `b`, `e` and `g` print.
@@ -413,6 +413,20 @@ fn by_language(lcid: u16) -> Option<&'static DateNames> {
 /// Hijri after a `B2` prefix.
 fn resolve_bcp47(tag: &str, hijri_prefix: bool) -> LocaleTag {
     let resolve_id = |id: u16| resolve_lcid(hijri_default(u32::from(id), hijri_prefix));
+    if let Some((_, names)) = BCP47_ONLY
+        .iter()
+        .find(|(t, _)| t.eq_ignore_ascii_case(tag))
+        .filter(|_| !hijri_prefix)
+    {
+        return LocaleTag::Names(Localized {
+            names,
+            day_half: Some(names),
+            calendar: Calendar::Gregorian,
+            japanese_lcid: false,
+            year_twice: false,
+            names_after_mmm: None,
+        });
+    }
     if let Some((id, _, _)) = LOCALES.iter().find(|(_, t, _)| t.eq_ignore_ascii_case(tag)) {
         return resolve_id(*id);
     }

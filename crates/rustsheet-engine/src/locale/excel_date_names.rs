@@ -657,9 +657,13 @@ static TR: DateNames = DateNames {
     pm: "ÖS",
 };
 
+/// Tags probed only as BCP-47 (no LCID of their own that was probed): `[$-pt-AO]` has the pt-PT
+/// names with other `ddd` and day halves (probes/text-locale-regional-lcids-2 J1-J21, T-1875).
+pub(crate) static BCP47_ONLY: [(&str, &DateNames); 1] = [("pt-AO", &PT_AO)];
+
 /// The probed locales: LCID, BCP-47 tag and names. For a fallback by language the first entry
 /// of the language wins, so the order matters: `[$-zh]` and `[$-4]` are Traditional Chinese.
-pub(crate) static LOCALES: [(u16, &str, &DateNames); 43] = [
+pub(crate) static LOCALES: [(u16, &str, &DateNames); 42] = [
     (0x409, "en-US", &EN),
     (0x809, "en-GB", &EN),
     (0x40C, "fr-FR", &FR),
@@ -695,8 +699,6 @@ pub(crate) static LOCALES: [(u16, &str, &DateNames); 43] = [
     (0x5C0A, "es-419", &ES_419),
     (0x1007, "de-LU", &DE_LU),
     (0x1407, "de-LI", &DE_LU),
-    // 0x1000 is only a placeholder key so the BCP-47 tag `pt-AO` resolves; Excel has no pt-AO LCID here.
-    (0x1000, "pt-AO", &PT_AO),
     (0x408, "el-GR", &EL),
     (0x41E, "th-TH", &TH),
     (0x41B, "sk-SK", &SK),

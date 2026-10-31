@@ -145,7 +145,7 @@ pub(super) static ES_AR: DateNames = DateNames {
     pm: "p.\u{a0}m.",
 };
 
-/// es-CO and es-CL (T-1875): the es-AR names, except that es-CL prints "sept." for September.
+/// es-CL (T-1875; es-CO equals es-AR): the es-AR names, except that it prints "sept." for September.
 /// Excel: probes/text-locale-regional-lcids-2 A1-A21, B1-B21.
 pub(super) static ES_CL: DateNames = DateNames {
     months_short: [
