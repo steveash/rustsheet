@@ -44,6 +44,10 @@
     (condition 4); T-3269 covers x > 30.
   - eval/baseline/gen-m9.txt gains the line for `CHIDIST(42,7)` and loses the fixed cells' lines;
     eval/baseline/ironcalc-calc.txt loses CHISQ.xlsx G3; `update-baseline --allow-regressions` writes both.
-  - quality/fitted.json loses half_integer.rs's one FITTED tag (the 3a cut is gone).
+  - Against main, quality/fitted.json is unchanged: the kernel carries no fitted piece (an earlier commit on this branch
+    added a 3a cut and its tag, and both are gone).
+  - New coverage, not a loss: on this PR's own new probe, probes-numeric/t3285-chisq-dist-rt-half-integer-sweep,
+    A51 and A101 (both past x = 25, T-3269's region) are visibly off on this head as they are on main's engine; no
+    existing Excel evidence is lost (T-3461 and T-3469 own the region).
   - Decision 0188 R4: with no fitted piece, R4.1's hold-out does not apply; R4.2's fresh sweep
     (probes-numeric/t3285-chisq-dist-rt-half-integer-sweep, docs/research/t3285) is in T-3285's Outcome.
