@@ -43,6 +43,9 @@ over formatted number operands, VALUE forms beyond T-3136's set, a percent opera
     plain numeric criterion;
   - `VALUE` of every operand beside it (column H, as in T-3136), so a row that disagrees with VALUE
     stands out.
+  - also (folded in from a duplicate filed by gap triage 2026-10-30e): `"-$1e2"`,
+    `">=January 2, 2020 12:00"`, `"<1 1/2"`, the operand `"="&CHAR(160)&"$1"`, and the percent tie's
+    neighbours one ulp either side of the cell value.
 
 ## Acceptance criteria
 - [ ] A new probe case `probes/t3334-criteria-operand-forms` (excel-probe skill, tag `M2`), filled
