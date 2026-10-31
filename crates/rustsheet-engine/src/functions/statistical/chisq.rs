@@ -66,6 +66,7 @@ fn chi_squared_sf(dist: &Gamma, x: f64) -> f64 {
 /// any threshold in (1E-(k+1), 1E-k] scores the same, and a p strictly inside a decade is unprobed.
 /// Every probed cell is CHISQ.INV.RT; CHIINV takes the same edge by inference, as it shares the
 /// function elsewhere, not by probe (TODO(T-3310)).
+/// FITTED(T-2561, 1320 cells, df 3..42, p 1E-20..1E-300)
 const RIGHT_TAIL_P_MIN: [f64; 40] = [
     1e-20, 1e-27, 1e-35, 1e-43, 1e-52, 1e-62, 1e-72, 1e-81, 1e-87, 1e-90, 1e-94, 1e-99, 1e-104,
     1e-110, 1e-116, 1e-121, 1e-127, 1e-133, 1e-139, 1e-146, 1e-152, 1e-158, 1e-165, 1e-171, 1e-178,

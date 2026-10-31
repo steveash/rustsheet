@@ -3510,6 +3510,27 @@ off (its y about 4E-12; T-1542).
 Ours: the exact quantile (A&S 26.7.5 from df 1E5, statrs' inverse below), so up to 2.2E-7 relative away at huge df:
 T-3061.
 
+## Two-tailed Student-t quantile with p near 1 is accurate in Excel (T-3349)
+Rule: for df from 2 up, `T.INV.2T(p,df)`, `TINV(p,df)` and `CONFIDENCE.T(p,sd,n)` with p just below or above 1 return
+the small quantile to the 15th digit of the exact value: Excel solves the centre directly, never forming 1 - p/2.
+`T.INV.2T(0.999999999989522,2)` is 1.481806159731988E-11 (exact 1.48180615973198...E-11; decision 0188 item 3,
+where the engine gave 1.49E-8 before T-2724), `T.INV.2T(0.999999999999999,2)` 1.4130832128154019E-15 (c = 1 - p is 9.99E-16 in doubles), and so on for c from
+1E-3 to 1E-15 at df 2, 5, 30, 1000 and 1E6 and for p = 1.001 and 1.000000001 at df 2 (the negative quantile,
+`T.INV.2T(1.000000001,2)` = -1.4142136793856508E-9; the literal 1.000000000000001 has 16 digits and reads as 1, giving 0).
+At df 1 Excel is the 1/TAN form instead (T-2858's entry above), up to 2.9% off the exact value at
+`T.INV.2T(0.999999999999999,1)` (Excel 1.6155696572206502E-15, exact 1.5695408241038844E-15).
+Evidence: probes/t3349-t-inv-2t-near-one A1-A44 (excel-graph, 2026-10-31): every cell from df 2 up is within 15
+significant digits of the exact quantile (mpmath at 60 digits) and of the engine; the df 1 cells A3, A6-A10 match the
+1/TAN form, and A5 (`CONFIDENCE.T(0.999999999989522,1,3)` = 8.555211852081089E-12, exact 8.5552118520810793E-12) is
+Excel's last digits, 1.1E-15 relative off. Fresh sweep: probes-numeric/t3349-t-inv-2t-sweep (300 stratified points; the
+counts are in T-3349's Outcome). In that sweep Excel is more than 1E-4 off the exact value at a tiny p and a large df,
+p from 1.38E-300 to 1.73E-110 and df from 2490 up (42 points, A211-A300; `T.INV.2T(6.68863396408457E-199,2490)` is
+100.83724584548176 in Excel, exact 33.047211122914894): the tiny-p pattern of "MATH-OVER-EXCEL" case 1, which lists
+T.INV only and from p 1E-150; whether it extends to T.INV.2T needs an owner ruling (T-3386).
+Ours: the centre crossing of `student_t_centre` (T-2724), within about 5E-16 of the exact value.
+Status: VERIFIED (excel-graph)
+Tasks: T-3349, T-2724, T-2858
+
 ## Inverse CDF functions at a tiny or near-1 probability (T-1543)
 Rule: NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and BETA.INV return a value (or `#NUM!`) for p from 1E-300 to 1-1E-16; none panics or hangs in Excel.
 
