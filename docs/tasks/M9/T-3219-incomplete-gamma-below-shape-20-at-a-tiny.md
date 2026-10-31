@@ -57,6 +57,16 @@ Cells (from T-2638; run `make eval-show CASE=...` for the values):
 - probes/t2753-gamma-density-ratio-sweep S!A20, A46, A47, A48, B20, B21, B46, B47, B48.
 Also visibly off and T-2638's before: probes-numeric m9-legacy-chidist A71, A72 `CHIDIST(1000,30)` (shape 15).
 
+Evidence from the T-3509 held-out probe (docs/research/t3509/README.md, score-main-744815d06.out; excel-graph,
+2026-10-31; never fit to it, score it before and after): GAMMA.DIST at scale 1 and shape 2.5 to 20 is visibly off at
+25 of 46 cdf cells and 23 of 46 density cells, all at x/a below 0.5, most below 1E-6 (17 cdf, 15 density). There
+Excel is 22 to 72 ulp (median by x/a bucket) from the 50-digit math, at most 2.8E-14 relative, and ours 1 to 3 ulp:
+Excel's own form, not an accuracy gap. The same region is T-3412's (Excel's leading-factor series form above shape
+1, filed on T-3311's branch, not yet on main): whichever lands first scores these cells, and the other names it.
+Example: A31 `GAMMA.DIST(2.99093236925923E-09,15.9819911769224,1,TRUE)` Excel 2.9357492812870526E-150, ours (and the
+math) 2.9357492812871356E-150.
+- probes-numeric/t3509-blind-gamma-dist.case.json (48): S!A10, A25, A31, A52, A59, A97, A110, A122, A126, A135, A173, A174, A240, A248, A249, A283, A335, A359, A390, A405, A411, A424, A426, A432, A448, B10, B14, B25, B31, B75, B97, B122, B126, B135, B173, B174, B184, B248, B283, B335, B342, B359, B365, B387, B390, B424, B432, B448
+
 ## Acceptance criteria
 - [ ] Each cell above is within half a unit of Excel's 15th significant digit, with no new baseline line.
 - [ ] The candidates tried, with their per-cell ulp, are recorded in docs/excel-semantics/statistics.md; after this

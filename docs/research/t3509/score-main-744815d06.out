@@ -1,0 +1,466 @@
+function         shape    x/shape or p      n | ours vs Excel    =   4u  15d  off | ours vs math    =   4u  15d  off | Excel vs math    =   4u  15d  off | outA nomath
+CHISQ.DIST.RT    0.5-2.5  <1E-6            26 |                23    3    0    0 |               26    0    0    0 |                23    3    0    0 |    0      0
+CHISQ.DIST.RT    0.5-2.5  1E-6..1E-3       35 |                32    3    0    0 |               35    0    0    0 |                32    3    0    0 |    0      0
+CHISQ.DIST.RT    0.5-2.5  1E-3..0.5        30 |                27    3    0    0 |               28    2    0    0 |                27    3    0    0 |    0      0
+CHISQ.DIST.RT    0.5-2.5  0.5..1.4          4 |                 1    2    1    0 |                1    2    1    0 |                 3    1    0    0 |    0      0
+CHISQ.DIST.RT    0.5-2.5  1.4..10           4 |                 2    1    1    0 |                2    1    1    0 |                 3    1    0    0 |    0      0
+CHISQ.DIST.RT    0.5-2.5  >=10             10 |                 7    0    0    3 |                4    3    0    3 |                 2    2    1    5 |    0      0
+CHISQ.DIST.RT    2.5-20   <1E-6            28 |                28    0    0    0 |               28    0    0    0 |                28    0    0    0 |    0      0
+CHISQ.DIST.RT    2.5-20   1E-6..1E-3       47 |                46    1    0    0 |               47    0    0    0 |                46    1    0    0 |    0      0
+CHISQ.DIST.RT    2.5-20   1E-3..0.5        42 |                34    8    0    0 |               42    0    0    0 |                34    8    0    0 |    0      0
+CHISQ.DIST.RT    2.5-20   0.5..1.4          4 |                 1    3    0    0 |                2    2    0    0 |                 1    3    0    0 |    0      0
+CHISQ.DIST.RT    2.5-20   1.4..10          10 |                 0    6    2    2 |                0   10    0    0 |                 1    5    2    2 |    0      0
+CHISQ.DIST.RT    2.5-20   >=10             16 |                 0    2    3   11 |                1   15    0    0 |                 0    1    4   11 |    0      0
+CHISQ.DIST.RT    20-1E3   <1E-6            43 |                43    0    0    0 |               43    0    0    0 |                43    0    0    0 |    0      0
+CHISQ.DIST.RT    20-1E3   1E-6..1E-3       77 |                77    0    0    0 |               77    0    0    0 |                77    0    0    0 |    0      0
+CHISQ.DIST.RT    20-1E3   1E-3..0.5        72 |                72    0    0    0 |               72    0    0    0 |                72    0    0    0 |    0      0
+CHISQ.DIST.RT    20-1E3   0.5..1.4          6 |                 5    1    0    0 |                4    2    0    0 |                 5    1    0    0 |    0      0
+CHISQ.DIST.RT    20-1E3   1.4..10          28 |                 7   13    0    8 |                5    1    0   22 |                 5    1    1   21 |    0      0
+CHISQ.DIST.RT    20-1E3   >=10             18 |                16    2    0    0 |               16    0    0    2 |                16    0    0    2 |    0      0
+
+CHISQ.INV.RT     0.5-2.5  p<1E-100         67 |                67    0    0    0 |               26    0    0   41 |                26    0    0   41 |    0      0
+CHISQ.INV.RT     0.5-2.5  1E-100..1E-10    23 |                23    0    0    0 |               10    0    0   13 |                10    0    0   13 |    0      0
+CHISQ.INV.RT     0.5-2.5  1E-10..0.5        2 |                 2    0    0    0 |                2    0    0    0 |                 2    0    0    0 |    0      0
+CHISQ.INV.RT     2.5-20   p<1E-100         96 |                88    8    0    0 |                5    6    0   85 |                 9    2    0   85 |    0      0
+CHISQ.INV.RT     2.5-20   1E-100..1E-10    48 |                29   19    0    0 |               16   22    0   10 |                25   13    0   10 |    0      0
+CHISQ.INV.RT     20-1E3   p<1E-100        174 |                71  102    1    0 |               76   98    0    0 |               123   50    1    0 |    0      0
+CHISQ.INV.RT     20-1E3   1E-100..1E-10    81 |                27   54    0    0 |               38   43    0    0 |                55   26    0    0 |    0      0
+CHISQ.INV.RT     20-1E3   1E-10..0.5        8 |                 4    4    0    0 |                5    3    0    0 |                 7    1    0    0 |    0      0
+CHISQ.INV.RT     20-1E3   0.5..1-1E-6       1 |                 0    1    0    0 |                0    1    0    0 |                 1    0    0    0 |    0      0
+
+GAMMA            <0       -                46 |                43    3    0    0 |                5   34    5    2 |                 6   33    5    2 |    0      0
+GAMMA            <0.5     -                 1 |                 1    0    0    0 |                0    1    0    0 |                 0    1    0    0 |    0      0
+GAMMA            0.5-2.5  -                 2 |                 2    0    0    0 |                0    2    0    0 |                 0    2    0    0 |    0      0
+GAMMA            2.5-20   -                21 |                20    1    0    0 |                7   12    2    0 |                 6   13    2    0 |    0      0
+GAMMA            20-1E3   -               230 |               230    0    0    0 |                9   56   68   97 |                 9   56   68   97 |    0      0
+
+GAMMA.DIST cdf   <0.5     <1E-6            57 |                26   28    3    0 |               30   27    0    0 |                23   32    2    0 |    0      0
+GAMMA.DIST cdf   <0.5     1E-6..1E-3       20 |                13    7    0    0 |               15    5    0    0 |                12    8    0    0 |    0      0
+GAMMA.DIST cdf   <0.5     1E-3..0.5        21 |                13    8    0    0 |               16    5    0    0 |                14    7    0    0 |    0      0
+GAMMA.DIST cdf   <0.5     0.5..1.4          3 |                 3    0    0    0 |                3    0    0    0 |                 3    0    0    0 |    0      0
+GAMMA.DIST cdf   <0.5     1.4..10           7 |                 6    1    0    0 |                6    1    0    0 |                 6    1    0    0 |    0      0
+GAMMA.DIST cdf   <0.5     >=10             20 |                15    5    0    0 |               20    0    0    0 |                15    5    0    0 |    0      0
+GAMMA.DIST cdf   0.5-2.5  <1E-6            15 |                 0    4    4    7 |                3   12    0    0 |                 0    2    7    6 |    0      0
+GAMMA.DIST cdf   0.5-2.5  1E-6..1E-3        8 |                 1    5    2    0 |                1    7    0    0 |                 1    5    2    0 |    0      0
+GAMMA.DIST cdf   0.5-2.5  1E-3..0.5        10 |                 1    8    1    0 |                2    8    0    0 |                 2    8    0    0 |    0      0
+GAMMA.DIST cdf   0.5-2.5  >=10              8 |                 8    0    0    0 |                8    0    0    0 |                 8    0    0    0 |    0      0
+GAMMA.DIST cdf   2.5-20   <1E-6            20 |                 0    0    3   17 |                5   15    0    0 |                 0    1    3   16 |    0      0
+GAMMA.DIST cdf   2.5-20   1E-6..1E-3       10 |                 0    0    4    6 |                4    5    1    0 |                 0    2    2    6 |    0      0
+GAMMA.DIST cdf   2.5-20   1E-3..0.5         9 |                 0    5    2    2 |                2    7    0    0 |                 0    4    2    3 |    0      0
+GAMMA.DIST cdf   2.5-20   0.5..1.4          1 |                 0    1    0    0 |                0    1    0    0 |                 0    1    0    0 |    0      0
+GAMMA.DIST cdf   2.5-20   >=10              6 |                 6    0    0    0 |                6    0    0    0 |                 6    0    0    0 |    0      0
+GAMMA.DIST cdf   20-1E3   <1E-6            29 |                27    0    0    2 |               25    1    1    2 |                25    1    0    3 |    0      0
+GAMMA.DIST cdf   20-1E3   1E-6..1E-3       22 |                19    0    0    3 |               18    0    1    3 |                18    0    0    4 |    0      0
+GAMMA.DIST cdf   20-1E3   1E-3..0.5        17 |                 5    6    0    6 |                2    1    0   14 |                 2    1    0   14 |    0      0
+GAMMA.DIST cdf   20-1E3   0.5..1.4          1 |                 0    1    0    0 |                0    1    0    0 |                 1    0    0    0 |    0      0
+GAMMA.DIST cdf   20-1E3   1.4..10           2 |                 2    0    0    0 |                2    0    0    0 |                 2    0    0    0 |    0      0
+GAMMA.DIST cdf   20-1E3   >=10              8 |                 8    0    0    0 |                8    0    0    0 |                 8    0    0    0 |    0      0
+GAMMA.DIST cdf   >=1E3    <1E-6            74 |                74    0    0    0 |               74    0    0    0 |                74    0    0    0 |    0      0
+GAMMA.DIST cdf   >=1E3    1E-6..1E-3       41 |                41    0    0    0 |               41    0    0    0 |                41    0    0    0 |    0      0
+GAMMA.DIST cdf   >=1E3    1E-3..0.5        40 |                40    0    0    0 |               39    0    0    1 |                39    0    0    1 |    0      0
+GAMMA.DIST cdf   >=1E3    0.5..1.4         10 |                 9    0    0    1 |                9    0    0    1 |                 9    0    0    1 |    0      0
+GAMMA.DIST cdf   >=1E3    1.4..10          14 |                14    0    0    0 |               14    0    0    0 |                14    0    0    0 |    0      0
+GAMMA.DIST cdf   >=1E3    >=10             27 |                27    0    0    0 |               27    0    0    0 |                27    0    0    0 |    0      0
+
+GAMMA.DIST pdf   <0.5     <1E-6            57 |                13   42    1    1 |               11   45    1    0 |                24   31    1    1 |    0      0
+GAMMA.DIST pdf   <0.5     1E-6..1E-3       20 |                 5   14    1    0 |                7   13    0    0 |                 9   11    0    0 |    0      0
+GAMMA.DIST pdf   <0.5     1E-3..0.5        21 |                 0   20    1    0 |                4   17    0    0 |                14    7    0    0 |    0      0
+GAMMA.DIST pdf   <0.5     0.5..1.4          3 |                 0    3    0    0 |                0    3    0    0 |                 3    0    0    0 |    0      0
+GAMMA.DIST pdf   <0.5     1.4..10           7 |                 2    5    0    0 |                4    3    0    0 |                 4    3    0    0 |    0      0
+GAMMA.DIST pdf   <0.5     >=10             20 |                 8   12    0    0 |                7   13    0    0 |                 6   14    0    0 |    0      0
+GAMMA.DIST pdf   0.5-2.5  <1E-6            15 |                 2   13    0    0 |                0    3    3    9 |                 0    5    4    6 |    0      0
+GAMMA.DIST pdf   0.5-2.5  1E-6..1E-3        8 |                 1    7    0    0 |                0    7    1    0 |                 1    5    2    0 |    0      0
+GAMMA.DIST pdf   0.5-2.5  1E-3..0.5        10 |                 5    5    0    0 |                1    9    0    0 |                 4    6    0    0 |    0      0
+GAMMA.DIST pdf   0.5-2.5  >=10              8 |                 3    4    0    1 |                4    3    0    1 |                 3    3    0    2 |    0      0
+GAMMA.DIST pdf   2.5-20   <1E-6            20 |                 0    3    2   15 |                4   14    1    1 |                 0    1    3   16 |    0      0
+GAMMA.DIST pdf   2.5-20   1E-6..1E-3       10 |                 0    2    2    6 |                4    5    0    1 |                 1    0    2    7 |    0      0
+GAMMA.DIST pdf   2.5-20   1E-3..0.5         9 |                 0    5    2    2 |                4    5    0    0 |                 0    5    2    2 |    0      0
+GAMMA.DIST pdf   2.5-20   0.5..1.4          1 |                 0    1    0    0 |                1    0    0    0 |                 0    1    0    0 |    0      0
+GAMMA.DIST pdf   2.5-20   >=10              6 |                 3    3    0    0 |                1    0    1    4 |                 1    0    1    4 |    0      0
+GAMMA.DIST pdf   20-1E3   <1E-6            29 |                27    0    0    2 |               25    0    1    3 |                25    0    0    4 |    0      0
+GAMMA.DIST pdf   20-1E3   1E-6..1E-3       22 |                19    0    0    3 |               18    0    1    3 |                18    0    0    4 |    0      0
+GAMMA.DIST pdf   20-1E3   1E-3..0.5        17 |                 3    8    0    6 |                2    0    1   14 |                 2    0    1   14 |    0      0
+GAMMA.DIST pdf   20-1E3   0.5..1.4          1 |                 0    0    1    0 |                1    0    0    0 |                 0    0    1    0 |    0      0
+GAMMA.DIST pdf   20-1E3   1.4..10           2 |                 2    0    0    0 |                2    0    0    0 |                 2    0    0    0 |    0      0
+GAMMA.DIST pdf   20-1E3   >=10              8 |                 7    1    0    0 |                7    0    0    1 |                 7    0    0    1 |    0      0
+GAMMA.DIST pdf   >=1E3    <1E-6            74 |                74    0    0    0 |               74    0    0    0 |                74    0    0    0 |    0      0
+GAMMA.DIST pdf   >=1E3    1E-6..1E-3       41 |                41    0    0    0 |               41    0    0    0 |                41    0    0    0 |    0      0
+GAMMA.DIST pdf   >=1E3    1E-3..0.5        40 |                40    0    0    0 |               39    0    0    1 |                39    0    0    1 |    0      0
+GAMMA.DIST pdf   >=1E3    0.5..1.4         10 |                 6    0    0    4 |                6    1    1    2 |                 6    0    0    4 |    0      0
+GAMMA.DIST pdf   >=1E3    1.4..10          14 |                12    1    0    1 |               12    0    0    2 |                12    0    0    2 |    0      0
+GAMMA.DIST pdf   >=1E3    >=10             27 |                27    0    0    0 |               27    0    0    0 |                27    0    0    0 |    0      0
+
+GAMMA.INV        <0.5     p<1E-100         36 |                36    0    0    0 |               36    0    0    0 |                36    0    0    0 |    0      0
+GAMMA.INV        <0.5     1E-100..1E-10    14 |                13    0    0    1 |               11    0    1    2 |                11    0    1    2 |    0      0
+GAMMA.INV        <0.5     1E-10..0.5        2 |                 1    0    0    1 |                1    0    0    1 |                 1    0    1    0 |    0      0
+GAMMA.INV        <0.5     0.5..1-1E-6      57 |                 3   13    7   34 |                6   10   10   31 |                 3    9   10   35 |    0      0
+GAMMA.INV        <0.5     >=1-1E-6          2 |                 1    1    0    0 |                1    1    0    0 |                 2    0    0    0 |    0      0
+GAMMA.INV        0.5-2.5  p<1E-100         15 |                10    0    0    5 |                1    2    0   12 |                 0    2    0   13 |    0      0
+GAMMA.INV        0.5-2.5  1E-100..1E-10     6 |                 3    1    0    2 |                1    1    1    3 |                 0    3    2    1 |    0      0
+GAMMA.INV        0.5-2.5  1E-10..0.5        1 |                 0    1    0    0 |                0    1    0    0 |                 0    1    0    0 |    0      0
+GAMMA.INV        0.5-2.5  0.5..1-1E-6      19 |                 5   12    2    0 |                2   15    2    0 |                 1   16    1    1 |    0      0
+GAMMA.INV        2.5-20   p<1E-100         23 |                11    1    4    7 |                1   11    3    8 |                 0    4    7   12 |    0      0
+GAMMA.INV        2.5-20   1E-100..1E-10    11 |                 1    7    1    2 |                7    3    0    1 |                 1    9    0    1 |    0      0
+GAMMA.INV        2.5-20   1E-10..0.5        2 |                 1    0    1    0 |                0    2    0    0 |                 0    1    1    0 |    0      0
+GAMMA.INV        2.5-20   0.5..1-1E-6      17 |                 6   10    0    1 |                5   12    0    0 |                 7    9    0    1 |    0      0
+GAMMA.INV        20-1E3   p<1E-100         34 |                 4   22    7    1 |                7   25    2    0 |                 6   22    5    1 |    0      0
+GAMMA.INV        20-1E3   1E-100..1E-10    15 |                 3   11    1    0 |                6    9    0    0 |                 5    9    1    0 |    0      0
+GAMMA.INV        20-1E3   1E-10..0.5        2 |                 1    1    0    0 |                1    1    0    0 |                 2    0    0    0 |    0      0
+GAMMA.INV        20-1E3   0.5..1-1E-6      48 |                18   30    0    0 |               19   29    0    0 |                47    1    0    0 |    0      0
+GAMMA.INV        20-1E3   >=1-1E-6          2 |                 1    1    0    0 |                1    1    0    0 |                 0    2    0    0 |    0      0
+GAMMA.INV        >=1E3    p<1E-100         71 |                31   40    0    0 |               30   41    0    0 |                57   14    0    0 |    0      0
+GAMMA.INV        >=1E3    1E-100..1E-10    28 |                14   14    0    0 |               15   13    0    0 |                25    3    0    0 |    0      0
+GAMMA.INV        >=1E3    1E-10..0.5        2 |                 2    0    0    0 |                1    1    0    0 |                 1    1    0    0 |    0      0
+GAMMA.INV        >=1E3    0.5..1-1E-6      89 |                49   39    0    1 |               49   39    0    1 |                87    2    0    0 |    1      0
+GAMMA.INV        >=1E3    >=1-1E-6          4 |                 1    3    0    0 |                0    3    0    1 |                 3    0    0    1 |    0      0
+
+GAMMALN          <0.5     -               125 |               124    1    0    0 |               94   31    0    0 |                93   32    0    0 |    0      0
+GAMMALN          0.5-2.5  -                10 |                 8    2    0    0 |                3    7    0    0 |                 5    5    0    0 |    0      0
+GAMMALN          2.5-20   -                24 |                24    0    0    0 |               17    7    0    0 |                17    7    0    0 |    0      0
+GAMMALN          20-1E3   -                40 |                40    0    0    0 |               21   19    0    0 |                21   19    0    0 |    0      0
+GAMMALN          >=1E3    -               101 |               101    0    0    0 |               54   47    0    0 |                54   47    0    0 |    0      0
+
+POISSON cdf      0.5-2.5  1E-3..0.5        35 |                31    4    0    0 |               34    1    0    0 |                30    5    0    0 |    0      0
+POISSON cdf      0.5-2.5  0.5..1.4          4 |                 3    1    0    0 |                3    1    0    0 |                 4    0    0    0 |    0      0
+POISSON cdf      0.5-2.5  1.4..10           6 |                 5    1    0    0 |                5    1    0    0 |                 6    0    0    0 |    0      0
+POISSON cdf      0.5-2.5  >=10              5 |                 1    3    1    0 |                1    4    0    0 |                 2    1    1    1 |    0      0
+POISSON cdf      2.5-20   1E-3..0.5        50 |                35   15    0    0 |               50    0    0    0 |                35   15    0    0 |    0      0
+POISSON cdf      2.5-20   0.5..1.4          7 |                 3    3    1    0 |                1    6    0    0 |                 1    6    0    0 |    0      0
+POISSON cdf      2.5-20   1.4..10          22 |                 0   10    5    7 |                2   17    2    1 |                 4    7    5    6 |    0      0
+POISSON cdf      2.5-20   >=10             14 |                 0    0    1   13 |                6    8    0    0 |                 0    0    1   13 |    0      0
+POISSON cdf      20-1E3   1E-3..0.5       108 |               107    1    0    0 |              108    0    0    0 |               107    1    0    0 |    0      0
+POISSON cdf      20-1E3   0.5..1.4         12 |                 3    7    0    2 |                3    6    0    3 |                 4    7    1    0 |    0      0
+POISSON cdf      20-1E3   1.4..10          26 |                 7    6    1   12 |                6    1    3   16 |                 6    0    2   18 |    0      0
+POISSON cdf      20-1E3   >=10             18 |                14    2    2    0 |               15    0    0    3 |                14    1    0    3 |    0      0
+POISSON cdf      >=1E3    1E-3..0.5       114 |               114    0    0    0 |              114    0    0    0 |               114    0    0    0 |    0      0
+POISSON cdf      >=1E3    0.5..1.4         23 |                17    0    3    3 |               17    0    2    4 |                17    1    3    2 |    0      0
+POISSON cdf      >=1E3    1.4..10          41 |                38    0    0    3 |               38    0    0    3 |                38    0    0    3 |    0      0
+POISSON cdf      >=1E3    >=10             15 |                15    0    0    0 |               15    0    0    0 |                15    0    0    0 |    0      0
+
+POISSON pmf      0.5-2.5  1E-3..0.5        35 |                25   10    0    0 |               20   15    0    0 |                23   12    0    0 |    0      0
+POISSON pmf      0.5-2.5  0.5..1.4          4 |                 3    1    0    0 |                3    1    0    0 |                 4    0    0    0 |    0      0
+POISSON pmf      0.5-2.5  1.4..10           6 |                 4    2    0    0 |                4    2    0    0 |                 3    3    0    0 |    0      0
+POISSON pmf      0.5-2.5  >=10              5 |                 4    1    0    0 |                2    3    0    0 |                 2    3    0    0 |    0      0
+POISSON pmf      2.5-20   1E-3..0.5        50 |                30   20    0    0 |                8   24    7   11 |                 8   23    8   11 |    0      0
+POISSON pmf      2.5-20   0.5..1.4          7 |                 5    2    0    0 |                3    4    0    0 |                 2    5    0    0 |    0      0
+POISSON pmf      2.5-20   1.4..10          22 |                22    0    0    0 |                2   13    4    3 |                 2   13    4    3 |    0      0
+POISSON pmf      2.5-20   >=10             14 |                14    0    0    0 |                0    1    0   13 |                 0    1    0   13 |    0      0
+POISSON pmf      20-1E3   1E-3..0.5       108 |                95   13    0    0 |               34    5   10   59 |                34    5   10   59 |    0      0
+POISSON pmf      20-1E3   0.5..1.4         12 |                 3    3    4    2 |                0    9    1    2 |                 2    4    3    3 |    0      0
+POISSON pmf      20-1E3   1.4..10          26 |                26    0    0    0 |                6    0    2   18 |                 6    0    2   18 |    0      0
+POISSON pmf      20-1E3   >=10             18 |                17    1    0    0 |               15    0    0    3 |                14    1    0    3 |    0      0
+POISSON pmf      >=1E3    1E-3..0.5       114 |               114    0    0    0 |              113    0    0    1 |               113    0    0    1 |    0      0
+POISSON pmf      >=1E3    0.5..1.4         23 |                10    0    1   12 |                6    0    2   15 |                 6    0    0   17 |    0      0
+POISSON pmf      >=1E3    1.4..10          41 |                41    0    0    0 |               38    0    0    3 |                38    0    0    3 |    0      0
+POISSON pmf      >=1E3    >=10             15 |                15    0    0    0 |               15    0    0    0 |                15    0    0    0 |    0      0
+
+per function
+CHISQ.DIST.RT    all      all             500 |               421   48    7   24 |              433   38    2   27 |               418   33    8   41 |    0      0
+CHISQ.INV.RT     all      all             500 |               311  188    1    0 |              178  173    0  149 |               258   92    1  149 |    0      0
+GAMMA            all      all             300 |               296    4    0    0 |               21  105   75   99 |                21  105   75   99 |    0      0
+GAMMA.DIST cdf   all      all             500 |               358   79   19   44 |              380   96    3   21 |               350   78   18   54 |    0      0
+GAMMA.DIST pdf   all      all             500 |               300  149   10   41 |              306  141   11   42 |               323   92   17   68 |    0      0
+GAMMA.INV        all      all             500 |               215  207   23   55 |              201  220   19   60 |               295  108   29   68 |    1      0
+GAMMALN          all      all             300 |               297    3    0    0 |              189  111    0    0 |               190  110    0    0 |    0      0
+POISSON cdf      all      all             500 |               393   53   14   40 |              418   45    7   30 |               397   44   13   46 |    0      0
+POISSON pmf      all      all             500 |               428   53    5   14 |              269   77   26  128 |               272   70   27  131 |    0      0
+
+visibly-off cells (ours vs Excel), by region
+
+CHISQ.DIST.RT | shape 0.5-2.5 | >=10 (3)
+  t3509-blind-chisq-dist-rt.case.json S!A148 =CHISQ.DIST.RT(166.439634481701,4)  Excel 6.074448885357317e-35  ours 6.074448885357361e-35  math 6.074448885357361e-35
+  t3509-blind-chisq-dist-rt.case.json S!A175 =CHISQ.DIST.RT(72.4649950962071,3)  Excel 1.2656225667089833e-15  ours 1.265622566708978e-15  math 1.2656225667089786e-15
+  t3509-blind-chisq-dist-rt.case.json S!A205 =CHISQ.DIST.RT(190.624804787665,4)  Excel 3.890736321991954e-40  ours 3.890736321991987e-40  math 3.890736321991987e-40
+
+CHISQ.DIST.RT | shape 2.5-20 | 1.4..10 (2)
+  t3509-blind-chisq-dist-rt.case.json S!A80 =CHISQ.DIST.RT(185.834001343503,35)  Excel 1.8676499460115776e-22  ours 1.867649946011587e-22  math 1.8676499460115868e-22
+  t3509-blind-chisq-dist-rt.case.json S!A213 =CHISQ.DIST.RT(79.7942789713537,24)  Excel 6.56092161964637e-08  ours 6.560921619646362e-08  math 6.56092161964636e-08
+
+CHISQ.DIST.RT | shape 2.5-20 | >=10 (11)
+  t3509-blind-chisq-dist-rt.case.json S!A14 =CHISQ.DIST.RT(379.507771372194,32)  Excel 4.817794344060982e-61  ours 4.817794344060997e-61  math 4.817794344060999e-61
+  t3509-blind-chisq-dist-rt.case.json S!A131 =CHISQ.DIST.RT(767.605959440475,21)  Excel 6.637922582956621e-149  ours 6.637922582956543e-149  math 6.6379225829565395e-149
+  t3509-blind-chisq-dist-rt.case.json S!A140 =CHISQ.DIST.RT(440.173690701869,26)  Excel 7.456240496261293e-77  ours 7.456240496261272e-77  math 7.456240496261278e-77
+  t3509-blind-chisq-dist-rt.case.json S!A160 =CHISQ.DIST.RT(136.445500155569,7)  Excel 2.821322485143101e-26  ours 2.821322485143109e-26  math 2.8213224851431083e-26
+  t3509-blind-chisq-dist-rt.case.json S!A178 =CHISQ.DIST.RT(135.515866954812,9)  Excel 8.679537564404265e-25  ours 8.679537564404234e-25  math 8.679537564404236e-25
+  t3509-blind-chisq-dist-rt.case.json S!A222 =CHISQ.DIST.RT(300.685141468964,27)  Excel 5.307126329185661e-48  ours 5.3071263291856985e-48  math 5.307126329185699e-48
+  t3509-blind-chisq-dist-rt.case.json S!A248 =CHISQ.DIST.RT(215.113907274042,16)  Excel 6.86403500213116e-37  ours 6.864035002131204e-37  math 6.864035002131203e-37
+  t3509-blind-chisq-dist-rt.case.json S!A352 =CHISQ.DIST.RT(181.542519133196,6)  Excel 1.5957976012235832e-36  ours 1.59579760122359e-36  math 1.5957976012235902e-36
+  t3509-blind-chisq-dist-rt.case.json S!A413 =CHISQ.DIST.RT(352.498631492986,22)  Excel 2.4133401009112368e-61  ours 2.4133401009112274e-61  math 2.4133401009112274e-61
+  t3509-blind-chisq-dist-rt.case.json S!A437 =CHISQ.DIST.RT(514.020715574009,30)  Excel 1.603038729071094e-89  ours 1.6030387290711255e-89  math 1.6030387290711262e-89
+  t3509-blind-chisq-dist-rt.case.json S!A453 =CHISQ.DIST.RT(377.272449186609,14)  Excel 7.703845787412421e-72  ours 7.703845787412324e-72  math 7.703845787412326e-72
+
+CHISQ.DIST.RT | shape 20-1E3 | 1.4..10 (8)
+  t3509-blind-chisq-dist-rt.case.json S!A28 =CHISQ.DIST.RT(419.573356791675,290)  Excel 9.398659623110899e-07  ours 9.398659623110941e-07  math 9.398659623110919e-07
+  t3509-blind-chisq-dist-rt.case.json S!A84 =CHISQ.DIST.RT(361.118428794895,155)  Excel 1.7137399791597373e-18  ours 1.7137399791597622e-18  math 1.7137399791597533e-18
+  t3509-blind-chisq-dist-rt.case.json S!A135 =CHISQ.DIST.RT(3903.00797150386,1442)  Excel 2.1044439983620602e-225  ours 2.1044439983618206e-225  math 2.1044439983619513e-225
+  t3509-blind-chisq-dist-rt.case.json S!A137 =CHISQ.DIST.RT(189.580667015909,47)  Excel 4.97603693300077e-19  ours 4.976036933000805e-19  math 4.976036933000799e-19
+  t3509-blind-chisq-dist-rt.case.json S!A138 =CHISQ.DIST.RT(608.005844711675,344)  Excel 6.404706784614705e-17  ours 6.404706784614611e-17  math 6.404706784614601e-17
+  t3509-blind-chisq-dist-rt.case.json S!A266 =CHISQ.DIST.RT(294.790918899517,148)  Excel 8.462654316109756e-12  ours 8.462654316109817e-12  math 8.46265431610982e-12
+  t3509-blind-chisq-dist-rt.case.json S!A405 =CHISQ.DIST.RT(178.946021762887,88)  Excel 3.635089769792708e-08  ours 3.635089769792721e-08  math 3.6350897697927087e-08
+  t3509-blind-chisq-dist-rt.case.json S!A432 =CHISQ.DIST.RT(804.940376457806,354)  Excel 3.929680288367349e-37  ours 3.929680288367236e-37  math 3.929680288367281e-37
+
+GAMMA.DIST cdf | shape 0.5-2.5 | <1E-6 (7)
+  t3509-blind-gamma-dist.case.json S!A62 =GAMMA.DIST(7.45986584495088E-11,2.05094603388257,1,TRUE)  Excel 8.088157212465994e-22  ours 8.088157212465939e-22  math 8.088157212465943e-22
+  t3509-blind-gamma-dist.case.json S!A156 =GAMMA.DIST(3.78711152655121E-10,1.91215272407915,1,TRUE)  Excel 5.221464658202527e-19  ours 5.221464658202542e-19  math 5.221464658202543e-19
+  t3509-blind-gamma-dist.case.json S!A198 =GAMMA.DIST(4.90443850268924E-08,0.583544545595403,1,TRUE)  Excel 6.086691931927009e-05  ours 6.0866919319270154e-05  math 6.086691931927014e-05
+  t3509-blind-gamma-dist.case.json S!A222 =GAMMA.DIST(1.38668334327427E-09,1.71246087742162,1,TRUE)  Excel 4.343256823081529e-16  ours 4.343256823081553e-16  math 4.3432568230815523e-16
+  t3509-blind-gamma-dist.case.json S!A280 =GAMMA.DIST(9.79578302180089E-08,1.85916418211864,1,TRUE)  Excel 5.2828632206105715e-14  ours 5.282863220610566e-14  math 5.282863220610565e-14
+  t3509-blind-gamma-dist.case.json S!A386 =GAMMA.DIST(1.07639088286831E-08,1.51732631157696,1,TRUE)  Excel 6.038642348997068e-13  ours 6.038642348997055e-13  math 6.038642348997055e-13
+  t3509-blind-gamma-dist.case.json S!A497 =GAMMA.DIST(1.32794558208847E-09,1.02951251699332,1,TRUE)  Excel 7.17237310435137e-10  ours 7.172373104351382e-10  math 7.172373104351383e-10
+
+GAMMA.DIST cdf | shape 2.5-20 | <1E-6 (17)
+  t3509-blind-gamma-dist.case.json S!A31 =GAMMA.DIST(2.99093236925923E-09,15.9819911769224,1,TRUE)  Excel 2.9357492812870526e-150  ours 2.9357492812871356e-150  math 2.9357492812871356e-150
+  t3509-blind-gamma-dist.case.json S!A97 =GAMMA.DIST(1.1243553065532E-09,3.05786039043499,1,TRUE)  Excel 6.683312249238883e-29  ours 6.683312249238859e-29  math 6.683312249238859e-29
+  t3509-blind-gamma-dist.case.json S!A110 =GAMMA.DIST(6.57014909285296E-09,2.65284299298522,1,TRUE)  Excel 4.9757749622676176e-23  ours 4.97577496226764e-23  math 4.9757749622676394e-23
+  t3509-blind-gamma-dist.case.json S!A122 =GAMMA.DIST(8.27448636251598E-09,19.0852020118266,1,TRUE)  Excel 3.575709246395236e-172  ours 3.575709246395155e-172  math 3.575709246395155e-172
+  t3509-blind-gamma-dist.case.json S!A135 =GAMMA.DIST(2.08021978773807E-11,16.6009752077668,1,TRUE)  Excel 4.10358820549667e-192  ours 4.103588205496753e-192  math 4.1035882054967524e-192
+  t3509-blind-gamma-dist.case.json S!A173 =GAMMA.DIST(6.54276665052048E-06,10.7608991869571,1,TRUE)  Excel 7.317001014421233e-64  ours 7.31700101442133e-64  math 7.317001014421329e-64
+  t3509-blind-gamma-dist.case.json S!A174 =GAMMA.DIST(3.02132798043667E-10,11.5496126515028,1,TRUE)  Excel 7.246986296460396e-119  ours 7.246986296460471e-119  math 7.24698629646047e-119
+  t3509-blind-gamma-dist.case.json S!A240 =GAMMA.DIST(1.48660312065302E-06,2.67879282118642,1,TRUE)  Excel 6.012191925151913e-17  ours 6.012191925151933e-17  math 6.012191925151932e-17
+  t3509-blind-gamma-dist.case.json S!A248 =GAMMA.DIST(9.71042657698788E-10,14.02053034662,1,TRUE)  Excel 4.6993900091169846e-138  ours 4.699390009117028e-138  math 4.6993900091170306e-138
+  t3509-blind-gamma-dist.case.json S!A249 =GAMMA.DIST(1.39260480932502E-06,2.9542455240178,1,TRUE)  Excel 8.833009205540565e-19  ours 8.833009205540575e-19  math 8.83300920554057e-19
+  t3509-blind-gamma-dist.case.json S!A283 =GAMMA.DIST(2.98748530779301E-06,10.3248542553538,1,TRUE)  Excel 1.1604422574605811e-64  ours 1.1604422574605666e-64  math 1.1604422574605664e-64
+  t3509-blind-gamma-dist.case.json S!A359 =GAMMA.DIST(1.23472758219042E-08,6.05942412706152,1,TRUE)  Excel 1.491741326060293e-51  ours 1.4917413260602764e-51  math 1.4917413260602758e-51
+  t3509-blind-gamma-dist.case.json S!A405 =GAMMA.DIST(1.36320360298526E-10,3.27973462065865,1,TRUE)  Excel 5.111202802050576e-34  ours 5.111202802050593e-34  math 5.111202802050593e-34
+  t3509-blind-gamma-dist.case.json S!A424 =GAMMA.DIST(2.47444362731086E-09,4.59525195750991,1,TRUE)  Excel 4.623460436369542e-42  ours 4.623460436369516e-42  math 4.623460436369515e-42
+  t3509-blind-gamma-dist.case.json S!A426 =GAMMA.DIST(1.67990166109969E-07,7.53976607884322,1,TRUE)  Excel 5.458389870657186e-56  ours 5.458389870657194e-56  math 5.458389870657193e-56
+  t3509-blind-gamma-dist.case.json S!A432 =GAMMA.DIST(9.07775383143614E-06,11.731524049462,1,TRUE)  Excel 2.899520949326902e-68  ours 2.899520949326928e-68  math 2.899520949326928e-68
+  t3509-blind-gamma-dist.case.json S!A448 =GAMMA.DIST(1.87294548698696E-10,12.9231622507343,1,TRUE)  Excel 3.8260316894800145e-136  ours 3.8260316894800986e-136  math 3.8260316894801e-136
+
+GAMMA.DIST cdf | shape 2.5-20 | 1E-6..1E-3 (6)
+  t3509-blind-gamma-dist.case.json S!A25 =GAMMA.DIST(0.00206950966285592,10.4397823622487,1,TRUE)  Excel 9.215987146174954e-36  ours 9.215987146175015e-36  math 9.215987146175015e-36
+  t3509-blind-gamma-dist.case.json S!A59 =GAMMA.DIST(2.80241103525307E-06,2.7749801089003,1,TRUE)  Excel 8.578755657504996e-17  ours 8.57875565750501e-17  math 8.57875565750501e-17
+  t3509-blind-gamma-dist.case.json S!A126 =GAMMA.DIST(0.000214387924312536,5.4796212167966,1,TRUE)  Excel 2.837410646785017e-23  ours 2.83741064678503e-23  math 2.837410646785031e-23
+  t3509-blind-gamma-dist.case.json S!A335 =GAMMA.DIST(9.91203180409187E-05,4.16104914114182,1,TRUE)  Excel 7.128796261473436e-19  ours 7.128796261473453e-19  math 7.128796261473454e-19
+  t3509-blind-gamma-dist.case.json S!A390 =GAMMA.DIST(4.79837839068555E-05,6.51900186942617,1,TRUE)  Excel 3.6042875866856704e-32  ours 3.6042875866856584e-32  math 3.6042875866856584e-32
+  t3509-blind-gamma-dist.case.json S!A411 =GAMMA.DIST(0.000104216474378338,12.1142155644359,1,TRUE)  Excel 9.005770708196199e-58  ours 9.00577070819618e-58  math 9.005770708196182e-58
+
+GAMMA.DIST cdf | shape 2.5-20 | 1E-3..0.5 (2)
+  t3509-blind-gamma-dist.case.json S!A10 =GAMMA.DIST(0.00635231209920965,3.94920976272986,1,TRUE)  Excel 9.418938106361655e-11  ours 9.418938106361626e-11  math 9.418938106361626e-11
+  t3509-blind-gamma-dist.case.json S!A52 =GAMMA.DIST(2.01123380815698,9.85520100415521,1,TRUE)  Excel 6.196429771332368e-05  ours 6.19642977133238e-05  math 6.196429771332379e-05
+
+GAMMA.DIST cdf | shape 20-1E3 | <1E-6 (2)
+  t3509-blind-gamma-dist.case.json S!A166 =GAMMA.DIST(6.20867229165578E-08,36.7225774141425,1,TRUE)  Excel 4.3434013700705186e-308  ours 4.343401370069842e-308  math 4.3434013700702237e-308
+  t3509-blind-gamma-dist.case.json S!A254 =GAMMA.DIST(7.16129596872168E-07,33.4651712431741,1,TRUE)  Excel 5.0903288763266074e-244  ours 5.090328876326484e-244  math 5.090328876326479e-244
+
+GAMMA.DIST cdf | shape 20-1E3 | 1E-6..1E-3 (3)
+  t3509-blind-gamma-dist.case.json S!A231 =GAMMA.DIST(0.0590345556575017,85.4270502412247,1,TRUE)  Excel 5.230960656474962e-235  ours 5.230960656474663e-235  math 5.230960656475006e-235
+  t3509-blind-gamma-dist.case.json S!A291 =GAMMA.DIST(0.000270254253185275,58.6961443983786,1,TRUE)  Excel 9.026669929300812e-290  ours 9.026669929301483e-290  math 9.026669929301173e-290
+  t3509-blind-gamma-dist.case.json S!A467 =GAMMA.DIST(0.000298401055745946,20.6033997167178,1,TRUE)  Excel 1.5392101867943254e-92  ours 1.539210186794315e-92  math 1.5392101867943107e-92
+
+GAMMA.DIST cdf | shape 20-1E3 | 1E-3..0.5 (6)
+  t3509-blind-gamma-dist.case.json S!A28 =GAMMA.DIST(0.114220942873464,37.7214630986736,1,TRUE)  Excel 1.3524515811238829e-80  ours 1.352451581123854e-80  math 1.3524515811238358e-80
+  t3509-blind-gamma-dist.case.json S!A172 =GAMMA.DIST(0.834458485827025,83.3927282099861,1,TRUE)  Excel 5.450472717809887e-133  ours 5.450472717809894e-133  math 5.450472717810054e-133
+  t3509-blind-gamma-dist.case.json S!A182 =GAMMA.DIST(0.30974412532456,53.5504034834939,1,TRUE)  Excel 1.065410574907169e-98  ours 1.0654105749072029e-98  math 1.0654105749071843e-98
+  t3509-blind-gamma-dist.case.json S!A224 =GAMMA.DIST(0.220835091452928,96.7044650185205,1,TRUE)  Excel 1.1967798008338157e-215  ours 1.1967798008337307e-215  math 1.1967798008337062e-215
+  t3509-blind-gamma-dist.case.json S!A258 =GAMMA.DIST(0.458284124971886,62.8115327802835,1,TRUE)  Excel 3.6463973298985777e-109  ours 3.646397329898663e-109  math 3.646397329898609e-109
+  t3509-blind-gamma-dist.case.json S!A288 =GAMMA.DIST(0.0782728708140215,74.3091258041271,1,TRUE)  Excel 4.49900889250135e-191  ours 4.499008892501554e-191  math 4.499008892501364e-191
+
+GAMMA.DIST cdf | shape >=1E3 | 0.5..1.4 (1)
+  t3509-blind-gamma-dist.case.json S!A33 =GAMMA.DIST(9526.50467887119,11980.8277358857,1,TRUE)  Excel 2.619943927754948e-129  ours 2.6199439277549952e-129  math 2.6199439277548427e-129
+
+GAMMA.DIST pdf | shape <0.5 | <1E-6 (1)
+  t3509-blind-gamma-dist.case.json S!B498 =GAMMA.DIST(1.70855257537412E-10,0.374420115998575,1,FALSE)  Excel 542936.1919956387  ours 542936.191995638  math 542936.1919956381
+
+GAMMA.DIST pdf | shape 0.5-2.5 | >=10 (1)
+  t3509-blind-gamma-dist.case.json S!B333 =GAMMA.DIST(212.981946475684,1.29423934158568,1,FALSE)  Excel 1.7169363597798645e-92  ours 1.716936359779876e-92  math 1.716936359779876e-92
+
+GAMMA.DIST pdf | shape 2.5-20 | <1E-6 (15)
+  t3509-blind-gamma-dist.case.json S!B31 =GAMMA.DIST(2.99093236925923E-09,15.9819911769224,1,FALSE)  Excel 1.5687121375647462e-140  ours 1.5687121375647905e-140  math 1.5687121375647905e-140
+  t3509-blind-gamma-dist.case.json S!B75 =GAMMA.DIST(6.62024932470605E-08,3.04700433462084,1,FALSE)  Excel 9.643681316380666e-16  ours 9.643681316380686e-16  math 9.643681316380684e-16
+  t3509-blind-gamma-dist.case.json S!B97 =GAMMA.DIST(1.1243553065532E-09,3.05786039043499,1,FALSE)  Excel 1.8176314621437671e-19  ours 1.8176314621437604e-19  math 1.8176314621437601e-19
+  t3509-blind-gamma-dist.case.json S!B122 =GAMMA.DIST(8.27448636251598E-09,19.0852020118266,1,FALSE)  Excel 8.247416248583305e-163  ours 8.247416248583117e-163  math 8.247416248583118e-163
+  t3509-blind-gamma-dist.case.json S!B135 =GAMMA.DIST(2.08021978773807E-11,16.6009752077668,1,FALSE)  Excel 3.2748254037294884e-180  ours 3.2748254037295548e-180  math 3.2748254037295548e-180
+  t3509-blind-gamma-dist.case.json S!B173 =GAMMA.DIST(6.54276665052048E-06,10.7608991869571,1,FALSE)  Excel 1.203427703751539e-57  ours 1.203427703751555e-57  math 1.2034277037515549e-57
+  t3509-blind-gamma-dist.case.json S!B174 =GAMMA.DIST(3.02132798043667E-10,11.5496126515028,1,FALSE)  Excel 2.7703011773238293e-108  ours 2.770301177323858e-108  math 2.770301177323857e-108
+  t3509-blind-gamma-dist.case.json S!B248 =GAMMA.DIST(9.71042657698788E-10,14.02053034662,1,FALSE)  Excel 6.785277629853218e-128  ours 6.785277629853281e-128  math 6.785277629853284e-128
+  t3509-blind-gamma-dist.case.json S!B283 =GAMMA.DIST(2.98748530779301E-06,10.3248542553538,1,FALSE)  Excel 4.010528181711741e-58  ours 4.0105281817116906e-58  math 4.01052818171169e-58
+  t3509-blind-gamma-dist.case.json S!B359 =GAMMA.DIST(1.23472758219042E-08,6.05942412706152,1,FALSE)  Excel 7.32071875370211e-43  ours 7.320718753702028e-43  math 7.320718753702027e-43
+  t3509-blind-gamma-dist.case.json S!B365 =GAMMA.DIST(7.44926031902656E-10,3.1547280717645,1,FALSE)  Excel 9.264759026371114e-21  ours 9.264759026371094e-21  math 9.264759026371094e-21
+  t3509-blind-gamma-dist.case.json S!B387 =GAMMA.DIST(2.95596587071178E-10,6.3747000343078,1,FALSE)  Excel 2.6341621143671493e-54  ours 2.6341621143671395e-54  math 2.634162114367139e-54
+  t3509-blind-gamma-dist.case.json S!B424 =GAMMA.DIST(2.47444362731086E-09,4.59525195750991,1,FALSE)  Excel 8.586158672925732e-33  ours 8.586158672925683e-33  math 8.58615867292568e-33
+  t3509-blind-gamma-dist.case.json S!B432 =GAMMA.DIST(9.07775383143614E-06,11.731524049462,1,FALSE)  Excel 3.747157736026494e-62  ours 3.7471577360265275e-62  math 3.7471577360265284e-62
+  t3509-blind-gamma-dist.case.json S!B448 =GAMMA.DIST(1.87294548698696E-10,12.9231622507343,1,FALSE)  Excel 2.63992885230623e-125  ours 2.639928852306288e-125  math 2.6399288523062886e-125
+
+GAMMA.DIST pdf | shape 2.5-20 | 1E-6..1E-3 (6)
+  t3509-blind-gamma-dist.case.json S!B25 =GAMMA.DIST(0.00206950966285592,10.4397823622487,1,FALSE)  Excel 4.648226421909718e-32  ours 4.648226421909749e-32  math 4.648226421909749e-32
+  t3509-blind-gamma-dist.case.json S!B126 =GAMMA.DIST(0.000214387924312536,5.4796212167966,1,FALSE)  Excel 7.252004144542678e-19  ours 7.252004144542713e-19  math 7.252004144542713e-19
+  t3509-blind-gamma-dist.case.json S!B184 =GAMMA.DIST(0.00271053959453538,7.25540946913828,1,FALSE)  Excel 7.487228638462457e-20  ours 7.487228638462466e-20  math 7.487228638462463e-20
+  t3509-blind-gamma-dist.case.json S!B335 =GAMMA.DIST(9.91203180409187E-05,4.16104914114182,1,FALSE)  Excel 2.992595509425402e-14  ours 2.992595509425409e-14  math 2.992595509425409e-14
+  t3509-blind-gamma-dist.case.json S!B342 =GAMMA.DIST(7.69861219357851E-05,4.43370978080503,1,FALSE)  Excel 7.066472964912086e-16  ours 7.066472964912101e-16  math 7.066472964912102e-16
+  t3509-blind-gamma-dist.case.json S!B390 =GAMMA.DIST(4.79837839068555E-05,6.51900186942617,1,FALSE)  Excel 4.896697520831367e-27  ours 4.896697520831352e-27  math 4.8966975208313504e-27
+
+GAMMA.DIST pdf | shape 2.5-20 | 1E-3..0.5 (2)
+  t3509-blind-gamma-dist.case.json S!B10 =GAMMA.DIST(0.00635231209920965,3.94920976272986,1,FALSE)  Excel 5.8482060114418785e-08  ours 5.8482060114418607e-08  math 5.8482060114418607e-08
+  t3509-blind-gamma-dist.case.json S!B14 =GAMMA.DIST(0.0402593766240482,7.50195150143554,1,FALSE)  Excel 4.3415610374295876e-13  ours 4.3415610374295795e-13  math 4.341561037429581e-13
+
+GAMMA.DIST pdf | shape 20-1E3 | <1E-6 (2)
+  t3509-blind-gamma-dist.case.json S!B166 =GAMMA.DIST(6.20867229165578E-08,36.7225774141425,1,FALSE)  Excel 2.5690016367098573e-299  ours 2.569001636709457e-299  math 2.569001636709682e-299
+  t3509-blind-gamma-dist.case.json S!B254 =GAMMA.DIST(7.16129596872168E-07,33.4651712431741,1,FALSE)  Excel 2.3787415676549017e-236  ours 2.3787415676548446e-236  math 2.378741567654842e-236
+
+GAMMA.DIST pdf | shape 20-1E3 | 1E-6..1E-3 (3)
+  t3509-blind-gamma-dist.case.json S!B231 =GAMMA.DIST(0.0590345556575017,85.4270502412247,1,FALSE)  Excel 7.564388379429032e-232  ours 7.564388379428603e-232  math 7.564388379429098e-232
+  t3509-blind-gamma-dist.case.json S!B291 =GAMMA.DIST(0.000270254253185275,58.6961443983786,1,FALSE)  Excel 1.9604809794167075e-284  ours 1.9604809794168523e-284  math 1.960480979416785e-284
+  t3509-blind-gamma-dist.case.json S!B467 =GAMMA.DIST(0.000298401055745946,20.6033997167178,1,FALSE)  Excel 1.0627484077175134e-87  ours 1.0627484077175065e-87  math 1.0627484077175031e-87
+
+GAMMA.DIST pdf | shape 20-1E3 | 1E-3..0.5 (6)
+  t3509-blind-gamma-dist.case.json S!B28 =GAMMA.DIST(0.114220942873464,37.7214630986736,1,FALSE)  Excel 4.453296699867188e-78  ours 4.453296699867092e-78  math 4.453296699867033e-78
+  t3509-blind-gamma-dist.case.json S!B172 =GAMMA.DIST(0.834458485827025,83.3927282099861,1,FALSE)  Excel 5.393150443678627e-131  ours 5.393150443678634e-131  math 5.393150443678794e-131
+  t3509-blind-gamma-dist.case.json S!B182 =GAMMA.DIST(0.30974412532456,53.5504034834939,1,FALSE)  Excel 1.831487336891226e-96  ours 1.831487336891285e-96  math 1.8314873368912534e-96
+  t3509-blind-gamma-dist.case.json S!B224 =GAMMA.DIST(0.220835091452928,96.7044650185205,1,FALSE)  Excel 5.228895899437304e-213  ours 5.228895899436932e-213  math 5.228895899436825e-213
+  t3509-blind-gamma-dist.case.json S!B258 =GAMMA.DIST(0.458284124971886,62.8115327802835,1,FALSE)  Excel 4.9617928783506206e-107  ours 4.9617928783507355e-107  math 4.961792878350663e-107
+  t3509-blind-gamma-dist.case.json S!B288 =GAMMA.DIST(0.0782728708140215,74.3091258041271,1,FALSE)  Excel 4.2667394816844884e-188  ours 4.2667394816846804e-188  math 4.266739481684501e-188
+
+GAMMA.DIST pdf | shape >=1E3 | 0.5..1.4 (4)
+  t3509-blind-gamma-dist.case.json S!B33 =GAMMA.DIST(9526.50467887119,11980.8277358857,1,FALSE)  Excel 6.760425117010692e-130  ours 6.760425117009925e-130  math 6.760425117009527e-130
+  t3509-blind-gamma-dist.case.json S!B312 =GAMMA.DIST(2660.04780755956,2161.22489156258,1,FALSE)  Excel 1.339879572924187e-24  ours 1.3398795729242156e-24  math 1.3398795729242123e-24
+  t3509-blind-gamma-dist.case.json S!B458 =GAMMA.DIST(12914.0891246172,11344.7800321852,1,FALSE)  Excel 2.0875537434487803e-46  ours 2.0875537434486017e-46  math 2.0875537434486033e-46
+  t3509-blind-gamma-dist.case.json S!B495 =GAMMA.DIST(1784.94697403104,1345.62476958171,1,FALSE)  Excel 1.6923152445032612e-28  ours 1.6923152445032854e-28  math 1.6923152445032717e-28
+
+GAMMA.DIST pdf | shape >=1E3 | 1.4..10 (1)
+  t3509-blind-gamma-dist.case.json S!B40 =GAMMA.DIST(2350.43571135143,1205.91754294642,1,FALSE)  Excel 1.676749460727325e-150  ours 1.676749460727706e-150  math 1.67674946072754e-150
+
+GAMMA.INV | shape <0.5 | 1E-100..1E-10 (1)
+  t3509-blind-gamma-inv.case.json S!A233 =GAMMA.INV(9.12475174865904E-12,0.0394033624556485,1)  Excel 3.88691613468224e-281  ours 3.886916134682432e-281  math 3.8869161346825916e-281
+
+GAMMA.INV | shape <0.5 | 1E-10..0.5 (1)
+  t3509-blind-gamma-inv.case.json S!A325 =GAMMA.INV(1.89806259562409E-06,0.157722831512001,1)  Excel 3.3486995872563873e-37  ours 3.348699587256413e-37  math 3.348699587256383e-37
+
+GAMMA.INV | shape <0.5 | 0.5..1-1E-6 (34)
+  t3509-blind-gamma-inv.case.json S!A13 =GAMMA.INV(0.5,0.283756718398782,1)  Excel 0.06296108930404444  ours 0.06296108930404459  math 0.06296108930404454
+  t3509-blind-gamma-inv.case.json S!A17 =GAMMA.INV(0.5,0.0513890707246318,1)  Excel 8.116524370070504e-07  ours 8.116524370070466e-07  math 8.116524370070528e-07
+  t3509-blind-gamma-inv.case.json S!A40 =GAMMA.INV(0.5,0.0158107544933975,1)  Excel 5.192195687574522e-20  ours 5.192195687574471e-20  math 5.1921956875745025e-20
+  t3509-blind-gamma-inv.case.json S!A43 =GAMMA.INV(0.5,0.0203632795718632,1)  Excel 9.408899841695294e-16  ours 9.408899841695115e-16  math 9.40889984169515e-16
+  t3509-blind-gamma-inv.case.json S!A55 =GAMMA.INV(0.5,0.0154225214059009,1)  Excel 1.7215867003453024e-20  ours 1.7215867003452837e-20  math 1.721586700345301e-20
+  t3509-blind-gamma-inv.case.json S!A60 =GAMMA.INV(0.5,0.0115865263401875,1)  Excel 5.9209938851794816e-27  ours 5.920993885179538e-27  math 5.920993885179505e-27
+  t3509-blind-gamma-inv.case.json S!A66 =GAMMA.INV(0.5,0.0986286610086048,1)  Excel 0.000538291335669056  ours 0.0005382913356690529  math 0.0005382913356690543
+  t3509-blind-gamma-inv.case.json S!A82 =GAMMA.INV(0.5,0.020507206701365,1)  Excel 1.1949277989915436e-15  ours 1.1949277989915343e-15  math 1.1949277989915375e-15
+  t3509-blind-gamma-inv.case.json S!A85 =GAMMA.INV(0.5,0.141634661792629,1)  Excel 0.00471099352674633  ours 0.00471099352674632  math 0.00471099352674632
+  t3509-blind-gamma-inv.case.json S!A101 =GAMMA.INV(0.5,0.0202452843857962,1)  Excel 7.715039555033925e-16  ours 7.715039555033882e-16  math 7.715039555033852e-16
+  t3509-blind-gamma-inv.case.json S!A104 =GAMMA.INV(0.5,0.0234743471796881,1)  Excel 8.586640501152508e-14  ours 8.586640501152522e-14  math 8.58664050115255e-14
+  t3509-blind-gamma-inv.case.json S!A120 =GAMMA.INV(0.5,0.105637778564543,1)  Excel 0.0008628459761200374  ours 0.0008628459761200389  math 0.0008628459761200374
+  t3509-blind-gamma-inv.case.json S!A123 =GAMMA.INV(0.5,0.151991215531149,1)  Excel 0.006635623488977046  ours 0.0066356234889770205  math 0.006635623488977029
+  t3509-blind-gamma-inv.case.json S!A132 =GAMMA.INV(0.5,0.14779494321304,1)  Excel 0.0058081284224097435  ours 0.0058081284224097175  math 0.005808128422409726
+  t3509-blind-gamma-inv.case.json S!A166 =GAMMA.INV(0.5,0.0148415863361311,1)  Excel 2.9628509079313706e-21  ours 2.9628509079313472e-21  math 2.9628509079313683e-21
+  t3509-blind-gamma-inv.case.json S!A170 =GAMMA.INV(0.5,0.0237583032145884,1)  Excel 1.222335947169122e-13  ours 1.222335947169107e-13  math 1.2223359471691156e-13
+  t3509-blind-gamma-inv.case.json S!A190 =GAMMA.INV(0.5,0.0133165066507282,1)  Excel 1.4069096424335388e-23  ours 1.4069096424335506e-23  math 1.4069096424335274e-23
+  t3509-blind-gamma-inv.case.json S!A191 =GAMMA.INV(0.5,0.0235717854957074,1)  Excel 9.70212319766535e-14  ours 9.70212319766529e-14  math 9.702123197665312e-14
+  t3509-blind-gamma-inv.case.json S!A215 =GAMMA.INV(0.5,0.0207497824882063,1)  Excel 1.7743302652750166e-15  ours 1.7743302652750045e-15  math 1.7743302652750166e-15
+  t3509-blind-gamma-inv.case.json S!A217 =GAMMA.INV(0.5,0.0271818946541629,1)  Excel 4.833373797764771e-12  ours 4.833373797764761e-12  math 4.833373797764788e-12
+  t3509-blind-gamma-inv.case.json S!A255 =GAMMA.INV(0.5,0.0250308480829654,1)  Excel 5.392520722270805e-13  ours 5.392520722270797e-13  math 5.392520722270768e-13
+  t3509-blind-gamma-inv.case.json S!A261 =GAMMA.INV(0.5,0.0206001690249796,1)  Excel 1.3919291694804575e-15  ours 1.3919291694804486e-15  math 1.3919291694804417e-15
+  t3509-blind-gamma-inv.case.json S!A278 =GAMMA.INV(0.5,0.130237353086894,1)  Excel 0.0030401502699665245  ours 0.003040150269966518  math 0.0030401502699665245
+  t3509-blind-gamma-inv.case.json S!A293 =GAMMA.INV(0.5,0.0324726033229279,1)  Excel 3.0935833680788314e-10  ours 3.093583368078822e-10  math 3.093583368078817e-10
+  t3509-blind-gamma-inv.case.json S!A302 =GAMMA.INV(0.5,0.156591909926439,1)  Excel 0.007618316291493259  ours 0.007618316291493246  math 0.00761831629149325
+  t3509-blind-gamma-inv.case.json S!A341 =GAMMA.INV(0.5,0.01382223884665,1)  Excel 9.452603611321619e-23  ours 9.452603611321543e-23  math 9.45260361132163e-23
+  t3509-blind-gamma-inv.case.json S!A354 =GAMMA.INV(0.5,0.105720416004836,1)  Excel 0.000867339732495469  ours 0.0008673397324954698  math 0.0008673397324954706
+  t3509-blind-gamma-inv.case.json S!A380 =GAMMA.INV(0.5,0.0244850047243496,1)  Excel 2.9073559729098846e-13  ours 2.9073559729098603e-13  math 2.90735597290987e-13
+  t3509-blind-gamma-inv.case.json S!A387 =GAMMA.INV(0.5,0.0504948639484215,1)  Excel 6.387481207433754e-07  ours 6.387481207433696e-07  math 6.387481207433723e-07
+  t3509-blind-gamma-inv.case.json S!A434 =GAMMA.INV(0.5,0.304141697507416,1)  Excel 0.07580649471724414  ours 0.07580649471724404  math 0.07580649471724404
+  t3509-blind-gamma-inv.case.json S!A439 =GAMMA.INV(0.5,0.0173363461668878,1)  Excel 2.462420351923039e-18  ours 2.462420351923029e-18  math 2.462420351923034e-18
+  t3509-blind-gamma-inv.case.json S!A467 =GAMMA.INV(0.5,0.0132190842112791,1)  Excel 9.585859239942438e-24  ours 9.585859239942197e-24  math 9.585859239942398e-24
+  t3509-blind-gamma-inv.case.json S!A482 =GAMMA.INV(0.5,0.251534326113161,1)  Excel 0.04449057173499718  ours 0.04449057173499703  math 0.04449057173499708
+  t3509-blind-gamma-inv.case.json S!A496 =GAMMA.INV(0.5,0.076658198255712,1)  Excel 7.060640754336607e-05  ours 7.060640754336586e-05  math 7.060640754336584e-05
+
+GAMMA.INV | shape 0.5-2.5 | p<1E-100 (5)
+  t3509-blind-gamma-inv.case.json S!A115 =GAMMA.INV(1.58505193907599E-209,1.60237146365436,1)  Excel 6.1732895874859e-131  ours 6.173289587486183e-131  math 6.17328958748601e-131
+  t3509-blind-gamma-inv.case.json S!A133 =GAMMA.INV(1.91505479451475E-121,1.93757097070493,1)  Excel 6.901399232318518e-63  ours 6.901399232318373e-63  math 6.901399232318477e-63
+  t3509-blind-gamma-inv.case.json S!A206 =GAMMA.INV(2.66110088162878E-256,1.0296004487979,1)  Excel 5.999264607435156e-249  ours 5.999264607435219e-249  math 5.999264607435219e-249
+  t3509-blind-gamma-inv.case.json S!A242 =GAMMA.INV(6.88008069128849E-169,0.667269455538338,1)  Excel 8.27443201835638e-253  ours 8.274432018356741e-253  math 8.274432018356525e-253
+  t3509-blind-gamma-inv.case.json S!A284 =GAMMA.INV(7.77436739081193E-104,0.946708009240311,1)  Excel 1.1927072152984274e-109  ours 1.1927072152984095e-109  math 1.1927072152984336e-109
+
+GAMMA.INV | shape 0.5-2.5 | 1E-100..1E-10 (2)
+  t3509-blind-gamma-inv.case.json S!A199 =GAMMA.INV(1.94124600489204E-58,1.86108133927522,1)  Excel 1.3269540068706704e-31  ours 1.3269540068706993e-31  math 1.3269540068706753e-31
+  t3509-blind-gamma-inv.case.json S!A433 =GAMMA.INV(7.27759745013259E-43,2.21913416049832,1)  Excel 1.5436141407913594e-19  ours 1.5436141407913536e-19  math 1.5436141407913596e-19
+
+GAMMA.INV | shape 2.5-20 | p<1E-100 (7)
+  t3509-blind-gamma-inv.case.json S!A79 =GAMMA.INV(4.60629684531354E-295,5.74725071485856,1)  Excel 1.7713430886090913e-51  ours 1.7713430886090652e-51  math 1.771343088609065e-51
+  t3509-blind-gamma-inv.case.json S!A93 =GAMMA.INV(6.78919535451104E-179,17.1898391112751,1)  Excel 3.1297419132650086e-10  ours 3.129741913265001e-10  math 3.1297419132650024e-10
+  t3509-blind-gamma-inv.case.json S!A289 =GAMMA.INV(1.69943480742469E-230,15.1033373779392,1)  Excel 3.955676986018317e-15  ours 3.955676986018301e-15  math 3.955676986018312e-15
+  t3509-blind-gamma-inv.case.json S!A425 =GAMMA.INV(2.1791551876229E-176,14.3148584541456,1)  Excel 3.3009085265200384e-12  ours 3.300908526520045e-12  math 3.3009085265200444e-12
+  t3509-blind-gamma-inv.case.json S!A431 =GAMMA.INV(7.85598505228771E-158,15.2811169065036,1)  Excel 3.4190197763925715e-10  ours 3.419019776392577e-10  math 3.4190197763925777e-10
+  t3509-blind-gamma-inv.case.json S!A473 =GAMMA.INV(5.36441524174503E-111,4.86769573840513,1)  Excel 5.670417129439321e-23  ours 5.670417129439266e-23  math 5.670417129439306e-23
+  t3509-blind-gamma-inv.case.json S!A489 =GAMMA.INV(2.73071531161998E-180,3.07512502507513,1)  Excel 7.484344512648707e-59  ours 7.484344512648756e-59  math 7.484344512648757e-59
+
+GAMMA.INV | shape 2.5-20 | 1E-100..1E-10 (2)
+  t3509-blind-gamma-inv.case.json S!A164 =GAMMA.INV(6.9427750987361E-25,4.40547486923056,1)  Excel 7.78937707898064e-06  ours 7.789377078980629e-06  math 7.789377078980629e-06
+  t3509-blind-gamma-inv.case.json S!A443 =GAMMA.INV(1.30304862018367E-86,2.73000211892739,1)  Excel 5.930297828625049e-32  ours 5.930297828625002e-32  math 5.930297828625048e-32
+
+GAMMA.INV | shape 2.5-20 | 0.5..1-1E-6 (1)
+  t3509-blind-gamma-inv.case.json S!A470 =GAMMA.INV(0.999717006703396,9.09874864666114,1)  Excel 23.22525795190716  ours 23.225257951907217  math 23.225257951907217
+
+GAMMA.INV | shape 20-1E3 | p<1E-100 (1)
+  t3509-blind-gamma-inv.case.json S!A28 =GAMMA.INV(1.93377444182898E-188,34.3114167842275,1)  Excel 4.616399327882974e-05  ours 4.6163993278829803e-05  math 4.6163993278829803e-05
+
+GAMMA.INV | shape >=1E3 | 0.5..1-1E-6 (1)
+  t3509-blind-gamma-inv.case.json S!A403 =GAMMA.INV(0.5,7990464.81598859,1)  Excel 7990464.482655259  ours #NUM!  math 7990464.482655259
+
+POISSON cdf | shape 2.5-20 | 1.4..10 (7)
+  t3509-blind-poisson-dist.case.json S!A22 =POISSON.DIST(7,67.557510887666,TRUE)  Excel 6.488390821393242e-21  ours 6.488390821393247e-21  math 6.488390821393249e-21
+  t3509-blind-poisson-dist.case.json S!A54 =POISSON.DIST(8,40.8962915043512,TRUE)  Excel 4.1540339277910263e-10  ours 4.1540339277910185e-10  math 4.154033927791019e-10
+  t3509-blind-poisson-dist.case.json S!A95 =POISSON.DIST(9,56.8089071224034,TRUE)  Excel 4.2802518009803235e-15  ours 4.280251800980318e-15  math 4.280251800980318e-15
+  t3509-blind-poisson-dist.case.json S!A131 =POISSON.DIST(11,44.1529344166922,TRUE)  Excel 2.7443635818887508e-09  ours 2.7443635818887594e-09  math 2.74436358188876e-09
+  t3509-blind-poisson-dist.case.json S!A265 =POISSON.DIST(4,34.4488534934361,TRUE)  Excel 7.234346861361381e-11  ours 7.234346861361367e-11  math 7.234346861361368e-11
+  t3509-blind-poisson-dist.case.json S!A279 =POISSON.DIST(11,40.3835273047521,TRUE)  Excel 4.589784466566114e-08  ours 4.5897844665661086e-08  math 4.589784466566109e-08
+  t3509-blind-poisson-dist.case.json S!A443 =POISSON.DIST(8,62.2272375749129,TRUE)  Excel 6.0257014236251105e-18  ours 6.025701423625126e-18  math 6.02570142362513e-18
+
+POISSON cdf | shape 2.5-20 | >=10 (13)
+  t3509-blind-poisson-dist.case.json S!A26 =POISSON.DIST(2,42.5430943814629,TRUE)  Excel 3.168155188356177e-16  ours 3.168155188356171e-16  math 3.1681551883561705e-16
+  t3509-blind-poisson-dist.case.json S!A59 =POISSON.DIST(17,292.186016734541,TRUE)  Excel 3.135474891881484e-100  ours 3.1354748918815185e-100  math 3.135474891881518e-100
+  t3509-blind-poisson-dist.case.json S!A65 =POISSON.DIST(5,168.610902336673,TRUE)  Excel 6.94154024183589e-65  ours 6.941540241835904e-65  math 6.941540241835903e-65
+  t3509-blind-poisson-dist.case.json S!A76 =POISSON.DIST(6,167.447658558328,TRUE)  Excel 6.026934719486642e-63  ours 6.026934719486597e-63  math 6.026934719486597e-63
+  t3509-blind-poisson-dist.case.json S!A99 =POISSON.DIST(12,374.369367862704,TRUE)  Excel 4.2347270050871075e-141  ours 4.2347270050870894e-141  math 4.2347270050870894e-141
+  t3509-blind-poisson-dist.case.json S!A122 =POISSON.DIST(18,335.200616883759,TRUE)  Excel 1.2510103803472642e-116  ours 1.2510103803472276e-116  math 1.2510103803472273e-116
+  t3509-blind-poisson-dist.case.json S!A156 =POISSON.DIST(14,170.176053977512,TRUE)  Excel 2.646591660239871e-54  ours 2.6465916602398613e-54  math 2.6465916602398613e-54
+  t3509-blind-poisson-dist.case.json S!A190 =POISSON.DIST(2,82.917802484764,TRUE)  Excel 3.43554629318914e-33  ours 3.4355462931891534e-33  math 3.4355462931891534e-33
+  t3509-blind-poisson-dist.case.json S!A200 =POISSON.DIST(3,55.1402462345036,TRUE)  Excel 3.3341498388359406e-20  ours 3.3341498388359496e-20  math 3.33414983883595e-20
+  t3509-blind-poisson-dist.case.json S!A376 =POISSON.DIST(7,107.919239274695,TRUE)  Excel 4.890622256844691e-37  ours 4.8906222568447634e-37  math 4.890622256844764e-37
+  t3509-blind-poisson-dist.case.json S!A440 =POISSON.DIST(4,146.494129681564,TRUE)  Excel 4.714291180647219e-57  ours 4.7142911806472026e-57  math 4.7142911806472004e-57
+  t3509-blind-poisson-dist.case.json S!A441 =POISSON.DIST(13,213.2002034384,TRUE)  Excel 8.231339509997032e-73  ours 8.2313395099971e-73  math 8.2313395099971e-73
+  t3509-blind-poisson-dist.case.json S!A463 =POISSON.DIST(10,188.002990030309,TRUE)  Excel 3.604337008450257e-66  ours 3.6043370084502684e-66  math 3.6043370084502674e-66
+
+POISSON cdf | shape 20-1E3 | 0.5..1.4 (2)
+  t3509-blind-poisson-dist.case.json S!A142 =POISSON.DIST(319,436.166558680084,TRUE)  Excel 2.319600649138496e-09  ours 2.3196006491385054e-09  math 2.3196006491385e-09
+  t3509-blind-poisson-dist.case.json S!A397 =POISSON.DIST(100,134.95756112209,TRUE)  Excel 0.0009908387867231861  ours 0.0009908387867231835  math 0.000990838786723186
+
+POISSON cdf | shape 20-1E3 | 1.4..10 (12)
+  t3509-blind-poisson-dist.case.json S!A12 =POISSON.DIST(56,116.105866667852,TRUE)  Excel 4.319808589184174e-10  ours 4.3198085891842024e-10  math 4.3198085891841937e-10
+  t3509-blind-poisson-dist.case.json S!A15 =POISSON.DIST(184,426.801243666743,TRUE)  Excel 3.160454592832568e-40  ours 3.1604545928325214e-40  math 3.160454592832523e-40
+  t3509-blind-poisson-dist.case.json S!A191 =POISSON.DIST(19,100.947093591826,TRUE)  Excel 1.7429726011007585e-23  ours 1.7429726011007723e-23  math 1.7429726011007693e-23
+  t3509-blind-poisson-dist.case.json S!A263 =POISSON.DIST(38,147.697278938044,TRUE)  Excel 5.027599054577502e-27  ours 5.0275990545774665e-27  math 5.027599054577489e-27
+  t3509-blind-poisson-dist.case.json S!A276 =POISSON.DIST(481,1558.41411173322,TRUE)  Excel 1.184566344318871e-224  ours 1.1845663443189386e-224  math 1.1845663443189024e-224
+  t3509-blind-poisson-dist.case.json S!A285 =POISSON.DIST(292,528.184145942622,TRUE)  Excel 2.011243753004398e-29  ours 2.0112437530044248e-29  math 2.011243753004439e-29
+  t3509-blind-poisson-dist.case.json S!A294 =POISSON.DIST(74,517.429318952353,TRUE)  Excel 4.5247238878779057e-132  ours 4.5247238878776466e-132  math 4.5247238878777474e-132
+  t3509-blind-poisson-dist.case.json S!A350 =POISSON.DIST(77,132.15415786173,TRUE)  Excel 1.370662194732265e-07  ours 1.3706621947322483e-07  math 1.3706621947322518e-07
+  t3509-blind-poisson-dist.case.json S!A370 =POISSON.DIST(736,1521.73304659887,TRUE)  Excel 2.4745043110076085e-111  ours 2.4745043110074685e-111  math 2.4745043110076118e-111
+  t3509-blind-poisson-dist.case.json S!A379 =POISSON.DIST(783,1664.67752478898,TRUE)  Excel 1.0183692724218677e-128  ours 1.0183692724216935e-128  math 1.0183692724217914e-128
+  t3509-blind-poisson-dist.case.json S!A381 =POISSON.DIST(265,850.640284947312,TRUE)  Excel 2.7108584259249547e-122  ours 2.7108584259247994e-122  math 2.7108584259250014e-122
+  t3509-blind-poisson-dist.case.json S!A391 =POISSON.DIST(649,1892.8712238608,TRUE)  Excel 7.503307253294852e-241  ours 7.503307253295707e-241  math 7.503307253295779e-241
+
+POISSON cdf | shape >=1E3 | 0.5..1.4 (3)
+  t3509-blind-poisson-dist.case.json S!A29 =POISSON.DIST(19467,21438.5462677144,TRUE)  Excel 7.148003181230041e-43  ours 7.148003181230056e-43  math 7.148003181230025e-43
+  t3509-blind-poisson-dist.case.json S!A355 =POISSON.DIST(2105,2460.67714424429,TRUE)  Excel 1.0667637123053853e-13  ours 1.0667637123053791e-13  math 1.0667637123053887e-13
+  t3509-blind-poisson-dist.case.json S!A418 =POISSON.DIST(10528,12464.489510716,TRUE)  Excel 2.478494924960996e-71  ours 2.4784949249610157e-71  math 2.4784949249610663e-71
+
+POISSON cdf | shape >=1E3 | 1.4..10 (3)
+  t3509-blind-poisson-dist.case.json S!A41 =POISSON.DIST(1346,2171.0307297927,TRUE)  Excel 4.047217600200383e-81  ours 4.047217600200041e-81  math 4.047217600200056e-81
+  t3509-blind-poisson-dist.case.json S!A105 =POISSON.DIST(1096,2784.1454971185,TRUE)  Excel 7.866801440739625e-292  ours 7.866801440738735e-292  math 7.866801440739467e-292
+  t3509-blind-poisson-dist.case.json S!A400 =POISSON.DIST(1795,3020.76981814723,TRUE)  Excel 6.101558955725808e-129  ours 6.101558955726505e-129  math 6.101558955726042e-129
+
+POISSON pmf | shape 20-1E3 | 0.5..1.4 (2)
+  t3509-blind-poisson-dist.case.json S!B142 =POISSON.DIST(319,436.166558680084,FALSE)  Excel 6.36777674459403e-10  ours 6.367776744593962e-10  math 6.367776744593981e-10
+  t3509-blind-poisson-dist.case.json S!B256 =POISSON.DIST(97,66.6476854882207,FALSE)  Excel 9.53427254808932e-05  ours 9.534272548089329e-05  math 9.534272548089327e-05
+
+POISSON pmf | shape >=1E3 | 0.5..1.4 (12)
+  t3509-blind-poisson-dist.case.json S!B2 =POISSON.DIST(9311,9720.45387932461,FALSE)  Excel 6.568428492688257e-07  ours 6.568428492688176e-07  math 6.568428492688279e-07
+  t3509-blind-poisson-dist.case.json S!B47 =POISSON.DIST(3753,3823.80465901993,FALSE)  Excel 0.0033669824957784007  ours 0.0033669824957784232  math 0.003366982495778426
+  t3509-blind-poisson-dist.case.json S!B108 =POISSON.DIST(15371,13023.8442862807,FALSE)  Excel 5.274407527909736e-90  ours 5.274407527908986e-90  math 5.274407527909935e-90
+  t3509-blind-poisson-dist.case.json S!B111 =POISSON.DIST(3197,2788.4899003503,FALSE)  Excel 2.7857161328846755e-15  ours 2.785716132884626e-15  math 2.7857161328846483e-15
+  t3509-blind-poisson-dist.case.json S!B187 =POISSON.DIST(21699,17183.5049329935,FALSE)  Excel 5.911582380978422e-241  ours 5.911582380975733e-241  math 5.9115823809769625e-241
+  t3509-blind-poisson-dist.case.json S!B290 =POISSON.DIST(56218,48357.5183739406,FALSE)  Excel 4.925919036226302e-267  ours 4.925919036225741e-267  math 4.9259190362256836e-267
+  t3509-blind-poisson-dist.case.json S!B355 =POISSON.DIST(2105,2460.67714424429,FALSE)  Excel 1.5666873462602906e-14  ours 1.5666873462602795e-14  math 1.566687346260276e-14
+  t3509-blind-poisson-dist.case.json S!B364 =POISSON.DIST(1738,1399.76148442446,FALSE)  Excel 3.2463978459371552e-19  ours 3.246397845937063e-19  math 3.246397845936989e-19
+  t3509-blind-poisson-dist.case.json S!B389 =POISSON.DIST(4356,3900.992234811,FALSE)  Excel 4.7932144314868153e-14  ours 4.7932144314867977e-14  math 4.7932144314868784e-14
+  t3509-blind-poisson-dist.case.json S!B399 =POISSON.DIST(6687,5842.78310141584,FALSE)  Excel 2.4634099997688126e-28  ours 2.463409999769023e-28  math 2.463409999768985e-28
+  t3509-blind-poisson-dist.case.json S!B406 =POISSON.DIST(1234,930.141402183109,FALSE)  Excel 3.3563309614418396e-22  ours 3.3563309614418636e-22  math 3.356330961441911e-22
+  t3509-blind-poisson-dist.case.json S!B418 =POISSON.DIST(10528,12464.489510716,FALSE)  Excel 3.86134217398104e-72  ours 3.861342173980601e-72  math 3.861342173980293e-72

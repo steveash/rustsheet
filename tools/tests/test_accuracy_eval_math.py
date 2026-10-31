@@ -107,6 +107,22 @@ def test_write_suite_is_deterministic_and_removes_only_its_own_stale_sidecars(
     assert math_path(c_sidecar).exists()  # not ours: kept
 
 
+def test_write_suite_filter_leaves_other_cases_alone(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in ("keep", "skip"):
+        (tmp_path / name).mkdir()
+    k_case, k_sidecar = _case(tmp_path / "keep", {"A1": "=T.DIST(1.5,3,TRUE)"}, {"A1": {"t": "n", "v": 0.9}})
+    s_case, s_sidecar = _case(tmp_path / "skip", {"A1": "=T.DIST(1.5,3,TRUE)"}, {"A1": {"t": "n", "v": 0.9}})
+    entries = [
+        {"id": f"t/{p.parent.name}", "path": str(p), "sidecar": str(s)}
+        for p, s in ((k_case, k_sidecar), (s_case, s_sidecar))
+    ]
+    monkeypatch.setattr(eval_math, "suite_cases", lambda _suite: entries)
+    results = write_suite("t", workers=1, only="keep")
+    assert [m.case for m in results] == ["t/keep"]
+    assert math_path(k_sidecar).exists()
+    assert not math_path(s_sidecar).exists()
+
+
 def test_an_mpmath_value_error_drops_the_point_but_a_domain_error_does_not() -> None:
     def gives_up(_args: Sequence[MathArg]) -> mpmath.mpf:
         msg = "hypercomb() failed to converge to the requested 223 bits of accuracy"

@@ -20,6 +20,7 @@ import yaml
 from rustsheet_tools import repo_root, snapshot
 from rustsheet_tools.accuracy import cli as accuracy_cli
 from rustsheet_tools.accuracy import literal
+from rustsheet_tools.accuracy.defs import gamma
 from rustsheet_tools.accuracy.defs.annuity import RATE, rate
 from rustsheet_tools.accuracy.defs.student_t import T_DIST, T_INV, cdf, density, quantile
 from rustsheet_tools.accuracy.model import (
@@ -183,6 +184,45 @@ def test_rate_against_published_values() -> None:
         assert abs(900 - 100 * (1 + due) * (1 - (1 + due) ** -10) / due) < mpmath.mpf(10) ** -45
 
 
+def test_gamma_family_against_closed_forms() -> None:
+    # Shape 1 is the exponential law, df 2 the chi-squared one with the same closed forms (A&S 26.4).
+    with mpmath.workdps(80):
+        for x in (1e-20, 0.3, 2.0, 50.0):
+            assert close(value(gamma.GAMMA_DIST, [x, 1.0, 1.0, True]), -mpmath.expm1(-mp(x)), 1e-45)
+            assert close(value(gamma.GAMMA_DIST, [x, 1.0, 1.0, False]), mpmath.exp(-mp(x)), 1e-45)
+            assert close(value(gamma.CHISQ_DIST_RT, [x, 2]), mpmath.exp(-mp(x) / 2), 1e-45)
+        for p in (1e-300, 1e-5, 0.3, 0.999999):
+            assert close(value(gamma.GAMMA_INV, [p, 1.0, 2.0]), -2 * mpmath.log1p(-mp(p)), 1e-45)
+            assert close(value(gamma.CHISQ_INV_RT, [p, 2]), -2 * mpmath.log(mp(p)), 1e-45)
+        # POISSON.DIST(3, 2.5): e^-2.5·2.5^3/3! and the sum to 3.
+        pmf = mpmath.exp(-mp(2.5)) * mp(2.5) ** 3 / 6
+        cdf = mpmath.exp(-mp(2.5)) * (1 + mp(2.5) + mp(2.5) ** 2 / 2 + mp(2.5) ** 3 / 6)
+        assert close(value(gamma.POISSON_DIST, [3, 2.5, False]), pmf, 1e-45)
+        assert close(value(gamma.POISSON_DIST, [3, 2.5, True]), cdf, 1e-45)
+        assert close(value(gamma.GAMMALN, [0.5]), mpmath.log(mpmath.sqrt(mpmath.pi)), 1e-45)
+        assert close(value(gamma.GAMMA, [-2.5]), -8 * mpmath.sqrt(mpmath.pi) / 15, 1e-45)
+    assert value(gamma.POISSON_DIST, [0, 0.0, False]) == 1
+    assert value(gamma.CHISQ_INV_RT, [1.0, 7]) == 0
+    assert compute(gamma.GAMMA, [-3.0]).why is not None  # pole
+    assert compute(gamma.GAMMA_DIST, [-1.0, 2.0, 1.0, True]).why is not None
+    assert compute(gamma.CHISQ_DIST_RT, [1.0, 0]).why is not None  # df < 1
+    assert compute(gamma.CHISQ_INV_RT, [0.0, 3]).why is not None  # p = 0 (CHIINV, T-1047)
+
+
+def test_gamma_expansions_agree_with_mpmath_and_invert() -> None:
+    # The series and the continued fraction meet at x = a + 1; mpmath's own gammainc is the check at
+    # moderate shapes, and a quantile at a huge shape (where gammainc gives up) is checked by its cdf.
+    with mpmath.workdps(60):
+        for a, x in ((0.01, 0.5), (2.5, 3.4), (2.5, 3.6), (40.0, 30.0), (40.0, 70.0), (1000.5, 1001.0)):
+            reference = mpmath.gammainc(mp(a), 0, mp(x), regularized=True)
+            assert close(gamma.lower(mp(a), mp(x)), reference, 1e-50)
+            assert close(gamma.upper(mp(a), mp(x)), 1 - reference, 1e-45)
+        a = mp(7990464.8)
+        for p, upper_tail in ((mp("1e-200"), False), (mp("0.5"), False), (mp("1e-15"), True)):
+            x = gamma.quantile(p, a, upper_tail=upper_tail)
+            assert close((gamma.upper if upper_tail else gamma.lower)(a, x), p, 1e-40)
+
+
 def test_definitions_follow_the_catalog_parameter_order() -> None:
     catalog = yaml.safe_load((repo_root() / "eval" / "catalog" / "functions.yaml").read_text())
     params = {f["name"]: [p["name"] for p in f.get("params", [])] for f in catalog["functions"]}
@@ -323,7 +363,8 @@ def test_fill_writes_excels_values_and_leaves_the_rest_pending(
 
 def test_cli_lists_and_generates(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     assert accuracy_cli.main(["list"]) == 0
-    assert capsys.readouterr().out.split() == ["RATE", "T.DIST", "T.INV"]
+    assert capsys.readouterr().out.split() == sorted(REGISTRY)
+    assert {"RATE", "T.DIST", "T.INV", "GAMMA.INV"} <= set(REGISTRY)
     assert accuracy_cli.main(["--tables", str(tmp_path), "generate", "t.dist", "--count", "5"]) == 0
     assert (tmp_path / "T.DIST" / "s1.case.json").exists()
     assert accuracy_cli.main(["--tables", str(tmp_path), "verify", "T.DIST"]) == 0

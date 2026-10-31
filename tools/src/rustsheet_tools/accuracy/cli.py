@@ -5,6 +5,7 @@
   rustsheet-accuracy generate RATE --batch e-T-1234 --count 40 --stratum tail
   rustsheet-accuracy verify T.INV                          recompute committed math at dps 80
   rustsheet-accuracy math --suite probes-numeric           math sidecars for an eval suite's cells
+  rustsheet-accuracy math --suite probes-numeric --filter t3509-blind-   only cases whose id has it
 
 Then `uv run rustsheet-oracle fill -b excel-graph --suite accuracy` fills Excel's values, and
 `rustsheet-eval accuracy` (run by `make check`) checks the engine against both.
@@ -49,6 +50,7 @@ def main(argv: list[str] | None = None) -> int:
     mth = sub.add_parser("math", help="write math sidecars for an eval suite's one-call cells (T-3380)")
     mth.add_argument("--suite", required=True)
     mth.add_argument("--workers", type=int, help="processes (default: one per CPU)")
+    mth.add_argument("--filter", help="only cases whose id contains this substring (as rustsheet-eval run)")
     args = parser.parse_args(argv)
     tables: Path = args.tables or repo_root() / "eval" / "accuracy" / "tables"
 
@@ -57,7 +59,7 @@ def main(argv: list[str] | None = None) -> int:
             print(name)
         return 0
     if args.command == "math":
-        results = write_suite(args.suite, args.workers)
+        results = write_suite(args.suite, args.workers, args.filter)
         skipped: dict[str, int] = {}
         for math in results:
             for reason, n in math.skipped.items():

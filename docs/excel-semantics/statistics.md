@@ -5442,3 +5442,28 @@ Ours: within 1.01e-13 of the math throughout the Rule's region in both cases (wo
 reaches 1.43e-10 (C168, `F.DIST.RT(1.09080885395379,8,5567623)`), still inside Gate A; cells beyond half a unit of
 Excel's 15th digit are Phase 1b residue (decision 0188 R5).
 Tasks: T-3354, T-3479
+
+## Gamma family on a blind log-uniform sweep: where Excel is far from the math (T-3509)
+Rule: across GAMMA.DIST, CHISQ.DIST.RT, GAMMA.INV, CHISQ.INV.RT, POISSON.DIST, GAMMALN and GAMMA drawn log-uniform
+over their whole domains, Excel is within 2.5e-13 relative of the 50-digit math wherever it returns a number (outside
+the documented MATH-OVER-EXCEL regions), but in these regions it is tens to hundreds of ulp away, so its last digits
+are its own arithmetic, not the math:
+- GAMMA.DIST cdf and density at shape 2.5 to 20 with x/a below 0.5: 22 to 72 ulp (median by x/a bucket), up to
+  2.8e-14 relative (RustSheet's accurate kernel is within 1 to 3 ulp there);
+- GAMMA.INV at the median, `GAMMA.INV(0.5,a,1)`, at shape below 0.5: 21 ulp median, up to 1.5e-14;
+- GAMMA.INV in the deep lower tail (p below 1E-10) at shape 0.5 to 20: 6 to 63 ulp, up to 1.8e-14;
+- CHISQ.DIST.RT at df 40 to 2000 with x/df 1.4 to 10: 82 ulp median, up to 5.2e-14;
+- POISSON.DIST pmf at k above 1000 with the mean 0.75 to 1.2 times k: 228 ulp median, up to 2.5e-13 (the relative
+  error grows with k);
+- GAMMA at x from 20 to 171.6: beyond 15 digits of the math at 97 of 230 cells (Excel's x87 routine, T-1941, T-2129;
+  RustSheet matches Excel there); POISSON.DIST pmf at k 20 to 1000 with the mean below 0.5 or 1.4 to 10 times k + 1:
+  at 77 of 134 (T-2055's saddle point; RustSheet within 15 digits of Excel at all 134).
+Everywhere else in the sweep Excel is within a few ulp of the math (GAMMALN, CHISQ.INV.RT outside its tiny-p
+MATH-OVER-EXCEL region, the shape-1000-and-up GAMMA.DIST cells).
+Evidence: probes-numeric/t3509-blind-* (4,100 cells, excel-graph 2026-10-31, refilled with the same values as the
+first fill), with `rustsheet-accuracy math` sidecars; the per-region table is docs/research/t3509/score-main-744815d06.out.
+Status: VERIFIED (excel-graph)
+Ours: within Gate A on every cell but `GAMMA.INV(0.5,7990464.8,1)` (`#NUM!`, fixed elsewhere); visibly off Excel in the
+regions above and in POISSON's deep upper tail (T-3269), owned by T-3219, T-3519, T-3520, T-3521, T-3522, T-3310 and
+T-3269 (docs/research/t3509/README.md has the table).
+Tasks: T-3509

@@ -185,11 +185,15 @@ def _job(entry: dict[str, Any]) -> tuple[dict[str, Any], CaseMath]:
     return entry, case_math(entry["id"], Path(entry["path"]), Path(entry["sidecar"]))
 
 
-def write_suite(suite: str, workers: int | None = None) -> list[CaseMath]:
-    """Writes the math sidecar of every spec case of `suite` that has a math cell, and removes a
-    math sidecar this tool wrote for a case that no longer has one. Deterministic: the same case
-    files give the same bytes."""
-    entries = [e for e in suite_cases(suite) if str(e["path"]).endswith(".case.json")]
+def write_suite(suite: str, workers: int | None = None, only: str | None = None) -> list[CaseMath]:
+    """Writes the math sidecar of every spec case of `suite` (whose id contains `only`, when given)
+    that has a math cell, and removes a math sidecar this tool wrote for such a case that no longer
+    has one. Deterministic: the same case files give the same bytes."""
+    entries = [
+        e
+        for e in suite_cases(suite)
+        if str(e["path"]).endswith(".case.json") and (only is None or only in str(e["id"]))
+    ]
     results: list[CaseMath] = []
     with ProcessPoolExecutor(max_workers=workers) as pool:
         for entry, math in pool.map(_job, entries):
