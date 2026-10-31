@@ -7,18 +7,33 @@ status: todo
 priority: P1
 size: M
 tier: opus
-depends_on: []
+depends_on: [T-3361]
 ---
 
 ## Goal
-TODO(fill): the outcome, not the implementation.
+The fitted pieces that are applied beyond the inputs they were measured on stop at their measured range and fall back to
+accurate math outside it (decision 0188 R4.3), and GAMMA.INV at a huge shape follows the math where Excel is more than
+G = 1e-4 off it (decision 0188 R3).
 
 ## Context
-TODO(fill): why; failing case ids; semantics notes; code paths.
+- Owner's 2026-10-31 assessment (decision 0188, code audit): extrapolated fits.
+  - statistical/incomplete_gamma/huge_shape.rs `WILSON_HILFERTY_SPREAD` and its terms: fitted at shape 1E13, applied
+    from 2E10. Excel's GAMMA.INV at a huge shape is about 2.7e-4 off the math, an R3 case (`MATH-OVER-EXCEL`,
+    statistics.md).
+  - statistical/f_density.rs `STIRLING_ERROR` table: used past df 56, beyond its measured cells.
+  - statistical/student_t.rs df bands (`LOG_GAMMA_BETA_MIN` 6.5, `LOG_GAMMA_BETA_MAX`, `SERIES_MAX_DF`,
+    `ASYMPTOTIC_MIN_SHAPE`).
+- The `FITTED(T-XXXX, n_cells, range)` tag comes from T-3361; this task uses each site's recorded range.
+- T-3354 (P0) may touch the F density first; build on it.
 
 ## Acceptance criteria
-- [ ] TODO(fill): verifiable statements.
+- [ ] Each piece above applies only inside its recorded `FITTED` range; outside it the code computes the accurate value
+      (an mpmath-checked unit test on each side of each boundary).
+- [ ] GAMMA.INV and CHISQ.INV at a huge shape return the math (within 1e-9 relative) where the `MATH-OVER-EXCEL` entry
+      says, and Excel's value elsewhere; the entry names the region and its evidence points.
+- [ ] A fresh log-uniform sweep over each affected function's domain (R4.2) shows the Gate A envelope (R2).
+- [ ] No gated cell regresses beyond decision 0083's allowance; cells moved to the math by R3 are listed in the Outcome.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Re-validating the in-range form selectors (T-3365).
