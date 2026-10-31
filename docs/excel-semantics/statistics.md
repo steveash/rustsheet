@@ -2438,7 +2438,7 @@ z = fl64(fl(a·LN(x)) - L)  (extended);   I = fl(EXP(z)·s)  (Excel's EXP of the
   1 < b0 < 8 cells this L loses to r2-bratio's (3,365 against 4,038 of 7,455, verifier); b < 1 shapes top out at 55-84%
   bit-exact for any constant L (one stored intermediate, unidentified). The port needs Excel's GAMMALN exact at the shape
   arguments; the engine model is exact on 274 of 771 in [1, 2) and 1,738 of 2,585 below 1 (t2464-r2-bpser-small-gl).
-- An isolated miss at 1 < b0 < 8 (gap triage 2026-10-30, T-3252): `BETA.DIST(0.1,2.5,5,TRUE)` (probes-numeric/
+- An isolated miss at 1 < b0 < 8 (gap triage 2026-10-30, T-3331): `BETA.DIST(0.1,2.5,5,TRUE)` (probes-numeric/
   m9-beta-dist-a2p5 Calc!A31, a bpser point: b0·x0 = 0.5) is 0.05533381860850995 in Excel and 0.055333818608509895 in
   the engine, visibly off. Against a 60-digit mpmath value, 0.055333818608509839059, Excel is 16.1 ulp high and the
   engine 8.1 ulp high, so here Excel is the inaccurate one, and by more than the shapes probe's sub-branch suggests
@@ -2488,7 +2488,7 @@ TOMS `betaln` at every shape (half-integers included) scores bit-exact +150, vis
 A9 (A18 is now within 4 ulp): T-2924's k plus whole fl(a·LN x) steps, as above.
 Status: PARTIAL (excel-graph): within 15 digits in every bpser sub-branch of the shapes probe (2,861 of 2,868 at
 b0 >= 8, all others); bit-exact 52-75%; both > 1 with max > 8 a provisional form (T-3007)
-Tasks: T-2505, T-2512, T-2122, T-3007, T-3252
+Tasks: T-2505, T-2512, T-2122, T-3007, T-3331
 
 ## Incomplete beta at a shape near the double range: no overflowing fl(a LN x), and bpser is #NUM! once 1/B overflows (T-3007)
 Rule: Excel never evaluates a bpser whose fl(a·LN x) overflows: Excel for the web refuses a workbook that holds
