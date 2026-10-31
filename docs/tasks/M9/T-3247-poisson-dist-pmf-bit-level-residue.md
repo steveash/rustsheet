@@ -40,6 +40,9 @@ the bit-level residue.
 Stage: `campaign: visible` like T-2055 (Excel is the inaccurate side for this pmf, statistics.md), parked by
 `defer: phase-1b` because only the four large-k cells are visibly off.
 
+Gap triage 2026-10-31 (`make eval`, excel-graph): no open task named these cells (their probe's task is done); same function and kernel as this task, all 1 ulp. Example: Calc!A43 `POISSON.DIST(8,1.1,FALSE)` Excel 1.7696893109815857E-05, ours 1.769689310981586E-05.
+- probes-numeric/t2055-poisson-pmf-switch.case.json (6): Calc!A43, A64, A85, A113, A120, A127
+
 ## Acceptance criteria
 - [ ] `POISSON_STIRLERR_2_TO_5` is replaced by an identified mechanism, or the record says why none was found.
 - [ ] More bit-exact cells on t2055-poisson-pmf-sweep and -switch, and no Excel-computed pmf cell goes from pass to fail.

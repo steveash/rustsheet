@@ -34,6 +34,13 @@ there is a times LN(y)'s rounding error, and the form above fixes 44 cells, but 
 A probe sweep (GAMMA.DIST densities at shapes 0.05 to 2.9, x / beta 1E-17 to 40, both a literal y with beta = 1 and an
 inexact quotient) is likely needed first (`excel-probe` skill). Shape 50 below a/100 is T-3219's.
 
+Gap triage 2026-10-31 (`make eval`, excel-graph): these gated GAMMA.DIST density cells had no open owner after T-2852
+(done) left them; all within 15 digits (1 to 7 ulp, median 1), at y = x / beta from 1E-17 to about 1E-10 and shapes
+1 to 2.9, the switch between T-2753's form and the log form. Example: S!A20 `GAMMA.DIST(1E-14,2,1,FALSE)` Excel
+9.999999999999874E-15, ours 9.999999999999875E-15. t2738 A4 is `GAMMA.DIST(1E-5,1,1E+300,FALSE)` (y = 1E-305), 1 ulp.
+- probes/t2753-gamma-density-switch.case.json (63): S!A3, A4, A5, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A23, A24, A25, A26, A27, A28, A29, A30, A31, A32, A33, A34, A37, A38, A41, A42, B4, B5, B10, B11, B12, B13, B14, B15, B17, B18, B19, B20, B21, B22, B23, B24, B25, B26, B27, B28, B29, B30, B31, B32, B33, B35, B36, B38, B40, B42
+- probes/t2738-gamma-dist-tiny-ratio.case.json (1): S!A4
+
 ## Acceptance criteria
 - [ ] The cells named above are bit-exact or within 1 ulp, or each form tried is recorded in statistics.md with its counts
       (decision 0056); no gated regression and no cell newly visibly off.

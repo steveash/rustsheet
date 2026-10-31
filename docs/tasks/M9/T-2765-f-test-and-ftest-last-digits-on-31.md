@@ -67,6 +67,10 @@ is 33031.07777777778 in ours) and our FTEST is 0.206831318254199; the rate two u
 value in every product order, so the innermost difference is FTEST, about 2 ulp low (the same class as the cells above).
 - gen-m9/932b33b1ef8b7608.case.json (1): Calc!A168
 
+Gap triage 2026-10-31 (`make eval`, excel-graph): no open task named these cells (their probe's task is done); same function and kernel as this task, 1 ulp each. Example: t1049-ftest Calc!A13 `F.TEST(B1:B3,C1:C5)` Excel 0.21470767674564564, ours 0.21470767674564567.
+- probes-numeric/t1049-ftest.case.json (2): Calc!A13, A24
+- probes-numeric/m9-legacy-ftest.case.json (1): Calc!A31
+
 ## Acceptance criteria
 - [ ] These 32 known-failure lines (the 31 F.TEST and FTEST cells plus the T-2676 cell 932b33b1ef8b7608 A168) disappear from eval/baseline/gen-m9.txt (`make eval-baseline`) with no new ones in any
       baseline, or the Outcome records the candidates scored with the f-test fit and their bit-exact counts (decision

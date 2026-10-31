@@ -50,6 +50,10 @@ PRICE's root", T-1592 fourth-round paragraph; lab fit `uv run rustsheet-fitlab y
   B62, B69, B11, A54 and A62, yield-solver-sweep C11 and solver-iteration-traces Y!E2. The same probe shows Excel's PRICE
   at our iterates equals the lab's `^` PRICE to the bit (financial.md "YIELD stops short of PRICE's root", T-2974).
 
+Gap triage 2026-10-31 (`make eval`, excel-graph): no open task named these cells (their probe's task is done); same function and kernel as this task, 2 to 4 ulp, none visibly off. Example: yield-one-step-start S!A162 `YIELD(DATE(2024,3,1),DATE(2027,6,30),0.1,95,99.976694,2,0)` Excel 0.11842330011243947, ours 0.11842330011243941.
+- probes/yield-newton-domain.case.json (5): P!B6, B10, B11, B12, B13
+- probes/yield-one-step-start.case.json (3): S!A162, B19, B24
+
 ## Acceptance criteria
 - [ ] The three regressed probe cells pass bit for bit (their lines leave eval/baseline/probes.txt), or the task
       records the PRICE kernels and stop rules tried with their lab bit-exact counts (decision 0056).

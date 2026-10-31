@@ -3502,6 +3502,12 @@ Tasks: T-1543, T-1634, T-2561
     on its double-valued lower cdf: `CHIINV(1E-9,1)` (probes-numeric/m9-legacy-chiinv A1, A2) is 37.324892889999234
     in Excel, about 2.2E-7 (one step of the cdf's resolution near 1) below the complement crossing
     37.324893106518715 (ours) and the true quantile 37.32489305136234 (T-2561).
+    Gap triage 2026-10-31 (100-digit mpmath check): Excel's value is, to the bit, the exact quantile of the lower cdf
+    value one double below q = fl(1 - 1E-9): its tail 2·(1 - fl((1 + q)/2)) = 1.0000000827E-9 against q's
+    9.999999717E-10. Ours is the exact quantile of q. So Excel's search stops one cdf ulp outside the band of x that
+    rounds to q, on the smaller-x side. At p = 1E-10 and 1E-4 (A11, A12) Excel is within 4 ulp of the exact quantile
+    of q, and `NORM.S.INV((1+q)/2)^2` is 114 to 134,935 ulp off Excel at p = 0.001, 0.995, 0.999 and 0.99999, so a
+    df-1 normal closed form is not Excel's algorithm. The landing rule is T-3146's.
   - Excel's search gives up in the far right tail. Below an edge that depends on df, CHISQ.INV.RT and CHIINV are
     `#NUM!`, though the quantile exists and CHISQ.DIST.RT past it is a plain number. With p = 1E-k, the last k that
     is still a value is, for df 3 to 42: 20, 27, 35, 43, 52, 62, 72, 81, 87, 90, 94, 99, 104, 110, 116, 121, 127,

@@ -109,6 +109,9 @@ Cells:
 - gen-m9/cb61169f4c033d4b.case.json (3): Calc!A22, A193, A321
 - gen-m9/d8f44d556674c2fd.case.json (1): Calc!A9
 
+Gap triage 2026-10-31 (`make eval`, excel-graph): no open task named these cells (their probe's task is done); same function and kernel as this task, all within 15 digits (1 to 2 ulp), so bit-level targets that need not pass for the visible-parity stage. CONFIDENCE and CONFIDENCE.NORM are NORM.S.INV(1 - alpha/2) times sigma over the root of n. Example: Calc!A11 `CONFIDENCE(0.999,3,7)` Excel 0.0014211250243260142, ours 0.0014211250243260137.
+- probes-numeric/m9-legacy-confidence.case.json (10): Calc!A1, A2, A3, A4, A7, A8, A11, A12, A19, A29
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2255 and T-2256): these 25 known-failure lines (14 from T-2255, 11 from T-2256) disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.

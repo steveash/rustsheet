@@ -47,6 +47,9 @@ ulp off under statrs).
   name written beside a different case (decision 0159, T-0099):
   - probes-numeric/t1049-hypgeomdist.case.json: Calc!A14, A16
 
+Gap triage 2026-10-31 (`make eval`, excel-graph): no open task named these cells (their probe's task is done); same function and kernel as this task, all within 15 digits (1 to 12 ulp), so bit-level targets that need not pass for the visible-parity stage. Example: Calc!A6 `HYPGEOMDIST(10,20,40,100)` Excel 0.11923605235455972, ours 0.11923605235455989 (12 ulp).
+- probes-numeric/t1048-hypgeomdist.case.json (18): Calc!A1, A3, A4, A5, A6, A7, A9, A18, A19, B1, B3, B4, B5, B6, B7, B9, B18, B19
+
 ## Acceptance criteria
 - [ ] The ten cells above are within half a unit of the 15th digit of Excel's value, no new known-failure lines.
 - [ ] statistics.md records the matched formulation; the bit-level cells above pass or are listed with Excel vs ours.
