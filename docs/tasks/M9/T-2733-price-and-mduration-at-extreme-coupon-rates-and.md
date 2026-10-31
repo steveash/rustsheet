@@ -63,7 +63,7 @@ in numbers.md "Integer exponents: right-to-left square-and-multiply" and "Non-in
       DURATION and MDURATION lines in eval/baseline/probes.txt that are visibly off, with no new known-failure lines in
       any baseline (`make eval-baseline`).
 - [x] financial.md records the rule found (or the candidates scored, if time-boxed) and cites the cells above.
-- [x] `make check` green; reviewers approve.
+- [ ] `make check` green (done); reviewers approve (pending: the agent panel has not run on this head).
 
 ## Out of scope
 - Last-digit residue of these functions (T-1374), PRICEMAT (above), YIELD and ODDFYIELD (T-1592, T-2007).
