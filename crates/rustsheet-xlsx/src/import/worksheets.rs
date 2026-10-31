@@ -252,7 +252,8 @@ fn parse_reference(s: &str) -> Result<CellReferenceRC, ParseReferenceError> {
 /// A1 parsing stores a relative reference as its offset from the formula's cell, so the trees of
 /// a formula copied along a row or column are equal, and the R1C1 text is a function of the tree
 /// and of whether the cell holds an array formula alone (`add_implicit_intersection` and
-/// `to_rc_format` read nothing else). A hit skips both, which were about 40% of loading
+/// `to_rc_format` read nothing else), up to the sign of a zero, which the derived `PartialEq`
+/// ignores: trees holding a `-0` are not cached. A hit skips both, which were about 40% of loading
 /// corpus-bench/52450's 36,640 copies of one formula. Only the last few trees are kept: copies
 /// come in runs, and comparing a tree that differs stops at the first different node.
 #[derive(Default)]
@@ -298,15 +299,22 @@ pub(super) fn from_a1_to_rc(
             "Formula in {context} nests more than {MAX_NESTED_CALLS} function calls"
         )));
     }
-    if let Some(text) = cache.get(&t, is_array_formula) {
-        return Ok(text.to_string());
+    // Tree equality holds `-0` equal to `0`, which print differently (`{-0}`, `{0}`): such a
+    // tree is neither looked up nor kept.
+    let cacheable = !t.has_negative_zero();
+    if cacheable {
+        if let Some(text) = cache.get(&t, is_array_formula) {
+            return Ok(text.to_string());
+        }
     }
     let mut rewritten = t.clone();
     if !is_array_formula {
         add_implicit_intersection(&mut rewritten, true);
     }
     let text = to_rc_format(&rewritten);
-    cache.insert(t, is_array_formula, text.clone());
+    if cacheable {
+        cache.insert(t, is_array_formula, text.clone());
+    }
     Ok(text)
 }
 

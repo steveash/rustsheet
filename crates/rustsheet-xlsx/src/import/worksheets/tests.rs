@@ -66,8 +66,16 @@ fn load_hyperlinks_skips_malformed_and_caps_huge_ranges() {
     assert_eq!(links.get(&(1, 6)), None);
 }
 
-/// Every `<f>` text of a workbook's worksheets with its cell, and the workbook's sheet names.
-fn workbook_formulas(path: &std::path::Path) -> (Vec<String>, Vec<(String, String)>) {
+/// A workbook's sheet names and the formulas written in its worksheets.
+struct WorkbookFormulas {
+    /// The sheet names, in tab order.
+    sheets: Vec<String>,
+    /// Each `<f>` text with its cell (`B7`), from every worksheet.
+    formulas: Vec<(String, String)>,
+}
+
+/// The sheet names and `<f>` texts of the workbook at `path`.
+fn workbook_formulas(path: &std::path::Path) -> WorkbookFormulas {
     use std::io::Read;
 
     let mut archive = zip::ZipArchive::new(std::fs::File::open(path).unwrap()).unwrap();
@@ -94,10 +102,11 @@ fn workbook_formulas(path: &std::path::Path) -> (Vec<String>, Vec<(String, Strin
             }
         }
     }
-    (sheets, formulas)
+    WorkbookFormulas { sheets, formulas }
 }
 
-/// The `.xlsx` files under `dir`, recursively.
+/// The `.xlsx` files under `dir`, recursively. build.rs's `collect_xlsx` does the same for the
+/// generated calc tests, but a build script's items cannot be imported from tests.
 fn xlsx_files(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
@@ -131,7 +140,7 @@ fn rc_text_cache_prints_what_a_fresh_parse_prints() {
     assert!(files.len() > 200, "vendored workbooks not found");
     let (mut checked, mut copies) = (0, 0);
     for path in files {
-        let (sheets, formulas) = workbook_formulas(&path);
+        let WorkbookFormulas { sheets, formulas } = workbook_formulas(&path);
         let Some(sheet) = sheets.first().cloned() else {
             continue;
         };
@@ -185,4 +194,25 @@ fn rc_text_cache_prints_what_a_fresh_parse_prints() {
         checked > 1_000 && copies > 1_000,
         "{checked} formulas, {copies} copies"
     );
+}
+
+/// `{-0}` and `{0}` parse to trees the derived `PartialEq` holds equal but print differently, so
+/// neither may take the other's text from the cache, in either order (T-3318).
+#[test]
+fn rc_text_cache_keeps_the_sign_of_zero() {
+    use rustsheet_engine::expressions::parser::new_parser_english;
+
+    use crate::import::worksheets::{from_a1_to_rc, RcTextCache};
+
+    let mut parser = new_parser_english(vec!["Sheet1".to_string()], vec![], HashMap::new());
+    parser.set_loaded(true);
+    for order in [["SUM({-0})", "SUM({0})"], ["SUM({0})", "SUM({-0})"]] {
+        let mut cache = RcTextCache::default();
+        for (row, formula) in order.iter().enumerate() {
+            let context = format!("Sheet1!A{}", row + 1);
+            let text = from_a1_to_rc(formula.to_string(), &mut parser, &mut cache, context, false);
+            let expected = if formula.contains('-') { "{-0}" } else { "{0}" };
+            assert!(text.unwrap().contains(expected), "{formula}");
+        }
+    }
 }
