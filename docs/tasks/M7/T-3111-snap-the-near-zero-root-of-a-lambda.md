@@ -3,7 +3,7 @@ id: T-3111
 title: "Snap the near-zero root of a LAMBDA body at every call made by MAP, MAKEARRAY, BYROW, BYCOL, REDUCE and SCAN, and of an in-place call passed as a LAMBDA argument"
 milestone: M7
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
