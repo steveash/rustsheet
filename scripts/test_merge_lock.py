@@ -445,7 +445,7 @@ class MergeLock(unittest.TestCase):
         # 31 polls: own PR and the holder's at polls 0, 10, 20 and 30, not 62 reads.
         self.assertEqual(sorted(reads), ["101"] * 4 + ["202"] * 4)
 
-    def flaky_read(self, errors: list[Exception]):  # noqa: ANN202
+    def flaky_read(self, errors: list[Exception]) -> mock._patch[mock.MagicMock]:
         real = merge_lock.read_lock
 
         def flaky(root: Path) -> merge_lock.Lock | None:

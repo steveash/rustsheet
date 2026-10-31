@@ -91,6 +91,8 @@ ATTEMPTS = 10
 
 # What `busy_message` says to a caller that could not join a full queue.
 QUEUE_FULL = f"queue full ({QUEUE_MAX} waiters)"
+# The start of what `busy_message` says to a caller that is in the queue.
+IN_QUEUE = "you are waiter"
 
 HELD, BUSY, ERROR, DONE, LOST = 0, 1, 2, 3, 4
 
@@ -435,7 +437,7 @@ def busy_message(lock: Lock, live: bool, place: int | None, waiting: int) -> str
         ahead = f"held by {lock.holder} for PR {lock.pr or '?'}"
     else:
         ahead = f"reserved for {head.id if head else '?'} (PR {head.pr if head else '?'})"
-    where = f"you are waiter {place} of {waiting}" if place else QUEUE_FULL
+    where = f"{IN_QUEUE} {place} of {waiting}" if place else QUEUE_FULL
     return f"merge lock busy: {ahead}; {where}"
 
 
@@ -473,7 +475,7 @@ def wait(
         if code == BUSY and message.endswith(QUEUE_FULL) and not queued:
             print(message, flush=True)
             return ERROR
-        queued = queued or (code == BUSY and "you are waiter" in message)
+        queued = queued or (code == BUSY and IN_QUEUE in message)
         if message != last:
             print(message, flush=True)
             last = message
