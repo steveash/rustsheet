@@ -20,10 +20,10 @@ the decision 0188 R3 points marked, and `make check` running them.
   RATE, XIRR, NPER, T.INV, T.INV.2T, TINV, F.INV, CHISQ.INV, CHISQ.INV.RT, BETA.INV, GAMMA.INV, BINOM.DIST,
   NEGBINOM.DIST, POISSON.DIST, F.DIST, T.DIST, BETA.DIST. The spec splits the rest into further slices.
 - **Split 2026-10-31** (18 functions with 3 definitions is more than an M task): this task keeps the continuous
-  distributions and quantiles: T.DIST, T.INV, T.INV.2T, TINV, F.DIST, F.INV, CHISQ.INV, CHISQ.INV.RT, BETA.DIST,
-  BETA.INV and GAMMA.INV, with their R3 points (the deep-tail quantiles, GAMMA.INV at a huge shape). T-3527 takes the
-  discrete distributions (BINOM.DIST, NEGBINOM.DIST, POISSON.DIST) and T-3528 the financial solvers (IRR, XIRR, NPER,
-  RATE, with NPER's R3 points).
+  Student-t and F families: T.DIST, T.INV, T.INV.2T, TINV, F.DIST and F.INV, with the deep-tail T.INV R3 points.
+  T-3529 takes CHISQ.INV, CHISQ.INV.RT, GAMMA.INV, BETA.DIST and BETA.INV (with GAMMA.INV's huge-shape R3 points),
+  T-3527 the discrete distributions (BINOM.DIST, NEGBINOM.DIST, POISSON.DIST) and T-3528 the financial solvers (IRR,
+  XIRR, NPER, RATE, with NPER's R3 points).
 - R3's initial `MATH-OVER-EXCEL` cases (statistics.md and financial.md) need committed evidence points: the deep-tail
   quantiles (for example `T.INV(1.87E-297,3937)`, Excel -156.96, math -40.26), NPER at rates below 1e-14, GAMMA.INV at
   a huge shape. Add them as R3-marked points, filled, and cite them from the semantics entries.
