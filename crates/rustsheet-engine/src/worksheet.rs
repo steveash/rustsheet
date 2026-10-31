@@ -422,7 +422,8 @@ impl Worksheet {
         if !is_valid_row(row) {
             return Err(format!("Row number '{row}' is not valid."));
         }
-        if height < 0.0 {
+        // `!(x >= 0)` also refuses NaN, and an external diff can carry any `f64` (T-2896).
+        if !(height >= 0.0 && height.is_finite()) {
             return Err(format!("Can not set a negative height: {height}"));
         }
         let hidden = self.is_row_hidden(row)?;
@@ -474,7 +475,8 @@ impl Worksheet {
         if !is_valid_column_number(column) {
             return Err(format!("Column number '{column}' is not valid."));
         }
-        if width < 0.0 {
+        // `!(x >= 0)` also refuses NaN, and an external diff can carry any `f64` (T-2896).
+        if !(width >= 0.0 && width.is_finite()) {
             return Err(format!("Can not set a negative width: {width}"));
         }
         let cols = &mut self.cols;

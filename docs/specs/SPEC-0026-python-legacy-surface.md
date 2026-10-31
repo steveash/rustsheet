@@ -138,7 +138,8 @@ index checks. The Python package no longer calls it (decision 2), but the Rust A
 As built (T-2896): each diff is checked against the model as it is when that diff applies, not before the first one,
 because a list can depend on itself (it can add the sheet a later diff edits, or create the style a later undo
 restores). "Unchanged" comes from a copy of the workbook: the model is rebuilt from it when any diff is refused. The
-structural actions and the range clears also refuse counts and areas off the grid, which overflowed in `i32`.
+structural actions and the range clears also refuse counts and areas off the grid, which overflowed in `i32`, and
+an area costs the cells it holds, not its size.
 
 ### Decision 5. Fuzzing (T-2895)
 A new target, fuzz/fuzz_targets/bitcode_workbook.rs, decodes arbitrary bytes through `Model::from_bytes` and, when the
