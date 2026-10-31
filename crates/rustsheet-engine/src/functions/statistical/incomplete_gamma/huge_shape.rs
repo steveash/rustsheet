@@ -14,7 +14,11 @@ use super::{gamma_density, gamma_quantile, Tail};
 /// From this shape on the quantile is [`huge_shape_quantile`]. Below it statrs' search and the
 /// refinement give the true quantile, as Excel does at every probed p down to shape 1E8 (T-1634);
 /// at 1E9 Excel is already `#NUM!` at p = 1E-300 (probes/t3070-gamma-inv-band A1).
-/// FITTED(T-3070, 1 cell, shape 1E9, p 1E-300)
+/// Only the 1E9 side has discriminating cells (T-3395, the cut moved in a full eval run with a
+/// temporary override): a cut of 2E9 breaks t3070 A1 and A335 (`CHISQ.INV.RT(1E-100,2E9)`, shape
+/// 1E9). A cut of 1E8 changes no cell: the 13 GAMMA.INV and CHISQ.INV calls at shapes 1E8 to 7E8
+/// give the same value from either path, so nothing pins the cut from below.
+/// FITTED(T-3070, 2 cells, shape 1E9 at p 1E-300 and 1E-100; no cell discriminates from 1E8 up)
 pub(crate) const HUGE_SHAPE_MIN: f64 = 1e9;
 
 /// The offset Excel adds to the Wilson-Hilferty cube root: (1.0002658235505755)^(1/3) - 1 is

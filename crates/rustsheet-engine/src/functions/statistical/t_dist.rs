@@ -295,7 +295,14 @@ fn t_x_overflows(x: f64) -> bool {
 const T_QUANTILE_SERIES_DF: f64 = 1e5;
 
 /// Probabilities below this take the tail path of [`t_tail_quantile`] instead of `statrs`.
-/// FITTED(T-1531, 105 cells, p 1E-300..1E-10, df 1..1E5)
+/// T-3395 moved the cut in a full eval run (a temporary override) and scored every changed cell in
+/// ulps: the 138 cells with df below 1E5 and q from 1E-8 to 1E-2 are the ones that bracket it.
+/// The tail path is the closer one on net at every q tried below 1E-3: a cut of 1E-8 makes 15 cells
+/// worse (q 5E-7 and 1E-6), 1E-11 makes 62 worse and 9 better, and 1E-3 makes 21 better (one now
+/// bit-exact, `TINV(0.001,9)`) and 5 worse. From 1E-3 to 1E-2 statrs is better on net: a cut of
+/// 1E-2 breaks `TINV(LN(..),5)` and `T.INV.2T(0.01,5)` (q 5E-3). So the cells put the cut in
+/// 5E-4..5E-3, above this value; moving it is T-3410's.
+/// FITTED(T-1531, 138 cells, q 1E-8..1E-2 at df 1..2777; cells favour a cut in 5E-4..5E-3)
 const T_TAIL_P: f64 = 1e-5;
 
 /// Below this `x = df / (df + t^2)` the incomplete beta `I_x(df/2, 1/2)` equals its leading term and
@@ -305,7 +312,13 @@ const T_TAIL_X: f64 = 1e-8;
 /// Below this probability the quantile comes from bisection on the cdf, not `statrs`' `inverse_cdf`,
 /// which hangs at 1E-100 for df = 1000 and panics from about 1E-200 (the sweep test covers df 2 to
 /// 9E4). Above it `statrs` is bit-exact with Excel where x is not tiny (`T_DIST.xlsx` `T.INV(0.9999999,10)`).
-/// FITTED(T-1531, 105 cells, p 1E-300..1E-10, df 1..1E5)
+/// The cells pin only the top of its bracket (T-3395, the same cut-moving runs as [`T_TAIL_P`]):
+/// a cut of 1E-7 sends `T_DIST.xlsx` E66, `T.INV(0.9999999,10)` at q 1.0000000006E-7, to
+/// bisection and breaks it. Below the cut no cell favours bisection: with statrs down to 1E-11,
+/// 19 cells move closer and 11 further off; down to 1E-20, 33 closer (`T.INV(1E-15,10)` bit-exact)
+/// and 19 further. The cut is in effect the guard against statrs' hang and panic, placed where
+/// no cell objects; lowering it is T-3410's.
+/// FITTED(T-1531, 160 cells, q 1E-300..1E-5 where x is not tiny, df 2..99999; only the 1E-7 cell discriminates)
 const T_STATRS_MIN_P: f64 = 1e-8;
 
 /// Magnitude `t > 0` with `P(T < -t) = q` for a small `q`, `df < T_QUANTILE_SERIES_DF`; bounded time.
@@ -336,8 +349,14 @@ fn t_tail_quantile(dist: &StudentsT, df: f64, q: f64) -> f64 {
 /// digits of `y` below 1 (`TINV(1-1E-10,5)` 2.36E-8, Excel 1.32E-10; T-2724). Excel switches from the
 /// rounded-y form to the exact quantile between two-tailed p = 0.9 (c = 0.1) and 0.95 (c = 0.05)
 /// (statistics.md "Student-t quantile is SQRT(df*(1/y-1)) of the rounded beta quantile, away from
-/// the centre"), so the cut sits inside that bracket.
-/// FITTED(T-2724, 5 cells, c 0.1, df 2..1000)
+/// the centre"), so the cut sits inside that bracket. The cells on its low side are gen-m9's six at
+/// c = 0.05 (`TINV(0.95,3)`, `TINV(0.95,5)`, `T.INV.2T(0.95,12)`, `CONFIDENCE.T(0.95,..,20)`, df
+/// 3..19): a cut of 0.04 sends them to statrs and breaks them (T-3395, a temporary override in a
+/// full eval run). No cell lies in (0.057, 0.0787). Two failing t3349 sweep cells above the cut,
+/// `T.INV.2T(0.921314149721905,4)` (c 0.0787) and `T.INV.2T(0.90147488203954,8)` (c 0.0985),
+/// come closer to Excel from the centre path (a cut of 0.0999), so on net the cells favour a cut
+/// in 0.0985..0.1; moving it is T-3410's.
+/// FITTED(T-2724, 13 cells, c 0.05..0.1, df 2..1000; cut bracketed 0.05..0.1, cells favour 0.0985..0.1)
 const T_CENTRE_C: f64 = 0.075;
 
 /// The centre cut of T.INV.2T's negative branch, p in (1, 2), with c = p - 1: Excel is the exact

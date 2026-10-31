@@ -19,7 +19,8 @@ T-3395 moved each cut in full eval runs (a temporary env override, reverted; sui
 ironcalc-calc) and scored every changed cell by its ulp distance to Excel (counts are in the doc comments):
 - `T_TAIL_P` (1E-5): the tail path beats statrs on net at every q tried from 5E-11 to 5E-4. A cut of 1E-3 makes 21
   cells closer (gen-m9 46ac3ef5e61583ca A293 `TINV(0.001,9)` bit-exact) and 5 further off. A cut of 1E-2 breaks
-  5cebac1f02bf30f2 A60 and m9-t-inv-2t A56 (q 5E-3). So the cells favour a cut in 5E-4..5E-3.
+  5cebac1f02bf30f2 A60 and m9-t-inv-2t A56 (`T.INV.2T(0.01,5)`, q 5E-3), and between 1E-3 and 1E-2 statrs is the
+  closer on net. So the cells favour a cut in 5E-4..5E-3.
 - `T_STATRS_MIN_P` (1E-8): only T_DIST.xlsx E66 (`T.INV(0.9999999,10)`, q 1E-7) discriminates, and it needs statrs.
   Below the cut statrs beats bisection on net (to 1E-11: 19 closer, 11 further; to 1E-20: 33 and 19, a4090567758520df
   A201 `T.INV(1E-15,10)` bit-exact). The bisection exists for statrs' hang (1E-100 at df 1000) and panic (about

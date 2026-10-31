@@ -57,14 +57,23 @@ pub(crate) fn compute_rate(
     annuity_type: i32,
     guess: f64,
 ) -> Result<f64, Error> {
+    // The start offset was chosen by scoring (T-2005; fit lab `rate_candidates` scores +-1E-3 and
+    // 1E-4): on the 782 cells of the fit lab's `rate` set the model is bit-exact on all, with
+    // nper 1..1000, |pmt| 1E-6..1E+6, pv -100..1E+7, guess -0.5..10 and rates -0.75..2.
+    /// FITTED(T-2005, 782 cells, RATE nper 1..1000, |pmt| 1E-6..1E+6, guess -0.5..10, rate -0.75..2)
     const OFFSET: f64 = 0.001;
+    // Not a fit: Microsoft's RATE documentation gives 0.0000001 as the convergence bound. Scoring
+    // only confirms it (financial.md "RATE is a secant on the FV residual": 1e-6 and 1e-8 score
+    // lower).
     const TOLERANCE: f64 = 1e-7;
     // Excel's looser test at the cap (T-2689): the 200th iterate is returned when its step and
     // |f| are below 1e-4 and it is above -1 + 1e-4. probes/rate-cap-return-rule: steps of 7.3e-5
     // (A68) and 7.8e-5 (A72) return and 1.3e-4 (A70) is `#NUM!`, also where the step is 4e-4 of
     // the rate (A72);
     // |f| 7.3e-5 returns (rate-step-cap A30) and 1.06e-4 is `#NUM!` (A53); 1 + r 1.02e-4 returns (A1)
-    // and 9.4e-5 is `#NUM!` (A16).
+    // and 9.4e-5 is `#NUM!` (A16). One value sits inside all three brackets, so it is a cut placed
+    // on the cells of the three cap probes (T-3395 counted them).
+    /// FITTED(T-2689, 178 cells, RATE at the 200-step cap; one cut for all three tests bracketed 9.4E-5..1.02E-4)
     const RATE_CAP_TOLERANCE: f64 = 1e-4;
     if guess <= -1.0 {
         return Err(Error::VALUE);
@@ -162,6 +171,9 @@ fn irr_npv(values: &[f64], v: f64) -> Option<f64> {
 /// the secant or the fallback alike (financial.md "IRR's far-root bound"): `IRR({-1,3E+6})` and
 /// `IRR({-1,0,1E+14})` (1 + r = 9999999.994) return, `IRR({-1,1E+7})` and every larger
 /// two-flow root are `#NUM!` (probes/irr-fallback-roots A25-A39, irr-guess-edges-2 A15-A34).
+/// The exact edge between 9999999.994 and 1E+7 is not pinned: the round value is placed in that
+/// bracket (T-2727).
+/// FITTED(T-2727, 35 cells, IRR roots with 1 + r 1E+4..2E+15; cut bracketed 9999999.994..1E+7)
 const IRR_FAR_ROOT_BOUND: f64 = 1e7;
 
 /// The most Newton steps of [`irr_fallback`]: a run that needs 119 is `#NUM!` in Excel
@@ -178,6 +190,12 @@ fn irr_from_discount(v: f64) -> Option<f64> {
 /// is not a positive discount factor, or no stop in 50 steps). The state is d = 1 - v = r/(1 + r),
 /// so from v = 0.5 down the iterates' v = 1 - d sit on Excel's grid of multiples of 2^-53
 /// (probes/t2565-irr-guess-sweeps), and each step is anchored on the newer iterate.
+/// Chosen by scoring on the fit set (financial.md "IRR is a secant in d = 1 - v"): the start offset
+/// of 1E-3 toward larger |NPV| (+1E-3 on both sides scores 121 of 263) and the 1E-7 residual stop
+/// (1E-6 scores 188, 1E-8 180). Not fits: the 1E-7 step stop is Microsoft's documented 0.00001
+/// percent, and `MAX_STEPS` is a directive-5 cap (financial.md "The IRR and XIRR solver caps").
+/// FITTED(T-1533, 263 cells, IRR of 2..41 flows, |c| 1E-6..1E+9, guess -0.99..100, roots -0.99..99)
+/// The zero-step stop's bound (below):
 /// FITTED(T-3120, 36 cells, IRR of {-2.5,-1,123456789.123} over a guess sweep)
 fn irr_secant(values: &[f64], guess: f64) -> Option<f64> {
     const MAX_STEPS: usize = 50;
