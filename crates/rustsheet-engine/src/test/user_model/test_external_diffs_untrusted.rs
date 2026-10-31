@@ -540,5 +540,6 @@ fn a_restored_sheet_with_a_taken_id_or_a_nan_width_is_refused() {
         new_value: f64::NAN,
         old_value: 10.0,
     };
-    assert_refused(&mut model, &one(DiffType::Redo, width), "NaN width");
+    let error = assert_refused(&mut model, &one(DiffType::Redo, width), "NaN width");
+    assert!(error.contains("non-finite width"), "{error}");
 }

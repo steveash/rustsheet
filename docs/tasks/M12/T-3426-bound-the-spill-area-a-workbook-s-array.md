@@ -4,7 +4,7 @@ title: "Bound the spill area a workbook's array anchors claim in total, not only
 milestone: M12
 lane: engine
 status: todo
-priority: P2
+priority: P1
 size: M
 tier: opus
 depends_on: []
@@ -22,11 +22,15 @@ anchor's range densely (model.rs and user_model/cell_undo.rs: `for r in row..row
 about 10^9 steps, and memory for that many spill cells. Options: walk only the cells that exist in those loops
 (`SheetData::places_in_block`), check at load that anchors' ranges do not overlap (their sum is then bounded by the
 grid), or cap the total claimed area. Also probe whether Excel opens a file whose CSE or cached spill range exceeds
-2^20 cells. T-2896 refuses one, a DEVIATION in docs/excel-semantics/xlsx-storage.md.
+2^20 cells (T-2896 refuses one, a DEVIATION in docs/excel-semantics/xlsx-storage.md), and whether Excel lets a CSE
+formula be entered over more than 2^20 cells (T-2896 refuses it, a DEVIATION in docs/excel-semantics/arrays.md).
+P1: until this lands, a small crafted workbook or diff list can still claim n x 2^20 cells.
 
 ## Acceptance criteria
 - [ ] A test with many anchors each claiming 2^20 cells loads (or is refused) and evaluates in bounded time and memory.
-- [ ] The xlsx-storage.md entry cites a probe of a CSE range above 2^20 cells, or a probe task is filed.
+- [ ] The xlsx-storage.md entry cites a probe of a file whose CSE or cached spill range is above 2^20 cells, and the
+      arrays.md entry a probe of entering a CSE formula over more than 2^20 cells (e.g. over A:B); or a probe task is
+      filed for each.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
