@@ -3,7 +3,7 @@ id: T-3304
 title: "Probe and fit the open edges of Excel's pairwise accent rule: marks on several letters, equal-sum units that share a prefix, and the accent pass against the case and skipped-character passes"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -59,3 +59,15 @@ COUNTIFS), so these edges decide M2 criteria results on real accented text (name
 - Changing collation.rs (the follow-up engine task).
 - Sorts and lookups under the rule (T-3210, T-3211); marks after an expansion (T-3203); other
   scripts, width and kana (T-3275, T-3276); the Windows-table-only weights (T-3305).
+
+## Outcome
+probes/t3304-collation-multi-letter-accents (1,896 cells, excel-graph 2026-10-31): four pair grids
+(several accented letters; marks across a letter boundary; equal-sum runs sharing a prefix; case
+and skipped characters) plus SUMPRODUCT ranks and COUNTIF `"="&x`. The per-letter pairwise rule
+held everywhere it was asked: the first letter whose accents differ decides, the shared-unit skip
+never crosses a letter boundary, and equal remaining sums are equal whatever their units. coercion.md
+replaces the "Open, UNVERIFIED" sentence with these rules and cites the cells. New finding: a
+combining mark after a hyphen or apostrophe belongs to that skipped character (no accent weight;
+it raises the character in the last pass), which the engine gets wrong in 47 cells, recorded as
+known failures and filed as T-3329. Eval delta: +1,849 passing cells, +47 known failures,
+0 regressions.
