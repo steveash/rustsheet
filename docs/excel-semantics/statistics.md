@@ -3501,7 +3501,10 @@ Tasks: T-1543, T-1634, T-2561, T-3336, T-3337
     (`CHISQ.INV.RT(1E-20,1)`; p between 5.55E-17 and 1E-16 is unprobed). The rule is exact only to Excel's search
     on its double-valued lower cdf: `CHIINV(1E-9,1)` (probes-numeric/m9-legacy-chiinv A1, A2) is 37.324892889999234
     in Excel, about 2.2E-7 (one step of the cdf's resolution near 1) below the complement crossing
-    37.324893106518715 (ours) and the true quantile 37.32489305136234 (T-2561), while at 1E-10 and 1E-4 Excel is within
+    37.324893106518715 (ours) and the true quantile 37.32489305136234 (T-2561). At 50 digits (gap triage
+    2026-10-31) the lower cdf erf(sqrt(x/2)) at ours rounds to the double 1 - 1E-9 and at Excel's to the double one
+    ulp below it (0.9999999989999999), and the gap between them is exactly one band, 2^-53 over the density
+    5.128E-10: Excel stops in the band below the one holding 1 - p. At 1E-10 and 1E-4 Excel is within
     2 ulp of the crossing (m9-chisq-inv-rt A1, m9-legacy-chiinv A12), so the step is not taken at every p. Where it is
     taken is unprobed: T-3336 sweeps p at df 1, T-3337 fits the landing.
   - Excel's search gives up in the far right tail. Below an edge that depends on df, CHISQ.INV.RT and CHIINV are

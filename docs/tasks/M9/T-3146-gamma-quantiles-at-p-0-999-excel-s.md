@@ -62,6 +62,9 @@ cells above (Excel's landing point where its double cdf is flat), over p 0.995 t
   A133, A135, A136, A138, A139
 - probes-numeric/t3148-gamma-quantile-flat-band CHISQ.INV.RT (28): A74, A75, A76, A82, A83, A84, A85, A90, A91, A92,
   A93, A94, A95, A98, A100, A101, A102, A103, A106, A107, A108, A109, A110, A111, A131, A134, A137, A140
+- Gap triage 2026-10-31 (`make eval` on 1171772e, `--all-off`): probes-numeric/m9-legacy-chiinv Calc!A65
+  `CHIINV(0.999,5)` and Calc!A66 `CHISQ.INV.RT(0.999,5)`, Excel 0.210212602629218, ours 0.21021260262921926: the same
+  call and value as the `CHISQ.INV.RT(0.999,5)` cell of the 12 above, so the same landing point.
 
 Caution when fitting from this probe: Excel truncates formula literals to 15 significant digits, so the 17-digit p
 literals of A120 to A140 are not the neighbouring doubles of 0.999 the probe meant. `0.99899999999999967`, `...78`
