@@ -117,6 +117,7 @@ need bratio's branches (T-2505 onwards).
       reported in the Outcome.
 - [ ] statistics.md's T-0970 section replaces the PARTIAL rules with the fitted formulation (VERIFIED on
       the sweep) or records which hypotheses were ruled out.
+- [ ] The 35 cells added by gap triage 2026-10-30 are bit-exact (their 6 gen-m9 lines leave eval/baseline/gen-m9.txt; the probes-numeric cells, ungated, shown with `make eval-show`) or the Outcome lists each with its ulp distance.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -134,3 +135,16 @@ criteria still unmet at that point move to a follow-up task without the campaign
 
 ## Phase 1 triage (T-0090, 2026-10-27)
 110 visibly-off F.DIST cells of probes-numeric/t2220-f-dist-sweep-cdf (and the other t2220 sweeps) are not last-digit residue; T-2981 owns them and routes them to the kernel task that fixes them (T-2219 / T-2790 first guess). This task stays `defer: phase-1b` for its bit-level fits.
+
+## Cells added by gap triage (2026-10-30)
+`make eval` on origin/main 6a26b992a (excel-graph), `scripts/exit_owners.py`'s `owned` rule over every failing cell and the task files of origin/main and every pushed branch: 35 F.DIST, F.DIST.RT and FDIST cells within 15 digits (31 within 4 ulp, 4 further; none visibly off) that no open task names, on the m9, m9-legacy and t1049 probes this task already reads and six gen-m9 cells. They include the d1 = d2 = 1 points this task's Context cites (`F.DIST.RT(1,1,1)` and `FDIST(1,1,1)`: Excel 0.4999999999999999, ours 0.5000000000000002; statistics.md "Incomplete beta in the ironcalc-calc workbooks: F tails and densities"). Other examples, Excel vs ours: m9-legacy-fdist A46 `F.DIST.RT(3.5,10,10)` 0.030373282606640854 vs 0.030373282606640812; t1049-fdist A33 `F.DIST(1,1.5,7,TRUE)` 0.6493833371797926 vs 0.6493833371797924; gen-m9/0a614cfe974b59c3 A19 `F.DIST.RT(10,3,4)` 0.024910273396826055 vs 0.024910273396826058.
+- gen-m9/05d44f6dd6cfc567.case.json (1): Calc!A175
+- gen-m9/0a614cfe974b59c3.case.json (1): Calc!A19
+- gen-m9/0a9226016e8f5f33.case.json (1): Calc!A325
+- gen-m9/4ab2ba98d26c8a5e.case.json (1): Calc!A157
+- gen-m9/a790a4d4a6a82756.case.json (1): Calc!A121
+- gen-m9/eced4bb6a0234c9e.case.json (1): Calc!A213
+- probes-numeric/m9-f-dist-rt.case.json (3): Calc!A2, A3, A18
+- probes-numeric/m9-legacy-fdist.case.json (20): Calc!A31, A37, A39, A46, A49, A50, A51, A57, A58, A59, A60, A61, A66, A67, A68, A71, A76, A77, A78, A79
+- probes-numeric/t1049-fdist.case.json (3): Calc!A13, A19, A33
+- probes-numeric/t1049-fdistrt.case.json (3): Calc!A10, A11, A26
