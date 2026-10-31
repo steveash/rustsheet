@@ -3,7 +3,7 @@ id: T-3293
 title: "TEXTJOIN ignore_empty FALSE: probe a limit crossed inside the formula's own row, stop mid-row if Excel does"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
