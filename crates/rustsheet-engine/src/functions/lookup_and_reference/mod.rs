@@ -837,8 +837,8 @@ impl Model {
 
     /// INDIRECT of the text of a structured reference (`INDIRECT("Sales[Qty]")`): the area the
     /// parser lowers the reference to, as for the same text in a formula. A table or column the
-    /// workbook lacks stays `#REF!` (docs/excel-semantics/references.md "INDIRECT of a structured
-    /// reference"; probes/table-edits/table-insert-column-inside-header F!A4:A5, T-2911).
+    /// workbook lacks stays `#REF!` (docs/excel-semantics/lookup.md "INDIRECT of a structured
+    /// reference text resolves the table area"; probes/table-edits/table-insert-column-inside-header F!A4:A5, T-2911).
     fn indirect_structured(&mut self, text: &str, cell: CellReferenceIndex) -> Option<CalcResult> {
         let sheet = self
             .workbook
@@ -854,23 +854,13 @@ impl Model {
         else {
             return None;
         };
-        match *lowered {
+        let (sheet, row1, column1, row2, column2) = match *lowered {
             Node::ReferenceKind {
                 sheet_index,
                 row,
                 column,
                 ..
-            } => {
-                let reference = CellReferenceIndex {
-                    sheet: sheet_index,
-                    row,
-                    column,
-                };
-                Some(CalcResult::Range {
-                    left: reference,
-                    right: reference,
-                })
-            }
+            } => (sheet_index, row, column, row, column),
             Node::RangeKind {
                 sheet_index,
                 row1,
@@ -878,20 +868,21 @@ impl Model {
                 row2,
                 column2,
                 ..
-            } => Some(CalcResult::Range {
-                left: CellReferenceIndex {
-                    sheet: sheet_index,
-                    row: row1,
-                    column: column1,
-                },
-                right: CellReferenceIndex {
-                    sheet: sheet_index,
-                    row: row2,
-                    column: column2,
-                },
-            }),
-            _ => None,
-        }
+            } => (sheet_index, row1, column1, row2, column2),
+            _ => return None,
+        };
+        Some(CalcResult::Range {
+            left: CellReferenceIndex {
+                sheet,
+                row: row1,
+                column: column1,
+            },
+            right: CellReferenceIndex {
+                sheet,
+                row: row2,
+                column: column2,
+            },
+        })
     }
 
     /// INDIRECT of the text of a defined name that stands for a reference (`INDIRECT("RCR")`,
