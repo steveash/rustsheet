@@ -32,7 +32,7 @@ T-3347 (IRR) this is the first task of the accuracy stage.
 - `annuity.rs` `DISCOUNTED_INTEREST_FROM` is a tuned cut-point of the code audit; do not move it in this task (T-3365).
 
 ## Acceptance criteria
-Re-scoped in review round 1 by decision 0192 to what this task delivers. The original criteria it cannot meet are
+Re-scoped in review round 1 by decision 0198 to what this task delivers. The original criteria it cannot meet are
 moved, each with its note, below the list.
 - [x] `RATE(239,-14841.27102594,344293.4825124,-155496.6323522,0)` is 0.0431054691928255 (a unit test and a probe cell).
 - [x] The `#NUM!` class is fixed. Every probe cell where the engine gave `#NUM!` on a flat secant and Excel a number
@@ -50,9 +50,9 @@ moved, each with its note, below the list.
         point outside it listed.
 - [x] The rule (what Excel does, what was wrong) is in docs/excel-semantics/ in the same PR.
 - [x] `make check` green.
-- [x] Reviewers approve, decision 0192 included.
+- [x] Reviewers approve, decision 0198 included.
 
-Moved by decision 0192:
+Moved by decision 0198:
 - *Every cell of the probe case within 15 significant digits of Excel* goes to **T-3389 (P1)**. 4 cells are beyond
   15 digits with the right type: fv-nonzero A138, A171, A180 and A185. A112, A153 and A175 are 1 to 2 ulps off,
   which is Phase 1b work (decision 0188 R5).
@@ -86,7 +86,7 @@ digit of Excel's value with the right type and error, and the fresh sweep shows 
 Bit-level residue moves to a follow-up with `defer: phase-1b`.
 
 ## Outcome
-Done on the criteria re-scoped by decision 0192 (review round 1). It trades 13 Gate A points for 164 cells of Excel's
+Done on the criteria re-scoped by decision 0198 (review round 1). It trades 13 Gate A points for 164 cells of Excel's
 type and is reviewed with this task. RATE's Gate A is not met; T-3424 (P0) owns that.
 
 **Cause.** On long annuities with a large balance the residual near the root is rounding noise above 1e-7. The
@@ -170,7 +170,7 @@ probes-numeric/t3348-rate-gate-a-sweep, the earlier sweep, is training evidence 
 rule). There the new model has 298/300 of Excel's type against the old model's 274; it gains 25 and loses 1 (A296),
 and 0 points are a number outside both bounds.
 
-**Disposition (decision 0192).**
+**Disposition (decision 0198).**
 - The 16 type cells go to T-3424 (P0): the 13 the hold lost (sweep A296 and the 12 fresh points above) and 3 that
   neither model gets right (sweep A272; fresh A251, A272). A296 is `=RATE(351,-1684985188.67608,607019725001.509,
   -15796156082.0366,0)`: Excel `#NUM!`, engine 1.8814890660971136e-6, math

@@ -46,7 +46,7 @@ pub(crate) const RATE_MAX_STEPS: u32 = 200;
 /// a looser test: |r2 - r1|, |f(r2)| and 1 + r2 against 1e-4, all absolute
 /// (probes/rate-cap-return-rule, rate-pmt-zero-cap, rate-step-cap A30). The modelled outcome of a
 /// flat secant (f1 = f0) is a hold at r1, judged by the same two tests, and an iterate at or below
-/// -1 runs on (T-3348, decision 0192; the rule, its evidence and its known misses are in
+/// -1 runs on (T-3348, decision 0198; the rule, its evidence and its known misses are in
 /// financial.md "RATE holds on a flat secant and runs on below -1"). A residual Excel's `^`
 /// cannot form and a run that has not stopped by then are `#NUM!`. Microsoft documents Newton's
 /// method and 20 steps; neither fits. The fit, its scores and the rules not yet probed are in
@@ -86,7 +86,7 @@ pub(crate) fn compute_rate(
         // 344293.4825124,-155496.6323522,0)` is held at |f| 3.2e-7 and is 0.04310546919282547
         // in Excel (probes/t3348-rate-fv-nonzero A1). A residual of exactly 0 on both sides is
         // `#NUM!` (`RATE(1,0,0,0)`, probes/rate-zero-residual-guess A1, A2). Excel errs on 13
-        // holds the rule returns (decision 0192, T-3424).
+        // holds the rule returns (decision 0198, T-3424).
         let flat = f1 == f0;
         let (r2, f2) = if flat {
             if f1 == 0.0 {

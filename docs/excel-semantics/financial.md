@@ -1098,7 +1098,7 @@ Evidence (excel-graph, 2026-10-31, T-3348):
     15 digits (A138, A171, A180, A185).
   - Wrong type: at |pv| and |fv| 1e6 to 1e12 the noise decides the type. 13 holds the model returns are `#NUM!` in
     Excel (gate-a-sweep A296; gate-a-fresh A59, A70, A74, A77, A89, A90, A95, A157, A162, A173, A275, A292), at held
-    |f| 2.4e-7 to 5.5e-5 and steps 11 to 119. The old model's `#NUM!` matched Excel on these 13; decision 0192
+    |f| 2.4e-7 to 5.5e-5 and steps 11 to 119. The old model's `#NUM!` matched Excel on these 13; decision 0198
     records the trade. 3 more are `#NUM!` in the model where Excel returns a number (gate-a-sweep A272; gate-a-fresh
     A251, A272). Excel's A272 value is about 2 ulps from the model's held iterate, so its last steps differ.
   - Across the 1,796 RATE oracle cells (the fit set, both probes and both sweeps), Excel returns 133 holds and
@@ -1112,7 +1112,7 @@ Evidence (excel-graph, 2026-10-31, T-3348):
     They are the noise floor's path, not a second rule; T-3424 owns them.
 - Unprobed: no oracle cell has a flat secant with |f1| < 1e-7, so the convergence test on a held point is untested.
   It differs from the cap's test only where 1 + r1 <= 1e-4.
-Ours: `compute_rate` (functions/financial/financial_util.rs), T-3348, decision 0192.
+Ours: `compute_rate` (functions/financial/financial_util.rs), T-3348, decision 0198.
 Status: VERIFIED (excel-graph) / UNVERIFIED (Excel's residual in the noise floor; a non-integer nper below -1; a held
 point with |f1| < 1e-7)
 Tasks: T-3348, T-3389, T-3424

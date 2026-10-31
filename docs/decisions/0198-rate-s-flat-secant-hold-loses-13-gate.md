@@ -1,4 +1,4 @@
-# 0192 — RATE's flat-secant hold loses 13 Gate A points and T-3348 is re-scoped
+# 0198 — RATE's flat-secant hold loses 13 Gate A points and T-3348 is re-scoped
 
 - **Status:** accepted (2026-10-31, T-3348). Owner ruling (2026-10-31, in chat with the repository owner): accept the
   trade (+164 cells of Excel's type, -13 Gate A points) and merge, with the 13 points owned by P0 task T-3424. Takes

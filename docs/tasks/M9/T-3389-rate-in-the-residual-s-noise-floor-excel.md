@@ -14,7 +14,7 @@ campaign: accuracy
 ## Goal
 RATE returns Excel's value where the secant ends in the residual's rounding noise: the 4 cells T-3348 left inside
 the Gate A envelope (within 1e-9 of the math) but beyond 15 digits of Excel. The Gate A sweep points where the noise
-decides the type are T-3424 (P0), and decision 0192 records the trade.
+decides the type are T-3424 (P0), and decision 0198 records the trade.
 P1 rather than P2: these 4 are visible misses, not bit residue, and visible parity is the accuracy stage's done
 criterion (decisions 0083 and 0114). They rank below the Gate A failures (P0, decision 0188 R2) and above last-digit
 work (R5).

@@ -19,9 +19,9 @@ cells, so RATE's Gate A fails until they are settled.
 ## Context
 - T-3348 made a flat secant hold at its iterate (financial.md "RATE holds on a flat secant and runs on below -1").
   The iterate returns when |f| < 1e-7 or when it passes the cap's looser test (|f| < 1e-4); otherwise the run is
-  `#NUM!`. Decision 0192 records the trade.
+  `#NUM!`. Decision 0198 records the trade.
 - **Cells T-3348 lost (13).** The old model's `#NUM!` matched Excel; the hold returns a number. Returning `#NUM!`
-  on them is a goal of this task, through a model of Excel's noise, not through a rule on the hold (decision 0192):
+  on them is a goal of this task, through a model of Excel's noise, not through a rule on the hold (decision 0198):
   - probes-numeric/t3348-rate-gate-a-sweep Calc!A296:
     `=RATE(351,-1684985188.67608,607019725001.509,-15796156082.0366,0)`. Excel `#NUM!`; the engine gives
     1.8814890660971136e-6, 2.4e-8 relative off the math (0.0000018814890215042125897557712909148668011313466560856).
@@ -38,7 +38,7 @@ cells, so RATE's Gate A fails until they are settled.
   - t3348-rate-gate-a-fresh Calc!A251 and A272 (in T-3348's Outcome). They hold at |f| 2.4e-4 and 9.5e-4.
 - All 16 have |pv| and |fv| from 1e6 to 1e12. Across the 1,796 RATE oracle cells, Excel returns 133 holds and errs
   on 13 below the 1e-4 bound, and errs on 95 and returns 3 above it. No rule on the hold gives them all Excel's type
-  (decision 0192):
+  (decision 0198):
   - an absolute bound: Excel errs at 2.4e-7 and returns up to 9.5e-4;
   - a relative bound: errors and returns overlap from 5e-20 to 1.4e-16;
   - zero step against distinct iterates: Excel errs on 12 of 125 zero-step holds and 1 of 21 distinct ones;
