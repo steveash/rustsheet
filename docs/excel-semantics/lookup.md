@@ -635,7 +635,29 @@ HLOOKUP(..,FALSE) and XMATCH(..,2) give the same first position for every key.
 XMATCH's exact mode (0) differs: it compares by the collation (coercion.md "Collation equality in lookups and
 criteria"), where `İ` equals i+U+0307 and `ẞ`/`ß` equal `ss`, but not `I` or `i`.
 Evidence: probes/t3133-lookup-criteria-case-fold Calc!A1:E35, I1:J35 (excel-graph, 2026-10-29, T-3133).
-UNVERIFIED: characters outside the list above are assumed to follow the same fold.
+Beyond that list (probes/t3298-case-mapping-sweep Calc!C1:D48, excel-graph, 2026-10-31, T-3298): over the 1514
+one-to-one case pairs of every character Rust's tables case-map (Data!D upper, Data!E lower, 32 pairs per cell, each
+lower looked up among its block's uppers in C and the reverse in D), 982 pairs equal each other both ways, 374 equal
+nothing and 158 hit another position. By block:
+- fold as Rust's simple lowercase: Basic Latin, Latin-1, Latin Extended-A and -B, Cyrillic, Armenian, Latin Extended
+  Additional, the basic Greek letters, Greek Extended (most), Glagolitic, Coptic, Cyrillic Extended-B (most), the
+  Roman numerals U+2160-U+217F, the circled letters, fullwidth Latin and Georgian Asomtavruli with Nuskhuri
+  (U+10A0-U+10C5 with U+2D00-U+2D25). This fold is wider than UPPER and LOWER's table (text.md "UPPER and LOWER use an
+  old per-character case table"): MATCH folds Glagolitic, Coptic and Greek Extended, which UPPER and LOWER leave alone.
+- stay apart (each matches only itself): the supplementary-plane scripts (Deseret, Osage, Vithkuqi, Old Hungarian,
+  Garay, Warang Citi, Medefaidrin, U+16EA0-U+16ED3, Adlam; Calc!C38:D38 from position 24 and C39:D48 are all 0),
+  Cherokee U+13AB-U+13EA with U+AB7B-U+ABBA, and as T-3133 found ı/I and ſ/S; the Greek symbol variants ϐ ϑ ϕ ϖ ϰ ϱ,
+  µ, U+0345, the Cyrillic Ext-C variants U+1C80-U+1C87 and ẛ do not equal their capital (C is 0; in D the capital finds
+  its ordinary small letter's row), while ϵ and U+1FBE equal Ε and Ι, and the titlecase digraphs ǅ ǈ ǋ ǲ equal their
+  capital and small forms (Calc!C5:D6).
+- equal one another: characters that look missing from Excel's comparison table (BMP letters Unicode added after about
+  5.0, e.g. U+0524-U+052F, U+10C7, U+10CD, U+10FD-U+10FF, U+13F5-U+13FD, U+1C88-U+1C8A, Georgian Mtavruli
+  U+1C90-U+1CBF, U+2D27, U+2D2D, much of Latin Extended-D from U+A792, U+AB53, U+AB70-U+AB7A) match the first such
+  character of the other column, whatever it is: Calc!C17 position 22 (U+AB70 finds U+10C7), C15 position 4 (U+0529
+  finds U+0524), C37 and D37 (positions 1 and 5). They behave like characters with no sort weight. Which characters
+  are weightless, and whether they also equal empty text, is unprobed (T-3444).
+The engine folds every pair through Rust's `to_lowercase`, so the cells of C and D listed in eval/baseline/probes.txt
+fail (T-3445).
 Status: VERIFIED
 Implemented in: `fold_case` (functions/util/collation.rs), through `folded_units` (`ExactKey`, the indexed exact
 search) and `WildcardPattern` (the linear one); `decompose` (collation.rs) for XMATCH's `İ`
