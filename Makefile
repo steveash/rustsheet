@@ -51,8 +51,9 @@ eval: build ## Run all suites; writes eval/runs/latest/report.{md,json}
 eval-check: build ## Gate: fail on any regression vs eval/baseline
 	$(EVAL_GUARDED) check
 
-eval-gates: build ## eval-check and evidence-floor from one run of the suites (CI, make check; T-2761)
+eval-gates: build ## eval-check and evidence-floor from one run of the suites, then Gate A's accuracy check (CI, make check; T-2761, decision 0193)
 	$(EVAL_GUARDED) check --evidence-floor
+	$(EVAL_GUARDED) accuracy
 
 eval-baseline: build ## Ratchet eval/baseline and quality/evidence-floor.json after fixes (refuses regressions)
 	$(EVAL_GUARDED) update-baseline

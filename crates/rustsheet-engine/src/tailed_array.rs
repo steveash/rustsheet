@@ -113,6 +113,30 @@ impl Tailed<RefArg> {
             _ => None,
         })
     }
+
+    /// The `row`-th element (from 1) of a tailed argument read as one column of `head` rows and
+    /// `tail_len` copies of the tail ([`Tailed::elements`]): INDEX's pick with a scalar row
+    /// (SPEC-0020 Amendment 2, section 3). `None` when the argument is not such a column, or
+    /// `row` is 0 or past its rows: the caller then reads it the ordinary way. With no tail (the
+    /// pass is being abandoned, the value discarded) a row past the head is `#REF!`, as the head
+    /// alone would give.
+    pub(crate) fn element_at(self, row: usize) -> Option<ArrayNode> {
+        if row == 0 {
+            return None;
+        }
+        let (head, tail) = self.elements()?;
+        let mut rows = 0;
+        for element in head {
+            rows += 1;
+            if rows == row {
+                return Some(element);
+            }
+        }
+        match tail {
+            Some((element, tail_len)) => (row - rows <= tail_len).then_some(element),
+            None => Some(ArrayNode::Error(Error::REF)),
+        }
+    }
 }
 
 impl<T> Tailed<T> {

@@ -22,6 +22,10 @@ the answer is 1.0.
 - Code: `fn_beta_inv` in crates/rustsheet-engine/src/functions/statistical/beta.rs and inverse_beta.rs (the statrs
   port: Newton steps, step adjustments and their caps). The quantile rounds to 1 in doubles; the search must return it
   instead of failing.
+- Cells already failing (gap triage 2026-10-31, `make exit-owners MILESTONE=M9`, eval on a64f963e; Excel 1, ours
+  `#NUM!`): probes-numeric/m9-beta-inv Calc!A7 `BETA.INV(0.9999999999,0.5,0.5)`, A42 (a = 1), A77 (a = 2.5), A112
+  (a = 10) and A147 (a = 100), all at b = 0.5. statistics.md "Incomplete beta sweep (T-1044)" already records
+  `BETA.INV(0.9999999999,0.5,0.5)` as exactly 1. The new probe below still covers the rest of the region.
 - Related: T-1871 (statrs saturation and panics), T-2511 (crossing of the ported CDF), T-2555 (BETA.INV's early
   Newton stop at a huge shape), T-2633 (BETA.INV chained on BETA.DIST). Name any of their cells this
   moves in the Outcome.

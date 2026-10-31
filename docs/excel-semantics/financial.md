@@ -786,6 +786,22 @@ Status: VERIFIED for the method (secant in d, offset, both stop tests, retry, le
 twice-rounded; 263/263 bit-exact); UNVERIFIED for the zero-step stop's bound and the step cap
 Tasks: T-1525, T-1533, T-0916, T-2131, T-2565, T-3120, T-3205
 
+## IRR at an exact zero root
+Rule: on flows whose exact root is 0, Excel for the web returns exactly 0 for `IRR({-4,4})` (with or without a
+guess of 0.1 or -0.5), `IRR(A4:B4)` on -4 and 4, and `IRR({-1,1})`, but -2^-52 for `IRR({4,-4})` and
+-2.886801908630332E-12 for `IRR({-2,1,1})` (probes/t3410-irr-zero-root-imcos Calc!C1 to C8, excel-graph,
+2026-10-31; C7 `IRR({-4,4})=0` is TRUE). The engine gives all eight.
+- The secant of "IRR is a secant in d = 1 - v" stops at d2 = 8.326672684688674E-17 on {-4,4}. Its final
+  1/(1 - d2) - 1 in plain doubles is 2^-52; with Excel's twice-rounded division (numbers.md "Division rounds
+  twice") 1/(1 - d2) is a tie that rounds to 1, so the result is 0, the web's value. On {4,-4} and {-2,1,1} plain
+  and twice-rounded arithmetic agree (a scratch run of the rule in plain doubles, T-3410).
+- ironcalc-calc/FINANCIAL/IRR.xlsx Two Values!C4, the same formula on the same cells, caches 2^-52, though its
+  app.xml names Excel Online 16.0300. docs/research/oracle-calibration.md (T-0004) recorded the web's 0 there too.
+  That is consistent with a build that rounds the final quotient once, though other paths could give the same bits. Decision 0196 names the cell M14
+  desktop-only evidence (T-1075 item 23); it stays a known failure.
+Status: VERIFIED (web); the desktop value is T-1075 item 23
+Tasks: T-3410
+
 ## The IRR and XIRR solver caps
 Rule: Excel's caps on its IRR secant, XIRR's bracket walk and XIRR's bisection are unknown: no probe
 reaches them. The engine bounds each loop itself, so an untrusted workbook cannot make one cell iterate
@@ -1816,11 +1832,26 @@ T-3067 notes (float64 fit, 2026-10-28; nothing changed in the kernel):
   A19, fin-remaining-later-argument-ranges K3 and 18 near-1e15 cells) and 7 near-1e15 cells leave the bit (A7, B1, B4,
   B9, C6, C10 by an ulp; E7 `CUMIPMT(0.01,1E15,100000,1E15-6,1E15,0)` by 16, A7's ulp in the interest, visibly):
   decision 0160, follow-up T-3141. Visibly-off cells go from 2,833 to 2,822.
+- The interest as `PMT·m - CUMPRINC`, applied (T-3118, after T-3014 gave PMT Excel's bits): the kernel's CUMIPMT is
+  the engine's PMT times the period count less the engine's CUMPRINC, a type 1 range from period 1 from the range from
+  period 2, with no per-period interest form left (type 0's balance form and payments less principal, type 1's IPMT
+  sum and tiny-rate form are gone; where PMT is `#NUM!`, a rate lost in `1 + rate`, type 0 keeps the payments less
+  the remaining-balance principal, fin-cumipmt-period-bound A24). On probes, gen-m9 and ironcalc-calc it fixes 53
+  CUMIPMT cells (gate-edges A5, A8, E1, E2, H2, H4; 31 of tiny-rate-structure; period-bound A3, A5; `CUMPRINC_CUMIPMT.xlsx` G6, G7, G12,
+  G16, G17, G22, G25; gen-m9 e168be7f6d3f84c2 A379 and 6 more) and CUMIPMT's visibly-off cells go from 102 to 67.
+  Every CUMIPMT cell still off, and the 7 it moves off the bit (decision 0197: gen-m9 6e18550e9fc9c1b9 A329,
+  `CUMPRINC_CUMIPMT.xlsx` G3, overflow-and-forms A8, A12, A14, gate-edges A1, tiny-rate-structure F2), is our
+  CUMPRINC's last bits, amplified: with our PMT, Excel's value is `PMT·m - x` for an x 1 to 4 ulps from our CUMPRINC
+  (`CUMIPMT(2E-6,100,100000,4,4,1)`'s x is Excel's own probed CUMPRINC -999.9050029410097, ours ...096). The old
+  forms were exact on those 7 by fit. No structural gate keeps all 7 (keeping the balance form in its growth band,
+  or type 1's IPMT sum at ordinary rates, gives up 7 to 25 fixes and still regresses 2 to 5), and CUMPRINC derived
+  from the old interest forms regresses 10 to 42 CUMPRINC cells. Follow-up: T-3413.
 Status: PARTLY VERIFIED (excel-graph; visibly right but for A7 (= G2) and A10 near period 1E15, fin-cumipmt-period-bound
-A18, fin-cumprinc-near-1e15 E7, the gen-m9 cells A352 and A379, and gate-edges A2-A8, E1-E10, H5 and H6: T-3118 (the
-interest as `PMT·m - CUMPRINC`, after T-3014's PMT bits) and T-3141 (the underflowed principal's bits); the short
-sums' last digits in T-1374)
-Tasks: T-1845, T-1890, T-2192, T-2363, T-2514, T-2521, T-3067, T-3118, T-3141, T-1374
+A18, fin-cumprinc-near-1e15 E7, and the CUMIPMT cells that amplify our CUMPRINC's last bits (gate-edges A1-A4, A6, A7,
+E3-E10, H3, gen-m9 A352: T-3413; T-3118 moved 7 off the bit, decision 0197: gen-m9 A329,
+`CUMPRINC_CUMIPMT.xlsx` G3, overflow-and-forms A8, A12, A14, gate-edges A1, tiny-rate-structure F2) and T-3141 (the
+underflowed principal's bits); the short sums' last digits in T-1374)
+Tasks: T-1845, T-1890, T-2192, T-2363, T-2514, T-2521, T-3067, T-3118, T-3141, T-3413, T-1374
 
 ## CUMIPMT and CUMPRINC work cap
 Rule: RustSheet charges each lifted CUMIPMT or CUMPRINC element for its kernel's bound, 2^8 units against SPEC-0011's

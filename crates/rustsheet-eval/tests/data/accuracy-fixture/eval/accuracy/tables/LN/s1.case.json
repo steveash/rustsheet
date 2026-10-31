@@ -1,0 +1,17 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3356 fixture: not a real table",
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=LN(10)",
+    "A2": "=LN(0)"
+   }
+  }
+ ],
+ "check": [
+  "Calc!A1",
+  "Calc!A2"
+ ]
+}
