@@ -77,3 +77,7 @@ differs from the engine is stated in docs/excel-semantics/ and owned by a task.
   Owners: T-3443 (UPPER/LOWER, functions-text, sonnet) and T-3445 (fold_char, engine, opus, after T-3444, a research
   probe of the per-character fold and the weightless-equality rule). `make exit-owners MILESTONE=M2` reports no
   t3298 cell. Its 3 remaining cells (t3266 nested, typed-mixed-fraction B15) predate this PR and are unrelated.
+- Train ejection (ci-red, 2026-10-31 20:52): the 130 new cells are visibly off, and the PR's baseline listed the case
+  without raising `eval/baseline/visible-parity.json`, so after main moved the lock no longer counted them as new
+  coverage. Re-recorded from main's probes list with `make eval-baseline` (no `--allow-regressions`): the probes list
+  comes out identical, 130 new-coverage cells, 0 regressions, and the lock goes 2427 -> 2556 (decision 0088).
