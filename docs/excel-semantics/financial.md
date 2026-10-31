@@ -3278,6 +3278,35 @@ Status: VERIFIED (excel-graph)
 Implemented in: `fn_npv`, `fn_fvschedule` in functions/financial/mod.rs (T-1373)
 Tasks: T-1084, T-1373
 
+## IRR on conventional flows where the secant fails: which return is path-sensitive
+Rule (partial; what Excel does is not known yet): on conventional flows (one outlay, then positive flows) where the
+fitted secant from guess 0.1 fails, Excel returns the root on some series and is `#NUM!` (or `#DIV/0!`) on others, and
+which one is decided by something that changes when the outlay moves by under 1%. probes/t3406-irr-num-boundary
+(excel-graph, 2026-10-31; T-3406):
+- Level annuities, `IRR({-P,1,...,1})` with n flows of 1 and the root at r = -0.02k: Excel returns down to
+  r = -0.22 for n = 20 (A1-A11), -0.18 for n = 30 (A25-A33), -0.14 for n = 40 (A49-A55) and -0.12 for n = 60
+  (A73-A78), then is `#NUM!`; below about -0.36 for n = 40 (A66-A72) and from -0.18 for n = 60 (A81-A96, but A83 at
+  -0.22 is `#NUM!`) it is `#DIV/0!`. The engine (main) is `#NUM!` on 28 of the 33 returning cells: from r = -0.10
+  for n = 20, -0.04 for n = 30 and already -0.02 for n = 40 and 60. This is an ordinary input that is visibly wrong.
+- The outlay of t3347-irr-conventional-holdout A26, A70, A142 and A61 scaled by 0.97 to 1.03 in 12 steps
+  (A97-A144): A26's family alternates num, num, `#NUM!` x3, num, `#NUM!` x2, num, `#NUM!`, num, num as the root moves
+  smoothly from 7.3E-4 to -1.26E-3; A70's is `#NUM!` except A117; A142's alternates; A61's always returns. The engine
+  is `#NUM!` on all 26 returning cells of this family.
+Refuted candidates, scored on the type (number, `#NUM!`, `#DIV/0!`) of 450 cells (this probe, T-3347's probe, sweep and
+hold-out): Newton on P(v) = sum c_i v^i from v = 1 under any step cap (T-3347's fit: a returning n = 60 annuity needs
+137 steps, a `#NUM!` n = 20 one 33); the secant from guess 0.1 under a 50, 100 or 200-step cap (295, 301, 306 of 450);
+the secant carried past a flat step by a Newton step in d (304, 311, 317); a retry of the secant from any one of 17
+fixed guesses in -0.9 to 2 (no guess set separates T-3347's `#NUM!` cells from its returning ones: the `#NUM!` ones
+converge from some negative guesses, many returning ones from none). In a double replica, the secant from 0.1 on the
+annuities lands at d ~ -1.2 to -14 on its first step, comes back to d1 = 0.0919 and goes flat at step 3, the same on
+A11 (returns) and A12 (`#NUM!`).
+Evidence: probes/t3406-irr-num-boundary (inputs and 50-digit roots in its `.roots.tsv`;
+docs/research/t3406_irr_num_boundary.py)
+Status: VERIFIED (excel-graph) for the cells; the rule is UNVERIFIED (unknown)
+Ours: the secant, `irr_fallback` (Newton from v = 0) then `#NUM!`: 76 of the 144 probe cells fail (28 + 26 `#NUM!`
+for a number, 22 `#NUM!` for `#DIV/0!`)
+Tasks: T-3406, T-3411 (the model), T-3407 (`#DIV/0!`), T-3347
+
 ## IRR over an error element
 Rule: IRR (probes/fin-irr-error-array, T-2390, excel-graph) gives `#VALUE!`, whatever the kind, when its values hold an
 error: in an array constant (`IRR({-100,#N/A,60})`, also `#DIV/0!`, `#NUM!`, `#VALUE!`, `#REF!`, `#NAME?`, first, middle or last,
