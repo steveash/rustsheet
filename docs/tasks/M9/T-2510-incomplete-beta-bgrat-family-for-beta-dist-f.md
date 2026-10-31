@@ -95,3 +95,12 @@ Notes from the opus run that claimed the task (data for the run that resumes it,
 - Next: measure per function and per branch on probes-numeric (the task's owned cases) with the switch, and keep
   b = 1/2 bgrat off for (F, df1 = 1) points like FDIST(x,1,9) unless the general-b work changes them; then the
   general-b TOMS bgrat per the Context.
+- probes-numeric with the same switch (all callers, `main` 6f1e30e), cells whose value changes, by function:
+  BETA.DIST visibly off 30 -> 0, bit-exact +309 / -20; F.DIST 10 -> 15, +28 / -9; F.DIST.RT 11 -> 15, +28 / -8;
+  cells whose formula does not start with a function (e.g. `1-BETA.DIST(..)`) 22 -> 0, +36 / -2.
+- So the b = 1/2 bgrat is a net visible gain for BETA.DIST and a loss for F. Next step: turn `half_bgrat` on in
+  `bratio::beta_dist_lower_tail` only (closed forms, then `ported_tails_with(.., true)`), leave `ported_tails` (F,
+  BINOM, NEGBINOM through `closed_or_ported_tails`) as it is, then re-measure: `beta_dist_lower_tail` also serves
+  BETA.INV's search (`inverse_beta.rs`) and F.TEST's tail (`fisher.rs` line 165), so check those cases and the gated
+  suites before committing. BINOM/NEGBINOM at b = 1/2 do not occur (integer shapes).
+- This branch also carries task file T-3327 (sonnet: tidy-ups from T-2508's review); it lands with this PR.
