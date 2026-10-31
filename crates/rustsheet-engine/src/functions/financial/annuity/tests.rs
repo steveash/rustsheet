@@ -1,14 +1,12 @@
-use super::{compute_payment, growth_log, period_payments, SplitForm};
+use super::{compute_payment, growth_log, period_payments};
 use crate::expressions::token::Error;
 
 /// IPMT and PPMT past `(1+rate)^nper`'s range and where IPMT's balance cancels on fv
 /// (probes/fin-ipmt-ppmt-huge-rate, gen-m9; financial.md "IPMT cancels on fv").
 #[test]
 fn period_payments_at_huge_rates() {
-    let ipmt =
-        |r, per, n, pv, fv, t| period_payments(r, per, n, pv, fv, t, SplitForm::Discounted).0;
-    let ppmt =
-        |r, per, n, pv, fv, t| period_payments(r, per, n, pv, fv, t, SplitForm::Discounted).1;
+    let ipmt = |r, per, n, pv, fv, t| period_payments(r, per, n, pv, fv, t).0;
+    let ppmt = |r, per, n, pv, fv, t| period_payments(r, per, n, pv, fv, t).1;
     assert_eq!(ppmt(42.0, 10.0, 303.0, 8292.0, 1.0, true), Ok(0.0));
     assert_eq!(ppmt(10.0, 1.0, 296.0, 1.0, 0.0, false), Ok(0.0));
     assert_eq!(
@@ -47,8 +45,7 @@ fn period_payments_at_huge_rates() {
 /// financial.md "PPMT discounts with an atanh-series log").
 #[test]
 fn principal_at_negative_rates() {
-    let ppmt =
-        |r, per, n, pv, fv| period_payments(r, per, n, pv, fv, false, SplitForm::Discounted).1;
+    let ppmt = |r, per, n, pv, fv| period_payments(r, per, n, pv, fv, false).1;
     assert_eq!(
         ppmt(-0.5, 5.0, 294.0, 171_132.0, 0.0),
         Ok(-5_347.875_000_000_112)
@@ -73,8 +70,7 @@ fn principal_at_negative_rates() {
 /// discount where it moves the value").
 #[test]
 fn interest_on_excels_discount() {
-    let ipmt =
-        |r, per, n, pv, fv, t| period_payments(r, per, n, pv, fv, t, SplitForm::Discounted).0;
+    let ipmt = |r, per, n, pv, fv, t| period_payments(r, per, n, pv, fv, t).0;
     assert_eq!(
         ipmt(-0.05, 10.0, 336.0, 1.0, 0.0, false),
         Ok(0.031_512_469_880_875_22)
@@ -143,10 +139,10 @@ fn payment_is_excels_discounted_form() {
 
 /// IPMT and PPMT split Excel's discounted payment (financial.md "IPMT and PPMT split Excel's
 /// discounted payment", T-2243): ironcalc-calc `FINANCIAL/IPMT_PPMT.xlsx` and the cells the earlier
-/// forms left open (T-2667, T-3086); CUMIPMT's type 1 sum keeps the exact split.
+/// forms left open (T-2667, T-3086).
 #[test]
 fn period_payments_split_the_discounted_payment() {
-    let split = |r, per, n, pv, fv, t| period_payments(r, per, n, pv, fv, t, SplitForm::Discounted);
+    let split = |r, per, n, pv, fv, t| period_payments(r, per, n, pv, fv, t);
     // IPMT_PPMT.xlsx G12, H4, H13 and I2 (PPMT in period 1 of type 1 is Excel's PMT).
     assert_eq!(
         split(0.1, 3.0, 30.0, 8000.0, 10.0, true).0,
@@ -175,10 +171,4 @@ fn period_payments_split_the_discounted_payment() {
     );
     // A discount below the normal range is a PPMT of 0 (probes/fin-ppmt-discount-underflow F1).
     assert_eq!(split(7.0, 1.0, 341.0, 1.0, 0.0, false).1, Ok(0.0));
-    // CUMIPMT(0.1,10,345,2,2,1) is the exact split's -29.395712615048502, the discounted one's
-    // ...485 (probes/fin-cumipmt-overflow-and-forms A8).
-    assert_eq!(
-        period_payments(0.1, 2.0, 10.0, 345.0, 0.0, true, SplitForm::Exact).0,
-        Ok(-29.395_712_615_048_502)
-    );
 }
