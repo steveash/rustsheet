@@ -79,8 +79,11 @@ class Mode(unittest.TestCase):
             self.assertEqual(merge_train.read_mode(clone), merge_train.TRAIN)
             self.assertEqual(merge_train.read_mode(base / "nowhere"), merge_train.LOCK)
 
-    def test_the_switch_file_says_shadow(self) -> None:
-        self.assertEqual(merge_train.parse_mode((SCRIPTS / "merge_train.toml").read_text()), merge_train.SHADOW)
+    def test_the_switch_file_names_a_mode(self) -> None:
+        # Not pinned to one mode: a flip PR (decision 0157) changes only merge_train.toml.
+        text = (SCRIPTS / "merge_train.toml").read_text()
+        self.assertRegex(text, r'(?m)^mode = "(lock|shadow|train)"$')
+        self.assertIn(merge_train.parse_mode(text), (merge_train.LOCK, merge_train.SHADOW, merge_train.TRAIN))
 
 
 class IdChecks(unittest.TestCase):
