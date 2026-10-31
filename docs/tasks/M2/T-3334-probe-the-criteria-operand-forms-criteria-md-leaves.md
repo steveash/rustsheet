@@ -67,5 +67,6 @@ Done on this branch: the probe case and its excel-graph sidecar (76 operand rows
 current-year `1-Jan 6:00 PM` as its offset from January 1 so the cell does not depend on the run date),
 criteria.md's UNVERIFIED sentence replaced by the verified rules, follow-up T-3404 filed for the 33
 failing cells (1e2$ rows 39-42 and H39; VALUE of CHAR(160)-padded text H47, H51, H55, H59), and
-`make eval-baseline` run. Left: `make eval` then `make exit-owners MILESTONE=M2` (expect 0),
-`make check`, the review skill, PR and merge.
+`make eval-baseline` run. `make eval` ran (09:31 UTC): `make exit-owners MILESTONE=M2` lists none of this case's cells; it reports 3
+unowned cells that were not touched here (probes t3266-nested-200-824-stored/typed and
+typed-mixed-fraction-number-format B15). Left: `make check`, the review skill, PR and merge.
