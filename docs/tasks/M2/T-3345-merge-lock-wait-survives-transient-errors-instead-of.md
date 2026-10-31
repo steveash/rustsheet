@@ -35,10 +35,19 @@ T-3010 built `wait`.
 ## Acceptance criteria
 - [ ] Reproduce or pin down the failure: a test that injects 3+ consecutive `GitError`s, and a
       `LockFormatError` from a racing write, into `wait`.
-- [ ] `wait` retries transient failures (git, CAS loss, unreadable marker) with backoff until
-      its timeout, and prints each distinct error. It exits 2 only for errors that cannot be
-      transient: a bad holder id, a bad PR number, or a queue over `QUEUE_MAX` that persists.
-- [ ] The waiter keeps its queue place across retries.
+- [ ] Errors are classified explicitly, for example with a distinct exception type for permanent
+      errors, so a persistent `LockFormatError` is never retried forever:
+      - **Permanent:** a bad holder id, a bad PR number, or a full queue (`QUEUE_MAX` waiters)
+        when it first joins. These exit 2 at once.
+      - **Transient:** git and push failures, CAS loss, and a marker unreadable during a racing
+        write. `wait` retries these with backoff until its timeout and prints each distinct
+        error.
+      - **Repeated unreadable marker:** an unreadable marker that persists across, say, 5
+        consecutive polls is reported and exits 2.
+
+      A queue that becomes full while the waiter is already queued does not end its wait.
+- [ ] The waiter keeps its queue place across retries: a test asserts its id is still in the
+      marker's queue, at the same position, after an injected error.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

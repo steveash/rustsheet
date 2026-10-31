@@ -41,22 +41,34 @@ Note: the edit touches `.claude/skills/steward/SKILL.md`, a protected path, so i
 decision record the governance gate asks for.
 
 ## Acceptance criteria
-- [ ] The `steward` skill (orphaned-PR rule or "Merge train" section) says that in `shadow` mode
-      a `ready-to-merge` PR whose head has not moved for 2 h is merged by the steward per the
-      per-PR flow. That flow is:
+- [ ] The `steward` skill says that in `shadow` mode the steward merges a `ready-to-merge` PR when
+      all of these hold:
+      - **Idle:** the PR has been idle past `STRANDED_AFTER`. Reuse the definition in
+        `scripts/merge_train_stats.py` `stranded()` (`make merge-train-stats` lists these PRs),
+        so the 2 h threshold has one source.
+      - **Verdicts on the current head:** `make merge-ready-verify PR=<n>` passes on the PR's
+        current head, so the steward does not rely on the PR body's table. When the marker is
+        stale or missing, the steward runs the reviewers on that head itself, as in the
+        orphaned-PR rule (decision 0050), and marks the PR ready with those verdicts.
+      - **No blockers:** no unresolved change-request thread; the task is not `status: blocked`;
+        the task file is `status: done` with an Outcome; CI is green on the head.
+
+      It then merges the PR by the per-PR flow:
       - wait for the merge lock;
-      - merge `origin/main` in, regenerating baselines on a baseline-only conflict;
-      - wait for CI green on that head;
+      - merge `origin/main` in, regenerating baselines on a baseline-only conflict with
+        `make eval-baseline`, never by hand;
+      - wait for CI green on that new head;
       - run the up-to-date check;
       - squash-merge with `expectedHeadSha`;
       - remove the label.
 
-      The review table must still show APPROVE from every applicable reviewer on the PR. In
-      `train` mode the rule does not apply, because the train merges them.
+      In `train` mode the rule does not apply, because the train merges these PRs.
 - [ ] The steward's daily report names each PR it merged this way.
-- [ ] `make merge-train-stats`' "stranded" count is the input the steward acts on, or the skill
-      says how the steward finds these PRs.
-- [ ] A decision record covers the steward skill change.
+- [ ] A decision record amends 0050 and 0157 for `shadow` mode. It reconciles the skill's line
+      "A PR whose worker already marked it ready, on its current head, is not orphaned" with this
+      sweep. It covers the edit to the protected `.claude/skills/steward/SKILL.md`.
+- [ ] SPEC-0027 is unchanged, or its "stranded" paragraph gains a one-line pointer to the sweep.
+      The task's Outcome says which.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
