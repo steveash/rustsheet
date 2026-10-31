@@ -510,7 +510,6 @@ class MergeLock(unittest.TestCase):
         with self.assertRaises(SystemExit), mock.patch("sys.stderr"):
             merge_lock.main(["acquire", "--pr", "$(whoami)", "--holder", "x"])
 
-
     def test_train_mode_refuses_a_per_pr_claim_but_not_a_flip_or_a_train(self) -> None:
         """Decision 0204: in `train` mode only trains and the `merge-train-stop` PR take the lock."""
         import merge_train
@@ -545,6 +544,7 @@ class MergeLock(unittest.TestCase):
             with self.subTest(mode=mode):
                 self.assertEqual(claim(mode, [], *acquire), merge_lock.HELD)
         self.assertEqual(claim("train", [], "acquire", "--train", "run-8"), merge_lock.HELD)
+
 
 class PrFinished(unittest.TestCase):
     """`pr_finished` over gh_client's fake (no network)."""

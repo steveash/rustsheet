@@ -301,8 +301,10 @@ def train_mode_refusal(pr: str, root: Path = ROOT) -> str | None:
     emergency-flip PR merges under the lock in `train` mode (`steward` skill, "Emergency flip to
     `lock`" step 4). The mode is `make merge-mode`'s read; unreadable reads as `lock`, and an
     unreadable label lets the claim through, so neither failure can block a flip."""
-    import merge_ready  # imports this module
-    import merge_train  # imports this module
+    # Imported here, not at the top: both modules import merge_lock, so a top-level import would
+    # be circular.
+    import merge_ready
+    import merge_train
 
     if merge_train.read_mode(root) != merge_train.TRAIN:
         return None
@@ -599,7 +601,7 @@ def main(argv: list[str], root: Path = ROOT) -> int:
         if args.command == "release":
             return release(holder, root)
         pr = TRAIN if args.train else str(args.pr)
-        check_claim(holder, pr)
+        check_claim(holder, pr)  # a malformed claim is exit 2 before the mode's git fetch
         if pr != TRAIN and (refusal := train_mode_refusal(pr, root)) is not None:
             print(refusal, file=sys.stderr)
             return REFUSED
