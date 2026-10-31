@@ -94,7 +94,8 @@ pub(crate) fn nearest_crossing(f: impl Fn(f64) -> f64, target: f64, min: f64, ma
 /// [`nearest_crossing`] with the bracket grown around `estimate` when it is finite (as
 /// [`refine_increasing`] does): the same final bracket for a monotone `f`, in fewer evaluations
 /// when the estimate is close (about 25 within 2^-30 relative). At most
-/// [`REFINE_MAX_EXPANSIONS`] + 65 + 2 evaluations.
+/// [`REFINE_MAX_EXPANSIONS`] + 65 + 2 evaluations; on [0, 1] the expansions, 4x each from 2^-30
+/// relative, reach an end in about 16, so about 81.
 pub(crate) fn nearest_crossing_from(
     f: impl Fn(f64) -> f64,
     target: f64,

@@ -380,8 +380,8 @@ const T_ROUNDED_Y_MIN_DF: f64 = 2.0;
 /// T-3061; the crossing is T-2511's). The ported kernel's tail at y (`bratio::t_kernel_tails`,
 /// as T.DIST takes it) fixes 4 more cells but makes 3 newly visibly off (`T.INV(0.2,5)`,
 /// gen-m9/0bbab6206b5c9a07 A67, 6 ulp). L rises with y, so the search is `nearest_crossing` over
-/// [0, 1], seeded by AS 109's root where statrs is reliable: about 25 to 30 tails seeded, at most
-/// about 81 unseeded, for every df up to [`T_DF_MAX`] (the cost is in lift/kinds/statistical.rs
+/// [0, 1], seeded by AS 109's root where statrs is reliable: about 25 to 30 tails with a good seed,
+/// at most 66 unseeded and about 81 with a poor seed, for every df up to [`T_DF_MAX`] (the cost is in lift/kinds/statistical.rs
 /// `T_QUANTILE_WEIGHT`). A deep tail keeps
 /// [`t_tail_closed_form`].
 fn t_rounded_y_quantile(df: f64, q: f64) -> f64 {
@@ -756,7 +756,8 @@ mod tests {
     #[test]
     fn rounded_y_quantile_is_finite_and_ordered_on_a_sweep() {
         // Every df the worksheet accepts from 2 up, and p from the smallest to the largest double
-        // below 1: a finite quantile of the right sign (bounded: at most about 81 tails per call).
+        // below 1: a finite quantile of the right sign (bounded: at most about 81 tails per call,
+        // the poor-seed case).
         for df in [2.0, 3.0, 30.0, 99_999.0, 1e5, 1e10] {
             for p in [
                 1e-300,

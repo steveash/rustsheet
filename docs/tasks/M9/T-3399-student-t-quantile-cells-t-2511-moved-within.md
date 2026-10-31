@@ -35,6 +35,9 @@ the nearest crossing.
   15 digits: t1531-t-tiny-p A54 `T.INV(1E-15,5)` 1 -> 11 ulp (q below 1E-5 with x about 5E-6, so the crossing
   rather than the closed form), A64 and A65 and gen-m9/cb61169f4c033d4b A45, 8fec7b207f4dd753 A2 (df 5 at 1E-20)
   4 -> 5 ulp, `CONFIDENCE.T(0.1,1,3)` 5 -> 6 ulp.
+- Cost (T-2511 performance review): one tail at integer df up to 1000 sums the exact series (about 30 us), and the
+  per-df work (`student_t` `gamma_ratio`/`integer_ratio`) is redone for every y of the crossing; hoisting it out
+  of the search would cut every tail and lift `T_QUANTILE_WEIGHT`'s 1,024-element cap back up.
 - Variants T-2511 measured on gen-m9, ironcalc-calc, probes and probes-numeric (visibly-off cells against main):
   - the crossing of the ported kernel's tail at y (`bratio::t_kernel_tails`, as T.DIST takes it): 298 fixed, 3 new
     (`T.INV(0.2,5)` = -0.9195437802408258, ours -0.9195437802408264, gen-m9/0bbab6206b5c9a07 A67; probes

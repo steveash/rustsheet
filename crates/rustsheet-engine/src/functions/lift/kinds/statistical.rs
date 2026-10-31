@@ -117,12 +117,13 @@ const BETA_INV: ArgKinds = ArgKinds::fixed(
 const F_INV: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Weighted(QUANTILE_WEIGHT));
 /// What one T.INV or CONFIDENCE.T element is charged. From df 2 its quantile is a crossing of the
 /// tail at y (`t_dist::t_rounded_y_quantile`, T-2511): about 25 to 30 tails seeded by statrs' search,
-/// at most about 81 without a seed (q below 1E-8), each tail up to about 30 us where it sums the
+/// at most 66 without a seed (q below 1E-8) and about 81 with a poor one, each tail up to about 30 us where it sums the
 /// integer-df series (df up to 1000). Measured in release (T-2511): 1.53 ms for `T.INV(1E-12,999)`,
 /// the worst seen, about 1.0 ms at df 999 and 1000 otherwise, 0.47 ms at df 500, under 0.2 ms at
 /// df 99 and from df 1001. At df 1 it is the capped statrs port (0.21 ms) or a bisection of at most
 /// 264 cdfs (0.82 ms). The weight caps a lifted call at 2^27 / 2^17 = 1,024 elements: about 1.6 s
-/// at the worst case seen (a DEVIATION, statistics.md).
+/// at the worst case seen (a DEVIATION, statistics.md). It assumes a good seed: a poor one at df
+/// near 1000 would cost about 2.5 ms a call; hoisting the per-df work out of the tail is T-3399's.
 const T_QUANTILE_WEIGHT: u32 = 1 << 17;
 /// `T.INV(probability, deg_freedom)`, T.INV.2T and TINV.
 const T_INV: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift], Weighted(T_QUANTILE_WEIGHT));
