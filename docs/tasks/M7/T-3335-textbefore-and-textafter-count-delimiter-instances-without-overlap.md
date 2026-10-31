@@ -3,7 +3,7 @@ id: T-3335
 title: "TEXTBEFORE and TEXTAFTER count delimiter instances without overlap: probe and match Excel (TEXTBEFORE(\"-2.5\",{\"2.5\",\"-2.5\"},2) is #N/A, ours \"-\")"
 milestone: M7
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
