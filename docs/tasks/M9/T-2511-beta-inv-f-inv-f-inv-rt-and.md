@@ -3,7 +3,7 @@ id: T-2511
 title: "BETA.INV, F.INV, F.INV.RT and T.INV invert the ported incomplete beta to the crossing (T-2464 E8)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
