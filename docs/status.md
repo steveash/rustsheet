@@ -18,7 +18,7 @@ This is the scheduled 18:43 UTC run. It follows #2523, today's 05:47 UTC run. It
 
 CI on `main` is green. Of the 36 `ci.yml` push runs since 07:00 UTC, 23 succeeded and 13 were cancelled by the next push. None failed.
 
-**Merge train: emergency flip to `lock`.** `scripts/merge_train.toml` has said `train` since T-2991 (#2547, about 10:20 UTC). `make merge-train-stats STRANDED=1` at 18:45 UTC listed **10 stranded PRs**: marked ready more than 2 h earlier, unmerged and not ejected. They are #2590, #2586, #2584, #2583, #2582, #2581, #2580, #2550, #2437 and #2104, and the oldest current marker is #2580's, from 14:48 UTC. In `train` mode that is a daily threshold (SPEC-0027; `steward` skill "Merge-train daily check"), so I opened the one-line flip PR **#2613** (`mode = "lock"`), labelled it `merge-train-stop` (`make merge-flip-check` exit 0, head c0353484) and filed the P0 **T-3488** in the task-only PR #2614.
+**Merge train: emergency flip to `lock`.** `scripts/merge_train.toml` has said `train` since T-2991 (#2547, about 10:20 UTC). `make merge-train-stats STRANDED=1` at 18:45 UTC listed **10 stranded PRs**: marked ready more than 2 h earlier, unmerged and not ejected. They are #2590, #2586, #2584, #2583, #2582, #2581, #2580, #2550, #2437 and #2104, and the oldest current marker is #2580's, from 14:48 UTC. In `train` mode that is a daily threshold (SPEC-0027; `steward` skill "Merge-train daily check"), so I opened the one-line flip PR **#2613** (`mode = "lock"`) and labelled it `merge-train-stop` (`make merge-flip-check` exit 0). Once its CI was green on a merge of `main`, I merged it under the merge lock (aeebe730). `make merge-mode` now reads `lock`. The P0 is **T-3488**, filed in the task-only PR #2614.
 - Facts for T-3488: `merge-train/current` ran 11 CI runs from 12:05 to 17:35 UTC, all green, and none after that while 20 or more PRs were ready. At 18:45 UTC the lock was held by a per-PR claim (#2601) with a train queued behind it; the train then held the lock "between batches" for more than 15 min after `merge-train-stop`.
 - The rest of `make merge-train-stats` (p90 latency, red-train rate, bisection runs) did not finish: a GitHub read was reset mid-run. Those numbers are missing from this run.
 - Going back to `train` needs SPEC-0027's full bar again or an owner ruling (decision 0192).
@@ -54,7 +54,7 @@ Oracle: excel-graph credentials are present (`rustsheet-oracle status`: excel-gr
 
 Spot-audit: the last was 2026-10-25 (#1736), six days ago, so none is due. The next is on or after 2026-11-01.
 
-Step 9 (one `make merge-train TRAIN=1` pass): skipped, because a stop is pending (#2613) and the mode is going to `lock`.
+Step 9 (one `make merge-train TRAIN=1` pass): skipped. The mode is `lock` since #2613. Workers fall back to the per-PR lock flow, and PRs still labelled `ready-to-merge` are merged or unlabelled per the `steward` skill's "Housekeeping" rule.
 
 **Critical lane:** engine, harness, research
 
