@@ -3,7 +3,7 @@ id: T-1875
 title: "Probe remaining regional LCID and BCP-47 regional date-name variants"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
