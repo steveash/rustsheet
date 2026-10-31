@@ -314,9 +314,10 @@ K = TypeVar("K")
 V = TypeVar("V")
 # GitHub reads in flight at once (decision 0191). A day of merge-lock pushes is about 1,900 commits to
 # read (every waiter's refresh is a push) at about 0.3 s each, so one at a time ran past 10 minutes
-# and the steward gave up (2026-10-31). Eight keeps the burst near 25 requests/s, under GitHub's
-# secondary limit of 900 REST points a minute; a run that still hits it fails loudly (GhError, exit 2).
-READERS = 8
+# and the steward gave up (2026-10-31). Four keeps the burst near 13 requests/s (about 800 a minute),
+# under GitHub's secondary limit of 900 REST points a minute; a run that still hits it fails loudly
+# (GhError, exit 2), never with wrong numbers.
+READERS = 4
 
 
 class Stats:
@@ -357,6 +358,7 @@ class Stats:
 
     @staticmethod
     def cached(cache: dict[K, V], key: K, read: Callable[[K], V]) -> V:
+        """`cache[key]`, read with `read` the first time."""
         if key not in cache:
             cache[key] = read(key)
         return cache[key]

@@ -12,17 +12,18 @@
     waiter's refresh is a push. The script read their commits one `gh api` call at a time, at about
     0.3 s each, and did the same for each merged head's runs and each run's jobs.
 - **Decision:**
-  - `scripts/merge_train_stats.py` reads commit messages, head runs and run jobs 8 at a time
+  - `scripts/merge_train_stats.py` reads commit messages, head runs and run jobs 4 at a time
     (`READERS`). It caches each in memory for one report run, so each object is read once per
     report. A head's runs can change later, but one report's view of them does not need to.
   - Agents judge `gh` by whether `gh api` succeeds, never by `gh auth status`.
   - The owner supplies no GitHub token for the merge scripts.
 - **Consequences:**
-  - `make merge-train-stats` completes in minutes on a day of history (6 min with either 8 or 16 readers on
+  - `make merge-train-stats` completes in minutes on a day of history (8 min 19 s with 4 readers, 6 min with 8 or 16, on
     2026-10-31); before, it ran past 10 minutes and was abandoned.
   - The steward can record T-2991's shadow evidence again.
   - The "refresh `GH_TOKEN`" owner item in docs/status.md is void. The steward removes it at
     its next run.
-  - Eight readers burst at about 25 requests/s, under the 900-a-minute secondary limit, and the
+  - Four readers burst at about 13 requests/s (about 800 a minute), under the 900-a-minute
+    secondary limit, and the
     total request count does not grow. A run that still hits a secondary limit gets a 403 and fails
     loudly (`GhError`, exit 2), never with wrong numbers.
