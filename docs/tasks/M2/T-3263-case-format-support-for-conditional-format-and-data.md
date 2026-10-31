@@ -3,7 +3,7 @@ id: T-3263
 title: "Case-format support for conditional-format and data-validation formulas, then probe the 65-call nesting cap in them"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
