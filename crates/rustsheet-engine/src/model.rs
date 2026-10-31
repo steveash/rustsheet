@@ -17,7 +17,7 @@ use crate::{
         },
         token::{get_error_by_name, Error},
         types::*,
-        utils::{self, is_valid_column_number, is_valid_row},
+        utils::{self, check_block, is_valid_column_number, is_valid_row},
     },
     formatter::{
         format::{displayed_text, format_number, parse_typed_number, rejected_clock_text_format},
@@ -1310,6 +1310,8 @@ impl Model {
         language_id: &str,
         clock: Clock,
     ) -> Result<Model, String> {
+        // Before anything is built from it: the indices are untrusted (T-2913).
+        crate::workbook_check::check_indices(&workbook)?;
         workbook.rebuild_derived_state();
         let worksheets = &workbook.worksheets;
 
@@ -2038,6 +2040,12 @@ impl Model {
         height: i32,
         value: &str,
     ) -> Result<(), String> {
+        check_block(row, column, width, height)?;
+        // Each cell of the area is written, so the area is held to the array limit (directive 5).
+        let cells = |n: i32| usize::try_from(n).unwrap_or(usize::MAX);
+        if crate::limits::check_array_cells(cells(height), cells(width)).is_some() {
+            return Err("The array formula's range has too many cells".to_string());
+        }
         if self
             .workbook
             .worksheet(sheet)?
@@ -2512,27 +2520,30 @@ impl Model {
     /// # }
     /// ```
     pub fn range_clear_contents(&mut self, range: &Area) -> Result<(), String> {
+        // The clears walk `row..row + height`, which overflows past the grid (T-2896).
+        check_block(range.row, range.column, range.width, range.height)?;
         if !self.can_clear_range(range)? {
             return Err("Cannot clear the range because it contains array formulas".to_string());
         }
         let sheet = range.sheet;
         let ws = self.workbook.worksheet_mut(sheet)?;
-        for row in range.row..range.row + range.height {
-            for column in range.column..range.column + range.width {
-                let structure = ws.get_cell_structure(row, column)?;
-                match structure {
-                    CellStructure::DynamicFormula { range }
-                    | CellStructure::ArrayFormula { range, .. } => {
-                        let (width, height) = range;
-                        for r in row..row + height {
-                            for c in column..column + width {
-                                let _ = ws.cell_clear_contents(r, c);
-                            }
+        // Only the cells that exist, since an absent cell has no contents to clear, and the area
+        // can be the whole sheet (T-2896).
+        let places =
+            (ws.sheet_data).places_in_block((range.row, range.column), (range.width, range.height));
+        for (row, column) in places {
+            match ws.get_cell_structure(row, column)? {
+                CellStructure::DynamicFormula { range }
+                | CellStructure::ArrayFormula { range, .. } => {
+                    let (width, height) = range;
+                    for r in row..row + height {
+                        for c in column..column + width {
+                            let _ = ws.cell_clear_contents(r, c);
                         }
                     }
-                    _ => {
-                        let _ = ws.cell_clear_contents(row, column);
-                    }
+                }
+                _ => {
+                    let _ = ws.cell_clear_contents(row, column);
                 }
             }
         }
@@ -2622,6 +2633,8 @@ impl Model {
     /// # Ok(())
     /// # }
     pub fn range_clear_all(&mut self, area: &Area) -> Result<(), String> {
+        // The clears walk `row..row + height`, which overflows past the grid (T-2896).
+        check_block(area.row, area.column, area.width, area.height)?;
         if !self.can_clear_range(area)? {
             return Err("Cannot clear the range because it contains array formulas".to_string());
         }

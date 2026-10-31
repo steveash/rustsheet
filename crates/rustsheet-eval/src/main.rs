@@ -10,6 +10,7 @@
 //! rustsheet-eval show <case-id> [--all]         # per-cell detail for one case
 //! rustsheet-eval snapshot <file.xlsx>           # dump stored formulas/values as JSON
 //! rustsheet-eval cases <suite>                  # cases + sidecar paths as JSON (for tools)
+//! rustsheet-eval accuracy [--json PATH]         # Gate A: reference tables within the envelope
 //! ```
 #![allow(clippy::print_stdout, clippy::print_stderr)]
 
@@ -22,6 +23,7 @@ use std::time::Duration;
 use anyhow::{anyhow, bail, Context, Result};
 use clap::{Parser, Subcommand};
 
+use rustsheet_eval::accuracy;
 use rustsheet_eval::baseline::{self, Baseline};
 use rustsheet_eval::calibrate::compare_snapshots;
 use rustsheet_eval::catalog::Catalog;
@@ -155,6 +157,17 @@ enum Cmd {
         cached: PathBuf,
         recalculated: PathBuf,
     },
+    /// Gate A (SPEC-0029, decision 0188 R2): fail when a reference-table point of eval/accuracy
+    /// is outside the envelope, a known-failure line is stale, an R3 mark lacks evidence or a
+    /// table is defective.
+    Accuracy {
+        /// Where to write every point's class and values (default: eval/runs/accuracy.json).
+        #[arg(long)]
+        json: Option<PathBuf>,
+        /// Per-batch timeout in seconds.
+        #[arg(long, default_value_t = 60)]
+        timeout: u64,
+    },
 }
 
 /// One line of `rustsheet-eval cases`.
@@ -175,10 +188,7 @@ struct CaseListing {
 }
 
 fn cmd_cases(root: &Path, name: &str) -> Result<ExitCode> {
-    let suites = Suite::load_all(&root.join("eval/suites"))?;
-    let Some(suite) = suites.iter().find(|s| s.manifest.name == name) else {
-        bail!("suite {name} not found");
-    };
+    let suite = Suite::load_named(root, name)?;
     if suite.fetch_state() == FetchState::NotFetched {
         bail!("suite {name} is not fetched (run `rustsheet-eval fetch --suite {name}`)");
     }
@@ -644,14 +654,20 @@ fn evidence_floor_gate(
 }
 
 fn cmd_show(root: &Path, case_id: &str, all: bool) -> Result<ExitCode> {
-    let suite_name = case_id.split('/').next().unwrap_or_default().to_string();
+    let suite_name = case_id.split('/').next().unwrap_or_default();
     let sel = Selection {
-        suites: vec![suite_name],
+        suites: vec![suite_name.to_string()],
         filter: Some(case_id.to_string()),
         timeout: 120,
     };
-    let suites = select(root, &sel, false)?;
-    let results = execute(&suites, &sel);
+    // `load_named` also finds Gate A's tables, which `select` (eval/suites only) never lists.
+    let suite = Suite::load_named(root, suite_name)?;
+    if suite.fetch_state() == FetchState::NotFetched {
+        bail!(
+            "suite {suite_name} is not fetched (run `rustsheet-eval fetch --suite {suite_name}`)"
+        );
+    }
+    let results = execute(&[suite], &sel);
     let Some(r) = results.iter().find(|r| r.id == case_id) else {
         bail!("case {case_id} not found");
     };
@@ -676,6 +692,23 @@ fn cmd_show(root: &Path, case_id: &str, all: bool) -> Result<ExitCode> {
     text_expect::write_case(&r.text, all, &mut text);
     print!("{text}");
     Ok(ExitCode::SUCCESS)
+}
+
+/// Gate A's check (SPEC-0029): prints the summary and failures, writes the JSON, and fails on
+/// any failing point, stale known-failure line, bad R3 mark or table defect.
+fn cmd_accuracy(root: &Path, json: Option<PathBuf>, timeout: u64) -> Result<ExitCode> {
+    // Panics are captured per batch; keep the default hook from spamming stderr.
+    std::panic::set_hook(Box::new(|_| {}));
+    let json = json.unwrap_or_else(|| root.join(accuracy::JSON_PATH));
+    let engine: Arc<dyn Engine + Send> = Arc::new(RustSheetEngine);
+    let check = accuracy::run(root, &engine, Duration::from_secs(timeout))?;
+    print!("{}", check.render());
+    check.write_json(&json)?;
+    Ok(if check.passes() {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    })
 }
 
 fn load_snapshot(path: &Path) -> Result<WorkbookSnapshot> {
@@ -799,6 +832,7 @@ fn run() -> Result<ExitCode> {
         Cmd::LiftKinds { write } => cmd_lift_kinds(&root, write),
         Cmd::Show { case_id, all } => cmd_show(&root, &case_id, all),
         Cmd::Cases { suite } => cmd_cases(&root, &suite),
+        Cmd::Accuracy { json, timeout } => cmd_accuracy(&root, json, timeout),
         Cmd::Snapshot { .. } | Cmd::Compare { .. } => unreachable!("handled above"),
     }
 }
