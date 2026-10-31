@@ -295,3 +295,106 @@ fn relocation_key_gives_equal_trees_for_equal_keys() {
         }
     }
 }
+
+/// A copy keyed from the template of the formula before it (T-3384) has the key a fresh lexer
+/// gives it. Each formula is copied down, right and back over a grid, as the engine prints the
+/// copies, through one shared lexer (whose templates serve most copies) and a fresh one each time.
+/// Also copies past the grid's edge, lower-case and leading-zero text, mixed-`$` corners, and a
+/// different formula in between.
+#[test]
+fn shifted_copies_take_the_keys_a_fresh_lexer_gives() {
+    use rustsheet_engine::expressions::parser::new_parser_english;
+    use rustsheet_engine::expressions::parser::stringify::to_english_string;
+    use rustsheet_engine::expressions::types::CellReferenceRC;
+
+    use crate::import::relocation_key::KeyLexer;
+
+    let sheets = vec!["Sheet1".to_string(), "My Data".to_string()];
+    let mut copier = new_parser_english(sheets, vec![], HashMap::new());
+    let at = |row, column| CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row,
+        column,
+    };
+    let formulas = [
+        "COUNTIFS('My Data'!$A$2:$A$9,B3,'My Data'!C$1:C3,\">0\")+'My Data'!B3",
+        "SUM(C3:E9)*$B$1+B$2+$C2",
+        "SUM(C$3:$B5)",
+        "SUM($C3:B$5)",
+        "A1 B1:C3",
+        "IF(A1>0,\"A1\",#N/A)*{1,2;3,4}+Z9+AA10",
+        "VLOOKUP(A3,'My Data'!$A:$C,3,FALSE)",
+        "SUM(1:1)+XFD1+A1048576",
+        "  SUM( A3 , B3 )  ",
+        "A3&\"B3\"&'My Data'!A3",
+        "SUM(B:B)+COUNTIF(3:5,A3)+SUM('My Data'!$J:$J,C:$D)",
+        "COUNTIFS('My Data'!$J:$J,\">=\"&W$1,'My Data'!$D:$D,$E5)+SUM($2:4)",
+    ];
+    let cells = [
+        (3, 3),
+        (4, 3),
+        (5, 3),
+        (6, 3),
+        (6, 4),
+        (6, 5),
+        (2, 5),
+        (1, 1),
+        (1_048_576, 3),
+        (3, 16384),
+        (9, 9),
+    ];
+    let mut shared = KeyLexer::default();
+    let origin = at(3, 3);
+    let mut checked = 0;
+    for formula in formulas {
+        let tree = copier.parse(formula, &origin);
+        for (row, column) in cells {
+            let cell = at(row, column);
+            let copy = to_english_string(&tree, &cell);
+            let from_template = shared.key(&copy, &cell);
+            let fresh = KeyLexer::default().key(&copy, &cell);
+            assert_eq!(from_template, fresh, "{copy} at {row},{column}");
+            checked += 1;
+        }
+    }
+    // Text the engine never prints, after a template: compared, never matched wrongly.
+    for (row, text) in [
+        (4, "SUM(c4:e10)*$B$1+B$2+$C3"),
+        (4, "SUM(C04:E10)*$B$1+B$2+$C3"),
+        (4, "SUM(C4:E10)*$B$1+B$3+$C3"),
+        (4, "SUM(C4:E10)*$B$1+B$2+$C3 "),
+        (5, "SUM(C4:E10)*$B$1+B$2+$C3"),
+    ] {
+        let mut lexer = KeyLexer::default();
+        lexer.key("SUM(C3:E9)*$B$1+B$2+$C2", &at(3, 3));
+        let cell = at(row, 3);
+        assert_eq!(
+            lexer.key(text, &cell),
+            KeyLexer::default().key(text, &cell),
+            "{text}"
+        );
+        checked += 1;
+    }
+    // Off the grid: `A1048577` and `XFE1` are names, not the template's references moved.
+    for (template, from, text, to) in [
+        ("A1048576+1", (1, 1), "A1048577+1", (2, 1)),
+        ("XFD1+1", (1, 1), "XFE1+1", (1, 2)),
+        ("SUM(A1:B2)", (2, 2), "SUM(A0:B1)", (1, 2)),
+    ] {
+        let mut lexer = KeyLexer::default();
+        lexer.key(template, &at(from.0, from.1));
+        let cell = at(to.0, to.1);
+        assert_eq!(
+            lexer.key(text, &cell),
+            KeyLexer::default().key(text, &cell),
+            "{text}"
+        );
+        checked += 1;
+    }
+    assert!(checked > 100, "{checked}");
+    assert!(
+        shared.copies > 30,
+        "{} copies from a template",
+        shared.copies
+    );
+}

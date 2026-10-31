@@ -6,6 +6,16 @@ pub mod shift;
 mod test;
 
 /// Converts column letter identifier to number.
+/// The column number `column_number` (the letters read so far) becomes with the upper-case letter
+/// `letter` after it, or `None` past `i32`. Checked: a long letter run (e.g. `ISERROR` after a
+/// sheet prefix) overflows i32, and a wrapped value could land back in range and lex as a valid
+/// column (found by fuzzing, T-0021).
+pub(crate) fn push_column_letter(column_number: i32, letter: char) -> Option<i32> {
+    column_number
+        .checked_mul(26)
+        .and_then(|n| n.checked_add((letter as i32) - 64))
+}
+
 pub fn column_to_number(column: &str) -> Result<i32, String> {
     if column.is_empty() {
         return Err("Column identifier cannot be empty.".to_string());
@@ -20,12 +30,7 @@ pub fn column_to_number(column: &str) -> Result<i32, String> {
         if !character.is_ascii_uppercase() {
             return Err("Column identifier can use only A-Z characters".to_string());
         }
-        // Checked: a long letter run (e.g. `ISERROR` after a sheet prefix) overflows i32, and a
-        // wrapped value could land back in range and lex as a valid column (found by fuzzing,
-        // T-0021).
-        column_number = column_number
-            .checked_mul(26)
-            .and_then(|n| n.checked_add((character as i32) - 64))
+        column_number = push_column_letter(column_number, character)
             .ok_or_else(|| "Column is not valid.".to_string())?;
     }
 
