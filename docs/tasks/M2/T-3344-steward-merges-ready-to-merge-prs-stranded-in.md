@@ -3,7 +3,7 @@ id: T-3344
 title: "Steward merges ready-to-merge PRs stranded in shadow mode"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
