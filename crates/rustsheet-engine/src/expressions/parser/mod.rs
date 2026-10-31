@@ -555,6 +555,7 @@ impl Node {
 pub struct Parser {
     lexer: lexer::Lexer,
     worksheets: Vec<String>,
+    /// The defined names. Whatever sets this field sets `name_index` too.
     defined_names: Vec<DefinedNameS>,
     /// Each defined name's position in `defined_names`, by its scope and lower-cased name (the
     /// key `Model::parsed_defined_names` uses), the first of names that fold alike: a lookup is
