@@ -93,3 +93,12 @@ Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c
 - probes-numeric/m9-legacy-finv: Calc!A1, Calc!A2, Calc!A3, Calc!A4, Calc!A9, Calc!A10, Calc!A37, Calc!A38, Calc!A39, Calc!A40, Calc!A47, Calc!A48
 - probes-numeric/t1049-finv: Calc!A7
 - probes-numeric/t1049-finvrt: Calc!A14
+
+## Cells added by the gap triage (2026-10-31)
+Visibly-off m9-beta-inv cells no open task owned (`make exit-owners MILESTONE=M9`, `rate:BETA.INV`, eval on a64f963e).
+Each is the same point as a t1745-beta-inv-roundtrip row this task already owns, where Excel's x is a crossing of its
+own cdf (BETA.DIST at x is p, or p lies between x and a neighbour) but our cdf there is a few ulps off Excel's and our
+search does not land on our own crossing (A31: ours is 9.5E-15 off the 50-digit root, Excel 1E-15):
+- probes-numeric/m9-beta-inv: Calc!A31, Calc!A102, Calc!A103 (t1745 rows 30, 99, 100)
+The other 12 visibly-off m9-beta-inv cells at small shapes, where Excel's cdf is flat or its search stops off the
+crossing, are T-3388's; the 5 `#NUM!` cells at p = 0.9999999999 are T-3351's.
