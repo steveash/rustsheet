@@ -1212,11 +1212,10 @@ correction(a)), the form T-2638 found above shape 20 away from the mode, times t
 - The switch: probes-numeric/t3269-gamma-tail-switch (x from 26 to 40 by 0.5 at shapes 2 to 4) has Excel correctly
   rounded at every x up to 30 at shapes 2, 3 and 4, and the ratio form (within 2 ulp at most cells) from 30.5 on:
   `POISSON(2,30,TRUE)` is exact, `POISSON(2,30.5,TRUE)` 32 ulp from it and 3 from the form.
-- Not in the engine yet (T-3269 blocked, decision 0203 proposed): the form as a kernel is on branch
-  `claude/hopeful-meitner-5oxf0g-t3269-far-tail` (d74097f8c, on top of T-3285), `incomplete_gamma/excel_tail.rs`
-  for POISSON's cdf and CHISQ.DIST.RT / CHIDIST / CHISQ.TEST: that prefactor with the exact correction at each multiple of 1/2
+- In the engine (T-3269, `incomplete_gamma/excel_tail.rs`, POISSON's cdf and CHISQ.DIST.RT / CHIDIST / CHISQ.TEST,
+  decision 0203): that prefactor with the exact correction at each multiple of 1/2
   (`docs/research/t3269/stirling_correction.py`; TOMS's series is only good from 8) times the fraction in double-double
-  (T-3285's backward evaluation) for 30 < x <= 600; past 600 (unmeasured) the accurate kernel would stay. With the exact
+  (T-3285's backward evaluation) for 30 < x <= 600; past 600 (unmeasured) the accurate kernel stays. With the exact
   fraction ratio, ln(Excel / exact) minus the form's rounding stays at -0.32 of the exponent's ulp (+-0.03) along the
   whole POISSON ulp run: its jumps are the exponent's.
 - Fit (decision 0188 R4): the form is a structural choice, the switch at 30 a FITTED cut. On the 502 literal cells
@@ -1225,7 +1224,7 @@ correction(a)), the form T-2638 found above shape 20 away from the mode, times t
   ulp, test 147 of 157 (correctly rounded 46). Fresh log-uniform sweep after the freeze
   (probes-numeric/t3269-fresh-sweep, 240 cells, x from 1 to 1000): in the far range 20 of 88 bit-exact (old kernel 1,
   correctly rounded 2) and 72 within 4 ulp; elsewhere 74 of 152 (old 73).
-- On the eval (main ea7470e4a against that branch with T-3285, per cell) the gated cells: fixed 8, closer 18, visibly
+- On the eval (main ea7470e4a against the branch with T-3285, per cell) the gated cells: fixed 8, closer 18, visibly
   fixed 13 (gen-m9 POISSON and CHIDIST at mean or x 100, ironcalc-calc CHISQ.xlsx G3 and G4 with T-3285), farther 6,
   lost 1 (five of them T-3285's, decision 0202), newly visibly off 0. Two gated cells already visibly off went
   farther: `POISSON(9,100,TRUE)` (x / a = 10; 44 to 72 ulp) and `POISSON(5,42,TRUE)` (5 to 25). Ungated cells newly

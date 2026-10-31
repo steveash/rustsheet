@@ -140,6 +140,15 @@ pub(crate) fn gamma_ur(a: f64, x: f64) -> f64 {
     pair_with(a, x, &mut Terms(MAX_TERMS), Exponent::Accurate).1
 }
 
+/// POISSON's cdf Q(k + 1, mean): Excel's far upper tail ([`excel_tail`], T-3269) where it applies,
+/// else [`gamma_ur`].
+pub(crate) fn poisson_upper(a: f64, x: f64) -> f64 {
+    if let Some(q) = excel_tail::excel_far_upper(a, x, &mut Terms(MAX_TERMS)) {
+        return q;
+    }
+    gamma_ur(a, x)
+}
+
 /// statrs' `Gamma::cdf` within `terms`: its closed branches are statrs' own.
 fn cdf_within(dist: &Gamma, x: f64, terms: &mut Terms, exponent: Exponent) -> f64 {
     if x <= 0.0 || dist.rate().is_infinite() || x.is_infinite() {
@@ -700,6 +709,9 @@ fn pair_with(a: f64, x: f64, terms: &mut Terms, exponent: Exponent) -> (f64, f64
 /// accurate pair's `upper` or lower tail.
 fn accurate_tail(a: f64, scaled: f64, upper: bool) -> f64 {
     if upper {
+        if let Some(q) = excel_tail::excel_far_upper(a, scaled, &mut Terms(MAX_TERMS)) {
+            return q;
+        }
         if let Some(q) = half_integer::half_integer_upper(a, scaled, &mut Terms(MAX_TERMS)) {
             return q;
         }
@@ -892,6 +904,7 @@ fn quantile_tail(dist: &Gamma, x: f64, tail: Tail, terms: &mut Terms) -> f64 {
 }
 
 mod density;
+mod excel_tail;
 mod fraction;
 mod half_integer;
 mod huge_shape;
