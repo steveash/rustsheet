@@ -127,9 +127,57 @@ pub(super) fn is_elapsed(token: &TextToken) -> bool {
     )
 }
 
+/// The unit and padding of an elapsed `[h]`, `[m]` or `[s]` token, `None` for any other token.
+pub(super) fn elapsed_token(token: &TextToken) -> Option<(ElapsedUnit, bool)> {
+    match token {
+        TextToken::ElapsedHour => Some((ElapsedUnit::Hour, false)),
+        TextToken::ElapsedHourPadded => Some((ElapsedUnit::Hour, true)),
+        TextToken::ElapsedMinute => Some((ElapsedUnit::Minute, false)),
+        TextToken::ElapsedMinutePadded => Some((ElapsedUnit::Minute, true)),
+        TextToken::ElapsedSecond => Some((ElapsedUnit::Second, false)),
+        TextToken::ElapsedSecondPadded => Some((ElapsedUnit::Second, true)),
+        _ => None,
+    }
+}
+
+/// The unit of a clock `h`, `m` (as minutes) or `s` token, ranked hour 3, minute 2, second 1.
+fn clock_unit_rank(token: &TextToken) -> Option<u8> {
+    match token {
+        TextToken::Hour | TextToken::HourPadded => Some(3),
+        TextToken::Minute | TextToken::MinutePadded => Some(2),
+        TextToken::Second | TextToken::SecondPadded => Some(1),
+        _ => None,
+    }
+}
+
+/// Whether an elapsed token stands after a clock token of its own unit or a larger one, which
+/// makes the section `#VALUE!` for any value: `h [h]`, `h [m]`, `h [s]`, `h:mm [h]`, `mm:ss [m]`,
+/// `mm:ss [s]`, `s [s]`, `s.0 [s]`, `h d [h]`. A smaller clock unit first is valid (`s [h]`,
+/// `ss [m]`, `mm:ss [h]`), and so is the elapsed token first (`[h] h`, where the `h` counts too).
+/// Evidence: probes/t3419-elapsed-after-date-general A5, A23; t3419-elapsed-after-date-b A1-A3,
+/// A7, A8, A15, A23; t3419-elapsed-after-clock-c (excel-graph, 2026-10-31, T-3419).
+pub(super) fn elapsed_after_larger_clock(tokens: &[TextToken]) -> bool {
+    let mut largest_clock = 0;
+    for token in tokens {
+        if let Some(rank) = clock_unit_rank(token) {
+            largest_clock = largest_clock.max(rank);
+        } else if let Some((unit, _)) = elapsed_token(token) {
+            let rank = match unit {
+                ElapsedUnit::Hour => 3,
+                ElapsedUnit::Minute => 2,
+                ElapsedUnit::Second => 1,
+            };
+            if largest_clock >= rank {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 /// Whether the token reads the serial's date or time of day (`d`, `mmm`, `h`, `ss`, `AM/PM`, an
 /// era): anything in a date section but literals, `General`, elapsed counts and fraction digits.
-fn is_date_or_clock(token: &TextToken) -> bool {
+pub(super) fn is_date_or_clock(token: &TextToken) -> bool {
     !(token.is_literal()
         || is_elapsed(token)
         || matches!(
@@ -142,28 +190,38 @@ fn is_date_or_clock(token: &TextToken) -> bool {
         ))
 }
 
-/// What one `General` among the tokens of a date section prints (the parser lets one in; a digit
-/// placeholder beside it still makes the section a number one and `#VALUE!`). Beside elapsed tokens
-/// only, the value's magnitude: `TEXT(5.25,"[h] General")` is "126 5.25". Once any date or clock
-/// token splits the serial, wherever it stands, the seconds within the minute, in units of the
-/// shown second fraction, of the serial after Excel's half-unit rounding step (`x + 0.5/86400`
-/// with no fraction digits, `x + 0.05/86400` with `.0`), with that step's float error left in:
-/// `TEXT(5,"d General")` is "5 0.5", `TEXT(45000,"General d")` "0.499999803 15",
-/// `TEXT(12345.678,"d General")` "18 19.69999995", `TEXT(45000,"s.0 General")` "0.0 0.499997288".
-/// `value` is non-negative. Evidence: probes/t3378-general-in-date-section (excel-graph,
-/// 2026-10-31, T-3378); number-formats.md "`General` in a date section".
-pub(super) fn general_in_date_section(
+/// Excel's one value register in a date section: what `General` prints and what an elapsed token
+/// after a date or clock token counts from (the parser lets one `General` in; a digit placeholder
+/// beside it still makes the section a number one and `#VALUE!`). With elapsed tokens only and no
+/// fraction digits it is the value's magnitude: `TEXT(5.25,"[h] General")` is "126 5.25". Once a
+/// date or clock token or fraction digits split the serial, wherever they stand, it is the last
+/// component of the serial after Excel's half-unit rounding step (`x + 0.5/86400` with no fraction
+/// digits, `x + 0.5/864000` with `.0`), with that step's float error left in: without fraction
+/// digits the seconds within the minute (`TEXT(5,"d General")` is "5 0.5",
+/// `TEXT(45000,"General d")` "0.499999803 15", `TEXT(12345.678,"d General")` "18 19.69999995"),
+/// with them the shown fraction in its own units (`TEXT(12345.678,"s.0 General")` is
+/// "19.2 2.500000331", `TEXT(0.99999,"s.00 General")` "59.14 14.1", `TEXT(5,"[s].0 General")`
+/// "432000.0 0.5"). `value` is non-negative. Evidence: probes/t3378-general-in-date-section,
+/// probes/t3419-elapsed-after-date-general A12, A15, A16 (excel-graph, 2026-10-31, T-3378, T-3419);
+/// number-formats.md "`General` in a date section".
+pub(super) fn date_section_register(
     value: f64,
     tokens: &[TextToken],
     fraction_digits: Option<usize>,
 ) -> f64 {
-    if !tokens.iter().any(is_date_or_clock) {
+    if fraction_digits.is_none() && !tokens.iter().any(is_date_or_clock) {
         return value;
     }
     let scale = 10f64.powi(i32::try_from(fraction_digits.unwrap_or(0)).unwrap_or(0));
     let shifted = value + 0.5 / (SECONDS_PER_DAY_F64 * scale);
     let day_fraction = shifted - shifted.floor();
-    (day_fraction * SECONDS_PER_DAY_F64 * scale) % (60.0 * scale)
+    // The parser only makes `.0`, `.00` and `.000`, so with fraction digits `scale` is 10 or more.
+    let modulus = if fraction_digits.is_some() {
+        scale
+    } else {
+        60.0
+    };
+    (day_fraction * SECONDS_PER_DAY_F64 * scale) % modulus
 }
 
 /// `x` rounded to `1/scale`; a magnitude whose scaled value overflows is already integral, and

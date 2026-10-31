@@ -1,3 +1,4 @@
+use super::elapsed::elapsed_after_larger_clock;
 use super::lexer::{Compare, Lexer, Token};
 use super::locale_tag::{self, Calendar, DateNames, LocaleTag};
 use crate::locale::excel_date_names::EN_US;
@@ -876,8 +877,10 @@ impl Parser {
         }
         // Excel: a section with two bracketed elapsed tokens is #VALUE! for any value (`[h]:[mm]`,
         // `[mm]:[ss]`; probes/negative-date-sections-1900 and -1904 A9, A21, A22; dates.md "Negative
-        // serials under an explicit negative section"). A bare `h` after `[h]` is not bracketed.
-        if bracketed_elapsed > 1 {
+        // serials under an explicit negative section"). A bare `h` after `[h]` is not bracketed. An
+        // elapsed token after a clock token of its own or a larger unit is #VALUE! too (`h [m]`,
+        // `s [s]`; T-3419, `elapsed_after_larger_clock`).
+        if bracketed_elapsed > 1 || elapsed_after_larger_clock(&tokens) {
             return ParsePart::Error(ErrorPart::default());
         }
         if repeated_locale {

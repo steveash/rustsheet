@@ -1776,6 +1776,9 @@ C	probes/t3378-general-in-date-section-1904.case.json	7
 C	probes/t3378-general-in-date-section.case.json	64
 C	probes/t3406-irr-num-boundary.case.json	144
 C	probes/t3410-irr-zero-root-imcos.case.json	13
+C	probes/t3419-elapsed-after-clock-c.case.json	14
+C	probes/t3419-elapsed-after-date-b.case.json	25
+C	probes/t3419-elapsed-after-date-general.case.json	30
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
 C	probes/table-edits/plain-range-delete-rows-across-edge.case.json	10
@@ -4954,7 +4957,6 @@ F	probes/t3354-f-dist-tiny-x-huge-d2.case.json	S!B98
 F	probes/t3354-f-dist-tiny-x-huge-d2.case.json	S!B99
 F	probes/t3354-f-dist-tiny-x-huge-d2.case.json	S!C40
 F	probes/t3354-f-dist-tiny-x-huge-d2.case.json	S!C48
-F	probes/t3378-general-in-date-section.case.json	Sheet1!A59
 F	probes/t3406-irr-num-boundary.case.json	P!A10
 F	probes/t3406-irr-num-boundary.case.json	P!A102
 F	probes/t3406-irr-num-boundary.case.json	P!A105
@@ -5031,6 +5033,7 @@ F	probes/t3406-irr-num-boundary.case.json	P!A95
 F	probes/t3406-irr-num-boundary.case.json	P!A96
 F	probes/t3406-irr-num-boundary.case.json	P!A97
 F	probes/t3406-irr-num-boundary.case.json	P!A98
+F	probes/t3419-elapsed-after-date-b.case.json	Sheet1!A19
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F10
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F2
 F	probes/table-edits/table-convert-names-this-row.case.json	T!A2
@@ -5079,7 +5082,6 @@ F	probes/table-edits/table-insert-row-this-row-inside-data.case.json	F!G3
 F	probes/table-edits/table-insert-row-this-row-inside-data.case.json	F!G4
 F	probes/table-edits/table-insert-row-this-row-inside-data.case.json	F!G5
 F	probes/table-edits/table-insert-row-this-row-inside-data.case.json	F!G6
-F	probes/text-elapsed-two-tokens.case.json	S!A13
 F	probes/text-locale-calendars.case.json	S!A140
 F	probes/text-locale-calendars.case.json	S!A26
 F	probes/typed-mixed-fraction-number-format.case.json	Sheet1!B15
