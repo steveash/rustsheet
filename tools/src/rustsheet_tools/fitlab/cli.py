@@ -21,13 +21,16 @@ from typing import Any
 
 from rustsheet_tools import repo_root
 from rustsheet_tools.fitlab.fit import ENGINE, Fit, FitResult, run
+from rustsheet_tools.fitlab.holdout import HOLDOUT_PERMILLE, HOLDOUT_SALT, REFERENCE
 from rustsheet_tools.fitlab.kernels import registry
 from rustsheet_tools.fitlab.score import (
     Candidate,
+    Score,
     candidate,
     families,
     family_table,
     iterate_text,
+    pct,
     rank,
     table,
     worst_text,
@@ -60,6 +63,31 @@ def _fit(args: argparse.Namespace) -> Fit:
     return Fit("adhoc", "ad hoc fit", args.case, args.pattern, lambda: adhoc)
 
 
+def _side(s: Score) -> str:
+    return f"{s.exact:>6} {pct(s.exact, s.total)} {s.ulp:>6} {s.digits15:>6}"
+
+
+def holdout_table(result: FitResult, top: int) -> str:
+    """Train and test counts side by side (bit-exact, within 4 ulp, within 15 digits) and the accept
+    verdict, for the first `top` ranked candidates plus the engine and the correctly rounded one
+    (decision 0188 R4.1)."""
+    fit = result.fit
+    lines = [
+        f"hold-out (decision 0188 R4.1): {result.test_cells} of {result.train_cells + result.test_cells} cells "
+        f"held out by sha256 of {HOLDOUT_SALT!r}, case and cell ({HOLDOUT_PERMILLE / 10:g}%); "
+        f"accept: test exact rate at most {fit.margin:.1%} below train, and beats {REFERENCE!r} on test",
+        f"{'#':>4}  {'candidate':<44} {'train exact':>13} {'<=4u':>6} {'<=15d':>6}   "
+        f"{'test exact':>13} {'<=4u':>6} {'<=15d':>6}  verdict",
+    ]
+    for i, s in enumerate(rank(result.scores), 1):
+        sides = result.sides.get(s.name)
+        if sides is None or (i > top and s.name not in (ENGINE, REFERENCE)):
+            continue
+        shown = "reference" if sides.verdict is None else sides.verdict.text()
+        lines.append(f"{i:>4}  {s.name[:44]:<44} {_side(sides.train)}   {_side(sides.test)}  {shown}")
+    return "\n".join(lines)
+
+
 def report(result: FitResult, top: int, worst: int) -> str:
     """The text report: sweep summary, ranked table, families, worst cells."""
     sweep, fit = result.sweep, result.fit
@@ -69,6 +97,8 @@ def report(result: FitResult, top: int, worst: int) -> str:
         f"filter, {sweep.non_numeric} with a text or bool Excel value, {len(sweep.unparsed)} unparsed",
         "",
         table(result.scores, top),
+        "",
+        holdout_table(result, top),
     ]
     if len({s.family for s in result.scores}) < len(result.scores):
         lines += ["", family_table(families(result.scores), len(sweep.cells))]
