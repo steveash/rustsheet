@@ -1755,7 +1755,7 @@ C	probes/t3275-collation-width-kana.case.json	856
 C	probes/t3276-collation-other-scripts.case.json	643
 C	probes/t3283-typed-double-star.case.json	36
 C	probes/t3283-typed-missing-paren.case.json	12
-C	probes/t3293-textjoin-own-row-limit.case.json	11
+C	probes/t3293-textjoin-own-row-limit.case.json	26
 C	probes/t3302-text-funcs-arrays.case.json	21
 C	probes/t3304-collation-multi-letter-accents.case.json	1896
 C	probes/t3317-xlookup-scalar-return.case.json	20

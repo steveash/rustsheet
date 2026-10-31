@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-3293: TEXTJOIN ignore_empty FALSE over a row whose 32,767-unit limit is passed before (ZZ1, ZZ9) or after (B3) the formula's own cell in its own row; ZZ5 (range excludes self) and ZZ7 (ignore_empty TRUE) are controls. A1/A3/A5/A7/A9 are 32,160-unit texts.",
+ "description": "T-3293: TEXTJOIN ignore_empty FALSE over a row whose 32,767-unit limit is passed before (ZZ1, ZZ9) or after (B3) the formula's own cell in its own row; ZZ5 (range excludes self) and ZZ7 (ignore_empty TRUE) are controls. A1/A3/A5/A7/A9 are 32,160-unit texts. Rows 11-15 (T-3293 review): a cell VALUE (B, 250 units) takes the join from 32,562 units over the limit, then the formula cell follows directly (C), after a blank (D), with ignore_empty TRUE and FALSE; row 15 has two more cells before E15.",
  "tags": [
   "M5",
   "probe",
@@ -21,7 +21,24 @@
     "ZZ7": "=TEXTJOIN(\",\",TRUE,7:7)",
     "A9": "=TEXTJOIN(\"\",TRUE,REPT(\"x\",200)&SEQUENCE(160,1,0,0))",
     "ZZ9": "=TEXTJOIN(\",\",FALSE,1:10)",
-    "A10": "=LEN(A1)"
+    "A10": "=LEN(A1)",
+    "A11": "=TEXTJOIN(\"\",TRUE,REPT(\"x\",200)&SEQUENCE(162,1,0,0))",
+    "B11": "=REPT(\"y\",250)",
+    "C11": "=TEXTJOIN(\",\",FALSE,11:11)",
+    "A12": "=TEXTJOIN(\"\",TRUE,REPT(\"x\",200)&SEQUENCE(162,1,0,0))",
+    "B12": "=REPT(\"y\",250)",
+    "C12": "=TEXTJOIN(\",\",TRUE,12:12)",
+    "A13": "=TEXTJOIN(\"\",TRUE,REPT(\"x\",200)&SEQUENCE(162,1,0,0))",
+    "B13": "=REPT(\"y\",250)",
+    "D13": "=TEXTJOIN(\",\",FALSE,13:13)",
+    "A14": "=TEXTJOIN(\"\",TRUE,REPT(\"x\",200)&SEQUENCE(162,1,0,0))",
+    "B14": "=REPT(\"y\",250)",
+    "D14": "=TEXTJOIN(\",\",TRUE,14:14)",
+    "A15": "=TEXTJOIN(\"\",TRUE,REPT(\"x\",200)&SEQUENCE(162,1,0,0))",
+    "B15": "=REPT(\"y\",250)",
+    "C15": "a",
+    "D15": "b",
+    "E15": "=TEXTJOIN(\",\",TRUE,15:15)"
    }
   }
  ],

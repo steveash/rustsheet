@@ -93,7 +93,26 @@ fn limit_passed_inside_the_formulas_own_row_stops_the_read() {
     model._set("B3", "=TEXTJOIN(\",\",FALSE,3:3)");
     model._set("A7", long);
     model._set("ZZ7", "=TEXTJOIN(\",\",TRUE,7:7)");
+    // A cell value (not padding) takes the join over the limit; the formula cell comes next, after a
+    // blank, or with ignore_empty TRUE (C11, C12, D13, D14, E15).
+    let long2 = "=TEXTJOIN(\"\",TRUE,REPT(\"x\",200)&SEQUENCE(162,1,0,0))";
+    for (row, column, ignore_empty) in [
+        (11, "C", "FALSE"),
+        (12, "C", "TRUE"),
+        (13, "D", "FALSE"),
+        (14, "D", "TRUE"),
+    ] {
+        model._set(&format!("A{row}"), long2);
+        model._set(&format!("B{row}"), "=REPT(\"y\",250)");
+        model._set(
+            &format!("{column}{row}"),
+            &format!("=TEXTJOIN(\",\",{ignore_empty},{row}:{row})"),
+        );
+    }
     model.evaluate();
+    for cell in ["C11", "C12", "D13", "D14"] {
+        assert_eq!(model._get_text(cell), "#CALC!", "{cell}");
+    }
     assert_eq!(model._get_text("ZZ1"), "#CALC!");
     assert_eq!(model._get_text("B3"), "0");
     assert_eq!(model._get_text("ZZ7"), "0");

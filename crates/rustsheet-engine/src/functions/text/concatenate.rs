@@ -344,8 +344,8 @@ impl Model {
     ) -> Result<(), CalcResult> {
         // Excel reads no cell past the 32,767-unit limit, not even later in the same row: a
         // whole-row TEXTJOIN that includes its own cell is #CALC!, not circular, when the limit is
-        // passed before that cell (probes/t3293-textjoin-own-row-limit ZZ1, ZZ9; text.md). The
-        // walk stops with a private `Err` once over, before the next cell is evaluated.
+        // passed before that cell (probes/t3293-textjoin-own-row-limit ZZ1, ZZ9, E15; text.md), with
+        // ignore_empty TRUE as well as FALSE. The walk stops with a private `Err` once over, before the next cell is evaluated.
         let mut stopped = false;
         let walked = self.for_each_cell_or_error_in_whole_range(range, cell, |_, item| {
             match item {
@@ -359,6 +359,9 @@ impl Model {
                     }
                 }
             }
+            // A cell that takes the join over the limit stops the read at once, so the cell
+            // after it is not read either (probes/t3293-textjoin-own-row-limit C11, C12, D13, D14).
+            *over_limit = *over_limit || size.exceeds(values);
             if *over_limit {
                 stopped = true;
                 return Err(CalcResult::EmptyCell);

@@ -190,13 +190,13 @@ whole-row walk with ignore_empty FALSE stops at the limit (`textjoin_push_padded
 spans every column (A1, XFD1, A2, XFD2 set: B5 `=TEXTJOIN(",",FALSE,1:10)` and B8 `=TEXTJOIN(",",FALSE,A1:XFD10)`
 are `#CALC!`, D3 with ignore_empty TRUE is circular (0); probes/textjoin-whole-rows-self-reference-full-width,
 excel-graph, 2026-10-29, T-3123).
-The limit can also be passed partway along the formula's own row: with A1 holding 32,160 units of text, `=TEXTJOIN(",",FALSE,1:1)` in ZZ1 (and `1:10` in ZZ9) is `#CALC!`, because Excel stops reading once the padding passes the limit and never reaches its own cell, while in B3 (limit passed after the formula cell) and with ignore_empty TRUE (ZZ7) it is circular (0); `textjoin_push_range` stops its walk once over the limit (probes/t3293-textjoin-own-row-limit ZZ1, ZZ9, B3, ZZ7, excel-graph, 2026-10-31, T-3293).
-Evidence: probes/whole-column-empty-walkers E2, E3, E6, F1, F2, F5, F8 (excel-graph, 2026-10-07, T-1114); probes/textjoin-whole-rows-error-cell A1-A7 and probes/textjoin-whole-rows-self-reference B5, D3 (excel-graph, 2026-10-29, T-3098); probes/textjoin-whole-rows-self-reference-full-width B5, B8, D3 (T-3123).
+The limit can also be passed partway along the formula's own row: with A1 holding 32,160 units of text, `=TEXTJOIN(",",FALSE,1:1)` in ZZ1 (and `1:10` in ZZ9) is `#CALC!`, because Excel stops reading once the join passes the limit and never reaches its own cell. It stops at the cell that crosses it, padding or value, with ignore_empty TRUE too: with A holding 32,562 units and B 250 more, the formula in C (next cell), in D (after a blank), TRUE or FALSE, and in E after two more cells (TRUE) is `#CALC!` (C11, C12, D13, D14, E15). Where the limit is passed only after the formula cell (B3, FALSE) or never (ZZ7, TRUE, 32,160 units) it is circular (0). `textjoin_push_range` stops its walk at the crossing (probes/t3293-textjoin-own-row-limit, excel-graph, 2026-10-31, T-3293). 3-D references are unprobed.
+Evidence: probes/whole-column-empty-walkers E2, E3, E6, F1, F2, F5, F8 (excel-graph, 2026-10-07, T-1114); probes/textjoin-whole-rows-error-cell A1-A7 and probes/textjoin-whole-rows-self-reference B5, D3 (excel-graph, 2026-10-29, T-3098); probes/textjoin-whole-rows-self-reference-full-width B5, B8, D3 (T-3123); probes/t3293-textjoin-own-row-limit (T-3293).
 Status: VERIFIED
 Implemented in: `fn_textjoin` (functions/text/concatenate.rs) walks the used area through the shared
 sparse whole-range walker (T-2713) and adds the skipped empty cells per row (one walk per row)
 and after the last row through `JoinSize::push_empties`, which stops at the limit.
-Tasks: T-1114
+Tasks: T-1114, T-3293
 
 ## JIS is `#NAME?` in en-US Excel for the web
 Rule: `JIS`, although Microsoft's en-US function list includes it, is not a known function in
