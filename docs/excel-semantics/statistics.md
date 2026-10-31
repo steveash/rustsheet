@@ -3812,16 +3812,15 @@ Tasks: T-1543, T-1634, T-2561, T-3336, T-3337
     (iterate 0) is Excel's at 8 of them, at shapes 2.2 to 18. That is the deep-tail root test T-3294 looks for.
 
   Ours (T-3311, `incomplete_gamma::closed_form::excel_newton_quantile`): after T-2561's root, the nearest-F rule over
-  50 steps where the form at the root is within 1E-8 of p, at shapes 1.5 to 5 and p 1E-200 to 1E-12 (the measured
-  range of that cut; the search elsewhere), times the scale. The cut is a fit. On a 30% hold-out (docs/research/t3311) the
-  train part is best at 3E-7 and 1E-6, and 1E-6 leads on test and on the second fresh sweep (filled after it was
-  frozen: 23 of its 30 in-region cells bit-exact, against 1 for the search). 1E-6 moves gen-m9/c18dbf21f11093f3 A107
-  `CHISQ.INV(POISSON.DIST(9,100,FALSE),8)` from bit-exact to 1 ulp off; the branch holds 1E-8 until that is ruled on
-  (T-3311 review round 1, T-3403). Bit-exact now: A212, A301, gen-m9
-  4e55500bb8ad3cd8 A111, 58e3253bbd3a7a82 A287, a7bf0d8d81d33ba6 A216; within 15 digits: A128 and A98 (2 ulp).
-  Still visibly off at 1E-8: A169 and A338 (the form at the root is 2.9E-7 and 4.6E-7 off p; at 1E-6 A338 is
-  bit-exact and A169 within 15 digits), and A355 (`CHISQ.INV(1E-20,10)`, 2.2E-4 off at the root, where the steps are
-  no better than the search).
+  50 steps where the form at the root is within 1E-6 of p, at shapes 1.5 to 7.5 and p 1E-200 to 1.0000000827E-10
+  (the measured range of that cut; the search elsewhere), times the scale. The cut is a fit. On a 30% hold-out
+  (docs/research/t3311) the train part is best at 3E-7 and 1E-6, and 1E-6 leads on test and on the second fresh sweep
+  (filled after it was frozen: 23 of its 30 in-region cells bit-exact, against 1 for the search). It moves
+  gen-m9/c18dbf21f11093f3 A107 `CHISQ.INV(POISSON.DIST(9,100,FALSE),8)` from bit-exact to 1 ulp off (Excel
+  7.92099982566666E-8, ours 7.920999825666661E-8), taken by owner ruling under decision 0083's allowance (decision
+  0197; T-3403). Bit-exact now: A212, A301, A338, gen-m9 4e55500bb8ad3cd8 A111, 58e3253bbd3a7a82 A287,
+  a7bf0d8d81d33ba6 A216; within 15 digits: A128 and A98 (2 ulp), A169 (4 ulp). Still visibly off: A355
+  (`CHISQ.INV(1E-20,10)`, 2.2E-4 off at the root, where the steps are no better than the search).
 
 - `1-1E-16` is a different double from 1 (`NORM.INV(1-1E-16,0,1)` = 8.209536151601386), but `1-1E-17` is 1 and gives `#NUM!`.
 - Excel's CHISQ.INV and GAMMA.INV are exact in the lower tail (`CHISQ.INV(1E-100,1)` = 1.5707963267948966E-200, `GAMMA.INV(1E-300,1,1)` = 1E-300, `CHISQ.INV(1E-300,1)` = 0) and CHISQ.INV.RT is `#NUM!` for p below about 1E-15 with df = 1 but finite for df = 50 (`CHISQ.INV.RT(1E-300,50)` = 1592.68...). Before T-1634 ours gave `#NUM!` for CHISQ.INV(p<=1E-200,1), GAMMA.INV(p<=1E-20,1,1) and CHISQ.INV.RT(p<=1E-20,df) (Excel: values), and wrong digits elsewhere in the tails (`CHISQ.INV(1E-300,50)` 0.0033 vs 2.04E-11; `CHISQ.INV(1-1E-16,50)` 179.80 vs 180.68; `GAMMA.INV(1E-300,100,1)` 1.0165 vs 0.0380) (fixed by T-1634, below).

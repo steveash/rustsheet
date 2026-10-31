@@ -1,6 +1,6 @@
 ---
 id: T-3403
-title: "Which Newton iterate Excel's GAMMA.INV returns once the steps from the leading-factor root cycle (A169, A338, A355 left by T-3311)"
+title: "Which Newton iterate Excel's GAMMA.INV returns once the steps from the leading-factor root cycle (A355, A169, A107 left by T-3311)"
 milestone: M9
 lane: functions-stat
 status: todo
@@ -12,9 +12,9 @@ campaign: visible
 ---
 
 ## Goal
-The three gated gen-m9 cells T-3311 left visibly off reach Excel's value within half a unit of the 15th digit, by a
-rule for which Newton iterate from the leading-factor root Excel returns, or the Outcome lists the rules tried with
-their counts (decision 0056).
+The gated gen-m9 cell T-3311 left visibly off (A355) reaches Excel's value within half a unit of the 15th digit, and
+its bit-level misses (A169, A107) Excel's bits, by a rule for which Newton iterate from the leading-factor root
+Excel returns, or the Outcome lists the rules tried with their counts (decision 0056).
 
 ## Context
 T-3311 found that Excel's lower-tail GAMMA.INV/CHISQ.INV at a shape above 1 is Newton steps from the leading-factor
@@ -22,16 +22,16 @@ root on the leading-factor series form, a staircase in x (docs/excel-semantics/s
 shape above 1", T-3311 paragraphs; probes-numeric/t3311-gamma-inv-lower-tail-cdf, t3311-fresh-sweep). The steps
 cycle between two or three levels of the staircase, and which iterate Excel returns is not pinned. The engine
 (`incomplete_gamma::closed_form::excel_newton_quantile`) keeps the first iterate whose cdf is nearest p, only where
-the form at the root is within 1E-8 of p (`NEWTON_START_MAX`). A wider cut (1E-6, tied on T-3311's hold-out train
-part) would fix A169 and A338 but moves gen-m9/c18dbf21f11093f3 A107 `CHISQ.INV(POISSON.DIST(9,100,FALSE),8)`
+the form at the root is within 1E-6 of p (`NEWTON_START_MAX`, the hold-out's cut). That cut makes A338 bit-exact and
+A169 visible, but moves gen-m9/c18dbf21f11093f3 A107 `CHISQ.INV(POISSON.DIST(9,100,FALSE),8)`
 (p = 1.025153212086874E-31, shape 4) one ulp off: no iterate is Excel's value there.
 
 Cells (gen-m9, excel-graph):
-- gen-m9/a612e89321a6df9c.case.json (1): Calc!A169 `CHISQ.INV(1E-20,6)`, form at the root 2.9E-7 off p;
-- gen-m9/a5828d3925575713.case.json (1): Calc!A338 `GAMMAINV(1E-16,2.5,TRUE)`, 4.6E-7 off (the second iterate is
-  Excel's bit for bit);
 - gen-m9/c2974c061384fdd9.case.json (1): Calc!A355 `CHISQ.INV(1E-20,10)`, 2.2E-4 off, where the steps are no better
-  than the search.
+  than the search (visibly off);
+- gen-m9/a612e89321a6df9c.case.json (1): Calc!A169 `CHISQ.INV(1E-20,6)`, form at the root 2.9E-7 off p; 4 ulp,
+  within 15 digits;
+- gen-m9/c18dbf21f11093f3.case.json (1): Calc!A107, 1 ulp, within 15 digits (decision 0197).
 
 Leads:
 - The 1-ulp residue of the form against Excel's GAMMA.DIST (T-3242) moves the levels; at A107 the nearest iterate is
@@ -47,10 +47,9 @@ Root test, to unify here or in T-3294: T-2561's `TINY_QUANTILE_CHECK` tests the 
 same root on `excel_form_lower`, Excel's staircase form. On the form, "the root is the nearest iterate" may be the test
 the root check only approximates.
 
-Cut held (T-3311 review round 1): the hold-out picks `NEWTON_START_MAX` = 1E-6, which makes A338 bit-exact and A169
-visible but moves A107 (above) from bit-exact to 1 ulp off (Excel 7.92099982566666E-8, ours 7.920999825666661E-8).
-Recording A107 under decision 0083's ulp allowance is pending a ruling, and the cut stays at 1E-8 until then. If the
-allowance is recorded, this task owns A107's 1-ulp miss as its ulp follow-up (decision 0083 condition 4).
+The cut (T-3311, owner ruling, decision 0197): `NEWTON_START_MAX` = 1E-6 moves A107 (above) from bit-exact to 1 ulp
+off (Excel 7.92099982566666E-8, ours 7.920999825666661E-8), recorded under decision 0083's ulp allowance. This task
+owns A107's 1-ulp miss as its ulp follow-up (decision 0083 condition 4).
 
 ## Visible-parity stage
 Decision 0083: the cells this task owns are visibly off, so it is in the campaign. Its target is that every visibly-off
@@ -58,9 +57,9 @@ cell it owns has Excel's type, error and text, or is within half a unit of the 1
 bit-level misses left then go to a `defer: phase-1b` follow-up.
 
 ## Acceptance criteria
-- [ ] A169, A338 and A355 are within half a unit of Excel's 15th digit, or the Outcome lists the rules tried with
+- [ ] A355 is within half a unit of Excel's 15th digit, or the Outcome lists the rules tried with
       their bit-exact and visible counts on a hold-out split (decision 0188 R4).
-- [ ] No gated cell regresses (A107 included); no new known-failure line in eval/baseline.
+- [ ] No gated cell regresses; no new known-failure line in eval/baseline.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
