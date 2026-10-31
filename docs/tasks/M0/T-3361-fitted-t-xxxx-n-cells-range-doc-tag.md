@@ -3,7 +3,7 @@ id: T-3361
 title: "FITTED(T-XXXX, n_cells, range) doc tag: tag the known fitted constants and ratchet their count in make hygiene (decision 0188 R4.3)"
 milestone: M0
 lane: quality
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
