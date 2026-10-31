@@ -3,7 +3,7 @@ id: T-3266
 title: "Probe which unary signs count toward Excel's sign cap and how nested -( runs share it"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
