@@ -246,7 +246,9 @@ CI_POLL = 60  # every CI poll is a stop checkpoint
 DISPATCH_AFTER = 3 * 60  # no run by then: dispatch once; still none after as long again: stop
 RENEW_EVERY = 5 * 60
 PRE_SQUASH_POLL = 5
-PRE_SQUASH_TIMEOUT = 2 * 60
+# GitHub recomputes a PR's test merge when the PR changes, not when `main` moves, so the stage
+# re-sets a stale PR's base once and waits for the recompute, which took about 3 min (decision 0200).
+PRE_SQUASH_TIMEOUT = 5 * 60
 TITLE_MAX = 100
 ZWJ = "\u200d"
 CLOSING_KEYWORD = re.compile(r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\b", re.IGNORECASE)
@@ -567,6 +569,7 @@ class Stage:
         """Step 7.2: wait until GitHub's test merge of the PR sits on `expected` (the current
         `main`), and require its tree to be the train's. Returns the PR read."""
         deadline = self.clock() + PRE_SQUASH_TIMEOUT
+        refreshed = False
         while True:
             pull = self.client.pull(member.pr)
             merge = merge_ready.text_of(pull, "merge_commit_sha")
@@ -581,6 +584,10 @@ class Stage:
                     return pull
                 if remote_sha(MAIN_REF, self.root) != expected:
                     raise Stop(f"main moved without the lock before squashing #{member.pr}", p0=True, pr=member.pr)
+                if not refreshed:  # a test merge on an older main: make GitHub recompute it
+                    self.client.set_base(member.pr, merge_ready.BASE_BRANCH)
+                    self.log.append(f"#{member.pr}: re-set the base to recompute its stale test merge")
+                    refreshed = True
             if self.clock() >= deadline:
                 raise Stop(f"GitHub's test merge of #{member.pr} was not recomputed on {expected[:12]} "
                            f"within {PRE_SQUASH_TIMEOUT // 60} min")

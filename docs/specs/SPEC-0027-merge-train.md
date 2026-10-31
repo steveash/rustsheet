@@ -761,8 +761,9 @@ schema; the "As built" note below supersedes the enum and the re-run of these bu
 - the session never adds, skips, reorders or changes an action.
 
 **As built (T-3077, decision 0169).** `make merge-train TRAIN=1 STEP=1` (or `SHADOW=1 STEP=1`) runs the
-merger with `scripts/merge_step.py`'s `StepClient`: reads go through `gh_client`, and the seven writes
-(`comment`, `label`, `unlabel`, `merge`, `create_pull`, `delete_branch`, `dispatch`) are actions validated
+merger with `scripts/merge_step.py`'s `StepClient`: reads go through `gh_client`, and the eight writes
+(`comment`, `label`, `unlabel`, `merge`, `create_pull`, `delete_branch`, `dispatch`, and `set_base`,
+which re-sets a PR's base to `main` so GitHub recomputes a stale test merge, decision 0200) are actions validated
 against one schema, which `make mark-ready STEP=1` also uses. The run stays alive and keeps the lock:
 it prints each action as one JSON line (with a `seq`), the session performs it and runs `make
 merge-train-ack SEQ=<n>` (`REFUSED=1` when GitHub or the tool refused it), and the script reads the

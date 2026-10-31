@@ -421,6 +421,9 @@ class GitHub(Client):
         self.bad_tree = False
         self.lose_reply = False
         self.mergeable: object = True
+        # Like GitHub, a PR's test merge stays on the `main` it was computed on until the PR
+        # changes; here it changes when the stage re-sets the PR's base (decision 0200).
+        self.test_bases: dict[int, str] = {}
         self.refuse: set[int] = set()
         self.unlabelled: set[int] = set()
         self.closed: list[int] = []  # closed PRs still labelled ready-to-merge
@@ -444,7 +447,7 @@ class GitHub(Client):
         return self.git("rev-parse", "refs/heads/main")
 
     def test_merge(self, pr: int) -> str:
-        main, head = self.main(), self.heads[pr]
+        main, head = self.test_bases.get(pr) or self.main(), self.heads[pr]
         if self.bad_tree:  # a test merge on the right parent whose tree is not the train's
             tree = self.git("rev-parse", f"{main}^{{tree}}")
         else:
@@ -516,6 +519,10 @@ class GitHub(Client):
             gone = {*self.merged, *self.unlabelled}
             stop = [{"number": pr, "labels": [{"name": merge_ready.STOP_LABEL}]} for pr in sorted(self.stop)]
             return [{"number": pr, "labels": label} for pr in self.heads if pr not in gone] + stop
+        if (m := re.fullmatch(r"pulls/(\d+)", path)) and request.method == "PATCH":
+            assert request.body == {"base": "main"}
+            self.test_bases.pop(int(m[1]), None)
+            return {"number": int(m[1])}
         if m := re.fullmatch(r"pulls/(\d+)", path):
             pr = int(m[1])
             if pr in self.merged:
@@ -747,6 +754,15 @@ class MergeStage(StageFixture):
         self.assertEqual(self.run_stage(), 1)
         self.assertEqual(self.gh.merged, [])
         self.assertIn("P0: main moved without the lock before the first squash", self.stage.log)
+
+    def test_a_stale_test_merge_is_recomputed_by_re_setting_the_base(self) -> None:
+        # GitHub leaves #2's test merge on the main before #1's squash (decision 0200).
+        self.gh.test_bases[2] = self.gh.main()
+        self.assertEqual(self.run_stage(), 0, self.stage.log)
+        self.assertEqual(self.gh.merged, [1, 2])
+        patches = [r for r in self.gh.writes if r.method == "PATCH"]
+        self.assertEqual([(r.path.removeprefix("repos/o/r/"), r.body) for r in patches], [("pulls/2", {"base": "main"})])
+        self.assertIn("#2: re-set the base to recompute its stale test merge", self.stage.log)
 
     def test_a_merge_ref_that_is_never_recomputed_stops(self) -> None:
         self.gh.mergeable = None
