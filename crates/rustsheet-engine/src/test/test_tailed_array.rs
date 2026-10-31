@@ -4,6 +4,7 @@
 //! T-0469) give what the 1,048,576-row arrays give.
 
 use crate::functions::lift::LIFT_TALLY;
+use crate::functions::REGEX_UNITS;
 use crate::tailed_array::{TAILED_OFF, TAILED_WALKS};
 use crate::test::util::new_empty_model;
 use crate::Model;
@@ -713,7 +714,6 @@ fn keyed_lookup_shapes_that_are_not_tailed() {
         "=COUNT(MATCH(A:A,$J$1:$J$6,0+0))",
         "=SUM(--(VLOOKUP(1,$J$1:$K$6,2,FALSE)=A:A))",
         "=COUNT(MATCH(A:B,$J$1:$J$6,0))",
-        "=COUNT(XMATCH(A:A,$J$1:$J$6))",
     ]
     .iter()
     .map(ToString::to_string)
@@ -726,8 +726,9 @@ fn keyed_lookup_shapes_that_are_not_tailed() {
 }
 
 /// `formula` in E1 of a model `setup` fills, evaluated with the tailed reading on and off: its
-/// text, the arguments walked tailed, and the lift tally (kernel runs, visits charged).
-fn tallied(setup: &dyn Fn(&mut Model), formula: &str) -> [(String, usize, (u64, u64)); 2] {
+/// text, the arguments walked tailed, the lift tally (kernel runs, visits charged) and the regex
+/// work units charged.
+fn tallied(setup: &dyn Fn(&mut Model), formula: &str) -> [(String, usize, (u64, u64), u64); 2] {
     [false, true].map(|off| {
         TAILED_OFF.with(|flag| flag.set(off));
         let mut model = new_empty_model();
@@ -735,12 +736,14 @@ fn tallied(setup: &dyn Fn(&mut Model), formula: &str) -> [(String, usize, (u64, 
         model._set("E1", formula);
         TAILED_WALKS.with(|count| count.set(0));
         LIFT_TALLY.with(|tally| tally.set((0, 0)));
+        REGEX_UNITS.with(|units| units.set(0));
         model.evaluate();
         TAILED_OFF.with(|flag| flag.set(false));
         (
             model._get_text("E1"),
             TAILED_WALKS.with(std::cell::Cell::get),
             LIFT_TALLY.with(std::cell::Cell::get),
+            REGEX_UNITS.with(std::cell::Cell::get),
         )
     })
 }
@@ -849,4 +852,102 @@ fn fixed_references_in_a_cycle_or_a_spill() {
         let [tailed, full] = tallied(&setup, formula);
         assert_eq!(tailed.0, full.0, "{formula}");
     }
+}
+
+/// XLOOKUP and XMATCH over a tailed key are keyed lookups (SPEC-0020 Amendment 2, section 3;
+/// T-3223): exact, next-smaller and next-larger, wildcard and regex match modes, both search
+/// directions and the binary searches, over the t3096 tables, an `if_not_found` of each fixed
+/// kind and a multi-column `return_array` (each element keeps its match's first cell).
+#[test]
+fn keyed_xlookup_and_xmatch_over_a_whole_column_key() {
+    check(
+        AGGREGATES,
+        &[
+            "XMATCH(A:A,$J$1:$J$6)",
+            "XMATCH(A:A,$J$1:$J$6,0,-1)",
+            "XMATCH(A:A,$L$1:$L$5,1)",
+            "XMATCH(A:A,$L$1:$L$5,-1,-2)",
+            "XMATCH(A:A&\"*\",$J$1:$J$6,2)",
+            "XMATCH(A:A,$J$1:$J$6,3,-1)",
+            "XLOOKUP(A:A,$J$1:$J$6,$K$1:$K$6)",
+            "XLOOKUP(A:A,$J$1:$J$6,$K$1:$K$6,-1)",
+            "XLOOKUP(A:A,$J$1:$J$6,$K$1:$K$6,\"nf\",0,-1)",
+            "XLOOKUP(A:A,$J$1:$J$6,$J$1:$K$6,$H$1)",
+            "XLOOKUP(A:A&\"*\",$J$1:$J$6,$K$1:$K$6,0,2)",
+            "XLOOKUP(A:A,$J$1:$J$6,$K$1:$K$6,0,3,-1)",
+            "XLOOKUP(A:A,$L$1:$L$5,$L$1:$L$5,0,1,2)",
+            "XLOOKUP(A:A,$N$1:$S$1,$N$2:$S$2)",
+            "XLOOKUP(A:A,{0,1,\"x\"},{1,2,3})",
+            "XMATCH(A:A,$J$1:$J$6,$H$1)",
+            "XLOOKUP(Sheet2!A:A,$J$1:$J$6,$K$1:$K$6,\"nf\")",
+        ],
+    );
+}
+
+/// XLOOKUP and XMATCH shapes a keyed lookup refuses: an array `match_mode` or `search_mode`, a
+/// function-call `lookup_array` or `return_array`, a named table, an operator or an omitted
+/// argument before a given one, and a key that reaches no leaf.
+#[test]
+fn keyed_xlookup_shapes_that_are_not_tailed() {
+    let formulas: Vec<String> = [
+        "=COUNT(XMATCH(A:A,$J$1:$J$6,{0;2}))",
+        "=COUNT(XMATCH(A:A,$J$1:$J$6,0,{1;-1}))",
+        "=COUNTA(XLOOKUP(A:A,INDIRECT(\"J1:J6\"),$K$1:$K$6))",
+        "=COUNTA(XLOOKUP(A:A,$J$1:$J$6,OFFSET($K$1,0,0,6,1)))",
+        "=COUNTA(XLOOKUP(A:A,Tbl,$K$1:$K$6))",
+        "=COUNTA(XLOOKUP(A:A,$J$1:$J$6,$K$1:$K$6,1+1))",
+        "=COUNTA(XLOOKUP(A:A,$J$1:$J$6,$K$1:$K$6,,2))",
+        "=SUM(--(XLOOKUP(1,$J$1:$J$6,$K$1:$K$6)=A:A))",
+    ]
+    .iter()
+    .map(ToString::to_string)
+    .collect();
+    let (results, walks) = both_ways(&formulas);
+    for (formula, tailed, full) in results {
+        assert_eq!(tailed, full, "{formula}");
+    }
+    assert_eq!(walks, 0);
+}
+
+/// Keys 1, empty, 2, 2 in A1:A4; `last` in A5, the head's last row (Z5 keeps it used); the
+/// table in J1:K4 (1..=4 and their tens).
+fn regex_keys(model: &mut Model, last: &str) {
+    for (row, key) in ["1", "", "2", "2", last].iter().enumerate() {
+        model._set(&format!("A{}", row + 1), key);
+    }
+    model._set("Z5", "1");
+    for row in 1..=4 {
+        model._set(&format!("J{row}"), &row.to_string());
+        model._set(&format!("K{row}"), &(row * 10).to_string());
+    }
+}
+
+/// The continued lift and the continued regex state (SPEC-0020 Amendment 2, sections 2 and 3):
+/// for exact, wildcard and regex modes, merged and not, the head and the tail run the kernel,
+/// charge visits and charge regex work units as the one call does. The key `A:A&"a"` makes the
+/// tail's pattern "a" one the head already compiled (its empty row): the tail continues the
+/// head's patterns and budgets, so it compiles and charges nothing for it again.
+#[test]
+fn keyed_xlookup_and_xmatch_charge_the_one_call() {
+    let formulas = [
+        "=COUNT(XMATCH(A:A,$J$1:$J$4))",
+        "=COUNTA(XLOOKUP(A:A,$J$1:$J$4,$K$1:$K$4,0,0,-1))",
+        "=COUNT(XMATCH(A:A&\"*\",$J$1:$J$4,2))",
+        "=COUNT(XMATCH(A:A&\"a\",$J$1:$J$4,3))",
+        "=COUNTA(XLOOKUP(A:A&\"a\",$J$1:$J$4,$K$1:$K$4,\"nf\",3))",
+        "=COUNTA(XLOOKUP(A:A,$J$1:$J$4,$K$1:$K$4,\"x\",$J$1))",
+    ];
+    for (last, kind) in [("", "merged"), ("9", "unmerged")] {
+        for formula in formulas {
+            let [tailed, full] = tallied(&|model| regex_keys(model, last), formula);
+            assert_eq!(tailed.0, full.0, "{kind} {formula}");
+            assert_eq!(tailed.1, 1, "{kind} {formula} is tailed");
+            assert_eq!(tailed.2, full.2, "{kind} {formula}: runs and visits");
+            assert_eq!(tailed.3, full.3, "{kind} {formula}: regex work units");
+        }
+    }
+    // The regex calls charge work at all, so the comparison above can tell a tail that compiles
+    // its pattern again from one that continues the head's.
+    let [_, full] = tallied(&|model| regex_keys(model, "9"), formulas[3]);
+    assert!(full.3 > 0);
 }

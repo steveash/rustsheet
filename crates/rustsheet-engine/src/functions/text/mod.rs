@@ -22,4 +22,6 @@ mod text_kernel;
 mod textsplit;
 pub(super) mod util;
 
+#[cfg(test)]
+pub(crate) use regex_functions::REGEX_UNITS;
 pub(crate) use regex_functions::{LookupPattern, LookupRegexes};

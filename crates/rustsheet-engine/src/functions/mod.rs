@@ -26,6 +26,12 @@ pub(crate) mod util;
 mod xlookup;
 mod xlsx_names;
 
+/// A lookup's regex state, which a keyed XLOOKUP or XMATCH carries from its head to its tail
+/// (`tailed_array.rs`).
+pub(crate) use text::LookupRegexes;
+#[cfg(test)]
+pub(crate) use text::REGEX_UNITS;
+
 /// List of all implemented functions
 #[derive(PartialEq, Clone, Debug)]
 pub enum Function {

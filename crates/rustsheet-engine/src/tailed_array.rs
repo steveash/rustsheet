@@ -20,7 +20,9 @@
 //! and MATCH over such a key, their other arguments fixed (ranges, one-cell references, literals),
 //! are interior nodes too (SPEC-0020 Amendment 2, T-3221): the head's lift leaves a
 //! [`LiftRecord`] that the tail's lift continues, so the two charge and check what the one lift
-//! over the whole key would (`Model::lift_values_keyed`). A range operand
+//! over the whole key would (`Model::lift_values_keyed`). XLOOKUP and XMATCH are keyed lookups
+//! the same way (T-3223), and their tail also continues the head's regex state
+//! (`Model::keyed_regexes`). A range operand
 //! reads what `evaluate_range` reads: its used rows, the rest on record as read empty through
 //! `clip_block_to_used_area`. The tail reads the one-cell references again, which finds them
 //! evaluated and records nothing new. Should the used area grow while the head is evaluated (a
@@ -31,7 +33,7 @@ use crate::calc_result::CalcResult;
 use crate::expressions::parser::{ArrayNode, Node};
 use crate::expressions::token::{Error, OpUnary};
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::Function;
+use crate::functions::{Function, LookupRegexes};
 use crate::model::Model;
 use crate::reference_operators::RefArg;
 
@@ -70,6 +72,9 @@ pub(crate) struct TailView {
     /// What each keyed lookup's head lift charged and gave last, by argument slice address
     /// (SPEC-0020 Amendment 2, section 2).
     lifts: Vec<(usize, LiftRecord)>,
+    /// Each XLOOKUP or XMATCH head's regex state, by argument slice address, which its tail
+    /// continues (SPEC-0020 Amendment 2, section 3).
+    regexes: Vec<(usize, LookupRegexes)>,
 }
 
 /// What a keyed lookup's head lift charged and gave last: the tail lift continues it, as the
@@ -191,18 +196,24 @@ fn is_if(node: &Node) -> bool {
     matches!(node, Node::FunctionKind { kind: Function::If, args } if (2..=3).contains(&args.len()))
 }
 
-/// The arguments of a keyed lookup: VLOOKUP or HLOOKUP with 3 or 4 arguments, MATCH with 2 or 3
-/// (SPEC-0020 Amendment 2, section 1). Its one operand is its key, `args[0]`.
-fn keyed_lookup(node: &Node) -> Option<&[Node]> {
+/// The arguments of a keyed lookup and how many of them past the key are tables: VLOOKUP or
+/// HLOOKUP with 3 or 4 arguments, MATCH with 2 or 3 (SPEC-0020 Amendment 2, section 1; T-3221),
+/// XMATCH with 2 to 4 and XLOOKUP with 3 to 6, whose `return_array` is a second table (section 3;
+/// T-3223). Its one operand is its key, `args[0]`.
+fn keyed_lookup(node: &Node) -> Option<(&[Node], usize)> {
     let Node::FunctionKind { kind, args } = node else {
         return None;
     };
-    let counts = match kind {
-        Function::Vlookup | Function::Hlookup => 3..=4,
-        Function::Match => 2..=3,
+    let (counts, tables) = match kind {
+        Function::Vlookup | Function::Hlookup => (3..=4, 1),
+        Function::Match => (2..=3, 1),
+        Function::Xmatch => (2..=4, 1),
+        Function::Xlookup => (3..=6, 2),
         _ => return None,
     };
-    counts.contains(&args.len()).then_some(args.as_slice())
+    counts
+        .contains(&args.len())
+        .then_some((args.as_slice(), tables))
 }
 
 /// A keyed lookup's identity while its formula is evaluated: the address of its argument slice,
@@ -214,11 +225,12 @@ pub(crate) fn call_address(args: &[Node]) -> usize {
 }
 
 /// Whether a keyed lookup's arguments past the key read the same in the head and the tail, and
-/// as scalars where they could lift (SPEC-0020 Amendment 2, section 1): the table a range, a
-/// one-cell reference or an array literal; every other argument a literal (a negative number
-/// included) or a one-cell reference. A function call, a name or an operator is refused, so an
-/// array `range_lookup` or `match_type` never lifts with the key.
-fn fixed_arguments(args: &[Node]) -> bool {
+/// as scalars where they could lift (SPEC-0020 Amendment 2, section 1): its `tables` (the first
+/// arguments past the key) each a range, a one-cell reference or an array literal; every other
+/// argument a literal (a negative number included) or a one-cell reference. A function call, a
+/// name or an operator is refused, so an array `range_lookup`, `match_type`, `match_mode` or
+/// `search_mode` never lifts with the key.
+fn fixed_arguments(args: &[Node], tables: usize) -> bool {
     let scalar = |node: &Node| match ungroup(node) {
         Node::NumberKind(_)
         | Node::BooleanKind(_)
@@ -236,8 +248,11 @@ fn fixed_arguments(args: &[Node]) -> bool {
             Node::RangeKind { .. } | Node::ReferenceKind { .. } | Node::ArrayKind(_)
         )
     };
-    match args {
-        [_, table_array, rest @ ..] => table(table_array) && rest.iter().all(scalar),
+    match args.get(1..) {
+        Some(fixed) if fixed.len() >= tables => {
+            let (tables, rest) = fixed.split_at(tables);
+            tables.iter().all(table) && rest.iter().all(scalar)
+        }
         _ => false,
     }
 }
@@ -264,7 +279,7 @@ fn push_operands<'a>(node: &'a Node, pending: &mut Vec<&'a Node>) -> bool {
             true
         }
         _ => match keyed_lookup(node) {
-            Some([key, ..]) => {
+            Some(([key, ..], _)) => {
                 pending.push(key);
                 true
             }
@@ -315,8 +330,8 @@ impl Model {
         let mut conditions = Vec::new();
         while let Some(node) = pending.pop() {
             let node = ungroup(node);
-            if let Some(args) = keyed_lookup(node) {
-                if !fixed_arguments(args) {
+            if let Some((args, tables)) = keyed_lookup(node) {
+                if !fixed_arguments(args, tables) {
                     return None;
                 }
                 leaves.lookups.push(call_address(args));
@@ -404,6 +419,7 @@ impl Model {
             stale: false,
             lookups: leaves.lookups,
             lifts: Vec::new(),
+            regexes: Vec::new(),
         });
         let head = read(self);
         let stale = self.tail_views.last().is_none_or(|view| view.stale);
@@ -546,6 +562,47 @@ impl Model {
         let lifts = &mut view.lifts;
         lifts.retain(|(key, _)| *key != at);
         lifts.push((at, record));
+    }
+
+    /// The regex state an XLOOKUP or XMATCH call `call` of `cell` starts from: while its tailed
+    /// argument's tail is evaluated, the head's (taken; once per tail), so the call's patterns,
+    /// budgets and charges run on as in its one call over the logical key; otherwise a new one
+    /// (SPEC-0020 Amendment 2, section 3).
+    pub(crate) fn keyed_regexes(
+        &mut self,
+        call: &[Node],
+        cell: CellReferenceIndex,
+    ) -> LookupRegexes {
+        let at = call_address(call);
+        let view = self
+            .keyed_view(call, cell)
+            .and_then(|index| self.tail_views.get_mut(index))
+            .filter(|view| view.head_end.is_none());
+        view.and_then(|view| {
+            let index = view.regexes.iter().position(|(key, _)| *key == at)?;
+            Some(view.regexes.swap_remove(index).1)
+        })
+        .unwrap_or_else(LookupRegexes::new)
+    }
+
+    /// Keeps the regex state `regexes` of the XLOOKUP or XMATCH call `call` of `cell`, already
+    /// finished, for its tail when its head is being evaluated; drops it otherwise.
+    pub(crate) fn keep_keyed_regexes(
+        &mut self,
+        call: &[Node],
+        cell: CellReferenceIndex,
+        regexes: LookupRegexes,
+    ) {
+        let at = call_address(call);
+        let Some(view) = self
+            .keyed_view(call, cell)
+            .and_then(|index| self.tail_views.get_mut(index))
+            .filter(|view| view.head_end.is_some())
+        else {
+            return;
+        };
+        view.regexes.retain(|(key, _)| *key != at);
+        view.regexes.push((at, regexes));
     }
 }
 

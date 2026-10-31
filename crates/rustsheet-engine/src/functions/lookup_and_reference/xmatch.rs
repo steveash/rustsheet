@@ -255,8 +255,11 @@ impl Model {
 
         let array = self.xmatch_vector(&args[1], cell);
         let scan = array.as_ref().map_or(1, SearchVector::scan_cells);
-        let mut regexes = LookupRegexes::new();
-        let result = self.lift_values(
+        // Over a tailed key the call is a keyed lookup (SPEC-0020 Amendment 2, section 3): its
+        // tail's lift and regex state continue its head's.
+        let mut regexes = self.keyed_regexes(args, cell);
+        let result = self.lift_values_keyed(
+            args,
             vec![lookup_value, match_mode, search_mode],
             LiftCost::Cells(scan),
             &LiftOptions::REUSE_EQUAL_RUNS,
@@ -275,7 +278,9 @@ impl Model {
                 )
             },
         );
-        regexes.finish(self, result, cell)
+        let result = regexes.finish(self, result, cell);
+        self.keep_keyed_regexes(args, cell, regexes);
+        result
     }
 
     /// XMATCH of one element. The errors come in argument order: `lookup_value`, `match_mode`,

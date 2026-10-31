@@ -529,8 +529,11 @@ impl Model {
         // Each element searches the evaluated cells of the lookup vector once, whatever the
         // three criteria are; the table is never walked again.
         let cost = table.as_ref().map_or(1, |table| table.values.scan_cells());
-        let mut regexes = LookupRegexes::new();
-        let result = self.lift_values(
+        // Over a tailed key the call is a keyed lookup (SPEC-0020 Amendment 2, section 3): its
+        // tail's lift and regex state continue its head's.
+        let mut regexes = self.keyed_regexes(args, cell);
+        let result = self.lift_values_keyed(
+            args,
             criteria,
             LiftCost::Cells(cost),
             &LiftOptions::REUSE_EQUAL_RUNS,
@@ -539,7 +542,9 @@ impl Model {
                 model.xlookup_one(values, &table, &if_not_found, pick, &mut regexes, cell)
             },
         );
-        regexes.finish(self, result, cell)
+        let result = regexes.finish(self, result, cell);
+        self.keep_keyed_regexes(args, cell, regexes);
+        result
     }
 
     /// XLOOKUP's `if_not_found` (`#N/A` when omitted or empty). A range stays a reference in the
