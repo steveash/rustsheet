@@ -486,6 +486,24 @@ class MergeLock(unittest.TestCase):
         self.put(merge_lock.Lock("", "agent-a", "101", renewed=self.now, waiters=full))
         self.assertEqual(self.wait()[:2], (merge_lock.ERROR, 0))
 
+    def test_a_wait_that_began_before_a_switch_to_train_stops_and_leaves_the_queue(self) -> None:
+        """Decision 0209: the mode is re-read on every poll, not only when the wait starts."""
+        merge_lock.acquire("agent-a", "101", root=self.a)
+        polls = 0
+
+        def refusal() -> str | None:
+            nonlocal polls
+            polls += 1
+            return "merge lock refused: the merge train is on" if polls >= 3 else None
+
+        with mock.patch.object(merge_lock.time, "sleep", lambda s: None), mock.patch("builtins.print"):
+            code = merge_lock.wait("agent-b", "202", timeout_minutes=5, root=self.b, refusal=refusal)
+        self.assertEqual((code, polls), (merge_lock.REFUSED, 3))
+        lock = self.lock()
+        assert lock is not None
+        self.assertEqual(lock.holder, "agent-a")
+        self.assertEqual([w.id for w in lock.waiters], [])  # it queued on poll 1, then left
+
     def test_main_waits_for_a_pr_or_a_train_and_refuses_bad_minutes(self) -> None:
         self.assertEqual(
             merge_lock.main(["wait", "--pr", "202", "--holder", "agent-b", "--timeout", "1"], self.a), 0
