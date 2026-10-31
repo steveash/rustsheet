@@ -124,7 +124,13 @@ impl CouponSchedule {
         let dsc_over_e = (e - a) / e;
 
         let coupon = 100.0 * rate / frequency as f64;
-        let accrued = coupon * (a / e);
+        // The accrued interest is `rate/f · A/E · 100`, not `coupon · A/E`, and each coupon is
+        // discounted at `k + DSC/E` counted from k = 0 (not `DSC/E + k - 1` from k = 1): with it
+        // all 240 PRICE cells of probes/bond-extreme-coupon-yield are bit-exact in the eval, and
+        // the single-coupon branch below uses the same accrued order without regressions
+        // (financial.md "PRICE, DURATION and MDURATION sum order at a huge coupon rate and yield",
+        // T-2733).
+        let accrued = rate / frequency as f64 * (a / e) * 100.0;
 
         // A single remaining coupon is discounted with simple (linear) interest
         if n == 1.0 {
@@ -135,9 +141,8 @@ impl CouponSchedule {
         let first_term = redemption / growth(v, dsc_over_e + n - 1.0);
 
         let mut second_term = 0.0;
-        for k in 1..=(n as u32) {
-            let t = dsc_over_e + k as f64 - 1.0;
-            second_term += coupon / growth(v, t);
+        for k in 0..(n as u32) {
+            second_term += coupon / growth(v, k as f64 + dsc_over_e);
         }
 
         first_term + second_term - accrued
@@ -618,8 +623,9 @@ impl Model {
             num += t * cash_flow / growth;
             den += cash_flow / growth;
         };
-        for k in 1..=(n as u32) {
-            add_cash_flow(dsc_over_e + k as f64 - 1.0, coupon);
+        // Coupon terms `k + DSC/E` from k = 0, as PRICE's ([`CouponSchedule::price`], T-2733).
+        for k in 0..(n as u32) {
+            add_cash_flow(k as f64 + dsc_over_e, coupon);
         }
         add_cash_flow(dsc_over_e + n - 1.0, redemption);
 
