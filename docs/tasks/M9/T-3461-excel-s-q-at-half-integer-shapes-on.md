@@ -31,7 +31,9 @@ CHISQ.TEST at an odd df), so the cells T-3285 moved off Excel's bits match again
   holds below 30 at half-integer shapes is the first lead.
 - Phase 1b under decision 0188 R5: every cell here is within 15 digits of Excel and within Gate A's envelope.
 
-Cells this task owns: the gated and ungated cells listed above.
+Cells this task owns: the gated and ungated cells listed above. Split with T-2695 (deferred, the gen-m9 CHIDIST last
+digits): it already lists gen-m9/320d51765af9b6b7 A249 and b8ee55934c5b824c A262 and A400; whichever task lands Excel's
+form first takes the shared cells, and records it in both.
 
 ## Acceptance criteria
 - [ ] The listed cells match Excel, or a probe shows why not (recorded in statistics.md).
