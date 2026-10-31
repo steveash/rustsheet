@@ -27,10 +27,12 @@ instead of having its held lock renewed and relabelled to B.
 - Exit 4 (`--renew`) is unaffected: a renewal states the PR it holds.
 
 ## Acceptance criteria
-- [ ] `acquire --pr B` or `wait --pr B` by the holder of a lock held for PR A (A != B) does not change
-      the held lock: it registers B's waiter at the tail (keyed by holder and PR) and returns busy,
-      or exits with a clear error. Pick one and document it in decision 0145's status or a new record.
-- [ ] `acquire --pr A --renew` by the holder of A still renews and keeps the queue order.
+- [ ] `acquire --pr B` or `wait --pr B` by the holder of a lock held for PR A (A != B) leaves the held
+      lock unchanged (holder, `pr`, `renewed`), registers a waiter for B at the tail of the queue, and
+      returns BUSY (exit 1) with a message naming both PRs (behaviour chosen in advance, so no design
+      call is left). Note it in decision 0145's status line.
+- [ ] `acquire --pr A` (with or without `--renew`) by the holder of A still renews and keeps the queue
+      order, as today.
 - [ ] `scripts/test_merge_lock.py` covers both, plus a train holder (`--train ID`) asking for a PR.
 - [ ] `make hygiene` passes; reviewers approve (architecture and security for the protected path).
 
