@@ -866,6 +866,74 @@ class Stats(unittest.TestCase):
         self.assertIn("usage", err)
 
 
+SUITES = {"gen-m9", "ironcalc-calc", "probes", "probes-numeric"}
+
+
+class CellOverlaps(unittest.TestCase):
+    def test_reads_cell_lists_and_inline_citations(self) -> None:
+        text = (
+            "- gen-m9/abc.case.json (3): Calc!A185, A246, A9/A10\n"
+            "- ironcalc-calc/STATISTICAL/T_DIST.xlsx (2): T.DIST T.INV!E7, E8\n"
+            "  - probes-numeric/m9-t.case.json: A3-A5 `TINV(0.5,1)` Excel 1\n"
+            "owns probes/irr-fallback-roots P!A12-A13 and P!A22, and `probes/q.case.json` B2:C3.\n"
+            "Excel 3.9 vs gen-m9/def Calc!A200 `=KURT(Data!E4:E11)`; not a case: crates/x.rs A1 is code.\n"
+        )
+        self.assertEqual(tasks.cells_of(text, SUITES), {
+            "gen-m9/abc!!A185", "gen-m9/abc!!A246", "gen-m9/abc!!A9", "gen-m9/abc!!A10",
+            "ironcalc-calc/STATISTICAL/T_DIST.xlsx!T.DIST T.INV!E7", "ironcalc-calc/STATISTICAL/T_DIST.xlsx!T.DIST T.INV!E8",
+            "probes-numeric/m9-t!!A3", "probes-numeric/m9-t!!A4", "probes-numeric/m9-t!!A5",
+            "probes/irr-fallback-roots!P!A12", "probes/irr-fallback-roots!P!A13", "probes/irr-fallback-roots!P!A22",
+            "probes/q!!B2", "probes/q!!B3", "probes/q!!C2", "probes/q!!C3",
+            "gen-m9/def!!A200",
+        })
+        self.assertEqual(tasks.cells_of("- gen-m9/abc.case.json (1): A1-A99999", SUITES), set())  # a typo, not a claim
+
+    def test_hostile_text_is_bounded(self) -> None:
+        # Task text can come from a GitHub issue (decision 0158): no crash and no quadratic scan.
+        self.assertEqual(tasks.cells_of("- a/b: A" + "1" * 5000, {"a"}), set())
+        start = time.monotonic()
+        tasks.cells_of("- a/b: " + "A1/" * 20000 + "\n- a/b: " + "x " * 30000 + "!A1\n" + "a/b " * 20000, {"a"})
+        self.assertLess(time.monotonic() - start, 2.0)
+
+    def overlaps(self, new_ids: set[str], **bodies: str) -> list[str]:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for suite in SUITES:
+                (root / "eval/suites" / suite).mkdir(parents=True)
+            for tid, body in bodies.items():
+                status, _, text = body.partition(":")
+                write_task(root, tid.replace("_", "-"), status=status, body=text)
+            with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks, "TASKS", root / "docs/tasks"):
+                return tasks.cell_overlaps(tasks.load(), new_ids)
+
+    def test_a_new_task_listing_an_open_tasks_cells_fails(self) -> None:
+        errors = self.overlaps(
+            {"T-0003"},
+            T_0001="todo:- gen-m9/abc.case.json (2): A1, A2\n",
+            T_0002="done:- gen-m9/abc.case.json (1): A3\n",
+            T_0003="todo:Owns gen-m9/abc Calc!A2, A3.\n",
+        )
+        self.assertEqual(len(errors), 1)
+        self.assertIn("new task T-0003 lists 1 cell(s) that open task T-0001 already lists (gen-m9/abc!A2)", errors[0])
+        self.assertIn("record the split", errors[0])
+
+    def test_naming_the_other_task_records_a_split(self) -> None:
+        cells = "- gen-m9/abc.case.json (1): A1\n"
+        self.assertEqual(self.overlaps({"T-0002"}, T_0001="todo:" + cells, T_0002="todo:" + cells + "Split from T-0001.\n"), [])
+        self.assertEqual(self.overlaps({"T-0002"}, T_0001="todo:" + cells + "T-0002 has A1.\n", T_0002="todo:" + cells), [])
+
+    def test_paths_outside_eval_suites_are_not_cells(self) -> None:
+        code = "todo:Fix crates/x.rs A1 and docs/a.md B2.\n"
+        self.assertEqual(self.overlaps({"T-0001", "T-0002"}, T_0001=code, T_0002=code), [])
+
+    def test_only_new_tasks_are_checked_and_a_new_pair_is_reported_once(self) -> None:
+        cells = "- gen-m9/abc.case.json (1): A1\n"
+        self.assertEqual(self.overlaps(set(), T_0001="todo:" + cells, T_0002="blocked:" + cells), [])
+        errors = self.overlaps({"T-0001", "T-0002"}, T_0001="todo:" + cells, T_0002="in-progress:" + cells)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("new task T-0002", errors[0])
+
+
 class Slug(unittest.TestCase):
     def test_slug(self) -> None:
         self.assertEqual(tasks.slug("Parser: bound `nesting` depth!"), "parser-bound-nesting-depth")

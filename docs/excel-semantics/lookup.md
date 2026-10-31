@@ -1008,6 +1008,11 @@ other consumer still read such a variable as its cell's value (T-2622). TRIMRANG
 unprobed.
 Status: VERIFIED (excel-graph); implemented
 Tasks: T-2622
+TRIMRANGE's value read is a reference too: `TYPE(TRIMRANGE(LET(v,A2,v)))` and `TYPE(TRIMRANGE(A2))` are 1, and `ROWS(A2-TRIMRANGE(LET(v,A3,v)))`
+and `ROWS(A2-TRIMRANGE(A3))` with A3 text are `#VALUE!`. TAKE of a variable that CHOOSE picks (`LET(v,A2,TYPE(TAKE(CHOOSE(1,v),1)))`) or that is bound
+to a cell on another sheet (`TYPE(TAKE(LET(v,Data!A1,v),1))`) is a reference as well: TYPE 1, ISREF TRUE
+A multi-cell source that trims to one cell is read the same way (our rule, from gen-m7 a470dc9e165bdb20 A465: `MAKEARRAY(3,2,LAMBDA(w,v,TRIMRANGE(Data!D11:E11,2,2)))` is 0.2 throughout); `TYPE`/`ISREF` of it are unprobed.
+(probes/t3130-concat-lambda-trimrange-cell-variable Q13-Q16, Q23-Q26, excel-graph, 2026-10-30, T-3130).
 
 ## OFFSET, INDIRECT and TRIMRANGE lift into arrays of references
 Rule: a multi-cell range or an array as OFFSET's rows, cols, height or width, INDIRECT's ref_text or a1, or
@@ -1370,3 +1375,12 @@ E1:E8, F1:F7 (excel-graph, 2026-10-28).
 A literal error as match_type still propagates it (`NA()` gives #N/A, `#DIV/0!` gives #DIV/0!; probes/m2-argument-kind-gaps A23, A24).
 Status: VERIFIED (web).
 Tasks: T-2861, T-2965. Implemented in: `match_type_arg` (lookup_and_reference/mod.rs).
+
+## XLOOKUP with a scalar return_array
+
+A scalar `return_array` (a literal, not a reference or array) is a one-cell array: a hit returns
+it, a miss returns `if_not_found`, and `XLOOKUP("a",A1,"hit","miss")` is "hit". Over a lookup
+vector of two or more cells a scalar return is `#VALUE!` (sizes differ), found or not; an array
+return of the wrong size with a miss still gives `if_not_found`
+(`XLOOKUP("z",A1,A1:A2,"miss")` is "miss"). An invalid `match_mode` 9 is `#VALUE!`.
+Evidence: probes/t3317-xlookup-scalar-return (C1-C20, oracle-filled).

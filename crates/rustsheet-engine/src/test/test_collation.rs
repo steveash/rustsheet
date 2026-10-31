@@ -190,6 +190,13 @@ fn collation_key_equality_is_cmp_text_equality() {
         "ё",
         "a\u{301}\u{30c}",
         "\u{301}a",
+        "ª",
+        "ª\u{301}",
+        "à",
+        "ǎ",
+        "a\u{30c}",
+        "a\u{342}\u{342}",
+        "a\u{327}",
     ]
     .iter()
     .map(|s| Text::from(*s))
@@ -230,19 +237,55 @@ fn letters_beyond_latin1_and_combining_marks() {
         ("σ", "ς"),
         ("Ё", "ё"),
         ("Ά", "ά"),
-        // These two pin unprobed engine choices (a stacked mark, a mark before a hyphen); T-3154
-        // probes them and may overturn them.
         ("ϊ\u{301}", "ΐ"),
+        // Pins an unprobed engine choice: a mark before a hyphen still belongs to its letter.
         ("C\u{30c}-a", "č-a"),
     ] {
         assert_eq!(cmp_text_excel(a, b), Ordering::Equal, "{a:?} = {b:?}");
     }
 }
 
+/// Accents are the Windows table's diacritic weights, and combining marks add theirs to the letter
+/// before them in one wrapping byte (probes/t3154-collation-accents,
+/// probes/t3154-collation-accent-weights, probes/t3154-collation-accent-pairs).
+#[test]
+fn accent_weights_add_up_and_wrap() {
+    assert_increasing(&[
+        "a", "á", "à", "â", "ä", "ǎ", "ă", "ā", "ã", "å", "ą", "ạ", "aa",
+    ]);
+    assert_increasing(&["e", "é", "è", "ė", "ê", "ë", "ě", "ē", "ę", "f"]);
+    assert_increasing(&[
+        "o", "ó", "ò", "ô", "ö", "ō", "õ", "ő", "ơ", "oa", "ơa", "ob",
+    ]);
+    assert_increasing(&["u", "ú", "ù", "û", "ü", "ū", "ů", "ų", "ű", "ư", "v"]);
+    assert_increasing(&["s", "š", "ş", "ș", "sa", "șa", "sb"]);
+    // Three dot-below marks wrap (2 + 3 * 86 = 260, so 4): between "a" and "á".
+    assert_increasing(&["a", "a\u{323}\u{323}\u{323}", "á"]);
+    assert_increasing(&["ª", "à", "ª\u{301}", "ȧ"]);
+    for (a, b) in [
+        ("a\u{301}\u{301}", "å"),
+        ("a\u{301}\u{30c}", "a\u{30c}\u{301}"),
+        ("á\u{30c}", "ǎ\u{301}"),
+        ("à\u{323}", "a\u{323}\u{300}"),
+        ("a\u{301}\u{300}", "ą"),
+        ("a\u{342}\u{342}", "a\u{327}"),
+        ("ǎ", "a\u{30c}"),
+        ("Ș", "s\u{326}"),
+        ("ț", "t\u{326}"),
+        ("ư", "u\u{31b}"),
+        ("ạ", "a\u{323}"),
+        ("й", "и\u{306}"),
+    ] {
+        assert_eq!(cmp_text_excel(a, b), Ordering::Equal, "{a:?} = {b:?}");
+        assert_eq!(collation_key(&Text::from(a)), collation_key(&Text::from(b)));
+    }
+    assert_ne!(cmp_text_excel("ș", "ş"), Ordering::Equal);
+}
+
 /// `decompose` binary-searches the table, so it must stay sorted by letter.
 #[test]
 fn decomposed_table_is_sorted() {
-    use crate::functions::util::collation::DECOMPOSED;
+    use crate::functions::util::collation_tables::DECOMPOSED;
     assert!(DECOMPOSED.windows(2).all(|pair| pair[0].0 < pair[1].0));
 }
 
@@ -270,4 +313,165 @@ fn final_sigma_folds_in_exact_and_wildcard_matches() {
         WildcardPattern::new(&Text::from("οδοσ")).literal_units(),
         Some(folded_units(&Text::from("ΟΔΟΣ")))
     );
+}
+
+/// The evaluated `Data` strings of the probes case `stem` (each a formula such as
+/// `="a"&REPT(UNICHAR(769),22)`).
+fn probe_data_strings(stem: &str) -> Vec<Text> {
+    let path = format!(
+        "{}/../../eval/suites/probes/cases/{stem}.case.json",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let case: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+    let sheet = case["sheets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|sheet| sheet["name"] == "Data")
+        .unwrap();
+    let cells = sheet["cells"].as_object().unwrap();
+    let mut model = crate::test::util::new_empty_model();
+    for (cell, formula) in cells {
+        model._set(cell, formula.as_str().unwrap());
+    }
+    model.evaluate();
+    cells
+        .keys()
+        .map(|cell| Text::from(model._get_text(cell)))
+        .collect()
+}
+
+/// The accent strings of the T-3154 and T-3201 probes and the kana strings of T-3275, on which
+/// Excel's own comparison is not transitive (coercion.md "Not a total order"): `cmp_text`, which the sorts use, stays a total
+/// order with `CollationKey` equality as its equality, and texts `cmp_text_pairwise` finds equal
+/// share a key (what the criteria index relies on).
+#[test]
+fn cmp_text_is_a_total_order_on_the_accent_probes() {
+    use crate::functions::util::collation::cmp_text_pairwise;
+    for stem in [
+        "t3154-collation-accent-weights",
+        "t3154-collation-accent-pairs",
+        "t3201-collation-long-mark-runs",
+        "t3201-collation-wrapped-run-pairs",
+        "t3275-collation-width-kana",
+        "t3275-collation-width-kana-pairs",
+    ] {
+        let mut texts = probe_data_strings(stem);
+        assert!(texts.len() > 20, "{stem}");
+        texts.sort_by(cmp_text);
+        for (i, a) in texts.iter().enumerate() {
+            // Sorted, each text is equal to a run of the ones after it and below all the rest.
+            let mut below = false;
+            for b in &texts[i + 1..] {
+                let order = cmp_text(a, b);
+                assert_eq!(cmp_text(b, a), order.reverse(), "{stem}: {a:?} vs {b:?}");
+                assert_eq!(
+                    order,
+                    if below {
+                        Ordering::Less
+                    } else {
+                        order.min(Ordering::Equal)
+                    },
+                    "{stem}: {a:?} vs {b:?}"
+                );
+                below = order.is_lt();
+                assert_eq!(
+                    order.is_eq(),
+                    collation_key(a) == collation_key(b),
+                    "{stem}: {a:?} vs {b:?}"
+                );
+                if cmp_text_pairwise(a, b).is_eq() {
+                    assert!(order.is_eq(), "{stem}: {a:?} vs {b:?}");
+                }
+            }
+        }
+    }
+}
+
+/// Excel's pairwise comparison: a text is below any text it is a proper prefix of, even when the
+/// wrapped sums are equal or say otherwise (probes/t3181-collation-prefix-callers Calc!A1:A9,
+/// probes/t3154-collation-accent-pairs Calc!S19, T18, W23, X22, AB28, AC27).
+#[test]
+fn pairwise_prefix_rule() {
+    use crate::functions::util::collation::cmp_text_pairwise;
+    let cmp = |a: &str, b: &str| cmp_text_pairwise(&Text::from(a), &Text::from(b));
+    let circumflexes = format!("a{}", "\u{302}".repeat(16));
+    assert_eq!(cmp("a", &circumflexes), Ordering::Less);
+    assert_eq!(cmp(&circumflexes, "a"), Ordering::Greater);
+    assert_eq!(
+        cmp_text(&Text::from("a"), &Text::from(circumflexes.as_str())),
+        Ordering::Equal
+    );
+    // U+0342 (141) < two U+0342 (28, = cedilla) < U+0342.
+    assert_eq!(cmp("a\u{342}", "a\u{342}\u{342}"), Ordering::Less);
+    assert_eq!(cmp("a\u{342}\u{342}", "a\u{327}"), Ordering::Equal);
+    assert_eq!(cmp("a\u{327}", "a\u{342}"), Ordering::Less);
+    // U+0323 (86) < three U+0323 (4) < á (14) < U+0323.
+    assert_eq!(cmp("a\u{323}", "a\u{323}\u{323}\u{323}"), Ordering::Less);
+    assert_eq!(cmp("a\u{323}\u{323}\u{323}", "á"), Ordering::Less);
+    assert_eq!(cmp("á", "a\u{323}"), Ordering::Less);
+    // Precomposed á is one unit: it equals a plus U+0301.
+    assert_eq!(cmp("á", "a\u{301}"), Ordering::Equal);
+}
+
+/// Full-width forms, kana, voicing and the long-vowel and iteration marks
+/// (probes/t3275-collation-width-kana, probes/t3275-collation-width-kana-pairs; coercion.md
+/// "Full-width and half-width forms, kana, voicing and the long-vowel mark").
+#[test]
+fn width_and_kana_tiebreaks() {
+    use crate::functions::util::collation::cmp_text_pairwise;
+    assert_increasing(&["0", "０", "1", "１", "１a", "1b"]);
+    assert_increasing(&[" ", "\u{3000}", "!", "！", "#"]);
+    assert_increasing(&[
+        "A", "Ａ", "á", "aa", "Ａa", "aá", "ab", "a＇b", "a-b", "a－b", "AＢ", "Ａb",
+    ]);
+    assert_increasing(&["", "'", "＇", "-", "－", "゛", " "]);
+    assert_increasing(&[
+        "я", "ぁ", "ｱ", "ア", "あ", "ｱあ", "アあ", "あア", "ああ", "ぁい", "い",
+    ]);
+    assert_increasing(&["かぁ", "カア", "かあ", "カー", "かー", "があ", "かい"]);
+    assert_increasing(&["か", "ｶﾞ", "ガ", "が", "ッ", "っ", "つ", "は", "ば", "ぱ"]);
+    assert_increasing(&["かか", "かゝ", "かが", "かゞ", "き", "きい", "きー"]);
+    assert_increasing(&["一", "人", "人々", "人人", "ー", "ーa"]);
+    for (left, right) in [
+        ("Ａ", "ａ"),
+        ("か\u{3099}", "が"),
+        ("は\u{309a}", "ぱ"),
+        ("ー", "ゝ"),
+        ("ゞ", "々"),
+    ] {
+        assert_eq!(
+            cmp_text_excel(left, right),
+            Ordering::Equal,
+            "{left:?} = {right:?}"
+        );
+    }
+    // `"aー"` sorts as `"aa"`, but Excel's `<` compares its `ー` alone where the texts differ.
+    let cmp = |a: &str, b: &str| cmp_text_pairwise(&Text::from(a), &Text::from(b));
+    assert_eq!(cmp_text_excel("aー", "aa"), Ordering::Equal);
+    assert_eq!(cmp("aー", "aa"), Ordering::Greater);
+    assert_eq!(cmp("aー", "ab"), Ordering::Greater);
+    assert_eq!(cmp("aー", "AＢ"), Ordering::Greater);
+    assert_eq!(cmp("aー", "Ａa"), Ordering::Less);
+    assert_eq!(cmp("aー", "Ａb"), Ordering::Less);
+}
+
+/// Exact MATCH folds `ー` after a letter to that letter and a leading iteration mark to `ー`
+/// (probes/t3275-collation-width-kana Calc!C127:C129, C136), and does not decompose voicing.
+#[test]
+fn exact_match_fold_of_the_marks() {
+    use crate::functions::util::collation::fold_exact_lookup;
+    let fold = |text: &str| {
+        let units: Vec<u16> = text.encode_utf16().collect();
+        String::from_utf16_lossy(&fold_exact_lookup(&units))
+    };
+    assert_eq!(fold("aー"), "aa");
+    assert_eq!(fold("ゝ"), "ー");
+    assert_eq!(fold("々"), "ー");
+    assert_eq!(fold("かー"), "かー");
+    assert_eq!(fold("かゝ"), "かゝ");
+    assert_eq!(fold("a々"), "a々");
+    assert_ne!(fold("か\u{3099}"), fold("が"));
+    assert_eq!(fold_exact_lookup(&[0xD800, 0x30FC]), vec![0xD800, 0x30FC]);
 }

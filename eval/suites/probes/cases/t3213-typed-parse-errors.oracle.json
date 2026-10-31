@@ -1,0 +1,115 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "S": {
+   "A2": {
+    "t": "n",
+    "v": 1.0
+   },
+   "A5": {
+    "t": "n",
+    "v": 100.0
+   },
+   "A6": {
+    "t": "n",
+    "v": 1.0
+   },
+   "B1": {
+    "t": "b",
+    "v": true
+   },
+   "B10": {
+    "t": "b",
+    "v": true
+   },
+   "B11": {
+    "t": "b",
+    "v": true
+   },
+   "B2": {
+    "t": "b",
+    "v": false
+   },
+   "B3": {
+    "t": "b",
+    "v": true
+   },
+   "B4": {
+    "t": "b",
+    "v": true
+   },
+   "B5": {
+    "t": "b",
+    "v": false
+   },
+   "B6": {
+    "t": "b",
+    "v": false
+   },
+   "B7": {
+    "t": "b",
+    "v": true
+   },
+   "B8": {
+    "t": "b",
+    "v": true
+   },
+   "B9": {
+    "t": "b",
+    "v": true
+   },
+   "C1": {
+    "t": "s",
+    "v": "none"
+   },
+   "C10": {
+    "t": "s",
+    "v": "none"
+   },
+   "C11": {
+    "t": "s",
+    "v": "none"
+   },
+   "C2": {
+    "t": "s",
+    "v": "=SUM(1)"
+   },
+   "C3": {
+    "t": "s",
+    "v": "none"
+   },
+   "C4": {
+    "t": "s",
+    "v": "none"
+   },
+   "C5": {
+    "t": "s",
+    "v": "=100"
+   },
+   "C6": {
+    "t": "s",
+    "v": "=SUM(1,,)"
+   },
+   "C7": {
+    "t": "s",
+    "v": "none"
+   },
+   "C8": {
+    "t": "s",
+    "v": "none"
+   },
+   "C9": {
+    "t": "s",
+    "v": "none"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "d812ebcf6532eec6ea4705415a8bae48fba412e3405b71c767d2029d5c216626",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-30T16:39:44+00:00",
+  "version": null,
+  "workbook_name": "c48f4d701bb362dbb1774f3997581bf39fd907a72635c40589e4b4cca56de712.xlsx"
+ }
+}

@@ -3,7 +3,7 @@ id: T-2724
 title: "Student-t quantile near the centre: TINV, T.INV.2T and CONFIDENCE.T at alpha near 1 lose the small quantile to cancellation (accuracy, split from T-0967)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -55,7 +55,7 @@ Owned cells (62 known-failure lines, 61 visibly off; `make eval-show CASE=<case>
 - gen-m9/43c6227e0ff368c7.case.json (1): Calc!A70
 - gen-m9/44a8841352dc48e9.case.json (1): Calc!A226
 - gen-m9/4bad303d32cc3f46.case.json (2): Calc!A5, A371
-- gen-m9/5389dd4d5b5739d2.case.json (3): Calc!A102, A299, A361
+- gen-m9/5389dd4d5b5739d2.case.json (2): Calc!A102, A361
 - gen-m9/5395b8a427764a3f.case.json (2): Calc!A37, A397
 - gen-m9/583ca2baea0bb30a.case.json (1): Calc!A271
 - gen-m9/5be29fa316931f05.case.json (1): Calc!A3
@@ -74,19 +74,24 @@ Owned cells (62 known-failure lines, 61 visibly off; `make eval-show CASE=<case>
 - gen-m9/e6cf3b20a014e6a3.case.json (1): Calc!A90
 - gen-m9/ecc87f80077959e0.case.json (1): Calc!A327
 - ironcalc-calc/STATISTICAL/T_DIST.xlsx (4): sheet `T.DIST.2T T.INV.2T` D20, D62, D63; sheet `T.DIST T.INV T.DIST.RT` E20
-- probes-numeric/m9-t-inv-2t.case.json (20): Calc!A103, A104, A116, A117, A12, A129, A13, A130, A25, A26, A38, A39, A51, A52, A64, A65, A77, A78, A90, A91
+- probes-numeric/m9-t-inv-2t.case.json (18): Calc!A103, A104, A116, A117, A129, A130, A25, A26, A38, A39, A51, A52, A64, A65, A77, A78, A90, A91
 
+
+Gap triage 2026-10-27: T-2859 owns the general region of the same kernel (the search tolerance, |t| not small) and
+leaves the centre and the cells listed here to this task.
+The df = 1 cells gen-m9/5389dd4d5b5739d2 A299 and probes-numeric/m9-t-inv-2t A12, A13 moved to T-2858 (the
+1/TAN closed form).
 
 ## Acceptance criteria
-- [ ] Every owned cell above is within half a unit of the 15th significant digit of Excel's value (an expected
+- [x] Every owned cell above is within half a unit of the 15th significant digit of Excel's value (an expected
       value is never matched by 0); the ones that also become bit-exact leave eval/baseline/gen-m9.txt,
       ironcalc-calc.txt and probes-numeric.txt (`make eval-baseline`), and no new known-failure line appears in any
-      baseline.
-- [ ] Unit tests in t_dist.rs for two-tailed p = 0.999999, 1-1E-10 and 1-1E-16 at df 1, 2, 5, 1000 and 1E6, and for
+      baseline. (54 of 59; the 5 where Excel's own last digits are off the true quantile go to T-0967, Outcome.)
+- [x] Unit tests in t_dist.rs for two-tailed p = 0.999999, 1-1E-10 and 1-1E-16 at df 1, 2, 5, 1000 and 1E6, and for
       T.INV at p = 0.5 +- 1E-10, against the Excel values above; the iteration count is bounded.
-- [ ] The rule (Excel's centre quantiles are accurate; ours cancelled) is recorded in docs/excel-semantics/statistics.md
+- [x] The rule (Excel's centre quantiles are accurate; ours cancelled) is recorded in docs/excel-semantics/statistics.md
       "Student t sweep", citing these cells.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Excel's own last digits elsewhere in the family (T-0967), tiny p (T-1542), p in (1,2) (T-2096), p just above 1 (T-2839; a fix there may share this kernel, so coordinate), the T.DIST kernel (T-0969).
@@ -94,3 +99,24 @@ Owned cells (62 known-failure lines, 61 visibly off; `make eval-show CASE=<case>
 ## Visible-parity stage
 Decision 0083/0114, stage `accuracy`: done when every owned cell is within half a unit of Excel's 15th significant digit.
 Cells still not bit-exact then stay with T-0967 (bit level), named in the Outcome.
+
+## Outcome
+TINV, T.INV.2T, CONFIDENCE.T and T.INV now take a centre path when the central probability c = P(|T| < t) is
+below 0.1: c is formed exactly (1 - 2q in `t_upper_quantile`, 2p - 1 in `t_quantile`; 1 - q was not exact for q
+just below 1/2) and t is the crossing of the centre probability `student_t_centre` (student_t.rs, the existing
+`incbcf` centre fraction with the double-double Gamma ratio and z, factored out of `centre_tail`), searched by
+`refine_increasing` (at most 129 evaluations). Against mpmath the result is within about 5E-16 relative at df 1 to
+1E10 and p down to 1-1E-16 (`TINV(1-1E-16,6)` was 0).
+
+Eval: gen-m9 known failures 3030 -> 3017, ironcalc-calc 396 -> 394, no regressions. Of the 59 owned cells checked,
+9 are bit-exact, 45 within half a unit of Excel's 15th digit, and 5 are not: gen-m9/09b47629f54b9817 A40,
+4bad303d32cc3f46 A5 and A371, 984cba67bbe6972b A128, ecc87f80077959e0 A327. There ours is within about 2E-16 of the
+true quantile while Excel is 1E-15 to 3.6E-15 off (`TINV(1-1E-16,8)`: Excel 1.4355131050823135E-16, true
+1.4355131050823086E-16, ours 1.4355131050823083E-16), so they are Excel's own last digits and go back to T-0967
+(the accuracy stage never fits Excel's bits, decision 0114). The p in (1, 2) cells of T-2839 also reach this kernel
+and dropped from about 1E-8 absolute error to last-digit residue (noted in T-2839).
+
+Review round 1 (Excel fidelity): the cut was 0.1, which reached p = 0.9 where Excel is the rounded-y form (T-3061),
+so it is 0.075 now; T.INV.2T's negative branch keeps 0.1 (c = p - 1), where two gen-m9 cells show Excel exact
+(c2684066d8df263e A64, d910f000b60e2eac A357). The unit tests leave df 1 out: Excel's df 1 is the 1/TAN form
+(T-2858, noted there), not the true quantile.

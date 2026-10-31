@@ -408,14 +408,26 @@ constant in C3 and `*3` typed into C4). A column that was not filled (rule 4) ge
 A table that grew by typing beside it gets the new `<tableColumn name="Column1">` with the column formula, or
 `name="0"` and none for the header-row case. With a totals row, the table keeps `totalsRowCount="1"` and the
 label column's `totalsRowLabel`; the filled column gets no totals metadata.
-Whether a stored `calculatedColumnFormula` fills blank cells on load is unprobed (T-2969); the engine neither reads
-nor writes it.
+A stored `calculatedColumnFormula` does not fill blank cells on load (next entry, T-2969); the engine neither
+reads nor writes it.
 Evidence: the saved `xl/tables/table1.xml` and `xl/worksheets/sheet1.xml` of probes/t2957-fill-one-totals,
 -refill-second, -constant-exception, -constant-then-refill, -existing-constant, -a1-reference and -expand-right-*
 (the eval/.cache/oracle/excel-graph/<input_sha256>.xlsx of each sidecar).
 Status: VERIFIED (excel-graph)
-Implemented in: no (T-2958 for export, T-2969 for load)
+Implemented in: no (T-2958 for export; load needs nothing, the engine ignores the formula)
 Tasks: T-2957, T-2958, T-2969
+
+## Excel does not fill a calculated column on load
+Rule: a table part whose `<tableColumn>` holds `<calculatedColumnFormula>` does not make Excel fill the
+column when the workbook opens: blank data cells stay blank, a cell holding the formula leaves its
+neighbours blank, and a constant stays a constant. Only a formula typed into a data cell afterwards
+fills the whole column (as in the entry above).
+Evidence: probes/t2969-calculated-column-load (excel-graph, 2026-10-30), column formula
+`T[[#This Row],[Val]]*2` on C:F of T A1:F5: FORMULATEXT is #N/A for every cell of C (all blank), for D3:D5
+(only D2 holds the formula, `=[@Val]*2`) and for E2:E5 (E3 holds 99); F4 typed `=B4*3` fills F2:F5.
+Status: VERIFIED (excel-graph)
+Implemented in: yes (the engine does not read `calculatedColumnFormula`)
+Tasks: T-2969
 
 ## A table part without a name attribute is named by its displayName
 Rule: Excel opens a workbook whose `xl/tables/tableN.xml` has `displayName` but no `name` attribute (as
@@ -437,7 +449,7 @@ sheet1.xml), in the `<f>` and in FORMULATEXT's cached `<v>` alike; an XML parser
 back as one LF, which is what the oracle sidecar shows. A writer emitting LF therefore matches. A space after the line
 feed is kept. The drops FORMULATEXT shows (trailing whitespace, a run before a comma after an operand) are made before
 the save. A structured reference is stored with its normalized spaces: typed `T[ [Col] ]` saves as `SUM(T[ Col ])`,
-`T[ [#Data] , [Col] ]` as `SUM(T[ [#Data], [Col] ])`, and a this-row reference as `T[[#This Row],[Col]]`.
+`T[ [#Data] , [Col] ]` as `SUM(T[ [#Data], [Col] ])`, and a this-row reference as `T[[#This Row],[Col]]`. Excel does not read that saved text back: a stored `T[ Col ]` loads as `#REF!` (syntax.md, T-2800).
 Evidence: the workbook Excel for the web saved for probes/t2786-whitespace-structured-refs-runs (excel-graph, 2026-10-26,
 T-2786; cache key `input_sha256` 2161fcb9526ce30cb3c8c4df7b77633f621d88c0048bdac1b22c81cabb3f77c8, refetch with `rustsheet-oracle fill --force`), sheet1.xml H1:H17 and E4:E15. A typed `=T[#Headers]` (E13) is `#SPILL!` in the sidecar but `#VALUE!` in the saved array `<v>`; not relied on. Excel's whitespace semantics are in syntax.md.
 Ours: export writes the tree as written, its kept whitespace included (T-2948), a line feed as the reference `&#xA;`,

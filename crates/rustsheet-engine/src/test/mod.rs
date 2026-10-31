@@ -130,6 +130,8 @@ mod test_tailed_array;
 mod test_this_row;
 mod test_trigonometric;
 mod test_true_false;
+mod test_typed_parse_errors;
+mod test_typed_r1c1;
 mod test_typographic_quote_names;
 mod test_union_operator;
 mod test_union_sum_metamorphic;

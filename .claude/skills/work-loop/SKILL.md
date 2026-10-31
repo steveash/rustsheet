@@ -51,16 +51,24 @@ If the task is bigger than size M, split it (planner) instead of doing it.
 - `make fmt` then `make check`. Fix everything. Never weaken a gate to get green.
 - If eval cells newly pass: `make eval-baseline` and commit `eval/baseline/`.
 - If you paid down lint debt / duplication / oversized files: run the script with `--update`.
+- **Numeric fits** (decisions 0056 and 0188 R4): a value or selection chosen by scoring candidates
+  against oracle cells is a fit; a structural model chosen from ranked candidates (operation order,
+  rounding model, algorithm family) owes the hold-out and fresh sweep but no `FITTED` tag; a
+  constant copied verbatim from a cited source is not a fit. Meet the R4 guards of
+  reviewer-excel-fidelity check 7 (hold-out split fixed before scoring, fresh sweep after the
+  freeze, Gate A envelope result, `FITTED` tag and range, reproducibility floor, no keep-matched
+  branch) and record them in the Outcome; check 7 says what to use until their tools land.
 - A decision record (needed for any protected-path change) is created with
   `make new-decision TITLE="..."` (collision-free number; decision 0029); commit and push it with
   the first commit after the claim so other sessions see the number.
 
 ## 5. Review
-Use the `review` skill. Fix every BLOCKING / REQUEST_CHANGES finding, re-run `make check`, and
-re-run only the reviewers that did not approve. Max 3 review rounds; if still blocked, set the
-task `status: blocked` with a "Blocked because" section, push the branch, open the PR as draft,
-and stop work on this task (pick the next one at step 1 while the session budget allows). When
-the round limit is the only blocker, the section's first line is exactly
+Open the PR as a draft (step 6.2's template) if none exists, so the reviewers' verdict records have
+a PR to go on. Use the `review` skill. Fix every BLOCKING / REQUEST_CHANGES finding, re-run
+`make check`, and re-run only the reviewers that did not approve. Max 3 review rounds; if still blocked,
+set the task `status: blocked` with a "Blocked because" section, push the branch, keep the PR a
+draft, and stop work on this task (pick the next one at step 1 while the session budget allows).
+When the round limit is the only blocker, the section's first line is exactly
 `Blocked because: review-round limit` (no other block uses it); if the task file already says
 `Resumed after the review-round limit (step 5c).`, write `Blocked because: review-round limit, twice`
 instead: that one goes to the owner, not to another run (decision 0095).
@@ -96,7 +104,8 @@ file and its acceptance criteria.
 1. Mark the task `status: done` with a short "Outcome" section (what changed, eval delta), commit.
    Do not add a line to `docs/status.md`: the squash commit and the Outcome are the record, and the
    steward summarizes merged work daily (decision 0024).
-2. `git push -u origin agent/<lane>/T-XXXX-<slug>`; open a PR to `main` using
+2. `git push -u origin agent/<lane>/T-XXXX-<slug>`; mark the step-5 draft PR ready for review
+   (or, if none exists, open a PR to `main`) using
    `.github/pull_request_template.md`, pasting the eval delta and the review table. When the
    task has `issue: <N>` (it came from a GitHub issue; the `issue-intake` skill, decision 0158),
    the PR body says `Closes #<N>`, or `Part of #<N>` while `python3 scripts/tasks.py issue <N>`
@@ -111,9 +120,12 @@ file and its acceptance criteria.
    fetched `origin/main`, never your branch; decision 0157) and follow its mode. Read it again
    for each PR: the mode can change while you work.
    - **Mark ready** (`shadow` and `train`): with the PR's head checked out (`HEAD` must equal the
-     PR head), `make mark-ready PR=<n> REVIEW="security=APPROVE architecture=APPROVE
-     quality=APPROVE [excel-fidelity=APPROVE]"` with your review table's verdicts on that head
-     (the `steward` skill's "Merge train"). If its GitHub writes are refused in your session, run
+     PR head), `make mark-ready PR=<n>`: it takes the verdicts from the verdict records the
+     `review` skill posted on that head (decision 0178; the `steward` skill's "Merge train").
+     While `verdict_records = "warn"`, add `REVIEW="security=APPROVE architecture=APPROVE
+     quality=APPROVE [excel-fidelity=APPROVE]"` with your review table's verdicts on that head:
+     it stands in for a reviewer whose record is missing, with a warning; never in `require`.
+     If its GitHub writes are refused in your session, run
      it again with `STEP=1`, perform each printed JSON action in order with the GitHub MCP tools,
      exactly as printed, then `make merge-ready-verify PR=<n>`. A refusal (exit 1) names what is
      missing: fix that, never work around it.
@@ -141,11 +153,13 @@ file and its acceptance criteria.
      `ci-red` is red CI on the train: fix it per the `steward` skill. `conflict with main`: merge
      `origin/main` in and resolve (decision 0121 (1)). `id collision`: renumber your own file
      (decision 0121 (2)). `invalidated`: a push moved the head after marking. Then run `make
-     check`, re-run the reviewers the change concerns, wait for green CI, and mark again with
-     `REVIEW="..."`. Only when the new head is a clean merge of `origin/main` onto the marked head
-     and nothing else (no conflict resolution, no other commit) may you carry the old verdicts
-     over with `make mark-ready PR=<n> CARRY=1`; the script checks that mechanically. Once marked
-     again, remove `merge-train-ejected` from the PR.
+     check`, re-run the reviewers the change concerns (each posts a verdict record on the new head;
+     once `verdict_records = "require"`, every applicable reviewer needs one there), wait for
+     green CI, and mark again (`REVIEW="..."` covers the others only while in `warn`). Only
+     when the new head is a clean merge of `origin/main` onto the marked head and nothing else
+     (no conflict resolution, no other commit) may you carry the old verdicts over with `make
+     mark-ready PR=<n> CARRY=1`; the script checks that mechanically. Marking again removes
+     `merge-train-ejected` (decision 0177).
    - **Revert PRs** the merger opens (`revert: merge train mismatch at #k`) are handled by
      whoever takes their P0 task: full review panel, then merge under the lock (`lock`, `shadow`)
      or mark ready (`train`), with P0 priority. No review waiver applies to reverts.

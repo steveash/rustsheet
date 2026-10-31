@@ -1,11 +1,13 @@
 #![allow(clippy::unwrap_used)]
 
 use rustsheet_engine::expressions::parser::{
-    new_parser_english, static_analysis::add_implicit_intersection, Parser, MAX_NESTED_CALLS,
+    new_parser_english, static_analysis::add_implicit_intersection, Parser,
 };
 use std::{collections::HashMap, io::Read, num::ParseIntError};
 
+use super::call_cap;
 use super::package::{part_folder_and_rels, resolve_target, Package};
+pub(super) use super::relocation_key::RcTextCache;
 use super::rich_errors::{cached_error_name, load_value_metadata_errors};
 use super::workbook::WorkbookXML;
 use super::xml::XmlNode;
@@ -250,24 +252,50 @@ fn parse_reference(s: &str) -> Result<CellReferenceRC, ParseReferenceError> {
 pub(super) fn from_a1_to_rc(
     formula: String,
     parser: &mut Parser,
+    cache: &mut RcTextCache,
     context: String,
     is_array_formula: bool,
 ) -> Result<String, XlsxError> {
     let cell_reference =
         parse_reference(&context).map_err(|error| XlsxError::Xml(error.to_string()))?;
-    let mut t = parser.parse(&formula, &cell_reference);
+    // A copy of a formula read before (same key) has its tree, so its text: no parse. The copy
+    // read first passed the nesting check below, and the copy's tree nests the same.
+    let key = cache.lexer.key(&formula, &cell_reference);
+    if let Some(text) = key
+        .as_deref()
+        .and_then(|k| cache.get_keyed(k, is_array_formula))
+    {
+        return Ok(text.to_string());
+    }
+    let t = parser.parse(&formula, &cell_reference);
     // Excel refuses a workbook nesting more function calls than it takes (createSession 501;
     // syntax.md "Formula nesting depth cap", T-3097).
-    if parser.nests_too_many_calls() {
-        return Err(XlsxError::Workbook(format!(
-            "Formula in {context} nests more than {MAX_NESTED_CALLS} function calls"
-        )));
+    call_cap::refuse_too_many_calls(parser, &format!("Formula in {context}"))?;
+    // Tree equality holds `-0` equal to `0`, which print differently (`{-0}`, `{0}`): such a
+    // tree is neither looked up nor kept.
+    let key = key.filter(|_| !t.has_parse_error());
+    let cacheable = !t.has_negative_zero();
+    if cacheable {
+        if let Some(text) = cache.get(&t, is_array_formula) {
+            let text = text.to_string();
+            if let Some(key) = key {
+                cache.insert_keyed(key, is_array_formula, text.clone());
+            }
+            return Ok(text);
+        }
     }
+    let mut rewritten = t.clone();
     if !is_array_formula {
-        add_implicit_intersection(&mut t, true);
+        add_implicit_intersection(&mut rewritten, true);
     }
-
-    Ok(to_rc_format(&t))
+    let text = to_rc_format(&rewritten);
+    if let Some(key) = key {
+        cache.insert_keyed(key, is_array_formula, text.clone());
+    }
+    if cacheable {
+        cache.insert(t, is_array_formula, text.clone());
+    }
+    Ok(text)
 }
 
 /// The index of a formula among the shared formulas of the sheet being read,
@@ -808,6 +836,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     let links = load_hyperlinks(ws, &settings.hyperlink_rels)?;
 
     let conditional_formatting = load_conditional_formatting(ws, theme, dxfs)?;
+    call_cap::check_rule_formulas(ws, &mut parser, sheet_name)?;
     // pageSetup
     // <pageSetup orientation="portrait" r:id="rId1"/>
 

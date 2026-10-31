@@ -10,7 +10,6 @@ use crate::{
     constants::{self, LAST_COLUMN, LAST_ROW},
     expressions::{
         parser::{
-            is_limit_error,
             move_formula::{move_formula, MoveContext},
             new_parser_english,
             stringify::{to_english_string, to_localized_string, to_rc_format},
@@ -21,7 +20,7 @@ use crate::{
         utils::{self, is_valid_column_number, is_valid_row},
     },
     formatter::{
-        format::{format_number, parse_typed_number, rejected_clock_text_format},
+        format::{displayed_text, format_number, parse_typed_number, rejected_clock_text_format},
         lexer::is_likely_date_number_format,
     },
     implicit_intersection::implicit_intersection,
@@ -2207,35 +2206,6 @@ impl Model {
         Ok(index)
     }
 
-    /// Parses a formula typed into a cell. A formula that fails to parse is
-    /// retried with a closing parenthesis (`SUM(A1:A3` => `SUM(A1:A3)`) and
-    /// otherwise kept as a parse error, except one past the parser's limits (nested too deep
-    /// or too many operators; no `)` helps), which is rejected: the cell could never hold it.
-    pub(crate) fn parse_cell_formula(
-        &mut self,
-        sheet: u32,
-        row: i32,
-        column: i32,
-        formula: &str,
-    ) -> Result<Node, String> {
-        let sheet = self.workbook.worksheet(sheet)?.get_name();
-        let cell_reference = &CellReferenceRC { sheet, row, column };
-        let mut node = self.parser.parse(formula, cell_reference);
-        if matches!(&node, Node::ParseErrorKind { message, .. } if !is_limit_error(message)) {
-            let closed = format!("{formula})");
-            let retry = self.parser.parse(&closed, cell_reference);
-            if !matches!(retry, Node::ParseErrorKind { .. }) {
-                node = retry;
-            }
-        }
-        match node {
-            Node::ParseErrorKind { message, .. } if is_limit_error(&message) => {
-                Err(format!("Formula: {message}"))
-            }
-            node => self.parser.typed_refusal().map_or(Ok(node), Err),
-        }
-    }
-
     // FIXME
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn set_cell_with_array_formula(
@@ -2412,17 +2382,16 @@ impl Model {
         row: i32,
         column: i32,
     ) -> Result<String, String> {
-        match self.workbook.worksheet(sheet_index)?.cell(row, column) {
-            Some(cell) => {
-                let format = self.get_style_for_cell(sheet_index, row, column)?.num_fmt;
-                let formatted_value =
-                    cell.formatted_value(&self.workbook.shared_strings, self.language, |value| {
-                        format_number(value, &format, &self.format_context()).displayed()
-                    });
-                Ok(formatted_value)
-            }
-            None => Ok("".to_string()),
-        }
+        let Some(cell) = self.workbook.worksheet(sheet_index)?.cell(row, column) else {
+            return Ok("".to_string());
+        };
+        let format = self.get_style_for_cell(sheet_index, row, column)?.num_fmt;
+        Ok(cell.formatted_value(
+            &self.workbook.shared_strings,
+            self.language,
+            |value| format_number(value, &format, &self.format_context()).displayed(),
+            |text| displayed_text(text, &format),
+        ))
     }
 
     /// Return the typeof a cell

@@ -1,3 +1,4 @@
+use crate::arithmetic::lambda_text_error;
 use crate::calc_result::Range;
 use crate::functions::util::{array_node_to_calc_result, RangeItem};
 use crate::number_format::number_to_text;
@@ -102,7 +103,10 @@ impl JoinSize {
             }
             error @ CalcResult::Error { .. } => return Err(error),
             CalcResult::EmptyCell | CalcResult::EmptyArg | CalcResult::Range { .. } => {}
-            CalcResult::Array(_) | CalcResult::Lambda(_) => {
+            // Excel: an uncalled LAMBDA joined as text is #VALUE! (probes/t3130-concat-lambda-
+            // trimrange-cell-variable Q5-Q12; arrays.md "An uncalled LAMBDA is one value").
+            CalcResult::Lambda(_) => return Err(lambda_text_error(cell)),
+            CalcResult::Array(_) => {
                 return Err(CalcResult::new_error(
                     Error::NIMPL,
                     cell,
@@ -231,13 +235,7 @@ impl Model {
                         }
                     }
                 }
-                CalcResult::Lambda(_) => {
-                    return CalcResult::new_error(
-                        Error::NIMPL,
-                        cell,
-                        "Arrays not supported yet".to_string(),
-                    );
-                }
+                CalcResult::Lambda(_) => return lambda_text_error(cell),
                 scalar => {
                     if let Err(error) = result.push_value(scalar) {
                         return error;
@@ -261,7 +259,11 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Vec<String>, CalcResult> {
-        match self.get_string_or_array(node, cell)? {
+        let value = self.evaluate_node_in_context(node, cell);
+        if matches!(value, CalcResult::Lambda(_)) {
+            return Err(lambda_text_error(cell));
+        }
+        match self.string_or_array(value, cell)? {
             StringOrArray::String(text) => Ok(vec![text.into_lossy_string()]),
             StringOrArray::Array(array) => {
                 let mut delimiters = Vec::new();
@@ -378,45 +380,37 @@ impl Model {
         let skipped_columns = i64::from(full_column2) - i64::from(column2.max(column1 - 1));
         let skipped_rows = i64::from(full_row2) - i64::from(row2.max(row1 - 1));
         let width = i64::from(full_column2) - i64::from(column1) + 1;
-        if skipped_columns == 0 {
-            self.textjoin_push_range(
-                &Range { left, right },
-                false,
-                (&mut *size, &mut *values, &mut *over_limit),
-                cell,
-            )?;
-        } else {
-            // The clipped columns' delimiters follow each row's cells, so the join stays in
-            // row-major order (the first error cell reached, and the limit, depend on it): one walk
-            // per row. Past the limit nothing more changes the result (cell errors are dropped), so
-            // the walk stops.
-            for row in row1..=row2 {
-                if column2 >= column1 {
-                    let row_range = Range {
-                        left: CellReferenceIndex {
-                            row,
-                            column: column1,
-                            ..left
-                        },
-                        right: CellReferenceIndex {
-                            row,
-                            column: column2,
-                            ..right
-                        },
-                    };
-                    self.textjoin_push_range(
-                        &row_range,
-                        false,
-                        (&mut *size, &mut *values, &mut *over_limit),
-                        cell,
-                    )?;
-                }
-                if !*over_limit {
-                    *over_limit = size.push_empties(values, skipped_columns);
-                }
-                if *over_limit {
-                    return Ok(());
-                }
+        // One walk per row, so the join stays in row-major order (the first error cell reached, and
+        // the limit, depend on it) when columns are clipped, and so the walk can stop at the limit:
+        // Excel reads no cell past it, so a range that includes the TEXTJOIN cell itself is #CALC!,
+        // not circular (probes/textjoin-whole-rows-self-reference{,-full-width} B5; text.md). Past
+        // the limit nothing more changes the result (cell errors are dropped).
+        for row in row1..=row2 {
+            if column2 >= column1 {
+                let row_range = Range {
+                    left: CellReferenceIndex {
+                        row,
+                        column: column1,
+                        ..left
+                    },
+                    right: CellReferenceIndex {
+                        row,
+                        column: column2,
+                        ..right
+                    },
+                };
+                self.textjoin_push_range(
+                    &row_range,
+                    false,
+                    (&mut *size, &mut *values, &mut *over_limit),
+                    cell,
+                )?;
+            }
+            if !*over_limit {
+                *over_limit = size.push_empties(values, skipped_columns);
+            }
+            if *over_limit {
+                return Ok(());
             }
         }
         if !*over_limit {
@@ -503,13 +497,7 @@ impl Model {
                         }
                     }
                 }
-                CalcResult::Lambda(_) => {
-                    return CalcResult::Error {
-                        error: Error::NIMPL,
-                        origin: cell,
-                        message: "Arrays not supported yet".to_string(),
-                    }
-                }
+                CalcResult::Lambda(_) => return lambda_text_error(cell),
             };
         }
         if over_limit || size.exceeds(&values) {

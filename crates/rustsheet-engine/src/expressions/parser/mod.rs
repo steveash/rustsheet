@@ -75,8 +75,8 @@ use chain::ChainLevel;
 pub(crate) use chain::{for_each_chain_operand_mut, left_chain, value_operands};
 pub(crate) use depth::is_limit_error;
 pub use depth::{
-    MAX_FORMULA_DEPTH, MAX_NESTED_CALLS, MAX_VALUE_OPERATORS, TOO_DEEP_MESSAGE,
-    TOO_MANY_NESTED_CALLS_MESSAGE, TOO_MANY_OPERATORS_MESSAGE,
+    MAX_FORMULA_DEPTH, MAX_NESTED_CALLS, MAX_PARENTHESES, MAX_SIGNS, MAX_VALUE_OPERATORS,
+    TOO_DEEP_MESSAGE, TOO_MANY_NESTED_CALLS_MESSAGE, TOO_MANY_OPERATORS_MESSAGE,
 };
 pub(crate) use spacing::Run;
 pub use spacing::Spacing;
@@ -290,7 +290,7 @@ pub enum Node {
     /// FORMULATEXT and stored formula text keep every written parenthesis
     /// (docs/excel-semantics/syntax.md, SPEC-0007).
     Group {
-        levels: u8,
+        levels: u16,
         child: Box<Node>,
     },
     /// A structured reference as written (`Sales[[#All],[Qty]]`), with the area it resolves to
@@ -358,7 +358,7 @@ pub enum Node {
     EmptyArgKind,
 }
 
-// A `Group` must not grow the node: `Box<Node>` + `u8` fits in the largest variant (SPEC-0007).
+// A `Group` must not grow the node: `Box<Node>` + `u16` fits in the largest variant (SPEC-0007).
 const _: () = assert!(std::mem::size_of::<Node>() <= NODE_SIZE);
 
 /// `size_of::<Node>()` before the `Group` variant; pinned so later variants cannot grow it unnoticed.
@@ -569,13 +569,27 @@ pub struct Parser {
     /// function/name completion even when the surrounding parse succeeds (`SU`,
     /// `A1+F`) or fails for an unrelated reason (`IF(VLOOK`). See that method.
     trailing_name: Option<(String, usize)>,
-    /// Primaries (operands) open on the current parse path. Checked before
-    /// descending so the parser's own recursion stays bounded.
+    /// Half levels reserved by the primaries (operands) open on the current parse path, bounded
+    /// by [`depth::MAX_NESTING`]. Checked before descending so the parser's own recursion stays
+    /// bounded.
     nesting: usize,
     /// Depth of the tree the last `parse_*` call returned.
     depth: usize,
     /// Deepest subexpression parsed so far inside the primary being parsed.
     inner_depth: usize,
+    /// An operand parsed ahead, with its depth, for the next [`Parser::parse_primary`] to
+    /// return: the inner group of a run of parentheses ([`Parser::parse_parenthesis_run`]).
+    pending_operand: Option<(Node, usize)>,
+    /// Where the pending operand's text starts (a char index), for the intersection that reads
+    /// it back ([`Parser::parse_intersection`]).
+    pending_start: usize,
+    /// Written groups open on the current parse path, bounded by [`MAX_PARENTHESES`].
+    open_groups: usize,
+    /// A group's content is about to be parsed: its first operand, unless another group, reserves
+    /// less nesting ([`Parser::parse_primary`], T-3197).
+    group_head: bool,
+    /// Unary signs open on the current parse path, bounded by [`MAX_SIGNS`].
+    open_signs: usize,
     /// Value operators in the formula so far, bounded by [`MAX_VALUE_OPERATORS`].
     value_operators: usize,
     /// The parser is outside every parenthesis and argument list, where a comma is the bare
@@ -647,6 +661,11 @@ impl Parser {
             top_level: false,
             depth: 0,
             inner_depth: 0,
+            pending_operand: None,
+            pending_start: 0,
+            open_groups: 0,
+            group_head: false,
+            open_signs: 0,
             value_operators: 0,
             bound_names: Vec::new(),
             typed: false,
@@ -667,10 +686,10 @@ impl Parser {
         self.loaded = loaded;
     }
 
-    /// Reads the next formulas as typed (`true`) or as stored (`false`, the default); see
-    /// [`Parser::typed_refusal`].
+    /// Reads the next formulas as typed (`true`) or stored (`false`); see [`Parser::typed_refusal`].
     pub(crate) fn set_typed(&mut self, typed: bool) {
         self.typed = typed;
+        self.lexer.set_typed(typed);
     }
 
     pub fn set_lexer_mode(&mut self, mode: lexer::LexerMode) {
@@ -715,13 +734,15 @@ impl Parser {
         }
         // A file's stored text drops the whitespace it starts with, where the same text typed
         // after `=` keeps it: `<f> 1+2</f>` prints `=1+2` (probes/t2776-formula-text-whitespace-shapes
-        // E7, E8; syntax.md "Formula text keeps typed whitespace…", T-2784).
+        // E7, E8; syntax.md "Formula text keeps typed whitespace…", T-2784), and so does a
+        // leading line feed (`<f>` LF `1+2</f>` prints `=1+2`; probes/t2949-stored-5).
         let formula = if self.loaded {
-            formula.trim_start_matches(' ')
+            formula.trim_start_matches([' ', '\n'])
         } else {
             formula
         };
         self.lexer.set_formula(formula);
+        self.lexer.set_engine_text(!self.typed && !self.loaded);
         self.context = context.clone();
         // At the top level a formula may start with an expression or a range.
         self.expecting_here = vec![ExpectedTokens::Range, ExpectedTokens::Other];
@@ -729,6 +750,10 @@ impl Parser {
         self.nesting = 0;
         self.depth = 0;
         self.inner_depth = 0;
+        self.pending_operand = None;
+        self.open_groups = 0;
+        self.group_head = false;
+        self.open_signs = 0;
         self.value_operators = 0;
         self.bound_names.clear();
         self.cell_shaped_binding = None;
@@ -841,35 +866,19 @@ impl Parser {
     /// before and after the operand is in helpers of their own, to keep this frame small in
     /// unoptimized builds (T-1110).
     pub(super) fn parse_power(&mut self) -> Node {
-        let before = self.run_ahead();
-        let signs = self.parse_signs();
+        let (before, signs, counted) = self.parse_prefix();
+        if self.open_signs + counted > MAX_SIGNS {
+            return self.too_deep();
+        }
+        self.open_signs += counted;
         let t = self.parse_bare_union();
+        self.open_signs -= counted;
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
         match self.finish_power(t, before, signs) {
             Ok(node) | Err(node) => node,
         }
-    }
-
-    /// The unary signs before an operand, in written order: whether each is a minus, and the
-    /// run after it. Every sign is kept in its written order (`--x` coerces `x` to a number,
-    /// `+-5` prints back as written), but a plus written directly before a number literal folds
-    /// into it: `=+5` is `=5`, `=-+5` is `=-5`, `=+ 5` stays (syntax.md, T-2723). The run before a
-    /// folded plus stays where it was: `=  +5` prints `=  5` (T-2776).
-    #[inline(never)]
-    fn parse_signs(&mut self) -> Vec<(bool, Run)> {
-        let mut signs = Vec::new();
-        while let TokenType::Addition(op) = self.lexer.peek_token() {
-            self.lexer.advance_token();
-            let fold = op == token::OpSum::Add
-                && !self.lexer.whitespace_follows()
-                && matches!(self.lexer.peek_token(), TokenType::Number(_));
-            if !fold {
-                signs.push((op == token::OpSum::Minus, self.run_ahead()));
-            }
-        }
-        signs
     }
 
     /// Operand `t` of [`Parser::parse_power`] under its `signs`, then its `%`s, with the runs
@@ -881,9 +890,10 @@ impl Parser {
         before: Run,
         signs: Vec<(bool, Run)>,
     ) -> Result<Node, Node> {
+        // A sign adds no depth: its consumers walk a run in a loop (`Model::apply_unary_chain`),
+        // and [`MAX_SIGNS`] bounds how many are open at once.
         for (is_minus, after_sign) in signs.into_iter().rev() {
             t = t.spaced(after_sign, Run::default());
-            self.grow(self.depth, 0)?;
             let right = Box::new(t);
             t = if is_minus {
                 Node::UnaryKind {
@@ -894,7 +904,7 @@ impl Parser {
                 Node::UnaryPlus { child: right }
             };
         }
-        while self.lexer.peek_token() == TokenType::Percent {
+        while *self.lexer.peek() == TokenType::Percent {
             t = t.spaced(Run::default(), self.run_ahead());
             self.lexer.advance_token();
             self.grow(self.depth, 0)?;
@@ -911,7 +921,7 @@ impl Parser {
         let start = self.lexer.get_position_index();
         let next_token = self.lexer.next_token();
         match next_token {
-            TokenType::LeftParenthesis => self.parse_parenthesized_call(),
+            TokenType::LeftParenthesis => self.parse_parenthesis_run(),
             TokenType::Number(s) => Node::NumberKind(s),
             TokenType::String(s) => Node::StringKind(s),
             TokenType::LeftBrace => self.parse_array_operand(),

@@ -5,6 +5,7 @@
   scripts/merge_train.py --dry-run   # steps 2-4: collect, build, id checks; prints, writes nothing
   scripts/merge_train.py --train     # steps 1-9 and section 6 (red trains), in `train` mode only
   scripts/merge_train.py --shadow    # steps 2-6 and section 6 on merge-train/shadow, in `shadow` mode only
+  ... --train --step, --shadow --step  # each write is a JSON action the session performs (decision 0169)
 
 The mode is read from `scripts/merge_train.toml` on a freshly fetched `origin/main`, never from
 the checkout, so a branch cannot switch its own flow. The read fails closed: a missing file, a
@@ -29,6 +30,7 @@ import gh_client
 import merge_flip
 import merge_lock
 import merge_ready
+import merge_step
 from gh_client import SHA, Client, GhError
 from merge_flip import LOCK, SWITCH
 from merge_lock import GitError, git
@@ -178,6 +180,11 @@ class Collected:
     ready: list[merge_ready.Verdict] = field(default_factory=list)
     unlabel: list[tuple[int, str]] = field(default_factory=list)
     keep: list[tuple[int, str]] = field(default_factory=list)
+    # Verdict-record gaps under `verdict_records = "warn"` (decision 0178): reported only.
+    warnings: list[tuple[int, str]] = field(default_factory=list)
+
+    def warning_lines(self) -> list[str]:
+        return [f"verdict records #{pr} (warn): {warning}" for pr, warning in self.warnings]
 
 
 def collect(client: Client, repo: merge_ready.Repo) -> Collected:
@@ -190,6 +197,7 @@ def collect(client: Client, repo: merge_ready.Repo) -> Collected:
         verdict = merge_ready.verify(client, pr, repo)
         actions = {f.action for f in verdict.failures}
         reasons = "; ".join(f.reason for f in verdict.failures)
+        found.warnings += [(pr, warning) for warning in verdict.warnings]
         if merge_ready.UNLABEL in actions:
             found.unlabel.append((pr, reasons))
         elif merge_ready.KEEP in actions:
@@ -220,6 +228,7 @@ def dry_run(client: Client, root: Path = ROOT) -> str:
     lines += [f"would unlabel #{pr}: {reason}" for pr, reason in found.unlabel]
     lines += [f"skipped, label kept #{pr}: {reason}" for pr, reason in found.keep]
     lines += [f"waiting for a later batch #{v.pr}" for v in found.ready[BATCH_MAX:]]
+    lines += found.warning_lines()
     return "\n".join(lines)
 
 
@@ -658,6 +667,7 @@ class Stage:
         repo.fetch_base()
         base = git("rev-parse", f"refs/merge-ready/{merge_ready.BASE_BRANCH}", root=self.root).stdout.strip()
         found = collect(self.client, repo)
+        self.log += found.warning_lines()
         for pr, reason in found.unlabel:
             self.unlabel(pr, reason)
         heads = [(v.pr, v.marker.head) for v in found.ready[:BATCH_MAX] if v.marker is not None]
@@ -808,26 +818,35 @@ def main(argv: list[str], root: Path = ROOT) -> int:
     if argv == ["mode"]:
         print(mode_line(root))
         return 0
-    if argv not in (["--dry-run"], ["--train"], ["--shadow"]):
-        print("usage: merge_train.py mode | --dry-run | --train | --shadow", file=sys.stderr)
+    step = argv[1:] == ["--step"] and argv[0] in ("--train", "--shadow")
+    if argv not in (["--dry-run"], ["--train"], ["--shadow"]) and not step:
+        print("usage: merge_train.py mode | --dry-run | (--train | --shadow) [--step]", file=sys.stderr)
         return 2
-    client = gh_client.from_remote(root, REMOTE)
-    if client is None:
+    real = gh_client.from_remote(root, REMOTE)
+    if real is None:
         print("merge_train: origin is not a github.com repository", file=sys.stderr)
         return 2
+    stage: Stage | None = None
     try:
         if argv == ["--dry-run"]:
-            print(dry_run(client, root))
+            print(dry_run(real, root))
             return 0
         signal.signal(signal.SIGTERM, raise_on_term)
+        # Every write of a --step run is an action the session performs (decision 0169).
+        client: Client = merge_step.StepClient(real, merge_step.AckFile(root)) if step else real
         # Imported here: merge_train_shadow subclasses this module's Stage.
         from merge_train_shadow import ShadowStage
 
-        kind = ShadowStage if argv == ["--shadow"] else Stage
+        kind = ShadowStage if argv[0] == "--shadow" else Stage
         stage = kind(client, root, LockOps(f"train-{int(time.time())}", root))
         code = stage.run()
         print("\n".join(stage.log))
         return code
+    except merge_step.StepError as error:
+        # The lock was released on the way out; nothing after the failed action ran.
+        print("\n".join(stage.log if stage is not None else []))
+        print(f"merge_train: step mode aborted: {error}", file=sys.stderr)
+        return 2
     except (GhError, GitError) as error:
         print(f"merge_train: {error}", file=sys.stderr)
         return 2

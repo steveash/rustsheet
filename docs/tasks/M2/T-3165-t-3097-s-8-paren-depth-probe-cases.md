@@ -3,7 +3,7 @@ id: T-3165
 title: "T-3097's 8 paren-depth probe cases count against M2 exit: pin them as decision-0036 deviations or lift MAX_FORMULA_DEPTH past Excel's paren nesting"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -28,10 +28,43 @@ M0-M2 probe row's known failures. Two ways out; the implementer picks with evide
   entry in docs/excel-semantics (decision 0036; check that the deviations file can pin a case that
   fails to load, and extend `crates/rustsheet-eval/src/deviations.rs` if it cannot).
 
+## Progress
+- 2026-10-29 (opus run, session budget ran out before an implementation): all eight cases are `status=EngineError`,
+  `checked=0` (`make eval-show`: "invalid input for A1: Formula: Formula is nested too deeply"), for the `-stored`
+  cases too. The spec adapter enters every formula through the API, and the parser refuses the too-deep formula.
+  The baseline records them as `F <case> !EngineError` with `C <case> 0`. So the "keep the bound" route cannot pin
+  them with today's `deviations` file: `deviations.rs` pins a scored cell (`Sheet!A1`, compared in
+  `runner.rs` around line 437), and an EngineError case scores no cells (`runner.rs` `Ok(Ok(Err(e)))` branch).
+  Options seen, not yet weighed:
+  (1) a case-level deviation line (pinned `!EngineError` for the whole case), which needs a format extension in
+  deviations.rs and its readers (report, probe_milestones, milestone_lists, and `scripts/exit_owners.py`
+  `PASSING`);
+  (2) have the spec adapter mirror what RustSheet does by design: a refused typed formula leaves the cell as it
+  was (`EditError::InvalidInput`), and a stored one loads as a parse error like the xlsx importer's. The cells then
+  score, and per-cell deviation lines pin A1/B1;
+  (3) lift `MAX_FORMULA_DEPTH`. 255 parentheses cost about 510 levels at `PRIMARY_DEPTH` 2, about 1 MiB of parser
+  stack by depth.rs's 2 KB per level, so a group would have to cost less than a call frame.
+  (2) changes harness policy (today any refused input fails the case loudly), so it probably needs a decision
+  record.
+
+- 2026-10-30: resumed by an opus run (branch idle 3 h).
+
 ## Acceptance criteria
-- [ ] `make exit-owners MILESTONE=M2` no longer lists the eight t3097-nesting-paren cases.
-- [ ] The DEVIATION entry (if kept) names the bound, the cases, and Excel's own limit as probed.
-- [ ] No regressions; `make check` green; reviewers approve.
+- [x] `make exit-owners MILESTONE=M2` no longer lists the eight t3097-nesting-paren cases.
+- [x] The DEVIATION entry (if kept) names the bound, the cases, and Excel's own limit as probed.
+- [x] No regressions; `make check` green; reviewers approve.
 
 ## Out of scope
 - The 65-call function nesting cap (T-3097, done) and T-3143's follow-ups.
+
+## Outcome
+Kept the bound and pinned the eight cases whole (route (1) of the Progress notes; decision 0168).
+A `deviations` line whose cell is `*` and whose value reads `refused "<message>"` pins a case the
+engine refuses with that message: every scored cell is a deviation (`deviations.rs` `Pin::Refusal`,
+`runner.rs` `refused`). Any other refusal stays an `EngineError`, and a pinned case that starts
+loading scores as usual with every cell listed, so a match shows as a stale line. Lifting the bound
+was measured first (release, 1 MiB stack): the parser alone overflows at about 292 nested
+parentheses, 180 `ABS(` and 112 `(ABS(`, so 255 parentheses need a parser that spends less stack
+per parenthesis; syntax.md "Formula nesting depth cap" records the numbers.
+Eval delta: probes 8 cases `!EngineError` → pass (16 cells, all deviations); `make exit-owners
+MILESTONE=M2` no longer lists them; no regressions. Follow-up: T-3191 (lift the bound for parentheses).

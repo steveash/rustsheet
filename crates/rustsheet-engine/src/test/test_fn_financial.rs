@@ -109,6 +109,31 @@ fn fn_rate_secant_excel_bits() {
     );
 }
 
+/// IRR's NPV takes Excel's twice-rounded `*` and `+` (financial.md "IRR is a secant in d = 1 - v",
+/// T-3205): in plain doubles both calls stop one secant iterate early, 16 ulp off.
+#[test]
+fn fn_irr_npv_rounds_twice() {
+    check_cells(
+        &[],
+        &[
+            // probes-numeric/m9-fin-irr-rate Calc!A214
+            (
+                "A1",
+                "=IRR({-1000,230,200,125,200,10},5)",
+                "-0.10150067605359347",
+            ),
+            // gen-m9/67a4c03afd63f988 Calc!A395 (its flows as a literal)
+            ("A2", "=IRR({0.5,0.1,-0.5},0.5)", "-0.09501243788791103"),
+            // gen-m9/9d9ceba257f8001b Calc!A85 (its Data!A8 is blank, which NPV skips)
+            (
+                "A3",
+                "=NPV(1E-10,{-100,50,60,0,0},{0,0,0})",
+                "9.999999981999995",
+            ),
+        ],
+    );
+}
+
 #[test]
 fn fn_impmt_ppmt_arguments() {
     let mut model = new_empty_model();
@@ -924,4 +949,61 @@ fn ipmt_past_the_range_fractional_nper_is_the_integer_value() {
     assert_eq!(number(3), Ok(CellValue::Number(-46194.91271820449)));
     assert_eq!(number(4), Ok(CellValue::Number(-383602.6046511628)));
     assert_eq!(number(5), Ok(CellValue::Number(-100.0)));
+}
+
+/// XIRR returns an error values argument first, then an error dates argument, before it reads the
+/// values' cells (gen-m9/67a4c03afd63f988 A241, 79d87fc527927626 A228; T-2611).
+#[test]
+fn fn_xirr_error_arguments_before_the_value_cells() {
+    let mut model = new_empty_model();
+    model._set("B1", "-100");
+    model._set("B2", "x");
+    model._set("A1", "=XIRR(B1:B2,1/0)");
+    model._set("A2", "=XIRR(#VALUE!,1/0)");
+    model._set("A3", "=XIRR(B1:B2,{39448,39508})");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#DIV/0!");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    assert_eq!(model._get_text("A3"), *"#VALUE!");
+}
+
+/// XIRR's error guess comes before an error dates argument, the size checks and the values' cells
+/// (gen-m9/1dce4774f5c0e736 A189, 1b60bf99d71424e7 A29; T-2611).
+#[test]
+fn fn_xirr_guess_error_before_the_dates_and_the_sizes() {
+    let mut model = new_empty_model();
+    model._set("B1", "-100");
+    model._set("B2", "x");
+    model._set("A1", "=XIRR(1E+21,1/0,SQRT(-1))");
+    model._set("A2", "=XIRR({-1000,300,400,500},{1,2},NA())");
+    model._set("A3", "=XIRR(B1:B2,{1,2,3},#DIV/0!)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"#N/A");
+    assert_eq!(model._get_text("A3"), *"#DIV/0!");
+}
+
+/// One empty or numeric-text cell beside a range of another count is the count's `#NUM!`, but one
+/// boolean cell keeps `#VALUE!` (gen-m9/1dce4774f5c0e736 A91, 89f0aee953a55a45 A330,
+/// c0681a8b150ce301 A266, 1cd3096e3e87c965 A48; T-2611).
+#[test]
+fn fn_xirr_one_empty_or_numeric_text_cell_is_the_count_error() {
+    let mut model = new_empty_model();
+    model._set("B1", "-100");
+    model._set("B2", "50");
+    model._set("B3", "60");
+    model._set("C1", "'1");
+    model._set("C2", "FALSE");
+    model._set("A1", "=XIRR(D1:D1,B1:B3)");
+    model._set("A2", "=XIRR(B1:B3,D1,0.5)");
+    model._set("A3", "=XIRR(B1:B3,C1)");
+    model._set("A4", "=XIRR(B1:B3,C2)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
+    assert_eq!(model._get_text("A4"), *"#VALUE!");
 }

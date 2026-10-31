@@ -3,16 +3,19 @@ use statrs::distribution::FisherSnedecor;
 use crate::arithmetic::extended_quotient;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error};
-use crate::functions::statistical::bratio::{beta_dist_lower_tail, closed_or_ported_tails};
+use crate::functions::statistical::bratio::{closed_or_ported_tails, kernel_tails};
 use crate::functions::statistical::f_density::excel_f_density;
 use crate::functions::statistical::f_test_tail::f_test_bratio_p;
-use crate::functions::statistical::incomplete_beta::{beta_reg_tails, A1_EXPM1_MAX_X};
+use crate::functions::statistical::half_integer_beta::half_integer_remainder;
+use crate::functions::statistical::incomplete_beta::{
+    beta_reg_tails, search_tails, A1_EXPM1_MAX_X,
+};
 use crate::functions::statistical::inverse_beta::{beta_lower_crossing, f_inverse_cdf};
 use crate::functions::statistical::paired::marked_number_error;
 use crate::functions::statistical::special::refine_increasing;
 use crate::functions::statistical::t_dist::sample_var;
 use crate::functions::Function;
-use crate::x87_exp::{dd_add, dd_div, dd_div_small, dd_mul, excel_exp};
+use crate::x87_exp::excel_exp;
 use crate::x87_log10::excel_ln;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
@@ -113,7 +116,7 @@ fn f_quantile_tail(df1: f64, df2: f64, x: f64, upper: bool) -> f64 {
             return tail;
         }
     }
-    let (lower, upper_tail) = beta_reg_tails(u, v, a, b);
+    let (lower, upper_tail) = search_tails(u, v, a, b);
     if upper {
         upper_tail
     } else {
@@ -122,16 +125,9 @@ fn f_quantile_tail(df1: f64, df2: f64, x: f64, upper: bool) -> f64 {
 }
 
 /// Above this a + b (half the two df summed) F.TEST's tail is
-/// [`beta_dist_lower_tail`]'s; below it the remainder of [`f_test_upper_tail`] is summed
+/// [`kernel_tails`]'s; below it the remainder of [`f_test_upper_tail`] is summed
 /// in double-double, at most about 30,000 terms (x <= 0.9975 there).
 const F_TEST_SERIES_SHAPE_MAX: f64 = 200.0;
-
-/// Bound on the terms of [`f_test_remainder`]'s series (it converges well before it below
-/// [`F_TEST_SERIES_SHAPE_MAX`]).
-const F_TEST_SERIES_TERMS: u32 = 100_000;
-
-/// pi as a double-double (hi + lo).
-const PI_DD: (f64, f64) = (std::f64::consts::PI, 1.224_646_799_147_353_2e-16);
 
 /// F.TEST's two-tailed p, `2 min(u, 1 - u)` for the upper tail u of [`f_test_upper_tail`]: with
 /// both shapes above 1 and a + b up to [`F_TEST_SERIES_SHAPE_MAX`], TOMS 708 `bratio`'s branches
@@ -156,7 +152,8 @@ fn f_test_p(x: f64, y: f64, a: f64, b: f64) -> f64 {
 /// file this form is bit-exact on 90 against 53 for the correctly rounded p and visibly off on 6
 /// against 40 (docs/excel-semantics/statistics.md "F.TEST / FTEST: larger variance on top").
 /// A shape of 1 is F.TEST's own form ([`unoriented_shape_one_tail`]), large shapes are the kernel's
-/// ([`beta_dist_lower_tail`]: the bratio port's branches, else today's kernel; T-2977), and
+/// ([`kernel_tails`]: the bratio port's branches, else today's kernel; T-2977; F keeps today's kernel
+/// on the b = 1/2 bgrat branches, T-2510), and
 /// a = b = 1/2 is Excel's closed form 2 asin(sqrt x)/pi (T-2571; current scores in statistics.md).
 fn f_test_upper_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
     if x > 0.0 && y > 0.0 {
@@ -166,14 +163,14 @@ fn f_test_upper_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
     }
     let half_integers = (2.0 * a).fract() == 0.0 && (2.0 * b).fract() == 0.0;
     if !(x > 0.0 && y > 0.0 && half_integers && a + b <= F_TEST_SERIES_SHAPE_MAX) {
-        return beta_dist_lower_tail(x, y, a, b);
+        return kernel_tails(x, y, a, b).0;
     }
     // Bit-exact on 13 of the 16 such cells on file against 3 for the series (T-2571; the
     // committed fit is `uv run rustsheet-fitlab f-test-half`, T-2681).
     if a == 0.5 && b == 0.5 {
         return 2.0 * x.sqrt().asin() / std::f64::consts::PI;
     }
-    (a * x.ln()).exp() * (b * y.ln()).exp() * f_test_remainder(x, a, b)
+    (a * x.ln()).exp() * (b * y.ln()).exp() * half_integer_remainder((x, 0.0), a, b)
 }
 
 /// `I_x(a, b)` at a shape of 1 as F.TEST and the F quantile's search ([`f_quantile_tail`]) take it,
@@ -199,51 +196,6 @@ fn unoriented_shape_one_tail(x: f64, a: f64, b: f64) -> Option<f64> {
     })
 }
 
-/// `I_x(a,b)/(x^a (1-x)^b) = 2F1(a+b, 1; a+1; x) / (a B(a,b))` for half-integer shapes, in
-/// double-double: `B(a,b)` by [`half_integer_beta`] and the series of positive terms
-/// `t_(n+1) = t_n (a+b+n) x/(a+1+n)`, which nothing cancels.
-fn f_test_remainder(x: f64, a: f64, b: f64) -> f64 {
-    let beta = half_integer_beta(a, b);
-    let mut term = (1.0, 0.0);
-    let mut sum = (1.0, 0.0);
-    let mut n = 0.0;
-    for _ in 0..F_TEST_SERIES_TERMS {
-        term = dd_div_small(
-            dd_mul(dd_mul(term, (a + b + n, 0.0)), (x, 0.0)),
-            a + 1.0 + n,
-        );
-        sum = dd_add(sum, term);
-        n += 1.0;
-        // 2^-110 of the sum: past double-double precision.
-        if term.0 < sum.0 * 7.7e-34 {
-            break;
-        }
-    }
-    dd_div(sum, dd_mul(beta, (a, 0.0))).0
-}
-
-/// `B(a,b)` in double-double for half-integer shapes a, b >= 1/2: `B(a+1,b) = B(a,b) a/(a+b)` and
-/// `B(a,b+1) = B(a,b) b/(a+b)` from `B(1,1) = 1`, `B(1/2,1) = B(1,1/2) = 2` or `B(1/2,1/2) = pi`.
-pub(super) fn half_integer_beta(a: f64, b: f64) -> (f64, f64) {
-    let a0 = if a.fract() == 0.0 { 1.0 } else { 0.5 };
-    let b0 = if b.fract() == 0.0 { 1.0 } else { 0.5 };
-    let mut beta = match (a0 == 1.0, b0 == 1.0) {
-        (true, true) => (1.0, 0.0),
-        (true, false) | (false, true) => (2.0, 0.0),
-        (false, false) => PI_DD,
-    };
-    let (mut p, mut q) = (a0, b0);
-    while p < a {
-        beta = dd_div_small(dd_mul(beta, (p, 0.0)), p + q);
-        p += 1.0;
-    }
-    while q < b {
-        beta = dd_div_small(dd_mul(beta, (q, 0.0)), p + q);
-        q += 1.0;
-    }
-    beta
-}
-
 /// Above this df `statrs`' `inverse_cdf` for the F distribution does not finish (found at 1E10, the
 /// same failure as Student-t), so from it the quantile is [`f_quantile_through_beta`]: Excel's
 /// BETA.INV mapped to F. Either side of it the quantile is within 2E-13 relative of Excel's at
@@ -260,6 +212,7 @@ const F_QUANTILE_STATRS_P_MIN: f64 = 1e-20;
 /// deep tail of [`f_cdf`] carries exp(a ln y)'s rounding, and refining to its crossing makes
 /// `F.INV(1E-20,5,5)` visibly off Excel's 5.081599921802649E-09 (probes/stat-quantile-lift E12),
 /// which statrs' search matches to 15 digits (T-0974: 0 cells newly visibly off at 1E-15, 4 at 0).
+/// FITTED(T-0974, 1 cell, range unknown)
 const F_QUANTILE_REFINE_P_MIN: f64 = 1e-15;
 
 /// Quantile of the F distribution for `p` (the right tail's when `right_tail`) in [0, 1]: statrs'
@@ -726,7 +679,7 @@ impl Model {
 
 #[cfg(test)]
 mod tests {
-    use super::{f_cdf, f_quantile, fisher, fisher_inv};
+    use super::{f_cdf, f_quantile, f_tail, fisher, fisher_inv};
 
     // FISHER and FISHERINV round their quotient twice, like Excel's `/` (excel-graph; T-2437).
     #[test]
@@ -754,6 +707,15 @@ mod tests {
     fn shape_one_other_tail_is_the_complement() {
         assert_eq!(f_cdf(20.0, 2.0, 5.0), 0.820_348_299_875_155_2);
         assert_eq!(f_cdf(4.0, 2.0, 5.0), 0.826_446_280_991_735_6);
+    }
+
+    // There w is -expm1(b0 ln1p(-x0)) with Excel's own expm1 and log1p (T-3170): libm's put
+    // gen-m9/146b46e74f2dac3b A329 `F.DIST.RT(10,6,2)` and abc2939ebd1e2365 A318 `FDIST(40,8,2)`
+    // 1 ulp low.
+    #[test]
+    fn shape_one_tail_takes_excels_expm1_and_log1p() {
+        assert_eq!(f_tail(6.0, 2.0, 10.0, true), 0.093_686_012_554_127_09);
+        assert_eq!(f_tail(8.0, 2.0, 40.0, true), 0.024_614_204_935_833_432);
     }
 
     #[test]
