@@ -3,7 +3,7 @@ id: T-3326
 title: "Formula import, part 3: skip the parse of copied formulas (relocation key) to reach 1,500 ms on corpus-bench 52450"
 milestone: M11
 lane: perf
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
