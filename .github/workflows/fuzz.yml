@@ -30,6 +30,8 @@ jobs:
             args: -dict=dict/formula.dict -max_len=512
           - target: xlsx_import
             args: -max_len=1048576
+          - target: bitcode_workbook
+            args: -max_len=65536
     steps:
       - uses: actions/checkout@v4
         with:

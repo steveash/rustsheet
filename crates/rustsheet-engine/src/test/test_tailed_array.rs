@@ -850,3 +850,81 @@ fn fixed_references_in_a_cycle_or_a_spill() {
         assert_eq!(tailed.0, full.0, "{formula}");
     }
 }
+
+/// INDEX with scalar indices picks from a tailed argument (SPEC-0020 Amendment 2, section 3;
+/// T-3222): rows in the head, in the tail and at the logical last row, in the three-argument
+/// form (a value) and the two-argument form (a 1x1 array), over each kind of tailed argument.
+#[test]
+fn index_picks_from_a_tailed_argument() {
+    let picks = ["3", "40", "41", "5000", "1048576"];
+    let arguments = [
+        "VLOOKUP(A:A,$J$1:$K$6,2,FALSE)",
+        "MATCH(A:A,$J$1:$J$6,1)",
+        "HLOOKUP(B:B,$N$1:$S$2,2)",
+        "IF(A:A=\"\",\"blank\",A:A&\"!\")",
+        "MATCH(A2:A70000,$L$1:$L$5,-1)",
+        "ROW(A:A)*0+A:A",
+    ];
+    let mut formulas = Vec::new();
+    for argument in arguments {
+        for row in picks {
+            formulas.push(format!("=INDEX({argument},{row})"));
+            formulas.push(format!("=INDEX({argument},{row},1)"));
+            formulas.push(format!("=ROWS(INDEX({argument},{row}))"));
+            formulas.push(format!("=TYPE(INDEX({argument},{row},1,1))"));
+        }
+    }
+    let (results, walks) = both_ways(&formulas);
+    for (formula, tailed, full) in results {
+        assert_eq!(tailed, full, "{formula}");
+    }
+    // The `ROW()` argument's sentinel tail sends all its picks to the ordinary reading. The picks
+    // past `MATCH(A2:A70000,..)`'s 69,999 rows read it tailed, then fall back too.
+    let fallbacks = picks.len() * 4;
+    assert_eq!(walks, formulas.len() - fallbacks);
+}
+
+/// INDEX keeps the ordinary reading for every other index (SPEC-0020 Amendment 2, section 3):
+/// past the logical rows (`#REF!`), row 0, column 0 and 2, `area_num` 2, lifted indices, and an
+/// error index before an error array; an error key element in the picked row is that error.
+#[test]
+fn index_forms_that_fall_back() {
+    let formulas: Vec<String> = [
+        "=INDEX(MATCH(A:A,$J$1:$J$6,0),1048577)",
+        "=INDEX(MATCH(A:A,$J$1:$J$6,0),0)",
+        "=ROWS(INDEX(MATCH(A:A,$J$1:$J$6,0),0,1))",
+        "=INDEX(MATCH(A:A,$J$1:$J$6,0),5,0)",
+        "=INDEX(MATCH(A:A,$J$1:$J$6,0),5,2)",
+        "=INDEX(MATCH(A:A,$J$1:$J$6,0),5,1,2)",
+        "=SUM(INDEX(MATCH(A:A,$J$1:$J$6,0),{1;2;5000}))",
+        "=INDEX(MATCH(A:A,{\"\"},0)/0,#REF!)",
+        "=INDEX(VLOOKUP(A:A,$H$2,2),5)",
+        "=INDEX(IF(TRUE,MATCH(A:A,$J$1:$J$6,0)),5)",
+        "=INDEX(XMATCH(A:A,$J$1:$J$6),5)",
+    ]
+    .iter()
+    .map(ToString::to_string)
+    .collect();
+    let (results, walks) = both_ways(&formulas);
+    for (formula, tailed, full) in results {
+        assert_eq!(tailed, full, "{formula}");
+    }
+    // Only row 1048577 reads the tailed argument before falling back (past its rows), and the
+    // table error lifted over the key (`$H$2`) is picked tailed; the other indices never read
+    // it tailed, and the IF, lifted and XMATCH forms are not tailed.
+    assert_eq!(walks, 2);
+    let errors: Vec<String> = [
+        // A6 is `=1/0`: the key element of the picked row is its own error.
+        "=INDEX(VLOOKUP(A:A,$J$1:$K$6,2,FALSE),6)",
+        "=INDEX(MATCH(A:A,$J$1:$J$6,0),6,1)",
+    ]
+    .iter()
+    .map(ToString::to_string)
+    .collect();
+    let (results, walks) = both_ways(&errors);
+    for (formula, tailed, full) in results {
+        assert_eq!(tailed, full, "{formula}");
+        assert_eq!(tailed, "#DIV/0!", "{formula}");
+    }
+    assert_eq!(walks, errors.len());
+}

@@ -5412,3 +5412,23 @@ Status: MATH-OVER-EXCEL (decision 0188)
 Ours: today the engine matches Excel with a fitted closed form (incomplete_gamma/huge_shape.rs,
 `WILSON_HILFERTY_SPREAD`, fitted at 1E13 and applied from 2E10); T-3364 moves the branch to the math.
 Tasks: T-3364, T-3358
+
+## F.DIST at a tiny x with a huge d2: Excel is within 1.5e-13 of the math, and so is RustSheet (T-3354)
+Rule: at x from 1E-15 to 1E-3, d1 from 1 to 40 and d2 from 1000 to 1E10, Excel's F.DIST (cumulative and density) and
+F.DIST.RT are the true values to within 1.5e-13 relative; there is no 5e-4 error there in Excel or, on main from
+2026-10-31, in RustSheet. Excel's residue against the math is largest at d1 = 40 (results from 1E-113 down to 1E-293);
+there Excel and RustSheet (up to 1.01e-13 off the math, at A217) differ beyond half a unit of the 15th significant
+digit on 222 of the 480 cdf and density cells (the harness's 15-digit test; score.py's `<=` test counts 221, A159
+sitting exactly on the half-unit line). In the probe case F.DIST.RT, near 1 at a tiny x, agrees to 15 digits on every
+cell; the sweep's three F.DIST.RT exceptions (C147, C168 and C187, at x of 1 or more, away from the tiny-x region) are
+T-3479's.
+Evidence: probes/t3354-f-dist-tiny-x-huge-d2 (720 cells, the decision 0188 assessment's region x near 1E-12, d2 near
+7.8E6, and both sides of it) and probes-numeric/t3354-f-dist-sweep (600 cells at 200 stratified points), both
+excel-graph, scored against 50-digit mpmath by docs/research/t3354/score.py: no probe cell is more than 1.5e-13 from
+the math in Excel, and no point of either case is outside Gate A's envelope in RustSheet. The assessment's "x ≈ 1e-12
+with d2 ≈ 7.8e6 is off 5e-4" (decision 0188, item 7) does not reproduce on main; its raw points are not committed.
+Status: VERIFIED (excel-graph)
+Ours: within 1.01e-13 of the math throughout the Rule's region in both cases (worst probe A217); outside it the sweep
+reaches 1.43e-10 (C168, `F.DIST.RT(1.09080885395379,8,5567623)`), still inside Gate A; cells beyond half a unit of
+Excel's 15th digit are Phase 1b residue (decision 0188 R5).
+Tasks: T-3354, T-3479
