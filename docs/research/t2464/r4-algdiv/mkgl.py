@@ -10,6 +10,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "r3-m1-residual"))
 import m1lib as M  # noqa: E402
 import mkalgprobe as P  # noqa: E402
+from mkprobe import write_case  # noqa: E402
 
 CASE = "t3383-r4-algdiv-gl"
 
@@ -37,14 +38,12 @@ if __name__ == "__main__":
     for i, v in enumerate(vs):
         cells[f"A{i + 1}"] = "=" + M.lit(v)
         cells[f"B{i + 1}"] = f"=GAMMALN(A{i + 1})"
-    case = {
-        "format": "rustsheet-case/v1",
-        "description": "T-3383 r4-algdiv: Excel's GAMMALN at a, b and a + b of the r4-algdiv probe shapes (exact "
-        "literals read back in A)",
-        "tags": ["M9", "probe", "statistics", "T-3383", "incomplete-beta"],
-        "sheets": [{"name": "Calc", "cells": cells}],
-        "expected": {},
-    }
-    (M.SUITE / f"{CASE}.case.json").write_text(json.dumps(case, indent=1) + "\n")
+    write_case(
+        CASE,
+        "T-3383 r4-algdiv: Excel's GAMMALN at a, b and a + b of the r4-algdiv probe shapes (exact literals read "
+        "back in A)",
+        "T-3383",
+        cells,
+    )
     (HERE / "probe_gl.args.json").write_text(json.dumps(vs) + "\n")
     print(CASE, len(vs), "arguments")

@@ -16,7 +16,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "r3-m1-residual"))
 import m1lib as M  # noqa: E402
-from mkprobe import xs_for  # noqa: E402
+from mkprobe import beta_dist_cells, write_case, xs_for  # noqa: E402
 
 SPECS = {
     "a": dict(seed=3383, a=(0.5, 0.25), lo=8.25, hi=5000.0, fine=(16.0, 0.125)),
@@ -40,26 +40,17 @@ def rows_of(name):
 def main(name):
     rows = rows_of(name)
     assert len(rows) <= 4096, len(rows)
-    cells = {}
-    for i, (x, a, b) in enumerate(rows):
-        r = i + 1
-        cells[f"A{r}"] = "=" + M.lit(x)
-        cells[f"B{r}"] = "=" + M.lit(a)
-        cells[f"C{r}"] = "=" + M.lit(b)
-        cells[f"D{r}"] = f"=BETA.DIST(A{r},B{r},C{r},FALSE)"
+    cells = beta_dist_cells(rows)
     cid = f"t3383-r4-algdiv-{name}"
-    case = {
-        "format": "rustsheet-case/v1",
-        "description": f"T-3383 r4-algdiv probe {name}: BETA.DIST(x,a,b,FALSE) at fixed a < 1 over b sweeps (b > 8), "
-        "pinning the density's algdiv(a, b) per b; x, a, b are exact two-piece literals read back in A:C",
-        "tags": ["M9", "probe", "statistics", "T-3383", "incomplete-beta"],
-        "sheets": [{"name": "Calc", "cells": cells}],
-        "expected": {},
-    }
-    (M.SUITE / f"{cid}.case.json").write_text(json.dumps(case, indent=1) + "\n")
+    write_case(
+        cid,
+        f"T-3383 r4-algdiv probe {name}: BETA.DIST(x,a,b,FALSE) at fixed a < 1 over b sweeps (b > 8), pinning the "
+        "density's algdiv(a, b) per b; x, a, b are exact two-piece literals read back in A:C",
+        "T-3383",
+        cells,
+    )
     (HERE / f"probe_{name}.meta.json").write_text(json.dumps({"case": cid, "rows": rows}) + "\n")
     print(cid, len(rows), "rows", len(cells), "cells")
-
 
 if __name__ == "__main__":
     main(sys.argv[1])

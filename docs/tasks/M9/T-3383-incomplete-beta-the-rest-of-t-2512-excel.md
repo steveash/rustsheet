@@ -88,4 +88,6 @@ item 2 only.
 - Negatives: no fixed candidate reaches half the shapes (CR lnB 34 and 37 of 80, TOMS-d 26 and 30, fl(GL + CR algdiv)
   22 and 35, Excel's GAMMALN difference past 8 at 0-1). Nothing is frozen, so no fit and no `FITTED` tag.
 - Engine follow-ups: none (no model to port); T-3468 scores x87 algdiv storage variants per shape against the pins.
-- Eval delta: none (research only; the new probe cases' engine misses are recorded in the baseline).
+- Eval delta: none (research only; probes-numeric is non-gating, so the new cases need no baseline change).
+- r4-algdiv's probe writers share r3-m1-residual's new `beta_dist_cells` and `write_case` (its own probes regenerate
+  byte-identical).

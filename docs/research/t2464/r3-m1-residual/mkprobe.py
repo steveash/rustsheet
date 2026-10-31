@@ -97,9 +97,8 @@ def rows_of(name):
     return rows, blk
 
 
-def main(name):
-    rows, blk = rows_of(name)
-    assert len(rows) <= 4096, len(rows)
+def beta_dist_cells(rows):
+    """A = x, B = a, C = b as exact literals (read back to catch a literal cut), D = BETA.DIST(A,B,C,FALSE)."""
     cells = {}
     for i, (x, a, b) in enumerate(rows):
         r = i + 1
@@ -107,22 +106,38 @@ def main(name):
         cells[f"B{r}"] = "=" + M.lit(a)
         cells[f"C{r}"] = "=" + M.lit(b)
         cells[f"D{r}"] = f"=BETA.DIST(A{r},B{r},C{r},FALSE)"
-    cid = f"t2513-r3-m1-residual-{name}"
+    return cells
+
+
+def write_case(cid, description, task, cells):
+    """Write probes-numeric case `cid` (one Calc sheet, no expectations) tagged M9 / `task`."""
     case = {
         "format": "rustsheet-case/v1",
-        "description": f"T-2513 r3-m1-residual probe {name}: BETA.DIST(x,a,b,FALSE) with min(a,b) <= 1 (a = 1 and "
-        "a < 1 with b > 8 for TOMS algdiv, a < 1 with 1 < b < 8 for lnGamma(a0 < 1), the (0.6, 7.3) and (0.5, 6.25) "
-        "shapes, b < 1, consecutive-double runs); x, a, b are exact two-piece literals read back in A:C",
-        "tags": ["M9", "probe", "statistics", "T-2513", "incomplete-beta"],
+        "description": description,
+        "tags": ["M9", "probe", "statistics", task, "incomplete-beta"],
         "sheets": [{"name": "Calc", "cells": cells}],
         "expected": {},
     }
     (M.SUITE / f"{cid}.case.json").write_text(json.dumps(case, indent=1) + "\n")
+
+
+def main(name):
+    rows, blk = rows_of(name)
+    assert len(rows) <= 4096, len(rows)
+    cells = beta_dist_cells(rows)
+    cid = f"t2513-r3-m1-residual-{name}"
+    write_case(
+        cid,
+        f"T-2513 r3-m1-residual probe {name}: BETA.DIST(x,a,b,FALSE) with min(a,b) <= 1 (a = 1 and "
+        "a < 1 with b > 8 for TOMS algdiv, a < 1 with 1 < b < 8 for lnGamma(a0 < 1), the (0.6, 7.3) and (0.5, 6.25) "
+        "shapes, b < 1, consecutive-double runs); x, a, b are exact two-piece literals read back in A:C",
+        "T-2513",
+        cells,
+    )
     (M.HERE / f"probe_{name}.meta.json").write_text(
         json.dumps({"case": cid, "rows": rows, "blk": blk}) + "\n"
     )
     print(cid, len(rows), "rows", len(cells), "cells", {b: blk.count(b) for b in dict.fromkeys(blk)})
-
 
 if __name__ == "__main__":
     main(sys.argv[1])
