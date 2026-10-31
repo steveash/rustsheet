@@ -100,6 +100,11 @@ def compute(definition: Definition, args: Sequence[literal.Arg]) -> MathValue:
     except mpmath.libmp.NoConvergence as err:  # e.g. a hypergeometric series at a huge df
         msg = f"mpmath did not converge ({err})"
         raise DroppedError(msg) from err
+    except NoValueError:
+        raise
+    except ValueError as err:  # mpmath's hypercomb gives up near 0 or infinity with a ValueError
+        msg = f"mpmath did not converge ({str(err).strip().splitlines()[0]})"
+        raise DroppedError(msg) from err
     low, high = results
     if isinstance(high, DomainError) or isinstance(low, DomainError):
         if isinstance(high, DomainError) and isinstance(low, DomainError):

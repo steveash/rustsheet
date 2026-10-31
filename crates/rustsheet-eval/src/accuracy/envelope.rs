@@ -7,7 +7,7 @@
 //! relative of the 50-digit math, with an absolute floor of 1e-300. An error against a number,
 //! either way, is never inside.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::closeness::Visible;
 use crate::runner::CellResult;
@@ -49,6 +49,27 @@ impl Serialize for MathValue {
             }
         }
         map.end()
+    }
+}
+
+/// The tagged form [`MathValue`] serializes to, read back when a report is deserialized.
+#[derive(Deserialize)]
+#[serde(tag = "t", deny_unknown_fields)]
+enum TaggedMath {
+    #[serde(rename = "n")]
+    Number { v: f64 },
+    #[serde(rename = "e")]
+    DomainError { why: String },
+}
+
+impl<'de> Deserialize<'de> for MathValue {
+    /// The inverse of [`MathValue`]'s `Serialize`: `{"t":"n","v":<double>}` or
+    /// `{"t":"e","why":<text>}`.
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        Ok(match TaggedMath::deserialize(d)? {
+            TaggedMath::Number { v } => Self::Number(v),
+            TaggedMath::DomainError { why } => Self::DomainError(why),
+        })
     }
 }
 

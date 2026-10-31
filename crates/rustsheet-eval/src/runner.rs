@@ -10,6 +10,8 @@ use std::time::{Duration, Instant};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use crate::accuracy::envelope::MathValue;
+use crate::accuracy::math::{math_sidecar, Attached, MathTable};
 use crate::argument_coverage::{self, CallSeen};
 use crate::case::{
     canonical_key, cell_key, is_excel_evidence, kept_nonzero_formulas, load_oracle,
@@ -83,6 +85,12 @@ pub struct CellResult {
     /// A scored expectation, or a cell the spill-extent check added (decision 0140).
     #[serde(default, skip_serializing_if = "CellKind::is_scored")]
     pub kind: CellKind,
+    /// The cell's 50-digit math value from the case's math sidecar, when one is there for this
+    /// cell's formula (SPEC-0029 "Math references for eval cells", T-3380): R1(c) counts a
+    /// visibly-off numeric cell inside Gate A's envelope through it. A value written for another
+    /// formula is stale and never attaches.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub math: Option<MathValue>,
 }
 
 /// Where a [`CellResult`] comes from.
@@ -121,6 +129,7 @@ impl CellResult {
             listed_deviation: false,
             graph_subnormal: false,
             kind: CellKind::Scored,
+            math: None,
         }
     }
 
@@ -382,7 +391,11 @@ fn run_isolated(
     timeout: Duration,
     values: bool,
 ) -> CaseValues {
-    let (prepared, refusal) = match prepare(suite, case, values) {
+    // An unreadable math sidecar is a broken committed file, so the case reports it as invalid.
+    let prepared = MathTable::load(&math_sidecar(&case.sidecar))
+        .map_err(|e| e.to_string())
+        .and_then(|m| prepare(suite, case, values).map(|p| (p, m)));
+    let ((prepared, refusal), math_table) = match prepared {
         Ok(p) => p,
         Err(e) => {
             return CaseValues {
@@ -485,6 +498,9 @@ fn run_isolated(
                 CaseStatus::Fail
             };
             result.cells = cells;
+            if let Some(table) = &math_table {
+                attach_math(&mut result.cells, table);
+            }
         }
     }
     CaseValues {
@@ -585,9 +601,23 @@ fn score(evaluated: &dyn Evaluated, expectations: &[Expectation], listed: bool) 
                 listed_deviation: listed || e.pinned.is_some(),
                 graph_subnormal,
                 kind: CellKind::Scored,
+                math: None,
             }
         })
         .collect()
+}
+
+/// Attaches each cell's math value from `table` (see [`CellResult::math`]); a value for another
+/// formula, or for a cell with no formula of its own, is dropped.
+fn attach_math(cells: &mut [CellResult], table: &MathTable) {
+    for cell in cells {
+        let Some(addr) = Addr::parse(&cell.cell) else {
+            continue;
+        };
+        if let Attached::Value(m) = table.attach(&cell.sheet, addr, cell.formula.as_deref()) {
+            cell.math = Some(m.value.clone());
+        }
+    }
 }
 
 /// The case ready to run, and the refusal message its whole-case `deviations` line pins, if any.
@@ -622,6 +652,7 @@ fn refused(expectations: &[Expectation]) -> Vec<CellResult> {
             listed_deviation: true,
             graph_subnormal: false,
             kind: CellKind::Scored,
+            math: None,
         })
         .collect()
 }
