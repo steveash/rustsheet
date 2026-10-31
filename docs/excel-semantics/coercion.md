@@ -92,8 +92,10 @@ acute < grave < circumflex < diaeresis < tilde < ring, then stroke (`ø`); T-311
 order. (3) Hyphens and apostrophes as (position, weight), a later position first, apostrophe before
 hyphen. `þ`, `ð`, `œ` and the Latin-1 symbols were placed later (T-1590, T-1595, T-1662, T-1669,
 below), and the Latin Extended-A, Greek and Cyrillic letters by T-3114 (next section); full-width and
-half-width forms and kana are probed by T-3275 (below; not yet implemented, T-3321). Every other
-character (CJK ideograph order, other scripts, other symbols; T-3276) keeps code-point order after the
+half-width forms and kana are probed by T-3275 (below; not yet implemented, T-3321). Hebrew, Arabic,
+Devanagari, Thai, Lao, Hangul, CJK ideographs, symbols above `€` and astral characters are probed by
+T-3276 (below; not yet implemented, T-3324). Every other character (other scripts, such as Bengali,
+Tamil, Georgian, Armenian and Ethiopic, and other symbol blocks) keeps code-point order after the
 letters, UNVERIFIED.
 
 ### Letters beyond Latin-1 and combining marks (T-3114)
@@ -227,8 +229,10 @@ Microsoft's Windows sorting weight table (`Windows Server 2022 Sorting Weight Ta
   marks, one per weight 2, 5, 8, 11 and 14 to 255, self-ranked in order (Calc!A1:A246); `"a"` with
   1 to 40 of U+0301, U+030A, U+0323, U+0342 ranked against it (Data!B1:B160), mixes, `"e"` runs
   and `"a"`&run&`"b"`) and probes/t3201-collation-wrapped-run-pairs (37 texts whose sums wrap to
-  2 to 22, every pair, 1,369 cells), excel-graph 2026-10-30. Status: VERIFIED for one accented
-  letter, and for it followed by `"b"`. Compare a letter's accent as a sequence of units, the
+  2 to 22, every pair, 1,369 cells), excel-graph 2026-10-30, and probes/t3304-collation-multi-letter-accents
+  (four groups of texts, every pair within a group, 1,653 cells, plus ranks and COUNTIF `"="&x`;
+  excel-graph 2026-10-31). Status: VERIFIED, for texts with several accented letters, marks on
+  either side of a letter boundary and equal-sum runs that share a prefix too. Compare a letter's accent as a sequence of units, the
   letter itself (weight 2, or a precomposed letter's whole weight, `á` 14) and then each mark (its
   weight above): first drop the leading units the two texts share with equal weights (a mark matches
   any mark of the same weight: U+0341 matches U+0301, U+0352 matches U+0323, but precomposed `á` is
@@ -253,9 +257,46 @@ Microsoft's Windows sorting weight table (`Windows Server 2022 Sorting Weight Ta
   - Per letter: `"a"`, 22 U+0301, `"b"` beats `"a"&UNICHAR(833)&"b"` on its 21 acutes left
     (Calc!B242); `"e"` runs rank as `"a"` runs (Calc!B181:B220).
   - A model of this rule (and the weights above) reproduces all 3,391 cells of the four t3154 and
-    t3201 accent cases (pairs, weights, long-mark-runs, wrapped-run-pairs). Open, UNVERIFIED: units
-    shared across letters (`"áb"` against `"a"&UNICHAR(769)&"c"`), two units with equal sums that
-    share a prefix, and marks after `æ`/`ß`.
+    t3201 accent cases (pairs, weights, long-mark-runs, wrapped-run-pairs).
+  - **Letter by letter, the first difference decides** (multi-letter-accents sheet G1, Data!A): a
+    letter whose units are left equal after the skip (equal sums) passes the decision to the next
+    letter, and the first letter that differs decides, whatever the later letters do. So
+    `"áe" > "aé"` (G1!D4) and `"áe" > "aè"` (G1!J4) although the second text's accents sum higher; a
+    text-wide sum or a text-wide skip would make them equal or less. `"áé"` = `"a"&UNICHAR(769)&"e"&UNICHAR(769)`
+    = `"a"&UNICHAR(769)&"é"` = `"á"&"e"&UNICHAR(769)` (G1!F2:H2; COUNTIF 4, Rank!E2). `"a"` plus 16
+    U+0302 (wrapped sum 2, as plain `"a"`) then `"é"` is above `"aé"` (G1!D11): `"a"` is the first
+    letter's proper prefix, so the second letter is never reached. `"a"&UNICHAR(781)&UNICHAR(768)&"e"`
+    = `"a"&UNICHAR(770)&"e"` (16 = 3 + 13; G1!O12) and `"a"&UNICHAR(781)&UNICHAR(768)&"e"` <
+    `"a"&UNICHAR(770)&"é"` (G1!P12).
+  - **The skip stops at the letter**: units are never shared across a letter boundary (sheet G2,
+    Data!B). `"a"&UNICHAR(769)&"b"` > `"ab"&UNICHAR(769)` (G2!E3: the first letter has units left
+    against none), where a text-wide unit stream would make them equal; `"a"&UNICHAR(769)&UNICHAR(769)&"b"`
+    > `"a"&UNICHAR(769)&"b"&UNICHAR(769)&UNICHAR(769)` (G2!J8). Letters themselves come first: `"áb"`
+    < `"a"&UNICHAR(769)&"c"` (G2!L2, decided by `b < c`). `"a"&UNICHAR(769)&"b"&UNICHAR(769)` =
+    `"á"&"b"&UNICHAR(769)` = `"a"&UNICHAR(833)&"b"&UNICHAR(769)` = `"a"&UNICHAR(769)&"b"&UNICHAR(833)`
+    (G2!F5, O5, P5; COUNTIF 4, Rank!F5).
+  - **Equal sums sharing a prefix are equal** (sheet G3, Data!C): after the shared units, only the
+    sums of the rest count, however many units and in whatever order. `"a"&UNICHAR(769)&UNICHAR(770)`
+    = `"a"&UNICHAR(769)&UNICHAR(768)&UNICHAR(781)` = `"a"&UNICHAR(769)&UNICHAR(781)&UNICHAR(768)` =
+    `"a"&UNICHAR(833)&UNICHAR(770)` = `"á"&UNICHAR(770)` = `"á"&UNICHAR(768)&UNICHAR(781)` (G3!G5:H5,
+    K5, Q5, R5; COUNTIF 6, Rank!G5); `"a"&UNICHAR(769)&UNICHAR(768)&UNICHAR(768)` =
+    `"a"&UNICHAR(769)&UNICHAR(807)` (26 = 13 + 13; G3!T18); `"a"&UNICHAR(769)&UNICHAR(833)&UNICHAR(768)`
+    = `"a"&UNICHAR(833)&UNICHAR(769)&UNICHAR(768)` (G3!P14); `"a"&UNICHAR(833)&UNICHAR(833)` =
+    `"a"&UNICHAR(769)&UNICHAR(769)` (G3!M11) and both < `"a"&UNICHAR(769)&UNICHAR(770)` (G3!F11:
+    after the shared acute, 12 against 16).
+  - **Accents come before case and before skipped characters**, and case never counts (sheet G4,
+    Data!D): `"ab"` = `"Ab"` = `"aB"` = `"AB"` and `"áb"` = `"Áb"` = `"áB"` = `"ÁB"` (G4!B1:E1,
+    F5:I5; COUNTIF 4); `"Áb"` > `"aB"` (G4!D6); `"á-b"` > `"a-b"` (G4!J10), `"a-b"` < `"áb"`
+    (G4!F9), `"á-b"` > `"áb"` (G4!F10) and `"a"&UNICHAR(769)&"-b"` = `"á-b"` (G4!K12).
+  - **A mark after a hyphen or apostrophe goes with that skipped character, not with the letter
+    before it**: it adds nothing to the accent pass and raises the skipped character in the last
+    pass. `"a-"&UNICHAR(769)&"b"` is above `"a-b"`, `"ab-"`, `"a'b"` and
+    `"a'"&UNICHAR(769)&"b"` and below `"áb"`, `"á-b"`, `"a"&UNICHAR(769)&"-b"` and `"á'b"` (G4 row 11;
+    COUNTIF 1, Rank!H11), and `"a'"&UNICHAR(769)&"b"` is above `"a-b"` (G4!J20): `"a'b"` < `"a-b"` <
+    `"a'"&UNICHAR(769)&"b"` < `"a-"&UNICHAR(769)&"b"` < `"áb"`. One mark (U+0301) was probed: how
+    other marks or several marks weigh there is open. Ours attaches the mark to the letter before
+    the hyphen (so `"a-"&UNICHAR(769)&"b"` = `"á-b"`) and fails these 47 cells (T-3329).
+  - Open, UNVERIFIED: marks after `æ`/`ß` (T-3203).
   Ours (T-3181): `cmp_text_pairwise` applies this rule for the operators and criteria, so every
   cell of the four accent cases passes. The rule is not transitive (wrapped-run-pairs has 554
   intransitive triples), so the sorts keep the wrapped total with nothing skipped (`cmp_text`, a
@@ -319,6 +360,53 @@ than the probed `０ １ ９` (not `２`-`８`) follow the same rule (only these
 and long-vowel tiebreaks against the Latin width tiebreak (different scripts never tie on letters in
 these cells); where `ー` after a Latin letter weighs when compared with strings without full-width
 letters (it sorts above `"ab"`, below the kana: U8).
+
+### Other scripts, their marks and digits, symbols and astral characters (T-3276)
+Evidence: probes/t3276-collation-other-scripts (excel-graph, 2026-10-31): 99 strings in Data!A; Calc!A =
+count less, B = count equal, C = exact MATCH position, D = XMATCH position, E = COUNTIF `"="&x`,
+G1:G36 = `(x<y)+2*(x=y)+4*(x>y)` for chosen pairs, H1:H13 single cells. "Rank" cites Calc!A by Data row.
+The engine fails the collation cells (T-3324) and the digit cells (T-3325). VERIFIED (cells cited):
+- **Block order is not code-point order.** Lowest first: Latin, Greek, Cyrillic, **kana**, Hebrew,
+  Arabic, Devanagari, Thai, Lao, the astral `𝐀` (U+1D400) and `😀` (U+1F600), Hangul, CJK ideographs,
+  then the astral ideograph `𠀀` (U+20000): `"я" < "ア" < "あ" < "א"` (ranks A18, A20, A19, A21 = 32,
+  33, 34, 35), `"ω" < "א"` (G8), `"א" < "ا"` (G2), `"ا" < "क"` (G3), `"क" < "ก"` (G4), `"ก" < "가"` (G5),
+  `"가" < "一"` (G6), `"一" > "あ"` (G7), `"ເກ" < "𝐀" < "😀" < "가"` (ranks A79, A96, A95, A44 = 80, 81,
+  83, 84), `"𠀀" > "龍"` (G35). Kana sit below Hebrew although their code points are higher.
+- **Inside each script, code-point order**, also where a dictionary or radical order would differ:
+  `א < ב < ג < ת` (ranks A21:A24 = 35, 36, 42, 43; G12), `ا < ب < ت < ي`, `क < ख < ग < ह`, `ก < ข < ฮ`,
+  `가 < 각 < 나 < 힣` (G11), `一 < 丁 < 中 < 乙 < 人 < 龍` (ranks A50, A51, A54, A52, A53, A55 = 90, 93, 94, 95, 96, 97; G9, G10).
+  Two-letter strings compare letter by letter (`"一一" < "一丁" < "丁"`, `"가가" < "가나" < "각"`).
+- **Hebrew points, Arabic harakat and the Thai tone mark are tiebreaks** (accents) on their letter:
+  `"ב" < "ב"&UNICHAR(1463) < "ב"&UNICHAR(1468) < "בא" < "ב"&UNICHAR(1468)&"א" < "בב"` (ranks A22, A60,
+  A58, A25, A59, A26; G13, G14), `"ب" < "ب"&UNICHAR(1614) < "ب"&UNICHAR(1617) < "با" < "ب"&UNICHAR(1614)&"ا" < "بب"`
+  (G15, G16), `"ก" < "ก"&UNICHAR(3656) < "กก" < "ก"&UNICHAR(3656)&"ก" < "กข"` (G19, G20). None is equal
+  to the bare letter (Calc!B = 1 on each row). **Devanagari matras and the virama are letters**, after
+  the consonants in code-point order: `"कख" < "का"` (G18), `"का" < "कि" < "क्" < "ख"`, `"क्" > "क"` (G17).
+- **Prevowels are not reordered.** Thai `เ` and `แ` sort **before** every consonant probed:
+  `"เก" < "เข" < "แก" < "ก"` (ranks A72, A75, A74, A39 = 64, 65, 66, 67), `"กเ" < "กก"` (rank A73 = 69 <
+  A42 = 70), `"เก" < "กเ"` (G21), `"เก" < "ขก"` (G22), `"เข" < "กข"` (G23); Thai `า` keeps its code-point
+  place after the consonants (`"กข" < "กา" < "ข"`). The Lao prevowel `ເ` sorts **after** the consonants:
+  `"ກ" < "ກເ" < "ຂ" < "ເກ"` (G24).
+- **Other-script digits are their digit plus a tiebreak**: `"3" < "٣" < "३" < "3a" < "٣a" < "३a" < "3b"`
+  (ranks A10, A81, A82, A85, A83, A84, A86 = 14 to 20; G25, G26, G27), `"2" < "٢" < "3"`, `"4" < "٤" < "9"`;
+  never equal under `=` (Calc!B = 1). But COUNTIF `"="&x` counts every spelling of the digit
+  (E10 = E81 = E82 = 3, E9 = E87 = 2, E11 = E88 = 2) because the criterion is numeric: **VALUE reads
+  Arabic-Indic, Devanagari and Thai digits as numbers**, also mixed with ASCII digits and with a decimal
+  point: `VALUE("٣")` = `VALUE("३")` = `VALUE("๓")` = 3, `VALUE("٢٣")` = 23, `"٣"+0` = 3,
+  `VALUE("٣.٥")` = 3.5, `VALUE("1٣")` = 13 (Calc!H1:H5, H7, H8). Full-width `VALUE("３")` is an error (H6, wrapped in IFERROR, so which error is not probed).
+- **No probed symbol above `€` sorts after the letters; the arrows and dingbats sort among the punctuation.** `"~" < "€" < "+" < ">" < "←" <
+  "☺" < "♥" < "✓" < "0"` (ranks A4, A7, A5, A6, A90, A94, A92, A93, A8 = 3 to 11; G29, G30, G31), with
+  `← ☺ ♥ ✓` in code-point order; `∞` sorts between `"9"` and `"a"` (rank A91 = 24), `™` between `"Ab"`
+  and `"ÿ"` (rank A89 = 28). `😀` sorts above `☺` (G36), so astral characters are not punctuation.
+  `𝐀` is not `A`: `"𝐀" > "A"` and `"𝐀b" > "Ab"` (G33, G34), and `"𝐀" < "𝐀b" < "😀"` (ranks 81, 82, 83),
+  so the astral characters are letters of their own.
+- In passing: exact MATCH, VLOOKUP(...,FALSE) and wildcard XMATCH of a lone `"~"` find the empty string,
+  not a `"~"` cell (`MATCH("~",{"a","","~"},0)` = 2, H9; `MATCH("~",{"a","~"},0)` an error, H10; H11, H13;
+  over Data, C4 = 1 finds `""` while XMATCH finds the `"~"` row, D4 = 4). The engine already agrees.
+UNVERIFIED: whether `™` is an expansion (`"tm"`) or a symbol placed between `a` and `y` (only `"Ab"` and
+`"ÿ"` bracket it); where `∞` sits against the punctuation other than digits; where other astral
+characters (other planes, emoji with modifiers) sit; whether Thai vowels other than `เ แ า` and other
+Lao vowels follow the same split; Hebrew and Arabic letters other than those probed.
 
 ### Collation equality in lookups and criteria; unprobed characters (T-1590)
 Evidence: probes/text-collation-lookups (66 formula cells) and probes/text-collation-unprobed (90 strings ranked by

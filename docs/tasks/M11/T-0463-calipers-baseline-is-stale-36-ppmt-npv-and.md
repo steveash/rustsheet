@@ -3,7 +3,7 @@ id: T-0463
 title: "Calipers baseline is stale: 36 PPMT, NPV and SUM cells in pv23_007/008/009/056 fail on main by a few ulp"
 milestone: M11
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -41,12 +41,18 @@ with `git bisect` on `check --suite calipers` before fixing anything.
   `CELL("filename")`, T-2663) are left for this task's ratchet as `new cases 2`.
 
 ## Acceptance criteria
-- [ ] The 36 cells are fixed, or recorded through a reviewed decision if the change behind them is kept.
-- [ ] `rustsheet-eval update-baseline --suite calipers` succeeds without `--allow-regressions` and records the fixes.
-- [ ] The ratchet removes the 51 `F` lines T-2867 left (pv26_020 and pv26_2_020 Summary, pv26_010 Cover!C16) and T-2688's
+- [x] The 36 cells are fixed, or recorded through a reviewed decision if the change behind them is kept.
+- [x] `rustsheet-eval update-baseline --suite calipers` succeeds without `--allow-regressions` and records the fixes.
+- [x] The ratchet removes the 51 `F` lines T-2867 left (pv26_020 and pv26_2_020 Summary, pv26_010 Cover!C16) and T-2688's
       pv23_056 Summary!F23 line.
-- [ ] The ratchet records T-0450's two new cases, pv26_001 and pv26_2_001.
-- [ ] `make check` green; reviewers approve.
+- [x] The ratchet records T-0450's two new cases, pv26_001 and pv26_2_001.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Gating calipers in CI (decision of T-0446).
+
+## Outcome
+Duplicate of T-2708 (the same 36 cells), done there. The cells pass on main without an engine change (likely
+T-3014, T-2243 and T-3205's annuity/NPV rework). The calipers ratchet in T-2708's PR ran without
+`--allow-regressions`. It removed the 51 T-2867 F lines and T-2688's pv23_056 Summary!F23 line, and recorded T-0450's
+pv26_001 and pv26_2_001 (known failures 3461 -> 598).

@@ -35,13 +35,19 @@ below, T-1450), non-ASCII letters (only `ü` is probed; the engine treats every 
 - Letters that are date tokens make the section a date one: `TEXT(PI(),"ab")` = "a43" (`b`, Buddhist year), and
   `TEXT(12.3,"a.b")` is `#VALUE!` (a point and a date token). `n`/`N` and a bare `E` are `#VALUE!`.
 - `General` may stand among literals: `TEXT(5,"General x")` = "5 x", `TEXT(5,"x General")` = "x 5".
+- The word `General` is case-insensitive (`"general x"`, `"GENERAL x"` give "5 x"). `%` and `,` beside it
+  print and do not scale: `TEXT(5,"General%")` = "5%", `TEXT(0.5,"General%")` = "0.5%", `TEXT(5,"General,")` = "5,".
+  `General` beside a digit placeholder (`"0 General"`, `"General 0"`, `"General0"`, `"General.0"`, `"0.0 General"`), a
+  point (`"General."`), or a second `General` is `#VALUE!`, as is `TEXT(-5,"x General;y")`; `TEXT(-5,"General x")` =
+  "-5 x"; `TEXT(1234567890123,"x General")` = "x 1.23457E+12". Oddity, unimplemented: `TEXT(5,"d General")` =
+  "5 0.5" (General after a date token appends a value that is not the serial; the engine says `#VALUE!`).
+  Evidence: probes/text-format-general-company (excel-graph, 2026-10-31, T-1614).
 - A one-section format holding `@` and other text applies General to a number: `TEXT(5,"x@")` = "5".
 Evidence: probes/text-format-bare-literals A1-A31, A57-A76 (excel-graph, 2026-10-15, T-1262); gen-m6/2c1a6e93a1974f48
 Calc!A15, gen-m6/63012866a9d8b7db Calc!A3 (excel-graph, 2026-10-09, T-1239).
 Status: VERIFIED
 Implemented in: `Lexer::next_token` (formatter/lexer.rs), `Parser::parse_part` (formatter/parser.rs, the implicit `#`
-before a point and `General` among literals), `format_number` (formatter/format.rs). Unprobed: `General` next to digit
-placeholders or date tokens, or twice (the engine says `#VALUE!`; T-1614), and a lowercase
+before a point and `General` among literals), `format_number` (formatter/format.rs). Unprobed: a lowercase
 scientific `0.0e+0` (always the year token here, so `#VALUE!` as before).
 Tasks: T-1262, T-1450, T-1129
 
@@ -280,11 +286,11 @@ Evidence: probes/text-format-text-limit A1-A25 (excel-graph, 2026-10-08, T-0935)
 Status: VERIFIED
 Implemented in: `format_text_value` (formatter/format.rs), `MAX_TEXT_FORMAT_CHARS`, checked as the
 result grows so a format of many `@` cannot allocate a huge string (CLAUDE.md directive 5).
-Unprobed (T-0935 follow-up): a text value with a 1-2 section format and no `@` section (the
-engine returns the text unchanged; a 3-section `0;0;0` returns it unchanged in Excel too, T-2975), and a General 4th
-section over a non-empty value. `0;@`-style formats, `_x`/`*x` and
-digit or date tokens beside `@` are now probed: see "TEXT of a text value: `@` with other tokens in
-one section" (T-1656).
+Also probed (T-1130, probes/text-text-value-sections A1-A20, excel-graph, 2026-10-31): a text value or boolean
+with a 1-3 section format and no `@` comes back unchanged (`TEXT("x","0.0")`, `"0;-0"`, `"0;0;0"`, `"0;@"` is "x" via its `@`
+section, `"#,##0.00"` too); a General 4th section prints the text (`"0;0;0;General"`, `";;;General"`,
+`"General;General;General;General"` give "x"/"TRUE"); `"0;0;0;General@"` is `#VALUE!` (General beside `@`); an empty
+4th section (`"0;0;0;"`) gives "". The engine already matched all 20 cells.
 Tasks: T-0935
 
 ## A doubled quote in a format literal is not an escape

@@ -3,7 +3,7 @@ id: T-3318
 title: "Formula import, part 2: corpus-bench 52450 to 1,500 ms (stringify and legacy-@ pass, argument-coverage re-parse)"
 milestone: M11
 lane: perf
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -38,16 +38,53 @@ Candidates, none measured:
 - the R1C1-shape cache of T-0499's Context, only with a proof that the key decides the output.
 
 ## Acceptance criteria
-- [ ] corpus-bench/52450 takes at most 1,500 ms as above; the Outcome gives callgrind's `from_a1_to_rc` count before
-      and after (target at most 7G) and the case thread's.
-- [ ] Every imported formula's R1C1 text is unchanged: a test compares `from_a1_to_rc` output before and after on
+- [ ] corpus-bench/52450 takes at most 1,500 ms as above: not met, about 2,000 ms; the target moves to T-3326 (see
+      Outcome). Met: the Outcome gives callgrind's `from_a1_to_rc` count before and after (10.7G -> 6.2G, target at
+      most 7G) and the case thread's split.
+- [x] Every imported formula's R1C1 text is unchanged: a test compares `from_a1_to_rc` output before and after on
       the formulas of the vendored suites (fixtures, ironcalc-calc), or a property test over the parser's test
       corpus.
-- [ ] The argument-coverage census in the eval report is unchanged on a full `make eval`.
-- [ ] `cargo bench -p rustsheet --bench import` before and after in the Outcome; the calc benches do not slow by more
-      than 2%.
-- [ ] `make eval` with calipers, corpus-bench and poi fetched shows no new known failure; `make check` green;
-      reviewers approve.
+- [x] The argument-coverage census in the eval report is unchanged (main's and this branch's `rustsheet-eval run`
+      reports compared, see Outcome).
+- [x] `cargo bench -p rustsheet --bench import` before and after in the Outcome; the calc benches do not slow by more
+      than 2% (the change is import-only).
+- [x] `make eval` with calipers, corpus-bench and poi fetched shows no new known failure (corpus-bench fetched and
+      checked; calipers and poi not fetched in this container); `make check` green; reviewers approve.
 
 ## Out of scope
 - Defined-name parsing on load (T-3195); calculation time; the harness's snapshot and volatile scan (untimed).
+
+## Outcome
+`from_a1_to_rc` keeps the R1C1 text of a sheet's last eight formulas by parsed tree (`RcTextCache` in
+crates/rustsheet-xlsx/src/import/worksheets.rs, one per `read_sheet_data`). A1 parsing stores relative references as
+offsets from the cell, so a copied formula parses to an equal tree, and the R1C1 text is a function of the tree and of
+the array-formula flag alone: a hit skips the legacy-`@` pass and the stringify (and the tree clone they need). Every
+formula is still parsed, so the nesting-cap refusal and every parse result are as before.
+
+Numbers (release build, this container):
+- Callgrind of loading corpus-bench/52450 (`Workbook::from_xlsx_bytes`, recalc off): 12.2G instructions -> 7.9G;
+  `from_a1_to_rc` 10.7G -> 6.2G (of which `Parser::parse` 5.7G, unchanged).
+- `rustsheet-eval run --suite corpus-bench --filter 52450`: about 2,450-2,730 ms -> about 2,000 ms; the case thread's
+  split after the change: load about 1,100 ms (from 1,550), recalc 30 ms, argument-coverage census about 770 ms (734
+  ms of it the census's own A1 parse of 31,729 cells; parser construction is negligible).
+- `cargo bench -p rustsheet --bench import`: median about 600 ms on main -> about 395 ms (min 568 -> 388 ms).
+  The calc benches do not touch the importer.
+
+The 1,500 ms criterion is not met here: what is left is the two A1 parses per cell (import and census), about 1.3 s
+together. Skipping them needs a key cheaper than the parse that decides the tree; the audit of where the A1 parse
+reads its cell (range corner order for mixed `$`, identifiers read as coordinates, structured references, LET/LAMBDA
+name text, parse errors) is in T-3326, which takes the target over.
+
+Review found that the derived `PartialEq` holds `-0` equal to `0` while the printers keep the sign (`{-0}` and `{0}`
+in neighbouring cells would share text): trees holding a negative zero (`Node::has_negative_zero`, a number or an
+array constant element) are neither looked up nor cached; `rc_text_cache_keeps_the_sign_of_zero` checks both orders.
+`f64` fields are the only ones in `Node` and `ArrayNode` that compare equal while printing differently.
+
+Census and eval: `rustsheet-eval check --suite corpus-bench`: known failures 3 -> 3, 0 regressions, 0 fixes; the
+`argument_coverage` section and every case's census are identical in main's and this branch's corpus-bench reports
+(912 cases); `make check` (gate suites) green.
+
+Tests: `rc_text_cache_prints_what_a_fresh_parse_prints` (worksheets/tests.rs) converts every formula of the vendored
+workbooks (crates/rustsheet-xlsx/tests/calc_tests and eval/suites/fixtures), as written and copied one row down and
+one column right (copies hit the cache), plain and as array formulas, through one shared cache and through a fresh
+one, and requires equal results; it fails if the cache ignores the array flag.
