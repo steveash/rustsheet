@@ -15,6 +15,7 @@ use crate::{
     number_format::cmp_excel_precision,
     reference_operators::{Picked, RefArg},
 };
+use std::cmp::Ordering;
 
 pub(crate) mod aggregate_args;
 pub(crate) mod collation;
@@ -213,6 +214,64 @@ pub(crate) fn compare_values_pairwise(left: &CalcResult, right: &CalcResult) -> 
     match (left, right) {
         (CalcResult::String(l), CalcResult::String(r)) => collation::cmp_text_pairwise(l, r) as i32,
         _ => compare_values(left, right),
+    }
+}
+
+/// Sorts `indices` stably by `cmp`, which need not be a total order: Excel's text comparison is
+/// not transitive (docs/excel-semantics/coercion.md "Not a total order"), and `slice::sort_by`
+/// may panic on such a comparator. A natural merge sort: the input is cut into runs, each
+/// non-descending or strictly descending (reversed in place), and neighbouring runs are merged
+/// pairwise, a tie taking the left run's element, until one is left. On any comparator it ends
+/// with a permutation of `indices`, in O(n log n) comparisons and one buffer of n indices. On a
+/// cycle it reproduces Excel's SORT for every order of three texts; on longer inputs holding
+/// cycles Excel's order differs in some cells (probes/t3211-collation-sort-cycles, T-3211).
+pub(crate) fn sort_indices_pairwise(
+    indices: &mut [usize],
+    mut cmp: impl FnMut(usize, usize) -> Ordering,
+) {
+    let n = indices.len();
+    let mut runs: Vec<(usize, usize)> = Vec::new();
+    let mut start = 0;
+    while start < n {
+        let mut end = start + 1;
+        if end < n && cmp(indices[end], indices[end - 1]) == Ordering::Less {
+            while end < n && cmp(indices[end], indices[end - 1]) == Ordering::Less {
+                end += 1;
+            }
+            indices[start..end].reverse();
+        } else {
+            while end < n && cmp(indices[end], indices[end - 1]) != Ordering::Less {
+                end += 1;
+            }
+        }
+        runs.push((start, end));
+        start = end;
+    }
+    let mut merged: Vec<usize> = Vec::with_capacity(n);
+    while runs.len() > 1 {
+        let mut next = Vec::with_capacity(runs.len().div_ceil(2));
+        for pair in runs.chunks(2) {
+            let &[(lo, mid), (_, hi)] = pair else {
+                next.extend_from_slice(pair);
+                continue;
+            };
+            merged.clear();
+            let (mut i, mut j) = (lo, mid);
+            while i < mid && j < hi {
+                if cmp(indices[j], indices[i]) == Ordering::Less {
+                    merged.push(indices[j]);
+                    j += 1;
+                } else {
+                    merged.push(indices[i]);
+                    i += 1;
+                }
+            }
+            merged.extend_from_slice(&indices[i..mid]);
+            merged.extend_from_slice(&indices[j..hi]);
+            indices[lo..hi].copy_from_slice(&merged);
+            next.push((lo, hi));
+        }
+        runs = next;
     }
 }
 

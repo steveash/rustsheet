@@ -1,7 +1,7 @@
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::util::near_integer::near_integer_whole;
 use std::cmp::Ordering;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use crate::{
     calc_result::CalcResult,
@@ -14,14 +14,18 @@ use crate::{
     model::Model,
 };
 
-use super::util::compare_values;
+use super::util::collation::{cmp_text_pairwise, collation_key, CollationKey};
+use super::util::{compare_values_pairwise, sort_indices_pairwise};
 
 /// Compare two sort keys following Excel's rules:
 ///   Numbers < Strings < Booleans < Errors < Empty cells
 /// Empty cells always sort last regardless of ascending/descending.
 ///
-/// It is a total order, so `sort_by` cannot panic: grouping.rs tests it with GROUPBY's `key_cmp`
-/// (`sort_comparators_are_total_orders_on_mixed_types`, T-1694). The blank check must stay here:
+/// Texts compare as Excel's `<`, `=`, `>` do (`compare_values_pairwise`), which is not a total
+/// order on texts Excel orders intransitively, so SORT and SORTBY sort with
+/// [`sort_indices_pairwise`], which cannot panic (T-3211); GROUPBY's `key_cmp` compares texts
+/// itself. On everything else it is a total order (grouping.rs
+/// `sort_comparators_are_total_orders_on_mixed_types`, T-1694). The blank check must stay here:
 /// `compare_values` alone coerces a blank to 0, "" or FALSE, which is not transitive (-0 = blank =
 /// "" but -0 < "").
 pub(crate) fn sort_key_cmp(
@@ -39,7 +43,7 @@ pub(crate) fn sort_key_cmp(
         (false, false) => {
             let key_a = array_node_to_calc_result(a, cell);
             let key_b = array_node_to_calc_result(b, cell);
-            let cmp = compare_values(&key_a, &key_b);
+            let cmp = compare_values_pairwise(&key_a, &key_b);
             if ascending {
                 cmp.cmp(&0)
             } else {
@@ -64,6 +68,8 @@ pub(crate) enum CellKey {
     Empty,
     /// A LAMBDA element, by its lambda id.
     Lambda(usize),
+    /// A text under UNIQUE ([`unique_cell_key`]).
+    Collated(CollationKey),
 }
 
 pub(crate) fn cell_key(node: &ArrayNode) -> CellKey {
@@ -94,87 +100,87 @@ fn unique_flags_are_literals(args: &[Node]) -> bool {
 }
 
 /// One UNIQUE call over `data`: its distinct rows (or columns), or those that occur once.
+///
+/// Two texts are one value when Excel's `=` finds them equal ([`cmp_text_pairwise`]): case is
+/// folded, `"ß"` is `"ss"` and `"á"` is `"a"&UNICHAR(769)`, but `"a"` and `"a"` plus 16 U+0302
+/// (equal wrapped accent sums) are two (probes/t3211-collation-sort-cycles G1:J15,
+/// t3181-collation-prefix-arrays B1, B2; docs/excel-semantics/coercion.md "Not a total order").
+/// Lines are bucketed by their [`CellKey`]s, texts by [`collation_key`], which every pair the
+/// rule finds equal shares, and a line joins the first kept line of its bucket the rule finds
+/// equal to it. On an intransitive cycle Excel's grouping follows its sort order instead (G4);
+/// that is unmatched (T-3211 Outcome).
 fn unique_of(
     data: &[Vec<ArrayNode>],
     by_col: bool,
     exactly_once: bool,
     cell: CellReferenceIndex,
 ) -> CalcResult {
-    if !by_col {
-        let num_rows = data.len();
-
-        // First pass: count how many times each row key appears.
-        let mut counts: HashMap<Vec<CellKey>, usize> = HashMap::with_capacity(num_rows);
-        for row in data {
-            *counts.entry(row_key(row)).or_insert(0) += 1;
-        }
-
-        // Second pass: collect rows in original order.
-        let result: Vec<Vec<ArrayNode>> = if exactly_once {
-            data.iter()
-                .filter(|row| counts[&row_key(row)] == 1)
-                .cloned()
-                .collect()
-        } else {
-            let mut seen: HashSet<Vec<CellKey>> = HashSet::with_capacity(num_rows);
-            data.iter()
-                .filter(|row| seen.insert(row_key(row)))
-                .cloned()
-                .collect()
-        };
-
-        if result.is_empty() {
-            return CalcResult::new_error(
-                Error::CALC,
-                cell,
-                "UNIQUE found no matching rows".to_string(),
-            );
-        }
-
-        CalcResult::Array(result)
+    let num_rows = data.len();
+    let num_cols = data.first().map_or(0, Vec::len);
+    let (count, length) = if by_col {
+        (num_cols, num_rows)
     } else {
-        let num_cols = data[0].len();
-
-        // First pass: count how many times each column key appears.
-        let mut counts: HashMap<Vec<CellKey>, usize> = HashMap::with_capacity(num_cols);
-        for j in 0..num_cols {
-            *counts.entry(col_key(data, j)).or_insert(0) += 1;
-        }
-
-        // Second pass: collect column indices in original order.
-        let result_cols: Vec<usize> = if exactly_once {
-            (0..num_cols)
-                .filter(|&j| counts[&col_key(data, j)] == 1)
-                .collect()
+        (num_rows, num_cols)
+    };
+    let at = |line: usize, k: usize| {
+        if by_col {
+            &data[k][line]
         } else {
-            let mut seen: HashSet<Vec<CellKey>> = HashSet::with_capacity(num_cols);
-            (0..num_cols)
-                .filter(|&j| seen.insert(col_key(data, j)))
-                .collect()
-        };
-
-        if result_cols.is_empty() {
-            return CalcResult::new_error(
-                Error::CALC,
-                cell,
-                "UNIQUE found no matching columns".to_string(),
-            );
+            &data[line][k]
         }
-
+    };
+    let same_texts = |a: usize, b: usize| {
+        (0..length).all(|k| match (at(a, k), at(b, k)) {
+            (ArrayNode::String(x), ArrayNode::String(y)) => {
+                cmp_text_pairwise(x, y) == Ordering::Equal
+            }
+            _ => true,
+        })
+    };
+    // The kept lines, in order, with how many lines each stands for.
+    let mut kept: Vec<(usize, usize)> = Vec::new();
+    let mut buckets: HashMap<Vec<CellKey>, Vec<usize>> = HashMap::with_capacity(count);
+    for line in 0..count {
+        let key: Vec<CellKey> = (0..length).map(|k| unique_cell_key(at(line, k))).collect();
+        let bucket = buckets.entry(key).or_default();
+        match bucket.iter().find(|&&slot| same_texts(kept[slot].0, line)) {
+            Some(&slot) => kept[slot].1 += 1,
+            None => {
+                bucket.push(kept.len());
+                kept.push((line, 1));
+            }
+        }
+    }
+    let lines: Vec<usize> = kept
+        .into_iter()
+        .filter(|&(_, n)| !exactly_once || n == 1)
+        .map(|(line, _)| line)
+        .collect();
+    if lines.is_empty() {
+        let what = if by_col { "columns" } else { "rows" };
+        return CalcResult::new_error(
+            Error::CALC,
+            cell,
+            format!("UNIQUE found no matching {what}"),
+        );
+    }
+    if by_col {
         CalcResult::Array(
             data.iter()
-                .map(|row| result_cols.iter().map(|&c| row[c].clone()).collect())
+                .map(|row| lines.iter().map(|&c| row[c].clone()).collect())
                 .collect(),
         )
+    } else {
+        CalcResult::Array(lines.iter().map(|&r| data[r].clone()).collect())
     }
 }
 
-fn row_key(row: &[ArrayNode]) -> Vec<CellKey> {
-    row.iter().map(cell_key).collect()
-}
-
-fn col_key(data: &[Vec<ArrayNode>], j: usize) -> Vec<CellKey> {
-    data.iter().map(|row| cell_key(&row[j])).collect()
+/// UNIQUE's [`cell_key`]: a text is keyed by its [`collation_key`] (see [`unique_of`]).
+fn unique_cell_key(node: &ArrayNode) -> CellKey {
+    match node {
+        ArrayNode::String(text) => CellKey::Collated(collation_key(text)),
+        other => cell_key(other),
+    }
 }
 
 /// The first of `orderings` that is not `Equal`: the comparison of SORT's and SORTBY's keys,
@@ -520,7 +526,7 @@ impl Model {
         if !by_col {
             // Sort rows by the key columns.
             let mut row_indices: Vec<usize> = (0..num_rows).collect();
-            row_indices.sort_by(|&a, &b| {
+            sort_indices_pairwise(&mut row_indices, |a, b| {
                 first_unequal(keys.iter().map(|&(key, ascending)| {
                     sort_key_cmp(&data[a][key], &data[b][key], ascending, cell)
                 }))
@@ -530,7 +536,7 @@ impl Model {
         } else {
             // Sort columns by the key rows.
             let mut col_indices: Vec<usize> = (0..num_cols).collect();
-            col_indices.sort_by(|&a, &b| {
+            sort_indices_pairwise(&mut col_indices, |a, b| {
                 first_unequal(keys.iter().map(|&(key, ascending)| {
                     sort_key_cmp(&data[key][a], &data[key][b], ascending, cell)
                 }))
@@ -689,7 +695,7 @@ impl Model {
 
         if by_rows {
             let mut row_indices: Vec<usize> = (0..num_rows).collect();
-            row_indices.sort_by(|&a, &b| {
+            sort_indices_pairwise(&mut row_indices, |a, b| {
                 first_unequal(
                     sort_keys.iter().map(|(key, ascending)| {
                         sort_key_cmp(&key[a][0], &key[b][0], *ascending, cell)
@@ -699,7 +705,7 @@ impl Model {
             CalcResult::Array(row_indices.iter().map(|&r| data[r].clone()).collect())
         } else {
             let mut col_indices: Vec<usize> = (0..num_cols).collect();
-            col_indices.sort_by(|&a, &b| {
+            sort_indices_pairwise(&mut col_indices, |a, b| {
                 first_unequal(
                     sort_keys.iter().map(|(key, ascending)| {
                         sort_key_cmp(&key[0][a], &key[0][b], *ascending, cell)
