@@ -47,7 +47,6 @@ use std::mem;
 use serde::{Deserialize, Serialize};
 
 use crate::expressions::token::{OpCompare, OpProduct, OpSum};
-use crate::number_format::parse_excel_number;
 
 use crate::language::Language;
 use crate::locale::Locale;
@@ -67,6 +66,7 @@ pub use string_literal::{
 #[cfg(test)]
 mod test;
 
+mod number;
 mod ranges;
 mod string_literal;
 mod structured_references;
@@ -121,6 +121,9 @@ pub struct Lexer {
     /// `T[ [Col] ]`, which the engine re-parses after edits. Text typed or loaded from a file
     /// reads it as no column, as Excel does (see [`Lexer::set_engine_text`]).
     padded_bare_columns: bool,
+    /// Whether `**` is a number's exponent marker, as `E` is: text a user types, which Excel
+    /// reads so (`=2**3` stores `=2000`; see [`Lexer::set_typed`]).
+    double_star_exponent: bool,
     /// The last token [`peek_token`](Self::peek_token) read: the parser peeks at most tokens
     /// several times before taking them, and long imported formulas spent most of their parse
     /// lexing the same token again (T-0499). A token depends only on the text, the start
@@ -148,8 +151,19 @@ impl Lexer {
             locale,
             language,
             padded_bare_columns: true,
+            double_star_exponent: false,
             peeked: None,
         }
+    }
+
+    /// Whether the next formulas are text a user types, where Excel reads `**` in a number as
+    /// its exponent marker `E`: `=2**3` is `=2000`, `=1.5**2` `=150`, `=2**-1` `=0.2`; `**` not
+    /// written where an `E` would be (after a reference or `)`, before a space, a fraction or a
+    /// second exponent) is refused (syntax.md "`**` in a typed number is `E`",
+    /// probes/t3283-typed-double-star, t3213-typed-parse-errors A5).
+    pub(crate) fn set_typed(&mut self, typed: bool) {
+        self.double_star_exponent = typed;
+        self.peeked = None;
     }
 
     /// Whether the next formulas are text the engine printed itself (`true`, the default), which
@@ -650,72 +664,6 @@ impl Lexer {
             position,
             message: format!("Failed to parse to int: {chars}"),
         })
-    }
-
-    // Consumes a number in the current locale.
-    // It only takes into account the decimal separator
-    // Note that we do not parse the thousands separator
-    // Let's say ',' is the thousands separator. Then 1,234 would be an error.
-    // This is ok for most cases:
-    // =IF(A1=1,234, TRUE, FALSE) will not work
-    // If a user introduces a single number in the cell 1,234 we should be able to parse
-    // and format the cell appropriately
-    fn consume_number(&mut self, first: char) -> Result<f64> {
-        let mut position = self.position;
-        let len = self.len;
-        let mut chars = first.to_string();
-        // numbers before the decimal point
-        while position < len {
-            let x = self.chars[position];
-            if x.is_ascii_digit() {
-                chars.push(x);
-            } else {
-                break;
-            }
-            position += 1;
-        }
-        if position < len && self.chars[position].to_string() == self.locale.numbers.symbols.decimal
-        {
-            // numbers after the decimal point
-            chars.push('.');
-            position += 1;
-            while position < len {
-                let x = self.chars[position];
-                if x.is_ascii_digit() {
-                    chars.push(x);
-                } else {
-                    break;
-                }
-                position += 1;
-            }
-        }
-        if position + 1 < len && (self.chars[position] == 'e' || self.chars[position] == 'E') {
-            // exponential side
-            let x = self.chars[position + 1];
-            if x == '-' || x == '+' || x.is_ascii_digit() {
-                chars.push('e');
-                chars.push(x);
-                position += 2;
-                while position < len {
-                    let x = self.chars[position];
-                    if x.is_ascii_digit() {
-                        chars.push(x);
-                    } else {
-                        break;
-                    }
-                    position += 1;
-                }
-            }
-        }
-        self.position = position;
-        match parse_excel_number(&chars) {
-            // Excel refuses a workbook whose formula holds a literal number text would not read
-            // (`=1E-310`, `=0E309`: numbers.md "Number text of 1E+308 or more is not a number").
-            None => Err(self.set_error(&format!("Failed to parse to double: {chars}"), position)),
-            // A literal below the smallest normal reads as 0 (`=1E-308=0` is TRUE,
-            // probes/subnormal-function-results A70): `parse_excel_number` flushes it.
-            Some(v) => Ok(v),
-        }
     }
 
     /// Excel allows `\` in defined names (`poi/46535.xlsx` Others!L12 evaluates to `#NAME?`).

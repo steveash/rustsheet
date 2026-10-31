@@ -686,10 +686,10 @@ impl Parser {
         self.loaded = loaded;
     }
 
-    /// Reads the next formulas as typed (`true`) or as stored (`false`, the default); see
-    /// [`Parser::typed_refusal`].
+    /// Reads the next formulas as typed (`true`) or stored (`false`); see [`Parser::typed_refusal`].
     pub(crate) fn set_typed(&mut self, typed: bool) {
         self.typed = typed;
+        self.lexer.set_typed(typed);
     }
 
     pub fn set_lexer_mode(&mut self, mode: lexer::LexerMode) {
