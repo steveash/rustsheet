@@ -22,7 +22,7 @@ quantile and the engine is on it.
   3.7E-15 relative off the true quantile (mpmath 1.4.1 at 60+ digits, at the double p) and ours within 4E-16 of it.
   Example: A187 `T.INV.2T(0.999999999999996,402)` Excel 5.0123657350064685E-15, ours 5.0123657350064874E-15 (true value
   within 5E-17 of ours). T-3415 owns the cells and lists them.
-- 21 points over df 2 to 5.7E9 and c = 1 - p from 6E-4 down to 4E-15 are too few to fit a form with a hold-out split
+- These 21 sweep points (22 cells with probes/t3349-t-inv-2t-near-one A5, as T-3415 counts them) over df 2 to 5.7E9 and c = 1 - p from 6E-4 down to 4E-15 are too few to fit a form with a hold-out split
   (decision 0188 R4.1), so the fit is not attempted blind (gap-triager rule; T-0942 is the pattern).
 - docs/excel-semantics/statistics.md "Two-tailed Student-t quantile with p near 1 is accurate in Excel (T-3349)" has
   the rule and its sweep note.

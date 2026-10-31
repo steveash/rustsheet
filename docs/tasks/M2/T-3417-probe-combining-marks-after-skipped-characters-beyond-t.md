@@ -43,10 +43,10 @@ and `'`, or the cells that contradict it are owned by an engine task.
 - Method: the `excel-probe` skill on excel-graph, laid out like probes/t3304-collation-multi-letter-
   accents (a Data column of strings built with UNICHAR so the workbook stays ASCII,
   `SUMPRODUCT(--(range<x))` ranks, chosen pairwise `<` cells and a COUNTIF column). Under about 400
-  formula cells. Case `probes/t3412-collation-marks-after-skipped`, milestone tag M2 (decision 0051).
+  formula cells. Case `probes/t3417-collation-marks-after-skipped`, milestone tag M2 (decision 0051).
 
 ## Acceptance criteria
-- [ ] probes/t3412-collation-marks-after-skipped is committed with its excel-graph oracle sidecar and
+- [ ] probes/t3417-collation-marks-after-skipped is committed with its excel-graph oracle sidecar and
       answers questions 1-5.
 - [ ] coercion.md's T-3304 bullet is extended (or a sub-bullet added) with the rule per shape, the
       case id and the cells, VERIFIED; a shape whose result is ambiguous stays UNVERIFIED with the

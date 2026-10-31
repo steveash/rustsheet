@@ -62,7 +62,7 @@ longer end up with two different task files under one id.
       id is in a task file on `main`, and those older than 30 days whose id is in no task file on any
       `origin/*` branch (both unit-tested on the bare repository). The
       steward skill has no pruning step today, so calling it from the steward is a follow-up task
-      filed in this PR (`.claude/` is protected), named in the Outcome.
+      filed by the PR that implements this task (`.claude/` is protected), named in the Outcome.
 - [ ] Decision record amending 0016 committed; docs/process/task-format.md's `make new-task` rule
       states that the id is reserved at allocation (one sentence).
 - [ ] The seven collisions listed above are left to their PRs (each renumbers on its own branch);
