@@ -1771,6 +1771,7 @@ C	probes/t3349-t-inv-2t-near-one.case.json	44
 C	probes/t3350-chisq-inv-huge-df.case.json	372
 C	probes/t3350-gamma-inv-band-lower-edge.case.json	160
 C	probes/t3354-f-dist-tiny-x-huge-d2.case.json	720
+C	probes/t3375-textbefore-scan-steps.case.json	24
 C	probes/t3378-general-in-date-section-1904.case.json	7
 C	probes/t3378-general-in-date-section.case.json	64
 C	probes/t3406-irr-num-boundary.case.json	144
