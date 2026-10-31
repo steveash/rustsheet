@@ -342,16 +342,33 @@ impl Model {
         (size, values, over_limit): (&mut JoinSize, &mut Vec<String>, &mut bool),
         cell: CellReferenceIndex,
     ) -> Result<(), CalcResult> {
-        self.for_each_cell_or_error_in_whole_range(range, cell, |_, item| match item {
-            RangeItem::Cell(value) => size.push_cell(value, ignore_empty, values, over_limit, cell),
-            RangeItem::Blanks(count) => {
-                if !ignore_empty && !*over_limit {
-                    *over_limit =
-                        size.push_empties(values, i64::try_from(count).unwrap_or(i64::MAX));
+        // Excel reads no cell past the 32,767-unit limit, not even later in the same row: a
+        // whole-row TEXTJOIN that includes its own cell is #CALC!, not circular, when the limit is
+        // passed before that cell (probes/t3293-textjoin-own-row-limit ZZ1, ZZ9; text.md). The
+        // walk stops with a private `Err` once over, before the next cell is evaluated.
+        let mut stopped = false;
+        let walked = self.for_each_cell_or_error_in_whole_range(range, cell, |_, item| {
+            match item {
+                RangeItem::Cell(value) => {
+                    size.push_cell(value, ignore_empty, values, over_limit, cell)?;
                 }
-                Ok(())
+                RangeItem::Blanks(count) => {
+                    if !ignore_empty && !*over_limit {
+                        *over_limit =
+                            size.push_empties(values, i64::try_from(count).unwrap_or(i64::MAX));
+                    }
+                }
             }
-        })
+            if *over_limit {
+                stopped = true;
+                return Err(CalcResult::EmptyCell);
+            }
+            Ok(())
+        });
+        if stopped {
+            return Ok(());
+        }
+        walked
     }
 
     /// Walks a one-sheet `left:right` for [`Self::textjoin_walk`] with `ignore_empty` FALSE.

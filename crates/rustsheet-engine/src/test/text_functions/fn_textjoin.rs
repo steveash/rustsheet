@@ -80,6 +80,25 @@ fn full_width_rows_stop_reading_at_the_limit() {
     assert_eq!(model._get_text("D3"), "0");
 }
 
+// Excel values: probes/t3293-textjoin-own-row-limit ZZ1, B3, ZZ7. The limit passed partway along the
+// formula's own row stops the read before the formula cell: #CALC!, not circular; before the limit
+// (B3) or with ignore_empty TRUE (ZZ7) the self-reference is circular (0).
+#[test]
+fn limit_passed_inside_the_formulas_own_row_stops_the_read() {
+    let mut model = new_empty_model();
+    let long = "=TEXTJOIN(\"\",TRUE,REPT(\"x\",200)&SEQUENCE(160,1,0,0))";
+    model._set("A1", long);
+    model._set("ZZ1", "=TEXTJOIN(\",\",FALSE,1:1)");
+    model._set("A3", long);
+    model._set("B3", "=TEXTJOIN(\",\",FALSE,3:3)");
+    model._set("A7", long);
+    model._set("ZZ7", "=TEXTJOIN(\",\",TRUE,7:7)");
+    model.evaluate();
+    assert_eq!(model._get_text("ZZ1"), "#CALC!");
+    assert_eq!(model._get_text("B3"), "0");
+    assert_eq!(model._get_text("ZZ7"), "0");
+}
+
 // Excel values: probes/textjoin-array-arguments.
 #[test]
 fn array_literals_and_function_results() {
