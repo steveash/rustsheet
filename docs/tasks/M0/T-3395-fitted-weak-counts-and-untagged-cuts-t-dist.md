@@ -44,13 +44,15 @@ Method for the t_dist and huge-shape cuts: a temporary env override of each cut 
 `rustsheet-eval run` of probes-numeric, probes, gen-m9 and ironcalc-calc per setting, and every cell whose value
 changed scored by its ulp distance to Excel against an unchanged run; a temporary `eprintln!` run counted the inputs
 near each cut.
-- t_dist.rs `T_TAIL_P` (1E-5): 138 cells at q 1E-8..1E-2 bracket it. The tail path is closer on net at every q tried
-  from 5E-11 to 5E-4 (cut 1E-8: 15 worse; 1E-11: 62 worse, 9 better; 1E-3: 21 better, 5 worse, `TINV(0.001,9)`
-  bit-exact) and statrs from 1E-3 to 1E-2 (cut 1E-2 breaks two cells), so the cells favour 5E-4..5E-3.
-- `T_STATRS_MIN_P` (1E-8): only T_DIST.xlsx E66 (q 1E-7, needs statrs) discriminates; below the cut statrs beats
-  the bisection on net down to 1E-20 (33 closer, 19 further). Tagged as a statrs-failure guard no cell supports.
-- `T_CENTRE_C` (0.075): bracketed 0.05..0.1 by gen-m9's six c = 0.05 cells (a cut of 0.04 breaks them) and the
-  five c = 0.1 cells; two failing t3349 cells at c 0.0787 and 0.0985 favour 0.0985..0.1.
+- t_dist.rs, re-measured after merging main's T-2511 (which sends every df from 2 to the rounded-y crossing):
+  - `T_TAIL_P` (1E-5): it moves 25 cells, df 1 and 2, q 5E-11..5E-3. Lower cuts are worse (1E-11: 15 worse, 4
+    better), 1E-3 brings one df-1 cell closer, and 1E-2 is worse on net, so the cells place it in 1E-5..1E-3.
+  - `T_STATRS_MIN_P` (1E-8): no cell moves at any cut from 1E-20 to 1E-7; it is a statrs-failure guard. The tag
+    stays, and says so.
+  - `T_CENTRE_C` (0.075): bracketed 0.05..0.1 by gen-m9's six c = 0.05 cells (a cut of 0.04 breaks them) and the
+    c = 0.1 cells; two failing t3349 cells at c 0.0787 and 0.0985 favour 0.0985..0.1 (13 cells move).
+  - Before T-2511 the same runs had favoured 5E-4..5E-3 for `T_TAIL_P` and statrs over bisection down to 1E-20; the
+    rewrite moved those cells to the new path, so the earlier numbers no longer hold.
 - huge_shape.rs `HUGE_SHAPE_MIN` (1E9): a cut of 2E9 breaks t3070 A1 and A335 (shape 1E9); a cut of 1E8 changes no
   cell (13 calls at shapes 1E8..7E8 give the same value from either path), so nothing pins it from below.
 - f_density.rs: `LARGE_DF_MIN` is the r5-f-bigconst probe-design edge (its section 4.5 scan, after the freeze and
@@ -69,8 +71,8 @@ near each cut.
   probe cells, 9999999.994..1E+7). These and f_density's small-shape constant apply past their tagged ranges:
   T-3413. Not fits, now said in the comments: RATE's and IRR's 1E-7 step stops (Microsoft's documented bounds), `RATE_MAX_STEPS` and `IRR_GUESS_BOUND` (pinned exactly), the loop caps (directive 5).
 - R4 guards: no value changed, so no hold-out or fresh sweep is owed; the in-sample scores above are why T-3410 owns
-  moving the three t cuts under R4.
+  moving the t cuts under R4.
 - Not done: a committed range script (the T-3385 review's optional point); the cut-moving method needs an override
   hook the engine must not carry, so it stays a recipe here.
-Follow-ups: T-3410 (move the t cuts under R4), T-3413 (fits applied past their tagged ranges). Eval delta: +214 cells (the two new probe cases, all bit-exact); no
+Follow-ups: T-3410 (move `T_CENTRE_C` and `T_TAIL_P` under R4), T-3413 (fits applied past their tagged ranges). Eval delta: +214 cells (the two new probe cases, all bit-exact); no
 other change.

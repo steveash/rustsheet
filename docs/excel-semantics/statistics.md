@@ -3451,13 +3451,11 @@ Tasks: T-1531, T-1542
 - `T.INV(1E-300,1)` = `T.INV(1E-300,1.5)` = -3.183098861837907E299 (the df = 1.5 value is the df = 1 value: df truncates); `T.INV(1E-300,5)` = -1.568392559099332E60.
 - `T.INV.2T(1E-300,1)` = 6.366197723675814E299 (exactly twice the one-sided magnitude); `CONFIDENCE.T(1E-300,1,2)` = 4.50158158078553E299.
 - Ours: `statrs`' `StudentsT::inverse_cdf` is wrong for small df well before it fails (`T.INV(1E-10,1)` gives -8.9E7, Excel -3.18E9) and panics from p about 1E-200. For p < 1E-5 we use a closed-form tail asymptotic once x = df/(df+t^2) < 1E-8; otherwise `statrs` for p >= 1E-8 (it is bit-exact with Excel there) and bisection on its cdf below 1E-8 (`statrs`' inverse hangs at p = 1E-100 for df = 1000). Results agree with Excel to about 1E-13 relative for df <= 5, but only 7 of 105 cells are bit-exact, and for df >= 99999 at p <= 1E-200 we are wrong (-37.17 where Excel gives -79.06: for df = 99999 the `statrs` cdf saturates in the bisection branch, for df = 1E5 the normal series is used): T-1542.
-- Where the engine's paths meet Excel's cells (T-3395, each cut moved in a full eval run, every changed cell scored in
-  ulps): our tail path is the closer to Excel on net at every one-sided q tried from 5E-11 to 5E-4, and statrs from
-  1E-3 to 1E-2 (gen-m9 46ac3ef5e61583ca A293 `TINV(0.001,9)` is bit-exact from the tail path; m9-t-inv-2t A56
-  `T.INV.2T(0.01,5)` needs statrs), so the cells favour switching at 5E-4..5E-3, not our 1E-5. Below our 1E-8,
-  statrs beats our bisection on net down to 1E-20 (a4090567758520df A201 `T.INV(1E-15,10)` bit-exact from statrs),
-  and `T_DIST.xlsx` `T.INV(0.9999999,10)` (q 1E-7) needs statrs. Our cuts follow statrs' failures, not Excel; moving
-  them is T-3410.
+- Where the engine's paths meet Excel's cells (T-3395, each cut moved in full eval runs after T-2511, every changed cell
+  scored in ulps): our tail path's cut at q = 1E-5 moves 25 cells, all df 1 or 2. Lowering it makes them worse and
+  raising it to 1E-3 brings `T.INV.2T(0.001,1)` closer, while 1E-2 is worse on net, so Excel's cells place it in
+  1E-5..1E-3. Our bisection cut at 1E-8 moves no cell anywhere from 1E-20 to 1E-7: it guards statrs' failures, and
+  Excel says nothing about it. Any move is T-3410.
 - `T.INV.2T` with p in (1,2) is `T.INV(1 - p/2)`, a negative number (`T.INV.2T(1.5,1)` = -1, cells A121-A128); ours implements it since T-2096 (`t_inv_of`), see the entry above. Near p = 1 the quantile has an absolute error of about 1e-8 (`TINV(1+2^-52,2)` is -1.49e-8, Excel -3.14e-16): T-2839.
 
 ## Student-t quantile at one degree of freedom is 1/TAN(π·p/2) through Excel's TAN (T-2858)
@@ -3529,7 +3527,7 @@ within 1E-15 of the exact quantile, and the form is thousands of ulps off. The s
 A100, A113), p = 0.95 (q = 0.475) the exact quantile (T-2724 review; T-2724's centre kernel starts at c = 1 - 2q
 below 0.075, inside that bracket; gen-m9's six cells at q = 0.475, df 3 to 19, break when it starts below 0.05, and
 t3349-t-inv-2t-sweep A98 and A195, at q 0.4607 and 0.4507, come closer to Excel from the centre kernel, so on net the
-cells favour a switch near q = 0.45: T-3410). At df 30 and q = 5E-17 (`T.INV.2T(1E-16,30)`, gen-m9 583ca2baea0bb30a A147) Excel's t is 2E-12
+cells favour a switch near q = 0.45: T-3395, measured after T-2511; T-3410). At df 30 and q = 5E-17 (`T.INV.2T(1E-16,30)`, gen-m9 583ca2baea0bb30a A147) Excel's t is 2E-12
 off (its y about 4E-12; T-1542).
 Which y (T-2511, 2026-10-31, scored over gen-m9, ironcalc-calc, probes and probes-numeric against main): y as the
 double nearest the crossing of the Student-t tail evaluated at a rounded y (`I_y(df/2, 1/2)/2`, the tail T.TEST

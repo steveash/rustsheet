@@ -292,14 +292,13 @@ fn t_x_overflows(x: f64) -> bool {
 }
 
 /// Probabilities below this take the tail path of [`t_tail_quantile`] instead of `statrs`.
-/// T-3395 moved the cut in a full eval run (a temporary override) and scored every changed cell in
-/// ulps: the 138 cells with df below 1E5 and q from 1E-8 to 1E-2 are the ones that bracket it.
-/// The tail path is the closer one on net at every q tried below 1E-3: a cut of 1E-8 makes 15 cells
-/// worse (q 5E-7 and 1E-6), 1E-11 makes 62 worse and 9 better, and 1E-3 makes 21 better (one now
-/// bit-exact, `TINV(0.001,9)`) and 5 worse. From 1E-3 to 1E-2 statrs is better on net: a cut of
-/// 1E-2 breaks `TINV(LN(..),5)` and `T.INV.2T(0.01,5)` (q 5E-3). So the cells put the cut in
-/// 5E-4..5E-3, above this value; moving it is T-3410's.
-/// FITTED(T-1531, 138 cells, q 1E-8..1E-2 at df 1..2777; cells favour a cut in 5E-4..5E-3)
+/// T-3395 moved the cut in full eval runs (a temporary override, reverted) and scored every
+/// changed cell in ulps against Excel; after T-2511 the 25 cells it moves are df 1 and 2 (and
+/// df 1.5, truncated), q 5E-11..5E-3. A lower cut makes them worse (1E-8: 3 cells, 1E-11: 15
+/// worse, 4 better), 1E-4 changes none, 1E-3 brings one closer (`T.INV.2T(0.001,1)`) and 1E-2
+/// makes 4 worse and 2 better. So the cells place the cut in 1E-5..1E-3, leaning to the top;
+/// T-3410 owns any move.
+/// FITTED(T-1531, 25 cells, q 5E-11..5E-3 at df 1..2; cells place the cut in 1E-5..1E-3)
 const T_TAIL_P: f64 = 1e-5;
 
 /// Below this `x = df / (df + t^2)` the incomplete beta `I_x(df/2, 1/2)` equals its leading term and
@@ -308,8 +307,10 @@ const T_TAIL_X: f64 = 1e-8;
 
 /// Below this probability the df-1 quantile comes from bisection on the cdf, not `statrs`'
 /// `inverse_cdf`, which hangs at 1E-100 for df = 1000 and panics from about 1E-200. Only df 1
-/// reaches it (every other df takes [`t_rounded_y_quantile`]).
-/// FITTED(T-1531, 105 cells, p 1E-300..1E-10, df 1..1E5)
+/// reaches it (every other df takes [`t_rounded_y_quantile`]). No cell moves with it (T-3395: the
+/// same cut-moving runs as [`T_TAIL_P`], at 1E-20, 1E-11, 1E-9 and 1E-7, change no cell's value),
+/// so after T-2511 it is in effect the guard against statrs' hang and panic, not a fit to cells.
+/// FITTED(T-1531, 105 cells, p 1E-300..1E-10, df 1..1E5; no cell moves with the cut from 1E-20 to 1E-7)
 const T_STATRS_MIN_P: f64 = 1e-8;
 
 /// The tail quantile's closed form: `t` with `P(T < -t) = q` from the leading term and first
@@ -354,14 +355,13 @@ fn t_tail_quantile(dist: &StudentsT, df: f64, q: f64) -> f64 {
 /// digits of `y` below 1 (`TINV(1-1E-10,5)` 2.36E-8, Excel 1.32E-10; T-2724). Excel switches from the
 /// rounded-y form to the exact quantile between two-tailed p = 0.9 (c = 0.1) and 0.95 (c = 0.05)
 /// (statistics.md "Student-t quantile is SQRT(df*(1/y-1)) of the rounded beta quantile, away from
-/// the centre"), so the cut sits inside that bracket. The cells on its low side are gen-m9's six at
-/// c = 0.05 (`TINV(0.95,3)`, `TINV(0.95,5)`, `T.INV.2T(0.95,12)`, `CONFIDENCE.T(0.95,..,20)`, df
-/// 3..19): a cut of 0.04 sends them to statrs and breaks them (T-3395, a temporary override in a
-/// full eval run). No cell lies in (0.057, 0.0787). Two failing t3349 sweep cells above the cut,
-/// `T.INV.2T(0.921314149721905,4)` (c 0.0787) and `T.INV.2T(0.90147488203954,8)` (c 0.0985),
-/// come closer to Excel from the centre path (a cut of 0.0999), so on net the cells favour a cut
-/// in 0.0985..0.1; moving it is T-3410's.
-/// FITTED(T-2724, 13 cells, c 0.05..0.1, df 2..1000; cut bracketed 0.05..0.1, cells favour 0.0985..0.1)
+/// the centre"), so the cut sits inside that bracket. T-3395 moved it in full eval runs (a
+/// temporary override, after T-2511): a cut of 0.04 breaks gen-m9's six cells at c = 0.05
+/// (`TINV(0.95,3)`, `TINV(0.95,5)`, `T.INV.2T(0.95,12)`, `CONFIDENCE.T(0.95,..,20)`) and takes 5
+/// more at c 0.05..0.057 further off; a cut of 0.0999 brings two failing t3349 sweep cells closer,
+/// `T.INV.2T(0.921314149721905,4)` (c 0.0787) and `T.INV.2T(0.90147488203954,8)` (c 0.0985). So
+/// on net the cells favour a cut in 0.0985..0.1; T-3410 owns any move.
+/// FITTED(T-2724, 13 cells, c 0.05..0.1, df 3..1E10; cut bracketed 0.05..0.1, cells favour 0.0985..0.1)
 const T_CENTRE_C: f64 = 0.075;
 
 /// The centre cut of T.INV.2T's negative branch, p in (1, 2), with c = p - 1: Excel is the exact
