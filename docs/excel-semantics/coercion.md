@@ -335,7 +335,7 @@ The engine fails the collation cells (T-3324) and the digit cells (T-3325). VERI
   83, 84), `"𠀀" > "龍"` (G35). Kana sit below Hebrew although their code points are higher.
 - **Inside each script, code-point order**, also where a dictionary or radical order would differ:
   `א < ב < ג < ת` (ranks A21:A24 = 35, 36, 42, 43; G12), `ا < ب < ت < ي`, `क < ख < ग < ह`, `ก < ข < ฮ`,
-  `가 < 각 < 나 < 힣` (G11), `一 < 丁 < 中 < 乙 < 人 < 龍` (ranks A50:A55 = 90, 93, 94, 95, 96, 97; G9, G10).
+  `가 < 각 < 나 < 힣` (G11), `一 < 丁 < 中 < 乙 < 人 < 龍` (ranks A50, A51, A54, A52, A53, A55 = 90, 93, 94, 95, 96, 97; G9, G10).
   Two-letter strings compare letter by letter (`"一一" < "一丁" < "丁"`, `"가가" < "가나" < "각"`).
 - **Hebrew points, Arabic harakat and the Thai tone mark are tiebreaks** (accents) on their letter:
   `"ב" < "ב"&UNICHAR(1463) < "ב"&UNICHAR(1468) < "בא" < "ב"&UNICHAR(1468)&"א" < "בב"` (ranks A22, A60,
@@ -354,15 +354,15 @@ The engine fails the collation cells (T-3324) and the digit cells (T-3325). VERI
   (E10 = E81 = E82 = 3, E9 = E87 = 2, E11 = E88 = 2) because the criterion is numeric: **VALUE reads
   Arabic-Indic, Devanagari and Thai digits as numbers**, also mixed with ASCII digits and with a decimal
   point: `VALUE("٣")` = `VALUE("३")` = `VALUE("๓")` = 3, `VALUE("٢٣")` = 23, `"٣"+0` = 3,
-  `VALUE("٣.٥")` = 3.5, `VALUE("1٣")` = 13 (Calc!H1:H5, H7, H8). Full-width `VALUE("３")` is `#VALUE!` (H6).
-- **Symbols above `€` sort among the punctuation, not after the letters.** `"~" < "€" < "+" < ">" < "←" <
+  `VALUE("٣.٥")` = 3.5, `VALUE("1٣")` = 13 (Calc!H1:H5, H7, H8). Full-width `VALUE("３")` is an error (H6, wrapped in IFERROR, so which error is not probed).
+- **No probed symbol above `€` sorts after the letters; the arrows and dingbats sort among the punctuation.** `"~" < "€" < "+" < ">" < "←" <
   "☺" < "♥" < "✓" < "0"` (ranks A4, A7, A5, A6, A90, A94, A92, A93, A8 = 3 to 11; G29, G30, G31), with
   `← ☺ ♥ ✓` in code-point order; `∞` sorts between `"9"` and `"a"` (rank A91 = 24), `™` between `"Ab"`
   and `"ÿ"` (rank A89 = 28). `😀` sorts above `☺` (G36), so astral characters are not punctuation.
   `𝐀` is not `A`: `"𝐀" > "A"` and `"𝐀b" > "Ab"` (G33, G34), and `"𝐀" < "𝐀b" < "😀"` (ranks 81, 82, 83),
   so the astral characters are letters of their own.
 - In passing: exact MATCH, VLOOKUP(...,FALSE) and wildcard XMATCH of a lone `"~"` find the empty string,
-  not a `"~"` cell (`MATCH("~",{"a","","~"},0)` = 2, H9; `MATCH("~",{"a","~"},0)` `#N/A`, H10; H11, H13;
+  not a `"~"` cell (`MATCH("~",{"a","","~"},0)` = 2, H9; `MATCH("~",{"a","~"},0)` an error, H10; H11, H13;
   over Data, C4 = 1 finds `""` while XMATCH finds the `"~"` row, D4 = 4). The engine already agrees.
 UNVERIFIED: whether `™` is an expansion (`"tm"`) or a symbol placed between `a` and `y` (only `"Ab"` and
 `"ÿ"` bracket it); where `∞` sits against the punctuation other than digits; where other astral
