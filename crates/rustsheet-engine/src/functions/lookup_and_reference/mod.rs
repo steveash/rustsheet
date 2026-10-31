@@ -854,7 +854,7 @@ impl Model {
         // Only the evidenced `Table[Column]` shape: the specifiers, `@`, an unqualified column,
         // spacing, a bare table name and `a1` FALSE are unprobed and stay `#REF!` (case is
         // unprobed but matched ignoring case, as the parser does)
-        // (TODO(T-3386): probe them).
+        // (TODO(T-3394): probe them).
         let Node::StructuredReferenceKind { reference, lowered } =
             self.parser.parse(text, &context)
         else {

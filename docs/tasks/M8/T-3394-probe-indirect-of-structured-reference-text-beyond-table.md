@@ -1,5 +1,5 @@
 ---
-id: T-3386
+id: T-3394
 title: "Probe INDIRECT of structured-reference text beyond Table[Column]: specifiers, @, unqualified, case, spacing, bare name, a1 FALSE"
 milestone: M8
 lane: engine

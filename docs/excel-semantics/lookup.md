@@ -21,7 +21,7 @@ inserts inside `Sales`, `ROWS(INDIRECT("Sales[Column2]"))` is 4; after one inser
 it is `#REF!`. `COUNTA(INDIRECT("Sales[Column1]"))` is 0 (an empty data column). A column the table lacks is `#REF!`.
 Only the plain `Table[Column]` shape is evidenced and implemented; the specifiers (`#All`, `#Headers`, `@`), an
 unqualified column, spacing, a bare table name and `a1` FALSE are unprobed and stay `#REF!` in the engine until
-T-3386 probes them. Case is unprobed too: the engine matches table and column names ignoring case, as the parser
+T-3394 probes them. Case is unprobed too: the engine matches table and column names ignoring case, as the parser
 does, so `INDIRECT("sales[column2]")` probably resolves (T-2911).
 Evidence: probes/table-edits/table-insert-column-inside-header F!A4, F!A5; table-insert-two-columns-inside-header
 F!A4, F!A5 (excel-graph 2026-10-27).
