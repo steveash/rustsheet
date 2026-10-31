@@ -17,6 +17,8 @@ T-2852's EXP(a LN(y))/GAMMA(a)/x*EXP(-y) form stops: y = x / beta above 16, shap
 1 to 6 ulp residue inside its range.
 
 ## Context
+Split: T-3234 also lists gen-m9/c468f5046aadfbbc A171; this task owns it.
+
 T-2852 (docs/excel-semantics/statistics.md "GAMMA.DIST's density below shape 3 is a log-space form") found Excel's error
 there is a times LN(y)'s rounding error, and the form above fixes 44 cells, but it is not bit-exact everywhere, so gamma.rs
 `log_form_density` bounds it by fitted constants:

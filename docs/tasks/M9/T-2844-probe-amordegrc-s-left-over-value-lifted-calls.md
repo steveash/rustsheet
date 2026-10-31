@@ -3,7 +3,7 @@ id: T-2844
 title: "Probe AMORDEGRC's left-over value: lifted calls, dynamic-array formulas in the order, a NaN AMORLINC charge"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -28,10 +28,20 @@ Use the three-cell shape of probes/amordegrc-fraction-state-z (fraction / subjec
 "sets" are told apart. Probes in eval/suites/probes/cases/amordegrc-fraction-state-*.case.json, tag M9.
 
 ## Acceptance criteria
-- [ ] Probe cases for items 1 and 2 (and 3 if reachable) with excel-graph oracle values.
-- [ ] financial.md "AMORDEGRC below period 1" states each finding with its probe; the engine matches them (or a
+- [x] Probe cases for items 1 and 2 (and 3 if reachable) with excel-graph oracle values.
+- [x] financial.md "AMORDEGRC below period 1" states each finding with its probe; the engine matches them (or a
   known failure is named in the entry with its reason).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - gen-m9 d912671baa1364aa Calc!A76 (unexplained, financial.md).
+
+## Outcome
+- Probes `amordegrc-fraction-state-ac` to `-ai` (excel-graph, 2026-10-30). Findings in financial.md "AMORDEGRC below period 1":
+  a lifted call runs on a state of its own (empty at the start, elements in order) and leaves the workbook's state empty;
+  engine matches (`Model::amortization_call`): -ac to -af, -ai pass.
+- Item 3 (NaN AMORLINC charge): no reachable input (needs 1024 single walk steps); recorded, no probe.
+- Known failures, named in the entry: -ag (a spilling dynamic-array formula should empty the state; emptying it at its place
+  in `run_excel_order` had no effect, so the pass's handling of a spilling anchor is unclear) and -ah (the charges inside a
+  dynamic-array formula). Follow-up: T-3393.
+- Eval: 9 probe cells newly pass (baseline probes.txt); no regressions.
