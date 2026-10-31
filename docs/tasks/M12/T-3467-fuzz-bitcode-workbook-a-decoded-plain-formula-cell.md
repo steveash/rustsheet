@@ -49,12 +49,15 @@ AAEGbm9ybWFsBAAEAAAEc2VlZANVVEMCZW4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
 ```
 
 Probe first with the `excel-probe` skill.
-- **The file:** an xlsx with A1 `=SEQUENCE(3,2)`, and the same plain `<f>` (no `t="array"`, no `cm`) holding
-  `SIN(A1#)` in cells on the spill's rows and columns and off them. For example B2 is inside, D2 is on its rows but
-  off its columns, and D5 is off both.
-- **What to capture:** each cell's value, its FORMULATEXT (does Excel add an `@`?), and the plain-range form
-  `SIN(A1:B3)` in the same cells for comparison.
-- **What it decides:** spill, intersection and `#VALUE!` then give different results.
+- **The file:** an xlsx with a one-column spill, A1 `=SEQUENCE(3)`. Its formula is in a plain `<f>` (no
+  `t="array"`, no `cm`) holding `SIN(A1#)`, placed outside the spill in C2 (on its rows) and C5 (off them). Next to
+  it goes the plain-range form `SIN(A1:A3)` in the same rows. A cell inside the spill would block it, and a range of
+  several rows and columns intersects to `#VALUE!` everywhere, so a single column is what separates the outcomes:
+  - intersection: SIN(2) in C2 and `#VALUE!` in C5;
+  - a spill: a 3x1 array from each cell;
+  - plain `#VALUE!`: `#VALUE!` in both.
+- **What to capture:** each cell's value and its FORMULATEXT (does Excel add an `@`?).
+- **The minimized 3x2 input** stays the reproduction.
 
 Then, by what the probe shows:
 - **Excel intersects.** Treat a decoded `CellFormula` as a legacy formula and reuse the engine's existing
@@ -63,6 +66,8 @@ Then, by what the probe shows:
 - **Excel spills.** Reclassify such a cell at load as a dynamic anchor with r=(1,1), the way a typed formula is
   classified. Limit this to what the probe shows for `#` references, since plain ranges in legacy formulas
   intersect.
+- **Excel gives `#VALUE!` (no intersection, no spill).** Keep the release-build answer and only replace the
+  `debug_assert!` path with a handled `#VALUE!` for decoded cells.
 
 Either way, keep the assert for the engine's own formulas.
 
