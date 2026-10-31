@@ -92,16 +92,27 @@ impl Node {
         count
     }
 
-    /// Whether the tree holds a LAMBDA call, written out as `LAMBDA(x,x)(1)`.
-    pub(crate) fn contains_lambda_call(&self) -> bool {
+    /// Whether the tree holds, at any depth, a node for which `is_target` holds. Walked with an
+    /// explicit stack like [`Node::contains_function`]: a formula's tree is untrusted input.
+    pub(crate) fn contains_node(&self, mut is_target: impl FnMut(&Node) -> bool) -> bool {
         let mut pending = vec![self];
         while let Some(node) = pending.pop() {
-            if matches!(node, Node::LambdaCallKind { .. }) {
+            if is_target(node) {
                 return true;
             }
             node.push_children(&mut pending);
         }
         false
+    }
+
+    /// Whether the tree holds a LAMBDA call, written out as `LAMBDA(x,x)(1)`.
+    pub(crate) fn contains_lambda_call(&self) -> bool {
+        self.contains_node(|node| matches!(node, Node::LambdaCallKind { .. }))
+    }
+
+    /// Whether the tree holds a spill reference (`A1#`, [`Node::SpillRangeOperator`]).
+    pub(crate) fn contains_spill_reference(&self) -> bool {
+        self.contains_node(|node| matches!(node, Node::SpillRangeOperator { .. }))
     }
 
     /// Whether the tree holds a legacy N or T (SPEC-0012), the one fact of a legacy formula its
