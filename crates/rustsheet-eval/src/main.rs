@@ -361,6 +361,7 @@ fn score_milestones(
         .unwrap_or(BaselineMode::Cells);
     report.r1c = R1cCells::build(results, &milestones.r3, &milestones.phase1_exceptions);
     report.phase1b_evidence = report.r1c.phase1b();
+    report.r1c_left_out = report.r1c.left_out();
     report.probe_milestones =
         probe_milestones::summarize(&milestones.rules, results, probes_mode, &report.r1c);
     if let Some(scope) = report.function_scope.as_mut() {
@@ -450,11 +451,8 @@ fn visible_parity_gate(
     );
     Ok(match visible_parity::judge(lock, count, update) {
         Judgement::Holds => true,
-        Judgement::Record => {
-            Lock {
-                visibly_off_cells: count.cells,
-            }
-            .write(root)?;
+        Judgement::Record(visibly_off_cells) => {
+            Lock { visibly_off_cells }.write(root)?;
             println!("  updated {LOCK_PATH}: commit it");
             true
         }
