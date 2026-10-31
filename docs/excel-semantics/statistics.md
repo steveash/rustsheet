@@ -2521,11 +2521,21 @@ The products' rounding errors are not carried. EXP(hi)·EXP(lo) and EXP(hi)·(1 
   addition's error (8,867 and 6,467 of 12,800 on probe1), the products' errors added (7,783-11,172), an unrounded
   1 + lo (11,437).
 - Also seen, UNVERIFIED: where M2 gives a subnormal at a = 1, b = 9.1e6 and 4e8, Excel returns 0 (3 cells).
+- **The algdiv lnB (min < 1 < 8 < max) is the accurate value plus a few ulps of noise with no structure in b (T-3383
+  r4-algdiv).** b sweeps at a = 0.5, 0.25 (in-sample) and 0.75, 0.4 (hold-out), with 40 b from 8.25 to 7,000 each,
+  including fine steps of 1/8 and 1/4. With one free lnB per shape, M2 is exact on 78 of 80 shapes per probe (3,956 and
+  3,952 of 4,000 rows, against TOMS-d's 2,008 and 1,696). The pinned lnB sits -4 to +3 ulps from the correctly rounded
+  lnB (one shape +6, 68 of 156 at 0). The implied algdiv is within -1.7 to +2.2 ulp(algdiv) of the accurate one. Along
+  the fine steps the offset's lag-1 autocorrelation is -0.24 to +0.21: consecutive b are uncorrelated, so the offset is
+  rounding of stored intermediates, not an approximation error. Fixed candidates reach at most 34 and 37 of 80 shapes
+  (CR lnB, the best); TOMS-d 26 and 30. Excel's GAMMALN difference carried past 8, in either association, gets 0 and
+  1. Still open (T-3468: x87 storage variants of algdiv scored against the 156 per-shape pins).
 - Rejected (T-2464): a cdf prefactor over x or x·y; x87 base-2 pow forms; GAMMA-ratio B; R lbeta, NSWC/Apache logBeta;
   TOMS gamln/gamln1 or LN(GAMMA) for lnΓ(v < 1) (GL beats them in every combination, `lgam_*.out`). For algdiv
   (`lnbcands.out`, `algsearch.out`): accurate algdiv, TOMS fully extended, correctly rounded or series alnrel, and
   3,072 x87 storage variants, none reproducing both the probe a pins and probe1's (0.5, 20).
-Evidence: probes-numeric t2513-r3-m1-residual-a, -hold, -gl, t2513-verify-r3-m1-residual-hold, and the T-2464 cases
+Evidence: probes-numeric t2513-r3-m1-residual-a, -hold, -gl, t2513-verify-r3-m1-residual-hold, t3383-r4-algdiv-a,
+-hold, -gl (docs/research/t2464/r4-algdiv), and the T-2464 cases
 m9-beta-dist-a*, t0969-beta-switch, t0969-beta-density-b, t2464-w2f-xruns-2, t2464-r2-log1p-*; w1's probe1
 (w1-density/probe, not in eval/suites); docs/research/t2464/r3-m1-residual (`final_score.py`, `m1score.out`,
 `hivar.out`, `lnbshape_a.out`, `lnbfit.py`), verify-r3-m1-residual (`vscore_all.out`, `vshape_vhold.out`,
@@ -2950,7 +2960,8 @@ Rule: the entries above assembled in one TOMS 708 port (Excel's EXP, LN, GAMMALN
   The same probe's GAMMA.DIST(z, b, 1, TRUE) column (fractional b < 1, P near 1) is one the engine misses on 1,268 of
   4,980 cells, mostly by 1-2 ulp and on 117 at the 15th digit (T-3383 records it for the incomplete-gamma work).
 - Open: D to the bit, n > 1 bup terms and F/BINOM/NEGBINOM callers of L140 bup+bgrat (T-3383); F's bgrat at a df
-  of 1 (b = 1/2); algdiv for b0 >= 8 (about 1 unit off TOMS, in bpser and the density); lnΓ(a0 < 1) in L
+  of 1 (b = 1/2); algdiv for b0 >= 8 (about 1 unit off TOMS, in bpser and the density; in the density it is rounding noise of a few ulps, not an
+  approximation error, T-3383 r4-algdiv); lnΓ(a0 < 1) in L
   and the 55-84% ceiling of b < 1 bpser shapes; bfrac's fraction (sd 3.8 units) and bup's arithmetic in bup+bgrat;
   a0 < 1e-15 at 0.04 <= y < 0.25 (Excel 1e-14 to 3.8e-13 relative off the truth, in bgrat's incomplete-gamma ratio);
   the densities after T-2513's round 3 (each in its entry): Loader's constant residual of 2-4 units and bd0's series,

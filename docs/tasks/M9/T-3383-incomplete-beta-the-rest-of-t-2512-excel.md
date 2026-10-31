@@ -3,7 +3,7 @@ id: T-3383
 title: "Incomplete beta, the rest of T-2512: Excel's direct bgrat increment to the bit, algdiv for b0 >= 8, lnGamma(a0 < 1) in bpser, the b < 1 bpser ceiling, bfrac and bup arithmetic"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -62,12 +62,30 @@ that T-2512 round 1 (r3-bgrat, item 1 only) left open, so the engine tasks have 
   formula literals to 15 digits as Excel does.
 
 ## Acceptance criteria
-- [ ] Each item above has a recorded result in a RESULTS.md: a model with counts on a held-out probe, or the negatives
-      tried with their counts.
-- [ ] New oracle probes are committed under eval/suites/probes-numeric/cases/ with their sidecars.
-- [ ] statistics.md's T-2464 entries are updated with what is found.
-- [ ] Engine follow-ups are filed for any solved piece, or the owning engine task's criteria are amended.
-- [ ] `make check` green; reviewers approve.
+- [x] Each item above has a recorded result in a RESULTS.md: a model with counts on a held-out probe, or the negatives
+      tried with their counts. Amended at the split (see Outcome): item 2 for the
+      density only; the rest moved to T-3468.
+- [x] New oracle probes are committed under eval/suites/probes-numeric/cases/ with their sidecars.
+- [x] statistics.md's T-2464 entries are updated with what is found.
+- [x] Engine follow-ups are filed for any solved piece, or the owning engine task's criteria are amended.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine changes (T-3382 ports the L140 one-term composition).
+
+## Outcome
+Split for size: this round answered item 2 (algdiv for b0 >= 8) for the density. Item 1's leftovers, item 2 in bpser's
+L and items 3-6 moved to T-3468 (research, opus), so the "each item has a recorded result" criterion is met here for
+item 2 only.
+- docs/research/t2464/r4-algdiv/RESULTS.md and three new probes-numeric cases with sidecars (t3383-r4-algdiv-a and
+  -hold, 4,000 BETA.DIST densities each over b sweeps at a = 0.5, 0.25 / 0.75, 0.4; -gl, 203 GAMMALN arguments).
+  statistics.md's M2 entry has a new bullet, and the integrated model's Open line is updated.
+- With one free lnB per shape, M2 is exact on 78 of 80 shapes per probe (3,956 and 3,952 of 4,000 rows, against TOMS-d's
+  2,008 and 1,696), so the density's whole gap at min < 1 < 8 < max is the double lnB.
+- The pinned lnB is the correctly rounded value -4 to +3 ulps (one shape +6). The offset is uncorrelated between
+  neighbouring b (lag-1 autocorrelation -0.24 to +0.21 along steps of 1/8 and 1/4), so it is the rounding of stored
+  intermediates, not an approximation error.
+- Negatives: no fixed candidate reaches half the shapes (CR lnB 34 and 37 of 80, TOMS-d 26 and 30, fl(GL + CR algdiv)
+  22 and 35, Excel's GAMMALN difference past 8 at 0-1). Nothing is frozen, so no fit and no `FITTED` tag.
+- Engine follow-ups: none (no model to port); T-3468 scores x87 algdiv storage variants per shape against the pins.
+- Eval delta: none (research only; the new probe cases' engine misses are recorded in the baseline).
