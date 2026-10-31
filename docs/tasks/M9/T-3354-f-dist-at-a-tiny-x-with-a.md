@@ -30,13 +30,13 @@ F.DIST at x ≈ 1e-12 with d2 ≈ 7.8e6 returns Excel's value instead of one 5e-
       within 15 significant digits, with the right type and error, on the oracle-filled cells. The Gate A envelope below
       is only a floor on the fresh sweep; Excel's value is the target where it differs from the math by less than
       G = 1e-4.
-      Met with the right type and error everywhere; the 15th-digit residue on the cdf and density is T-3467's
+      Met with the right type and error everywhere; the 15th-digit residue on the cdf and density is T-3479's
       (`defer: phase-1b`, decision 0188 R5).
 - [x] A new public probe case under eval/suites/probes/cases/ (one milestone tag, M9; decision 0057), filled by the
       oracle (excel-graph), reproduces the bug; its cells are listed in this file before the fix. Include the inputs in
       Context and points on both sides of the failing region.
 - [x] After the fix every cell of that case is within 15 significant digits of Excel's value, with the right type and
-      error (decision 0083's rule). Met except the 15th-digit residue (222 cells, all inside Gate A), moved to T-3467
+      error (decision 0083's rule). Met except the 15th-digit residue (222 cells, all inside Gate A), moved to T-3479
       (`defer: phase-1b`, decision 0188 R5).
 - [x] No gated cell regresses (`make eval-baseline` refuses regressions; decision 0083's ulp allowance only as it
       states).
@@ -66,7 +66,7 @@ Not reproducible on main (2026-10-31): F.DIST has no 5e-4 error at a tiny x with
     an error on either side.
   - 222 cells (F.DIST cdf and density, none of F.DIST.RT) are beyond half a unit in Excel's 15th digit: Excel's own
     error against the math is up to 1.5e-13 there. They are inside Gate A, so under decision 0188 R5 they move to
-    T-3467 (`defer: phase-1b`). Criteria 1 and 3 are met except for that residue, which their
+    T-3479 (`defer: phase-1b`). Criteria 1 and 3 are met except for that residue, which their
     lines name.
 - **Engine-only scans** (no oracle, against mpmath): 1,200 random points over x 1E-15 to 1E-6, d1 1 to 1E7,
   d2 1E5 to 1E10, and 3,000 dense points at x 1E-13 to 1E-11, d2 3E6 to 1.6E7, with integer and non-integer d1 and d2
@@ -83,12 +83,12 @@ Not reproducible on main (2026-10-31): F.DIST has no 5e-4 error at a tiny x with
   | rows 181-200, log-uniform | 60 | 50 | 60 | 0 | 0 |
 
   The 14 extreme points without a math value are ones mpmath could not converge on within 30 s; all 14 are within 15
-  digits of Excel, so none is outside the envelope. The 177 sweep cells beyond Excel's 15th digit are also T-3467's.
+  digits of Excel, so none is outside the envelope. The 177 sweep cells beyond Excel's 15th digit are also T-3479's.
 - **Probable cause:** the incomplete-beta and F density work merged on 2026-10-30 (T-2508 bfrac for b0 ≥ 40, T-2510,
   T-2219, T-3034), after the build the assessment measured. The assessment's raw points are not committed, so this
   cannot be confirmed point for point.
-- **Eval delta:** probes known failures 2300 -> 2727 (fixed 0, new-coverage 427, regressions 0, one new case). The
-  visible-parity lock moves from 2429 to 2489 (`make eval-baseline`, decision 0093): 2489 cells are visibly off, 222 of
-  them in the new case; the other 2267 are 162 below the old lock, cells main fixed since it was last written. No other suite changes.
+- **Eval delta** (`make eval-baseline` after merging main): probes known failures 2234 -> 2661 (fixed 0, new-coverage
+  427, regressions 0, one new case). No other suite changes. 2427 in-scope cells are visibly off, 222 of them in the new
+  case, which is under main's visible-parity lock of 2462, so the lock is unchanged.
 - **Not a fit:** no engine change, so decision 0188 R4's hold-out and `FITTED` rules do not apply.
-- Follow-up: T-3467 (Phase 1b), the 15th-digit residue in both cases.
+- Follow-up: T-3479 (Phase 1b), the 15th-digit residue in both cases.
