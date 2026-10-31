@@ -6,7 +6,9 @@
 //! Excel evidence: docs/excel-semantics/references.md "Intersection operator (space)" (gen-m1,
 //! T-0105) and "Union (comma) reference in a value context is #VALUE!" (gen-m1, T-0134).
 
-use crate::expressions::parser::depth::{MAX_FORMULA_DEPTH, MAX_PARENTHESES, PRIMARY_DEPTH};
+use crate::expressions::parser::depth::{
+    MAX_FORMULA_DEPTH, MAX_NESTING, MAX_PARENTHESES, OPERAND_NESTING, PRIMARY_DEPTH,
+};
 use crate::expressions::parser::{ExpectedTokens, Node, Parser, Run};
 use crate::expressions::token::{Error, OpUnary, TokenType};
 use crate::functions::Function;
@@ -22,6 +24,7 @@ impl Parser {
     /// but refuses `(1,A1)` and `(A1+B1,C1)` (docs/excel-semantics/references.md, "Union:
     /// parsing and evaluation", T-0187).
     pub(super) fn parse_parenthesized(&mut self) -> Node {
+        self.group_head = true;
         let t = self.parse_enclosed_expr();
         if let Node::ParseErrorKind { .. } = t {
             return t;
@@ -59,10 +62,11 @@ impl Parser {
     /// docs/excel-semantics/syntax.md "Formula nesting depth cap"), so a formula nesting more
     /// than 256 groups, in one run or several (`( ((...)))`, `(1+((...)))`), is too deep.
     pub(super) fn parse_parenthesis_run(&mut self) -> Node {
+        // The run's parentheses are written with nothing between them, so the `n`th starts `n`
+        // chars after the first.
+        let first = self.lexer.get_position_index().saturating_sub(1);
         let mut opened = 1;
-        while !self.lexer.whitespace_follows()
-            && self.lexer.peek_token() == TokenType::LeftParenthesis
-        {
+        while !self.lexer.whitespace_follows() && *self.lexer.peek() == TokenType::LeftParenthesis {
             opened += 1;
             if self.open_groups + opened > MAX_PARENTHESES {
                 return self.too_deep();
@@ -73,20 +77,22 @@ impl Parser {
             return self.too_deep();
         }
         self.open_groups += opened;
-        let node = self.parse_run_groups(opened);
+        let node = self.parse_run_groups(first, opened);
         self.open_groups -= opened;
         node
     }
 
-    /// The `opened` groups of a run, after its last `(`: see [`Parser::parse_parenthesis_run`].
-    fn parse_run_groups(&mut self, opened: usize) -> Node {
+    /// The `opened` groups of a run whose first `(` is at char `first`, after its last `(`: see
+    /// [`Parser::parse_parenthesis_run`].
+    fn parse_run_groups(&mut self, first: usize, opened: usize) -> Node {
         let mut node = self.parse_parenthesized_call();
         let mut depth = self.inner_depth + PRIMARY_DEPTH;
-        for _ in 1..opened {
+        for done in 1..opened {
             if let Node::ParseErrorKind { .. } = node {
                 return node;
             }
             self.pending_operand = Some((node, depth));
+            self.pending_start = first + opened - done;
             self.inner_depth = 0;
             node = self.parse_parenthesized_call();
             self.pending_operand = None;
@@ -135,7 +141,7 @@ impl Parser {
         let separator = self.get_argument_separator_token();
         let mut t = first;
         let mut depth = self.depth;
-        while self.lexer.peek_token() == separator {
+        while *self.lexer.peek() == separator {
             self.lexer.advance_token();
             let p = operand(self);
             if let Node::ParseErrorKind { .. } = p {
@@ -167,7 +173,13 @@ impl Parser {
     /// (`A1:B2 B1:B3`, `(A1) B1`, `A1 OFFSET(...)`). Everywhere else it keeps its meaning
     /// of nothing at all: `= 1 + 2`, `SUM( A1 , B1 )`, `A1 -B1`, `{ 1 , 2 }`.
     pub(super) fn parse_intersection(&mut self) -> Node {
-        let start = self.lexer.get_position_index();
+        // A group of a run is read before the content it starts (`((A1) B1)`), so its text
+        // starts where it was recorded, not at the lexer (T-3281).
+        let start = if self.pending_operand.is_some() {
+            self.pending_start
+        } else {
+            self.lexer.get_position_index()
+        };
         let mut t = self.parse_range();
         if let Node::ParseErrorKind { .. } = t {
             return t;
@@ -176,7 +188,7 @@ impl Parser {
         let mut as_name = false;
         while !is_constant(&t)
             && self.lexer.whitespace_follows()
-            && starts_reference(&self.lexer.peek_token())
+            && starts_reference(self.lexer.peek())
         {
             // Excel refuses the formula (load-time `FileCorruptTryRepair`, so no oracle value)
             // on CR, TAB, NBSP and the like as separator, and on a value as an operand.
@@ -260,8 +272,7 @@ impl Parser {
             return t;
         }
         let depth = self.depth;
-        let next_token = self.lexer.peek_token();
-        if next_token == TokenType::Colon {
+        if *self.lexer.peek() == TokenType::Colon {
             self.lexer.advance_token();
             let p = self.parse_primary();
             if let Node::ParseErrorKind { .. } = p {
@@ -285,32 +296,31 @@ impl Parser {
     /// `=@A1:A3 A2:B2` in row 11 to 2, `@(A1:A3 A2:B2)`, where `=@A1:A3` alone is `#VALUE!`
     /// (probes/intersection-operands H11, probes/intersection-at-operands; T-0149).
     fn parse_implicit(&mut self) -> Node {
-        let next_token = self.lexer.peek_token();
-        if next_token == TokenType::At && self.pending_operand.is_none() {
+        if *self.lexer.peek() == TokenType::At && self.pending_operand.is_none() {
             self.lexer.advance_token();
             // `@` recurses into the intersection without an operand in between (`A1 @A1
             // @A1 ...`), so it reserves nesting like an operand does to bound the recursion.
-            if self.nesting + PRIMARY_DEPTH > MAX_FORMULA_DEPTH {
+            if self.nesting + OPERAND_NESTING > MAX_NESTING {
                 return self.too_deep();
             }
             // `=@ B1:B2` keeps its space (probes/t2776-ws-after-at, SPEC-0023); a signed operand
             // keeps it as its own (`Parser::parse_power`).
             let gap = self.run_ahead();
-            let t = if self.lexer.peek_token() == TokenType::At {
+            let t = if *self.lexer.peek() == TokenType::At {
                 // `@@A1`: an operand cannot start with `@`.
                 self.parse_primary()
-            } else if matches!(self.lexer.peek_token(), TokenType::Addition(_)) {
+            } else if matches!(self.lexer.peek(), TokenType::Addition(_)) {
                 // `@-1` loads (probes/anchorarray-at-operand-kinds H101, T-1247): the sign is
                 // the operand's, a value, so the `@` of it is a value too. The precedence against
                 // `%`, `^` and ranges is inferred (UNVERIFIED, T-1285).
-                self.nesting += PRIMARY_DEPTH;
+                self.nesting += OPERAND_NESTING;
                 let t = self.parse_power();
-                self.nesting -= PRIMARY_DEPTH;
+                self.nesting -= OPERAND_NESTING;
                 t
             } else {
-                self.nesting += PRIMARY_DEPTH;
+                self.nesting += OPERAND_NESTING;
                 let t = self.parse_intersection();
-                self.nesting -= PRIMARY_DEPTH;
+                self.nesting -= OPERAND_NESTING;
                 match t {
                     Node::ParseErrorKind { .. } => t,
                     t => t.spaced(gap, Run::default()),
@@ -328,8 +338,7 @@ impl Parser {
         if let Node::ParseErrorKind { .. } = primary {
             return primary;
         }
-        let next_token = self.lexer.peek_token();
-        if next_token == TokenType::Spill {
+        if *self.lexer.peek() == TokenType::Spill {
             self.lexer.advance_token();
             // `x#` is stored as `_xlfn.ANCHORARRAY(x)`, so it takes the same operands.
             if !is_reference_operand(&primary) {
@@ -350,8 +359,7 @@ impl Parser {
     /// `node` if the whole formula was consumed, otherwise a parse error: input left over
     /// after a complete expression (`=1 2`, `=SUM(A1))`) is invalid, not silently dropped.
     pub(super) fn expect_end(&mut self, node: Node) -> Node {
-        if matches!(node, Node::ParseErrorKind { .. }) || self.lexer.peek_token() == TokenType::EOF
-        {
+        if matches!(node, Node::ParseErrorKind { .. }) || *self.lexer.peek() == TokenType::EOF {
             return node;
         }
         Node::ParseErrorKind {
@@ -559,16 +567,6 @@ pub(crate) fn spill_operand(text: String, node: &Node) -> String {
         Node::ImplicitIntersection { .. } => text,
         _ => tight_operand(text, node),
     }
-}
-
-/// `text` in the `levels` pairs of parentheses a [`Node::Group`] was written in.
-pub(crate) fn group_text(levels: u16, text: &str) -> String {
-    let levels = usize::from(levels);
-    let mut grouped = String::with_capacity(text.len() + 2 * levels);
-    grouped.extend(std::iter::repeat_n('(', levels));
-    grouped.push_str(text);
-    grouped.extend(std::iter::repeat_n(')', levels));
-    grouped
 }
 
 /// The printed `@child`. An intersection operand prints bare, as Excel does (`@A1:B2 B1`,

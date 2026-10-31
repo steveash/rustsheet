@@ -3,7 +3,7 @@ id: T-3217
 title: "SPEC-0020 amendment: a lifted VLOOKUP, HLOOKUP or MATCH whose lookup_value is a whole column evaluates its tail once (probes/t3096-lookup-value-blank-elements takes 4.8 s)"
 milestone: M11
 lane: perf
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -43,16 +43,39 @@ Design questions the amendment must answer:
   them today.
 - Seen-empty records for the key's tail (`clip_to_used_area`): unchanged, one rectangle.
 
+Callgrind on main (gap triage 2026-10-30, folded in from a duplicate task; `valgrind --tool=callgrind
+./target/release/rustsheet-eval show probes/t3096-lookup-value-blank-elements.case.json`), 28.3G instructions in total:
+- `Model::index_impl` 28.2G, of which `index_source` → `reference_arg_reading` → `lift_values` 24.1G;
+- `lift_grids` 17.3G and `vlookup_impl` 15.3G; `fn_match` 8.8G; `evaluate_range` over the key column 6.8G;
+- malloc and free 18G together: dropping `Vec<Vec<ArrayNode>>` 5.5G, dropping `CalcResult` 4.1G, and
+  `lift::driver::same_as` 4.0G (`LiftOptions::REUSE_EQUAL_RUNS` compares every element to the one before it). Each `#N/A`
+  also builds its own `"Not found".to_string()` (`lookup_each.rs`).
+
+Semantics to keep (the probe's Excel cells; docs/excel-semantics/lookup.md "VLOOKUP / HLOOKUP lift over an array
+lookup_value"):
+- a blank element is looked up as the scalar blank-cell key, the number 0 (rows 44-51 equal the scalar control rows 2-8);
+- INDEX past the used head (`...,1000)`) reads a tail element;
+- the shared cell-visit cap stays as specified, so `VLOOKUP(SEQUENCE(1048576),SEQUENCE(1048576,2),2,FALSE)` stays
+  `#ERROR!` (DEVIATION, decision 0014). The amendment says whether a tailed whole column is still charged for 1,048,576
+  elements; keeping that charge is the safe default, since a cap result must not change.
+
 Code: `functions/lift/`, `spill_functions.rs`, `tailed_array.rs`; the lookups in `functions/lookup_and_reference/`.
 
 ## Acceptance criteria
-- [ ] docs/specs/SPEC-0020-whole-column-array-operands.md has an "Amendment 2" section with the Problem (the timings
+- [x] docs/specs/SPEC-0020-whole-column-array-operands.md has an "Amendment 2" section with the Problem (the timings
       above), the design answers above, the invariants per consumer, and a test plan that names
       probes/t3096-lookup-value-blank-elements and its expected run time after the Rollout (under 0.5 s).
-- [ ] Its Rollout tasks are filed with `make new-task` (lane `perf`, one PR each) and linked from the amendment.
-- [ ] No engine change in this task; `make check` green; reviewers approve the amendment.
+- [x] Its Rollout tasks are filed with `make new-task` (lane `perf`, one PR each) and linked from the amendment.
+- [x] No engine change in this task; `make check` green; reviewers approve the amendment.
 
 ## Out of scope
 - Implementing the amendment (its Rollout tasks).
 - XLOOKUP and XMATCH, unless the amendment finds they share the same lift path. If they do, they go in as one more
   Rollout task.
+
+## Outcome
+SPEC-0020 Amendment 2 written: VLOOKUP, HLOOKUP and MATCH over a tailed key become tailed interior nodes, with
+fixed-argument rules and a "continued lift" record so the kernel runs, the per-call cap and the work-budget charges
+match today's single lift. INDEX with scalar indices becomes a consumer. XLOOKUP and XMATCH share the lift path and get
+their own Rollout task, because each call also has a per-call regex cache. Rollout filed: T-3221 (keyed lookups, M),
+T-3222 (INDEX consumer, S; t3096 under 0.5 s), T-3223 (XLOOKUP/XMATCH, S). No engine change; eval delta 0.

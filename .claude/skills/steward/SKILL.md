@@ -59,8 +59,10 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   | `lock` | the per-PR flow under "Merge lock" above | stops at once |
   | `shadow` | `make mark-ready`, then the per-PR flow; remove `ready-to-merge` after its merge | builds and tests trains on `merge-train/shadow`, takes no lock, merges nothing |
   | `train` | `make mark-ready`, then move on | batches ready PRs, tests them on `merge-train/current`, squash-merges the green ones in order |
-  - **Marking.** `make mark-ready PR=<n> REVIEW="security=APPROVE architecture=APPROVE
-    quality=APPROVE [excel-fidelity=APPROVE]"` with the PR head checked out. It posts a marker
+  - **Marking.** `make mark-ready PR=<n>` with the PR head checked out. It takes the verdicts
+    from the verdict records the `review` skill posted on that head (decision 0178); while
+    `verdict_records = "warn"`, `REVIEW="security=APPROVE architecture=APPROVE quality=APPROVE
+    [excel-fidelity=APPROVE]"` stands in for a missing record, with a warning. It posts a marker
     comment (head sha, verdicts) and the `ready-to-merge` label, and refuses a draft, a red or
     pending head, a task not `done` with an Outcome, or a missing verdict. When a session cannot
     write through `gh api`, add `STEP=1`: perform each printed JSON action in order with the
@@ -142,10 +144,10 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   apply to closing a duplicate. When any condition fails, do what you did before: fix CI, comment
   the blocker, or mark the task blocked with reasons.
   In `train` mode (decision 0157 amending 0050) these are the conditions for **marking** an
-  orphaned PR ready (`make mark-ready` with the verdicts of your own panel), not for merging it,
-  and the up-to-date condition drops out: the train provides it. A PR whose worker already
-  marked it ready, on its current head, is not orphaned. In `shadow` mode, mark it ready and then
-  merge it per the per-PR flow, as its worker would.
+  orphaned PR ready (`make mark-ready` with the verdict records of your own panel), not for
+  merging it, and the up-to-date condition drops out: the train provides it. A PR whose worker
+  already marked it ready, on its current head, is not orphaned. In `shadow` mode, mark it ready
+  and then merge it per the per-PR flow, as its worker would.
 - **Merge-train daily check** (SPEC-0027 "Daily thresholds"): in `shadow` and `train` mode, the
   daily run runs `make merge-train-stats` (T-3076; until it exists, say so in docs/status.md and
   skip the check) and records p90 latency, stranded PRs, the red-train rate and the bisection
@@ -251,12 +253,17 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   its `v15.met`. The Phase 1 measure counts the in-scope functions at ≥ 99.9% of their attributed
   Excel cells within 15 digits (decision 0118).
 - **Phase 1 exit** (decision 0114 item 3): add the line `**Phase 1:** exited <YYYY-MM-DD>` to
-  docs/status.md when `v15_checkpoint.phase1_met` in `eval/runs/latest/report.json` is true (the
-  dashboard's `goals` block shows it) and the rest of docs/milestones.md's Phase 1 exit holds; no
-  Phase 1 line in docs/status.md is read for this. In the same PR, remove `defer: phase-1b` from
+  docs/status.md only when `make phase1-exit` exits 0 on a full `make eval` (every suite fetched,
+  clean tree) and you have checked each of its `manual` lines by hand (decision 0187). It measures
+  `v15_checkpoint.phase1_met` and the rest of docs/milestones.md's Phase 1 exit; no Phase 1 line in
+  docs/status.md is read for this. In the same PR, remove `defer: phase-1b` from
   every task.
 - **Time-boxed numeric fits** (decision 0056): a task "Blocked because: time-boxed (decision 0056)"
   is not reopened when its dependencies land, only when a new hypothesis is recorded there.
+  Read with decision 0188 R4.1, an attempt raises the bit-exact count only if it raises the
+  hold-out bit-exact count.
+- **Fit guards** (decision 0188 R4): a fit task you file or reopen lists the R4 guards of
+  reviewer-excel-fidelity check 7 in its acceptance criteria; a fit PR missing one is not ready to merge.
 - **Review-round limit** (decision 0095): list every PR whose task is `Blocked because: review-round
   limit` under open PRs in `docs/status.md` with its age; the opus worker re-reviews it once its
   branch is idle 2 h, so do not merge or unblock it yourself. A task `Blocked because: review-round

@@ -9,6 +9,7 @@ size: M
 tier: opus
 depends_on: [T-2586]
 campaign: visible
+defer: phase-1b
 ---
 
 ## Goal
@@ -17,6 +18,10 @@ campaign: visible
 and T-2586 sweeps after T-3034 fall to the share the new model measures, with no gated loss.
 
 ## Context
+- Decision 0188 R5 (owner's 2026-10-31 rulings): parked as Phase 1b. Every cell this task owns is a BETA.DIST or
+  F.DIST density cell or a dense probes-numeric sweep cell, within Gate A's envelope (most agree with Excel to 12 or
+  more digits, and Excel and the engine are both close to the math), so R1(c) counts it as Phase 1b evidence. A
+  point that Gate A's tables show outside the envelope gets its own task without the key.
 - Gap triage 2026-10-29 (`make eval` on main a2ecf005b, excel-graph; `python3 scripts/exit_owners.py --all-off`):
   18,293 visibly-off F.DIST density cells have no open owner. T-3034 (done) shipped T-2586's frozen model M-final
   (`crates/rustsheet-engine/src/functions/statistical/f_density.rs` `excel_f_density`) and took the F density's
@@ -79,6 +84,15 @@ visibly-off F.DIST cells in the case):
 - probes-numeric/t2586-verify-r5-f-edges-hold: 339 (of 391)
 - probes-numeric/t2586-verify-r5-f-final-hold: 415 (of 439)
 - probes-numeric/t2586-verify-r5-f-smallr-hold: 334 (of 334)
+
+More cells (gap triage 2026-10-30c, `make eval` on main 40ca52179, `python3 scripts/exit_owners.py --all-off`):
+212 visibly-off F.DIST density cells of the F-density probe at large df ((100,100), (50,100), (20,100), (50,50),
+(2,10), (10,30)). Their only owner was T-2821, which is `defer: phase-1b`. Every one has |P| = |c·LN x| >= 4 by
+M-final's side rule, so they are this task's, not T-3174's:
+- probes-numeric/t2513-r3-fdensity-a.case.json (212): Calc!B695, B696, B697, B698, B699, B712, B713, B714, B715, B716, B2125, B2126, B2127, B2153, B2154, B2155, B2156, B2157, B2356, B2392, B2394, B2395, B2404, B2405, B2406, B2407, B2413, B2414, B2415, B2416, B2417, B2418, B2419, B2420, B2421, B2422, B2423, B2424, B2430, B2431, B2432, B2433, B2434, B2435, B2436, B2437, B2441, B2442, B2443, B2444, B2445, B2446, B2447, B2448, B2657, B2659, B2661, B2662, B2684, B2694, B2695, B2696, B2697, B2698, B2699, B2700, B2701, B2702, B2703, B2710, B2711, B2712, B2713, B2714, B2715, B2716, B2717, B2724, B2725, B2726, B2727, B2728, B2729, B2730, B2731, B2732, B2733, B2737, B2743, B2744, B2745, B2752, B2753, B2759, B2763, B2764, B2771, B2772, B2779, B2780, B2781, B2833, B2834, B2835, B2836, B2842, B2843, B2844, B2845, B2846, B2847, B2848, B2853, B2854, B2855, B2856, B2857, B2858, B2863, B2864, B2865, B2866, B2867, B2873, B2874, B2875, B2876, B2877, B2878, B2879, B3025, B3026, B3027, B3028, B3029, B3031, B3032, B3034, B3035, B3036, B3037, B3038, B3042, B3043, B3044, B3047, B3048, B3049, B3054, B3055, B3056, B3057, B3059, B3060, B3061, B3062, B3063, B3064, B3066, B3067, B3068, B3069, B3070, B3072, B3078, B3079, B3080, B3081, B3082, B3083, B3084, B3085, B3086, B3099, B3100, B3101, B3102, B3103, B3104, B3106, B3107, B3114, B3124, B3125, B3126, B3127, B3128, B3129, B3130, B3131, B3132, B3133, B3134, B3135, B3136, B3137, B3138, B3139, B3140, B3141, B3142, B3143, B3144, B3145, B3146, B3154, B3155, B3156, B3157, B3158, B3159, B3168
+- probes-numeric/t3249-beta-large-shape-fit.case.json B1:B9792 (T-3249's F.DIST column: F.DIST(b·x/(a·(1-x)),2a,2b,
+  FALSE) beside each BETA.DIST cell, d1 = 2a from 257 to 16385, d2 = 2b from 3 to 16385, |ln f| up to 650)
+- probes-numeric/t3249-beta-large-shape-hold.case.json B1:B7936 (the same column of the hold-out)
 
 ## Acceptance criteria
 - [ ] `excel_f_density` computes the power term the way T-2586's model for it does, with unit tests pinning

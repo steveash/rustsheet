@@ -3,7 +3,7 @@
 - **Status:** accepted
 - **Milestone / lane:** M11 / perf
 - **Tasks:** T-0456 (this spec); T-0469, T-0470, T-0471 (Rollout); T-0488 (Amendment 1); T-0491,
-  T-0492, T-0493, T-0494 (its Rollout)
+  T-0492, T-0493, T-0494 (its Rollout); T-3217 (Amendment 2); T-3221, T-3222, T-3223 (its Rollout)
 
 ## Problem
 In an aggregate over an element-wise expression of whole columns, every operand becomes a
@@ -408,3 +408,193 @@ falls back as the aggregate walk does. The shape checks and the lift costs use t
 
 TEXTJOIN, COLUMN, LOOKUP's searched-kind tail and UNIQUE's lifted flags are not filed. Each is
 filed when a corpus file needs it. Until a task lands, its expressions take today's path unchanged.
+
+## Amendment 2 (T-3217): lookups over a tailed key; INDEX as a consumer
+Status: accepted with the spec. It widens what is tailed and adds one consumer. "Which expressions
+are tailed" now also takes a VLOOKUP, HLOOKUP or MATCH call whose `lookup_value` is a tailed operand,
+as an interior node (section 1). INDEX with scalar indices becomes a consumer (section 3). The
+non-goal "lookups" no longer covers a lifted `lookup_value`: the T-0448 and T-0449 clipping is of
+the *searched* range, and a lifted key was never clipped. For the expressions Amendment 1 already
+takes, nothing changes.
+
+### Problem
+Gap triage 2026-10-30 (`make eval` on origin/main): probes/t3096-lookup-value-blank-elements passes,
+but it is the slowest case outside the lunar-calendar probes (T-2908), 4.8 s for 203 cells. Measured
+on a scratch split of the case (`rustsheet-eval --root <scratch> show`, release build):
+- its 32 formulas with a whole-column `lookup_value` (Calc!B44:E51, for example
+  `=INDEX(VLOOKUP(Keys!$A:$A,Data!$A$1:$B$5,2,FALSE),1000)` and
+  `=INDEX(MATCH(Keys!$A:$A,Data!$A$1:$A$5,1),2)`) take 5.1 s, about 160 ms each;
+- the other 171 formulas take 20 ms.
+
+Each such call reads the key as 1,048,576 elements (`LiftedArg::read`, `evaluate_range`), nearly
+all of them blank past the used area. The lift (`lift_values` with `LiftOptions::REUSE_EQUAL_RUNS`,
+from `lookup_each` and `fn_match`) already runs the search once per run of equal keys, so the blank
+rows cost one search. What remains is linear in the logical size: the key's grid, `count_walks` over
+it, a 1,048,576-row result built element by element, its value charge, and INDEX picking one element
+of it. At that rate a sheet with a few hundred such formulas (`INDEX(MATCH(A:A,..),n)`,
+`SUM(--(VLOOKUP(A:A,..)=x))`) takes about a minute.
+
+### 1. A lookup over a tailed key is an interior node
+`tailed_leaves` takes a **keyed lookup**, `Node::FunctionKind` of `VLOOKUP`, `HLOOKUP` or `MATCH`
+with its argument count in range, as an interior node, beside the value operators and IF:
+- **Its operand is the key.** `push_operands` pushes `args[0]` only, so `reaches_leaf` (the IF
+  condition rule) and the leaf walk see the key and nothing else.
+- **The key reaches a leaf.** A keyed lookup whose key reaches no range leaf is refused, as an IF
+  over a scalar condition is: such a call does not lift, and in the reference form it may hand its
+  cell on as a reference (`lookup_each`'s `as_reference`). A key that reaches a leaf is a range or
+  an array, so the call lifts and returns an array value today (`lifts` is `true` in `lookup_each`).
+- **Fixed arguments.** Every other argument (`table_array` or `lookup_array`, `col_index_num` or
+  `row_index_num`, `range_lookup`, `match_type`) is evaluated by both evaluations, and must give
+  the same value in both. Each must be:
+  - for the table: a `RangeKind`, a `ReferenceKind` or an array literal (`ArrayKind`);
+  - for the others: a literal, a `ReferenceKind`, or absent.
+
+  Nothing else is taken: no function call (INDIRECT, OFFSET, RAND), no name and no operator. The
+  static walk does not enter a fixed argument, so a fixed range is never a leaf: a single whole
+  column as the table (`MATCH(A:A,B:B,0)`) is read as today, clipped to the used area (T-0448).
+  A fixed argument read twice is read as the one-cell references already are: an evaluated cell
+  reads the same, and its seen-empty rectangles are recorded once (`SeenRanges::push` keeps
+  only a new rectangle).
+- **Array-valued fixed arguments do not lift.** A `range_lookup` or `match_type` that is an array
+  lifts with the key today (`lookup_each`'s `criteria`, `fn_match`'s second criterion). The
+  static rule rejects arrays there; a `ReferenceKind` is one cell, so its value is a scalar.
+- **A keyed lookup may be the top node** of a consumer's argument, since it is array-producing by
+  the key rule. It may also sit under operators and IF, and a key may itself be an expression
+  (`MATCH(A:A&"",..)`).
+
+Why the tail element is the value of every tail row: the lift's kernel reads its key element and
+the fixed arguments, which are the same in every row, and nothing else (the search vector and the
+index are resolved before the lift). So each output element is a function of the same-position key
+element, as for the value operators.
+
+`ROW()` position leaves (Amendment 1, section 2) may sit in a key. A lifted lookup returns an error
+key element as itself, before any search or argument check (`lookup_each`: `value.is_error()`;
+`fn_match`: `target.is_error()`). So a sentinel key gives the sentinel, and the induction of section 2
+holds with keyed lookups among its steps.
+
+### 2. The continued lift: the charges are the logical ones
+The head and the tail are two lifts, where today there is one. Today's lift charges
+`count_walks(..)` walks (one per run of equal consecutive keys) times the search vector's
+`scan_cells()`. Then it checks the per-call cap (`too_many_visits`, `MAX_LIFTED_CELL_VISITS`) and
+charges the formula's work budget (SPEC-0024 section 1; SPEC-0028 sums those charges). Over the
+logical key, which is the head followed by `tail_len` copies of the tail key, that count is the
+head's runs, plus one if the tail key differs from the head's last key.
+
+A keyed call makes exactly one lift per evaluation, always through `lift_values` with
+`REUSE_EQUAL_RUNS`: the search (`lookup_each`, `fn_match`), or, when the table or a value index
+fails under a lifted key, `argument_error_each` (`LiftCost::Unit`; an error key element is itself,
+any other element the argument's error, probes/lookup-argument-edges H120-H124). Both kernels read
+only their key element and values fixed before the lift, so both are element-wise.
+
+To keep each check's outcome and each charge, the `TailView` gains one record per keyed lookup,
+keyed by the call's argument slice address (as the leaves are keyed by node address):
+- **Head.** The lift charges and checks as today, over the head. It records its walk count, its
+  last key element, and the last element's result.
+- **Tail.** The tail key equals the recorded last key element in the merged-run case. The lift then
+  runs nothing and charges nothing, and its element is the recorded result, as `ReusePlan::EqualRuns`
+  reuses it today. Otherwise the lift is one walk. The per-call cap is checked on `head walks + 1`
+  walks, and only the one walk is charged to the work budget.
+- **The sequence matches.** The kernel runs on the same keys, in the same order, as today: the head's
+  run starts, then the tail's run if it starts one. The per-call cap fails exactly when today's
+  fails, and the formula budget is charged the same units.
+  - When the head lift fails its cap, today's would fail too: the head's walks are at most
+    today's. Its result is then a scalar `#ERROR!`, which is not a one-column head, so the
+    consumer reads the argument the ordinary way and gets today's error.
+  - When only the tail lift fails, the same fallback applies.
+  - Either fallback spends that ordinary read's charges again, on top of the tailed reads. A formula
+    already near its work budget (`MAX_FORMULA_WORK`) could exceed it on the fallback where
+    today's single read would not, with `#VALUE!` "too much work" in place of `#ERROR!`. Both are
+    directive 5 limits on a formula already past the per-call cap, not values Excel shows. This is
+    the same class as the stale-head reread under Evaluation.
+- **Values.** A value charge (`spend_value`, `cell_units`) is made for the arrays built: the head's
+  result and the one-element tail. That is the T-0469 rule for every tailed array ("the cell budget
+  is charged for the cells `evaluate_range` builds, which is the head"). It charges less than
+  today, never more.
+- **Shape checks** (`broadcast_shape`, `check_array_cells`) apply to the logical size. One column
+  of at most 1,048,576 rows never exceeds the bound, so no outcome changes.
+
+### 3. Consumers
+- **Every existing consumer** gets keyed lookups through section 1, unchanged: the aggregate walk
+  (`SUM(--(VLOOKUP(A:A,..)=x))`, `COUNT(MATCH(A:A,..,0))`), SUMPRODUCT, SMALL and LARGE, UNIQUE,
+  LOOKUP's vector form, and CHISQ's tailed read. Each already reads its argument through
+  `read_tailed` and takes `Tailed::elements` or falls back.
+- **INDEX with scalar indices** (new). The consumer sits in `index_source`'s ordinary reading, the
+  `PickedReference::Node` arm of `index_impl`, after `index_numbers` has validated the indices as
+  today. It reads `args[0]` with `read_tailed` and `evaluate_reference_arg`. An IF or CHOOSE that
+  `pick_reference` resolves, an external reference, and lifted indices (`IndexArgs::Lifted`) keep
+  today's path.
+  - **Tailed when** `area` is 1, the column is absent or 1, and the row `r` satisfies
+    `1 <= r <= head + tail_len`, the logical rows. The pick is then `r`'s element: the head's
+    `r`-th when `r <= head`, otherwise the tail element. It is converted to a value as
+    `index_from_array` converts an element of an array.
+  - **Fallback.** Any other index falls back to the ordinary read. These are a whole column or row
+    (`r = 0`, column 0), `#REF!` past the logical bounds, and an `area_num` past 1. So does a
+    `Tailed::elements_by` that gives `None`: a head that is not one column, a scalar error result,
+    or the sentinel tail of a `ROW()` leaf. The value is then today's, by construction. Those
+    shapes are rare in corpus formulas, and the fallback costs one more reading.
+  - **The pass is being abandoned** (no tail): a pick past the head returns the head's
+    `#REF!`, as the aggregate walk folds the head alone. The value is discarded.
+  - INDEX's error order is unchanged: the indices are read and checked before the array
+    (`index_numbers` first), and an error result of the array argument is a fallback that returns
+    today's error.
+- **A spill** of a tailed expression (`=VLOOKUP(A:A,..)` in a cell) is no consumer. It materializes
+  as today, and its size checks are unchanged.
+- **XLOOKUP and XMATCH** share the lift (`lift_values`, `REUSE_EQUAL_RUNS`, `LiftCost::Cells`). They
+  take the same rules as one more keyed-lookup kind. That is a Rollout task of its own, because
+  each call also owns a `LookupRegexes` cache that `finish` settles once per call (`xlookup_impl`,
+  `fn_xmatch`). Two calls compile a pattern used in both the head and the tail twice. The task
+  must show that `finish` charges and fails exactly as one call does, or record the head's patterns
+  in the lift record as section 2 records the walks. XLOOKUP's `if_not_found` is a fixed argument,
+  read under the lifted rules (`xlookup_if_not_found` with `lifts`). Its `return_array` is a fixed
+  table, and each lifted element keeps only the first cell of its match (`XlookupPick::FirstCell`),
+  so a multi-column `return_array` still gives one column.
+
+### 4. Invariants per consumer
+- **Values and errors.** The lift kernel runs on the same keys in the same order (section 2). Every
+  consumer then sees the same element sequence as today, through the same reading.
+- **Reads and records.** These are the T-0469 rules. The key's leaves make the same clip records,
+  one seen-empty rectangle each for the rows past the used area (`clip_to_used_area` for a whole
+  column, `clip_block_to_used_area` for a bounded span). The fixed arguments are read again,
+  recording nothing new. The stale-head fallback applies, and no tail is read when the pass is
+  being abandoned.
+- **Limits.** The per-call cap and the formula's work budget see today's charges (section 2). The
+  value charges are what is built. The shape checks use the logical size. The static walk stays a
+  loop over an explicit stack. A fixed argument is a leaf node, never walked, so the walk stays
+  linear in the formula's AST.
+- **Not under iterative calculation, Excel-order passes or a blocked read**, as before
+  (`read_tailed`).
+
+### Test plan (per Rollout task)
+- **Equivalence tests** in `test/test_tailed_array.rs`, each formula with `TAILED_OFF` and without,
+  and with a count of tailed reads:
+  - VLOOKUP, HLOOKUP and MATCH (exact, approximate and descending) over a whole-column key, against
+    tables holding 0, empty text, FALSE and blanks. These are the t3096 tables: the tail key is a
+    blank, whose lookup they pin.
+  - A bounded-span key, a key expression (`MATCH(A:A&"",..)`), a keyed lookup under an operator and
+    under an IF, and a `ROW()` leaf in a key, both picked and not picked.
+  - A tail key equal to the head's last key (the merged run) and one that differs, each with a count
+    of kernel runs and of the visits charged. Both must equal the `TAILED_OFF` counts.
+  - The per-call cap at its boundary: head walks times the scan at the cap, plus the tail's walk,
+    both merged and not.
+  - Refused shapes: an array `range_lookup` or `match_type`, a function-call table (`INDIRECT`), a
+    table that is a name, a key that reaches no leaf, and multi-column keys.
+  - INDEX: rows in the head, in the tail, at the logical last row, past it (`#REF!`), row 0, column
+    0 and 2, `area_num` 2, lifted indices (refused), an error key element in the picked row, and a
+    `#REF!` in the indices before an error array.
+- **Eval.** `rustsheet-eval check`, 0 regressions in every gated suite. Run
+  probes/t3096-lookup-value-blank-elements with every Rollout task.
+- **Measures.** probes/t3096-lookup-value-blank-elements through the harness: 4.8 s today, under
+  0.5 s after T-3222. A bench line `aggregate -- tailed_consumers` (T-0488's bench): 400
+  `INDEX(MATCH(A:A,..),n)` and 400 `SUM(--(VLOOKUP(A:A,..)=x))` over a 2,000-row sheet.
+
+### Rollout
+1. **T-3221 (M).** Keyed VLOOKUP, HLOOKUP and MATCH in `tailed_leaves` and `push_operands`, with the
+   fixed-argument rules (section 1) and the continued lift record in `TailView` (section 2). This
+   gives the existing consumers keyed lookups. Measure: the equivalence tests and the
+   `SUM(--(VLOOKUP(A:A,..)=x))` bench line.
+2. **T-3222 (S, after T-3221).** INDEX with scalar indices as a consumer (section 3). Measure:
+   probes/t3096-lookup-value-blank-elements under 0.5 s, and the INDEX bench line.
+3. **T-3223 (S, after T-3221).** XLOOKUP and XMATCH as keyed lookups, with the `LookupRegexes`
+   proof (section 3). Measure: the equivalence tests, with wildcard and regex match modes.
+
+Until a task lands, its expressions take today's path unchanged.

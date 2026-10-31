@@ -163,9 +163,15 @@ impl Lexer {
     }
 
     /// The `@` shorthand for `#This Row`: `T[@]`, `T[@Col]`, `T[@[Col]]` and `T[@[A]:[B]]`
-    /// lex like their `[#This Row]` forms (Excel only shows `@` in the UI).
-    fn consume_this_row_shorthand(&mut self, table_name: &str) -> Result<TokenType> {
+    /// lex like their `[#This Row]` forms (Excel only shows `@` in the UI), after the run `open`
+    /// inside the outer `[`. A run after the `@` (`[@ Col]`) is not part of the column: Excel
+    /// reads the column and prints the reference padded on both sides, `[ @Col ]` (syntax.md
+    /// "Whitespace beside a missing argument", probes/t2800-this-row-whitespace F2:F3, T-3069),
+    /// which reads back as the same reference, its runs kept as the padding.
+    fn consume_this_row_shorthand(&mut self, table_name: &str, open: String) -> Result<TokenType> {
         self.position += 1; // '@'
+        let after_at = self.whitespace_run();
+        let mut close = String::new();
         let specifier = Some(TableSpecifier::ThisRow);
         let table_reference = match self.peek_char() {
             Some(']') => {
@@ -184,15 +190,29 @@ impl Lexer {
                 self.expect(TokenType::RightBracket)?;
                 Some(reference)
             }
-            _ => Some(TableReference::ColumnReference(
-                self.consume_escaped_until(']')?,
-            )),
+            _ => {
+                let text = self.consume_escaped_until(']')?;
+                let name = text.trim_end_matches(char::is_whitespace);
+                close = text[name.len()..].to_string();
+                Some(TableReference::ColumnReference(name.to_string()))
+            }
+        };
+        // `[ @Col ]` brings its own runs before `@` and after the column; `[@ Col]` has only the
+        // run after `@`, which then stands for both sides (Excel prints it `[ @Col ]`).
+        let spacing = TableSpacing {
+            open: if open.is_empty() {
+                after_at.clone()
+            } else {
+                open
+            },
+            close: if close.is_empty() { after_at } else { close },
+            comma_space: false,
         };
         Ok(TokenType::StructuredReference {
             table_name: table_name.to_string(),
             specifier,
             table_reference,
-            spacing: TableSpacing::default(),
+            spacing,
         })
     }
 
@@ -250,20 +270,25 @@ impl Lexer {
     //   But this is only a UI thing that we will ignore for now.
     pub(crate) fn consume_structured_reference(&mut self, table_name: &str) -> Result<TokenType> {
         self.expect(TokenType::LeftBracket)?;
-        // A run after the outer `[` is kept before nested brackets (`T[ [Col] ]`) and around a
-        // bare column padded on both sides (`T[ Col ]`, the form Excel prints and saves for
-        // `T[ [Col] ]`). Graph refuses one-sided padding (`T[ Col]`, `T[Col ]`; syntax.md),
-        // which keeps the reading it had before T-2801.
+        // A run after the outer `[` is kept before nested brackets (`T[ [Col] ]`) and, in text
+        // the engine printed itself, around a bare column padded on both sides (`T[ Col ]`, the
+        // form Excel prints for `T[ [Col] ]`). Typed or in a file, Excel refuses or loads as
+        // `#REF!` every padded bare column (`T[ Col ]`, `T[ Col]`, `T[Col ]`; syntax.md,
+        // probes/t2800-stored-ws-0..2, T-3069): the run is then read as part of the column
+        // name, which no table has.
         let start = self.position;
         let mut spacing = TableSpacing {
             open: self.whitespace_run(),
             ..TableSpacing::default()
         };
-        // A padded `#` or `@` start (`T[ #Data ]`) is unprobed and keeps its old reading.
+        // A padded `#` start (`T[ #Data ]`) is unprobed and keeps its old reading.
         if !spacing.open.is_empty() && !matches!(self.peek_char(), Some('[' | '#' | '@')) {
-            if let Some(token) = self.padded_bare_column(table_name, &spacing.open)? {
-                return Ok(token);
+            if self.padded_bare_columns {
+                if let Some(token) = self.padded_bare_column(table_name, &spacing.open)? {
+                    return Ok(token);
+                }
             }
+            // Back onto the run, so the bare column reads it as part of the name, up to `]`.
             self.position = start;
             spacing.open.clear();
         }
@@ -274,7 +299,7 @@ impl Lexer {
             return Ok(TokenType::Ident(table_name.to_string()));
         }
         if peek_char == Some('@') {
-            return self.consume_this_row_shorthand(table_name);
+            return self.consume_this_row_shorthand(table_name, spacing.open);
         }
         if peek_char == Some('#') {
             // Expecting MyTable[#Totals]
@@ -305,7 +330,7 @@ impl Lexer {
         self.expect(TokenType::LeftBracket)?;
         let mut specifier = self.consume_table_specifier()?;
         if specifier.is_some() {
-            if self.peek_token() == TokenType::Comma {
+            if *self.peek() == TokenType::Comma {
                 self.advance_token();
                 spacing.comma_space = !self.whitespace_run().is_empty();
                 self.expect(TokenType::LeftBracket)?;
@@ -317,7 +342,7 @@ impl Lexer {
                         position,
                         message: "Invalid structured reference".to_string(),
                     })?);
-                    if self.peek_token() == TokenType::Comma {
+                    if *self.peek() == TokenType::Comma {
                         self.advance_token();
                         spacing.comma_space = !self.whitespace_run().is_empty();
                         self.expect(TokenType::LeftBracket)?;
@@ -326,7 +351,7 @@ impl Lexer {
             }
             let before_close = self.position;
             spacing.close = self.whitespace_run();
-            if self.peek_token() == TokenType::RightBracket {
+            if *self.peek() == TokenType::RightBracket {
                 self.expect(TokenType::RightBracket)?;
                 return Ok(TokenType::StructuredReference {
                     table_name: table_name.to_string(),

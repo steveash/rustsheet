@@ -107,9 +107,11 @@ pub(crate) fn compute_rate(
 }
 
 /// The worksheet NPV with Excel's arithmetic and range rules: (v1/d0 + v2/d1 + ... + vn/d(n-1))
-/// / (1+rate), where d0 = 1 and d(i) = d(i-1)*(1+rate) is a running product, every step a double
-/// and the quotients summed left to right (financial.md "NPV's residue at IRR's root is not the
-/// double sum"; T-2671, probes/npv-term-order 382/382 and m9-fin-nper-npv 88/88 in the fit lab).
+/// / (1+rate), where d0 = 1 and d(i) = d(i-1)*(1+rate) is a running product, every step Excel's
+/// twice-rounded operator and the quotients summed left to right (financial.md "NPV's residue at
+/// IRR's root is not the double sum"; T-2671, probes/npv-term-order 382/382 and m9-fin-nper-npv
+/// 88/88 in the fit lab, with plain or twice-rounded operators alike; IRR's NPV needs the latter,
+/// T-3205).
 /// The call is `#DIV/0!` when 1+rate is 0 (a rate of -1, also with no flow but 0s) or when a
 /// discount a period divides by overflows or is below the smallest normal double (financial.md
 /// "NPV's discount past the double range", probes/npv-power-edges and npv-power-edges-2):
@@ -122,25 +124,28 @@ pub(crate) fn excel_npv(rate: f64, values: &[f64]) -> Result<f64, Error> {
         return Err(Error::DIV);
     }
     let sum = discounted_sum(base, values).ok_or(Error::DIV)?;
-    Ok(flush_subnormal(sum / base))
+    Ok(flush_subnormal(extended_quotient(sum, base)))
 }
 
-/// `c0/d0 + c1/d1 + ... + cn/dn` with d0 = 1 and d(i) = d(i-1)*base a running product, every step
-/// a double and the quotients summed left to right: the sum worksheet NPV divides by `base` and
-/// the NPV IRR's secant evaluates at `base` = 1 + r. `None` when a discount overflows or is below
-/// the smallest normal double; a subnormal quotient is 0, as for `/`.
+/// `c0/d0 + c1/d1 + ... + cn/dn` with d0 = 1 and d(i) = d(i-1)*base a running product, every `*`,
+/// `/` and `+` Excel's twice-rounded operator and the quotients summed left to right: the sum
+/// worksheet NPV divides by `base` and the NPV IRR's secant evaluates at `base` = 1 + r. The
+/// twice-rounded `*` and `+` decide IRR's last secant step: with plain doubles
+/// `IRR({-1000,230,200,125,200,10},5)` and gen-m9's `IRR({0.5,0.1,-0.5},0.5)` stop one iterate
+/// early, 16 ulp off (financial.md "IRR is a secant in d = 1 - v", T-3205). `None` when a discount
+/// overflows or is below the smallest normal double; a subnormal quotient is 0, as for `/`.
 fn discounted_sum(base: f64, values: &[f64]) -> Option<f64> {
     let mut sum = 0.0;
     // d(i), the running product this period divides by.
     let mut discount = 1.0_f64;
     for (i, item) in values.iter().enumerate() {
         if i > 0 {
-            discount = flush_subnormal(discount * base);
+            discount = flush_subnormal(extended_product(discount, base));
         }
         if discount == 0.0 || !discount.is_finite() {
             return None;
         }
-        sum += flush_subnormal(item / discount);
+        sum = extended_sum(sum, flush_subnormal(extended_quotient(*item, discount)));
     }
     Some(sum)
 }
@@ -173,6 +178,7 @@ fn irr_from_discount(v: f64) -> Option<f64> {
 /// is not a positive discount factor, or no stop in 50 steps). The state is d = 1 - v = r/(1 + r),
 /// so from v = 0.5 down the iterates' v = 1 - d sit on Excel's grid of multiples of 2^-53
 /// (probes/t2565-irr-guess-sweeps), and each step is anchored on the newer iterate.
+/// FITTED(T-3120, 36 cells, IRR of {-2.5,-1,123456789.123} over a guess sweep)
 fn irr_secant(values: &[f64], guess: f64) -> Option<f64> {
     const MAX_STEPS: usize = 50;
     let npv = |d: f64| irr_npv(values, 1.0 - d);
@@ -211,9 +217,9 @@ const IRR_GUESS_BOUND: f64 = 9_007_199_254_740_992.0;
 /// d0 = guess/(1 + guess) and d1 = d0 -+ 0.001 (toward larger |NPV|), each step anchored on the
 /// newer iterate. It stops at the first iterate with |d2 - d1| < 1e-7 and |NPV| < 1e-7 (or a zero
 /// step, see [`irr_secant`]) and returns 1/(1 - d2) - 1; a run that fails is retried once from 0.1.
-/// Leading zero flows are dropped first. This matches 262 of the 263 cells of the fit set
+/// Leading zero flows are dropped first. This matches all 263 cells of the fit set
 /// (probes/solver-iteration-traces sheet I, probes-numeric/m9-fin-irr-rate; fit lab `irr`,
-/// `irr_secant_d`, T-3120) and 180 of the 181 of probes/t2565-irr-guess-sweeps.
+/// `irr_secant_d`, T-3120, T-3205) and 180 of the 181 of probes/t2565-irr-guess-sweeps.
 /// Not Excel facts, kept from the fit: the d >= 1 (v <= 0) guard, no retry when the guess is
 /// already 0.1, and `#NUM!` for flows without a sign change. Where both runs fail,
 /// [`irr_fallback`] runs a Newton search from v = 0 (fitted, T-2727). A root with 1 + r at or past
@@ -267,6 +273,7 @@ pub(crate) fn compute_irr(values: &[f64], guess: f64) -> Result<f64, (Error, Str
 /// reach its root and is `#NUM!`. The method is fitted, not Excel's code: the returned digits are
 /// 15 to 35 ulp from Excel's on the probed roots (T-1686, T-2131).
 /// `values` has no leading zero flow ([`compute_irr`] drops them).
+/// FITTED(T-2727, 39 cells, range unknown)
 fn irr_fallback(values: &[f64]) -> Option<f64> {
     // Horner for P(v) and P'(v), highest power first
     let polynomial = |v: f64| {
@@ -399,12 +406,14 @@ fn xirr_bracket(values: &[f64], dates: &[f64], guess: f64) -> Option<(f64, f64)>
 /// XIRR as Excel computes it: not Newton, but a bisection of [`xirr_bracket`]. `a` starts at the
 /// upper end; each step takes m = a + (b - a)/2 and replaces the upper end when
 /// XNPV(m)·values[0] >= 0, else the lower one (an exact 0 does not stop the search). It returns m
-/// once the half-width is below 5e-9 + 1e-8·|m| and |XNPV(m)| is below
-/// 2e-8·max|value|·max(1, years from the first date to the latest), with no XNPV bound when the
-/// first value is 0. This matches all 227 numeric cells of the fit set (probes/solver-iteration-traces
-/// sheet X, probes-numeric/m9-fin-irr-rate) and 21 of 22 out of sample (fit lab `xirr`,
-/// `xirr-oos`; T-1525, T-1583). The span scaling rests on one long-span cell (T-1591 probes it).
+/// once the half-width is below 5e-9 + 1e-8·|m| and, on a negative midpoint only, |XNPV(m)| is
+/// below 2e-8·max|value| (no XNPV bound when the first value is 0). Every positive root in the
+/// oracle cells stops at the first step-test pass and every negative one fits that bound (T-3268),
+/// so the fitted rule matches all 227 cells of the fit set (probes/solver-iteration-traces sheet X,
+/// probes-numeric/m9-fin-irr-rate) and 80 of 81 out of sample, the miss being the input check of
+/// xirr-early-dates A7 (fit lab `xirr`, `xirr-oos`; T-1525, T-1583, T-3268).
 /// Excel's bisection cap is unprobed: 200 steps is enough on every oracle cell.
+/// FITTED(T-3268, 267 cells, range unknown)
 pub(crate) fn compute_xirr(
     values: &[f64],
     dates: &[f64],
@@ -427,16 +436,13 @@ pub(crate) fn compute_xirr(
     };
     let first_value = values[0];
     let largest = values.iter().fold(0.0_f64, |m, v| m.max(v.abs()));
-    let d0 = dates[0];
-    let latest = dates.iter().fold(d0, |m, &d| m.max(d));
-    let span_years = ((latest - d0) / 365.0).max(1.0);
     // `a` (here `upper`) is the end the midpoint is measured from
     for _ in 0..BISECTION_CAP {
         let m = upper + (lower - upper) / 2.0;
         let fm = xirr_xnpv(m, values, dates).ok_or_else(no_result)?;
         let half_width = (lower - upper).abs() / 2.0;
         if half_width < 5e-9 + 1e-8 * m.abs()
-            && (first_value == 0.0 || fm.abs() < 2e-8 * largest * span_years)
+            && (m >= 0.0 || first_value == 0.0 || fm.abs() < 2e-8 * largest)
         {
             return Ok(m);
         }

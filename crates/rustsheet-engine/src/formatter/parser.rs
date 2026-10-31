@@ -399,6 +399,8 @@ impl Parser {
         // Where each currency symbol sits among `tokens`, for a date section to print it there.
         let mut currency_positions: Vec<(usize, char)> = Vec::new();
         let mut is_time = false;
+        // Excel: after a minute, later `m`/`mm` are months (number-formats.md "`mm` after a minute").
+        let mut minute_read = false;
         let mut hijri = false;
         let mut calendar_prefix = false;
         // Whether the previous token is an unescaped colon, which the next one joins.
@@ -447,7 +449,8 @@ impl Parser {
                     }
                     // Excel: literals around `General` print around the value (`TEXT(5,"General x")`
                     // = "5 x", `TEXT(5,"x General")` = "x 5"; probes/text-format-bare-literals
-                    // A75, A76). TODO(T-1614): next to placeholders or date tokens it stays an error (unprobed).
+                    // A75, A76). Next to placeholders or a second General it stays an error
+                    // (probes/text-format-general-company).
                     tokens.push(TextToken::General);
                 }
                 Token::Comma => {
@@ -674,23 +677,18 @@ impl Parser {
                     is_date = true;
                     tokens.push(TextToken::MonthName);
                 }
-                Token::Month => {
-                    if is_time || self.minute_before_seconds(&next_token) {
-                        // minute
-                        tokens.push(TextToken::Minute);
-                    } else {
-                        is_date = true;
-                        tokens.push(TextToken::Month);
-                    }
-                }
-                Token::MonthPadded => {
-                    if is_time || self.minute_before_seconds(&next_token) {
-                        // minute padded
-                        tokens.push(TextToken::MinutePadded);
-                    } else {
-                        is_date = true;
-                        tokens.push(TextToken::MonthPadded);
-                    }
+                Token::Month | Token::MonthPadded => {
+                    let padded = matches!(token, Token::MonthPadded);
+                    let minute =
+                        (is_time && !minute_read) || self.minute_before_seconds(&next_token);
+                    minute_read |= minute;
+                    is_date |= !minute;
+                    tokens.push(match (minute, padded) {
+                        (true, false) => TextToken::Minute,
+                        (true, true) => TextToken::MinutePadded,
+                        (false, false) => TextToken::Month,
+                        (false, true) => TextToken::MonthPadded,
+                    });
                 }
                 Token::MonthLetter => {
                     is_date = true;
@@ -911,9 +909,11 @@ impl Parser {
             let only_literals = tokens
                 .iter()
                 .all(|t| t.is_literal() || matches!(t, TextToken::General));
-            if general_count > 1 || !only_literals || is_date || percent > 0 || comma > 0 {
+            if general_count > 1 || !only_literals || is_date || comma > 0 {
                 return ParsePart::Error(ErrorPart::default());
             }
+            // Excel: `%` beside `General` prints, no scaling (probes/text-format-general-company A3).
+            percent = 0;
         }
         if is_date {
             if is_number {

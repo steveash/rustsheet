@@ -186,13 +186,15 @@ Past the limit Excel stops reading cells: with A1 = "x", A2 = "y" and `=TEXTJOIN
 of its own range, below the row where the padding passes the limit) the result is `#CALC!`, not a circular
 reference, while `=TEXTJOIN(",",TRUE,1:10)` in D3 is circular (0), since ignore_empty TRUE adds no padding and reads
 every cell (probes/textjoin-whole-rows-self-reference B5, D3, excel-graph, 2026-10-29, T-3098). The engine's
-whole-row walk with ignore_empty FALSE and clipped columns stops at the limit (`textjoin_push_padded_range`);
-the unclipped single-walk path still reads past it (unprobed).
-Evidence: probes/whole-column-empty-walkers E2, E3, E6, F1, F2, F5, F8 (excel-graph, 2026-10-07, T-1114); probes/textjoin-whole-rows-error-cell A1-A7 and probes/textjoin-whole-rows-self-reference B5, D3 (excel-graph, 2026-10-29, T-3098).
+whole-row walk with ignore_empty FALSE stops at the limit (`textjoin_push_padded_range`), also when the used area
+spans every column (A1, XFD1, A2, XFD2 set: B5 `=TEXTJOIN(",",FALSE,1:10)` and B8 `=TEXTJOIN(",",FALSE,A1:XFD10)`
+are `#CALC!`, D3 with ignore_empty TRUE is circular (0); probes/textjoin-whole-rows-self-reference-full-width,
+excel-graph, 2026-10-29, T-3123).
+Evidence: probes/whole-column-empty-walkers E2, E3, E6, F1, F2, F5, F8 (excel-graph, 2026-10-07, T-1114); probes/textjoin-whole-rows-error-cell A1-A7 and probes/textjoin-whole-rows-self-reference B5, D3 (excel-graph, 2026-10-29, T-3098); probes/textjoin-whole-rows-self-reference-full-width B5, B8, D3 (T-3123).
 Status: VERIFIED
 Implemented in: `fn_textjoin` (functions/text/concatenate.rs) walks the used area through the shared
-sparse whole-range walker (T-2713) and adds the skipped empty cells per row (one walk per row when
-columns are clipped) and after the last row through `JoinSize::push_empties`, which stops at the limit.
+sparse whole-range walker (T-2713) and adds the skipped empty cells per row (one walk per row)
+and after the last row through `JoinSize::push_empties`, which stops at the limit.
 Tasks: T-1114
 
 ## JIS is `#NAME?` in en-US Excel for the web
@@ -454,6 +456,35 @@ A35, A36 (excel-graph, 2026-10-18, T-1361).
 Ours: matches (`around_empty_delimiter` in functions/text/before_after.rs).
 Status: VERIFIED (web)
 Tasks: T-1361
+
+## TEXTBEFORE and TEXTAFTER: overlapping delimiter instances
+Rule: TEXTBEFORE and TEXTAFTER count only disjoint delimiter matches, unlike SUBSTITUTE's instance_num ("SUBSTITUTE
+instances overlap" above). From the start, the scan counts the longest delimiter that starts at a position and resumes
+after its end: `TEXTBEFORE("aaa","aa",2)` is `#N/A`, `TEXTBEFORE("aaaa","aa",2)` "aa", `,3)` `#N/A`, `TEXTAFTER("aaaaa","aa",2)`
+"a"; `TEXTBEFORE("-2.5",{"2.5","-2.5"},2)` is `#N/A` in either list order ("-2.5" at unit 0 hides the "2.5" inside it);
+`TEXTBEFORE("xabcx",{"b","abc"},2)` is `#N/A` ("abc" at unit 1 hides the "b"). With a negative instance_num the scan
+takes start positions from the last back, and after a counted match steps back by that match's length and goes on from
+there, checking the whole rest of the text at each position, so a longer delimiter may still run into the counted match
+(`TEXTAFTER("3.141590.2-0.5x~*",C5:D12,-2)` with "0.2" and "2" among the delimiters counts "2" at unit 9, then "0.2" at
+unit 7, and is "-0.5x~*"; gen-m7/a470dc9e165bdb20 Calc!A1441), while the same delimiter cannot:
+`TEXTBEFORE("aaa","aa",-1)` "a", `-2` `#N/A`; `TEXTBEFORE("aaaaa","aa",-2)` "a"; `TEXTBEFORE("ababa","aba",-1)` "ab",
+`-2` `#N/A`; `TEXTBEFORE("xabcx",{"abc","b"},-1)` is "xa" (the later start wins, even though "abc" ends later);
+`TEXTBEFORE("abcd",{"ab","bc","cd"},-2)` is "" ("cd", then "ab"; "bc" overlaps "cd"). match_mode 1 counts the same way
+(`TEXTBEFORE("AAA","aa",2,1)` `#N/A`, `TEXTBEFORE("aAaA","AA",2,1)` "aA"). With match_end 1 the end of the text (the
+start, from the end) is one more instance after the last disjoint match, not only when nothing matches:
+`TEXTBEFORE("aaa","aa",2,,1)` is "aaa", `TEXTBEFORE("aaa","aa",-2,,1)` "", `TEXTAFTER("aaa","aa",2,,1)` ""; and
+`TEXTBEFORE("aaa","aa",2,,,"nf")` is "nf". The `#VALUE!` bound on instance_num ("instance_num past the text" below)
+counts positions, not disjoint matches: `TEXTBEFORE("aaa","aa",3)` is `#VALUE!` but `TEXTBEFORE("aaaa","aa",3)` `#N/A`.
+TEXTSPLIT splits at the same disjoint matches: `TEXTSPLIT("aaa","aa")` is "","a", `TEXTSPLIT("aaaaa","aa")` "","","a",
+`TEXTSPLIT("-2.5",{"2.5","-2.5"})` "","", `TEXTSPLIT("ababa","aba")` splits only at unit 0, `TEXTSPLIT("xabcx",{"b","abc"})` "x","x".
+Evidence: probes/t3335-textbefore-overlapping-instances A1-A58, C1-E29 (excel-graph, 2026-10-31, T-3335);
+gen-m9/cde551ea787f713a Calc!A37 (`TEXTBEFORE("-2.5",{2.5,-2.5},2)` inside BETADIST, `#N/A`); gen-m7/a470dc9e165bdb20
+Calc!A1441 (excel-graph). The backward step is inferred from these cells: whether it is the match's length or the
+shortest delimiter's (they agree on every cell) is unprobed, as is a forward scan's step past a match whose delimiter
+list holds a shorter entry starting inside it.
+Ours: matches (`Instances::Disjoint` in functions/text/util.rs; TEXTSPLIT's `split_grid` already scanned disjointly).
+Status: VERIFIED (excel-graph)
+Tasks: T-3335
 
 ## TEXTSPLIT of empty text is #VALUE!
 Rule: TEXTSPLIT of empty text is `#VALUE!` whatever its valid other arguments: a literal `""`, a blank cell and an empty-string cell,
@@ -975,11 +1006,17 @@ a sign (`"-3 1/2"`, `"- 3 1/2"`, `"-  3 1/2"` -3.5, `"+3 1/2"` 3.5), a `$` (3.5)
 numerator with a leading zero too (`"3 01/02"` 3.5), many digits (`"123456789 1/2"`), a denominator of 200 (3.005); but
 `"3 1/0"`, `"3  1/2"` (two spaces), `"3 1 /2"` and `"3 1/ 2"` are `#VALUE!`. A dash date reads a one-digit year as 200x
 and `"1/1/1"` is the same 36892 (`"1-1-0"` 36526, `"1-1-99"` 36161, `"1-1-30"` 1930); `"13-1-1"` and `"0-1-1"` are `#VALUE!`.
-UNVERIFIED: typed cell input and criteria also read `- 5` and a one-digit-year date now (shared grammar), and the mixed-fraction
-combinations `€3 1/2`, `-$3 1/2`, `-3 1/2%`, `$3 1/2%`, `+ 3 1/2` are extrapolated (T-2646 follow-up probe).
-Ours: all implemented (`mixed_fraction`, cast.rs; `parse_number`, parse_formatted.rs; `parse_separated`, date_text.rs).
+Typed input, criteria and coercion (probes/typed-input-sign-space-mixed-fraction, excel-graph, 2026-10-30, T-3178): typed
+`- 5`, `+ 5`, `1-1-1` and `1/1/1` are numbers (-5, 5, 36892, 36892), and so are the typed mixed fractions `-$3 1/2` (-3.5),
+`-3 1/2%` (-0.034999999999999996) and `+ 3 1/2` (3.5); typed `€3 1/2` (no euro in en-US) and `$3 1/2%` stay text; unsigned `3 1/2`, `$3 1/2` and `3 1/2%` are numbers (B10-B12). Number
+coercion reads `"€3 1/2"` 3.5, `"-$3 1/2"`, `"-3 1/2%"` and `"+ 3 1/2"` too, but `"$3 1/2%"` is `#VALUE!`, and so is `VALUE("$3 1/2%")` (J1): a currency
+symbol and a `%` do not combine in a mixed fraction. A criterion operand reads `- 5`, `+ 5`, both dates, `-$3 1/2`,
+`-3 1/2%` and `+ 3 1/2` but not `€3 1/2` or `$3 1/2%` (`COUNTIF(3.5,"€3 1/2")` is 0), while a text cell `€3 1/2` does read
+as 3.5 (`COUNTIF(A5,A5+0)` is 1). UNVERIFIED: the number format a typed mixed fraction gets (`CELL("format")` is `#VALUE!` on
+excel-graph; ours General, T-3237).
+Ours: all implemented (`mixed_fraction`, mixed_fraction.rs, read through `value_number_text_with`, cast.rs; `parse_number`, parse_formatted.rs; `parse_separated`, date_text.rs).
 Status: VERIFIED (excel-graph); implemented (T-3151, T-2646).
-Tasks: T-2646, T-3151
+Tasks: T-2646, T-3151, T-3178
 
 ## REGEX* POSIX classes are Unicode (T-1903)
 Rule: inside a bracket, a POSIX class matches what PCRE2 in UCP mode matches, by Unicode property, not ASCII only:
@@ -1158,3 +1195,13 @@ reference to an error cell (also `B1:B1`) the same. With two errors the first ar
 engine, unprobed beyond that cell). UNPROBED: a multi-cell range of only errors and a 1x1 array (`{#N/A}`) with format 2 (the engine gives `#VALUE!`); a reference to an error cell with an error or text format, such as `ARRAYTOTEXT(B1,NA())` or `ARRAYTOTEXT(B1,"x")` with B1 holding `#N/A` (the engine reads the format first and returns its error).
 
 See also: RIGHT num_chars numeric-text coercion is recorded in criteria.md "Zero and negative SUMIFS criteria; IF error arguments; RIGHT numeric-text num_chars" (T-2980).
+
+## CHAR lifts over ranges and arrays
+
+`CHAR` takes a range or array argument and returns an array, like `UNICHAR`, `CODE` and
+`UNICODE`; inside `CONCAT`, `TEXTJOIN` (as text or delimiter) and `CONCAT`'s mixed arguments the
+elements are joined whole (`=CONCAT(CHAR(A1:A3))` is "Hi!" for 72, 105, 33), not implicitly
+intersected. An error element (`CHAR(0)` is `#VALUE!`, a `#N/A` cell) is the join's result.
+Evidence: probes/t3302-text-funcs-arrays (E1-E20, oracle-filled). The probe shows
+`CONCAT`/`TEXTJOIN` over `CHAR`, `UNICHAR`, `CODE`, `UNICODE` ranges and computed arrays already
+agree; the only gap was `CHAR`, fixed in T-3302.

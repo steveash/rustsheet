@@ -4,9 +4,9 @@ use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error, LiftCost};
 use crate::functions::statistical::inverse_beta::t_inverse_cdf;
 use crate::functions::statistical::paired::{MarkedSample, PairedSamplesError, PairedValues};
-use crate::functions::statistical::special::{bisect_increasing, ln_gamma};
+use crate::functions::statistical::special::{bisect_increasing, ln_gamma, refine_increasing};
 use crate::functions::statistical::student_t::{
-    student_t_density, student_t_tail_at, student_t_tails,
+    student_t_centre, student_t_density, student_t_tail_at, student_t_tails,
 };
 use crate::functions::Function;
 use crate::{
@@ -295,6 +295,7 @@ fn t_x_overflows(x: f64) -> bool {
 const T_QUANTILE_SERIES_DF: f64 = 1e5;
 
 /// Probabilities below this take the tail path of [`t_tail_quantile`] instead of `statrs`.
+/// FITTED(T-1531, 105 cells, p 1E-300..1E-10, df 1..1E5)
 const T_TAIL_P: f64 = 1e-5;
 
 /// Below this `x = df / (df + t^2)` the incomplete beta `I_x(df/2, 1/2)` equals its leading term and
@@ -304,6 +305,7 @@ const T_TAIL_X: f64 = 1e-8;
 /// Below this probability the quantile comes from bisection on the cdf, not `statrs`' `inverse_cdf`,
 /// which hangs at 1E-100 for df = 1000 and panics from about 1E-200 (the sweep test covers df 2 to
 /// 9E4). Above it `statrs` is bit-exact with Excel where x is not tiny (`T_DIST.xlsx` `T.INV(0.9999999,10)`).
+/// FITTED(T-1531, 105 cells, p 1E-300..1E-10, df 1..1E5)
 const T_STATRS_MIN_P: f64 = 1e-8;
 
 /// Magnitude `t > 0` with `P(T < -t) = q` for a small `q`, `df < T_QUANTILE_SERIES_DF`; bounded time.
@@ -329,9 +331,41 @@ fn t_tail_quantile(dist: &StudentsT, df: f64, q: f64) -> f64 {
     bisect_increasing(|t| -dist.cdf(-t), -q, 64)
 }
 
+/// Central probabilities `c = |2p - 1|` below this take [`t_centre_quantile`]. statrs' inversion
+/// solves for `y = df / (df + t^2)` near 1 and back-transforms with `1 - y`, which keeps only the
+/// digits of `y` below 1 (`TINV(1-1E-10,5)` 2.36E-8, Excel 1.32E-10; T-2724). Excel switches from the
+/// rounded-y form to the exact quantile between two-tailed p = 0.9 (c = 0.1) and 0.95 (c = 0.05)
+/// (statistics.md "Student-t quantile is SQRT(df*(1/y-1)) of the rounded beta quantile, away from
+/// the centre"), so the cut sits inside that bracket.
+/// FITTED(T-2724, 5 cells, c 0.1, df 2..1000)
+const T_CENTRE_C: f64 = 0.075;
+
+/// The centre cut of T.INV.2T's negative branch, p in (1, 2), with c = p - 1: Excel is the exact
+/// quantile there at c = 0.0986 and 0.0991, past [`T_CENTRE_C`] (`T.INV.2T(LN(3),7)` =
+/// -0.12847323195087978, gen-m9 c2684066d8df263e A64; d910f000b60e2eac A357 at df 8).
+/// FITTED(T-2724, 2 cells, c 0.0986..0.0991, df 7..8)
+const T_NEGATIVE_CENTRE_C: f64 = 0.1;
+
+/// Magnitude `t >= 0` with `P(|T| < t) = c` for a central probability `c` below [`T_CENTRE_C`]
+/// (so `t` < 0.12 at every df): the crossing of the centre probability itself
+/// (`student_t_centre`), which never forms `1 - y`, so a tiny quantile keeps its digits. Excel's
+/// centre quantiles are accurate (statistics.md "Student t sweep", T-2724). The estimate is
+/// `c / (2 f(0))`, `f` the density; at most 129 evaluations (`refine_increasing`).
+/// `df` is a truncated integer from 1 to [`T_DF_MAX`] here, every one of which `student_t_centre`
+/// takes (it is NaN only for a df its Gamma ratio refuses).
+fn t_centre_quantile(df: f64, c: f64) -> f64 {
+    let estimate = student_t_density(0.0, df).map_or(f64::NAN, |density| 0.5 * c / density);
+    refine_increasing(|t| student_t_centre(t, df), c, estimate, 0.0, 1.0)
+}
+
 /// Quantile `t` with `P(T > t) = q`. For a tiny `q`, `1 - q` rounds to 1, so the tail is asked for
-/// directly (T-1531); otherwise this is `t_quantile(1 - q)` as before.
+/// directly (T-1531); near 1/2 the centre is (T-2724); otherwise this is `t_quantile(1 - q)`.
 pub(crate) fn t_upper_quantile(dist: &StudentsT, df: f64, q: f64) -> f64 {
+    // 1 - 2q is exact for q in [1/4, 1] (Sterbenz) where 1 - q is not for q below 1/2.
+    let c = 1.0 - 2.0 * q;
+    if c.abs() < T_CENTRE_C {
+        return t_centre_quantile(df, c.abs()).copysign(c);
+    }
     if q < T_TAIL_P {
         -t_quantile(dist, df, q)
     } else {
@@ -343,6 +377,11 @@ pub(crate) fn t_upper_quantile(dist: &StudentsT, df: f64, q: f64) -> f64 {
 /// every df up to [`T_DF_MAX`]. statrs' search is the capped port of `inverse_beta.rs` (T-1848),
 /// bit for bit statrs' value where statrs finishes.
 pub(crate) fn t_quantile(dist: &StudentsT, df: f64, p: f64) -> f64 {
+    // 2p - 1 is exact for p in [1/4, 1] (Sterbenz).
+    let c = 2.0 * p - 1.0;
+    if c.abs() < T_CENTRE_C {
+        return t_centre_quantile(df, c.abs()).copysign(c);
+    }
     if df < T_QUANTILE_SERIES_DF {
         // Below the tail threshold `statrs` is fine; above it its inverse saturates (T.INV(1E-10,1)
         // gives -8.9E7, Excel -3.18E9) and panics from p about 1E-200 (T-1531).
@@ -530,8 +569,12 @@ impl Model {
         let x = if two_tailed && p > 1.0 {
             // T.INV.2T(p) = T.INV(1 - p/2), the negative quantile, for p in (1, 2) (m9-t-edges A2
             // `T.INV.2T(1.5,5)`, A43 `T.INV.2T(1.5,10)`). 2 - p is exact on [1, 2] (Sterbenz), and
-            // the upper tail of (2 - p) / 2 reaches the tiny-p path for p near 2.
-            -t_upper_quantile(&dist, df, (2.0 - p) / 2.0).abs()
+            // the upper tail of (2 - p) / 2 reaches the tiny-p path for p near 2. p - 1 is exact too.
+            if p - 1.0 < T_NEGATIVE_CENTRE_C {
+                -t_centre_quantile(df, p - 1.0)
+            } else {
+                -t_upper_quantile(&dist, df, (2.0 - p) / 2.0).abs()
+            }
         } else if two_tailed {
             // Two-sided: F(x) = 1 - p/2
             t_upper_quantile(&dist, df, p / 2.0).abs()
@@ -619,7 +662,8 @@ impl Model {
 
 #[cfg(test)]
 mod tests {
-    use super::{t_quantile, t_upper_quantile};
+    use super::{t_centre_quantile, t_quantile, t_upper_quantile};
+    use crate::test::util::within_fifteen_digits;
     use statrs::distribution::StudentsT;
 
     // Excel (probes-numeric t1531-t-tiny-p): the Student-t quantile is finite, never an error, for
@@ -678,6 +722,78 @@ mod tests {
         // wrong (the cdf of statrs saturates), so only the bound is pinned (TODO(T-1542)).
         let t = t_quantile(&dist(99999.0), 99999.0, 1e-300);
         assert!(t.is_finite() && t < -30.0 && t > -80.0, "{t}");
+    }
+
+    #[test]
+    fn centre_quantiles_keep_their_digits() {
+        // T-2724: two-tailed quantiles with p near 1, against the true quantile at the double p
+        // (mpmath, 40 digits, `I_w(1/2, df/2) = 1 - p`), within 1E-15 relative; statrs' 1 - y lost
+        // most digits (`TINV(1-1E-10,5)` was 2.36E-8) and gave 0 at 1-1E-16.
+        // df 1 is Excel's 1/TAN form, not the true quantile, so it is left out (TODO(T-2858)).
+        for (df, p, exact) in [
+            (2.0, 0.999_999, 1.414_213_562_414_469e-6),
+            (2.0, 1.0 - 1e-10, 1.414_213_679_385_65e-10),
+            (2.0, 1.0 - 1e-16, 1.570_092_458_683_775_2e-16),
+            (5.0, 0.999_999, 1.317_152_762_108_468_7e-6),
+            (5.0, 1.0 - 1e-10, 1.317_152_871_051_844_3e-10),
+            (5.0, 1.0 - 1e-16, 1.462_333_323_398_885_8e-16),
+            (1000.0, 0.999_999, 1.253_627_505_003_303e-6),
+            (1000.0, 1.0 - 1e-10, 1.253_627_608_692_530_5e-10),
+            (1000.0, 1.0 - 1e-16, 1.391_806_120_317_668_7e-16),
+            (1e6, 0.999_999, 1.253_314_450_680_441_7e-6),
+            (1e6, 1.0 - 1e-10, 1.253_314_554_343_776_3e-10),
+            (1e6, 1.0 - 1e-16, 1.391_458_560_200_48e-16),
+        ] {
+            let t = t_upper_quantile(&dist(df), df, p / 2.0);
+            assert!(
+                (t / exact - 1.0).abs() < 1e-15,
+                "T.INV.2T({p},{df}) = {t:e}, exact {exact:e}"
+            );
+        }
+        // Excel's values (gen-m9 b9a32ce9a1fd0d71 A58, 334f3dc9ca937f10 A128, probes-numeric
+        // m9-t-inv-2t A117 and A130; T-3349: probes/t3349-t-inv-2t-near-one A1, decision 0188
+        // item 3's input, once 1.49E-8, and A15, A29) to half a unit of the 15th digit.
+        for (df, p, excel) in [
+            (2.0, 0.999_999_999_989_522, 1.481_806_159_731_988e-11),
+            (2.0, 0.999_999_999_999_999, 1.413_083_212_815_401_9e-15),
+            (1000.0, 0.999_999_999_999, 1.253_599_772_570_125_8e-12),
+            (5.0, 1.0 - 1e-10, 1.317_152_871_051_845_8e-10),
+            (7.0, 0.999_999, 1.298_730_137_860_588_3e-6),
+            (1000.0, 0.999_999_999_9, 1.253_627_608_692_531_2e-10),
+            (1e6, 0.999_999_999_9, 1.253_314_554_343_774_5e-10),
+        ] {
+            let t = t_upper_quantile(&dist(df), df, p / 2.0);
+            assert!(
+                within_fifteen_digits(excel, t),
+                "T.INV.2T({p},{df}) = {t:e}, Excel {excel:e}"
+            );
+        }
+        // T.INV.2T's negative branch keeps the centre to c = p - 1 = 0.1, bit-exact at
+        // `T.INV.2T(LN(3),7)` (gen-m9 c2684066d8df263e A64).
+        assert_eq!(
+            -t_centre_quantile(7.0, 3f64.ln() - 1.0),
+            -0.128_473_231_950_879_78
+        );
+        // T.INV at p = 1/2 +- 1E-10: the same centre at c = |2p - 1|, odd in p.
+        let exact = 2.634_305_742_103_688_5e-10;
+        let above = t_quantile(&dist(5.0), 5.0, 0.5 + 1e-10);
+        assert!((above / exact - 1.0).abs() < 1e-15, "{above:e}");
+        assert_eq!(t_quantile(&dist(5.0), 5.0, 0.5 - 1e-10), -above);
+        assert_eq!(t_quantile(&dist(5.0), 5.0, 0.5), 0.0);
+    }
+
+    #[test]
+    fn centre_quantile_rises_with_c_at_every_df() {
+        // The search is bounded (`refine_increasing`); its result is finite and rises with c up to
+        // the switch back to statrs.
+        for df in [1.0, 2.0, 3.0, 30.0, 1e3, 99_999.0, 1e5, 1e8, 1e10] {
+            let mut last = 0.0;
+            for c in [1.2e-16, 1e-12, 1e-8, 1e-4, 1e-2, 0.05, 0.074] {
+                let t = t_upper_quantile(&dist(df), df, (1.0 - c) / 2.0);
+                assert!(t.is_finite() && t > last, "df {df} c {c}: {t}");
+                last = t;
+            }
+        }
     }
 
     #[test]

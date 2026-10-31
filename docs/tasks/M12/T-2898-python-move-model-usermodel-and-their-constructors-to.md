@@ -4,7 +4,7 @@ title: "Python: move Model, UserModel and their constructors to rustsheet.legacy
 milestone: M12
 lane: api
 status: todo
-priority: P1
+priority: P2
 size: M
 tier: opus
 depends_on: [T-2897]

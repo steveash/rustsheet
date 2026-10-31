@@ -40,6 +40,7 @@
   {"name":"CEILING","required":2,"params":["Lift","Lift"],"repeat":[],"max":2,"work":"Constant"},
   {"name":"CEILING.MATH","required":1,"params":["Lift","Lift","Lift"],"repeat":[],"max":3,"work":"Constant"},
   {"name":"CEILING.PRECISE","required":1,"params":["Lift","Lift"],"repeat":[],"max":2,"work":"Constant"},
+  {"name":"CHAR","required":1,"params":["Lift"],"repeat":[],"max":1,"work":"Constant"},
   {"name":"CHIDIST","required":2,"params":["Lift","Lift"],"repeat":[],"max":2,"work":"ByValue(IncompleteGamma { args: 2, shape: 1, shape_of: HalfDegrees, probability: None, weight: 262144 })"},
   {"name":"CHIINV","required":2,"params":["Lift","Lift"],"repeat":[],"max":2,"work":"ByValue(IncompleteGamma { args: 2, shape: 1, shape_of: HalfDegrees, probability: Some(0), weight: 262144 })"},
   {"name":"CHISQ.DIST","required":3,"params":["Lift","Lift","Lift"],"repeat":[],"max":3,"work":"ByValue(IncompleteGamma { args: 3, shape: 1, shape_of: HalfDegrees, probability: None, weight: 262144 })"},
