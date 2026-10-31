@@ -1842,8 +1842,12 @@ down to 1E-10 / up to 0.9999999999. The values are the targets for T-0969 and T-
   exact tail is 8 to 23 ulp off, but 29 and 97 ulp off at `T.DIST.RT(0.5,100)` and (0.5,1000), where the exact
   tail is within 1. No (df, t) cut on the swept cells separates the two (superseded: the denser grid of T-0969 attempt 7
   finds the cut, see "T.DIST.RT follows the rounded y beyond t = 1").
-- **Centre quantiles are accurate** (T-2724): TINV, T.INV.2T and CONFIDENCE.T with p near 1 (and T.INV with
-  p near 1/2), whose quantile is a tiny t, keep their digits down to p = 1-1E-16: `TINV(1-1E-10,5)` =
+- **Centre quantiles are accurate** (T-2724): from df 2 (df 1 is Excel's 1/TAN form, T-2858), TINV, T.INV.2T and
+  CONFIDENCE.T with p near 1 (and T.INV with p near 1/2), whose quantile is a tiny t, keep their digits down to
+  p = 1-1E-16, from two-tailed p = 0.95 on (at p = 0.9 Excel is the rounded-y form instead; "Student-t quantile is
+  SQRT(df*(1/y-1)) of the rounded beta quantile, away from the centre"); T.INV.2T's negative branch, p in (1, 2), is
+  the exact quantile further out, at c = p - 1 = 0.0986 (`T.INV.2T(LN(3),7)` = -0.12847323195087978, gen-m9
+  c2684066d8df263e A64; d910f000b60e2eac A357 at df 8, c = 0.0991): `TINV(1-1E-10,5)` =
   1.3171528710518458E-10, `TINV(1-1E-16,6)` = 1.4503892858778844E-16, `T.INV.2T(0.999999,7)` =
   1.2987301378605883E-6, `T.INV.2T(0.9999999999,1E6)` = 1.2533145543437745E-10 (gen-m9 b9a32ce9a1fd0d71 A58,
   cb61169f4c033d4b A71, 334f3dc9ca937f10 A128; probes-numeric m9-t-inv-2t A130). Each is within about 2E-15
@@ -3492,7 +3496,9 @@ stat-argument-modes H518, and gen-m9 1b31092a0d79e5f1 A275, 2138b909d8f810ea A24
 5919660b7bb4d195 A53, 775d053de498b8c7 A176. The full cell list is in T-3061.
 It does not hold near the centre. At two-tailed p = 0.99 and 0.999 (q = 0.495, 0.4995; m9-t-inv-2t A10-A115) Excel is
 within 1E-15 of the exact quantile, and the form is thousands of ulps off. The switch lies between q = 0.45 and
-0.495 (T-2724). At df 30 and q = 5E-17 (`T.INV.2T(1E-16,30)`, gen-m9 583ca2baea0bb30a A147) Excel's t is 2E-12
+0.475: p = 0.9 (q = 0.45) is the form bit for bit at df 2, 3, 5, 10, 100 and 1000 (mpmath, m9-t-inv-2t A22, A35, A61,
+A100, A113), p = 0.95 (q = 0.475) the exact quantile (T-2724 review; T-2724's centre kernel starts at c = 1 - 2q
+below 0.075, inside that bracket). At df 30 and q = 5E-17 (`T.INV.2T(1E-16,30)`, gen-m9 583ca2baea0bb30a A147) Excel's t is 2E-12
 off (its y about 4E-12; T-1542).
 Ours: the exact quantile (A&S 26.7.5 from df 1E5, statrs' inverse below), so up to 2.2E-7 relative away at huge df:
 T-3061.

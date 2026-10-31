@@ -115,3 +115,8 @@ true quantile while Excel is 1E-15 to 3.6E-15 off (`TINV(1-1E-16,8)`: Excel 1.43
 1.4355131050823086E-16, ours 1.4355131050823083E-16), so they are Excel's own last digits and go back to T-0967
 (the accuracy stage never fits Excel's bits, decision 0114). The p in (1, 2) cells of T-2839 also reach this kernel
 and dropped from about 1E-8 absolute error to last-digit residue (noted in T-2839).
+
+Review round 1 (Excel fidelity): the cut was 0.1, which reached p = 0.9 where Excel is the rounded-y form (T-3061),
+so it is 0.075 now; T.INV.2T's negative branch keeps 0.1 (c = p - 1), where two gen-m9 cells show Excel exact
+(c2684066d8df263e A64, d910f000b60e2eac A357). The unit tests leave df 1 out: Excel's df 1 is the 1/TAN form
+(T-2858, noted there), not the true quantile.

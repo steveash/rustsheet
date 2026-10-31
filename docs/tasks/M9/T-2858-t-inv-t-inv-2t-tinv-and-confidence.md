@@ -95,3 +95,7 @@ T-2724 (the centre); they are this task's, and T-2724 no longer lists them.
 Decision 0083: done when every cell this task owns is within half a unit of the 15th significant digit of Excel's
 value. The closed form is expected to be bit-exact on all of them; any cell left only at the ulp level moves to a
 `defer: phase-1b` follow-up named in the Outcome.
+
+Note from T-2724 (2026-10-31): two-tailed p near 1 at df 1 now reaches T-2724's centre kernel (the true quantile,
+`t_centre_quantile` in t_dist.rs) before any df-1 rule; this task's 1/TAN form has to take df 1 ahead of it. The
+T-2724 unit test `centre_quantiles_keep_their_digits` leaves df 1 out for this task to pin.

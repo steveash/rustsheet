@@ -331,14 +331,24 @@ fn t_tail_quantile(dist: &StudentsT, df: f64, q: f64) -> f64 {
 
 /// Central probabilities `c = |2p - 1|` below this take [`t_centre_quantile`]. statrs' inversion
 /// solves for `y = df / (df + t^2)` near 1 and back-transforms with `1 - y`, which keeps only the
-/// digits of `y` below 1 (`TINV(1-1E-10,5)` 2.36E-8, Excel 1.32E-10; T-2724).
-const T_CENTRE_C: f64 = 0.1;
+/// digits of `y` below 1 (`TINV(1-1E-10,5)` 2.36E-8, Excel 1.32E-10; T-2724). Excel switches from the
+/// rounded-y form to the exact quantile between two-tailed p = 0.9 (c = 0.1) and 0.95 (c = 0.05)
+/// (statistics.md "Student-t quantile is SQRT(df*(1/y-1)) of the rounded beta quantile, away from
+/// the centre"), so the cut sits inside that bracket.
+const T_CENTRE_C: f64 = 0.075;
+
+/// The centre cut of T.INV.2T's negative branch, p in (1, 2), with c = p - 1: Excel is the exact
+/// quantile there at c = 0.0986 and 0.0991, past [`T_CENTRE_C`] (`T.INV.2T(LN(3),7)` =
+/// -0.12847323195087978, gen-m9 c2684066d8df263e A64; d910f000b60e2eac A357 at df 8).
+const T_NEGATIVE_CENTRE_C: f64 = 0.1;
 
 /// Magnitude `t >= 0` with `P(|T| < t) = c` for a central probability `c` below [`T_CENTRE_C`]
-/// (so `t` < 0.16 at every df): the crossing of the centre probability itself
+/// (so `t` < 0.12 at every df): the crossing of the centre probability itself
 /// (`student_t_centre`), which never forms `1 - y`, so a tiny quantile keeps its digits. Excel's
 /// centre quantiles are accurate (statistics.md "Student t sweep", T-2724). The estimate is
 /// `c / (2 f(0))`, `f` the density; at most 129 evaluations (`refine_increasing`).
+/// `df` is a truncated integer from 1 to [`T_DF_MAX`] here, every one of which `student_t_centre`
+/// takes (it is NaN only for a df its Gamma ratio refuses).
 fn t_centre_quantile(df: f64, c: f64) -> f64 {
     let estimate = student_t_density(0.0, df).map_or(f64::NAN, |density| 0.5 * c / density);
     refine_increasing(|t| student_t_centre(t, df), c, estimate, 0.0, 1.0)
@@ -555,8 +565,12 @@ impl Model {
         let x = if two_tailed && p > 1.0 {
             // T.INV.2T(p) = T.INV(1 - p/2), the negative quantile, for p in (1, 2) (m9-t-edges A2
             // `T.INV.2T(1.5,5)`, A43 `T.INV.2T(1.5,10)`). 2 - p is exact on [1, 2] (Sterbenz), and
-            // the upper tail of (2 - p) / 2 reaches the tiny-p path for p near 2.
-            -t_upper_quantile(&dist, df, (2.0 - p) / 2.0).abs()
+            // the upper tail of (2 - p) / 2 reaches the tiny-p path for p near 2. p - 1 is exact too.
+            if p - 1.0 < T_NEGATIVE_CENTRE_C {
+                -t_centre_quantile(df, p - 1.0)
+            } else {
+                -t_upper_quantile(&dist, df, (2.0 - p) / 2.0).abs()
+            }
         } else if two_tailed {
             // Two-sided: F(x) = 1 - p/2
             t_upper_quantile(&dist, df, p / 2.0).abs()
@@ -644,7 +658,8 @@ impl Model {
 
 #[cfg(test)]
 mod tests {
-    use super::{t_quantile, t_upper_quantile};
+    use super::{t_centre_quantile, t_quantile, t_upper_quantile};
+    use crate::test::util::within_fifteen_digits;
     use statrs::distribution::StudentsT;
 
     // Excel (probes-numeric t1531-t-tiny-p): the Student-t quantile is finite, never an error, for
@@ -705,21 +720,13 @@ mod tests {
         assert!(t.is_finite() && t < -30.0 && t > -80.0, "{t}");
     }
 
-    /// Whether `actual` is within half a unit of the 15th significant digit of `expected`.
-    fn within_15_digits(actual: f64, expected: f64) -> bool {
-        let unit = 10f64.powf(expected.abs().log10().floor() - 14.0);
-        (actual - expected).abs() <= 0.5 * unit
-    }
-
     #[test]
     fn centre_quantiles_keep_their_digits() {
         // T-2724: two-tailed quantiles with p near 1, against the true quantile at the double p
         // (mpmath, 40 digits, `I_w(1/2, df/2) = 1 - p`), within 1E-15 relative; statrs' 1 - y lost
         // most digits (`TINV(1-1E-10,5)` was 2.36E-8) and gave 0 at 1-1E-16.
+        // df 1 is Excel's 1/TAN form, not the true quantile, so it is left out (TODO(T-2858)).
         for (df, p, exact) in [
-            (1.0, 0.999_999, 1.570_796_326_841_358e-6),
-            (1.0, 1.0 - 1e-10, 1.570_796_456_763_167_3e-10),
-            (1.0, 1.0 - 1e-16, 1.743_934_249_004_316e-16),
             (2.0, 0.999_999, 1.414_213_562_414_469e-6),
             (2.0, 1.0 - 1e-10, 1.414_213_679_385_65e-10),
             (2.0, 1.0 - 1e-16, 1.570_092_458_683_775_2e-16),
@@ -749,10 +756,16 @@ mod tests {
         ] {
             let t = t_upper_quantile(&dist(df), df, p / 2.0);
             assert!(
-                within_15_digits(t, excel),
+                within_fifteen_digits(excel, t),
                 "T.INV.2T({p},{df}) = {t:e}, Excel {excel:e}"
             );
         }
+        // T.INV.2T's negative branch keeps the centre to c = p - 1 = 0.1, bit-exact at
+        // `T.INV.2T(LN(3),7)` (gen-m9 c2684066d8df263e A64).
+        assert_eq!(
+            -t_centre_quantile(7.0, 3f64.ln() - 1.0),
+            -0.128_473_231_950_879_78
+        );
         // T.INV at p = 1/2 +- 1E-10: the same centre at c = |2p - 1|, odd in p.
         let exact = 2.634_305_742_103_688_5e-10;
         let above = t_quantile(&dist(5.0), 5.0, 0.5 + 1e-10);
@@ -767,7 +780,7 @@ mod tests {
         // the switch back to statrs.
         for df in [1.0, 2.0, 3.0, 30.0, 1e3, 99_999.0, 1e5, 1e8, 1e10] {
             let mut last = 0.0;
-            for c in [1.2e-16, 1e-12, 1e-8, 1e-4, 1e-2, 0.05, 0.099] {
+            for c in [1.2e-16, 1e-12, 1e-8, 1e-4, 1e-2, 0.05, 0.074] {
                 let t = t_upper_quantile(&dist(df), df, (1.0 - c) / 2.0);
                 assert!(t.is_finite() && t > last, "df {df} c {c}: {t}");
                 last = t;
