@@ -191,6 +191,17 @@ class Build(unittest.TestCase):
         self.assertEqual((train.deferred, train.ejected), ([], []))
         self.assertEqual(self.git("rev-parse", f"{train.tip}^1"), train.members[-2].merge)
 
+    def test_ejected_candidates_make_room_for_later_ones(self) -> None:
+        # Two candidates conflict with main; the batch still fills to BATCH_MAX from the rest.
+        clashing = [self.pr(self.m0, {"shared.txt": f"one\n{k}\nthree\n"}) for k in range(2)]
+        clean = [self.pr(self.m0, {f"c{k}.txt": "x"}) for k in range(merge_train.BATCH_MAX + 1)]
+        self.git("checkout", "-q", "-f", "--detach", self.m0)
+        self.write("shared.txt", "one\nzwei\nthree\n")
+        main = self.commit("main moves")
+        train = self.build(*clashing, *clean, base=main)
+        self.assertEqual([pr for pr, _ in train.ejected], [1, 2])
+        self.assertEqual([m.pr for m in train.members], list(range(3, 3 + merge_train.BATCH_MAX)))
+
     def test_stacked_and_intra_batch_conflicts_defer_and_main_conflicts_eject(self) -> None:
         first = self.pr(self.m0, {"a.txt": "a", "shared.txt": "one\nTWO\nthree\n"})
         stacked = self.pr(first, {"b.txt": "b"})
@@ -269,6 +280,20 @@ class Build(unittest.TestCase):
 def verdict(pr: int, head: str, at: str, *failures: merge_ready.Failure) -> merge_ready.Verdict:
     mark = merge_ready.Marker(head, None, None, {}, "session-1")
     return merge_ready.Verdict(pr, mark, pr, at, failures)
+
+
+class Candidates(unittest.TestCase):
+    def test_a_run_builds_from_more_ready_prs_than_one_batch(self) -> None:
+        # Ejected or deferred candidates make room for later ones (decision 0204), so a run hands
+        # the build up to CANDIDATES_MAX ready PRs, oldest first, not just the first BATCH_MAX.
+        count = merge_train.CANDIDATES_MAX + 3
+        found = merge_train.Collected(
+            ready=[verdict(pr, f"{pr:040x}", f"2026-10-31T{pr:02d}:00:00Z") for pr in range(1, count + 1)]
+        )
+        heads = merge_train.candidates(found)
+        self.assertGreater(merge_train.CANDIDATES_MAX, merge_train.BATCH_MAX)
+        self.assertEqual([pr for pr, _ in heads], list(range(1, merge_train.CANDIDATES_MAX + 1)))
+        self.assertEqual(heads[0], (1, f"{1:040x}"))
 
 
 class DryRun(unittest.TestCase):

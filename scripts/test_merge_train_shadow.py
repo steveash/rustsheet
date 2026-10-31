@@ -67,10 +67,12 @@ class Shadow(StageFixture):
         self.assertEqual(self.run_stage(), 0)
         self.assertEqual(self.shadow_ref(), tip)
         self.assertIn("skipped: main and the ready set are unchanged", self.stage.log[-1])
-        self.add_pr(6, {"f6.txt": "x"})  # sixth by marker time: not in the batch, so nothing changed
+        # A sixth ready PR is a candidate (decision 0204), so the ready set changed: a new round.
+        self.add_pr(6, {"f6.txt": "x"})
         self.stage = merge_train_shadow.ShadowStage(self.gh, self.clone, self.lock, self.clock, self.clock.sleep)
         self.assertEqual(self.run_stage(), 0)
-        self.assertEqual(self.shadow_ref(), tip)
+        self.assertNotEqual(self.shadow_ref(), tip)
+        tip = self.shadow_ref()
         self.push_main({"g.txt": "y"})
         self.stage = merge_train_shadow.ShadowStage(self.gh, self.clone, self.lock, self.clock, self.clock.sleep)
         self.assertEqual(self.run_stage(), 0, self.stage.log)

@@ -44,6 +44,10 @@ MODES = (LOCK, SHADOW, TRAIN)
 # The id checks of step 4; each takes `--root <tree>`. They run from `main`'s scripts (M0).
 ID_CHECKS = (("tasks.py", "validate"), ("check_decisions.py",))
 BATCH_MAX = 5
+# Ready PRs a run hands to the build, oldest first. The build keeps the first BATCH_MAX that merge
+# cleanly, so an ejected or deferred PR makes room for the next one instead of shrinking the
+# batch (decision 0204). Each candidate costs one local merge.
+CANDIDATES_MAX = 4 * BATCH_MAX
 # Ids that an id-check failure line names; only these, never its file names, reach a reason.
 COLLIDING_ID = re.compile(r"\b(?:duplicate id (T-\d{4})|decision number (\d{4}))\b")
 
@@ -211,6 +215,11 @@ def collect(client: Client, repo: merge_ready.Repo) -> Collected:
     return found
 
 
+def candidates(found: Collected) -> list[tuple[int, str]]:
+    """The (PR, marked head) pairs a run builds from: up to CANDIDATES_MAX ready PRs, oldest first."""
+    return [(v.pr, v.marker.head) for v in found.ready[:CANDIDATES_MAX] if v.marker is not None]
+
+
 def dry_run(client: Client, root: Path = ROOT) -> str:
     """Steps 2-4 against a fresh origin/main in scratch worktrees; returns the report. No writes:
     no push, label, comment or lock (the write policy of SPEC-0027 section 4)."""
@@ -218,7 +227,7 @@ def dry_run(client: Client, root: Path = ROOT) -> str:
     repo.fetch_base()
     base = git("rev-parse", f"refs/merge-ready/{merge_ready.BASE_BRANCH}", root=root).stdout.strip()
     found = collect(client, repo)
-    heads = [(v.pr, v.marker.head) for v in found.ready[:BATCH_MAX] if v.marker is not None]
+    heads = candidates(found)
     with worktrees(root, base) as (train_tree, scripts_tree):
         train = build(train_tree, scripts_tree / "scripts", base, heads)
     lines = [f"dry run on main {base}: {len(heads)} candidate(s); nothing was written"]
@@ -227,7 +236,8 @@ def dry_run(client: Client, root: Path = ROOT) -> str:
     lines += [f"would eject #{pr}: {reason}" for pr, reason in train.ejected]
     lines += [f"would unlabel #{pr}: {reason}" for pr, reason in found.unlabel]
     lines += [f"skipped, label kept #{pr}: {reason}" for pr, reason in found.keep]
-    lines += [f"waiting for a later batch #{v.pr}" for v in found.ready[BATCH_MAX:]]
+    decided = {m.pr for m in train.members} | {pr for pr, _ in (*train.deferred, *train.ejected)}
+    lines += [f"waiting for a later batch #{v.pr}" for v in found.ready if v.pr not in decided]
     lines += found.warning_lines()
     return "\n".join(lines)
 
@@ -677,7 +687,7 @@ class Stage:
         self.log += found.warning_lines()
         for pr, reason in found.unlabel:
             self.unlabel(pr, reason)
-        heads = [(v.pr, v.marker.head) for v in found.ready[:BATCH_MAX] if v.marker is not None]
+        heads = candidates(found)
         if not heads:
             self.log.append("no ready PR")
             return []

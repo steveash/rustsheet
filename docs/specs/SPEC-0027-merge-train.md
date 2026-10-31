@@ -559,7 +559,9 @@ flip therefore takes effect within about 1 min of its stop label, or of its merg
 2. **Collect.** List open PRs labelled `ready-to-merge` and run V1–V6 on each. Section 2 gives the
    side effects of each failure, and they apply in `train` mode only; the other modes report
    them. A PR whose `mergeable_state` is `dirty` is ejected with the reason `conflict with main`.
-   Sort the rest by marker time, oldest first, and take up to `BATCH_MAX`. If none is left,
+   Sort the rest by marker time, oldest first, and take up to `BATCH_MAX`. *As built (decision
+   0204):* up to `CANDIDATES_MAX` (20) go to the build, which keeps the first `BATCH_MAX` that
+   merge cleanly, so ejected and deferred candidates make room for later ones. If none is left,
    release and report "no ready PR". Housekeeping in `train` and `shadow` mode: remove
    `ready-to-merge` from closed PRs, because in `shadow` mode a worker merges ready-labelled PRs by
    the per-PR flow.
