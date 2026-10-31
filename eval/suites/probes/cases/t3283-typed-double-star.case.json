@@ -1,0 +1,93 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3283: `**` typed (Graph PATCH): refused (cell blank), or stored and how (FORMULATEXT): an exponent-literal reading (1**2 is 100) vs a power. Z1 is 2.",
+ "tags": [
+  "M2",
+  "syntax",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "Z1": 2,
+    "A1": {
+     "entered": "=2**3"
+    },
+    "B1": "=ISBLANK(A1)",
+    "C1": "=IFERROR(FORMULATEXT(A1),\"none\")",
+    "A2": {
+     "entered": "=1**"
+    },
+    "B2": "=ISBLANK(A2)",
+    "C2": "=IFERROR(FORMULATEXT(A2),\"none\")",
+    "A3": {
+     "entered": "=Z1**2"
+    },
+    "B3": "=ISBLANK(A3)",
+    "C3": "=IFERROR(FORMULATEXT(A3),\"none\")",
+    "A4": {
+     "entered": "=1***2"
+    },
+    "B4": "=ISBLANK(A4)",
+    "C4": "=IFERROR(FORMULATEXT(A4),\"none\")",
+    "A5": {
+     "entered": "=1.5**2"
+    },
+    "B5": "=ISBLANK(A5)",
+    "C5": "=IFERROR(FORMULATEXT(A5),\"none\")",
+    "A6": {
+     "entered": "=2**-1"
+    },
+    "B6": "=ISBLANK(A6)",
+    "C6": "=IFERROR(FORMULATEXT(A6),\"none\")",
+    "A7": {
+     "entered": "=2** 3"
+    },
+    "B7": "=ISBLANK(A7)",
+    "C7": "=IFERROR(FORMULATEXT(A7),\"none\")",
+    "A8": {
+     "entered": "=(2)**3"
+    },
+    "B8": "=ISBLANK(A8)",
+    "C8": "=IFERROR(FORMULATEXT(A8),\"none\")",
+    "A9": {
+     "entered": "=2**3*2"
+    },
+    "B9": "=ISBLANK(A9)",
+    "C9": "=IFERROR(FORMULATEXT(A9),\"none\")",
+    "A10": {
+     "entered": "=2**0.5"
+    },
+    "B10": "=ISBLANK(A10)",
+    "C10": "=IFERROR(FORMULATEXT(A10),\"none\")",
+    "A11": {
+     "entered": "=-2**2"
+    },
+    "B11": "=ISBLANK(A11)",
+    "C11": "=IFERROR(FORMULATEXT(A11),\"none\")",
+    "A12": {
+     "entered": "=1E2**1"
+    },
+    "B12": "=ISBLANK(A12)",
+    "C12": "=IFERROR(FORMULATEXT(A12),\"none\")",
+    "A13": {
+     "entered": "=\"a\"**2"
+    },
+    "B13": "=ISBLANK(A13)",
+    "C13": "=IFERROR(FORMULATEXT(A13),\"none\")",
+    "A14": {
+     "entered": "=2**3**2"
+    },
+    "B14": "=ISBLANK(A14)",
+    "C14": "=IFERROR(FORMULATEXT(A14),\"none\")",
+    "A15": {
+     "entered": "=SUM(1**2)"
+    },
+    "B15": "=ISBLANK(A15)",
+    "C15": "=IFERROR(FORMULATEXT(A15),\"none\")"
+   }
+  }
+ ],
+ "expected": {}
+}
