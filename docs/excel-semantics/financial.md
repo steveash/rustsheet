@@ -3598,7 +3598,12 @@ Tasks: T-2671, T-2672, T-1528, T-2131
 Rule: PV's growth factor `P = (1+rate)^nper` is Excel's `^`, errors included, and PV then divides by P:
 - a rate of -1 with nper 0 is 0^0, which is `#NUM!` (`PV(-1,0,-713)`);
 - a P of 0 is the division's `#DIV/0!`. That covers a rate of -1 with nper > 0, and a rate so near -1 that P underflows
-  (`PV(-1+2^-52,165,-978,224,0)`, where 1+rate is 2^-52 and its 165th power is 0).
+  (`PV(-1+2^-52,165,-978,224,0)`, where 1+rate is 2^-52 and its 165th power is 0);
+- so is a subnormal P, whatever pmt, fv and type are (`PV(-0.5,1030,0,0)` too): `PV(-0.9999999999,30,-1,1)` is
+  9.999976005322188E+289 and `PV(-0.9999999999,31,-1,1)` (P = 1E-310) `#DIV/0!`, as are 31.5, 78 and 161 periods;
+  `PV(-0.5,1022,0,1)` is -4.49423283715579E+307 (P = 2^-1022) and `PV(-0.5,1023,-1,1)` `#DIV/0!`; `PV(-0.9,307,-1,1)` is
+  1.1111111111112013E+306 and `PV(-0.9,308,-1,1)` `#DIV/0!`. Evidence: probes/fin-pv-power-underflow (excel-graph,
+  2026-10-31, T-2685), 35 cells, all matched.
 
 NPER divides by ln(1+rate):
 - a rate so small that 1+rate is 1 is `#DIV/0!`, start-of-period type 1 too (`NPER(1E-300,-113,3037,368,1)`);
