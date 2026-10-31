@@ -20,13 +20,13 @@ typical, 30% tails and domain edges, 20% extreme-but-valid, 10% log-uniform; dec
 - Decision 0188 R2; design in the Gate A spec (T-3355).
 - Reuse the oracle client (`rustsheet-oracle`), the spec→xlsx builder and `rustsheet-eval snapshot`; Python is ruff
   and mypy strict; never re-implement xlsx value parsing (CLAUDE.md conventions).
-
 - SPEC-0029 decides the design: `tools/src/rustsheet_tools/accuracy/`, CLI `rustsheet-accuracy` (`generate`,
   `verify`; `math` is T-3380), `Definition`s per family with cited valid and extreme ranges, dps 60 and 80 with a
   1e-45 convergence check, seeds from `sha256(FUNCTION/batch)`, the five strata and their shares, 120/200/300 points by
   arity, literals of at most 15 significant digits below 1E+308, and the fit lab's refusal of `accuracy/*` sweeps.
 - The oracle fill needs nothing new once T-3356's `Suite::load_named` resolves `--suite accuracy`; until then, test the
   fill on a temporary suite.
+
 ## Acceptance criteria
 - [ ] The generator is deterministic (same seed, same points), and its mpmath definitions for at least three functions
       (one distribution, one inverse, one financial solver) are unit-tested against published values.

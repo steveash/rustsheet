@@ -19,13 +19,13 @@ significant digits of Excel's value, or when one side is an error and the other 
 ## Context
 - Decision 0188 R1(a) and R2; the format, location and runner are the spec's (T-3355).
 - Reuse the eval engine adapter and `Visible::is_off` (crates/rustsheet-eval), never a second 15-digit rule.
-
 - SPEC-0029 decides the design: the `eval/accuracy/` manifest resolved by `Suite::load_named` (for `cases` and
   `show`, never `make eval`), batches `tables/<FUNCTION>/<batch>.case.json` with oracle and `rustsheet-math/v1` math
   sidecars, `envelope` (the one definition T-3359 and T-3380 reuse), `known-failures.tsv` (stale lines fail),
   `math-over-excel.tsv` (anchors checked by `deviations::check_entry` given the status, Excel off by > 1e-4 on a filled
   marked point), the summary and `--json eval/runs/accuracy.json`, a 30 s budget, and the `make eval-gates` wiring
   (Makefile is protected: a decision record).
+
 ## Acceptance criteria
 - [ ] The reader and the check exist as the spec says, with unit tests for a passing point, a point within ε of the
       math only, within 15 digits of Excel only, outside both, an error against a number, and an R3 point checked

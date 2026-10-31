@@ -1,6 +1,6 @@
 # SPEC-0029 — Gate A, the accuracy gate
 
-- **Status:** draft (T-3355; accepted once the architecture reviewer approves)
+- **Status:** accepted (T-3355; architecture, security and quality reviewers approved)
 - **Milestone / lane:** M0 / harness
 - **Tasks:** T-3355 (this spec); rollout T-3356, T-3357, T-3358, T-3379, T-3380; T-3359 reads the result
 
@@ -74,7 +74,7 @@ eval/accuracy/
 `eval/accuracy/` is outside `eval/suites/`, `eval/baseline/` and `quality/`. Because `Suite::load_all` scans
 `eval/suites/` only, `make eval`, the eval gate, the evidence floor and every report measure never see the tables.
 `rustsheet-eval cases accuracy` and `rustsheet-eval show accuracy/<FUNCTION>/<batch>.case.json` resolve the manifest
-through one helper (`Suite::load_named(root, name)`: `eval/suites/*` first, then `eval/accuracy/suite.toml`), so the
+through one helper in suite.rs beside `Suite::load_all` (`Suite::load_named(root, name)`: `eval/suites/*` first, then `eval/accuracy/suite.toml`), so the
 oracle fill, `make eval-show` and the fit lab's sweep reader work on tables unchanged.
 
 **One table per function, one file per batch.** A function's table is every batch in its directory. A batch is

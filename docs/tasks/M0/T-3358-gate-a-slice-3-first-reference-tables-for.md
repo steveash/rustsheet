@@ -24,11 +24,11 @@ the decision 0188 R3 points marked, and `make check` running them.
   a huge shape. Add them as R3-marked points, filled, and cite them from the semantics entries.
 - Points that fail on landing are known bugs: the P0 tasks T-3347 to T-3354 and T-3367 own them. The spec says how a
   failing point is carried until its task lands (never by weakening ε or the 15-digit rule).
-
 - SPEC-0029: a failing point is carried by a `known-failures.tsv` line naming its owner task, allowed only for points
   added in the same diff (T-3379); R3 points are lines of `math-over-excel.tsv` (protected: a decision record citing
   0188 R3's initial cases). Functions with no table yet are listed by the check's missing-table count; the follow-up
   slices by family are in SPEC-0029's rollout step 4.
+
 ## Acceptance criteria
 - [ ] Tables for the batch are committed and filled; each failing point is named with its owner task in the Outcome.
 - [ ] The `MATH-OVER-EXCEL` entries cite their committed evidence points.

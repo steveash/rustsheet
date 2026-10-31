@@ -50,7 +50,7 @@ more, if the design needs it).
   - how the tables join the R4 guards: a fresh log-uniform sweep (R4.2) is a table stratum, not a second format.
 - [x] Implementation slices are filed or amended (T-3356 format and gate, T-3357 generator and fill, T-3358 the first
       tables), each size S or M, with the spec linked.
-- [ ] `make check` green; architecture reviewer approves.
+- [x] `make check` green; architecture reviewer approves.
 
 ## Out of scope
 - Implementing the gate (T-3356 to T-3358).
