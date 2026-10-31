@@ -17,6 +17,8 @@ within 15 significant digits of Excel, match Excel to the bit, or the task recor
 their bit-exact counts (decision 0056 time box).
 
 ## Context
+Split: T-3233 (deferred M9 fitting) also lists these quantile cells; this task owns them.
+
 Gap triage 2026-10-28 (`make eval` on 40844417, excel-graph evidence). An ownership check over every failing cell found
 these cells named by no open task, here or on a pushed `agent/*` branch. T-2767 (deferred) is the same work for the
 gen-m9 sweep's 28 F quantile cells; T-2500 owns the F quantile cells about a unit of the 15th digit off; T-2511 re-bases
