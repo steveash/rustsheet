@@ -34,6 +34,8 @@ ROOT = Path(__file__).resolve().parent.parent
 REF = "refs/heads/id-registry"
 SEEN_REF = "refs/id-registry/seen"
 HEADER = "id-registry v1"
+TASK = re.compile(r"T-\d{4}")
+DECISION = re.compile(r"\d{4}")
 CLAIM = re.compile(r"T-\d{4}|\d{4}")
 KEEP = 400
 ATTEMPTS = 10
@@ -66,15 +68,15 @@ def commit(claims: list[str], root: Path) -> str:
     return git(*IDENTITY, "commit-tree", tree, "-m", message, root=root).stdout.strip()
 
 
-def claim(pick: Callable[[set[str]], str], root: Path = ROOT) -> str:
-    """Claims the id that `pick` chooses given the registry's claims, atomically; returns it.
-    `pick` must choose an id outside the set it is given. Raises RegistryError when the registry
-    cannot be reached or every attempt lost a race."""
+def claim(pick: Callable[[set[str]], str], kind: re.Pattern[str], root: Path = ROOT) -> str:
+    """Claims the id that `pick` chooses given the registry's claims of `kind` (TASK or DECISION),
+    atomically; returns it. `pick` must choose an id of that kind outside the set it is given.
+    Raises RegistryError when the registry cannot be reached or every attempt lost a race."""
     try:
         for _ in range(ATTEMPTS):
             sha, claims = read(root)
-            chosen = pick(set(claims))
-            if not CLAIM.fullmatch(chosen) or chosen in claims:
+            chosen = pick({c for c in claims if kind.fullmatch(c)})
+            if not kind.fullmatch(chosen) or chosen in claims:
                 raise RegistryError(f"refusing to claim {chosen!r}")
             if merge_lock.push_lease(sha, commit([*claims, chosen], root), root, ref=REF):
                 return chosen
@@ -83,12 +85,14 @@ def claim(pick: Callable[[set[str]], str], root: Path = ROOT) -> str:
     raise RegistryError(f"lost the race {ATTEMPTS} times")
 
 
-def allocate(pick: Callable[[set[str]], str], fetch: bool, root: Path = ROOT) -> tuple[str, bool]:
+def allocate(
+    pick: Callable[[set[str]], str], kind: re.Pattern[str], fetch: bool, root: Path = ROOT
+) -> tuple[str, bool]:
     """(id, reserved): `claim(pick)` when `fetch` (online); otherwise, or when the registry fails,
     `pick(set())` unreserved, with a warning: the scan of the tree and the branches still applies."""
     if fetch:
         try:
-            return claim(pick, root), True
+            return claim(pick, kind, root), True
         except RegistryError as e:
             print(f"warning: id registry unavailable ({e}); the id is not reserved", file=sys.stderr)
     return pick(set()), False

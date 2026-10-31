@@ -624,7 +624,7 @@ def reserve_id(pick: Callable[[set[str]], str], fetch: bool) -> tuple[str, str]:
     except ImportError:
         print("warning: no id registry beside tasks.py; the id is not reserved", file=sys.stderr)
         return pick(set()), "NOT reserved: commit and push it now to claim it"
-    chosen, reserved = id_registry.allocate(pick, fetch)
+    chosen, reserved = id_registry.allocate(pick, id_registry.TASK, fetch)
     return chosen, id_registry.note(reserved)
 
 

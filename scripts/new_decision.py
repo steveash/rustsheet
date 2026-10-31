@@ -47,7 +47,7 @@ def new_decision(title: str, fetch: bool = True) -> int:
     taken = numbers_in_tree(directory) | tasks.git_branch_names(
         str(directory.relative_to(tasks.ROOT)), check_decisions.NAME, fetch
     )
-    number, reserved = id_registry.allocate(lambda claimed: next_number(taken | claimed), fetch)
+    number, reserved = id_registry.allocate(lambda claimed: next_number(taken | claimed), id_registry.DECISION, fetch)
     path = directory / f"{number}-{tasks.slug(title, 'decision')}.md"
     path.write_text(TEMPLATE.format(number=number, title=title))
     print(
