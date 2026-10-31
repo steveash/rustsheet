@@ -51,3 +51,23 @@ references per cell, since its shapes are a function of the tree and the cell.
 
 ## Out of scope
 - Defined-name parsing on load (T-3195); calculation time; the harness's snapshot and volatile scan (untimed).
+
+## Progress (2026-10-31, opus run; work in flight)
+Done on this branch:
+- `import/relocation_key.rs`: `KeyLexer::key` (the formula text with each reference token replaced by
+  its offsets, or values when `$`, plus the corner comparisons of a range; only called stored
+  functions other than LET/LAMBDA as identifiers; structured references, other identifiers and a
+  reference called as `A1(` are not keyed). Soundness is argued in the module docs against the T-3318
+  audit list. `RcTextCache` moved there and gained a keyed list: a key hit skips the parse; a tree
+  with a parse error (`Node::has_parse_error`, new in the engine) is never keyed.
+- Test `relocation_key_gives_equal_trees_for_equal_keys` (mixed-`$` ranges, intersections, LET
+  names, dotted ranges, defined names, `A1(2)`, a parse error) and the extended T-3318 copy test pass.
+- corpus-bench/52450 (`rustsheet-eval run --suite corpus-bench --filter 52450`, release): before
+  1,776 / 1,795 / 1,944 ms, after 1,330 / 1,342 / 1,393 ms (three runs each), so at most 1,500 ms
+  without the census cache.
+- `cargo bench -p rustsheet --bench import`: before min 380.2 ms, median 386.6 ms; after min 272.3 ms,
+  median 295.6 ms.
+Left: callgrind's `from_a1_to_rc` count before and after and the load/census time split; the full
+`make eval` with calipers, corpus-bench and poi fetched (no new known failure, argument census
+unchanged against main); `make check`; reviewers. The census cache (`observe`) is not needed for
+the 1,500 ms target and is not done.
