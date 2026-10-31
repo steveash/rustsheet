@@ -1314,7 +1314,7 @@ Status: VERIFIED (excel-graph), one cell
 Tasks: T-2583
 
 ## gen-m6 arg-pairs batch (T-3495): unresolved DAYS and NETWORKDAYS.INTL cells
-Status: VERIFIED (excel-graph oracle cells; engine fix pending)
+Status: observed in oracle cells; the general rule is still to be probed (T-3536, T-3537)
 Excel's DAYS returns the error of an argument pair, not #VALUE!: `DAYS(-1,"abc")` and `DAYS(-1,"")` are #NUM!,
 `DAYS("abc",#NAME?)` is #NAME?, and a #DIV/0! cell paired with text gives #DIV/0! (gen-m6 a4a301d00b46acf3, T-3536).
 NETWORKDAYS.INTL with a fractional or serial-0 start/end and weekend codes 3, 13-15 is one day different from the

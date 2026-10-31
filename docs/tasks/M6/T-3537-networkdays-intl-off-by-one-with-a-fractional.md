@@ -24,7 +24,7 @@ Found by the T-3495 arg-pairs batch (oracle excel-graph): the engine is off by o
 - Other functions; the unrelated cells of these cases.
 
 ## Visible-parity stage
-Decision 0083: every cell above is visibly off (a wrong error or a value off in a leading digit). The acceptance criteria are the stage.
+Decision 0083: the cells below are wrong errors or values off by one day. Only some count as visibly off in the visible-parity metric (the batch raised the lock by 1, decision 0088 new coverage); the acceptance criteria are the stage.
 Cells:
 - 102b2df13f6891d2 A547
 - 1b4963f7cb42e2fa A385

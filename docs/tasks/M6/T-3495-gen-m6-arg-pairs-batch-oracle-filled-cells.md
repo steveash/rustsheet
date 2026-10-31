@@ -52,3 +52,6 @@ gen-m6 gains an oracle-filled batch from `rustsheet-gen --policy arg-pairs` (T-3
 ## Outcome
 38 arg-pairs cases added to gen-m6 with excel-graph sidecars; gen-m6 now 31998/32014 bit-exact (16 known failures, all new).
 Failures owned by T-3536 (DAYS, 10 cells) and T-3537 (NETWORKDAYS.INTL, 6 cells); recorded in dates.md.
+
+Pairwise share is 1.0 (0 unseen pairs) for all 14 functions in report.json `argument_coverage`.
+eval/baseline/visible-parity.json moved 2427 -> 2428, written by `make eval-baseline` as new coverage (decision 0088): one cell of the batch is visibly off; eval-check fails at 2427.
