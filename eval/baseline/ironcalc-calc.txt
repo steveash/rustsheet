@@ -228,10 +228,13 @@ C	ironcalc-calc/simple_functions.xlsx	199
 C	ironcalc-calc/spill_operator.xlsx	17
 F	ironcalc-calc/ENGINEERING/BESSEL.xlsx	All!D18
 F	ironcalc-calc/ENGINEERING/BESSEL.xlsx	All!F18
+F	ironcalc-calc/ENGINEERING/COMPLEXs.xlsx	Sheet1!AL12
+F	ironcalc-calc/ENGINEERING/COMPLEXs.xlsx	Sheet1!AL26
 F	ironcalc-calc/ENGINEERING/COMPLEXs.xlsx	Sheet1!H10
 F	ironcalc-calc/ENGINEERING/COMPLEXs.xlsx	Sheet1!H2
 F	ironcalc-calc/ENGINEERING/COMPLEXs.xlsx	Sheet1!H3
 F	ironcalc-calc/ENGINEERING/COMPLEXs.xlsx	Sheet1!K25
+F	ironcalc-calc/ENGINEERING/COMPLEXs.xlsx	Sheet1!N6
 F	ironcalc-calc/ENGINEERING/ERFs.xlsx	Sheet1!E8
 F	ironcalc-calc/ENGINEERING/ERFs.xlsx	Sheet1!G8
 F	ironcalc-calc/FINANCIAL/CUMPRINC_CUMIPMT.xlsx	Sheet1!G12

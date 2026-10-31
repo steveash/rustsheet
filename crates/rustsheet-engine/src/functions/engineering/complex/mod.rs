@@ -540,10 +540,11 @@ impl Model {
             // The angle is Excel's ATAN2 kernel, `atan(y/x)` (IMARGUMENT's [`excel_atan2`]):
             // `IMPOWER("1000+1i",1)` is "1000+1i", its imaginary part 1.0000000000000002 where
             // libm `atan2` gives exactly 1 (gen-m9/74779cff2810ccf4 Calc!A379; T-2610). Unprobed
-            // (T-2736): where that kernel errs (a zero or subnormal x, an overflowing y/x) `atan2` is
-            // kept; its subnormal angle is 0 (`IMPOWER("1E20+1E-300i",1)` is "1E+20") and a -0
-            // imaginary part with x < 0 is +π, where `atan2` gave a tiny part and -π.
-            let angle = excel_atan2(x, y).unwrap_or_else(|_| f64::atan2(y, x)) * n;
+            // (T-2736): where that kernel errs (a subnormal x, an overflowing y/x) `atan2` is kept
+            // ([`atan2_or_libm`]); its subnormal angle is 0 (`IMPOWER("1E20+1E-300i",1)` is
+            // "1E+20") and a -0 imaginary part with x < 0 is +π, where `atan2` gave a tiny part and
+            // -π.
+            let angle = atan2_or_libm(x, y) * n;
             // An underflowed radius of 0 is "0" without reading the angle
             // (`IMPOWER("0.5i",134217728)`; probes/eng-impower-imdiv-edges A28-A35).
             if radius == 0.0 {
@@ -954,6 +955,13 @@ fn imlog2_parts(x: f64, y: f64, angle: f64) -> (f64, f64) {
     (scaled_modulus(x, y).ln() * k, angle * k)
 }
 
+/// The angle of `x + yi` for IMPOWER and IMSQRT: Excel's ATAN2 kernel ([`excel_atan2`]), and libm
+/// `atan2` where that kernel errs: a subnormal x, an overflowing y/x, or x = y = 0 (a zero modulus,
+/// whose angle does not change the result). The fallback is unprobed (T-2736).
+fn atan2_or_libm(x: f64, y: f64) -> f64 {
+    excel_atan2(x, y).unwrap_or_else(|_| f64::atan2(y, x))
+}
+
 fn imreal((x, _, _): ComplexParts, _: CellReferenceIndex) -> CalcResult {
     CalcResult::Number(x)
 }
@@ -964,6 +972,14 @@ fn imreal((x, _, _): ComplexParts, _: CellReferenceIndex) -> CalcResult {
 /// eng-imsqrt-large-b; docs/excel-semantics/engineering.md, T-1996). Not `modulus`: a subnormal
 /// square is 0 ([`flushed_square`]), so `IMSQRT("1E-154+1E-154i")` and `IMSQRT("1E-160+0i")` are
 /// "0" (probes/eng-imln-modulus A18, A20; eng-imln-modulus-range A51-A56, A80; T-2572).
+/// The half angle is Excel's ATAN2 kernel (IMARGUMENT's [`excel_atan2`]) through Excel's SIN and
+/// COS: `IMSQRT("-1")` is "6.1257422745431E-17+i", COS(ATAN2(-1,0)/2), where libm's cos(π/2) gives
+/// 6.12323399573677E-17 (gen-m9 59a16b5ab566ee5c A6, 516488da78a6b08c A52; excel-graph, T-2536).
+/// Decision 0188 R6 follows the web over the Mac 16.0300 cache of ironcalc-calc COMPLEXs.xlsx
+/// AL12 and AL26, which has libm's digits (T-1075 item 16). Every other IMSQRT cell of the suites
+/// prints the same either way. Where that kernel errs (a subnormal x or an overflowing y/x) libm
+/// `atan2` stands in ([`atan2_or_libm`]), and a -0 imaginary part with x < 0 takes +π, as in
+/// IMPOWER (unprobed, T-2736).
 fn imsqrt((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     let (xx, yy) = (flushed_square(x), flushed_square(y));
     if !xx.is_finite() || !yy.is_finite() {
@@ -973,8 +989,9 @@ fn imsqrt((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult 
         return complex_result(0.0, 0.0, suffix);
     }
     let r = f64::sqrt(xx + yy).sqrt();
-    let a = f64::atan2(y, x);
-    complex_result(r * f64::cos(a / 2.0), r * f64::sin(a / 2.0), suffix)
+    let a = atan2_or_libm(x, y);
+    let (sin, cos) = excel_sin_cos(a / 2.0);
+    complex_result(r * cos, r * sin, suffix)
 }
 
 #[cfg(test)]

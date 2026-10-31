@@ -132,13 +132,13 @@ const INVERSE_EXP_LOW: f64 = 0.01;
 /// FITTED(T-2629, 306 cells, |x| 0.00012..100; cuts bracketed 0.01..0.0105 and 18.2..100)
 const INVERSE_EXP_HIGH: f64 = 20.0;
 
-/// IMSIN, IMCOS, IMSEC, IMCSC and IMCOT of a real number `x` (imaginary part 0): `value` of SIN,
-/// COS and TAN's own kernels (the x87 reduction, [`excel_sin_cos`] and [`excel_tan`]), and
+/// IMSIN, IMCOS, IMTAN, IMSEC, IMCSC and IMCOT of a real number `x` (imaginary part 0): `value` of
+/// SIN, COS and TAN's own kernels (the x87 reduction, [`excel_sin_cos`] and [`excel_tan`]), and
 /// `#NUM!` from |x| = 2^27 as SIN is, except IMCOT, which is "0" there (`past_limit`).
 /// probes/t2534-im-trig-real-limit (excel-graph): `IMSIN("710")` is 0.0000602887066915739 and
 /// `IMCOT("123456789.123")` 0.0177255441505541, where libm gave other last digits; at 134217728,
 /// 1E+10, 1E+15 and ±1E+200 IMSIN, IMCOS, IMTAN, IMSEC and IMCSC are `#NUM!` and IMCOT "0"
-/// (docs/excel-semantics/engineering.md, T-2534). IMTAN takes the limit only (see [`imtan`]).
+/// (docs/excel-semantics/engineering.md, T-2534). IMTAN is TAN's kernel too (see [`imtan`]).
 fn real_trig(
     x: f64,
     suffix: Suffix,
@@ -375,12 +375,12 @@ pub(super) fn imsinh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> 
 /// digits, where the tan/tanh form loses the last 1-10 of them when the real part is small
 /// (ironcalc-calc/ENGINEERING/COMPLEXs.xlsx N2, N7, N15: `IMTAN("1.23+9.5121i")` has real part
 /// 6.89106871662165E-09; T-0907). Past `cosh 2y`'s range the value is `±0 ± i`, as tanh gives
-/// (probes/eng-imtan-imcot-overflow A1-A9, T-1966). Where the denominator rounds to 0 (x within
-/// about 5.2E-9 of an odd multiple of π/2 and `cosh 2y` 1) it is TAN's kernel, reduced by the x87
-/// 64-bit π: `IMTAN("1.5707963267949")` is -286413440886091 and `IMTAN("1.5707963267948966")`
-/// (read as 1.57079632679489) 148752068975966, where libm's `tan` gives -286411383293069 and
-/// 148752623989354 (A10, A11, T-2760). Only those two points near π/2 are probed, not the window's
-/// edges or other odd multiples; past SIN's limit, also unprobed, it is libm's.
+/// (probes/eng-imtan-imcot-overflow A1-A9, T-1966). A real argument never gets here: it is TAN's
+/// kernel ([`imtan`], T-2774), which gives `IMTAN("1.5707963267949")` -286413440886091 and
+/// `IMTAN("1.5707963267948966")` 148752068975966 (A10, A11, T-2760). Where the denominator rounds
+/// to 0 for a nonzero imaginary part (x within about 5.2E-9 of an odd multiple of π/2 and
+/// `cosh 2y` 1, so |y| below about 1E-8) it falls back to that kernel too; unprobed, as is the
+/// libm value past SIN's limit.
 fn tan_parts(x: f64, y: f64) -> (f64, f64) {
     let denominator = f64::cos(2.0 * x) + f64::cosh(2.0 * y);
     if denominator == 0.0 {
@@ -396,11 +396,13 @@ fn tan_parts(x: f64, y: f64) -> (f64, f64) {
 }
 
 pub(super) fn imtan((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
-    // Below the limit a real number keeps the double-angle form, which gives the Mac desktop cache
-    // of ironcalc-calc COMPLEXs.xlsx N6 (`IMTAN(5)` -3.38051500624658) where the web gives TAN's
-    // kernel (-3.38051500624659): a web-vs-desktop conflict left to T-1075 item 17 (T-2534).
-    if y == 0.0 && x.abs() >= EXCEL_TRIG_LIMIT {
-        return num_error(cell);
+    // A real number is TAN's own kernel, as Excel for the web gives it: `IMTAN("5")`
+    // -3.38051500624659, `IMTAN("-17.2737")` -197.642601323436, where the double-angle form prints
+    // ...658 and ...305 (probes/t3054-imtan-real-tan-kernel, t2534-im-trig-real-limit; T-2774).
+    // The Mac 16.0300 cache of ironcalc-calc COMPLEXs.xlsx N6 has the double-angle ...658; decision
+    // 0188 R6 follows the web (T-1075 item 17).
+    if y == 0.0 {
+        return real_trig(x, suffix, cell, None, excel_tan);
     }
     let (x, y) = tan_parts(x, y);
     complex_result(x, y, suffix)

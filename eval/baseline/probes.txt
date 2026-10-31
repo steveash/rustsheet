@@ -3537,10 +3537,6 @@ F	probes/t2475-stat-subexpressions.case.json	P!A62
 F	probes/t2475-stat-subexpressions.case.json	P!A63
 F	probes/t2496-fin-subexpressions.case.json	P!A24
 F	probes/t2496-fin-subexpressions.case.json	P!A25
-F	probes/t2534-im-trig-real-limit.case.json	Sheet1!D1
-F	probes/t2534-im-trig-real-limit.case.json	Sheet1!D10
-F	probes/t2534-im-trig-real-limit.case.json	Sheet1!D8
-F	probes/t2534-im-trig-real-limit.case.json	Sheet1!D9
 F	probes/t2565-irr-guess-sweeps.case.json	P!C157
 F	probes/t2576-error-type-cell-paired.case.json	Calc!D1
 F	probes/t2576-error-type-cell-paired.case.json	Calc!D19
@@ -3902,16 +3898,6 @@ F	probes/t3012-gamma-inv-small-shape.case.json	S!B35
 F	probes/t3012-gamma-inv-small-shape.case.json	S!B36
 F	probes/t3028-b2-taiwan-cuts.case.json	Sheet1!A65
 F	probes/t3028-b2-taiwan-cuts.case.json	Sheet1!C65
-F	probes/t3054-imtan-real-tan-kernel.case.json	Sheet1!A10
-F	probes/t3054-imtan-real-tan-kernel.case.json	Sheet1!A11
-F	probes/t3054-imtan-real-tan-kernel.case.json	Sheet1!A2
-F	probes/t3054-imtan-real-tan-kernel.case.json	Sheet1!A4
-F	probes/t3054-imtan-real-tan-kernel.case.json	Sheet1!A5
-F	probes/t3054-imtan-real-tan-kernel.case.json	Sheet1!A6
-F	probes/t3054-imtan-real-tan-kernel.case.json	Sheet1!A7
-F	probes/t3054-imtan-real-tan-kernel.case.json	Sheet1!A8
-F	probes/t3054-imtan-real-tan-kernel.case.json	Sheet1!A9
-F	probes/t3054-imtan-real-tan-kernel.case.json	Sheet1!N1
 F	probes/t3070-gamma-inv-band.case.json	S!A110
 F	probes/t3070-gamma-inv-band.case.json	S!A111
 F	probes/t3070-gamma-inv-band.case.json	S!A112
