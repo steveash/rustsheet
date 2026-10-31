@@ -5153,10 +5153,11 @@ Rule (gen-m9, excel-graph, 2026-10-23):
   (`PERMUTATIONA(1000000000000000,0)`, 775d053de498b8c7 A152; `PERMUTATIONA(FACT(18),2)`, b9a32ce9a1fd0d71 A378).
 Ours (T-2474): as Excel for every T-2474 cell. The cumulative t functions (T.DIST with cumulative TRUE, T.DIST.RT,
 T.DIST.2T, TDIST) are `#NUM!` where `x²` overflows (|x| past about 1.34E+154). T-3358's T.DIST table brackets the cut
-on both sides: the cumulative T.DIST is 0 at x = -4.0E+136 and -2.1E+119 (accuracy/T.DIST/s1 A90, A96) and `#NUM!` at
-x = -2.1E+217 and -4.1E+259 (A103, A91) and at x = 5.4E+186 and 4.4E+221 (A86, A98), so the cut is in (4.0E+136,
-5.4E+186) and a negative x is `#NUM!` too; the exact cut is UNVERIFIED. The negative mean
-follows "POISSON at x 0 with a negative mean", the tiny-p NEGBINOM is 0 (the binomial walk renormalizes before a ratio
+per sign: for a negative x the cumulative T.DIST is 0 at x = -4.0E+136 and -2.1E+119 (accuracy/T.DIST/s1 A90, A96) and
+`#NUM!` at x = -2.1E+217 and -4.1E+259 (A103, A91), so a negative x is `#NUM!` too, with its cut in (4.0E+136,
+2.1E+217); for a positive x the table has only `#NUM!`, at 5.4E+186 and 4.4E+221 (A86, A98). The exact cuts are
+UNVERIFIED. The negative mean follows "POISSON at x 0 with a negative mean", the tiny-p NEGBINOM is 0 (the binomial
+walk renormalizes before a ratio
 p/q past 2^53 overflows it), and PERMUTATIONA takes PERMUT's limit, a number of 2^31 - 1 or more is `#NUM!` (UNVERIFIED cut).
 Since T-2700 a NEGBINOM.DIST/NEGBINOMDIST number_f in (-1, 0) is `#NUM!` as in Excel (the sign is checked before truncation; bonus cell
 b9a32ce9a1fd0d71 A195, `NEGBINOMDIST(Data!$D$6,7,..)` with D6 = -0.5). The PERMUTATIONA truncation cells are T-2701's. Probe of the cuts: T-2752.
@@ -5477,10 +5478,11 @@ more than G, and they need an owner ruling:
 - T.INV and F.INV at p from 1.2E-69 to 8.2E-131 (accuracy/T.INV/s1 A91, A96; F.INV/s1 A164, A169), owned by T-3544;
 - T.INV.2T and TINV at any p (T.INV.2T/s1 A98, A99, A103, with A99 at p 4.4E-242; TINV/s1 A102), owned by T-3386.
 
-The engine is within ε of the math on all of them, so they pass Gate A through its math side. One point inside the
-region is not marked either: `F.INV(4.36982683607437E-189,1,1698856)` (F.INV/s1 A167) is 3.85E-145 in Excel, while the
-true quantile, 3.0E-377, is below the double range. The engine returns 0, which passes only through Gate A's 1e-300
-absolute floor; a mark would make 0 the target, so T-3544 leaves it to the owner.
+The engine is within ε of the math on all of them, so they pass Gate A through its math side. One point inside
+decision 0188's p < 1e-150 bound but outside the region the entry names needs a ruling of its own:
+`F.INV(4.36982683607437E-189,1,1698856)` (F.INV/s1 A167) is 3.85E-145 in Excel, while the true quantile, 3.0E-377, is
+below the double range. The engine returns 0, which passes only through Gate A's 1e-300 absolute floor; a mark would
+make 0 the target, so T-3544 leaves it to the owner.
 Evidence: R3-marked points of the Gate A tables (eval/accuracy/math-over-excel.tsv), excel-graph and 50-digit mpmath:
 - T.INV: accuracy/T.INV/s1 A89, A93 and A95. For example, `T.INV(1.68092983773194E-249,10068)` is -77.496 in Excel and
   -34.691 in truth.
@@ -5536,10 +5538,11 @@ Tasks: T-3354, T-3479
 
 ## T.DIST's density is #NUM! at a huge x, and T.INV.2T and TINV at p = 2.2E-308 (T-3358)
 Rule:
-- `T.DIST(x,df,FALSE)` is `#NUM!` in Excel at a huge |x|, from 1.0E+236 to 1.4E+307 at df 2 to 824733515. Smaller
-  huge x give 0, not `#NUM!`: `T.DIST(9.93424108915371E+137,24,FALSE)` (A97) and `T.DIST(-3.27346874547497E+59,11,FALSE)`
-  (A94), although the density underflows there too. The cut lies between 9.9E+137 and 1.0E+236, which fits the x²
-  overflow cut (about 1.34E+154) of the cumulative t functions (T-2474 entry above). The engine returns 0.
+- `T.DIST(x,df,FALSE)` is `#NUM!` in Excel at a huge positive x, from 1.0E+236 to 1.4E+307 at df 2 to 824733515.
+  A smaller huge x gives 0, not `#NUM!`: `T.DIST(9.93424108915371E+137,24,FALSE)` (A97), although the density
+  underflows there too. The positive cut lies between 9.9E+137 and 1.0E+236, which fits the x² overflow cut (about
+  1.34E+154) of the cumulative t functions (T-2474 entry above). A negative x is 0 up to |x| 7.6E+87 (A92, A94, A106)
+  and is not probed beyond. The engine returns 0.
 - `T.INV.2T(2.22507385850721E-308,df)` and `TINV(2.22507385850721E-308,df)` are `#NUM!` at df 8, 9, 12 and 14, although
   the quantile is a finite double (about 3.2E+22 to 6.9E+38). T.INV accepts p down to 1E-300 (T-1531).
 - `F.INV(0,d1,d2)` is 0, the lower end of the support.

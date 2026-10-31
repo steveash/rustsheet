@@ -80,14 +80,15 @@ Done (2026-10-31), on T-3379's governance (built on its branch).
   side:
   - T.INV A91, A96 and F.INV A164, A169, at p ≥ 1e-150 (new T-3544);
   - T.INV.2T A98, A99, A103 and TINV A102 (T-3386);
-  - F.INV A167, inside the region but with a true quantile (3.0E-377) below the double range, where the engine's 0
-    passes only through the 1e-300 floor (T-3544).
+  - - F.INV A167, inside 0188's p < 1e-150 bound but outside the named region, with a true quantile (3.0E-377) below
+    the double range, where the engine's 0 passes only through the 1e-300 floor (T-3544).
 - **New quirks** (statistics.md, "T.DIST's density is #NUM! at a huge x, and T.INV.2T and TINV at p = 2.2E-308"):
-  - T.DIST's density is `#NUM!` at |x| from 1.0E+236 and 0 up to 9.9E+137.
+  - T.DIST's density is `#NUM!` at a positive x from 1.0E+236 and 0 up to 9.9E+137; the negative side is probed
+    only up to |x| 7.6E+87, where it is 0.
   - The two-tailed quantiles are `#NUM!` at p = 2.2E-308.
   - F.INV(0) is 0, while the legacy FINV(0) is `#NUM!`.
   - The table also settles the T-2474 entry's open question: the cumulative T.DIST is `#NUM!` at a huge negative x
-    too, with the cut in (4.0E+136, 5.4E+186).
+    too, with the negative cut in (4.0E+136, 2.1E+217).
 - **probes-numeric math sidecars,** regenerated with the new definitions: 109,909 cells in 67 cases, 16 MB, in about
   2 minutes.
   - 32,184 of the 70,286 visibly-off numeric cells now have a math value, up from 588.

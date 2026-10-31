@@ -23,7 +23,8 @@ a decision record and R3 marks, or keeps Excel as the target. The record says wh
     - accuracy/T.INV/s1 A91 (p 8.2E-131, df 66741) and A96 (p 2.9E-116, df 91643);
     - accuracy/F.INV/s1 A164 (p 1.9E-93) and A169 (p 1.2E-69);
     - accuracy/F.INV/s1 A167, `F.INV(4.36982683607437E-189,1,1698856)`, discussed below.
-- A167 is inside the region, but it cannot simply be marked:
+- A167 (p 4.4E-189 at (1, 1698856)) is inside decision 0188's p < 1e-150 bound but outside the region the entry
+  names, and it cannot simply be marked:
   - The true quantile is 3.0E-377, below the double range.
   - Excel returns 3.85E-145 and the engine returns 0.
   - The point passes Gate A only through the absolute floor of 1e-300.
