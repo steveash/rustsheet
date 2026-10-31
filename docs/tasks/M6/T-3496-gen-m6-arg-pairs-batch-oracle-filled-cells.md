@@ -3,7 +3,7 @@ id: T-3496
 title: "gen-m6 arg-pairs batch: oracle-filled cells for the unseen argument-class pairs of the M6 lookup functions (ADDRESS, OFFSET, INDIRECT, XMATCH, XLOOKUP, CHOOSE, CHOOSEROWS, CHOOSECOLS, TRIMRANGE, HYPERLINK)"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
