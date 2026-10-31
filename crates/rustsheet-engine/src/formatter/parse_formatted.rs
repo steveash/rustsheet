@@ -16,6 +16,16 @@ use super::{
 /// docs/research/non-glued-typed-input-2026-10-19.md).
 const TYPED_DATE_CLOCK_FORMAT: &str = "m/d/yyyy h:mm";
 
+/// Format Excel gives a typed mixed fraction whose denominator is a single digit (`3 1/2`,
+/// `-$3 1/2`, `+ 3 1/2`, `3 01/02`).
+const MIXED_FRACTION_FORMAT: &str = "# ?/?";
+
+/// Format of a typed mixed fraction whose denominator is 10 or more (`3 1/12`, `3 1/10000`).
+const MIXED_FRACTION_WIDE_FORMAT: &str = "# ??/??";
+
+/// Format of a typed mixed fraction with a `%` (`3 1/2%`, `-3 1/2%`).
+const MIXED_FRACTION_PERCENT_FORMAT: &str = "0.00%";
+
 /// Format of a typed clock with a fractional second (`10:00:30.5`, `10:00.5`).
 const FRACTION_CLOCK_FORMAT: &str = "mm:ss.0";
 
@@ -37,10 +47,19 @@ pub(crate) fn parse_typed_number(
             return Ok(parsed);
         }
         // A mixed fraction, signed, with `$` or `%`, is a number (probes/typed-input-sign-space-
-        // mixed-fraction B6, B7, B9-B12). Its number format is UNVERIFIED (CELL("format") is
-        // #VALUE! on excel-graph), so it stays General: TODO(T-3237).
-        if let Some(v) = mixed_fraction(original.trim_matches(' '), currencies) {
-            return Ok((v, None));
+        // mixed-fraction B6, B7, B9-B12). Its format is `# ?/?`, `# ??/??` for a denominator of 10 or more, or `0.00%` with a `%` (ENTERED
+        // numberFormat, probes/typed-mixed-fraction-number-format, excel-graph 2026-10-30;
+        // docs/research/typed-mixed-fraction-number-format-2026-10-30.md).
+        let trimmed = original.trim_matches(' ');
+        if let Some(v) = mixed_fraction(trimmed, currencies) {
+            let format = if trimmed.ends_with('%') {
+                MIXED_FRACTION_PERCENT_FORMAT
+            } else if mixed_fraction_denominator_is_wide(trimmed) {
+                MIXED_FRACTION_WIDE_FORMAT
+            } else {
+                MIXED_FRACTION_FORMAT
+            };
+            return Ok((v, Some(format.to_string())));
         }
         let Some(shape) = typed_clock_shape(text) else {
             return Err(err);
@@ -49,6 +68,14 @@ pub(crate) fn parse_typed_number(
             .map(|serial| (serial, shape.format()))
             .ok_or(err)
     })
+}
+
+/// Whether the denominator of the mixed fraction `text` (already read by `mixed_fraction`) is 10
+/// or more, ignoring leading zeros: `3 1/12` and `3 1/10000` take `# ??/??`, `3 1/9` and
+/// `3 1/002` take `# ?/?` (probes/typed-mixed-fraction-number-format A9-A27).
+fn mixed_fraction_denominator_is_wide(text: &str) -> bool {
+    text.rsplit_once('/')
+        .is_some_and(|(_, denominator)| denominator.trim_start_matches('0').len() >= 2)
 }
 
 /// A bare typed clock with an `A`/`P` or `AM`/`PM` suffix as a time of day with its AM/PM clock

@@ -1976,6 +1976,7 @@ C	probes/type-long-text.case.json	30
 C	probes/type-one-cell-range-kinds.case.json	20
 C	probes/typed-currency-percent-input.case.json	66
 C	probes/typed-input-sign-space-mixed-fraction.case.json	63
+C	probes/typed-mixed-fraction-number-format.case.json	31
 C	probes/typed-number-tiny.case.json	24
 C	probes/typed-paren-number-input.case.json	24
 C	probes/unichar-arg-shapes.case.json	22
@@ -4386,6 +4387,7 @@ F	probes/text-elapsed-two-tokens.case.json	S!A13
 F	probes/text-format-general-company.case.json	Sheet1!A5
 F	probes/text-locale-calendars.case.json	S!A140
 F	probes/text-locale-calendars.case.json	S!A26
+F	probes/typed-mixed-fraction-number-format.case.json	Sheet1!B15
 F	probes/xirr-back-dated-stop.case.json	Sheet1!A31
 F	probes/xnpv-empty-values-cell.case.json	Sheet1!C8
 F	probes/yield-newton-domain.case.json	P!B10
@@ -4421,3 +4423,5 @@ TC	probes/t2729-hijri-locale-tag.case.json	5
 TC	probes/t2932-b2-calendar-twice.case.json	5
 TC	probes/t3029-b2-calendar-weekday.case.json	3
 TC	probes/t3101-b2-calendar-names.case.json	3
+TC	probes/typed-mixed-fraction-number-format.case.json	31
+TF	probes/typed-mixed-fraction-number-format.case.json	Sheet1!A15

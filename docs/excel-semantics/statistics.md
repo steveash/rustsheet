@@ -1175,6 +1175,10 @@ and Q keep the direct form below 20 (T-3219). The bounds are fits inside their b
 unbracketed below 20 (UNVERIFIED: no probed density between a and 1.5a changes with the form).
 Status: VERIFIED (excel-graph)
 Tasks: T-0971, T-0972, T-2638, T-3147, T-3219
+Deep upper tail sweep (T-3289): probes-numeric/t3284-gamma-deep-upper-tail (343 cells: POISSON cdf at mean 4(k+1) to 100(k+1),
+its CHISQ.DIST.RT twin, half-integer shapes at x = 4 to 100 df, and 32-double ulp runs at POISSON(2,100) and CHISQ.DIST.RT(200,5)).
+Excel is within 1 ulp of the 50-digit value in 64 of the 343 cells (docs/research/t3284/ulp_vs_exact.py), and today's engine is
+bit-exact on 53 (`rustsheet-eval show --all`); T-3269 fits the rest.
 
 ## HYPGEOM.DIST: per-call cap and lifting (T-1873)
 Rule: HYPGEOM.DIST and HYPGEOMDIST lift every argument over an array and over a two-cell range on the formula's own rows,
