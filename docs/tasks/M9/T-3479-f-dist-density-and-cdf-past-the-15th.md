@@ -26,17 +26,22 @@ match Excel's value to 15 digits.
 - Code: `fn_f_dist` in crates/rustsheet-engine/src/functions/statistical/fisher.rs, f_density.rs and the incomplete
   beta.
 - probes/t3354-f-dist-tiny-x-huge-d2 (222 cells): A11, A15, A19, A23, A27, A31, A35, A39, A43, A47, A97, A137:A139,
-  A141:A142, A145:A146, A148:A149, A151, A153:A166, A168:A173, A177:A182, A185:A191, A193:A240, B50:B52, B54, B58:B62,
-  B65, B67:B70, B74, B76:B78, B82:B83, B86, B90, B92:B95, B97:B99, B105:B107, B110, B113:B115, B118, B121:B122, B126,
-  B129:B130, B133:B134, B137, B139, B141, B143, B145, B148, B150, B153:B158, B162:B164, B170:B172, B175, B177,
-  B179:B180, B182:B183, B185:B186, B188:B189, B191, B193:B199, B201:B239
+  probes/t3354-f-dist-tiny-x-huge-d2 (cont.): A141:A142, A145:A146, A148:A149, A151, A153:A166, A168:A173, A177:A182,
+  probes/t3354-f-dist-tiny-x-huge-d2 (cont.): A185:A191, A193:A240, B50:B52, B54, B58:B62, B65, B67:B70, B74, B76:B78,
+  probes/t3354-f-dist-tiny-x-huge-d2 (cont.): B82:B83, B86, B90, B92:B95, B97:B99, B105:B107, B110, B113:B115, B118,
+  probes/t3354-f-dist-tiny-x-huge-d2 (cont.): B121:B122, B126, B129:B130, B133:B134, B137, B139, B141, B143, B145,
+  probes/t3354-f-dist-tiny-x-huge-d2 (cont.): B148, B150, B153:B158, B162:B164, B170:B172, B175, B177, B179:B180,
+  probes/t3354-f-dist-tiny-x-huge-d2 (cont.): B182:B183, B185:B186, B188:B189, B191, B193:B199, B201:B239
 - probes-numeric/t3354-f-dist-sweep (177 cells): A3:A4, A7:A9, A11:A13, A16:A17, A19:A21, A23:A24, A26:A30, A32:A33,
-  A35, A38, A40, A45:A49, A55, A57, A59:A60, A65:A66, A70, A75:A77, A79, A81, A84, A89, A93, A96:A97, A99, A101:A103,
-  A106:A110, A116:A117, A119, A121, A125, A129, A131, A133:A138, A140, A145, A163, A168, A177, A185, A194, B1, B4,
-  B7:B13, B15:B16, B18:B19, B21:B27, B29:B33, B35:B36, B38, B40:B42, B45:B46, B48:B49, B53, B55, B57, B60, B65:B66,
-  B68:B70, B72, B74, B76:B81, B85:B90, B93:B94, B96, B101:B103, B106:B107, B109:B111, B113:B114, B116, B119:B121,
-  B125:B126, B129:B132, B134:B137, B140, B145, B147, B158, B163, B177, B184:B185, B187, B190, B194, B196:B197, C147,
-  C168, C187
+  probes-numeric/t3354-f-dist-sweep (cont.): A35, A38, A40, A45:A49, A55, A57, A59:A60, A65:A66, A70, A75:A77, A79,
+  probes-numeric/t3354-f-dist-sweep (cont.): A81, A84, A89, A93, A96:A97, A99, A101:A103, A106:A110, A116:A117, A119,
+  probes-numeric/t3354-f-dist-sweep (cont.): A121, A125, A129, A131, A133:A138, A140, A145, A163, A168, A177, A185,
+  probes-numeric/t3354-f-dist-sweep (cont.): A194, B1, B4, B7:B13, B15:B16, B18:B19, B21:B27, B29:B33, B35:B36, B38,
+  probes-numeric/t3354-f-dist-sweep (cont.): B40:B42, B45:B46, B48:B49, B53, B55, B57, B60, B65:B66, B68:B70, B72, B74,
+  probes-numeric/t3354-f-dist-sweep (cont.): B76:B81, B85:B90, B93:B94, B96, B101:B103, B106:B107, B109:B111,
+  probes-numeric/t3354-f-dist-sweep (cont.): B113:B114, B116, B119:B121, B125:B126, B129:B132, B134:B137, B140, B145,
+  probes-numeric/t3354-f-dist-sweep (cont.): B147, B158, B163, B177, B184:B185, B187, B190, B194, B196:B197, C147,
+  probes-numeric/t3354-f-dist-sweep (cont.): C168, C187
 - Scorer: docs/research/t3354/score.py.
 
 ## Acceptance criteria
