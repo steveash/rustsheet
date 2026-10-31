@@ -390,30 +390,62 @@ Evidence: probes/t2738-gamma-dist-tiny-ratio (excel-graph 2026-10-25): #NUM! at 
 `(4.5E-308,1,2,FALSE)` (ratio 2.25E-308, 0.499999999999989), `(3E-308,1,1,FALSE)` and `(1,1,1E+307,FALSE)`. The cdf is 0
 (companion TRUE) at `(1E-10,1,1E+300,TRUE)`, `(1E-300,1,1E+10,TRUE)` and `(3E-308,1,2,TRUE)`; a normal x / beta with a
 subnormal density is 0 (`(10,1,1E+307*10,FALSE)`, `(1E+300,1,1E+307*10,FALSE)`). Near the bound Excel's density is
-about 1E-14 relative off the exact value: see "GAMMA.DIST's density at a tiny x / beta" (T-2753).
+about 1E-14 relative off the exact value: see "GAMMA.DIST's density below shape 3 is a log-space form" (T-2753, T-2852).
 Implemented in: functions/statistical/gamma.rs `gamma_dist_of`; x = 0 keeps its own rule. Unprobed: CHISQ.DIST at x
 below 4.45E-308 (its scale is 2), an x / beta that overflows, and a computed subnormal x with a normal x / beta (a
 typed one reads as 0, numbers.md "Formula literals").
 Status: VERIFIED
 
-## GAMMA.DIST's density at a tiny x / beta is a log-space form (T-2753)
-Rule: where y = x / beta is at most about 1E-15 (and x > 0, shape a below 20), `GAMMA.DIST(x,a,beta,FALSE)` is
-EXP(a*LN(y)-y)/GAMMA(a)/x, not the exact density: the log carries |LN(y)| ulp of error, so `GAMMA.DIST(1E-300,1,1,FALSE)`
-is 1.0000000000000235 and `GAMMA.DIST(1,1,1E+307,FALSE)` 9.999999999999768E-308. Between 1E-15 and 1E-10 Excel takes a
-form not yet found, up to 37 ulp from both this one and the direct y^a e^-y / GAMMA(a) / x (T-2852).
+## GAMMA.DIST's density below shape 3 is a log-space form (T-2753, T-2852)
+Rule: below shape 20, where y = x / beta is at most about 1E-15, `GAMMA.DIST(x,a,beta,FALSE)` is EXP(a*LN(y)-y)/GAMMA(a)/x
+(T-2753). From shape 0.5 to below 3, for y below the mode (y < a), and from 0.5 to below 2.5 at any y, from 1E-15 up to
+16 (UNVERIFIED from 2 up), it is EXP(a*LN(y))/GAMMA(a)/x*EXP(-y) (T-2852), with Excel's own LN, EXP and GAMMA. Both
+carry a times the rounding error of LN(y): `GAMMA.DIST(1E-300,1,1,FALSE)` is 1.0000000000000235,
+`GAMMA.DIST(1,1,1E+307,FALSE)` 9.999999999999768E-308 and `GAMMA.DIST(1E-14,2,1,FALSE)` 11.8 ulp below the true value.
+CHISQ.DIST's density takes the same forms at scale 2.
 Evidence: probes/t2753-gamma-density-ratio-sweep (x / beta 1E-300 to 0.5 at shapes 1, 2, 0.5 and 50, column A beta = 1,
-column B x = 1) and probes/t2753-gamma-density-switch (1E-19 to 1E-11), excel-graph 2026-10-27;
-probes/t2738-gamma-dist-tiny-ratio A2, A4, A15, A19. With Excel's own LN, EXP and GAMMA the form is exact or 1 ulp off at
-most cells below 1E-15 (exact at t2738 A2, A15, A19) and 2 to 3 ulp off at a few: switch A11 `GAMMA.DIST(2E-16,1,1,FALSE)`,
-A12, A18, A24, A25, A38, B10, B11, B18, B24, B25, B38 and sweep A19 `GAMMA.DIST(1E-20,2,1,FALSE)` (T-2852); at 1E-15 it is 4
-to 7 off, the direct form 4 to 12. LNGAMMA in place of GAMMA is 40 to 60 ulp off at shape 0.5.
-CHISQ.DIST's density takes the same form at scale 2 (y = x/2): `CHISQ.DIST(1E-300,1,FALSE)` is 3.9894228040142567E+149
-(gen-m9/3e98b26cf6713e77 A268), 154 ulp below the exact 1/SQRT(2*PI()*1E-300) and 1 ulp from the form with Excel's LN,
-EXP and GAMMA (T-2638).
-Implemented in: functions/statistical/gamma.rs `tiny_ratio_density` (GAMMA.DIST, GAMMADIST and, from T-2638, CHISQ.DIST
-through chisq.rs). Unprobed: shapes from 2 to 20 (the cutoff at 20 is the
-prefactor's own split, not evidence; at shape 50 the density underflows to 0 in this regime).
-Status: VERIFIED for the form (0 to 3 ulp at the probed cells; the last bits are T-2852)
+column B x = 1) and probes/t2753-gamma-density-switch (1E-19 to 1E-11), excel-graph 2026-10-27; probes/t2738-gamma-dist-
+tiny-ratio A2, A4, A15, A19; probes-numeric m9-gamma-dist-a0p5, -a1, -a2, m9-chisq-dist, t1049-chisqdist;
+`CHISQ.DIST(1E-300,1,FALSE)` = 3.9894228040142567E+149 (gen-m9/3e98b26cf6713e77 A268), 154 ulp below the exact
+1/SQRT(2*PI()*1E-300).
+Found in T-2852: at every switch and sweep cell from 1E-16 to 1E-10, Excel's relative error minus a times LN(y)'s
+rounding error is within about 1 ulp (shapes 0.5, 1, 2; both columns), the signature of EXP(a LN(y)) with the rest
+accurate; T-2753's EXP(a LN(y) - y) loses y into the rounding of a LN(y) above 1E-15, and the direct form was up to 37 ulp
+off there (switch B23 26 ulp). Fit (Excel's kernels, the 222 literal densities at shapes 0.5 to 2.5 in
+eval/; exact / within 1 ulp): EXP(a LN y)/GAMMA(a)*EXP(-y)/x 114 / 208; EXP(a LN y)*EXP(-y)/GAMMA(a)/x 110 / 208;
+EXP(a LN y)/GAMMA(a)/x*EXP(-y) 111 / 206 (in the full eval it fixes two cells more than the first and keeps
+gen-m9/ecc87f80077959e0 A261 `CHISQ.DIST(1.5,2,FALSE)` bit-exact, which the first loses, so it is the one implemented);
+EXP(a LN y)/EXP(y)/GAMMA(a)/x 99 / 202; the same exponent in an x87 register less GAMMALN(a) 107 / 203, or into EXP over
+GAMMA(a) 112 / 203; EXP(a LN y - y)/GAMMA(a)/x 69 / 141; EXP(a LN y - y - GAMMALN(a))/x 49 / 124; the direct y^a e^-y /
+GAMMA(a) / x (the engine's form before) 26 / 74 above 1E-15.
+The bounds are fits inside their evidence brackets (gamma.rs names each cell):
+- y at most 1E-15 keeps T-2753's form: the new one is as close but not at the same cells, and the old one is bit-exact at
+  four gated switch cells (A39, A40, B39, B41).
+- Lower shape 0.5, in (0.1, 0.5]: at shape 0.1 gen-m9/0a614cfe974b59c3 A367 is bit-exact on the direct form and 1 ulp off
+  on this one (at 1E-10, gen-m9/4e55500bb8ad3cd8 A386 goes the other way).
+- Above the mode, shape 2.5, in (2, 2.5]: at 2.5 all five probed cells above the mode move away from Excel on it
+  (m9-chisq-dist A36 `CHISQ.DIST(5,5,FALSE)` 0 -> -1 ulp, A38 and t1049-chisqdist A38 `(10,5,FALSE)` -1 -> -3, A40
+  `(20,5,FALSE)` -1 -> 3, gen-m9/a54c738c697617c3 A29 `GAMMADIST(9,2.5,2.5,FALSE)` -2 -> -6); at 2 it is mixed (gated
+  gen-m9/bc40d37cb4d8301d A165 `CHISQ.DIST(11,4,FALSE)` and m9-gamma-dist-a2 A28 become bit-exact, A8 and A18 lose a bit,
+  t1048-gammadist A6, B6 go from 1 ulp to 2).
+- Below the mode, shape 3, in (2.5, 5]: at 2.5 all four probed cells below the mode move closer (t1049-chisqdist A6, A30;
+  gen-m9/9cca17438a7e6f8a A133 and d8266bc15533702a A230 bit-exact); at shapes 5, 9 and 10 every log form is 10 to 18 ulp
+  off from y = 1 up (m9-chisq-dist A48, m9-gamma-dist-a9 A8), where the direct form is 0 to 1 (and T-3147 finds the
+  ratio form there above the mode from 3).
+- Upper y 16, in [5, 20.01): gated gen-m9/8dd2312c96effb1b A150 at y = 5 and gen-m9/bc40d37cb4d8301d A165 at y = 5.5 are bit-exact on the form (1 ulp on the
+  direct one); at `GAMMA.DIST(40,1.5,1.999,FALSE)` (gen-m9/c468f5046aadfbbc A171, y = 20.01) e^-y of the double y misses
+  by 10 ulp, the direct form by 5 and e^-y of the extended quotient by 3 (Excel is within 1 ulp of the true value), but
+  the extended quotient loses the gated sweep B35. From y = 2 up the form is no closer than the direct one on balance
+  (UNVERIFIED: of 12 probed cells from y = 2 to 16, 3 become bit-exact, gated gen-m9/8dd2312c96effb1b A150 and A165 among
+  them, 2 lose a bit, 2 move closer and 5 stay at the same distance).
+Still off: shape 50 below a/100 (sweep A46:A48, B46:B48, 32 to 114 ulp; T-3219): Excel is 50 to 105 ulp above the true
+value, and its error is 50 times LN(y)'s rounding error plus 41 to 52 units of 2^-52 there, a log form with the rest of
+the exponent about 1E-14 high; no tried order of a LN(y), y and GAMMALN(50) in doubles or in an x87 register, nor the
+ratio form, Loader's saddle point or `rcomp`, reproduces it (13 to 435 ulp off).
+Implemented in: functions/statistical/gamma.rs `log_form_density` (GAMMA.DIST, GAMMADIST, and CHISQ.DIST through
+chisq.rs).
+Status: VERIFIED for the forms (every probed density the form moves ends 0 to 2 ulp from Excel; UNVERIFIED from y = 2
+to 16; the remaining bits, y above 16 and shapes below 0.5 are T-3303)
 
 ## One incomplete-gamma kernel under ERF, ERFC, NORM, CHISQ, GAMMA.DIST and POISSON (T-1778)
 Rule: these functions are bit-identical compositions of one another, so their last digits come from one
@@ -1442,7 +1474,7 @@ are `#N/A` and one point is `#DIV/0!` (COVAR of one pair is 0): `TTEST(A7:C7,<nu
 `FORECAST.LINEAR(x,C2:D7,<number>)` and `FORECAST.LINEAR(x,0.2,D11:D12)` are `#N/A`; `SLOPE(123456789.123,<number>)`,
 `INTERCEPT(1.005,2.5)`, `FORECAST.LINEAR(x,0.2,1)` and `FORECAST.LINEAR(x,7,137.5)` are `#DIV/0!`; `COVAR(0,D6)` is a number (inferred 0;
 `(B6-0.5)>COVAR(0,D6)` is TRUE). `PEARSON(D5,SEQUENCE(0))` is `#CALC!`. `T.TEST(B11,A8:B9,0.1,0.3)` with B11 = FALSE (one value, no number) is `#NUM!` (tails/type before
-the paired unequal-size `#N/A`; whether an error array argument beats a bad tails/type is unprobed). GROWTH of one value is a number (`GROWTH(GAMMA(100))` =
+the paired unequal-size `#N/A`; an error array argument beats a bad tails/type, see below). GROWTH of one value is a number (`GROWTH(GAMMA(100))` =
 9.332621544394404E+155), `TREND(#NUM!)` is `#NUM!`, and `GROWTH(B2:B3,<number>,..)` with B2:B3 = "?b", 0 is `#REF!` (the size
 check before the text check). LARGE of an error is that error (`LARGE(<#VALUE!>,k)`, `LARGE(<#REF!>,0.1)`), and so is
 PERCENTRANK (`PERCENTRANK(<#N/A>,100)` is `#N/A`). A single cell holding text is no number, like text inside a range: `QUARTILE(A1,1)`, `QUARTILE(A1,7)`, `QUARTILE.INC/.EXC`,
@@ -1459,6 +1491,13 @@ A33; b58b6d7cd39d195f A2, A31; bc0901ce6193d576 A12; d244411dd90f7fbd A10, A17, 
 are read from the cases' Data sheets; each cell's other operands were checked not to decide the result.
 Ours: GROWTH and TREND match the single-value, error and size-before-text rules (T-1402); the paired functions match (T-1401), a single cell holding text, a boolean or nothing being one value that is no number (a typed text or boolean literal too, for the regression functions and CHISQ.TEST: T-1723); `LARGE(#N/A,1)` is that error (gen-m9/1782efcecd5d4b1b A25); PERCENTILE.EXC reports k's error before the empty-data `#NUM!` (T-1403; PERCENTILE.INC's order is unprobed);
 `PERCENTRANK.EXC` of a single value equal to x is 1, not 0.5 (probes/percentrank-single-value B6). `PERCENTRANK` and `PERCENTRANK.INC` of a single value equal to x are 1 (probes/legacy-value-argument-intersection-c T2, U2); with one value, x below or above it is `#N/A` for all three, an error x (`#DIV/0!`, text `#VALUE!`) beats that `#N/A`, and any numeric significance (0, negative, fractional) gives 1 rather than `#NUM!` (a text significance is `#VALUE!`) (probes/percentrank-single-value B2-B20); an empty array is `#N/A`.
+Typed literals and error arrays (probes/paired-typed-literals-error-tails, excel-graph 2026-10-30, T-1968): `COVAR("x",B1:B2)`,
+`COVAR(B1:B2,"x")`, `COVAR(TRUE,B1:B2)`, `CORREL("x",B1:B2)`, `CORREL(TRUE,B1:B2)` and `CORREL(B1:B2,TRUE)` are `#N/A` (a literal is one
+value, so the sizes differ); `COVAR("x","x")`, `COVAR("x",5)`, `COVAR(TRUE,5)`, `COVAR("1",B1)` and `CORREL(TRUE,TRUE)` are `#DIV/0!`
+(a literal is no number, so no pair remains). T.TEST reads an error array before tails and type: `T.TEST(#DIV/0!,A1:A2,0.1,3)`,
+`T.TEST(#DIV/0!,A1:A2,1,0.3)`, `T.TEST(#DIV/0!,A1:A2,3,2)` and `T.TEST(#DIV/0!,A1:A2,"x",2)` are `#DIV/0!`, `T.TEST(A1:A2,#DIV/0!,0.1,3)` too,
+and the first error wins (`T.TEST(#N/A,#DIV/0!,1,1)` is `#N/A`); without an error array a bad type is `#NUM!` (`T.TEST(A1:A2,B1:B2,0.1,3)`).
+The engine already matches all 20 cells.
 Status: VERIFIED (web) for the listed cells
 Tasks: T-1401, T-1402, T-1403
 

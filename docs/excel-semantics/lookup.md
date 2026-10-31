@@ -1375,3 +1375,12 @@ E1:E8, F1:F7 (excel-graph, 2026-10-28).
 A literal error as match_type still propagates it (`NA()` gives #N/A, `#DIV/0!` gives #DIV/0!; probes/m2-argument-kind-gaps A23, A24).
 Status: VERIFIED (web).
 Tasks: T-2861, T-2965. Implemented in: `match_type_arg` (lookup_and_reference/mod.rs).
+
+## XLOOKUP with a scalar return_array
+
+A scalar `return_array` (a literal, not a reference or array) is a one-cell array: a hit returns
+it, a miss returns `if_not_found`, and `XLOOKUP("a",A1,"hit","miss")` is "hit". Over a lookup
+vector of two or more cells a scalar return is `#VALUE!` (sizes differ), found or not; an array
+return of the wrong size with a miss still gives `if_not_found`
+(`XLOOKUP("z",A1,A1:A2,"miss")` is "miss"). An invalid `match_mode` 9 is `#VALUE!`.
+Evidence: probes/t3317-xlookup-scalar-return (C1-C20, oracle-filled).
