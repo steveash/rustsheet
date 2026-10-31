@@ -47,7 +47,7 @@ over rate and price.
   the 100th and last check. probes/yield-newton-step-cap (15 cells, three prices, rates where our uncapped Newton
   converges on checks 98 to 102) confirms it: Excel is `#NUM!` on exactly the check-100 cell of each column and
   agrees with ours on the other 12. `compute_yield` now refuses a check-100 stop (`NewtonStop::converged_on`);
-  ODDFYIELD, the same Newton, keeps its behavior pending evidence (follow-up T-3479).
+  ODDFYIELD, the same Newton, keeps its behavior pending evidence (follow-up T-3485).
 - Rule in financial.md "YIELD's #NUM! cells and its 100-step cap". Eval: the two new probe cases add 199 cells; with
   the fix every cell matches in type; probes known failures 2201 -> 2270 (69 new-coverage last-ulp cells of "YIELD
   stops short of PRICE's root", T-1592/T-2741), 0 regressions, 130 new passing cells including all three check-100

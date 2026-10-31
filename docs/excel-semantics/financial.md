@@ -3053,7 +3053,7 @@ probes/yield-below-par-sweep (184 cells) and probes/yield-newton-step-cap (15 ce
   type and the values within 2.5e-12 relative; the 184th (H16) is the check-100 cell above.
 Ours: matches since T-2391 (`excel_yield_newton` in functions/financial/financial_bonds/yield_solver.rs); the
 check-100 `#NUM!` since T-2747 (`compute_yield` in financial_bonds.rs). ODDFYIELD runs the same Newton; whether
-its check-100 stop is `#NUM!` too is not probed (T-3479).
+its check-100 stop is `#NUM!` too is not probed (T-3485).
 Status: VERIFIED
 Tasks: T-2391, T-1592, T-2747
 

@@ -1,5 +1,5 @@
 ---
-id: T-3479
+id: T-3485
 title: "Probe whether ODDFYIELD is #NUM! when its Newton converges on the 100th check, like YIELD"
 milestone: M9
 lane: functions-financial
