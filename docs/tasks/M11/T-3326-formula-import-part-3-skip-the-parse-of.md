@@ -72,3 +72,5 @@ Done on this branch:
 Left: callgrind's `from_a1_to_rc` count before and after and the load/census time split; the argument
 census compared with a main run on the same fetched suites; `make check`; reviewers (draft PR open). The census cache (`observe`) is not needed for
 the 1,500 ms target and is not done.
+
+Resumed 2026-10-31 by an opus run (stale-branch rule, step 2 of the routine).
