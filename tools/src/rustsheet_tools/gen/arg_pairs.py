@@ -229,7 +229,8 @@ def generate_arg_pairs(
         if skipped:
             skipped_by_fn[name] = skipped
         chunks = [texts[i : i + MAX_FORMULAS] for i in range(0, len(texts), MAX_FORMULAS)]
-        stride = SPILL_ROW_STRIDE if fn["name"] in dynamic else ROW_STRIDE
+        spills = fn["name"] in dynamic
+        stride = SPILL_ROW_STRIDE if spills else ROW_STRIDE
         for part, chunk in enumerate(chunks, 1):
             note = f"; skipped: {', '.join(skipped)}" if skipped else "; skipped: none"
             calc = {f"A{1 + i * stride}": text for i, text in enumerate(chunk)}
@@ -243,7 +244,7 @@ def generate_arg_pairs(
                     "tags": ["generated", "arg-pairs", milestone, name],
                     "sheets": [{"name": "Data", "cells": data}, {"name": "Calc", "cells": calc}],
                     "expected": {},
-                    "check": [] if fn["name"] in dynamic else [f"Calc!{a1}" for a1 in calc],
+                    "check": [] if spills else [f"Calc!{a1}" for a1 in calc],
                 }
             )
     return specs, skipped_by_fn

@@ -2142,18 +2142,28 @@ Tasks: T-3506
 
 ## TOCOL, TOROW and SORT: which bad argument wins (T-3497)
 Rule:
-- TOCOL and TOROW: an invalid `ignore` is `#VALUE!` even when `scan_by_column` is an error. This holds for a text ignore, an
-  empty text and a range: `TOROW(Data!A7:D7,"abc",#NULL!)` (gen-m7/1157e6d3a3c6ae12 Calc!A4393), `TOCOL(Data!B3:C3,"",#NAME?)`
-  (gen-m7/52ccea5df17b29a8 A5613) and `TOCOL(Data!D$11,Data!C3:D4,Data!G9)` (A10676).
-- SORT: a text `sort_index` ("", "abc") loses to an error in a later argument: `SORT(Data!C4,"",Data!B10:D12,#DIV/0!)` is
-  `#DIV/0!` (gen-m7/75534bc7e1ce6474 A245) and `SORT({#DIV/0!;2;#VALUE!},"abc",#NULL!)` is `#NULL!` (gen-m7/91b6b88061b805b1 A367).
-  But a blank sort_index or sort_order, an out-of-range index and a FALSE index win with `#VALUE!`: `SORT(0.3,Data!H1,-1,#NAME?)`
-  (75534bc7e1ce6474 A4027), `SORT(Data!A4:B6,2,Data!H2,Data!G9)` (gen-m7/8217549f0b417328 A1770) and
-  `SORT(Data!D7:E12,Data!G8,Data!E7,Data!G9)` (75534bc7e1ce6474 A1526). So the order is not left to right, and text is coerced
-  later than a range check.
-Evidence: gen-m7 arg-pairs batch (excel-graph, 2026-10-31, T-3497); the full cell list is in T-3507.
-Ours: TOCOL and TOROW return the scan_by error; SORT returns `#VALUE!` for a text index and the later error for the others.
-Status: VERIFIED (excel-graph) for the cells named; the general order is UNVERIFIED (T-3507)
+- TOCOL and TOROW, `ignore` against an error in `scan_by_column`:
+  - A text ignore ("abc", "x", "") wins with `#VALUE!`: `TOROW(Data!A7:D7,"abc",#NULL!)` (gen-m7/1157e6d3a3c6ae12 Calc!A4393),
+    `TOCOL(Data!B3:C3,"",#NAME?)` (gen-m7/52ccea5df17b29a8 A5613), `TOCOL(Data!C5,Data!G6,Data!G9)` (52ccea5df17b29a8 A4454).
+  - An out-of-range number loses to the scan_by error: `TOCOL(Data!C3:E10,7,#DIV/0!)` (as Data!G1, Data!G9) is `#DIV/0!`
+    (gen-m7/7cd94f345acd55bb A11530), and so are `TOROW(Data!C5:D9,-2.5,..)` (1157e6d3a3c6ae12 A1160) and
+    `TOCOL(Data!A1:D9,-2.5,..)` (52ccea5df17b29a8 A1038).
+  - A range ignore lifts, and each element follows the two rules above. `TOCOL(Data!D$11,Data!C3:D4,Data!G9)` spills `#VALUE!`
+    for its text element and `#DIV/0!` for its 7 (52ccea5df17b29a8 A10676:B10676). `TOCOL(Data!D11:E11,Data!A1:B2,#NULL!)` is
+    `#NULL!` for the number elements and `#VALUE!` only for the text one (A10615:B10616).
+- SORT, a bad `sort_index` or `sort_order` against an error in a later argument:
+  - A blank sort_index or sort_order wins with `#VALUE!`. Examples: `SORT(0.3,Data!H1,-1,#NAME?)` (gen-m7/75534bc7e1ce6474
+    A4027); `SORT(1,Data!H2,Data!G9)` (gen-m7/91b6b88061b805b1 A5308); `SORT(Data!B3:D8,Data!A3,#DIV/0!,#NUM!)` with A3 blank
+    (gen-m7/8217549f0b417328 A611); `SORT(Data!A4:B6,2,Data!H2,Data!G9)` (8217549f0b417328 A1770);
+    `SORT(Data!D7:E12,Data!G8,Data!E7,Data!G9)` with E7 blank (75534bc7e1ce6474 A1526).
+  - A text or FALSE sort_index loses to the later error. Examples: `SORT(Data!C4,"",Data!B10:D12,#DIV/0!)` is `#DIV/0!`
+    (75534bc7e1ce6474 A245); `SORT({#DIV/0!;2;#VALUE!},"abc",#NULL!)` is `#NULL!` (91b6b88061b805b1 A367);
+    `SORT(0.5,Data!G8,Data!G9)` (FALSE index) is `#DIV/0!` (91b6b88061b805b1 A2990, passing);
+    `SORT(Data!C8,Data!A6:B8,Data!G8,Data!G9)` is `#DIV/0!` (75534bc7e1ce6474 A11652, passing).
+Evidence: gen-m7 arg-pairs batch (excel-graph, 2026-10-31, T-3497); the failing cells are listed in T-3507.
+Ours: TOCOL and TOROW return the scan_by error for a text ignore as well. SORT returns `#VALUE!` for a text sort_index and the
+later error for a blank one.
+Status: VERIFIED (excel-graph) for the cells named; the order among more than two bad arguments is UNVERIFIED (T-3507)
 Tasks: T-3507
 
 ## SORT's lifted by_col spreads an argument error (T-3497)
