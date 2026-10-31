@@ -37,11 +37,13 @@ const DEPTH_FACTOR: u32 = 2;
 const DEPTH_MARGIN: u32 = 8;
 
 /// The largest x / a at which CHISQ.DIST.RT takes [`accurate_half_integer_upper`]. Measured on
-/// the eval (T-3285): up to 3a the accurate Q fixed or moved closer every changed cell
-/// (`CHISQ.DIST.RT(10,5)` four times, ironcalc-calc CHISQ.xlsx G3 and G4,
-/// `CHISQ.DIST.RT(6,3)`), while past it Excel is not correctly rounded either and the accurate Q
-/// lost `CHIDIST(42,7)` = Q(3.5, 21) (gen-m9/fec39efaba9284c3 A249), where Excel is 1 ulp above it.
-/// FITTED(T-3285, 12 cells, x/a 1.76..6)
+/// the gated cells the accurate Q changed when applied from a to 30a (T-3285 attempt 1, x/a from
+/// 1.05 to 13.3): up to 3a it fixed or moved closer every one but two that went from 2 to 3 ulp
+/// (`CHISQ.DIST.RT(8,3.34)` and `(12.3,7.2)`, ironcalc-calc CHISQ.xlsx G3 and G4, and
+/// `CHISQ.DIST.RT(10,5)` four times in probes-numeric), while past it Excel is not correctly
+/// rounded either and the accurate Q lost `CHIDIST(42,7)` = Q(3.5, 21) (gen-m9/fec39efaba9284c3
+/// A249), where Excel is 1 ulp above it.
+/// FITTED(T-3285, 17 cells, x/a 1.05..13.3)
 const ACCURATE_MAX_RATIO: f64 = 3.0;
 
 /// CHISQ.DIST.RT's Q(a, x) at a half-integer shape from 3/2 up to [`DIRECT_SHAPE_MAX`] for

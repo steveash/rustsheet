@@ -57,3 +57,33 @@ Cells this task owns:
 ## Out of scope
 - The deep upper tail where Excel is 10 to 405 ulp off (T-3269, T-3289). The near-mode window at large shapes (T-3286).
   The shapes below 20 at a tiny x / a (T-3219).
+
+## Outcome
+- Cause: the forward (modified Lentz) continued fraction, 5.1 ulp at Q(2.5, 5) and 16 at Q(1.5, 3); the prefactor
+  (`powf * exp / tgamma`) was within 1.3. `incomplete_gamma/half_integer.rs` takes Q at a half-integer shape in
+  double-double: the prefactor sqrt(x) e^-x / sqrt(pi) * prod 2x / (2j - 1) (exact in the shape) and the fraction evaluated
+  backward from twice the forward depth plus 8, rounded once. The unit test checks it against 50-digit mpmath at shapes
+  1/2, 3/2, 5/2, 7/2 for x from a to 30a: 44 of 44 correctly rounded. 1/sqrt(pi) moved from bratio/bgrat.rs to
+  half_integer_beta.rs (one definition).
+- Attempt 1 applied it to CHISQ.DIST.RT for every x >= a and lost 3 gated cells: `CHIDIST(5,5)` and `CHIDIST(7,7)`
+  (x = a, where Excel is the series' 1 - P bit for bit) and `CHIDIST(42,7)` = Q(3.5, 21), where Excel is 1 ulp above the
+  correctly rounded Q. Excel is not correctly rounded at half-integer shapes in general: on the fraction's range up to
+  x = 30 the correctly rounded Q is Excel's at 9 of 92 cells, the old kernel at 7, Excel's ERFC plus the series at 9.
+  Attempt 2 (shipped) applies the accurate Q only on [a + 1, 3a] (`ACCURATE_MAX_RATIO`,
+  `FITTED(T-3285, 17 cells, x/a 1.05..13.3)`; quality/fitted.json via `scripts/check_fitted.py --update`).
+- Eval, main (report of 2026-10-31, 1248554a; no statistical change since) vs HEAD, per cell, CHI*/POISSON/GAMMA*:
+  - gated fixed 1: ironcalc-calc STATISTICAL/CHISQ.xlsx G3 (11 ulp to 0); closer 1: G4 (5 to 1 ulp, now within 15
+    digits); farther 2: gen-m9/320d51765af9b6b7 A249 and 7674c89c824aca43 A332 (`CHIDIST(..,5)`, 2 to 3 ulp, both still
+    within 15 digits); lost bit-exact 0; newly visibly off 0; visibly fixed 2 (G3, G4).
+  - ungated (probes-numeric): fixed 4, the cells this task owns (`CHISQ.DIST.RT(10,5)` and `CHIDIST(10,5)`,
+    m9-chisq-dist-rt A19, m9-legacy-chidist A45, A46, t1049-chisqdistrt A19); closer 1, m9-chisq-dist-rt A14
+    `CHISQ.DIST.RT(6,3)` (T-2367's cell, 19 to 1 ulp; Excel is -0.7 ulp from the truth, so not bit-exact).
+  - `CHIDIST(40,3)` (T-2695) is at x/a 13.3, outside the applied range: unchanged.
+  - eval/baseline: ironcalc-calc one line fewer (G3).
+- Decision 0188 R4: the only fitted piece is the 3a cut, chosen on attempt 1's 17 changed gated cells; it is applied
+  only inside that measured range (outside, the old kernel). The accurate Q is within 1e-9 of the math everywhere
+  (Gate A envelope). No hold-out split: the kernel is not fitted to Excel's bits.
+- docs/excel-semantics/statistics.md "Incomplete gamma: accurate kernel (T-0971)" records the cells and why the range
+  is narrow. T-3269 found Excel's own form past x = 30 (the Stirling ratio prefactor), which also gives
+  `CHISQ.DIST.RT(6,3)` and G4 bit for bit; that suggests the [a + 1, 3a] cells are that form too, a lead for T-3269's
+  follow-up rather than this task.
