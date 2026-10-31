@@ -1,9 +1,11 @@
-"""Tests for fuzz/seed_corpus.py's formula seed selection (T-3163, decision 0171; stdlib unittest,
-run by `make hygiene`)."""
+"""Tests for fuzz/seed_corpus.py's formula seed selection (T-3163, decision 0171) and bitcode seeds
+(T-2895); stdlib unittest, run by `make hygiene`."""
 
 from __future__ import annotations
 
+import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -41,6 +43,29 @@ class Seeds(unittest.TestCase):
             again = seed_corpus.formula_seeds(set(sorted(formulas, reverse=True)))
         self.assertEqual(len(first), 7)
         self.assertEqual(first, again)
+
+
+class BitcodeSeeds(unittest.TestCase):
+    """`bitcode_seeds` adds what the Rust binary writes, named by content, and adds nothing twice."""
+
+    @staticmethod
+    def fake_run(argv: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        written = Path(argv[-1])
+        (written / "seed-0.bin").write_bytes(b"first")
+        (written / "seed-1.bin").write_bytes(b"second")
+        return subprocess.CompletedProcess(argv, 0)
+
+    def test_seeds_are_named_by_content_and_added_once(self) -> None:
+        with tempfile.TemporaryDirectory() as corpus, mock.patch.object(
+            seed_corpus.subprocess, "run", side_effect=self.fake_run
+        ):
+            directory = Path(corpus) / "bitcode_workbook"
+            self.assertEqual(seed_corpus.bitcode_seeds(directory), 2)
+            names = {path.name for path in directory.iterdir()}
+            expected = {seed_corpus.hashlib.sha256(data).hexdigest() for data in (b"first", b"second")}
+            self.assertEqual(names, expected)
+            seed_corpus.bitcode_seeds(directory)
+            self.assertEqual({path.name for path in directory.iterdir()}, expected)
 
 
 if __name__ == "__main__":
