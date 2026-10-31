@@ -3,7 +3,7 @@ id: T-3321
 title: "Collate full-width forms, kana, voicing marks and the long-vowel and iteration marks as Excel does (T-3275 probes)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
