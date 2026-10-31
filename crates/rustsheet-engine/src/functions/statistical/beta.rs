@@ -8,7 +8,9 @@ use crate::functions::statistical::bratio::beta_dist_lower_tail;
 use crate::functions::statistical::incomplete_beta::{
     beta_density, beta_reg_complement, beta_reg_upper,
 };
-use crate::functions::statistical::inverse_beta::{beta_inverse_cdf, beta_quantile_crossing};
+use crate::functions::statistical::inverse_beta::{
+    beta_inverse_cdf, beta_lower_crossing, beta_quantile_crossing,
+};
 use crate::functions::statistical::loader::excel_beta_density;
 use crate::functions::statistical::special::refine_increasing;
 use crate::functions::Function;
@@ -58,6 +60,23 @@ fn beta_quantile(alpha: f64, beta: f64, p: f64) -> f64 {
             1.0,
         )
     }
+}
+
+/// BETA.INV's quantile for p above 1/2 where the upper-tail search above rounds to 1: Excel's
+/// AS 109 structure, `1 - y` with `y` the lower quantile of the flipped distribution at `1 - p`
+/// (exact for p in (1/2, 1)), which is 1 wherever `y` is below half an ulp of 1. Excel answers 1
+/// while that `y` is a normal double and `#NUM!` once it underflows (probes/
+/// t3351-beta-inv-p-near-1: `BETA.INV(1-1E-8,2,0.1)` is 1, y = 3.9E-81; `BETA.INV(1-1E-10,2,0.03)`
+/// is `#NUM!`, y = 1.7E-334), so a `y` of 0 or a subnormal is `None` (`#NUM!`). Excel's own cut
+/// lies inside the subnormals and depends on alpha (1 at y = 1.5E-308 with alpha 2, 1.4E-317 with
+/// alpha 0.5), and Excel's search sometimes still answers 1 far below it
+/// (probes-numeric/t3351-beta-inv-sweep A122, y about 1E-700): TODO(T-3430). The crossing is of
+/// Excel's BETA.DIST kernel (`inverse_beta::beta_lower_crossing`, at most 67 cdfs), since statrs'
+/// search there stops near 1E-17 whatever the true `y` (docs/excel-semantics/statistics.md
+/// "BETA.INV where the quantile rounds to 1 (T-3351)").
+fn upper_quantile_near_one(alpha: f64, beta: f64, p: f64) -> Option<f64> {
+    let y = beta_lower_crossing(beta, alpha, 1.0 - p);
+    (f64::MIN_POSITIVE..0.5).contains(&y).then_some(1.0 - y)
 }
 
 /// BETA.DIST's `cumulative`: a boolean, a number (TRUE unless 0), "TRUE" or "FALSE" in any case,
@@ -219,11 +238,21 @@ impl Model {
         if alpha <= 0.0 || beta_param <= 0.0 || p <= 0.0 || p >= 1.0 || b <= a {
             return Err(num_error(cell));
         }
-        // A quantile that underflows to 0 or rounds to 1 is #NUM! (`BETAINV(0.025,1E-15,2.5)`,
-        // `BETAINV(0.05,0.002,1)`, `BETAINV(1-1E-16,2,0.01)`; statistics.md "Scalar distributions
-        // at extreme arguments (T-2255)", probes/t2475-stat-subexpressions P!A127).
-        let t = beta_quantile(alpha, beta_param, p);
-        if !(t > 0.0 && t < 1.0) {
+        // A quantile that underflows to 0 is #NUM! (`BETAINV(0.025,1E-15,2.5)`,
+        // `BETAINV(0.05,0.002,1)`; statistics.md "Scalar distributions at extreme arguments
+        // (T-2255)", probes/t2475-stat-subexpressions P!A127). One that rounds to 1 is
+        // `upper_quantile_near_one`'s for p above 1/2: 1, or #NUM! where Excel's flipped search
+        // underflows (`BETAINV(1-1E-16,2,0.01)`, T-3351). At p of 1/2 or less AS 109 does not flip
+        // and its search never steps onto 1, so Excel gives the largest double below 1
+        // (`BETA.INV(0.5,2,1E-3)`, `BETA.INV(0.1,2,1E-3)`: probes/t3351-beta-inv-p-near-1
+        // D197-D210).
+        let mut t = beta_quantile(alpha, beta_param, p);
+        if p > 0.5 && (t >= 1.0 || t.is_nan()) {
+            t = upper_quantile_near_one(alpha, beta_param, p).ok_or_else(|| num_error(cell))?;
+        } else if t >= 1.0 {
+            t = 1.0 - f64::EPSILON / 2.0;
+        }
+        if !(t > 0.0 && t <= 1.0) {
             return Err(num_error(cell));
         }
         // Map back from [0,1] to [A,B]
