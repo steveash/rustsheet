@@ -9,6 +9,7 @@ size: M
 tier: opus
 depends_on: [T-3249]
 campaign: visible
+defer: phase-1b
 ---
 
 ## Goal
@@ -17,6 +18,10 @@ That covers the 4,180 visibly-off cells of T-2464's a = 1025, b = 1.5 column and
 visibly-off cell anywhere.
 
 ## Context
+- Decision 0188 R5 (owner's 2026-10-31 rulings): parked as Phase 1b. Every cell this task owns is a BETA.DIST or
+  F.DIST density cell or a dense probes-numeric sweep cell, within Gate A's envelope (most agree with Excel to 12 or
+  more digits, and Excel and the engine are both close to the math), so R1(c) counts it as Phase 1b evidence. A
+  point that Gate A's tables show outside the envelope gets its own task without the key.
 - Gap triage 2026-10-30c (`make eval` on main 40ca52179, excel-graph; `python3 scripts/exit_owners.py --all-off`,
   also run against the task files of every unmerged branch): no open task owned these cells. T-2507 (done) ported
   Excel's Loader saddle point (`crates/rustsheet-engine/src/functions/statistical/loader.rs`
@@ -48,6 +53,10 @@ visibly-off cell anywhere.
 
 Cells (gap triage 2026-10-30c): every cell of this case:
 - probes-numeric/t2464-r2-log1p-hix.case.json
+
+Cells (T-3249's sweep): the BETA.DIST column of both cases; column B (F.DIST) is T-3173's:
+- probes-numeric/t3249-beta-large-shape-fit.case.json A1:A9792 (fit)
+- probes-numeric/t3249-beta-large-shape-hold.case.json A1:A7936 (hold-out: score once, never fit)
 
 ## Acceptance criteria
 - [ ] Every cell of the case, and every cell of T-3249's two cases, is within 15 digits of Excel's value, or each

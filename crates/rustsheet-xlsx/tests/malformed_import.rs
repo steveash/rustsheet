@@ -443,6 +443,94 @@ fn formula_nesting_more_than_65_calls_refuses_the_workbook() -> TestResult {
     Ok(())
 }
 
+// Stored, `_xlfn.SINGLE(` (`@`) and `_xlfn.ANCHORARRAY(` (`#`) are calls like any other: 65 calls
+// with one of them load and 66 are refused (createSession 501; probes/t3143-single-*-stored and
+// t3143-anchor-inner-*-stored, T-3143).
+#[test]
+fn stored_single_and_anchorarray_count_toward_the_nesting_cap() -> TestResult {
+    let abs = |n: usize, inner: &str| format!("{}{inner}{}", "ABS(".repeat(n), ")".repeat(n));
+    for calls in [65, 66] {
+        for formula in [
+            abs(calls - 1, "_xlfn.SINGLE(C1:C2)"),
+            format!("ABS(_xlfn.SINGLE({}))", abs(calls - 2, "1")),
+            abs(calls - 2, "SUM(_xlfn.ANCHORARRAY(C1))"),
+        ] {
+            let sheet = sheet_with_a100_formula(&formula)?;
+            if calls == 65 {
+                assert_imports(&sheet)?;
+            } else {
+                assert_import_error(
+                    &sheet,
+                    "Formula in Sheet1!A100 nests more than 65 function calls",
+                );
+            }
+        }
+    }
+    Ok(())
+}
+
+// A defined-name body is held to the same cap: a body of 65 nested calls loads and one of 66 makes
+// Excel refuse the workbook (createSession 501; probes/t3143-name-body-65, T-3143).
+#[test]
+fn name_body_nesting_more_than_65_calls_refuses_the_workbook() -> TestResult {
+    let body = |n: usize| format!("{}1{}", "ABS(".repeat(n), ")".repeat(n));
+    assert_imports(&workbook_with_name_body(&body(65))?)?;
+    assert_import_error(
+        &workbook_with_name_body(&body(66))?,
+        "definedName nm body nests more than 65 function calls",
+    );
+    Ok(())
+}
+
+// A formula conditional format and a custom data validation are held to the same cap: 65 nested
+// calls load and 66 make Excel refuse the workbook (createSession 501; probes/t3263-cf-abs-65 and
+// t3263-dv-abs-65, T-3263). A 299-character rule formula with no call loads (t3263-*-long-299).
+#[test]
+fn rule_formula_nesting_more_than_65_calls_refuses_the_workbook() -> TestResult {
+    let abs = |n: usize| format!("{}1{}", "ABS(".repeat(n), ")".repeat(n));
+    let cf = |f: &str| {
+        format!(
+            "<conditionalFormatting sqref=\"A1\"><cfRule type=\"expression\" priority=\"1\">\
+             <formula>{f}</formula></cfRule></conditionalFormatting>"
+        )
+    };
+    let dv = |f: &str| {
+        format!(
+            "<dataValidations count=\"1\"><dataValidation type=\"custom\" sqref=\"A1\">\
+             <formula1>{f}</formula1></dataValidation></dataValidations>"
+        )
+    };
+    let long = vec!["1"; 150].join("+");
+    for (rule, kind) in [
+        (&cf as &dyn Fn(&str) -> String, "conditional format"),
+        (&dv, "data validation"),
+    ] {
+        assert_imports(&sheet_with_rules(&rule(&abs(65)))?)?;
+        assert_imports(&sheet_with_rules(&rule(&long))?)?;
+        assert_import_error(
+            &sheet_with_rules(&rule(&abs(66)))?,
+            &format!("Formula of a {kind} on Sheet1!A1 nests more than 65 function calls"),
+        );
+    }
+    // Another data-validation type is not checked (unprobed): a whole-number rule keeps 66 calls.
+    let whole =
+        "<dataValidations count=\"1\"><dataValidation type=\"whole\" operator=\"greaterThan\" \
+                 sqref=\"A1\"><formula1>{}</formula1></dataValidation></dataValidations>";
+    assert_imports(&sheet_with_rules(&whole.replace("{}", &abs(66)))?)?;
+    Ok(())
+}
+
+/// A sheet with `rules` (conditional formatting or data validation XML) after its cells.
+fn sheet_with_rules(rules: &str) -> Result<Vec<u8>, Box<dyn Error>> {
+    rewrite(|name, content| {
+        if name == "xl/worksheets/sheet1.xml" {
+            content.replacen("</sheetData>", &format!("</sheetData>{rules}"), 1)
+        } else {
+            content
+        }
+    })
+}
+
 /// A workbook whose only defined name `nm` has `body` as its stored text.
 fn workbook_with_name_body(body: &str) -> Result<Vec<u8>, Box<dyn Error>> {
     let names = format!(

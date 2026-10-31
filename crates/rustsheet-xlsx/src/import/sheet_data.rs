@@ -24,7 +24,7 @@ use super::shared_strings::SharedStringTable;
 use super::util::parse_bool_with_default;
 use super::worksheets::{
     find_or_add_formula, from_a1_to_rc, get_cell_from_excel, parse_cell_reference, parse_range,
-    CellArrayKind,
+    CellArrayKind, RcTextCache,
 };
 use super::xml::{attribute_value_of, reference_of, XmlNode, XmlTreeBuilder};
 use quick_xml::XmlVersion;
@@ -154,6 +154,8 @@ struct CellXml {
 struct SheetDataReader<'a> {
     sheet_name: &'a str,
     parser: &'a mut Parser,
+    /// The R1C1 text of the last formulas read, see `RcTextCache`.
+    rc_text: RcTextCache,
     shared_strings: &'a mut SharedStringTable,
     limits: &'a ImportLimits,
     /// The rich-value error of each value-metadata entry (`vm` is 1-based into it).
@@ -533,7 +535,13 @@ impl SheetDataReader<'_> {
                     match formula.reference {
                         Some(_) => {
                             // It's the anchor cell. We do not use the ref attribute in IronCalc
-                            let formula = from_a1_to_rc(formula_text, self.parser, context, false)?;
+                            let formula = from_a1_to_rc(
+                                formula_text,
+                                self.parser,
+                                &mut self.rc_text,
+                                context,
+                                false,
+                            )?;
                             match self.index_map.get(&si) {
                                 Some(index) => {
                                     // The index for that formula already exists meaning we bumped into a daughter cell first:
@@ -625,7 +633,8 @@ impl SheetDataReader<'_> {
                         array_kind =
                             CellArrayKind::ArrayFormula(column2 - column1 + 1, row2 - row1 + 1);
                     }
-                    let formula = from_a1_to_rc(formula_text, self.parser, context, true)?;
+                    let formula =
+                        from_a1_to_rc(formula_text, self.parser, &mut self.rc_text, context, true)?;
                     formula_index = find_or_add_formula(
                         formula,
                         &mut self.shared_formulas,
@@ -634,7 +643,13 @@ impl SheetDataReader<'_> {
                 }
                 "normal" => {
                     // Its a cell with a simple formula
-                    let formula = from_a1_to_rc(formula_text, self.parser, context, false)?;
+                    let formula = from_a1_to_rc(
+                        formula_text,
+                        self.parser,
+                        &mut self.rc_text,
+                        context,
+                        false,
+                    )?;
                     formula_index = find_or_add_formula(
                         formula,
                         &mut self.shared_formulas,
@@ -692,6 +707,7 @@ pub(super) fn read_sheet_data<R: BufRead>(
     let mut state = SheetDataReader {
         sheet_name,
         parser,
+        rc_text: RcTextCache::default(),
         shared_strings,
         limits,
         rich_errors,

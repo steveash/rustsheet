@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use crate::calculated_columns::TableGrowth;
 use crate::expressions::{
     lexer::LexerMode,
     parser::{is_limit_error, new_parser_english, stringify::to_english_string, Node},
@@ -124,8 +125,9 @@ impl Model {
     /// error here (decision 0103, T-2497) and binds through `set_user_input`. A formula typed
     /// into a table's data rows fills its column as a calculated column, when
     /// [`Model::calculated_column`] finds the column empty or filled (T-2958, T-3024); a stored
-    /// formula never fills. A formula typed just right of a table grows the table by a column
-    /// first ([`Model::table_expansion`], T-2968). A formula that does not parse is an error
+    /// formula never fills. A formula or a constant typed just right of a table grows the table
+    /// by a column first, and one typed just below it by a row ([`Model::table_expansion`],
+    /// T-2968, T-3218, T-3273). A formula that does not parse is an error
     /// starting with [`TYPED_FORMULA_DOES_NOT_PARSE`], and the cell keeps its content (T-3213).
     pub fn set_typed_user_input(
         &mut self,
@@ -134,15 +136,22 @@ impl Model {
         column: i32,
         value: String,
     ) -> Result<(), String> {
-        // A formula typed just right of a table grows it first, so the new column fills
-        // (T-2968); one typed into the header cell only names the column.
-        if let Some(expansion) = self.table_expansion(sheet, row, column, &value)? {
-            self.expand_table(sheet, &expansion)?;
+        // A formula or constant typed just right of a table grows it first, so the new column
+        // fills (T-2968, T-3218); one typed into the header cell only names the column. One typed
+        // just below it grows it by a row (T-3273).
+        let expansion = self.table_expansion(sheet, row, column, &value)?;
+        if let Some(expansion) = &expansion {
+            self.expand_table(sheet, expansion)?;
             if expansion.header {
                 return Ok(());
             }
         }
-        let fill = self.calculated_column_fill(sheet, row, column)?;
+        // A new row fills no calculated column, not even an empty or calculated one: unprobed
+        // (t3003-below-last-row types into a column of constants), and the facade logs no fill.
+        let fill = match expansion.map(|e| e.growth) {
+            Some(TableGrowth::Down) => None,
+            _ => self.calculated_column_fill(sheet, row, column)?,
+        };
         self.parser.set_typed(true);
         let result = self.set_user_input(sheet, row, column, value);
         self.parser.set_typed(false);

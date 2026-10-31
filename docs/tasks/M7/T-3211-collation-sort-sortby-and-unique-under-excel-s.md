@@ -4,10 +4,11 @@ title: "Collation: SORT, SORTBY and UNIQUE under Excel's non-transitive pairwise
 milestone: M7
 lane: engine
 status: todo
-priority: P2
+priority: P1
 size: S
 tier: opus
 depends_on: [T-3181]
+campaign: semantics
 ---
 
 ## Goal
@@ -17,6 +18,8 @@ Excel's output on an intransitive cycle is out of reach, a recorded DEVIATION (d
 directive 5: no panics) with accepted-deviation entries.
 
 ## Context
+- Decision 0188 (owner's 2026-10-31 rulings, R1(c)): this task owns probe-row or text cells of its milestone's exit,
+  which Phase 1 still counts in full, so it is in the semantics stage at P1 (was P2).
 - Filed by T-3181. Evidence: coercion.md "Not a total order", the "Every caller uses it" part:
   SORT of `"a"&UNICHAR(834)` and `"a"&UNICHAR(834)&UNICHAR(834)` puts the shorter first in either
   input order, so Excel sorts with the pairwise comparison (`cmp_text_pairwise`), not the

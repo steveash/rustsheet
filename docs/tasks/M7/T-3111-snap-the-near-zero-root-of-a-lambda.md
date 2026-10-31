@@ -4,10 +4,11 @@ title: "Snap the near-zero root of a LAMBDA body at every call made by MAP, MAKE
 milestone: M7
 lane: engine
 status: todo
-priority: P3
+priority: P1
 size: S
 tier: opus
 depends_on: [T-3105]
+campaign: semantics
 ---
 
 ## Goal
@@ -16,6 +17,8 @@ the body, as an in-place call does, so each element and each accumulator step ho
 same goes for an in-place LAMBDA call passed as an argument to another LAMBDA call.
 
 ## Context
+- Decision 0188 (owner's 2026-10-31 rulings, R1(c)): this task owns probe-row or text cells of its milestone's exit,
+  which Phase 1 still counts in full, so it is in the semantics stage at P1 (was P3).
 - Evidence: probes/t3095-snap-lambda-helpers (T-3095, excel-graph 2026-10-29); docs/excel-semantics/numbers.md
   "Near-zero snapping", paragraph "Pickers, LET, LAMBDA and unary signs". Excel snaps the body's root at every
   helper call, and REDUCE and SCAN snap at every step, so a cancelled accumulator is 0 before the next step:

@@ -15,6 +15,17 @@ then renamed (T-1608, the unscored cells of probes/sheet-ops/sheet-ops-rename-in
 -add-then-rename and -add-resolves-indirect). Never take oracle values as evidence for references to missing sheets
 (docs/architecture/oracle.md, "Known divergences"; desktop wins per decision 0030).
 
+## INDIRECT of a structured reference text resolves the table area
+Rule: `INDIRECT("Sales[Column2]")` is the area the same structured reference is in a formula. After two column
+inserts inside `Sales`, `ROWS(INDIRECT("Sales[Column2]"))` is 4; after one insert, where `Column2` does not exist,
+it is `#REF!`. `COUNTA(INDIRECT("Sales[Column1]"))` is 0 (an empty data column). A column the table lacks is `#REF!`.
+Only the plain `Table[Column]` shape is evidenced and implemented; the specifiers (`#All`, `#Headers`, `@`), an
+unqualified column, spacing, a bare table name and `a1` FALSE are unprobed and stay `#REF!` in the engine until
+T-3394 probes them. Case is unprobed too: the engine matches table and column names ignoring case, as the parser
+does, so `INDIRECT("sales[column2]")` probably resolves (T-2911).
+Evidence: probes/table-edits/table-insert-column-inside-header F!A4, F!A5; table-insert-two-columns-inside-header
+F!A4, F!A5 (excel-graph 2026-10-27).
+
 ## INDIRECT resolves a defined name that holds a reference
 Rule: `INDIRECT("<name>")` of a defined name whose body is a cell or range reference is that
 reference: `ISREF(INDIRECT("RCR"))` is TRUE with `RCR` = `Sheet1!$B$1`. Text that is neither a
@@ -1375,3 +1386,12 @@ E1:E8, F1:F7 (excel-graph, 2026-10-28).
 A literal error as match_type still propagates it (`NA()` gives #N/A, `#DIV/0!` gives #DIV/0!; probes/m2-argument-kind-gaps A23, A24).
 Status: VERIFIED (web).
 Tasks: T-2861, T-2965. Implemented in: `match_type_arg` (lookup_and_reference/mod.rs).
+
+## XLOOKUP with a scalar return_array
+
+A scalar `return_array` (a literal, not a reference or array) is a one-cell array: a hit returns
+it, a miss returns `if_not_found`, and `XLOOKUP("a",A1,"hit","miss")` is "hit". Over a lookup
+vector of two or more cells a scalar return is `#VALUE!` (sizes differ), found or not; an array
+return of the wrong size with a miss still gives `if_not_found`
+(`XLOOKUP("z",A1,A1:A2,"miss")` is "miss"). An invalid `match_mode` 9 is `#VALUE!`.
+Evidence: probes/t3317-xlookup-scalar-return (C1-C20, oracle-filled).

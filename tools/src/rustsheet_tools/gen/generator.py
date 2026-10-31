@@ -14,7 +14,8 @@ import hashlib
 import json
 import random
 import re
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -255,11 +256,32 @@ class Gen:
             if self.pivot is None:
                 self.pivot = build_source(random.Random(f"pivot-{self.pivot_seed}"))
             return pivot_call(self.rng, self.pivot, fn.get("spelled", fn["name"]))
-        args: list[str] = []
-        params: list[dict[str, Any]] = fn["params"]
+        with self.call_frame():
+            args, declared = self.call_args(fn, depth)
+        invoked = ""
+        if fn.get("invoke"):
+            # A LAMBDA left uncalled is #CALC!, so the generator calls it with one value per parameter.
+            invoked = "(" + ",".join(self.expr("any", depth + 1) for _ in range(declared)) + ")"
+        return f"{fn.get('spelled', fn['name'])}({','.join(args)}){invoked}"
+
+    @contextmanager
+    def call_frame(self) -> Iterator[None]:
+        """Generate one call's arguments: the names it declares and the shape its `same_shape` ranges share
+        stay inside it, and the outer call's are restored after."""
         outer, outer_pending = len(self.scope), self.pending
         self.pending = []
         outer_shape, self.call_shape = self.call_shape, None
+        try:
+            yield
+        finally:
+            del self.scope[outer:]
+            self.pending = outer_pending
+            self.call_shape = outer_shape
+
+    def call_args(self, fn: dict[str, Any], depth: int) -> tuple[list[str], int]:
+        """`fn`'s generated arguments and how many names they declare (LET variables, LAMBDA parameters)."""
+        args: list[str] = []
+        params: list[dict[str, Any]] = fn["params"]
         declared = 0  # names this call declares (LET variables, LAMBDA parameters)
         repeated = 1  # how many arguments the last repeating param got (MAP's arrays fix its LAMBDA's arity)
         # A `probe: <param>` value is drawn from the cells of that range param, so the search finds something
@@ -304,14 +326,7 @@ class Gen:
             if p.get("mode") == "name":
                 declared += count
             i += 1
-        del self.scope[outer:]
-        self.pending = outer_pending
-        self.call_shape = outer_shape
-        invoked = ""
-        if fn.get("invoke"):
-            # A LAMBDA left uncalled is #CALC!, so the generator calls it with one value per parameter.
-            invoked = "(" + ",".join(self.expr("any", depth + 1) for _ in range(declared)) + ")"
-        return f"{fn.get('spelled', fn['name'])}({','.join(args)}){invoked}"
+        return args, declared
 
     def fresh_name(self) -> str:
         taken = set(self.scope) | set(self.pending)
@@ -462,8 +477,14 @@ class Gen:
         # A `hard` domain is never violated: outside it Excel refuses the workbook (MUNIT(10^6)).
         if not (dom.get("int") or dom.get("enum")) or not (dom.get("hard") or self.rng.random() < 0.7):
             return None
+        return self.in_domain_literal(dom)
+
+    def in_domain_literal(self, dom: dict[str, Any]) -> str | None:
+        """A literal drawn from an `int` or `enum` domain, or None when the domain is neither."""
         if dom.get("int"):
             return str(self.rng.randint(dom.get("min", 0), dom.get("max", 10)))
+        if not dom.get("enum"):
+            return None
         v = self.rng.choice(dom["enum"])
         # A number enum (a bond's frequency 1, 2 or 4) is a number literal; text would be coerced, not the same call.
         return str(v) if isinstance(v, int | float) and not isinstance(v, bool) else '"' + str(v) + '"'
@@ -483,6 +504,19 @@ class Gen:
         if r < 0.85:
             return self.rng.choice([True, False])
         return None  # blank
+
+    def data_cells(self) -> dict[str, Any]:
+        """The Data sheet's `data_rows` x `data_cols` block of `data_value` draws, by A1 (blanks left out)."""
+        cells: dict[str, Any] = {}
+        for r in range(1, self.data_rows + 1):
+            for c in range(self.data_cols):
+                v = self.data_value()
+                if v is not None:
+                    # Text that starts with `=` is a constant, not a formula.
+                    cells[f"{col_letter(c)}{r}"] = (
+                        {"t": "s", "v": v} if isinstance(v, str) and v.startswith("=") else v
+                    )
+        return cells
 
 
 def narrow_targets(
@@ -551,14 +585,7 @@ def generate_case(
             msg = f"no generator-ready functions at milestone {milestone} to focus on"
             raise ValueError(msg)
         rng.shuffle(targets)
-    data: dict[str, Any] = {}
-    for r in range(1, data_rows + 1):
-        for c in range(data_cols):
-            v = g.data_value()
-            if v is not None:
-                if isinstance(v, str) and v.startswith("="):
-                    v = {"t": "s", "v": v}
-                data[f"{chr(ord('A') + c)}{r}"] = v
+    data = g.data_cells()
     texts: list[str] = []
     for i in range(1, formulas + 1):
         if focus:

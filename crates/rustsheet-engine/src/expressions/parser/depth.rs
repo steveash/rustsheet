@@ -69,10 +69,13 @@ pub const TOO_MANY_OPERATORS_MESSAGE: &str = "Formula has too many operators";
 
 /// Most function calls one formula may nest, the outermost included: Excel takes 65 and refuses
 /// 66, stored (createSession 501) and typed (Graph PATCH 400), for built-in functions, LET and a
-/// called LAMBDA alike; parentheses and operators add no level (docs/excel-semantics/syntax.md
-/// "Formula nesting depth cap", probes/t3097-nesting-*, T-3097). Unlike
+/// called LAMBDA alike, and for `SINGLE(` and `ANCHORARRAY(` spelled as calls (as a file stores
+/// `@` and `#`); parentheses and operators, the `@` and `#` operators included, add no level
+/// (docs/excel-semantics/syntax.md "Formula nesting depth cap", probes/t3097-nesting-*,
+/// probes/t3143-*, T-3097, T-3143). Unlike
 /// [`MAX_FORMULA_DEPTH`] this is not a parse error: the API refuses a typed formula past it
-/// ([`Parser::typed_refusal`]) and the xlsx importer refuses the workbook.
+/// ([`Parser::typed_refusal`]) and the xlsx importer refuses the workbook, for a cell formula or a
+/// defined-name body.
 pub const MAX_NESTED_CALLS: usize = 65;
 
 /// Why a formula nesting more than [`MAX_NESTED_CALLS`] calls is refused.
@@ -175,11 +178,11 @@ impl Parser {
     pub(super) fn parse_signs(&mut self) -> (Vec<(bool, Run)>, usize) {
         let mut signs = Vec::new();
         let mut counted = 0;
-        while let TokenType::Addition(op) = self.lexer.peek_token() {
+        while let TokenType::Addition(op) = self.lexer.peek() {
+            let is_minus = *op == token::OpSum::Minus;
             self.lexer.advance_token();
-            let is_minus = op == token::OpSum::Minus;
             let before_number = !self.lexer.whitespace_follows()
-                && matches!(self.lexer.peek_token(), TokenType::Number(_));
+                && matches!(self.lexer.peek(), TokenType::Number(_));
             if !before_number {
                 counted += 1;
             }
@@ -208,7 +211,7 @@ impl Parser {
             self.depth = depth;
             return node;
         }
-        let cost = if group_head && self.lexer.peek_token() != TokenType::LeftParenthesis {
+        let cost = if group_head && *self.lexer.peek() != TokenType::LeftParenthesis {
             GROUP_HEAD_NESTING
         } else {
             OPERAND_NESTING

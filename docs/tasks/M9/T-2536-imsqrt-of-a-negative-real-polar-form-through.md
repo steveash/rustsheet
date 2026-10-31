@@ -52,3 +52,10 @@ implementable before desktop evidence. Its open question is item 16 of the M14 t
 it does not block a milestone). Recorded as CONFLICTING in engineering.md "IMSQRT of a negative real is polar through COS and ATAN2".
 Unblocks when T-1075 item 16 is answered: if Windows desktop gives the web values, implement them (the engine change is
 `excel_atan2` plus `excel_sin_cos` of the half angle in `imsqrt`) and update the two COMPLEXs.xlsx cells under decision 0030.
+
+## Decision 0188 note (2026-10-31)
+Decision 0188 R6 settles the web-vs-desktop part of the blocker: IMSQRT of a negative real follows the
+Excel-for-the-web value under decision 0039 item 4, and this task's PR may regress ironcalc-calc/ENGINEERING/COMPLEXs.xlsx
+Sheet1!AL12 and AL26 (lines added to eval/milestones/exit-exceptions.tsv and phase1-exceptions.tsv, owner T-1075 item
+16). Status left as is by the owner's instruction for this PR; T-2117 is done, so the next steward or worker can unblock
+it (docs/process/agent-workflow.md, "Unblocking").

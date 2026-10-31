@@ -7,7 +7,8 @@ use crate::{
     x87_log10::excel_ln,
 };
 
-/// 2^32 - 1: from this exponent on a negative base is `#NUM!` (docs/excel-semantics/numbers.md).
+/// 2^32 - 1: from this exponent on a negative base is `#NUM!` and a positive one is raised as
+/// `exp(y·ln x)`, not by square-and-multiply (docs/excel-semantics/numbers.md).
 const NEGATIVE_BASE_EXPONENT_LIMIT: f64 = 4_294_967_295.0;
 
 /// `x` to the power of `y`, as POWER and the operator `^` compute it.
@@ -133,17 +134,22 @@ fn positive_power(x: f64, y: f64, steps: PowerSteps) -> f64 {
 /// `x^y` for an integer `y`, by binary exponentiation scanning the bits of `|y|` from the low end,
 /// as Excel computes it (docs/excel-semantics/numbers.md "Integer exponents: right-to-left
 /// square-and-multiply"; libm `pow` and `powi` round differently). A negative `y` is one over
-/// the positive power, divided like the operator `/`. `None` leaves a non-integer or huge `y` to
-/// the general path (bounding the loop to 54 iterations).
+/// the positive power, divided like the operator `/`. `None` leaves a non-integer `y` to the
+/// general path, and so a `|y|` of 2^32 - 1 or more, which Excel also raises as `exp(y·ln x)`:
+/// `(1+0.05/3E9)^3E9` is the square-and-multiply value and `(1+0.05/4294967295)^4294967295`,
+/// `(1+0.05/1E10)^1E10` and `(1+0.05/1E12)^1E12` are `EXP(n*LN(x))` (probes/fin-effect-huge-npery,
+/// T-2392; the same limit as a negative base's `#NUM!`). It also bounds the loop to 33 iterations.
 ///
 /// Out of range, for any sign of `x` (probes-numeric/power-negative-base-range,
 /// power-odd-roots A157-A162): a positive power that overflows is `#NUM!` and one that underflows
 /// is 0, so `(-0.1)^401` is 0; a negative exponent whose positive power underflows is `#DIV/0!`
 /// (`(-0.1)^-401`, `(-0.5)^-1075`), and one whose positive power overflows is 0 (`(-10)^-401`).
 fn integer_power(x: f64, y: f64) -> Option<Result<f64, Error>> {
-    // 2^53: beyond it every float is an integer, and the loop would need more than 54 iterations
-    const MAX_EXPONENT: f64 = 9_007_199_254_740_992.0;
-    if !x.is_finite() || !y.is_finite() || y.fract() != 0.0 || y.abs() > MAX_EXPONENT {
+    if !x.is_finite()
+        || !y.is_finite()
+        || y.fract() != 0.0
+        || y.abs() >= NEGATIVE_BASE_EXPONENT_LIMIT
+    {
         return None;
     }
     let positive_power =
@@ -164,7 +170,7 @@ fn integer_power(x: f64, y: f64) -> Option<Result<f64, Error>> {
     Some(Ok(flush_subnormal(result)))
 }
 
-/// `x^n` for a non-negative integer `n` <= 2^53 by scanning the bits of `n` from the low end.
+/// `x^n` for a non-negative integer `n` below 2^32 - 1 by scanning the bits of `n` from the low end.
 /// Each product is rounded twice, like the operator `*` ([`extended_product`]): with products
 /// rounded once the loop misses 18 of the 20 `SQRT(5)^n` cells (numbers.md "Integer exponents
 /// beyond 360", T-1524 fit lab `power-sqrt5`).

@@ -11,7 +11,8 @@ use super::super::utils::{
 };
 use super::reference_operators::is_reference_operand;
 use super::structured_reference::{
-    is_unresolved_structured_reference, COLUMN_NOT_FOUND, TABLE_NOT_FOUND, TABLE_SHEET_NOT_FOUND,
+    is_unresolved_structured_reference, TableExtent, COLUMN_NOT_FOUND, TABLE_NOT_FOUND,
+    TABLE_SHEET_NOT_FOUND,
 };
 use super::*;
 use crate::functions::kinds::arg_counts;
@@ -101,8 +102,7 @@ impl Parser {
 
     /// `node` called with the argument list that follows it, when a `(` follows with no space.
     pub(super) fn call_if_parenthesis_follows(&mut self, node: Node) -> Node {
-        if !self.lexer.whitespace_follows() && self.lexer.peek_token() == TokenType::LeftParenthesis
-        {
+        if !self.lexer.whitespace_follows() && *self.lexer.peek() == TokenType::LeftParenthesis {
             return self.parse_call(node);
         }
         node
@@ -225,19 +225,23 @@ impl Parser {
 
     /// An identifier: a call when `(` follows, otherwise a name.
     pub(super) fn parse_identifier(&mut self, name: String) -> Node {
-        let next_token = self.lexer.peek_token();
+        let next_token = self.lexer.peek();
+        let (at_end, call) = (
+            *next_token == TokenType::EOF,
+            *next_token == TokenType::LeftParenthesis,
+        );
         // If this identifier is the last token before the cursor (its
         // peek is EOF), the user is mid-typing a name here. Record it so
         // `parse_at_cursor` can offer function/name completion. We are in
         // a name/operand position by construction, so this never fires
         // for an identifier glued to a completed operand: the `m` in
         // `1m` is leftover input, never reached as a primary.
-        if next_token == TokenType::EOF {
+        if at_end {
             let end = self.lexer.get_position() as usize;
             let start = end.saturating_sub(name.chars().count());
             self.trailing_name = Some((name.clone(), start));
         }
-        if next_token == TokenType::LeftParenthesis {
+        if call {
             self.lexer.advance_token();
             return self.parse_named_call(name);
         }
@@ -342,19 +346,16 @@ impl Parser {
                 return Node::DefinedNameKind((name, scope, formula));
             }
         }
-        let name_lower = name.to_lowercase();
-        for table_name in self.tables.keys() {
-            if table_name.to_lowercase() == name_lower {
-                // A bare table name is its data area, like `Table[]` (gen-m8b specials
-                // e804cf2f8af00680 K116, lookups 27252667210b1d03).
-                return self.structured_reference_operand(
-                    name,
-                    None,
-                    None,
-                    token::TableSpacing::default(),
-                    true,
-                );
-            }
+        if self.table_named(&name).is_some() {
+            // A bare table name is its data area, like `Table[]` (gen-m8b specials
+            // e804cf2f8af00680 K116, lookups 27252667210b1d03).
+            return self.structured_reference_operand(
+                name,
+                None,
+                None,
+                token::TableSpacing::default(),
+                true,
+            );
         }
         // xlpm: Excel Lambda Parameter
         let name = name.trim_start_matches("_xlpm.").to_string();
@@ -542,11 +543,16 @@ impl Parser {
             return self.parse_lambda();
         }
         // The user-facing name, without the xlsx import prefixes.
-        let display_name = name
-            .trim_start_matches("_xlfn._xlws.")
-            .trim_start_matches("_xlfn.")
-            .trim_start_matches("_xlpm.")
-            .to_string();
+        // Each prefix starts with `_`, and most names have none: the searches are skipped for
+        // them, a hot spot on loading long formulas (T-0499).
+        let display_name = if name.starts_with('_') {
+            name.trim_start_matches("_xlfn._xlws.")
+                .trim_start_matches("_xlfn.")
+                .trim_start_matches("_xlpm.")
+                .to_string()
+        } else {
+            name.clone()
+        };
         let empty_call_run = self.empty_call_run();
         let mut args = match self.parse_function_args(&display_name) {
             Ok(s) => s,
@@ -667,8 +673,7 @@ impl Parser {
     /// `TRUE` or `FALSE`, or the calls `TRUE()` and `FALSE()`.
     pub(super) fn parse_boolean_operand(&mut self, value: bool) -> Node {
         // Could be a function call "TRUE()"
-        let next_token = self.lexer.peek_token();
-        if next_token == TokenType::LeftParenthesis {
+        if *self.lexer.peek() == TokenType::LeftParenthesis {
             self.lexer.advance_token();
             // We parse all the arguments, although technically this is moot
             // But is has the upside of transforming `=TRUE( 4 )` into `=TRUE(4)`
@@ -709,15 +714,26 @@ impl Parser {
         spacing: token::TableSpacing,
         bare: bool,
     ) -> Node {
-        let reference = StructuredReference {
+        let mut reference = StructuredReference {
             table_name: table_name.clone(),
             specifier: specifier.clone(),
             table_reference: table_reference.clone(),
             spacing,
             bare,
             unqualified: false,
+            extent: None,
         };
         let lowered = self.lower_structured_reference(table_name, specifier, table_reference);
+        if let Node::ThisRowKind {
+            data_start,
+            data_end,
+            ..
+        } = &lowered
+        {
+            reference.extent = self
+                .table_named(&reference.table_name)
+                .and_then(|table| TableExtent::of(table, Some((*data_start, *data_end))));
+        }
         if let Node::ParseErrorKind { message, .. } = &lowered {
             if self.loaded
                 && !message.starts_with(TABLE_SHEET_NOT_FOUND)
@@ -757,15 +773,7 @@ impl Parser {
             }
         };
         // table-name => table
-        // Table names match ignoring case (gen-m8b names-case 5b5c0e20e82153bb).
-        // An exact hit is deterministic; the case-folded scan covers the rest.
-        let table_name_lower = table_name.to_lowercase();
-        let table = match self.tables.get(&table_name).or_else(|| {
-            self.tables
-                .iter()
-                .find(|(name, _)| name.to_lowercase() == table_name_lower)
-                .map(|(_, t)| t)
-        }) {
+        let table = match self.table_named(&table_name) {
             Some(t) => t,
             None => {
                 let message = format!(

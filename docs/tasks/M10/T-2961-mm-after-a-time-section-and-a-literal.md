@@ -3,7 +3,7 @@ id: T-2961
 title: "mm after a time section and a literal reads as minutes instead of month in h:mm|yyyy-mm-dd"
 milestone: M10
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -26,3 +26,6 @@ or `lexer.rs`, recording the rule in docs/excel-semantics/number-formats.md.
 
 ## Out of scope
 -
+
+## Outcome
+A minute already read makes later `m`/`mm` months (`minute_read`, formatter/parser.rs); new probe mm-after-time-and-date-token passes 22/22; t2779-hebrew-saka-more E7 fixed.
