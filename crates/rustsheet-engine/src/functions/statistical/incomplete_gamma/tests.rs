@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used)]
+use super::half_integer::accurate_half_integer_upper;
 use super::huge_shape::{huge_shape_quantile, wilson_hilferty_quantile};
 use super::{
     cdf_terms_bound, continued_fraction_budget, excel_small_shape_lower,
@@ -693,9 +694,10 @@ fn ulp_distance(a: f64, b: f64) -> u64 {
     a.to_bits().abs_diff(b.to_bits())
 }
 
-// Q at the half-integer shapes 1/2, 3/2, 5/2 and 7/2 for x from a to 30a, through `gamma_sf` (the
-// CHISQ.DIST.RT path), against mpmath's `gammainc(a, x, inf, regularized=True)` at 50 digits
-// rounded to a double (T-3285): within 1 ulp. The forward fraction was up to 19 ulp off here.
+// Q at the half-integer shapes 1/2, 3/2, 5/2 and 7/2 for x from a to 30a, by the accurate kernel
+// (`accurate_half_integer_upper`; CHISQ.DIST.RT takes it from a + 1 to 3a), against mpmath's
+// `gammainc(a, x, inf, regularized=True)` at 50 digits rounded to a double (T-3285): within 1
+// ulp. The forward fraction was up to 19 ulp off here.
 #[test]
 fn half_integer_upper_tail_is_within_an_ulp_of_the_reference() {
     let reference = [
@@ -746,7 +748,7 @@ fn half_integer_upper_tail_is_within_an_ulp_of_the_reference() {
     ];
     let mut exact = 0;
     for (a, x, q) in reference {
-        let ours = gamma_sf(&Gamma::new(a, 1.0).unwrap(), x);
+        let ours = accurate_half_integer_upper(a, x, &mut Terms(MAX_TERMS)).unwrap();
         assert!(
             ulp_distance(ours, q) <= 1,
             "Q({a}, {x}) = {ours:e}, reference {q:e}"
@@ -755,4 +757,15 @@ fn half_integer_upper_tail_is_within_an_ulp_of_the_reference() {
     }
     // Rounded once from about 2^-100: every point is the correctly rounded double.
     assert_eq!(exact, reference.len());
+    // Through CHISQ.DIST.RT's path, Excel's bits: `CHISQ.DIST.RT(10,5)` (probes-numeric/
+    // m9-chisq-dist-rt A19) and `CHISQ.DIST.RT(8,3.34)` (ironcalc-calc CHISQ.xlsx G3).
+    let sf = |a: f64, x: f64| gamma_sf(&Gamma::new(a, 1.0).unwrap(), x);
+    assert_eq!(
+        sf(2.5, 5.0).to_bits(),
+        0.075_235_246_146_512_18_f64.to_bits()
+    );
+    assert_eq!(
+        sf(1.5, 4.0).to_bits(),
+        0.046_011_705_689_231_37_f64.to_bits()
+    );
 }
