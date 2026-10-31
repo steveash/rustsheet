@@ -1,6 +1,6 @@
 # 0217 — Gate A exempts ABS, MIN and MAX as exact and SUMIF and SUMIFS as composite
 
-- **Status:** accepted (2026-11-01, T-3550; an `exempt.tsv` change under decision 0199)
+- **Status:** accepted (2026-10-31, T-3550; an `exempt.tsv` change under decision 0199)
 - **Context:** Gate A (decision 0188 R2, SPEC-0029 "Gate A holds") holds only when every in-scope catalog
   function with `returns: number` has a reference table or an `exempt.tsv` line. `rustsheet-eval accuracy`
   on main printed `missing tables 323`. Ten of them are M2 functions, and M2 is the current milestone.
@@ -13,7 +13,8 @@
   - **MIN, MAX** (`number`, `mode: aggregate`) return one of their numeric arguments unchanged, or 0 when
     there is none. No arithmetic is done on the value. Which arguments count is coercion
     (coercion.md "MIN / MAX coerce value arguments like SUM; ranges and arrays give only their numbers"), and
-    the eval suites test it.
+    the eval suites test it. numbers.md's near-zero snapping entry (T-3139, gen-m2 `numeric-fp` cases) confirms none of the three adds rounding:
+    an operand read through MIN, MAX or ABS snaps `b-X` exactly as a plain reference does.
   - **SUMIF, SUMIFS**: the catalog marks `range`, `sum_range` and `criteria_range` as `mode: range`, so a table
     of scalar literals cannot drive them. Their numeric part is a plain left-to-right sum that never snaps
     (numbers.md "Summing functions", T-3048, probes/t3048-snap-conditional-sums: 5.551115123125783e-17 over

@@ -53,4 +53,4 @@ After this task, every M2 function that Gate A counts as missing has a table tas
 Decision 0217 records the five lines. `eval/accuracy/exempt.tsv` now lists ABS, MAX and MIN as `exact` and SUMIF and
 SUMIFS as `composite`. `rustsheet-eval accuracy` reports `missing tables` 318, down from 323, with no stale exemption.
 The evidence table in the `make eval` report shows that gen-m2, probes and ironcalc-calc carry Excel cells for both
-SUMIF and SUMIFS. Eval delta: none (no engine change).
+SUMIF and SUMIFS. Eval delta: none (no engine change). Follow-up filed: T-3551 (classify the M5–M7 functions with no table or exemption).
