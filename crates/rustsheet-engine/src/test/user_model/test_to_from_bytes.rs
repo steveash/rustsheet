@@ -23,9 +23,13 @@ fn basic() {
 #[test]
 fn errors() {
     let model_bytes = "Early in the morning, late in the century, Cricklewood Broadway.".as_bytes();
-    assert_eq!(
-        &UserModel::from_bytes(model_bytes, "en").unwrap_err(),
-        "Error parsing workbook: invalid packing"
+    let error = UserModel::from_bytes(model_bytes, "en").unwrap_err();
+    // Only the prefix is ours: bitcode 0.6 writes its detailed error text ("invalid packing") only
+    // under `debug_assertions` and "bitcode error" otherwise, so the rest depends on the build
+    // profile (T-3228).
+    assert!(
+        error.starts_with("Error parsing workbook: "),
+        "unexpected error: {error}"
     );
 }
 
