@@ -273,7 +273,10 @@ pub(crate) fn compute_irr(values: &[f64], guess: f64) -> Result<f64, (Error, Str
 /// reach its root and is `#NUM!`. The method is fitted, not Excel's code: the returned digits are
 /// 15 to 35 ulp from Excel's on the probed roots (T-1686, T-2131).
 /// `values` has no leading zero flow ([`compute_irr`] drops them).
-/// FITTED(T-2727, 39 cells, range unknown)
+/// Range (T-3385, flow sets read from the cases): the probe's A1-A24 are 3 to 6 flows of |c| 0.3 to
+/// 400 with roots -0.75 and 6.91; every gen-m9 IRR that reaches this fallback (a superset of the 15
+/// cells) has 2 to 29 flows of |c| 1E-15 to 1E+15, and only 4 of its 68 calls return a root.
+/// FITTED(T-2727, 39 cells, IRR of 2..29 flows, |c| 1E-15..1E+15, roots -0.93..661, mostly #NUM!)
 fn irr_fallback(values: &[f64]) -> Option<f64> {
     // Horner for P(v) and P'(v), highest power first
     let polynomial = |v: f64| {
@@ -413,7 +416,9 @@ fn xirr_bracket(values: &[f64], dates: &[f64], guess: f64) -> Option<(f64, f64)>
 /// probes-numeric/m9-fin-irr-rate) and 80 of 81 out of sample, the miss being the input check of
 /// xirr-early-dates A7 (fit lab `xirr`, `xirr-oos`; T-1525, T-1583, T-3268).
 /// Excel's bisection cap is unprobed: 200 steps is enough on every oracle cell.
-/// FITTED(T-3268, 267 cells, range unknown)
+/// Range (T-3385, from the fit lab's sweeps): 2 to 6 flows over 0.5 to 124 years, |value| 5E-6 to
+/// 1.4E+21, roots -0.93 to 22.05 (184 positive, 83 negative).
+/// FITTED(T-3268, 267 cells, 2..6 flows over 0.5..124 years, |value| 5E-6..1.4E+21, root -0.93..22.05)
 pub(crate) fn compute_xirr(
     values: &[f64],
     dates: &[f64],

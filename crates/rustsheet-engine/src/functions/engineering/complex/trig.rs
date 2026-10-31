@@ -122,9 +122,10 @@ fn in_inverse_exp_band(x: f64) -> bool {
 }
 
 /// [`inverse_exp_sinh_cosh`] takes the `1/u` form for `INVERSE_EXP_LOW < |x| <= INVERSE_EXP_HIGH`.
-/// Both ends are unprobed (T-2797): Excel's lower switch lies between 0.01 (libm's digits) and
-/// 0.0105 (the form's), its upper one between 18.2 and 100; 20 is where the worksheet TANH turns
-/// to ±1 (numbers.md).
+/// Neither end is pinned (T-2797): Excel's lower switch lies between 0.01 (libm's digits,
+/// probes/t2535-imsinh-imcosh-kernel-sweep) and 0.0105 (the form's, probes/t2778-imsinh-sign-sweep),
+/// its upper one between 18.2 (t2778) and 100 (t2535); 20 is where the worksheet TANH turns to ±1
+/// (numbers.md).
 /// FITTED(T-2629, 306 cells, |x| 0.00012..100; cuts bracketed 0.01..0.0105 and 18.2..100)
 const INVERSE_EXP_LOW: f64 = 0.01;
 /// See [`INVERSE_EXP_LOW`].

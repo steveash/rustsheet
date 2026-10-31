@@ -18,6 +18,12 @@ use crate::x87_exp::excel_expm1;
 use crate::x87_log10::excel_ln;
 
 /// Below this |x| SINH and TANH are built from `expm1` ([`expm1_pair`]); from it on, from `exp`.
+/// Not from the math: a cut placed between Excel's cells (T-3385, probes-numeric
+/// t2178-hyperbolic-unit-sweep). Below 1 the expm1 forms fit all 2030 SINH and TANH cells and the
+/// exp forms fail up to `TANH(0.995054655025377)`; on the 20 control points in (1, 1.5) the exp
+/// forms fit all 40 cells and the expm1 forms miss from `SINH(1.0375)`, so Excel's switch lies in
+/// 0.99505..1.0375.
+/// FITTED(T-2134, 2070 cells, SINH and TANH |x| 1E-10..1.49; cut bracketed 0.99505..1.0375)
 const EXPM1_FORM_LIMIT: f64 = 1.0;
 /// |tanh(x)| rounds to 1.0 in f64 beyond this.
 const TANH_SATURATION: f64 = 20.0;
