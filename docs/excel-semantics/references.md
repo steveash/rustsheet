@@ -2683,12 +2683,16 @@ stored cells come from spec2xlsx, which writes no `calculatedColumnFormula`):
    (b) Stored `=A2*2` in C2 and `=A4*2` in C4, C3 blank, then `=A4*3` typed into C4: C2 stays 2, C3 stays blank (F3
    `#N/A`), C4 is 12 (t2983-formulas-and-blank-enter-last). (c) The same with `=A3*3` typed into the blank C3: C2 2,
    C3 6, C4 8, nothing filled (t2983-formulas-and-blank-enter-blank). (c) is a second witness for (a): C2 and C4 are
-   one relative formula. (b) follows from (a) too, so **whether a blank beside a real calculated-column formula blocks
-   the fill is unprobed** (T-3025).
+   one relative formula. (b) follows from (a) too, so it did not show whether a blank beside a real calculated-column
+   formula blocks the fill; (e) does.
    (d) The same holds for a stored structured formula (T-3023, excel-graph 2026-10-30): stored `T[[#This Row],[Col]]*2`
    (the file form of `[@Col]*2`; a bare `[@Col]` in a stored cell loads as `#REF!`) in C2:C4, then `=[@Col]*3` typed into
    C5: C2:C4 stay 2, 4, 8 (F2:F4 `=[@Col]*2`), C5 is 24 (F5 `=[@Col]*3`), so identical stored structured formulas are
    no calculated column either (t3023-identical-stored-structured-refill). The engine matches (a stored formula never fills).
+   (e) **A blank beside a real calculated column blocks the re-fill** (T-3025, excel-graph 2026-10-31): `=[@Col]*2`
+   typed into C2 fills C2:C4, C3 is cleared (an empty entry), then `=[@Col]*3` typed into C4: only C4 changes (C2 stays 2,
+   C3 stays blank with FORMULATEXT `#N/A`, C4 is 12), the same as a constant in C3 (t2957-constant-then-refill)
+   (t3025-blank-beside-calculated). The engine matches (it blocks the fill for a blank beside formulas).
 (T-2969 probes a stored column formula.)
 Evidence: probes/t2957-* (excel-graph, 2026-10-27): fill-one-totals C2:C4, F2:F5, G5; refill-second C2:C4, F2:F4;
 constant-exception C2, C4, F2:F4; constant-then-refill C2, C4, F2:F4; existing-constant C3, F2:F4; a1-reference
@@ -2705,7 +2709,7 @@ re-fills it does (only whether it is set is read; its text, the first data row's
 choice); a typed constant
 keeps it. So a column of identical stored formulas is not re-filled (rule 8a). It stays set until the column is
 removed: clearing or overwriting the column's cells does not clear it, an engine choice (what Excel does is unprobed). A blank cell beside formulas blocks the
-fill in the engine, an unprobed choice (T-3025). The column formula is neither read from nor written to xlsx yet
+fill, as in Excel (rule 8e). The column formula is neither read from nor written to xlsx yet
 (T-2969 probes whether Excel honors it on load; T-3033 then imports and exports it), so a column Excel saved as
 calculated is, after import, no calculated column for a typed re-fill. A stored formula (`Input::StoredFormula`, xlsx import) never fills;
 the facade logs the filled cells and the table as it was, so they are one edit with the typed cell. The eval adapter
