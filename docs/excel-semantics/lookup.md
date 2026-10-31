@@ -176,7 +176,8 @@ Status: VERIFIED (web)
 
 ## A lookup over a whole-column key read as a head and a tail: the limits it meets
 Rule: Excel has no per-call cap, work budget or text budget, so the lookup's values are the same whichever limit
-applies. Inside an aggregate, SUMPRODUCT, SMALL, LARGE, UNIQUE or LOOKUP-vector argument, the engine reads
+applies. Inside an aggregate, SUMPRODUCT, SMALL, LARGE, UNIQUE or LOOKUP-vector argument, or as INDEX's array
+with a scalar row and column 1 (`INDEX(VLOOKUP(Keys!A:A,..),1000)`, T-3222), the engine reads
 VLOOKUP, HLOOKUP or MATCH over a whole-column (or past-the-used-area) key as its used head plus one tail element
 standing for every row below (SPEC-0020 Amendment 2, T-3221). For example `SUM(--(VLOOKUP(A:A,T,2,FALSE)=x))` and
 `COUNT(MATCH(A:A,T,0))` take this reading. The head's lift and the tail's are charged and checked as the one lift
