@@ -1016,16 +1016,17 @@ Evidence: probes/incomplete-gamma-cap (38 formula cells, excel-graph, 2026-10-18
 H27-H50; probes/stat-argument-modes H132-H156, H293-H314, H476-H485.
 Ours: matches the lift and element cells (T-1872), each kernel reading its arguments in its scalar order. The
 incomplete gamma is the accurate pair of T-0971 ("Incomplete gamma: accurate kernel" below; it replaced the port of
-statrs 0.18's `gamma_lr` and `gamma_ur` that T-1872 capped) and its quantile statrs' `Gamma::inverse_cdf` (halve and
-double a bracket, 8 bisections, 4 Newton steps), ported line for line to `statistical/incomplete_gamma.rs`, with a
+statrs 0.18's `gamma_lr` and `gamma_ur` that T-1872 capped) and its quantile the crossing of that cdf
+(`incomplete_gamma::gamma_quantile`; until T-3131 from statrs' `Gamma::inverse_cdf`, halve and double a bracket, 8
+bisections, 4 Newton steps, ported line for line, and since T-3131 from a Wilson-Hilferty start), with a
 per-call cap of its own: at most 2^19 terms in one cdf, and in one whole inversion over all its cdfs (unit test
 `a_call_past_its_cap_is_nan`). The series needs about 6.8 * sqrt(a) terms at x = a: 481,117 at
 the largest chi-squared shape (df 1E10, a = 5E9), so every chi-squared cdf is kept. CHISQ.TEST uses the same capped
 cdf (a sheet's cell count keeps its shape under 2^33, where the series can need about 630,000 terms: past the cap, see
 the DEVIATION below). The lifting table charges every entry 2^18 units an element: the bound of the cap at the slowest
 term, the continued fraction's NaN path (4.1 to 4.7 ns in release; a converging fraction at the cap, which rescales on
-about 65% of its terms at a shape of 1E15, costs 2.4 ns, and a series term 2.5 ns), plus the inversion's 2,120 cdfs,
-about 2.6 ms (lift/kinds/statistical.rs `INCOMPLETE_GAMMA_WEIGHT` has the measurements; 1.2 ms for `CHISQ.DIST(1E10,1E10,TRUE)`).
+about 65% of its terms at a shape of 1E15, costs 2.4 ns, and a series term 2.5 ns), plus the inversion's cdfs (2,120 for statrs' search,
+about 2.6 ms; at most 129 since T-3131) (lift/kinds/statistical.rs `INCOMPLETE_GAMMA_WEIGHT` has the measurements; 1.2 ms for `CHISQ.DIST(1E10,1E10,TRUE)`).
 Where x / beta underflows to 0 (statrs panicked) the cdf is 0 at every shape, as Excel's `GAMMA.DIST(1E-300,a,1E100,TRUE)` is for a = 2 (E7) and for a = 1, 0.5, 0.01, 1E-17 and 1E-300 (probes/t2982-gamma-inv-huge-shape A117-A122), although the true P(1E-17, 1E-400) is 1 - 9E-15; its density is `#NUM!` (A124, A125), and so is the density where x / beta overflows (`GAMMA.DIST(1E300,1,1E-10,FALSE)`, E18), as the cdf there is (E6; T-2982). At a statistic of 5E-324, whose half underflows, `CHISQ.DIST(x,2,TRUE)` is 0 and `CHISQ.DIST.RT(x,2)` and
 `CHIDIST(x,2)` 1 where main panicked (Excel unprobed). CHISQ.TEST cannot reach that statistic: its sum of
 `diff*diff/exp` is never 2^-1074.
@@ -1036,8 +1037,11 @@ a = x = 1E10 and never ended at 2^53. It is bit-exact on Excel's E1-E4, E8-E12, 
 cdfs at df 1E10, 0.4999982128217492 on statrs and main, are now Excel's 0.5000018806319452) and 1 ulp off at E13; a
 shape of 1E8 needs no term past C_3 (they fall by 1/a each). The cap of 2^19 terms now binds a cdf nowhere (below 1E8
 the series takes at most about 68,000 terms) and still binds an inversion's cdfs together below that shape.
-DEVIATION (decision 0014, CLAUDE.md directive 5): an inversion whose cdfs together need more than 2^19 terms, or that
-statrs' search cannot finish, is `#NUM!` where Excel gives a number. From a shape of 1E9 the quantile is
+DEVIATION (decision 0014, CLAUDE.md directive 5): an inversion whose cdfs together need more than 2^19 terms is `#NUM!`
+where Excel gives a number (from shape 1E7 to Temme's 1E8: `GAMMA.INV(0.5,1E7,1)`, before and after T-3131; Excel
+unprobed there, its numbers are probed from 1E9). For a tiny upper-tail p the lower tail rounds to 1 and the
+Wilson-Hilferty start is NaN, so the refinement halves the whole range and can spend the budget sooner from about
+shape 2E6 to 1E9 (statrs' search also took the lower tail; T-2367 measures it). From a shape of 1E9 the quantile is
 `huge_shape_quantile` (section "GAMMA.INV and CHISQ.INV at a huge shape"; T-3070), so `GAMMA.INV(0.5,1E300,1E-300)`
 (E5) and `CHISQ.INV(5.6221E-26,4715100000)` (E15) are Excel's values; E5, E14 and E19 are 1 ulp off. A CHISQ.TEST's
 cdf is never past the cap. Unit tests `incomplete_gammas_that_hung_or_panicked_are_bounded` and
@@ -1051,7 +1055,7 @@ the power series a + 58 (it runs for x < a + 1, where every ratio x / (a + n) is
 the small-shape Q series 20 more, and the continued fraction a budget of 256 + 32 * cbrt(a) terms, enforced by the kernel
 (NaN past it). A sweep of shapes 1E-3 to 1.6E15 needed at most about 10 * cbrt(a) terms (110 below a = 10), so the budget
 is at least twice the need and changes no value (unit test `the_continued_fraction_stays_within_half_its_budget`). An
-inversion is charged 2,250 cdfs of that bound, within its one budget of 2^19 terms. The shape comes from the shape
+inversion is charged 129 cdfs of that bound (2,250 before T-3131), within its one budget of 2^19 terms. The shape comes from the shape
 argument (alpha, df / 2, or POISSON's x + 1); an element with an error argument, or an inversion whose probability is
 outside (0, 1), a logical or a blank, is charged 1, as the kernel returns before any cdf; a text shape or probability is
 charged 2^18. So `CHIDIST(x,5)` costs 150 units an element and a CHIDIST over a 731-element PIVOTBY runs (gen-m9/
@@ -3697,8 +3701,12 @@ Tasks: T-1543, T-1634, T-2561, T-3336, T-3337
   lower tail's `powf * exp(-x - ln Gamma(a + 1))` form is used only at x * rate up to 1 (T-1634 used it up to the
   shape: at shape 50 its exponent's rounding is 1E-14 of the tail). With `x^a` by `powf`, `GAMMA.INV(1E-300,1,1)` is
   9.999999999999999E-301, one ulp under Excel's 1E-300: the crossing is exact, and the ulp is lost to
-  `refine_increasing`'s midpoint (`special::nearest_crossing` would return 1E-300, a lead for T-2561). Above shape 1E9
-  it stays statrs' search alone: Excel is `#NUM!` for `GAMMAINV(0.999999,10000000000.5,1E+10)`.
+  `refine_increasing`'s midpoint (`special::nearest_crossing` would return 1E-300, a lead for T-2561). Since T-3131
+  the refinement starts from Wilson and Hilferty's a (1 - 1/(9a) + z/(3 sqrt a))^3, not statrs' search (at most 129
+  cdfs, was about 2,250). The crossing does not depend on the start where the cdf is monotone, but the doubles near it
+  are not always: four eval cells moved, GAMMA.xlsx F7 to Excel's 1.9999999999999996, gen-m9 ecc87f80077959e0 A231 to
+  within 15 digits, and two `GAMMAINV(0.5,...)` cells (35e8168aae2b00f8 A196, 4bad303d32cc3f46 A289) from 1 ulp under
+  Excel's 3.6720607488508965 to 1 ulp over. From shape 1E9 the quantile is `huge_shape_quantile` (T-3070).
   The crossing is not always the correctly rounded quantile: on 49 gated cells it lands 1 to 3 ulps off Excel where
   Excel is the correctly rounded closed form (`CHISQ.INV(0.5,2)` is 1.3862943611198906 = 2 ln 2 in Excel, ours
   1.3862943611198908; `CHISQ.INV.RT(0.5,2)` ours 1.3862943611198904; GAMMA.xlsx F75 Excel 0.6931471805599453 = ln 2,
@@ -4755,7 +4763,7 @@ d8266bc15533702a A296. excel-graph refused (FileCorruptTryRepair) workbooks hold
 from 1E40 to 1E100 and `GAMMA.DIST(x,1E10..1E11,1,FALSE)` at a tiny x, so those cells were dropped from the probe (T-2982).
 Ours: `incomplete_gamma/huge_shape.rs` `huge_shape_quantile` for GAMMA.INV, GAMMAINV, CHISQ.INV, CHISQ.INV.RT and CHIINV
 from shape 1E9, its true quantile the crossing of the accurate cdf (Temme's expansion), halved over the whole range
-(65 cdfs) since statrs' search is NaN or far off there; `chisq.rs` lets CHISQ.INV.RT and CHIINV past
+(65 cdfs) since statrs' search (used before T-3131) was NaN or far off there; `chisq.rs` lets CHISQ.INV.RT and CHIINV past
 `MAX_DEGREES_OF_FREEDOM`.
 Status: VERIFIED (excel-graph) for the cells; the band's edges and the closed form's terms are fits (UNVERIFIED as forms)
 Tasks: T-2982, T-3070
