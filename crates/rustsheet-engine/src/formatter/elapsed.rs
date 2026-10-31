@@ -112,6 +112,19 @@ impl DisplayClock {
     }
 }
 
+/// What `General` prints in a date section with a date or clock token: the seconds within the
+/// minute, in units of the shown second fraction, of the serial after Excel's half-unit rounding
+/// step (`x + 0.5/86400` with no fraction digits, `x + 0.05/86400` with `.0`), with that step's
+/// float error left in. `TEXT(5,"d General")` is "5 0.5", `TEXT(45000,"d General")` "15 0.499999803",
+/// `TEXT(12345.678,"d General")` "18 19.69999995", `TEXT(45000,"s.0 General")` "0.0 0.499997288"
+/// (probes/t3378-general-in-date-section, excel-graph 2026-10-31, T-3378; number-formats.md).
+pub(super) fn general_clock_residue(value: f64, fraction_digits: Option<usize>) -> f64 {
+    let scale = 10f64.powi(i32::try_from(fraction_digits.unwrap_or(0)).unwrap_or(0));
+    let shifted = value + 0.5 / (86400.0 * scale);
+    let day_fraction = shifted - shifted.floor();
+    (day_fraction * 86400.0 * scale) % (60.0 * scale)
+}
+
 /// `x` rounded to `1/scale`; a magnitude whose scaled value overflows is already integral, and
 /// Excel does not turn it into 0 (probes/elapsed-huge-h-1900: 2.08E303 days in `[s]` is #VALUE!).
 fn snap(x: f64, scale: f64) -> f64 {

@@ -3,7 +3,7 @@ id: T-3378
 title: "TEXT: General inside a date or time section prints the half-second rounding offset (TEXT(5,\"d General\") is \"5 0.5\")"
 milestone: M10
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -71,3 +71,19 @@ usual, and `General` prints a value Excel derives from its half-second rounding 
 Decisions 0083 and 0114: the owned cell has the wrong type (`#VALUE!` against text), so the stage is `semantics`.
 The target is every owned cell and every new probe cell giving Excel's exact text. A wrong TEXT result is visible to
 every user of the format.
+
+## Outcome
+- The triage hypothesis `(fl(x + 0.5/86400) - x) * 86400` held only at whole serials. The committed probes show the
+  real rule: General prints the seconds within the minute of `x + 0.5/86400`, in units of the shown second fraction.
+  Beside elapsed tokens only, it prints the value's magnitude. All 44 date and clock cells match to the digit, in
+  doubles, with General's 11-character printer (`general_clock_residue` in formatter/elapsed.rs). This is a structural
+  rule read off the probes, not a fitted constant.
+- The parser accepts one `General` in a date section. A `General` beside a lone elapsed token keeps a negative
+  formattable in 1900 mode (`TEXT(-5,"[h] General")` = "-120 5").
+- Probe cases: probes/t3378-general-in-date-section (64 cells) and t3378-general-in-date-section-1904 (7 cells),
+  excel-graph 2026-10-31. number-formats.md has a new entry, "`General` in a date section", in place of the "Oddity,
+  unimplemented" note.
+- Eval delta, probes: fixed 1 (text-format-general-company A5), new-coverage failures 1, regressions 0. The two new
+  cases pass 70 of 71 cells.
+- Follow-up: T-3419 owns the one open cell, A59 `TEXT(5,"d [h] General")` = "5 12 0.5". An elapsed token after a
+  date token counts from something else there.

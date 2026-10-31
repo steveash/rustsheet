@@ -56,6 +56,27 @@ pub enum TextToken {
 }
 
 impl TextToken {
+    /// Whether the token reads the serial's date or time of day (`d`, `mmm`, `h`, `ss`, `AM/PM`,
+    /// an era): everything a date section holds but literals, `General`, the elapsed `[h]`/`[m]`/
+    /// `[s]` counts and a second's fraction digits.
+    pub fn is_date_or_clock(&self) -> bool {
+        !(self.is_literal()
+            || matches!(
+                self,
+                TextToken::Raw
+                    | TextToken::General
+                    | TextToken::Digit(_)
+                    | TextToken::Period
+                    | TextToken::ElapsedHour
+                    | TextToken::ElapsedHourPadded
+                    | TextToken::ElapsedMinute
+                    | TextToken::ElapsedMinutePadded
+                    | TextToken::ElapsedSecond
+                    | TextToken::ElapsedSecondPadded
+                    | TextToken::SecondFraction(_)
+            ))
+    }
+
     /// Whether the token prints fixed text and no value (a literal, quoted text, a ghost or a fill).
     pub fn is_literal(&self) -> bool {
         matches!(
@@ -909,7 +930,11 @@ impl Parser {
             let only_literals = tokens
                 .iter()
                 .all(|t| t.is_literal() || matches!(t, TextToken::General));
-            if general_count > 1 || !only_literals || is_date || comma > 0 {
+            // Excel: one `General` among date, clock or elapsed tokens prints a value of its own
+            // (`TEXT(5,"d General")` is "5 0.5"; the `ParsePart::Date` arm of `format_number`,
+            // probes/t3378-general-in-date-section, T-3378). A digit placeholder beside it still
+            // makes the section an error through `is_number` below.
+            if general_count > 1 || !(only_literals || is_date) || comma > 0 {
                 return ParsePart::Error(ErrorPart::default());
             }
             // Excel: `%` beside `General` prints, no scaling (probes/text-format-general-company A3).
