@@ -289,6 +289,12 @@ impl Model {
         // A reference is passed as a reference, a single cell too, so that
         // `LAMBDA(x, MAX(x))(A2)` ignores the text in A2 (upstream MAX_MIN.xlsx H54).
         let provided = call_args.len();
+        // A called LAMBDA's body is a formula root: a `+`/`-` there snaps a near-zero result,
+        // `=LAMBDA(x,x+0.2-0.3)(0.1)` is 0, where a LET body does not
+        // (docs/excel-semantics/numbers.md "Near-zero snapping", probes/t3049-snap-under-pickers
+        // B17, C17). A defined-name LAMBDA snaps alike, also when another named LAMBDA calls it
+        // (probes/t3094-snap-lambda-call-forms C2-F5, J2-J5). The helpers' calls (MAP, REDUCE,
+        // ...) snap alike (`LambdaCaller::snapping_root`).
         let mut caller = self.lambda_caller(&lambda_result, provided).snapping_root();
         // A defined-name LAMBDA starts from the body its last call patched (`NamedLambdas`). It
         // is taken out while this call runs, so a call inside it (recursion, `MyFn(MyFn(x))`)
@@ -300,12 +306,6 @@ impl Model {
             }
             _ => None,
         };
-        // A called LAMBDA's body is a formula root: a `+`/`-` there snaps a near-zero result,
-        // `=LAMBDA(x,x+0.2-0.3)(0.1)` is 0, where a LET body does not
-        // (docs/excel-semantics/numbers.md "Near-zero snapping", probes/t3049-snap-under-pickers
-        // B17, C17). A defined-name LAMBDA snaps alike, also when another named LAMBDA calls it
-        // (probes/t3094-snap-lambda-call-forms C2-F5, J2-J5). The helpers' calls (MAP, REDUCE,
-        // ...) snap alike (`LambdaCaller::snapping_root`).
         if let Some(key) = named {
             caller.prepared = self
                 .named_lambdas
