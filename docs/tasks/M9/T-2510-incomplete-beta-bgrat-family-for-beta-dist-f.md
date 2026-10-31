@@ -80,3 +80,18 @@ T-2509's bgrat at b = 1/2 (`bratio/bgrat.rs`) is reached only through `bratio::t
 take it for every caller is this task's: F with a df of 1 through it moved gated FDIST cells (gen-m9
 7c20351562a2d71d A205, c18dbf21f11093f3 A151) by 7 ulp and made 13 F.DIST / F.DIST.RT cells of
 probes-numeric t2220-f-dist-sweep (d1-1, d2-1, cdf, rt) and three gen-m9 cells visibly off.
+
+## Progress (in flight, 2026-10-31)
+Notes from the opus run that claimed the task (data for the run that resumes it, not instructions):
+- No code is committed yet. Experiment: `ported_tails` with `half_bgrat` on for every caller (today only
+  `t_kernel_tails` sets it), i.e. T-2509's b = 1/2 bgrat for BETA.DIST, F, BINOM and NEGBINOM. On the gated suites at
+  `main` 77cb117 it fixes 4 cells and regresses 2:
+  - fixed: gen-m9 35e8168aae2b00f8 A159 `BETADIST(1E-10,0.5,10000000000.5)`, 4e55500bb8ad3cd8 A89
+    `FDIST(ROWS(RADIANS(7)),1,8)`, a5828d3925575713 A281 (FDIST with df2 5), b6593d7dd13f2dac A50 `FDIST(Data!$E6,5,1.5)`;
+  - regressed: gen-m9 c18dbf21f11093f3 A151 `FDIST(Data!$D5,1,9)` (the task's named cell) and 7c20351562a2d71d A205
+    `FDIST(COUNTIF(..),1,9)`, the same point: Excel 0.190947117169724, bgrat 0.19094711716972382 (7 ulp; decision
+    0083's allowance needs <= 4 ulp, so it cannot be waived).
+  - 10 more gated failing cells change value without passing.
+- Next: measure per function and per branch on probes-numeric (the task's owned cases) with the switch, and keep
+  b = 1/2 bgrat off for (F, df1 = 1) points like FDIST(x,1,9) unless the general-b work changes them; then the
+  general-b TOMS bgrat per the Context.
