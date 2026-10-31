@@ -3,7 +3,7 @@ id: T-3285
 title: "Upper incomplete gamma at shapes 1.5 and 2.5: CHISQ.DIST.RT(10,5) and CHIDIST(10,5) are 6 ulp off where Excel is correctly rounded (accuracy)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
