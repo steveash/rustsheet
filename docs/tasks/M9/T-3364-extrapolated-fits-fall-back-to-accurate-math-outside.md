@@ -30,7 +30,7 @@ and true-quantile branches keep matching Excel.
 ## Acceptance criteria
 - [ ] Each piece above applies only inside its recorded `FITTED` range; outside it the code computes the accurate value
       (an mpmath-checked unit test on each side of each boundary).
-- [ ] On the closed-form branch (statistics.md's `MATH-OVER-EXCEL` entry; t3070 A110, t2982 A7-A23, t3070 A304-A327)
+- [ ] On the closed-form branch (statistics.md's `MATH-OVER-EXCEL` entry; t3070 A110, t2982 A7-A23, and the closed-form numeric cells of the five functions among t3070 A304-A327; A315-A317 are CHISQ.DIST/CHISQ.DIST.RT and stay `#NUM!`)
       the five functions return the math within 1e-9 relative; the `#NUM!` and true-quantile branches keep Excel's
       results.
 - [ ] A fresh log-uniform sweep over each affected function's domain (R4.2) shows the Gate A envelope (R2).
