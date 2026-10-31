@@ -30,4 +30,5 @@ GAMMA.INV, CHISQ.INV and the other gamma quantiles at a huge shape are `#NUM!` e
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- A model of Excel's whole search (T-3409). If T-3409's model explains A122, close this task as its duplicate.
+- The band's upper edge and the closed-form branch.

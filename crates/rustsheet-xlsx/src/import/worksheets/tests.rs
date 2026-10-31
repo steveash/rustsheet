@@ -216,3 +216,349 @@ fn rc_text_cache_keeps_the_sign_of_zero() {
         }
     }
 }
+
+/// The relocation key (T-3326) at the places the A1 parse reads its cell: each formula is copied
+/// over a grid of cells, every copy is read through one shared cache and through a fresh one, and
+/// the two must print the same. Mixed-`$` range corners swap order with the cell; LET names,
+/// dotted ranges, defined names and a callee spelled like a cell are never keyed.
+#[test]
+fn relocation_key_gives_equal_trees_for_equal_keys() {
+    use rustsheet_engine::expressions::parser::new_parser_english;
+    use rustsheet_engine::expressions::parser::stringify::to_english_string;
+    use rustsheet_engine::expressions::types::CellReferenceRC;
+
+    use crate::import::relocation_key::KeyLexer;
+    use crate::import::worksheets::{from_a1_to_rc, RcTextCache};
+
+    let sheets = vec!["Sheet1".to_string(), "Other".to_string()];
+    let mut parser = new_parser_english(sheets.clone(), vec![], HashMap::new());
+    parser.set_loaded(true);
+    let mut copier = new_parser_english(sheets, vec![], HashMap::new());
+    let mut shared = RcTextCache::default();
+    let mut lexer = KeyLexer::default();
+    let at = |row, column| CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row,
+        column,
+    };
+    // The key's own marker in a sheet name could alias another formula's key.
+    assert_eq!(lexer.key("'X\u{1}'!A1+1", &at(3, 3)), None);
+    for formula in [
+        "COUNTIFS($A$2:$A$9,B3,C$1:C3,\">0\")",
+        "SUM(C$3:$B5)",
+        "SUM($C3:B$5)+Other!$A1",
+        "A1 B1:C3",
+        "SUM(A1:A3 B2:C2)",
+        "IF(A1>0,\"x\",#N/A)*{1,2;3,4}",
+        "_xlfn.XLOOKUP(A1,B:B,C:C)",
+        "SUM(1:1)+ABS(-0)",
+        "LET(x1,1,x1+A1)",
+        "_xlfn.LET(_xlpm.x,A1,_xlpm.x)",
+        "A1.B2",
+        "rate*A1",
+        "A1(2)",
+        "SUM(A1",
+    ] {
+        let origin = at(3, 3);
+        // As stored (the copies below are as the engine prints them, `A1.B2` as `A1:B2`).
+        let keyed = lexer.key(formula, &origin).is_some();
+        let expect = !["LET", "A1.B2", "rate", "A1(2)"]
+            .iter()
+            .any(|s| formula.contains(s));
+        assert_eq!(keyed, expect, "{formula}");
+        for (row, column) in [(3, 3), (4, 3), (3, 4), (6, 1), (1, 6), (9, 9)] {
+            let cell = at(row, column);
+            let Some(name) = number_to_column(column) else {
+                continue;
+            };
+            let copy = to_english_string(&copier.parse(formula, &origin), &cell);
+            let context = format!("Sheet1!{name}{row}");
+            for array in [false, true] {
+                let fresh = from_a1_to_rc(
+                    copy.clone(),
+                    &mut parser,
+                    &mut RcTextCache::default(),
+                    context.clone(),
+                    array,
+                )
+                .map_err(|e| e.to_string());
+                let cached = from_a1_to_rc(
+                    copy.clone(),
+                    &mut parser,
+                    &mut shared,
+                    context.clone(),
+                    array,
+                )
+                .map_err(|e| e.to_string());
+                assert_eq!(cached, fresh, "{context}: {copy}");
+            }
+        }
+    }
+}
+
+/// A copy keyed from the template of the formula before it (T-3384) has the key a fresh lexer
+/// gives it. Each formula is copied down, right and back over a grid, as the engine prints the
+/// copies, through one shared lexer (whose templates serve most copies) and a fresh one each time.
+/// Also copies past the grid's edge, lower-case and leading-zero text, mixed-`$` corners, and a
+/// different formula in between.
+#[test]
+fn shifted_copies_take_the_keys_a_fresh_lexer_gives() {
+    use rustsheet_engine::expressions::parser::new_parser_english;
+    use rustsheet_engine::expressions::parser::stringify::to_english_string;
+    use rustsheet_engine::expressions::types::CellReferenceRC;
+
+    use crate::import::relocation_key::KeyLexer;
+
+    let sheets = vec!["Sheet1".to_string(), "My Data".to_string()];
+    let mut copier = new_parser_english(sheets, vec![], HashMap::new());
+    let at = |row, column| CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row,
+        column,
+    };
+    let formulas = [
+        "COUNTIFS('My Data'!$A$2:$A$9,B3,'My Data'!C$1:C3,\">0\")+'My Data'!B3",
+        "SUM(C3:E9)*$B$1+B$2+$C2",
+        "SUM(C$3:$B5)",
+        "SUM($C3:B$5)",
+        "A1 B1:C3",
+        "IF(A1>0,\"A1\",#N/A)*{1,2;3,4}+Z9+AA10",
+        "VLOOKUP(A3,'My Data'!$A:$C,3,FALSE)",
+        "SUM(1:1)+XFD1+A1048576",
+        "  SUM( A3 , B3 )  ",
+        "A3&\"B3\"&'My Data'!A3",
+        "SUM(B:B)+COUNTIF(3:5,A3)+SUM('My Data'!$J:$J,C:$D)",
+        "COUNTIFS('My Data'!$J:$J,\">=\"&W$1,'My Data'!$D:$D,$E5)+SUM($2:4)",
+    ];
+    let cells = [
+        (3, 3),
+        (4, 3),
+        (5, 3),
+        (6, 3),
+        (6, 4),
+        (6, 5),
+        (2, 5),
+        (1, 1),
+        (1_048_576, 3),
+        (3, 16384),
+        (9, 9),
+    ];
+    let mut shared = KeyLexer::default();
+    let origin = at(3, 3);
+    let mut checked = 0;
+    for formula in formulas {
+        let tree = copier.parse(formula, &origin);
+        for (row, column) in cells {
+            let cell = at(row, column);
+            let copy = to_english_string(&tree, &cell);
+            let from_template = shared.key(&copy, &cell);
+            let fresh = KeyLexer::default().key(&copy, &cell);
+            assert_eq!(from_template, fresh, "{copy} at {row},{column}");
+            checked += 1;
+        }
+    }
+    // Text the engine never prints, after a template: compared, never matched wrongly.
+    for (row, text) in [
+        (4, "SUM(c4:e10)*$B$1+B$2+$C3"),
+        (4, "SUM(C04:E10)*$B$1+B$2+$C3"),
+        (4, "SUM(C4:E10)*$B$1+B$3+$C3"),
+        (4, "SUM(C4:E10)*$B$1+B$2+$C3 "),
+        (5, "SUM(C4:E10)*$B$1+B$2+$C3"),
+    ] {
+        let mut lexer = KeyLexer::default();
+        lexer.key("SUM(C3:E9)*$B$1+B$2+$C2", &at(3, 3));
+        let cell = at(row, 3);
+        assert_eq!(
+            lexer.key(text, &cell),
+            KeyLexer::default().key(text, &cell),
+            "{text}"
+        );
+        checked += 1;
+    }
+    // Off the grid: `A1048577` and `XFE1` are names, not the template's references moved.
+    for (template, from, text, to) in [
+        ("A1048576+1", (1, 1), "A1048577+1", (2, 1)),
+        ("XFD1+1", (1, 1), "XFE1+1", (1, 2)),
+        ("SUM(A1:B2)", (2, 2), "SUM(A0:B1)", (1, 2)),
+    ] {
+        let mut lexer = KeyLexer::default();
+        lexer.key(template, &at(from.0, from.1));
+        let cell = at(to.0, to.1);
+        assert_eq!(
+            lexer.key(text, &cell),
+            KeyLexer::default().key(text, &cell),
+            "{text}"
+        );
+        checked += 1;
+    }
+    assert!(checked > 100, "{checked}");
+    assert!(
+        shared.copies > 30,
+        "{} copies from a template",
+        shared.copies
+    );
+}
+
+/// Templates over random text built from the characters the lexer reads by context (digits and
+/// `E` before a column, `.`, `_`, `R` and `C`, `:` and `!` around column and row ranges, `$`,
+/// quotes and prefixes): every copy a template takes gets the key a fresh lexer gives it. The
+/// template is dropped for a formula that does not parse, as `from_a1_to_rc` drops it (T-3384).
+/// It holds the two texts the Excel-fidelity review found: `1A1` copied to `1E1` (a number) and
+/// `R:B!C1` copied to `Q:A!B1` (a span of sheets).
+#[test]
+fn template_keys_match_a_fresh_lex_on_random_text() {
+    use rustsheet_engine::expressions::parser::new_parser_english;
+    use rustsheet_engine::expressions::types::CellReferenceRC;
+
+    use crate::import::relocation_key::KeyLexer;
+
+    let sheets = vec!["Sheet1".to_string(), "My Data".to_string()];
+    let mut parser = new_parser_english(sheets, vec![], HashMap::new());
+    parser.set_loaded(true);
+    let at = |row, column| CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row,
+        column,
+    };
+    // A template keyed, dropped if its formula does not parse, then each copy it takes keyed
+    // through it and fresh. Returns how many copies it took.
+    let mut check = |text: &str, from: &CellReferenceRC, cells: &[(i32, i32)]| -> usize {
+        let mut lexer = KeyLexer::default();
+        if lexer.key(text, from).is_none() {
+            return 0;
+        }
+        if parser.parse(text, from).has_parse_error() {
+            lexer.forget_template();
+        }
+        let mut taken = 0;
+        for &(row, column) in cells {
+            let cell = at(row, column);
+            let Some(copy) = lexer.template_copy(&cell) else {
+                continue;
+            };
+            let through_template = lexer.key(&copy, &cell);
+            assert_eq!(
+                through_template,
+                KeyLexer::default().key(&copy, &cell),
+                "{text} at {},{} copied as {copy} at {row},{column}",
+                from.row,
+                from.column
+            );
+            taken += 1;
+        }
+        taken
+    };
+    // The review's counterexamples: no template, so nothing taken.
+    assert_eq!(check("1A1", &at(1, 3), &[(1, 7)]), 0);
+    assert_eq!(check("R:B!C1", &at(1, 3), &[(1, 2)]), 0);
+    assert_eq!(check("1.A1", &at(1, 3), &[(1, 7)]), 0);
+    // A plain template is taken (the check can pass).
+    assert!(check("A1+B$2", &at(3, 3), &[(4, 3), (3, 4)]) == 2);
+
+    const PIECES: [&str; 40] = [
+        "A1",
+        "$A$1",
+        "B$2",
+        "$C3",
+        "E1",
+        "R1",
+        "C1",
+        "D9",
+        "1",
+        "1.",
+        "2E",
+        "E",
+        "R",
+        "C",
+        ":",
+        "!",
+        "$",
+        "'My Data'!",
+        "Sheet1!",
+        "(",
+        ")",
+        ",",
+        "+",
+        "*",
+        "&",
+        " ",
+        "\"x\"",
+        "SUM(",
+        "A:A",
+        "$J:$J",
+        "3:5",
+        "R:B",
+        "1E1",
+        ".",
+        "_",
+        "#",
+        "{1}",
+        "-",
+        "%",
+        "^",
+    ];
+    // Near cells, and far ones whose column names change length (Z to AA, ZZ to AAA), reach
+    // letters such as `LOG`, or sit at the grid's last row and column.
+    let cells = [
+        (1, 1),
+        (2, 3),
+        (5, 2),
+        (1, 9),
+        (12, 4),
+        (3, 3),
+        (1, 27),
+        (1, 703),
+        (2, 8509),
+        (1, 16_384),
+        (1_048_576, 1),
+        (1_048_570, 16_380),
+    ];
+    let mut state: u64 = 0x2545_f491_4f6c_dd1d;
+    let mut next = |bound: usize| {
+        // xorshift: deterministic, so a failure reproduces.
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        usize::try_from(state % bound as u64).unwrap_or(0)
+    };
+    let mut taken = 0;
+    for _ in 0..20_000 {
+        let length = 1 + next(7);
+        let text: String = (0..length).map(|_| PIECES[next(PIECES.len())]).collect();
+        let from = at(
+            1 + i32::try_from(next(8)).unwrap(),
+            1 + i32::try_from(next(8)).unwrap(),
+        );
+        taken += check(&text, &from, &cells);
+    }
+    assert!(taken > 1_000, "only {taken} copies taken");
+}
+
+/// A cell's row is read from the file unchecked (`A2147483647`, `A-5`): moving a template's
+/// coordinates to such a cell neither overflows nor takes the template (T-3384).
+#[test]
+fn templates_at_extreme_rows_do_not_overflow() {
+    use rustsheet_engine::expressions::types::CellReferenceRC;
+
+    use crate::import::relocation_key::KeyLexer;
+
+    let at = |row, column| CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row,
+        column,
+    };
+    for (from, to) in [
+        ((1, 1), (i32::MAX, 1)),
+        ((i32::MAX, 1), (1, 1)),
+        ((1, 1), (i32::MIN, 1)),
+        ((i32::MIN, 1), (i32::MAX, 1)),
+        ((1, i32::MAX), (1, i32::MIN)),
+    ] {
+        let mut lexer = KeyLexer::default();
+        lexer.key("A5+B$2+$C3", &at(from.0, from.1));
+        let cell = at(to.0, to.1);
+        assert_eq!(lexer.template_copy(&cell), None, "{from:?} to {to:?}");
+        let text = "A2147483647+B$2+$C3";
+        assert_eq!(lexer.key(text, &cell), KeyLexer::default().key(text, &cell));
+    }
+}

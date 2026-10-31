@@ -25,6 +25,7 @@ const HALF_SHAPE: f64 = 0.5;
 /// The x / beta up to which GAMMA.DIST's density is Excel's log-space form below shape 20 (probes/
 /// t2753-gamma-density-switch: 0 to 3 ulp from Excel up to 3E-16 at shapes 0.5, 1 and 2, 4 to 7 at
 /// 1E-15, where the direct form is 4 to 12 off; T-2753).
+/// FITTED(T-2753, 84 cells, x/beta 1E-19..1E-11, shape 0.5..2)
 const LOG_FORM_RATIO: f64 = 1E-15;
 
 /// The smallest `(alpha - 1)·(-LN(x/beta))`, at an x/beta below 1, at which Excel's GAMMA.DIST density
@@ -32,6 +33,7 @@ const LOG_FORM_RATIO: f64 = 1E-15;
 /// 6.9E+10 (shape 1E+8) is 0 and a huge x at a huge shape stays 0 (probes/t2435-dist-extremes A26,
 /// A92, A31). The true cut lies in that bracket, unprobed (docs/excel-semantics/statistics.md
 /// "GAMMA.DIST at a huge shape", T-3271).
+/// FITTED(T-3271, 3 cells, shape 1E8..1E9, x/beta 1E-300 and a huge x)
 const HUGE_SHAPE_DENSITY_CUT: f64 = 6.9187E+11;
 
 /// The smallest shape at which Excel's GAMMA.DIST cdf of a positive x has been seen to be `#NUM!`
@@ -39,6 +41,7 @@ const HUGE_SHAPE_DENSITY_CUT: f64 = 6.9187E+11;
 /// (probes/t2435-dist-extremes A101, A100). The true cut lies in that bracket, unprobed (T-3271).
 /// A cdf that is not 0 keeps its value: `GAMMA.DIST(1E300,1E300,1,TRUE)` is 0.5
 /// (probes/incomplete-gamma-cap E3).
+/// FITTED(T-3271, 2 cells, shape 1E40..1.85E76, x 2)
 const HUGE_SHAPE_CDF_CUT: f64 = 1.85E+76;
 
 /// Whether GAMMA.DIST's computed 0 is Excel's `#NUM!` at a huge shape: a density
@@ -61,6 +64,7 @@ fn huge_shape_num_error(alpha: f64, x: f64, beta: f64, cumulative: bool) -> bool
 /// chisqdist A6, A30; gen-m9/9cca17438a7e6f8a A133 and d8266bc15533702a A230 bit-exact, 1 to 4 ulp
 /// on the direct form); at 5, 9 and 10 it is 10 to 18 off from y = 1 up (probes-numeric
 /// m9-chisq-dist A48, m9-gamma-dist-a9 A8), where the direct form is 0 to 1.
+/// FITTED(T-2852, 6 cells, shape 2.5..10, y below the mode)
 const LOG_FORM_SHAPE_MAX: f64 = 3.0;
 
 /// The shape below which the form holds above the mode too (y >= a). A fit inside its evidence
@@ -70,12 +74,14 @@ const LOG_FORM_SHAPE_MAX: f64 = 3.0;
 /// 2.5,2.5,FALSE)` -2 -> -6); at shape 2 above the mode it is mixed, not worse on balance (gated
 /// gen-m9/bc40d37cb4d8301d A165 `CHISQ.DIST(11,4,FALSE)` and m9-gamma-dist-a2 A28 become bit-exact,
 /// A8 and A18 lose a bit, t1048-gammadist A6 and B6 go from 1 ulp to 2).
+/// FITTED(T-2852, 11 cells, shape 2..2.5, y above the mode)
 const LOG_FORM_ABOVE_MODE_SHAPE_MAX: f64 = 2.5;
 
 /// The smallest shape at which GAMMA.DIST's density takes the EXP(a LN(y)) form. A fit inside its
 /// evidence bracket (0.1, 0.5] (T-2852): the form holds at the probed densities of shapes 0.5 to
 /// 2, and at shape 0.1 gen-m9/0a614cfe974b59c3 A367 is Excel's on the direct form and 1 ulp off
 /// on this one (gen-m9/4e55500bb8ad3cd8 A386, at shape 1E-10, goes the other way by 4 ulp).
+/// FITTED(T-2852, 2 cells, shape 1E-10..0.1)
 const LOG_FORM_SHAPE_MIN: f64 = 0.5;
 
 /// The largest x / beta at which GAMMA.DIST's density takes the EXP(a LN(y)) form. A fit inside its
@@ -89,6 +95,7 @@ const LOG_FORM_SHAPE_MIN: f64 = 0.5;
 /// the direct one on balance (UNVERIFIED: of 12 probed cells from y = 2 to 16, 3 become bit-exact,
 /// gated gen-m9/8dd2312c96effb1b A150 and A165 among them, 2 lose a bit, 2 move closer and 5 stay
 /// at the same distance).
+/// FITTED(T-2852, 14 cells, y 2..20.01 and one sweep cell)
 const LOG_FORM_Y_MAX: f64 = 16.0;
 
 /// GAMMA.DIST's (and CHISQ.DIST's, at beta = 2) density in Excel's log-space forms, with Excel's

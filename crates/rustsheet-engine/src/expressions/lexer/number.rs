@@ -16,7 +16,10 @@ impl Lexer {
     pub(super) fn consume_number(&mut self, first: char) -> Result<f64> {
         let mut position = self.position;
         let len = self.len;
-        let mut chars = first.to_string();
+        // The buffer kept on the lexer: a string per number was most of reading one (T-3384).
+        let mut chars = std::mem::take(&mut self.number_text);
+        chars.clear();
+        chars.push(first);
         // numbers before the decimal point
         while position < len {
             let x = self.chars[position];
@@ -27,8 +30,13 @@ impl Lexer {
             }
             position += 1;
         }
-        if position < len && self.chars[position].to_string() == self.locale.numbers.symbols.decimal
-        {
+        // The char is the decimal separator when the separator is that one char.
+        let decimal = self.locale.numbers.symbols.decimal.as_str();
+        let is_decimal = |c: char| {
+            let mut separator = decimal.chars();
+            separator.next() == Some(c) && separator.next().is_none()
+        };
+        if position < len && is_decimal(self.chars[position]) {
             // numbers after the decimal point
             chars.push('.');
             position += 1;
@@ -67,13 +75,15 @@ impl Lexer {
             }
         }
         self.position = position;
-        match parse_excel_number(&chars) {
+        let read = match parse_excel_number(&chars) {
             // Excel refuses a workbook whose formula holds a literal number text would not read
             // (`=1E-310`, `=0E309`: numbers.md "Number text of 1E+308 or more is not a number").
             None => Err(self.set_error(&format!("Failed to parse to double: {chars}"), position)),
             // A literal below the smallest normal reads as 0 (`=1E-308=0` is TRUE,
             // probes/subnormal-function-results A70): `parse_excel_number` flushes it.
             Some(v) => Ok(v),
-        }
+        };
+        self.number_text = chars;
+        read
     }
 }

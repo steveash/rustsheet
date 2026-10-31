@@ -181,7 +181,8 @@ def math_quantile(function: str, p_double: float, df: int) -> object:
 
 
 def parse_show(path: str, sheet: str) -> dict[str, tuple[str, str, str]]:
-    text = open(path).read()
+    with open(path) as handle:
+        text = handle.read()
     blocks = re.findall(
         rf"^{sheet}!(A\d+)\s+(\w+)\n\s+formula : (.*)\n\s+expected: (.*)\n\s+actual  : (.*)$", text, re.M
     )
@@ -191,11 +192,13 @@ def parse_show(path: str, sheet: str) -> dict[str, tuple[str, str, str]]:
 def score(case_path: str, show_path: str) -> None:
     import mpmath as mp  # noqa: PLC0415
 
-    case = json.load(open(case_path))
+    with open(case_path) as handle:
+        case = json.load(handle)
     sheet = case["sheets"][0]["name"]
     cells = case["sheets"][0]["cells"]
     strata = case.get("hypotheses", {})
-    oracle = json.load(open(case_path.replace(".case.json", ".oracle.json")))["sheets"][sheet]
+    with open(case_path.replace(".case.json", ".oracle.json")) as handle:
+        oracle = json.load(handle)["sheets"][sheet]
     shown = parse_show(show_path, sheet)
     table: Counter[tuple[str, str]] = Counter()
     for cell, formula in sorted(cells.items(), key=lambda kv: int(kv[0][1:])):
