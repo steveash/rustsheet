@@ -3,7 +3,7 @@ id: T-3478
 title: "Fits applied past their tagged range: RATE and IRR secant constants, F density SMALL_SHAPE_OFFSET below LARGE_DF_MIN (R4.3)"
 milestone: M9
 lane: quality
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
