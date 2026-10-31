@@ -1842,6 +1842,18 @@ down to 1E-10 / up to 0.9999999999. The values are the targets for T-0969 and T-
   exact tail is 8 to 23 ulp off, but 29 and 97 ulp off at `T.DIST.RT(0.5,100)` and (0.5,1000), where the exact
   tail is within 1. No (df, t) cut on the swept cells separates the two (superseded: the denser grid of T-0969 attempt 7
   finds the cut, see "T.DIST.RT follows the rounded y beyond t = 1").
+- **Centre quantiles are accurate** (T-2724): TINV, T.INV.2T and CONFIDENCE.T with p near 1 (and T.INV with
+  p near 1/2), whose quantile is a tiny t, keep their digits down to p = 1-1E-16: `TINV(1-1E-10,5)` =
+  1.3171528710518458E-10, `TINV(1-1E-16,6)` = 1.4503892858778844E-16, `T.INV.2T(0.999999,7)` =
+  1.2987301378605883E-6, `T.INV.2T(0.9999999999,1E6)` = 1.2533145543437745E-10 (gen-m9 b9a32ce9a1fd0d71 A58,
+  cb61169f4c033d4b A71, 334f3dc9ca937f10 A128; probes-numeric m9-t-inv-2t A130). Each is within about 2E-15
+  relative of the true quantile at the double p (mpmath `betainc(1/2, df/2, 0, w) = 1 - p`), so a solver on
+  y = df/(df+t^2) near 1 that back-transforms through 1 - y (statrs; ours before T-2724 gave 2.36E-8 and 0
+  for the first two) is wrong. The central probability c = 1 - p (or |2p - 1|, or 1 - 2q for an upper tail q) is
+  exact by Sterbenz while 1 - q is not for q just below 1/2, so it has to be formed that way. Excel's own last
+  digits are noise of up to 3.6E-15 relative around the true value (`TINV(1-1E-16,8)` = 1.4355131050823135E-16,
+  true 1.4355131050823086E-16; `CONFIDENCE.T(1-1E-10,2.5,16)` = 7.964763775429037E-11, true
+  7.964763775429023E-11), which an accurate kernel does not reproduce (T-0967).
 Evidence: probes-numeric cases `m9-t-dist-cdf`, `m9-t-dist-pdf`, `m9-t-dist-rt`, `m9-t-dist-2t`, `m9-t-inv`,
 `m9-t-inv-2t`, `m9-confidence-t`, `m9-t-nonint-df`, `m9-t-edges`. Oracle: excel-graph, 2026-10-13. Exact reference values for
 the T.DIST accuracy bullets: mpmath `betainc` at 60 digits (T-0969 attempt 2, 2026-10-20).
