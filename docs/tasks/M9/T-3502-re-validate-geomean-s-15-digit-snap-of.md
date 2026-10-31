@@ -3,7 +3,7 @@ id: T-3502
 title: "Re-validate GEOMEAN's 15-digit snap of the root on a fresh hold-out sweep (decision 0188 R4)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
