@@ -64,3 +64,11 @@ count, then time-box).
 ## Out of scope
 - Principals where `v^nper` underflows: fin-cumprinc-near-1e15, fin-cumprinc-underflow-ends (T-3141).
 - CUMIPMT's own construction (T-3118) and the `1-Q` switch (T-3179).
+
+## Cells added by gap triage (2026-10-31m)
+`make eval` on origin/main 900fbc1bf (excel-graph). An ownership check over every failing Excel cell
+(`scripts/exit_owners.py`'s `owned` rule over the open task files of origin/main and of every `origin/agent/*` branch
+pushed since 2026-10-29) found these cells named by no open task. All are within 15 significant digits of Excel (Phase
+1b), so they join this deferred owner of their kernel. CUMIPMT at rate 0.0083 over short ranges, 4 and 8 ulp, on the
+overflow-and-forms probe.
+- probes/fin-cumipmt-overflow-and-forms.case.json (2): Sheet1!A7, A14
