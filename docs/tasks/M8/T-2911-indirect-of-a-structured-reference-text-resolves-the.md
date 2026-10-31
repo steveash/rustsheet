@@ -40,4 +40,4 @@ every structured text is `#REF!` (COUNTA counts it: 1). Reuse the parser's struc
 ## Outcome
 `indirect_of` falls back to the parser's structured-reference lowering (`Model::parser`) when the text is
 neither A1 nor a defined name, so `INDIRECT("Sales[Column2]")` is the table column. Documented in lookup.md.
-Probe cells F!A4/F!A5 of both table-insert-*-inside-header cases pass; baseline updated.
+Three probe cells (F!A4 of both table-insert-*-inside-header cases and F!A5 of the two-column case) were fixed and left the baseline; the header case's F!A5 `#REF!` keeps passing. Only the plain `Table[Column]` shape resolves; other shapes are follow-up T-3386.

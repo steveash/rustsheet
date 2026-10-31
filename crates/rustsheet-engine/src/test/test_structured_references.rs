@@ -514,7 +514,7 @@ fn edge_insert(totals: bool, row: i32) -> (Vec<String>, String) {
     let mut model = edge_model(totals);
     model.insert_rows(0, row, 1).unwrap();
     model.evaluate();
-    let formulas = (1..=4).map(|r| formula(&model, 1, r, 1)).collect();
+    let formulas = (1..=5).map(|r| formula(&model, 1, r, 1)).collect();
     (formulas, model.workbook.tables["Sales"].reference.clone())
 }
 

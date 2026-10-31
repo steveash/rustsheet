@@ -18,9 +18,9 @@ then renamed (T-1608, the unscored cells of probes/sheet-ops/sheet-ops-rename-in
 ## INDIRECT of a structured reference text resolves the table area
 Rule: `INDIRECT("Sales[Column2]")` is the area the same structured reference is in a formula: after a column
 insert inside `Sales` (S!B3:C7), `ROWS(INDIRECT("Sales[Column2]"))` is 4 and `COUNTA(INDIRECT("Sales[Column1]"))`
-is 0 (an empty data column). A column the table lacks is `#REF!`. Only the A1 form (`a1` TRUE) reads it; the
-specifiers (`#All`, `#Headers`, `@`), case and spacing of the text are unprobed, so the engine reads whatever the
-parser reads (T-2911).
+is 0 (an empty data column). A column the table lacks is `#REF!`. Only the plain `Table[Column]` shape is evidenced
+and implemented; the specifiers (`#All`, `#Headers`, `@`), an unqualified column, case, spacing, a bare table name
+and `a1` FALSE are unprobed and stay `#REF!` in the engine until T-3386 probes them (T-2911).
 Evidence: probes/table-edits/table-insert-column-inside-header F!A4, F!A5; table-insert-two-columns-inside-header
 F!A4, F!A5 (excel-graph 2026-10-27).
 

@@ -2,6 +2,7 @@ use crate::arithmetic::bcast_get;
 use crate::cast::NumberOrArray;
 use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::ArrayNode;
+use crate::expressions::token::TableReference;
 use crate::expressions::types::{CellReferenceIndex, CellReferenceRC};
 use crate::expressions::utils::{
     is_indirect_unquoted_sheet, is_out_of_range_r1c1_name, quote_digit_leading_sheet,
@@ -850,10 +851,24 @@ impl Model {
             row: cell.row,
             column: cell.column,
         };
-        let Node::StructuredReferenceKind { lowered, .. } = self.parser.parse(text, &context)
+        // Only the evidenced `Table[Column]` shape: the specifiers, `@`, an unqualified column,
+        // case, spacing, a bare table name and `a1` FALSE are unprobed and stay `#REF!`
+        // (TODO(T-3386): probe them).
+        let Node::StructuredReferenceKind { reference, lowered } =
+            self.parser.parse(text, &context)
         else {
             return None;
         };
+        let plain_column = reference.specifier.is_none()
+            && !reference.bare
+            && !reference.unqualified
+            && matches!(
+                reference.table_reference,
+                Some(TableReference::ColumnReference(_))
+            );
+        if !plain_column {
+            return None;
+        }
         let (sheet, row1, column1, row2, column2) = match *lowered {
             Node::ReferenceKind {
                 sheet_index,
