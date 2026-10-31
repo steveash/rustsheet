@@ -2365,7 +2365,11 @@ Rule (gen-m8b, excel-graph, 2026-10-16, T-1607):
   Ours (T-2979): an operand that starts with `[` in a cell of a table (its header and totals rows included) is a
   structured reference to that table: `[@Col]`, `[Col]`, `[[#This Row],[Col]]`. It prints without the name, a
   `#This Row` one in its `@` form (`=[[#This Row],[Col]]` prints `=[@Col]`, as calculated-column rule 6 shows for
-  `=[@Col]*2`; how Excel prints the typed long form is unprobed). Counting the header and totals rows as inside the
+  `=[@Col]*2`). Since T-3241 a `#This Row` reference written with the table name prints the same `@` form in a data row
+  of its table (probes/t2800-this-row-whitespace B3:E3, table-edits/table-insert-row-calc-column-inside-data
+  F!A1:A2), and any reference written without the name prints with it in a cell outside its table (`[@Col]` as
+  `T[[#This Row],[Col]]`, `[Col]` as `T[Col]`: the engine's choice so the text parses there; Excel's spelling there
+  is T-3240). Counting the header and totals rows as inside the
   table is an engine choice too, unprobed (T-3000). Storage (R1C1) keeps the table as a `[T]` prefix
   (`[T][[#This Row],[Col]]*2`), so the same text in two tables of one sheet reads each its own table and a re-parse
   (a sheet rename) prints it unqualified again; the export writes the qualified form Excel saves
@@ -2531,15 +2535,25 @@ Right/Left):
   totals row the only data row is kept and cleared too, and the totals row does not move: `ROWS(Sales)` 1,
   `#All` 3, `ROW(Sales[#Totals])` 5, `Sales[[#Totals],[Qty]]` 0 (SUBTOTAL over the cleared row), `S!C5` 0, a
   cell below the table unchanged (table-delete-row-only-data-totals; all excel-graph 2026-10-28, T-2848).
-  Still unprobed (the case format deletes one row per op and has no header-less table): one delete of every
-  data row at once, a two-row delete reaching a data edge, and a delete on a table without a header row.
+  One delete of several rows (`delete_row` with `count`, Graph `range('4:7')/delete`; excel-graph 2026-10-30,
+  T-3019) behaves as the one-row deletes do. Rows 4-7 at once, every data row, keep the table's first data row,
+  cleared: `ROWS(Sales)` 1, `#All` 2, `ROW(Sales[#Headers])` 3, `SUM(Sales[Qty])` and `COUNTA(Sales[Region])` 0,
+  `=SUM(S!C4:C7)` becomes `=SUM(S!C4:C4)` (0), and the cells below move three rows, not four (`=S!C10` reads
+  `=S!C7`, `=SUM(S!C9:C10)` reads `=SUM(S!C6:C7)`) (table-delete-rows-all-data-once; the engine deletes all four
+  rows, T-3259). Rows 6-7 at once, the last two data rows, shrink the table to rows 4-5 (`ROWS(Sales)` 2,
+  `SUM(Sales[Qty])` 3, `S!C4:C7` becomes `S!C4:C5`), a range wholly inside the deleted rows is `=SUM(S!#REF!)`,
+  `=SUM(S!C7:C9)` straddling the bottom edge becomes `=SUM(S!C6:C7)`, and `=S!C10` reads `=S!C8`
+  (table-delete-rows-last-two; the engine matches). Still unprobed: a delete on a table without a header row
+  (the case format has none yet, T-3260).
 - A plain range, with no table involved, shrinks when a row delete takes its first or last rows but not all
   of them: `=SUM(S!C4:C7)` and `=SUM(S!$C$4:$C$7)` become `S!C4:C6` (`$C$4:$C$6`) for a delete of row 4 and
   of row 7, `=SUM(S!C7:C9)` becomes `=SUM(S!C6:C8)` / `=SUM(S!C7:C8)`, and a range wholly deleted
   (`=SUM(S!C4:C4)`, row 4) becomes `#REF!`, printed `=SUM(S!#REF!)` (plain-range-delete-row-first, -last,
-  excel-graph 2026-10-27, T-2338). Only one-row deletes are probed: the engine's shrink on a multi-row delete
-  across an edge (rows 3-5 over `C4:C7` give `C3:C4`) is a hand generalisation, and whole-row ranges and
-  column deletes still give `#REF!` corners (T-2851).
+  excel-graph 2026-10-27, T-2338). A multi-row delete across an edge shrinks the same way (plain-range-delete-rows-across-edge,
+  excel-graph 2026-10-30, T-3019; rows 3-5 deleted in one edit over S!C1:C10 = 1..10): `=SUM(S!C4:C7)` and its
+  absolute form become `S!C3:C4` (`$C$3:$C$4`, 13), `=SUM(S!C2:C4)` becomes `=SUM(S!C2:C2)` (2), the wholly
+  deleted `=SUM(S!C3:C5)` is `=SUM(S!#REF!)`, and `=S!C10` reads `=S!C7`; the engine matches. Whole-row ranges
+  and column deletes still give `#REF!` corners (T-2851).
 - Column inserts. At A or B (left of or at the table's first column) the table moves right
   (`COLUMN(Sales[Qty])` 4, plain `S!C4:C7` becomes `S!D4:D7`); at C, between its columns, it grows
   (`COLUMNS(Sales)` 3, `COLUMN(Sales[Qty])` 4); at D, just right of it, nothing changes
@@ -2648,7 +2662,10 @@ columns `Col` 1,2,4, `Other` 10,20,40 and an empty `Calc` C; FORMULATEXT of each
    (e) **Typing just below the last data row grows the table by a row**: `=B4*2` or the constant `7` typed into A5
    makes `ROWS(T[#All])` 5 and `COLUMNS` 3, A5 keeps what was typed (formula `=B4*2`), column D stays blank (B5, C5 and the
    constant in A5 are not read back)
-   (below-last-row, below-last-row-const).
+   (below-last-row, below-last-row-const). Ours (T-3273): `set_typed_user_input` grows the table by the row through
+   `table_expansion`, for a typed formula or constant inside the table's columns; stored or untyped input does not.
+   Unprobed and pinned as no growth: below a totals row, two rows down, outside the table's columns, into a row
+   another table reaches, or into a row whose other cells are not blank. Nothing is filled into the new row.
    (f) **An unqualified `=[@Col]*2` typed into D2 is accepted** (Excel resolves it against the table the new column
    joins): `T` grows to A1:D4, D2:D4 are `=[@Col]*2` in every row (2, 4, 8) (unqualified-structured-d2). The engine
    refuses this entry as a parse error (T-2979).
@@ -2687,17 +2704,19 @@ calculated is, after import, no calculated column for a typed re-fill. A stored 
 the facade logs the filled cells and the table as it was, so they are one edit with the typed cell. The eval adapter
 types `entered` cells after the tables and every stored cell, as the oracle types them after load. The unqualified `[@Col]` the probes type resolves to the
 table holding the cell since T-2979 (below).
-Ours (T-2968): rule 7. A formula typed (not stored) into the cell just right of a table's header row or a data row
-grows the table by one column (`Model::table_expansion`, calculated_columns.rs), before the fill of rules 1-5 runs
-over the new column. The new column is named as a column insert names one (`Column1`, `table_edits::append_column`)
+Ours (T-2968, T-3218): rule 7. A formula or a constant typed (not stored) into the cell just right of a table's
+header row, a data row or its totals row grows the table by one column (`Model::table_expansion`,
+calculated_columns.rs), before the fill of rules 1-5 runs over the new column. A constant fills nothing, and a
+formula typed beside the totals row fills nothing either; the totals cell is never filled (rules 7a, 7c). The new column is named as a column insert names one (`Column1`, `table_edits::append_column`)
 and the name is written into its header cell. A formula typed into the header cell itself is not stored: the header
-is the text `0`. Excel's header is the text `0` for any formula typed there (rule 7b: `=2+3`, `="x"`, ISTEXT TRUE), not derived from its value; the engine writes text `0`. If the
-table already has a column named `0`, the engine falls back to `ColumnN` (an engine choice). The table does not grow,
-and the cell is typed as before, in these cases: a constant typed there, a table with a totals row, a new
-column whose other cells are not all blank (Excel also stays put for an occupied neighbour, rule 7d) and a new column that another table overlaps (unprobed). The engine deviates from Excel on rules 7a, 7c, 7e and 7f (known deviations, not accepted behavior; T-3218); it already matches 7b and 7d. Nor does it grow for a formula that does not parse there as typed (a parse error, or typed text decision 0103 refuses), since Excel refuses that entry and changes nothing. That includes an unqualified `=[@Col]*2` typed beside the table, which is a parse error outside every table (T-2979) but which Excel accepts and fills (rule 7f). The facade's edit holds
+is the text `0`. Excel's header is the text `0` for any formula typed there (rule 7b: `=2+3`, `="x"`, ISTEXT TRUE), not derived from its value; the engine writes text `0`. A constant typed
+into the header cell is the header text, always text (`5` is the text `5`; a leading `'` is dropped, unprobed). If the
+table already has a column of that name, the engine falls back to `ColumnN` (an engine choice). The table does not grow,
+and the cell is typed as before, in these cases: an empty value, a new
+column whose other cells are not all blank (Excel also stays put for an occupied neighbour, rule 7d) and a new column that another table overlaps (unprobed). The engine deviates from Excel on rules 7e and 7f (known deviations, not accepted behavior; T-3273, T-3274); it matches 7a-7d. Nor does it grow for a formula that does not parse there as typed (a parse error, or typed text decision 0103 refuses), since Excel refuses that entry and changes nothing. That includes an unqualified `=[@Col]*2` typed beside the table, which is a parse error outside every table (T-2979) but which Excel accepts and fills (rule 7f). The facade's edit holds
 the growth, the header cell and the filled rows, and its rollback puts the table back.
 Status: VERIFIED (excel-graph; desktop unprobed; rule 3's no-re-fill half on 3 of 4 runs; rule 7a-7f by probes/t3003-*)
-Implemented in: rules 1-5 and 8, crates/rustsheet-engine/src/calculated_columns.rs (T-2958, T-3024); rule 7, the same file (T-2968)
+Implemented in: rules 1-5 and 8, crates/rustsheet-engine/src/calculated_columns.rs (T-2958, T-3024); rule 7 (7a-7d), the same file (T-2968, T-3218)
 Tasks: T-2957, T-2958, T-2968, T-2969, T-2983, T-3024, T-3025, T-3033, T-3003, T-3218
 
 ## Unknown function call names: spelling in FORMULATEXT

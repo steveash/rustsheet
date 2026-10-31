@@ -3,7 +3,7 @@ id: T-3249
 title: "Oracle sweep: BETA.DIST(.,FALSE) Loader density at large shapes (a + b from 128 to 8192, partner 1.5 to a), the fitting and hold-out points the large-exponent residue needs"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -46,16 +46,31 @@ density's large-shape behaviour, plus a hold-out no fitting choice uses, so the 
   canary-verify (excel-probe skill).
 
 ## Acceptance criteria
-- [ ] Two probe cases (fit and hold-out) with excel-graph sidecars land under eval/suites/probes-numeric/cases/.
+- [x] Two probe cases (fit and hold-out) with excel-graph sidecars land under eval/suites/probes-numeric/cases/.
       The generator that rebuilds them byte for byte is in docs/research/t3249/.
-- [ ] `make eval` loads both. Their known failures are recorded with `make eval-baseline` and no existing line
+- [x] `make eval` loads both. Their known failures are recorded with `make eval-baseline` and no existing line
       regresses.
-- [ ] T-3250's Cells section names both new case stems, so that no visibly-off cell they add is unowned
+- [x] T-3250's Cells section names both new case stems, so that no visibly-off cell they add is unowned
       (`make unowned-off ALL=1 FUNCTION=BETA.DIST`). T-3173's Cells section names the F.DIST column.
-- [ ] statistics.md's Loader entry gets one line on what the sweep shows, without fitting: the error sd against
+- [x] statistics.md's Loader entry gets one line on what the sweep shows, without fitting: the error sd against
       |ln f| and n per shape, and where it collapses.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fitting or changing the engine (T-3250, T-3244).
 - min(a,b) <= 1 (T-2503, T-2821, T-3035).
+
+## Outcome
+- probes-numeric/t3249-beta-large-shape-fit (19,584 cells: 34 shapes x 9 runs of 32 doubles, BETA.DIST in column A,
+  F.DIST at the mapped point in column B) and -hold (15,872 cells: 62 shapes x 8 runs of 16 doubles), excel-graph
+  2026-10-30. Generator, scorer and run notes in docs/research/t3249/ (the hold-out's shorter runs keep it under the
+  16,384-row case limit; see its README).
+- Without fitting: the engine's miss against Excel grows with |ln f| at every shape and does not collapse above 400
+  (sd in 2^-52 units: 1 at the mode run, 43-58 at 25-75, 175-211 at 400-500, 257-283 at 600-650; fit and hold-out
+  agree). With b = a it also grows with n (83 at n 255, 457 at n 16383). F.DIST at the mapped point behaves the
+  same way. Recorded in statistics.md's Loader entry.
+- Eval delta: probes-numeric +2 cases, 35,456 cells (1,791 passing at the bit, 13,361 BETA.DIST and 13,918 F.DIST cells
+  visibly off). probes-numeric has no baseline file (gate = false), so `make eval-baseline` records nothing, and no
+  existing line changed. T-3250 owns column A of both cases and T-3173 owns column B.
+  `make unowned-off ALL=1 FUNCTION=BETA.DIST` still shows 1 cell, which predates this task (m9-beta-dist-a2p5
+  Calc!A31). For F.DIST it shows 0.

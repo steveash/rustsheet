@@ -1,12 +1,17 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-3003: 5 typed into D2 beside table T (A1:C4): does T grow (H1:H2), what are D1:D4 (F,J,K), D1 text/formula (H3:H4).",
+ "description": "T-3003: 5 typed into D2 beside table T (A1:C4): does T grow (H1:H2), what are D1:D4 (F,J,K), D1 text/formula (H3:H4). D1 is the header text Excel writes (not a formula, so the sidecar does not record it): `Column1`, as the oracle's J1 (`=D1&\"\"`), K1 (`TYPE(D1)` 2) and H3 (`ISFORMULA(D1)` FALSE) read it (T-3218).",
  "tags": [
   "M2",
   "tables",
   "probe"
  ],
- "expected": {},
+ "expected": {
+  "S!D1": {
+   "t": "s",
+   "v": "Column1"
+  }
+ },
  "sheets": [
   {
    "name": "S",

@@ -1166,3 +1166,13 @@ reference to an error cell (also `B1:B1`) the same. With two errors the first ar
 engine, unprobed beyond that cell). UNPROBED: a multi-cell range of only errors and a 1x1 array (`{#N/A}`) with format 2 (the engine gives `#VALUE!`); a reference to an error cell with an error or text format, such as `ARRAYTOTEXT(B1,NA())` or `ARRAYTOTEXT(B1,"x")` with B1 holding `#N/A` (the engine reads the format first and returns its error).
 
 See also: RIGHT num_chars numeric-text coercion is recorded in criteria.md "Zero and negative SUMIFS criteria; IF error arguments; RIGHT numeric-text num_chars" (T-2980).
+
+## CHAR lifts over ranges and arrays
+
+`CHAR` takes a range or array argument and returns an array, like `UNICHAR`, `CODE` and
+`UNICODE`; inside `CONCAT`, `TEXTJOIN` (as text or delimiter) and `CONCAT`'s mixed arguments the
+elements are joined whole (`=CONCAT(CHAR(A1:A3))` is "Hi!" for 72, 105, 33), not implicitly
+intersected. An error element (`CHAR(0)` is `#VALUE!`, a `#N/A` cell) is the join's result.
+Evidence: probes/t3302-text-funcs-arrays (E1-E20, oracle-filled). The probe shows
+`CONCAT`/`TEXTJOIN` over `CHAR`, `UNICHAR`, `CODE`, `UNICODE` ranges and computed arrays already
+agree; the only gap was `CHAR`, fixed in T-3302.

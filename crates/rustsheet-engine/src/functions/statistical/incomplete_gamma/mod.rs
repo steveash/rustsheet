@@ -183,26 +183,36 @@ fn gamma_prefactor(a: f64, x: f64, form: Exponent) -> f64 {
         }
         return (a * x.ln() - x - super::special::ln_gamma(a)).exp();
     }
-    let exponent =
-        if form == Exponent::Accurate || (x - a).abs() <= a * NEAR_MODE || x < a * RATIO_FORM_MIN {
-            // TOMS 654's `rcomp`, -a rlog(x/a), accurate: `POISSON.DIST(1E6,1E6,TRUE)` is Excel's
-            // 0.5002659614862837 to 5 ulp, where the ratio form below is 1E-10 off (ironcalc-calc
-            // POISSON.xlsx D31). Below a/200 Excel is neither (TODO(T-3219)).
-            -a * rlog(a, x)
-        } else {
-            // Excel's own form away from the mode: the log of the ratio that is at least 1, a ln(x/a)
-            // above it and -a ln(a/x) below it, then a - x added. Excel's density and cdf are 0 to 1
-            // ulp from it at shapes 25, 50 and 500 (60 to 1,083 ulp from `rcomp`, and Excel itself up
-            // to 600 ulp from the true value: probes-numeric m9-gamma-dist-a50, -a500, m9-chisq-dist
-            // A51-A64; T-2638).
-            let log_ratio = if x < a {
-                -a * (a / x).ln()
-            } else {
-                a * (x / a).ln()
-            };
-            log_ratio + (a - x)
-        };
-    (a / (2.0 * std::f64::consts::PI)).sqrt() * (exponent - stirling_correction(a)).exp()
+    let away_from_mode = form == Exponent::Excel && (x - a).abs() > a * NEAR_MODE;
+    let exponent = if away_from_mode && x >= a * RATIO_FORM_MIN {
+        // Excel's own form away from the mode. Excel's density and cdf are 0 to 1 ulp from it at
+        // shapes 25, 50 and 500 (60 to 1,083 ulp from `rcomp`, and Excel itself up to 600 ulp
+        // from the true value: probes-numeric m9-gamma-dist-a50, -a500, m9-chisq-dist A51-A64;
+        // T-2638).
+        excel_ratio_exponent(a, x)
+    } else {
+        // TOMS 654's `rcomp`, -a rlog(x/a), accurate: `POISSON.DIST(1E6,1E6,TRUE)` is Excel's
+        // 0.5002659614862837 to 5 ulp, where the ratio form is 1E-10 off (ironcalc-calc
+        // POISSON.xlsx D31). Below a/200 Excel is neither (TODO(T-3219)).
+        -a * rlog(a, x)
+    };
+    stirling_prefactor(a, exponent, stirling_correction(a))
+}
+
+/// sqrt(a / 2 pi) exp(exponent - correction), Stirling's form of the prefactor.
+fn stirling_prefactor(a: f64, exponent: f64, correction: f64) -> f64 {
+    (a / (2.0 * std::f64::consts::PI)).sqrt() * (exponent - correction).exp()
+}
+
+/// Excel's exponent away from the mode (T-2638): the log of the ratio that is at least 1,
+/// a ln(x/a) above the mode and -a ln(a/x) below it, then a - x added.
+fn excel_ratio_exponent(a: f64, x: f64) -> f64 {
+    let log_ratio = if x < a {
+        -a * (a / x).ln()
+    } else {
+        a * (x / a).ln()
+    };
+    log_ratio + (a - x)
 }
 
 /// rlog(x / a) = x/a - 1 - ln(x / a). Within a factor of 2 of a, x - a is exact (Sterbenz) and
@@ -241,33 +251,6 @@ const NEAR_MODE: f64 = 0.4;
 /// gen-m9/68d8ffb69ff739d8 A341 `GAMMADIST(0.3,30,1,TRUE)`: 118 against 208) and closer to `rcomp`
 /// at a/500 (A47, B47 `GAMMA.DIST(0.1,50,1,FALSE)`: 114 against 252); 1/200 lies between (T-3252).
 const RATIO_FORM_MIN: f64 = 0.005;
-
-/// The gamma density x^(a-1) e^(-x/scale) / (scale^a Gamma(a)) for a > 0, x > 0 and scale > 0,
-/// as [`gamma_prefactor`]`(a, x / scale) / x`: the prefactor P and Q share, so the density keeps
-/// its digits where statrs' `exp(ln pdf)` loses the absolute error of its log (T-0971). `None` at
-/// x = 0 or where x / scale is not normal, which keep statrs' closed forms.
-pub(crate) fn gamma_density(a: f64, x: f64, scale: f64) -> Option<f64> {
-    density_with(a, x, scale, Exponent::Excel)
-}
-
-/// [`gamma_density`] with the accurate exponent throughout, for the large-shape beta paths, where
-/// the ratio form is unprobed (T-3252).
-pub(crate) fn accurate_gamma_density(a: f64, x: f64, scale: f64) -> Option<f64> {
-    density_with(a, x, scale, Exponent::Accurate)
-}
-
-fn density_with(a: f64, x: f64, scale: f64, form: Exponent) -> Option<f64> {
-    let y = x / scale;
-    if x <= 0.0 || !y.is_normal() {
-        return None;
-    }
-    // The exponential density e^(-x/scale) / scale, as statrs forms it: one rounding fewer than
-    // the prefactor's y e^-y / x (gen-m9/ecc87f80077959e0 A261 `CHISQ.DIST(1.5,2,FALSE)`).
-    if a == 1.0 {
-        return Some((-y).exp() / scale);
-    }
-    Some(gamma_prefactor(a, y, form) / x)
-}
 
 /// The shape below which, for x below 1, Q is not 1 - P but [`small_shape_upper`]: there P runs
 /// up to 1 as the shape falls (P(0.00113, 8E-4) = 0.992), and 1 - P keeps only the digits P and
@@ -471,8 +454,7 @@ pub(crate) fn excel_small_shape_quantile(a: f64, p: f64) -> Option<f64> {
     if !(a > 0.0 && a < 1.0 && a != 0.5 && p > 0.0 && p < 1.0) {
         return None;
     }
-    let exponent = (excel_ln(p) + excel_gammaln(a) + excel_ln(a)) / a;
-    let mut x = excel_exp(exponent);
+    let mut x = leading_factor_root(a, p);
     if x.is_nan() || x >= CLOSED_FORM_QUANTILE_MAX {
         return None;
     }
@@ -488,6 +470,51 @@ pub(crate) fn excel_small_shape_quantile(a: f64, p: f64) -> Option<f64> {
         x -= step;
     }
     (x > 0.0 && x.is_finite()).then_some(x)
+}
+
+/// The root of the cdf's leading factor, p = x^a / Gamma(a + 1), as Excel forms it:
+/// `EXP((LN(p)+GAMMALN(a)+LN(a))/a)`, summed in that order (T-3013 at a shape below 1, T-2561
+/// above it). NaN where a logarithm is.
+fn leading_factor_root(a: f64, p: f64) -> f64 {
+    excel_exp((excel_ln(p) + excel_gammaln(a) + excel_ln(a)) / a)
+}
+
+/// How far, relative to p, GAMMA.DIST at [`leading_factor_root`] may be from p for
+/// [`excel_tiny_quantile`] to return that root. A fit, not an Excel constant, and a proxy for
+/// Excel's own test, which is unknown. Two cells set the bracket [4.09E-14, 5.88E-14): gen-m9/
+/// 0a9226016e8f5f33 A240 `CHISQ.INV(1E-200,7)`, the root bit for bit with our cdf 4.09E-14 from
+/// p, and d8266bc15533702a A212 `CHISQ.INV(1E-200,10)`, not the root (Excel 111 ulp above it)
+/// with our cdf 5.88E-14 from p. Over the cells it was fitted on, 7 distinct (shape, p) points are
+/// in and bit-exact and 2 are out. The ones in: (2, 1E-300) at A293 and A123, (2.5, 1E-300) A217,
+/// (3.5, 1E-200) A240, (2, 1E-100) A283, (4.5, 1E-200) A252, (3, 1E-100) A184 and A399, and
+/// (1.500000000000001, 1E-100) A142. The ones out: (5, 1E-200) A212 and (2.5, 1E-200) at A128, A98
+/// and caa1eed48b1883fe A282. The test is not Excel's: at shape 25 Excel's
+/// `CHISQ.INV(1E-300,50)` is the root (probes-numeric t1543-inverse-cdf-tiny-p A31) with our cdf
+/// 9.8E-12 off (TODO(T-3294)).
+const TINY_QUANTILE_CHECK: f64 = 5e-14;
+
+/// Excel's lower-tail quantile at a shape above 1 (and below [`DIRECT_SHAPE_MAX`]) where it is
+/// tiny (T-2561): the root of the leading factor, [`leading_factor_root`], with no Newton step.
+/// It applies where GAMMA.DIST (the pair with Excel's prefactor) at that root is within
+/// [`TINY_QUANTILE_CHECK`] of p. The check also limits the form to tiny quantiles. The cdf's other
+/// factors, e^-x and the series, are 1 - x a / (a + 1) to first order, so above x of about 5E-14
+/// they move the cdf past the check. At `CHISQ.INV(1E-16,3)` (x = 2.6E-11, 1.6E-11 off)
+/// the search takes over. The check is not Excel's own test. At shape 25, `CHISQ.INV(1E-300,50)`
+/// is the root bit for bit in Excel (probes-numeric t1543-inverse-cdf-tiny-p A31), though the cdf
+/// there is 9.8E-12 off; the shape bound keeps that cell on the search (TODO(T-3294)). The root
+/// differs from the true quantile by the rounding of Excel's exponent: `CHISQ.INV(1E-300,4)` is
+/// Excel's 2.828427124746146E-150, 82 ulp below the crossing. `None` elsewhere.
+fn excel_tiny_quantile(a: f64, p: f64) -> Option<f64> {
+    if !(a > 1.0 && a < DIRECT_SHAPE_MAX && p > 0.0 && p < 1.0) {
+        return None;
+    }
+    let x = leading_factor_root(a, p);
+    if !(f64::MIN_POSITIVE..1.0).contains(&x) {
+        return None;
+    }
+    // One cdf of a shape below 20 at x below 1: the series, at most `cdf_terms_bound(20)` terms.
+    let cdf = pair_with(a, x, &mut Terms(MAX_TERMS), Exponent::Excel).0;
+    ((cdf / p - 1.0).abs() <= TINY_QUANTILE_CHECK).then_some(x)
 }
 
 /// The shape from which the pair is Temme's uniform asymptotic expansion ([`temme_pair`]) and not a
@@ -809,43 +836,6 @@ pub(crate) enum Tail {
     Upper,
 }
 
-/// Above this shape the quantile is statrs' search alone, its NaN included: Excel is `#NUM!` for
-/// `GAMMAINV(0.999999,10000000000.5,1E+10)` and for a CHISQ.INV.RT of 10000000000.5 degrees of
-/// freedom (gen-m9), where statrs' search ends as NaN and a refinement would find the quantile
-/// (T-1634).
-/// Excel also has values above this shape (`CHISQ.INV(1E-16,10000000000.5)` = 9998837266.383266,
-/// gen-m9; `CHISQ.INV(5.6221E-26,4715100000)` = 4714082845.627977, probes/incomplete-gamma-cap),
-/// which rest on statrs' search alone, so moving the cut needs both kinds of cell checked.
-const REFINE_SHAPE_MAX: f64 = 1e9;
-
-/// From this shape on, Excel's GAMMA.INV and GAMMAINV are not a search but
-/// [`wilson_hilferty_quantile`]: `GAMMA.INV(0.5,a,1)` / a tends to c = 1.0002658235505755, and is
-/// c (a - 1/3) / a from 1E13 to 1E300 (probes/t2982-gamma-inv-huge-shape A7-A23; the one cell at 2E10, A7, is at
-/// p = 0.5), while at 5E9 the quantile is the true one and
-/// at 7E9 and 1E10 Excel is mostly `#NUM!` (A5, A6, A42-A59; that band and the shapes from 1E9 to
-/// it stay on the search, TODO(T-3070)).
-pub(crate) const WILSON_HILFERTY_SHAPE_MIN: f64 = 2e10;
-
-/// The offset Excel adds to the Wilson-Hilferty cube root: (1.0002658235505755)^(1/3) - 1 is
-/// 0.0000886 to 13 digits (A7-A23).
-const WILSON_HILFERTY_OFFSET: f64 = 0.000_088_6;
-
-/// The factor on Excel's z term, fitted to the p sweep at shape 1E13 (A25-A41, 1 - 2.2106E-5;
-/// the cells are within 7 ulps of it, 3 at most from p = 1E-16 to 1 - 1E-6).
-const WILSON_HILFERTY_SPREAD: f64 = 0.999_977_893_94;
-
-/// Excel's gamma quantile at a shape from [`WILSON_HILFERTY_SHAPE_MIN`], for a scale of 1, where
-/// `z` is the standard normal quantile of the lower tail's probability: the Wilson-Hilferty
-/// approximation a (1 - 1/(9a) + z/(3 sqrt a))^3 with Excel's offset and spread inside the cube
-/// (probes/t2982-gamma-inv-huge-shape, docs/excel-semantics/statistics.md "GAMMA.INV and CHISQ.INV
-/// at a huge shape"). It is within 7 ulps of Excel from a shape of 1E13 and about 100 to 1,500 ulps
-/// off at 1E11 (a term in z^2 that the fit does not have; T-3070).
-pub(crate) fn wilson_hilferty_quantile(shape: f64, z: f64) -> f64 {
-    let cube_root = 1.0 + WILSON_HILFERTY_OFFSET - 1.0 / (9.0 * shape)
-        + z * WILSON_HILFERTY_SPREAD / (3.0 * shape.sqrt());
-    shape * cube_root * cube_root * cube_root
-}
-
 /// The quantile of the gamma distribution of `shape` and `scale` where the probability of `tail`
 /// is `p` (in [0, 1], else NaN). NaN where the rate 1 / scale is not a positive finite double, at
 /// every shape (a subnormal scale stays `#NUM!` in GAMMA.INV, as statrs' `Gamma::new` made it).
@@ -855,8 +845,9 @@ pub(crate) fn wilson_hilferty_quantile(shape: f64, z: f64) -> f64 {
 /// (`GAMMA.INV(0.95,1,1000000)` = 2995732.27355399, probes-numeric m9-gamma-inv A26).
 ///
 /// Other shapes take the crossing of the smaller tail of the cdf of rate 1 / scale
-/// (`special::refine_increasing`, at most 129 cdfs, from statrs' search, [`inverse_cdf_within`],
-/// when it has a result). Excel is close to the true quantile (against mpmath, 509 of 545
+/// (`special::refine_increasing`: below [`HUGE_SHAPE_MIN`] at most 129 cdfs, from statrs' search,
+/// [`inverse_cdf_within`], when it has a result; from it at most 65, halving the whole range).
+/// Excel is close to the true quantile (against mpmath, 509 of 545
 /// literal-argument quantile cells are within half a unit of the 15th digit), so statrs' result
 /// is never kept as it is: it can be 7E-15 off (`GAMMA.INV(0.5,9,1)`). The smaller tail is `p` or
 /// its exact complement `1 - p`, so a tiny right-tail `p` keeps the digits `1 - p` loses, as in
@@ -884,8 +875,15 @@ pub(crate) fn gamma_quantile(shape: f64, scale: f64, p: f64, tail: Tail) -> f64 
         (Tail::Lower, false) => (Tail::Upper, 1.0 - p),
         (Tail::Upper, false) => (Tail::Lower, 1.0 - p),
     };
+    // Only a lower-tail p of at most 1/2: the lower tail is both the tail given and the smaller one.
+    let tiny = (tail == Tail::Lower && small == Tail::Lower)
+        .then(|| excel_tiny_quantile(shape, target))
+        .flatten();
     let x = if shape == 1.0 {
         exponential_quantile(small, target) * scale
+    } else if let Some(unit) = tiny {
+        // The scale multiplies the unit quantile, as at shape 1 and below 1 (T-3013, T-3016).
+        unit * scale
     } else {
         let Ok(dist) = Gamma::new(shape, rate) else {
             return f64::NAN;
@@ -894,10 +892,15 @@ pub(crate) fn gamma_quantile(shape: f64, scale: f64, p: f64, tail: Tail) -> f64 
         // (`probability` calls no cdf of its own), so no borrow can overlap.
         let terms = RefCell::new(Terms(MAX_TERMS));
         let probability = |x: f64| quantile_tail(&dist, x, small, &mut terms.borrow_mut());
-        let estimate = inverse_cdf_within(&dist, lower, &mut terms.borrow_mut());
-        if dist.shape() > REFINE_SHAPE_MAX {
-            return estimate;
-        }
+        // From a huge shape statrs' search is NaN or far off (its 8 bisections leave Newton too
+        // far out: 4714346327.59633 for `CHISQ.INV(5.6221E-26,4715100000)`, whose quantile is
+        // Excel's 4714082845.627977, probes/incomplete-gamma-cap E15), so the refinement halves
+        // the whole range instead: at most 65 cdfs, each one Temme term.
+        let estimate = if shape >= HUGE_SHAPE_MIN {
+            f64::NAN
+        } else {
+            inverse_cdf_within(&dist, lower, &mut terms.borrow_mut())
+        };
         let crossing = match small {
             Tail::Lower => refine_increasing(probability, target, estimate, 0.0, f64::MAX),
             Tail::Upper => refine_increasing(|x| -probability(x), -target, estimate, 0.0, f64::MAX),
@@ -968,6 +971,12 @@ fn quantile_tail(dist: &Gamma, x: f64, tail: Tail, terms: &mut Terms) -> f64 {
         Tail::Upper => upper,
     }
 }
+
+mod density;
+mod huge_shape;
+
+pub(crate) use density::{accurate_gamma_density, gamma_density};
+pub(crate) use huge_shape::{huge_shape_quantile, HUGE_SHAPE_MIN};
 
 #[cfg(test)]
 mod tests;

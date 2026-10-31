@@ -390,30 +390,62 @@ Evidence: probes/t2738-gamma-dist-tiny-ratio (excel-graph 2026-10-25): #NUM! at 
 `(4.5E-308,1,2,FALSE)` (ratio 2.25E-308, 0.499999999999989), `(3E-308,1,1,FALSE)` and `(1,1,1E+307,FALSE)`. The cdf is 0
 (companion TRUE) at `(1E-10,1,1E+300,TRUE)`, `(1E-300,1,1E+10,TRUE)` and `(3E-308,1,2,TRUE)`; a normal x / beta with a
 subnormal density is 0 (`(10,1,1E+307*10,FALSE)`, `(1E+300,1,1E+307*10,FALSE)`). Near the bound Excel's density is
-about 1E-14 relative off the exact value: see "GAMMA.DIST's density at a tiny x / beta" (T-2753).
+about 1E-14 relative off the exact value: see "GAMMA.DIST's density below shape 3 is a log-space form" (T-2753, T-2852).
 Implemented in: functions/statistical/gamma.rs `gamma_dist_of`; x = 0 keeps its own rule. Unprobed: CHISQ.DIST at x
 below 4.45E-308 (its scale is 2), an x / beta that overflows, and a computed subnormal x with a normal x / beta (a
 typed one reads as 0, numbers.md "Formula literals").
 Status: VERIFIED
 
-## GAMMA.DIST's density at a tiny x / beta is a log-space form (T-2753)
-Rule: where y = x / beta is at most about 1E-15 (and x > 0, shape a below 20), `GAMMA.DIST(x,a,beta,FALSE)` is
-EXP(a*LN(y)-y)/GAMMA(a)/x, not the exact density: the log carries |LN(y)| ulp of error, so `GAMMA.DIST(1E-300,1,1,FALSE)`
-is 1.0000000000000235 and `GAMMA.DIST(1,1,1E+307,FALSE)` 9.999999999999768E-308. Between 1E-15 and 1E-10 Excel takes a
-form not yet found, up to 37 ulp from both this one and the direct y^a e^-y / GAMMA(a) / x (T-2852).
+## GAMMA.DIST's density below shape 3 is a log-space form (T-2753, T-2852)
+Rule: below shape 20, where y = x / beta is at most about 1E-15, `GAMMA.DIST(x,a,beta,FALSE)` is EXP(a*LN(y)-y)/GAMMA(a)/x
+(T-2753). From shape 0.5 to below 3, for y below the mode (y < a), and from 0.5 to below 2.5 at any y, from 1E-15 up to
+16 (UNVERIFIED from 2 up), it is EXP(a*LN(y))/GAMMA(a)/x*EXP(-y) (T-2852), with Excel's own LN, EXP and GAMMA. Both
+carry a times the rounding error of LN(y): `GAMMA.DIST(1E-300,1,1,FALSE)` is 1.0000000000000235,
+`GAMMA.DIST(1,1,1E+307,FALSE)` 9.999999999999768E-308 and `GAMMA.DIST(1E-14,2,1,FALSE)` 11.8 ulp below the true value.
+CHISQ.DIST's density takes the same forms at scale 2.
 Evidence: probes/t2753-gamma-density-ratio-sweep (x / beta 1E-300 to 0.5 at shapes 1, 2, 0.5 and 50, column A beta = 1,
-column B x = 1) and probes/t2753-gamma-density-switch (1E-19 to 1E-11), excel-graph 2026-10-27;
-probes/t2738-gamma-dist-tiny-ratio A2, A4, A15, A19. With Excel's own LN, EXP and GAMMA the form is exact or 1 ulp off at
-most cells below 1E-15 (exact at t2738 A2, A15, A19) and 2 to 3 ulp off at a few: switch A11 `GAMMA.DIST(2E-16,1,1,FALSE)`,
-A12, A18, A24, A25, A38, B10, B11, B18, B24, B25, B38 and sweep A19 `GAMMA.DIST(1E-20,2,1,FALSE)` (T-2852); at 1E-15 it is 4
-to 7 off, the direct form 4 to 12. LNGAMMA in place of GAMMA is 40 to 60 ulp off at shape 0.5.
-CHISQ.DIST's density takes the same form at scale 2 (y = x/2): `CHISQ.DIST(1E-300,1,FALSE)` is 3.9894228040142567E+149
-(gen-m9/3e98b26cf6713e77 A268), 154 ulp below the exact 1/SQRT(2*PI()*1E-300) and 1 ulp from the form with Excel's LN,
-EXP and GAMMA (T-2638).
-Implemented in: functions/statistical/gamma.rs `tiny_ratio_density` (GAMMA.DIST, GAMMADIST and, from T-2638, CHISQ.DIST
-through chisq.rs). Unprobed: shapes from 2 to 20 (the cutoff at 20 is the
-prefactor's own split, not evidence; at shape 50 the density underflows to 0 in this regime).
-Status: VERIFIED for the form (0 to 3 ulp at the probed cells; the last bits are T-2852)
+column B x = 1) and probes/t2753-gamma-density-switch (1E-19 to 1E-11), excel-graph 2026-10-27; probes/t2738-gamma-dist-
+tiny-ratio A2, A4, A15, A19; probes-numeric m9-gamma-dist-a0p5, -a1, -a2, m9-chisq-dist, t1049-chisqdist;
+`CHISQ.DIST(1E-300,1,FALSE)` = 3.9894228040142567E+149 (gen-m9/3e98b26cf6713e77 A268), 154 ulp below the exact
+1/SQRT(2*PI()*1E-300).
+Found in T-2852: at every switch and sweep cell from 1E-16 to 1E-10, Excel's relative error minus a times LN(y)'s
+rounding error is within about 1 ulp (shapes 0.5, 1, 2; both columns), the signature of EXP(a LN(y)) with the rest
+accurate; T-2753's EXP(a LN(y) - y) loses y into the rounding of a LN(y) above 1E-15, and the direct form was up to 37 ulp
+off there (switch B23 26 ulp). Fit (Excel's kernels, the 222 literal densities at shapes 0.5 to 2.5 in
+eval/; exact / within 1 ulp): EXP(a LN y)/GAMMA(a)*EXP(-y)/x 114 / 208; EXP(a LN y)*EXP(-y)/GAMMA(a)/x 110 / 208;
+EXP(a LN y)/GAMMA(a)/x*EXP(-y) 111 / 206 (in the full eval it fixes two cells more than the first and keeps
+gen-m9/ecc87f80077959e0 A261 `CHISQ.DIST(1.5,2,FALSE)` bit-exact, which the first loses, so it is the one implemented);
+EXP(a LN y)/EXP(y)/GAMMA(a)/x 99 / 202; the same exponent in an x87 register less GAMMALN(a) 107 / 203, or into EXP over
+GAMMA(a) 112 / 203; EXP(a LN y - y)/GAMMA(a)/x 69 / 141; EXP(a LN y - y - GAMMALN(a))/x 49 / 124; the direct y^a e^-y /
+GAMMA(a) / x (the engine's form before) 26 / 74 above 1E-15.
+The bounds are fits inside their evidence brackets (gamma.rs names each cell):
+- y at most 1E-15 keeps T-2753's form: the new one is as close but not at the same cells, and the old one is bit-exact at
+  four gated switch cells (A39, A40, B39, B41).
+- Lower shape 0.5, in (0.1, 0.5]: at shape 0.1 gen-m9/0a614cfe974b59c3 A367 is bit-exact on the direct form and 1 ulp off
+  on this one (at 1E-10, gen-m9/4e55500bb8ad3cd8 A386 goes the other way).
+- Above the mode, shape 2.5, in (2, 2.5]: at 2.5 all five probed cells above the mode move away from Excel on it
+  (m9-chisq-dist A36 `CHISQ.DIST(5,5,FALSE)` 0 -> -1 ulp, A38 and t1049-chisqdist A38 `(10,5,FALSE)` -1 -> -3, A40
+  `(20,5,FALSE)` -1 -> 3, gen-m9/a54c738c697617c3 A29 `GAMMADIST(9,2.5,2.5,FALSE)` -2 -> -6); at 2 it is mixed (gated
+  gen-m9/bc40d37cb4d8301d A165 `CHISQ.DIST(11,4,FALSE)` and m9-gamma-dist-a2 A28 become bit-exact, A8 and A18 lose a bit,
+  t1048-gammadist A6, B6 go from 1 ulp to 2).
+- Below the mode, shape 3, in (2.5, 5]: at 2.5 all four probed cells below the mode move closer (t1049-chisqdist A6, A30;
+  gen-m9/9cca17438a7e6f8a A133 and d8266bc15533702a A230 bit-exact); at shapes 5, 9 and 10 every log form is 10 to 18 ulp
+  off from y = 1 up (m9-chisq-dist A48, m9-gamma-dist-a9 A8), where the direct form is 0 to 1 (and T-3147 finds the
+  ratio form there above the mode from 3).
+- Upper y 16, in [5, 20.01): gated gen-m9/8dd2312c96effb1b A150 at y = 5 and gen-m9/bc40d37cb4d8301d A165 at y = 5.5 are bit-exact on the form (1 ulp on the
+  direct one); at `GAMMA.DIST(40,1.5,1.999,FALSE)` (gen-m9/c468f5046aadfbbc A171, y = 20.01) e^-y of the double y misses
+  by 10 ulp, the direct form by 5 and e^-y of the extended quotient by 3 (Excel is within 1 ulp of the true value), but
+  the extended quotient loses the gated sweep B35. From y = 2 up the form is no closer than the direct one on balance
+  (UNVERIFIED: of 12 probed cells from y = 2 to 16, 3 become bit-exact, gated gen-m9/8dd2312c96effb1b A150 and A165 among
+  them, 2 lose a bit, 2 move closer and 5 stay at the same distance).
+Still off: shape 50 below a/100 (sweep A46:A48, B46:B48, 32 to 114 ulp; T-3219): Excel is 50 to 105 ulp above the true
+value, and its error is 50 times LN(y)'s rounding error plus 41 to 52 units of 2^-52 there, a log form with the rest of
+the exponent about 1E-14 high; no tried order of a LN(y), y and GAMMALN(50) in doubles or in an x87 register, nor the
+ratio form, Loader's saddle point or `rcomp`, reproduces it (13 to 435 ulp off).
+Implemented in: functions/statistical/gamma.rs `log_form_density` (GAMMA.DIST, GAMMADIST, and CHISQ.DIST through
+chisq.rs).
+Status: VERIFIED for the forms (every probed density the form moves ends 0 to 2 ulp from Excel; UNVERIFIED from y = 2
+to 16; the remaining bits, y above 16 and shapes below 0.5 are T-3303)
 
 ## One incomplete-gamma kernel under ERF, ERFC, NORM, CHISQ, GAMMA.DIST and POISSON (T-1778)
 Rule: these functions are bit-identical compositions of one another, so their last digits come from one
@@ -1005,11 +1037,11 @@ cdfs at df 1E10, 0.4999982128217492 on statrs and main, are now Excel's 0.500001
 shape of 1E8 needs no term past C_3 (they fall by 1/a each). The cap of 2^19 terms now binds a cdf nowhere (below 1E8
 the series takes at most about 68,000 terms) and still binds an inversion's cdfs together below that shape.
 DEVIATION (decision 0014, CLAUDE.md directive 5): an inversion whose cdfs together need more than 2^19 terms, or that
-statrs' search cannot finish, is `#NUM!` where Excel gives a number: `GAMMA.INV(0.5,1E300,1E-300)` (E5, Excel
-1.0002658235505755). Above a shape of 1E9 the quantile is statrs' search alone (`REFINE_SHAPE_MAX`), so
-`CHISQ.INV(5.6221E-26,4715100000)` is 4714346327.59633 where Excel's is 4714082845.627977 (E15); E14 and E19 are now
-1 ulp off Excel. A CHISQ.TEST's cdf is never past the cap. Unit tests `incomplete_gammas_that_hung_or_panicked_are_bounded`
-and `a_call_past_its_cap_is_nan`; T-2982 gives Excel's values for the inversions.
+statrs' search cannot finish, is `#NUM!` where Excel gives a number. From a shape of 1E9 the quantile is
+`huge_shape_quantile` (section "GAMMA.INV and CHISQ.INV at a huge shape"; T-3070), so `GAMMA.INV(0.5,1E300,1E-300)`
+(E5) and `CHISQ.INV(5.6221E-26,4715100000)` (E15) are Excel's values; E5, E14 and E19 are 1 ulp off. A CHISQ.TEST's
+cdf is never past the cap. Unit tests `incomplete_gammas_that_hung_or_panicked_are_bounded` and
+`a_call_past_its_cap_is_nan`; T-2982 and T-3070 give Excel's values for the inversions.
 DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted CHISQ.*, CHIDIST, CHIINV, GAMMA.DIST, GAMMADIST, GAMMA.INV,
 GAMMAINV, POISSON or POISSON.DIST is `#ERROR!` before it runs where Excel computes it once its elements' charges pass
 2^27 units (`limits::MAX_LIFTED_CELL_VISITS`). Since T-2795 an element is charged by value
@@ -1078,6 +1110,14 @@ forms, every summation order of a LN(x), -a LN(2), -x/2, -LNGAMMA(a) and the (a-
 some cell. At `CHIDIST(100,4)` Excel is 38 ulp below the truth while every log form is above it, so the continued
 fraction's own rounding, not only the prefactor, differs; stopping the fraction or the series at a looser tolerance
 (1E-16 to 1E-10, Numerical Recipes' gcf and gser) changes none of these cells.
+The deep upper tail reaches far past 37 ulp (gap triage 2026-10-30, 60-digit mpmath, ulps of Excel's value):
+`CHISQ.DIST.RT(1000,3)` +86.7 (probes-numeric/t1049-chisqdistrt A39), `CHIDIST(1000,30)` +405 (m9-legacy-chidist A71),
+`CHISQ.DIST.RT(200,20)` = `POISSON(9,100,TRUE)` -43.3 (t1049-chisqdistrt A28, gen-m9/5919660b7bb4d195 A80), and
+`POISSON.DIST(3,100,TRUE)` -59.4 (gen-m9/9735c5ab72fa5ecf A48); ours is within about 3 ulp of the truth at each (T-3269,
+sweep T-3289). Excel is correctly rounded nearer the bulk at small half-integer shapes, `CHISQ.DIST.RT(10,5)`
+0.07523524614651218 (+0.3 ulp; m9-chisq-dist-rt A19, ours -5.7: T-3285), and near the mode at large shapes,
+`POISSON.DIST(46040,46071,TRUE)` 0.4438020698095389 (-0.2 ulp; ironcalc-calc POISSON.xlsx D55, ours +15.8: T-3286),
+so only the far tail is Excel's own inaccurate form.
 Not Excel's either, and not correctly rounded on either side (gap triage 2026-10-29, 60-digit mpmath reference;
 T-3147): CHISQ.DIST at 50 and 100 degrees of freedom, the `rcomp` branch of the prefactor (shape 20 and up).
 `CHISQ.DIST(10,100,FALSE)` is 9.838365191393825E-32 in Excel, 63 ulp below the true 9.8383651913938939E-32.
@@ -1101,8 +1141,29 @@ ratio form (probes/t2753-gamma-density-ratio-sweep A48, B48 `GAMMA.DIST(0.5,50,1
 `GAMMA.DIST(0.1,50,1,FALSE)`: 114 against 252), so ours keeps `rcomp` below a/200 (UNVERIFIED between). POISSON.DIST's cdf and the large-shape BETA.DIST, BETA.INV and F.INV paths keep `rcomp`
 too: no cell probes them (T-3252 probes the window and those functions). Below shape 20 neither this form nor the direct one is Excel's
 (`GAMMA.DIST(0.9,9,1,TRUE)`: Excel 9 ulp below the truth, the ratio form 23 below Excel, the direct one 10 above).
+Found in T-3147: from shape 3 to 20 the *density* above the mode (x > 1.4a) is the same ratio form, with the exact
+Stirling error (loader.rs `stirlerr_exact`; the 8-term asymptotic series is 2E-13 off at shape 5):
+`CHISQ.DIST(40,10,FALSE)` = 6.870512074795199E-6 (probes-numeric m9-chisq-dist A50) is Excel's bit for bit and 7 ulp
+above the true value, where the direct form is 8 ulp below Excel; `GAMMA.DIST(27,9,1,FALSE)` and `(54,9,2,FALSE)`
+(m9-gamma-dist-a9 A10, A20) become bit-exact and `CHISQ.DIST(37.5,6,FALSE)` (gen-m9/984cba67bbe6972b A42) 1 ulp off (6
+before); m9-gamma-dist-a9 A30 `GAMMA.DIST(27000000,9,1000000,FALSE)` loses its bit (1 ulp). Fit attempt 1 (Python,
+60-digit mpmath, ulp from Excel at the 110 literal densities of shapes 0.5 to 19.9 with x / beta above 1E-15 in eval/,
+shape 1 and the tiny-ratio log form left out; exact / within 1 ulp): the engine's direct form 24 / 73 (26 / 72 with
+Python's tgamma); the ratio form everywhere 34 / 73 (max 49 ulp); `rcomp` everywhere 30 / 73; EXP(a LN(y) -
+y)/GAMMA(a)/x 14 / 43; EXP(a LN(y) - y - LNGAMMA(a))/x 13 / 29; EXP((a-1) LN(y) - y - LNGAMMA(a))/beta 9 / 25; y^(a-1)
+e^-y / GAMMA(a) / beta 26 / 65; x^(a-1) e^(-x/beta) / (beta^a GAMMA(a)) 31 / 70; Loader's saddle point (R's `dpois_raw`
+with its 0.1 `bd0` cut, R's `stirlerr`, or the a - 1 shape of R's `dgamma`) 25 to 36 exact, never more than the ratio
+form, and the a - 1 shape is 1,060 ulp off at shape 50; the ratio form with a GAMMALN-based Stirling error 11 / 26. No
+form is Excel's at every cell: the ratio form is 12 to 49 ulp off below 0.15a (`GAMMA.DIST(0.9,9,1,FALSE)` -12, the
+direct form 7; `CHISQ.DIST(1,20,FALSE)` 49 against 17) and at shape 2.5 and x = 10a (`CHISQ.DIST(50,5,FALSE)` 23 against
+5), and below the mode it is as close or 1 ulp further (ironcalc-calc GAMMA.xlsx E3 `GAMMA.DIST(10,9,2,FALSE)`,
+bit-exact on the direct form). The cdf does not follow the density: the same prefactor under P and Q puts
+`CHIDIST(38.5,6)` (gen-m9/4ab2ba98d26c8a5e A224, bit-exact on the direct form) 8 ulp off and `CHIDIST(37.5,7)` 12, so P
+and Q keep the direct form below 20 (T-3219). The bounds are fits inside their brackets: the shape (2.5, 3]
+(`CHISQ.DIST(50,5,FALSE)` against `CHISQ.DIST(37.5,6,FALSE)`); the lower end 1.4a is the large-shape `NEAR_MODE` bound,
+unbracketed below 20 (UNVERIFIED: no probed density between a and 1.5a changes with the form).
 Status: VERIFIED (excel-graph)
-Tasks: T-0971, T-0972, T-2638, T-3147
+Tasks: T-0971, T-0972, T-2638, T-3147, T-3219
 
 ## HYPGEOM.DIST: per-call cap and lifting (T-1873)
 Rule: HYPGEOM.DIST and HYPGEOMDIST lift every argument over an array and over a two-cell range on the formula's own rows,
@@ -1279,6 +1340,9 @@ LN, EXP and GAMMALN are Excel's own (`x87_log10.rs`, `x87_exp.rs`, `gammaln.rs`)
   gen-m9, t1048-poisson and ironcalc-calc POISSON.xlsx with resolvable arguments 106/121/0 (statrs 47/80/33);
   probes-numeric/t2055-poisson-pmf-sweep (204 cells, k 1 to 300) 154/198/5 (29/121/65); t2055-poisson-pmf-switch
   (133) 127/133/0 (11/57/56).
+- Large-k sweep (T-3288): probes-numeric/t3282-poisson-pmf-large-k (171 cells: k 30 to 1000, mean = k·r for r 0.5 to 2.5) and
+  t3282-poisson-pmf-ulp-runs (160 cells: 32 adjacent doubles around each of the five visibly-off t2055 cells). With today's
+  engine 60 of 171 and 26 of 160 are bit-exact (`rustsheet-eval show --all`); T-3295 fits the rest.
 - Residue: the saddle point at large k and a mean well off k (`POISSON.DIST(100,140,FALSE)` 23 ulp, `(300,240)` 46 ulp,
   `(300,210)` 16 ulp, `(30,21)` 11 ulp; t2055-poisson-pmf-sweep), about one ulp at k = 2 to 8 elsewhere, and 1 ulp at the
   small-k edge of the closed form, where main's statrs happened to be right: `POISSON.DIST(1,0.3,FALSE)`, `(3,0.9)`,
@@ -1410,7 +1474,7 @@ are `#N/A` and one point is `#DIV/0!` (COVAR of one pair is 0): `TTEST(A7:C7,<nu
 `FORECAST.LINEAR(x,C2:D7,<number>)` and `FORECAST.LINEAR(x,0.2,D11:D12)` are `#N/A`; `SLOPE(123456789.123,<number>)`,
 `INTERCEPT(1.005,2.5)`, `FORECAST.LINEAR(x,0.2,1)` and `FORECAST.LINEAR(x,7,137.5)` are `#DIV/0!`; `COVAR(0,D6)` is a number (inferred 0;
 `(B6-0.5)>COVAR(0,D6)` is TRUE). `PEARSON(D5,SEQUENCE(0))` is `#CALC!`. `T.TEST(B11,A8:B9,0.1,0.3)` with B11 = FALSE (one value, no number) is `#NUM!` (tails/type before
-the paired unequal-size `#N/A`; whether an error array argument beats a bad tails/type is unprobed). GROWTH of one value is a number (`GROWTH(GAMMA(100))` =
+the paired unequal-size `#N/A`; an error array argument beats a bad tails/type, see below). GROWTH of one value is a number (`GROWTH(GAMMA(100))` =
 9.332621544394404E+155), `TREND(#NUM!)` is `#NUM!`, and `GROWTH(B2:B3,<number>,..)` with B2:B3 = "?b", 0 is `#REF!` (the size
 check before the text check). LARGE of an error is that error (`LARGE(<#VALUE!>,k)`, `LARGE(<#REF!>,0.1)`), and so is
 PERCENTRANK (`PERCENTRANK(<#N/A>,100)` is `#N/A`). A single cell holding text is no number, like text inside a range: `QUARTILE(A1,1)`, `QUARTILE(A1,7)`, `QUARTILE.INC/.EXC`,
@@ -1427,6 +1491,13 @@ A33; b58b6d7cd39d195f A2, A31; bc0901ce6193d576 A12; d244411dd90f7fbd A10, A17, 
 are read from the cases' Data sheets; each cell's other operands were checked not to decide the result.
 Ours: GROWTH and TREND match the single-value, error and size-before-text rules (T-1402); the paired functions match (T-1401), a single cell holding text, a boolean or nothing being one value that is no number (a typed text or boolean literal too, for the regression functions and CHISQ.TEST: T-1723); `LARGE(#N/A,1)` is that error (gen-m9/1782efcecd5d4b1b A25); PERCENTILE.EXC reports k's error before the empty-data `#NUM!` (T-1403; PERCENTILE.INC's order is unprobed);
 `PERCENTRANK.EXC` of a single value equal to x is 1, not 0.5 (probes/percentrank-single-value B6). `PERCENTRANK` and `PERCENTRANK.INC` of a single value equal to x are 1 (probes/legacy-value-argument-intersection-c T2, U2); with one value, x below or above it is `#N/A` for all three, an error x (`#DIV/0!`, text `#VALUE!`) beats that `#N/A`, and any numeric significance (0, negative, fractional) gives 1 rather than `#NUM!` (a text significance is `#VALUE!`) (probes/percentrank-single-value B2-B20); an empty array is `#N/A`.
+Typed literals and error arrays (probes/paired-typed-literals-error-tails, excel-graph 2026-10-30, T-1968): `COVAR("x",B1:B2)`,
+`COVAR(B1:B2,"x")`, `COVAR(TRUE,B1:B2)`, `CORREL("x",B1:B2)`, `CORREL(TRUE,B1:B2)` and `CORREL(B1:B2,TRUE)` are `#N/A` (a literal is one
+value, so the sizes differ); `COVAR("x","x")`, `COVAR("x",5)`, `COVAR(TRUE,5)`, `COVAR("1",B1)` and `CORREL(TRUE,TRUE)` are `#DIV/0!`
+(a literal is no number, so no pair remains). T.TEST reads an error array before tails and type: `T.TEST(#DIV/0!,A1:A2,0.1,3)`,
+`T.TEST(#DIV/0!,A1:A2,1,0.3)`, `T.TEST(#DIV/0!,A1:A2,3,2)` and `T.TEST(#DIV/0!,A1:A2,"x",2)` are `#DIV/0!`, `T.TEST(A1:A2,#DIV/0!,0.1,3)` too,
+and the first error wins (`T.TEST(#N/A,#DIV/0!,1,1)` is `#N/A`); without an error array a bad type is `#NUM!` (`T.TEST(A1:A2,B1:B2,0.1,3)`).
+The engine already matches all 20 cells.
 Status: VERIFIED (web) for the listed cells
 Tasks: T-1401, T-1402, T-1403
 
@@ -2500,6 +2571,16 @@ L5 = LN(n + 1) (Excel's);  Cs = accurate stirlerr(n) - stirlerr(k) - stirlerr(nk
   n = 90-256 with both shapes large (t2513-r3-loader-bd0-a and -bd0-hold) the miss is x-dependent with sd 8-19 units.
   The one exception is (45.2, 60.9), a constant +5.3. UNVERIFIED as a mechanism: T-3249 sweeps the shapes, and
   T-3250 and T-3244 fit them.
+- Large shapes, measured without fitting (T-3249: t3249-beta-large-shape-fit and -hold, 34 + 62 shapes,
+  a = 128.5-8192.5, b = 1.5-40.5 or b = a, n 128-16383, runs below the mode at ln f = -25 to -650): the miss
+  against Excel does not collapse at large |ln f|, unlike the a = 1025, b = 1.5 column. Its sd (2^-52 relative units)
+  grows steadily with |ln f|: about 1 at the mode run, 43-58 at 25-75, 83-101 at 100-150, 133-177 at 200-350, 175-211
+  at 400-500 and 257-283 at 600-650 (fit and hold-out agree). By shape (fit; hold-out in brackets) it is 57-159
+  [56-190] for one large shape; with b = a it is 83-141 to n 2048, then 237, 381 [408] and 457 [514] at n 4095, 8191
+  and 16383. Off at 15 digits: none of the mode runs, 49-84% of the cells at |ln f| 25-75, 81-98% from 100 up.
+  F.DIST at the mapped point (column B) shows the same growth (sd 46-53 at 25-50, 336-398 at 450-650).
+  UNVERIFIED hypothesis (T-3250 and T-3244 to test): one rounding at the scale of |E| that one side makes and the
+  other does not.
 Evidence: probes-numeric t2513-r3-loader-const-sweep1, -diverse1, -grid1, -hold1, t2513-r3-loader-bd0-a, -b, -hold,
 t2513-verify-r3-loader-const-hold, t2513-verify-r3-loader-bd0-hold, and T-2464's t2464-r2-density-large-p1,
 t2464-w2f-xruns-*, -absweep; docs/research/t2464/r3-loader-const (`m1_model.py`, `a2_forms.py`, `a5_xreg.py`,
@@ -3411,7 +3492,7 @@ Status: VERIFIED (excel-graph, 2026-10-15; probes-numeric case `t1543-inverse-cd
 
 Implemented in: functions/statistical/beta.rs `beta_quantile`, functions/statistical/inverse_beta.rs `beta_quantile_crossing` (BETA.INV); functions/statistical/incomplete_gamma.rs `gamma_quantile` and chisq.rs `chisq_inv_of` (CHISQ.INV, CHISQ.INV.RT, CHIINV, GAMMA.INV, GAMMAINV; T-1634)
 
-Tasks: T-1543, T-1634
+Tasks: T-1543, T-1634, T-2561
 
 - CHISQ.INV.RT and CHIINV quirks (T-1634; the literal-argument cells of gen-m9, this probe and m9-legacy-chiinv):
   - At one degree of freedom (df is truncated, so 1.5 too) the right-tail quantile is the left one of 1 - p:
@@ -3421,12 +3502,26 @@ Tasks: T-1543, T-1634
     on its double-valued lower cdf: `CHIINV(1E-9,1)` (probes-numeric/m9-legacy-chiinv A1, A2) is 37.324892889999234
     in Excel, about 2.2E-7 (one step of the cdf's resolution near 1) below the complement crossing
     37.324893106518715 (ours) and the true quantile 37.32489305136234 (T-2561).
-  - With 3 to 10 degrees of freedom a right-tail p of 1E-100, 1E-200 or 1E-300 is `#NUM!` (21 literal gen-m9 cells:
-    `CHISQ.INV.RT(1E-100,3)`, `CHIINV(1E-200,6)`, `CHISQ.INV.RT(1E-300,10)`), though the quantile exists, while
-    1E-20 is a value for every df probed (`CHIINV(1E-20,5)` = 103.42897723775795). df 2 (`CHISQ.INV.RT(1E-300,2)` =
-    1381.5510557964274, -2 ln p) and df 50 (`CHISQ.INV.RT(1E-300,50)` = 1592.6841019848946) are values at every p.
-    The boundary p between 1E-20 and 1E-100 is unprobed; the engine takes `#NUM!` below 1E-20
-    for df 3 to 10 (df 22 at `CHISQ.INV.RT(1E-100,...)` is 542.4417060011164 in Excel, gen-m9; df 11 to 21 unprobed, UNVERIFIED).
+  - Excel's search gives up in the far right tail. Below an edge that depends on df, CHISQ.INV.RT and CHIINV are
+    `#NUM!`, though the quantile exists and CHISQ.DIST.RT past it is a plain number. With p = 1E-k, the last k that
+    is still a value is, for df 3 to 42: 20, 27, 35, 43, 52, 62, 72, 81, 87, 90, 94, 99, 104, 110, 116, 121, 127,
+    133, 139, 146, 152, 158, 165, 171, 178, 184, 191, 198, 205, 212, 219, 226, 234, 241, 249, 257, 265, 273, 282,
+    291. 1E-(k+1) is `#NUM!`, and so is every smaller p probed. Examples: `CHISQ.INV.RT(1E-20,3)` = 96.2391239380938
+    while `(1E-21,3)` is `#NUM!`; `(1E-291,42)` = 1520.841398295613 while `(1E-292,42)` is `#NUM!`. From df 43 on
+    every p to 1E-300 is a value (`(1E-300,43)` = 1567.117852865588). df 1 and 2 have their own rules (above, and the
+    closed form). This replaces T-1634's guess: `#NUM!` below 1E-20 for df 3 to 10 only, which gave values beyond
+    the edge from df 11 on and `#NUM!` short of it for df 4 to 10.
+    The edge rises 3 to 10 decades a degree of freedom, with a dip at df 11 to 14. No closed form fits it. In x it is
+    32 to 41 times df, and 39 to 248 below the Wilson-Hilferty estimate at p, with neither steady. The engine
+    tabulates it (chisq.rs `RIGHT_TAIL_P_MIN`). A p strictly between 1E-(k+1) and 1E-k is unprobed, and the engine
+    takes 1E-k itself as the threshold, a choice inside the bracket.
+    Every probed cell is CHISQ.INV.RT. CHIINV takes the same edge in the engine by inference, not by probe (T-3310
+    probes it, with a mantissa sweep inside a decade and df above 50).
+    Evidence: probes-numeric t2561-chisq-inv-rt-num-boundary (df 3 to 22, p = 1E-20 to 1E-300 in steps of 5 decades
+    and wider), -num-edge (every decade inside each df 3 to 22 bracket), -num-large-df and -num-large-df-edge (df 23
+    to 50), and t2561-chisq-dist-rt-past-edge (CHISQ.DIST.RT and the density up to 7% past each edge). All
+    excel-graph, 1,480 cells. The earlier gen-m9 cells agree: 21 cells such as `CHISQ.INV.RT(1E-100,3)` and
+    `CHIINV(1E-200,6)` are `#NUM!`, `CHIINV(1E-20,5)` = 103.42897723775795, and df 22 at 1E-100 = 542.4417060011164.
   - A quantile below the smallest normal double is 0 (`CHISQ.INV(1E-200,1)`, crossing about 1.6E-400).
 - Excel's gamma quantiles (T-0972, against an mpmath 50-digit reference of the 545 literal-argument CHISQ.INV,
   CHISQ.INV.RT, CHIINV, GAMMA.INV and GAMMAINV cells in eval/, df truncated, df 1 right tail as the lower quantile of
@@ -3473,7 +3568,56 @@ Tasks: T-1543, T-1634
     (df 5), [-64, 8] (df 10) and [-16, -4] (df 50). These are the sampled k (powers of two), so the true band edges
     lie within one step of them. Excel's own quantile (k = 0) is inside the band except for a = 2 and df 50, where
     Excel's quantile does not evaluate back to p (`CHISQ.DIST.RT(24.673905271877409,50)` = 0.9989999999999999); it
-    sits at the high edge only for a = 25. So it is not at a fixed edge of the band. T-3146 fits from these cells.
+    sits at the high edge only for a = 25. So it is not at a fixed edge of the band. T-3146's fit from these cells is the
+    next bullet.
+  - T-3146 (time-boxed after two attempts, decision 0056; nothing implemented). The cell sets, all from the probe's
+    140 quantile cells (77 GAMMA.INV, 63 CHISQ.INV.RT), with the p literals cut to 15 digits:
+    - S: shapes other than 0.5 and 1 (CHISQ.INV.RT at df 1 and 2 and GAMMA.INV at shape 1 are closed forms), 112 cells.
+    - S99: S at 0.99 <= p <= 0.9999, 99 cells. This includes A120-A140, whose p read as 0.998999999999999 and 0.999.
+
+    References are mpmath at 60 digits. "Our double cdf" is the correctly rounded P or Q, which the engine's
+    accurate pair is within an ulp of. The script and its output are docs/research/t3146/flat_band_fit.py and
+    flat_band_fit.out.
+    - Excel lands where the true cdf of the tail it is given is within 0.73 ulp of p. That is P(a, x) - p for
+      GAMMA.INV and Q(a, x/2) - p for CHISQ.INV.RT, in units of 2^-53. Over S99 it runs from -0.715 (A82
+      `CHISQ.INV.RT(0.998,3)`) to +0.727 (A109 `(0.9999,20)`), with no trend in shape or p. At shape 2 it is -0.31,
+      +0.70, +0.71, -0.58, +0.49 and -0.70 at p = 0.99, 0.995, 0.998, 0.999, 0.9995 and 0.9999. The quantile error in
+      ulps of x is this offset over the density, 18 to 3,084 ulps.
+    - On 35 of the 140 cells, all of them in S99, Excel's quantile is 1 ulp of p off our double cdf: 17 below, 18 above.
+      No search that stops where our cdf equals p reaches those 35, whatever its start or step.
+    - Excel's own cdf near p is not correctly rounded; the probe's cdf cells against the 60-digit values:
+      - GAMMA.DIST is off on 12 of 85 cells by 1 or 2 ulp: A167, A171, A172, A174, A202, A205-A208, A215, A217 and A218.
+        Ours is off from Excel on the same cells except A215 and A217 (shape 50, x = 74.7246263895192), where it
+        is Excel's double, also 1 ulp under the correctly rounded value. That is Excel's ratio-form large-shape
+        prefactor, which ours takes since T-2638 (the T-3146 implementer's engine eval at main f9d91462a; the
+        committed script does not run the engine).
+      - CHISQ.DIST.RT is off on 8 of 68 by 1 ulp: A251, A255, A259, A289, A313, A317, A353 and A355. For example, A313
+        `CHISQ.DIST.RT(1.4787434638356816,10)` is 0.9989999999999999 in Excel, where the true value is
+        0.999 - 0.39 ulp.
+      - The lower-tail CHISQ.DIST near 0.001 is off on 49 of 68. On 5 it is 1 ulp; the worst are 19 ulp low at df 50
+        (A340, A344, A348 `CHISQ.DIST(24.673905271877395,50,TRUE)` and its neighbours; A338 is 7 ulp high).
+    - Search forms tried, each on our double cdf, in unit scale, scored over S and S99. The figures are bit-exact /
+      within 4 ulp / visible:
+
+      | Search form | S (112) | S99 (99) |
+      |---|---|---|
+      | crossing (the correctly rounded quantile, a stand-in for the engine) | 11 / 38 / 47 | 2 / 25 / 34 |
+      | statrs' search | 6 / 25 / 36 | 5 / 21 / 32 |
+      | Newton from a, stopping at cdf = p or at a step under 1E-15 | 3 / 19 / 33 | 3 / 19 / 33 |
+      | Newton from Wilson-Hilferty, stopping at cdf = p | 4 / 24 / 33 | 4 / 24 / 33 |
+      | Newton from Wilson-Hilferty, stopping at a step under 1E-15 | 4 / 25 / 34 | 4 / 25 / 34 |
+      | Newton from the crossing times 1.001 | 4 / 17 / 26 | 4 / 17 / 25 |
+      | Newton from the crossing times 0.999 | 3 / 19 / 27 | 3 / 19 / 27 |
+      | Newton on ln cdf from a | 3 / 20 / 35 | 3 / 20 / 35 |
+      | Newton in ln x from a | 4 / 21 / 32 | 4 / 21 / 32 |
+      | bisection from [0, 2^k], stopping at cdf = p | 4 / 21 / 29 | 4 / 21 / 29 |
+
+      None beats the crossing on within-4-ulp or visible counts; statrs' search is more often bit-exact on S99 (5
+      against 2) but less often visible.
+    - Reproducing Excel's landing point needs Excel's noisy double cdf near p bit for bit and its iteration path.
+      This probe pins neither, and its x literals are cut to 15 digits (T-3175 replaces them).
+    - Superseded: T-3146's first-round counts (136 cells, 44 of 132 off the band, crossing 4 / 48) used the engine's
+      cdf through a scratch harness and an unstated cell filter. They do not reproduce; the counts above replace them.
 - Shape 1 (T-3016): Excel's quantile is the closed form of the exponential, taken in the smaller tail: with t the
   smaller tail's probability (p, or the exact 1 - p for p above 1/2), `-LN(1-t)` (by `ln_1p`) where that tail is the
   lower one and `-LN(t)` where it is the upper, times the scale. `CHISQ.INV(0.5,2)` = `CHISQ.INV.RT(0.5,2)` =
@@ -3510,6 +3654,52 @@ Tasks: T-1543, T-1634
   prefactor they are Excel's doubles. The kept-search quantiles moved by 1 to 2 ulps with the cdf under them: the
   merge fixed 56 more quantile cells (gen-m9) and left 6 at 1 to 2 ulps (`CHIINV(0.95,7)` Excel 2.167349909298057,
   ours 2.167349909298058; `CHISQ.INV.RT(0.1,7)`, `GAMMA.INV(0.05,2,30)`; T-2367).
+- Deep lower tail at a shape above 1 (T-2561): where the quantile is tiny, Excel's CHISQ.INV, GAMMA.INV and GAMMAINV
+  return the root of the cdf's leading factor p = x^a / Gamma(a + 1), as T-3013 found below shape 1. Excel forms it
+  as `EXP((LN(p)+GAMMALN(a)+LN(a))/a)` and takes no Newton step, then multiplies by the scale. Its error is the
+  rounding of that exponent, up to 82 ulp from the true quantile:
+  - `CHISQ.INV(1E-300,4)` = 2.828427124746146E-150 (crossing ...61904E-150);
+  - `CHISQ.INV(1E-100,6)` = 1.686865330603492E-33;
+  - `GAMMAINV(1E-300,2,1925)` = 2.7223611075681657E-147.
+
+  Evidence: gen-m9 (excel-graph). The cells with a quantile below 1E-11 at shape 1 to 20 reduce to 9 distinct
+  (shape, p) points. The root is bit-exact at 7 of them:
+  - (2, 1E-300): a790a4d4a6a82756 A293 and eced4bb6a0234c9e A123;
+  - (2.5, 1E-300): 4e55500bb8ad3cd8 A217;
+  - (3.5, 1E-200): 0a9226016e8f5f33 A240;
+  - (2, 1E-100): 165db58d1540f014 A283;
+  - (4.5, 1E-200): b4173fe25109a238 A252;
+  - (3, 1E-100): a61e547a1cab994c A184 and a7bf0d8d81d33ba6 A399;
+  - (1.500000000000001, 1E-100): 3e98b26cf6713e77 A142.
+
+  It also holds at shape 25 (probes-numeric/t1543-inverse-cdf-tiny-p A31 `CHISQ.INV(1E-300,50)`). The 2 exceptions
+  are (2.5, 1E-200), `CHISQ.INV(1E-200,5)` (06b4e8f5de409d5e A128, 623663cacea53bbc A98; also caa1eed48b1883fe A282
+  `GAMMAINV(1E-200,2.5,10000000001)`), and (5, 1E-200), `CHISQ.INV(1E-200,10)` (d8266bc15533702a A212). There Excel
+  is 236 and 111 ulp above the root and 20 and 36 ulp above the crossing. That is neither a Newton step from the root
+  (at most about 1E-14 of x there) nor any other root form tried:
+  - `GAMMALN(a+1)` in place of `GAMMALN(a)+LN(a)`;
+  - `LN(p)/a+GAMMALN(a+1)/a`;
+  - `(p*GAMMA(a+1))^(1/a)`;
+  - the log of the scale inside the exponent.
+
+  Ours (T-2561, `incomplete_gamma::excel_tiny_quantile`): the root wherever our GAMMA.DIST at it is within 5E-14 of p,
+  at shapes 1 to 20. Where our cdf at the root is further than 5E-14 from p, the search applies, as before. The
+  5E-14 is a fit inside the bracket [4.09E-14, 5.88E-14), set by A240 (our cdf 4.09E-14 from p, and Excel is the
+  root) and A212 (5.88E-14, and Excel is not); over the 9 points, 7 are in and 2 out. The rule is a proxy, not
+  Excel's own test:
+  - At A31 (shape 25) Excel takes the root though our cdf there is 9.8E-12 off (e^-x and the series at x = 1E-11).
+  - At `CHISQ.INV(1E-16,3)` (x = 2.6E-11, a7bf0d8d81d33ba6 A216) Excel is one Newton step from the root, not the root.
+
+  T-3294 sweeps shapes 1.5 to 19.5 and p from 1E-50 to 1E-300 to find the real test.
+  Not reached (time-boxed, decision 0056), each still visibly off. These quantiles are too large for the root:
+  - `CHISQ.INV(1E-20,6)` (a612e89321a6df9c A169, Excel 7.829736048647269E-7, ours 5 ulp below);
+  - `CHISQ.INV(1E-20,10)` (c2974c061384fdd9 A355);
+  - `GAMMAINV(1E-16,2.5,1)` (a5828d3925575713 A338);
+  - `CHISQ.INV.RT(1-1E-16,3)` (ecc87f80077959e0 A301).
+
+  On them the search was compared with the root followed by one Newton step, or by Newton steps until a step is under
+  3.5E-14 of x, on the leading-factor series form. Neither matches. A169 is 71 ulp off with a step; A355 is 6 ulp
+  off with the loop against 5 for the search.
 
 - `1-1E-16` is a different double from 1 (`NORM.INV(1-1E-16,0,1)` = 8.209536151601386), but `1-1E-17` is 1 and gives `#NUM!`.
 - Excel's CHISQ.INV and GAMMA.INV are exact in the lower tail (`CHISQ.INV(1E-100,1)` = 1.5707963267948966E-200, `GAMMA.INV(1E-300,1,1)` = 1E-300, `CHISQ.INV(1E-300,1)` = 0) and CHISQ.INV.RT is `#NUM!` for p below about 1E-15 with df = 1 but finite for df = 50 (`CHISQ.INV.RT(1E-300,50)` = 1592.68...). Before T-1634 ours gave `#NUM!` for CHISQ.INV(p<=1E-200,1), GAMMA.INV(p<=1E-20,1,1) and CHISQ.INV.RT(p<=1E-20,df) (Excel: values), and wrong digits elsewhere in the tails (`CHISQ.INV(1E-300,50)` 0.0033 vs 2.04E-11; `CHISQ.INV(1-1E-16,50)` 179.80 vs 180.68; `GAMMA.INV(1E-300,100,1)` 1.0165 vs 0.0380) (fixed by T-1634, below).
@@ -4459,36 +4649,56 @@ Ours: `#NUM!` where the quantile saturates, and 7 ulp off at `F.INV.RT(1E-20,3,9
 Status: VERIFIED (excel-graph)
 Tasks: T-2435, T-2808
 
-## GAMMA.INV and CHISQ.INV at a huge shape: #NUM! from about 7E9, then a Wilson-Hilferty closed form (T-2982)
-Rule: GAMMA.INV (and GAMMAINV, CHISQ.INV, CHISQ.INV.RT, CHIINV, with shape df/2 and scale 2) is close to the true
-quantile up to a shape of 5E9 (`GAMMA.INV(0.5,5E9,1)` = 4999999999.666667, `CHISQ.INV(1E-16,10000000000.5)` =
-9998837266.383266), mostly `#NUM!` at 7E9 and 1E10 (`GAMMA.INV(p,1E10,1)` is `#NUM!` for 17 of 18 p from 1E-300 to
-1-1E-15; only p = 1E-30 gives 9998853641.00538; `CHISQ.INV.RT(1E-10,10000000000.5)` and `(0.001,..)` are `#NUM!`
-while `(0.5,..)` = 9999999999.333334 and `(0.999,..)` = 9999562980.855858), and from 2E10 on the true quantile times a
-constant c = 1.0002658235505755, at every shape up to 1E300 and every scale: `GAMMA.INV(0.5,a,1)` / a is c for a = 1E11
-to 1E300 (A9-A23; `GAMMA.INV(0.5,1E13,1)` = 10002658235505.422 = c (1E13 - 1/3)), `GAMMA.INV(0.5,1E13,b)` is b times it
-for b = 1E-300 to 1E280 (A78-A85), and `GAMMA.INV(0.5,1E300,1E8)` = 1.0002658235505756E+308 (A86). The tails are not
-exactly c times the true quantile: at shape 1E13 and p = 1E-300 Excel's 10002541064587.973 is 12,972 below c times
-it and 2,600 above the true quantile at shape c·1E13 (A24). The whole factor is a Wilson-Hilferty
-closed form with constants of Excel's own: c^(1/3) - 1 is 0.0000886 to 13 digits, and from shape 2E10
-Excel's value is a·(1 + 0.0000886 - 1/(9a) + z·s/(3·sqrt a))^3, z the normal quantile of p and s =
-1 - 2.2106E-5 (fitted on the 1E13 sweep A25-A41, all within 7 ulps of it; at 1E11, A61-A77, a term
-in z^2 of about 0.0002·z^2 absolute is left, 100 to 1,500 ulps). No search: the value has no
-(z^2 - 1)/3 skew of its own beyond the cube's. CHISQ.INV and CHIINV differ at the
-same df: `CHISQ.INV(0.5,2E13)` is `#NUM!` while `CHIINV(0.5,2E13)` = `CHISQ.INV.RT(0.5,2E13)` = 20005316471010.844 (A91-A93).
+## GAMMA.INV and CHISQ.INV at a huge shape: the true quantile, `#NUM!`, or a Wilson-Hilferty closed form (T-2982, T-3070)
+Rule: from a shape of 1E9 Excel's GAMMA.INV (and GAMMAINV, CHISQ.INV, CHISQ.INV.RT and CHIINV, at shape df/2 and scale
+2) is one of three things, decided by its Wilson-Hilferty start x0 = a(1 + 0.0000886 - 1/(9a) + z s/(3 sqrt a) + ...)^3
+(z the normal quantile of the lower tail's p; for CHISQ.INV.RT and CHIINV minus that of p itself, so
+`CHISQ.INV.RT(1E-100,1E10)` = 10005667524.015223 although 1 - p is 1):
+- **the closed form x0 itself** where the gamma density at x0 is below the smallest normal double: the true quantile
+  times about 1.000266. Fit: ln density -708.54 at the closed form `GAMMA.INV(0.999999,1.5E10,1)` =
+  15004569623.957905 (t3070 A110), only 0.14 past the cut, -701.60 at `GAMMA.INV(0.5,1.95E10,1)` `#NUM!` (A210); every
+  probed cell either side agrees. So `GAMMA.INV(0.5,a,1)` is the closed form from 2E10 (c (a - 1/3) for a = 1E13 to 1E300, t2982 A7-A23, and at
+  every scale, A78-A86), while at 2E10 p = 0.1 and below are `#NUM!` (t3070 A127-A134), at 5E10 only p = 1E-300 is
+  (A155), and from about 8E10 every p is the closed form;
+- **the true quantile** inside a band of the start's offset o = (x0(z = 0) - a)/sqrt(a), about 2.66E-4 sqrt(a)
+  standard deviations, and z: z + 1.35 o < 27.25 and o - z < 39 (a fit: the edges lie in (26.93, 27.60) and
+  (38.05, 40.07), pinned by t3070 A77 `GAMMA.INV(0.001,7E9,1)` (a value) and t2982 A45 `GAMMA.INV(1E-16,1E10,1)`
+  (`#NUM!`), and by t2982 A44 `GAMMA.INV(1E-30,1E10,1)` = 9998853641.00538 and t3070 A44 `GAMMA.INV(1E-100,5E9,1)`
+  (`#NUM!`); slopes 1.30 to 1.41 also separate every probed cell, UNVERIFIED between them). The lower edge fixes the
+  offset's slope at 1, UNVERIFIED: any slope from about 0.5 to 1.2 separates the probed cells, and it is pinned by one
+  value (t2982 A44, at 38.05) and one `#NUM!` point (t3070 A44 and A370, at 40.07); near it only p = 1E-30, 1E-100 and
+  1E-300 were probed, so it is in effect a cut in p between 1E-30 and 1E-100. `GAMMA.INV(0.5,5E9,1)` =
+  4999999999.666667, `GAMMA.INV(1E-30,7E9,1)` = 6999040894.354145, `CHISQ.INV(1E-100,6E9)` = 5997669910.951994,
+  `CHISQ.INV(5.6221E-26,4715100000)` = 4714082845.627977 (incomplete-gamma-cap E15);
+- **`#NUM!`** elsewhere: at the far tails (`GAMMA.INV(1E-300,1E9,1)`, `GAMMA.INV(1-1E-15,3E9,1)`, `CHISQ.INV.RT(1E-100,2E9)`),
+  above the band (`GAMMA.INV(0.5,6E9,1)`, every probed p at 1.2E10) and below the closed form.
+How Excel's search fails is not known; the band is the shape of its failures, not its algorithm.
+The closed form's constants are effective constants fitted (T-3070) to Excel's values on the 167 closed-form cells
+from shape 1.5E10 to 1E300, not Excel's own formula: s = 0.999977894167, and terms (-7.586532E-4 + 6.740481E-5 z^2)/a -
+3.08676E-3 z^3/a^(3/2) inside the cube (UNVERIFIED as a form). The fit's residual is at most 3.6 ulps with a reference
+z (Python's `NormalDist`); the engine, with its own `normal_quantile` z, is up to 9 ulps off from 1.5E10 (t3070 A110;
+5 to 7 at A112, A152, A179, t2982 A63), and at 5E9 to 2E10 the right tail's closed form at p = 1E-100 is 11 to 33 ulps
+off (A229, A214, A371, the last just visibly off; T-3272). T-2982's fit without the terms, at 1E13 alone, was 100 to
+12,459 ulps off at 1E11 and 2E10.
+CHISQ.INV.RT and CHIINV take any number of degrees of freedom (2E13 and 1E15: `CHIINV(0.5,2E13)` =
+`CHISQ.INV.RT(0.5,2E13)` = 20005316471010.844, t2982 A92, A93, t3070 A304-A327), while CHISQ.INV, CHISQ.DIST,
+CHISQ.DIST.RT and CHIDIST are `#NUM!` above 1E10 (t2982 A91, t3070 A222-A333). "Any" is evidenced up to about 1E16
+(gen-m9 7bd219ec0c0c5e22 A239 `CHIINV(1E-300,ROUND(9999999999999999,2))`), and p = 0 or 1 above 1E10 is unprobed: ours
+stays `#NUM!` there (`chisq.rs` `chi_squared`) (T-3272 probes both).
 The cdf itself has no such factor (`GAMMA.DIST(1E12,1E12,1,TRUE)` is correctly rounded, probes/incomplete-gamma-cap E9),
-so the factor is the inversion's.
-Evidence: probes/t2982-gamma-inv-huge-shape A1-A95 (excel-graph, 2026-10-28); probes/incomplete-gamma-cap E5, E14, E15,
-E19; gen-m9 0a614cfe974b59c3 A327, 4e55500bb8ad3cd8 A341, 7bd219ec0c0c5e22 A239, a013a45a8fbcab4f A338, d8266bc15533702a
-A296 (each within about 1E-11 of c times the true quantile). excel-graph refused (FileCorruptTryRepair) workbooks holding
-`GAMMA.DIST(2,a,1E10,TRUE)` for a from 1E40 to 1E100 and `GAMMA.DIST(x,1E10..1E11,1,FALSE)` at a tiny x, so those cells
-were dropped from the probe (T-2982).
-Ours: the closed form from shape 2E10 for GAMMA.INV and GAMMAINV (`incomplete_gamma` `wilson_hilferty_quantile`);
-below it statrs' search, `#NUM!` from a shape of about 1E9, where Excel has values to 5E9. CHISQ.INV.RT and CHIINV
-stay `#NUM!` above 1E10 degrees of freedom (`chisq.rs` `MAX_DEGREES_OF_FREEDOM`), where Excel takes 2E13 (A92, A93):
-both are T-3070's.
-Status: VERIFIED (excel-graph) for the factor at p = 0.5 and the #NUM! band; the closed form is a fit (7 ulps at 1E13)
-Tasks: T-2982
+so the factor is the inversion's: Excel is the inaccurate side here (T-3070's stage moved to `campaign: visible`).
+Evidence: probes/t3070-gamma-inv-band (381 cells: p sweeps at shapes 1E9 to 1E12, the median at 17 shapes of the band,
+the chi-square functions from 1.5E10 to 1E15 degrees of freedom, CHISQ.INV and CHISQ.INV.RT at 2E9 to 1E10; excel-graph,
+2026-10-30); probes/t2982-gamma-inv-huge-shape A1-A95 (excel-graph, 2026-10-28); probes/incomplete-gamma-cap E5, E14,
+E15, E19; gen-m9 0a614cfe974b59c3 A327, 4e55500bb8ad3cd8 A341, 7bd219ec0c0c5e22 A239, a013a45a8fbcab4f A338,
+d8266bc15533702a A296. excel-graph refused (FileCorruptTryRepair) workbooks holding `GAMMA.DIST(2,a,1E10,TRUE)` for a
+from 1E40 to 1E100 and `GAMMA.DIST(x,1E10..1E11,1,FALSE)` at a tiny x, so those cells were dropped from the probe (T-2982).
+Ours: `incomplete_gamma/huge_shape.rs` `huge_shape_quantile` for GAMMA.INV, GAMMAINV, CHISQ.INV, CHISQ.INV.RT and CHIINV
+from shape 1E9, its true quantile the crossing of the accurate cdf (Temme's expansion), halved over the whole range
+(65 cdfs) since statrs' search is NaN or far off there; `chisq.rs` lets CHISQ.INV.RT and CHIINV past
+`MAX_DEGREES_OF_FREEDOM`.
+Status: VERIFIED (excel-graph) for the cells; the band's edges and the closed form's terms are fits (UNVERIFIED as forms)
+Tasks: T-2982, T-3070
 
 ## GAMMA.DIST at a huge shape: #NUM! for a density at a tiny x, for the cdf above about 1E+76 (T-2435)
 Rule: GAMMA.DIST's density is `#NUM!`, not 0, where the shape is large and x/beta tiny:
@@ -4500,10 +4710,17 @@ x/beta = 2E-10 but `#NUM!` at 1.85E+76 (`GAMMA.DIST(2,1.85E+76,1E+10,TRUE)`,
 Evidence: probes/t2435-dist-extremes A25:A34, A92:A102 (excel-graph, 2026-10-26); gen-m9
 2801c1c11c21e134 A241 (`GAMMADIST(1E-300,10000000001,3,FALSE)`) and 40425341c5034eed A265
 (`GAMMADIST(2,1.85E+76,1E+10,"TRUE")`).
-Ours: 0 for each `#NUM!` above (T-2982); `GAMMA.DIST(1E+10,1E+10,1,TRUE)` is Excel's 0.5000013298076014 since
-T-1891 (Temme's expansion).
-Status: VERIFIED (excel-graph), one cell per shape at the cuts
-Tasks: T-2435, T-1891, T-2982
+The cdf cut only turns a 0 into `#NUM!`: at a shape of 1E+300, x = 1E+300 is 0.5 (probes/incomplete-gamma-cap E3), and a huge
+x at a huge shape keeps its density of 0 (`GAMMA.DIST(1E+307,1E+10,0.5,FALSE)` is 0, t2435-dist-extremes A31).
+Ours (T-3271): a computed 0 is `#NUM!` for a density at x/beta below 1 with (alpha - 1)·(-LN(x/beta)) of at least
+6.9187E+11 (A26's value, the smallest `#NUM!` seen), and for a cdf of a positive x at a shape of at least 1.85E+76 (the
+smallest `#NUM!` seen). Between the bracket ends (density 6.9E+10 to 6.9187E+11, cdf 1E+40 to 1.85E+76) the cut is
+UNVERIFIED: excel-graph refused workbooks holding those cells (FileCorruptTryRepair, T-2982).
+`GAMMA.DIST(1E+10,1E+10,1,TRUE)` is Excel's 0.5000013298076014 since T-1891 (Temme's expansion).
+Status: VERIFIED (excel-graph) at the probed cells; the cut positions inside each bracket UNVERIFIED
+Tasks: T-2435, T-1891, T-2982, T-3271
+Implemented in: `huge_shape_num_error`, `HUGE_SHAPE_DENSITY_CUT`, `HUGE_SHAPE_CDF_CUT`
+(crates/rustsheet-engine/src/functions/statistical/gamma.rs)
 
 ## LINEST and LOGEST: shapes, one point, collinear columns, exact fits and check order (T-1741)
 Rule: LINEST and LOGEST line known_x up with known_y as TREND does ("TREND: defaults, shapes, single points and error

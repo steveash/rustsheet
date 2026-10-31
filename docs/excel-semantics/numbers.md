@@ -41,12 +41,23 @@ the last addend (exponent -1 or 0) predict cut-offs of k ≤ 3 or k ≤ 15 in so
 k ≤ 7 (8 ULP of 1) and keeps k = 8 (1.7763568394002505e-15, negated in the second block). In every block the running
 total is the larger of the two final addends or shares its binary exponent (block 2: 1 against -(1+k·2^-52)), so
 this probe alone does not separate it from the larger addend; the two-addend `-` side above (b = 1, whose larger
-addend 1 would allow k ≤ 7, snaps only to k = 3) rules the larger addend out, and T-3248 probes it inside SUM. SUM over the cells as
-arguments, over the row range and over an array argument (`SUM(CHOOSE({1,2,3},..))`), SUBTOTAL(9,range) and
-the `+` chain agree on every cell. AVERAGE snaps the sum before dividing: 0 for k ≤ 7, the kept total over the
+addend 1 would allow k ≤ 7, snaps only to k = 3) rules the larger addend out, and T-3248 rules it out inside SUM
+(below). SUM over the cells as arguments, over the row range and over an array argument
+(`SUM(CHOOSE({1,2,3},..))`), SUBTOTAL(9,range) and the `+` chain agree on every cell. AVERAGE snaps the sum before dividing: 0 for k ≤ 7, the kept total over the
 count from k = 8 on (5.921189464667501e-16 for three addends). Status: VERIFIED.
 Implemented in: `SumParts::snapped` (functions/math_and_trigonometry/sum.rs), which SUM, AVERAGE and SUBTOTAL
 share; the engine already matched.
+
+Running total below the last addend's exponent (T-3248, probes/t3248-snap-running-total-below-last, excel-graph
+2026-10-30): inside SUM the bound is 8 ULP of the **running total**, not of the larger of the two final addends.
+Four 16-row blocks make the running total before the last addend 1-k·2^-52 (exponent -1, bound 2^-50) while the
+last addend is ∓1 (exponent 0, bound 2^-49): (0.5, 0.5-k·2^-52, -1), its negation, (0.25, 0.25, 0.5-k·2^-52, -1)
+and (2, -1.5, 0.5-k·2^-52, -1), whose first argument 2 would allow k ≤ 15. Every block snaps exactly k ≤ 3 and
+keeps k = 4 (-8.881784197001252e-16, positive in the negated block), where the larger addend would snap to k = 7.
+SUM of the cells as arguments, of the row range and of an array argument (`SUM(CHOOSE({1,2,3},..))`),
+SUBTOTAL(9,range) and the `+` chain agree on all 384 cells; AVERAGE snaps the sum before dividing (0 for k ≤ 3,
+then the kept total over the count, -2.9605947323337506e-16 at k = 4 with three addends). Status: VERIFIED. The
+engine already matched (`SumParts::snapped`).
 
 Groups and names (T-1137, probes/near-zero-snap-groups, excel-graph 2026-10-08): `=((0.1+0.2-0.3))`, `=(((0.1+0.2-0.3)))` and `=((1-0.9-0.1))` are not snapped (5.551115123125783e-17, 5.551115123125783e-17, -2.7755575615628914e-17), like the single-level `=(0.1+0.2-0.3)`; a group that is an operand of an outer `+` (`=(0.1+0.2-0.3)+0`, `=0+(0.1+0.2-0.3)`) is not snapped either. A defined-name body **is** snapped at its own root: `nz` = `=0.1+0.2-0.3` and `nzb` = `=Sheet1!$A$1-0.3` (A1 = `=0.1+0.2`) give 0 for `=nz`, `=nzb`, `=nz+0`, `=nz*1` and `=SUM(nz)`; the engine snaps a name body at its root through `evaluate_formula_root` (T-1160). Name bodies written as a group or a SUM (T-1164, probes/near-zero-snap-name-bodies, excel-graph 2026-10-08): `nzg` = `=(0.1+0.2-0.3)` and `nzgg` = `=((0.1+0.2-0.3))` are not snapped (`=nzg`, `=nzgg`, `=nzg+0` and `=SUM(nzg)` give 5.551115123125783e-17, like the cell forms), while `nzs` = `=SUM(0.1,0.2,-0.3)` is snapped (`=nzs` and `=nzs+0` give 0). The engine keeps a grouped root on a name body (`Model::parse_internal_formula`, `user_formula_to_internal`, the xlsx import re-parse, sheet copy and rename, name display); a parenthesized reference body stays a reference (`rg` = `=(Sheet1!$B$1:$B$2)`, `ig` = `=(INDEX(...))` and `og` = `=(OFFSET(...))` give ISREF TRUE, ROWS/SUM as without the parentheses: probes/defined-name-grouped-reference, excel-graph 2026-10-08), so `is_reference` looks through the group (`Node::ungrouped`). The same parse also keeps the grouped root of a conditional-formatting formula written wholly in parentheses (`user_formula_to_internal` serves both); whether Excel snaps inside CF formulas is UNVERIFIED and not observable through the oracle (T-1171: excel-graph reads cell values only, the case format and the Graph workbook API carry no conditional-formatting rules or their rendered fill; see docs/architecture/oracle.md, Unobservable features), so it needs desktop Excel (M14, Phase 4, decision 0039, T-1204). Unprobed: a formula typed as `=(X-b` that Excel completes with `)`. FORMULATEXT of `=((0.1+0.2-0.3))` is `=((0.1+0.2-0.3))`: the engine keeps every written level around a whole formula (one root `Group` holding every level, T-1161, T-1341).
 
@@ -1653,8 +1664,26 @@ oracle's exponents 1..360 are unverified, so a zero or non-finite result falls b
 Status: VERIFIED (integer exponents)
 Tasks: T-0221, T-0901, T-1302
 
+### Integer exponents from 2^32 - 1: exp(y·ln x) (T-2392)
+Rule: for a positive base and an integer exponent with |n| >= 2^32 - 1 = 4294967295 (the limit at which a negative
+base is `#NUM!`, below), `x^n` and `POWER(x,n)` are not square-and-multiply but the non-integer path `exp(n·ln x)`
+("Non-integer exponents: exp(y·ln x)"): `(1+0.05/1E10)^1E10` is 1.0512711007250206, equal to
+`EXP(1E10*LN(1+0.05/1E10))` and libm `pow`, where square-and-multiply gives 1.0512711002754753. The switch is exact:
+`(1+0.05/n)^n` is the square-and-multiply value for n = 2^31, 3E9, 4E9, 4294967000 and 4294967294, and `exp(n·ln x)`
+for 4294967295, 4294967296, 5E9, 1E11, 1E12, 1E13 and 1234567890123 (and at n = 1E10 and 1E12 for rates 0.01, 0.1,
+0.5 and 1 too). A negative exponent switches at the same |n|: `(1+0.05/n)^-n` for n = 3E9 and 4294967294 is one over
+the square-and-multiply power, for 4294967295 and 1E10 the general path, and that path keeps its out-of-range results:
+`0.5^-5E9` and `0.5^-4294967294` are `#DIV/0!`, `2^-5E9` is 0, `0.5^5E9` 0 and `2^5E9` `#NUM!`. The bases that drift
+apart are the ones near 1; the T-1311 cells past 2^32 - 1 (`0.5^9007199254740992`, `1^9007199254740992`, ...) are equal
+either way, and all of probes-numeric scores the same.
+Evidence: probes/fin-effect-huge-npery (124 cells: `^`, POWER and EFFECT side by side; excel-graph, 2026-10-30, T-2392).
+Status: VERIFIED (excel-graph)
+Implemented (T-2392): `integer_power` in arithmetic/power.rs leaves |n| >= 2^32 - 1 to the general path.
+Tasks: T-2392
+
 ### Integer exponents beyond 360, subnormal results, base 10 (T-1311)
-Rule: the square-and-multiply rule above holds for every integer exponent tried up to 2^53 and
+Rule: the square-and-multiply rule above holds for every integer exponent below 2^32 - 1 (from there on see
+"Integer exponents from 2^32 - 1: exp(y·ln x)" above; the cells past it here agree with both) and
 every base except 10 (about 280 cells across `1.0000001`, `0.9999999`, `1.5`, `2`, `3`, `5`, `7`,
 `13`, `20`, `50`, `100`, `1000`, `1E5`, `1E15`, `-10`, `-1.5`, negative n by `1/`). Four additions:
 1. A result below 2.2250738585072014E-308 (subnormal) is 0, not the subnormal: `0.1^310`,

@@ -3,7 +3,7 @@ id: T-3210
 title: "Collation: approximate and exact lookups compare texts by Excel's pairwise accent rule (t3181 lookup cells)"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -48,3 +48,10 @@ lookup cells of the t3181 probes pass.
 
 ## Out of scope
 - SORT, SORTBY, UNIQUE and GROUPBY (T-3211).
+
+## Outcome
+Lookups and SWITCH compare texts with `compare_values_pairwise` (`cmp_text_pairwise`); the hashed
+exact XMATCH/XLOOKUP index tests the first (last) cell with the key and walks when it is not equal.
+Eval: probes known failures 2161 -> 2147 (14 fixed, 0 regressions); t3181-collation-prefix-callers
+43/43. Calc!B11 (XLOOKUP scalar return_array) is not the prefix rule: filed as T-3317. The remaining
+arrays cells are SORT/UNIQUE (T-3211).
