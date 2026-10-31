@@ -474,11 +474,12 @@ fn discounted_split(
     // discount alone is kept where `A` lifts the product (`PPMT(7,1,341,1.9999)` is 0,
     // `PPMT(7,1,341,2)` and `PPMT(7,10,350,2)` -1.5575517009551696E-307, the discount 8^-341 =
     // 2^-1023; probes/fin-ppmt-subnormal-discount-by-size B3, B4, B17).
+    // An overflowing product stays non-finite, so the caller's rescaled forms decide it.
     let held = balance * excel_exp(x);
-    let principal = if held.is_normal() {
-        -(held * factor)
-    } else {
+    let principal = if held.is_finite() && !held.is_normal() {
         0.0
+    } else {
+        -(held * factor)
     };
     (interest.is_finite() && principal.is_finite()).then_some((interest, principal))
 }

@@ -240,8 +240,9 @@ ulp of 315), `IPMT(1E+10,10,10,0,315)` is 315.00007935392205 (exact 314.99999996
 are the exact payment" has it. The form needs no `(1+rate)^nper`, so past its overflow IPMT keeps
 its value, about `-pv*rate` for huge rates: `IPMT(1E+300,3,2000,452017,905)` is -4.52017E+305,
 `IPMT(123456789.123,3,156,64486)` -7961234503385.777, `IPMT(2,1100,1100,1,5)` 2. PPMT past the
-overflow is the discounted form of "PPMT discounts with an atanh-series log", and it is 0 where `pv+fv` times the
-discount `Q(per-1-nper)` is below the normal range (a flush to zero of that product, not of the discount): `PPMT(r,1,300,1)`
+overflow is the discounted form of "PPMT discounts with an atanh-series log", and it is 0 where the discounted balance
+`A*Q(per-1-nper)` is below the normal range, `A = (pv+fv)/(1-Q(-nper))`, which is `pv+fv` here (a flush to zero of that
+product, not of the discount nor of the final value): `PPMT(r,1,300,1)`
 keeps a discount of 2^-1022 and is 0 from 2^-1022.5 on, `PPMT(10,1,296,1)` is 0 though its value, 5.6E-308, is normal,
 `PPMT(7,1,341,1.9999)` is 0 and `PPMT(7,1,341,2)` -1.5575517009551696E-307 (the discount 8^-341 = 2^-1023), as are
 `PPMT(7,1,341,1,1)`, `PPMT(7,1,341,3,-1)` and `PPMT(7,10,350,2)`; the period does not matter (`PPMT(7,k,340+k,1)` is 0 and
