@@ -1546,6 +1546,7 @@ C	probes/t3012-gamma-dist-at-quantile.case.json	136
 C	probes/t3012-gamma-inv-small-shape.case.json	72
 C	probes/t3014-pmt-fv-type-alone.case.json	371
 C	probes/t3023-identical-stored-structured-refill.case.json	8
+C	probes/t3025-blank-beside-calculated.case.json	5
 C	probes/t3028-b2-taiwan-cuts.case.json	240
 C	probes/t3028-b2-taiwan-years.case.json	165
 C	probes/t3029-b2-calendar-weekday.case.json	128
