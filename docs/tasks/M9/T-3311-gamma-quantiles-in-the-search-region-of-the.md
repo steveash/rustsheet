@@ -45,7 +45,7 @@ Cells (the seven above, listed so `scripts/exit_owners.py` credits them; gap tri
 - [x] The seven cells reach visible parity, or the Outcome lists the candidates with their bit-exact and visible
       counts (decision 0056). Six reached; A355 to T-3403 with the candidates listed.
 - [x] No new known-failure line in any eval/baseline file; no cell T-2561 fixed gets worse. One line (A107) added by
-      owner ruling under decision 0083's allowance (decision 0197); no T-2561 cell worse.
+      owner ruling under decision 0083's allowance (decision 0210); no T-2561 cell worse.
 - [x] `make check` green; reviewers approve (round 1's 1E-6 request taken, by owner ruling).
 
 ## Visible-parity stage
@@ -59,7 +59,7 @@ reproduce Excel's landing, never a more accurate kernel.
 - Shape 20 and above (T-3294); the p = 0.999 band (T-3146).
 
 ## Outcome
-Two attempts (decision 0056). Shipped at the hold-out's cut, 1E-6 (owner ruling, decision 0197): six of the seven
+Two attempts (decision 0056). Shipped at the hold-out's cut, 1E-6 (owner ruling, decision 0210): six of the seven
 targets match Excel (A212, A301 and A338 bit for bit, A128, A98 and A169 within 15 digits). A355 stays visibly off
 (T-3403). The cost is gen-m9/c18dbf21f11093f3 A107, bit-exact to 1 ulp off, within 15 digits, under decision 0083's
 allowance (below).
@@ -83,7 +83,7 @@ right tail, which this path never takes.
 1. The cut at 1E-8, the narrow end of the train plateau (below). Held through review round 1; replaced.
 2. The cut at 1E-6. Fixes A169 and A338 as well, but moves gen-m9/c18dbf21f11093f3 A107
    `CHISQ.INV(POISSON.DIST(9,100,FALSE),8)` from bit-exact to 1 ulp off, a gated regression. No iterate is Excel's
-   value there, and no density or form ordering tried changes that. Shipped by owner ruling (decision 0197).
+   value there, and no density or form ordering tried changes that. Shipped by owner ruling (decision 0210).
 
 Rules tried for the iterate, on the 97 points of the first probe (exact / within 15 digits; engine 34 / 93):
 - nearest-F over 15 to 50 steps: 37 / 94;
@@ -102,7 +102,7 @@ pair: 46), and one variant reaches 307.
   classifier ("[CI Bypass]") when committing the record, before any baseline change. Per the review's instruction
   for a refusal, the branch held 1E-8 until a ruling. The 1E-6 model was frozen and measured below.
 - Owner ruling, 2026-10-31 (https://claude.ai/code/session_01WTJ7rq9tsQyspbybqNLk1a): "Allow, with records".
-  Decision 0197 records A107 under decision 0083's allowance; `NEWTON_START_MAX` is 1E-6 with its range
+  Decision 0210 records A107 under decision 0083's allowance; `NEWTON_START_MAX` is 1E-6 with its range
   (`FITTED(T-3311, 23 cells, shape 1.5..7.5, p 1E-200..1.0000000827E-10)`), the unit test pins A338 bit-exact, A169
   and A107 within 15 digits; `update-baseline --allow-regressions` added the A107 line and removed A338's.
 - A107 at 1E-6: Excel 7.92099982566666E-8, ours 7.920999825666661E-8, +1 ulp, within 15 digits. All four 0083
@@ -111,7 +111,7 @@ pair: 46), and one variant reaches 307.
 
 **R4 guards** (decision 0188). The model is structural (an algorithm family); `NEWTON_START_MAX` is a fit with a
 `FITTED` tag (at 1E-8: 13 points where the steps apply, shape 1.5..5, p 1E-200..1E-12; at 1E-6: 23 points, shape
-1.5..7.5, p 1E-200..1.0000000827E-10). quality/fitted.json rises by one (decision 0197).
+1.5..7.5, p 1E-200..1.0000000827E-10). quality/fitted.json rises by one (decision 0210).
 - Hold-out (R4.1), disclosed as contaminated: the 100/53 split (FNV-1a of the cell key mod 100 < 30, 153 distinct
   (shape, p) points, docs/research/t3311/split_points.json) was fixed after the model family was chosen on all the
   data. Margin 15 points of exact rate. Fallback is main with T-3131's search. Exact / within 4 ulp / within 15 digits:
@@ -154,10 +154,10 @@ pair: 46), and one variant reaches 307.
 **Eval comparison, main (origin/main bf7db78fb, with T-3131's search) against HEAD, every cell.**
 - At 1E-6 (shipped), gated: 6 fixed (the 5 below and A338, -5 to 0 ulp), 4 closer (A128, A98, A282, A169 -5 to -4),
   6 visibly fixed (A128, A98, A169, A212, A301, A338), 1 lost bit-exact (A107: Excel 7.92099982566666E-8, ours
-  7.920999825666661E-8, +1 ulp, within 15 digits; decision 0197), nothing farther, newly visibly off or of another
+  7.920999825666661E-8, +1 ulp, within 15 digits; decision 0210), nothing farther, newly visibly off or of another
   type. Re-checked after merging origin/main 1af9bd6c6: `update-baseline --allow-regressions` against the round-1
   head (1E-8) shows gen-m9 fixed 1 (A338), regressions 1 (A107), no other suite changed; in-scope visibly off 2261.
-- eval/baseline/gen-m9.txt against main: 6 F lines removed, 1 added (A107, decision 0197).
+- eval/baseline/gen-m9.txt against main: 6 F lines removed, 1 added (A107, decision 0210).
 - At the 1E-8 round-1 hold, gated suites (only gen-m9 changes):
   - 5 fixed to bit-exact: A212 (-36 ulp), A301 (-11), 4e55500bb8ad3cd8 A111 `CHIINV(NPV(..),3)` (+5),
     58e3253bbd3a7a82 A287 and a7bf0d8d81d33ba6 A216 `CHISQ.INV(1E-16,3)` (-1 each).

@@ -726,7 +726,7 @@ fn newton_steps_from_the_leading_factor_root_reach_excel_deep_lower_tail() {
     );
     let x = gamma_quantile(3.0, 2.0, 1e-20, Tail::Lower);
     assert!(within_15_digits(x, 7.829_736_048_647_269e-7), "{x:e}");
-    // The cut's cost (decision 0197): c18dbf21f11093f3 A107 `CHISQ.INV(POISSON.DIST(9,100,FALSE),8)`
+    // The cut's cost (decision 0210): c18dbf21f11093f3 A107 `CHISQ.INV(POISSON.DIST(9,100,FALSE),8)`
     // is 1 ulp from Excel's 7.92099982566666E-8, within 15 digits (decision 0083's allowance).
     let x = gamma_quantile(4.0, 2.0, 1.025_153_212_086_874e-31, Tail::Lower);
     assert!(within_ulps(x, 7.920_999_825_666_66e-8, 1.0), "{x:e}");

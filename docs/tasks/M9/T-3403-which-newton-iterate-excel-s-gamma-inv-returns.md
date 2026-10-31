@@ -31,7 +31,7 @@ Cells (gen-m9, excel-graph):
   than the search (visibly off);
 - gen-m9/a612e89321a6df9c.case.json (1): Calc!A169 `CHISQ.INV(1E-20,6)`, form at the root 2.9E-7 off p; 4 ulp,
   within 15 digits;
-- gen-m9/c18dbf21f11093f3.case.json (1): Calc!A107, 1 ulp, within 15 digits (decision 0197).
+- gen-m9/c18dbf21f11093f3.case.json (1): Calc!A107, 1 ulp, within 15 digits (decision 0210).
 
 Leads:
 - The 1-ulp residue of the form against Excel's GAMMA.DIST (T-3242) moves the levels; at A107 the nearest iterate is
@@ -47,7 +47,7 @@ Root test, to unify here or in T-3294: T-2561's `TINY_QUANTILE_CHECK` tests the 
 same root on `excel_form_lower`, Excel's staircase form. On the form, "the root is the nearest iterate" may be the test
 the root check only approximates.
 
-The cut (T-3311, owner ruling, decision 0197): `NEWTON_START_MAX` = 1E-6 moves A107 (above) from bit-exact to 1 ulp
+The cut (T-3311, owner ruling, decision 0210): `NEWTON_START_MAX` = 1E-6 moves A107 (above) from bit-exact to 1 ulp
 off (Excel 7.92099982566666E-8, ours 7.920999825666661E-8), recorded under decision 0083's ulp allowance. This task
 owns A107's 1-ulp miss as its ulp follow-up (decision 0083 condition 4).
 

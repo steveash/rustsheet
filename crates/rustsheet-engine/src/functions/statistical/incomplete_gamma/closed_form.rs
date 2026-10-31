@@ -142,7 +142,7 @@ fn form_step(a: f64, x: f64, p: f64) -> Option<(f64, f64)> {
 /// the correctly rounded quantile. From 1E-6 to 1E-4 the steps lose: `GAMMA.INV(1E-8,1.5,1)` 7 ulp
 /// off, where the search is within 15 digits. The cut moves gen-m9/c18dbf21f11093f3 A107
 /// `CHISQ.INV(POISSON.DIST(9,100,FALSE),8)` from bit-exact to 1 ulp off Excel, within 15 digits;
-/// the owner ruled that in under decision 0083's ulp allowance (decision 0197). The 23 cells in
+/// the owner ruled that in under decision 0083's ulp allowance (decision 0210). The 23 cells in
 /// the tag are the measured points where the steps apply (the cut admits them and T-2561's root
 /// does not take them); the range is theirs.
 /// FITTED(T-3311, 23 cells, shape 1.5..7.5, p 1E-200..1.0000000827E-10)

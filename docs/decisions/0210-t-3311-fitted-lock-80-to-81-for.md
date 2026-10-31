@@ -1,4 +1,4 @@
-# 0197 — T-3311: fitted lock 80 to 81 for NEWTON_START_MAX, duplication banked, A107 one ulp off under decision 0083
+# 0210 — T-3311: fitted lock 80 to 81 for NEWTON_START_MAX, duplication banked, A107 one ulp off under decision 0083
 
 - **Status:** accepted (2026-10-31, T-3311). It applies decision 0188 R4.3 and decision 0083's standing ulp
   allowance, and adds no rule.

@@ -3857,7 +3857,7 @@ Tasks: T-1543, T-1634, T-2561, T-3336, T-3337
   (filled after it was frozen: 23 of its 30 in-region cells bit-exact, against 1 for the search). It moves
   gen-m9/c18dbf21f11093f3 A107 `CHISQ.INV(POISSON.DIST(9,100,FALSE),8)` from bit-exact to 1 ulp off (Excel
   7.92099982566666E-8, ours 7.920999825666661E-8), taken by owner ruling under decision 0083's allowance (decision
-  0197; T-3403). Bit-exact now: A212, A301, A338, gen-m9 4e55500bb8ad3cd8 A111, 58e3253bbd3a7a82 A287,
+  0210; T-3403). Bit-exact now: A212, A301, A338, gen-m9 4e55500bb8ad3cd8 A111, 58e3253bbd3a7a82 A287,
   a7bf0d8d81d33ba6 A216; within 15 digits: A128 and A98 (2 ulp), A169 (4 ulp). Still visibly off: A355
   (`CHISQ.INV(1E-20,10)`, 2.2E-4 off at the root, where the steps are no better than the search).
 
