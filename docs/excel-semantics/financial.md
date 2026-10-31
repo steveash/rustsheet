@@ -160,7 +160,17 @@ Evidence (T-3014):
   CUMIPMT and CUMPRINC still use Kahan's form at every |x| and keep their fitted forms (T-3179).
   Not probed: nper 0 with a non-zero rate, |x| at exactly 1, and rates where `1-Q` leaves the normal range (the
   engine keeps "PMT, IPMT and PPMT are the exact payment"'s forms and errors there).
-Status: VERIFIED (m9-fin-pmt, t3014-pmt-fv-type-alone, PMT.xlsx)
+Tiny rates (T-2748): the same form holds down to a rate of 1E-16, with no switch to the rate-0 branch
+`-(pv+fv)/nper` or to the double `(1+rate)^nper`, except at rates between 2^-53 and 2^-52 (about 1.11E-16 to
+2.22E-16), where Excel's payment is 1 to 3 ulp larger in magnitude than this form's. probes/pmt-tiny-rate (160 cells:
+rates 1E-16 to 1E-12 by type 0 and 1 at (nper, pv, fv) = (346, 96301, 42), (346, 96301, 0), (346, 0, 42), (12, 96301,
+42), (1000, 96301, 42)) is bit-exact but for its 2E-16 row (`PMT(2E-16,346,96301,42,0)` = -278.4479768786224, the form
+-278.44797687862234), and `PMT(1E-15,346,96301,42,1)` = -278.44797687866065 (t2475-stat-subexpressions P!A462) is one of
+the bit-exact cells. probes/pmt-tiny-rate-near-2e-16 (30 cells, rates 1.1E-16 to 4E-16) misses on every row inside
+that band (1.2E-16 to 2.1E-16) and on none outside it. In the band `1+rate` rounds up to 1+2^-52 while `2+rate` rounds
+down to 2. Excel's s = rate/(2+rate) is still the double quotient: taking `2+rate` in the x87 register fixes 23
+cells and breaks 294 (probes, gen-m9 and ironcalc-calc CUMPRINC_CUMIPMT). The band's form is open (T-3489).
+Status: VERIFIED (m9-fin-pmt, t3014-pmt-fv-type-alone, PMT.xlsx); the 2^-53 to 2^-52 band UNVERIFIED (T-3489)
 Implemented in: `discounted_payment` and `compute_payment`
 (crates/rustsheet-engine/src/functions/financial/annuity.rs, T-3014).
 
