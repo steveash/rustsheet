@@ -1256,8 +1256,8 @@ sweep's 1035 COSH cells).
   - expm1 replaced by exp(x) - 1 above any cut from 0.2 to 1: never better than expm1 throughout.
 - At |x| >= 1 the exp forms stay: they match all 20 of the sweep's control points in (1, 1.5), and the expm1 forms 17.
   The switch is bracketed by the sweep's cells, not derived (T-3385): the exp forms already miss
-  `TANH(0.995054655025377)` and `TANH(±0.9950546550253772)`, where the expm1 forms match, and the expm1 forms miss from
-  `SINH(1.0375)` and `TANH(1.0375)`, so Excel's cut lies in 0.99505..1.0375 (`EXPM1_FORM_LIMIT` = 1 is tagged FITTED).
+  `TANH(0.995054655025377)` and `TANH(±0.9950546550253772)`, where the expm1 forms match, and the expm1 forms first miss at
+  `SINH(1.0375)` and `TANH(1.0375)` (and at 1.0625 and `TANH(1.4875)`; they match at 1.0125), so Excel's cut lies in 0.99505..1.0375 (`EXPM1_FORM_LIMIT` = 1 is tagged FITTED).
 Ours: `functions/math_and_trigonometry/hyperbolic.rs` `sinh`, `tanh` (`expm1_pair`, `excel_expm1`).
 Status: VERIFIED (excel-graph); the expm1 kernel is below.
 

@@ -7,7 +7,7 @@
   follows from the math. It does not, because Excel's cells place it. In
   probes-numeric/t2178-hyperbolic-unit-sweep the exp forms miss `TANH(0.995054655025377)` and
   `TANH(±0.9950546550253772)`, where the expm1 forms match. On the 20 control points in (1, 1.5)
-  the expm1 forms miss from `SINH(1.0375)`, where the exp forms match all 40 cells. Excel's switch
+  the expm1 forms first miss at `SINH(1.0375)`, where the exp forms match all 40 cells. Excel's switch
   therefore lies in 0.99505..1.0375 (docs/excel-semantics/numbers.md "SINH and TANH below 1 are
   built from expm1").
 - **Decision:** the constant carries `FITTED(T-2134, 2070 cells, SINH and TANH |x| 1E-10..1.49; cut

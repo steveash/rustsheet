@@ -417,7 +417,7 @@ fn xirr_bracket(values: &[f64], dates: &[f64], guess: f64) -> Option<(f64, f64)>
 /// xirr-early-dates A7 (fit lab `xirr`, `xirr-oos`; T-1525, T-1583, T-3268).
 /// Excel's bisection cap is unprobed: 200 steps is enough on every oracle cell.
 /// Range (T-3385): the 267 are the numeric cells of the fit lab's `xirr` and `xirr-oos` sweeps (308
-/// cells) whose first value is nonzero: 2 to 6 flows over 0.5 to 124 years, |value| 5E-6 to 1.4E+21,
+/// cells, 278 numeric) whose first value is nonzero: 2 to 6 flows over 0.5 to 124 years, |value| 5E-6 to 1.4E+21,
 /// roots -0.93 to 22.05 (184 positive, 83 negative).
 /// FITTED(T-3268, 267 cells, 2..6 flows over 0.5..124 years, |value| 5E-6..1.4E+21, root -0.93..22.05)
 pub(crate) fn compute_xirr(
