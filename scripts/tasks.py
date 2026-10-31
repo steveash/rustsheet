@@ -622,13 +622,19 @@ def new_task(tasks: list[dict[str, object]], fetch: bool = True) -> int:
     if priority not in PRIORITIES or size not in SIZES or size == "L" or tier not in TIERS:
         print(f"priority must be one of {PRIORITIES}; size one of S, M (split L tasks); tier one of {TIERS}")
         return 2
+    # Here, not at the top: id_registry imports merge_lock, which imports tasks. `python -I` (the
+    # merger's filing, decision 0066) leaves this directory off sys.path, so add it.
+    if str(Path(__file__).resolve().parent) not in sys.path:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import id_registry
+
     taken = {str(t["id"]) for t in tasks} | git_task_ids(fetch)
-    tid = next_id(milestone, tasks, taken)
+    tid, reserved = id_registry.allocate(lambda claimed: next_id(milestone, tasks, taken | claimed), fetch)
     path = TASKS / milestone / f"{tid}-{slug(title)}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(TEMPLATE.format(id=tid, title=quote(title), milestone=milestone,
                                     lane=lane, priority=priority, size=size, tier=tier))
-    print(f"wrote {path.relative_to(ROOT)}: fill in the TODO(fill) lines, then commit and push it now to claim {tid}")
+    print(f"wrote {path.relative_to(ROOT)}: {tid} is {id_registry.note(reserved)}; fill in the TODO(fill) lines")
     return 0
 
 
