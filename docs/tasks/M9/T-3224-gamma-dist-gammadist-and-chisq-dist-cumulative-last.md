@@ -17,6 +17,8 @@ cumulative, CHISQ.DIST.RT), all already within 15 significant digits of Excel, m
 records the candidate formulations tried with their bit-exact counts (decision 0056 time box).
 
 ## Context
+Split: T-3234 (deferred M9 fitting) also lists these cumulative cells; this task owns them.
+
 Gap triage 2026-10-28 (`make eval` on 40844417, excel-graph evidence). An ownership check over every failing cell (not
 only the visibly-off ones `make unowned-off` lists) found these cells named by no open task, here or on a pushed
 `agent/*` branch. Neighbouring owners, none of which lists them: T-2695 (the same functions' gen-m9 sweep cells, deferred),
