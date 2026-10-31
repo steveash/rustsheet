@@ -912,8 +912,7 @@ impl Parser {
             if general_count > 1 || !only_literals || is_date || comma > 0 {
                 return ParsePart::Error(ErrorPart::default());
             }
-            // Excel: a `%` beside `General` prints and does not scale (`TEXT(5,"General%")` is
-            // "5%", `TEXT(0.5,"General%")` "0.5%"; probes/text-format-general-company A3, A13).
+            // Excel: `%` beside `General` prints, no scaling (probes/text-format-general-company A3).
             percent = 0;
         }
         if is_date {
