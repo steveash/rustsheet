@@ -104,6 +104,11 @@ fn beta_inv_quantile_rounding_to_one() {
         ("=BETA.INV(1-5E-10,2,0.03)", "#NUM!"), // A200
         ("=BETAINV(1-1E-16,2,0.01)", "#NUM!"),
         ("=BETA.INV(1-1E-8,2,0.01,3,5)", "#NUM!"), // A196
+        // At p of 1/2 or less there is no flip: the largest double below 1 (D198, D199, D202).
+        ("=BETA.INV(0.5,2,1E-3)=1-2^-53", "TRUE"),
+        ("=BETA.INV(0.1,2,1E-3)=1-2^-53", "TRUE"),
+        ("=BETA.INV(0.5,2,1E-4)=1-2^-53", "TRUE"),
+        ("=BETA.INV(0.51,2,1E-3)", "#NUM!"), // D203
         // Away from 1 the quantile is unchanged: 0.99999999 (A57).
         ("=BETA.INV(1-1E-8,0.5,1)=0.99999998", "TRUE"),
     ];

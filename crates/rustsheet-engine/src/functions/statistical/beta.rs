@@ -241,11 +241,16 @@ impl Model {
         // A quantile that underflows to 0 is #NUM! (`BETAINV(0.025,1E-15,2.5)`,
         // `BETAINV(0.05,0.002,1)`; statistics.md "Scalar distributions at extreme arguments
         // (T-2255)", probes/t2475-stat-subexpressions P!A127). One that rounds to 1 is
-        // `upper_quantile_near_one`'s: 1, or #NUM! where Excel's flipped search underflows
-        // (`BETAINV(1-1E-16,2,0.01)`, T-3351).
+        // `upper_quantile_near_one`'s for p above 1/2: 1, or #NUM! where Excel's flipped search
+        // underflows (`BETAINV(1-1E-16,2,0.01)`, T-3351). At p of 1/2 or less AS 109 does not flip
+        // and its search never steps onto 1, so Excel gives the largest double below 1
+        // (`BETA.INV(0.5,2,1E-3)`, `BETA.INV(0.1,2,1E-3)`: probes/t3351-beta-inv-p-near-1
+        // D197-D210).
         let mut t = beta_quantile(alpha, beta_param, p);
         if p > 0.5 && (t >= 1.0 || t.is_nan()) {
             t = upper_quantile_near_one(alpha, beta_param, p).ok_or_else(|| num_error(cell))?;
+        } else if t >= 1.0 {
+            t = 1.0 - f64::EPSILON / 2.0;
         }
         if !(t > 0.0 && t <= 1.0) {
             return Err(num_error(cell));

@@ -1760,7 +1760,7 @@ C	probes/t3304-collation-multi-letter-accents.case.json	1896
 C	probes/t3317-xlookup-scalar-return.case.json	20
 C	probes/t3335-textbefore-overlapping-instances.case.json	78
 C	probes/t3349-t-inv-2t-near-one.case.json	44
-C	probes/t3351-beta-inv-p-near-1.case.json	240
+C	probes/t3351-beta-inv-p-near-1.case.json	254
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
 C	probes/table-edits/plain-range-delete-rows-across-edge.case.json	10
@@ -4354,6 +4354,8 @@ F	probes/t3351-beta-inv-p-near-1.case.json	Calc!B211
 F	probes/t3351-beta-inv-p-near-1.case.json	Calc!B212
 F	probes/t3351-beta-inv-p-near-1.case.json	Calc!B213
 F	probes/t3351-beta-inv-p-near-1.case.json	Calc!C199
+F	probes/t3351-beta-inv-p-near-1.case.json	Calc!D205
+F	probes/t3351-beta-inv-p-near-1.case.json	Calc!D209
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F10
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F2
 F	probes/table-edits/table-convert-names-this-row.case.json	T!A2

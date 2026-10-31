@@ -4638,12 +4638,18 @@ the fresh sweep has Excel at 1 where the true y is far below the subnormals (`BE
 2.52340266710761,0.0133219075721009)`, y about 1E-700; probes-numeric/t3351-beta-inv-sweep A88, A89, A122), while
 `BETA.INV(1-1E-8,2,0.01)` is `#NUM!`. So where Excel's AS 109 Newton search gives up decides between 1 and `#NUM!`
 (T-3430).
+At p of 1/2 or less there is no flip, and a quantile that rounds to 1 is the largest double below 1, 0.9999999999999999,
+never 1 and never `#NUM!`: `BETA.INV(0.5,2,1E-3)`, `BETA.INV(0.1,2,1E-3)`, `BETA.INV(0.5,2,1E-4)` (y about 1E-3011),
+`BETA.INV(0.49,2,1E-3)`. Yet `BETA.INV(0.51,2,1E-3)` is `#NUM!` (flipped, y = 1E-310 subnormal), so the result is not
+monotone across p = 1/2.
 Evidence: probes/t3351-beta-inv-p-near-1 and probes-numeric/t3351-beta-inv-sweep (excel-graph, 2026-10-31). The probe has 240 cells: alpha 0.5, 2 and 10, beta 1E-3 to 1,
-p = 1 - 1E-6 to 1 - 1E-16, the underflow boundary at beta 0.03 (rows 197-214), the lower-tail mirror (column B).
+p = 1 - 1E-6 to 1 - 1E-16, the underflow boundary at beta 0.03 (rows 197-214), the lower-tail mirror (column B), p at or below 1/2 (D197-D210).
 Ours: until T-3351 every quantile that rounded to 1 was `#NUM!` (statrs' search stops near y = 1E-17 whatever the true y,
 and the refinement on the upper tail lands on 1). Since T-3351, when the quantile rounds to 1, the flipped tail is solved
-on Excel's BETA.DIST kernel (`beta.rs` `upper_quantile_near_one`). The answer is 1 - y for a normal y and `#NUM!` for
-a y of 0 or a subnormal one. That is wrong on the 5 probe cells where Excel still answers 1 at a subnormal y (A199,
+on Excel's BETA.DIST kernel (`beta.rs` `upper_quantile_near_one`), and at p of 1/2 or less a quantile that rounds to 1 is
+1 - 2^-53. The answer is 1 - y for a normal y and `#NUM!` for
+a y of 0 or a subnormal one. That cut is a provisional rule at the IEEE normal boundary, not a value chosen by scoring
+candidates against the cells (no fit, decision 0188 R4). That is wrong on the 5 probe cells where Excel still answers 1 at a subnormal y (A199,
 A209-A211, C199) and on the sweep's A88, A89 and A122. T-3430 owns where Excel's search fails.
 Status: VERIFIED (excel-graph)
 Tasks: T-3351, T-3430
