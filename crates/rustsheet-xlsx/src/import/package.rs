@@ -254,14 +254,6 @@ pub(crate) struct Part<'a, R: Read> {
     exceeded: &'a Cell<bool>,
 }
 
-impl<R: Read> Part<'_, R> {
-    /// The size the zip directory declares the part inflates to. It is untrusted, but already
-    /// checked against the bytes the package may still inflate to (`ImportLimits`).
-    pub(crate) fn declared_size(&self) -> u64 {
-        self.file.size()
-    }
-}
-
 impl<R: Read> Read for Part<'_, R> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let remaining = self.remaining.get();

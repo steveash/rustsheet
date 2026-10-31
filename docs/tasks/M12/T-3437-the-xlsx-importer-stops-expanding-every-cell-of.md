@@ -30,38 +30,47 @@ today either.
 ## Acceptance criteria
 - [x] A test imports an xlsx with thousands of whole-sheet array `ref`s and is refused quickly, with bounded memory.
 - [x] Every suite workbook imports as before (`make eval-check`, no regressions).
-- [x] `make check` green; reviewers approve.
+- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 -
 
 ## Outcome
-The importer now bounds `array_cell` instead of restructuring it. `SheetDataReader` gives each sheet a budget of cells
-its array formulas may cover: the part's declared size / 16, plus one whole column (`array_cell_budget`).
-`claim_array_cells` charges each `ref` against it before any entry goes into the map, and refuses two cases:
+The importer now bounds `array_cell` instead of restructuring it. `import/array_refs.rs` keeps one `ArrayClaims` tally
+per load, passed through `load_sheet` and `read_sheet_data` (`SheetPart`). It counts the cells array formula `ref`s
+cover against the bytes of the workbook's sheets read so far, using the XML reader's position. Every `ref` is charged
+before any of its cells goes into the map. Two cases are refused:
+- one `ref` of more than one whole column of cells, which the load check (T-2896) refuses later anyway;
+- `ref`s covering more than one cell per 16 bytes read, plus 4 x 2^20 once per load.
 
-- **One `ref` of more than one whole column of cells.** The load check (T-2896) refuses such a file anyway, so this
-  only refuses earlier.
-- **`ref`s that exhaust the budget.** Memory and time are then proportional to the part.
+So memory and time are proportional to the bytes the file actually holds.
 
-**Why the budget is safe.** A file that stores every cell its arrays cover spends more than 16 bytes per covered cell,
-in its `<c>` and `<row>` elements, so such files fit. The declared size is untrusted, but `ImportLimits` already
-checks it against the package's byte budget (`Part::declared_size`).
+**Why this bound.**
+- **Excel's files fit.** Excel writes `r` on every cell, so each covered cell costs at least 22 bytes
+  (`<c r="A1"><v>1</v></c>`). A writer that leaves `r` out costs at least 14, which fits up to 32 x 2^20 covered
+  cells.
+- **The repository's files fit.** The Excel-fidelity review scanned 2,039 xlsx files: 45,815 array formulas on
+  317 sheets, the densest at 0.45 of the budget.
+- **The slack is per load, not per sheet.** Otherwise about 5,000 tiny sheets would each get a column's worth of map
+  entries (Excel-fidelity review).
+- **It counts bytes read, not the size the zip declares.** A tiny part declaring 256 MiB would otherwise buy about
+  17M map entries (security review).
 
 **Why not stream a structure of open anchors.** The suggested BTreeMap of anchors whose rows are still open would need
 cells in row order. The importer does not enforce that: a row's `r` is free, and so is a cell's.
 
-**Plumbing.** `read_sheet_data` now takes a `SheetPart` (rich errors, date system, part size) to stay within the
-argument limit.
-
 **Records.** The refusal is a DEVIATION, recorded in docs/excel-semantics/xlsx-storage.md. Whether Excel opens such a
 file is part of probe T-3436.
 
-**Tests** (`tests/malformed_import.rs`):
-- a `ref` of two whole columns;
-- a thousand whole-column `ref`s with no cells behind them, refused in milliseconds;
-- an array formula with its cells, which still imports.
+**Tests.**
+- `tests/malformed_import.rs`:
+  - a `ref` of two whole columns;
+  - a thousand whole-column `ref`s in one sheet, refused quickly (no timing assertion);
+  - an array formula with its cells, which still imports.
+- `array_refs.rs` unit tests:
+  - many sheets share one slack;
+  - bytes read pay for more arrays;
+  - one array past a whole column is refused.
 
 **Found while working.** The covered-cell clearing of merged ranges walks every cell of each range. That is T-3442,
 P1.
-

@@ -3,6 +3,7 @@
 use std::error::Error;
 use std::io::{Cursor, Read, Write};
 
+use rustsheet_xlsx::base::expressions::utils::number_to_column;
 use rustsheet_xlsx::base::Model;
 use rustsheet_xlsx::error::{ImportLimit, XlsxError};
 use rustsheet_xlsx::import::{
@@ -682,13 +683,7 @@ fn an_array_formula_ref_past_one_column_is_an_error() -> TestResult {
 fn array_formula_refs_naming_more_cells_than_the_sheet_holds_are_an_error() -> TestResult {
     let mut cells = String::new();
     for column in 1..=1000 {
-        let mut name = String::new();
-        let mut n = column;
-        while n > 0 {
-            let digit = u8::try_from((n - 1) % 26).unwrap_or(0);
-            name.insert(0, char::from(b'A' + digit));
-            n = (n - 1) / 26;
-        }
+        let name = number_to_column(column).ok_or("column")?;
         cells.push_str(&format!(
             r#"<c r="{name}1"><f t="array" ref="{name}1:{name}1048576">1</f><v>1</v></c>"#
         ));

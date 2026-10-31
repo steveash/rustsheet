@@ -28,6 +28,7 @@ use thiserror::Error;
 use crate::error::XlsxError;
 
 use super::{
+    array_refs::ArrayClaims,
     columns::load_columns,
     conditional_formatting::load_conditional_formatting,
     iso_date::iso8601_to_date_system_serial,
@@ -783,6 +784,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     theme: &Theme,
     dxfs: &mut Vec<Dxf>,
     rich_errors: &[Option<&'static str>],
+    array_claims: &mut ArrayClaims,
 ) -> Result<(Worksheet, bool), XlsxError> {
     let sheet_name = &settings.name;
     let sheet_id = settings.id;
@@ -790,7 +792,6 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
 
     let limits = *archive.limits();
     let file = archive.open(path)?;
-    let part_bytes = file.get_ref().declared_size();
     // One parser for the whole sheet: building one clones the defined names
     // and tables, which is far too much to do once per formula cell.
     let mut parser = new_parser_english(worksheets.to_owned(), defined_names, tables.clone());
@@ -812,7 +813,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
         SheetPart {
             rich_errors,
             date_system: settings.date_system,
-            bytes: part_bytes,
+            array_claims,
         },
     )?;
     let ws = &worksheet;
@@ -932,6 +933,8 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
 
     let defined_names = workbook.get_defined_names_with_scope();
     let rich_errors = load_value_metadata_errors(archive)?;
+    // One tally for the whole load: the sheets share its slack (T-3437).
+    let mut array_claims = ArrayClaims::default();
 
     for sheet in &workbook.worksheets {
         let sheet_name = &sheet.name;
@@ -962,6 +965,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
                 theme,
                 dxfs,
                 &rich_errors,
+                &mut array_claims,
             )?;
             if is_selected {
                 selected_sheet = sheet_index;

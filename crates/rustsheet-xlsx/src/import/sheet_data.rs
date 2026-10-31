@@ -19,7 +19,7 @@ use rustsheet_engine::types::{Cell, DataTable, DataTableInput, DateSystem, Row, 
 
 use crate::error::XlsxError;
 
-use super::array_refs::{array_cell_budget, claim_array_cells};
+use super::array_refs::ArrayClaims;
 use super::package::ImportLimits;
 use super::shared_strings::SharedStringTable;
 use super::util::parse_bool_with_default;
@@ -173,8 +173,8 @@ struct SheetDataReader<'a> {
     index_map: HashMap<i32, i32>,
     /// Cells covered by an array formula, with the anchor cell of the formula.
     array_cell: HashMap<(i32, i32), (i32, i32)>,
-    /// How many more cells `array_cell` may take (T-3437, [`array_cell_budget`]).
-    array_budget: u64,
+    /// The cells `array_cell` has taken in this load, against the bytes read (T-3437).
+    array_claims: &'a mut ArrayClaims,
     /// The sheet's what-if data tables; their result cells load as plain values.
     data_tables: Vec<DataTable>,
 
@@ -620,11 +620,8 @@ impl SheetDataReader<'_> {
                             "The first cell of the range of an array formula must be the anchor cell".to_string(),
                         ));
                     }
-                    claim_array_cells(
-                        &mut self.array_budget,
-                        &range,
-                        (row1, column1, row2, column2),
-                    )?;
+                    self.array_claims
+                        .claim(&range, (row1, column1, row2, column2))?;
                     for r in row1..=row2 {
                         for c in column1..=column2 {
                             if r == row1 && c == column1 {
@@ -697,15 +694,14 @@ impl SheetDataReader<'_> {
     }
 }
 
-/// What a worksheet part is read with besides the shared tables: the workbook's rich-value
-/// errors and date system, and the size the part declares.
+/// What a worksheet part is read with besides the parser and the shared tables.
 pub(super) struct SheetPart<'a> {
     /// The rich-value error of each value-metadata entry (`vm` is 1-based into it).
     pub(super) rich_errors: &'a [Option<&'static str>],
     /// The workbook's date system, for `t="d"` cells.
     pub(super) date_system: DateSystem,
-    /// The size the part declares it inflates to, which bounds its array formulas (T-3437).
-    pub(super) bytes: u64,
+    /// The cells the load's array formulas have covered so far (T-3437).
+    pub(super) array_claims: &'a mut ArrayClaims,
 }
 
 /// Reads a worksheet part: its cells into a `SheetData`, and everything else
@@ -721,7 +717,7 @@ pub(super) fn read_sheet_data<R: BufRead>(
     let SheetPart {
         rich_errors,
         date_system,
-        bytes: part_bytes,
+        array_claims,
     } = part;
     let mut reader = quick_xml::Reader::from_reader(reader);
     let mut tree = XmlTreeBuilder::new();
@@ -741,7 +737,7 @@ pub(super) fn read_sheet_data<R: BufRead>(
         formula_lookup: HashMap::new(),
         index_map: HashMap::new(),
         array_cell: HashMap::new(),
-        array_budget: array_cell_budget(part_bytes),
+        array_claims,
         data_tables: Vec::new(),
         stack: Vec::new(),
         row: None,
@@ -761,11 +757,16 @@ pub(super) fn read_sheet_data<R: BufRead>(
                 in_sheet_data = false;
             }
             Event::Empty(element) if !in_sheet_data && is_sheet_data(element) => {}
-            _ if in_sheet_data => state.process(&event)?,
+            _ if in_sheet_data => {
+                state.array_claims.read_up_to(reader.buffer_position());
+                state.process(&event)?;
+            }
             _ => tree.push(&event)?,
         }
         buffer.clear();
     }
+    state.array_claims.read_up_to(reader.buffer_position());
+    state.array_claims.end_sheet();
     Ok(SheetDataXml {
         worksheet: tree.finish()?,
         sheet_data: state.sheet_data,
@@ -866,7 +867,7 @@ mod tests {
             SheetPart {
                 rich_errors: &[],
                 date_system: DateSystem::Excel1900,
-                bytes: xml.len() as u64,
+                array_claims: &mut ArrayClaims::default(),
             },
         )?;
         let mut positions: Vec<(i32, i32)> = read
@@ -893,7 +894,7 @@ mod tests {
             SheetPart {
                 rich_errors: &[],
                 date_system,
-                bytes: xml.len() as u64,
+                array_claims: &mut ArrayClaims::default(),
             },
         )?;
         let cell = read
