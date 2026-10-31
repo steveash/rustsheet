@@ -3410,10 +3410,7 @@ F	probes/t2435-dist-extremes.case.json	S!A15
 F	probes/t2435-dist-extremes.case.json	S!A18
 F	probes/t2435-dist-extremes.case.json	S!A23
 F	probes/t2435-dist-extremes.case.json	S!A24
-F	probes/t2435-dist-extremes.case.json	S!A35
-F	probes/t2435-dist-extremes.case.json	S!A36
 F	probes/t2435-dist-extremes.case.json	S!A37
-F	probes/t2435-dist-extremes.case.json	S!A38
 F	probes/t2435-dist-extremes.case.json	S!A40
 F	probes/t2435-dist-extremes.case.json	S!A41
 F	probes/t2435-dist-extremes.case.json	S!A68
@@ -3763,7 +3760,6 @@ F	probes/t3003-unqualified-structured-d2.case.json	S!J2
 F	probes/t3003-unqualified-structured-d2.case.json	S!J3
 F	probes/t3003-unqualified-structured-d2.case.json	S!J4
 F	probes/t3003-unqualified-structured-d2.case.json	S!K1
-F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A12
 F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A15
 F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A16
 F	probes/t3007-beta-dist-ln-x-overflow.case.json	S!A18
