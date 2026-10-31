@@ -1,3 +1,4 @@
+mod array_refs;
 mod call_cap;
 mod columns;
 mod conditional_formatting;

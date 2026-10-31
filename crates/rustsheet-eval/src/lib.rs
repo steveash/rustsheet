@@ -9,6 +9,7 @@
 //!
 //! See `docs/architecture/eval-harness.md`.
 
+pub mod accuracy;
 pub mod argument_coverage;
 pub mod attribution;
 pub mod baseline;

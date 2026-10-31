@@ -78,7 +78,19 @@ Rule: `Model::from_workbook`, which every load ends in (xlsx import, `Model::fro
 `UserModel::from_bytes`), refuses a workbook whose indices point at nothing the model would later read
 unchecked: a cell, row or column style past `cellXfs` (or no `cellXfs` at all), a style's font, fill or
 border past its list, a negative number format id, a shared-formula index past its list, a spill range
-or anchor off the grid, a row or column record or a merged range off the grid, and cell storage whose
+or anchor off the grid, a spill range of more than 1,048,576 cells (the array limit of arrays.md "Array results above
+1,048,576 cells": a CSE anchor's whole range is filled on evaluation, so a crafted range of the whole sheet would write
+2^34 cells; T-2896; a real file whose cached spill or CSE range is larger is refused too, unprobed), anchors that
+together claim more spill cells than the workbook stores, past one whole array (a few bytes per anchor could otherwise
+claim 2^20 cells each; the engine stores every cell of a spill and resets a blocked spill's range to its anchor, and the
+622 array formulas in the repository's xlsx files store all 3,447 cells they claim, but what range Excel writes for a
+#SPILL! anchor is UNVERIFIED, T-3436; the bound is the cells stored plus 2^20 per load; T-3426), array formula `ref`s that, when each anchor is
+reached, cover more cells than one per 16 bytes of the workbook's sheets read so far plus 4 x 2^20 once per load. The
+xlsx importer checks this itself, before the model exists, because it maps every covered cell to its anchor; worst
+case, a hostile 256 MiB package still makes that map about 21M cells (1 to 1.5 GB), the accepted ceiling. An anchor
+comes before its cells, so more than four whole-column spills anchored ahead of their cells (`=A:A+1` in five
+columns of row 1) are refused even in a file Excel wrote; the 22 bytes a covered cell takes in Excel's files (it
+writes `r` on every cell) and 14 without `r` only matter once the cells are read; T-3437), a row or column record or a merged range off the grid, and cell storage whose
 rows or columns are out of order or off the grid. The error names the sheet and the index
 (`Sheet 'Sheet1': cell R1C2 has style 9999, which does not exist`). Indices the model reads with a
 checked lookup that tolerates a dangling value load as before: a shared-string index (it reads as
@@ -90,9 +102,11 @@ Excel: desktop Excel offers to repair a corrupt file and Excel for the web refus
 does with these particular indices is not probed. Without the check the model panicked later (T-2882:
 style 9999 at the next edit, formula index 77 with no shared formula at the next evaluation).
 Evidence: none for Excel; this is the no-panic rule (CLAUDE.md directive 5), not an Excel observation.
-Status: DEVIATION (decision 0014); what Excel does with these indices is UNVERIFIED (probe pending: an
-xlsx with a dangling `s=` and one with a `fontId` past `<fonts>`, on excel-graph)
+Status: DEVIATION (decision 0014); what Excel does with these indices is UNVERIFIED (probe pending, T-3405: an
+xlsx with a dangling `s=` and one with a `fontId` past `<fonts>`, on excel-graph; a spill or CSE range above 2^20
+cells: T-3436)
 Implemented in: crates/rustsheet-engine/src/workbook_check.rs (`check_indices`),
+crates/rustsheet-xlsx/src/import/array_refs.rs (`ArrayClaims`, the importer's own check),
 crates/rustsheet-engine/src/sheet_data.rs (`SheetData::check_layout`)
 
 ## Phonetic (furigana) runs are not cell text
