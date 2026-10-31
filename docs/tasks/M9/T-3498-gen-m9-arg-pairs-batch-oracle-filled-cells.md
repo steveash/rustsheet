@@ -3,7 +3,7 @@ id: T-3498
 title: "gen-m9 arg-pairs batch: oracle-filled cells for the unseen argument-class pairs of the 26 M9 engineering functions below 0.3 pairwise (base conversions, BIT*, BESSEL*, COMPLEX, IM*, CONVERT, ERF, DELTA, GESTEP)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -35,16 +35,29 @@ gen-m9 gains an oracle-filled batch from `rustsheet-gen --policy arg-pairs` (T-3
 - Tier: opus: gen-m9 engineering draws have a history of many distinct failure rules (IM* inumber reading T-2541/T-2641, base-conversion places, Bessel orders), so owning the failures takes triage judgment beyond a mechanical run.
 
 ## Acceptance criteria
-- [ ] New gen-m9 cases from `--policy arg-pairs --functions OCT2HEX,BIN2OCT,DEC2HEX,DEC2OCT,OCT2BIN,BIN2HEX,HEX2BIN,BITXOR,DEC2BIN,BESSELY,BITAND,COMPLEX,HEX2OCT,BESSELK,BITOR,BITRSHIFT,CONVERT,IMDIV,ERF,IMPOWER,BESSELI,BITLSHIFT,IMSUB,GESTEP,BESSELJ,DELTA` with their excel-graph oracle sidecars
+- [x] New gen-m9 cases from `--policy arg-pairs --functions OCT2HEX,BIN2OCT,DEC2HEX,DEC2OCT,OCT2BIN,BIN2HEX,HEX2BIN,BITXOR,DEC2BIN,BESSELY,BITAND,COMPLEX,HEX2OCT,BESSELK,BITOR,BITRSHIFT,CONVERT,IMDIV,ERF,IMPOWER,BESSELI,BITLSHIFT,IMSUB,GESTEP,BESSELJ,DELTA` with their excel-graph oracle sidecars
       are committed.
-- [ ] After `make eval`, each of the 26 functions above has a `pairwise` share of at least 0.9 in report.json
+- [x] After `make eval`, each of the 26 functions above has a `pairwise` share of at least 0.9 in report.json
       `argument_coverage`, or the PR lists the pairs left unseen and why (a hard domain, a pair Excel refuses to load).
-- [ ] Failing cells are known failures in eval/baseline/gen-m9.txt (`make eval-baseline`, 0 regressions), each
+- [x] Failing cells are known failures in eval/baseline/gen-m9.txt (`make eval-baseline`, 0 regressions), each
       owned by an open task, and `make exit-owners MILESTONE=M9` and `make unowned-off ALL=1` report no new
       unowned cell from the batch.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fixing the engine for the cells this batch finds (the owning tasks), beyond a one-line coercion fix in the
   function's own module that the PR also tests.
 - Single argument-kind probes (the research tasks named above) and other functions or milestones.
+
+## Outcome
+- 32 new gen-m9 cases (5642 cells) from `rustsheet-gen --policy arg-pairs --milestone M9` over the
+  26 functions, filled on excel-graph. After `make eval`, every one of the 26 has `pairwise` 1.0
+  in report.json `argument_coverage` (0 unseen pairs, was 0.16-0.29 and 2821 unseen).
+- 12 cells failed, one rule: DEC2BIN/DEC2HEX/DEC2OCT read empty text as 0 where Excel gives
+  `#VALUE!`. Probed it with and without places (probes/eng-dec2base-empty-text, excel-graph):
+  `#VALUE!` either way, a blank cell is 0. Fixed in the function's own module (DEC2* no longer
+  share BIN2*'s empty-text-as-0 reader); recorded in engineering.md "DEC2BIN, DEC2HEX and DEC2OCT
+  reject empty text".
+- Eval delta: gen-m9 +5642 cells checked, all passing (99226 -> 99238 passed before/after the fix
+  on the batch; 0 new known failures); probes +18 cells passing. 0 regressions. No unowned cell
+  left from the batch.

@@ -1,0 +1,2 @@
+# Fixture exemptions: COUNT needs no table; ABS is the missing table.
+COUNT	exact	counts cells, no floating-point kernel
