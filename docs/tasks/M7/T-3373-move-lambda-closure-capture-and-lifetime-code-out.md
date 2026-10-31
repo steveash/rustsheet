@@ -3,7 +3,7 @@ id: T-3373
 title: "Move LAMBDA closure capture and lifetime code out of logical/lambda.rs (947 of its 1,000 lines)"
 milestone: M7
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
