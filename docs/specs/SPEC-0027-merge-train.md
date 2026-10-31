@@ -312,7 +312,9 @@ option records `prev:` and checks mechanically that the PR's own diff did not ch
   which means a clean merge with no edits. *As built (decision 0205):* exactly, except in
   the content of the eval-gated, non-fetched suites' baseline lists, where a conflict may be
   resolved and the lists re-recorded (`make catch-up`), because the eval gate, which marking
-  requires green, checks exactly those lists against the engine.
+  requires green, checks exactly those lists against the engine. A re-recorded list may not
+  add a failure line that neither parent's list has: the gate cannot tell that regression from
+  a correct list (decision 0205).
 
 Any other push needs the reviewers that the change concerns to run again, as today.
 
