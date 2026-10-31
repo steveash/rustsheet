@@ -24,8 +24,8 @@ const BETA_QUANTILE_STATRS_SHAPE_MAX: f64 = 1e5;
 const BETA_QUANTILE_STATRS_P_MIN: f64 = 1e-15;
 
 /// The quantile of `p` in (0, 1): the crossing of BETA.DIST's own cdf (`special::refine_increasing`
-/// on `bratio::beta_search_tails`, the kernel BETA.DIST returns where it is ported), from statrs' search as a start
-/// where it is reliable. Excel's BETA.INV solves its own cdf to the crossing
+/// on `bratio::beta_search_tails`, the kernel BETA.DIST returns where it is ported), from statrs'
+/// search as a start where it is reliable. Excel's BETA.INV solves its own cdf to the crossing
 /// (docs/excel-semantics/statistics.md "BETA.INV solves Excel's own CDF to the crossing
 /// (T-1745)"); until T-3398 the search crossed the older Cephes-based tails, which BETA.DIST no
 /// longer returns. Of the final bracket the even-significand end fits Excel better than the end
