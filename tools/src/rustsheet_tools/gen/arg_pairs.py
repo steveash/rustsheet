@@ -90,20 +90,13 @@ def load_unseen_pairs(report: Path) -> dict[str, list[Pair]]:
     return out
 
 
-def plain_value(p: dict[str, Any], rng: random.Random) -> str:
-    """An unforced `value` argument: in its domain when it has one, else a plain literal of its type."""
-    dom = p.get("domain") or {}
-    if dom.get("int"):
-        return str(rng.randint(dom.get("min", 0), dom.get("max", 10)))
-    if dom.get("enum"):
-        v = rng.choice(dom["enum"])
-        return str(v) if isinstance(v, int | float) and not isinstance(v, bool) else '"' + str(v) + '"'
-    typ = p.get("type", "any")
-    if typ == "text":
-        return rng.choice(['"abc"', '"Hello"'])
-    if typ == "bool":
-        return rng.choice(["TRUE", "FALSE"])
-    return rng.choice(["1", "2", "3"])
+# Unforced arguments without a domain: plain values of their type, not the edge pools (`Gen.literal`'s NUMBER_POOL
+# holds 0, negatives, fractions and 1e15), so the forced pair, not an edge in another argument, decides the result.
+PLAIN_LITERALS: dict[str, list[str]] = {
+    "text": ['"abc"', '"Hello"'],
+    "bool": ["TRUE", "FALSE"],
+    "number": ["1", "2", "3"],
+}
 
 
 def skip_reason(fn: dict[str, Any], pair: Pair) -> str | None:
@@ -143,7 +136,10 @@ class ArgPairs:
 
     def unforced(self, p: dict[str, Any]) -> str:
         if p.get("mode", "value") in ("value", "criteria"):
-            return plain_value(p, self.gen.rng)
+            in_domain = self.gen.in_domain_literal(p.get("domain") or {})
+            return in_domain or self.gen.rng.choice(
+                PLAIN_LITERALS.get(p.get("type", "any"), PLAIN_LITERALS["number"])
+            )
         # Ranges, arrays, aggregates, names and lambdas keep the generator's own draw (shapes, scope).
         return self.gen.argument(p, 0)
 
@@ -158,35 +154,25 @@ class ArgPairs:
             + [i for i, p in enumerate(params) if not p.get("optional") or p.get("always")]
         )
         gen = self.gen
-        outer_scope, outer_pending = len(gen.scope), gen.pending
-        gen.pending, gen.call_shape = [], None
         args = []
-        for p in params[: last + 1]:
-            if p.get("body"):
-                gen.scope += gen.pending
-                gen.pending = []
-            if p["name"] in force:
-                args.append(self.forced(p, force[p["name"]], variant))
-                gen.scope += gen.pending
-                gen.pending = []
-            else:
-                args.append(self.unforced(p))
-        del gen.scope[outer_scope:]
-        gen.pending = outer_pending
+        with gen.call_frame():
+            for p in params[: last + 1]:
+                if p.get("body"):
+                    gen.scope += gen.pending
+                    gen.pending = []
+                if p["name"] in force:
+                    args.append(self.forced(p, force[p["name"]], variant))
+                    gen.scope += gen.pending
+                    gen.pending = []
+                else:
+                    args.append(self.unforced(p))
         return f"{fn.get('spelled', fn['name'])}({','.join(args)})"
 
 
 def data_sheet(gen: Gen) -> dict[str, Any]:
-    """The Data sheet: a DATA_ROWS x DATA_COLS block of generator values (the ranges' contents), one cell per
-    class in CLASS_COLUMN and an empty BLANK_COLUMN."""
-    cells: dict[str, Any] = {}
-    for r in range(1, DATA_ROWS + 1):
-        for c in range(DATA_COLS):
-            v = gen.data_value()
-            if v is not None:
-                cells[f"{chr(ord('A') + c)}{r}"] = (
-                    {"t": "s", "v": v} if isinstance(v, str) and v.startswith("=") else v
-                )
+    """The Data sheet: the generator's DATA_ROWS x DATA_COLS block (the ranges' contents), one cell per class in
+    CLASS_COLUMN and an empty BLANK_COLUMN."""
+    cells = gen.data_cells()
     for cls, (_, value) in CLASS_FORMS.items():
         if value is not None:
             cells[class_cell(cls)] = value
@@ -225,15 +211,15 @@ def generate_arg_pairs(
         gen = Gen(random.Random(f"arg-pairs-{seed}-{name}"), scoped, DATA_ROWS, DATA_COLS, 1)
         data = data_sheet(gen)
         maker = ArgPairs(gen)
-        skipped = [f"{pair.label()} ({why})" for pair in pairs if (why := skip_reason(fn, pair)) is not None]
+        skipped: list[str] = []
+        texts: list[str] = []
+        for pair in pairs:
+            if (why := skip_reason(fn, pair)) is not None:
+                skipped.append(f"{pair.label()} ({why})")
+                continue
+            texts += ["=" + maker.call(fn, pair, variant) for variant in range(calls_per_pair)]
         if skipped:
             skipped_by_fn[name] = skipped
-        texts = [
-            "=" + maker.call(fn, pair, variant)
-            for pair in pairs
-            if skip_reason(fn, pair) is None
-            for variant in range(calls_per_pair)
-        ]
         chunks = [texts[i : i + MAX_FORMULAS] for i in range(0, len(texts), MAX_FORMULAS)]
         for part, chunk in enumerate(chunks, 1):
             note = f"; skipped: {', '.join(skipped)}" if skipped else "; skipped: none"
