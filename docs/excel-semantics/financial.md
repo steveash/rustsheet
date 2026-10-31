@@ -1760,7 +1760,7 @@ T-3067 notes (float64 fit, 2026-10-28; nothing changed in the kernel):
   period 2, with no per-period interest form left (type 0's balance form and payments less principal, type 1's IPMT
   sum and tiny-rate form are gone; where PMT is `#NUM!`, a rate lost in `1 + rate`, type 0 keeps the payments less
   the remaining-balance principal, fin-cumipmt-period-bound A24). On probes, gen-m9 and ironcalc-calc it fixes 53
-  CUMIPMT cells (gate-edges A5, A8, E1, E2, H2, H4; 33 of tiny-rate-structure; `CUMPRINC_CUMIPMT.xlsx` G6, G7, G12,
+  CUMIPMT cells (gate-edges A5, A8, E1, E2, H2, H4; 31 of tiny-rate-structure; period-bound A3, A5; `CUMPRINC_CUMIPMT.xlsx` G6, G7, G12,
   G16, G17, G22, G25; gen-m9 e168be7f6d3f84c2 A379 and 6 more) and CUMIPMT's visibly-off cells go from 102 to 67.
   Every CUMIPMT cell still off, and the 7 it moves off the bit (decision 0190: gen-m9 6e18550e9fc9c1b9 A329,
   `CUMPRINC_CUMIPMT.xlsx` G3, overflow-and-forms A8, A12, A14, gate-edges A1, tiny-rate-structure F2), is our
