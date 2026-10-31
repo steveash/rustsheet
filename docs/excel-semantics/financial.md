@@ -1785,12 +1785,18 @@ T-3067 notes (float64 fit, 2026-10-28; nothing changed in the kernel):
   forms were exact on those 7 by fit. No structural gate keeps all 7 (keeping the balance form in its growth band,
   or type 1's IPMT sum at ordinary rates, gives up 7 to 25 fixes and still regresses 2 to 5), and CUMPRINC derived
   from the old interest forms regresses 10 to 42 CUMPRINC cells. Follow-up: T-3413.
+- One period of CUMPRINC is not PPMT at a tiny rate either (gap triage 2026-10-31k, probes/fin-cumipmt-tiny-rate-structure,
+  excel-graph): over a single period the probe's own pairs are 1 to 3 ulps apart, B1 `CUMPRINC(2E-5,100,100000,3,3,1)`
+  -999.0303135033106 against C1 `PPMT(2E-5,3,100,100000,0,1)` -999.0303135033108, B4 -999.0902565209652 against C4
+  ...9655, I1 `CUMPRINC(1E-4,60,100000,3,3,0)` -1662.087365975419 against J1 -1662.0873659754193 (I2 and J2 agree).
+  Our PPMT has Excel's bits on every C and J cell. Our CUMPRINC is 1 to 3 ulps off on 59 of the case's 104 principals,
+  so 38 of its CUMIPMT cells are visibly off (F2 is T-3413's; the other 37 and their principals are T-3534's).
 Status: PARTLY VERIFIED (excel-graph; visibly right but for A7 (= G2) and A10 near period 1E15, fin-cumipmt-period-bound
 A18, fin-cumprinc-near-1e15 E7, and the CUMIPMT cells that amplify our CUMPRINC's last bits (gate-edges A1-A4, A6, A7,
-E3-E10, H3, gen-m9 A352: T-3413; T-3118 moved 7 off the bit, decision 0197: gen-m9 A329,
+E3-E10, H3, gen-m9 A352: T-3413; tiny-rate-structure's other 37: T-3534; T-3118 moved 7 off the bit, decision 0197: gen-m9 A329,
 `CUMPRINC_CUMIPMT.xlsx` G3, overflow-and-forms A8, A12, A14, gate-edges A1, tiny-rate-structure F2) and T-3141 (the
 underflowed principal's bits); the short sums' last digits in T-1374)
-Tasks: T-1845, T-1890, T-2192, T-2363, T-2514, T-2521, T-3067, T-3118, T-3141, T-3413, T-1374
+Tasks: T-1845, T-1890, T-2192, T-2363, T-2514, T-2521, T-3067, T-3118, T-3141, T-3413, T-3534, T-1374
 
 ## CUMIPMT and CUMPRINC work cap
 Rule: RustSheet charges each lifted CUMIPMT or CUMPRINC element for its kernel's bound, 2^8 units against SPEC-0011's
