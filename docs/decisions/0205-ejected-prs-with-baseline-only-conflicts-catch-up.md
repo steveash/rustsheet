@@ -13,14 +13,20 @@
 - **Decision:**
   - **Carry rule.** The carry check (`merge_ready.Repo.carry_problem`, SPEC-0027 "Carry-over")
     accepts a merge of `main` into the marked head whose tree is the plain merge of its parents
-    except in `eval/baseline/`. A conflict or an edit anywhere else still breaks the carry. The
-    eval gate, which marking requires green on the head, checks the lists against the engine
-    exactly, so a wrong list cannot be marked.
+    except for the *content* of the lists CI's eval gate checks: `eval/baseline/<suite>.txt`
+    for each suite on `main` with `gate = true` and no `fetch` (`Repo.checked_baselines`). Only
+    those lists may conflict, and only their content may differ (no added, removed or
+    mode-changed file). Fetched suites (poi, corpus-bench), ungated suites and
+    `visible-parity.json` are excluded because CI does not check them against the engine. A
+    conflict or edit anywhere else still breaks the carry. The eval gate, which marking requires
+    green on the head, checks the accepted lists exactly, so a wrong list cannot be marked.
   - **`make catch-up PR=<n>`** (scripts/merge_catchup.py), in the caller's checkout:
     - merges `origin/main` into the PR branch;
-    - refuses any conflict outside `eval/baseline/`;
+    - refuses any conflict outside those checked lists;
     - takes `main`'s side of the lists and runs `make eval-baseline`, which refuses regressions;
-    - commits and pushes (never forced), then restores the checkout.
+    - refuses if the re-record changed any file other than those lists;
+    - commits everything as one merge commit and pushes (never forced), then restores the
+      checkout's branch or commit.
     Once CI is green, `make mark-ready PR=<n> CARRY=1` re-marks with the old verdicts. Any session
     may do this (steward skill, "Ejections").
 - **Consequences:**

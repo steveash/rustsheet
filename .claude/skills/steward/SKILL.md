@@ -78,10 +78,11 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
     work-loop step 6.3; an idle ejected branch is resumed like any idle agent branch. `make
     mark-ready` removes `merge-train-ejected` when it marks the PR again (decision 0177). A PR
     that conflicts only with another PR of its batch is deferred, not ejected: it stays ready.
-    Any session may clear a `conflict with main` ejection whose conflicts are all in
-    `eval/baseline/`: run `make catch-up PR=<n>`, which merges `main` in, re-records the lists
-    and pushes, then `make mark-ready PR=<n> CARRY=1` once CI is green (decision 0205). Any other
-    conflict stays with the PR's worker.
+    Any session may clear a `conflict with main` ejection whose conflicts are all in the
+    eval-gated, non-fetched suites' `eval/baseline/<suite>.txt` lists: run `make catch-up
+    PR=<n>`, which merges `main` in, re-records the lists and pushes, then `make mark-ready
+    PR=<n> CARRY=1` once CI is green (decision 0205). Any other conflict stays with the PR's
+    worker.
   - **Stall fallback** (`train` mode only): any session may run one `make merge-train TRAIN=1`
     pass when a PR has been ready for more than 45 min (by its marker's `updated_at`), the last
     CI run on `merge-train/current` was created more than 45 min ago (workflow-runs

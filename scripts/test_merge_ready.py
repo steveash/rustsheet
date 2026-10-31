@@ -6,6 +6,7 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import os
 import re
 import subprocess
 import sys
@@ -647,8 +648,16 @@ class Mark(PrFixture):
 
     def baseline_conflict(self, pr_side: str, main_side: str, path: str = "eval/baseline/probes.txt") -> str:
         """Marks a PR head that edits `path`, then moves `main` with a conflicting edit to it and
-        starts merging `main` into the PR (left conflicted). Returns the marked head."""
+        starts merging `main` into the PR (left conflicted). `main` holds a gated suite `probes`
+        and a fetched one `poi`. Returns the marked head."""
+        self.git("checkout", "-q", "main")
+        self.write("eval/suites/probes/suite.toml", 'name = "probes"\ngate = true\n')
+        self.write("eval/suites/poi/suite.toml", 'name = "poi"\ngate = true\n[fetch]\nurl = "x"\n')
+        if self.git("status", "--porcelain"):  # once per test
+            self.commit("suites")
+            self.git("push", "-q", "origin", "main")
         self.git("checkout", "-q", "pr")
+        self.git("merge", "-q", "--no-edit", "main")
         self.write(path, pr_side)
         old = self.commit("pr edits a baseline")
         self.git("push", "-q", "-f", "origin", "HEAD:refs/pull/7/head")
@@ -678,18 +687,31 @@ class Mark(PrFixture):
         plan = self.plan(review=None, carry=True)
         self.assertEqual((plan.marker.prev, plan.marker.head), (old, self.head))
 
-    def test_carry_refuses_a_conflict_or_edit_outside_the_baselines(self) -> None:
+    def test_carry_refuses_a_conflict_outside_the_checked_lists(self) -> None:
         self.baseline_conflict("pr side\n", "main side\n", path="scripts/x.py")
         self.write("scripts/x.py", "resolved\n")
         self.finish_merge()
-        self.refused("conflicts outside eval/baseline/", review=None, carry=True)
-
-    def test_carry_refuses_a_baseline_merge_that_also_edits_code(self) -> None:
-        self.baseline_conflict("F\tprobes/a\tA1\n", "F\tprobes/b\tB1\n")
-        self.write("eval/baseline/probes.txt", "F\tprobes/c\tC1\n")
-        self.write("scripts/x.py", "slipped into the merge\n")
+        self.refused("conflicts outside the eval-gated baseline lists", review=None, carry=True)
+        # A fetched suite's list is not checked by CI's eval gate, so it is not carried either.
+        self.baseline_conflict("F\tpoi/a\tA1\n", "F\tpoi/b\tB1\n", path="eval/baseline/poi.txt")
+        self.write("eval/baseline/poi.txt", "F\tpoi/c\tC1\n")
         self.finish_merge()
-        self.refused("outside eval/baseline/", review=None, carry=True)
+        self.refused("conflicts outside the eval-gated baseline lists", review=None, carry=True)
+
+    def test_carry_refuses_any_other_change_in_a_baseline_merge(self) -> None:
+        cases = {
+            "code": lambda: self.write("scripts/x.py", "slipped into the merge\n"),
+            "a new list": lambda: self.write("eval/baseline/extra.txt", "F\tx\tA1\n"),
+            "a fetched list": lambda: self.write("eval/baseline/poi.txt", "F\tpoi/x\tA1\n"),
+            "a mode change": lambda: os.chmod(self.clone / "eval/baseline/probes.txt", 0o755),
+        }
+        for name, edit in cases.items():
+            with self.subTest(name):
+                self.baseline_conflict(f"F\tprobes/{name}-pr\tA1\n", f"F\tprobes/{name}-main\tB1\n")
+                self.write("eval/baseline/probes.txt", f"F\tprobes/{name}\tC1\n")
+                edit()
+                self.finish_merge()
+                self.refused("only the content of an eval-gated baseline list may", review=None, carry=True)
 
     def test_carry_refuses_an_edited_merge_or_another_commit(self) -> None:
         self.merge_main()
