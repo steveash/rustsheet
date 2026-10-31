@@ -9,6 +9,7 @@
 
 use crate::expressions::lexer::STRING_LITERAL_TOO_LONG_MESSAGE;
 use crate::expressions::parser::{value_operands, ExpectedTokens, Node, Parser, Run};
+use crate::expressions::token::{self, TokenType};
 
 /// Deepest formula tree the parser builds; deeper formulas are a parse error
 /// ([`TOO_DEEP_MESSAGE`]), which keeps untrusted formulas from overflowing
@@ -27,9 +28,29 @@ pub const MAX_FORMULA_DEPTH: usize = 256;
 /// ([`Parser::parse_parenthesis_run`]), so this bound is Excel's, not the stack's.
 pub const MAX_PARENTHESES: usize = 256;
 
+/// Most unary signs (`-`, `+`) a formula may hold open at once, a minus written directly before a
+/// number literal not counted: Excel loads 1,024 minus signs before `1`, 1,023 plus signs before
+/// `"a"` and 1,023 alternating `-+` signs before `C1`, and refuses one more of each, stored and
+/// typed (probes/t3172-minus-*, -plus-*, -alt-*; T-3172). Signs in several runs on one path
+/// (`=-(-(...))`) count together (unprobed). A sign adds no level of [`MAX_FORMULA_DEPTH`]: the
+/// evaluator walks a run in a loop (`Model::apply_unary_chain`), so this bound is Excel's; it
+/// also keeps the walks that recurse per sign (printing, analysis, dropping) on the stack.
+pub const MAX_SIGNS: usize = 1023;
+
 /// Levels an operand adds over its subexpressions, at most: a call wrapped in
 /// `@` or `#` on import (`_xlfn.SINGLE`), or `LAMBDA(...)(...)`.
 pub(super) const PRIMARY_DEPTH: usize = 2;
+
+/// [`Parser::parse_primary`]'s bound on its own recursion counts half levels, so that an operand
+/// can cost one and a half: the most half levels open at once.
+pub(super) const MAX_NESTING: usize = 2 * MAX_FORMULA_DEPTH;
+
+/// Half levels of nesting an operand reserves before descending: [`PRIMARY_DEPTH`].
+pub(super) const OPERAND_NESTING: usize = 2 * PRIMARY_DEPTH;
+
+/// Half levels of nesting the first operand of a group's content reserves, unless it is a group
+/// itself (T-3197).
+const GROUP_HEAD_NESTING: usize = 3;
 
 /// Message of the parse error for a formula deeper than [`MAX_FORMULA_DEPTH`].
 pub const TOO_DEEP_MESSAGE: &str = "Formula is nested too deeply";
@@ -48,10 +69,13 @@ pub const TOO_MANY_OPERATORS_MESSAGE: &str = "Formula has too many operators";
 
 /// Most function calls one formula may nest, the outermost included: Excel takes 65 and refuses
 /// 66, stored (createSession 501) and typed (Graph PATCH 400), for built-in functions, LET and a
-/// called LAMBDA alike; parentheses and operators add no level (docs/excel-semantics/syntax.md
-/// "Formula nesting depth cap", probes/t3097-nesting-*, T-3097). Unlike
+/// called LAMBDA alike, and for `SINGLE(` and `ANCHORARRAY(` spelled as calls (as a file stores
+/// `@` and `#`); parentheses and operators, the `@` and `#` operators included, add no level
+/// (docs/excel-semantics/syntax.md "Formula nesting depth cap", probes/t3097-nesting-*,
+/// probes/t3143-*, T-3097, T-3143). Unlike
 /// [`MAX_FORMULA_DEPTH`] this is not a parse error: the API refuses a typed formula past it
-/// ([`Parser::typed_refusal`]) and the xlsx importer refuses the workbook.
+/// ([`Parser::typed_refusal`]) and the xlsx importer refuses the workbook, for a cell formula or a
+/// defined-name body.
 pub const MAX_NESTED_CALLS: usize = 65;
 
 /// Why a formula nesting more than [`MAX_NESTED_CALLS`] calls is refused.
@@ -134,34 +158,82 @@ impl Parser {
 
     /// The run and the signs before an operand of [`Parser::parse_power`]. A pending operand has
     /// none of its own (what follows it is read after it, [`Parser::parse_parenthesis_run`]).
-    pub(super) fn parse_prefix(&mut self) -> (Run, Vec<(bool, Run)>) {
+    /// Also returns how many of the signs count toward [`MAX_SIGNS`] ([`Parser::parse_signs`]).
+    pub(super) fn parse_prefix(&mut self) -> (Run, Vec<(bool, Run)>, usize) {
         if self.pending_operand.is_some() {
-            return (Run::default(), Vec::new());
+            return (Run::default(), Vec::new(), 0);
         }
-        (self.run_ahead(), self.parse_signs())
+        let before = self.run_ahead();
+        let (signs, counted) = self.parse_signs();
+        (before, signs, counted)
+    }
+
+    /// The unary signs before an operand, in written order: whether each is a minus, and the
+    /// run after it. Every sign is kept in its written order (`--x` coerces `x` to a number,
+    /// `+-5` prints back as written), but a plus written directly before a number literal folds
+    /// into it: `=+5` is `=5`, `=-+5` is `=-5`, `=+ 5` stays (syntax.md, T-2723). The run before a
+    /// folded plus stays where it was: `=  +5` prints `=  5` (T-2776). Also returns how many of
+    /// them count toward [`MAX_SIGNS`]: all but a minus written directly before a number literal.
+    #[inline(never)]
+    pub(super) fn parse_signs(&mut self) -> (Vec<(bool, Run)>, usize) {
+        let mut signs = Vec::new();
+        let mut counted = 0;
+        while let TokenType::Addition(op) = self.lexer.peek() {
+            let is_minus = *op == token::OpSum::Minus;
+            self.lexer.advance_token();
+            let before_number = !self.lexer.whitespace_follows()
+                && matches!(self.lexer.peek(), TokenType::Number(_));
+            if !before_number {
+                counted += 1;
+            }
+            if is_minus || !before_number {
+                signs.push((is_minus, self.run_ahead()));
+            }
+        }
+        (signs, counted)
     }
 
     /// Parses an operand. Its subexpressions (parenthesised, function
     /// arguments, array items, LAMBDA bodies) recurse into `parse_expr`, so
     /// this is where the parser's recursion is bounded: every open operand
     /// reserves its share of [`MAX_FORMULA_DEPTH`] before descending.
+    ///
+    /// The first operand of a group's content reserves one and a half levels of nesting, not
+    /// [`PRIMARY_DEPTH`], unless it is a group itself, and there a plain function call adds one
+    /// level to the tree: so a level of `(ABS(` costs three and a half on the way down and three
+    /// on the way up, not four, and Excel's 65 nested calls each wrapped in parentheses
+    /// (probes/t3097-nesting-paren-abs-65) fit, with 72 levels the most (T-3197). Groups directly
+    /// inside groups (`( (`; an unbroken run is one operand, [`Parser::parse_parenthesis_run`])
+    /// still cost two levels each. The at-limit tests measure the stack this takes.
     pub(super) fn parse_primary(&mut self) -> Node {
+        let group_head = std::mem::take(&mut self.group_head);
         if let Some((node, depth)) = self.pending_operand.take() {
             self.depth = depth;
             return node;
         }
-        if self.nesting + PRIMARY_DEPTH > MAX_FORMULA_DEPTH {
+        let cost = if group_head && *self.lexer.peek() != TokenType::LeftParenthesis {
+            GROUP_HEAD_NESTING
+        } else {
+            OPERAND_NESTING
+        };
+        if self.nesting + cost > MAX_NESTING {
             return self.too_deep();
         }
         let outer_depth = std::mem::replace(&mut self.inner_depth, 0);
-        self.nesting += PRIMARY_DEPTH;
+        self.nesting += cost;
         let node = self.parse_operand();
-        self.nesting -= PRIMARY_DEPTH;
+        self.nesting -= cost;
         let inner_depth = std::mem::replace(&mut self.inner_depth, outer_depth);
         if let Node::ParseErrorKind { .. } = node {
             return node;
         }
-        self.depth = inner_depth + PRIMARY_DEPTH;
+        // A call is one node over its arguments; anything else may be two (see PRIMARY_DEPTH).
+        let levels = if cost == GROUP_HEAD_NESTING && matches!(node, Node::FunctionKind { .. }) {
+            1
+        } else {
+            PRIMARY_DEPTH
+        };
+        self.depth = inner_depth + levels;
         if self.depth > MAX_FORMULA_DEPTH {
             return self.too_deep();
         }

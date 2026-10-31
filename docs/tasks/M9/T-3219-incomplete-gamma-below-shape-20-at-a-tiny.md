@@ -29,12 +29,12 @@ for the exponent; for shape 50 at y / a below 1/100 (t2753 A46-A48), a third bra
 be needed first (`excel-probe` skill). Decision 0056: this is attempt 2 of the small-shape fit; record each candidate.
 
 Cells (from T-2638; run `make eval-show CASE=...` for the values):
-- gen-m9/05d44f6dd6cfc567 Calc!A178, 3a25a03eb94fcfbd A158 `CHIDIST(100,4)`, bbdfc06cae0e0d71 A125 `CHIDIST(100,5)`,
-  f34f66fb7f81e673 A3 `CHIDIST(Data!A2,8)`, 4bad303d32cc3f46 A293 and 984cba67bbe6972b A49 `CHISQ.DIST(1E-10,8,...)`,
-  984cba67bbe6972b A42 `CHISQ.DIST(37.5,6,FALSE)`, A140, A217, 68d8ffb69ff739d8 A341, a54c738c697617c3 A212,
-  a7bf0d8d81d33ba6 A152, and 0a614cfe974b59c3 A178 (`CHISQ.DIST(AGGREGATE(...),...)`, 3 ulp off before T-2638 and
+- gen-m9/05d44f6dd6cfc567 Calc!A178, gen-m9/3a25a03eb94fcfbd A158 `CHIDIST(100,4)`, gen-m9/bbdfc06cae0e0d71 A125 `CHIDIST(100,5)`,
+  gen-m9/f34f66fb7f81e673 A3 `CHIDIST(Data!A2,8)`, gen-m9/4bad303d32cc3f46 A293 and gen-m9/984cba67bbe6972b A49 `CHISQ.DIST(1E-10,8,...)`,
+  gen-m9/984cba67bbe6972b A42 `CHISQ.DIST(37.5,6,FALSE)`, A140, A217, gen-m9/68d8ffb69ff739d8 A341, gen-m9/a54c738c697617c3 A212,
+  gen-m9/a7bf0d8d81d33ba6 A152, and gen-m9/0a614cfe974b59c3 A178 (`CHISQ.DIST(AGGREGATE(...),...)`, 3 ulp off before T-2638 and
   4 after).
-- CHIINV: gen-m9/285d87cea1aaa73c A261 and 4ab2ba98d26c8a5e A85 `CHIINV(0.975,5)`; 73f053591a54bc43 A108 (MOD of
+- CHIINV: gen-m9/285d87cea1aaa73c A261 and gen-m9/4ab2ba98d26c8a5e A85 `CHIINV(0.975,5)`; gen-m9/73f053591a54bc43 A108 (MOD of
   `CHISQ.INV.RT(0.975,5)`).
 - Type mismatches T-2638 owned by the decision-0159 rule (other causes may own them; check first):
   gen-m9/2801c1c11c21e134 A241, 40425341c5034eed A265, 4e55500bb8ad3cd8 A341, 7bd219ec0c0c5e22 A239,
@@ -42,6 +42,7 @@ Cells (from T-2638; run `make eval-show CASE=...` for the values):
 - ironcalc-calc STATISTICAL/BETA_GAMMA.xlsx BETA_DIST!L3, CHISQ.xlsx Sheet1!G3 and G4, GAMMA.xlsx
   'GAMMA.DIST GAMMA.INV'!E16.
 - probes-numeric/m9-gamma-dist-a9 Calc!A1, A2, A11, A21, A22; t1049-chisqdist Calc!A16, A46, A48;
+- Since T-3147: probes-numeric/m9-gamma-dist-a9 Calc!A30 `GAMMA.DIST(27000000,9,1000000,FALSE)` (lost bit-exact, now 1 ulp: same y as A10, so the gap is in the final division) and t1049-chisqdist A48 (moved 8 to 10 ulp; Excel is 8 ulp below the true value there);
   t3148-gamma-quantile-flat-band Calc!A240.
 - probes/t2753-gamma-density-ratio-sweep S!A20, A46, A47, A48, B20, B21, B46, B47, B48.
 Also visibly off and T-2638's before: probes-numeric m9-legacy-chidist A71, A72 `CHIDIST(1000,30)` (shape 15).

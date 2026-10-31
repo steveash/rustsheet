@@ -9,6 +9,7 @@ size: M
 tier: opus
 depends_on: []
 campaign: visible
+defer: phase-1b
 ---
 
 ## Goal
@@ -16,6 +17,10 @@ campaign: visible
 3,417 probes-numeric cells listed below, with no new visibly-off cell.
 
 ## Context
+- Decision 0188 R5 (owner's 2026-10-31 rulings): parked as Phase 1b. Every cell this task owns is a BETA.DIST or
+  F.DIST density cell or a dense probes-numeric sweep cell, within Gate A's envelope (most agree with Excel to 12 or
+  more digits, and Excel and the engine are both close to the math), so R1(c) counts it as Phase 1b evidence. A
+  point that Gate A's tables show outside the envelope gets its own task without the key.
 - Gap triage 2026-10-30c (`make eval` on main 40ca52179, excel-graph; `python3 scripts/exit_owners.py --all-off`,
   also run against the task files of every unmerged branch). These cells were visibly off before T-2507's Loader port
   and still are. T-2507 (done) owned them; T-3220 owns only the 661 cells the port newly moved off

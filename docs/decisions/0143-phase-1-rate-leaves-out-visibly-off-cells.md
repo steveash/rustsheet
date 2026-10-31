@@ -1,6 +1,7 @@
 # 0143 — Phase 1 rate leaves out visibly-off cells owned only by open M14 tasks
 
 - **Status:** accepted (2026-10-28, T-0085).
+  Extended by decision 0188 R7 (2026-10-31) to the milestone probe rows.
 - **Amends:**
   - decision 0134 item 1: a cell no longer needs its own decision and line in
     `eval/milestones/phase1-exceptions.tsv` to leave the Phase 1 rate when only open M14 tasks own

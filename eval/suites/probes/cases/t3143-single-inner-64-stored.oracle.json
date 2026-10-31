@@ -1,0 +1,23 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "S": {
+   "A1": {
+    "t": "n",
+    "v": 1.0
+   },
+   "B1": {
+    "t": "b",
+    "v": true
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "4e334c438e5820d07a3c2632f0e1cae70cfe7e02f1d457b7e2a83f3427949123",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-30T09:19:52+00:00",
+  "version": null,
+  "workbook_name": "0555f6195dbb5ac5a75f1c2eae5deba7bf9acf821e5a2de1a7bd19a5ad994fdd.xlsx"
+ }
+}

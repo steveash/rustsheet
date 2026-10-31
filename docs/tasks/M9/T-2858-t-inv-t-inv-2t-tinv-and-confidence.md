@@ -102,3 +102,7 @@ p = 0.5, 1.5) now serves df = 1 in T.INV, T.INV.2T, TINV and CONFIDENCE.T. Two-t
 statistics.md). Eval: gen-m9 known failures 3151 -> 3125 (26 fixed), ironcalc-calc 403 -> 391 (12 fixed): all 30 gated lines are gone, no
 regressions. The ungated probes-numeric cells were not itemised cell by cell; the reviewer's list of round-point cells (m9-t-inv A6/A8,
 m9-t-inv-2t A7, m9-t-edges A9, t1531 A127) is covered by the same fix.
+
+Note from T-2724 (2026-10-31): two-tailed p near 1 at df 1 now reaches T-2724's centre kernel (the true quantile,
+`t_centre_quantile` in t_dist.rs) before any df-1 rule; this task's 1/TAN form has to take df 1 ahead of it. The
+T-2724 unit test `centre_quantiles_keep_their_digits` leaves df 1 out for this task to pin.
