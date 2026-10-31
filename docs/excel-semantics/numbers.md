@@ -1847,9 +1847,10 @@ remaining misses (decision 0211).
 The model was chosen on the T-1123 probes and the fit lab's train side of the fresh sweep (q toward zero against
 q floored: in-range-many 71 against 53, train 110 against 104). After it was frozen, a second sweep with a new seed,
 probes-numeric/t3502-geomean-postfreeze (same strata, seed 35020), gives the split root 172 of 180 (train 118/124,
-test 54/56), the correctly rounded geometric mean 165 (110/124, 55/56), the 15-digit snap 70 and r 25. Pooled
-over the T-1123 probes and both sweeps (fit lab `geomean-all`) the split root is 271/292 on train and 132/137 on
-test, the correctly rounded mean 242/292 and 120/137. Every split-root miss on both sweeps is within 1.3E-16
+test 54/56), the correctly rounded geometric mean 165 (110/124, 55/56), the 15-digit snap 70 and r 25. The
+hold-out that decided is the first sweep's (test 59/61 against 49/61, the model chosen on train only); pooled
+over the T-1123 probes and both sweeps (fit lab `geomean-all`, supplementary since it includes the cells that chose
+the model) the split root is 271/292 on train and 132/137 on test, the correctly rounded mean 242/292 and 120/137. Every split-root miss on both sweeps is within 1.3E-16
 relative of the 50-digit mpmath root, inside Gate A's envelope.
 
 Before T-3502: GEOMEAN was taken as closest to `r = exp(ln(P) / n)` in doubles, with two exceptions: a single value is returned as is, and when

@@ -20,7 +20,7 @@
     `GEOMEAN(8.26,6.3,6.7,1.41,6.14,8.77,7.92,6.5,5.8,2.8)` (Excel 5.426261309079341, ours
     5.42626130907934), A33 (3.631815615869783, ours 3.6318156158697836), A34 (3.920282312333767, ours
     3.9202823123337676) and A44 `GEOMEAN(6.6,3.6,3.03,4.73,1.6)` (3.525770483125708, ours
-    3.5257704831257075). None becomes visibly off; in-scope visibly-off cells fall from 2427 to 2423.
+    3.5257704831257075). None becomes visibly off; in-scope visibly-off cells fall from 2427 to 2424.
   - No model scored keeps all four and the fixes: Excel's root behaves like a library root of up to
     about 0.8 ulp (numbers.md, "GEOMEAN in-range root"). The correctly rounded root of P keeps them only
     by breaking ironcalc-calc GEOMEAN C23 and G27 and 14 other probes cells. Decision 0083's standing

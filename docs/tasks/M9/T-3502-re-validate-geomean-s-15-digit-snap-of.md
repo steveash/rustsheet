@@ -78,11 +78,13 @@ no fitted constant: P = m·2^E is rooted as `exp(ln(m·2^r)/n)·2^q`, E = q·n +
   | 15-digit snap (T-1123) | 70 | 98 | 115 | 45/124 | 25/56 |
   | plain `exp(ln(P)/n)` | 25 | 84 | 115 | 17/124 | 8/56 |
 
-  The split root leads overall and on train. On this sweep's 56 test cells it is one cell behind the reference,
-  so the per-sweep rule reads "refuse". Pooled over every scored cell (fit lab `geomean-all`: the T-1123 probes and
-  both sweeps, with the same per-cell hash split), it is accepted: train 271/292 (92.8%), test 132/137 (96.4%),
-  against the reference's 242/292 and 120/137. The correctly rounded mean cannot be the engine's form in any case:
-  it breaks gated ironcalc-calc GEOMEAN C23 and G27.
+  The R4.1 hold-out that decides is the first sweep's, where the model was chosen on the train side only: test
+  59/61 against the reference's 49/61, so it is accepted. This post-freeze sweep is the R4.2 record. The split
+  root leads overall (172 against 165) and on train, and is one cell behind the reference on this sweep's 56 test
+  cells, where the per-sweep rule reads "refuse". As a supplementary view only, since it includes cells used to
+  choose the model, fit lab `geomean-all` pools the T-1123 probes and both sweeps: train 271/292, test 132/137,
+  against the reference's 242/292 and 120/137. The correctly rounded mean cannot be the engine's form anyway: it
+  breaks gated ironcalc-calc GEOMEAN C23 and G27.
 - **Gate A envelope (R2):** holds on both sweeps. Every split-root cell is within 1 ulp of Excel, and within
   1.3E-16 relative of the 50-digit mpmath root of P (the bound is 1E-9). Per miss, Excel / engine / mpmath:
   - post-freeze A5: 1.1257931344394546E-52 / ...544E-52 / 1.1257931344394544661E-52
@@ -92,7 +94,7 @@ no fitted constant: P = m·2^E is rooted as `exp(ln(m·2^r)/n)·2^q`, E = q·n +
   - post-freeze A47, A50, A70, A74 and the 11 first-sweep misses are likewise below 1.2E-16 relative.
 
   GEOMEAN has no eval/accuracy table yet.
-- **Eval delta:** gen-m9 known failures 2887 -> 2861 (26 fixed). probes 2661 -> 2633 (32 fixed, 4 one-ulp
+- **Eval delta:** gen-m9 known failures 2888 -> 2862 (26 fixed: 25 GEOMEAN cells and a PPMT over GEOMEAN). probes 2661 -> 2633 (32 fixed, 4 one-ulp
   regressions: geomean-root-refinement A23, A33, A34, A44, allowed by decision 0211). ironcalc-calc unchanged.
-  In-scope visibly-off cells 2427 -> 2423.
+  In-scope visibly-off cells 2427 -> 2424.
 - **Follow-up:** T-3526 (defer: phase-1b) owns the cells the split root misses.
