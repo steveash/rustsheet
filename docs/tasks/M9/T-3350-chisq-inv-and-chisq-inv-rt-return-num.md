@@ -70,7 +70,7 @@ engine returns `#NUM!` today.
       to 7.2E9). Those 3 sit on the existing R3 closed-form branch (shape 1E9 and up, decision 0188 R3). They are
       unchanged base to head (ours is Excel's closed form, 2.66E-4 from the math there) and are owned by T-3364. This is a floor only: the target stays Excel's value.
 - [x] The rule (what Excel does, what was wrong) is in docs/excel-semantics/ in the same PR.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Last-digit (bit) parity on cells already within 15 digits: Phase 1b (decision 0188 R5).
