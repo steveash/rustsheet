@@ -1,5 +1,5 @@
 ---
-id: T-3499
+id: T-3523
 title: "Re-validate IPMT's DISCOUNTED_INTEREST_FROM selector on a fresh hold-out sweep (decision 0188 R4)"
 milestone: M9
 lane: functions-financial
@@ -40,5 +40,5 @@ IPMT's `DISCOUNTED_INTEREST_FROM` (financial/annuity.rs, 6E-16) is shown to gene
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- The other selectors split from T-3365 (T-3499..T-3503, one each); extrapolated fits (T-3364); the t, F and
+- The other selectors split from T-3365 (T-3502, T-3503, T-3523, T-3524, T-3525, one each); extrapolated fits (T-3364); the t, F and
   chi-squared inverses (T-3363).

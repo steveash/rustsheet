@@ -1,8 +1,8 @@
 ---
-id: T-3501
-title: "Re-validate the complex hyperbolic bands (HYPERBOLIC_LOG_CUT, INVERSE_EXP_LOW, INVERSE_EXP_HIGH) on a fresh hold-out sweep (decision 0188 R4)"
+id: T-3524
+title: "Re-validate CUMIPMT and CUMPRINC's GEOMETRIC_MIN_LEAD and LONG_GEOMETRIC_MIN_LEAD on a fresh hold-out sweep (decision 0188 R4)"
 milestone: M9
-lane: functions-engineering
+lane: functions-financial
 status: todo
 priority: P2
 size: M
@@ -11,15 +11,15 @@ depends_on: [T-3360, T-3361]
 ---
 
 ## Goal
-The complex hyperbolic bands of engineering/complex/trig.rs (`HYPERBOLIC_LOG_CUT` 709, `INVERSE_EXP_LOW` 0.01, `INVERSE_EXP_HIGH` 20) are shown to generalize on a fresh hold-out sweep (IMSINH, IMCOSH and the functions built on them), or are replaced by the accurate form.
+CUMIPMT and CUMPRINC's `GEOMETRIC_MIN_LEAD` (0.3) and `LONG_GEOMETRIC_MIN_LEAD` (3.6) (financial/cumulative.rs) are shown to generalize on a fresh hold-out sweep, or are replaced by the accurate form.
 
 ## Context
 - Split from T-3365 (decision 0188's code audit, "tuned cut-points" and "others"; R4.1 hold-out split, R4.2 fresh
   sweep, R4.3 `FITTED` range). Functions that port Excel's algorithm generalize to fresh points; tuned selectors are
   the risk.
-- `HYPERBOLIC_LOG_CUT` is `FITTED(T-2231, 84 cells, |x| 100..800 ...)`; the `1/u` band is
-  `FITTED(T-2629, 306 cells, |x| 0.00012..100; cuts bracketed 0.01..0.0105 and 18.2..100)`: the upper cut was fitted
-  inside a bracket of 18.2..100, so its placement there is unevidenced. engineering.md (T-2629) has the notes.
+- The cuts choose the geometric-sum form over the per-period form by the leading exponent `(nper-end+1)·L`; tagged
+  `FITTED(T-3067, 36 cells, ...)` and `FITTED(T-3067, 96 cells, 33..99998 periods, ...)`. Both cut-points were fitted
+  inside wide brackets (0.095..0.398, 2.9..4.3).
 - Method: build the engine twice (with the selector, and with the accurate form only) and score both on the old
   cells through the fit lab (`docs/architecture/fit-lab.md`, hold-out split, default margin 5 points), then on the
   fresh sweep. Accuracy-suite tables are refused as sweeps (`--holdout-only` measures a frozen fit only).
@@ -40,5 +40,5 @@ The complex hyperbolic bands of engineering/complex/trig.rs (`HYPERBOLIC_LOG_CUT
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- The other selectors split from T-3365 (T-3499..T-3503, one each); extrapolated fits (T-3364); the t, F and
+- The other selectors split from T-3365 (T-3502, T-3503, T-3523, T-3524, T-3525, one each); extrapolated fits (T-3364); the t, F and
   chi-squared inverses (T-3363).

@@ -40,5 +40,5 @@ GEOMEAN's 15-digit snap of the root (statistical/geomean.rs) is shown to general
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- The other selectors split from T-3365 (T-3499..T-3503, one each); extrapolated fits (T-3364); the t, F and
+- The other selectors split from T-3365 (T-3502, T-3503, T-3523, T-3524, T-3525, one each); extrapolated fits (T-3364); the t, F and
   chi-squared inverses (T-3363).

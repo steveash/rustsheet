@@ -40,5 +40,5 @@ GAMMALN's K2 dual coefficients (statistical/gammaln.rs `K2_CAND9_BELOW` 0.01 and
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- The other selectors split from T-3365 (T-3499..T-3503, one each); extrapolated fits (T-3364); the t, F and
+- The other selectors split from T-3365 (T-3502, T-3503, T-3523, T-3524, T-3525, one each); extrapolated fits (T-3364); the t, F and
   chi-squared inverses (T-3363).

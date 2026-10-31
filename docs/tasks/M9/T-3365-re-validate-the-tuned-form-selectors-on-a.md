@@ -40,8 +40,8 @@ does not generalize is simplified to the accurate form, and one that does keeps 
 Split into smaller tasks (2026-10-31); no code changed. The five sites are independent (four function lanes, one
 module each) and each needs its own fresh oracle sweep, two engine builds and a Gate A check, which is more than one
 size-M task. One task per selector, each with this task's acceptance criteria:
-- T-3499 (opus, M): annuity.rs `DISCOUNTED_INTEREST_FROM` (IPMT).
-- T-3500 (opus, M): cumulative.rs `GEOMETRIC_MIN_LEAD` and `LONG_GEOMETRIC_MIN_LEAD` (CUMIPMT, CUMPRINC).
-- T-3501 (opus, M): complex/trig.rs `HYPERBOLIC_LOG_CUT`, `INVERSE_EXP_LOW`, `INVERSE_EXP_HIGH`.
+- T-3523 (opus, M): annuity.rs `DISCOUNTED_INTEREST_FROM` (IPMT).
+- T-3524 (opus, M): cumulative.rs `GEOMETRIC_MIN_LEAD` and `LONG_GEOMETRIC_MIN_LEAD` (CUMIPMT, CUMPRINC).
+- T-3525 (opus, M): complex/trig.rs `HYPERBOLIC_LOG_CUT`, `INVERSE_EXP_LOW`, `INVERSE_EXP_HIGH`.
 - T-3502 (opus, S): geomean.rs, the 15-digit snap of the root.
 - T-3503 (opus, M): gammaln.rs `K2_CAND9_BELOW` and gamma_kernels.rs `K2_CAND9_*`.
