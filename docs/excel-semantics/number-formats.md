@@ -41,10 +41,19 @@ Calc!A15, gen-m6/63012866a9d8b7db Calc!A3 (excel-graph, 2026-10-09, T-1239).
 Status: VERIFIED
 Implemented in: `Lexer::next_token` (formatter/lexer.rs), `Parser::parse_part` (formatter/parser.rs, the implicit `#`
 before a point and `General` among literals), `format_number` (formatter/format.rs). Unprobed: `General` next to digit
-placeholders or date tokens, or twice (the engine says `#VALUE!`; T-1614), a negative's minus for a value that rounds to
-zero under a literal-only format or `.` (`TEXT(-0.4,"x")` is "x" and `TEXT(-0.5,".")` is "-1." here, unprobed; T-1129), and a lowercase
+placeholders or date tokens, or twice (the engine says `#VALUE!`; T-1614), and a lowercase
 scientific `0.0e+0` (always the year token here, so `#VALUE!` as before).
-Tasks: T-1262, T-1450
+Tasks: T-1262, T-1450, T-1129
+
+## Sign of a negative that rounds to zero or to one unit (VERIFIED, probes/text-negative-round-sign, excel-graph, 2026-10-30, T-1129)
+Rule: the minus follows the value rounded at the last shown place. A negative that rounds to zero loses it (`TEXT(-0.4,"0")` = "0",
+`TEXT(-0.04,"0.0")` = "0.0", `TEXT(-0.004,"0.00")` = "0.00", `TEXT(-0.004,"0%")` = "0%", `TEXT(-499,"0,")` = "0", `TEXT(-1,"0.00,")`
+= "0.00", `TEXT(-0.4,".")` = ".", `TEXT(-0.04,".0")` = ".0", `TEXT(-0.04,"x.0")` = "x.0") and a negative that rounds to one unit keeps it
+(`TEXT(-0.5,"0")` = "-1", `TEXT(-0.06,"0.0")` = "-0.1", `TEXT(-0.005,"0.00")` = "-0.01", `TEXT(-500,"#,")` = "-1", `TEXT(-500,"0,")` = "-1",
+`TEXT(-0.06,".0")` = "-.1"). `#` formats print nothing for zero (`TEXT(-0.4,"#")` = "", `TEXT(-400,"#,")` = "", `TEXT(-0.004,"#.##")` = ".").
+A format with no digit placeholder and no decimal point rounds nothing, so every negative keeps its minus (`TEXT(-0.4,"x")` and
+`TEXT(-0.0001,"x")` = "-x", `TEXT(-0.4,"x%")` and `TEXT(-0.004,"x%")` = "-x%"). Implemented in `format_number` (formatter/format.rs).
+
 
 ## Buddhist-era year, era and calendar tokens
 Rule: in a date section `b`/`bb` is the two-digit Buddhist-era year (year + 543) and `bbb`+ the four-digit one;
