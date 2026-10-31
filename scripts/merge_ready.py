@@ -377,10 +377,8 @@ def ci_state(
     `runs` are the head's workflow runs, `check_runs` its check runs, and `docs_only` whether the
     PR's diff is docs-only (`run_heavy=false`; None when it cannot be told, which counts as no).
     `events` are the run events that count: a PR head's `pull_request`, a train's `push` and
-    `workflow_dispatch` (SPEC-0027 section 4, step 6). With `early` (the merge train, decision
-    0212), a run still in progress is already RED once one of its jobs has concluded `failure`:
-    the run can only end red, and waiting for its slowest job costs the train minutes per red run.
-    """
+    `workflow_dispatch` (SPEC-0027 section 4, step 6). With `early` (the train, decision 0212), a
+    running run is RED once a job concluded `failure` (`early_failures`)."""
     ci = [
         r
         for r in runs
@@ -426,18 +424,11 @@ def latest_checks(run: object, check_runs: Sequence[object]) -> dict[str, object
 
 
 def early_failures(latest: Mapping[str, object]) -> list[str]:
-    """The jobs of a running suite that already concluded `failure`, as "name: failure"
-    (decision 0212). Only `failure` counts: the merger reads `cancelled` and `timed_out` as
-    infrastructure once the run completes (merge_train.INFRA_CONCLUSIONS). The summary job
-    RUST_SUMMARY_JOB is left out: it reports `failure` for cancelled shards too (ci.yml, "a
-    cancelled run must report a failure here"), and a shard that really failed reports itself."""
-    return sorted(
-        f"{name}: failure"
-        for name, check in latest.items()
-        if name != RUST_SUMMARY_JOB
-        and text_of(check, "status") == "completed"
-        and text_of(check, "conclusion") == "failure"
-    )
+    """A running suite's jobs that concluded `failure`, as "name: failure" (decision 0212). Not
+    `cancelled` or `timed_out` (infrastructure, read once the run completes), and not
+    RUST_SUMMARY_JOB, which fails for cancelled shards too; a failed shard reports itself."""
+    done = {n: c for n, c in latest.items() if text_of(c, "status") == "completed"}
+    return sorted(f"{n}: failure" for n, c in done.items() if n != RUST_SUMMARY_JOB and text_of(c, "conclusion") == "failure")
 
 
 @dataclass(frozen=True)
