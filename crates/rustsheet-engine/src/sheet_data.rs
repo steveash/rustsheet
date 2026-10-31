@@ -30,7 +30,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use bitcode::{Decode, Encode};
 
-use crate::constants::LAST_ROW;
+use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::sheet_reads::ReadLog;
 use crate::types::Cell;
 
@@ -324,6 +324,53 @@ impl SheetData {
         self.layout_version = self.layout_version.wrapping_add(1);
     }
 
+    /// Checks the storage of a decoded sheet, which the bytes control: every read indexes a chunk's
+    /// rows by the row number unchecked, and the counts are trusted by every write. Holds when
+    /// there are at most as many chunks as the grid has, each `CHUNK_ROWS` rows long with `used`
+    /// counting them, rows only within `1..=LAST_ROW`, `row_count` counting every row, and the
+    /// columns of a row strictly ascending within `1..=LAST_COLUMN`. One pass, linear in the
+    /// chunks and cells.
+    pub(crate) fn check_layout(&self) -> Result<(), String> {
+        if self.chunks.len() > (LAST_ROW as usize >> CHUNK_BITS) + 1 {
+            return Err("more row chunks than the sheet has rows".to_string());
+        }
+        let mut rows = 0;
+        for (chunk_index, chunk) in self.chunks.iter().enumerate() {
+            let Some(chunk) = chunk else { continue };
+            if chunk.rows.len() != CHUNK_ROWS {
+                return Err(format!(
+                    "row chunk {chunk_index} is not {CHUNK_ROWS} rows long"
+                ));
+            }
+            let mut used = 0;
+            for (index, row) in chunk.rows.iter().enumerate() {
+                let Some(row) = row else { continue };
+                let number = (chunk_index << CHUNK_BITS) | index;
+                if number == 0 || number > LAST_ROW as usize {
+                    return Err(format!("row {number} is outside the sheet"));
+                }
+                let mut previous = 0;
+                for &(column, _) in &row.cells {
+                    if column <= previous || column > LAST_COLUMN {
+                        return Err(format!(
+                            "row {number}: column {column} is out of order or outside the sheet"
+                        ));
+                    }
+                    previous = column;
+                }
+                used += 1;
+            }
+            if used != chunk.used {
+                return Err(format!("row chunk {chunk_index} miscounts its rows"));
+            }
+            rows += used;
+        }
+        if rows != self.row_count {
+            return Err("the sheet miscounts its rows".to_string());
+        }
+        Ok(())
+    }
+
     /// Builds the column index from the cells if it is not built yet. One pass over the cells
     /// and a sort, paid once per sheet: afterwards every write keeps it in step.
     pub(crate) fn build_column_index(&mut self) {
@@ -587,6 +634,55 @@ mod test {
 
     fn number(v: f64) -> Cell {
         Cell::NumberCell { v, s: 0 }
+    }
+
+    /// A sheet with cells in rows 1 and 2000, to be broken in one place at a time.
+    fn two_rows() -> SheetData {
+        let mut data = SheetData::new();
+        data.set_cell(1, 1, number(1.0));
+        data.set_cell(1, 3, number(1.0));
+        data.set_cell(2000, 2, number(1.0));
+        data
+    }
+
+    fn first_row(data: &mut SheetData) -> &mut Row {
+        data.chunks[0].as_mut().unwrap().rows[1].as_mut().unwrap()
+    }
+
+    #[test]
+    fn check_layout_accepts_what_writes_build() {
+        assert_eq!(two_rows().check_layout(), Ok(()));
+        assert_eq!(SheetData::new().check_layout(), Ok(()));
+        let mut data = SheetData::new();
+        data.set_cell(LAST_ROW, LAST_COLUMN, number(1.0));
+        assert_eq!(data.check_layout(), Ok(()));
+    }
+
+    #[test]
+    fn check_layout_refuses_what_bytes_can_forge() {
+        let broken: [fn(&mut SheetData); 8] = [
+            |d| d.chunks.resize_with(2000, || None),
+            |d| d.chunks[0].as_mut().unwrap().rows.truncate(5),
+            |d| d.chunks[0].as_mut().unwrap().rows[0] = Some(Row::default()),
+            |d| d.chunks[0].as_mut().unwrap().used = 7,
+            |d| d.row_count = 9,
+            |d| first_row(d).cells.reverse(),
+            |d| first_row(d).cells[1].0 = LAST_COLUMN + 1,
+            |d| first_row(d).cells[0].0 = 0,
+        ];
+        for (case, break_it) in broken.iter().enumerate() {
+            let mut data = two_rows();
+            break_it(&mut data);
+            assert!(data.check_layout().is_err(), "case {case}");
+        }
+        // A row past the last one, in the slots of the last chunk that the grid does not reach.
+        let mut data = SheetData::new();
+        data.set_cell(LAST_ROW, 1, number(1.0));
+        let last = data.chunks.last_mut().unwrap().as_mut().unwrap();
+        last.rows[1] = Some(Row::default());
+        last.used += 1;
+        data.row_count += 1;
+        assert!(data.check_layout().is_err());
     }
 
     #[test]

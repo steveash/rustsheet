@@ -72,6 +72,7 @@ value in every product order, so the innermost difference is FTEST, about 2 ulp 
       baseline, or the Outcome records the candidates scored with the f-test fit and their bit-exact counts (decision
       0056 time box) and the cells still open move to a follow-up.
 - [ ] statistics.md "F.TEST / FTEST: larger variance on top" cites these cells for the model that matches them.
+- [ ] The 60 cells added by gap triage 2026-10-30 are bit-exact (their 57 gen-m9 lines leave eval/baseline/gen-m9.txt; the probes-numeric cells, ungated, shown with `make eval-show`) or the Outcome lists each with its ulp distance.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -80,3 +81,45 @@ value in every product order, so the innermost difference is FTEST, about 2 ulp 
 
 ## Phase 1 triage (T-0090, 2026-10-27)
 The visibly-off F.TEST cell gen-m9/b6593d7dd13f2dac Calc!A306 goes to the T-0087 sweep with the other unowned visibly-off F.TEST/FTEST cells (T-2681, the natural owner, finished on 2026-10-27 before this triage landed); this task keeps the last-digit work.
+
+## Cells added by gap triage (2026-10-30)
+`make eval` on origin/main 6a26b992a (excel-graph), `scripts/exit_owners.py`'s `owned` rule over every failing cell and the task files of origin/main and every pushed branch: 60 more F.TEST and FTEST cells within 15 digits (57 within 4 ulp, 3 further; none visibly off) that no open task names: 57 gen-m9 cells with F.TEST or FTEST as the outer call, and three on the t1049 and m9-legacy F.TEST probes. Same root cause as the cells above (Excel's two-tailed F at the variance ratio, now through `f_test_tail.rs` since T-2681), so score them together. Examples, Excel vs ours: gen-m9/7bd219ec0c0c5e22 A313 `F.TEST(Data!D8:D11,Data!B4:C12)` 1.0354587903758923e-14 vs 1.0354587903758912e-14; gen-m9/c6cfda6bd10cae93 A44 `FTEST(Data!C4:D11,Data!D9:E10)` 0.17265211336953595 vs 0.17265211336953612; probes-numeric/t1049-ftest A24 `F.TEST(B1:C2,B3:C5)` 0.04001227468543416 vs 0.04001227468543417.
+- gen-m9/0a9226016e8f5f33.case.json (1): Calc!A13
+- gen-m9/27601819397dd56e.case.json (3): Calc!A130, A298, A314
+- gen-m9/2801c1c11c21e134.case.json (2): Calc!A63, A168
+- gen-m9/285d87cea1aaa73c.case.json (2): Calc!A158, A280
+- gen-m9/2a18b2f5a4dc43ac.case.json (1): Calc!A123
+- gen-m9/320d51765af9b6b7.case.json (1): Calc!A223
+- gen-m9/35e8168aae2b00f8.case.json (1): Calc!A297
+- gen-m9/3e98b26cf6713e77.case.json (1): Calc!A374
+- gen-m9/4250f880ab640c49.case.json (1): Calc!A386
+- gen-m9/4bad303d32cc3f46.case.json (2): Calc!A266, A400
+- gen-m9/4e55500bb8ad3cd8.case.json (1): Calc!A322
+- gen-m9/589f42e67f4b4b8d.case.json (2): Calc!A252, A393
+- gen-m9/60b0b6e69ad35a45.case.json (2): Calc!A233, A300
+- gen-m9/623663cacea53bbc.case.json (1): Calc!A249
+- gen-m9/68d8ffb69ff739d8.case.json (1): Calc!A21
+- gen-m9/7bd219ec0c0c5e22.case.json (2): Calc!A313, A369
+- gen-m9/85f48d5cdfb24555.case.json (1): Calc!A337
+- gen-m9/8d3588d8df0812df.case.json (3): Calc!A60, A243, A359
+- gen-m9/8dd2312c96effb1b.case.json (1): Calc!A55
+- gen-m9/9cca17438a7e6f8a.case.json (2): Calc!A104, A125
+- gen-m9/a013a45a8fbcab4f.case.json (2): Calc!A75, A139
+- gen-m9/a5828d3925575713.case.json (1): Calc!A222
+- gen-m9/a612e89321a6df9c.case.json (1): Calc!A10
+- gen-m9/a7bf0d8d81d33ba6.case.json (1): Calc!A40
+- gen-m9/b4173fe25109a238.case.json (1): Calc!A256
+- gen-m9/bbdfc06cae0e0d71.case.json (1): Calc!A310
+- gen-m9/bcb24385baafb2f0.case.json (1): Calc!A377
+- gen-m9/c2974c061384fdd9.case.json (2): Calc!A141, A385
+- gen-m9/c6cfda6bd10cae93.case.json (4): Calc!A42, A44, A105, A286
+- gen-m9/caa1eed48b1883fe.case.json (2): Calc!A319, A380
+- gen-m9/cde551ea787f713a.case.json (2): Calc!A34, A199
+- gen-m9/d8266bc15533702a.case.json (1): Calc!A354
+- gen-m9/e6cf3b20a014e6a3.case.json (2): Calc!A206, A239
+- gen-m9/ee2497a5e683c5d9.case.json (2): Calc!A155, A201
+- gen-m9/f2bd5f380ec002bf.case.json (1): Calc!A59
+- gen-m9/fd9fa22d212080d6.case.json (1): Calc!A279
+- gen-m9/fec39efaba9284c3.case.json (1): Calc!A36
+- probes-numeric/m9-legacy-ftest.case.json (1): Calc!A31
+- probes-numeric/t1049-ftest.case.json (2): Calc!A13, A24

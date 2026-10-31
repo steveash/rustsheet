@@ -5,6 +5,9 @@ use crate::{
 };
 
 impl Model {
+    /// GEOMEAN. In range, the root `exp(ln(P)/n)` snaps to its 15-digit value when that value,
+    /// multiplied n times, gives P back (numbers.md "GEOMEAN in-range root").
+    /// FITTED(T-1123, 170 cells, GEOMEAN of 1..1100 values with a normal product)
     pub(crate) fn fn_geomean(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);

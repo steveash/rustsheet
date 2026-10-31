@@ -2,6 +2,8 @@
 """`make merge-train-stats [SINCE=<date>]`: the merge train's metrics (SPEC-0027 "Metrics" and
 "Daily thresholds"), the shadow agreement score (section 4, "When a shadow prediction agrees") and
 T-2991's evidence and load bar (SPEC-0027 "Rollout", "Shadow evidence for T-2991"); T-3076.
+`make merge-train-stats STRANDED=1` prints only the stranded-PR line: a few reads, where the whole
+report reads every run, job and PR of the window and takes minutes (T-3344, decision 0194).
 
 Every read goes through scripts/gh_client.py. Force-pushed branches keep no history, so the train
 and lock histories come from the activity API (each push's `after` commit, read through the commits
@@ -27,11 +29,12 @@ import re
 import subprocess
 import sys
 from collections import Counter
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, TypeVar
 
 import gh_client
 import merge_lock
@@ -309,6 +312,16 @@ def trains_of(runs: Sequence[tuple[Run, str, frozenset[int]]]) -> list[Train]:
     return trains
 
 
+K = TypeVar("K")
+V = TypeVar("V")
+# GitHub reads in flight at once (decision 0191). A day of merge-lock pushes is about 1,900 commits to
+# read (every waiter's refresh is a push) at about 0.3 s each, so one at a time ran past 10 minutes
+# and the steward gave up (2026-10-31). Four keeps the burst near 13 requests/s (about 800 a minute),
+# under GitHub's secondary limit of 900 REST points a minute; a run that still hits it fails loudly
+# (GhError, exit 2), never with wrong numbers.
+READERS = 4
+
+
 class Stats:
     """Reads the history from GitHub and prints the report."""
 
@@ -317,6 +330,9 @@ class Stats:
         self.out: list[str] = []
         self.laters: dict[int, Later] = {}
         self.conclusions: dict[str, list[str]] = {}
+        self.messages: dict[str, str] = {}
+        self.head_runs: dict[str, list[Run]] = {}
+        self.jobs: dict[int, list[object]] = {}
         # Job queue delays (s) of the window's completed ci.yml runs: `merge_stage` reads them (one
         # call per run) and `load` reuses them, so `report` calls `merge_stage` first.
         self.delays: list[float] = []
@@ -333,8 +349,36 @@ class Stats:
         older = [i for i, (at, _) in enumerate(found) if at < since]
         return found[older[-1] :] if older else found
 
-    def message(self, sha: str) -> str:
+    def prefetch(self, cache: dict[K, V], keys: Iterable[K], read: Callable[[K], V]) -> None:
+        """Fill `cache` with `read(key)` for each key it lacks, READERS reads at a time; only this
+        thread writes the cache. The caches last one report run, so each object is read once per
+        report (a head's runs can change later; this report's view of them does not)."""
+        missing = [key for key in dict.fromkeys(keys) if key not in cache]
+        if len(missing) > 1:
+            with ThreadPoolExecutor(READERS) as pool:
+                cache.update(zip(missing, pool.map(read, missing)))
+
+    @staticmethod
+    def cached(cache: dict[K, V], key: K, read: Callable[[K], V]) -> V:
+        """`cache[key]`, read with `read` the first time."""
+        if key not in cache:
+            cache[key] = read(key)
+        return cache[key]
+
+    def commit_message(self, sha: str) -> str:
         return text_of(self.client.commit(sha), "message")
+
+    def message(self, sha: str) -> str:
+        return self.cached(self.messages, sha, self.commit_message)
+
+    def read_head_runs(self, sha: str) -> list[Run]:
+        return runs_of(self.client.workflow_runs(head_sha=sha))
+
+    def runs_of_head(self, sha: str) -> list[Run]:
+        return self.cached(self.head_runs, sha, self.read_head_runs)
+
+    def run_jobs(self, run_id: int) -> list[object]:
+        return self.cached(self.jobs, run_id, self.client.run_jobs)
 
     def runs(self, start: datetime, end: datetime) -> list[Run]:
         return runs_of(self.client.workflow_runs(created=f"{iso(start)}..{iso(end)}"))
@@ -342,7 +386,7 @@ class Stats:
     def head_conclusions(self, sha: str) -> list[str]:
         """The conclusions of a PR head's completed `pull_request` ci.yml runs, oldest first."""
         if sha not in self.conclusions:
-            runs = [r for r in runs_of(self.client.workflow_runs(head_sha=sha)) if r.event == "pull_request"]
+            runs = [r for r in self.runs_of_head(sha) if r.event == "pull_request"]
             self.conclusions[sha] = [r.conclusion for r in runs if r.conclusion]
         return self.conclusions[sha]
 
@@ -369,6 +413,7 @@ class Stats:
             steps.append((sha, kind, at))
             prev = sha
         later = Later(merged_at, text_of(pull, "head", "sha"), steps)
+        self.prefetch(self.head_runs, (sha for sha, _, _ in steps), self.read_head_runs)
         for sha, _, _ in steps:
             later.conclusions[sha] = self.head_conclusions(sha)
         self.laters[pr] = later
@@ -378,6 +423,7 @@ class Stats:
         """Every shadow prediction since the shadow branch was created, and that creation time."""
         found = []
         pushes = self.pushes(SHADOW_BRANCH, datetime.fromtimestamp(0, UTC))
+        self.prefetch(self.messages, (sha for _, sha in pushes), self.commit_message)
         for at, sha in pushes:
             parsed = parse_prediction(sha, at, self.message(sha))
             if parsed is not None:
@@ -393,10 +439,9 @@ class Stats:
         self.emit(f"merge-train-stats {iso(self.since)} .. {iso(self.now)}")
         predictions, shadow_start = self.predictions()
         runs = self.runs(self.since, self.now)
-        lock = [
-            (at, merge_lock.parse_lock(sha, int(at.timestamp()), self.message(sha)))
-            for at, sha in self.pushes(LOCK_BRANCH, self.since)
-        ]
+        lock_pushes = self.pushes(LOCK_BRANCH, self.since)
+        self.prefetch(self.messages, (sha for _, sha in lock_pushes), self.commit_message)
+        lock = [(at, merge_lock.parse_lock(sha, int(at.timestamp()), self.message(sha))) for at, sha in lock_pushes]
         holds = holds_of(lock, self.now)
         merged = self.merged()
         self.throughput(merged, window)
@@ -430,8 +475,9 @@ class Stats:
         """First green on the merged head -> merged, p50/p90 per arrival bucket; returns (merged
         time, latency) pairs for the daily threshold."""
         starts: list[tuple[datetime, datetime]] = []
+        self.prefetch(self.head_runs, (text_of(pull, "head", "sha") for _, pull, _ in merged), self.read_head_runs)
         for _, pull, at in merged:
-            runs = runs_of(self.client.workflow_runs(head_sha=text_of(pull, "head", "sha")))
+            runs = self.runs_of_head(text_of(pull, "head", "sha"))
             green = [r.updated for r in runs if r.event == "pull_request" and r.conclusion == "success"]
             if green:
                 starts.append((min(green), at))
@@ -459,11 +505,12 @@ class Stats:
         per_pr = f"{count / len(merged):.2f}" if merged else "n/a"
         self.emit(f"merge-stage CI runs per merged PR: {per_pr} ({count} runs under the lock)")
         minutes_by: Counter[str] = Counter()
+        self.prefetch(self.jobs, (run.id for run in runs if run.conclusion), self.client.run_jobs)
         for run in runs:
             if not run.conclusion:
                 continue
             kind = run.branch if run.branch in (TRAIN_BRANCH, SHADOW_BRANCH, "main") else run.event
-            for job in self.client.run_jobs(run.id):
+            for job in self.run_jobs(run.id):
                 created, started, done = (
                     when(text_of(job, k)) for k in ("created_at", "started_at", "completed_at")
                 )
@@ -648,6 +695,9 @@ class Stats:
 def main(argv: Sequence[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0] if __doc__ else "")
     parser.add_argument("--since", help="start of the metrics window (ISO date or instant; default 24 h ago)")
+    parser.add_argument(
+        "--stranded", action="store_true", help="print only the stranded-PR line (fast; the steward's sweep)"
+    )
     args = parser.parse_args(argv)
     now = datetime.now(UTC)
     since = now - DAY
@@ -663,7 +713,12 @@ def main(argv: Sequence[str]) -> int:
         print("merge-train-stats: origin is not a github.com remote", file=sys.stderr)
         return 2
     try:
-        print(Stats(client, GitHistory(), now, since).report())
+        stats = Stats(client, GitHistory(), now, since)
+        if args.stranded:
+            stats.stranded()
+            print("\n".join(stats.out))
+        else:
+            print(stats.report())
     except (GhError, subprocess.CalledProcessError) as error:
         print(f"merge-train-stats: {error}", file=sys.stderr)
         return 2

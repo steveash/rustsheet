@@ -51,6 +51,7 @@ pub(super) const STIRLING: [f64; 10] = [
 
 /// x - 2 below this takes reviewer 3's cand9 K2 coefficients (HANDOFF2 §12.1, §12.6), measured
 /// on the T-1941 data (statistics.md).
+/// FITTED(T-2128, 2054772 cells, GAMMALN x 2..3)
 const K2_CAND9_BELOW: f64 = 0.01;
 
 /// Excel's GAMMALN(x) for x > 0; NaN for anything else, and infinity past the double range.

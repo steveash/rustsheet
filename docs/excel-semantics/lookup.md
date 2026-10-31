@@ -15,6 +15,17 @@ then renamed (T-1608, the unscored cells of probes/sheet-ops/sheet-ops-rename-in
 -add-then-rename and -add-resolves-indirect). Never take oracle values as evidence for references to missing sheets
 (docs/architecture/oracle.md, "Known divergences"; desktop wins per decision 0030).
 
+## INDIRECT of a structured reference text resolves the table area
+Rule: `INDIRECT("Sales[Column2]")` is the area the same structured reference is in a formula. After two column
+inserts inside `Sales`, `ROWS(INDIRECT("Sales[Column2]"))` is 4; after one insert, where `Column2` does not exist,
+it is `#REF!`. `COUNTA(INDIRECT("Sales[Column1]"))` is 0 (an empty data column). A column the table lacks is `#REF!`.
+Only the plain `Table[Column]` shape is evidenced and implemented; the specifiers (`#All`, `#Headers`, `@`), an
+unqualified column, spacing, a bare table name and `a1` FALSE are unprobed and stay `#REF!` in the engine until
+T-3394 probes them. Case is unprobed too: the engine matches table and column names ignoring case, as the parser
+does, so `INDIRECT("sales[column2]")` probably resolves (T-2911).
+Evidence: probes/table-edits/table-insert-column-inside-header F!A4, F!A5; table-insert-two-columns-inside-header
+F!A4, F!A5 (excel-graph 2026-10-27).
+
 ## INDIRECT resolves a defined name that holds a reference
 Rule: `INDIRECT("<name>")` of a defined name whose body is a cell or range reference is that
 reference: `ISREF(INDIRECT("RCR"))` is TRUE with `RCR` = `Sheet1!$B$1`. Text that is neither a
@@ -173,6 +184,31 @@ Evidence: probes/vlookup-array-lookup-value (35 cells, excel-graph, 2026-10-09, 
 Implemented in: `Model::lookup_each` (functions/lookup_and_reference/lookup_each.rs) through
 `Model::lift_values` (functions/lift/driver.rs); the spill shape follows lookup_value in static analysis.
 Status: VERIFIED (web)
+
+## A lookup over a whole-column key read as a head and a tail: the limits it meets
+Rule: Excel has no per-call cap, work budget or text budget, so the lookup's values are the same whichever limit
+applies. Inside an aggregate, SUMPRODUCT, SMALL, LARGE, UNIQUE or LOOKUP-vector argument, the engine reads
+VLOOKUP, HLOOKUP or MATCH over a whole-column (or past-the-used-area) key as its used head plus one tail element
+standing for every row below (SPEC-0020 Amendment 2, T-3221). For example `SUM(--(VLOOKUP(A:A,T,2,FALSE)=x))` and
+`COUNT(MATCH(A:A,T,0))` take this reading. The head's lift and the tail's are charged and checked as the one lift
+over 1,048,576 keys: the same kernel runs, the same visits against `MAX_LIFTED_CELL_VISITS` and the same work units.
+Three outcomes can still differ from that one lift, each only for a formula already at an engine limit:
+- When the head or the tail lift fails the per-call cap (`#ERROR!`), the argument is read again the ordinary way.
+  That gives today's `#ERROR!`, unless the reread's charges take the formula past its work budget
+  (`MAX_FORMULA_WORK`). Then it is `#VALUE!` ("Formula needs too much work"). This is the same class as the
+  stale-head reread of SPEC-0020.
+- The array the lookup builds is charged to the cell budget for the head and the one tail element, not for the
+  1,048,576 rows. A formula that the whole column's array would take past that budget is not taken past it.
+- The 64 MiB broadcast text budget counts the texts of the head (and of the tail element when it is computed), not
+  those of every tail row.
+  So a lookup that returns a text over 64 bytes for the blank key no longer fails it. Excel gives the values here,
+  and the tailed reading matches Excel where the one lift gives `#VALUE!`.
+Evidence: none needed: these are engine limits, not Excel values (CLAUDE.md directive 5). The values outside them are
+pinned by the equivalence tests of `test_tailed_array.rs` (each formula with the tailed reading and without) and by
+probes/t3096-lookup-value-blank-elements.
+Implemented in: `Model::tailed_leaves`, `Model::keyed_lift` (tailed_array.rs) and `Model::lift_values_keyed`
+(functions/lift/keyed.rs), through `Model::lift_grids_after` (functions/lift/driver.rs).
+Status: DEVIATION (decision 0014)
 
 ## VLOOKUP / HLOOKUP with an array index or range_lookup
 Rule: lookup_value and range_lookup lift together, broadcast like any two arrays (a 3x1 lookup_value
