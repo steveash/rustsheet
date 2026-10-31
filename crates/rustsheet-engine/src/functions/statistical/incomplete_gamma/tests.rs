@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 use super::huge_shape::{huge_shape_quantile, wilson_hilferty_quantile};
 use super::{
-    cdf_terms_bound, continued_fraction_budget, excel_small_shape_lower,
+    cdf_terms_bound, continued_fraction_budget, excel_newton_quantile, excel_small_shape_lower,
     excel_small_shape_quantile, excel_tiny_quantile, gamma_cdf, gamma_density, gamma_inverse_cdf,
     gamma_quantile, gamma_sf, gamma_ur, incomplete_gamma_pair, inverse_cdf_within, temme_pair,
     Tail, Terms, MAX_TERMS, TEMME_C,
@@ -686,4 +686,42 @@ fn a_tiny_quantile_above_shape_one_is_the_leading_factor_root() {
     // Outside the shapes it covers.
     assert_eq!(excel_tiny_quantile(1.0, 1e-300), None);
     assert_eq!(excel_tiny_quantile(25.0, 1e-300), None);
+}
+
+/// Within half a unit of the 15th significant digit of `expected` (decision 0083).
+fn within_15_digits(actual: f64, expected: f64) -> bool {
+    let unit = 10f64.powf(expected.abs().log10().floor() - 14.0);
+    (actual - expected).abs() <= unit / 2.0
+}
+
+#[test]
+fn newton_steps_from_the_leading_factor_root_reach_excel_deep_lower_tail() {
+    // Excel's values, gen-m9 (excel-graph); T-3311. The first step from the root.
+    assert_eq!(
+        gamma_quantile(5.0, 2.0, 1e-200, Tail::Lower),
+        5.210342169394733e-40 // d8266bc15533702a A212 `CHISQ.INV(1E-200,10)`
+    );
+    assert_eq!(
+        gamma_quantile(1.5, 2.0, 1.0 - 1e-16, Tail::Upper),
+        5.5854857570344876e-11 // ecc87f80077959e0 A301 `CHISQ.INV.RT(1-1E-16,3)`
+    );
+    // One ulp from Excel, the cdf form's own residue (T-3242), within 15 digits:
+    // 06b4e8f5de409d5e A128 `CHISQ.INV(1E-200,5)`.
+    let x = gamma_quantile(2.5, 2.0, 1e-200, Tail::Lower);
+    assert!(within_ulps(x, 3.233407780583136e-80, 3.0), "{x:e}");
+    assert!(within_15_digits(x, 3.233407780583136e-80), "{x:e}");
+    // Where the root is the answer the steps keep it, but the T-2561 root comes first.
+    assert_eq!(
+        excel_newton_quantile(3.0, 1e-100),
+        excel_tiny_quantile(3.0, 1e-100)
+    );
+    // The cdf at the root is 3.2E-8 off p, past the cut (gen-m9/c18dbf21f11093f3 A107 stays on
+    // the search), and 4.6E-7 at `GAMMAINV(1E-16,2.5,TRUE)`.
+    assert_eq!(excel_newton_quantile(4.0, 1.025_153_212_086_874e-31), None);
+    assert_eq!(excel_newton_quantile(2.5, 1e-16), None);
+    // Outside the measured shapes and probabilities.
+    assert_eq!(excel_newton_quantile(1.2, 1e-30), None);
+    assert_eq!(excel_newton_quantile(6.0, 1e-100), None);
+    assert_eq!(excel_newton_quantile(2.5, 1e-250), None);
+    assert_eq!(excel_newton_quantile(1.5, 1e-11), None);
 }

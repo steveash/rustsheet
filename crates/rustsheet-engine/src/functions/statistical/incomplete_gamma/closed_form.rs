@@ -1,7 +1,8 @@
 //! Excel's closed-form gamma quantiles in the far lower tail (GAMMA.INV, GAMMAINV and CHISQ.INV;
 //! T-3013 below shape 1, T-2561 above it; docs/excel-semantics/statistics.md, T-3013 bullet and
 //! "Deep lower tail at a shape above 1"): the root of the cdf's leading factor, with or without
-//! one Newton step. Moved out of `mod.rs` unchanged (T-3313).
+//! one Newton step; and, where that root is close but not Excel's value, Newton steps from it
+//! on Excel's cdf (T-3311). The first three moved out of `mod.rs` unchanged (T-3313).
 
 use super::{
     excel_form_lower, gamma_density, pair_with, Exponent, Terms, DIRECT_SHAPE_MAX, MAX_TERMS,
@@ -119,4 +120,81 @@ pub(super) fn excel_tiny_quantile(a: f64, p: f64) -> Option<f64> {
     // One cdf of a shape below 20 at x below 1: the series, at most `cdf_terms_bound(20)` terms.
     let cdf = pair_with(a, x, &mut Terms(MAX_TERMS), Exponent::Excel).0;
     ((cdf / p - 1.0).abs() <= TINY_QUANTILE_CHECK).then_some(x)
+}
+
+/// How far, relative to p, the leading-factor series form ([`excel_form_lower`]) at
+/// [`leading_factor_root`] may be from p for [`excel_newton_quantile`] to apply. A region cut, not
+/// an Excel constant: Newton steps from the root reproduce Excel better than the search only where
+/// the root is already close, and that distance is about x a / (a + 1) at a quantile x. Chosen on a
+/// 30% hold-out split by cell over the 153 distinct (shape, p) points of gen-m9, probes and
+/// probes-numeric at shapes 1 to 20 (T-3311 Outcome): every cut from 1E-8 to 1E-6 ties on the train
+/// part, and this is the narrowest. The wider cuts move gen-m9/c18dbf21f11093f3 A107
+/// `CHISQ.INV(POISSON.DIST(9,100,FALSE),8)` (p = 1.03E-31, shape 4, 3.2E-8 from p at the root) one
+/// ulp off Excel, a gated regression (decisions 0083, 0111). So `CHISQ.INV(1E-20,6)` (a612e89321a6df9c
+/// A169, 2.9E-7) and `GAMMAINV(1E-16,2.5,TRUE)` (a5828d3925575713 A338, 4.6E-7), which the steps
+/// make Excel's within 15 digits, stay on the search, visibly off (T-3311 Outcome).
+/// FITTED(T-3311, 13 cells, shape 1.5..5, p 1E-200..1E-12)
+const NEWTON_START_MAX: f64 = 1e-8;
+
+/// The shapes [`NEWTON_START_MAX`] was measured on (decision 0188 R4.3: a fit applies only inside
+/// its range). Outside them the search, the accurate crossing, applies.
+const NEWTON_SHAPES: std::ops::RangeInclusive<f64> = 1.5..=5.0;
+
+/// The probabilities [`NEWTON_START_MAX`] was measured on, from `CHISQ.INV(1E-200,5)` to
+/// `GAMMA.INV(1E-12,1.5,1)`.
+const NEWTON_PROBABILITIES: std::ops::RangeInclusive<f64> = 1e-200..=1e-12;
+
+const NEWTON_STEPS: u32 = 50;
+
+/// Excel's lower-tail quantile at a shape above 1 where the leading-factor root is close but not
+/// Excel's value (T-3311; docs/excel-semantics/statistics.md, "Deep lower tail at a shape above
+/// 1"): Newton steps from [`leading_factor_root`] on the leading-factor series form
+/// ([`excel_form_lower`], T-3060's form of Excel's GAMMA.DIST) with [`gamma_density`], keeping
+/// the first iterate whose cdf is nearest p.
+///
+/// Excel's GAMMA.DIST there is that form: within an ulp of it at 304 of 330 probed cells
+/// (probes-numeric t3311-gamma-inv-lower-tail-cdf), where the engine's accurate pair is within
+/// an ulp at 46. Since LN(x) moves by an ulp only every few ulps of x (every 128 at x = 1.6E-80),
+/// the form is a staircase, flat across 3 to 9 ulps of x around Excel's quantiles, and its levels
+/// are up to 3E-14 of p apart. Excel's quantile sits on a level that is not the nearest to p from
+/// the true quantile: `CHISQ.INV(1E-200,5)` is Excel's 3.233407780583136E-80, 20 ulp above the
+/// crossing, on the level 2.29E-14 above p. The steps from the root reach it (one ulp below it,
+/// the form's own residue) as their second iterate, and `CHISQ.INV(1E-200,10)` and
+/// `CHISQ.INV.RT(1-1E-16,3)` as their first. Which iterate Excel returns once the steps cycle is
+/// not known: the nearest-to-p rule is the best of the rules tried (T-3311 Outcome), bit-exact at
+/// 10 of the 13 in-region points and one ulp off at the other 3.
+///
+/// `None` outside [`NEWTON_SHAPES`] and [`NEWTON_PROBABILITIES`], where the root is not normal or
+/// not below 1, where the form at it is more than [`NEWTON_START_MAX`] from p, and where a cdf or
+/// density fails: the search applies there.
+pub(super) fn excel_newton_quantile(a: f64, p: f64) -> Option<f64> {
+    if !(NEWTON_SHAPES.contains(&a) && NEWTON_PROBABILITIES.contains(&p)) {
+        return None;
+    }
+    let mut x = leading_factor_root(a, p);
+    if !(f64::MIN_POSITIVE..1.0).contains(&x) {
+        return None;
+    }
+    let mut cdf = excel_form_lower(a, x, a * excel_ln(x))?;
+    if (cdf - p).abs() > NEWTON_START_MAX * p {
+        return None;
+    }
+    let mut best = (x, (cdf - p).abs());
+    for _ in 0..NEWTON_STEPS {
+        x -= (cdf - p) / gamma_density(a, x, 1.0)?;
+        // The cdf is convex below the mode a - 1, so the steps stay near the root; this only
+        // guards the form's domain.
+        if !(f64::MIN_POSITIVE..1.0).contains(&x) {
+            break;
+        }
+        cdf = excel_form_lower(a, x, a * excel_ln(x))?;
+        let miss = (cdf - p).abs();
+        if miss < best.1 {
+            best = (x, miss);
+        }
+        if miss == 0.0 {
+            break;
+        }
+    }
+    Some(best.0)
 }

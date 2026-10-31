@@ -26,6 +26,16 @@ crossing is 2,484 ulp off, visibly off. The T-2561 rule does not cover this cell
 So Excel's own test for when it takes the root is not the check. The candidates and counts are in
 docs/excel-semantics/statistics.md, in the T-2561 entry.
 
+Evidence from T-3311 (docs/excel-semantics/statistics.md, T-3311 paragraphs of "Deep lower tail at a shape above
+1"): Excel's deep-tail quantile is Newton steps from the leading-factor root on the leading-factor series form, and
+the root is iterate 0. In probes-numeric/t3311-fresh-sweep, of the 64 cells the engine leaves visibly off at shapes
+1 to 20 (61 of them at p below 1E-20), Excel's value is an exact iterate at 58 and the root at 8 (shapes 2.2 to 18).
+T-3311's rule (the first iterate whose cdf is nearest p, `incomplete_gamma::closed_form::excel_newton_quantile`),
+applied without its cut or range, is bit-exact at 50 and within 15 digits at 62. T-3311 ships it only at shapes 1.5 to
+5 and p 1E-200 to 1E-12, after T-2561's root. So the root test this task looks for may be "the root is the nearest
+iterate", which would replace `TINY_QUANTILE_CHECK` and widen that range; the fresh sweep is not a hold-out for it
+any more, so a new sweep is owed (decision 0188 R4).
+
 ## Acceptance criteria
 - [ ] A31 is within half a unit of Excel's 15th digit, or the Outcome records why it cannot be reached.
 - [ ] A probe sweeps shapes 1.5 to 19.5 (step 1) by p = 1E-50, 1E-100, 1E-150, 1E-200, 1E-250 and 1E-300 of

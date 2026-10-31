@@ -3,7 +3,7 @@ id: T-3313
 title: "Move the closed-form gamma quantiles into an incomplete_gamma::closed_form submodule (mod.rs is near its 1,000-line limit)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -28,3 +28,10 @@ lines (T-2561 architecture review, round 1). T-3070 set the pattern: it moved th
 
 ## Out of scope
 - Any change to what the functions compute.
+
+## Outcome
+Done as the first code commit of T-3311's PR (3a3a4102f, "move the closed-form gamma quantiles into
+incomplete_gamma::closed_form"): the six items moved unchanged into `incomplete_gamma/closed_form.rs`, re-exported
+through `mod.rs` as `huge_shape` is; quality/fitted.json moves three FITTED tags from mod.rs to closed_form.rs (total
+unchanged). Its eval delta is not separate from T-3311's: every cell the PR changes is in T-3311's comparison and comes
+from `excel_newton_quantile`, which T-3311 added after the move.

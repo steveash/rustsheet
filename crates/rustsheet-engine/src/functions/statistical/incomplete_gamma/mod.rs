@@ -770,13 +770,22 @@ pub(crate) fn gamma_quantile(shape: f64, scale: f64, p: f64, tail: Tail) -> f64 
         (Tail::Upper, false) => (Tail::Lower, 1.0 - p),
     };
     // Only a lower-tail p of at most 1/2: the lower tail is both the tail given and the smaller one.
-    let tiny = (tail == Tail::Lower && small == Tail::Lower)
-        .then(|| excel_tiny_quantile(shape, target))
+    // Then Newton steps from the root where it is close, the lower tail being the smaller one
+    // in either function: `CHISQ.INV.RT(1-1E-16,3)` is Excel's first step (T-3311).
+    let tiny = (small == Tail::Lower)
+        .then(|| {
+            (tail == Tail::Lower)
+                .then(|| excel_tiny_quantile(shape, target))
+                .flatten()
+                .or_else(|| excel_newton_quantile(shape, target))
+        })
         .flatten();
     let x = if shape == 1.0 {
         exponential_quantile(small, target) * scale
     } else if let Some(unit) = tiny {
         // The scale multiplies the unit quantile, as at shape 1 and below 1 (T-3013, T-3016).
+        // Excel's `CHISQ.INV(p,2a)` and `GAMMA.INV(p,a,2)` are twice `GAMMA.INV(p,a,1)` at all 88
+        // points of probes-numeric/t3311-gamma-inv-lower-tail-cdf sheet W (T-3311).
         unit * scale
     } else {
         let Ok(dist) = Gamma::new(shape, rate) else {
@@ -871,7 +880,7 @@ mod density;
 mod huge_shape;
 
 pub(crate) use closed_form::excel_small_shape_quantile;
-use closed_form::excel_tiny_quantile;
+use closed_form::{excel_newton_quantile, excel_tiny_quantile};
 pub(crate) use density::{accurate_gamma_density, gamma_density};
 pub(crate) use huge_shape::{huge_shape_quantile, HUGE_SHAPE_MIN};
 
