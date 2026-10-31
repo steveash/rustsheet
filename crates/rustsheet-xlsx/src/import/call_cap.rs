@@ -32,6 +32,8 @@ pub(super) fn check_rule_formulas(
     parser: &mut Parser,
     sheet_name: &str,
 ) -> Result<(), XlsxError> {
+    // The cell a formula is parsed at moves its relative references but not its call nesting,
+    // the only thing read here, so one origin serves every rule.
     let origin = CellReferenceRC {
         sheet: sheet_name.to_string(),
         row: 1,
