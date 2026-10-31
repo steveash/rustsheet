@@ -82,4 +82,4 @@ differs from the engine is stated in docs/excel-semantics/ and owned by a task.
   coverage. Re-recorded from main's probes list with `make eval-baseline` (no `--allow-regressions`): the probes list
   comes out identical (130 new-coverage cells, 0 regressions). The lock is the in-scope visibly-off count, written by
   the tool: main's lock 2427 carried slack from fixes the steward had not yet lowered (decision 0093), so it reads
-  2544 after the last merge of main (main's own count 2414 plus the 130 cells).
+  2548 after the last merge of main (main's own count 2418 plus the 130 cells).
