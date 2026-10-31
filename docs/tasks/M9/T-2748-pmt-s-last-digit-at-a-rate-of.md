@@ -29,6 +29,7 @@ record the form in financial.md "Annuity evaluation order".
 
 ## Acceptance criteria
 - [x] P!A462 and gen-m9/bcb1105c61a2649d A97 leave the baselines (`make eval-baseline`), with no new known failures.
+      (Met before this task ran; the 20 known failures this PR adds are the new probes' own cells, tracked in T-3489.)
 - [x] The tiny-rate form is in docs/excel-semantics/financial.md with its probe cells.
 - [x] `make check` green; reviewers approve.
 
@@ -36,11 +37,12 @@ record the form in financial.md "Annuity evaluation order".
 - PMT's general last digits over the T-2242 sweeps (T-2730).
 
 ## Outcome
-Both cells had already left the baselines on origin/main when this task started (2026-10-31): PMT's discounted
-payment (T-3014) gives `PMT(1E-15,346,96301,42,1)` = -278.44797687866065 to the bit, and gen-m9/bcb1105c61a2649d
-A97 follows. New evidence: probes/pmt-tiny-rate (160 cells, rates 1E-16 to 1E-12, both types, five nper/pv/fv sets)
-and probes/pmt-tiny-rate-near-2e-16 (30 cells) show that form holds at every tiny rate except 2^-53 to 2^-52, where
-Excel is 1 to 3 ulp larger in magnitude (20 cells). Taking `2+rate` in the x87 register in `growth_log` was tried and
-regressed 294 cells (fixing 23), so it is not the cause. That band is T-3489 (opus). Recorded in financial.md "PMT is a discounted
-payment". No code change. Eval delta: probes +190 checked, +170 passing, 20 new known failures, all in the two new
-cases and listed in T-3489.
+Both cells had already left the baselines on origin/main when this task started (checked 2026-10-31: neither
+t2475-stat-subexpressions P!A462 nor gen-m9/bcb1105c61a2649d Calc!A97 is in eval/baseline): PMT's discounted payment
+(T-3014) gives `PMT(1E-15,346,96301,42,1)` = -278.44797687866065 to the bit, and gen-m9/bcb1105c61a2649d A97 follows.
+New evidence: probes/pmt-tiny-rate (160 cells, rates 1E-16 to 1E-12, both types, five nper/pv/fv sets) and
+probes/pmt-tiny-rate-near-2e-16 (30 cells) show that form holds at every sampled tiny rate except 1.2E-16 to 2.1E-16,
+where Excel is 1 to 4 ulp larger in magnitude (20 cells, inside the web oracle's reproducibility floor). Taking `2+rate`
+in the x87 register in `growth_log` was tried and regressed 294 cells (fixing 23), so it is not the cause. That band is
+T-3489 (opus). Recorded in financial.md "PMT is a discounted payment". No code change. Eval delta: probes +190 checked,
++170 passing, 20 new known failures, all in the two new cases and listed in T-3489.
