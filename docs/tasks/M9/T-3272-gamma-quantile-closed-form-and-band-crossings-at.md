@@ -23,6 +23,9 @@ digits: the Wilson-Hilferty closed form's and the band's true-quantile crossings
   10005667524.015223 is just visibly off, A214, A229, A110); the band's true quantiles are mostly 1 ulp off (the
   crossing's even end against Excel's search's own end, as `GAMMA.INV(0.5,1E9,1)`, incomplete-gamma-cap E19).
 - Every known-failure line of probes/t3070-gamma-inv-band is this task's (decision 0136: the case named alone).
+- From T-3131 (2026-10-31): probes-numeric/t1049-chisqinv Calc!A27 `CHISQ.INV(0.5,1E10)` and
+  probes-numeric/t1049-chisqinvrt Calc!A27 `CHISQ.INV.RT(0.5,1E10)`: Excel 9999999999.333334, ours 9999999999.333332
+  (2 ulp).
 - probes/t2982-gamma-inv-huge-shape A1:A4, A7:A9, A11, A13, A16, A19, A22:A26, A29, A30, A34, A36:A41, A44, A60, A61,
   A63, A66, A68:A70, A72:A75, A77:A85, A89, A92, A93 (1 to 5 ulps); probes/incomplete-gamma-cap E5, E14, E19 (1 ulp).
 - Probe (excel-probe skill): CHISQ.INV.RT and CHIINV at p = 0 and p = 1 above 1E10 degrees of freedom (unprobed; ours

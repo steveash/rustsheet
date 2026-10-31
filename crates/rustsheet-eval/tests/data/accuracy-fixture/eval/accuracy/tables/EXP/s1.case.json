@@ -1,0 +1,21 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3356 fixture: not a real table",
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=EXP(1)",
+    "A2": "=EXP(2)",
+    "A3": "=EXP(0)",
+    "A4": "=EXP(3)"
+   }
+  }
+ ],
+ "check": [
+  "Calc!A1",
+  "Calc!A2",
+  "Calc!A3",
+  "Calc!A4"
+ ]
+}

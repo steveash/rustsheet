@@ -3,7 +3,7 @@ id: T-3385
 title: "FITTED range unknown: write down the input range of the five fits tagged `range unknown`, and settle EXPM1_FORM_LIMIT"
 milestone: M0
 lane: quality
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -41,11 +41,33 @@ Every `FITTED(...)` tag in the engine names the input range its cells cover: non
   (its sweep covers only |x| < 1): it may be an untagged fit.
 
 ## Acceptance criteria
-- [ ] Each of the five tags names the input range of its cells, read from the case files or computed from them; none
+- [x] Each of the five tags names the input range of its cells, read from the case files or computed from them; none
       says `range unknown` (`rg 'FITTED\(.*range unknown' crates` is empty).
-- [ ] `EXPM1_FORM_LIMIT` is either shown to follow from math (and its doc says so) or bracketed by Excel cells (with
+- [x] `EXPM1_FORM_LIMIT` is either shown to follow from math (and its doc says so) or bracketed by Excel cells (with
       `excel-probe` if needed) and tagged; quality/fitted.json updated with `--update` if the count changes.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing any fitted value or adding out-of-range fallbacks (T-3364, T-3365).
+
+## Outcome
+No value or behavior change: doc comments, tags and one semantics note. Method: a temporary `eprintln!` at each fitted
+branch, a full `rustsheet-eval run`, the logged inputs reduced to ranges (reverted); the XIRR and YIELD sets read from
+the fit lab's `xirr`, `xirr-oos` and `yield` sweeps.
+- `irr_fallback` (T-2727): probe A1-A24 are 3..6 flows, |c| 0.3..400, roots -0.75 and 6.91; gen-m9's 68 fallback calls
+  (the 15 cells among them) have 2..29 flows, |c| 1E-15..1E+15, 4 roots in -0.93..661, the rest `#NUM!`.
+- `compute_xirr` (T-3268): the 267 cells have 2..6 flows over 0.5..124 years, |value| 5E-6..1.4E+21, roots -0.93..22.05.
+- `excel_yield_newton` (T-1592): the 370 are the fit lab's `yield` set: basis 0, term 1.3..40.3 years, rate 0..0.5,
+  price 40..160, redemption 50..200, yield -0.081..0.51.
+- `SERIES_MIN_SHAPE_SUM` (T-2219): half-integer a + b 2..9.5 below the cut, 10.5..110 above it; no cell in (9.5, 10.5).
+- `F_QUANTILE_REFINE_P_MIN` (T-0974): 61 cells reach it (count corrected from 1): 25 unrefined at p 1E-20..1.1E-16, 36
+  refined at 1E-15..1E-10; no cell strictly between.
+- `EXPM1_FORM_LIMIT`: not from the math; bracketed by t2178-hyperbolic-unit-sweep at 0.99505..1.0375 (exp forms miss
+  `TANH(0.995054655025377)`, expm1 forms miss `SINH(1.0375)`), tagged `FITTED(T-2134, 2070 cells, ...)`;
+  quality/fitted.json 80 -> 81 by `--update`. It tags an existing fit (no value change), so no new hold-out applies.
+  numbers.md "SINH and TANH below 1" notes the bracket.
+- Also named the bracketing probes (t2535, t2778) on `INVERSE_EXP_LOW`/`INVERSE_EXP_HIGH`.
+- Decision 0190 records the fitted-lock raise (governance: quality/fitted.json is protected).
+- Not done (the optional "worth correcting" items): t_dist weak counts, f_density `LARGE_DF_MIN`/`LOG1P_SERIES_LIMIT`
+  and Stirling counts, RATE secant and IRR model: follow-up T-3395.
+Eval delta: none (comments only).
