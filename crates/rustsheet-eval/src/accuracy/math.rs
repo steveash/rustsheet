@@ -135,6 +135,7 @@ pub struct MathTable {
 
 /// The math sidecar beside an oracle sidecar path: `foo.oracle.json` → `foo.math.json`, so a
 /// suite's `oracle_dir` mirroring applies to both (SPEC-0029 "Math references for eval cells").
+/// The writer, `math_path` in `tools/src/rustsheet_tools/accuracy/eval_math.py`, must agree.
 #[must_use]
 pub fn math_sidecar(oracle_sidecar: &Path) -> PathBuf {
     let name = oracle_sidecar

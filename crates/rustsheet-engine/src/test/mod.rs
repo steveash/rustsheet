@@ -92,6 +92,7 @@ mod test_intersection_operator;
 mod test_inverted_ranges;
 mod test_issue_623;
 mod test_iteration;
+mod test_legacy_dynamic_promotion;
 mod test_legacy_n_t_marker;
 mod test_let_cell_shaped_names;
 mod test_lifted_range_bound;
