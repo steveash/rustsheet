@@ -178,7 +178,8 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   daily run runs `make merge-train-stats` (T-3076) and records p90 latency, stranded PRs, the
   red-train rate and the bisection runs in docs/status.md. The full report reads every run and
   job of the window and takes several minutes: let it finish (run it in the background), and if
-  it cannot, record the stranded PRs from "Stranded ready PRs" above and say the rest is missing. In `train` mode, any of these triggers the emergency flip to `lock`
+  it cannot, record the stranded PRs from "Stranded ready PRs" above and say the rest is
+  missing. In `train` mode, any of these triggers the emergency flip to `lock`
   ("Emergency flip to `lock`" above) and a P0: p90 latency over 60 min on any day; more than 2
   trains in a day needing more than 6 CI runs; a stranded PR (marked ready, unmerged after 2 h,
   not ejected); any tree-check failure. In `shadow` mode the numbers are only reported: they are

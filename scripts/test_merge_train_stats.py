@@ -7,9 +7,9 @@ import contextlib
 import io
 import sys
 import unittest
-from unittest import mock
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import merge_lock  # noqa: E402 (the sys.path line above must run first)

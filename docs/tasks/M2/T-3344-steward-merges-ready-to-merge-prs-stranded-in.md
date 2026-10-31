@@ -98,4 +98,3 @@ decision record the governance gate asks for.
   The other checks that `--stranded` prints only that line.
 - **SPEC-0027:** unchanged. Its "stranded" definition is the one the sweep uses, and decision
   0194 defines the sweep.
-
