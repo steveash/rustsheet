@@ -3,7 +3,7 @@ id: T-3373
 title: "Move LAMBDA closure capture and lifetime code out of logical/lambda.rs (947 of its 1,000 lines)"
 milestone: M7
 lane: functions-logic
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -42,3 +42,9 @@ What moves (line numbers at origin/main 2026-10-31):
 ## Out of scope
 - Any change to what LAMBDA, LET or the helpers compute (T-3111 owns the snap).
 - The call path (`call_prepared`, `prepare_lambda`) and the eta-name code.
+
+## Outcome
+`ScopeResult` (+ impls), `MAX_CAPTURED_CELLS`, `close_over`, `bind_captures`, `unbind_captures`, `RETAINED_LAMBDA_SLOTS` and the
+lifetime `impl Model` moved unchanged into `logical/lambda_scope.rs`; `logical/mod.rs` re-exports `ScopeResult` from
+there; `bind_captures`/`unbind_captures` are `pub(super)`. lambda.rs went 947 -> 746 lines. `make check` green;
+`make eval-check` shows no suite changed (0 fixed, 0 regressions).
