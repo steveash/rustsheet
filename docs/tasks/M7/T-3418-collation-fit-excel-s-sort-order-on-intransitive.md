@@ -31,6 +31,29 @@ text comparison, and UNIQUE groups such texts as Excel does; or the cells are re
   CPython/Java TimSort for short arrays, libc++ `__sort3` plus insertion, and natural merges (bottom-up, left fold,
   right fold, TimSort stack) with either tie rule. None fits every row. Next: probe four- to six-text inputs
   (every order of a small set) to tell the merge pattern apart, and Excel's comparison count if observable.
+- Scores per candidate (rows matched, SORT ascending and descending; SORTBY gives the same), from a Python
+  simulation over the probed matrix. All 44 rows were seen together: there was no hold-out, and T-3211 kept the
+  best total (`nat_bu`, now `sort_indices_pairwise`), so the eight-text rows are not independent evidence for it.
+
+  | candidate | 3-text asc | 3-text desc | 8-text asc | 8-text desc |
+  |---|---|---|---|---|
+  | ins_lin | 8/12 | 8/12 | 3/32 | 7/32 |
+  | msvc_ins | 7/12 | 7/12 | 4/32 | 8/32 |
+  | ins_front | 7/12 | 7/12 | 14/32 | 9/32 |
+  | ins_bin | 8/12 | 8/12 | 4/32 | 8/32 |
+  | selection | 7/12 | 7/12 | 14/32 | 9/32 |
+  | bubble | 8/12 | 8/12 | 3/32 | 7/32 |
+  | qs | 3/12 | 3/12 | 5/32 | 6/32 |
+  | qs_mid | 10/12 | 10/12 | 4/32 | 2/32 |
+  | merge_td | 8/12 | 8/12 | 14/32 | 19/32 |
+  | merge_td2 | 7/12 | 7/12 | 14/32 | 19/32 |
+  | merge_bu | 7/12 | 7/12 | 14/32 | 19/32 |
+  | timsort_small | 12/12 | 12/12 | 4/32 | 8/32 |
+  | ins3 | 12/12 | 12/12 | 3/32 | 7/32 |
+  | nat_bu | 12/12 | 12/12 | 20/32 | 24/32 |
+  | nat_left | 12/12 | 12/12 | 20/32 | 23/32 |
+  | nat_right | 12/12 | 12/12 | 12/32 | 17/32 |
+  | nat_stack | 12/12 | 12/12 | 18/32 | 19/32 |
 
 ## Acceptance criteria
 - [ ] Every cell named above passes, or is an accepted deviation with a decision-0014 entry; 0 regressions.

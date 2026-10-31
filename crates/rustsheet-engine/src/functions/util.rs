@@ -208,8 +208,9 @@ pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
 }
 
 /// [`compare_values`], except that two texts compare as Excel's `<`, `=`, `>` do (`cmp_text_pairwise`):
-/// the lookups and SWITCH use this, sorts keep `compare_values` (docs/excel-semantics/coercion.md
-/// "Not a total order"; probes/t3181-collation-prefix-callers; T-3210).
+/// the lookups and SWITCH use this (T-3210), and SORT and SORTBY through `sort_key_cmp` with
+/// [`sort_indices_pairwise`] (T-3211); GROUPBY and PIVOTBY keep the total `cmp_text`
+/// (docs/excel-semantics/coercion.md "Not a total order"; probes/t3181-collation-prefix-callers).
 pub(crate) fn compare_values_pairwise(left: &CalcResult, right: &CalcResult) -> i32 {
     match (left, right) {
         (CalcResult::String(l), CalcResult::String(r)) => collation::cmp_text_pairwise(l, r) as i32,

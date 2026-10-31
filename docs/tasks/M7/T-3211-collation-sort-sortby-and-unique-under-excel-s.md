@@ -52,7 +52,7 @@ directive 5: no panics) with accepted-deviation entries.
 - Lookups (T-3210).
 
 ## Outcome
-- Probe: probes/t3211-collation-sort-cycles (361 cells, excel-graph 2026-10-31): every order of the two three-text
+- Probe: probes/t3211-collation-sort-cycles (361 formula cells, 377 cells checked with Data; excel-graph 2026-10-31): every order of the two three-text
   cycles and 32 eight-text shuffles under SORT/SORTBY ascending and descending, UNIQUE of collation-equal and
   prefix pairs, and the 9x9 comparison matrix. Findings in coercion.md "Not a total order".
 - `functions::util::sort_indices_pairwise`: a stable natural merge sort (runs, descending ones reversed, pairwise
@@ -66,4 +66,4 @@ directive 5: no panics) with accepted-deviation entries.
   G4:I4); 0 regressions.
 - Unit test `the_pairwise_sort_ends_on_intransitive_texts` (test_collation.rs): the t3201 wrapped-run texts in five
   input orders, both directions.
-- Follow-up: T-3418 (fit the eight-text orders and UNIQUE's sort-order grouping).
+- Follow-ups: T-3418 (fit the eight-text orders and UNIQUE's sort-order grouping), T-3419 (bound UNIQUE's pairwise bucket scan; reviewers).
