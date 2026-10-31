@@ -72,6 +72,35 @@ pub fn is_valid_row(row: i32) -> bool {
     (1..=LAST_ROW).contains(&row)
 }
 
+/// Whether the block of `width` columns by `height` rows whose top left cell is (`row`, `column`)
+/// is at least one cell and lies within the grid, so `row + height` and `column + width` cannot
+/// overflow.
+pub fn is_valid_block(row: i32, column: i32, width: i32, height: i32) -> bool {
+    is_valid_row(row)
+        && is_valid_column_number(column)
+        && (1..=LAST_ROW - row + 1).contains(&height)
+        && (1..=LAST_COLUMN - column + 1).contains(&width)
+}
+
+/// [`is_valid_block`] as a `Result`, for an area read from untrusted input such as an external
+/// diff (T-2896).
+pub(crate) fn check_block(row: i32, column: i32, width: i32, height: i32) -> Result<(), String> {
+    if is_valid_block(row, column, width, height) {
+        Ok(())
+    } else {
+        Err(format!("The range at R{row}C{column} is outside the sheet"))
+    }
+}
+
+/// Whether the `count` rows (or columns) from `first`, shifted by `delta`, lie within
+/// `1..=last`: [`is_valid_block`] along one axis, with a shift. Computed in `i64`, since a move
+/// read from an external diff can carry any `i32` (T-2896).
+pub(crate) fn moved_span_in_grid(first: i32, count: i32, delta: i32, last: i32) -> bool {
+    let first = i64::from(first) + i64::from(delta);
+    let span_last = first + i64::from(count) - 1;
+    (1..=i64::from(last)).contains(&first) && (1..=i64::from(last)).contains(&span_last)
+}
+
 fn is_valid_row_str(row: &str) -> bool {
     match row.parse::<i32>() {
         Ok(r) => is_valid_row(r),
