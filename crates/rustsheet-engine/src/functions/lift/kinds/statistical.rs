@@ -96,9 +96,11 @@ const BINOM_INV_WEIGHT: u32 = 1 << 12;
 ///
 /// What one BETA.INV or F.INV element is charged. Its quantile is the capped port of statrs'
 /// inversion (`statistical/inverse_beta.rs`: at most 512 Newton steps of one cdf and 4,096 step
-/// adjustments, its own per-call cap: 1.6 ms at full cost), refined to the crossing of the T-0970
-/// incomplete beta (`special::refine_increasing`: at most 129 of its cdfs, each at most two
-/// continued fractions of 300 steps, about twice statrs' cost: 0.9 ms more; T-0974, T-2119), or, at
+/// adjustments, its own per-call cap: 1.6 ms at full cost), refined to the crossing of its cdf
+/// (`special::refine_increasing`: at most 129 cdfs; F.INV crosses `incomplete_beta::search_tails`,
+/// at most two continued fractions of 300 steps, 0.9 ms more, T-0974; BETA.INV crosses
+/// `bratio::beta_search_tails`, the port's branches (bpser at most 2,000 terms, bfrac 1,000, bgrat 30)
+/// and those same fractions elsewhere, 0.41 ms the slowest timed, T-3398), or, at
 /// a huge shape or df, a crossing of at most 67 of those cdfs (`inverse_beta::beta_quantile_crossing`,
 /// T-1538: 0.5 ms), so the full Newton search plus refinement (2.5 ms) is the bound.
 /// The weight caps a lifted call at 2^27 / 2^18 = 512 elements: 1.7 s at the bound (a DEVIATION,

@@ -4,7 +4,7 @@ title: "F quantiles through Excel's BETA.INV mapping: the p = 0.5 cells where Ex
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P2
+priority: P1
 size: M
 tier: opus
 depends_on: [T-3398]
@@ -34,9 +34,6 @@ F.INV.RT 83 of 434, FINV 32 of 277), with no cell newly visibly off.
   - `F.INV(0.5,50,100)` = `F.INV.RT(0.5,50,100)` = 0.9933156112563186 (m9-f-inv A32, m9-f-inv-rt A32); the mapping gives
     ...177 to ...181.
   The order of the mapping's arithmetic (four algebraically equal forms) does not decide them either.
-- BETA.INV cells T-3398 moved within 2 ulp (decision 0083's allowance; bit-level, not this task's visible target):
-  ironcalc-calc STATISTICAL/BETADIST_BETAINV.xlsx Sheet1!H2 (2 ulp), H25 (1), H63 (2), H64 (2), H67 (1). The same
-  even-end choice applied to F is measured above.
 - Split: T-3225 and T-3233 list probes-numeric/m9-f-inv A31; T-1871 lists gen-m9/4ab2ba98d26c8a5e A110. They keep those
   cells.
 

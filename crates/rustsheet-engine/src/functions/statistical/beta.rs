@@ -4,7 +4,7 @@ use crate::arithmetic::flush_subnormal;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error, value_error};
 use crate::functions::statistical::beta_density::beta_density_small_shape;
-use crate::functions::statistical::bratio::{beta_dist_lower_tail, beta_dist_tails};
+use crate::functions::statistical::bratio::{beta_dist_lower_tail, beta_search_tails};
 use crate::functions::statistical::incomplete_beta::beta_density;
 use crate::functions::statistical::inverse_beta::{beta_inverse_cdf, beta_quantile_crossing};
 use crate::functions::statistical::loader::excel_beta_density;
@@ -24,7 +24,7 @@ const BETA_QUANTILE_STATRS_SHAPE_MAX: f64 = 1e5;
 const BETA_QUANTILE_STATRS_P_MIN: f64 = 1e-15;
 
 /// The quantile of `p` in (0, 1): the crossing of BETA.DIST's own cdf (`special::refine_increasing`
-/// on `bratio::beta_dist_tails`, the kernel BETA.DIST returns), from statrs' search as a start
+/// on `bratio::beta_search_tails`, the kernel BETA.DIST returns where it is ported), from statrs' search as a start
 /// where it is reliable. Excel's BETA.INV solves its own cdf to the crossing
 /// (docs/excel-semantics/statistics.md "BETA.INV solves Excel's own CDF to the crossing
 /// (T-1745)"); until T-3398 the search crossed the older Cephes-based tails, which BETA.DIST no
@@ -46,7 +46,7 @@ fn beta_quantile(alpha: f64, beta: f64, p: f64) -> f64 {
     // (`BETAINV(0.5,1E-5,1)`, probes/t2435-dist-extremes S!A71).
     let t = if p > 0.5 {
         refine_increasing(
-            |t| -beta_dist_tails(t, 1.0 - t, alpha, beta).1,
+            |t| -beta_search_tails(t, 1.0 - t, alpha, beta).1,
             -(1.0 - p),
             estimate,
             0.0,
@@ -54,7 +54,7 @@ fn beta_quantile(alpha: f64, beta: f64, p: f64) -> f64 {
         )
     } else {
         refine_increasing(
-            |t| beta_dist_tails(t, 1.0 - t, alpha, beta).0,
+            |t| beta_search_tails(t, 1.0 - t, alpha, beta).0,
             p,
             estimate,
             0.0,

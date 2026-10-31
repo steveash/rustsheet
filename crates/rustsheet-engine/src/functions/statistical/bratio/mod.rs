@@ -13,7 +13,7 @@ pub(super) mod bpser;
 mod bup;
 pub(super) mod ln_beta;
 
-use super::incomplete_beta::{beta_reg_tails, closed_form_tails};
+use super::incomplete_beta::{beta_reg_tails, closed_form_tails, search_tails};
 use crate::arithmetic::extended_sum;
 use bfrac::bfrac;
 use bgrat::bgrat_half;
@@ -194,13 +194,19 @@ fn small_shape_branch(a0: f64, b0: f64, x0: f64) -> Branch {
 /// for F (see [`t_kernel_tails`]), so F's callers (`fisher.rs`) keep [`kernel_tails`].
 /// BETA.INV's search (`inverse_beta.rs`) crosses this same kernel.
 pub(crate) fn beta_dist_lower_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
-    beta_dist_tails(x, y, a, b).0
+    kernel_tails_with(x, y, a, b, true).0
 }
 
-/// (w, w1) of BETA.DIST's kernel ([`beta_dist_lower_tail`] and its complement), the tails BETA.INV's
-/// search crosses (T-3398).
-pub(crate) fn beta_dist_tails(x: f64, y: f64, a: f64, b: f64) -> (f64, f64) {
-    kernel_tails_with(x, y, a, b, true)
+/// (w, w1) of BETA.DIST's kernel ([`beta_dist_lower_tail`]) where it is closed or ported, the tails
+/// BETA.INV's search crosses (T-3398). On the branches not ported yet BETA.DIST sums the accurate
+/// half-integer series (thousands of double-double terms near x = 1: 0.32 ms a cdf at
+/// a = 170, b = 1.5, x = 0.99), so the search takes the bounded Cephes kernel there instead
+/// (`incomplete_beta::search_tails`, at most two 300-step fractions), as it did before T-3398:
+/// 129 cdfs of the series would cost 8 ms an element, past BETA.INV's lift weight.
+pub(crate) fn beta_search_tails(x: f64, y: f64, a: f64, b: f64) -> (f64, f64) {
+    closed_form_tails(x, y, a, b)
+        .or_else(|| ported_tails_with(a, b, x, y, true))
+        .unwrap_or_else(|| search_tails(x, y, a, b))
 }
 
 /// (w, w1) of K(a, b, x, y), x and y formed by the caller per SPEC-0025's caller table:
