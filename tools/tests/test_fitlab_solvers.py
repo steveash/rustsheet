@@ -4,12 +4,21 @@ from __future__ import annotations
 
 import datetime
 import math
+from collections.abc import Callable
 
 import pytest
 
 from rustsheet_tools.fitlab import fit
-from rustsheet_tools.fitlab.kernels import registry, solvers, xirr, yield_caret
-from rustsheet_tools.fitlab.sweep import Arg, UnparsedError, Workbook, load_sweep, parse_arg, serial_date
+from rustsheet_tools.fitlab.kernels import irr_fallback, irr_secant_d, registry, solvers, xirr, yield_caret
+from rustsheet_tools.fitlab.sweep import (
+    Arg,
+    Cell,
+    UnparsedError,
+    Workbook,
+    load_sweep,
+    parse_arg,
+    serial_date,
+)
 
 
 def test_parse_arg_reads_array_literals_and_dates() -> None:
@@ -86,17 +95,30 @@ def test_xirr_fit_scores() -> None:
     assert s["bisect fitted, m=(a+b)/2"] == 225
     assert s["bisect, first-value sign, span-scaled |f| bound (T-1583)"] == 227
     oos = _scores("xirr-oos")
-    assert oos["cells"] == 52  # T-1591 added 30 cells (probes/xirr-span-zero-first)
-    assert oos["bisect, stop h<5e-9+1e-8|m| & |f|<2e-8*max|v| (fitted)"] == 28
+    # T-1591 added 30 cells (probes/xirr-span-zero-first), T-2045 29 (probes/xirr-back-dated-stop, whose two
+    # range cells A2 and A31 the literal-array filter leaves out)
+    assert oos["cells"] == 81
+    assert oos["bisect, stop h<5e-9+1e-8|m| & |f|<2e-8*max|v| (fitted)"] == 46
     # T-1583 misses xirr-early-dates A7 (input check) and the root-0.1 cells at 20, 40 and 120 years (T-1591)
-    assert oos["bisect, first-value sign, span-scaled |f| bound (T-1583)"] == 48
-    assert oos["bisect, first-value sign, fitted stop"] == 30
-    # T-2328: XNPV discounted with Excel's `^` puts the root-0.1 cells on Excel's side of the exact root;
-    # only A7 (input check) is left. The span factor is still needed (A8, 124 years), the step test too.
+    assert oos["bisect, first-value sign, span-scaled |f| bound (T-1583)"] == 66
+    assert oos["bisect, first-value sign, fitted stop"] == 48
+    # T-2328: XNPV discounted with Excel's `^` puts the root-0.1 cells on Excel's side of the exact root.
+    # The span factor is still needed (A8, 124 years), the step test too.
     assert s["bisect, first-value sign, span-scaled |f| bound, Excel ^ (T-2328)"] == 227
-    assert oos["bisect, first-value sign, span-scaled |f| bound, Excel ^ (T-2328)"] == 51
-    assert oos["bisect, first-value sign, fitted stop, Excel ^"] == 33
-    assert oos["bisect, first-value sign, step test only, Excel ^"] == 48
+    assert oos["bisect, first-value sign, span-scaled |f| bound, Excel ^ (T-2328)"] == 69
+    assert oos["bisect, first-value sign, fitted stop, Excel ^"] == 51
+    assert oos["bisect, first-value sign, step test only, Excel ^"] == 74
+    # T-2045: a span that counts flows dated before the first fits the back-dated cells but
+    # whole-column-nogaps A4 and its copies (xirr-back-dated-stop A4, A5, A23).
+    for span in ("earliest-to-latest years", "first-to-farthest years"):
+        name = f"bisect, first-value sign, |f| bound scaled by {span}, Excel ^ (T-2045)"
+        assert s[name] == 227
+        assert oos[name] == 76
+    # T-3268: the XNPV bound only on a negative root, unscaled, fits every numeric cell; the one
+    # miss is xirr-early-dates A7 (Excel's input check).
+    name = "bisect, first-value sign, |f| bound on a negative root only, Excel ^ (T-3268)"
+    assert s[name] == 227
+    assert oos[name] == 80
 
 
 def test_xnpv_with_excels_power_at_an_exact_root() -> None:
@@ -133,6 +155,27 @@ def test_irr_secant_fit_scores() -> None:
     assert s["secant in v, no residual test"] == 181
     assert s["secant in v, no retry"] == 187
     assert s["Newton in v=1/(1+r), converged"] == 74
+
+
+def test_irr_secant_d_needs_twice_rounded_npv() -> None:
+    # T-3205: m9-fin-irr-rate Calc!A214 and gen-m9 67a4c03afd63f988 Calc!A395. With NPV in plain doubles
+    # both stop one secant iterate early, 16 ulp off Excel.
+    cells = [
+        ([-1000.0, 230.0, 200.0, 125.0, 200.0, 10.0], 5.0, -0.10150067605359347),
+        ([0.5, 0.1, -0.5], 0.5, -0.09501243788791103),
+    ]
+    plain = irr_secant_d.irr_secant_d(irr_secant_d.npv_v_running_plain)
+    for flows, guess, excel in cells:
+        assert irr_secant_d.irr_secant_d()(flows, guess, None) == excel
+        assert plain(flows, guess, None) != excel
+
+
+@pytest.mark.usefixtures("real_cases")
+def test_irr_secant_d_fit_scores() -> None:
+    s = _scores("irr")
+    assert s["secant in d, shipped (T-3205)"] == 263
+    assert s["secant in d, NPV in plain doubles (T-3120)"] == 262
+    assert s["secant in d, unconditional zero-step stop"] == 257
 
 
 def test_irr_secant_on_a_two_flow_root() -> None:
@@ -217,9 +260,10 @@ def test_yield_back_chain_shares_a_frequency_independent_iterate() -> None:
 def test_yield_start_sweep_newton_from_a_shared_start() -> None:
     # T-2187: yield-start-sweep A1 (frequency 2) and B1 (frequency 1) step back to the same iterate as
     # yield-solver-sweep S!A1; C1 (frequency 4) is at PRICE's root. Run forward from that start,
-    # analytic Newton returning the iterate after the first step below the cut gives Excel's value on
+    # analytic Newton returning the iterate before the first step below the cut gives Excel's value on
     # every cell of columns A to C (redemption 100 to 101 at frequency 2, 1 and 4) to 5e-14 relative (worst 1.2e-14).
-    # The cells bracket the cut between 6.66e-6 and 7.11e-6; 6.9e-6 is an arbitrary point inside.
+    # T-2330: the stop is T-1592's short stop (a step below 1e-10 is not taken); the 6e-6 to 7e-6 "last steps"
+    # T-2187 read as a cut are the steps before it.
     cells = load_sweep(["probes/yield-start-sweep"], r"^=YIELD\((.*)\)$").cells
     by_key = {c.key: c for c in cells}
     a1, b1 = (solvers.newton_back_chain(by_key[k].args, by_key[k].expected, 1)[1] for k in ("S!A1", "S!B1"))
@@ -229,7 +273,7 @@ def test_yield_start_sweep_newton_from_a_shared_start() -> None:
     assert abs(price_of(by_key["S!C1"].expected) - pr) < 1e-12
     swept = [c for c in cells if c.address[0] in "ABC"]
     assert len(swept) == 63
-    newton = solvers._newton_yield(a1, 6.9e-6)
+    newton = solvers._newton_yield_short(lambda *_args: a1, 1e-10)
     for cell in swept:
         assert abs(newton(*cell.args) - cell.expected) < 5e-14 * cell.expected, cell.key
 
@@ -315,6 +359,50 @@ def test_yield_fitted_start_and_short_stop() -> None:
         assert model(*cell.args) == cell.expected, cell.key
 
 
+def test_yield_unrounded_term_start_sits_one_ulp_above_rounded_once() -> None:
+    # T-2974 attempts 2 and 4 (T-3152 names them in the fit): yield-solver-sweep S!C7 takes one step
+    # from the start, so its bits show the start's last bit. The rounded-once start (decision 0162)
+    # is one ulp below Excel's; the unrounded-term start (decision 0166, the engine's) is Excel's.
+    sweep = {c.key: c for c in load_sweep(["probes/yield-solver-sweep"], r"^=YIELD\((.*)\)$").cells}
+    cell = sweep["S!C7"]
+    once = yield_caret.rounded_once_yield_start(*cell.args)
+    assert yield_caret.unrounded_term_yield_start(*cell.args) == math.nextafter(once, math.inf)
+    for start, exact in (
+        (yield_caret.rounded_once_yield_start, False),
+        (yield_caret.unrounded_term_yield_start, True),
+    ):
+        model = yield_caret.caret_priced(solvers._newton_yield_short(start, 1e-10))
+        assert (model(*cell.args) == cell.expected) == exact, start.__name__
+
+
+@pytest.mark.usefixtures("real_cases")
+def test_yield_short_stop_cut_is_bracketed_by_two_cells() -> None:
+    # T-2330: from the fitted start, yield-start-sweep C18 does not take a 9.67e-11 step (bit-exact) and
+    # yield-start-one-input A5 takes a 1.0063e-10 one (1 ulp off), so the cut lies between them; 1e-10 is
+    # inside. yield-start-rate-term B2 and A26, whose 7.54e-6 and 6.87e-6 steps ruled out the absolute and
+    # relative cuts of T-2187, stop before a 9.13e-11 and a 6.52e-11 step not taken (1 ulp off each).
+    def cell(case: str, key: str) -> Cell:
+        return next(c for c in load_sweep([case], r"^=YIELD\((.*)\)$").cells if c.key == key)
+
+    c18 = cell("probes/yield-start-sweep", "S!C18")
+    a5 = cell("probes/yield-start-one-input", "S!A5")
+    b2, a26 = (cell("probes/yield-start-rate-term", k) for k in ("S!B2", "S!A26"))
+
+    def model(cut: float) -> Callable[..., float]:
+        return yield_caret.caret_priced(solvers._newton_yield_short(solvers.fitted_yield_start, cut))
+
+    def ulps(value: float, cell: Cell) -> float:
+        return abs(value - cell.expected) / math.ulp(cell.expected)
+
+    for cut in (9.68e-11, 1e-10, 1.0062e-10):
+        assert model(cut)(*c18.args) == c18.expected
+        assert ulps(model(cut)(*a5.args), a5) <= 1
+        assert ulps(model(cut)(*b2.args), b2) <= 1
+        assert ulps(model(cut)(*a26.args), a26) <= 1
+    assert ulps(model(9.66e-11)(*c18.args), c18) > 1e6  # C18 would take its step
+    assert ulps(model(1.0064e-10)(*a5.args), a5) > 1e6  # A5 would stop before its step
+
+
 def test_yield_start_term_whole_years_then_leftover_days() -> None:
     # T-2777: the start's term is whole years, then the leftover days over 360, 365 (basis 3) or the
     # maturity's calendar year (basis 1). On probe cells the days-over-a-year term misses visibly (a
@@ -336,3 +424,48 @@ def test_yield_start_term_whole_years_then_leftover_days() -> None:
         assert abs(old(*cell.args) - cell.expected) >= 1e-13 * abs(cell.expected), key
     assert solvers.start_years(datetime.date(2010, 1, 31), datetime.date(2020, 1, 30), 1) == 9 + 364 / 366
     assert solvers.start_years(datetime.date(2012, 2, 29), datetime.date(2019, 8, 15), 0) == 7 + 164 / 360
+    assert solvers.start_term(datetime.date(2012, 2, 29), datetime.date(2019, 8, 15), 0) == (7, 164, 360)
+
+
+def test_irr_fallback_newton_matches_the_engine_and_keeps_the_selection_rule() -> None:
+    # The engine's fallback digits (T-2928): `{42,1,1,-1}` converges to -0.7467044766537408, the
+    # correctly rounded root, where Excel returns -0.7467044766537371 (probes/irr-fallback-roots A12).
+    engine = irr_fallback.irr_fallback_newton()
+    assert engine([42.0, 1.0, 1.0, -1.0]) == -0.7467044766537408
+    assert engine([0.0, 2.0, -1.0]) == pytest.approx(-0.5)  # leading zeros dropped (T-2727)
+    with pytest.raises(solvers.NoResultError):  # P's root nearest v = 0 is negative: #NUM! (T-2727)
+        engine([1.0, 3.0, -1.0])
+    # A residual test on |P| makes the run on the 1E6-scaled {-656,1,1,1,1,1} reach the cap, as
+    # Excel does (t2927-irr-fallback-sweep A103), where the engine's step test returns.
+    scaled = [-656e6, 1e6, 1e6, 1e6, 1e6, 1e6]
+    assert engine(scaled) == pytest.approx(-0.7072347712570631)
+    with pytest.raises(solvers.NoResultError):
+        irr_fallback.irr_fallback_newton(residual=1e-7)(scaled)
+
+
+@pytest.mark.usefixtures("real_cases")
+def test_yield_start_denominator_is_100t_minus_qt_over_2() -> None:
+    # T-3215: yield-start-rate-term S!B30 and yield-start-term-basis S!C47 want a start one ulp below
+    # the unrounded-term start (decision 0166), yield-one-step-start S!A37 one ulp above it. The
+    # denominator `(100 T - q T/2) - q/4` in doubles gives all three Excel's bits.
+    cases = ("yield-start-rate-term", "yield-start-term-basis", "yield-one-step-start")
+    cells = {
+        f"{case}!{c.key}": c
+        for case in cases
+        for c in load_sweep([f"probes/{case}"], r"^=YIELD\((.*)\)$").cells
+    }
+    old = yield_caret.caret_priced(solvers._newton_yield_short(yield_caret.unrounded_term_yield_start, 1e-10))
+    new = yield_caret.caret_priced(
+        solvers._newton_yield_short(yield_caret.hundred_t_minus_qt_yield_start, 1e-10)
+    )
+    for key, step in (
+        ("yield-start-rate-term!S!B30", -1),
+        ("yield-start-term-basis!S!C47", -1),
+        ("yield-one-step-start!S!A37", 1),
+    ):
+        cell = cells[key]
+        before = yield_caret.unrounded_term_yield_start(*cell.args)
+        after = yield_caret.hundred_t_minus_qt_yield_start(*cell.args)
+        assert after == math.nextafter(before, step * math.inf), key
+        assert old(*cell.args) != cell.expected, key
+        assert new(*cell.args) == cell.expected, key

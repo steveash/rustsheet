@@ -19,6 +19,7 @@ pub(crate) fn case(id: &str, millis: u64) -> CaseResult {
         text: Vec::new(),
         defined_names: BTreeMap::new(),
         arguments: Vec::new(),
+        reference_forms: crate::poi_m8_subset::ReferenceFormCells::default(),
     }
 }
 
@@ -76,6 +77,7 @@ pub(crate) fn cell(formula: &str, verdict: Verdict) -> CellResult {
         from_excel: false,
         listed_deviation: false,
         graph_subnormal: false,
+        kind: crate::runner::CellKind::Scored,
     }
 }
 

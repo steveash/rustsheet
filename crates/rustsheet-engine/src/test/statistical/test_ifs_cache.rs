@@ -377,3 +377,233 @@ fn indexed_number_criteria_match_the_walk() {
         );
     }
 }
+
+/// Each formula's text, and whether it is marked circular, with the pass caches on and off
+/// (iterative calculation on when `iterate`), and how many SUMIFS-shaped calls the cached run read
+/// partly as the walk does (T-3227).
+fn cached_and_walked(
+    fill: &dyn Fn(&mut Model),
+    formulas: &[&str],
+    iterate: bool,
+) -> (Vec<(String, String)>, usize) {
+    let run = |no_pass_caches: bool| {
+        let mut model = new_empty_model();
+        model.evaluation.no_pass_caches = no_pass_caches;
+        if iterate {
+            model.workbook.settings.iteration = Some(crate::types::Iteration {
+                max_iterations: 100,
+                max_change: 0.001,
+            });
+        }
+        fill(&mut model);
+        for (index, formula) in formulas.iter().enumerate() {
+            model._set(&format!("E{}", index + 1), formula);
+        }
+        model.evaluate();
+        let texts: Vec<String> = (1..=formulas.len())
+            .map(|row| {
+                let at = crate::expressions::types::CellReferenceIndex {
+                    sheet: 0,
+                    row: i32::try_from(row).unwrap(),
+                    column: 5,
+                };
+                let circular = model
+                    .evaluation
+                    .circular
+                    .contains(&crate::evaluation::key(at));
+                format!(
+                    "{} circular={circular}",
+                    model._get_text(&format!("E{row}"))
+                )
+            })
+            .collect();
+        (texts, model.evaluation.ifs_cache.mixed)
+    };
+    let (cached, mixed) = run(false);
+    let (walked, _) = run(true);
+    (cached.into_iter().zip(walked).collect(), mixed)
+}
+
+/// Sheet2 holds 300 rows: constants in A and B (cached at once) and formulas in C and D, which
+/// the walk only reaches where the criteria before them match. Sheet1's calls run before Sheet2's
+/// formulas in the pass, so C and D are not cacheable when they do.
+fn formula_columns(model: &mut Model) {
+    model.new_sheet();
+    for row in 1..=300 {
+        model._set(&format!("Sheet2!A{row}"), &format!("k{}", row % 7));
+        model._set(&format!("Sheet2!B{row}"), &(row % 5).to_string());
+        model._set(
+            &format!("Sheet2!C{row}"),
+            &format!("=IF(MOD(B{row},2)=0,\"x\",IF(B{row}>2,\"y\",\"z\"))"),
+        );
+        let d = match row {
+            37 => "=1/0".to_string(),
+            150 => "=NA()".to_string(),
+            _ => format!("=B{row}*{row}+0.1"),
+        };
+        model._set(&format!("Sheet2!D{row}"), &d);
+    }
+}
+
+/// Criteria and sum ranges of formulas the walk never fully evaluates: the cached leading criteria
+/// filter the rows, the rest are read at the matching rows as the walk reads them, so values and
+/// errors are the walk's (T-3227).
+#[test]
+fn uncached_formula_ranges_are_read_at_the_matching_rows() {
+    let formulas = [
+        // The sum range is uncached, a matching row holds an error (row 37: k2).
+        "=SUMIFS(Sheet2!D1:D300,Sheet2!A1:A300,\"k2\")",
+        "=SUMIFS(Sheet2!D1:D300,Sheet2!A1:A300,\"k3\")",
+        // A formula criteria range after the cached one, then a cached one.
+        "=SUMIFS(Sheet2!B1:B300,Sheet2!A1:A300,\"k4\",Sheet2!C1:C300,\"y\",Sheet2!B1:B300,\">3\")",
+        "=SUMIFS(Sheet2!D1:D300,Sheet2!A1:A300,\"k5\",Sheet2!C1:C300,\"z\")",
+        "=AVERAGEIFS(Sheet2!D1:D300,Sheet2!A1:A300,\"k1\",Sheet2!C1:C300,\"<>x\")",
+        "=MINIFS(Sheet2!D1:D300,Sheet2!B1:B300,\">=2\",Sheet2!C1:C300,\"y\")",
+        "=MAXIFS(Sheet2!D1:D300,Sheet2!B1:B300,\"<2\",Sheet2!C1:C300,\"z\")",
+        "=SUMIF(Sheet2!A1:A300,\"k6\",Sheet2!D1:D300)",
+        // A first criteria range of formulas: the walk as before.
+        "=SUMIFS(Sheet2!B1:B300,Sheet2!C1:C300,\"y\")",
+    ];
+    for iterate in [false, true] {
+        let (results, mixed) = cached_and_walked(&formula_columns, &formulas, iterate);
+        for ((cached, walked), formula) in results.iter().zip(formulas) {
+            assert_eq!(cached, walked, "{formula} (iterate: {iterate})");
+        }
+        assert!(mixed >= 6, "the mixed path ran {mixed} times");
+    }
+}
+
+/// A cycle through an uncached sum range: a call reaches the cell that reads it back only at a
+/// row every criterion matches, as the walk does, so the cycle is reported alike. Row 21 is k0
+/// with C "z" (B21 is 1): E1's call reaches D21, E2's (C "x") never does.
+#[test]
+fn a_cycle_through_an_uncached_sum_range() {
+    let fill = |model: &mut Model| {
+        formula_columns(model);
+        model._set("Sheet2!D21", "=Sheet1!E1+Sheet1!E2");
+    };
+    let formulas = [
+        "=SUMIFS(Sheet2!D1:D300,Sheet2!A1:A300,\"k0\",Sheet2!C1:C300,\"z\")",
+        "=SUMIFS(Sheet2!D1:D300,Sheet2!A1:A300,\"k0\",Sheet2!C1:C300,\"x\")",
+        "=SUM(E1:E2)",
+    ];
+    for iterate in [false, true] {
+        let (results, mixed) = cached_and_walked(&fill, &formulas, iterate);
+        for ((cached, walked), formula) in results.iter().zip(formulas) {
+            assert_eq!(cached, walked, "{formula} (iterate: {iterate})");
+        }
+        // Under iteration the sweeps over the cycle clear the pass caches, the count with them.
+        assert!(iterate || mixed >= 2, "the mixed path ran {mixed} times");
+    }
+}
+
+/// [`formula_columns`] plus two more formula columns, F (a year-like key, 4 distinct values) and
+/// G (a month-like key, 3), the shape of calipers `pv23_042` (T-0498): the walk evaluates C, F and G
+/// only where the criteria before them match, so none of them is ever cacheable as a whole.
+fn chained_formula_columns(model: &mut Model) {
+    formula_columns(model);
+    for row in 1..=300 {
+        model._set(
+            &format!("Sheet2!F{row}"),
+            &format!("=2020+MOD(B{row}+{row},4)"),
+        );
+        model._set(
+            &format!("Sheet2!G{row}"),
+            &format!("=CHOOSE(MOD({row},3)+1,\"Jan\",\"Feb\",\"Mar\")"),
+        );
+    }
+}
+
+/// The calls of `pv23_042`'s shape: a constant and selective criterion, a formula criteria range
+/// that matches most rows, and one varying per row and one per column of the calls. Each
+/// formula's value (and circularity) is the walk's.
+fn chained_calls() -> Vec<String> {
+    let mut formulas = Vec::new();
+    for key in ["k1", "k3"] {
+        for year in 2020..=2023 {
+            for month in ["Jan", "Feb", "Mar", "Apr"] {
+                formulas.push(format!(
+                    "=SUMIFS(Sheet2!$D:$D,Sheet2!$A:$A,\"{key}\",Sheet2!$C:$C,\"<>x\",\
+                     Sheet2!$F:$F,{year},Sheet2!$G:$G,\"{month}\")"
+                ));
+            }
+        }
+        formulas.push(format!(
+            "=COUNTIFS(Sheet2!$A:$A,\"{key}\",Sheet2!$C:$C,\"<>x\",Sheet2!$F:$F,\">2021\")"
+        ));
+    }
+    formulas
+}
+
+/// Criteria ranges of formulas read only where the criteria before them match are cached at those
+/// rows (T-0498): the calls give the walk's values, and from the second call on they read the
+/// cached cells: no range is cacheable as a whole but A, and C, F and G are cached at the cells of
+/// their chains.
+#[test]
+fn formula_ranges_are_cached_at_the_cells_their_chain_matches() {
+    let formulas = chained_calls();
+    let formulas: Vec<&str> = formulas.iter().map(String::as_str).collect();
+    for iterate in [false, true] {
+        let (results, _) = cached_and_walked(&chained_formula_columns, &formulas, iterate);
+        for ((cached, walked), formula) in results.iter().zip(&formulas) {
+            assert_eq!(cached, walked, "{formula} (iterate: {iterate})");
+        }
+    }
+    let mut model = new_empty_model();
+    chained_formula_columns(&mut model);
+    for (index, formula) in formulas.iter().enumerate() {
+        model._set(&format!("E{}", index + 1), formula);
+    }
+    model.evaluate();
+    let counts = model.evaluation.ifs_cache.counts();
+    // A as a whole; C (once per key), F (once per key) and G (once per key and year). C, D, F and
+    // G never as a whole.
+    assert_eq!(counts.ready, 1, "{counts:?}");
+    assert_eq!(counts.waiting, 4, "{counts:?}");
+    assert_eq!(counts.gathered, 2 + 2 + 2 * 4, "{counts:?}");
+}
+
+/// A cycle through a range cached at its chain's cells: F36 reads E1, and row 36 (A "k1", C "z")
+/// is one every k1 call reads F at, so E1's own call closes the cycle, as the walk's does, and the
+/// cycle is reported alike.
+#[test]
+fn a_cycle_through_a_range_cached_at_its_chain() {
+    let fill = |model: &mut Model| {
+        chained_formula_columns(model);
+        model._set("Sheet2!F36", "=2021+Sheet1!E1*0");
+    };
+    let formulas = chained_calls();
+    let formulas: Vec<&str> = formulas.iter().map(String::as_str).collect();
+    for iterate in [false, true] {
+        let (results, _) = cached_and_walked(&fill, &formulas, iterate);
+        for ((cached, walked), formula) in results.iter().zip(&formulas) {
+            assert_eq!(cached, walked, "{formula} (iterate: {iterate})");
+        }
+    }
+}
+
+/// A dynamic array anchored at G36 spills over G37:G45, cells the calls of other years read (and
+/// cache at their chain's cells) before a 2021 call evaluates the anchor (row 36: A "k1", C "z",
+/// F 2021): the pass restarts with an empty cache, and every call gives the walk's value.
+#[test]
+fn a_spill_into_a_range_cached_at_its_chain() {
+    let fill = |model: &mut Model| {
+        chained_formula_columns(model);
+        for row in 37..=45 {
+            model._set(&format!("Sheet2!G{row}"), "");
+        }
+        model._set(
+            "Sheet2!G36",
+            "={\"Jan\";\"Jan\";\"Feb\";\"Mar\";\"Jan\";\"Feb\";\"Mar\";\"Apr\";\"Jan\";\"Feb\"}",
+        );
+    };
+    let mut formulas = chained_calls();
+    formulas.push("=Sheet2!G43".to_string());
+    let formulas: Vec<&str> = formulas.iter().map(String::as_str).collect();
+    let (results, _) = cached_and_walked(&fill, &formulas, false);
+    for ((cached, walked), formula) in results.iter().zip(&formulas) {
+        assert_eq!(cached, walked, "{formula}");
+    }
+    let spilled = results.last().map(|(cached, _)| cached.as_str());
+    assert_eq!(spilled, Some("Apr circular=false"));
+}

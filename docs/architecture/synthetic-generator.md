@@ -516,9 +516,26 @@ Each workbook draws one policy. The policy multiplies category weights and pool 
 | `structure` | deep DAGs, wide fan-in/out, cross-sheet chains, insert/delete MRs |
 
 Implemented so far (`rustsheet-gen --policy`): `random` (the catalog-driven P0 generator),
-`numeric-rules` (dense floating-point probes, suite `probes-numeric`) and `operators-refs` (M1
-operators and references only, no functions, suite `gen-m1`; T-0117). The last two are
-whole-suite policies rather than per-workbook draws.
+`numeric-rules` (dense floating-point probes, suite `probes-numeric`), `operators-refs` (M1
+operators and references only, no functions, suite `gen-m1`; T-0117), `names-3d` (suite `gen-m8a`,
+T-1606), `tables` (suite `gen-m8b`, T-1607), `number-formats` (suite `gen-m10`, T-1611) and
+`numeric-fp` (suite `gen-m2`, T-3139). All but `random` are whole-suite policies rather than
+per-workbook draws.
+
+`numeric-fp` implements the cancellation part of the `numeric_fp` row for M2 and M5: X = base·(1±k·2^-52)
+against b = base (bases 1, 2, 0.5, 2^20, 1.5; k = 0..9; both signs; exact doubles built on an
+`Inputs` sheet with `numeric_rules`' `BASES` and `fmt_k`) in three positions, each case one
+position: `root` (the `+`/`-` at the root, operands read through VLOOKUP, HLOOKUP, INDEX,
+MATCH-fed INDEX, MIN, MAX, ABS, ROUND and IF), `wrapper` (the cancellation under IF, IFERROR,
+ROUND, ABS, `&`, `=`, AND and COUNTIF) and `sum` (SUM, AVERAGE, SUMIF and SUMIFS over a range of X
+and -b, with and without a trailing 0), all in both operand orders: 5,200 cells, each tagged
+`numeric-fp/<position>/<form>/<order>/base=../sign=../k=..`. The seed only shuffles the cells.
+With `--milestone M5` (suite `gen-m5`, T-3204) it writes three more cases over the same pairs: `root` reads
+both operands through TRUNC (with and without 20 digits), INT, `MOD(..,2^21)`, ROUNDUP and ROUNDDOWN (20 digits);
+`wrapper` puts `X-b` under TRUNC (both forms), INT, `MOD(..,1)`, ROUNDUP (20 and 0 digits) and ROUNDDOWN (20); and
+`digits15` takes, per base and sign, the k one step either side of where X's rounded or truncated 15-significant-digit
+cut stops being b (computed exactly with `decimal`), with every picker (plain references included) and wrapper, each
+cell tagged `round15=eq|ne/trunc15=eq|ne`: 4,252 cells. Other milestones are refused.
 
 ---
 
@@ -632,6 +649,47 @@ pool with share `ERROR_RATE` (3%), so generated suites reach the `empty_text` an
   mixed absolute/relative `$A1`, `A$1`, `$A$1`, unions `(A1:A3,C1:C3)`, intersections
   `A1:C3 B2:D4`, an empty intersection → `#NULL!`, 3D `Sheet1:Sheet3!A1`, refs to empty
   sheets, `A1#` spill refs, references at sheet limits (`XFD1048576`).
+
+### 6.7 Argument-class pairs (`--policy arg-pairs`, T-3278)
+
+`rustsheet-gen --policy arg-pairs --milestone <M> [--functions ..] [--report <report.json>]` writes calls that
+pass the argument-class pairs the eval report lists as unseen (`argument_coverage[].unseen_pairs`, T-3277;
+default report `eval/runs/latest/report.json`) for the generator-ready functions of exactly `<M>`
+(tools/src/rustsheet_tools/gen/arg_pairs.py). Pairwise coverage (T-0083) is where argument-error precedence
+and coercion order live, and random draws rarely hit a given pair. The policy settles these choices:
+
+- **Classes come from the report, never from Python.** The classifier
+  (crates/rustsheet-eval/src/argument_coverage.rs) is the one definition; the policy only writes
+  arguments in the two shapes it reads: a literal, or a reference to a Data cell holding the class's
+  value. Nested calls and operators are never forced arguments.
+- **Forced forms.** Each class has a fixed literal (`2`, `0`, `-1`, `0.5`, `"2.5"`, `"abc"`, `""`,
+  `TRUE`, a pooled error literal such as `#N/A`) and a Data cell in column G holding another value of
+  the class (`7`, `0`, `-2.5`, `1.5`, `"12"`, `"x"`, `=""`, `FALSE`, `#DIV/0!`). `blank` is a reference
+  to an empty cell in column H; `range` is a 2 × 2 reference (`Data!A1:B2`, `Data!C3:D4`), or, for a
+  `range`-mode parameter (which counts any reference as `range`), the parameter's own shaped draw.
+- **Two calls per pair.** One is enough for coverage; the first call forces both classes as literals,
+  the second as Data references, so two different values per class reduce accidental agreement
+  between engine and Excel.
+- **Other arguments are plain.** An unforced `value` or `criteria` argument is an in-domain literal
+  (`domain` int or enum) or a plain literal of its type (`1`..`3`, `"abc"`, `TRUE`), so the forced pair
+  decides the result; ranges, arrays, aggregates, LET names and lambdas keep the generator's own draw
+  (`Gen.argument`), which respects `vector`, `same_shape` and scope.
+- **Variadic parameters.** Each parameter appears once (a repeat group once), so argument *i* fills
+  parameter *i* under the classifier's `param_of`. A call runs through the later forced parameter and
+  every required or `always` parameter; trailing optionals beyond it are omitted.
+- **Skipped pairs.** A parameter with a `hard` domain is never forced (outside it Excel refuses the
+  workbook, e.g. MUNIT), so its pairs are skipped, as are pairs naming an unknown parameter or class.
+  The skipped pairs are named in each of the function's case descriptions and printed on stderr.
+  GETPIVOTDATA (`pivot`) and LAMBDA (`invoke`) are left out: neither is a plain call.
+- **Layout.** One function per case, at most 200 calls, formulas every third row of column A on
+  `Calc`, so a 2 × 2 `range` lifted by a value parameter spills into the gap instead of onto the next
+  formula. The Data sheet is a 12 × 5 block of generator values plus the class cells.
+- **Determinism.** Each function draws from its own stream seeded by the seed and its name: the same
+  seed and report give the same cases, and adding a function does not shift another's draws.
+
+At 2026-10-31 (report of `make eval` on main), the M2 batch is 17 cases and 2220 calls over 1110 unseen
+pairs of 12 functions; scored with the engine as if its values were Excel's, every one of those pairs is
+covered (T-3278 PR). The oracle-filled batch is T-3279.
 
 ---
 

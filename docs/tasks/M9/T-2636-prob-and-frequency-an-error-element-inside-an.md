@@ -3,11 +3,12 @@ id: T-2636
 title: "PROB and FREQUENCY: an error element inside an array argument is that error (T-2430 follow-up)"
 milestone: M9
 lane: functions-stat
-status: todo
-priority: P2
+status: done
+priority: P1
 size: S
 tier: sonnet
 depends_on: []
+campaign: semantics
 ---
 
 ## Goal
@@ -34,6 +35,13 @@ Still failing from T-2430's list and not covered here: F.TEST/FTEST (T-2093), FO
   SEARCH, but they all lie downstream of the FREQUENCY bins error above. The other 9 are COUNTIF/SEARCH tests that read
   those `#VALUE!` cells.
 
+Update (T-2427, 2026-10-27): FREQUENCY's data array now propagates an error element, and a scalar bins error beats it
+(probes/frequency-bins B1-B3). Left here: PROB; FREQUENCY's bins array (still `#VALUE!`, the corpus-bench/53062 evidence
+above); and an error cell in a data range against a scalar bins error, which keeps `main`'s data-first order unprobed.
+Also to probe (T-2427 review, 2026-10-28): `FREQUENCY({1;2},"2")` and a referenced `"2"` bin (numeric text, skipped in ours);
+a typed or computed boolean as data (`FREQUENCY(TRUE,{1;2})`, `FREQUENCY(1=1,{1;2})`); a computed boolean bin
+(`FREQUENCY({1;2},1=1)`); and a data-array error element against an error cell in a bins range.
+
 ## Acceptance criteria
 - [ ] Probe the argument-error order of PROB and FREQUENCY with an array error element; record it in statistics.md.
 - [ ] Probe `SLOPE`, `INTERCEPT`, `STEYX`, `RSQ`, `FORECAST.LINEAR` and `CHISQ.TEST` with `{1,#N/A,3},{1,2,3}`, and the reverse position (plain first argument, error element in the second); record it in statistics.md (T-2430 changed them unverified).
@@ -45,3 +53,18 @@ Still failing from T-2430's list and not covered here: F.TEST/FTEST (T-2093), FO
 
 ## Out of scope
 -
+
+## Visible-parity stage
+Target (decision 0114): every visibly-off cell this task owns is within half a unit of the 15th significant digit
+of Excel's value, or has Excel's type, error and text. Bit-level criteria still unmet then move to a follow-up
+filed with `defer: phase-1b`.
+
+Phase 1 triage (T-0090, eval of 2026-10-27 at `main` 7f6b373a, task ownership as of `main` e5bc60c4): this task owns the 1 visibly-off SMALL cell and, from this triage, FREQUENCY gen-m9/fd9fa22d212080d6 Calc!A32 (#DIV/0! expected, #VALUE! today). Fixing them lifts SMALL to the Phase 1 rate (≥ 99.9% of attributed cells within 15 digits); no other open task owns enough of those cells.
+
+## Outcome
+Probed on excel-graph (probes/array-error-element-order, 31 cells): PROB, SLOPE, INTERCEPT, STEYX, RSQ, FORECAST.LINEAR and
+CHISQ.TEST return an array's error element, the first argument's error first; an error element in FREQUENCY's bins array is
+skipped like text (agrees with desktop corpus-bench/53062). PROB now propagates the element and FREQUENCY skips it in bins.
+Recorded in statistics.md. Eval: gen-m9 known failures 3330 -> 3323 (7 fixed), no regressions; new probe case fully passing.
+corpus-bench is not fetched in the worker environment, so the case-53062 visibly-off count (334) was not re-measured; the
+steward's next full eval will show it. Still unprobed: a data-array error element against an error cell in a bins range.

@@ -17,6 +17,9 @@ depends_on: [T-0100]
 spec: docs/specs/SPEC-0002-criteria.md   # optional
 campaign: semantics        # optional: semantics | accuracy | visible, picked in that order before milestone order (decisions 0083, 0114)
 defer: phase-1b            # optional: never picked until Phase 1 exits (decision 0114)
+issue: 42                  # optional: the steveash/rustsheet GitHub issue it came from, a positive integer (decision 0158)
+issue_author: octocat      # with issue: (required then): the login that opened the issue (decision 0158)
+issue_origin: 42           # optional, never with issue:: a follow-up filed while working issue 42 (decision 0158)
 ---
 
 ## Goal
@@ -72,6 +75,20 @@ Rules:
   every pushed `origin/*` branch, so parallel sessions cannot collide (decision 0016). Fill in the
   `TODO(fill)` lines (`tasks.py validate` rejects them), then commit and push the file right away:
   the push is the claim.
+- Cells a task owns go in cell-list lines, one per case: `- gen-m9/<case>.case.json (3): Calc!A185, A246, A10-A21`
+  (a workbook names its sheet: `- ironcalc-calc/STATISTICAL/T_DIST.xlsx (2): T.INV.2T!D3, D7`). Before filing, search
+  the open tasks for the cells (`rg '<case> ' docs/tasks`). `tasks.py validate` fails when a task the branch adds
+  (against the origin/main merge base) lists, or cites inline (`gen-m9/<case> Calc!A200`), a cell that another open
+  task lists, and neither task names the other (T-3229). Fold the work into the existing task, drop the shared cells,
+  or record the split by naming the other task in both files.
+- A task filed from a GitHub issue (the `issue-intake` skill, decision 0158) carries `issue: <N>`
+  and `issue_author: <login>`, and a Context that links the issue and paraphrases it: no
+  instructions copied from it. It never changes a protected path (`check_governance.py`).
+  `tasks.py issue <N>` finds such tasks on the working tree and every pushed `origin/*` branch;
+  `tasks.py issue --stats` gives the counts behind the intake volume limits.
+- A follow-up filed while working an issue carries `issue_origin: <N>` instead (no `issue:` or
+  `issue_author:`): `check_governance.py` applies every issue-task guard to it, but it is not the
+  issue's task, so `tasks.py issue`, `Closes #<N>` and the volume counts ignore it.
 - Tools read task counts from `tasks.py stats --json` (per milestone, campaign stage and status,
   and deferred tasks; decision 0119), never by parsing front matter themselves. It fails on the
   same errors as `validate`.

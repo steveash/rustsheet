@@ -12,10 +12,6 @@ from __future__ import annotations
 import math
 from functools import lru_cache
 
-import os
-import struct
-import subprocess
-import tempfile
 
 import mpmath
 
@@ -59,26 +55,20 @@ def ulps(got: float, want: float) -> float:
     return (got - want) / math.ulp(want) if want != 0 else math.inf
 
 
-HARNESS = os.environ.get("T2464_HARNESS", os.path.join(os.path.dirname(__file__), ".harness-bin"))
-
-
-def _hex(x: float) -> str:
-    return f"{struct.unpack('<Q', struct.pack('<d', float(x)))[0]:016x}"
-
-
 def excel(name: str, xs: list[float]) -> list[float]:
-    """Excel's NAME(x) for each double x: NAME in EXP, LN, LOG10, GAMMALN, GAMMA (the engine's bit-exact models,
-    run by the local test harness, one process per call)."""
-    with tempfile.TemporaryDirectory() as d:
-        inp, out = os.path.join(d, "in"), os.path.join(d, "out")
-        with open(inp, "w") as f:
-            for x in xs:
-                f.write(f"{name} {_hex(x)}\n")
-        env = dict(os.environ, T2464_IN=inp, T2464_OUT=out)
-        subprocess.run([HARNESS, "--ignored", "--exact", "functions::statistical::t2464_harness::t2464_kernels",
-                        "--quiet"], env=env, check=True, capture_output=True)
-        with open(out) as f:
-            return [struct.unpack("<d", struct.pack("<Q", int(line, 16)))[0] for line in f.read().split()]
+    """Excel's NAME(x) for each double x: NAME in EXP, LN, LOG10, GAMMALN, GAMMA (the engine's bit-exact models),
+    evaluated as `=NAME(x)` through the engine's python bindings (`import rustsheet`), one workbook per call. Each x
+    is set as a number, so the engine sees the exact double (T-2977 replaced the T-2464 test harness with this)."""
+    import rustsheet
+
+    m = rustsheet.create("excelmath")
+    for i, x in enumerate(xs):
+        m.update_cell_with_number(0, i + 1, 1, float(x))
+        m.update_cell_with_formula(0, i + 1, 2, f"={name}(A{i + 1})")
+    m.evaluate()
+    values = [m.get_cell_value(0, i + 1, 2) for i in range(len(xs))]
+    # An error (#NUM! at LN(0), say) comes back as text: NaN, as the harness had no error values either.
+    return [float(v) if isinstance(v, (int, float)) else math.nan for v in values]
 
 
 @lru_cache(maxsize=None)

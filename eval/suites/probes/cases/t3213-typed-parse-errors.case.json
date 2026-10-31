@@ -1,0 +1,72 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3213: formulas that do not parse, typed (Graph PATCH): refused (cell blank) or stored; ISBLANK and FORMULATEXT tell.",
+ "tags": [
+  "M2",
+  "syntax",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": {
+     "entered": "=1+"
+    },
+    "B1": "=ISBLANK(A1)",
+    "C1": "=IFERROR(FORMULATEXT(A1),\"none\")",
+    "A2": {
+     "entered": "=SUM(1"
+    },
+    "B2": "=ISBLANK(A2)",
+    "C2": "=IFERROR(FORMULATEXT(A2),\"none\")",
+    "A3": {
+     "entered": "=(1"
+    },
+    "B3": "=ISBLANK(A3)",
+    "C3": "=IFERROR(FORMULATEXT(A3),\"none\")",
+    "A4": {
+     "entered": "=1)"
+    },
+    "B4": "=ISBLANK(A4)",
+    "C4": "=IFERROR(FORMULATEXT(A4),\"none\")",
+    "A5": {
+     "entered": "=1**2"
+    },
+    "B5": "=ISBLANK(A5)",
+    "C5": "=IFERROR(FORMULATEXT(A5),\"none\")",
+    "A6": {
+     "entered": "=SUM(1,,"
+    },
+    "B6": "=ISBLANK(A6)",
+    "C6": "=IFERROR(FORMULATEXT(A6),\"none\")",
+    "A7": {
+     "entered": "=+"
+    },
+    "B7": "=ISBLANK(A7)",
+    "C7": "=IFERROR(FORMULATEXT(A7),\"none\")",
+    "A8": {
+     "entered": "=NoSuchTable[Col]"
+    },
+    "B8": "=ISBLANK(A8)",
+    "C8": "=IFERROR(FORMULATEXT(A8),\"none\")",
+    "A9": {
+     "entered": "=[1]!Table3[#Data]"
+    },
+    "B9": "=ISBLANK(A9)",
+    "C9": "=IFERROR(FORMULATEXT(A9),\"none\")",
+    "A10": {
+     "entered": "=1 2"
+    },
+    "B10": "=ISBLANK(A10)",
+    "C10": "=IFERROR(FORMULATEXT(A10),\"none\")",
+    "A11": {
+     "entered": "=\"a"
+    },
+    "B11": "=ISBLANK(A11)",
+    "C11": "=IFERROR(FORMULATEXT(A11),\"none\")"
+   }
+  }
+ ],
+ "expected": {}
+}

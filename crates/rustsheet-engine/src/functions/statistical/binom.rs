@@ -8,6 +8,7 @@
 
 use statrs::distribution::{Binomial, Discrete, DiscreteCDF, NegativeBinomial};
 
+use super::bratio::{closed_or_ported_tails, dispatch, ported_tails, Branch};
 use super::discrete::{binomial_cdf, binomial_pmf, binomial_range, odds, times_ratio};
 use super::incomplete_beta::closed_form_tails;
 
@@ -99,8 +100,9 @@ impl Model {
         // which at k = n - 1 takes Excel's closed form (T-2464 w5-triangulation, T-2502). k = 0 is
         // BINOM's own shortcut, not the kernel's (T-2645).
         if cumulative && k >= 1 && k < n {
+            // Then the bratio port's branches (T-2847).
             if let Some((_, upper)) =
-                closed_form_tails(p, 1.0 - p, number_s + 1.0, trials - number_s)
+                closed_or_ported_tails(p, 1.0 - p, number_s + 1.0, trials - number_s)
             {
                 return Ok(flush_subnormal(upper));
             }
@@ -294,11 +296,25 @@ impl Model {
         let f_u = number_f as u64;
         // Excel's cdf is the incomplete beta I_p(r, f+1) at x = p, y = fl(1 - p), which at r = 1 or
         // f = 0 takes Excel's closed form (T-2464 w5-triangulation, T-2502).
+        let walk_first = cumulative && takes_bfrac(number_s, number_f + 1.0, probability_s);
         if cumulative {
-            if let Some((lower, _)) =
-                closed_form_tails(probability_s, 1.0 - probability_s, number_s, number_f + 1.0)
-            {
+            // Then the bratio port's branches (T-2847), whose subnormal cdf is 0 in Excel
+            // (`NEGBINOM.DIST(1,1000,0.48,TRUE)` = 0: probes/t2706-subnormal-density-paths A9:B9).
+            // Not [`closed_or_ported_tails`]: the flush is backed for the port only, so the closed
+            // form's result is returned as it was.
+            let (x, y, a, b) = (probability_s, 1.0 - probability_s, number_s, number_f + 1.0);
+            if let Some((lower, _)) = closed_form_tails(x, y, a, b) {
                 return Ok(lower);
+            }
+            // bfrac's points take the double-double walk below first, and bfrac only past its
+            // budget: Excel's `NEGBINOM.DIST(1,100,0.99,TRUE)` (ironcalc-calc BINOM.xlsx
+            // NEGBINOM.DIST!E39) is the correctly rounded I_0.99(100, 2), which the walk hits and
+            // bfrac misses by one ulp (its w is correctly rounded, but 1 - w is then an exact tie
+            // that rounds the other way; T-2508).
+            if !walk_first {
+                if let Some((lower, _)) = ported_tails(a, b, x, y) {
+                    return Ok(flush_subnormal(lower));
+                }
             }
         }
         // F failures before the r-th success: P(F <= f) is P(at most f failures in f + r trials),
@@ -328,6 +344,13 @@ impl Model {
             };
             if let Some(result) = walked {
                 return Ok(result);
+            }
+        }
+        if walk_first {
+            if let Some((lower, _)) =
+                ported_tails(number_s, number_f + 1.0, probability_s, 1.0 - probability_s)
+            {
+                return Ok(flush_subnormal(lower));
             }
         }
         let dist = NegativeBinomial::new(number_s, probability_s).map_err(|_| num_error(cell))?;
@@ -372,4 +395,9 @@ impl Model {
             },
         )
     }
+}
+
+/// Whether bratio takes bfrac for NEGBINOM.DIST's cdf, `I_p(r, f + 1)` at y = fl(1 - p).
+fn takes_bfrac(r: f64, f_plus_one: f64, p: f64) -> bool {
+    dispatch(r, f_plus_one, p, 1.0 - p).is_some_and(|d| d.branch == Branch::Bfrac)
 }

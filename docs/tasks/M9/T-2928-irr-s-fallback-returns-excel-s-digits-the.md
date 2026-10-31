@@ -3,7 +3,7 @@ id: T-2928
 title: "IRR's fallback returns Excel's digits: the polynomial Newton from v = 0 lands 15 to 35 ulp from Excel (10 visibly-off cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: blocked
 priority: P2
 size: M
 tier: opus
@@ -87,3 +87,39 @@ root and Excel 2E-15 to 4E-15 off it), so the target is Excel's own iterate, tim
 is done when every owned cell is within half a unit of the 15th significant digit of Excel's value. If P!A21 or any
 cell is still a few ulp off then, it moves to a follow-up task filed with `defer: phase-1b` and no campaign key, named
 in the Outcome.
+
+## Attempt 1 (decision 0056)
+2026-10-28, opus run. Added the fit-lab family `irr-fallback` (kernels/irr_fallback.py `irr_fallback_candidates`,
+`irr_fallback_newton`; `uv run rustsheet-fitlab irr-fallback`) over the T-2927 sweep and probes/irr-fallback-roots
+(212 cells, `#NUM!` included). Every candidate the Context lists is scored, and none raises the bit-exact count: the
+engine is 72 bit-exact, the best fallback variant (Newton in v from 0 with |P| < 1E-7) 69 against the same Newton's
+63. The counts, the rejected scratch candidates (damped secants past v <= 0, a 1,200-start fixed-start secant grid in
+v, r and x) and four findings are in financial.md "IRR's fallback when the secant fails", Fit. No engine change: the
+owned cells stay in eval/baseline/.
+Next attempt, from the findings: a secant (not Newton: the sign of Excel's error rules out a plain last Newton step on
+the three anchor flows) with a signed first offset and a |P| < 1E-7 stop, whose start is guess-dependent on
+`{0.3,-2.5,1.005}` and `{2,1,1,-1}` but not on `{42,1,1,-1}` or `{-400,1,1,1,1,1}`; and a rule for the `#NUM!` of the
+large-first-flow rows A26-A31 and A101 (finding 5: not a Newton step cap and not a root bound). A second attempt that does not raise the
+bit-exact count blocks the task (decision 0056).
+
+## Attempt 2 (decision 0056)
+2026-10-29, opus run, scratch harness only (the fit lab's `irr_secant_v` before each candidate; it matches 62 of the
+212 cells with the engine's Newton fallback, where the engine itself matches 72, so counts compare within this run).
+No candidate raises the bit-exact count beyond the |P| < 1E-7 test attempt 1 already scored. Candidates, findings and
+counts are in financial.md "IRR's fallback when the secant fails", Fit, attempt 2. No engine change: the owned cells
+stay in eval/baseline/.
+
+## Blocked because: time-boxed (decision 0056)
+- Two attempts. Neither raises the bit-exact count on the owned cells or the sweep. Attempt 1 scored every candidate in
+  the Context (Newton in v, r and x; starts at 0, 1 and the guess; stop tests; summation order) and a 1,200-start
+  secant grid. Attempt 2 scored Newton in d = 1 - v, finite-difference Newton, a secant from v = 0 in v and in d, and
+  replacements for a secant iterate at v <= 0 (2·v1, 1.5·v1, 10·v1, 1.1·v1, v1 + 0.1, v1 + 2|v1 - v0|). The best
+  attempt-2 variant (Newton in d with |P| < 1E-7, v held to 2^-53) gains only the `#NUM!` rows A103-A111 that
+  attempt 1's residual test already gave, plus last-bit noise. `{42,1,1,-1}` stays 34 ulp off.
+- What the next attempt starts from: (1) Newton in any variable is ruled out. Negating every flow leaves each Newton
+  iterate bit-for-bit unchanged, but Excel's negated rows differ from their positive rows by up to 1,251 ulp
+  (A74 against A12). So the step depends on the sign of P, as a secant's signed first offset does.
+  (2) Where v < 1, Excel's results lie on a 2^-53 grid in v, as T-2565 found for the secant: 29 of the 32 distinct
+  values, where chance gives 3.3. So the iterate is held as d = 1 - v or in a fixed-point form.
+- Reopen on new evidence: T-3117 probes the same families scaled by exact powers of two and negated. That separates an
+  absolute residual test from the iteration's arithmetic, which a 2^j scale does not change.

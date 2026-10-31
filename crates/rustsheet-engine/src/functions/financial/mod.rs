@@ -21,6 +21,7 @@ mod financial_bonds;
 mod financial_depreciation;
 pub(crate) use financial_depreciation::MAX_DEPRECIATION_PERIODS;
 mod financial_util;
+mod growth;
 mod mirr;
 mod rate_conversions;
 
@@ -272,13 +273,17 @@ impl Model {
                 return None;
             }
             Error::NA
-        } else if date_count == 1 && self.non_number_cell(dates) {
-            // gen-m9/1cd3096e3e87c965 A48, 1db18890916ee643 A108 (an empty date cell).
+        } else if date_count == 1 && self.non_numeric_text_or_boolean_cell(dates) {
+            // gen-m9/1cd3096e3e87c965 A48. An empty or numeric-text date cell is left to the
+            // count (`XIRR(Data!B6:C11,<empty>,0.5)` and `XIRR(Data!A6:B12,<"1">)` are `#NUM!`,
+            // 89f0aee953a55a45 A330, c0681a8b150ce301 A266; T-2611).
             Error::VALUE
-        } else if value_count == 1 && self.non_number_cell(values) {
+        } else if value_count == 1 && self.non_numeric_text_or_boolean_cell(values) {
             // One text or boolean value cell against several dates is read first, `#VALUE!`
-            // (gen-m9/6376e27be7a05871 A67); a larger values range of another count is `#NUM!`
-            // whatever it holds (0a957119475760c5 A47, bbdfc06cae0e0d71 A44).
+            // (gen-m9/6376e27be7a05871 A67), but one empty value cell is the count's `#NUM!`
+            // (`XIRR(Data!D10:D10,Data!B7:E8)`, 1dce4774f5c0e736 A91; T-2611); a larger values
+            // range of another count is `#NUM!` whatever it holds (0a957119475760c5 A47,
+            // bbdfc06cae0e0d71 A44).
             return None;
         } else if value_count != date_count {
             Error::NUM
@@ -606,7 +611,8 @@ impl Model {
 
     /// `XIRR(values, dates, [guess])`: the guess lifts over arrays (a multi-cell range is
     /// refused); the values and dates are read once, whole, and an error in them is every
-    /// element's, before the guess's, the scalar order (T-1843). Each element may run the bracket
+    /// element's: an error values argument before the guess's error, which comes before an error
+    /// dates argument and the values' cells (T-1843, T-2611). Each element may run the bracket
     /// walks and the bisection over the flows, so the call is charged their count per element,
     /// weighted by the table's `XIRR_WEIGHT`.
     pub(crate) fn fn_xirr(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -623,15 +629,22 @@ impl Model {
         } else {
             self.xirr_size_error(&values, &dates, cell)
         };
-        // The dates are truncated and checked once, not per element, as XNPV's.
-        let flows = self
-            .xirr_numbers(values, &cell)
-            .and_then(|values| {
+        // The dates are truncated and checked once, not per element, as XNPV's. An error dates
+        // argument comes before the values' cells are read (T-2611: `XIRR(<" x " in range>,
+        // <#N/A>)` is `#N/A`, gen-m9/67a4c03afd63f988 A241), but after an error values argument
+        // (79d87fc527927626 A228 is the values' `#VALUE!` beside a `#DIV/0!` dates).
+        let values_error =
+            matches!(values, CalcResult::Error { .. }).then(|| values.clone().without_message());
+        let flows = if values_error.is_none() && matches!(dates, CalcResult::Error { .. }) {
+            Err(dates.clone())
+        } else {
+            self.xirr_numbers(values, &cell).and_then(|values| {
                 let dates = self.xirr_numbers(dates, &cell)?;
                 let dates = xirr_dates(&values, &dates);
                 Ok((values, dates))
             })
-            .map_err(CalcResult::without_message);
+        }
+        .map_err(CalcResult::without_message);
         self.lift_call_costed(
             Function::Xirr,
             args,
@@ -640,17 +653,15 @@ impl Model {
             )),
             cell,
             &mut |model, arguments| {
-                // A size error stands only beside a number guess: a text, boolean or error guess
-                // leaves the old reading's `#VALUE!` (gen-m9/b6a02893a8d6b151 A226, b72d952c5f52cb4d
-                // A50).
-                let number_guess = matches!(arguments.get(2), None | Some(CalcResult::Number(_)));
-                if let (true, Some(size_error)) = (number_guess, &size_error) {
-                    return size_error.clone();
+                // An error values argument comes first; then an error guess is that error before
+                // the dates' error, the size checks and the values' cells (T-2611:
+                // `XIRR(1E+21,<#VALUE!>,<#NUM!>)` is `#NUM!`, gen-m9/1dce4774f5c0e736 A189;
+                // `XIRR(<4 values>,<16 dates>,<#N/A>)` `#N/A`, 1b60bf99d71424e7 A29). A text guess
+                // that is not a number is its `#VALUE!` at the same point; a boolean guess reads as
+                // 1 or 0, as before, and only skips the size checks (its order is unprobed).
+                if let Some(error) = &values_error {
+                    return error.clone();
                 }
-                let (values, dates) = match &flows {
-                    Ok(flows) => flows,
-                    Err(error) => return error.clone(),
-                };
                 // Excel: a written empty guess (`XIRR(v,d,)`) is the default 0.1, but an empty
                 // cell is guess 0; IRR and RATE read both as 0 (financial.md "XIRR (and IRR): an
                 // empty guess argument is the default 0.1 for XIRR, guess 0 for IRR";
@@ -658,15 +669,32 @@ impl Model {
                 let guess = arguments
                     .get(2)
                     .filter(|guess| !matches!(guess, CalcResult::EmptyArg));
-                match model.cast_number_or(guess, 0.1, cell) {
-                    Ok(guess) => {
-                        let xirr = dates.as_ref().map_err(Clone::clone).and_then(|dates| {
-                            compute_xirr(values, dates, guess).map_err(|error| error.0)
-                        });
-                        number_result(xirr, cell)
-                    }
-                    Err(error) => error,
+                let guess = match model.cast_number_or(guess, 0.1, cell) {
+                    Ok(guess) => guess,
+                    Err(error) => return error,
+                };
+                // A size error stands only beside a number guess: numeric text keeps the old
+                // reading. A written empty guess or an empty cell is a number guess here: both
+                // give `#NUM!` over text or boolean flows
+                // (probes/xirr-size-mismatch-empty-guess G21-G36).
+                let number_guess = matches!(
+                    arguments.get(2),
+                    None | Some(
+                        CalcResult::Number(_) | CalcResult::EmptyArg | CalcResult::EmptyCell
+                    )
+                );
+                if let (true, Some(size_error)) = (number_guess, &size_error) {
+                    return size_error.clone();
                 }
+                let (values, dates) = match &flows {
+                    Ok(flows) => flows,
+                    Err(error) => return error.clone(),
+                };
+                let xirr = dates
+                    .as_ref()
+                    .map_err(Clone::clone)
+                    .and_then(|dates| compute_xirr(values, dates, guess).map_err(|error| error.0));
+                number_result(xirr, cell)
             },
         )
     }

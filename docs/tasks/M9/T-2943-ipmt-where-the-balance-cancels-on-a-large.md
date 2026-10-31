@@ -3,7 +3,7 @@ id: T-2943
 title: "IPMT where the balance cancels on a large fv: Excel's discounted Y at rate 1"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -26,10 +26,13 @@ Cells:
 - gen-m9/0a957119475760c5.case.json (1): Calc!A202
 
 ## Acceptance criteria
-- [ ] Calc!A202 within half a unit of the 15th significant digit (its line leaves eval/baseline/gen-m9.txt or
+- [x] Calc!A202 within half a unit of the 15th significant digit (its line leaves eval/baseline/gen-m9.txt or
       stays only as a NumericUlp line), no new known-failure lines in any baseline.
-- [ ] financial.md records the rule and its evidence.
-- [ ] `make check` green; reviewers approve.
+- [x] financial.md records the rule and its evidence.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Bit parity of the cancelling cells (T-2667).
+
+## Outcome
+Done by T-2243. IPMT now splits Excel's discounted PMT (docs/excel-semantics/financial.md "IPMT and PPMT split Excel's discounted payment"), one form bit-exact on all 1495 IPMT cells with constant arguments, so no fitted switch is needed. gen-m9 0a957119475760c5 Calc!A202 passes to the bit and has left eval/baseline/gen-m9.txt.

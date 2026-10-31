@@ -53,6 +53,12 @@ Input conventions:
   PATCH before calculating (and logs the `numberFormat` Excel chose as `ENTERED ...` on stderr),
   excel-desktop sets `Range.Value` (that this parses exactly like typing is UNVERIFIED: no desktop run yet), libreoffice refuses. The engine adapter enters it as
   `Input::Parse`. Formulas can only observe the value: `CELL("format")` is `#VALUE!` on excel-graph.
+- `{"entered_r1c1":"=R1C2+1"}` is typed the same way in R1C1 mode (T-3113, decision 0179): recorded with
+  a fourth element `"r1c1"` and written with a range `formulasR1C1` PATCH (excel-desktop:
+  `Range.FormulaR1C1`, UNVERIFIED like `Range.Value`). The engine adapter converts
+  it to A1 text relative to its cell (`rustsheet_engine::r1c1_formula_to_a1`) and enters that as
+  `Input::Parse`. Typed text Excel for the web refuses (PATCH 400 `InvalidArgument`) leaves the cell blank, and so
+  does R1C1 text the engine cannot parse; probe a refusal through a dependant such as `=ISBLANK(A1)`.
 - Optional per-sheet `"legacy_formulas": ["H1"]` lists formula cells that spec2xlsx writes as plain
   legacy `<f>` formulas (no dynamic-array `cm`), to probe what Excel shows for a non-array formula
   (T-1077). The engine adapter enters them as `Input::LegacyFormula`, which adds the implicit
@@ -75,6 +81,11 @@ Input conventions:
   creates the workbook with `WorkbookOptions::date_system` and applies formats with
   `Txn::set_number_format`. Number formats change only what a cell displays, which excel-graph
   cannot report (it reads cached values), so they are for cases that formulas read through.
+- Optional per-sheet `"conditional_formats": [{"ref": "A1:A3", "formula": "=A1>0"}]` and
+  `"data_validations": [{"ref": "A1", "formula": "=A1>0"}]` write formula conditional formats
+  (`<cfRule type="expression">`) and custom data validations, their formulas prefixed like cell
+  formulas (T-3263). They probe what Excel accepts in those formulas (a refused workbook is the
+  answer); the engine adapter ignores both, as neither changes a cell value.
 - Optional `"names": {"rate": "=Sheet1!$B$1"}` declares workbook-scoped defined names (any
   formula Excel accepts as a name body, e.g. an intersection). A key `Sheet1!name` is a name scoped
   to that sheet.
@@ -204,6 +215,8 @@ Only `pass` counts as passing. Case statuses:
   (`{name, reason}` for each suite under eval/suites that did not run: `not fetched` or `not
   selected`); report.md prints it under the title. `date` and `commit` change on every run, so no
   test or golden file compares a whole report.json.
+  Each `argument_coverage[]` row's `unseen_pairs` (T-3277) lists the expected argument-class pairs
+  (parameter names and `ArgClass` of each) that its `pairwise` share counts but no Excel-evidence call has passed.
 - `eval/baseline/<suite>.txt`: known failures (see `docs/process/quality-gates.md`).
 - `eval/baseline/visible-parity.json`: the visible-parity lock (decision 0088). Task PRs never lower
   it; the steward does, daily, with `make eval-lower-visible-lock` (decision 0093).
@@ -266,8 +279,19 @@ The Phase 1 rate (`v15_checkpoint`) has its own list, `eval/milestones/phase1-ex
 that names it as M14-only desktop evidence, the owning M14 task). A listed visibly-off Excel cell
 leaves `rate_cells` and `rate_visible` of the function whose count holds it (`rate_excepted`);
 `cells`, `visible`, the tier and the strict count keep it. report.md prints the number left out per
-function under the Phase 1 line, and warns about a listed cell the run does not score or that is not
-visibly off (`stale_exceptions`). The same validation refuses a malformed line in `run` and `check`.
+function under the Phase 1 line, and warns about a listed cell whose suite the run scored but that is
+not scored or not visibly off (`stale_exceptions`). A line in a suite the run skipped (not fetched or
+not selected) is listed as not checked (`unchecked_exceptions`), never as stale. The same validation
+refuses a malformed line in `run` and `check`.
+
+The rate also leaves out the cells only open M14 tasks own (decision 0143), with no hand-kept line:
+`make eval` runs `scripts/desktop_owned.py`, which applies exit_owners.py's `owned` rule to every
+cell `F` line of eval/baseline and writes `case!Sheet!A1<TAB>T-<owner>` lines to the git-ignored
+`eval/runs/desktop-owned.tsv`, then `rustsheet-eval run --desktop-owned` reads it
+(`Phase1Exceptions::load_desktop_owned`). Such a visibly-off cell leaves `rate_cells` and
+`rate_visible` as `desktop_owned` (per function and in total; report.md's "M14-owned, left out"
+column); a cell both lists hold counts once, as `rate_excepted`. A generated cell that is not
+visibly off is not stale. Without the flag, `run` leaves no such cell out.
 
 ## Catalog coverage per milestone
 `crates/rustsheet-eval/src/catalog_coverage.rs` (T-2112, T-2175) adds a "Catalog coverage per milestone"
@@ -293,6 +317,19 @@ verdict is `n/a` and `exit` ignores it), needs 10,000 scored `gen-m2` cells with
 and reads the `M0-M2` probe row (`probe_row`). Each row lists its gen suite's visibly-off cells
 (`gen_visibly_off_cells`) and each probe row its own (`visibly_off_cells`), so
 `scripts/exit_owners.py` lists exactly the visibly-off exit cells without re-deriving closeness.
+`make phase1-exit` (`scripts/phase1_exit.py`, decision 0187) prints one verdict per Phase 1 exit
+criterion (run completeness, catalog, function rate, owners, each Phase 1 milestone row, and the
+`manual` items) from report.json, the catalog and the task tree, and exits 1 unless every measured
+one is met; `--json` prints the same lines for other tools.
+The M9 row (decision 0146 item 3, T-0095) requires no suite (`gen_suite` is empty and prints `none
+required`); its ironcalc-calc measure is a rate: the function-scope row less its deviations and exit
+exceptions (`calc_scored`) with at most `floor(0.0005 * calc_scored)` visibly off (`calc_allowance`),
+and every `v15_checkpoint` function of catalog milestone M9 must be `meets_rate` (`rate_functions`,
+`below_rate`, `rate_met`; `below_rate_functions` names the others, whose `attributed_off` cells
+`exit_owners.py` lists as `rate:<FUNCTION>`). Rates are over a denominator of 10,000 so that 99.95% is
+one `meets_rate` call. The M8 row (decision 0146 item 2, T-0096) reads gen-m8a (`gen_suite`), and as
+`more_suites` gen-m8b and the `poi M8 subset` (the report's `poi_m8_subset`, at 99.5% with no
+`blocked_cases`, the crashed or errored poi cases holding a subset formula, listed as `case!*`).
 
 The "Fifteen-digit parity checkpoint" section (`v15_checkpoint`, decision 0094) also prints the
 Phase 1 line of decision 0114: the in-scope functions that are covered and have at most one cell in

@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::cell::CellValue;
-use crate::test::util::new_empty_model;
+use crate::test::util::{new_empty_model, ulps, within_fifteen_digits};
 
 // ============================================================
 // PERCENTOF
@@ -213,11 +213,94 @@ fn fn_yield_start_term_whole_years_then_leftover_days() {
         Ok(CellValue::Number(n)) => n.to_bits(),
         other => panic!("expected number, got {other:?}"),
     };
+    // B5 and A37 were one ulp off under the rounded-once (decision 0162) and unrounded-term
+    // (decision 0166) starts; the `100 T - q T/2` denominator gives Excel's bits (T-3215).
     assert_eq!(bits("A1"), 0.053_819_659_384_186_62_f64.to_bits());
     assert_eq!(bits("A2"), 0.053_839_849_220_157_665_f64.to_bits());
     assert_eq!(bits("A3"), 0.042_160_398_818_263_84_f64.to_bits());
     assert_eq!(bits("A4"), 0.726_837_593_103_053_2_f64.to_bits());
     assert_eq!(bits("A5"), 0.055_580_455_075_332_17_f64.to_bits());
+}
+
+// YIELD's start divides by `(100 T - q T/2) - q/4` in doubles (T-3215; financial.md "YIELD stops
+// short of PRICE's root"): Excel's bits on probes/yield-start-rate-term S!B30 and
+// yield-start-term-basis S!C47 (a start one ulp below the unrounded-term start of decision 0166) and
+// yield-one-step-start S!A37 (one ulp above it, across a PRICE step: 32 ulps of yield).
+#[test]
+fn fn_yield_start_denominator_is_100t_minus_qt_over_2() {
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=YIELD(DATE(2096,3,1),DATE(2098,6,30),0.12,90,100.5,1,0)",
+    );
+    model._set(
+        "A2",
+        "=YIELD(DATE(2016,2,28),DATE(2019,8,15),0.05,110,100.5,2,0)",
+    );
+    model._set(
+        "A3",
+        "=YIELD(DATE(2024,3,1),DATE(2033,1,10),0.07,88.5,99.204492,2,0)",
+    );
+    model.evaluate();
+    let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
+        Ok(CellValue::Number(n)) => n.to_bits(),
+        other => panic!("expected number, got {other:?}"),
+    };
+    assert_eq!(bits("A1"), 0.176_683_161_171_460_55_f64.to_bits());
+    assert_eq!(bits("A2"), 0.021_295_382_081_558_69_f64.to_bits());
+    assert_eq!(bits("A3"), 0.088_353_346_290_028_8_f64.to_bits());
+}
+
+// YIELD's fitted start and early stop (T-1592) reach Excel's 15 digits beyond the cells it was
+// fitted on (T-2741; financial.md "YIELD stops short of PRICE's root"): ironcalc-calc
+// FINANCIAL/PRICE_YIELD.xlsx PRICE_YIELD!I30 (a yield of PRICE's own price, short of 0.065),
+// probes/date-system-1900-financial-readers S!E8 and its -shifted twin S!E8 (the same bond four
+// years later: the start moves with the term in the basis's years, so the two differ by 8e-11), and
+// probes/yield-start-rate-term S!B20 (basis 1, 14 years).
+#[test]
+fn fn_yield_matches_excel_off_the_fit() {
+    let mut model = new_empty_model();
+    model._set(
+        "H30",
+        "=PRICE(DATE(2025,4,1),DATE(2028,3,13),0.05,0.065,15,1,3)",
+    );
+    model._set(
+        "A1",
+        "=YIELD(DATE(2025,4,1),DATE(2028,3,13),0.05,H30,15,1,3)",
+    );
+    model._set(
+        "A2",
+        "=YIELD(DATE(2096,2,15),DATE(2100,2,28),0.05,98,100,2,0)",
+    );
+    model._set(
+        "A3",
+        "=YIELD(DATE(2100,2,16),DATE(2104,3,1),0.05,98,100,2,0)",
+    );
+    model._set(
+        "A4",
+        "=YIELD(DATE(2096,3,1),DATE(2110,6,30),0.12,98,100.5,1,0)",
+    );
+    model.evaluate();
+    let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
+        Ok(CellValue::Number(n)) => n.to_bits(),
+        other => panic!("expected number, got {other:?}"),
+    };
+    assert_eq!(bits("H30"), 25.484_095_435_031_72_f64.to_bits());
+    assert_eq!(bits("A1"), 0.064_999_999_991_596_71_f64.to_bits());
+    // The twins and B20 are within Excel's 15 digits and 1 ulp off its bits; the bit-level
+    // residue is T-2788's.
+    for (c, excel) in [
+        ("A2", 0.055_585_928_765_551_25),
+        ("A3", 0.055_585_928_843_032_48),
+        ("A4", 0.122_943_903_299_904_23),
+    ] {
+        let ours = f64::from_bits(bits(c));
+        assert!(
+            within_fifteen_digits(excel, ours),
+            "{c}: {ours} vs Excel's {excel}"
+        );
+        assert!(ulps(excel, ours) <= 1, "{c}: {ours} vs Excel's {excel}");
+    }
 }
 
 // YIELD's Newton has no fallback (T-2391; financial.md "YIELD's #NUM! cells and its 100-step

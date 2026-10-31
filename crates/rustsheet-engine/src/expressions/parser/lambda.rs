@@ -12,7 +12,7 @@ impl Parser {
     pub(crate) fn parse_lambda(&mut self) -> Node {
         let arg_separator = self.get_argument_separator_token();
 
-        if self.lexer.peek_token() == TokenType::RightParenthesis {
+        if *self.lexer.peek() == TokenType::RightParenthesis {
             self.lexer.advance_token();
             return Node::ParseErrorKind {
                 formula: self.lexer.get_formula(),
@@ -25,7 +25,7 @@ impl Parser {
         let mut parameters = Vec::new();
         // The parameters are in scope up to the LAMBDA's `)`.
         let scope = self.bound_names.len();
-        let def = self.parse_lambda_items(&arg_separator, &mut parameters);
+        let def = self.in_call(|parser| parser.parse_lambda_items(&arg_separator, &mut parameters));
         self.bound_names.truncate(scope);
         let body = match def {
             Ok(body) => body,
@@ -47,7 +47,7 @@ impl Parser {
         };
 
         // Immediate invocation: LAMBDA(params, body)(call_args)
-        if self.lexer.peek_token() == TokenType::LeftParenthesis {
+        if *self.lexer.peek() == TokenType::LeftParenthesis {
             return self.parse_call(def);
         }
 
@@ -65,7 +65,7 @@ impl Parser {
         let callee = self.parse_parenthesized();
         if matches!(callee, Node::ParseErrorKind { .. })
             || self.lexer.whitespace_follows()
-            || self.lexer.peek_token() != TokenType::LeftParenthesis
+            || *self.lexer.peek() != TokenType::LeftParenthesis
         {
             return callee;
         }
@@ -96,7 +96,7 @@ impl Parser {
     pub(super) fn chain_calls(&mut self, mut node: Node) -> Node {
         while !matches!(node, Node::ParseErrorKind { .. })
             && !self.lexer.whitespace_follows()
-            && self.lexer.peek_token() == TokenType::LeftParenthesis
+            && *self.lexer.peek() == TokenType::LeftParenthesis
         {
             node = self.parse_one_call(node);
             // The call sits over the previous one and its own arguments.
@@ -147,7 +147,7 @@ impl Parser {
             self.set_argument_hint("LAMBDA", arg_index);
 
             // Optional parameter syntax: [name]
-            let bracket_optional = self.lexer.peek_token() == TokenType::LeftBracket;
+            let bracket_optional = *self.lexer.peek() == TokenType::LeftBracket;
             if bracket_optional {
                 // consume '['
                 self.lexer.advance_token();

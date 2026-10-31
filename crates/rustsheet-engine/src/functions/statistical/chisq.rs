@@ -5,7 +5,11 @@ use statrs::distribution::{Continuous, Gamma};
 
 use super::element_errors::array_element_error;
 use super::erf::{gamma_half_lower, gamma_half_upper};
-use super::incomplete_gamma::{gamma_cdf, gamma_density, gamma_quantile, gamma_sf, Tail};
+use super::gamma::log_form_density;
+use super::incomplete_gamma::{
+    gamma_cdf, gamma_density, gamma_quantile, gamma_sf, huge_shape_quantile, Tail, HUGE_SHAPE_MIN,
+};
+use super::normal::normal_quantile;
 use crate::arithmetic::flush_subnormal;
 use crate::functions::lift::{num_error, number_or_error};
 use crate::functions::Function;
@@ -17,6 +21,9 @@ use crate::{
 };
 const MAX_DEGREES_OF_FREEDOM: f64 = 10_000_000_000.0;
 
+/// The scale of every chi-squared distribution: a gamma of shape df/2 and scale 2 (rate 1/2).
+const CHI_SQUARED_SCALE: f64 = 2.0;
+
 /// The chi-squared distribution of `df` degrees of freedom, truncated, as statrs builds it (a
 /// gamma of shape df/2 and rate 1/2); a df below 1 or above 1E10 is `#NUM!`.
 fn chi_squared(df: f64, cell: CellReferenceIndex) -> Result<Gamma, CalcResult> {
@@ -24,7 +31,7 @@ fn chi_squared(df: f64, cell: CellReferenceIndex) -> Result<Gamma, CalcResult> {
     if !(1.0..=MAX_DEGREES_OF_FREEDOM).contains(&df) {
         return Err(num_error(cell));
     }
-    Gamma::new(df / 2.0, 0.5).map_err(|_| num_error(cell))
+    Gamma::new(df / 2.0, 1.0 / CHI_SQUARED_SCALE).map_err(|_| num_error(cell))
 }
 
 /// Whether a chi-squared distribution from [`chi_squared`] has one degree of freedom (shape 1/2),
@@ -44,20 +51,40 @@ fn chi_squared_sf(dist: &Gamma, x: f64) -> f64 {
     }
 }
 
-/// Below this right-tail probability Excel's CHISQ.INV.RT and CHIINV are `#NUM!` for 3 to 10
-/// degrees of freedom (`CHISQ.INV.RT(1E-100,3)`, `CHIINV(1E-200,6)`, `(1E-300,10)`: 21 literal gen-m9
-/// cells, T-1634), though the quantile exists, while `CHISQ.INV.RT(1E-20,n)` is a value for every
-/// n probed. Two degrees of freedom (a closed form, `CHISQ.INV.RT(1E-300,2)` = 1381.5510557964274),
-/// 22 (`CHISQ.INV.RT(1E-100,AVERAGE((Data!E10*7),42))` = 542.4417060011164, gen-m9) and 50
-/// (`CHISQ.INV.RT(1E-300,50)` = 1592.6841019848946, T-1543) have values. The boundary p between
-/// 1E-20 and 1E-100, and the degrees of freedom from 11 to 21, are not probed
-/// (docs/excel-semantics/statistics.md, T-1634).
-// TODO(T-2561): the exact boundary is unprobed; T-2561 probes and pins it.
-const RIGHT_TAIL_P_MIN: f64 = 1e-20;
+/// Below `RIGHT_TAIL_P_MIN[df - 3]` Excel's CHISQ.INV.RT and CHIINV at 3 to 42 degrees of freedom
+/// are `#NUM!`, though the quantile exists. 1E-k there is still a value, and 1E-(k+1) is `#NUM!`
+/// (probes-numeric/t2561-chisq-inv-rt-num-boundary, -num-edge, -num-large-df and -num-large-df-edge,
+/// excel-graph: every p = 1E-k from 1E-20 to 1E-300 at each df bracketing its edge, 1,320 cells,
+/// one edge per df with no value below it). `CHISQ.INV.RT(1E-20,3)` = 96.2391239380938 and
+/// `(1E-21,3)` is `#NUM!`; `(1E-291,42)` is a value and `(1E-292,42)` `#NUM!`; from 43 degrees of
+/// freedom every p to 1E-300 is a value (`CHISQ.INV.RT(1E-300,50)` = 1592.6841019848946, T-1543).
+/// The edge rises by 3 to 10 decades a degree of freedom with no closed form found (it is
+/// neither a fixed quantile, a fixed multiple of df, nor a fixed distance from the
+/// Wilson-Hilferty start; docs/excel-semantics/statistics.md, T-2561). It is Excel's search
+/// giving up, not its cdf: CHISQ.DIST.RT is a plain number up to 7% past each edge
+/// (probes-numeric/t2561-chisq-dist-rt-past-edge). Each entry is a fit inside its probed decade:
+/// any threshold in (1E-(k+1), 1E-k] scores the same, and a p strictly inside a decade is unprobed.
+/// Every probed cell is CHISQ.INV.RT; CHIINV takes the same edge by inference, as it shares the
+/// function elsewhere, not by probe (TODO(T-3310)).
+/// FITTED(T-2561, 1320 cells, df 3..42, p 1E-20..1E-300)
+const RIGHT_TAIL_P_MIN: [f64; 40] = [
+    1e-20, 1e-27, 1e-35, 1e-43, 1e-52, 1e-62, 1e-72, 1e-81, 1e-87, 1e-90, 1e-94, 1e-99, 1e-104,
+    1e-110, 1e-116, 1e-121, 1e-127, 1e-133, 1e-139, 1e-146, 1e-152, 1e-158, 1e-165, 1e-171, 1e-178,
+    1e-184, 1e-191, 1e-198, 1e-205, 1e-212, 1e-219, 1e-226, 1e-234, 1e-241, 1e-249, 1e-257, 1e-265,
+    1e-273, 1e-282, 1e-291,
+];
 
-/// From this shape (11 degrees of freedom) a right-tail quantile below [`RIGHT_TAIL_P_MIN`] is a
-/// value, as at 22 and 50 in Excel.
-const RIGHT_TAIL_SHAPE_ALL_P: f64 = 5.5;
+/// Whether Excel's right-tail quantile of `p` at `df` (truncated) degrees of freedom is `#NUM!`
+/// below its search's edge ([`RIGHT_TAIL_P_MIN`]).
+fn right_tail_beyond_edge(df: f64, p: f64) -> bool {
+    if !(3.0..43.0).contains(&df) {
+        return false;
+    }
+    // df is a whole number in [3, 43) here, so the index is exact and within the table.
+    RIGHT_TAIL_P_MIN
+        .get(df as usize - 3)
+        .is_some_and(|&p_min| p < p_min)
+}
 
 /// A distribution value as a cell value: `#NUM!` unless finite and not negative.
 fn non_negative(value: f64, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
@@ -99,7 +126,14 @@ impl Model {
         } else if cumulative {
             gamma_cdf(&dist, x)
         } else {
-            gamma_density(dist.shape(), x, 1.0 / dist.rate()).unwrap_or_else(|| dist.pdf(x))
+            // CHISQ.DIST's density is GAMMA.DIST's at scale 2, its log forms included:
+            // `CHISQ.DIST(1E-300,1,FALSE)` is within 1 ulp of Excel's 3.9894228040142567E+149,
+            // which is 154 ulp below the exact 1/SQRT(2*PI()*1E-300) (gen-m9/3e98b26cf6713e77
+            // A268, T-2638).
+            let scale = 1.0 / dist.rate();
+            log_form_density(dist.shape(), x, scale)
+                .or_else(|| gamma_density(dist.shape(), x, scale))
+                .unwrap_or_else(|| dist.pdf(x))
         };
         // A subnormal cdf or density is 0, as in Excel (`(x)=0` TRUE: probes/
         // t2706-subnormal-density-paths B35, probes/t2737-subnormal-cdf-shapes B15:B17).
@@ -177,20 +211,52 @@ impl Model {
         if !(0.0..=1.0).contains(&p) {
             return Err(num_error(cell));
         }
+        // CHISQ.INV.RT and CHIINV take any number of degrees of freedom from 1, where CHISQ.INV
+        // and the cdfs are `#NUM!` above 1E10 (`CHIINV(0.5,2E13)` = `CHISQ.INV.RT(0.5,2E13)` =
+        // 20005316471010.844, `CHISQ.INV(0.5,2E13)` `#NUM!`: probes/t2982-gamma-inv-huge-shape
+        // A91-A93; probes/t3070-gamma-inv-band A214-A333 from 1.5E10 to 1E15).
+        let shape = if right_tail && df.trunc() > MAX_DEGREES_OF_FREEDOM && df.is_finite() {
+            df.trunc() / 2.0
+        } else {
+            chi_squared(df, cell)?.shape()
+        };
+        // From a shape of 1E9 Excel's own search at scale 2, the right tail's z from p itself
+        // (`CHISQ.INV.RT(1E-100,1E10)` = 10005667524.015223, A371, where 1 - p is 1).
+        if shape >= HUGE_SHAPE_MIN && p > 0.0 && p < 1.0 {
+            let lower_z = normal_quantile(p, 0.0, 1.0, cell)?;
+            let (tail, z) = if right_tail {
+                (Tail::Upper, -lower_z)
+            } else {
+                (Tail::Lower, lower_z)
+            };
+            return non_negative(
+                huge_shape_quantile(shape, CHI_SQUARED_SCALE, p, tail, z),
+                cell,
+            );
+        }
         let dist = chi_squared(df, cell)?;
         if !right_tail {
-            return non_negative(gamma_quantile(&dist, p, Tail::Lower), cell);
+            return non_negative(
+                gamma_quantile(dist.shape(), CHI_SQUARED_SCALE, p, Tail::Lower),
+                cell,
+            );
         }
         // At one degree of freedom Excel's right-tail quantile is the left one of 1 - p:
         // `CHISQ.INV.RT(1E-10,1)` is `CHISQ.INV(0.9999999999,1)`, 41.82145620298276, and below
         // 1.1E-16 (1 - p rounds to 1) it is `#NUM!` (T-1543 probe, T-1634).
         if is_one_degree(&dist) {
-            return non_negative(gamma_quantile(&dist, 1.0 - p, Tail::Lower), cell);
+            return non_negative(
+                gamma_quantile(dist.shape(), CHI_SQUARED_SCALE, 1.0 - p, Tail::Lower),
+                cell,
+            );
         }
-        if p < RIGHT_TAIL_P_MIN && dist.shape() != 1.0 && dist.shape() < RIGHT_TAIL_SHAPE_ALL_P {
+        if right_tail_beyond_edge(dist.shape() * 2.0, p) {
             return Err(num_error(cell));
         }
-        non_negative(gamma_quantile(&dist, p, Tail::Upper), cell)
+        non_negative(
+            gamma_quantile(dist.shape(), CHI_SQUARED_SCALE, p, Tail::Upper),
+            cell,
+        )
     }
 
     /// The values of a range, row-major, for a caller that keeps the numbers: a number is `Some`,
@@ -241,6 +307,47 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<Vec<Option<f64>>, CalcResult> {
         self.numbers_from_ranked_arg(node, cell, false)
+    }
+
+    /// [`Self::numbers_from_reference_arg`] of an element-wise expression of whole columns or of
+    /// bounded spans past the used area, read as its used head and its tail row (SPEC-0020
+    /// Amendment 1 section 3, T-0492): the head's first error, else the tail's error, else the
+    /// head's numbers and `tail_len` copies of a numeric tail; what the materialized array gives,
+    /// whose elements come in that order. `None` when the argument is not tailed: then it is read
+    /// the ordinary way (its cells already evaluated if a head was read). LARGE and SMALL only;
+    /// the RANK family makes arrays `#VALUE!` and keeps the ordinary reading.
+    pub(crate) fn tailed_numbers_from_reference_arg(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Option<Result<Vec<Option<f64>>, CalcResult>> {
+        let (head, tail) = self
+            .read_tailed(node, cell, |model| model.evaluate_reference_arg(node, cell))?
+            .elements()?;
+        // One column, the head's elements and the tail element once, read by the ordinary
+        // reading's kernels: their first error is the head's, else the tail's.
+        let mut column: Vec<ArrayNode> = head.collect();
+        let mut repeats = 0;
+        if let Some((element, tail_len)) = tail {
+            repeats = tail_len;
+            column.push(element);
+        }
+        let column = vec![column];
+        if let Some(error) = nested_array_error(&column, cell) {
+            return Some(Err(error));
+        }
+        let mut numbers = match self.values_from_array(column) {
+            Ok(numbers) => numbers,
+            Err(error) => return Some(Err(array_element_error(error, cell))),
+        };
+        // A numeric tail counts once per tail row; any other tail adds nothing. No tail when
+        // the pass is being abandoned: the value is discarded.
+        if repeats > 0 {
+            if let Some(Some(number)) = numbers.pop() {
+                numbers.extend(std::iter::repeat_n(Some(number), repeats));
+            }
+        }
+        Some(Ok(numbers))
     }
 
     /// [`Self::numbers_from_reference_arg`] for the RANK family, whose `ref` must be a reference:
@@ -389,8 +496,8 @@ impl Model {
         // A pair with a non-number on either side adds nothing; the degrees of freedom still come
         // from the first range's shape (statistics.md, CHITEST text rule; for two different shapes
         // that choice is UNVERIFIED, TODO(T-2650)). Pairs of only text and
-        // blanks are 1.0 for most shapes (gen-m9/8dd2312c96effb1b A343), but
-        // `CHISQ.TEST(Data!A10:B12,Data!A8:C9)` is #DIV/0! (0a9226016e8f5f33 A333), unexplained: TODO(T-2650).
+        // blanks are 1.0 when both sides hold numbers that are never paired (gen-m9/8dd2312c96effb1b
+        // A343); a side with no number at all is #DIV/0! (checked below).
         let values: Vec<(f64, f64)> = values_left
             .iter()
             .zip(&values_right)
@@ -406,6 +513,18 @@ impl Model {
                 Error::NA,
                 cell,
                 "CHISQ.TEST requires at least two data points".to_string(),
+            );
+        }
+
+        // Excel: a side holding no number at all is #DIV/0!, not p = 1
+        // (probes-numeric/t1049-chisqtest A23 `CHISQ.TEST(B1:B4,Z1:Z4)` and A24, Z1:Z4 blank;
+        // m9-legacy-chitest A28 `CHITEST(P1:P3,G1:G3)`; gen-m9/0a9226016e8f5f33 A333
+        // `CHISQ.TEST(Data!A10:B12,Data!A8:C9)`, a side of text, a boolean and blanks).
+        if values_left.iter().all(Option::is_none) || values_right.iter().all(Option::is_none) {
+            return CalcResult::new_error(
+                Error::DIV,
+                cell,
+                "CHISQ.TEST range holds no number".to_string(),
             );
         }
 
@@ -463,14 +582,13 @@ impl Model {
             }
         };
 
-        // The capped cdf. A sheet's cell count keeps the shape under 2^33, where the series can
-        // need about 630,000 terms, past the 2^19 cap, so a very large test is #NUM! (the cap's
-        // DEVIATION). A statistic whose half underflows is a cdf of 0 (incomplete_gamma.rs), so p 1.
-        let mut p = if is_one_degree(&dist) {
-            chi_squared_sf(&dist, chi2)
-        } else {
-            1.0 - gamma_cdf(&dist, chi2)
-        };
+        // The capped right tail, taken directly for every df and not as 1 - P, which cancels digits
+        // as p gets small: CHITEST(F1:F3,G1:G3) at chi2 = 18, df 2 is EXP(-9) in Excel, and 1 - P is
+        // off in the 13th digit (probes-numeric/m9-legacy-chitest A23; statistics.md "Incomplete
+        // gamma: accurate kernel", T-0971, T-3058). A sheet's cell count keeps the shape under 2^33,
+        // where the series can need about 630,000 terms, past the 2^19 cap, so a very large test is
+        // #NUM! (the cap's DEVIATION). A statistic whose half underflows gives p 1.
+        let mut p = chi_squared_sf(&dist, chi2);
         if p.is_nan() {
             return CalcResult::new_error(
                 Error::NUM,

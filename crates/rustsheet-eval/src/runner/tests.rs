@@ -156,6 +156,27 @@ fn graph_zero_hides_only_a_subnormal() {
     assert!(!graph_hides_subnormal(&e(0.0, true), &Value::Number(0.0)));
 }
 
+/// A spec suite `t` in `dir` with a `deviations` file, and its case at `path`
+/// (`cases/a.case.json`).
+fn deviations_suite(dir: &std::path::Path, path: PathBuf) -> (Suite, CaseFile) {
+    let manifest: SuiteManifest = toml::from_str(
+        "name = \"t\"\nkind = \"spec\"\nlicense = \"MIT\"\nroot = \"cases\"\n\
+         deviations = \"deviations\"\n",
+    )
+    .expect("manifest");
+    let suite = Suite {
+        manifest,
+        dir: dir.to_path_buf(),
+        cache_dir: PathBuf::new(),
+    };
+    let case = CaseFile {
+        id: "t/a.case.json".into(),
+        sidecar: oracle_sidecar(&path),
+        path,
+    };
+    (suite, case)
+}
+
 /// A listed cell is a deviation when it gives its pinned value, a pass when it matches Excel
 /// and a failure otherwise; a deviation leaves the case passing, and a line naming an
 /// unscored cell is an error (decision 0036).
@@ -172,21 +193,7 @@ fn listed_deviations_score_apart_from_bit_exact() {
         ),
     )
     .expect("write case");
-    let manifest: SuiteManifest = toml::from_str(
-        "name = \"t\"\nkind = \"spec\"\nlicense = \"MIT\"\nroot = \"cases\"\n\
-         deviations = \"deviations\"\n",
-    )
-    .expect("manifest");
-    let suite = Suite {
-        manifest,
-        dir: dir.clone(),
-        cache_dir: PathBuf::new(),
-    };
-    let case = CaseFile {
-        id: "t/a.case.json".into(),
-        sidecar: oracle_sidecar(&path),
-        path,
-    };
+    let (suite, case) = deviations_suite(&dir, path);
     let write = |cells: &[(&str, &str)]| {
         let lines: Vec<String> = cells
             .iter()
@@ -230,6 +237,63 @@ fn listed_deviations_score_apart_from_bit_exact() {
     assert!(unscored
         .message
         .is_some_and(|m| m.contains("unscored cell S!Z9")));
+}
+
+/// A whole-case line pins a case the engine refuses with its message: every scored cell is a
+/// deviation and the case passes. A refusal with another message stays an engine error, and a
+/// case that loads scores as usual with every cell listed, so a match reads stale (decision 0168).
+#[test]
+fn a_whole_case_line_pins_a_refused_case() {
+    let dir = std::env::temp_dir().join(format!("rs-runner-{}-refusal", std::process::id()));
+    std::fs::create_dir_all(dir.join("cases")).expect("mkdir");
+    let path = dir.join("cases/a.case.json");
+    let write_case = |a1: &str| {
+        std::fs::write(
+            &path,
+            format!(
+                r#"{{"format":"{CASE_FORMAT}","sheets":[{{"name":"S","cells":{{"A1":"{a1}","B1":"=2"}}}}],
+                   "expected":{{"S!A1":{{"t":"n","v":1}},"S!B1":{{"t":"n","v":2}}}}}}"#
+            ),
+        )
+        .expect("write case");
+    };
+    let (suite, case) = deviations_suite(&dir, path.clone());
+    let pin = |message: &str| {
+        std::fs::write(
+            dir.join("deviations"),
+            format!(
+                "a.case.json\t*\tdecision 0014\tdocs/excel-semantics/syntax.md#x\t\
+                 refused \"{message}\""
+            ),
+        )
+        .expect("write deviations");
+    };
+    let engine: Arc<dyn Engine + Send> = Arc::new(crate::engine::RustSheetEngine);
+    let run = || run_case(&engine, &suite, &case, Duration::from_secs(60));
+    let too_deep = format!("={}1{}", "(".repeat(300), ")".repeat(300));
+    write_case(&too_deep);
+    pin("nested too deeply");
+    let refused = run();
+    pin("another limit");
+    let other = run();
+    write_case("=1");
+    pin("nested too deeply");
+    let loaded = run();
+    let _ = std::fs::remove_dir_all(&dir);
+
+    assert_eq!(refused.status, CaseStatus::Pass);
+    assert_eq!(
+        (refused.checked, refused.passed, refused.deviations),
+        (2, 0, 2)
+    );
+    assert!(refused
+        .cells
+        .iter()
+        .all(|c| c.verdict == Verdict::Deviation && c.listed_deviation));
+    assert_eq!(other.status, CaseStatus::EngineError);
+    assert_eq!(loaded.status, CaseStatus::Pass);
+    assert_eq!((loaded.passed, loaded.deviations), (2, 0));
+    assert!(loaded.cells.iter().all(|c| c.listed_deviation));
 }
 
 /// An oracle sidecar replaces the hand expectation for the same cell, however the hand key
@@ -425,4 +489,9 @@ fn duplicate_hand_keys_and_bad_oracle_keys_are_errors() {
 fn pending_case_with_engine_error_is_reported() {
     let r = run_pending("error");
     assert_eq!(r.status, CaseStatus::EngineError);
+}
+
+#[test]
+fn cell_id_joins_case_and_cell_key() {
+    assert_eq!(cell_id("suite/case", "Sheet1!A1"), "suite/case!Sheet1!A1");
 }

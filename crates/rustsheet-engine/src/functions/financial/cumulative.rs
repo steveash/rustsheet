@@ -8,9 +8,10 @@
 //! (docs/excel-semantics/financial.md "CUMIPMT and CUMPRINC over many periods"). Moved out of
 //! `financial/mod.rs` (T-1845).
 
-use super::annuity::{payment_overflows, period_payments};
+use super::annuity::{growth_log, payment_overflows, period_payments, SplitForm};
 use super::number_or_error;
 use crate::functions::lift::num_error;
+use crate::x87_exp::{excel_exp, excel_expm1};
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, types::CellReferenceIndex},
@@ -31,22 +32,41 @@ const CUMULATIVE_LOOP_PERIODS: f64 = 32.0;
 /// 2^53: below it every period is an exact integer, so `start + offset` is a distinct period.
 const EXACT_INTEGER_LIMIT: f64 = 9_007_199_254_740_992.0;
 
-/// The growth `(1+r)^(end-1) - 1` over which type 0's short interest keeps the balance form
-/// ([`Periods::short_interest`]): from 2^-10 (below it `q - 1` cancels, `CUMIPMT(1E-9,55,157761,1,18,0)`)
-/// to 2^10 (above it `pv·q·r` swamps the interest, `CUMIPMT(0.5,96,265678,1,23,0)` is 80 ulps off).
+/// The growth `(1+r)^(end-1) - 1` over which type 0's short interest keeps the balance form where
+/// the principal is larger than the interest ([`Periods::short_interest`]): from 2^-10 (below it
+/// `q - 1` cancels, `CUMIPMT(1E-9,55,157761,1,18,0)`) to 2^10 (above it `pv·q·r` swamps the
+/// interest, `CUMIPMT(0.5,96,265678,1,23,0)` is 80 ulps off). Neither edge decides a probed cell:
+/// probes/fin-cumipmt-gate-edges A1-A8 cross 2^-10 and are 14 to 512 ulps off with either form, and
+/// every cell probed across 2^10 (B1-B11) has a principal smaller than its interest (T-2521).
 const BALANCE_GROWTH_MIN: f64 = 1.0 / 1024.0;
 /// See [`BALANCE_GROWTH_MIN`].
 const BALANCE_GROWTH_MAX: f64 = 1024.0;
 
-/// The deepest discount's exponent `(nper-first+1)·L` from which a short principal is
-/// [`Periods::geometric_principal`]. Below it the per-period powers are close to exact and the
-/// per-period sum (type 0) or the closed form (type 1) is closer: `CUMPRINC(1E-9,192,2707,8,24,0)`
-/// is -239.68227237224258 to the bit with the sum and 2 ulps off with the geometric form (exponent
-/// 2E-7, gen-m9 d912671baa1364aa A300), and `CUMPRINC_CUMIPMT.xlsx` H25 (`0.1234` over 36 periods,
-/// exponent 3.96) is to the bit with the closed form and 3 ulps off with the geometric form. From 8 up every probed
-/// cell is as close or closer with it (H4, exponent 8.9: 1 ulp where the closed form was 3; T-2514).
-/// Between 3.96 and 8.9 nothing is probed: the cut is a fit (TODO(T-2521): probe the edge).
-const GEOMETRIC_MIN_DISCOUNT: f64 = 8.0;
+/// The leading discount's exponent `(nper-end+1)·L`, the one power of
+/// [`Periods::geometric_principal`], from which a short principal is that geometric sum. Below it
+/// the range ends near nper and the per-period sum (type 0) or the closed form (type 1) is as
+/// close or closer: `CUMPRINC(1E-9,192,2707,8,24,0)` is -239.68227237224258 to the bit with the
+/// sum and 2 ulps off with the geometric form (exponent 2E-7, gen-m9 d912671baa1364aa A300),
+/// and so are the last periods of nper 1E15 at 0.1 (exponent 0.095, probes/fin-cumprinc-near-1e15
+/// C6, C10) and `CUMPRINC(0.1,6,100000,2,6,0)` (probes/fin-cumprinc-form-boundaries G1). From
+/// 0.398 up the geometric sum is exact on 22 of the 32 cells of E1-H8 (rates 0.01 and 0.1,
+/// leading exponents 0.4 to 3.6) and within 2 ulps on the rest, where the other forms are exact
+/// on 7 and up to 5 ulps off; between 0.095 and 0.398 the cut is a fit (T-3067). The deepest
+/// discount `(nper-first+1)·L`, the cut before T-3067, misses those near-1E15 cells.
+/// FITTED(T-3067, 36 cells, leading exponent 2E-7..3.6, rate 1E-9..0.1; cut a fit in 0.095..0.398)
+const GEOMETRIC_MIN_LEAD: f64 = 0.3;
+
+/// [`GEOMETRIC_MIN_LEAD`] for a long range (more than 32 periods), where the other form is the
+/// closed form's difference of two powers. From a leading exponent of 4.3 up that difference is
+/// 46 to 1,431 ulps off Excel and the geometric sum within 2: `CUMPRINC(2,600,319288,3,42,1)` is
+/// -6.214428680002485E-262 to the bit with it (probes/fin-cumprinc-form-boundaries A1-D14, 33 to
+/// 512 periods at rates 2 and 0.1, I9-I11, J9-J11; gen-m9 b73c6cc96e093f03 A62). Up to 2.9 the
+/// difference is as close and bit-exact on the whole-loan cells the geometric sum misses by an
+/// ulp (`CUMPRINC(0.005,100000,1000,2,99999,1)` -990.0745031063589, fin-cumipmt-period-bound A6,
+/// A11, A30; form-boundaries I1-I8, K1-K11, L1-L11). Between 2.9 and 4.3 the cut is a fit, and
+/// [`GEOMETRIC_MIN_LEAD`]'s 0.3 here leaves 5 more probe cells off the bit (T-3067).
+/// FITTED(T-3067, 96 cells, 33..99998 periods, rate 0.005..2; cut a fit in lead 2.9..4.3)
+const LONG_GEOMETRIC_MIN_LEAD: f64 = 3.6;
 
 /// The growth `nper·L` below which type 1's short interest is the payments less the principal
 /// ([`Periods::tiny_rate_interest`]): the rates of 1E-9 and 1E-10 that need it are far below
@@ -139,22 +159,25 @@ impl Model {
                     periods.payments_less_principal(periods.remaining_principal())
                 }
                 (Paid::Principal, true) => periods.short_principal(),
+                // Type 0's long principal is the geometric sum or the closed form, below.
                 (Paid::Principal, false) => None,
             };
             if let Some(sum) = sum {
                 return Ok(sum);
             }
         }
-        if short {
-            let sum = match paid {
-                Paid::Interest => periods
-                    .tiny_rate_interest()
-                    .or_else(|| periods.summed_interest()),
-                Paid::Principal => periods.geometric_principal(),
-            };
-            if let Some(sum) = sum {
-                return Ok(sum);
-            }
+        // Type 1 from here on, and type 0's long principal (its short sums returned above).
+        let sum = match (paid, short) {
+            (Paid::Interest, true) => periods
+                .tiny_rate_interest()
+                .or_else(|| periods.summed_interest()),
+            (Paid::Interest, false) => None,
+            (Paid::Principal, true) => periods.geometric_principal(GEOMETRIC_MIN_LEAD),
+            // A long range that ends a deep discount before nper is the geometric sum too (T-3067).
+            (Paid::Principal, false) => periods.geometric_principal(LONG_GEOMETRIC_MIN_LEAD),
+        };
+        if let Some(sum) = sum {
+            return Ok(sum);
         }
         periods.closed_form(paid).ok_or_else(|| num_error(cell))
     }
@@ -190,6 +213,7 @@ impl Periods {
                 self.pv,
                 0.0,
                 self.period_start,
+                SplitForm::Exact,
             )
             .0
             .ok()?;
@@ -230,15 +254,25 @@ impl Periods {
     /// visibly off. The balance form is bit-exact there (A12, A14, G21), so it is kept while the
     /// growth `q - 1` over the range stays within [2^-10, 2^10], where it neither cancels in
     /// `q - 1` nor in `pv·q·r - pmt·(q-1)`; the payments less the principal take the rest (T-2363).
+    /// But where the principal is no larger than the interest, the payments less the principal
+    /// lose no digits and are Excel's inside the band too: `CUMIPMT(0.5,60,100000,10,18,0)` is
+    /// -449999.99609733943 to the bit with them and 74 ulps off with the balance form
+    /// (probes/fin-cumipmt-gate-edges B1-B11, fin-argument-modes H72; T-2521).
     fn short_interest(&self) -> Option<f64> {
+        let principal = self.short_principal();
+        let payments_less = self.payments_less_principal(principal);
+        if let (Some(principal), Some(sum)) = (principal, payments_less) {
+            if principal.abs() <= sum.abs() {
+                return Some(sum);
+            }
+        }
         let growth = ((self.end - 1.0) * self.rate.ln_1p()).exp_m1();
         if (BALANCE_GROWTH_MIN..=BALANCE_GROWTH_MAX).contains(&growth) {
             if let Some(sum) = self.balance_interest() {
                 return Some(sum);
             }
         }
-        let principal = self.short_principal()?;
-        self.payments_less_principal(Some(principal))
+        payments_less
     }
 
     /// Type 0's principal over a short range, which its interest's `-pmt·m - principal` shares
@@ -246,21 +280,48 @@ impl Periods {
     /// has the remaining-balance principal: Excel's `CUMIPMT(1E-300,243,80923,12,22,0)` is
     /// -4.547473508864641E-13 and `(1E-300,83,156759,5,17,0)` 0 to the bit with it, where the
     /// per-period sum adds the payment m times (gen-m9 81bcdc0bec0c8e6b A274, abb7d565af89b849
-    /// A84). Elsewhere the geometric sum, then the per-period sum, then the closed form.
+    /// A84). Elsewhere the geometric sum, then the balance drop where `v^nper` underflows, then the
+    /// per-period sum, then the closed form.
     fn short_principal(&self) -> Option<f64> {
         let principal = if 1.0 + self.rate == 1.0 {
             self.remaining_principal()
         } else {
-            self.geometric_principal()
+            self.geometric_principal(GEOMETRIC_MIN_LEAD)
+                .or_else(|| self.underflowed_principal())
                 .or_else(|| self.discounted_principal())
         };
         principal.or_else(|| self.closed_form(Paid::Principal))
     }
 
-    /// Type 0's interest from a principal: `-pmt·m - principal` with
-    /// [`Periods::interest_payment`]. `None` without a principal or when the result is not finite.
+    /// Type 0's principal over a short range where `v^nper` underflows (`1 - v^nper` is 1), as the
+    /// drop in the balance: `-(pv·(v^(nper-end)·(1-v^m)))` with Excel's EXP, Kahan's expm1 for
+    /// `1-v^m` and [`growth_log`]'s L. Excel's principal there does not depend on nper: the last m
+    /// periods of nper 1E6, 1E10, 1E12 and 1E15 are the same doubles at rates 0.001, 0.01 and 0.1
+    /// (probes/fin-cumprinc-underflow-ends A-D, G, H; fin-cumprinc-near-1e15 A-C), so
+    /// `CUMIPMT(0.01,1E15,100000,1E15,1E15,0)` is -9.900990099009732 with it, which the per-period
+    /// sum missed visibly (fin-cumipmt-overflow-and-forms A9, A11; fin-remaining-later-argument-ranges
+    /// K3). It is exact on 70 of the 108 underflowed principals probed and within an ulp of the rest
+    /// (the per-period sum: 16 of the 36 near 1E15), not on all: decision 0160, TODO(T-3141). Only
+    /// below [`GEOMETRIC_MIN_LEAD`]: above it the geometric sum is Excel's, at a rate of 1E10 and at
+    /// integer rates too (T-3067). `None` for type 1, where `v^nper` has not underflowed or where
+    /// the result is not finite.
+    fn underflowed_principal(&self) -> Option<f64> {
+        let log_growth = growth_log(self.rate);
+        // Type 1's last periods take another form (probes/fin-cumprinc-underflow-ends J).
+        if self.period_start || self.unpaid_share(log_growth) != 1.0 {
+            return None;
+        }
+        let count = self.end - self.start + 1.0;
+        let leading = excel_exp(-(self.nper - self.end) * log_growth);
+        let principal = -(self.pv * (leading * -excel_expm1(-count * log_growth)));
+        principal.is_finite().then_some(principal + 0.0)
+    }
+
+    /// Type 0's interest from a principal: `-pmt·m - principal` with [`Periods::interest_payment`]
+    /// on Excel's own L ([`growth_log`], as the principal's). `None` without a principal or when
+    /// the result is not finite.
     fn payments_less_principal(&self, principal: Option<f64>) -> Option<f64> {
-        let payment = self.interest_payment(self.rate.ln_1p());
+        let payment = self.interest_payment(growth_log(self.rate));
         let sum = -payment * (self.end - self.start + 1.0) - principal?;
         // `+ 0.0` turns a -0 into Excel's 0 (`CUMIPMT(1E-300,83,156759,5,17,0)`).
         sum.is_finite().then_some(sum + 0.0)
@@ -322,7 +383,7 @@ impl Periods {
         sum.is_finite().then_some(sum)
     }
 
-    /// The principal over a short range as one geometric sum from the last period back:
+    /// The principal as one geometric sum from the last period back:
     /// `-((pmt·((1-v^m)/r·(1+r)))·v^(nper-end+1))` with `pmt = (pv/(1-v^nper))·r`, `v^j = exp(-j·L)`
     /// and `1-v^m = -expm1(-m·L)`; type 1 sums from period 2 (period 1 pays no interest) and
     /// divides that by `1+r`, then adds period 1's whole payment `pmt/(1+r)` when the range starts
@@ -333,23 +394,31 @@ impl Periods {
     /// A110, 1cd3096e3e87c965 A147, d0854366830dcdee A98) and bit-exact on type 1's (`CUMPRINC(10,121,308352,2,16,1)`
     /// -1.263054652346343E-105, where the closed form was 104 ulps off; 0a957119475760c5 A383,
     /// 5ded7594e597e31e A22, a91bad4e84f49739 A193, b6a02893a8d6b151 A398; T-2514). The operation
-    /// order is the fit. `None` where the deepest discount is near 1, the leading power is not
-    /// normal or the result is not finite: the per-period sum or the closed form decides there.
-    fn geometric_principal(&self) -> Option<f64> {
-        let log_growth = self.rate.ln_1p();
+    /// order is the fit. L is Excel's own `ln(1+rate)`, PPMT's [`growth_log`], not `log1p`: Excel's is
+    /// an ulp off the correctly rounded log at some rates (-1 at 0.1, +1 at 2 against libm's
+    /// `log1p`), and a deep discount carries that, so `CUMPRINC(0.1,1023,478581,7,24,1)` and
+    /// `CUMPRINC(2,151,319288,3,42,1)` are to the bit with it and 67 and 245 ulps off with `log1p`
+    /// (gen-m9 9d9ceba257f8001b A372, b73c6cc96e093f03 A62; T-2521). Over a long range it is
+    /// Excel's too where the range ends a deep discount before nper (T-3067). `None` where the
+    /// leading exponent `(nper-end+1)·L` is below `min_lead` ([`GEOMETRIC_MIN_LEAD`],
+    /// [`LONG_GEOMETRIC_MIN_LEAD`]), the leading power is not normal or the result is not finite:
+    /// the per-period sum or the closed form decides there.
+    fn geometric_principal(&self, min_lead: f64) -> Option<f64> {
+        let log_growth = growth_log(self.rate);
         // Type 1 pays no interest in period 1, so its principal is the whole payment.
         let first = if self.period_start {
             self.start.max(2.0)
         } else {
             self.start
         };
-        if self.end < first || (self.nper - first + 1.0) * log_growth < GEOMETRIC_MIN_DISCOUNT {
+        let lead = (self.nper - self.end + 1.0) * log_growth;
+        if self.end < first || lead < min_lead {
             return None;
         }
         let payment = self.interest_payment(log_growth);
         let count = self.end - first + 1.0;
         let series = -(-count * log_growth).exp_m1() / self.rate * (1.0 + self.rate);
-        let leading = (-(self.nper - self.end + 1.0) * log_growth).exp();
+        let leading = (-lead).exp();
         if !leading.is_normal() {
             return None;
         }
@@ -396,8 +465,11 @@ impl Periods {
     /// `CUMPRINC(1E10,100,1,1,100,0)` is -1.0000000000000013, `-1E10/expm1(log1p(1E10))` (A17).
     /// This form matches 19 of the 28 probe cells over many periods or past an overflow (22 of the
     /// case's 30 cells pass overall) bit for
-    /// bit and the others within 6 ulps, but for 48 to 64 near period 1E15 (fin-remaining-later-
-    /// argument-ranges K3, A18; TODO(T-2521)). `None` when the result is not finite.
+    /// bit and the others within 6 ulps, but for type 1 near period 1E15 (fin-cumipmt-period-bound
+    /// A18; TODO(T-3141)); type 0 there is [`Periods::underflowed_principal`]'s. It keeps
+    /// `log1p`, not the geometric sum's `growth_log`: on Excel's L over every long range
+    /// fin-cumipmt-period-bound A6, A11 and A30 leave the bit (T-2521). `None` when the result is
+    /// not finite.
     fn closed_form(&self, paid: Paid) -> Option<f64> {
         let log_growth = self.rate.ln_1p();
         let discount = |periods: f64| (periods * log_growth).exp();

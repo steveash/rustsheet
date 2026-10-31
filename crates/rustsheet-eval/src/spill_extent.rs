@@ -7,10 +7,10 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
-use crate::case::{cell_key, CaseSpec};
+use crate::case::{cell_key, CaseSpec, SheetOp};
 use crate::cellref::{parse_range, Addr};
 use crate::engine::Evaluated;
-use crate::runner::CellResult;
+use crate::runner::{CellKind, CellResult};
 use crate::value::{compare, Value};
 use crate::volatile::FormulaCell;
 use crate::xlsx_snapshot::is_undecoded;
@@ -27,6 +27,70 @@ pub(crate) struct SpillExtent {
     known: HashSet<String>,
     /// Formula cells without a decoded oracle value: Excel's extent of their spill is unknown.
     pending: Vec<(String, Addr)>,
+}
+
+/// Where `addr` on `sheet` sits after the spec's `sheet_ops`. Excel keeps a table's last data row
+/// when it is deleted (T-2338, probes/table-edits/table-delete-row-all-data-below), and keeps one
+/// when a single delete takes every data row (T-3019, table-delete-rows-all-data-once): one row
+/// fewer goes, so the cells below the table stay one row lower than a plain delete leaves them.
+fn moved_input(spec: &CaseSpec, sheet: &str, addr: Addr) -> Addr {
+    // The data rows (first, last) of each table on `sheet`, followed through the ops.
+    let mut tables: Vec<(u32, u32)> = spec
+        .sheets
+        .iter()
+        .filter(|s| s.name == sheet)
+        .flat_map(|s| &s.tables)
+        .filter_map(|t| {
+            let (first, last) = parse_range(&t.range)?;
+            let last_data = if t.totals_row {
+                last.row.checked_sub(1)?
+            } else {
+                last.row
+            };
+            (first.row < last_data).then_some((first.row + 1, last_data))
+        })
+        .collect();
+    let mut addr = addr;
+    for op in &spec.sheet_ops {
+        let SheetOp::DeleteRow {
+            sheet: at,
+            row,
+            count,
+        } = op
+        else {
+            addr = op.moved(sheet, addr);
+            continue;
+        };
+        if at != sheet {
+            continue;
+        }
+        let (mut row, mut count) = (*row, count.unwrap_or(1));
+        let end = row.saturating_add(count);
+        if tables
+            .iter()
+            .any(|&(first, last)| row == first && last.saturating_add(1) == end)
+        {
+            // The table's first data row stays, cleared; the rows after it go. Only a delete of
+            // exactly the data rows is probed: one reaching the header, the totals row or rows
+            // outside the table is moved as a plain delete.
+            row += 1;
+            count -= 1;
+        }
+        if count == 0 {
+            continue;
+        }
+        for (first, last) in &mut tables {
+            *first = first.saturating_sub(first.saturating_sub(row).min(count));
+            *last = last.saturating_sub(last.saturating_add(1).saturating_sub(row).min(count));
+        }
+        let kept = SheetOp::DeleteRow {
+            sheet: sheet.to_string(),
+            row,
+            count: Some(count),
+        };
+        addr = kept.moved(sheet, addr);
+    }
+    addr
 }
 
 impl SpillExtent {
@@ -47,11 +111,10 @@ impl SpillExtent {
                     // pivot's rendered cells are inputs of the engine case (T-2084).
                     let rendered = s.pivot_tables.iter().flat_map(|p| p.rendered.keys());
                     let inputs = s.cells.keys().chain(rendered).filter_map(|a1| {
-                        let addr = spec
-                            .sheet_ops
-                            .iter()
-                            .fold(Addr::parse(a1)?, |addr, op| op.moved(&s.name, addr));
-                        Some(cell_key(&s.name, addr))
+                        Some(cell_key(
+                            &s.name,
+                            moved_input(spec, &s.name, Addr::parse(a1)?),
+                        ))
                     });
                     // A data table's result cells are declared by the case; Excel saves all but
                     // the first as plain values, which the oracle does not record (T-0441).
@@ -127,6 +190,7 @@ fn unexpected(sheet: &str, addr: Addr, actual: Value) -> CellResult {
         from_excel: true,
         listed_deviation: false,
         graph_subnormal: false,
+        kind: CellKind::SpillExtent,
     }
 }
 
@@ -178,8 +242,13 @@ mod tests {
 
     #[test]
     fn spill_wider_than_excel_fails_the_extra_cells() {
-        let extra: Vec<(String, Value, Verdict)> = extent(&["A1"])
-            .unexpected_cells(&Spilled)
+        let cells = extent(&["A1"]).unexpected_cells(&Spilled);
+        // The report keeps only failing cells, and the M7 exit counts these from it (decision
+        // 0140), so each one is a failing, marked cell.
+        assert!(cells
+            .iter()
+            .all(|c| c.kind == CellKind::SpillExtent && !c.verdict.is_pass()));
+        let extra: Vec<(String, Value, Verdict)> = cells
             .into_iter()
             .map(|c| (c.key(), c.actual, c.verdict))
             .collect();
@@ -193,6 +262,41 @@ mod tests {
         assert!(extent(&["A1", "B1", "C1"])
             .unexpected_cells(&Spilled)
             .is_empty());
+    }
+
+    /// Deleting row 4 of a one-row table clears it and moves nothing (T-2338), so S!C10 sits at
+    /// C7 after four deletes of a four-row table, not at C6.
+    #[test]
+    fn a_table_keeps_its_last_data_row_when_following_moved_inputs() {
+        let json = format!(
+            r#"{{"format":"{CASE_FORMAT}","sheets":[{{"name":"S","cells":{{}},
+            "tables":[{{"name":"T","ref":"B3:C7"}}]}}],
+            "sheet_ops":[{}]}}"#,
+            [r#"{"op":"delete_row","sheet":"S","row":4}"#; 4].join(",")
+        );
+        let spec: CaseSpec = serde_json::from_str(&json).expect("spec");
+        let c10 = Addr::parse("C10").expect("addr");
+        assert_eq!(
+            moved_input(&spec, "S", c10),
+            Addr::parse("C7").expect("addr")
+        );
+    }
+
+    /// One delete of every data row keeps one cleared row too (T-3019): rows 5-7 go, so S!C10
+    /// sits at C7, and a later one-row delete below the table moves it on to C6.
+    #[test]
+    fn a_counted_delete_of_every_data_row_keeps_one() {
+        let json = format!(
+            r#"{{"format":"{CASE_FORMAT}","sheets":[{{"name":"S","cells":{{}},
+            "tables":[{{"name":"T","ref":"B3:C7"}}]}}],
+            "sheet_ops":[{},{}]}}"#,
+            r#"{"op":"delete_row","sheet":"S","row":4,"count":4}"#,
+            r#"{"op":"delete_row","sheet":"S","row":5}"#
+        );
+        let spec: CaseSpec = serde_json::from_str(&json).expect("spec");
+        let at = |a1| Addr::parse(a1).expect("addr");
+        assert_eq!(moved_input(&spec, "S", at("C10")), at("C6"));
+        assert_eq!(moved_input(&spec, "S", at("C2")), at("C2"));
     }
 
     /// A1 left pending: its spill extent in Excel is unknown, so its members are not checked.

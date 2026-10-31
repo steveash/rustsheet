@@ -3,8 +3,12 @@
 
 use super::super::lexer::{Lexer, LexerMode};
 use super::super::token::{TableReference, TableSpacing, TableSpecifier, TokenType};
+use super::{Node, Parser};
+use crate::expressions::types::CellReferenceRC;
 use crate::language::get_language;
 use crate::locale::get_locale;
+use crate::table_types::Table;
+use crate::types::sheet_names_match;
 
 /// The source of a structured reference: what [`super::Node::StructuredReferenceKind`] prints
 /// back in the storage and in-engine printers.
@@ -20,6 +24,50 @@ pub struct StructuredReference {
     pub spacing: TableSpacing,
     /// A bare table name (`ROWS(Sales)`), or `Sales[]`, which the lexer reads as the bare name.
     pub bare: bool,
+    /// Written without the table name in a cell of the table (`=[@Col]*2`), which names the
+    /// containing table (references.md "Structured references: this row, totals and ranges", T-2979).
+    pub unqualified: bool,
+    /// The range of the table of a `#This Row` reference or of one written without the table
+    /// name, as the table list the formula was parsed against had it: the printing cell decides
+    /// by it whether the reference prints without the table name (T-3241). `None` for any other
+    /// reference. Every change to the table list reparses the formulas, so it stays current.
+    pub extent: Option<TableExtent>,
+}
+
+/// A table's whole range on its sheet.
+#[derive(PartialEq, Clone, Debug)]
+pub struct TableExtent {
+    /// The table's sheet.
+    pub sheet: String,
+    /// The first and last columns.
+    pub columns: (i32, i32),
+    /// The first and last rows, headers and totals row included.
+    pub rows: (i32, i32),
+    /// The first and last data rows.
+    pub data_rows: (i32, i32),
+}
+
+impl TableExtent {
+    /// The range of `table`, if its `ref` is a range, with its data rows `data_rows` (the whole
+    /// range when `None`).
+    pub(super) fn of(table: &Table, data_rows: Option<(i32, i32)>) -> Option<Self> {
+        let (column_start, row_start, column_end, row_end) = parse_range(&table.reference).ok()?;
+        Some(Self {
+            sheet: table.sheet_name.clone(),
+            columns: (column_start, column_end),
+            rows: (row_start, row_end),
+            data_rows: data_rows.unwrap_or((row_start, row_end)),
+        })
+    }
+
+    /// Whether `cell` lies in the range (sheet names match ignoring case), on a data row if
+    /// `data_row`.
+    fn holds(&self, cell: &CellReferenceRC, data_row: bool) -> bool {
+        let rows = if data_row { self.data_rows } else { self.rows };
+        sheet_names_match(&self.sheet, &cell.sheet)
+            && (self.columns.0..=self.columns.1).contains(&cell.column)
+            && (rows.0..=rows.1).contains(&cell.row)
+    }
 }
 
 /// The parse error of a structured reference to a table that is not there.
@@ -101,6 +149,71 @@ impl StructuredReference {
     /// missing argument is kept; a structured reference keeps some and normalizes the rest";
     /// probes/t2786-whitespace-structured-refs-runs F4:F15, T-2801).
     pub(crate) fn text(&self) -> String {
+        self.text_with_name(!self.unqualified)
+    }
+
+    /// [`Self::text`] as printed in `cell`. A `#This Row` reference written with the table name
+    /// prints in its `@` form without the name on a data row of its own table (Excel's
+    /// FORMULATEXT of `=T[[#This Row],[Col]]` there is `=[@Col]`: probes/t2800-this-row-whitespace
+    /// B3:E3, table-edits/table-insert-row-calc-column-inside-data F!A1:A2); how Excel prints it
+    /// in the header or totals row is unprobed (T-3240). One written without the name prints
+    /// without it anywhere in the table's range, where it parses, and with it elsewhere, so a
+    /// copy, fill or move out of the table, or a resize that leaves the cell outside, gives text
+    /// that parses there (T-3241).
+    ///
+    /// The extent is the one the formula was parsed with: a structural edit prints the formulas
+    /// it moves before it reparses them, so a cell moved past the old extent may print with the
+    /// name in between, which parses and is reparsed at once.
+    pub(crate) fn text_at(&self, cell: &CellReferenceRC) -> String {
+        match &self.extent {
+            Some(extent) => self.text_with_name(!extent.holds(cell, !self.unqualified)),
+            None => self.text(),
+        }
+    }
+
+    /// [`Self::text`], with the table name if `named`, without it otherwise.
+    fn text_with_name(&self, named: bool) -> String {
+        let qualified = self.qualified_text();
+        if named {
+            return qualified;
+        }
+        // Excel shows a `#This Row` reference in its `@` form (references.md "Calculated
+        // columns" rule 6: FORMULATEXT prints `=[@Col]*2` in every filled row), keeping the
+        // padding inside the outer brackets: `T[ [#This Row] , [Col] ]` prints `[ @Col ]`
+        // (syntax.md, probes/t2800-this-row-whitespace, T-3069).
+        if self.specifier == Some(TableSpecifier::ThisRow) {
+            let TableSpacing { open, close, .. } = &self.spacing;
+            let inner = match &self.table_reference {
+                None => String::new(),
+                Some(TableReference::ColumnReference(column)) if prints_bare(column) => {
+                    escaped_column(column)
+                }
+                Some(reference) => table_reference_text(reference),
+            };
+            return format!("[{open}@{inner}{close}]");
+        }
+        qualified[self.table_name.len()..].to_string()
+    }
+
+    /// The text kept in storage (R1C1), which the parser reads back with no table to infer the
+    /// name from: an unqualified reference keeps its table as a `[T]` prefix (`[T][[#This
+    /// Row],[Col]]`), so two tables on one sheet never share `[@Col]*2` (T-2979). Any other
+    /// reference is [`Self::text`].
+    pub(crate) fn stored_text(&self) -> String {
+        if self.unqualified {
+            let qualified = self.qualified_text();
+            format!(
+                "[{}]{}",
+                self.table_name,
+                &qualified[self.table_name.len()..]
+            )
+        } else {
+            self.text()
+        }
+    }
+
+    /// [`Self::text`] with the table name, whether or not it was written.
+    fn qualified_text(&self) -> String {
         let name = &self.table_name;
         if self.bare {
             return name.clone();
@@ -142,12 +255,108 @@ impl StructuredReference {
     /// The form the xlsx file stores: [`Self::text`], with a bare table name written as `T[]`,
     /// since Excel refuses a file holding a bare `T` as corrupt (xlsx-storage.md "Structured
     /// references in the file").
+    ///
+    /// A single column in padded brackets keeps its own (`T[ [Col] ]`, not the printed
+    /// `T[ Col ]`): Excel loads a stored padded bare column as `#REF!` (syntax.md,
+    /// probes/t2800-stored-ws-0, T-3069).
     pub(crate) fn file_text(&self) -> String {
         if self.bare {
-            format!("{}[]", self.table_name)
-        } else {
-            self.text()
+            return format!("{}[]", self.table_name);
         }
+        let TableSpacing { open, close, .. } = &self.spacing;
+        match (&self.specifier, &self.table_reference) {
+            (None, Some(TableReference::ColumnReference(column))) if self.spacing.is_padded() => {
+                format!("{}[{open}{}{close}]", self.table_name, column_text(column))
+            }
+            _ => self.qualified_text(),
+        }
+    }
+}
+
+impl Parser {
+    /// An operand starting with `[` (the lexer's `LeftBracket`, just read): a structured
+    /// reference written without its table name, which names the table holding the formula's
+    /// cell, its totals row included (`=[@Col]*2`, `=SUBTOTAL(109,[Col])`; references.md
+    /// "Structured references: this row, totals and ranges", T-2979). Stored (R1C1) text carries
+    /// the table as a `[T]` prefix (`StructuredReference::stored_text`). Outside every table the
+    /// operand is refused, as before.
+    pub(super) fn unqualified_structured_reference(&mut self) -> Node {
+        let refused =
+            |parser: &mut Self| parser.unexpected_operand("Unexpected token: '['".to_string());
+        let table_name = if self.lexer.is_a1_mode() {
+            let Some(name) = self.containing_table_name() else {
+                return refused(self);
+            };
+            // Back onto the `[` just read (any whitespace before it is already behind).
+            self.lexer
+                .rewind_to(self.lexer.get_position_index().saturating_sub(1));
+            name
+        } else {
+            let Some(name) = self.lexer.stored_table_prefix() else {
+                return refused(self);
+            };
+            name
+        };
+        let Ok(TokenType::StructuredReference {
+            table_name,
+            specifier,
+            table_reference,
+            spacing,
+        }) = self.lexer.consume_structured_reference(&table_name)
+        else {
+            return refused(self);
+        };
+        let mut node = self.structured_reference_operand(
+            table_name,
+            specifier,
+            table_reference,
+            spacing,
+            false,
+        );
+        if let Node::StructuredReferenceKind { reference, .. } = &mut node {
+            reference.unqualified = true;
+            if reference.extent.is_none() {
+                reference.extent = self
+                    .table_named(&reference.table_name)
+                    .and_then(|table| TableExtent::of(table, None));
+            }
+        }
+        node
+    }
+
+    /// The table `name` names in the parser's table list. Table names match ignoring case
+    /// (gen-m8b names-case 5b5c0e20e82153bb): an exact hit is deterministic; the case-folded scan
+    /// covers the rest.
+    pub(super) fn table_named(&self, name: &str) -> Option<&Table> {
+        self.tables.get(name).or_else(|| {
+            let lower = name.to_lowercase();
+            self.tables
+                .iter()
+                .find(|(table_name, _)| table_name.to_lowercase() == lower)
+                .map(|(_, table)| table)
+        })
+    }
+
+    /// Puts `table` in place of the table of its name (or adds it), and returns the one it
+    /// replaced: a provisional table for one parse, which the caller puts back.
+    pub fn replace_table(&mut self, table: Table) -> Option<Table> {
+        self.tables.insert(table.name.clone(), table)
+    }
+
+    /// Removes the table `name` from the list structured references resolve against.
+    pub fn remove_table(&mut self, name: &str) -> Option<Table> {
+        self.tables.remove(name)
+    }
+
+    /// The name of the table whose range (headers and totals row included) holds the formula's
+    /// cell, if any.
+    fn containing_table_name(&self) -> Option<String> {
+        let context = &self.context;
+        self.tables.values().find_map(|table| {
+            (table.is_on_sheet(&context.sheet)
+                && TableExtent::of(table, None)?.holds(context, false))
+            .then(|| table.name.clone())
+        })
     }
 }
 

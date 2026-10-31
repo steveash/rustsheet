@@ -5,6 +5,7 @@
   exit and the milestone exit measures), decision 0083 (pick order inside the visible campaign) and
   decision 0094 (adds a rate measure next to its zero-visibly-off checkpoint). Keeps decision 0052:
   accepted deviations stay directive-5 limits only, and prime directive 1 is unchanged.
+  Amended by decision 0188 (2026-10-31): the Phase 1 exit adds Gate A and counts the rate on user-representative suites; R5 widens item 3.
 - **Context:**
   - The owner's priority, restated: **≥ 99.9% of each function's Excel cells right to the 15
     significant digits Excel shows** matters more than bit parity. Decision 0083 already ordered the

@@ -18,7 +18,7 @@ use std::sync::Arc;
 
 use super::r#let::assign_variable_ids;
 use super::read_once::read_once;
-use crate::evaluation::stack_address;
+use crate::evaluation_limits::stack_address;
 use crate::variable_stack::Binding;
 
 /// A LAMBDA's parameters and body as `Model::lambdas` stores them, shared with the defined name
@@ -44,6 +44,25 @@ pub(crate) struct NamedLambdas {
     /// A patched body by lambda id and number of arguments, for the next call. Only a body is
     /// kept: an error (a wrong count) is made again with the calling cell's origin.
     prepared: HashMap<(usize, usize), PreparedLambda>,
+}
+
+impl NamedLambdas {
+    /// Drops the defined-name LAMBDAs made with an id of at least `mark`, with their patched bodies,
+    /// once the root formula that named them is evaluated (`Model::evaluate_root_cell`, T-2925).
+    pub(crate) fn drop_since(&mut self, mark: usize) {
+        if self.named.is_empty() {
+            return;
+        }
+        self.ids.retain(|_, (_, id)| *id < mark);
+        self.named.retain(|id| *id < mark);
+        self.prepared.retain(|(id, _), _| *id < mark);
+    }
+
+    /// Whether no defined-name LAMBDA is kept (for the tests of T-2925).
+    #[cfg(test)]
+    pub(crate) fn is_empty(&self) -> bool {
+        self.ids.is_empty() && self.named.is_empty() && self.prepared.is_empty()
+    }
 }
 
 /// What a LET or a LAMBDA call gives, for [`Model::close_over`]: the LAMBDAs it holds, the one it
@@ -102,6 +121,8 @@ pub(crate) struct LambdaCaller {
     /// Whether a body that is a TRIMRANGE of a range returns the trimmed reference
     /// (`LambdaCaller::keeping_trimrange_references`).
     trimrange_references: bool,
+    /// Whether the body is a formula root that snaps a near-zero `+`/`-` (`Model::call_lambda`).
+    root_snap: bool,
 }
 
 impl LambdaCaller {
@@ -322,6 +343,13 @@ impl Model {
             }
             _ => None,
         };
+        // A called LAMBDA's body is a formula root: a `+`/`-` there snaps a near-zero result,
+        // `=LAMBDA(x,x+0.2-0.3)(0.1)` is 0, where a LET body does not
+        // (docs/excel-semantics/numbers.md "Near-zero snapping", probes/t3049-snap-under-pickers
+        // B17, C17). A defined-name LAMBDA snaps alike, also when another named LAMBDA calls it
+        // (probes/t3094-snap-lambda-call-forms C2-F5, J2-J5). The helpers' calls (MAP, REDUCE,
+        // ...) are unprobed.
+        caller.root_snap = true;
         if let Some(key) = named {
             caller.prepared = self
                 .named_lambdas
@@ -356,6 +384,7 @@ impl Model {
             prepared: None,
             references: false,
             trimrange_references: false,
+            root_snap: false,
         }
     }
 
@@ -506,6 +535,9 @@ impl Model {
                         kind: Function::Trimrange,
                         args,
                     } if caller.trimrange_references => self.trimrange_reference(args, cell, true),
+                    _ if caller.root_snap => {
+                        RefArg::Value(self.evaluate_formula_root(body, cell, false))
+                    }
                     _ => RefArg::Value(self.evaluate_node_in_context(body, cell)),
                 };
                 // A LAMBDA the body made may read the parameters and the captures bound here.
@@ -862,5 +894,54 @@ fn called_value(value: &ArrayNode) -> ArrayNode {
         ArrayNode::Number(_) | ArrayNode::Boolean(_) | ArrayNode::Empty => {
             ArrayNode::Error(Error::NAME)
         }
+    }
+}
+
+/// Slots of `Model::lambdas`' table kept once a root formula's LAMBDAs are dropped: past this the
+/// table is given back, so one formula that made millions holds no memory for the rest of the pass
+/// (T-2925).
+const RETAINED_LAMBDA_SLOTS: usize = 1 << 10;
+
+// The lifetime of the LAMBDAs a formula makes: one root cell's, or one evaluation's.
+impl Model {
+    /// Evaluates `cell` as a root of the evaluation pass. No LAMBDA outlives the formula that
+    /// made it (a cell holding one is `#CALC!`), so the LAMBDAs it made and what they captured
+    /// (`Model::close_over`) are dropped with it, not kept for the rest of the pass: each later
+    /// formula's calls would otherwise slow down with the map's size (T-2925).
+    pub(crate) fn evaluate_root_cell(&mut self, cell: CellReferenceIndex) {
+        let mark = self.last_lambda_id;
+        self.evaluate_cell(cell);
+        self.drop_lambdas_since(mark);
+        self.clear_formula_scratch();
+    }
+    /// Drops what LAMBDAs captured and the nested-array budgets: they belong to one formula, so a
+    /// root cell and a whole evaluation both end them.
+    fn clear_formula_scratch(&mut self) {
+        self.lambda_captures.clear();
+        self.captured_cells = 0;
+        self.nested_budget = crate::nested_array::NestedBudget::default();
+    }
+    /// Drops the LAMBDAs made since `last_lambda_id` was `mark`, in time proportional to how many
+    /// were made. Ids keep growing (`last_lambda_id` is not reset): a `PreparedLambda`'s
+    /// `lambda_mark` compares them (T-2925).
+    fn drop_lambdas_since(&mut self, mark: usize) {
+        for id in mark..self.last_lambda_id {
+            self.lambdas.remove(&id);
+            self.eta_lambdas.remove(&id);
+        }
+        self.named_lambdas.drop_since(mark);
+        // A formula that made many leaves the map's table behind; give it back once empty.
+        if self.lambdas.is_empty() && self.lambdas.capacity() > RETAINED_LAMBDA_SLOTS {
+            self.lambdas = HashMap::new();
+        }
+    }
+    /// Drops every LAMBDA and restarts the ids at 0: a whole evaluation (a pass, a data table) ends,
+    /// so no caller holds an id.
+    pub(crate) fn clear_lambdas(&mut self) {
+        self.lambdas.clear();
+        self.eta_lambdas.clear();
+        self.named_lambdas = NamedLambdas::default();
+        self.clear_formula_scratch();
+        self.last_lambda_id = 0;
     }
 }

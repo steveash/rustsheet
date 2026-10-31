@@ -1,6 +1,8 @@
 //! Walking a formula tree: the children of a node, and searching for calls of given functions.
 
-use super::{chain, Node};
+use super::spacing::is_empty_call_run;
+use super::{chain, ArrayNode, Node};
+use crate::expressions::token::Error;
 use crate::functions::Function;
 
 /// The pattern of the nodes with exactly one child, binding it to `$child`: one list for the
@@ -21,6 +23,46 @@ macro_rules! one_child {
 }
 
 impl Node {
+    /// Whether the tree holds a negative zero, a number or an array constant element (`{-0}`
+    /// folds its sign into the element). The derived `PartialEq` holds `-0` equal to `0` while
+    /// the printers keep the sign, so a cache keyed by tree equality must not take such a tree
+    /// (the xlsx importer's R1C1 text cache, T-3318).
+    #[must_use]
+    pub fn has_negative_zero(&self) -> bool {
+        let negative_zero = |n: f64| n == 0.0 && n.is_sign_negative();
+        let mut pending = vec![self];
+        while let Some(node) = pending.pop() {
+            let found = match node {
+                Node::NumberKind(n) => negative_zero(*n),
+                Node::ArrayKind(rows) => rows
+                    .iter()
+                    .flatten()
+                    .any(|item| matches!(item, ArrayNode::Number(n) if negative_zero(*n))),
+                _ => false,
+            };
+            if found {
+                return true;
+            }
+            node.push_children(&mut pending);
+        }
+        false
+    }
+
+    /// Whether the tree holds a parse error at any depth. Such a tree carries the formula's own
+    /// text and positions, so the import never reuses its printed form for another copy of the
+    /// formula (T-3326). An explicit stack, as above.
+    #[must_use]
+    pub fn has_parse_error(&self) -> bool {
+        let mut pending = vec![self];
+        while let Some(node) = pending.pop() {
+            if matches!(node, Node::ParseErrorKind { .. }) {
+                return true;
+            }
+            node.push_children(&mut pending);
+        }
+        false
+    }
+
     /// Whether the tree holds a call of one of `kinds` at any depth. SUBTOTAL and AGGREGATE skip
     /// every cell whose formula does (docs/excel-semantics/numbers.md "SUBTOTAL and AGGREGATE
     /// over hidden and filtered rows", probes/subtotal-hidden-filtered Nest sheet). An explicit
@@ -122,11 +164,12 @@ impl Node {
         }
     }
 
-    /// Whether the tree holds whitespace written in the formula ([`Node::Spaced`], SPEC-0023).
+    /// Whether the tree holds whitespace written in the formula ([`Node::Spaced`], SPEC-0023)
+    /// or another node only the written tree holds ([`Node::SheetRefErrorKind`]).
     pub(crate) fn has_spaces(&self) -> bool {
         let mut pending = vec![self];
         while let Some(node) = pending.pop() {
-            if matches!(node, Node::Spaced { .. }) {
+            if matches!(node, Node::Spaced { .. } | Node::SheetRefErrorKind { .. }) {
                 return true;
             }
             node.push_children(&mut pending);
@@ -135,13 +178,23 @@ impl Node {
     }
 
     /// The tree without the whitespace written in it: every [`Node::Spaced`] replaced by its
-    /// child. An explicit stack keeps the walk off the call stack.
+    /// child, every [`Node::SheetRefErrorKind`] by the bare `#REF!`, and the run of an empty call
+    /// removed with the argument that holds it ([`is_empty_call_run`]). An explicit stack keeps
+    /// the walk off the call stack.
     pub(crate) fn strip_spaces(&mut self) {
         let mut pending = vec![self];
         while let Some(node) = pending.pop() {
             while let Node::Spaced { child, .. } = node {
                 let child = std::mem::replace(&mut **child, Node::EmptyArgKind);
                 *node = child;
+            }
+            if let Node::SheetRefErrorKind { .. } = node {
+                *node = Node::ErrorKind(Error::REF);
+            }
+            if let Node::FunctionKind { args, .. } = node {
+                if is_empty_call_run(args) {
+                    args.clear();
+                }
             }
             node.push_children_mut(&mut pending);
         }

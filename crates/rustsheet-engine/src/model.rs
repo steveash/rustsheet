@@ -10,7 +10,6 @@ use crate::{
     constants::{self, LAST_COLUMN, LAST_ROW},
     expressions::{
         parser::{
-            is_limit_error,
             move_formula::{move_formula, MoveContext},
             new_parser_english,
             stringify::{to_english_string, to_localized_string, to_rc_format},
@@ -21,7 +20,7 @@ use crate::{
         utils::{self, is_valid_column_number, is_valid_row},
     },
     formatter::{
-        format::{format_number, parse_typed_number, rejected_clock_text_format},
+        format::{displayed_text, format_number, parse_typed_number, rejected_clock_text_format},
         lexer::is_likely_date_number_format,
     },
     implicit_intersection::implicit_intersection,
@@ -249,24 +248,6 @@ impl Model {
         let id = self.last_lambda_id;
         self.last_lambda_id += 1;
         id
-    }
-    /// Evaluates `cell` as a root of the evaluation pass. No LAMBDA outlives the formula that
-    /// made it (a cell holding one is `#CALC!`), so what the LAMBDAs captured
-    /// (`Model::close_over`) is dropped with it, not kept for the rest of the pass.
-    pub(crate) fn evaluate_root_cell(&mut self, cell: CellReferenceIndex) {
-        self.evaluate_cell(cell);
-        self.lambda_captures.clear();
-        self.captured_cells = 0;
-        self.nested_budget = crate::nested_array::NestedBudget::default();
-    }
-    pub(crate) fn clear_lambdas(&mut self) {
-        self.lambdas.clear();
-        self.eta_lambdas.clear();
-        self.named_lambdas = NamedLambdas::default();
-        self.lambda_captures.clear();
-        self.captured_cells = 0;
-        self.nested_budget = crate::nested_array::NestedBudget::default();
-        self.last_lambda_id = 0;
     }
     pub(crate) fn evaluate_node_with_reference(
         &mut self,
@@ -604,15 +585,13 @@ impl Model {
                     return CalcResult::new_error(Error::ERROR, cell, String::new());
                 };
                 let range = CalcResult::Range { left, right };
-                // A whole-column operand of a tailed aggregate argument (`tailed_array.rs`).
-                if !self.tail_views.is_empty() {
-                    if let Some(value) = self.tailed_operand(node, cell, &range) {
-                        return value;
-                    }
-                }
-                range
+                // A range operand of a tailed argument (`tailed_array.rs`).
+                self.tailed_operand(node, cell, &range).unwrap_or(range)
             }
-            FunctionKind { kind, args } => self.evaluate_function(kind, args, cell),
+            // A `ROW()` position leaf of a tailed argument (`tailed_array.rs`).
+            FunctionKind { kind, args } => self
+                .tailed_position(node, kind, cell)
+                .unwrap_or_else(|| self.evaluate_function(kind, args, cell)),
             NamedFunctionKind { name, args, id } => {
                 self.evaluate_named_function_call(name, args, *id, cell)
             }
@@ -634,6 +613,7 @@ impl Model {
             | DefinedNameKind(_)
             | UnaryKind { .. }
             | ErrorKind(_)
+            | SheetRefErrorKind { .. }
             | ParseErrorKind { .. }
             | Group { .. }
             | UnaryPlus { .. }
@@ -2226,35 +2206,6 @@ impl Model {
         Ok(index)
     }
 
-    /// Parses a formula typed into a cell. A formula that fails to parse is
-    /// retried with a closing parenthesis (`SUM(A1:A3` => `SUM(A1:A3)`) and
-    /// otherwise kept as a parse error, except one past the parser's limits (nested too deep
-    /// or too many operators; no `)` helps), which is rejected: the cell could never hold it.
-    pub(crate) fn parse_cell_formula(
-        &mut self,
-        sheet: u32,
-        row: i32,
-        column: i32,
-        formula: &str,
-    ) -> Result<Node, String> {
-        let sheet = self.workbook.worksheet(sheet)?.get_name();
-        let cell_reference = &CellReferenceRC { sheet, row, column };
-        let mut node = self.parser.parse(formula, cell_reference);
-        if matches!(&node, Node::ParseErrorKind { message, .. } if !is_limit_error(message)) {
-            let closed = format!("{formula})");
-            let retry = self.parser.parse(&closed, cell_reference);
-            if !matches!(retry, Node::ParseErrorKind { .. }) {
-                node = retry;
-            }
-        }
-        match node {
-            Node::ParseErrorKind { message, .. } if is_limit_error(&message) => {
-                Err(format!("Formula: {message}"))
-            }
-            node => self.parser.typed_refusal().map_or(Ok(node), Err),
-        }
-    }
-
     // FIXME
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn set_cell_with_array_formula(
@@ -2431,17 +2382,16 @@ impl Model {
         row: i32,
         column: i32,
     ) -> Result<String, String> {
-        match self.workbook.worksheet(sheet_index)?.cell(row, column) {
-            Some(cell) => {
-                let format = self.get_style_for_cell(sheet_index, row, column)?.num_fmt;
-                let formatted_value =
-                    cell.formatted_value(&self.workbook.shared_strings, self.language, |value| {
-                        format_number(value, &format, &self.format_context()).displayed()
-                    });
-                Ok(formatted_value)
-            }
-            None => Ok("".to_string()),
-        }
+        let Some(cell) = self.workbook.worksheet(sheet_index)?.cell(row, column) else {
+            return Ok("".to_string());
+        };
+        let format = self.get_style_for_cell(sheet_index, row, column)?.num_fmt;
+        Ok(cell.formatted_value(
+            &self.workbook.shared_strings,
+            self.language,
+            |value| format_number(value, &format, &self.format_context()).displayed(),
+            |text| displayed_text(text, &format),
+        ))
     }
 
     /// Return the typeof a cell

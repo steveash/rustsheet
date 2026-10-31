@@ -14,15 +14,24 @@ fn ulps_above(b: f64, k: f64) -> f64 {
 }
 
 #[test]
-fn snaps_below_eight_ulp_of_the_smaller_addend() {
+fn snaps_below_eight_ulp_of_the_left_addend() {
     // 7 ULP of 1.0 snaps, 8 ULP is kept.
     let seven = ulps_above(1.0, 7.0);
     assert_eq!(snap_near_zero(seven, -1.0, seven - 1.0), 0.0);
     let eight = ulps_above(1.0, 8.0);
     assert_eq!(snap_near_zero(eight, -1.0, eight - 1.0), eight - 1.0);
-    // The smaller addend sets the scale: 1 - 4·2^-52 has half the ULP of 1.
+    // The left addend sets the scale: 1 - 4·2^-52 has half the ULP of 1, so `(1-4·2^-52)-1` is
+    // kept and `1-(1-4·2^-52)` snaps (probes/t3100-snap-operand-order row 8, columns A and B).
     let below = 1.0 - 4.0 * f64::EPSILON;
-    assert_eq!(snap_near_zero(1.0, -below, 1.0 - below), 1.0 - below);
+    assert_eq!(snap_near_zero(below, -1.0, below - 1.0), below - 1.0);
+    assert_eq!(snap_near_zero(1.0, -below, 1.0 - below), 0.0);
+    assert_eq!(snap_near_zero(-1.0, below, below - 1.0), 0.0);
+    // 8 ULP of the left 1.0 is kept either way.
+    let eight_below = 1.0 - 4.0 * f64::EPSILON - 4.0 * f64::EPSILON;
+    assert_eq!(
+        snap_near_zero(1.0, -eight_below, 1.0 - eight_below),
+        1.0 - eight_below
+    );
 }
 
 // Excel flushes the 8-ULP bound when it is subnormal: addends of 1.5·2^-973 still snap (to a
@@ -107,5 +116,105 @@ fn aggregate_and_subtotal_sum_snap() {
     model.evaluate();
     for cell in ["B1", "B2", "B3"] {
         assert_eq!(model._get_text(cell), "TRUE", "{cell}");
+    }
+}
+
+/// The root `+`/`-` snaps every element of an array result on its own two addends, with the
+/// scalar bound: 7 ULP of 1 snaps on the `+` side, 4 ULP of the left addend does not on the
+/// `-` side (probes/t3047-snap-array-operands S!E1:L3).
+#[test]
+fn array_operands_snap_element_by_element() {
+    let mut model = new_empty_model();
+    for (row, (a, b, c)) in [
+        ("0.1", "0.2", "0.3"),
+        ("1", "1", "2"),
+        ("0.1", "0.2", "0.1"),
+        ("1", "-0.9", "0.1"),
+    ]
+    .iter()
+    .enumerate()
+    {
+        let row = row + 1;
+        model._set(&format!("A{row}"), a);
+        model._set(&format!("B{row}"), b);
+        model._set(&format!("C{row}"), c);
+    }
+    model._set("E1", "=A1:A4+B1:B4-C1:C4");
+    model._set("F1", "=-C1:C4+A1:A4+B1:B4");
+    model._set("G1", "=0+{0.1,1}+{0.2,1}-{0.3,2}");
+    model._set("G3", "=0.1+{0.2;0.2}-0.3");
+    model._set("H3", "=0+{0.1}+0.2-0.3");
+    model._set("I1", "=1+{3;7;8}*2^-52-1");
+    model._set("J1", "=1-{3;4;7}*2^-52-1");
+    model._set("K1", "=-1+(1+{3;7;8}*2^-52)");
+    model._set("M1", "=INDEX(E1#,1)=0");
+    model._set("M2", "=INDEX(A1:A4+B1:B4-C1:C4,1)=0");
+    model.evaluate();
+    let zero = [
+        "E1", "E2", "E4", "F1", "F2", "F4", "G1", "H1", "G3", "G4", "H3", "I1", "I2", "J1", "K1",
+        "K2",
+    ];
+    for cell in zero {
+        assert_eq!(model._get_text(cell), "0", "{cell}");
+    }
+    assert_eq!(model._get_text("E3"), "0.2");
+    assert_eq!(model._get_text("I3"), "1.77636E-15");
+    assert_eq!(model._get_text("J2"), "-8.88178E-16");
+    assert_eq!(model._get_text("J3"), "-1.55431E-15");
+    assert_eq!(model._get_text("K3"), "1.77636E-15");
+    // A reader of the spill sees the snapped value; an operator under a call is not snapped.
+    assert_eq!(model._get_text("M1"), "TRUE");
+    assert_eq!(model._get_text("M2"), "FALSE");
+}
+
+/// A legacy formula intersects its range operands with its own row and snaps the result
+/// (probes/t3047-snap-array-operands L!E1:E4).
+#[test]
+fn legacy_intersected_ranges_snap_per_row() {
+    let mut model = new_empty_model();
+    for (row, (a, b, c)) in [("0.1", "0.2", "0.3"), ("1", "-0.9", "0.1")]
+        .iter()
+        .enumerate()
+    {
+        let row = row + 1;
+        model._set(&format!("A{row}"), a);
+        model._set(&format!("B{row}"), b);
+        model._set(&format!("C{row}"), c);
+    }
+    for row in 1..=2 {
+        model
+            .set_cell_with_legacy_formula(0, row, 5, "=A1:A2+B1:B2-C1:C2")
+            .unwrap();
+    }
+    model.evaluate();
+    assert_eq!(model._get_text("E1"), "0");
+    assert_eq!(model._get_text("E2"), "0");
+}
+
+/// A coerced addend (number, percent, time or date-time text, a text cell, TRUE) snaps exactly as
+/// its number does: 7 ULP of the left addend snap and 8 keep, on either side
+/// (probes/t3140-snap-coerced-operands, every S cell; M!A4, M!A7, M!A11).
+#[test]
+fn coerced_addends_snap_like_numbers() {
+    let mut model = new_empty_model();
+    model._set("T1", "=\"1.5\"");
+    let cases = [
+        ("A1", "=\"1.5\"-(1.5+7*2^-52)", "0"),
+        ("A2", "=\"1.5\"-(1.5+8*2^-52)", "-1.77636E-15"),
+        ("A3", "=(1.5+7*2^-52)-T1", "0"),
+        ("A4", "=(1.5+8*2^-52)-T1", "1.77636E-15"),
+        ("A5", "=\"50%\"-(0.5+7*2^-53)", "0"),
+        ("A6", "=-\"12:00\"+(0.5+7*2^-53)", "0"),
+        ("A7", "=\"1/2/1900 12:00\"-(2.5+8*2^-51)", "-3.55271E-15"),
+        ("A8", "=TRUE-(1+7*2^-52)", "0"),
+        ("A9", "=\"30%\"-0.1-0.2", "0"),
+        ("A10", "=\"0.1\"+\"0.2\"-\"0.3\"", "0"),
+    ];
+    for (cell, formula, _) in cases {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, formula, expected) in cases {
+        assert_eq!(model._get_text(cell), expected, "{formula}");
     }
 }

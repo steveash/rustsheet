@@ -17,11 +17,12 @@
 //! Every loop is bounded (bratio's series bound, and `bup`'s n below 40).
 
 use super::beta_density::beta_density_small_shape;
-use super::bratio::{bpser_with_ln_beta, EPS};
+use super::bratio::bpser::bpser_with_ln_beta;
+use super::bratio::ln_beta::neg_ln_beta_half_integer;
+use super::bratio::EPS;
 use super::gammaln::excel_gammaln;
 use crate::arithmetic::{extended_quotient, extended_sum};
-use crate::x87_exp::{dd_add, dd_to_extended};
-use crate::x87_log10::{excel_ln, ln_double_double};
+use crate::x87_log10::excel_ln;
 use crate::x87_register::Register;
 
 /// The shape on bratio's smaller side from which it leaves `bpser` and `bup` (TOMS `b0 < 40`).
@@ -83,11 +84,9 @@ fn bpser(a: f64, b: f64, x: f64) -> Option<f64> {
 /// from 1 and fl64(gamln1(1/2) - LN(1/2)) at 1/2 (the only half-integer below 1).
 fn neg_ln_beta(a: f64, b: f64) -> Register {
     if a.max(b) > 8.0 {
-        let (hi, lo) = super::fisher::half_integer_beta(a, b);
-        let ln_beta = dd_add(ln_double_double(hi), (lo / hi, 0.0));
-        // ln B < 0 for both shapes above 1/2 and one above 1, so -ln B is positive.
-        let (significand, exponent) = dd_to_extended((-ln_beta.0, -ln_beta.1));
-        return Register::from_parts(false, significand, exponent);
+        if let Some(neg_ln_beta) = neg_ln_beta_half_integer(a, b) {
+            return neg_ln_beta;
+        }
     }
     let neg_lg = |v: f64| {
         if v >= 1.0 {
@@ -143,7 +142,7 @@ fn bup(a: f64, b: f64, x: f64, y: f64, n: f64) -> Option<f64> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::bratio::bpser_neg_ln_beta;
+    use super::super::bratio::bpser::bpser_neg_ln_beta;
     use super::{f_test_bratio_p, neg_ln_beta};
     use crate::test::util::ulps;
     use crate::x87_register::Register;
@@ -235,10 +234,10 @@ mod tests {
         }
     }
 
-    // F.TEST's ln B is not BETA.DIST's bpser ln B (`bratio::bpser_neg_ln_beta`), so bpser takes it
+    // F.TEST's ln B is not BETA.DIST's bpser ln B (`bratio::bpser::bpser_neg_ln_beta`), so bpser takes it
     // as an argument: at the L140 shape 1/2 it reads GAMMALN(1/2) as gamln1(1/2) - LN(1/2), an ulp
-    // apart once stored (A141 and A119 are bit-exact with it), and above a shape of 8 it has the
-    // accurate value where BETA.DIST's port has none yet.
+    // apart once stored (A141 and A119 are bit-exact with it). Above a shape of 8 with both shapes
+    // above 1 the two share the accurate half-integer value (T-3007).
     #[test]
     fn ln_beta_differs_from_beta_dist_bpser() {
         let beta_dist = |a, b| bpser_neg_ln_beta(a, b).map(Register::store);
@@ -249,7 +248,7 @@ mod tests {
             assert_eq!(neg_ln_beta(a, b).store(), f_test, "B({a}, {b})");
             assert_eq!(beta_dist(a, b), Some(beta_dist_value), "B({a}, {b})");
         }
-        assert_eq!(beta_dist(9.0, 2.5), None);
+        assert_eq!(beta_dist(9.0, 2.5), Some(neg_ln_beta(9.0, 2.5).store()));
     }
 
     // Not ported: a shape of 1/2 or 1 (the remainder model), a smaller-side shape of 40 or more

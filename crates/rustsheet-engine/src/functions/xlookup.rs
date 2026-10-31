@@ -3,13 +3,14 @@ use std::cmp::Ordering;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::{
-    calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
+    calc_result::CalcResult, cast::calc_result_to_array_node, expressions::parser::Node,
+    expressions::token::Error, model::Model,
 };
 
 use super::{
-    binary_search::{binary_search, Sequence},
+    binary_search::{binary_search_by, Sequence},
     lift::{LiftCost, LiftOptions, LiftedArg},
-    lookup_and_reference::lookup_table::{Indexed, SearchVector},
+    lookup_and_reference::lookup_table::{cmp_searched, Indexed, SearchVector},
     lookup_and_reference::xmatch::{
         exact_through_index, linear_scan, regex_pattern, regex_scan, MatchMode as XmatchMode,
     },
@@ -96,11 +97,12 @@ fn binary_hit<S: Sequence<CalcResult> + ?Sized>(
         MatchMode::ExactMatchLarger => Ordering::Greater,
         _ => Ordering::Equal,
     };
-    match binary_search(
+    match binary_search_by(
         lookup_value,
         values,
         *search_mode == SearchMode::BinarySearchDescending,
         side,
+        cmp_searched,
     ) {
         Some(index) => BinaryHit::Found(index),
         None => BinaryHit::NotFound,
@@ -314,6 +316,14 @@ impl Model {
             CalcResult::Range { left, right } => XlookupReturns::Range(left, right),
             CalcResult::Array(returns) => XlookupReturns::Array(returns),
             error @ CalcResult::Error { .. } => return Err(error),
+            // Excel: a scalar return_array is a one-cell array, so a hit returns it and a miss
+            // gives if_not_found (probes/t3317-xlookup-scalar-return C1-C4, C7, C10-C13, C19).
+            scalar @ (CalcResult::Number(_)
+            | CalcResult::String(_)
+            | CalcResult::Boolean(_)
+            | CalcResult::EmptyCell) => {
+                XlookupReturns::Array(vec![vec![calc_result_to_array_node(scalar)]])
+            }
             _ => return Err(value_error("Range expected")),
         };
         let vertical = xlookup_orientation(rows, columns, return_rows) == Some(true);

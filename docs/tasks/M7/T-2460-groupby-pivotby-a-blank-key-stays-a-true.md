@@ -3,7 +3,7 @@ id: T-2460
 title: "GROUPBY/PIVOTBY: a blank key stays a true blank in the result, not 0"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -37,10 +37,15 @@ Exit owners (decision 0096; the 2026-10-27 planner run names each cell the range
 - probes/t2625-nested-consumers P!A29, P!A30
 
 ## Acceptance criteria
-- [ ] The six G! known-failure lines above disappear from eval/baseline/probes.txt, no new known failures.
-- [ ] gen-m9/8d3588d8df0812df Calc!A240 and the eleven probes/t2578-* blank-key lines disappear from the baselines.
-- [ ] Unit test: `TYPE(INDEX(GROUPBY(..blank key..),r,1))&INDEX(..)` is "1".
-- [ ] `make check` green; reviewers approve.
+- [x] The six G! known-failure lines above disappear from eval/baseline/probes.txt, no new known failures.
+- [x] gen-m9/8d3588d8df0812df Calc!A240 and the eleven probes/t2578-* blank-key lines disappear from the baselines.
+- [x] Unit test: `TYPE(INDEX(GROUPBY(..blank key..),r,1))&INDEX(..)` is "1".
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Nested-array cells (T-2459).
+
+## Outcome
+Fixed by T-2854 (same cause): a blank key is a true blank inside the GROUPBY/PIVOTBY array (`shown_key` removed,
+grouping.rs), and IFERROR/IFNA read a blank array element as 0. Every cell this task names left the baselines; unit test
+`blank_key_is_a_true_blank_inside_the_array` (test_fn_groupby.rs).

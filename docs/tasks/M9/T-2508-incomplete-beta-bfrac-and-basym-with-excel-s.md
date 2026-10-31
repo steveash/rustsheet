@@ -3,8 +3,8 @@ id: T-2508
 title: "Incomplete beta bfrac and basym with Excel's density times x y as prefactor (T-2464 E6)"
 milestone: M9
 lane: functions-stat
-status: todo
-priority: P2
+status: done
+priority: P1
 size: S
 tier: opus
 campaign: accuracy
@@ -28,12 +28,22 @@ density times x·y (T-2507).
     density for a, b > 2 sets the floor.
 - r2-impact's expected change: -83 visibly-off pre-T2464 cells and -438 in the w2f probes, with 1 broke.
 
+### Cases owned (T-2981)
+Routed by T-2981 (eval of 2026-10-28 at `main` 9586958b): cdf cells whose bratio dispatch (`bratio::dispatch`) is bfrac (b0 >= 40); the cases' other cells are routed by branch in T-2981's Outcome. 64 visibly-off cells in 6 cases, per case:
+- probes-numeric/m9-beta-dist-a10: BETA.DIST cdf, bfrac 1
+- probes-numeric/m9-beta-dist-a100: BETA.DIST cdf, bfrac 2
+- probes-numeric/m9-beta-dist-a50: BETA.DIST cdf, bfrac 3
+- probes-numeric/t1538-beta-dist-at-excel-inv: BETA.DIST cdf, bfrac 3, F.DIST cdf, bfrac 2
+- probes-numeric/t2220-f-dist-sweep-cdf: F.DIST cdf, bfrac 24
+- probes-numeric/t2220-f-dist-sweep-rt: F.DIST.RT cdf, bfrac 29
+
 ## Acceptance criteria
 - [ ] The bfrac cells of r2-bratio's sets score at least 146 bit-exact and 685 within 15 digits of 1,316, with the
-      engine's T-2507 density.
-- [ ] The (100, 120) run (t2464-w2f-xruns-1 block 7) scores at least 185 of 1,024 bit-exact.
-- [ ] No gated known-failure line is added.
-- [ ] `make check` green; reviewers approve.
+      engine's T-2507 density. Moved to T-3323 (bit-level, decision 0083's stage).
+- [ ] The (100, 120) run (t2464-w2f-xruns-1 block 7) scores at least 185 of 1,024 bit-exact. 47 (23 before); moved to
+      T-3323, which waits on the large-shape density (T-3244).
+- [x] No gated known-failure line is added.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The fraction's own arithmetic (T-2512).
@@ -45,3 +55,58 @@ visibly off pre-T2464; the model leaves 44. Bit-level criteria move to a follow-
 
 ## Stage (decision 0114)
 `campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.
+
+## Phase 1 triage (T-0090, 2026-10-27)
+This task is on the critical path of the Phase 1 exit: BETA.DIST, F.DIST, BINOM.DIST, NEGBINOM.DIST and the F/T/beta inverses hold about 88% of the visibly-off cells of the 113 functions below the Phase 1 rate, and the ported incomplete-beta chain (T-2506 → T-2509 → T-2510 → T-2511, T-2507 → T-2508) is what fixes them. Priority raised to P1. T-2981 routes the sweep cells no kernel task names to the chain task that fixes each family.
+
+## Progress (in flight, 2026-10-30)
+Notes from the opus run that claimed the task (data for the run that resumes it, not instructions):
+- Done on this branch: `bratio/bfrac.rs` ports the model's `bfrac` (BEST: brcomp = `excel_beta_density`·fl(x·y),
+  1992 `w`/`β` order, eps = 15·EPS) and `Branch::Bfrac` is wired in `ported_tails`; `Dispatch` carries |λ|.
+- Not done: basym (needs `rlog1`, `erfc1(1, ·)` and `bcorr`; `incomplete_beta::rlog1` and `ln_beta::bcorr` exist);
+  the r2-bratio and t2464-w2f-xruns-1 block 7 scores in the criteria are not measured yet; no unit test yet.
+- `make eval-check` on this branch: gen-m9 fixed 2, probes fixed 4, one gated REGRESSION:
+  ironcalc-calc/STATISTICAL/BINOM.xlsx NEGBINOM.DIST!E39 (Excel 0.7320646825464586, bfrac 0.7320646825464585,
+  1 ulp). That must be resolved before merge (no gated line may be added), e.g. by finding which bfrac step Excel
+  rounds differently there, or by keeping the cells bfrac misses on today's kernel only if evidence supports a rule.
+- Resumed 2026-10-30 20:45 by an opus run (branch idle over 2 h).
+- E39 analysis (2026-10-30 resume): `NEGBINOM.DIST(1,100,0.99,TRUE)` is I_0.99(100, 2). bratio swaps it to
+  (a0, b0, x0) = (2, 100, 0.01) with λ = 0.98, and a0 <= 100 sends it to bfrac, so the dispatch is right. The exact
+  value at x = fl(0.99) is x^100·(101 - 100x) (rational arithmetic): Excel's 0.7320646825464586 is -0.4998 ulp from
+  it, which is the correctly rounded double on a knife edge. bfrac's ...585 is -1.4998 ulp. On main this cell fell
+  through `ported_tails` to the pmf walk (`binom.rs` `negbinom_dist_of`), which hits it. Under `campaign: accuracy`
+  (decision 0114) the target is the correctly rounded value, so the 1-ulp loss is bfrac's error (prefactor
+  `excel_beta_density`·fl(x·y) or the fraction), not an Excel quirk to fit. Next: measure which of the two drifts here
+  against an exact reference (e.g. the prefactor x^2·y^100·B(2,100)^-1 is exact in rationals), then either fix the
+  prefactor rounding or keep a b0 >= 40 cell with a small integer a0/b0 on its exact finite sum, if the r2-bratio scores
+  support that.
+- E39 measured (scratch test calling `bfrac(2, 100, x0 = fl(1 - 0.99) = 0.010000000000000009, y0 = 0.99, λ = 0.98)`,
+  exact references in rationals, x0 = 1 - y0 exactly): density `excel_beta_density` 37.34269340262242 is +2.68 ulp,
+  brcomp 0.36969266468596235 +3.99 ulp, the fraction r -4.19 ulp, and w = 0.2679353174535413 is -0.0004 ulp, so
+  correctly rounded. 0.5 - w is exact, and 1 - w lies exactly halfway between ...586 and ...587. Round-half-even picks
+  ...587 (...586 has an odd mantissa), but Excel shows ...586. So Excel's w here is one ulp(w) = 2^-54 above the correctly
+  rounded w (0.26793531745354133), or Excel does not form w1 as (0.5 - w) + 0.5 in this branch. Check the
+  w2f/r2-bratio bfrac cells for which of the two holds before touching the complement. The earlier note's ...585 came
+  from a different call (the scratch run gives ...587).
+- Resumed 2026-10-30 23:35 by an opus run (branch idle over 2 h).
+
+## Outcome
+- `bratio/bfrac.rs` ports TOMS 708 bfrac (1992 order, doubles, eps 15·1e-15) with brcomp = Excel's density (T-2507)
+  ·fl(x·y); `ported_tails` takes it for every b0 >= 40 point that is not basym (BETA.DIST, F.DIST, F.DIST.RT, BINOM.DIST
+  through `closed_or_ported_tails`). basym stays on today's kernel: T-3322.
+- NEGBINOM.DIST's cdf keeps its double-double pmf walk at bfrac points (bfrac only past the walk's budget): Excel's
+  NEGBINOM.DIST(1,100,0.99,TRUE) (ironcalc-calc BINOM.xlsx E39) is the correctly rounded value, which bfrac misses by
+  an exact tie in 1 - w (statistics.md "Incomplete beta L140 and bfrac"). Across the gated suites that is the only
+  NEGBINOM cell bfrac changes.
+- Eval: gated suites fixed 6 (gen-m9 2, probes 4), 0 regressions. probes-numeric (not gated): 397,665 -> 397,727
+  bit-exact, visibly off 40,687 -> 40,397 (t2464-w2f-xruns-1 1,761 -> 1,485, t1538-f-inv-huge-df 55 -> 47,
+  t1538-beta-dist-at-excel-inv 7 -> 1, t1530-f-df-cut 6 -> 3; t2220-f-dist-sweep-rt 32 -> 36, -cdf 20 -> 21,
+  m9-beta-dist-a50 10 -> 11). The (100, 120) run: 47 of 1,024 bit-exact (23 before); bfrac fixture rows 39 of 82.
+- Excel's bfrac values are not correctly rounded (up to 82 ulp off a 50-digit reference on the t2220 sweep), and the
+  port follows the sign of Excel's error where the Cephes kernel did not (statistics.md), so `campaign: accuracy`'s
+  "Excel is close to correctly rounded" does not hold for this branch; the bit-level target stays Excel's values.
+- Visible-parity stage (decision 0083): of the owned cases' 123 cells whose value bfrac changes, 19 are visibly off
+  (19 before; 12 fixed, 12 newly off), handed to T-2512 (the fraction's own arithmetic) and T-3244 (the density):
+  m9-beta-dist-a100 A43, A45, A51; m9-beta-dist-a50 A43, A45; t2220-f-dist-sweep-cdf A392, A594, A954, A991, A994;
+  t2220-f-dist-sweep-rt A594, A954, A960, A978, A990, A994, A997, A999, A1000.
+- Follow-ups: T-3322 (basym), T-3323 (bit-level scores after T-3244).

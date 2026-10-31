@@ -1,6 +1,7 @@
 # 0136 — Exit-owner report: case.json stems and colon spans own their cells
 
-- **Status:** accepted (2026-10-27, T-2731). Amends decision 0096's "Ownership rule".
+- **Status:** accepted (2026-10-27, T-2731). Amends decision 0096's "Ownership rule". Amended by decision 0159: a
+  single A1 name now counts only in the block that names its case, not anywhere in the task.
 - **Context:**
   - The gap triage of 2026-10-25 found two forms that tasks use to name cells and that the 0096
     rule does not read, so `scripts/exit_owners.py` lists owned cells as unowned and the planner

@@ -20,7 +20,8 @@ pub const ORACLE_FORMAT: &str = "rustsheet-oracle/v1";
 /// (`{"t":"s","v":"=not a formula"}`, `{"t":"e","v":"#N/A"}`) for anything else. An error may
 /// carry `"stored":true`: spec2xlsx writes it as a stored `t="e"` constant (T-0999) and the engine
 /// adapter enters it as one, as xlsx import does (T-1221), not as typed input. `{"entered":"(1)"}`
-/// is text entered as a user types it, so Excel picks the value and number format (T-0280).
+/// is text entered as a user types it, so Excel picks the value and number format (T-0280);
+/// `{"entered_r1c1":"=R1C2+1"}` is typed the same way in R1C1 mode (T-3113).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum CellInput {
@@ -37,14 +38,23 @@ pub enum CellInput {
     Entered {
         entered: String,
     },
+    /// Typed entry in R1C1 mode: as `Entered`, but the oracle backend writes it as
+    /// `Range.formulasR1C1`, so `R1C2` is a reference (T-3113, decision 0179).
+    EnteredR1c1 {
+        entered_r1c1: String,
+    },
 }
 
 impl CellInput {
-    /// The formula text without its leading `=`, or `None` for any other input.
+    /// The formula text without its leading `=`, or `None` for any other input. A typed entry
+    /// (`{"entered": "=NOW( )"}`) is a formula when it starts with `=`, as Excel's input parser reads it;
+    /// an R1C1-mode entry's formula is its R1C1 text.
     #[must_use]
     pub fn formula(&self) -> Option<&str> {
         match self {
-            Self::Str(f) => f.strip_prefix('='),
+            Self::Str(f) | Self::Entered { entered: f } | Self::EnteredR1c1 { entered_r1c1: f } => {
+                f.strip_prefix('=')
+            }
             _ => None,
         }
     }
@@ -136,6 +146,27 @@ pub struct SheetSpec {
     /// (probes/displayed-text-formats B1:B3; docs/excel-semantics/number-formats.md).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub column_widths: BTreeMap<String, f64>,
+    /// Conditional formats of type `formula` (`<cfRule type="expression">`), written by
+    /// spec2xlsx (T-3263) to probe what Excel accepts in their formulas. The engine adapter
+    /// ignores them: conditional formats change no cell value.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub conditional_formats: Vec<RangeFormulaSpec>,
+    /// Custom data validations (`<dataValidation type="custom">`), written by spec2xlsx
+    /// (T-3263). The engine adapter ignores them: data validation is not evaluated.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub data_validations: Vec<RangeFormulaSpec>,
+}
+
+/// A formula applied to a range of a spec sheet: a conditional format's rule or a data
+/// validation's criterion (T-3263).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RangeFormulaSpec {
+    /// A1 range the rule applies to (`A1:B3`).
+    #[serde(rename = "ref")]
+    pub range: String,
+    /// The formula, with its leading `=`.
+    pub formula: String,
 }
 
 /// A table in a spec sheet. spec2xlsx gives a filtered table a values filter that keeps exactly
@@ -218,7 +249,8 @@ pub struct CalculationSpec {
 /// "to":"Inputs"}` renames one, `{"op":"move","sheet":"Data","to":0}` moves one to a 0-based
 /// position, and `{"op":"insert_row","sheet":"S","row":1}` inserts one blank row above the 1-based
 /// `row`, shifting the cells below down (T-1933). T-2323 adds `{"op":"delete_row","sheet":"S",
-/// "row":1}` (the 1-based row goes, the cells below shift up), `{"op":"insert_column","sheet":"S",
+/// "row":1}` (the 1-based row goes, the cells below shift up; an optional `"count":4` deletes that
+/// many rows from `row` in one edit, T-3019), `{"op":"insert_column","sheet":"S",
 /// "column":"B"}` and `{"op":"delete_column","sheet":"S","column":"B"}` (a column letter; the cells
 /// to the right shift), `{"op":"delete_sheet","sheet":"S"}`, `{"op":"delete_table","sheet":"S",
 /// "table":"T1"}` and `{"op":"convert_table","sheet":"S","table":"T1"}`. `convert_table` converts the table
@@ -226,23 +258,55 @@ pub struct CalculationSpec {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
 pub enum SheetOp {
-    Add { sheet: String },
-    Rename { sheet: String, to: String },
-    Move { sheet: String, to: u32 },
-    InsertRow { sheet: String, row: u32 },
-    DeleteRow { sheet: String, row: u32 },
-    InsertColumn { sheet: String, column: String },
-    DeleteColumn { sheet: String, column: String },
-    DeleteSheet { sheet: String },
-    ConvertTable { sheet: String, table: String },
-    DeleteTable { sheet: String, table: String },
+    Add {
+        sheet: String,
+    },
+    Rename {
+        sheet: String,
+        to: String,
+    },
+    Move {
+        sheet: String,
+        to: u32,
+    },
+    InsertRow {
+        sheet: String,
+        row: u32,
+    },
+    DeleteRow {
+        sheet: String,
+        row: u32,
+        /// How many rows go from `row` on in one edit (absent: one).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        count: Option<u32>,
+    },
+    InsertColumn {
+        sheet: String,
+        column: String,
+    },
+    DeleteColumn {
+        sheet: String,
+        column: String,
+    },
+    DeleteSheet {
+        sheet: String,
+    },
+    ConvertTable {
+        sheet: String,
+        table: String,
+    },
+    DeleteTable {
+        sheet: String,
+        table: String,
+    },
 }
 
 impl SheetOp {
     /// Where the input cell `addr` (1-based row) of `sheet` sits after this op: an `insert_row` at
-    /// or above it moves it down a row, a `delete_row` above it moves it up, and the column ops
-    /// move it the same way across. A cell in the deleted row or column, a deleted sheet or a
-    /// table op leaves the address as it was (the cell is gone or unmoved; no case reads it).
+    /// or above it moves it down a row, a `delete_row` above it moves it up by its row count, and
+    /// the column ops move it the same way across. A cell in the deleted row or column, a deleted
+    /// sheet or a table op leaves the address as it was (the cell is gone or unmoved; no case
+    /// reads it).
     /// `sheet` is the spec's sheet name: an edit of a sheet renamed by an earlier op is not
     /// matched, which no case does yet.
     #[must_use]
@@ -259,10 +323,21 @@ impl SheetOp {
                 row: shift(addr.row, *row, 1),
                 ..addr
             },
-            SheetOp::DeleteRow { sheet: at, row } if at == sheet && addr.row > *row => Addr {
-                row: addr.row - 1,
-                ..addr
-            },
+            SheetOp::DeleteRow {
+                sheet: at,
+                row,
+                count,
+            } if at == sheet => {
+                let count = count.unwrap_or(1);
+                if addr.row >= row.saturating_add(count) {
+                    Addr {
+                        row: addr.row - count,
+                        ..addr
+                    }
+                } else {
+                    addr
+                }
+            }
             SheetOp::InsertColumn { sheet: at, column } if at == sheet => Addr {
                 col: Addr::col_index(column).map_or(addr.col, |c| shift(addr.col, c, 1)),
                 ..addr
@@ -467,6 +542,10 @@ mod tests {
         let del_row = op(r#"{"op":"delete_row","sheet":"S","row":3}"#);
         assert_eq!(del_row.moved("S", at("B4")), at("B3"));
         assert_eq!(del_row.moved("S", at("B2")), at("B2"));
+        let del_rows = op(r#"{"op":"delete_row","sheet":"S","row":3,"count":2}"#);
+        assert_eq!(del_rows.moved("S", at("B5")), at("B3"));
+        assert_eq!(del_rows.moved("S", at("B4")), at("B4"));
+        assert_eq!(del_rows.moved("S", at("B2")), at("B2"));
         let ins_col = op(r#"{"op":"insert_column","sheet":"S","column":"B"}"#);
         assert_eq!(ins_col.moved("S", at("B1")), at("C1"));
         assert_eq!(ins_col.moved("S", at("A1")), at("A1"));

@@ -9,9 +9,14 @@
 //! whole-column expressions (T-0469): 400 `MAX(IF(F:F=A1,G:G,""))` over 2,000 rows. Then criteria
 //! aggregates with a new criterion per call (T-0465): 10,500 ranks, each two COUNTIFS (one over a
 //! growing prefix), and 12,000 per-row SUMIFS over 1,500 rows. Then SUMPRODUCT over whole-column
-//! expressions (T-0471): 400 `SUMPRODUCT((F:F=A1)*G:G)` over 2,000 rows.
-//! `cargo bench -p rustsheet --bench aggregate` (`-- criteria`, `-- whole_column`, `-- rank` and
-//! `-- sumproduct` run only the T-0449, T-0469, T-0465 or T-0471 case)
+//! expressions (T-0471): 400 `SUMPRODUCT((F:F=A1)*G:G)` over 2,000 rows. Last, the three
+//! consumers the SPEC-0020 amendment tails next (T-0488), each over 2,000 rows: UNIQUE under
+//! TEXTJOIN, LOOKUP's last-non-empty idiom, and SMALL over a 70,000-row range with `ROW()`.
+//! Then calipers `pv23_042`'s shape (T-0498): 1,000 four-criteria SUMIFS over formula columns of
+//! 20,000 rows that the calls themselves evaluate.
+//! `cargo bench -p rustsheet --bench aggregate` (`-- criteria`, `-- whole_column`, `-- rank`,
+//! `-- sumproduct` and `-- chained` run only the T-0449, T-0469, T-0465, T-0471 or T-0498 case,
+//! `-- tailed_consumers` only the T-0488 cases)
 //!
 //! One warm-up run, then `RUNS` measured recalculations; each case prints the fastest, the median
 //! and the spread.
@@ -127,6 +132,165 @@ fn sumproduct_workbook() -> Result<Workbook, Box<dyn Error>> {
     })
 }
 
+/// Calls of each T-0488 shape: each one materializes 1,048,576-row arrays today.
+const TAILED_CONSUMER_CALLS: u32 = 20;
+/// Measured recalculations of each T-0488 shape (each takes seconds today).
+const TAILED_CONSUMER_RUNS: usize = 3;
+
+/// Corpus-bench 45896's shape: a key in Zord!A (one of 50) and a name in Zord!C (one of 20), and
+/// `TAILED_CONSUMER_CALLS` keys in A with `TEXTJOIN(",",TRUE,UNIQUE(IF(A1=Zord!A:A,Zord!C:C,"")))`
+/// beside each in B.
+fn unique_textjoin_workbook() -> Result<Workbook, Box<dyn Error>> {
+    common::filled_workbook(|tx| {
+        tx.add_sheet("Zord")?;
+        for r in 1..=WHOLE_COLUMN_ROWS {
+            tx.set(
+                format!("Zord!A{r}").as_str(),
+                format!("k{}", r % 50).as_str(),
+            )?;
+            tx.set(
+                format!("Zord!C{r}").as_str(),
+                format!("n{}", r % 20).as_str(),
+            )?;
+        }
+        for r in 1..=TAILED_CONSUMER_CALLS {
+            tx.set(format!("A{r}").as_str(), format!("k{}", r % 50).as_str())?;
+            let formula = format!("=TEXTJOIN(\",\",TRUE,UNIQUE(IF(A{r}=Zord!A:A,Zord!C:C,\"\")))");
+            tx.set(format!("B{r}").as_str(), Input::Formula(formula))?;
+        }
+        Ok(())
+    })
+}
+
+/// Corpus-bench 33935's shape: an amount in J, 2 in L1, and `TAILED_CONSUMER_CALLS` copies of
+/// the last-non-empty idiom `IF($L$1>1,LOOKUP(2,1/(J:J<>""),J:J))` in N.
+fn lookup_last_workbook() -> Result<Workbook, Box<dyn Error>> {
+    common::filled_workbook(|tx| {
+        for r in 1..=WHOLE_COLUMN_ROWS {
+            tx.set(format!("J{r}").as_str(), f64::from((r * 37) % 1000))?;
+        }
+        tx.set("L1", 2.0)?;
+        let formula = "=IF($L$1>1,LOOKUP(2,1/(J:J<>\"\"),J:J))";
+        for r in 1..=TAILED_CONSUMER_CALLS {
+            tx.set(
+                format!("N{r}").as_str(),
+                Input::Formula(formula.to_string()),
+            )?;
+        }
+        Ok(())
+    })
+}
+
+/// Corpus-bench 59969's shape: two keys in Report!A and Report!B (one of 5 and one of 4) and an
+/// amount in Report!G, the two keys wanted in X1 and X2, and in Z the k-th matching amount for
+/// k = 1 to `TAILED_CONSUMER_CALLS`, through SMALL over `ROW()` of 70,000-row ranges.
+fn small_row_workbook() -> Result<Workbook, Box<dyn Error>> {
+    common::filled_workbook(|tx| {
+        tx.add_sheet("Report")?;
+        for r in 2..=WHOLE_COLUMN_ROWS + 1 {
+            tx.set(
+                format!("Report!A{r}").as_str(),
+                format!("a{}", r % 5).as_str(),
+            )?;
+            tx.set(
+                format!("Report!B{r}").as_str(),
+                format!("b{}", r % 4).as_str(),
+            )?;
+            tx.set(format!("Report!G{r}").as_str(), f64::from((r * 37) % 1000))?;
+        }
+        tx.set("X1", "a1")?;
+        tx.set("X2", "b1")?;
+        for r in 1..=TAILED_CONSUMER_CALLS {
+            let formula = format!(
+                "=IFERROR(INDEX(Report!G:G,SMALL(IF((Report!$A$2:$A$70000=$X$1)*(Report!$B$2:$B$70000=$X$2),ROW(Report!$A$2:$A$70000)),ROWS($Y$1:Y{r}))),\"\")"
+            );
+            tx.set(format!("Z{r}").as_str(), Input::Formula(formula))?;
+        }
+        Ok(())
+    })
+}
+
+/// Rows of the formula columns of the T-0498 case.
+const CHAINED_ROWS: u32 = 20_000;
+/// Rows and columns of its SUMIFS calls (1,000).
+const CHAINED_CALL_ROWS: u32 = 100;
+const MONTHS: [&str; 10] = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct",
+];
+
+/// Calipers `pv23_042`'s shape: on Data, a customer in A (one of 50, a constant) and a number in X,
+/// and formulas of X: a person in B (all but 1% the same), a year in C (one of 10), a month in D
+/// (one of 12) and an amount in E. On Sheet1, which the pass reaches first, 100 rows x 10 columns
+/// of `SUMIFS(E,A,"c1",B,"p1",C,<the row's year>,D,<the column's month>)` over whole columns:
+/// the calls evaluate B, C, D and E where the criteria before them match, and nothing else does.
+fn chained_workbook() -> Result<Workbook, Box<dyn Error>> {
+    common::filled_workbook(|tx| {
+        tx.add_sheet("Data")?;
+        for r in 1..=CHAINED_ROWS {
+            tx.set(
+                format!("Data!A{r}").as_str(),
+                format!("c{}", r % 50).as_str(),
+            )?;
+            tx.set(format!("Data!X{r}").as_str(), f64::from(r))?;
+            let formulas = [
+                ("B", format!("=IF(MOD(X{r},100)=0,\"p2\",\"p1\")")),
+                ("C", format!("=2015+MOD(X{r}*7,10)")),
+                ("D", format!("=TEXT(DATE(2024,MOD(X{r},12)+1,1),\"mmm\")")),
+                ("E", format!("=ROUND(X{r}*1.5,5)")),
+            ];
+            for (column, formula) in formulas {
+                tx.set(
+                    format!("Data!{column}{r}").as_str(),
+                    Input::Formula(formula),
+                )?;
+            }
+        }
+        for r in 1..=CHAINED_CALL_ROWS {
+            let year = 2015 + r % 10;
+            for (column, month) in ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+                .iter()
+                .zip(MONTHS)
+            {
+                let formula = format!(
+                    "=SUMIFS(Data!$E:$E,Data!$A:$A,\"c1\",Data!$B:$B,\"p1\",Data!$C:$C,{year},Data!$D:$D,\"{month}\")"
+                );
+                tx.set(format!("{column}{r}").as_str(), Input::Formula(formula))?;
+            }
+        }
+        Ok(())
+    })
+}
+
+/// A bench workbook's builder.
+type Build = fn() -> Result<Workbook, Box<dyn Error>>;
+
+/// Times each T-0488 shape.
+fn tailed_consumer_cases() -> Result<(), Box<dyn Error>> {
+    let cases: [(&str, Build); 3] = [
+        (
+            "TEXTJOIN(\",\",TRUE,UNIQUE(IF(A1=Zord!A:A,Zord!C:C,\"\")))",
+            unique_textjoin_workbook,
+        ),
+        (
+            "IF($L$1>1,LOOKUP(2,1/(J:J<>\"\"),J:J))",
+            lookup_last_workbook,
+        ),
+        (
+            "SMALL(IF((A2:A70000=x)*(B2:B70000=y),ROW(A2:A70000)),k)",
+            small_row_workbook,
+        ),
+    ];
+    for (name, build) in cases {
+        let mut wb = build()?;
+        let t = common::timings(TAILED_CONSUMER_RUNS, || wb.recalculate());
+        writeln!(
+            std::io::stdout(),
+            "{name}: {TAILED_CONSUMER_CALLS} calls over {WHOLE_COLUMN_ROWS} rows, runs={TAILED_CONSUMER_RUNS} {t}"
+        )?;
+    }
+    Ok(())
+}
+
 /// Rows of data in the T-0465 case.
 const RANK_ROWS: u32 = 1_500;
 /// Score columns in the T-0465 case, A to G.
@@ -167,6 +331,9 @@ fn rank_workbook() -> Result<Workbook, Box<dyn Error>> {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    if std::env::args().any(|arg| arg == "tailed_consumers") {
+        return tailed_consumer_cases();
+    }
     let mut wb = sumproduct_workbook()?;
     let t = common::timings(RUNS, || wb.recalculate());
     writeln!(
@@ -174,6 +341,15 @@ fn main() -> Result<(), Box<dyn Error>> {
         "SUMPRODUCT((F:F=A1)*G:G): {WHOLE_COLUMN_CALLS} calls over {WHOLE_COLUMN_ROWS} rows, runs={RUNS} {t}"
     )?;
     if std::env::args().any(|arg| arg == "sumproduct") {
+        return Ok(());
+    }
+    let mut wb = chained_workbook()?;
+    let t = common::timings(RUNS, || wb.recalculate());
+    writeln!(
+        std::io::stdout(),
+        "chained SUMIFS over formula columns: 1,000 calls over {CHAINED_ROWS} rows, runs={RUNS} {t}"
+    )?;
+    if std::env::args().any(|arg| arg == "chained") {
         return Ok(());
     }
     let mut wb = rank_workbook()?;
@@ -240,5 +416,5 @@ fn main() -> Result<(), Box<dyn Error>> {
         let t = common::timings(RUNS, || wb.recalculate());
         writeln!(std::io::stdout(), "{name}: rows={ROWS} runs={RUNS} {t}")?;
     }
-    Ok(())
+    tailed_consumer_cases()
 }

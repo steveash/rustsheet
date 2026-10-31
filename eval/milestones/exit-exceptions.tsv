@@ -11,3 +11,9 @@ ironcalc-calc/LOGICAL/IF_ARRAY.xlsx!Sheet1!C4	M5	0085	T-1075
 ironcalc-calc/LOGICAL/IF_ARRAY.xlsx!Sheet1!E4	M5	0085	T-1075
 ironcalc-calc/MATH_AND_TRIGONOMETRY/ATAN2_POWER.xlsx!Sheet1!D14	M5	0086	T-1075
 ironcalc-calc/MATH_AND_TRIGONOMETRY/ATAN2_POWER.xlsx!Sheet1!D26	M5	0086	T-1075
+# COMPLEXs.xlsx N6 (IMTAN), AL12 and AL26 (IMSQRT) cache Mac 16.0300 digits; decision 0188 R6 has the engine follow
+# Excel for the web there (decision 0039 item 4). Added ahead of T-2774 and T-2536, which regress them: they read as
+# stale until those land; keep them. Their M14 items are T-1075 items 16 and 17.
+ironcalc-calc/ENGINEERING/COMPLEXs.xlsx!Sheet1!N6	M9	0188	T-1075
+ironcalc-calc/ENGINEERING/COMPLEXs.xlsx!Sheet1!AL12	M9	0188	T-1075
+ironcalc-calc/ENGINEERING/COMPLEXs.xlsx!Sheet1!AL26	M9	0188	T-1075

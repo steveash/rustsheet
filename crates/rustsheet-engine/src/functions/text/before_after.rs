@@ -41,6 +41,11 @@ impl Model {
         if !(2..=6).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
         }
+        // Which arguments are written: an empty value an argument evaluates to is not omitted.
+        let written: Vec<bool> = args
+            .iter()
+            .map(|arg| !matches!(arg, Node::EmptyArgKind))
+            .collect();
         let (operands, mut lists) = self.lift_text_operands(args, &[1], cell);
         let delimiters = match lists.pop() {
             Some(list) => self.around_delimiters(list, cell).map(Delimiters::new),
@@ -54,9 +59,7 @@ impl Model {
             cell,
             &scanned,
             COMPARED_BYTES_PER_VISIT,
-            |model, values, _| {
-                model.text_around_element(values, arg_count, &delimiters, side, cell)
-            },
+            |model, values, _| model.text_around_element(values, &written, &delimiters, side, cell),
         )
     }
 
@@ -79,7 +82,7 @@ impl Model {
     fn text_around_element(
         &mut self,
         values: &[CalcResult],
-        arg_count: usize,
+        written: &[bool],
         delimiters: &Result<Delimiters, CalcResult>,
         side: Side,
         cell: CellReferenceIndex,
@@ -92,7 +95,8 @@ impl Model {
             Ok(list) => list,
             Err(error) => return error.clone(),
         };
-        let options = match self.around_options(values, cell) {
+        let arg_count = written.len();
+        let options = match self.around_options(values, written, cell) {
             Ok(options) => options,
             Err(error) => return error,
         };
@@ -143,26 +147,33 @@ impl Model {
                 "instance_num is larger than the text".to_string(),
             );
         }
+        let (n, case, match_end) = (options.instance_num, options.case, options.match_end == 1.0);
         let found = match side {
-            Side::Before => text_before(&text, delimiters, options.instance_num, options.case),
-            Side::After => text_after(&text, delimiters, options.instance_num, options.case),
+            Side::Before => text_before(&text, delimiters, n, case, match_end),
+            Side::After => text_after(&text, delimiters, n, case, match_end),
         };
         match found {
             Some(s) => CalcResult::String(s.into()),
-            None => Self::around_not_found(values, arg_count, text, options, side, cell),
+            None => Self::around_not_found(values, arg_count, cell),
         }
     }
 
     /// The `instance_num`, `match_mode` and `match_end` of one element, read in that order (the
     /// defaults 1, case-sensitive and 0 when omitted, also as an empty argument:
-    /// probes/textbefore-delimiter-range A22, A37). An `instance_num` of 0 is `#VALUE!`.
+    /// probes/textbefore-delimiter-range A22, A37). An `instance_num` of 0 is `#VALUE!`. A written
+    /// argument that is the empty value is 0, not omitted: `TEXTAFTER(..,"-",CELL("contents",
+    /// <blank>),1,1)` is `#VALUE!` (gen-m7/9359f03972e94026 A1420, T-3053).
     fn around_options(
         &self,
         values: &[CalcResult],
+        written: &[bool],
         cell: CellReferenceIndex,
     ) -> Result<AroundOptions, CalcResult> {
         let number_at = |index: usize| -> Result<Option<f64>, CalcResult> {
             match values.get(index) {
+                Some(CalcResult::EmptyArg) if written.get(index) == Some(&true) => {
+                    self.cast_number_ref(&CalcResult::EmptyCell, cell).map(Some)
+                }
                 Some(CalcResult::EmptyArg) | None => Ok(None),
                 Some(value) => self.cast_number_ref(value, cell).map(Some),
             }
@@ -204,29 +215,13 @@ impl Model {
         CalcResult::String(if whole { text } else { String::new() }.into())
     }
 
-    /// The result of an element whose delimiter is not found: with `match_end` the end of the text
-    /// is the missing delimiter, then `if_not_found`, else `#N/A`.
+    /// The result of an element whose delimiter is not found (`match_end` already counted the end
+    /// of the text): `if_not_found`, else `#N/A`.
     fn around_not_found(
         values: &[CalcResult],
         arg_count: usize,
-        text: String,
-        options: AroundOptions,
-        side: Side,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        if options.match_end == 1.0 {
-            // Before the first match from the start is the whole text, after it is empty, and
-            // the other way for a search from the end.
-            let from_start = options.instance_num == 1;
-            let from_end = options.instance_num == -1;
-            match side {
-                Side::Before if from_end => return CalcResult::String("".into()),
-                Side::Before if from_start => return CalcResult::String(text.into()),
-                Side::After if from_start => return CalcResult::String("".into()),
-                Side::After if from_end => return CalcResult::String(text.into()),
-                _ => {}
-            }
-        }
         if arg_count == 6 {
             // An empty cell is converted to empty string (not 0), a number or a boolean comes back
             // as its text (probes/t2314-textbefore-instance-bound A27-A29).

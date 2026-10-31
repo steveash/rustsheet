@@ -30,6 +30,7 @@ fn hyperbolic_exp_overflows(x: f64, y: f64) -> bool {
 /// has real part 6.77493159657354E+307 where `IMSINH("709.5")` is 6.77493159657316E+307
 /// (probes/eng-im-overflow-edges A6, A14; eng-im-overflow-edges-2, T-2231). The exact cut between
 /// 709 and 709.0000000001 is not pinned.
+/// FITTED(T-2231, 84 cells, |x| 100..800 with a nonzero imaginary part; cut bracketed 709..709.0000000001)
 const HYPERBOLIC_LOG_CUT: f64 = 709.0;
 
 /// IMCOSH's (`sinh` false) or IMSINH's value past [`HYPERBOLIC_LOG_CUT`], `None` below the cut or
@@ -101,10 +102,11 @@ fn trig_sinh_cosh(y: f64) -> (f64, f64) {
     (-sinh, cosh)
 }
 
-/// `(sinh y, cosh y)` for IMSEC: [`trig_sinh_cosh`] inside its band, libm's outside, where IMSEC keeps
-/// libm's digits (the EXP pair of [`trig_sinh_cosh`] loses 9 older IMSEC cells there). With cosh 2y
-/// taken the same way, IMSEC fits 32 of the 34 probes-numeric im-sec-csch-fused texts (27 with libm's
-/// parts) and keeps every older oracle cell (docs/excel-semantics/engineering.md, T-2884).
+/// `(sinh y, cosh y)` for IMSEC: [`trig_sinh_cosh`] inside its band, libm's outside, where IMSEC
+/// keeps libm's digits (the EXP pair of [`trig_sinh_cosh`] loses 9 older IMSEC cells there). With
+/// IMSEC's cosh 2y taken the same way, IMSEC fits 32 of the 34 probes-numeric im-sec-csch-fused
+/// texts (27 with libm's parts) and keeps every older oracle cell (docs/excel-semantics/engineering.md,
+/// T-2884). [`imcot`] takes its sinh 2y and cosh 2y from here too (T-3032).
 fn sec_sinh_cosh(y: f64) -> (f64, f64) {
     if in_inverse_exp_band(y) {
         trig_sinh_cosh(y)
@@ -123,8 +125,10 @@ fn in_inverse_exp_band(x: f64) -> bool {
 /// Both ends are unprobed (T-2797): Excel's lower switch lies between 0.01 (libm's digits) and
 /// 0.0105 (the form's), its upper one between 18.2 and 100; 20 is where the worksheet TANH turns
 /// to ±1 (numbers.md).
+/// FITTED(T-2629, 306 cells, |x| 0.00012..100; cuts bracketed 0.01..0.0105 and 18.2..100)
 const INVERSE_EXP_LOW: f64 = 0.01;
 /// See [`INVERSE_EXP_LOW`].
+/// FITTED(T-2629, 306 cells, |x| 0.00012..100; cuts bracketed 0.01..0.0105 and 18.2..100)
 const INVERSE_EXP_HIGH: f64 = 20.0;
 
 /// IMSIN, IMCOS, IMSEC, IMCSC and IMCOT of a real number `x` (imaginary part 0): `value` of SIN,
@@ -221,21 +225,26 @@ pub(super) fn imcosh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> 
 /// gen-m9 cells, T-2537), where `cosh 2y - (2cos²x - 1)` prints ...5416. That includes the digits
 /// Excel loses for tiny arguments, where the denominator cancels (`IMCOT("1E-5+1E-5i")` real
 /// part 49999.9958596485, `IMCOT("0.00001i")` -99999.9917326303i; exact 50000 and 100000).
-/// UNVERIFIED (T-2531): below |y| ≈ 1.05E-8 `cosh 2y` rounds to 1 and the result is `#NUM!`.
+/// Excel agrees (probes-numeric/im-csc-cot-tiny-imag): below |y| ≈ 1.05E-8 `cosh 2y` rounds to 1 and the
+/// result is `#NUM!`.
+/// sinh 2y and cosh 2y are IMSEC's ([`sec_sinh_cosh`]): with libm's, the 24 cells of
+/// probes/t2787-imcot-denominator-grouping fit 21 (A2 and A17 need the kernel's sinh, A9 its cosh,
+/// one ulp above libm), and the 55 sweep and gen-m9 cells above keep fitting, the tiny-argument
+/// rows on libm's parts below the band (T-3032).
 /// Past `cosh 2y`'s range the value is `∓i` by the sign of y (Q27:R27, R55). A real number is 1
 /// over TAN's kernel ([`real_trig`]; `IMCOT("1E-20")` = 1E+20).
 pub(super) fn imcot((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     if y == 0.0 {
         return real_trig(x, suffix, cell, Some(0.0), |x| 1.0 / excel_tan(x));
     }
-    let cosh_2y = f64::cosh(2.0 * y);
+    let (sinh_2y, cosh_2y) = sec_sinh_cosh(2.0 * y);
     if cosh_2y.is_infinite() {
         return complex_result(0.0, -y.signum(), suffix);
     }
     let (_, cos_x) = trig_sin_cos(x);
     let (sin_2x, _) = trig_sin_cos(2.0 * x);
     let t = cosh_2y + 1.0 - 2.0 * cos_x * cos_x;
-    finite_complex_result(sin_2x / t, -f64::sinh(2.0 * y) / t, suffix, cell)
+    finite_complex_result(sin_2x / t, -sinh_2y / t, suffix, cell)
 }
 
 /// csc(x+iy) = `(sin x·(cosh y/t), -cos x·(sinh y/t))` with `t = sin²x + (cosh 2y - 1)/2` and SIN
@@ -244,7 +253,8 @@ pub(super) fn imcot((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
 /// for tiny arguments: `IMCSC("1E-5+1E-5i")` is 49999.9979339908-49999.9979306575i (exact
 /// 50000.0000016667), `IMCSC("0.00001i")` -99999.9917276303i. A real number is 1 over SIN's kernel ([`real_trig`])
 /// (gen-m9/2f0d384b8ed0d392 A109, `IMCSC(0.2)` 5.03348954767234; the complex formula gives ...235), as
-/// IMSEC's is `1/cos x` and IMSECH's `1/cosh x` (gen-m9/01810fc89c5ec2c0 A318). UNVERIFIED (T-2531): below |y| ≈ 1.05E-8
+/// IMSEC's is `1/cos x` and IMSECH's `1/cosh x` (gen-m9/01810fc89c5ec2c0 A318). Excel agrees
+/// (probes-numeric/im-csc-cot-tiny-imag): below |y| ≈ 1.05E-8
 /// `cosh 2y` rounds to 1, `t` is 0 and the result is `#NUM!`.
 pub(super) fn imcsc((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     if y == 0.0 {
@@ -397,7 +407,23 @@ pub(super) fn imtan((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
 
 #[cfg(test)]
 mod tests {
-    use super::{imsec, inverse_exp_sinh_cosh, CalcResult, CellReferenceIndex, Suffix};
+    use super::{
+        imcot, imcsc, imsec, inverse_exp_sinh_cosh, CalcResult, CellReferenceIndex, ComplexParts,
+        Suffix,
+    };
+
+    /// The text a kernel prints for `x+yi`.
+    fn text(kernel: fn(ComplexParts, CellReferenceIndex) -> CalcResult, x: f64, y: f64) -> String {
+        let cell = CellReferenceIndex {
+            sheet: 0,
+            row: 1,
+            column: 1,
+        };
+        match kernel((x, y, Suffix::I), cell) {
+            CalcResult::String(t) => t.to_string(),
+            _ => panic!("the kernel returned no text"),
+        }
+    }
 
     #[test]
     fn inverse_exp_kernel_is_lopsided_in_x() {
@@ -419,25 +445,41 @@ mod tests {
     // (cosh 2y - 1)/2 (T-2920).
     #[test]
     fn imsec_takes_the_half_angle_sinh_squared_inside_the_band() {
-        let text = |x, y| match imsec(
-            (x, y, Suffix::I),
-            CellReferenceIndex {
-                sheet: 0,
-                row: 1,
-                column: 1,
-            },
-        ) {
-            CalcResult::String(t) => t.to_string(),
-            _ => panic!("IMSEC returned no text"),
-        };
         assert_eq!(
-            text(2.112_17, 0.627_617),
+            text(imsec, 2.112_17, 0.627_617),
             "-0.86864314680255+0.803795556920423i"
         );
         assert_eq!(
-            text(-3.754_83, 1.338_47),
+            text(imsec, -3.754_83, 1.338_47),
             "-0.436112042213995+0.267414799382832i"
         );
+    }
+
+    // probes/t2787-imcot-denominator-grouping A2, A9, A17 (excel-graph): IMCOT takes IMSEC's
+    // sinh 2y and cosh 2y, not libm's (T-3032).
+    #[test]
+    fn imcot_takes_the_kernel_sinh_and_cosh_of_2y() {
+        assert_eq!(
+            text(imcot, 1.0791, 0.6495),
+            "0.32986297844979-0.672267525838187i"
+        );
+        assert_eq!(
+            text(imcot, 2.2478, -0.4516),
+            "-0.591346564495611+0.624356304227604i"
+        );
+        assert_eq!(
+            text(imcot, -2.9144, 0.0359),
+            "4.21835302073736-0.690660946251302i"
+        );
+    }
+
+    // probes-numeric im-last-digit-sweep P43, D18, P18 (excel-graph): a part that is -0.9999999999999999
+    // keeps its "1", and a real 1E+20 is written plain (T-2554).
+    #[test]
+    fn text_keeps_the_one_and_writes_1e20_plain() {
+        assert_eq!(text(imcot, -57.9375, 18.7089), "-4.00011374673746E-17-1i");
+        assert_eq!(text(imcsc, 1e-20, 0.0), "100000000000000000000");
+        assert_eq!(text(imcot, 1e-20, 0.0), "100000000000000000000");
     }
 
     #[test]

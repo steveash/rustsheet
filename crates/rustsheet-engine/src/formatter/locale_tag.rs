@@ -3,6 +3,9 @@
 //! probes/text-locale-name-tables, probes/text-locale-am-neutral (excel-graph, 2026-10-18);
 //! docs/excel-semantics/number-formats.md "Locale tags localize date names".
 
+use chrono::NaiveDate;
+
+use super::dates::convert_to_serial_number;
 use crate::locale::calendar_date_names::{
     HEBREW_LATIN, HEBREW_LATIN_ADARS, HEBREW_SCRIPT, HEBREW_SCRIPT_ADARS, SAKA, SAKA_HINDI,
 };
@@ -75,6 +78,13 @@ pub struct Localized {
     /// non-Japanese calendars (`[$-10411]g|yy` is "|2023", `[$-70411]g|yyyy` "|2023", but
     /// `[$-70409]g|yyyy` "|2566"; probes/text-locale-era-gregorian).
     pub japanese_lcid: bool,
+    /// A `B2` before a calendar-3, -5 or -7 tag: every year token converts once more than it
+    /// would without the `B2` ([`japanese_era`]; `calendar_dates::year_token_text`). Before a
+    /// calendar-4 tag the years are a garbled Minguo year instead (`calendar_dates::taiwan_after_b2`).
+    pub year_twice: bool,
+    /// A `B2` before a calendar-1, -3 or -5 tag: the names every name token prints from the
+    /// section's first `mmm` on, in place of [`Localized::names`] (`date_names::NameTokens`).
+    pub names_after_mmm: Option<&'static DateNames>,
 }
 
 /// What a `[$-...]` tag (with no currency symbol) does to its section.
@@ -123,8 +133,35 @@ pub fn resolve(tag: &str) -> LocaleTag {
 /// extended-hex tag, and so `[$-zzz]`, is not resolved this way: `B2[$-zzz]` is a bare `B2`
 /// (probes/t2729-hijri-locale-tag A243-A264, t2729-hijri-locale-tag-names A239-A277;
 /// text-locale-lunar-tokens A79). Calendar digits 15 and above are unprobed here.
+/// Under calendars 3, 5 and 7 the `B2` converts every year token once more
+/// ([`Localized::year_twice`]; `B2[$-70409]yyyy|e` of 2023-03-15 is "3109|2566",
+/// `B2[$-50409]yyyy|e` "6689|4356"; probes/t2932-b2-calendar-twice). Under calendar 4 it prints
+/// a garbled Minguo year ("01"; `calendar_dates::taiwan_after_b2`).
+///
+/// Under calendar 1 the names from the first `mmm` on are the ar-SA Gregorian ones, and under
+/// calendars 3 and 5 the en-US ones, whatever the LCID: `B2[$-10411]mmmm|ddd|mmm|mmmm|dddd` of
+/// 2023-03-15 is "3月|水|مارس|مارس|الثلاثاء" and `B2[$-30411]dddd|mmm|mmmm` "水曜日|Mar|March"
+/// ([`Localized::names_after_mmm`]; probes/t3101-b2-calendar-names, t3029-b2-calendar-weekday
+/// A73-A84). The other digits keep the tag's names.
 pub fn resolve_after_hijri_prefix(tag: &str) -> LocaleTag {
-    resolve_with(tag, true)
+    match resolve_with(tag, true) {
+        LocaleTag::Names(localized) => LocaleTag::Names(Localized {
+            year_twice: matches!(
+                localized.calendar,
+                Calendar::Japanese { explicit: true }
+                    | Calendar::Korean
+                    | Calendar::Taiwan
+                    | Calendar::Thai
+            ),
+            names_after_mmm: match hex_value(tag).map(|value| value >> 16) {
+                Some(1) => Some(ARABIC),
+                Some(3 | 5) => Some(EN_US),
+                _ => None,
+            },
+            ..localized
+        }),
+        other => other,
+    }
 }
 
 /// [`resolve`], with digit 0 read as 6 when `hijri_prefix`.
@@ -137,9 +174,7 @@ fn resolve_with(tag: &str, hijri_prefix: bool) -> LocaleTag {
     }
     // A tag that reads as hex is an LCID first, but one with no locale may still be a language
     // (`[$-de]` is German, not LCID 0xDE; `[$-C]` is French).
-    let hex = u32::from_str_radix(tag, 16)
-        .ok()
-        .filter(|_| tag.len() <= 8 && tag.chars().all(|c| c.is_ascii_hexdigit()));
+    let hex = hex_value(tag);
     if let Some(value) = hex {
         if resolve_lcid(value) != LocaleTag::Silent {
             return resolve_lcid(hijri_default(value, hijri_prefix));
@@ -157,6 +192,13 @@ fn resolve_with(tag: &str, hijri_prefix: bool) -> LocaleTag {
         }
         Some(hijri) => hijri,
     }
+}
+
+/// `tag` read as a hex LCID with its calendar digits, if it is one.
+fn hex_value(tag: &str) -> Option<u32> {
+    u32::from_str_radix(tag, 16)
+        .ok()
+        .filter(|_| tag.len() <= 8 && tag.chars().all(|c| c.is_ascii_hexdigit()))
 }
 
 /// The value Excel reads from a tag that is neither hex nor BCP-47, as if it were hex with every
@@ -233,6 +275,8 @@ fn resolve_lcid(value: u32) -> LocaleTag {
             day_half: Some(names),
             calendar,
             japanese_lcid: japanese,
+            year_twice: false,
+            names_after_mmm: None,
         })
     };
     match value >> 16 {
@@ -340,6 +384,8 @@ fn without_locale(calendar: u32) -> LocaleTag {
         day_half: None,
         calendar,
         japanese_lcid: false,
+        year_twice: false,
+        names_after_mmm: None,
     })
 }
 
@@ -405,13 +451,28 @@ fn era_of(serial: i64) -> (i32, &'static [&'static str; 3]) {
     (*first_year, names)
 }
 
-/// What a `g` run of `length` prints for 1900-system `serial`: the era's letter, first character
-/// or (`ggg` and longer) name.
-pub fn japanese_era_name(serial: i64, length: usize) -> &'static str {
-    era_of(serial).1[length.clamp(1, 3) - 1]
-}
-
-/// The year in its Japanese era of 1900-system `serial`, whose Gregorian year is `year`.
-pub fn japanese_era_year(serial: i64, year: i32) -> i32 {
-    year - era_of(serial).0 + 1
+/// The Japanese era of 1900-system `serial`, whose Gregorian date is `(year, month, day)`: the
+/// era year and what `g`, `gg` and `ggg` print. With `twice` (a `B2` before a calendar-3 tag)
+/// Excel converts once more, reading the era year as the Gregorian year of a date with the same
+/// month and day: Reiwa 5 (2023-03-15) is year 5, before Meiji, so Meiji 5 - 1868 + 1 = -1862,
+/// which Excel prints as an unsigned 32-bit number, "4294965434|M"; 9999-12-31, Reiwa 7981, is
+/// Reiwa 5963, and the era changes on its own day of the year read back: 3930-07-29 (Reiwa 1912)
+/// is Meiji 45, 3930-07-30 Taisho 1 (probes/t2932-b2-calendar-twice A1-A16, A69-A80).
+pub fn japanese_era(
+    serial: i64,
+    (year, month, day): (i32, u32, u32),
+    twice: bool,
+) -> (i32, &'static [&'static str; 3]) {
+    let (first_year, names) = era_of(serial);
+    let era_year = year - first_year + 1;
+    if !twice {
+        return (era_year, names);
+    }
+    // Day 0 (serial 0, "1900-01-00") and a 29 February of a common year have no date: the
+    // month's 28th stands in for them, which no era boundary separates.
+    let again = NaiveDate::from_ymd_opt(era_year, month, day)
+        .or_else(|| NaiveDate::from_ymd_opt(era_year, month, 28))
+        .map_or(i64::MIN, |date| i64::from(convert_to_serial_number(date)));
+    let (first_year, names) = era_of(again);
+    (era_year - first_year + 1, names)
 }

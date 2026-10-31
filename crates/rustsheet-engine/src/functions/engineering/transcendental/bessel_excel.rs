@@ -9,6 +9,7 @@
 //! `probes-numeric/m9-bessel` sweep (T-1004), every cell of which these formulas reproduce exactly
 //! (`docs/excel-semantics/engineering.md`, T-0908).
 
+use crate::arithmetic::{extended_product, extended_sum};
 use crate::functions::math_and_trigonometry::{excel_sin_cos, EXCEL_INNER_TRIG_LIMIT};
 use crate::functions::statistical::ln_gamma;
 use crate::functions::util::poly;
@@ -59,6 +60,8 @@ struct Asymptotic {
     shift: f64,
 }
 
+/// J0's asymptotic `P` and `Q`; `P` has Excel's fitted `-0.1098628267e-2` (see [`Asymptotic`]).
+/// FITTED(T-0908, 14 cells, x 8..100; checked bit-exact on 354 cells, orders 0..10)
 const J0_LARGE: Asymptotic = Asymptotic {
     p: &[
         -0.109_862_826_7e-2,
@@ -75,6 +78,8 @@ const J0_LARGE: Asymptotic = Asymptotic {
     ],
     shift: QUARTER_PI,
 };
+/// Y0's asymptotic `P` and `Q`; `Q` has Excel's fitted `-0.934945152e-7` (see [`Asymptotic`]).
+/// FITTED(T-0908, 14 cells, x 8..100; checked bit-exact on 354 cells, orders 0..10)
 const Y0_LARGE: Asymptotic = Asymptotic {
     p: &[
         -0.109_862_862_7e-2,
@@ -91,6 +96,8 @@ const Y0_LARGE: Asymptotic = Asymptotic {
     ],
     shift: QUARTER_PI,
 };
+/// J1's asymptotic `P` and `Q`; `P` repeats Excel's fitted `-0.3516396496e-4` (see [`Asymptotic`]).
+/// FITTED(T-0908, 14 cells, x 8..100; checked bit-exact on 354 cells, orders 0..10)
 const J1_LARGE: Asymptotic = Asymptotic {
     p: &[
         0.183_105e-2,
@@ -266,7 +273,6 @@ fn y1(x: f64) -> f64 {
     num / den + TWO_OVER_PI * (j1(x) * x.ln() - 1.0 / x)
 }
 
-/// Miller's downward recurrence for `J_n(|x|)`, `n >= 2`, `0 < |x| <= n`.
 /// The even order BESSELJ's Miller recurrence starts from, as in Numerical Recipes (`ACC = 40`).
 fn jn_start_order(n: i32) -> i32 {
     2 * ((n + (MILLER_ACCURACY * f64::from(n)).sqrt() as i32) / 2)
@@ -314,23 +320,32 @@ fn bessel_j_past_cap(n: i32, ax: f64) -> f64 {
     }
 }
 
+/// Miller's downward recurrence for `J_n(|x|)`, `n >= 2`, `0 < |x| <= n`.
 pub(super) fn jn_miller(n: i32, ax: f64) -> f64 {
     let tox = 2.0 / ax;
     let m = jn_start_order(n);
     let (mut bj, mut bjp, mut ans, mut sum) = (1.0_f64, 0.0_f64, 0.0_f64, 0.0_f64);
     let mut odd = false;
     for j in (1..=m).rev() {
-        let bjm = f64::from(j) * tox * bj - bjp;
+        // Every step is x87 code stored to a double, so each product and sum rounds twice
+        // (64-bit significand, then double): plain doubles drift from Excel's value by up to
+        // 3E-14 near the turning point n = x, and these match all 43 Miller cells of
+        // probes/t2881-besselj-turning-point bit for bit (docs/excel-semantics/engineering.md
+        // "BESSELJ / BESSELY", T-2548).
+        let bjm = extended_sum(
+            extended_product(extended_product(f64::from(j), tox), bj),
+            -bjp,
+        );
         bjp = bj;
         bj = bjm;
         if bj.abs() > MILLER_RESCALE {
-            bj *= MILLER_RESCALE_FACTOR;
-            bjp *= MILLER_RESCALE_FACTOR;
-            ans *= MILLER_RESCALE_FACTOR;
-            sum *= MILLER_RESCALE_FACTOR;
+            bj = extended_product(bj, MILLER_RESCALE_FACTOR);
+            bjp = extended_product(bjp, MILLER_RESCALE_FACTOR);
+            ans = extended_product(ans, MILLER_RESCALE_FACTOR);
+            sum = extended_product(sum, MILLER_RESCALE_FACTOR);
         }
         if odd {
-            sum += bj;
+            sum = extended_sum(sum, bj);
         }
         odd = !odd;
         if j == n {
@@ -338,6 +353,16 @@ pub(super) fn jn_miller(n: i32, ax: f64) -> f64 {
         }
     }
     ans / (2.0 * sum - bj)
+}
+
+/// One step of the upward recurrence `C_(j+1) = C_j * (2j * (1/x)) - C_(j-1)` of BESSELJ and BESSELY,
+/// from `a = C_(j-1)` and `b = C_j`. Each product and the difference round twice, as x87 code
+/// stored to doubles does (see `jn_miller`).
+fn upward_step(a: f64, b: f64, j: i32, inv_x: f64) -> f64 {
+    extended_sum(
+        extended_product(b, extended_product(2.0 * f64::from(j), inv_x)),
+        -a,
+    )
 }
 
 /// `BESSELJ(x, n)` for integer `n >= 0`.
@@ -357,7 +382,7 @@ pub(crate) fn excel_bessel_j(n: i32, x: f64) -> f64 {
             let inv_x = 1.0 / ax;
             let (mut a, mut b) = (j0(ax), j1(ax));
             for j in 1..n {
-                (a, b) = (b, b * (2.0 * f64::from(j) * inv_x) - a);
+                (a, b) = (b, upward_step(a, b, j, inv_x));
             }
             b
         }
@@ -387,7 +412,7 @@ pub(crate) fn excel_bessel_y(n: i32, x: f64) -> f64 {
     let inv_x = 1.0 / x;
     let (mut a, mut b) = (y0(x), y1(x));
     for j in 1..n {
-        (a, b) = (b, b * (2.0 * f64::from(j) * inv_x) - a);
+        (a, b) = (b, upward_step(a, b, j, inv_x));
     }
     b
 }

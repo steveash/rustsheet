@@ -1,32 +1,40 @@
 pub(super) mod bound_variables;
+mod literals;
 mod rename_defined_name;
 mod sheet_edits;
 mod structured;
+mod wrapped;
 mod wrong_reference;
+use std::fmt::Write;
+
 use super::reference_operators::{
-    at_text, callee_operand, group_text, intersection_operand, spill_operand, tight_operand,
-    union_text,
+    at_text, callee_operand, intersection_text, spill_operand, tight_operand, union_text,
 };
 use super::structured_reference::is_unresolved_structured_reference;
 use super::{
     super::utils::{name_needs_quoting, quote_name},
     left_chain,
     move_formula::{moved_reference_text, MoveContext},
-    value_operands, ArrayNode, Node, Reference,
+    value_operands, Node, Reference,
 };
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::static_analysis::remove_redundant_implicit_intersection;
 use crate::expressions::token::OpUnary;
+use crate::expressions::types::CellReferenceRC;
 use crate::language::{get_default_language, Language};
 use crate::locale::{get_default_locale, Locale};
-use crate::{expressions::types::CellReferenceRC, number_format::to_excel_precision_str};
 use bound_variables::{callee_text, prefix_bound_variables, variable_text};
+pub(crate) use literals::argument_separator;
+use literals::{format_number_locale, to_string_array_node};
 pub(crate) use rename_defined_name::rename_defined_name_in_node;
-pub(crate) use sheet_edits::{move_sheet_in_node, rename_sheet_in_node};
+pub(crate) use sheet_edits::{
+    move_sheet_in_node, rename_sheet_in_node, retarget_unqualified_references,
+};
 pub(crate) use structured::{
     to_localized_string_this_row_lowered, to_rc_lowering_at, to_string_lowering,
     to_string_with_ref_errors,
 };
+use wrapped::wrapped_text;
 
 pub enum DisplaceData {
     Column {
@@ -488,89 +496,59 @@ pub(crate) fn stringify_reference(
             }
         }
         None => {
-            let row_abs = if absolute_row {
-                format!("R{row}")
-            } else {
-                format!("R[{row}]")
-            };
-            let col_abs = if absolute_column {
-                format!("C{column}")
-            } else {
-                format!("C[{column}]")
-            };
-            match &sheet_name {
-                Some(name) => {
-                    format!("{}!{}{}", quote_name(name), row_abs, col_abs)
-                }
-                None => {
-                    format!("{row_abs}{col_abs}")
-                }
+            // Written into one buffer: the R1C1 text of every reference of every loaded formula
+            // is printed here (T-0499).
+            let mut text = String::with_capacity(24);
+            if let Some(name) = sheet_name {
+                text.push_str(&quote_name(name));
+                text.push('!');
             }
+            // Writing to a `String` cannot fail.
+            let _ = if absolute_row {
+                write!(text, "R{row}")
+            } else {
+                write!(text, "R[{row}]")
+            };
+            let _ = if absolute_column {
+                write!(text, "C{column}")
+            } else {
+                write!(text, "C[{column}]")
+            };
+            text
         }
-    }
-}
-
-/// The separator of function arguments, and of union operands, in `locale`: `,`, or `;`
-/// where the decimal separator is not `.`.
-pub(crate) fn argument_separator(locale: &Locale) -> &'static str {
-    if locale.numbers.symbols.decimal == "." {
-        ","
-    } else {
-        ";"
-    }
-}
-
-/// `number` as a formula prints it, with the decimal separator of `locale`.
-fn format_number_locale(number: f64, locale: &Locale) -> String {
-    let s = to_excel_precision_str(number);
-    let decimal = &locale.numbers.symbols.decimal;
-    if decimal == "." {
-        s
-    } else {
-        s.replace('.', decimal)
-    }
-}
-
-/// The printed element `node` of an array constant.
-fn to_string_array_node(node: &ArrayNode, locale: &Locale, language: &Language) -> String {
-    match node {
-        ArrayNode::Boolean(true) => language.booleans.r#true.to_uppercase(),
-        ArrayNode::Boolean(false) => language.booleans.r#false.to_uppercase(),
-        ArrayNode::Number(number) => format_number_locale(*number, locale),
-        ArrayNode::String(value) => format!("\"{value}\""),
-        ArrayNode::Error(kind) => format!("{kind}"),
-        ArrayNode::Empty => "0".to_string(),
-        ArrayNode::Lambda(_) => "#CALC!".to_string(), // never parsed: what a cell shows
-        ArrayNode::Nested(_) => "#VALUE!".to_string(), // never parsed: what a cell shows
     }
 }
 
 fn format_function(
     name: &str,
-    args: &Vec<Node>,
+    args: &[Node],
     context: Option<&CellReferenceRC>,
     rewrite: &Rewrite,
     export_to_excel: bool,
     locale: &Locale,
     language: &Language,
 ) -> String {
-    let mut first = true;
-    let mut arguments = "".to_string();
+    // One buffer for the call: rebuilding the argument text at each argument copied it once
+    // per argument, a hot spot on loading long formulas (T-0499).
     let arg_separator = argument_separator(locale);
-    for el in args {
-        if !first {
-            arguments = format!(
-                "{}{}{}",
-                arguments,
-                arg_separator,
-                stringify(el, context, rewrite, export_to_excel, locale, language)
-            );
-        } else {
-            first = false;
-            arguments = stringify(el, context, rewrite, export_to_excel, locale, language);
+    let mut text = String::with_capacity(name.len() + 2 + 16 * args.len());
+    text.push_str(name);
+    text.push('(');
+    for (index, el) in args.iter().enumerate() {
+        if index > 0 {
+            text.push_str(arg_separator);
         }
+        text.push_str(&stringify(
+            el,
+            context,
+            rewrite,
+            export_to_excel,
+            locale,
+            language,
+        ));
     }
-    format!("{name}({arguments})")
+    text.push(')');
+    text
 }
 
 // There is just one representation in the AST (Abstract Syntax Tree) of a formula.
@@ -718,6 +696,11 @@ fn stringify(
                 full_row,
                 full_column,
             );
+            // Quirk (T-2855, probes/table-edits plain-range-delete-row-first F!A6, excel-graph):
+            // a wholly deleted range prints one `S!#REF!`, not a `#REF!` per corner.
+            if s1 == "#REF!" && s2 == "#REF!" {
+                return wrong_reference::ref_error_text(sheet_name.as_deref());
+            }
             format!("{s1}:{s2}")
         }
         // Rows and columns inserted or moved on one sheet of the span do not shift the span's
@@ -744,10 +727,7 @@ fn stringify(
             let operand = |n: &Node| tight_operand(sub(n), n);
             format!("{}:{}", operand(left), operand(right))
         }
-        OpIntersectKind { left, right } => {
-            let operand = |n: &Node, is_left| intersection_operand(sub(n), n, is_left);
-            format!("{} {}", operand(left, true), operand(right, false))
-        }
+        OpIntersectKind { left, right } => intersection_text(left, right, &sub),
         OpUnionKind { left, right, .. } => union_text(&sub(left), &sub(right), locale),
         OpConcatenateKind { .. }
         | CompareKind { .. }
@@ -824,14 +804,19 @@ fn stringify(
             context.is_none() || export_to_excel,
         ),
         NamedVariableKind { name, id: _ } => variable_text(name, context),
-        UnaryKind { kind, right } => {
-            let operand = wrap(sub(right), binding(right) < binding(node));
-            match kind {
-                OpUnary::Minus => format!("-{operand}"),
-                OpUnary::Percentage => format!("{operand}%"),
-            }
+        UnaryKind {
+            kind: OpUnary::Minus,
+            ..
         }
+        | UnaryPlus { .. }
+        | Group { .. }
+        | Spaced { .. } => wrapped_text(node, sub),
+        UnaryKind {
+            kind: OpUnary::Percentage,
+            right,
+        } => format!("{}%", wrap(sub(right), binding(right) < binding(node))),
         ErrorKind(kind) => format!("{kind}"),
+        SheetRefErrorKind { sheet_name } => wrong_reference::ref_error_text(Some(sheet_name)),
         ParseErrorKind { message, .. }
             if export_to_excel && is_unresolved_structured_reference(message) =>
         {
@@ -839,9 +824,6 @@ fn stringify(
         }
         ParseErrorKind { formula, .. } => formula.to_string(),
         EmptyArgKind => "".to_string(),
-        Group { levels, child } => group_text(*levels, &sub(child)),
-        UnaryPlus { child } => format!("+{}", wrap(sub(child), binding(child) < binding(node))),
-        Spaced { space, child } => space.around(&sub(child)),
         ThisRowKind { .. } => structured::this_row_text(node, context, rewrite, sub),
         StructuredReferenceKind { reference, lowered } => structured::reference_text(
             reference,
@@ -984,9 +966,9 @@ fn operator_text(node: &Node, left_text: String, sub: &dyn Fn(&Node) -> String) 
         _ => return left_text,
     };
     let level = binding(node);
-    format!(
-        "{}{operator}{}",
-        wrap(left_text, binding(left) < level),
-        wrap(sub(right), binding(right) <= level)
-    )
+    // Appended to the chain's text so far rather than copied into a new string at every link.
+    let mut text = wrap(left_text, binding(left) < level);
+    let _ = write!(text, "{operator}");
+    text.push_str(&wrap(sub(right), binding(right) <= level));
+    text
 }

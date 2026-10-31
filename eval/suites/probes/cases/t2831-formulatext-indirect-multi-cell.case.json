@@ -1,0 +1,53 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2831 probe: FORMULATEXT of a lifted INDIRECT element that covers several cells (row, column and 2x2 shapes; first cell a formula or a constant) and of pick calls (CHOOSE, IF, LET, SWITCH, IFS) that yield a multi-area reference, beside the bare union and AREAS of the same picks. Data!A2, A4 and B1 are formulas, A1 and A3 constants. Each probe sits four rows below the last so spills cannot collide.",
+ "tags": [
+  "M5",
+  "probe",
+  "references",
+  "information"
+ ],
+ "sheets": [
+  {
+   "name": "Data",
+   "cells": {
+    "A1": 1,
+    "A2": "=A1+1",
+    "A3": 3,
+    "A4": "=A3*2",
+    "B1": "=A1*10",
+    "B2": 5,
+    "C1": "Data!A1:A2",
+    "D1": "Data!A3"
+   }
+  },
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=FORMULATEXT(INDIRECT({\"Data!A1:A2\",\"Data!A3\"}))",
+    "A5": "=FORMULATEXT(INDIRECT({\"Data!A2:A3\",\"Data!A4\"}))",
+    "A9": "=FORMULATEXT(INDIRECT({\"Data!A1:A2\";\"Data!A4\"}))",
+    "A13": "=FORMULATEXT(INDIRECT({\"Data!A2:A3\";\"Data!A4\"}))",
+    "A17": "=FORMULATEXT(INDIRECT({\"Data!A2\",\"Data!A1:B2\";\"Data!A3:A4\",\"Data!B1\"}))",
+    "A21": "=FORMULATEXT(INDIRECT({\"Data!A2:B2\"}))",
+    "A25": "=FORMULATEXT(INDIRECT({\"Data!A2:A2\"}))",
+    "A29": "=FORMULATEXT(INDIRECT(Data!C1:D1))",
+    "A33": "=FORMULATEXT((Data!A2,Data!B1))",
+    "A37": "=FORMULATEXT((Data!A1,Data!A2))",
+    "A41": "=FORMULATEXT(CHOOSE(1,(Data!A2,Data!B1)))",
+    "A45": "=FORMULATEXT(CHOOSE(1,(Data!A1,Data!A2)))",
+    "A49": "=FORMULATEXT(IF(TRUE,(Data!A2,Data!B1)))",
+    "A53": "=FORMULATEXT(IF(TRUE,(Data!A1,Data!A2)))",
+    "A57": "=FORMULATEXT(CHOOSE(2,5,(Data!A2,Data!B1)))",
+    "A61": "=FORMULATEXT(IF(FALSE,5,(Data!A2,Data!B1)))",
+    "A65": "=FORMULATEXT(LET(x,(Data!A2,Data!B1),x))",
+    "A69": "=FORMULATEXT(SWITCH(1,1,(Data!A2,Data!B1)))",
+    "A73": "=FORMULATEXT(IFS(TRUE,(Data!A2,Data!B1)))",
+    "A77": "=FORMULATEXT(CHOOSE(1,(Data!A2:A3,Data!B1)))",
+    "A81": "=AREAS(CHOOSE(1,(Data!A2,Data!B1)))",
+    "A85": "=AREAS(IF(TRUE,(Data!A2,Data!B1)))"
+   }
+  }
+ ],
+ "expected": {}
+}

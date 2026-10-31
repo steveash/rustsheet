@@ -214,10 +214,7 @@ pub fn negative_serial_allowed(tokens: &[TextToken], date_system: DateSystem) ->
     let mut elapsed = 0;
     for token in tokens {
         match token {
-            TextToken::Literal(_)
-            | TextToken::Text(_)
-            | TextToken::Ghost(_)
-            | TextToken::Spacer(_) => {}
+            token if token.is_literal() => {}
             TextToken::ElapsedHour
             | TextToken::ElapsedHourPadded
             | TextToken::ElapsedMinute

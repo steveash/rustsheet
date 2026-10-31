@@ -18,6 +18,7 @@ use crate::{
 
 pub(crate) mod aggregate_args;
 pub(crate) mod collation;
+pub(crate) mod collation_tables;
 mod existing_walk;
 
 pub(crate) use existing_walk::StoredWalk;
@@ -202,6 +203,16 @@ pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
         (CalcResult::Error { .. }, _) => 1,
         (_, CalcResult::Error { .. }) => -1,
         (_, _) => 1,
+    }
+}
+
+/// [`compare_values`], except that two texts compare as Excel's `<`, `=`, `>` do (`cmp_text_pairwise`):
+/// the lookups and SWITCH use this, sorts keep `compare_values` (docs/excel-semantics/coercion.md
+/// "Not a total order"; probes/t3181-collation-prefix-callers; T-3210).
+pub(crate) fn compare_values_pairwise(left: &CalcResult, right: &CalcResult) -> i32 {
+    match (left, right) {
+        (CalcResult::String(l), CalcResult::String(r)) => collation::cmp_text_pairwise(l, r) as i32,
+        _ => compare_values(left, right),
     }
 }
 

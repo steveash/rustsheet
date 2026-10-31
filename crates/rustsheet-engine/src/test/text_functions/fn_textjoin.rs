@@ -19,8 +19,9 @@ fn simple_cases() {
     assert_eq!(model._get_text("B1"), *"Monday, Tuesday, Wednesday");
     assert_eq!(model._get_text("B2"), *"Monday and Tuesday and Wednesday");
     assert_eq!(model._get_text("B3"), *"Monday or Tuesday or Wednesday");
-    // Our text version removes the prefix, of course (and some white spaces)
-    assert_eq!(model._get_formula("B3"), *"=TEXTJOIN(\" or \",, A1:A3)");
+    // Our text version removes the prefix, and keeps the whitespace Excel keeps: the run in the
+    // missing argument's place (`=IF(1, ,2)`, probes/t2786-whitespace-structured-refs-runs I2, T-2944).
+    assert_eq!(model._get_formula("B3"), *"=TEXTJOIN(\" or \", , A1:A3)");
 }
 
 #[test]
@@ -58,6 +59,25 @@ fn whole_column_sees_a_spill_beyond_the_used_area() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "9");
     assert_eq!(model.evaluation.restarts_in_last_evaluation, 0);
+}
+
+// Excel values: probes/textjoin-whole-rows-self-reference-full-width B5, B8, D3. With ignore_empty FALSE
+// the padding passes the limit in row 2, so no later cell is read: a range holding the TEXTJOIN cell is
+// #CALC! even when the used area spans every column; with ignore_empty TRUE it is circular.
+#[test]
+fn full_width_rows_stop_reading_at_the_limit() {
+    let mut model = new_empty_model();
+    model._set("A1", "x");
+    model._set("XFD1", "z");
+    model._set("A2", "y");
+    model._set("XFD2", "w");
+    model._set("B5", "=TEXTJOIN(\",\",FALSE,1:10)");
+    model._set("B8", "=TEXTJOIN(\",\",FALSE,A1:XFD10)");
+    model._set("D3", "=TEXTJOIN(\",\",TRUE,1:10)");
+    model.evaluate();
+    assert_eq!(model._get_text("B5"), "#CALC!");
+    assert_eq!(model._get_text("B8"), "#CALC!");
+    assert_eq!(model._get_text("D3"), "0");
 }
 
 // Excel values: probes/textjoin-array-arguments.

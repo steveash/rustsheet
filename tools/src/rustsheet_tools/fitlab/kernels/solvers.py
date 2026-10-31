@@ -5,8 +5,9 @@ Sweeps (excel-graph): probes-numeric/m9-fin-irr-rate (T-1009) and probes/solver-
 `xirr-oos`. probes/bond-one-period-bases (T-1525 review) adds YIELD on every basis.
 
 - `xirr`, `xirr-oos`: in kernels/xirr.py.
-- `irr`: the fitted secant in v = 1/(1 + r) (`irr_secant_v`, T-1533) and its rejected variants, and the
+- `irr`: in kernels/irr_secant_d.py (the fit; T-3120's secant in d is shipped); here the fitted secant in v = 1/(1 + r) (`irr_secant_v`, T-1533) and its rejected variants, and the
   value-returning Newton candidates (k steps, or to convergence, in r, x = 1 + r and v).
+- `irr-fallback`: in kernels/irr_fallback.py.
 - `rate`: the T-2005 secant on the FV residual and its residual variants, traced (T-2527; a nested PMT is
   Excel's own value of that call, `Fit.calls`), and the rejected Newton candidates in r and IRR's secant
   applied to r (T-1533).
@@ -750,11 +751,12 @@ def newton_back_chain(cell_args: tuple[Arg, ...], y: float, steps: int) -> list[
     return chain
 
 
-def start_years(settle: datetime.date, maturity: datetime.date, basis: int) -> float:
-    """The term the fitted YIELD start takes (T-2777, probes/yield-start-term-basis): whole years from
-    `settle` (a 29 February settlement has its anniversaries on 1 March in common years), then the
-    basis' days from the last anniversary to `maturity` over 360 (bases 0, 2, 4), 365 (basis 3) or
-    the length of the maturity's calendar year (basis 1). The engine's `yield_start_years`."""
+def start_term(settle: datetime.date, maturity: datetime.date, basis: int) -> tuple[int, int, int]:
+    """The term the fitted YIELD start takes (T-2777, probes/yield-start-term-basis), as its parts
+    (whole years, days, year days): whole years from `settle` (a 29 February settlement has its
+    anniversaries on 1 March in common years), then the basis' days from the last anniversary to
+    `maturity` over 360 (bases 0, 2, 4), 365 (basis 3) or the length of the maturity's calendar year
+    (basis 1). The engine's `yield_start_term`."""
 
     def anniversary(year: int) -> datetime.date:
         if settle.month == 2 and settle.day == 29 and not calendar.isleap(year):
@@ -765,7 +767,13 @@ def start_years(settle: datetime.date, maturity: datetime.date, basis: int) -> f
     if last > maturity:
         whole, last = whole - 1, anniversary(maturity.year - 1)
     days = days360(last, maturity, basis == 4) if basis in (0, 4) else (maturity - last).days
-    year = {1: 366.0 if calendar.isleap(maturity.year) else 365.0, 3: 365.0}.get(basis, 360.0)
+    year = {1: 366 if calendar.isleap(maturity.year) else 365, 3: 365}.get(basis, 360)
+    return whole, days, year
+
+
+def start_years(settle: datetime.date, maturity: datetime.date, basis: int) -> float:
+    """`start_term` as the double `whole + days / year`."""
+    whole, days, year = start_term(settle, maturity, basis)
     return whole + days / year
 
 
@@ -934,14 +942,6 @@ def yield_candidates() -> list[Candidate]:
 
 
 FITS = [
-    Fit(
-        name="irr",
-        description="IRR fit set: the fitted secant in v (T-1533) and its variants, Newton candidates in r, x and v",
-        cases=FIT_CASES,
-        pattern=r"^=IRR\((.*)\)$",
-        candidates=irr_candidates,
-        where=_literal_irr,
-    ),
     Fit(
         name="rate",
         description="RATE cells of the fit set, nested PMT at Excel's bits: the T-2005 secant, its variants, Newton",

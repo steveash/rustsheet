@@ -4,7 +4,7 @@ title: "DEVSQ accumulation order: last-digit and cancellation mismatches (probes
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P2
+priority: P1
 size: S
 tier: opus
 campaign: visible
@@ -16,6 +16,9 @@ DEVSQ matches Excel's value to the last digit, including under cancellation.
 
 ## Context
 Oracle: `DEVSQ(L1:L6)` = 48.833333333333336 (ours ...34), `DEVSQ(0.1,0.2,0.3)` = 0.019999999999999997 (ours ...976), `DEVSQ(1E15,1E15+1)` = 0.5 (ours 0), plus 1-ulp cases A278, A280, A290, A300 in probes/stat-order-floor-batch. More last-digit cells (T-1927): probes/ftest-decomposition Calc!B9 `DEVSQ(Data!C1:C3)` = 4.666666666666666 (ours ...668), C9/F10 77.60000000000001 (ours 77.6), C10/F9 30.8 (ours 30.799999999999997), D10 11.719999999999999 (ours 11.720000000000013). Excel looks like a mean-then-squared-deviation two-pass; fit the accumulation order against these cells (see coercion.md note on I392).
+
+Also poi/FormulaEvalTestData_Copy.xlsx EverythingTests!I392 `DEVSQ("1","2",2)`: Excel 0.6666666666666666, ours 0.6666666666666661 (sumsq - sum^2/n), now visibly off
+(half a unit in the 15th digit is 5E-16; owner moved from the deferred T-0951 at the 2026-10-28 triage). A two-pass mean/deviation sum gives Excel's value here; T-0951 keeps the VARP cells.
 
 Visibly-off cells (gap triage 2026-10-21, decision 0083): 1 cell, 1 numeric past half a unit in the 15th digit and 0 with a wrong type, error or text, blamed on DEVSQ 1. Every one is listed above.
 
@@ -33,6 +36,13 @@ Cells:
 gen-m9 sweep (T-2255 triage), last digits only, not visibly off: DEVSQ (124) and KURT (45) last digits (the accumulation order). Bit-level targets, outside the visible-parity stage (T-2255 triage, excel-graph, 2026-10-22): 169 known-failure lines in eval/baseline/gen-m9.txt, 169 formulas.
 Examples:
 - gen-m9/05d44f6dd6cfc567 Calc!A185 `=KURT(Data!C7:C12,Data!A11:A12,Data!E11:E12)`: Excel 7.000000000000002, ours 7.0
+- KURT fitting hints (gap triage 2026-10-29, folded in from a duplicate task): where the exact result is 7 (n = 8, one
+  outlier) Excel gives 7.000000000000002 and we give 7.0 in eight cases (A185 above; 06b4e8f5de409d5e A14, 3e98b26cf6713e77
+  A359, 4ab2ba98d26c8a5e A356, 68d8ffb69ff739d8 A25, abc2939ebd1e2365 A34, c18dbf21f11093f3 A307, ee2497a5e683c5d9 A350),
+  but d8266bc15533702a A46 is Excel 7.0, ours 6.999999999999998, and `KURT({1,..,10})` is Excel -1.2000000000000002
+  (a013a45a8fbcab4f A2, a54c738c697617c3 A41). These pin the order of the n(n+1)/((n-1)(n-2)(n-3)) factor, the Σz⁴ sum
+  and the 3(n-1)²/((n-2)(n-3)) term. Deferred T-1754's three KURT last-digit cells (probes/stats-evidence-floor-t1623 Q36,
+  ironcalc-calc MEADIAN_KURT_SKEW_HARMEAN.xlsx F2, probes/stat-argument-modes H13) are likely the same order.
 Cells:
 - gen-m9/05d44f6dd6cfc567.case.json (3): Calc!A185, A246, A345
 - gen-m9/06b4e8f5de409d5e.case.json (2): Calc!A14, A158
@@ -98,6 +108,7 @@ Cells:
 - [ ] Visible parity (gen-m9, T-2255): these 4 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
 - [ ] Visible parity: the visibly-off cell listed under Context (2026-10-21) has Excel's value to 15 significant digits, or its type, error and text: the 1 line in eval/baseline/probes.txt disappears (`make eval-baseline`), with no new known-failure lines in any baseline.
+- [ ] Visible parity: poi/FormulaEvalTestData_Copy.xlsx EverythingTests!I392 is within half a unit of the 15th significant digit of 0.6666666666666666 (its eval/baseline/poi.txt line may stay only if the last digit is still off; no new known-failure lines).
 - [ ] A277, A278, A280, A290, A294, A295, A300 pass and leave eval/baseline/probes.txt.
 - [ ] `make check` green; reviewers approve.
 
