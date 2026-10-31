@@ -55,7 +55,8 @@ def math_arg(param: Param, a: Arg) -> MathArg:
     return mpmath.mpf(a)
 
 
-def _log_uniform(rng: random.Random, lo: float, hi: float) -> float:
+def log_uniform(rng: random.Random, lo: float, hi: float) -> float:
+    """A draw log-uniform over [lo, hi], 0 < lo ≤ hi."""
     return math.exp(rng.uniform(math.log(lo), math.log(hi)))
 
 
@@ -63,9 +64,9 @@ def _spread(rng: random.Random, lo: float, hi: float) -> float:
     """Uniform over [lo, hi], or log-uniform when the range lies on one side of 0 and spans more
     than two decades."""
     if lo > 0 and hi / lo > 100:
-        return _log_uniform(rng, lo, hi)
+        return log_uniform(rng, lo, hi)
     if hi < 0 and lo / hi > 100:
-        return -_log_uniform(rng, -hi, -lo)
+        return -log_uniform(rng, -hi, -lo)
     return rng.uniform(lo, hi)
 
 
@@ -119,7 +120,7 @@ class Sampler:
             x = -x
         return self.inside(param, self.finish(param, x))
 
-    def log_uniform(self, param: Param) -> Arg:
+    def whole_domain(self, param: Param) -> Arg:
         """A draw log-uniform over the parameter's whole valid domain (sign uniform if signed)."""
         if param.kind == "bool":
             return self.rng.random() < 0.5
@@ -129,7 +130,7 @@ class Sampler:
         negative = hi <= 0 or (lo < 0 and self.rng.random() < 0.5)
         top = -lo if negative else hi
         bottom = max(floor, -hi if negative else lo, floor)
-        x = top if top <= bottom else _log_uniform(self.rng, bottom, top)
+        x = top if top <= bottom else log_uniform(self.rng, bottom, top)
         return self.inside(param, self.finish(param, -x if negative else x))
 
     # -- strata --------------------------------------------------------------------------
@@ -147,7 +148,7 @@ class Sampler:
         if stratum == "extreme":
             return self._extreme()
         if stratum == "log-uniform":
-            return [self.log_uniform(p) for p in d.params]
+            return [self.whole_domain(p) for p in d.params]
         return [self.typical(p) for p in d.params]
 
     def _extreme(self) -> list[Arg]:
@@ -177,7 +178,7 @@ class Sampler:
         param = params[target]
         bounds = param.finite_bounds()
         bound, _, lower = bounds[(index // len(targets)) % len(bounds)]
-        distance = _log_uniform(self.rng, *TAIL_DISTANCE) * max(abs(bound), 1.0)
+        distance = log_uniform(self.rng, *TAIL_DISTANCE) * max(abs(bound), 1.0)
         args[target] = self.inside(param, self.finish(param, bound + distance if lower else bound - distance))
         return args
 
@@ -187,7 +188,7 @@ class Sampler:
         d = self.definition
         assert d.tail is not None and d.tail_param is not None
         target = next(i for i, p in enumerate(d.params) if p.name == d.tail_param)
-        q = mpmath.mpf(_log_uniform(self.rng, *TAIL_PROBABILITY))
+        q = mpmath.mpf(log_uniform(self.rng, *TAIL_PROBABILITY))
         upper = self.rng.random() < 0.5
         others = [math_arg(p, a) for p, a in zip(d.params, args, strict=True)]
         try:

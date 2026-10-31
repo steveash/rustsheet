@@ -32,6 +32,7 @@ from rustsheet_tools.accuracy.model import (
     register,
     solve_bracket,
 )
+from rustsheet_tools.accuracy.sampler import log_uniform
 
 RATE_SOURCE = "financial.md#rate-is-a-secant-on-the-fv-residual"
 MAX_BRACKET_DOUBLINGS = 24  # |ln(1 + r)| up to 2^24: far past any double rate
@@ -104,22 +105,18 @@ def payment(r: float, nper: int, pv: float, fv: float, due: bool) -> float:
         return float(max(min(value, MAX_LITERAL), -MAX_LITERAL))
 
 
-def _log_uniform(rng: random.Random, lo: float, hi: float) -> float:
-    return float(mpmath.exp(rng.uniform(float(mpmath.log(lo)), float(mpmath.log(hi)))))
-
-
 def _draw(stratum: str, rng: random.Random) -> list[Arg]:
     """One annuity per stratum's shape: [nper, pmt, pv, fv, type]."""
     sign = 1.0 if rng.random() < 0.5 else -1.0
     nper = rng.randint(1, 360)
-    r = _log_uniform(rng, 1e-3, 0.2)
-    pv = sign * _log_uniform(rng, 1e2, 1e6)
+    r = log_uniform(rng, 1e-3, 0.2)
+    pv = sign * log_uniform(rng, 1e2, 1e6)
     fv = 0.0 if rng.random() < 0.5 else -sign * abs(pv) * rng.random()
     due = rng.random() < 0.25
     same_sign = False
     if stratum == "tail":  # rates near 0, or large
         r = (
-            rng.choice((-1.0, 1.0)) * _log_uniform(rng, 1e-12, 1e-4)
+            rng.choice((-1.0, 1.0)) * log_uniform(rng, 1e-12, 1e-4)
             if rng.random() < 0.5
             else rng.uniform(0.5, 5)
         )
@@ -134,14 +131,14 @@ def _draw(stratum: str, rng: random.Random) -> list[Arg]:
         else:
             same_sign = True
     elif stratum == "extreme":
-        nper = round(_log_uniform(rng, 360, 1e4))
-        pv = sign * _log_uniform(rng, 1e6, 1e15)
+        nper = round(log_uniform(rng, 360, 1e4))
+        pv = sign * log_uniform(rng, 1e6, 1e15)
         fv = 0.0 if rng.random() < 0.5 else -sign * abs(pv) * rng.random()
     elif stratum == "log-uniform":
-        nper = round(_log_uniform(rng, 1, 1e4))
-        r = rng.choice((-1.0, 1.0)) * _log_uniform(rng, 1e-10, 0.9)
-        pv = sign * _log_uniform(rng, 1, 1e12)
-        fv = 0.0 if rng.random() < 0.5 else -sign * _log_uniform(rng, 1, 1e12)
+        nper = round(log_uniform(rng, 1, 1e4))
+        r = rng.choice((-1.0, 1.0)) * log_uniform(rng, 1e-10, 0.9)
+        pv = sign * log_uniform(rng, 1, 1e12)
+        fv = 0.0 if rng.random() < 0.5 else -sign * log_uniform(rng, 1, 1e12)
         due = rng.random() < 0.5
     pmt = payment(r, nper, pv, fv, due)
     if same_sign:  # every flow the sign of pv: no rate (the point checks Excel's error)

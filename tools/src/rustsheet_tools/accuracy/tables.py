@@ -13,6 +13,7 @@ import contextlib
 import hashlib
 import json
 import random
+import re
 import signal
 import sys
 import threading
@@ -34,6 +35,7 @@ CONVERGENCE = mpmath.mpf("1e-45")  # relative agreement the two precisions must 
 DIGITS = 50  # significant digits written
 TIME_LIMIT = 10.0  # seconds per point (both precisions)
 MAX_REDRAWS = 20  # a point whose math overflows is redrawn this many times, then dropped
+BATCH_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*")  # a file name, never a path
 DOUBLE_MAX = mpmath.mpf(1.7976931348623157e308)
 
 
@@ -207,6 +209,9 @@ def write_batch(
 ) -> tuple[Path, Path]:
     """Writes the batch under `tables/<FUNCTION>/`; refuses to overwrite one (a committed batch
     never changes: new points are a new batch)."""
+    if not BATCH_NAME.fullmatch(batch):
+        msg = f"batch name {batch!r} must match {BATCH_NAME.pattern} (s1, r4-T-1234, e-T-1234)"
+        raise ValueError(msg)
     folder = tables / definition.function
     case_path, math_path = folder / f"{batch}.case.json", folder / f"{batch}.math.json"
     for path in (case_path, math_path):

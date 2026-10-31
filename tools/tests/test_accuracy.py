@@ -221,6 +221,8 @@ def test_batch_files_follow_the_spec(tmp_path: Path) -> None:
             assert cell["why"]
     with pytest.raises(FileExistsError):  # a batch is never rewritten
         write_batch(tmp_path, T_INV, "s1", [])
+    with pytest.raises(ValueError, match="batch name"):  # a name, never a path
+        write_batch(tmp_path, T_INV, "../x", [])
 
 
 def test_verify_reports_a_changed_value(tmp_path: Path) -> None:
