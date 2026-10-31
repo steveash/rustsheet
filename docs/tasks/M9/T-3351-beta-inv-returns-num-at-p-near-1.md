@@ -3,7 +3,7 @@ id: T-3351
 title: "BETA.INV returns #NUM! at p near 1-1E-8 with a small b, where the answer is 1"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P0
 size: S
 tier: opus
