@@ -2667,8 +2667,11 @@ columns `Col` 1,2,4, `Other` 10,20,40 and an empty `Calc` C; FORMULATEXT of each
    Unprobed and pinned as no growth: below a totals row, two rows down, outside the table's columns, into a row
    another table reaches, or into a row whose other cells are not blank. Nothing is filled into the new row.
    (f) **An unqualified `=[@Col]*2` typed into D2 is accepted** (Excel resolves it against the table the new column
-   joins): `T` grows to A1:D4, D2:D4 are `=[@Col]*2` in every row (2, 4, 8) (unqualified-structured-d2). The engine
-   refuses this entry as a parse error (T-2979).
+   joins): `T` grows to A1:D4, D2:D4 are `=[@Col]*2` in every row (2, 4, 8) (unqualified-structured-d2). Ours
+   (T-3274): `table_expansion` parses a formula typed beside a data row against the table as it would be grown, so the
+   `[@Col]` names it; the stored text carries the `[T]` prefix. Unprobed and pinned as before (refused): the same
+   entry when the new column is occupied (rule 7d, no growth), beside the header or totals row, and an unknown
+   column (`[@Nope]`), which grows nothing.
 What Excel saves for a filled column is in xlsx-storage.md ("A calculated column is saved as
 `calculatedColumnFormula` plus one formula per row"). Rules 1-4 depend only on the column's other data cells (all
 blank, or all the one calculated formula). Rule 8 (T-2983, excel-graph 2026-10-28, same table and `FORMULATEXT` in F;
