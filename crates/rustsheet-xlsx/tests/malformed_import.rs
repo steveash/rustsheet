@@ -109,8 +109,10 @@ fn sheet_without_relationship_is_an_error() -> TestResult {
     Ok(())
 }
 
+/// The workbook decodes, but its style 0 points at a font that is not there, so the first read of
+/// a cell's style would index past the fonts: the model refuses it (T-2913).
 #[test]
-fn empty_fonts_with_an_xf_pointing_at_a_font_imports() -> TestResult {
+fn empty_fonts_with_an_xf_pointing_at_a_font_is_an_error() -> TestResult {
     let bytes = rewrite(|name, content| {
         if name != "xl/styles.xml" {
             return content;
@@ -123,7 +125,13 @@ fn empty_fonts_with_an_xf_pointing_at_a_font_imports() -> TestResult {
             &content[end..]
         )
     })?;
-    assert_imports(&bytes)
+    let workbook = load_from_xlsx_bytes(&bytes, "case", "en", "UTC")?;
+    let err = Model::from_workbook(workbook, "en").err();
+    assert!(
+        err.as_ref().is_some_and(|e| e.contains("font 0")),
+        "expected a dangling-font error, got {err:?}"
+    );
+    Ok(())
 }
 
 #[test]

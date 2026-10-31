@@ -73,6 +73,26 @@ Status: DEVIATION (decision 0014)
 Implemented in: crates/rustsheet-xlsx/src/import/package.rs (`ImportLimits`, `Package`),
 crates/rustsheet-xlsx/src/import/xml.rs (`reference_of`)
 
+## A workbook whose indices dangle is refused outright
+Rule: `Model::from_workbook`, which every load ends in (xlsx import, `Model::from_bytes`,
+`UserModel::from_bytes`), refuses a workbook whose indices point at nothing the model would later read
+unchecked: a cell, row or column style past `cellXfs` (or no `cellXfs` at all), a style's font, fill or
+border past its list, a negative number format id, a shared-string or shared-formula index past its
+list, a spill range or anchor off the grid, a row, column, merged range or frozen pane off the grid, a
+workbook view selecting a sheet that does not exist, a workbook with no sheets, and cell storage
+whose rows or columns are out of order or off the grid. The error names the sheet and the index
+(`Sheet 'Sheet1': cell R1C2 has style 9999, which does not exist`). Indices the model reads with a
+checked lookup that tolerates a dangling value load as before: a conditional format's dxf id, a named
+style's `xfId`, a defined name's local sheet id.
+Excel: desktop Excel offers to repair a corrupt file and Excel for the web refuses one
+(`FileCorruptTryRepair`, seen for other corruptions in `arrays.md` and `number-formats.md`); what either
+does with these particular indices is not probed. Without the check the model panicked later (T-2882:
+style 9999 at the next edit, formula index 77 with no shared formula at the next evaluation).
+Evidence: none for Excel; this is the no-panic rule (CLAUDE.md directive 5), not an Excel observation.
+Status: DEVIATION (decision 0014)
+Implemented in: crates/rustsheet-engine/src/workbook_check.rs (`check_indices`),
+crates/rustsheet-engine/src/sheet_data.rs (`SheetData::check_layout`)
+
 ## Phonetic (furigana) runs are not cell text
 Rule: a shared string's text is its plain `<t>` plus the `<r><t>` rich-text runs. `<rPh><t>` phonetic
 runs (ECMA-376 §18.4.6) are annotations and are not part of the cell value, so they do not count
