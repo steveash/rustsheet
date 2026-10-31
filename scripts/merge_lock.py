@@ -83,10 +83,14 @@ WAIT_MINUTES = 45
 # A PR's state is re-read at most every READ_EVERY polls: about 12 reads an hour per PR, against
 # 60 an hour for unauthenticated API access.
 READ_EVERY = 10
-# `wait` gives up (exit 2) after this many polls in a row fail on git (a fetch or push error).
-GIT_FAILURES = 3
+# `wait` retries git errors and an unreadable marker until its timeout, but gives up (exit 2) when
+# the marker stays unreadable for this many polls in a row (a persistent format error).
+UNREADABLE_POLLS = 5
 # Waiters rewrite the commit when they refresh, so a holder's write can lose to a waiter's.
 ATTEMPTS = 10
+
+# What `busy_message` says to a caller that could not join a full queue.
+QUEUE_FULL = f"queue full ({QUEUE_MAX} waiters)"
 
 HELD, BUSY, ERROR, DONE, LOST = 0, 1, 2, 3, 4
 
@@ -431,7 +435,7 @@ def busy_message(lock: Lock, live: bool, place: int | None, waiting: int) -> str
         ahead = f"held by {lock.holder} for PR {lock.pr or '?'}"
     else:
         ahead = f"reserved for {head.id if head else '?'} (PR {head.pr if head else '?'})"
-    where = f"you are waiter {place} of {waiting}" if place else f"queue full ({QUEUE_MAX} waiters)"
+    where = f"you are waiter {place} of {waiting}" if place else QUEUE_FULL
     return f"merge lock busy: {ahead}; {where}"
 
 
@@ -445,22 +449,31 @@ def wait(
     root: Path = ROOT,
 ) -> int:
     """`acquire` every POLL seconds until the lock is held (0), the PR is finished (3), or the
-    timeout (1). Prints only changed messages. A git error is retried at the next poll; the
-    GIT_FAILURES-th in a row is raised (exit 2)."""
+    timeout (1). Prints only changed messages. A bad claim, or a queue that is full when the
+    waiter first tries to join, exits 2 at once. A git error, a lost race or an unreadable marker
+    (a racing write) is printed and retried at the next poll, keeping the queue place; the
+    UNREADABLE_POLLS-th unreadable marker in a row is raised (exit 2)."""
+    check_claim(holder, pr, prs or ())
     finished = FinishedReads(root)
     deadline = time.time() + timeout_minutes * 60
-    last, failures = "", 0
+    last, unreadable, queued = "", 0, False
     while True:
         try:
             code, message = attempt(
                 holder, pr, prs=prs, ttl_minutes=ttl_minutes, root=root, renew=False, finished=finished
             )
-            failures = 0
+            unreadable = 0
         except GitError as e:
-            failures += 1
-            if failures >= GIT_FAILURES:
+            code, message = BUSY, f"merge lock: {e} (retrying)"
+        except LockFormatError as e:
+            unreadable += 1
+            if unreadable >= UNREADABLE_POLLS:
                 raise
             code, message = BUSY, f"merge lock: {e} (retrying)"
+        if code == BUSY and message.endswith(QUEUE_FULL) and not queued:
+            print(message, flush=True)
+            return ERROR
+        queued = queued or (code == BUSY and "you are waiter" in message)
         if message != last:
             print(message, flush=True)
             last = message
