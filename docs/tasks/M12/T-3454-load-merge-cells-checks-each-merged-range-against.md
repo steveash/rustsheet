@@ -43,8 +43,8 @@ relies on.
 Tests:
 - Unit tests compare the index with the old pairwise rule on edge shapes and on two sets of 4,000 pseudo-random
   ranges: one on a small grid, and one over all the columns with some ranges thousands of columns wide, which
-  reaches the tree's upper levels. The edge shapes are crossing ranges, whole rows and columns, shared corners, and touching but disjoint
-  ranges.
+  reaches the tree's upper levels. The edge shapes are crossing ranges, whole rows and columns, shared corners,
+  and touching but disjoint ranges.
 - `many_merged_ranges_import_quickly_and_keep_the_first_of_intersecting_ones` (tests/malformed_import.rs) imports
   10^5 disjoint ranges, then 10^4 that each intersect them, then three whole rows. It asserts the kept list exactly.
 

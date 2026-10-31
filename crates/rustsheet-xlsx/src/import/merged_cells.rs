@@ -184,7 +184,10 @@ pub(super) fn clear_covered_cells(sheet_data: &mut SheetData, merged_cells: &[Me
 
 #[cfg(test)]
 mod tests {
-    use rustsheet_engine::types::{Cell, MergedCell, SheetData};
+    use rustsheet_engine::{
+        types::{Cell, MergedCell, SheetData},
+        LAST_COLUMN,
+    };
 
     use super::{clear_covered_cells, KeptRanges};
 
@@ -312,7 +315,7 @@ mod tests {
                 } else {
                     1 + next(40)
                 };
-                let column = 1 + next(u64::from((16_385 - width).unsigned_abs()));
+                let column = 1 + next(u64::from((LAST_COLUMN + 1 - width).unsigned_abs()));
                 merged(1 + next(2_000), column, width, 1 + next(30))
             })
             .collect();
