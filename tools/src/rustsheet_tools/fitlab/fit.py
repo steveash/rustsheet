@@ -76,10 +76,13 @@ class FitResult:
         }
 
 
-def run(fit: Fit, *, engine: bool = True, only: str | None = None, keep: int = 10) -> FitResult:
+def run(
+    fit: Fit, *, engine: bool = True, only: str | None = None, keep: int = 10, holdout_only: bool = False
+) -> FitResult:
     """Loads the sweep and scores the engine (unless `engine` is false) and every candidate whose
-    name matches the regex `only`."""
-    sweep = load_sweep(fit.cases, fit.pattern, fit.where, fit.errors, fit.calls)
+    name matches the regex `only`. `holdout_only` allows Gate A tables (a measurement of a frozen
+    fit, never a selection; `sweep.refuse_accuracy`)."""
+    sweep = load_sweep(fit.cases, fit.pattern, fit.where, fit.errors, fit.calls, holdout_only=holdout_only)
     cases = sorted({c.case for c in sweep.cells})
     candidates = [engine_candidate(cases)] if engine and cases else []
     wanted = re.compile(only) if only else None

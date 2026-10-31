@@ -44,6 +44,10 @@ other than a number, misses that cell and is counted under `err`. It does not st
   is a number are scored, plus error cells when the `Fit` sets `errors=True`: a candidate signals an
   error by raising `ExcelError` (code `#NUM!` by default), the same error is an exact match, and another
   error or a number is a miss (not counted under `err`, only as not comparable). Text and bool cells are counted as non-numeric.
+- **Never Gate A's tables:** a case of the `accuracy` suite (`accuracy/<FUNCTION>/<batch>`, SPEC-0029)
+  is refused as a sweep, or as a `calls` case, with `RefusedSweepError`: a table that tuned a constant
+  would stop measuring generalization (decision 0188 R4). `--holdout-only` (`run(..., holdout_only=True)`)
+  allows one only to measure a frozen fit.
 - **Iterate traces:** a candidate may expose `trace` (its iterates on a cell, in order). The report then
   lists, per candidate, on how many cells Excel's value is one of the iterates and at which index
   (`iterate_hits` in the JSON).

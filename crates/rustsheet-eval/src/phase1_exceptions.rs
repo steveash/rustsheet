@@ -244,7 +244,9 @@ mod tests {
             [
                 "ironcalc-calc/ENGINEERING/COMPLEXs.xlsx!Sheet1!AL12 0188 T-1075",
                 "ironcalc-calc/ENGINEERING/COMPLEXs.xlsx!Sheet1!AL26 0188 T-1075",
+                "ironcalc-calc/ENGINEERING/COMPLEXs.xlsx!Sheet1!K25 0196 T-1075",
                 "ironcalc-calc/ENGINEERING/COMPLEXs.xlsx!Sheet1!N6 0188 T-1075",
+                "ironcalc-calc/FINANCIAL/IRR.xlsx!Two Values!C4 0196 T-1075",
                 "poi/FormulaEvalTestData_Copy.xlsx!EverythingTests!G936 0134 T-1075",
                 "poi/FormulaEvalTestData_Copy.xlsx!EverythingTests!H936 0134 T-1075",
                 "poi/FormulaEvalTestData_Copy.xlsx!EverythingTests!J136 0134 T-1075",

@@ -32,6 +32,7 @@ from rustsheet_tools.fitlab.score import (
     table,
     worst_text,
 )
+from rustsheet_tools.fitlab.sweep import RefusedSweepError
 
 
 def _import(spec: str) -> Any:
@@ -94,13 +95,28 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--top", type=int, default=20, help="rows of the ranked table (default 20)")
     parser.add_argument("--worst", type=int, default=5, help="worst cells per candidate (default 5)")
     parser.add_argument("--json", type=Path, help="JSON output (default eval/runs/fitlab/<fit>.json)")
+    parser.add_argument(
+        "--holdout-only",
+        action="store_true",
+        help="allow Gate A tables (accuracy/*) to measure a frozen fit; never to choose one (SPEC-0029)",
+    )
     args = parser.parse_args(argv)
     if args.list:
         for name, fit in registry().items():
             print(f"{name:<16} {fit.description}")
         return 0
     fit = _fit(args)
-    result = run(fit, engine=not args.no_engine, only=args.only, keep=max(args.worst, 1))
+    try:
+        result = run(
+            fit,
+            engine=not args.no_engine,
+            only=args.only,
+            keep=max(args.worst, 1),
+            holdout_only=args.holdout_only,
+        )
+    except RefusedSweepError as err:
+        print(f"fit {fit.name}: {err}", file=sys.stderr)
+        return 2
     if not result.sweep.cells:
         print(f"fit {fit.name}: no cell matched {fit.pattern!r}", file=sys.stderr)
         return 1

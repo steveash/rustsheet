@@ -1,0 +1,5 @@
+# Gate A R3 marks (SPEC-0029 "The check" step 5, decision 0188 R3): points (or eval cells) checked
+# against the math only, one per line, tab-separated:
+#   <point or eval cell id>	docs/excel-semantics/<file>.md#<anchor>
+# The entry must have a `Status: MATH-OVER-EXCEL` line, and a filled marked point must show Excel off
+# the math by more than G = 1e-4 relative. A new R3 case needs an owner ruling (decision 0188 R3).

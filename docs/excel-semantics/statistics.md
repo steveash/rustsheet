@@ -984,10 +984,11 @@ p = 1-2^-53), the capped search has no start and the refinement bisects the cdf:
 Excel's value there. (statrs also panicked for every F.INV below p = 1.6E-162 and hung for about 7% of F.INV
 calls below p = 3.6E-27; since T-0974 those bisect the cdf without a start and give a number, see E6 above.)
 DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted BETA.INV, BETAINV, F.INV, F.INV.RT or FINV of more than 512
-elements, and a lifted T.INV, T.INV.2T, TINV or CONFIDENCE.T of more than 2,048, is `#ERROR!` before it runs where Excel
-computes it (2^27 units, `limits::MAX_LIFTED_CELL_VISITS`, over 2^18 and 2^16 an element;
+elements, and a lifted T.INV, T.INV.2T, TINV or CONFIDENCE.T of more than 1,024 (2,048 before T-2511's crossing, whose
+integer-df tails cost up to about 1.5 ms a quantile at df 999), is `#ERROR!` before it runs where Excel
+computes it (2^27 units, `limits::MAX_LIFTED_CELL_VISITS`, over 2^18 and 2^17 an element;
 `ROWS(BETA.INV(SEQUENCE(513)/514,2,3))`, unit test `quantile_kernels_are_charged_their_weight`). At the bound of the caps,
-512 BETA.INV elements take about 1.7 s and 2,048 T.INV elements about 1.7 s, the 2 s budget of the Bessel entries
+512 BETA.INV elements take about 1.7 s and 1,024 T.INV elements about 1.6 s, the 2 s budget of the Bessel entries
 (engineering.md "BESSEL order cap"). Showing that a slow cdf and a long search never coincide would allow larger lifts.
 Status: VERIFIED (excel-graph)
 Tasks: T-1848, T-1849, T-1871
@@ -1799,7 +1800,8 @@ down to 1E-10 / up to 0.9999999999. The values are the targets for T-0969 and T-
   2026-10-14). The pdf `T.DIST(2,1.4E10,FALSE)` stays finite (0.05399096651993693).
   Excel's `T.INV(0.9,1E10)` = 1.2815518424115688 is not the exact quantile (1.28155156554...; the
   normal quantile plus the 1/df correction): Excel is off by about 3E-7 there, so the large-df values need a fit
-  (T-0967). Our implementation above df = 1E5 uses the normal quantile with the A&S 26.7.5 series to stay bounded in time.
+  (T-0967). Ours: from df 2 the rounded-y form of "Student-t quantile is SQRT(df*(1/y-1)) of the rounded beta
+  quantile" (T-2511, `t_dist::t_rounded_y_quantile`), which gives that value; the A&S 26.7.5 series is gone.
 - **T.INV.2T does not reject p in (1,2)**: `T.INV.2T(1.5,5)` = -0.7266868438004216,
   `T.INV.2T(1.0001,5)` = -0.0001317152766640225, `T.INV.2T(1.999,5)` = -6.868826625881273 (negative
   quantile: `T.INV.2T(p,df)` = `T.INV(1 - p/2, df)`, e.g. `T.INV.2T(1.5,10)` = `T.INV(0.25,10)` =
@@ -2927,8 +2929,28 @@ Rule: the entries above assembled in one TOMS 708 port (Excel's EXP, LN, GAMMALN
   neither, see bpser).
 - r2-bratio's "Excel-only noise of sd 47 units" on the (30.7, 1.7, 0.81) a-sweep was the same literal artefact: with
   truncated literals the sd is 2.9 and the model sits a median -6 ulp off (verify-r2-bratio/misparse.out).
-- Open: bgrat for b ≠ 1/2 (L140 bup+bgrat; 600 x29 BETA.DIST/F bgrat cells), first test the b = 1/2 identity with Q(b,z)
-  from Excel's incomplete gamma; algdiv for b0 >= 8 (about 1 unit off TOMS, in bpser and the density); lnΓ(a0 < 1) in L
+- **L140 bup+bgrat at 1 < b < 2 is RN(W + D) (T-2512; within 4 ulp on all 3,072 cells, bit-exact on 2,515).**
+  With b0 = b - 1, a > 15, x > 0.7, the cell is RN(W + D). Here W = fl(x87(P·fl(x·y)/b0)), with P Excel's density in bup's own orientation,
+  BETA.DIST(y, b0, a, FALSE), and D = BETA.DIST(x, a, b0, TRUE), the direct bgrat branch's increment with w = 0.
+  It scores 2,515/3,072/3,072 of 3,072 (hold-out 1,306/1,613/1,613). The caller's orientation BETA.DIST(x, a, b0, FALSE)
+  gives 1,267/1,767/1,815: the two densities differ on 1,355 of 2,908 points by up to ±8 ulp (`orient.out`; M2 takes
+  LN or log1p by its own x, so the two orientations take different paths). With the exact increment in place of D it is still 1,726/3,072/3,072. With r2-bratio's density
+  and D it falls to 89/2,154/2,356, so the visible gap there is the density's algdiv lnB, not bgrat. The engine's
+  density with an accurate increment scores 282/2,824/3,042, against today's kernel at 26/113/344 (T-3382).
+- **Why TOMS bgrat lost at b ≠ 1/2 (T-2512).** TOMS passes bgrat's 15·eps = 15e-15 to grat1, whose continued fraction
+  (z >= 1.1 on every such cell) stops tens of ulps short. On 2,908 direct bgrat cells (t2512-r3-bgrat-split):
+  - TOMS in doubles with Excel's pieces scores 13/142/162, and 139/1,263/1,834 at eps 1e-15.
+  - x87 extended with the stored lnx and z and the CF at 1e-15 scores 206/1,672/2,158.
+  - CR scores 208/1,598/2,091. The best tried, RN(F·Q(b, z_s)/Q(b, z_e)), scores 246/1,881/2,357.
+  - Excel's D is a median 4 units of 2^-53 below the true value. It is not TOMS in any precision tried, so D to the
+    bit is open (T-3383).
+- **The b = 1/2 identity cannot be tested at generic b through the worksheet (T-2512).** No worksheet function
+  returns Q(b, z) there. CHISQ.DIST.RT truncates its df to an integer (2b < 1 is `#NUM!`). 1 - GAMMA.DIST loses the
+  digits, because Q < 0.01 on 5,196 of the 5,228 BETA.DIST cells that reach bgrat (probe t2512-r3-bgrat-qgamma).
+  The same probe's GAMMA.DIST(z, b, 1, TRUE) column (fractional b < 1, P near 1) is one the engine misses on 1,268 of
+  4,980 cells, mostly by 1-2 ulp and on 117 at the 15th digit (T-3383 records it for the incomplete-gamma work).
+- Open: D to the bit, n > 1 bup terms and F/BINOM/NEGBINOM callers of L140 bup+bgrat (T-3383); F's bgrat at a df
+  of 1 (b = 1/2); algdiv for b0 >= 8 (about 1 unit off TOMS, in bpser and the density); lnΓ(a0 < 1) in L
   and the 55-84% ceiling of b < 1 bpser shapes; bfrac's fraction (sd 3.8 units) and bup's arithmetic in bup+bgrat;
   a0 < 1e-15 at 0.04 <= y < 0.25 (Excel 1e-14 to 3.8e-13 relative off the truth, in bgrat's incomplete-gamma ratio);
   the densities after T-2513's round 3 (each in its entry): Loader's constant residual of 2-4 units and bd0's series,
@@ -2950,9 +2972,10 @@ Rule: the entries above assembled in one TOMS 708 port (Excel's EXP, LN, GAMMALN
 Evidence: probes-numeric t2464-*; docs/research/t2464/README.md, r2-bratio (`score.py`, `report_best.out`,
 `report_ladder.out`), r2-impact (`impact.out`, `ladder.out`, `branches.out`, `offcells_pre.tsv`), w2-forensics
 `tie_response.py`, w4-fractions `t1_pdfshare.py`, w6-literature (source survey), verify-r2-bratio/analyze.out,
-verify-r2-impact/v2_plan.out.
+verify-r2-impact/v2_plan.out; T-2512: probes-numeric t2512-r3-bgrat-qgamma, -split, -bupdens and r3-bgrat (RESULTS.md,
+`bupdens.out`, `engdens.out`, `epsscan.out`, `bgld.out`, `ident.out`, `zstore.out`, `split.out`, `qsize.out`).
 Status: PARTIAL (excel-graph)
-Tasks: T-2464, T-2504 to T-2511, T-2512, T-2513, T-2585, T-2586
+Tasks: T-2464, T-2504 to T-2511, T-2512, T-2513, T-2585, T-2586, T-3382, T-3383
 
 ## Incomplete beta in the ironcalc-calc workbooks: F tails and densities (T-0970)
 Rule (VERIFIED on the cells named): Excel's F.DIST.RT is the upper tail of the incomplete beta,
@@ -3131,6 +3154,12 @@ have no neighbour above. The crossing holds at 155 of the 188:
   BETA.DIST(0.5,10,10,TRUE) is 0.5000000000000002. This suggests a tolerance stop, but it is not
   established.
 - Recomputing BETA.INV from constant inputs reproduces x at all 188 rows.
+- Against a 50-digit root (mpmath, gap triage 2026-10-31) Excel is within about 1E-15 relative at the flat rows,
+  where its cdf cannot resolve x: `BETA.INV(1E-10,1,1)` = 9.999999999999996E-11 (m9-beta-inv A43, row 41), 4E-16
+  below the uniform quantile 1E-10, and `BETA.INV(1E-10,0.5,1)` = 9.999999999999992E-21 (A8, row 7), -8E-16. So the
+  flat-row values are not arbitrary points of a flat band; they look like a start that the steps cannot move. At the
+  off-crossing rows Excel is the inaccurate side: `BETA.INV(0.05,2.5,100)` (A101, row 98) is 1.3E-14 above the root.
+  Both stay far inside 1E-9 of the math (decision 0188 Gate A). Tasks: T-3387 (sweep), T-3388 (fit).
 Consequence: BETA.INV parity follows BETA.DIST parity (T-1744) plus a solver that usually
 converges to the crossing.
 
@@ -3520,16 +3549,35 @@ within 1E-15 of the exact quantile, and the form is thousands of ulps off. The s
 A100, A113), p = 0.95 (q = 0.475) the exact quantile (T-2724 review; T-2724's centre kernel starts at c = 1 - 2q
 below 0.075, inside that bracket). At df 30 and q = 5E-17 (`T.INV.2T(1E-16,30)`, gen-m9 583ca2baea0bb30a A147) Excel's t is 2E-12
 off (its y about 4E-12; T-1542).
-Ours: the exact quantile (A&S 26.7.5 from df 1E5, statrs' inverse below), so up to 2.2E-7 relative away at huge df:
-T-3061.
+Which y (T-2511, 2026-10-31, scored over gen-m9, ironcalc-calc, probes and probes-numeric against main): y as the
+double nearest the crossing of the Student-t tail evaluated at a rounded y (`I_y(df/2, 1/2)/2`, the tail T.TEST
+takes; "T.TEST rounds y = df/(df+t^2) to a double before the tail") fixes 294 visibly-off cells and makes none newly
+visibly off, and 65 of T-3061's 75 cells come within 15 digits. Other choices of y score worse: the crossing of
+T.DIST's ported kernel at y (`bratio::t_kernel_tails`) fixes 298 but makes 3 newly visibly off (`T.INV(0.2,5)` =
+-0.9195437802408258, 6 ulp off through it, gen-m9/0bbab6206b5c9a07 A67); the other end of the final bracket fixes 285
+and breaks 6; AS 109's own root (statrs' search) with this back-transform fixes 137. So Excel's y is the nearest
+crossing of a tail at least as accurate as the y-tail on most cells. At q = 0.05 it is about 2 ulps from that
+crossing at df 999 and 1E10 alike (`T.INV.2T(0.1,1E10)` = 1.6448533237762966, `CONFIDENCE.T(0.1,1,1000)` =
+0.05206311786485653), which looks like the stop of Excel's search (T-3399).
+In the deep tail (q below 1E-5 with x = df/(df + t^2) below 1E-8) the rounded-y form is visibly off Excel and the
+closed form from the leading term and first correction of `I_x(df/2, 1/2)` is within an ulp or so of it
+(`TINV(1E-200,2)` = 1.0000000000000101E+100, gen-m9/7980ffb6095a340d A312: closed form 1.0000000000000103E+100, the
+rounded-y form 9.99999999999996E+99). The rounded-y form there makes 29 cells newly visibly off, the closed form
+none; what Excel computes in the deep tail is not established.
+Implemented in: functions/statistical/t_dist.rs `t_rounded_y_quantile` (every df from 2; df 1 is T-2858's closed form),
+`t_tail_closed_form` (the deep tail), `t_centre_quantile` (the centre, T-2724).
+Ours: this form from df 2 (T-2511); 10 of T-3061's cells and the bit-level remainder are T-3061 and T-3399.
+Tasks: T-3061, T-2511, T-3399
 
 ## Two-tailed Student-t quantile with p near 1 is accurate in Excel (T-3349)
-Rule: for df from 2 up, `T.INV.2T(p,df)`, `TINV(p,df)` and `CONFIDENCE.T(p,sd,n)` with p just below or above 1 return
-the small quantile to the 15th digit of the exact value: Excel solves the centre directly, never forming 1 - p/2.
+Rule: for df from 2 up, `T.INV.2T(p,df)` with p just below or above 1 returns the small quantile to the 15th digit of
+the exact value: Excel's result shows no 1 - p/2 cancellation. TINV and CONFIDENCE.T were probed at df 2 (n = 3) only:
+TINV matches there, and CONFIDENCE.T is 1.1E-15 relative off the exact value (A5 below).
 `T.INV.2T(0.999999999989522,2)` is 1.481806159731988E-11 (exact 1.48180615973198...E-11; decision 0188 item 3,
 where the engine gave 1.49E-8 before T-2724), `T.INV.2T(0.999999999999999,2)` 1.4130832128154019E-15 (c = 1 - p is 9.99E-16 in doubles), and so on for c from
 1E-3 to 1E-15 at df 2, 5, 30, 1000 and 1E6 and for p = 1.001 and 1.000000001 at df 2 (the negative quantile,
-`T.INV.2T(1.000000001,2)` = -1.4142136793856508E-9; the literal 1.000000000000001 has 16 digits and reads as 1, giving 0).
+`T.INV.2T(1.000000001,2)` = -1.4142136793856508E-9; A38 is `T.INV.2T(1,2)` = 0, since 1+1E-15 needs 16 digits, which a
+formula literal cannot carry: numbers.md "Formula number literals are read at 15 significant digits").
 At df 1 Excel is the 1/TAN form instead (T-2858's entry above), up to 2.9% off the exact value at
 `T.INV.2T(0.999999999999999,1)` (Excel 1.6155696572206502E-15, exact 1.5695408241038844E-15).
 Evidence: probes/t3349-t-inv-2t-near-one A1-A44 (excel-graph, 2026-10-31): every cell from df 2 up is within 15
@@ -5364,3 +5412,23 @@ Status: MATH-OVER-EXCEL (decision 0188)
 Ours: today the engine matches Excel with a fitted closed form (incomplete_gamma/huge_shape.rs,
 `WILSON_HILFERTY_SPREAD`, fitted at 1E13 and applied from 2E10); T-3364 moves the branch to the math.
 Tasks: T-3364, T-3358
+
+## F.DIST at a tiny x with a huge d2: Excel is within 1.5e-13 of the math, and so is RustSheet (T-3354)
+Rule: at x from 1E-15 to 1E-3, d1 from 1 to 40 and d2 from 1000 to 1E10, Excel's F.DIST (cumulative and density) and
+F.DIST.RT are the true values to within 1.5e-13 relative; there is no 5e-4 error there in Excel or, on main from
+2026-10-31, in RustSheet. Excel's residue against the math is largest at d1 = 40 (results from 1E-113 down to 1E-293);
+there Excel and RustSheet (up to 1.01e-13 off the math, at A217) differ beyond half a unit of the 15th significant
+digit on 222 of the 480 cdf and density cells (the harness's 15-digit test; score.py's `<=` test counts 221, A159
+sitting exactly on the half-unit line). In the probe case F.DIST.RT, near 1 at a tiny x, agrees to 15 digits on every
+cell; the sweep's three F.DIST.RT exceptions (C147, C168 and C187, at x of 1 or more, away from the tiny-x region) are
+T-3479's.
+Evidence: probes/t3354-f-dist-tiny-x-huge-d2 (720 cells, the decision 0188 assessment's region x near 1E-12, d2 near
+7.8E6, and both sides of it) and probes-numeric/t3354-f-dist-sweep (600 cells at 200 stratified points), both
+excel-graph, scored against 50-digit mpmath by docs/research/t3354/score.py: no probe cell is more than 1.5e-13 from
+the math in Excel, and no point of either case is outside Gate A's envelope in RustSheet. The assessment's "x ≈ 1e-12
+with d2 ≈ 7.8e6 is off 5e-4" (decision 0188, item 7) does not reproduce on main; its raw points are not committed.
+Status: VERIFIED (excel-graph)
+Ours: within 1.01e-13 of the math throughout the Rule's region in both cases (worst probe A217); outside it the sweep
+reaches 1.43e-10 (C168, `F.DIST.RT(1.09080885395379,8,5567623)`), still inside Gate A; cells beyond half a unit of
+Excel's 15th digit are Phase 1b residue (decision 0188 R5).
+Tasks: T-3354, T-3479
