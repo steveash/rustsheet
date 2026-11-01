@@ -378,6 +378,63 @@ fn indexed_number_criteria_match_the_walk() {
     }
 }
 
+/// A number equality over a block cut from an indexed range counts the run's positions inside the
+/// block by bisection (`positions_in_window`): over ties, values equal at 15 digits but not
+/// bitwise, negative zero, and the texts and blanks the predicate tests, each growing prefix and
+/// inner block gives what the walk gives with the pass caches off.
+#[test]
+fn indexed_equalities_over_blocks_match_the_walk() {
+    let values = [
+        "1", "=1+2^-52", "=1-2^-53", "0", "=-0", "", "2", "2", "'2", "0.3", "=0.1+0.2", "2", "",
+        "-5", "1",
+    ];
+    let criteria = [
+        "1",
+        "0",
+        "2",
+        "\"=2\"",
+        "0.3",
+        "-5",
+        "\"=1E-17\"",
+        "\"<>2\"",
+    ];
+    let rows = 300;
+    let run = |no_pass_caches: bool| {
+        let mut model = new_empty_model();
+        model.evaluation.no_pass_caches = no_pass_caches;
+        for row in 1..=rows {
+            let value = values[row % values.len()];
+            if !value.is_empty() {
+                model._set(&format!("A{row}"), value);
+            }
+        }
+        // Two criteria on the whole range build its index.
+        model._set("C1", &format!("=COUNTIF($A$1:$A${rows},\">0\")"));
+        model._set("C2", &format!("=COUNTIF($A$1:$A${rows},\"<0\")"));
+        let blocks = (64..=rows).step_by(9).map(|bottom| (1, bottom));
+        let mut row = 1;
+        for (top, bottom) in blocks.chain([(70, 250), (65, 128), (100, 300)]) {
+            for criterion in criteria {
+                let formula = format!("=COUNTIF($A${top}:$A${bottom},{criterion})");
+                model._set(&format!("D{row}"), &formula);
+                row += 1;
+            }
+        }
+        model.evaluate();
+        let cache = &model.evaluation.ifs_cache;
+        let counters = (cache.windows, cache.indexed());
+        let texts: Vec<String> = (1..row)
+            .map(|row| model._get_text(&format!("D{row}")))
+            .collect();
+        (texts, counters)
+    };
+    let (cached, (windows, indexed)) = run(false);
+    assert!(windows > 0, "no block was cut from the range");
+    assert!(indexed >= 1, "the range was not indexed");
+    let (walked, _) = run(true);
+    assert_eq!(cached, walked);
+}
+
 /// Each formula's text, and whether it is marked circular, with the pass caches on and off
 /// (iterative calculation on when `iterate`), and how many SUMIFS-shaped calls the cached run read
 /// partly as the walk does (T-3227).
