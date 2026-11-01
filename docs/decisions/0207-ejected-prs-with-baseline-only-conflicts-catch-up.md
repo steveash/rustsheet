@@ -1,7 +1,8 @@
 # 0207 — Ejected PRs with baseline-only conflicts catch up without a new review
 
 - **Status:** accepted (2026-10-31, T-3487; the owner asked for the fix). *Amended by decision
-  0219: the visible-parity lock is an eval-gated list too, merged three-way by catch-up.*
+  0219: the visible-parity lock is an eval-gated list too, merged three-way by catch-up. Extended by
+  decision 0224: the carry rule also accepts a `make renumber` merge.*
 - **Context:**
   - The merge train ejects a PR whose merge with `main` conflicts ("conflict with main"). Only
     the PR's worker could clear it: merge `main` in, re-mark, and run the reviewers again,
