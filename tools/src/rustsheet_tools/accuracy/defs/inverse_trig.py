@@ -9,7 +9,8 @@ Sources:
   the correctly rounded π/3); the cancellation near x = 1 costs at most about 1e-8 relative at the last double below
   1, inside G.
 - gen-m5 (excel-graph): `ACOT(-0.1)` is 1.6704649792860584 (Calc!A278), π/2 - atan(-0.1): ACOT's range is (0, π), not
-  mpmath's (-π/2, π/2]; numbers.md "Negative zero" has `ACOT(0)` = π/2.
+  mpmath's (-π/2, π/2]; numbers.md "Negative zero" has `ACOT(0)` = π/2. The definition is acot on (0, π) (`_acot`);
+  the π/2 - atan form is only the identity behind that check, since it cancels for a huge argument.
 - numbers.md, "ATAN2 is ATAN(y/x) plus or minus π": `ATAN2(x_num, y_num)` forms Excel's quotient y/x, so
   `ATAN2(0,0)` is `#DIV/0!` and a quotient beyond the double range is `#NUM!`: both are domain errors. Otherwise the
   math is the true atan2(y, x) (x = 0 gives ±π/2). A quotient that underflows is 0 in Excel (numbers.md "Subnormal

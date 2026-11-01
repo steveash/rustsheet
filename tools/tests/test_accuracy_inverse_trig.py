@@ -49,8 +49,10 @@ def test_published_values() -> None:
     assert abs(value(ACOT, -0.1) - mp(1.6704649792860584)) < mp("3e-16")
     assert value(ACOT, 0) == mpmath.pi / 2
     # no cancellation for a huge argument: ACOT(x) is about 1/x, not 0 (π/2 - atan(x) cancels beyond about 1e80)
-    assert mpmath.almosteq(value(ACOT, 1e300), mp(1) / mp(1e300), mp("1e-35"))
-    assert mpmath.almosteq(value(ACOT, -1e300), mpmath.pi - mp(1) / mp(1e300), mp("1e-35"))
+    # (abs_eps=0: mpmath otherwise uses rel_eps as an absolute tolerance too, which 0 against 1e-300 would pass)
+    assert mpmath.almosteq(value(ACOT, 1e300), mp(1) / mp(1e300), mp("1e-35"), abs_eps=0)
+    assert mpmath.almosteq(value(ACOT, 1e150), mp(1) / mp(1e150), mp("1e-35"), abs_eps=0)
+    assert mpmath.almosteq(value(ACOT, -1e300), mpmath.pi, mp("1e-38"), abs_eps=0)
     assert value(DEGREES, math.pi) == mp(math.pi) * 180 / mpmath.pi
     assert value(RADIANS, 180) == mpmath.pi
 
@@ -79,7 +81,7 @@ def test_atan2_follows_excels_quotient() -> None:
     assert mpmath.almosteq(value(ATAN2, -1e300, 1e-10), mpmath.pi, mp("1e-38"))
     assert mpmath.almosteq(value(ATAN2, -1e300, -1e-10), -mpmath.pi, mp("1e-38"))
     # a normal quotient keeps the true atan2
-    assert mpmath.almosteq(value(ATAN2, 1e300, 1e-10), mp(1e-10) / mp(1e300), mp("1e-38"))
+    assert mpmath.almosteq(value(ATAN2, 1e300, 1e-10), mp(1e-10) / mp(1e300), mp("1e-38"), abs_eps=0)
 
 
 def test_draws() -> None:
