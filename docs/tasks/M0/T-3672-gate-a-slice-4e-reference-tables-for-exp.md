@@ -3,7 +3,7 @@ id: T-3672
 title: "Gate A slice 4e: reference tables for EXP, LN, LOG, LOG10, POWER, SQRT and SQRTPI"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
