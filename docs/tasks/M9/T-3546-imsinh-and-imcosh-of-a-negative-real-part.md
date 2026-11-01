@@ -3,7 +3,7 @@ id: T-3546
 title: "IMSINH and IMCOSH of a negative real part: pin where the log form starts (below |x| = 708.94)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
