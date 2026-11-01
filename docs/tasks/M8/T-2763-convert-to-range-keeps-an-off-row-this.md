@@ -3,7 +3,7 @@ id: T-2763
 title: "Convert-to-range keeps an off-row #This Row reference as structured text (FORMULATEXT =Sales[@Qty], value #VALUE!)"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
