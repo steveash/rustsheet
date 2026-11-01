@@ -5999,11 +5999,14 @@ Tasks: T-3554, T-3386, T-3358
 
 ## A text scalar argument is #VALUE! before an error cell as the data (T-3781)
 Rule: when the data of SMALL, LARGE, PERCENTILE*, QUARTILE*, TRIMMEAN or PERCENTRANK* is a one-cell reference to an error
-cell, a k, quart, percent, x or significance that is a cell holding text or empty text makes the result `#VALUE!`, not the
-data's error. With Data!G9 = `#DIV/0!`, G6 = "x" and G7 = empty text, `SMALL(Data!G9,Data!G6)`, `LARGE(Data!G9,Data!G7)`,
+cell, a k, quart, percent, x or significance that is a cell holding text that does not read as a number (including empty
+text) makes the result `#VALUE!`, not the data's error. With Data!G9 = `#DIV/0!`, G6 = "x" and G7 = empty text, `SMALL(Data!G9,Data!G6)`, `LARGE(Data!G9,Data!G7)`,
 `PERCENTILE.EXC(Data!G9,Data!G6)`, `QUARTILE(Data!G9,Data!G7)`, `TRIMMEAN(Data!G9,Data!G6)`, `PERCENTRANK(Data!G9,Data!G6)` and
-`PERCENTRANK(Data!G9,2,Data!G6)` are `#VALUE!`. A number as the scalar lets the data's error through (`LARGE(<#REF!>,0.1)` is
-`#REF!`, "Array arguments given a scalar, a single cell or an error" above).
+`PERCENTRANK(Data!G9,2,Data!G6)` are `#VALUE!`. A number, a cell holding numeric text (G5 = "12") or a boolean (G8 = FALSE)
+as the scalar lets the data's error through: `SMALL(Data!G9,Data!G5)` and `SMALL(Data!G9,Data!G8)` are `#DIV/0!`
+(5830c688df805e71 A460, A478; also 4740a028a32c91de A412, A430; 4fc6bdaec0e5583d A472, A490; 157db6a46ed6535b A448, A466;
+de40f308bf65d545 A436, A454), as is `LARGE(<#REF!>,0.1)` `#REF!` ("Array arguments given a scalar, a single cell or an error"
+above).
 Evidence: gen-m9 (T-3781 arg-pairs batch, excel-graph, 2026-11-01): 157db6a46ed6535b A454, A460; 3df602816eacaa3f A424, A430;
 45d8028602e891ad A442, A448; 4740a028a32c91de A418, A424; 475eae18f2963cdc A466, A472; 4fc6bdaec0e5583d A478, A484;
 5830c688df805e71 A466, A472; 5e5063d014818a2d A460, A466; 61445b60bf8539f0 A430, A436; 8cbdca3221390122 A382, A388;
@@ -6016,12 +6019,15 @@ Tasks: T-3788
 
 ## PERCENTRANK: a text or error significance before the #N/A (T-3781)
 Rule: PERCENTRANK, PERCENTRANK.INC and PERCENTRANK.EXC return a significance that is an error (typed or in a referenced
-cell) as that error, and a text or empty-text significance as `#VALUE!`, before the `#N/A` of an x outside the data or of
-data with no number. `PERCENTRANK.INC(Data!H1,2,"abc")` (blank data) and `PERCENTRANK.EXC(Data!A$5,-1,"")` are `#VALUE!`,
+cell) as that error, and a significance of text that does not read as a number (including empty text) as `#VALUE!`, before
+the `#N/A` of an x outside the data or of data with no number. Numeric text and booleans coerce and keep the `#N/A` first:
+`PERCENTRANK.INC(Data!H1,2,"2.5")`, `PERCENTRANK.INC(Data!H2,3,Data!G5)` (G5 = "12"), `PERCENTRANK.INC(Data!H1,2,TRUE)` and
+`PERCENTRANK.INC(Data!H2,3,Data!G8)` (G8 = FALSE) are `#N/A` (8cbdca3221390122 A433, A436, A451, A454), as is
+`PERCENTRANK(Data!G5,2,Data!G8)` (de40f308bf65d545 A208). `PERCENTRANK.INC(Data!H1,2,"abc")` (blank data) and `PERCENTRANK.EXC(Data!A$5,-1,"")` are `#VALUE!`,
 `PERCENTRANK(Data!G5,3,Data!G9)` (text data, G9 = `#DIV/0!`) `#DIV/0!`, `PERCENTRANK(Data!C8,"2.5",#NAME?)` `#NAME?` and
 `PERCENTRANK.EXC(Data!H1,1,#NULL!)` `#NULL!`. A numeric significance out of its domain still comes after the `#N/A`
 ("Order statistics: the scalar argument's error before the no-number result; PERCENTRANK's #N/A before significance
-(T-2256)" above), so only the significance's type is read before x is placed. This settles that entry's UNVERIFIED line.
+(T-2256)" above), so only whether the significance is a number at all is decided before x is placed. This settles that entry's UNVERIFIED line.
 Evidence: gen-m9 (T-3781 arg-pairs batch, excel-graph, 2026-11-01), 63 cells in T-3789: 50594c61def0ea70 A46, A109, A361;
 58ae70ab5eb596c2 A100, A157; c149b14aa61b770d A10, A82; 8cbdca3221390122, 9240e43366ea4792 and de40f308bf65d545 (18-20
 cells each).
@@ -6031,11 +6037,14 @@ Tasks: T-3789
 
 ## TRIMMEAN of a typed scalar (T-3781)
 Rule: a typed numeric text or boolean literal as TRIMMEAN's data is one number: `TRIMMEAN("2.5",0)` is 2.5 and
-`TRIMMEAN(TRUE,0)` 1 (as are the forms with a blank cell or Data!A1:B2 as the percent), a percent out of [0, 1) is then
+`TRIMMEAN(TRUE,0)` 1 (as are the forms with a blank cell as the percent), a percent out of [0, 1) is then
 `#NUM!` (`TRIMMEAN("2.5",2)`, `(..,-1)`, `(..,"2.5")`, `(..,TRUE)`), and an error percent is that error
 (`TRIMMEAN("2.5",#NULL!)` `#NULL!`, `TRIMMEAN(TRUE,#REF!)` `#REF!`). Non-numeric text stays `#VALUE!` before the percent's own
 error (`TRIMMEAN("abc",0)`, `TRIMMEAN("",#VALUE!)`, `TRIMMEAN("abc",#NAME?)`). A cell holding text or a boolean is no number
 instead ("A lone text, boolean or empty cell as the data of QUARTILE, PERCENTILE, PERCENTRANK and TRIMMEAN (T-2256)").
+A range as the percent lifts TRIMMEAN over it, one result per cell: `TRIMMEAN("2.5",Data!A1:B2)` with Data!A1:B2 =
+{FALSE,"TRUE";"1",TRUE} spills 2x2, {2.5,#VALUE!;#NUM!,#NUM!} (A253:B254), and `TRIMMEAN(TRUE,Data!A1:B2)` likewise (A439:B440):
+a FALSE cell percent is 0, a text cell `#VALUE!`, and "1" and TRUE read as 1, out of range.
 Evidence: gen-m9/4fc6bdaec0e5583d (T-3781 arg-pairs batch, excel-graph, 2026-11-01) A199-A253 and A391-A439 (the 15 cells in
 T-3790), A259-A385 for the non-numeric text.
 Ours: `#VALUE!` for the numeric text and boolean literals; known failures owned by T-3790.

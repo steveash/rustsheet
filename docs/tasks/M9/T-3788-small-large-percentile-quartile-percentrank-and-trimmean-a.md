@@ -12,16 +12,19 @@ campaign: semantics
 ---
 
 ## Goal
-SMALL, LARGE, PERCENTILE*, QUARTILE*, TRIMMEAN and PERCENTRANK* return `#VALUE!` for a text k, quart, percent, x or
-significance (a cell holding text or empty text) when the data is a one-cell reference to an error cell, as Excel does;
-a numeric scalar argument still lets the data's error through.
+SMALL, LARGE, PERCENTILE*, QUARTILE*, TRIMMEAN and PERCENTRANK* return `#VALUE!` for a k, quart, percent, x or
+significance that is a cell holding text that does not read as a number (including empty text) when the data is a one-cell
+reference to an error cell, as Excel does; a number, a numeric-text cell or a boolean cell still lets the data's error through.
 
 ## Context
 - T-3781 (gen-m9 arg-pairs batch, excel-graph 2026-11-01). Data!G9 holds `#DIV/0!`, G6 the text "x", G7 empty text.
   `SMALL(Data!G9,Data!G6)`, `LARGE(Data!G9,Data!G7)`, `PERCENTILE.EXC(Data!G9,Data!G6)`, `QUARTILE(Data!G9,Data!G7)`,
   `TRIMMEAN(Data!G9,Data!G6)`, `PERCENTRANK(Data!G9,Data!G6)` and `PERCENTRANK(Data!G9,2,Data!G6)` are `#VALUE!` in Excel and
   `#DIV/0!` in ours. With a number as the scalar the data's error wins (`LARGE(<#REF!>,0.1)` is `#REF!`; statistics.md "Array
-  arguments given a scalar, a single cell or an error").
+  arguments given a scalar, a single cell or an error"). A cell holding numeric text (G5 = "12") or a boolean (G8 = FALSE)
+  also lets it through, and those cells pass today: `SMALL(Data!G9,Data!G5)` and `SMALL(Data!G9,Data!G8)` are `#DIV/0!`
+  (5830c688df805e71 A460, A478; 4740a028a32c91de A412, A430; 4fc6bdaec0e5583d A472, A490; 157db6a46ed6535b A448, A466;
+  de40f308bf65d545 A436, A454). Keep them passing.
 - Recorded in docs/excel-semantics/statistics.md "A text scalar argument is #VALUE! before an error cell as the data (T-3781)".
   Unprobed: an error-valued k against an error data cell (which error wins), and the data given as a multi-cell range
   holding an error (an error element, not a lone cell).
@@ -30,8 +33,8 @@ a numeric scalar argument still lets the data's error through.
 
 ## Acceptance criteria
 - [ ] The 30 cells below pass.
-- [ ] Unit or probe cells pin both orders: a text scalar with an error data cell (`#VALUE!`), a numeric scalar with an
-      error data cell (the data's error).
+- [ ] Unit or probe cells pin both orders: a non-numeric text scalar with an error data cell (`#VALUE!`), and a number,
+      numeric-text cell or boolean cell with an error data cell (the data's error); the passing cells listed above still pass.
 - [ ] statistics.md entry's Ours line updated.
 - [ ] `make check` green; reviewers approve.
 

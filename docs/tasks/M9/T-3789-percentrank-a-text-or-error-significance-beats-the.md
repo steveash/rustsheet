@@ -12,8 +12,8 @@ campaign: semantics
 ---
 
 ## Goal
-PERCENTRANK, PERCENTRANK.INC and PERCENTRANK.EXC return the significance's error, or `#VALUE!` for a text or empty-text
-significance, before the `#N/A` of an x outside the data or of data with no number, as Excel does.
+PERCENTRANK, PERCENTRANK.INC and PERCENTRANK.EXC return the significance's error, or `#VALUE!` for a significance of text
+that does not read as a number (including empty text), before the `#N/A` of an x outside the data or of data with no number, as Excel does.
 
 ## Context
 - T-3781 (gen-m9 arg-pairs batch, excel-graph 2026-11-01). `PERCENTRANK.INC(Data!H1,2,"abc")` (blank data) and
@@ -23,8 +23,11 @@ significance, before the `#N/A` of an x outside the data or of data with no numb
   result; PERCENTRANK's #N/A before significance (T-2256)": a numeric but out-of-domain significance (-2.5, 0) still loses
   to the `#N/A` (T-2472 matches that), but a non-numeric one wins. Recorded in statistics.md "PERCENTRANK: a text or error
   significance before the #N/A (T-3781)".
-- Code: percentile.rs `percentrank_of` (x, then empty data, then significance). Read the significance's type before the
-  x / data checks and keep the domain check where it is. T-2605 (single boolean cell, bad significance on empty data) is
+- Numeric text and booleans coerce and keep the `#N/A` first, and those cells pass today: `PERCENTRANK.INC(Data!H1,2,"2.5")`,
+  `(Data!H2,3,Data!G5)` (G5 = "12"), `(Data!H1,2,TRUE)` and `(Data!H2,3,Data!G8)` (G8 = FALSE) are `#N/A` (8cbdca3221390122
+  A433, A436, A451, A454), as is `PERCENTRANK(Data!G5,2,Data!G8)` (de40f308bf65d545 A208). Keep them passing.
+- Code: percentile.rs `percentrank_of` (x, then empty data, then significance). Decide whether the significance is a number (an error or
+  non-numeric text fails here) before the x / data checks and keep the domain check where it is. T-2605 (single boolean cell, bad significance on empty data) is
   the neighbour; check its cells still pass.
 
 ## Acceptance criteria

@@ -69,7 +69,7 @@ fails is owned by a task.
 - [x] Any fit task filed for the batch's cells lists the R4 guards of reviewer-excel-fidelity check 7 (hold-out
       counts, fresh sweep, Gate A envelope result, `FITTED` tag and range, reproducibility floor, no keep-matched
       branch) in its acceptance criteria.
-- [x] `make check` green; reviewers approve.
+- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine fixes for the cells this batch finds (the owning tasks make them), beyond a one-line coercion fix in the

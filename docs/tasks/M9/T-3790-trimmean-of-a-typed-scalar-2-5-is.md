@@ -17,13 +17,13 @@ percent is then `#NUM!` and an error percent is that error.
 
 ## Context
 - T-3781 (gen-m9 arg-pairs batch, excel-graph 2026-11-01), case 4fc6bdaec0e5583d: `TRIMMEAN("2.5",0)`,
-  `TRIMMEAN("2.5",Data!H1)` (blank) and `TRIMMEAN("2.5",Data!A1:B2)` are 2.5, the TRUE forms 1; `TRIMMEAN("2.5",2)`,
+  `TRIMMEAN("2.5",Data!H1)` (blank) are 2.5 (so is the top-left cell of `TRIMMEAN("2.5",Data!A1:B2)`), the TRUE forms 1; `TRIMMEAN("2.5",2)`,
   `(..,-1)`, `(..,"2.5")` and `(..,TRUE)` `#NUM!`; `TRIMMEAN("2.5",#NULL!)` `#NULL!`, `TRIMMEAN(TRUE,#REF!)` `#REF!`.
   Ours: `#VALUE!` for every one. A typed numeric-text or boolean literal is one number here, unlike a cell holding text or a
   boolean (no number, statistics.md "A lone text, boolean or empty cell as the data of ... TRIMMEAN (T-2256)").
   Note `TRIMMEAN("2.5","2.5")` is `#NUM!`, so the percent "2.5" reads as 2.5 (out of range), and `TRIMMEAN(..,Data!A1:B2)`
-  passes a range as percent and still gives 2.5: read the case's Data sheet and work out what the range percent is
-  (an implicit intersection or the first cell) before coding it.
+  is a 2x2 spill, one result per percent cell: Data!A1:B2 = {FALSE,"TRUE";"1",TRUE} gives {2.5,#VALUE!;#NUM!,#NUM!}
+  (A253:B254; A439:B440 for TRUE). Only the anchors A253 and A439 fail today; the lift already matches.
 - Non-numeric text stays `#VALUE!`, before the percent's own error: `TRIMMEAN("abc",0)`, `TRIMMEAN("",0)`,
   `TRIMMEAN("abc",#NAME?)` and `TRIMMEAN("",#VALUE!)` are `#VALUE!` (A259-A385; ours already matches these).
 - Recorded in statistics.md "TRIMMEAN of a typed scalar (T-3781)". Code: trimmean.rs `fn_trimmean`.
