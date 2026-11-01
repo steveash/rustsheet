@@ -3,7 +3,7 @@ id: T-3601
 title: "FORECAST.ETS.CONFINT and FORECAST.ETS.STAT from the shared AAA fit (owner ruling, unverified against Excel)"
 milestone: M14
 lane: functions-stat
-status: todo
+status: done
 priority: P3
 size: M
 tier: opus
@@ -27,12 +27,21 @@ Adapt gridcraft's `Fit::forecast_sd` (the h-step variance, Hyndman et al. Table 
 6 MAE, 7 RMSE, 8 step size); `confidence_level` outside (0, 1) and `statistic_type` outside 1 to 8 are `#NUM!`.
 
 ## Acceptance criteria
-- [ ] test_tailed_array.rs `fill` gives H4 a formula that is still `#N/IMPL!` (it uses FORECAST.ETS.STAT until this
+- [x] test_tailed_array.rs `fill` gives H4 a formula that is still `#N/IMPL!` (it uses FORECAST.ETS.STAT until this
       task; an error literal does not do, the tailed reading meets it as `#ERROR!`), and its tests pass.
-- [ ] CONFINT and STAT compute; unit tests show the values on exact data and each statistic type.
-- [ ] statistics.md's model section gains their rules (UNVERIFIED).
-- [ ] `make eval-baseline` shows no regression (or each one is named and accepted under decision 0221 by the owner).
-- [ ] `make check` green; reviewers approve.
+- [x] CONFINT and STAT compute; unit tests show the values on exact data and each statistic type.
+- [x] statistics.md's model section gains their rules (UNVERIFIED).
+- [x] `make eval-baseline` shows no regression (or each one is named and accepted under decision 0221 by the owner).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Matching desktop Excel (T-2425).
+
+## Outcome
+FORECAST.ETS.CONFINT and FORECAST.ETS.STAT compute from T-3600's fit, unverified against Excel under decision 0221.
+`Fit` now keeps its α, β and γ and its one-step errors, and gains `forecast_sd`, gridcraft's closed form of Hyndman et
+al. Table 6.1, class 1. CONFINT reuses `normal::normal_quantile`. STAT computes statistics 1 to 8, and statistic 8 is
+`Series::step`. `test_tailed_array`'s `#N/IMPL!` fixture moved to `SHEETS(5)`. T-3600's deferred review points are
+also done here: unit tests of the model internals, the `MAX_CALL_WORK` doc rewrap, the stale "Ours" wording, the
+quoted Microsoft sentence on `target_date`, and T-2425's probe list.
+Eval: 318 cells fixed (gen-m9 317, probes 1), 0 regressions. All are size-mismatch `#N/A` matches.

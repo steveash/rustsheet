@@ -27,10 +27,10 @@ fn fill(model: &mut Model) {
     model._set("H1", "1");
     model._set("H2", "=1/0");
     model._set("H3", "TRUE");
-    // #N/IMPL!: a formula the engine does not implement. FORECAST.ETS played this part until T-3600
-    // implemented it; FORECAST.ETS.STAT does until T-3601, which must find another (an error literal
-    // does not do: the tailed reading meets it as #ERROR!).
-    model._set("H4", "=FORECAST.ETS.STAT({1,2,3},{1,2,3},1)");
+    // #N/IMPL!: a formula the engine does not implement, SHEETS of a non-reference (T-2113).
+    // The FORECAST.ETS family played this part until T-3599 to T-3601 implemented it; an error
+    // literal does not do (the tailed reading meets it as #ERROR!).
+    model._set("H4", "=SHEETS(5)");
     let keys = ["0", "=\"\"", "FALSE", "", "1", "x"];
     for (index, key) in keys.iter().enumerate() {
         let row = index + 1;

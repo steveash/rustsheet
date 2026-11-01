@@ -53,9 +53,10 @@ const MAX_MISSING: f64 = 0.3;
 /// DEVIATION, statistics.md "FORECAST.ETS family: work caps").
 pub(super) const MAX_ACF_WORK: usize = 1 << 27;
 /// Most work one FORECAST.ETS-family call may spend over all its lifted elements: season
-/// detections (length × lags) plus fits ([`fit_work`]: (length + season) × the filter runs of one fit), each charged once per
-/// distinct series and season. Past it the element is `#NUM!` (directive 5, a DEVIATION,
-/// statistics.md "FORECAST.ETS family: work caps"): two fits of the longest series fit.
+/// detections (length × lags) plus fits ([`fit_work`]: (length + season) × the filter runs of
+/// one fit), each charged once per distinct series and season. Past it the element is `#NUM!`
+/// (directive 5, a DEVIATION, statistics.md "FORECAST.ETS family: work caps"): two fits of the
+/// longest series fit.
 pub(super) const MAX_CALL_WORK: usize = 1 << 30;
 /// A time stamp's step count may miss a whole number by this much and still count as on the grid.
 const STEP_TOLERANCE: f64 = 1e-6;
@@ -293,6 +294,9 @@ pub(super) struct Series {
     /// The completed values, one per step from the first time stamp to the last.
     pub(super) y: Vec<f64>,
     axis: Axis,
+    /// The timeline's step in timeline units (the average step for calendar months):
+    /// FORECAST.ETS.STAT's statistic 8.
+    pub(super) step: f64,
 }
 
 impl Series {
@@ -389,7 +393,11 @@ pub(super) fn build_series(
     } else {
         slots.iter().map(|slot| slot.unwrap_or(0.0)).collect()
     };
-    Ok(Series { y, axis })
+    let step = match axis {
+        Axis::Linear { step, .. } => step,
+        Axis::Months { .. } => (last - times.first().copied().unwrap_or(last)) / span,
+    };
+    Ok(Series { y, axis, step })
 }
 
 /// Missing points become the straight line between their known neighbours, or the nearest known
@@ -497,7 +505,10 @@ pub(super) fn detect_season(y: &[f64]) -> Result<usize, Error> {
 }
 
 mod model;
-pub(super) use model::{fit, fit_work, Fit};
+pub(super) use model::{
+    fit, fit_work, mean_absolute_error, mean_absolute_scaled_error, root_mean_squared_error,
+    symmetric_mean_absolute_percentage_error, Fit,
+};
 
 #[cfg(test)]
 mod tests;

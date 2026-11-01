@@ -37,6 +37,10 @@
   - FORECAST.ETS (T-3600): `make eval-baseline` fixes 169 more cells (gen-m9 168, probes 1) with no regression. Each
     expects Excel's `#N/A`, and each matches through the same size rule (130 top-level FORECAST.ETS calls, 39 nested
     in another function). None is evidence for the fit.
+  - FORECAST.ETS.CONFINT and FORECAST.ETS.STAT (T-3601): `make eval-baseline` fixes 318 more cells (gen-m9 317, probes
+    1) with no regression. Every one expects Excel's `#N/A` and matches through the same size rule (STAT 224 cells, 188
+    of them top-level; CONFINT 94, 78 top-level). None is evidence for the interval or the statistics. With T-3601
+    no member of the family is `#N/IMPL!` any more.
   - Directive 5 deviations, listed in statistics.md: season detection is `#NUM!` past 2^27 multiply-adds (a series of
     16,385 points or more), `values` or `timeline` above 200,000 cells is `#NUM!`, and one call's detections and fits
     share a work budget of 2^30 (T-3600).

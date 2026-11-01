@@ -187,7 +187,7 @@ fn fn_amorlinc_errors() {
 }
 
 #[test]
-fn fn_forecast_ets_family_computes_or_is_not_implemented_yet() {
+fn fn_forecast_ets_family_computes() {
     let mut model = new_empty_model();
     model._set("A1", "=FORECAST.ETS(5, {1,2,3}, {1,2,3})");
     model._set("A2", "=FORECAST.ETS.CONFINT(5, {1,2,3}, {1,2,3})");
@@ -195,12 +195,12 @@ fn fn_forecast_ets_family_computes_or_is_not_implemented_yet() {
     model._set("A4", "=FORECAST.ETS.STAT({1,2,3}, {1,2,3}, 1)");
     model.evaluate();
 
-    // FORECAST.ETS (T-3600) and FORECAST.ETS.SEASONALITY (T-3599) compute: the line continues,
-    // and three points show no season.
+    // The family computes (T-3599 to T-3601, unverified, decision 0221): the line continues
+    // with no error, three points show no season, and α is the first grid point (0.05).
     assert_eq!(model._get_text("A1"), *"5");
-    assert_eq!(model._get_text("A2"), *"#N/IMPL!");
+    assert_eq!(model._get_text("A2"), *"0");
     assert_eq!(model._get_text("A3"), *"0");
-    assert_eq!(model._get_text("A4"), *"#N/IMPL!");
+    assert_eq!(model._get_text("A4"), *"0.05");
 }
 
 // Excel's exact doubles for VDB's two charge orders (docs/excel-semantics/financial.md
