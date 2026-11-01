@@ -3,7 +3,7 @@ id: T-3572
 title: "GAMMA.DIST at a fractional shape below 1 near P = 1: record or route the t2512-r3-bgrat-qgamma column A misses"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -35,3 +35,12 @@ The engine's GAMMA.DIST misses at a fractional shape below 1 near P = 1 are reco
 - Engine changes (T-3382 ports the L140 one-term composition).
 - The other items split from T-3468: T-3567 (bgrat increment, F at df 1), T-3568 (bup), T-3569 (algdiv), T-3570
   (bpser's lnGamma and b < 1 ceiling), T-3571 (bfrac), T-3572 (GAMMA.DIST near P = 1); one each.
+
+## Outcome
+Counted the engine's column A misses on t2512-r3-bgrat-qgamma (docs/research/t2464/r5-gamma-p1/ulps.py): 1,268 of
+4,979 numeric cells, every one exactly 1 ulp (none at 2 or more), 117 off at the 15th digit. Recorded in
+statistics.md with counts by shape; cell list in r5-gamma-p1/misses.tsv. Owned by T-3224 (owned-cells list amended).
+No engine change; eval delta none. Negative: no kernel was tried here (out of scope).
+Follow-up for the owner: T-3224 is `defer: phase-1b` on the ground that none of its cells is visibly off; its own rule
+says to give it a `campaign:` stage once one is. 117 of the cells added here are off at the 15th digit, so the
+steward should decide that.

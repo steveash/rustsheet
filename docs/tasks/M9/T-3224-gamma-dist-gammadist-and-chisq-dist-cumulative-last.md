@@ -58,6 +58,11 @@ Owned cells:
 - probes-numeric/m9-gamma-dist-a9.case.json (6): Calc!A5, A7, A15, A17, A25, A27
 - probes-numeric/m9-gamma-dist-a50.case.json (3): Calc!A5, A15, A25
 - probes-numeric/m9-gamma-dist-a500.case.json (3): Calc!A5, A15, A25
+- probes-numeric/t2512-r3-bgrat-qgamma.case.json column A (1,268, all exactly 1 ulp, 117 of them off at the 15th
+  digit; `GAMMA.DIST(z, b, 1, TRUE)` at fractional b < 1, P near 1; T-3572): the cells are listed in
+  docs/research/t2464/r5-gamma-p1/misses.tsv (regenerate with `ulps.py`); counts by shape in statistics.md "The b = 1/2
+  identity cannot be tested at generic b". Excel's P(b, z) here is the upper-tail-side computation (Q < 0.01), so
+  the miss is in how Excel forms 1 - Q, not only in the lower series.
 - probes-numeric/t1048-gammadist.case.json (14): Calc!A5, B5, A11, B11, A13, B13, A21, B21, A22, B22, A25, B25, A26, B26
 - probes-numeric/t1049-chisqdist.case.json (11): Calc!A5, A7, A15, A29, A31, A37, A45, A55, A58, A59, A63
 
