@@ -9,7 +9,7 @@
   - Profiled locally on 2026-11-01, on a machine busy with other jobs:
     - The nine ratchet scripts take about 10 s together (`check_duplication.py` 6 s, the rest
       under 1.2 s each).
-    - Almost all the rest is `unittest discover` over `scripts/`: 28 modules, 467 tests, 455 s
+    - Almost all the rest is `unittest discover` over `scripts/`: 28 modules, 464 tests, 455 s
       serial.
     - The merge-train modules dominate: `test_merge_train_red` 142 s, `test_merge_train` 115 s,
       `test_merge_ready` 61 s, `test_merge_train_shadow` 42 s, `test_merge_lock` 35 s.
@@ -21,8 +21,8 @@
     first (`ls -S`) so the long modules start early.
   - Each module runs exactly as `discover` ran it: from the repository root, with `scripts/` on
     the path. `xargs` exits non-zero when any module fails, so the target fails as before.
-- **Measured (local, 4 cores, same busy machine):** 467 tests in 28 modules, all OK. 455 s serial,
-  144 s in parallel. The bound is the slowest module. CI times are in T-3705's Outcome.
+- **Measured (local, 4 cores, same busy machine):** 464 tests in 28 modules, all OK. 455 s serial,
+  144 s in parallel. The bound is the slowest module. CI (run 41301094082): `make hygiene` 46 s against a p50 of 104 s.
 - **Consequences:**
   - A test module must not depend on another module running first or on shared fixed paths. The
     suite already holds to this; a new module that breaks it shows up as a failure here.
