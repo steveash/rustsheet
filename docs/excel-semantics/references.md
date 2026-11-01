@@ -2597,6 +2597,20 @@ Right/Left):
   `=SUM(S!#REF!)`, while `COLUMNS(Sales)` is 1 and `ROWS(Sales)` 4 (table-delete-column-qty); deleting B
   (Region) makes `COUNTA(Sales[Region])` 1, a COUNTA of the `#REF!` error, printed `=COUNTA(#REF!)`
   (table-delete-column-region).
+- Column-edit shapes (excel-graph 2026-11-01, T-2899). The new column of a column insert is named with the least
+  `ColumnN` no column has, compared case-insensitively: with `Column2` present the new one is `Column1`
+  (table-insert-column-naming-gap), with `column1` present it is `Column2`, and with `Column1` and `Column3` present
+  it is `Column2` (-case-clash, -column1-column3). One insert of two columns inside the table (Graph `range('C:D')/insert`)
+  grows it by two, named `Column1`, `Column2` left to right, data cells blank (table-insert-two-columns-one-op); at the
+  first column it only moves the table right by two (-edge). Deleting every column (B:C) removes the table: every
+  reference is `#REF!` printed `=SUM(#REF!)`, `ISREF(Sales)` FALSE, `COUNTA(Sales[Region])` 1, plain `S!C4:C7`
+  `=SUM(S!#REF!)` (table-delete-all-columns). A delete that straddles an edge keeps the table without the deleted
+  columns: B:C with the table on C3:E7 leaves two columns, `INDEX(Sales[#Headers],1,1)` "Qty", `Sales[Qty]` text kept,
+  `Sales[Region]` `#REF!`; D:E with the table on B3:D7 drops Val the same way (table-delete-columns-straddle-left,
+  -right). A column range `Sales[[Qty]:[Val]]` is `#REF!`, printed `=SUM(#REF!)`, when either end column is
+  deleted, and when both are, in one edit or two (table-column-range-delete-end, -start, -both-ends, -both-ends-separate);
+  the plain `S!C4:D7` shrinks to `S!C4:C7` after a one-column delete. The engine matches the naming and the
+  two-column insert; the rest are T-3733 and T-3734.
 - Convert to Range (`tables/convertToRange`): every value is kept and each structured reference from another
   sheet is rewritten as an absolute, sheet-qualified range: `=SUM(S!$C$4:$C$7)`, `=COUNTA(S!$B$4:$B$7)`,
   `=COLUMN(S!$C$4:$C$7)`; `ROWS(Sales)` 4, `ROWS(Sales[#All])` 5 and `ROW(Sales[#Headers])` 3 keep their values
@@ -2629,8 +2643,7 @@ move and inside classes); the edge row deletes (T-2338) and the column grow and 
 too (T-2339: `column_span` and `edit_columns` in table_edits.rs grow or shrink the table and its column list,
 naming an inserted column `ColumnN` in its header cell, and `deleted_column` in stringify/structured.rs
 prints a reference to a deleted column as `#REF!`, a column range that loses both ends too; one that loses
-one end prints its displaced plain area, and a delete of every column or one straddling an edge stays a fallback, all unprobed, as are
-`ColumnN` naming with gaps or case clashes and a multi-column insert: T-2899). INDIRECT of a
+one end prints its displaced plain area, and a delete of every column or one straddling an edge, and one-end column ranges, differ from Excel: T-3733, T-3734; `ColumnN` naming and a multi-column insert match, T-2899). INDIRECT of a
 structured reference's text is `#REF!` (T-2911). Convert to range matches (T-2342): `Model::convert_table_to_range` prints each structured
 reference as the absolute area it lowered to (defined names too, T-2643). A cell with a `#This Row` reference
 off the data rows is lowered at its own row (`Model::lower_this_row_references`, T-2643), so it is `#VALUE!` as
@@ -2646,7 +2659,7 @@ xlsx export writes `S!C4:C7` where Excel stores `#REF!C4:C7`. The `#REF!` displa
 existed (a loaded `Nope!A1`), an engine choice with no evidence. The adapter's delete_table clears the whole table range (header, text and Qty columns: COUNTA 0 each)
 and keeps the rows in place: `S!C9` still 99 and `SUM(S!C9:C10)` still 104 with unshifted text
 (T-2341, table-delete-table-cells, excel-graph 2026-10-22).
-Tasks: T-2197, T-2323, T-2324, T-2325, T-2297, T-2338, T-2339, T-2340, T-2341, T-2342, T-2643, T-2855, T-2911, T-2899
+Tasks: T-2197, T-2323, T-2324, T-2325, T-2297, T-2338, T-2339, T-2340, T-2341, T-2342, T-2643, T-2855, T-2911, T-2899, T-3733, T-3734
 
 ## Calculated columns: a formula typed into a table column
 Rule (excel-graph `entered` cells, typed one at a time in the case's order, 2026-10-27, T-2957; table `T` A1:C4,

@@ -1,0 +1,83 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2899: one insert of two columns at C, between the two table columns, in a single edit (count 2). Table Sales on S!B3:C7 (headers Region/Qty, data rows 4-7). Sheet F reads the result; FORMULATEXT and INDIRECT cells record text the oracle prints. The new header cells are checked too; their expected text is Excel's as read through INDIRECT (excel-graph 2026-11-01).",
+  "tags": [
+    "M8",
+    "tables",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "B3": "Region",
+        "C3": "Qty",
+        "B4": "E",
+        "C4": 1,
+        "B5": "W",
+        "C5": 2,
+        "B6": "N",
+        "C6": 4,
+        "B7": "S",
+        "C7": 8
+      },
+      "tables": [
+        {
+          "name": "Sales",
+          "ref": "B3:C7"
+        }
+      ]
+    },
+    {
+      "name": "F",
+      "cells": {
+        "A1": "=INDIRECT(\"S!C3\")",
+        "A2": "=INDIRECT(\"S!D3\")",
+        "A3": "=INDIRECT(\"S!E3\")",
+        "A4": "=COLUMNS(Sales)",
+        "A5": "=SUM(Sales[Qty])",
+        "A6": "=COLUMN(Sales[Qty])",
+        "A7": "=INDEX(Sales[#Headers],1,COLUMNS(Sales))",
+        "A8": "=ISBLANK(INDIRECT(\"S!C4\"))",
+        "A9": "=ISBLANK(INDIRECT(\"S!D4\"))",
+        "A10": "=ROWS(Sales)",
+        "A11": "=SUM(S!E4:E7)",
+        "A12": "=FORMULATEXT(A5)"
+      }
+    }
+  ],
+  "sheet_ops": [
+    {
+      "op": "insert_column",
+      "sheet": "S",
+      "column": "C",
+      "count": 2
+    }
+  ],
+  "expected": {
+    "S!C3": {
+      "t": "s",
+      "v": "Column1"
+    },
+    "S!D3": {
+      "t": "s",
+      "v": "Column2"
+    }
+  },
+  "check": [
+    "F!A1",
+    "F!A2",
+    "F!A3",
+    "F!A4",
+    "F!A5",
+    "F!A6",
+    "F!A7",
+    "F!A8",
+    "F!A9",
+    "F!A10",
+    "F!A11",
+    "F!A12",
+    "S!C3",
+    "S!D3"
+  ]
+}

@@ -381,15 +381,28 @@ fn apply_sheet_ops(workbook: &mut Workbook, ops: &[SheetOp]) -> Result<(), Strin
                     .delete_rows(id, row, count)
                     .map(|()| workbook.recalculate())
             }
-            SheetOp::InsertColumn { sheet, column } | SheetOp::DeleteColumn { sheet, column } => {
+            SheetOp::InsertColumn {
+                sheet,
+                column,
+                count,
+            }
+            | SheetOp::DeleteColumn {
+                sheet,
+                column,
+                count,
+            } => {
+                let count = count.unwrap_or(1);
+                if count == 0 {
+                    return Err(format!("sheet op {op:?}: count is at least 1"));
+                }
                 let id = sheet_id_of(workbook, sheet)?;
                 let column = Addr::col_index(column)
                     .map(|c| c - 1)
                     .ok_or_else(|| format!("sheet op {op:?}: not a column letter"))?;
                 let result = if matches!(op, SheetOp::InsertColumn { .. }) {
-                    workbook.insert_columns(id, column, 1)
+                    workbook.insert_columns(id, column, count)
                 } else {
-                    workbook.delete_columns(id, column, 1)
+                    workbook.delete_columns(id, column, count)
                 };
                 result.map(|()| workbook.recalculate())
             }

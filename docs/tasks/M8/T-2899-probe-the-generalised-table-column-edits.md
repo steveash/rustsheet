@@ -3,7 +3,7 @@ id: T-2899
 title: "Probe the table column edits T-2339 generalised: ColumnN naming with gaps and case clashes, a multi-column insert in one op, deleting every column, a delete straddling an edge, a column range losing one end"
 milestone: M8
 lane: research
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -40,3 +40,10 @@ deletes, column edits, convert, table and sheet delete", and file engine tasks f
 
 ## Out of scope
 - Implementing fixes (filed as engine tasks).
+
+## Outcome
+12 probes added in eval/suites/probes/cases/table-edits/ (oracle-filled on excel-graph 2026-11-01). `sheet_ops` insert_column and
+delete_column take an optional `count` (spec2xlsx records the span `C:E`, which is Graph's address; case.rs/engine.rs apply it).
+Matching the engine already: `ColumnN` naming (least free N, gap and case clash) and a two-column insert in one edit.
+Mismatching, filed: T-3733 (straddle and delete-every-column), T-3734 (column range losing one end). Baseline grew by the
+12 probes' failing cells only; no previously passing cell regressed.
