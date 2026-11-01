@@ -3,7 +3,7 @@ id: T-3569
 title: "Incomplete beta: x87 storage variants of algdiv for b0 >= 8 against the r4-algdiv pins, then bpser's L"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
