@@ -11,15 +11,14 @@ depends_on: [T-2282]
 ---
 
 ## Goal
-No evaluation or range-walk test asserts an absolute wall-clock bound: the 13 assertions left in the five files below once
-T-2282 lands count
-work or compare a small and a large input, so `make check` cannot fail on a busy machine.
+No evaluation or range-walk test asserts an absolute wall-clock bound: once T-2282 lands, the 13
+assertions left in the five files below count work, so `make check` cannot fail on a busy machine.
 
 ## Context
 - Found in T-2282's quality review (#2723). T-2282 replaces the large-spill test's 20 s bound with a count of rectangle
   tests (`SeenRanges::rectangles_tested`, `#[cfg(test)]`); that counter lands with T-2282. T-2282 saw wall-clock bounds
   fail under a load average of about 15 (four `make check`s on four cores); a count is stable where time is not.
-- The inventory (`rg -n "elapsed\(\)\s*<|Duration::from" crates/rustsheet-engine/src`, 2026-11-01) is 30 bound
+- The inventory (`rg -n "elapsed\(\)(\.as_[a-z_]+\(\))?\s*<|Duration::from" crates/rustsheet-engine/src`, 2026-11-01) is 30 bound
   assertions in 16 test files on main, 29 once T-2282 removes the large-spill one, split by what they guard into T-3706 (evaluation and range walks), T-3707 (regex and
   PCRE backtracking) and T-3708 (function kernels). `test/test_recalc_budget.rs` `worked_example_timing` only prints its
   timing and asserts no bound, so none of the three covers it; `clock.rs` uses durations as inputs, not bounds.
@@ -35,8 +34,8 @@ work or compare a small and a large input, so `make check` cannot fail on a busy
   tests.
 
 ## Acceptance criteria
-- [ ] `rg -n "elapsed\(\)\s*<|Duration::from" crates/rustsheet-engine/src/test/test_clipped_range_walks.rs crates/rustsheet-engine/src/test/dynamic_evaluation/test_range_reads.rs crates/rustsheet-engine/src/test/test_sheet_span_references.rs crates/rustsheet-engine/src/test/test_defined_name_formulas.rs crates/rustsheet-engine/src/expressions/parser/tests/test_add_implicit_intersection.rs` finds no bound assertion; each guard asserts a work count
-      or a size ratio instead.
+- [ ] `rg -n "elapsed\(\)(\.as_[a-z_]+\(\))?\s*<|Duration::from" crates/rustsheet-engine/src/test/test_clipped_range_walks.rs crates/rustsheet-engine/src/test/dynamic_evaluation/test_range_reads.rs crates/rustsheet-engine/src/test/test_sheet_span_references.rs crates/rustsheet-engine/src/test/test_defined_name_formulas.rs crates/rustsheet-engine/src/expressions/parser/tests/test_add_implicit_intersection.rs` finds no bound assertion; each guard asserts a work count
+      or a ratio of work counts instead (never a ratio of timings).
 - [ ] Each still fails on a deliberate local regression of the code it guards (described in the Outcome).
 - [ ] No test is skipped, ignored or deleted.
 - [ ] `make check` green; reviewers approve.
