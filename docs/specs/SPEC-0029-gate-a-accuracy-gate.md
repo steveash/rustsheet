@@ -116,6 +116,8 @@ tools/ only (pure Python, BSD; the engine and the bindings never depend on it).
   real, integer, logical or array, valid domain with open or closed bounds, typical range, extreme range, optional
   tail map) and the mpmath function at the working precision. An array (IRR's flows, XIRR's dates; T-3586) is written
   as an array literal `{a,b,...}` with each element at most 15 significant digits, and its rules are the definition's.
+  A variadic function (SUM, AVERAGE; T-3549) repeats its last parameter (`Definition.variadic`), and its `draw` sets
+  the argument count, 1 to Excel's 255.
   Inverses solve the forward mpmath function with `mpmath.findroot` on a bracket; solvers (IRR, RATE, XIRR, YIELD)
   solve their defining equation and return Excel's root by Excel's root choice where several exist (the definition
   cites the semantics entry; with no evidenced choice, points with several roots are not drawn). The parameter list
