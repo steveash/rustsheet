@@ -39,9 +39,14 @@ direct. **lnGamma(a0 < 1) inside L is not shape-dependent on this evidence: it i
 uses GL53's L (`functions/statistical/bratio/bpser.rs`, T-2505), so no engine change follows. Its remaining gap is
 GAMMALN's own accuracy below 1, which T-3042 owns.
 
+Scope: only a0 within 80 ulps of 0.3, 0.5 and 0.7, at b0 2.5 and 6.25, in the direct orientation. Small a0, b0 <= 1 and
+b0 >= 8 are not covered. Two things are not checked here and go to T-3769. One is whether r2-bpser-small's old w2f
+(0.5, 6.25) reading changes when it is re-scored with measured GAMMALN. The other is whether these 1-2 ulp bits
+reproduce on a second excel-graph fill (decision 0112: bits that vary between fills are not targets).
+
 The method needs no fitted constant. It compares two fixed formulas cell by cell, so there is no `FITTED` value and no
-R4 fit to hold out. The tune/hold split by b0 still guards against a b0-specific accident. Positive control: 457 of the
-1,920 cells tell the two forms apart, and the winner is the same on the tune and hold-out halves.
+R4 fit to hold out. The tune/hold split by b0 still guards against a b0-specific accident. 457 of the 1,920 cells tell the two forms apart (a discrimination check, not a known-kernel positive control), and
+the winner is the same on the tune and hold-out halves.
 
 ## 3. What GL53 still misses (`residual.out`, `lshift.out`)
 

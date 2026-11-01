@@ -2908,7 +2908,8 @@ z = fl64(fl(a·LN(x)) - L)  (extended);   I = fl(EXP(z)·s)  (Excel's EXP of the
 - Open: L at b0 >= 8 (Excel's algdiv is about 1 unit from TOMS's: implied L -1.88, +1.65, +6.05 units on three runs);
   on the old 1 < b0 < 8 cells GL53's L loses to r2-bratio's (3,365 against 4,038 of 7,455, verifier); b < 1 shapes top
   out at 55-84% bit-exact for any constant L (one stored intermediate, unidentified; T-3769).
-- lnΓ(a0 < 1) inside L is Excel's GAMMALN, GL(a0), not fl(gamln1(a0) - LN a0) (T-3570, r5-bpser-lngamma). With b0
+- At 1 < b0 < 8 and a0 near 0.3, 0.5 and 0.7 (direct w_bpser), lnΓ(a0 < 1) inside L is Excel's GAMMALN, GL(a0), not
+  fl(gamln1(a0) - LN a0) (T-3570, r5-bpser-lngamma). Small a0, b0 <= 1 and b0 >= 8 are not probed this way. With b0
   and x fixed and a0 stepped by single ulps around 0.3, 0.5 and 0.7, so only a0 moves, GL53 beats the gamln1 form in all
   12 runs: 672 against 573 of 960 bit-exact at b0 2.5 (tune) and 831 against 691 at b0 6.25 (hold-out). On the 457
   cells where the two forms differ, GL53 matches 331 and gamln1 92. This replaces r2-bpser-small's "shape-dependent"

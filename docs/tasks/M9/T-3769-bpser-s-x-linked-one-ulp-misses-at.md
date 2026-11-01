@@ -26,6 +26,11 @@ their counts), and the a0-linked residual at a0 near 0.5 and 0.7 is explained or
   - **a0-linked**: at 0.5 and 0.7 both x miss together 2-3 times more often than chance. No constant L shift in
     -2..2 ulps fits: 155 of 960 a0 fit only at some k != 0 (mostly +1, +2) and 169 at none (`lshift.out`).
     Candidates: an internal lnGamma(a0) at a different precision than the GAMMALN worksheet function, or alx's rounding.
+- Also from T-3570's review:
+  - Re-score r2-bpser-small's old w2f (0.5, 6.25) shapes, which "prefer g1ln53", with measured GAMMALN (-gl probes), and
+    reconcile them with r5's GL53 result at the same point.
+  - Refill t3570-r5-bpser-lngamma-beta once from excel-graph to confirm its 1-2 ulp bits reproduce (decision 0112).
+  - Extend the GL53-vs-gamln1 comparison to small a0 (< 0.3), b0 <= 1 and b0 >= 8.
 - Method: docs/research/excel-kernel-playbook.md; work in a new docs/research/t2464/r6-* directory and import
   r5-bpser-lngamma's and r2-bpser-small's scripts instead of copying them. Rules: positive controls first, a real
   hold-out, record negatives (decision 0056).
