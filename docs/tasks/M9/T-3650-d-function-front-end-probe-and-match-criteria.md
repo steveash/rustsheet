@@ -3,7 +3,7 @@ id: T-3650
 title: "D-function front end: probe and match criteria block grammar, field resolution and error precedence across all 12"
 milestone: M9
 lane: functions-criteria
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -32,12 +32,23 @@ and the criteria at once (which wins). Probe each shape through all twelve funct
 the same result family-wide.
 
 ## Acceptance criteria
-- [ ] A probe case (excel-graph) covers the shapes above through all twelve D-functions.
-- [ ] The engine matches every probed cell, through one change in the shared front end (no per-function special case).
-- [ ] criteria.md states the grammar, field-resolution and error-order rules found.
-- [ ] T-3129's field kinds and T-3002's computed criteria are left to them.
-- [ ] Every quirk found is written up in docs/excel-semantics/criteria.md in the same PR, with its probe cells cited.
-- [ ] `make check` green; eval known failures only shrink (baseline updated); reviewers approve.
+- [x] A probe case (excel-graph) covers the shapes above through all twelve D-functions.
+- [x] The engine matches every probed cell, through one change in the shared front end (no per-function special case).
+- [x] criteria.md states the grammar, field-resolution and error-order rules found.
+- [x] T-3129's field kinds and T-3002's computed criteria are left to them.
+- [x] Every quirk found is written up in docs/excel-semantics/criteria.md in the same PR, with its probe cells cited.
+- [x] `make check` green; eval known failures only shrink (baseline updated); reviewers approve.
 
 ## Out of scope
 - Accumulation and last-digit work in DAVERAGE/DVAR (done in T-1054, T-1618 and others).
+
+## Outcome
+probes/db-front-end-sweep (excel-graph, 2026-11-01) sweeps 61 front-end shapes through all twelve D-functions (740
+cells): criteria grammar, field resolution, header-only databases and combined errors. The engine already matched 670
+of the first 688; every miss was one rule: an error in a matched record's field cell is the result of the nine
+aggregating D-functions (first error in record order), where ours skipped it like text. Fixed once in the shared
+`db_fold_numbers` (functions/database.rs); DCOUNT, DCOUNTA and DGET were already right. All 740 cells pass.
+criteria.md "D-function front end across all twelve functions" states the rules. Excel for the web refused a workbook
+whose D-function database or criteria argument was a function call (NA(), 1/0), so those shapes are not probed.
+T-3129 (error field kinds) and T-3002 (computed criteria) are untouched.
+Eval delta: +740 passing cells (new case; 0 regressions).
