@@ -1205,7 +1205,7 @@ bit for bit (111 of 111), and Excel's error grows with x, not with x / a (at mos
 about 50 near 100 and 317 at `POISSON(16,510,TRUE)`). Over the 32 adjacent doubles of `POISSON(2,100+j*2^-46,TRUE)` it
 drifts about 2 ulp a step and jumps by 64 ulp, one ulp of a number near |ln Q| = 92.
 
-Excel's far upper tail (T-3269). Rule: at shapes 3/2 to 11 (POISSON's cdf at k from 1 to 10, CHISQ.DIST.RT and
+Excel's far upper tail (T-3269; its subnormal results are flushed except at df 2 / k = 0, numbers.md "Subnormal results become 0", T-3638). Rule: at shapes 3/2 to 11 (POISSON's cdf at k from 1 to 10, CHISQ.DIST.RT and
 CHIDIST at df 3 to 22), for 30 < x <= 600, Excel's Q(a, x) is Stirling's ratio prefactor, sqrt(a / 2 pi) exp(a ln(x/a)
 + (a - x) - correction(a)), the form T-2638 found above shape 20 away from the mode, times the continued fraction; at
 and below x = 30 it is the accurate Q at integer shapes. Above shape 11 Excel is not this form next to x = 30 (where it

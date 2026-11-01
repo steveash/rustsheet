@@ -3,7 +3,7 @@ id: T-3638
 title: "CHISQ.DIST.RT and POISSON's upper tail at a subnormal result: kept or flushed (t3269-fresh-sweep A92)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -51,3 +51,10 @@ scores on evidence instead of on Graph's 0.
 ## Visible-parity stage
 Decisions 0083 and 0114 (`semantics`): done when A92 scores on companion evidence and every probed subnormal upper-tail
 path matches Excel's keep-or-flush.
+
+## Outcome
+Probed `probes/t3638-subnormal-upper-tail` (42 cells, excel-graph): CHISQ.DIST.RT/CHIDIST flush a subnormal tail to 0
+except at df 2; POISSON(k,mean,TRUE) flushes except at k = 0 (the exp closed forms keep it). Engine now follows
+(`flush_subnormal` in `chisq_dist_rt_of`, `poisson_dist_of`), with a unit test per path; t3269-fresh-sweep Calc!A92
+now scores (engine 0 = Graph 0). The "x inside 30 < x/2 <= 600" probe was impossible: no subnormal Q exists there
+(recorded in numbers.md). Documented in numbers.md and statistics.md.

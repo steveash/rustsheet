@@ -1,7 +1,9 @@
 use super::gammaln::excel_gammaln;
 use super::incomplete_gamma::poisson_upper;
 use super::loader::{excel_bd0, stirlerr_exact};
-use crate::arithmetic::{extended_product, extended_quotient, extended_sqrt, extended_sum};
+use crate::arithmetic::{
+    extended_product, extended_quotient, extended_sqrt, extended_sum, flush_subnormal,
+};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{num_error, number_or_error};
 use crate::functions::Function;
@@ -155,7 +157,14 @@ impl Model {
         }
         let prob = if cumulative {
             // statrs' `Poisson::cdf`, Q(k + 1, mean), with Excel's far upper tail (T-3269).
-            poisson_upper(k as f64 + 1.0, lambda)
+            // A subnormal tail is 0 except at k = 0, the exp closed form, where Excel keeps it
+            // (probes/t3638-subnormal-upper-tail B31:B42).
+            let tail = poisson_upper(k as f64 + 1.0, lambda);
+            if k == 0 {
+                tail
+            } else {
+                flush_subnormal(tail)
+            }
         } else {
             excel_poisson_pmf(k, lambda)
         };
