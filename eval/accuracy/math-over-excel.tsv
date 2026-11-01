@@ -11,3 +11,15 @@ accuracy/F.INV/s1!Calc!A171	docs/excel-semantics/statistics.md#tiny-p-quantiles-
 accuracy/T.INV/s1!Calc!A89	docs/excel-semantics/statistics.md#tiny-p-quantiles-excel-is-grossly-wrong-rustsheet-returns-the-math-math-over-excel
 accuracy/T.INV/s1!Calc!A93	docs/excel-semantics/statistics.md#tiny-p-quantiles-excel-is-grossly-wrong-rustsheet-returns-the-math-math-over-excel
 accuracy/T.INV/s1!Calc!A95	docs/excel-semantics/statistics.md#tiny-p-quantiles-excel-is-grossly-wrong-rustsheet-returns-the-math-math-over-excel
+accuracy/NPER/s1!Calc!A121	docs/excel-semantics/financial.md#nper-at-a-tiny-positive-rate-excel-is-up-to-4-off-rustsheet-returns-the-math-math-over-excel
+accuracy/NPER/s1!Calc!A130	docs/excel-semantics/financial.md#nper-at-a-tiny-positive-rate-excel-is-up-to-4-off-rustsheet-returns-the-math-math-over-excel
+accuracy/NPER/s1!Calc!A133	docs/excel-semantics/financial.md#nper-at-a-tiny-positive-rate-excel-is-up-to-4-off-rustsheet-returns-the-math-math-over-excel
+accuracy/NPER/s1!Calc!A135	docs/excel-semantics/financial.md#nper-at-a-tiny-positive-rate-excel-is-up-to-4-off-rustsheet-returns-the-math-math-over-excel
+accuracy/NPER/s1!Calc!A142	docs/excel-semantics/financial.md#nper-at-a-tiny-positive-rate-excel-is-up-to-4-off-rustsheet-returns-the-math-math-over-excel
+accuracy/NPER/s1!Calc!A143	docs/excel-semantics/financial.md#nper-at-a-tiny-positive-rate-excel-is-up-to-4-off-rustsheet-returns-the-math-math-over-excel
+accuracy/NPER/s1!Calc!A151	docs/excel-semantics/financial.md#nper-at-a-tiny-positive-rate-excel-is-up-to-4-off-rustsheet-returns-the-math-math-over-excel
+accuracy/NPER/s1!Calc!A152	docs/excel-semantics/financial.md#nper-at-a-tiny-positive-rate-excel-is-up-to-4-off-rustsheet-returns-the-math-math-over-excel
+accuracy/NPER/s1!Calc!A153	docs/excel-semantics/financial.md#nper-at-a-tiny-positive-rate-excel-is-up-to-4-off-rustsheet-returns-the-math-math-over-excel
+accuracy/NPER/s1!Calc!A156	docs/excel-semantics/financial.md#nper-at-a-tiny-positive-rate-excel-is-up-to-4-off-rustsheet-returns-the-math-math-over-excel
+accuracy/NPER/s1!Calc!A158	docs/excel-semantics/financial.md#nper-at-a-tiny-positive-rate-excel-is-up-to-4-off-rustsheet-returns-the-math-math-over-excel
+accuracy/NPER/s1!Calc!A162	docs/excel-semantics/financial.md#nper-at-a-tiny-positive-rate-excel-is-up-to-4-off-rustsheet-returns-the-math-math-over-excel

@@ -3895,11 +3895,16 @@ Status: VERIFIED for the probed cells; DB's boolean month beyond the FALSE pair 
 Tasks: T-2620, T-2698, T-2749
 
 ## NPER at a tiny positive rate: Excel is up to 4% off, RustSheet returns the math (MATH-OVER-EXCEL)
-Rule: NPER at 0 < rate < 1e-14 is up to 4% off the true period count in Excel, above G = 1e-4, so RustSheet returns the
-math there (decision 0188 R3). Excluded: rates so small that 1 + rate == 1, which are `#DIV/0!` in Excel ("NPER divides
+Rule: NPER at 0 < rate < 1e-14 is far off the true period count in Excel, above G = 1e-4, so RustSheet returns the
+math there (decision 0188 R3). The owner's assessment found up to 4%. The Gate A table finds up to 35% as the rate nears
+the 1 + rate = 1 cut: `NPER(3.04353262019695E-16,370.793811118894,-6303.49478902119,0,0)` is 23.0 in Excel against a
+true 17.0, and at rate 5.1E-16 Excel is 15% off. Excluded: rates so small that 1 + rate == 1, which are `#DIV/0!` in Excel ("NPER divides
 by ln(1+rate)" above, VERIFIED) and stay `#DIV/0!`. Negative tiny rates are not covered.
-Evidence: the owner's 2026-10-31 assessment (decision 0188), 50-digit mpmath against Excel for the web. The committed
-probe case and the bounded region come with T-3367, before the engine changes.
+Evidence:
+- The owner's 2026-10-31 assessment (decision 0188), 50-digit mpmath against Excel for the web.
+- The R3-marked points of the Gate A table: accuracy/NPER/s1 A121, A130, A133, A135, A142, A143, A151, A152, A153,
+  A156, A158 and A162, at rates 3.0E-16 to 7.6E-15 (excel-graph, T-3535, decision 0220).
 Status: MATH-OVER-EXCEL (decision 0188)
-Ours: today the engine matches Excel bit for bit; T-3367 moves it to the math in the region.
-Tasks: T-3367
+Ours: today the engine matches Excel bit for bit; T-3367 moves it to the math in the region. Until then the marked
+points are Gate A known failures owned by T-3367.
+Tasks: T-3367, T-3535
