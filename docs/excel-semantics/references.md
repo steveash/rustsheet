@@ -2735,8 +2735,7 @@ Ours (T-2958, T-3024): a formula typed into a table's data rows (`Model::set_typ
 one shared formula and the column is a calculated column (`Model::calculated_column`, calculated_columns.rs), by
 writing that shared formula, which is stored relative to its cell, so an A1 formula fills shifted. A column is a
 calculated column when its `TableColumn::calculated_column_formula` is set, which a typed formula that fills or
-re-fills it does (only whether it is set is read; its text, the first data row's formula in English, is an engine
-choice); a typed constant
+re-fills it does (only whether it is set is read; its text is the first data row's formula in file form, T-3033); a typed constant
 keeps it. So a column of identical stored formulas is not re-filled (rule 8a). It stays set until the column is
 removed: clearing or overwriting the column's cells does not clear it, an engine choice (what Excel does is unprobed). A blank cell beside formulas blocks the
 fill, as in Excel (rule 8e). The column formula is read from and written to xlsx (T-3033; Excel does not fill on load, T-2969),
