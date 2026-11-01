@@ -3,7 +3,7 @@ id: T-3443
 title: "BETA.DIST, F.DIST and T.DIST take bratio's basym at two large shapes, with BETA.INV still inverting to Excel's root"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
