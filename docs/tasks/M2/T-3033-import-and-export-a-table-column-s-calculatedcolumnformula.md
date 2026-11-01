@@ -3,7 +3,7 @@ id: T-3033
 title: "Import and export a table column's calculatedColumnFormula"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
@@ -42,7 +42,7 @@ Tests: `a_calculated_column_keeps_its_column_formula` (xlsx round trip, data row
 `the_column_formula_is_file_form_and_survives_an_exception` (engine). xlsx-storage.md and references.md updated; that
 Excel opens our exported column formula without repair is unprobed. Eval delta: none.
 
-## Handoff
+## Handoff (resumed)
 Tried: import keeps `<calculatedColumnFormula>`, a typed fill records it in file form, export writes the stored text
 (PR #2670, branch agent/engine/T-3033-calculated-column-formula, `make check` green on 6d363dd; security,
 architecture and quality approve). Excel-fidelity requested changes twice. Round 1 (fixed): export read the first data
