@@ -121,20 +121,25 @@ fn torow_lone_blank_cell_is_ignored() {
 fn tocol_torow_one_cell_error_reference_is_a_one_by_one_array() {
     let mut model = new_empty_model();
     model._set("G9", "=1/0");
-    model._set("C3", "7");
-    model._set("D3", "abc");
-    model._set("C4", "2");
-    model._set("D4", "1");
+    // Data!C3:D4 of the gen-m7 cases below.
+    model._set("C3", "abc");
+    model._set("D3", "7");
+    model._set("C4", "1");
+    model._set("D4", "2.5");
     // An invalid ignore is `#VALUE!` (gen-m7/20df23f84a528470 A8724).
     model._set("A1", "=TOROW(G9,7)");
     // Ignore 3 and 2 drop the error, so nothing is left (gen-m7/7cd94f345acd55bb A8480).
     model._set("A2", "=TOCOL(G9,3,0)");
     model._set("A3", "=TOROW(G9,2)");
-    // Ignore 0 and 1 keep it as the one element.
+    // Ignore 0 and 1 keep it as the one element (T-3506 Context; A7 below, b24463215bcb1ab9 A10067).
     model._set("A4", "=TOCOL(G9,1)");
     model._set("A5", "=TOROW(G9)");
-    // A range ignore lifts: 7 and "abc" are `#VALUE!`, 2 is `#CALC!`, 1 keeps the error.
+    // A range ignore lifts: "abc" and 7 are `#VALUE!`, 1 keeps the error, 2.5 (ignore 2) is
+    // `#CALC!` (`TOCOL(Data!G9,Data!C3:D4)`, gen-m7/b24463215bcb1ab9 A10066:B10067).
     model._set("A6", "=TOCOL(G9,C3:D4)");
+    // A range scan_by lifts too: "abc" is `#VALUE!`, each number `#CALC!`, as ignore 2 drops the
+    // error (`TOCOL(Data!G9,2,Data!C3:D4)`, gen-m7/7cd94f345acd55bb A9578:B9579).
+    model._set("A11", "=TOCOL(G9,2,C3:D4)");
     // A literal error is still the error (gen-m7/20df23f84a528470 A8907).
     model._set("A9", "=TOROW(#N/A,-1)");
     model.evaluate();
@@ -145,7 +150,11 @@ fn tocol_torow_one_cell_error_reference_is_a_one_by_one_array() {
     assert_eq!(model._get_text("A5"), "#DIV/0!");
     assert_eq!(model._get_text("A6"), "#VALUE!");
     assert_eq!(model._get_text("B6"), "#VALUE!");
-    assert_eq!(model._get_text("A7"), "#CALC!");
-    assert_eq!(model._get_text("B7"), "#DIV/0!");
+    assert_eq!(model._get_text("A7"), "#DIV/0!");
+    assert_eq!(model._get_text("B7"), "#CALC!");
+    assert_eq!(model._get_text("A11"), "#VALUE!");
+    assert_eq!(model._get_text("B11"), "#CALC!");
+    assert_eq!(model._get_text("A12"), "#CALC!");
+    assert_eq!(model._get_text("B12"), "#CALC!");
     assert_eq!(model._get_text("A9"), "#N/A");
 }

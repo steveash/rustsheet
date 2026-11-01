@@ -41,7 +41,7 @@ Decision 0083: every cell listed under Context is visibly off (a wrong error typ
 
 ## Acceptance criteria
 - [x] Every cell listed under Context matches Excel (`make eval-show` on each case), with unit tests for the TOCOL/TOROW ignore paths and the FILTER shape check over a one-cell error reference.
-- [x] Their lines leave eval/baseline/gen-m7.txt (`make eval-baseline`, 0 regressions); the visible-parity lock falls by the same count.
+- [x] Their lines leave eval/baseline/gen-m7.txt (`make eval-baseline`, 0 regressions); the steward lowers the visible-parity lock by the same count in its daily `make eval-lower-visible-lock` run.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -61,3 +61,7 @@ gen-m7 visibly off 109 -> 52 of 50,476 scored cells, allowance 50: M7's gen row 
 are T-3507's 25 and T-3508's 27; `scripts/exit_owners.py --milestone M7` finds 0 unowned. The visible-parity lock is
 lowered by the steward's daily run (`make eval-lower-visible-lock`), not in this PR (2744 visibly off against 2830
 allowed after this change).
+Review round 1: FILTER's shape-first return now keys on `wrap_one_cell_error_ref` reporting that it wrapped (no
+behaviour change: a `ReferenceKind` is one cell, so a multi-cell include never reached it; pinned by
+`filter_wrongly_shaped_range_include_with_an_error_is_the_error`). Follow-up: T-3667 (do other array functions read a
+one-cell error reference the same way).

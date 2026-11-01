@@ -508,6 +508,24 @@ fn filter_one_cell_error_reference_is_a_one_by_one_array() {
     assert_eq!(model._get_text("C6"), "#DIV/0!");
 }
 
+// T-3506 review: a wrongly shaped multi-cell include holding an error keeps its element error
+// first, as before (ours, unprobed); only a one-cell error reference is checked for shape first.
+#[test]
+fn filter_wrongly_shaped_range_include_with_an_error_is_the_error() {
+    let mut model = new_empty_model();
+    for row in 1..=3 {
+        model._set(&format!("A{row}"), &row.to_string());
+        model._set(&format!("B{row}"), &row.to_string());
+    }
+    model._set("C1", "=1/0");
+    model._set("C2", "TRUE");
+    model._set("D1", "=FILTER(A1:B3,C1:C2)");
+    model._set("D2", "=FILTER(A1:B3,(C1:C2))");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "#DIV/0!");
+    assert_eq!(model._get_text("D2"), "#DIV/0!");
+}
+
 #[test]
 fn filter_string_include_in_range_returns_value_error() {
     // A range whose cells contain strings is also invalid as an include mask.

@@ -5,7 +5,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::spill_functions::one_cell_error_ref_as_array,
+    functions::spill_functions::{one_cell_error_ref_as_array, wrap_one_cell_error_ref},
     model::Model,
 };
 
@@ -68,16 +68,17 @@ impl Model {
         let num_cols = data[0].len();
 
         let include = self.eval_to_array(&args[1], cell);
-        let include = match one_cell_error_ref_as_array(&args[1], include, cell) {
+        let (include, wrapped) = wrap_one_cell_error_ref(&args[1], include, cell);
+        let include = match include {
             Ok(d) => d,
             Err(e) => return e,
         };
         // A one-cell error reference as include is checked for its shape first:
         // `FILTER(Data!A1:D12,Data!G9,Data!G3)` is `#VALUE!` with G9 `#DIV/0!`
-        // (gen-m7/d7a127bd9334c2b4 A2380, T-3506). Other includes keep their element errors first
-        // (unprobed for a wrongly shaped multi-cell include).
+        // (gen-m7/d7a127bd9334c2b4 A2380, T-3506). Every other include keeps its element errors
+        // first, a wrongly shaped multi-cell one too (ours, unprobed).
         let axis = include_axis(&include, num_rows, num_cols);
-        if axis.is_none() && matches!(*args[1].ungrouped_at(cell.row), Node::ReferenceKind { .. }) {
+        if wrapped && axis.is_none() {
             return include_shape_error(cell);
         }
 
