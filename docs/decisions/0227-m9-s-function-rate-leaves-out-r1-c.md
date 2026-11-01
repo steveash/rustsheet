@@ -35,8 +35,9 @@
   - No user-representative cell stops counting: Gate B, the `function rate` line of `make phase1-exit`, is
     untouched. Within 1e-9 can still show in a 10th or 11th displayed digit, so Gate B is what keeps that gap
     out of users' files. On the 2026-11-01 report all 32,473 Phase 1b cells were in probes (233) and
-    probes-numeric (32,240), and none was in a Gate B suite. What leaves is the every-suite share's count of cells that already sit within 1e-9 of the true
-    value on both sides. They stay known failures, stay in `visible`, and are worked in Phase 1b.
+    probes-numeric (32,240), and none was in a Gate B suite. What leaves is the every-suite share's count of
+    cells that already sit within 1e-9 of the true value on both sides. They stay known failures, stay in
+    `visible`, and are worked in Phase 1b.
   - On the 2026-11-01 report this lifts T.DIST to the rate (571 of its 572 counted off cells are Phase 1b) and
     takes 31,814 Phase 1b cells out of F.DIST's count. It leaves 65 M9 functions below the rate: their off cells
     are outside Gate A's envelope or have no math value yet. A function gains Phase 1b cells only with a Gate A
