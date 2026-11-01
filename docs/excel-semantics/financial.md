@@ -1158,6 +1158,26 @@ Evidence (excel-graph, 2026-10-31, T-3348):
     - Step forms tried, none of which gives any of the 7: plain doubles, rounded once, kept at 64 bits, r1 -
       f1·((r1-r0)/(f1-f0)), and r1 - f1/((f1-f0)/(r1-r0)).
     The 4 stay known failures. T-3579 probes Excel's residual bits directly (guess-seeded runs at nper 1).
+  - **The residual is not the cause at nper 1; the flat-secant outcome is** (probes/t3579-rate-residual-nper1, 53
+    cells on A171's arguments, excel-graph, 2026-11-01, T-3579). The model is bit-exact on 49:
+    - every guess other than 0.1 (16 near the root, root ± 1e-14 to 1e-9, and 17 from -0.9 to 1, A3:A35), whose
+      values read Excel's residual at the guess, at the guess ± 0.001 and near the root, so Excel's residual there
+      has the model's bits, f(0.1)'s partner points 0.099 (A29) and 0.101 (A30) included;
+    - pv, pmt and fv scaled by 2^-40 to 2^-1 (A36:A40) and the two #NUM! runs at 2^10 and 2^20 (A43, A44).
+    The model's run at guess 0.1 reaches r2 = 0.0020941704345913 with f(r2) = -1.674e-7, steps to
+    0.0020941704345254896 with the same residual, and holds there on the flat secant. Scaled by 2^-1 or less,
+    |f| < 1e-7 stops the run at that iterate before the flat secant, and Excel agrees. At scales 1, 2 and 4 (A1, A2,
+    A41, A42) Excel does not hold. Its value at scales 1 and 2 (0.002094170434484841) is, bit for bit, the model's run
+    restarted from the flat step's older iterate r2 (`RATE(..,0.0020941704345913)`, A6). At scale 4 it is
+    0.0020941704344770674, which the same restart also gives once its third iterate fails |f| < 1e-7. Restarting
+    from the newer iterate gives 0.0020941704344399933 instead (A5).
+    - As a blanket rule ("on a flat secant that has not converged, restart the secant from r0 with r0 ∓ 0.001"),
+      the restart is wrong. In a scratch build it gets A1, A2, A41 and A42 and t3348-rate-fv-nonzero A171, but
+      loses this probe's A43 and A46 (scale 2^10) and 32 held cells of t3348-rate-fv-nonzero (A15 to A26, A74 to
+      A184 among them, including the distinct-iterate holds A182 to A184). It also loses 17 cells of
+      probes-numeric/t3348-rate-gate-a-fresh, 10 of t3348-rate-gate-a-sweep and 4 of t3478-rate-r4-wide.
+    - So Excel sometimes restarts and sometimes holds. What separates the two is open (T-3698). A1, A2, A41 and
+      A42 are known failures owned by T-3698.
   - Right type, last digits, on the training sweep (gap triage 2026-11-01c; T-3607): probes-numeric/
     t3348-rate-gate-a-sweep A228, A269, A271, A273 and A285 (terms 1e9 to 2e11) are 1 to 3 ulp from Excel. Excel
     is not the correctly rounded root there either: A228 `RATE(102,2166497722.99291,-207421358353.562,
