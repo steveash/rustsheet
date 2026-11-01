@@ -63,11 +63,72 @@ fn formulas_at_the_nesting_limit_evaluate_on_a_2_mib_stack() {
         let text = evaluate_deepest_on_2_mib_stack(open, close);
         assert_eq!(text.as_deref(), Some("1"), "{open}");
     }
-    // A sign costs no level (T-3193), so `-(` nests as deep as `(`, and an odd count negates.
+    // A sign costs no level (T-3193), and a group holding only a signed group none (T-3338),
+    // so `-(` nests past the depth bound, to the parenthesis cap (below).
     let (accepted, text) = deepest_on_2_mib_stack("-(", ")").unwrap_or_default();
     assert_eq!(accepted, MAX_OPERANDS);
     let negated = if accepted % 2 == 1 { "-1" } else { "1" };
     assert_eq!(text, negated);
+}
+
+/// T-3338: `-(` nests to Excel's 256-parenthesis cap (probes/t3266-nested-paren-256), and so do
+/// its spaced and plus forms, and 200 levels around Excel's 824 more minus signs
+/// (probes/t3266-nested-200-824): each parses, evaluates, prints as written, and survives a row
+/// insert and a sheet rename (directive 5). The bare forms take a 2 MiB stack even unoptimized.
+/// The others hold more nodes per level, a [`Node::Spaced`] around every sign and group or a
+/// long run of signs, as many as the sign cap's own tests build (`MAX_SIGNS`), and the walks that
+/// recurse per node (cloning the tree when it is stored) take what those take: 1 MiB optimized,
+/// 16 MiB unoptimized (`on_small_stack` in `expressions/parser/tests/test_nesting_depth.rs`).
+///
+/// [`Node::Spaced`]: crate::expressions::parser::Node::Spaced
+#[test]
+fn signed_parentheses_at_the_parenthesis_cap_evaluate_on_a_small_stack() {
+    let limit = MAX_PARENTHESES;
+    let small = if cfg!(debug_assertions) {
+        16 << 20
+    } else {
+        1 << 20
+    };
+    let minuses = "-".repeat(824);
+    for (open, inner, close, levels, value, stack) in [
+        ("-(", "B1", ")", limit, "2", 2 << 20),
+        ("-(", "B1", ")", limit - 1, "-2", 2 << 20),
+        ("+(", "B1", ")", limit, "2", 2 << 20),
+        ("- ( ", "B1", " ) ", limit, "2", small),
+        ("-(", "1", ")", 200, "1", small),
+        ("-(", "-B1%", ")", limit, "-0.02", small),
+    ] {
+        let inner = if levels == 200 {
+            format!("{minuses}{inner}")
+        } else {
+            inner.to_string()
+        };
+        let handle = std::thread::Builder::new()
+            .stack_size(stack)
+            .spawn(move || {
+                let mut model = new_empty_model();
+                let formula = nested(open, &inner, close, levels);
+                model.set_user_input(0, 1, 2, "2".to_string()).ok()?;
+                model.set_user_input(0, 1, 1, formula.clone()).ok()?;
+                model.evaluate();
+                let before = (model._get_formula("A1"), model._get_text("A1"));
+                model.insert_rows(0, 1, 1).ok()?;
+                model.rename_sheet("Sheet1", "Renamed").ok()?;
+                model.evaluate();
+                let moved = nested(open, &inner.replace("B1", "B2"), close, levels);
+                let after = (model._get_formula("A2"), model._get_text("A2"));
+                Some((formula, before, moved, after))
+            });
+        let result = handle.ok().and_then(|h| h.join().ok()).flatten();
+        let (formula, (text, before), moved, (after, value_after)) = result.unwrap_or_default();
+        assert_eq!(text, formula.trim_end(), "{open} {levels}");
+        assert_eq!(before, value, "{open} {levels}");
+        assert_eq!(after, moved.trim_end(), "{open} {levels}");
+        assert_eq!(value_after, value, "{open} {levels}");
+    }
+    let mut model = new_empty_model();
+    let past = nested("-(", "1", ")", limit + 1);
+    assert!(model.set_user_input(0, 1, 1, past).is_err());
 }
 
 /// SPEC-0023: whitespace costs no nesting level, so a shape typed with spaces at every level, a

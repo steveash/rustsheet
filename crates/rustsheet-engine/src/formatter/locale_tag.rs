@@ -6,6 +6,7 @@
 use chrono::NaiveDate;
 
 use super::dates::convert_to_serial_number;
+use super::numerals::Numerals;
 use crate::locale::calendar_date_names::{
     HEBREW_LATIN, HEBREW_LATIN_ADARS, HEBREW_SCRIPT, HEBREW_SCRIPT_ADARS, SAKA, SAKA_HINDI,
 };
@@ -153,7 +154,7 @@ pub fn resolve_after_hijri_prefix(tag: &str) -> LocaleTag {
                     | Calendar::Taiwan
                     | Calendar::Thai
             ),
-            names_after_mmm: match hex_value(tag).map(|value| value >> 16) {
+            names_after_mmm: match hex_value(tag).map(calendar_digit) {
                 Some(1) => Some(ARABIC),
                 Some(3 | 5) => Some(EN_US),
                 _ => None,
@@ -194,6 +195,18 @@ fn resolve_with(tag: &str, hijri_prefix: bool) -> LocaleTag {
     }
 }
 
+/// The numeral system of the text between `[$-` and `]`: byte 24-31 of the value of a hex tag, or
+/// of an extended-hex one ([`extended_hex`]) that is no BCP-47 tag (`[$-fr_FR-x]` is 0x10E00AF1,
+/// Myanmar digits; probes/t1924-locale-tag-extended-hex A26). It holds whatever the LCID resolves
+/// to (`[$-fr_FR-x]` keeps the workbook's names and `A/P` as written).
+pub fn numerals(tag: &str) -> Numerals {
+    let value = hex_value(tag).or_else(|| match resolve_bcp47(tag, false) {
+        LocaleTag::Silent => extended_hex(tag),
+        _ => None,
+    });
+    value.map_or(Numerals::Ascii, |value| Numerals::from_byte(value >> 24))
+}
+
 /// `tag` read as a hex LCID with its calendar digits, if it is one.
 fn hex_value(tag: &str) -> Option<u32> {
     u32::from_str_radix(tag, 16)
@@ -224,10 +237,19 @@ fn extended_hex(tag: &str) -> Option<u32> {
     }))
 }
 
+/// The calendar digits of a tag value (bits 16-23), without its numeral byte.
+fn calendar_digit(value: u32) -> u32 {
+    (value >> 16) & 0xFF
+}
+
 /// `value` with calendar digit 0 read as 6 (Hijri) after a `B2` prefix; the system tags keep
 /// theirs.
 fn hijri_default(value: u32, hijri_prefix: bool) -> u32 {
-    if hijri_prefix && value >> 16 == 0 && value != SYSTEM_DATE_LCID && value != SYSTEM_TIME_LCID {
+    if hijri_prefix
+        && calendar_digit(value) == 0
+        && value != SYSTEM_DATE_LCID
+        && value != SYSTEM_TIME_LCID
+    {
         value | 0x6_0000
     } else {
         value
@@ -243,16 +265,15 @@ fn hijri_default(value: u32, hijri_prefix: bool) -> u32 {
 /// 13 with en-US names. A is Gregorian with Levant Arabic month names, B and C Gregorian with
 /// the ar-SA names, 14 Gregorian with the Korean native month names (probes/t1923-calendar-digits).
 /// 6 is Hijri, with the LCID's Hijri names ([`hijri_names`]), 8 Hebrew and 10 Saka
-/// ([`hebrew_or_saka`]). Day halves follow the LCID throughout. Numeral-system digits (bits 24-31;
-/// TODO(T-3532)) stay [`LocaleTag::Silent`].
+/// ([`hebrew_or_saka`]). Day halves follow the LCID throughout. The numeral byte (bits 24-31) is
+/// [`numerals`]'s and leaves the names and calendar as they are (`[$-1000411]e|mmmm` is "5|3月";
+/// probes/t1925-numeral-digits B2).
 fn resolve_lcid(value: u32) -> LocaleTag {
+    let value = value & 0xFF_FFFF;
     match value {
         SYSTEM_DATE_LCID => return LocaleTag::SystemDate,
         SYSTEM_TIME_LCID => return LocaleTag::SystemTime,
         _ => {}
-    }
-    if value >> 24 != 0 {
-        return LocaleTag::Silent;
     }
     let lcid = (value & 0xFFFF) as u16;
     // LCID 1 has no locale under Hebrew and Saka, though 0xC, 0xD and 0x39 have theirs
@@ -347,8 +368,9 @@ fn hijri_names(lcid: u16) -> &'static DateNames {
 /// `[$-0_]` 0x2F Macedonian). `[$-x_y]` is 0x2412 and prints English, not Korean
 /// (text-locale-calendars A139), so an LCID with a sublanguage and no table has no locale here.
 fn resolve_extended(value: u32) -> LocaleTag {
+    let value = value & 0xFF_FFFF;
     let lcid = (value & 0xFFFF) as u16;
-    if value >> 24 == 0 && lcid > 0x3FF && lcid != 0x400 && lcid != 0x800 && table(lcid).is_none() {
+    if lcid > 0x3FF && lcid != 0x400 && lcid != 0x800 && table(lcid).is_none() {
         return without_locale(value >> 16);
     }
     resolve_lcid(value)

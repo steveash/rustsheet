@@ -415,8 +415,8 @@ fn exceeds_complexity_limit(format: &str) -> bool {
                 (Run::Literal, DOLLAR_COST)
             }
             // An escaped colon does not join a colon run: it prints (`0\:\:` is "1::").
-            Token::Locale(_) if currency_locale => continue,
-            Token::Locale(_) => (Run::None, LOCALE_COST),
+            Token::Locale(..) if currency_locale => continue,
+            Token::Locale(..) => (Run::None, LOCALE_COST),
             Token::Currency(_) | Token::Text(_) if currency_tag => {
                 let symbol = match &token {
                     Token::Text(text) => text.chars().count(),
@@ -452,7 +452,7 @@ fn exceeds_complexity_limit(format: &str) -> bool {
             if after_locale && !quoted && matches!(next_run, Run::Literal | Run::Colon) {
                 cost += AFTER_LOCALE_UNQUOTED_COST;
             }
-            after_locale = matches!(token, Token::Locale(_));
+            after_locale = matches!(token, Token::Locale(..));
             // `@` sets the `$` section cost like a date token (`"@"` + 246 `$` on text works and 247
             // fails; probes/t2842-dollar-run-contexts H, T-2842).
             section.has_date_time |= is_date_time_letter(&token) || token == Token::Raw;

@@ -402,6 +402,16 @@ impl Model {
         }
     }
 
+    /// Typed `-$3 1/2%` is text, not a formula (see `mixed_fraction`).
+    fn is_typed_negative_currency_percent_fraction(&self, value: &str) -> bool {
+        let symbol = &self.locale.currency.symbol;
+        let currencies = ["$", symbol.as_str()];
+        crate::mixed_fraction::is_negative_currency_percent_fraction(
+            value.trim_matches(' '),
+            &currencies,
+        )
+    }
+
     pub(crate) fn formula_without_prefix<'b>(&self, value: &'b str) -> Option<&'b str> {
         if let Some(stripped) = value.strip_prefix('=') {
             if stripped.is_empty() {
@@ -410,6 +420,9 @@ impl Model {
                 Some(stripped)
             }
         } else if let Some(stripped) = value.strip_prefix(['+', '-']) {
+            if self.is_typed_negative_currency_percent_fraction(value) {
+                return None;
+            }
             // Read with no clock, so "-4-2" stays a formula although "4-2" is a date now.
             (!stripped.is_empty() && self.cast_number_in(stripped, &|| None).is_none())
                 .then_some(value)
