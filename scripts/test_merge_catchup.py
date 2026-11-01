@@ -21,10 +21,10 @@ def run(*args: str, cwd: Path) -> str:
     return subprocess.run(args, cwd=cwd, check=True, capture_output=True, text=True).stdout.strip()
 
 
-class CatchUp(unittest.TestCase):
-    """An origin whose `main` and PR branch `agent/x` both edit files after a common commit."""
+class TempOrigin(unittest.TestCase):
+    """A bare origin with a clone on a fresh `main` (shared with test_merge_renumber.py)."""
 
-    def setUp(self) -> None:
+    def make_origin(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         base = Path(self.tmp.name)
@@ -34,15 +34,6 @@ class CatchUp(unittest.TestCase):
         for key, value in (("user.name", "t"), ("user.email", "t@invalid")):
             self.git("config", key, value)
         self.git("checkout", "-q", "-b", "main")
-        self.write(BASELINE, "F\tprobes/a\tA1\n")
-        self.write("eval/baseline/poi.txt", "F\tpoi/a\tA1\n")
-        self.write("eval/suites/probes/suite.toml", 'name = "probes"\ngate = true\n')
-        self.write("eval/suites/poi/suite.toml", 'name = "poi"\ngate = true\n[fetch]\nurl = "x"\n')
-        self.write("code.txt", "one\n")
-        self.base = self.commit("base")
-        self.git("push", "-q", "origin", "main")
-        self.recorded: list[Path] = []
-        self.listed: list[str] = []
 
     def git(self, *args: str) -> str:
         return run("git", *args, cwd=self.clone)
@@ -55,6 +46,22 @@ class CatchUp(unittest.TestCase):
         self.git("add", "-A")
         self.git("commit", "-q", "-m", message)
         return self.git("rev-parse", "HEAD")
+
+
+class CatchUp(TempOrigin):
+    """An origin whose `main` and PR branch `agent/x` both edit files after a common commit."""
+
+    def setUp(self) -> None:
+        self.make_origin()
+        self.write(BASELINE, "F\tprobes/a\tA1\n")
+        self.write("eval/baseline/poi.txt", "F\tpoi/a\tA1\n")
+        self.write("eval/suites/probes/suite.toml", 'name = "probes"\ngate = true\n')
+        self.write("eval/suites/poi/suite.toml", 'name = "poi"\ngate = true\n[fetch]\nurl = "x"\n')
+        self.write("code.txt", "one\n")
+        self.base = self.commit("base")
+        self.git("push", "-q", "origin", "main")
+        self.recorded: list[Path] = []
+        self.listed: list[str] = []
 
     def branch(self, files: dict[str, str]) -> str:
         self.git("checkout", "-q", "-B", "agent/x", self.base)
@@ -208,11 +215,24 @@ class CatchUp(unittest.TestCase):
         with self.assertRaisesRegex(Refused, "local changes"):
             merge_catchup.catch_up(self.clone, "agent/x", self.record(0))
 
-    def test_checked_only(self) -> None:
+    def test_outside_lists(self) -> None:
         lists = {"eval/baseline/a.txt", "eval/baseline/b.txt"}
-        self.assertTrue(merge_catchup.checked_only(["eval/baseline/a.txt", "eval/baseline/b.txt"], lists))
-        self.assertFalse(merge_catchup.checked_only(["eval/baseline/a.txt", "eval/baseline/c.txt"], lists))
-        self.assertFalse(merge_catchup.checked_only([], lists))
+        self.assertEqual(merge_catchup.outside_lists(["eval/baseline/a.txt", "eval/baseline/b.txt"], lists), [])
+        self.assertEqual(
+            merge_catchup.outside_lists(["eval/baseline/a.txt", "eval/baseline/c.txt"], lists), ["eval/baseline/c.txt"]
+        )
+        self.assertEqual(merge_catchup.outside_lists([], lists), [])
+
+    def test_conflicts_outside_is_the_shared_pre_merge_check(self) -> None:
+        # Decision 0224: make renumber and the janitor ask this before merging; catch-up agrees.
+        repo = merge_ready.Repo(self.clone)
+        before = self.branch({"code.txt": "pr\n", BASELINE: "F\tprobes/pr\tP1\n"})
+        self.move_main({"code.txt": "main\n", BASELINE: "F\tprobes/main\tM1\n"})
+        repo.fetch_base()
+        main = f"refs/merge-ready/{merge_ready.BASE_BRANCH}"
+        self.assertEqual(merge_catchup.conflicts_outside(repo, before, main), ["code.txt"])
+        lists_only = self.branch({BASELINE: "F\tprobes/pr\tP1\n"})
+        self.assertEqual(merge_catchup.conflicts_outside(repo, lists_only, main), [])
 
 
 if __name__ == "__main__":
