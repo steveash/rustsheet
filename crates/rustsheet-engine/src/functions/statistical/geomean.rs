@@ -1,13 +1,12 @@
 use crate::expressions::types::CellReferenceIndex;
-use crate::number_format::to_excel_precision;
+use crate::x87_exp::power_of_two;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
 impl Model {
-    /// GEOMEAN. In range, the root `exp(ln(P)/n)` snaps to its 15-digit value when that value,
-    /// multiplied n times, gives P back (numbers.md "GEOMEAN in-range root").
-    /// FITTED(T-1123, 170 cells, GEOMEAN of 1..1100 values with a normal product)
+    /// GEOMEAN. In range, P = m·2^E is rooted as `exp(ln(m·2^r)/n)·2^q` with E = q·n + r and q
+    /// truncated toward zero (numbers.md "GEOMEAN in-range root").
     pub(crate) fn fn_geomean(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
@@ -51,26 +50,23 @@ impl Model {
         // Excel gives exactly 9E+307 for two 9E+307 values (numbers.md, "Aggregate overflow"), which
         // a log-sum evaluation misses by ulps. When the plain product leaves the double range, take
         // the n-th root of a product kept in range by moving powers of two into a separate
-        // exponent. In range the root is `exp(ln(product) / n)`, and one value is returned as is:
-        // that matches 67 of 72 many-value sets (probes/geomean-in-range-many) and all of
-        // ironcalc-calc GEOMEAN, where a log-sum `exp(mean(ln v))` misses `GEOMEAN("47")` and 1101
-        // x 1.5 (probes/geomean-overflow-count H1) and `powf` rounds sqrt(3) down (C23). An
-        // exact root is returned exactly: GEOMEAN(3,3), GEOMEAN(1,9) and 50 copies of 7 are 3, 3 and
-        // 7, where `exp(ln/n)` is one ulp off, so a root whose 15-digit value, raised to the n-th
-        // power by the same left-to-right product, gives the product back is that value
-        // (numbers.md, "GEOMEAN in-range root"; probes/geomean-single-and-copies,
-        // probes/geomean-root-refinement; T-1123).
+        // exponent. In range, one value is returned as is, and the product P = m·2^E (m in [1, 2))
+        // keeps its power of two apart too: with E = q·n + r, q truncated toward zero, the root is
+        // `exp(ln(m·2^r)/n)·2^q`. Where |E| < n that is `exp(ln(P)/n)`; past it the whole part of
+        // E/n leaves the logarithm, whose rounding error `exp(ln(P)/n)` carries into the root (up
+        // to 194 ulps at P near 1E+300). It matches 169 of the 180 cells of the fresh log-uniform
+        // sweep probes-numeric/t3502-geomean-fresh and 167 of 176 in-range T-1113/T-1123 probe
+        // cells, where the 15-digit snap of `exp(ln(P)/n)` it replaces (T-1123) matches 58 and 141
+        // (numbers.md, "GEOMEAN in-range root"; T-3502). A log-sum `exp(mean(ln v))` misses
+        // `GEOMEAN("47")` and 1101 x 1.5 (probes/geomean-overflow-count H1) and `powf` rounds
+        // sqrt(3) down (ironcalc-calc GEOMEAN C23).
         let n = values.len() as f64;
         let plain: f64 = values.iter().product();
         if plain.is_normal() {
             if values.len() == 1 {
                 return CalcResult::Number(plain);
             }
-            let root = (plain.ln() / n).exp();
-            let short = to_excel_precision(root, 15);
-            // `short^n` as n left-to-right multiplications, the way `plain` was formed.
-            let exact = short != root && values.iter().fold(1.0, |p, _| p * short) == plain;
-            return CalcResult::Number(if exact { short } else { root });
+            return CalcResult::Number(split_root(plain, values.len()));
         }
         // Keep the product as a significand in [1, 2) and a separate power of two: every factor and
         // every partial product is split, so no step can overflow or underflow whatever the
@@ -111,6 +107,17 @@ impl Model {
             CalcResult::new_error(Error::NUM, cell, "GEOMEAN overflow".to_string())
         }
     }
+}
+
+/// The n-th root (n >= 2) of a positive normal `p` = m·2^E, m in [1, 2), as Excel's in-range
+/// GEOMEAN takes it: E = q·n + r with q truncated toward zero, `exp(ln(m·2^r)/n)·2^q` (T-3502).
+fn split_root(p: f64, n: usize) -> f64 {
+    let (m, e) = split_pow2(p);
+    // A normal p has -1022 <= E <= 1023, so |r| <= |E| keeps m·2^r normal and q fits 2^q.
+    let count = i32::try_from(n).unwrap_or(i32::MAX);
+    let (q, r) = (e / count, e % count);
+    let reduced = m * power_of_two(r);
+    ((reduced.ln() / n as f64).exp()) * power_of_two(q)
 }
 
 /// Span of the 11-bit double exponent field: Excel's power-of-two sum gains one of these per wrap.
