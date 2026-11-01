@@ -420,7 +420,8 @@ same set of matched records).
 - Field: text matches a header ignoring case but not with padding; numeric text (`"2"`, `"1"`), `""`, 0, -1, 0.5, FALSE,
   a blank cell, a position past the columns and a two-cell range are `#VALUE!`; 2.7 truncates to 2; TRUE is column 1
   (DCOUNTA 5, DCOUNT 0); an omitted field is `#VALUE!` except in DCOUNT and DCOUNTA, which count matched records.
-- Database: the header row alone is `#VALUE!`; blank rows at the end are not records.
+- Database: the header row alone is `#VALUE!`; two trailing blank rows (A1:C8 over the A1:C6 data, row 73) change no
+  result of the twelve (the probe cannot tell whether they are records; see "Database edge-pool smoke check (T-2249)").
 - Error order: an error field is the result (`#N/A`) even with a header-only database, header-only criteria or an
   error criterion. Every other front-end failure (an unresolvable field, a one-row criteria range, a header-only
   database) is `#VALUE!`, alone or combined (also with an error criteria header or no matching record), so their
