@@ -1,0 +1,443 @@
+{
+ "format": "rustsheet-math/v1",
+ "source": {
+  "generator": "rustsheet-accuracy",
+  "version": "1",
+  "dps": 80,
+  "input_sha256": "2c24bc634bf9e99755a845b9dda0f4c44c0dca9cfb5cbd14275282c4d4b23151"
+ },
+ "sheets": {
+  "Calc": {
+   "B1": {
+    "t": "n",
+    "v": "-2.0000000000000001539095918623324035418535952379933",
+    "f": "=POWER(-8,(1/3+1*2^-54))"
+   },
+   "B10": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/3-16*2^-54))"
+   },
+   "B101": {
+    "t": "n",
+    "v": "-0.50000000000000001923869898279155007260416085428454",
+    "f": "=POWER(-8,(-1/3))"
+   },
+   "B11": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/3+20*2^-54))"
+   },
+   "B12": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/3-20*2^-54))"
+   },
+   "B13": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/3+21*2^-54))"
+   },
+   "B14": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/3-21*2^-54))"
+   },
+   "B15": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/3+22*2^-54))"
+   },
+   "B16": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/3-22*2^-54))"
+   },
+   "B17": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/3+24*2^-54))"
+   },
+   "B18": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/3-24*2^-54))"
+   },
+   "B19": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/3+32*2^-54))"
+   },
+   "B2": {
+    "t": "n",
+    "v": "-1.999999999999999692180816275335228448536510368615",
+    "f": "=POWER(-8,(1/3-1*2^-54))"
+   },
+   "B20": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/3-32*2^-54))"
+   },
+   "B21": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/3+64*2^-54))"
+   },
+   "B22": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/3-64*2^-54))"
+   },
+   "B23": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/3+128*2^-54))"
+   },
+   "B24": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/3-128*2^-54))"
+   },
+   "B25": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/3+256*2^-54))"
+   },
+   "B26": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/3-256*2^-54))"
+   },
+   "B27": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/3+1024*2^-54))"
+   },
+   "B28": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/3-1024*2^-54))"
+   },
+   "B29": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/3+16384*2^-54))"
+   },
+   "B3": {
+    "t": "n",
+    "v": "-2.0000000000000003847739796558310310622863011228618",
+    "f": "=POWER(-8,(1/3+2*2^-54))"
+   },
+   "B30": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/3-16384*2^-54))"
+   },
+   "B31": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/3+1048576*2^-54))"
+   },
+   "B32": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/3-1048576*2^-54))"
+   },
+   "B33": {
+    "t": "n",
+    "v": "-1.9999999999999985378588773078427570759423717804512",
+    "f": "=POWER(-8,0.333333333333333)"
+   },
+   "B34": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,0.33333333333333)"
+   },
+   "B35": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,0.3333333333333)"
+   },
+   "B36": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,0.333333333333)"
+   },
+   "B37": {
+    "t": "n",
+    "v": "-1.515716566510398204821001819866812868198265262086",
+    "f": "=POWER(-8,(1/5+1*2^-55))"
+   },
+   "B38": {
+    "t": "n",
+    "v": "-0.49999999999999996152260203441690207555690959421855",
+    "f": "=POWER(-8,(-1/3-1*2^-54))"
+   },
+   "B39": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/5+8*2^-55))"
+   },
+   "B4": {
+    "t": "n",
+    "v": "-1.999999999999999461316428481836680875652131384099",
+    "f": "=POWER(-8,(1/3-2*2^-54))"
+   },
+   "B40": {
+    "t": "n",
+    "v": "-0.49999999999999955750992339579455264050558020786226",
+    "f": "=POWER(-8,(-1/3-8*2^-54))"
+   },
+   "B41": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/5+32*2^-55))"
+   },
+   "B42": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(-1/3-32*2^-54))"
+   },
+   "B43": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/5+64*2^-55))"
+   },
+   "B44": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(-1/3-64*2^-54))"
+   },
+   "B45": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/5+256*2^-55))"
+   },
+   "B46": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(-1/3-256*2^-54))"
+   },
+   "B47": {
+    "t": "n",
+    "v": "-1.0208019359564402090135158617717609055009477920262",
+    "f": "=POWER(-8,(1/101))"
+   },
+   "B48": {
+    "t": "n",
+    "v": "-1.0020795233933656788775600904179516780292144907926",
+    "f": "=POWER(-8,(1/1001))"
+   },
+   "B49": {
+    "t": "n",
+    "v": "-1.0000019831100658891820133648105160622339221408225",
+    "f": "=POWER(-8,(1/(2^20+1)))"
+   },
+   "B5": {
+    "t": "n",
+    "v": "-2.0000000000000008465027552428283660507000397929728",
+    "f": "=POWER(-8,(1/3+4*2^-54))"
+   },
+   "B50": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/(2^31-1)))"
+   },
+   "B51": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/(2^31+1)))"
+   },
+   "B52": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/(2^40+1)))"
+   },
+   "B53": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/(2^52+1)))"
+   },
+   "B54": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/101*(1+2^-40)))"
+   },
+   "B55": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/101*(1+2^-30)))"
+   },
+   "B56": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/(2^20+1)*(1+2^-40)))"
+   },
+   "B57": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/(2^20+1)*(1+2^-30)))"
+   },
+   "B58": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/(2^31+1)*(1+2^-40)))"
+   },
+   "B59": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/(2^31+1)*(1+2^-30)))"
+   },
+   "B6": {
+    "t": "n",
+    "v": "-1.9999999999999989995876528948396656774317003153981",
+    "f": "=POWER(-8,(1/3-4*2^-54))"
+   },
+   "B60": {
+    "t": "e",
+    "why": "the power overflows",
+    "f": "=POWER(10,309)"
+   },
+   "B61": {
+    "t": "e",
+    "why": "the power overflows",
+    "f": "=POWER(-10,309)"
+   },
+   "B62": {
+    "t": "e",
+    "why": "the power overflows",
+    "f": "=POWER(1E300,1.5)"
+   },
+   "B63": {
+    "t": "e",
+    "why": "the power overflows",
+    "f": "=POWER(-1E300,3)"
+   },
+   "B64": {
+    "t": "e",
+    "why": "the power overflows",
+    "f": "=POWER(2,1024)"
+   },
+   "B65": {
+    "t": "e",
+    "why": "the power overflows",
+    "f": "=POWER(-2,1025)"
+   },
+   "B66": {
+    "t": "e",
+    "why": "the positive power underflows, so 1 over it is #DIV/0!",
+    "f": "=POWER(1E-300,-1.5)"
+   },
+   "B67": {
+    "t": "n",
+    "v": "1.0e-309",
+    "f": "=POWER(10,-309)"
+   },
+   "B68": {
+    "t": "n",
+    "v": "-1.0e-309",
+    "f": "=POWER(-10,-309)"
+   },
+   "B69": {
+    "t": "e",
+    "why": "the positive power underflows, so 1 over it is #DIV/0!",
+    "f": "=POWER(1E-300,-2)"
+   },
+   "B7": {
+    "t": "n",
+    "v": "-2.0000000000000017699603064168233558177208247347772",
+    "f": "=POWER(-8,(1/3+8*2^-54))"
+   },
+   "B70": {
+    "t": "e",
+    "why": "the positive power underflows, so 1 over it is #DIV/0!",
+    "f": "=POWER(-1E-300,-3)"
+   },
+   "B71": {
+    "t": "e",
+    "why": "the power overflows",
+    "f": "=POWER(1E200,1.6)"
+   },
+   "B72": {
+    "t": "n",
+    "v": "-9.9999999999998723558665474858255008366709834953219e+99",
+    "f": "=POWER(-1E300,(1/3))"
+   },
+   "B73": {
+    "t": "n",
+    "v": "-9.9999999999998720973203738511182245812465338492996e+99",
+    "f": "=POWER(-1E-300,(-1/3))"
+   },
+   "B74": {
+    "t": "n",
+    "v": "-1.0000000000000127644133452515803801643813362117077e-100",
+    "f": "=POWER(-1E300,(-1/3))"
+   },
+   "B75": {
+    "t": "e",
+    "why": "0 to a negative power is #DIV/0!",
+    "f": "=POWER(0,-1)"
+   },
+   "B76": {
+    "t": "e",
+    "why": "0 to a negative power is #DIV/0!",
+    "f": "=POWER(0,-0.5)"
+   },
+   "B77": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=POWER(0,0.5)"
+   },
+   "B78": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,0.5)"
+   },
+   "B79": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,-1.5)"
+   },
+   "B8": {
+    "t": "n",
+    "v": "-1.9999999999999980761301017208459550711841457792339",
+    "f": "=POWER(-8,(1/3-8*2^-54))"
+   },
+   "B80": {
+    "t": "e",
+    "why": "a negative base with an exponent of magnitude 2^32 - 1 or more",
+    "f": "=POWER(-1,(2^32-1))"
+   },
+   "B81": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=POWER(-1,(2^32-2))"
+   },
+   "B82": {
+    "t": "e",
+    "why": "a negative base with an exponent of magnitude 2^32 - 1 or more",
+    "f": "=POWER(-1,(-(2^32-1)))"
+   },
+   "B83": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=POWER(1,9E307)"
+   },
+   "B84": {
+    "t": "e",
+    "why": "a negative base with an exponent of magnitude 2^32 - 1 or more",
+    "f": "=POWER(-1,9E307)"
+   },
+   "B9": {
+    "t": "e",
+    "why": "a negative base with a non-integer exponent that is not an odd root",
+    "f": "=POWER(-8,(1/3+16*2^-54))"
+   },
+   "B99": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=POWER(-0,0.5)"
+   }
+  }
+ }
+}

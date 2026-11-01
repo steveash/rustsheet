@@ -1,0 +1,18 @@
+{
+ "format": "rustsheet-math/v1",
+ "source": {
+  "generator": "rustsheet-accuracy",
+  "version": "1",
+  "dps": 80,
+  "input_sha256": "ac09a22660cec529ee66180da74b5c262a11a10f9eb761e4ae9740a1b5aa0a90"
+ },
+ "sheets": {
+  "Calc": {
+   "A9": {
+    "t": "n",
+    "v": "-1.0e-401",
+    "f": "=POWER(-10,-401)"
+   }
+  }
+ }
+}

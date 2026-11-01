@@ -1,0 +1,83 @@
+{
+ "format": "rustsheet-math/v1",
+ "source": {
+  "generator": "rustsheet-accuracy",
+  "version": "1",
+  "dps": 80,
+  "input_sha256": "cf40942ba956b7935582de32fbed01ebaa0e11d91d2cf5745c27e06c78c9db91"
+ },
+ "sheets": {
+  "Calc": {
+   "A10": {
+    "t": "e",
+    "why": "a negative base with an exponent of magnitude 2^32 - 1 or more",
+    "f": "=POWER(-1,4294967295)"
+   },
+   "A12": {
+    "t": "e",
+    "why": "a negative base with an exponent of magnitude 2^32 - 1 or more",
+    "f": "=POWER(-1,4294967296)"
+   },
+   "A14": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=POWER(-1,-3000000000)"
+   },
+   "A16": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=POWER(-1,-4294967294)"
+   },
+   "A18": {
+    "t": "e",
+    "why": "a negative base with an exponent of magnitude 2^32 - 1 or more",
+    "f": "=POWER(-1,-4294967295)"
+   },
+   "A2": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=POWER(-1,3500000000)"
+   },
+   "A20": {
+    "t": "e",
+    "why": "a negative base with an exponent of magnitude 2^32 - 1 or more",
+    "f": "=POWER(-1,-4294967296)"
+   },
+   "A38": {
+    "t": "n",
+    "v": "1000000000000000000000000000000000.0",
+    "f": "=POWER(10,33)"
+   },
+   "A39": {
+    "t": "n",
+    "v": "1.0e-33",
+    "f": "=POWER(10,-33)"
+   },
+   "A4": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=POWER(-1,4000000000)"
+   },
+   "A40": {
+    "t": "n",
+    "v": "1.0e+300",
+    "f": "=POWER(10,300)"
+   },
+   "A41": {
+    "t": "n",
+    "v": "1.0e-300",
+    "f": "=POWER(10,-300)"
+   },
+   "A6": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=POWER(-1,4294967000)"
+   },
+   "A8": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=POWER(-1,4294967294)"
+   }
+  }
+ }
+}
