@@ -66,44 +66,44 @@ _NOTES = [
     "Engine builds are the selector's candidates: --build NAME=PATH; docs/research/t3525/*.patch make them.",
 ]
 
+
+def _fit(name: str, description: str, cases: list[str]) -> Fit:
+    """One IM* fit: the shared pattern, reference, error cells and complex-text scoring."""
+    return Fit(
+        name=name,
+        description=description,
+        cases=cases,
+        pattern=PATTERN,
+        candidates=candidates,
+        errors=True,
+        complex_text=True,
+        notes=_NOTES,
+    )
+
+
 FITS = [
-    Fit(
-        name="im-hyperbolic",
-        description="IMSINH/IMCOSH/IMSIN/IMCOS on the cells the T-2231/T-2629 selectors were fitted on",
-        cases=[
+    _fit(
+        "im-hyperbolic",
+        "IMSINH/IMCOSH/IMSIN/IMCOS on the cells the T-2231/T-2629 selectors were fitted on",
+        [
             "probes/eng-im-overflow-edges",
             "probes/eng-im-overflow-edges-2",
             "probes/t2535-imsinh-imcosh-kernel-sweep",
             "probes/t2629-imcosh-imsinh-y-sweep",
             "probes/t2778-imsinh-sign-sweep",
         ],
-        pattern=PATTERN,
-        candidates=candidates,
-        errors=True,
-        complex_text=True,
-        notes=_NOTES,
     ),
-    Fit(
-        name="im-hyperbolic-fresh",
-        description="IMSINH/IMCOSH/IMSIN/IMCOS on T-3525's fresh log-uniform sweep (decision 0188 R4.2)",
-        cases=[
+    _fit(
+        "im-hyperbolic-fresh",
+        "IMSINH/IMCOSH/IMSIN/IMCOS on T-3525's fresh log-uniform sweep (decision 0188 R4.2)",
+        [
             "probes-numeric/t3525-im-hyperbolic-fresh-sweep",
             "probes-numeric/t3525-im-hyperbolic-log-band-sweep",
         ],
-        pattern=PATTERN,
-        candidates=candidates,
-        errors=True,
-        complex_text=True,
-        notes=_NOTES,
     ),
-    Fit(
-        name="im-small-imag",
-        description="IMSIN/IMCOS with a small imaginary part, T-3545's sweep drawn after the freeze",
-        cases=["probes-numeric/t3545-imsin-imcos-small-imag-sweep"],
-        pattern=PATTERN,
-        candidates=candidates,
-        errors=True,
-        complex_text=True,
-        notes=_NOTES,
+    _fit(
+        "im-small-imag",
+        "IMSIN/IMCOS with a small imaginary part, T-3545's sweep drawn after the freeze",
+        ["probes-numeric/t3545-imsin-imcos-small-imag-sweep"],
     ),
 ]

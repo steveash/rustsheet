@@ -115,6 +115,25 @@ fn fn_imsin() {
     assert_eq!(model._get_text("A1"), "-7.61923172032141-6.548120040911i");
 }
 
+/// IMSIN and IMCOS take sinh y and cosh y as (u ∓ 1/u)/2 with u = EXP(y) below IMSINH's band too
+/// (probes-numeric/t3525-im-hyperbolic-fresh-sweep C10, D89; t2778-imsinh-sign-sweep C2; T-3545).
+#[test]
+fn imsin_imcos_small_imaginary_part_takes_the_reciprocal_form() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=IMSIN("0+0.0080407127044978i")"#);
+    model._set("A2", r#"=IMCOS("-0.437695624558513-0.000131316980692306i")"#);
+    model._set("A3", r#"=IMSIN("-4i")"#);
+    model._set("A4", r#"=IMSIN("1E-200+1E-200i")"#);
+
+    model.evaluate();
+
+    // The EXP pair gives ...908i and ...7094i here.
+    assert_eq!(model._get_text("A1"), "0.00804079934755902i");
+    assert_eq!(model._get_text("A2"), "0.905730792422698-0.0000556591552727565i");
+    assert_eq!(model._get_text("A3"), "-27.2899171971278i");
+    assert_eq!(model._get_text("A4"), "1E-200");
+}
+
 #[test]
 fn fn_imaginary_misc() {
     let mut model = new_empty_model();

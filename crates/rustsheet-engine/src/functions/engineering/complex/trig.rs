@@ -60,12 +60,10 @@ fn hyperbolic_log_form(
     Some(finite_complex_result(re, im, suffix, cell))
 }
 
-/// `(sinh t, cosh t)` as IMSIN and IMCOS build them from the imaginary part past `INVERSE_EXP_HIGH`:
-/// `(EXP(t) ∓ EXP(-t))/2` with Excel's EXP ([`trig_sinh_cosh`]; below it they take the reciprocal
-/// form, T-3545, which also gives the small-t cells once fitted to this pair: the imaginary part of
-/// `IMCOS("1.5E+2-2E-3i")` -0.0014297538124271, libm sinh ...242709, and `IMSIN("1E-200+1E-200i")`
-/// "1E-200", EXP(1E-200) being 1; gen-m9, T-2258 triage, T-2535). IMSINH, IMCOSH, IMSECH and IMCSCH
-/// take [`inverse_exp_sinh_cosh`] instead (T-2629, T-2841).
+/// `(sinh t, cosh t)` as IMSIN and IMCOS build them from the imaginary part past `INVERSE_EXP_HIGH`
+/// (|t| > 20): `(EXP(t) ∓ EXP(-t))/2` with Excel's EXP. Below that they take the reciprocal form
+/// ([`trig_sinh_cosh`], T-3545). IMSINH, IMCOSH, IMSECH and IMCSCH take [`inverse_exp_sinh_cosh`]
+/// instead (T-2629, T-2841).
 fn exp_sinh_cosh(t: f64) -> (f64, f64) {
     let (a, b) = (excel_exp(t), excel_exp(-t));
     ((a - b) / 2.0, (a + b) / 2.0)
@@ -101,10 +99,13 @@ fn inverse_exp_form(x: f64) -> (f64, f64) {
 /// EXP pair above. `IMSIN("-4i")` is -27.2899171971278i, `IMSINH("4")`'s digits, where the EXP pair
 /// gives ...277i (probes/t2778-imsinh-sign-sweep C2, T-2796). IMSINH's lower cut does not apply
 /// here: below it the EXP pair cancels where the reciprocal does not, and `IMSIN("0+0.0080407127044978i")`
-/// is 0.00804079934755902i, this form's digits (EXP pair ...908i). The form fits all 300 cells of
-/// probes-numeric/t3545-imsin-imcos-small-imag-sweep (|y| in [1e-7, 0.0105], drawn after the form was
-/// chosen), where the EXP pair fits 227 (fit lab `im-small-imag`); `IMSIN("1E-200+1E-200i")` stays
-/// "1E-200" (u = 1) (docs/excel-semantics/engineering.md, T-3545).
+/// is 0.00804079934755902i, this form's digits (EXP pair ...908i). By digits the form fits all 300
+/// cells of probes-numeric/t3545-imsin-imcos-small-imag-sweep (|y| in [1e-7, 0.0105], drawn after the
+/// form was chosen; 4 differ only in notation, T-3560), where the EXP pair fits 227 (fit lab
+/// `im-small-imag`). The small-t cells the EXP pair was fitted to keep their digits: the imaginary
+/// part of `IMCOS("1.5E+2-2E-3i")` is -0.0014297538124271 (libm sinh ...242709), and
+/// `IMSIN("1E-200+1E-200i")` is "1E-200" since u = 1 (gen-m9, T-2535;
+/// docs/excel-semantics/engineering.md, T-3545).
 fn trig_sinh_cosh(y: f64) -> (f64, f64) {
     if y.abs() > INVERSE_EXP_HIGH {
         return exp_sinh_cosh(y);

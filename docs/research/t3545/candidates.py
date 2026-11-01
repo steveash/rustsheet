@@ -12,8 +12,6 @@ import math
 import re
 from pathlib import Path
 
-import mpmath
-
 from rustsheet_tools.fitlab.exact import EXTENDED, X87, double_round, exact, exp_cr, round_to_bits
 from rustsheet_tools.fitlab.kernels.fisher_expon_harmean import kahan_expm1
 from rustsheet_tools.fitlab.sweep import parse_complex_text
@@ -24,8 +22,7 @@ CASE = (
 
 
 def cr_exp(t: float) -> float:
-    with mpmath.workdps(40):
-        return float(mpmath.exp(t))
+    return float(exp_cr(t))  # correctly rounded to a double
 
 
 def extended_pair(y: float) -> float:
