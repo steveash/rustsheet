@@ -16,7 +16,8 @@ A candidate cell gets no math value when:
 - an integer parameter is given a non-integer (the definitions take integers; whether Excel
   truncates is per function, so the cell is skipped rather than guessed), a logical parameter is
   given a number (likewise unevidenced per function), or the call has a
-  different number of arguments than the definition (an omitted or extra optional argument);
+  different number of arguments than the definition (an omitted optional argument the definition
+  does not mark `optional`, or an extra one);
 - the generator would drop the point (dps 60 and 80 disagree, over the time limit, or a value beyond
   the double range).
 xlsx cases are skipped: tools never parse xlsx values.
@@ -135,10 +136,12 @@ def fit_arg(param: Param, value: Any) -> literal.Arg | str:
 
 def fit_args(definition: Definition, values: list[Any]) -> list[literal.Arg] | str:
     """`values` as the definition's arguments, or why they do not fit."""
-    if len(values) != len(definition.params):
+    try:
+        params = definition.params_for(len(values))
+    except ValueError:
         return "argument count"
     out: list[literal.Arg] = []
-    for param, value in zip(definition.params, values, strict=True):
+    for param, value in zip(params, values, strict=True):
         arg = fit_arg(param, value)
         if isinstance(arg, str):
             return arg
