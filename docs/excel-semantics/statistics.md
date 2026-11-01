@@ -2576,10 +2576,26 @@ even end is the next double, 0.5550000000000002 after the map back.
   The fresh sweep probes-numeric/t3443-basym-sweep (seed 34432, generated and filled after the rule was frozen) on
   T-3443: BETA.DIST 2 / 20 / 28, F 6 / 16 / 18, BETA.INV 48 / 33 / 9, F.INV 2 / 21 / 17.
 
-- The nearest end is not Excel's at every basym point: in-sample it is Excel's on 21 BETA.INV cells the even end
-  misses and misses 5 the even end hits (A136, A151, A155, A170, A173). Applied off basym it regresses gated cells at
-  small shapes (BETADIST_BETAINV H16 visibly, H60, H61; T-3352 found H2, H63 and others), so it is limited to basym points.
-  F.INV keeps the even end: the probes give no rule for it (in-sample 4 exact either way).
+- The crossing rule on its own (same basym kernel, even end against nearest end; BETA.INV + BETAINV, 90 cells, exact
+  / within 4 ulp / within 15 digits / visibly off; split fixed before scoring, hold-out scored once, sweep filled after
+  the freeze):
+
+  | case | even end | nearest end | exact margin |
+  |---|---|---|---|
+  | t3443-basym-a (in-sample) | 39 / 46 / 1 / 4 | 49 / 35 / 2 / 4 | +10 (15 gained, 5 lost) |
+  | t3443-basym-hold (hold-out) | 35 / 45 / 3 / 7 | 46 / 34 / 3 / 7 | +11 (16 gained, 5 lost) |
+  | t3443-basym-sweep (fresh) | 43 / 36 / 1 / 10 | 48 / 30 / 3 / 9 | +5 (14 gained, 9 lost) |
+
+  So the nearest end is not Excel's at every basym point (in-sample it loses A136, A151, A155, A170, A173). Applied
+  off basym it regresses gated cells at small shapes (BETADIST_BETAINV H16 visibly, H60, H61; T-3352 found H2, H63 and
+  others), so it is limited to basym points, bratio's own branch criterion, not a set of matched cells. UNVERIFIED
+  hypothesis (T-3597): Excel searches the tail bratio computes directly rather than its complement (0.5 - w) + 0.5,
+  which would name H29's mechanism and may hold off basym too. F.INV keeps the even end: the probes give no rule for
+  it (in-sample 4 exact either way).
+- Gate A (decision 0188 R2): eval/accuracy has no BETA.DIST, BETA.INV or F table, so the envelope is checked on the
+  fresh sweep directly: all 220 t3443-basym-sweep cells are within 3.2E-13 relative of Excel (worst A24
+  `BETA.DIST(0.00197427734733206,137,69670.555,TRUE)`, 3.1E-13), and its 75 BETA.DIST and F.DIST cdf cells within
+  6.4E-14 of 50-digit math (A42; Excel's own worst is 3.2E-13, A24). None is outside 1E-9.
 - Excel's cdf at these points is basym's to about 1E-13, not to the last digit: against 50-digit math (a continued
   fraction at 60 digits) Excel's BETA.DIST and F.DIST are closer than ours on 26 of the in-sample cdf cells and further
   on 44, Excel up to 3.3E-13 relative off (A26 `BETA.DIST(0.995975869785456,40036,161,TRUE)`) where ours is 1.3E-13,

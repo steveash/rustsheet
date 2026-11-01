@@ -3,9 +3,9 @@
 //! is TOMS 708 `bratio`"). This file is the dispatch: which branch bratio takes for a point, after
 //! its swap, and the branches ported so far ([`ported_tails`]): bfrac ([`bfrac`]) for b0 >= 40, bpser ([`bpser`]) for
 //! w = bpser(a0, b0, x0), w1 = bpser(b0, a0, y0) and min(a, b) > 1, L140's bup + bpser
-//! ([`bup`]), and basym ([`basym`]) for two shapes above 100 near the mean. The line-by-line model is `docs/research/t2464/r2-bratio/bratio_excel.py`
-//! `kernel`; every branch not ported yet keeps today's kernel (`incomplete_beta.rs`, SPEC-0025's
-//! migration).
+//! ([`bup`]), and basym ([`basym`]) for two shapes above 100 near the mean. The line-by-line
+//! model is `docs/research/t2464/r2-bratio/bratio_excel.py` `kernel`; every branch not ported yet
+//! keeps today's kernel (`incomplete_beta.rs`, SPEC-0025's migration).
 
 mod basym;
 mod bfrac;

@@ -54,10 +54,13 @@ basym, and the even end elsewhere. That keeps H29 at 0.555: at the root basym's 
   docs/research/t3443/gen_probe.py. Counts (exact / within 15 digits / visibly off, main then T-3443) are in
   statistics.md "BETA.DIST and F.DIST at basym points; BETA.INV takes the nearest end there (T-3443)". Hold-out:
   BETA.DIST 1/12/37 to 7/23/20, F 0/5/35 to 2/15/23, BETA.INV 30/49/11 to 46/36/8, F.INV 5/21/14 to 3/24/13.
-- R4 (decision 0188): the crossing rule is a structural choice among two candidates (nearest end, even end), scoped
-  to basym points, so no `FITTED` tag; the split was fixed before scoring, the hold-out was scored once, and the fresh
-  sweep was filled after the freeze (BETA.INV 48/33/9). No per-shape or keep-matched branch. Gate A (`rustsheet-eval
-  accuracy`) passes. The nearest end misses 5 in-sample BETA.INV cells the even end hits, recorded in statistics.md.
+- R4 (decision 0188): the crossing rule is a structural choice between two candidates (nearest end, even end), scoped
+  by bratio's own basym criterion, so no `FITTED` tag and no per-shape or keep-matched branch. Isolated on the same
+  basym kernel (BETA.INV + BETAINV, 90 cells, exact / within 4 ulp / within 15 digits / visibly off, even then
+  nearest): in-sample 39/46/1/4 to 49/35/2/4 (+10 exact), hold-out (scored once) 35/45/3/7 to 46/34/3/7 (+11), fresh
+  sweep (filled after the freeze) 43/36/1/10 to 48/30/3/9 (+5). Gate A has no table for these functions, so the
+  envelope was checked on the sweep: all 220 cells within 3.2E-13 relative of Excel, the 75 cdf cells within 6.4E-14
+  of 50-digit math; none outside 1E-9. The cells the nearest end loses are listed in statistics.md.
 - Acceptance 2 is partly met: the round trips' remaining visibly-off cells (in-sample BETA.INV 4, F.INV 13) follow the
   cdf's last digits, which are Excel's arithmetic inside basym (this task's out of scope). T-3597 owns them, with the
   cdf cells still visibly off (BETA.DIST 33 and F 17 in-sample).

@@ -67,8 +67,9 @@ fn beta_quantile(alpha: f64, beta: f64, p: f64) -> f64 {
 /// The crossing of the search's tail `f` with `target` (`refine_increasing`'s even-significand end
 /// of the final bracket), except where bratio takes basym at that point (both shapes above 100,
 /// near the mean): there the end of the bracket whose tail is nearer `target`
-/// (`special::nearest_crossing_from`). In-sample (probes-numeric/t3443-basym-a) that end is
-/// Excel's on 21 BETA.INV cells the even end misses and misses 5 it hits, and it keeps
+/// (`special::nearest_crossing_from`). On the same kernel, that end is Excel's on 15 in-sample
+/// BETA.INV cells the even end misses and misses 5 it hits (probes-numeric/t3443-basym-a; +11
+/// exact on the hold-out, +5 on the fresh sweep), and it keeps
 /// `BETA.INV(G29,1000,1000,0.1,1)` at Excel's 0.555 (ironcalc-calc `BETADIST_BETAINV.xlsx` H29: the
 /// root's upper tail is one ulp above fl(1 - p), so the even end is the next double). Off basym the
 /// nearest end regresses gated cells at small shapes (`BETADIST_BETAINV.xlsx` H16, H60, H61), so

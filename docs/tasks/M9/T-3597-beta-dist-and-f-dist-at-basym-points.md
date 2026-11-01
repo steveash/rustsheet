@@ -26,6 +26,11 @@ recorded as UNVERIFIED with the hypotheses ruled out).
   the coefficient recurrences, `erfc1`, `rlog1` and `bcorr` (T-3447 owns the same question for BINOM.DIST).
 - The BETA.INV and F.INV round trips' visibly-off cells follow the cdf's last digits; BETA.INV's nearest-end rule at
   these points also misses 5 in-sample cells (A136, A151, A155, A170, A173), which may move with the cdf.
+- Also owned here: F.INV's exact-count losses from T-3443's kernel switch (in-sample 5 to 4, hold-out 5 to 3, each
+  still within 15 digits), and BETA.INV's crossing rule at basym points. T-3443 takes the nearest bracket end there
+  (+10 / +11 / +5 exact on the three cases against the even end). UNVERIFIED hypothesis, worth testing on all three
+  cases and off basym: Excel searches the tail bratio computes directly rather than its complement (0.5 - w) + 0.5,
+  which names H29's mechanism (the complement one ulp above fl(1 - p)).
 - Method: docs/research/excel-kernel-playbook.md; a fit owes decision 0188 R4's guards.
 
 ## Acceptance criteria
