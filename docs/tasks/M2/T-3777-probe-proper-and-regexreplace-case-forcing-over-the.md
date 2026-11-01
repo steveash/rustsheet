@@ -22,4 +22,4 @@ T-3583 moved `simple_case` (used by PROPER) and `upper_case`/`lower_case` (used 
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- MATCH fold (T-3584).
