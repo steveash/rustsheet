@@ -45,8 +45,8 @@ _PROBABILITY = Param(
     source="Microsoft documentation",
 )
 NEGBINOM_P_SOURCE = "statistics.md#legacy-distribution-names-sweep-second-family-t-1048"
-# NEGBINOM.DIST's probability is open at both ends: accuracy/NEGBINOM.DIST/s1 A117 and A129 (p = 0) and A120 and A132
-# (p = 1) are #NUM! in Excel (excel-graph).
+# NEGBINOM.DIST's probability is open at both ends: `NEGBINOM.DIST(21,4,0,TRUE)` and `NEGBINOM.DIST(20,1,1,FALSE)`
+# are #NUM! in Excel (accuracy/NEGBINOM.DIST/s1 A117 and A119; also A127, A137 at p = 0, A129, A139 at p = 1).
 _NEGBINOM_PROBABILITY = Param(
     "probability_s",
     "real",

@@ -64,7 +64,7 @@ Done (2026-11-01). Renumbered from T-3543, an id collision with main (decision 0
     probes-numeric/t3553-negbinom-huge-s, where the engine gives 0 at its 7 `#NUM!` cells (probes-numeric is
     ungated); owned by the new T-3576.
   - "Legacy distribution names sweep, second family (T-1048)" gains NEGBINOM.DIST's p = 0: the probability is open
-    at both ends, so the definition rejects p = 0 and p = 1 (table cells A117, A129, A120, A132).
+    at both ends, so the definition rejects p = 0 and p = 1 (accuracy/NEGBINOM.DIST/s1 A117, A127 and A137 at p = 0, A119, A129 and A139 at p = 1).
   - "POISSON at x 0 with a negative mean" gains the oracle limit: `POISSON.DIST(2,-2.09435621420062E+249,TRUE)` keeps
     excel-graph from opening its workbook (bisected), so the table caps the mean at 1E+12.
 - **Carried fix:** `known-failures.tsv`'s four T.DIST density lines now name T-3554, following T-3358's renumber; that
