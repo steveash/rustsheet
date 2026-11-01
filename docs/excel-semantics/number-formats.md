@@ -574,8 +574,10 @@ Tasks: T-1733
 Rule: `.0`, `.00` after any clock token, not only after seconds, is the second fraction of the serial: at
 12345.678 (16:16:19.2) `[h].0` → "296296.2", `[h].00` → "296296.20", `[m].0` → "17777776.2", `[hh].0` → "296296.2",
 `h.0` → "16.2", `mm.0` → "16.2"; at 5 `[h].0` → "120.0", `[m].0` → "7200.0", `h.0` → "0.0", `mm.0` → "00.0"
-(`mm` is minutes here, not months). `[h].0 General` → "296296.2 2.500000331" (General prints the fraction register).
-Evidence: probes/t3575-elapsed-fraction A1-A14 (excel-graph); t3419-elapsed-after-date-b A19.
+(`mm` is minutes here, not months). `[h].0 General` → "296296.2 2.500000331" at 12345.678 and "120.0 0.5" at 5 (General prints the fraction
+register). A minute after `[h]:` takes it too: `[h]:mm.0` on (3-0.6/3600)/24 → "2:59.4".
+Evidence: probes/t3575-elapsed-fraction A1-A14 (excel-graph); t3419-elapsed-after-date-b A19;
+elapsed-no-seconds-boundary S!A32.
 Status: VERIFIED (bare `m.0` and `mm.0` beside date tokens such as `dd mm.0` are unprobed; implemented for `mm.0` anywhere)
 Implemented in: `Parser::parse_part` (formatter/parser.rs).
 Tasks: T-3575
