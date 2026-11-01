@@ -50,7 +50,7 @@ at `±i`, the reciprocals once 2e^-|other part| is subnormal). complex/trig.rs i
 `inner_trig_overflows`, `reciprocal_flushes`); engineering.md "IM* trig and hyperbolic functions past SIN's argument
 limit (T-3642)" states the rules. Before: 475 grid cells off (360 `#NUM!` in Excel, text ours). After: the only type
 mismatches left are the 32 IMSIN/IMCOS cells at y = 709.78, listed in T-3616; 41 IMCSCH cells at x = 700 to 709 where Excel keeps normal tiny parts and ours
-prints 0 are listed in T-2668 (the real rows also in T-2914); 74 grid and 37 cut cells differ in last digits (libm
-sine in the complex IMSIN/IMCOS/IMTAN paths), filed as T-3758.
+prints 0 are listed in T-2668 (the real rows also in T-2914); 74 grid and 37 cut cells differ in last digits (45
+IMSIN/IMCOS/IMTAN, 16 IMCSCH, 10 IMSINH/IMCOSH, 3 one-ulp reciprocals; mostly libm's sine), filed as T-3758.
 Eval delta: probes +2 cases, 4213/4360 and 153/190 cells pass, the misses recorded as new-case known failures; every
 other suite unchanged, 0 regressions.
