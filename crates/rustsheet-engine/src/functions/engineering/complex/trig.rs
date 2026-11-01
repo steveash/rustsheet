@@ -1,5 +1,6 @@
 //! The circular and hyperbolic IM* functions (IMSIN … IMCOT, IMSINH … IMCSCH), of a parsed number.
 
+use super::super::ENGINEERING_EXP_CUT;
 use super::{complex_result, finite_complex_result, ComplexParts, Suffix};
 use crate::calc_result::CalcResult;
 use crate::expressions::types::CellReferenceIndex;
@@ -7,16 +8,18 @@ use crate::functions::lift::num_error;
 use crate::functions::math_and_trigonometry::{excel_sin_cos, excel_tan, EXCEL_TRIG_LIMIT};
 use crate::x87_exp::excel_exp;
 
-/// IMSIN and IMCOS are `#NUM!` once `exp(|y|)` overflows (|y| above about 709.78), whatever the
-/// real part, although `cosh y` is still finite there: `IMSIN("1.5+710.4i")`, `IMCOS("710.4i")`
-/// (probes/eng-im-overflow-edges A25-A27, A33-A35). For negative y they are `#NUM!` sooner, once
-/// `u = EXP(y)` of [`trig_sinh_cosh`] leaves the normal range (y below `ln(DBL_MIN)` =
-/// -708.3964185322641): Excel's EXP gives 0 there and the reciprocal `1/u` overflows.
-/// `IMSIN("0.5-708.39641853i")` answers and `IMSIN("0.5-708.396419i")` is `#NUM!`, while
-/// `IMSIN("1.2+709.7i")` answers (probes-numeric/t3589-imsin-imcos-negative-cut-probe,
-/// t3589-imsin-imcos-subnormal-exp-probe; engineering.md, T-3589).
+/// IMSIN and IMCOS are `#NUM!` once the imaginary part y exceeds [`ENGINEERING_EXP_CUT`] (709.7),
+/// whatever the real part, although `cosh y` is finite up to about 709.78: `IMSIN("0.5+709.7i")`
+/// answers and `IMSIN("0.5+709.700000000001i")`, `IMCOS("709.75i")` are `#NUM!`
+/// (probes-numeric/t3616-imsin-imcos-positive-cut-probe, x = 0 to 3; engineering.md, T-3616).
+/// For negative y they are `#NUM!` once `u = EXP(y)` of [`trig_sinh_cosh`] leaves the normal range
+/// (y below `ln(DBL_MIN)` = -708.3964185322641): Excel's EXP gives 0 there and the reciprocal
+/// `1/u` overflows. `IMSIN("0.5-708.39641853i")` answers and `IMSIN("0.5-708.396419i")` is `#NUM!`
+/// (probes-numeric/t3589-imsin-imcos-negative-cut-probe, t3589-imsin-imcos-subnormal-exp-probe;
+/// engineering.md, T-3589). Both cuts also give `#NUM!` for every |y| past exp's overflow
+/// (probes/eng-im-overflow-edges A25-A27, A33-A35).
 fn trig_exp_overflows(y: f64) -> bool {
-    y.abs().exp().is_infinite() || excel_exp(y) < f64::MIN_POSITIVE
+    y > ENGINEERING_EXP_CUT || excel_exp(y) < f64::MIN_POSITIVE
 }
 
 /// IMCOSH and IMSINH are `#NUM!` for a zero imaginary part once `exp(|x|)` overflows, although
