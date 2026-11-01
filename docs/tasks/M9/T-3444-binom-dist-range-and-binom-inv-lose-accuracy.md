@@ -35,3 +35,20 @@ is since T-3352, instead of grossly wrong.
 
 ## Out of scope
 - BINOM.DIST and NEGBINOM.DIST (T-3352).
+
+## Handoff
+Opus session ran out of its time budget mid-task (2026-11-01). State of `agent/functions-stat/T-3444-binom-large-n`:
+- Probe probes/t3444-binom-range-inv-large-n (756 cells, excel-graph): Excel's BINOM.INV/CRITBINOM is the smallest k
+  whose own BINOM.DIST cdf reaches alpha (126/126 rows); BINOM.DIST.RANGE is its own cdf difference on 105/126 rows,
+  a one-point range is the pmf, and the 21 rows from mean + 3 sd to mean + 5 sd use an unidentified form (2E-16 to
+  6E-14 off the difference). Rule recorded in statistics.md "BINOM.DIST.RANGE and BINOM.INV at a large n sit on
+  BINOM.DIST's own cdf (T-3444)".
+- Code: `binom.rs` `excel_binom_cdf` and `excel_binom_pmf` (BINOM.DIST's own paths, extracted); BINOM.INV bisects on
+  the cdf; RANGE takes pmf / cdf-from-0 / walk / cdf difference. Probe 490/756 pass (all 252 INV/CRITBINOM cells);
+  `make eval-baseline`: gen-m9 -3, ironcalc-calc -6, probes -3 known failures, 0 regressions, +266 new-coverage lines
+  (the new case: BINOM.DIST's own last digits, T-3447, and the upper-tail RANGE rows).
+- Not done: (1) `make check` result (started, see the next commit or re-run); (2) BINOM.INV's per-call cost: each of
+  its 31 steps may now walk 2^10 terms or run bratio, so re-measure and re-size the `Weighted(4096)` lift charge in
+  lift/kinds/statistical.rs `BINOM_INV` and the doc comment on `fn_binom_inv` (directive 5); (3) the upper-tail RANGE
+  form (try Q(s1 - 1) - Q(s2) from bratio's other tail) or file it as a follow-up; (4) the Gate A fresh-sweep criterion;
+  (5) the review panel (security, architecture, quality, excel-fidelity), then PR and mark-ready.
