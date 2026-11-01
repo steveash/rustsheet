@@ -24,7 +24,8 @@
   - Before: 117 s serial on an idle machine. A second serial run, slowed by other jobs on the same
     machine, took 440 s.
   - After: 56-64 s with `-n auto`.
-  - CI times are in T-3700's Outcome.
+  - CI (run 41294866508): `make py-check` 199 s against a p50 of 242 s. The tests themselves take
+    about 40 s; the rest waits on the on-demand release `rustsheet-eval` build (T-3714).
 - **Consequences:**
   - A test that shares mutable state across tests (a fixed temp path, a module-level cache it
     mutates, a fork from a threaded parent) can now fail or race under `make check`. Such tests
