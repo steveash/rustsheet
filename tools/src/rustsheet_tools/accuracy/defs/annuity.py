@@ -78,9 +78,8 @@ def unique_rate(flows: Sequence[mpmath.mpf], f: Callable[[mpmath.mpf], mpmath.mp
     if changes > 1:
         msg = "several sign changes: no evidenced root choice"
         raise NoValueError(msg)
-    if (
-        f(mpmath.mpf(0)) == 0
-    ):  # the flows sum to 0: the root is exactly 0, which no relative bracket test reaches
+    # the flows sum to 0: the root is exactly 0, which no relative bracket test reaches
+    if f(mpmath.mpf(0)) == 0:
         return mpmath.mpf(0)
     lo, hi = mpmath.mpf(-1), mpmath.mpf(1)
     for _ in range(MAX_BRACKET_DOUBLINGS):

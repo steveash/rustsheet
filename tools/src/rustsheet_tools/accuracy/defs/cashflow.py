@@ -16,7 +16,9 @@ Sources:
 - financial.md, "IRR, RATE and XIRR stop early, and the guess and flow scaling change the result": the multi-root
   case, and Excel's guess (IRR 0.1, XIRR 0.1) that the table leaves at its default.
 - financial.md, "XIRR is a bracketing bisection, not Newton" and "XIRR reads empty cells as 0 and accepts earlier
-  dates": the table writes increasing integer dates, so the order and truncation rules do not apply.
+  dates": XIRR measures from the first listed date, so a probe cell with unsorted dates is put in time order before its
+  sign changes are counted. The table writes increasing integer dates; a fractional date has no math value here (how
+  Excel reads one in XIRR is unprobed).
 """
 
 from __future__ import annotations
@@ -32,6 +34,7 @@ from rustsheet_tools.accuracy.model import (
     Definition,
     DomainError,
     MathArg,
+    NoValueError,
     Param,
     register,
 )
@@ -69,7 +72,13 @@ def _xirr(args: Sequence[MathArg]) -> mpmath.mpf:
     if len(flows) != len(dates):
         msg = "values and dates differ in size"
         raise DomainError(msg)
-    return flow_rate(flows, [(d - dates[0]) / DAYS_PER_YEAR for d in dates])
+    if any(d != mpmath.floor(d) for d in dates):
+        msg = "a fractional date: how Excel reads one here is unprobed"
+        raise NoValueError(msg)
+    # Excel measures from the first listed date, earlier dates included; uniqueness needs the flows in time order
+    times = [(d - dates[0]) / DAYS_PER_YEAR for d in dates]
+    order = sorted(range(len(times)), key=lambda i: times[i])
+    return flow_rate([flows[i] for i in order], [times[i] for i in order])
 
 
 def _series(stratum: str, rng: random.Random) -> tuple[float, int, float, bool]:

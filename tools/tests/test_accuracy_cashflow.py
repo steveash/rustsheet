@@ -27,7 +27,8 @@ def irr(*flows: float) -> mpmath.mpf:
 
 
 def test_irr_matches_microsofts_examples() -> None:
-    # Microsoft's IRR examples, shown to 9 decimals
+    # Microsoft's IRR examples; Excel's own value of the first is 0.08663094803652216 (financial.md, "XIRR (and IRR):
+    # an empty guess argument is the default 0.1 for XIRR, guess 0 for IRR")
     assert mpmath.almosteq(irr(-70000, 12000, 15000, 18000, 21000, 26000), mp("0.086630948"), mp("1e-9"))
     assert mpmath.almosteq(irr(-70000, 12000, 15000, 18000, 21000), mp("-0.021244848"), mp("1e-9"))
     assert irr(-100, 50, 50) == 0  # the flows sum to 0: the root is exactly 0
@@ -50,6 +51,18 @@ def test_xirr_matches_microsofts_example() -> None:
     assert mpmath.almosteq(XIRR.evaluate([values, dates]), mp("0.3733625335188315"), mp("1e-15"))
     with pytest.raises(DomainError):
         XIRR.evaluate([values, dates[:4]])
+
+
+def test_xirr_counts_sign_changes_in_time_order_and_refuses_fractional_dates() -> None:
+    # listed out of order, the outlay on the earliest date: one sign change in time order, a unique root
+    values = tuple(mp(v) for v in (300, -1000, 800))
+    dates = tuple(mp(d) for d in (36700, 36526, 36900))
+    ordered = XIRR.evaluate([(mp(-1000), mp(300), mp(800)), (mp(36526), mp(36700), mp(36900))])
+    assert mpmath.almosteq(
+        XIRR.evaluate([values, dates]), ordered, mp(10) ** -35
+    )  # the base date only rescales
+    with pytest.raises(NoValueError):
+        XIRR.evaluate([values, (mp(36700), mp("36526.5"), mp(36900))])
 
 
 def test_array_literals_round_trip_through_the_formula() -> None:
