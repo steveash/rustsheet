@@ -1,8 +1,6 @@
-#![allow(clippy::unwrap_used, reason = "tests")]
-
-//! `SheetData::cell` tries the index its last read found before searching the row (T-3606): a
-//! guess, so every read must still find exactly the cell at its position, or none, whatever the
-//! rows around it hold and however writes moved cells since.
+//! `SheetData::cell` tries the index its last read found (T-3606), and a row's search tries a dense
+//! row's offset (T-3608), before bisecting: guesses, so every read must still find exactly the cell
+//! at its position, or none, whatever the rows around it hold and however writes moved cells since.
 
 use std::collections::BTreeMap;
 
@@ -23,12 +21,12 @@ fn assert_reads(data: &SheetData, model: &BTreeMap<(i32, i32), f64>, rows: i32, 
             });
             assert_eq!(found, model.get(&(row, column)).copied(), "{row},{column}");
         }
-        // Down a column too, where the hint serves the next row.
-        for column in [1, columns / 2, columns] {
-            for row in 1..=rows {
-                let found = data.cell(row, column).is_some();
-                assert_eq!(found, model.contains_key(&(row, column)), "{row},{column}");
-            }
+    }
+    // Down a column too, where the hint serves the next row.
+    for column in [1, columns / 2, columns] {
+        for row in 1..=rows {
+            let found = data.cell(row, column).is_some();
+            assert_eq!(found, model.contains_key(&(row, column)), "{row},{column}");
         }
     }
 }
@@ -60,4 +58,22 @@ fn reads_find_their_cell_whatever_the_hint() {
         model.remove(&(row, 2));
     }
     assert_reads(&data, &model, 30, 40);
+}
+
+/// Columns from anywhere in `i32`, as an unchecked caller may pass them, to reads and removals of a
+/// dense row: none overflows the offset guess (directive 5), and the row is unchanged.
+#[test]
+fn reads_at_extreme_columns_find_nothing() {
+    let mut data = SheetData::new();
+    for column in 1..=20 {
+        data.set_cell(3, column, number(f64::from(column)));
+    }
+    // 21 is on the sheet but holds nothing; the others are off it.
+    assert!(data.cell(3, 21).is_none());
+    for column in [i32::MIN, i32::MIN + 1, -1, 0, i32::MAX] {
+        assert!(data.cell(3, column).is_none(), "{column}");
+        assert!(data.cell_mut(3, column).is_none(), "{column}");
+        assert!(data.remove_cell(3, column).is_none(), "{column}");
+    }
+    assert_eq!(data.columns_in_row(3), (1..=20).collect::<Vec<_>>());
 }
