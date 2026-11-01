@@ -163,3 +163,13 @@ fn settings() {
     assert_eq!(DuplicateAggregate::from_setting(8.0), None);
     assert_eq!(DuplicateAggregate::from_setting(-1.0), None);
 }
+
+#[test]
+fn a_blank_time_stamp_beside_a_value_is_a_value_error() {
+    let values = numbers(&[1.0, 2.0, 3.0]);
+    let timeline = [Point::Number(1.0), Point::Blank, Point::Number(3.0)];
+    assert_eq!(
+        build_series(&values, &timeline, DEFAULT).map(|_| ()),
+        Err(Error::VALUE)
+    );
+}

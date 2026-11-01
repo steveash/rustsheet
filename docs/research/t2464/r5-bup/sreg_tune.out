@@ -1,0 +1,21 @@
+n<=9: cells 171, sd eS 4.75 -> residual sd 4.64
+   eP                           +0.002
+   dlnS/dlnapb * e_apb          +0.276
+   dlnS/dlnap1 * e_ap1          -0.000
+   dlnS/dlnx (unit x error)     -1.542
+   n                            +1.259
+   const                        -0.708
+n>=10: cells 597, sd eS 19.89 -> residual sd 19.83
+   eP                           -0.008
+   dlnS/dlnapb * e_apb          -0.062
+   dlnS/dlnap1 * e_ap1          -0.000
+   dlnS/dlnx (unit x error)     -0.028
+   n                            -0.017
+   const                        +0.611
+all: cells 768, sd eS 17.68 -> residual sd 17.64
+   eP                           -0.005
+   dlnS/dlnapb * e_apb          -0.057
+   dlnS/dlnap1 * e_ap1          -0.000
+   dlnS/dlnx (unit x error)     -0.104
+   n                            +0.070
+   const                        +0.118

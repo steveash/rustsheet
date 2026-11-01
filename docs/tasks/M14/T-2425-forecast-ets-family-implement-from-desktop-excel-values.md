@@ -39,7 +39,9 @@ The list keeps them as T-2255's triage record.
 The desktop probe should cover what decision 0221 ships unverified (statistics.md "FORECAST.ETS family: the model
 before Excel evidence"): a period-4 series, the error orderings of its steps 1 to 6, monthly and month-end timelines,
 duplicate time stamps under each aggregation (and an all-blank time stamp under COUNT and COUNTA), a range across
-two sheets, and the 30% missing rule.
+two sheets, a blank time stamp beside a value, and the 30% missing rule. Step 3 (an error element in `values` or
+`timeline` before different sizes) is the likeliest to differ on desktop: start from the web `#N/A` cells with an error
+element inside `values` or `timeline` that the T-2255 section of statistics.md counts.
 
 Owned gen-m9 cells (T-2255 triage, excel-graph, 2026-10-22): 877 known-failure lines in eval/baseline/gen-m9.txt, 877 formulas.
 Examples:
@@ -251,6 +253,12 @@ Cells:
   - gen-m9/caa1eed48b1883fe.case.json: Calc!A61
   - gen-m9/ec2a1d9194a84396.case.json: Calc!A67, A218, A316
   - gen-m9/fd9fa22d212080d6.case.json: Calc!A58
+
+Probe owned here (gap triage 2026-10-31, decision 0188 R7: an M14-only probe cell never blocks a milestone exit):
+probes/forecast-ets-longer-series (24- and 36-point series and a 12-point one; FORECAST.ETS, .CONFINT, .SEASONALITY and
+.STAT, each with and without a seasonality or statistic argument) is excel-graph `#N/A` in all 41 failing cells and ours
+`#N/IMPL!`, the same web gap as the gen-m9 cells above; no open M9 task named the case.
+- probes/forecast-ets-longer-series.case.json (41): Sheet1!K1, K2, K3, K4, K5, K6, K7, K8, K9, K10, K11, K12, K13, K14, K15, K16, K17, K18, K19, K20, K21, K22, K23, K24, K25, K26, K27, K28, K29, K30, K31, K32, K33, K34, K35, K36, K37, K39, K40, K41, K42
 
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2258): these 17 known-failure lines disappear from eval/baseline/gen-m9.txt

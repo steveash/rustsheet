@@ -292,6 +292,45 @@ pub(crate) fn reject_empty_value(
     Ok(result)
 }
 
+/// `array`, an array argument evaluated from `arg`, with an error read through a reference
+/// argument made a 1x1 array holding it, as Excel reads a one-cell range: the other arguments are
+/// checked first and the error survives only as an element of the result. With Data!G9 `#DIV/0!`,
+/// `TOROW(Data!G9,7)` is `#VALUE!`, `TOCOL(Data!G9,3)` `#CALC!`, and `FILTER(Data!G9,Data!B1:B12>-1)`
+/// `#VALUE!` for its shape (gen-m7 arg-pairs, excel-graph, T-3506). A literal error is still the
+/// error: `TOROW(#N/A,-1)` is `#N/A` and `FILTER(#DIV/0!,Data!C1:C12<>0.3)` `#DIV/0!`
+/// (gen-m7/20df23f84a528470 A8907, ee81c689b5fde629 A977).
+///
+/// No size check is needed: a `Node::ReferenceKind` is one cell by construction (a range is a
+/// `RangeKind`, which this never wraps). Any error read through it is wrapped, which is how a
+/// one-cell error reference shows up; only a stored cell error is evidenced, so other errors read
+/// there (a `#REF!` for a sheet index, a circular read) are wrapped unprobed.
+// Excel: docs/excel-semantics/arrays.md "A one-cell error reference is a 1x1 array in TOCOL, TOROW
+// and FILTER".
+pub(crate) fn one_cell_error_ref_as_array(
+    arg: &Node,
+    array: Result<Vec<Vec<ArrayNode>>, CalcResult>,
+    cell: CellReferenceIndex,
+) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
+    wrap_one_cell_error_ref(arg, array, cell).0
+}
+
+/// [`one_cell_error_ref_as_array`], and whether it wrapped an error (FILTER checks such an
+/// include's shape before its elements).
+pub(crate) fn wrap_one_cell_error_ref(
+    arg: &Node,
+    array: Result<Vec<Vec<ArrayNode>>, CalcResult>,
+    cell: CellReferenceIndex,
+) -> (Result<Vec<Vec<ArrayNode>>, CalcResult>, bool) {
+    match array {
+        Err(CalcResult::Error { error, .. })
+            if matches!(*arg.ungrouped_at(cell.row), Node::ReferenceKind { .. }) =>
+        {
+            (Ok(vec![vec![ArrayNode::Error(error)]]), true)
+        }
+        array => (array, false),
+    }
+}
+
 impl Model {
     /// Evaluate a node and convert the result to a 2-D array of `ArrayNodes`.
     /// Handles Range references, inline Arrays, and scalar values.
@@ -404,58 +443,39 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let data = match self.eval_to_array(&args[0], cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
-
-        if data.is_empty() || data[0].is_empty() {
+        // An error array is each call's result, as the argument errors below are.
+        let data = self.eval_to_array(&args[0], cell);
+        if data.as_ref().is_ok_and(|d| d.is_empty() || d[0].is_empty()) {
             return CalcResult::Array(vec![]);
         }
-
-        let num_rows = data.len();
-        let num_cols = data[0].len();
 
         // An omitted argument (`SORT(arr,,)`) takes its default: probes/counta-empty-value D22-D24.
         // Argument errors come before value validation and are reported left to right: sort_index,
         // then sort_order, then by_col (probes/sort-error-args H29-H53; docs/excel-semantics/arrays.md
         // "SORT argument errors come before validation").
-        // A sort_order that cannot be read as numbers is `#VALUE!` only after by_col is read, as a
-        // validation error is (a multi-cell sort_order is a list since T-1837, checked against
-        // sort_index below: c5d278a8662ef4b2 A39).
-        let raw_index = if args.len() >= 2 && !matches!(args[1], Node::EmptyArgKind) {
-            self.sort_number_list(&args[1], cell)
-        } else {
-            Ok(vec![1.0])
+        // A sort_index or sort_order that cannot be read as numbers (text, an error element, a 2-D
+        // list) is `#VALUE!` only after by_col is read, as a validation error is (a multi-cell
+        // sort_order is a list since T-1837, checked against sort_index below: c5d278a8662ef4b2
+        // A39); a blank cell is `#VALUE!` at once (`sort_number_list`, T-3507).
+        let mut key_list = |i: usize| match args.get(i) {
+            Some(node) if !matches!(node, Node::EmptyArgKind) => self.sort_number_list(node, cell),
+            _ => Ok(vec![1.0]),
         };
-        let raw_index = match raw_index {
-            Ok(list) => list,
-            Err(e) => return e,
-        };
-        let raw_order = if args.len() >= 3 && !matches!(args[2], Node::EmptyArgKind) {
-            self.sort_number_list(&args[2], cell)
-        } else {
-            Ok(vec![1.0])
-        };
-        if let Err(e @ CalcResult::Error { .. }) = &raw_order {
-            if !matches!(
-                e,
-                CalcResult::Error {
-                    error: Error::VALUE,
-                    ..
-                }
-            ) {
-                return e.clone();
-            }
-        }
+        // Their errors are each call's result, so a lifted by_col spreads them over its shape
+        // (`SORT(Data!C7:D11,Data!C5:C11,#VALUE!,Data!A1:B2)` is a 2x2 `#VALUE!`,
+        // gen-m7/8217549f0b417328 A855:B856; arrays.md "SORT's lifted by_col spreads an argument
+        // error").
+        let raw_index = key_list(1);
+        let raw_order = key_list(2);
         // The array, sort_index and sort_order are read once here; by_col lifts over an array, one
         // SORT per element (`SORT(Data!D6:E7,3,1e-15,<2x4 booleans>)` is a 2x4 `#VALUE!`,
         // gen-m7/7307132bb8820f17 A1076; T-2319). Each element sorts the whole array, and a range
         // by_col lifts too (probes/t2366-sort-lifted-by-col). Which elements keep their call's
         // top-left is `sort_lifted_elements`'s (T-2929).
-        let cells = u64::try_from(num_rows.saturating_mul(num_cols))
-            .unwrap_or(u64::MAX)
-            .max(1);
+        let cells = data.as_ref().map_or(1, |data| {
+            let cells = data.len().saturating_mul(data.first().map_or(0, Vec::len));
+            u64::try_from(cells).unwrap_or(u64::MAX).max(1)
+        });
         // Whether each call counts as a sorting call, in row-major order (one entry per element:
         // every element runs, `Reuse::Never`).
         let mut sorted: Vec<bool> = Vec::new();
@@ -469,11 +489,13 @@ impl Model {
                     None | Some(CalcResult::EmptyArg) => Ok(false),
                     Some(value) => Self::cast_bool_ref(value, cell),
                 };
-                let (result, read) = match (by_col, &raw_order) {
-                    (Err(error), _) => (error, false),
-                    (Ok(_), Err(error)) => (error.clone(), false),
-                    (Ok(by_col), Ok(raw_order)) => (
-                        model.sort_by_keys(&data, &raw_index, raw_order, by_col, cell),
+                let (result, read) = match (&data, &raw_index, &raw_order, by_col) {
+                    (Err(error), ..) | (_, Err(error), ..) | (_, _, Err(error), _) => {
+                        (error.clone(), false)
+                    }
+                    (.., Err(error)) => (error, false),
+                    (Ok(data), Ok(raw_index), Ok(raw_order), Ok(by_col)) => (
+                        model.sort_by_keys(data, raw_index, raw_order, by_col, cell),
                         true,
                     ),
                 };
@@ -491,7 +513,8 @@ impl Model {
             return result;
         }
         // sort_index truncates, so 2.7 is key 2 too (probes/t2929-sort-lifted-by-col-errors K18).
-        let only_key_two = matches!(raw_index.as_slice(), [index] if (2.0..3.0).contains(index));
+        let only_key_two =
+            matches!(raw_index.as_deref(), Ok([index]) if (2.0..3.0).contains(index));
         sort_lifted_elements(result, &sorted, only_key_two)
     }
 
@@ -594,7 +617,20 @@ impl Model {
             _ => false,
         };
         if !is_list {
-            return Ok(vec![self.cast_to_number(value, cell)?]);
+            // One value: an error is itself and a blank cell is `#VALUE!`, both before the later
+            // arguments are read, while text is invalid (NaN) like a 2-D list: `SORT(1,Data!H2,
+            // Data!G9)` with H2 blank is `#VALUE!` but `SORT(Data!B10,"abc",0,#NUM!)` is `#NUM!`
+            // (gen-m7/91b6b88061b805b1 A5308, A11103; docs/excel-semantics/arrays.md "TOCOL,
+            // TOROW and SORT: which bad argument wins", T-3507).
+            return match self.dereference(value, cell) {
+                error @ CalcResult::Error { .. } => Err(error),
+                CalcResult::EmptyCell => Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "a blank sort_index or sort_order".to_string(),
+                )),
+                value => Ok(vec![self.cast_number_ref(&value, cell).unwrap_or(f64::NAN)]),
+            };
         }
         let grid = self.result_to_array(value, cell)?;
         if grid.len() > 1 && grid.first().is_some_and(|row| row.len() > 1) {

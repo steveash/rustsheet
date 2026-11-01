@@ -1,0 +1,28 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3532 review follow-up: numeral byte with a fixed fraction denominator, a General fallback, a B2 prefix, and tags in later sections (inheritance, and whether a later tag reaches an earlier section).",
+ "tags": [
+  "probe",
+  "number-format",
+  "locale",
+  "M10",
+  "T-3532"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=TEXT(12.5,\"[$-2000409]# ?/4\")",
+    "A2": "=TEXT(1,\"[$-2000409][>5]0\")",
+    "A3": "=TEXT(45000,\"B2[$-2000409]yyyy|mmmm\")",
+    "A4": "=TEXT(-15,\"[$-2000409]0;General\")",
+    "A5": "=TEXT(0,\"0;[$-2000409]0;0\")",
+    "A6": "=TEXT(5,\"0;[$-2000409]0\")",
+    "A7": "=TEXT(-5,\"0;[$-2000409]0;0\")",
+    "A8": "=TEXT(12.5,\"[$-1B000409]# ?/16\")",
+    "A9": "=TEXT(\"x\",\"[$-2000409]0\")"
+   }
+  }
+ ],
+ "expected": {}
+}

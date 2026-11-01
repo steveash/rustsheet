@@ -3,7 +3,7 @@ id: T-3599
 title: "FORECAST.ETS family core and FORECAST.ETS.SEASONALITY: adapt gridcraft's AAA series and season detection (owner ruling, unverified against Excel)"
 milestone: M14
 lane: functions-stat
-status: blocked
+status: done
 priority: P2
 size: M
 tier: opus
@@ -34,14 +34,14 @@ the member's computation).
 - [x] statistics.md has the UNVERIFIED model section and a DEVIATION section for the work caps (directive 5).
 - [x] `make eval-baseline` shows no regression; unit tests cover the series errors, completion, aggregation,
       monthly timelines and season detection.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - FORECAST.ETS's fit and forecast (T-3600); CONFINT and STAT (T-3601).
 - Matching desktop Excel (T-2425, after T-1553).
 
-## Blocked because
-Blocked because: review-round limit
+## Review history
+Resumed after the review-round limit (step 5c).
 Round 3 (head 38269591): security, architecture and excel-fidelity APPROVE; quality REQUEST_CHANGES on one duplicate
 helper (`error_kind` in forecast.rs copied date_and_time.rs's). Fixed on the branch after round 3: forecast.rs reuses
 `date_and_time::error_kind`, the series enum is renamed `DuplicateAggregate` with a `match` in `from_setting`, and
@@ -57,3 +57,5 @@ SEASONALITY call whose `values` and `timeline` differ in size, `#N/A` like the w
 On probes/forecast-ets-longer-series the period-4 series gives 4 (web `#N/A`, still known failures). statistics.md
 records the model and its error order (UNVERIFIED) and the work caps (DEVIATION). Review: duplicated range reading and
 gcd replaced by `evaluate_range` and `gcd_i64`; the error order documented as the code takes it, pinned by a test.
+Step 5c re-review on db5b5cfb (after merging main): security, architecture, quality and excel-fidelity APPROVE.
+Their minor notes are done here: the blank time stamp rule (step 5 and a unit test) and T-2425's probe list.

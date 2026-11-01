@@ -22,10 +22,10 @@ impl Model {
         known: &[Node],
         cell: CellReferenceIndex,
     ) -> Result<(f64, f64), CalcResult> {
-        // Fewer than two pairs or all x equal is #DIV/0!.
+        // Fewer than two pairs or all x equal is #DIV/0!; an overflowing sum of squares #NUM!.
         self.paired_moments(known, cell)?
             .line()
-            .ok_or_else(|| CalcResult::new_error(Error::DIV, cell, String::new()))
+            .map_err(|error| super::correl::moment_error(error, cell))
     }
 
     /// `FORECAST(x, known_y's, known_x's)` and FORECAST.LINEAR: the predicted y at `x` by

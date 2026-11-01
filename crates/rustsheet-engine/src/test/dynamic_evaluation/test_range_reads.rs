@@ -238,19 +238,25 @@ fn a_sparse_single_range_past_the_seen_range_cap_is_value_error() {
 // rectangles. Checking every cell against every rectangle is over 10^10 tests.
 #[test]
 fn a_large_spill_is_checked_against_many_rectangles_in_near_linear_time() {
-    use std::time::{Duration, Instant};
     let rows =
         |from: usize| format!("=MAP(SEQUENCE(50000,1,{from}),LAMBDA(r,SUM(OFFSET(1:1,r,0))))");
     let mut model = new_empty_model();
     model._set("A1", &rows(200_000));
     model._set("B1", &rows(250_000));
     model._set("C2", "=SEQUENCE(100000)");
-    let start = Instant::now();
     model.evaluate();
     model.evaluate();
-    let elapsed = start.elapsed();
-    // About 3 s in a debug build; the cell-by-rectangle scan took 34 s in a release build.
-    assert!(elapsed < Duration::from_secs(20), "{elapsed:?}");
+    // Count the work, not the clock (T-2282): each of the three spills commits once per pass and
+    // tests each recorded rectangle at most once (its bands, or all of them when probing the bands
+    // would cost more), so two passes test at most 6 per rectangle (500,000 today). The
+    // cell-by-rectangle scan this guards against tests every rectangle for every spilled cell,
+    // about 2E+10 here (34 s in a release build).
+    let tested = model.evaluation.seen_ranges.rectangles_tested.get();
+    let bound = 6 * model.evaluation.seen_ranges.len() as u64;
+    assert!(
+        tested <= bound,
+        "{tested} rectangle tests against a bound of {bound}"
+    );
     assert_eq!(model._get_text("A50000"), "0");
     assert_eq!(model._get_text("C100001"), "100000");
     assert_eq!(model.evaluation.seen_ranges.len(), 100_000);

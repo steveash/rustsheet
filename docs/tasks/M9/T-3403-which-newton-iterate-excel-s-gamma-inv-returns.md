@@ -32,6 +32,10 @@ Cells (gen-m9, excel-graph):
 - gen-m9/a612e89321a6df9c.case.json (1): Calc!A169 `CHISQ.INV(1E-20,6)`, form at the root 2.9E-7 off p; 4 ulp,
   within 15 digits;
 - gen-m9/c18dbf21f11093f3.case.json (1): Calc!A107, 1 ulp, within 15 digits (decision 0210).
+- gen-m9/06b4e8f5de409d5e.case.json (1): Calc!A128 and gen-m9/623663cacea53bbc.case.json (1): Calc!A98,
+  `CHISQ.INV(1E-200,5)` (shape 2.5, inside the cut): Excel 3.233407780583136E-80, ours 3.233407780583135E-80, 2 ulp,
+  within 15 digits. T-3311 moved them from 20 ulp to 2 and named no owner for the rest; gap triage 2026-11-01g
+  (origin/main c0e330c2f) found no open task naming them. Same question as A169 and A107: which iterate Excel returns.
 
 Leads:
 - The 1-ulp residue of the form against Excel's GAMMA.DIST (T-3242) moves the levels; at A107 the nearest iterate is
