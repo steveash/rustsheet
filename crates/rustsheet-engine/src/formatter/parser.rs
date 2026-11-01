@@ -216,6 +216,19 @@ pub(crate) fn conditional_section(
     Some((index, drop_sign))
 }
 
+/// Whether `part` is a number section that holds a color or a condition and no token. Excel
+/// prints the value in General there, a text value unchanged, where a section with nothing in it
+/// (or only a locale tag) prints nothing: `TEXT(5,"[Red]")` is "5", `TEXT(-5,"0;[Red]")` "5",
+/// `TEXT(5,"[>1];0")` "5", `TEXT("abc","0;;;[Red]")` "abc", `TEXT(5,"[$-409];0")` ""
+/// (probes/text-value-kind-sweep B69, probes/text-value-kind-sweep-b rows 6-20; number-formats.md
+/// "A section of only a color or a condition prints General").
+pub(crate) fn is_bracket_only_section(part: &ParsePart) -> bool {
+    match part {
+        ParsePart::Number(p) => p.tokens.is_empty() && (p.color.is_some() || p.condition.is_some()),
+        ParsePart::Date(_) | ParsePart::General(_) | ParsePart::Error(_) => false,
+    }
+}
+
 /// Whether `part` holds `@`, which makes it a text section.
 pub(crate) fn is_text_section(part: &ParsePart) -> bool {
     section_tokens(part).is_some_and(|t| t.iter().any(|t| matches!(t, TextToken::Raw)))
@@ -346,14 +359,16 @@ impl Parser {
             lexer,
         }
     }
-    /// Whether the format is three sections plus an empty fourth: the parser drops the empty
-    /// section after a trailing `;`, so `;;;` has three parts. Excel prints nothing for it
-    /// (`TEXT("text",";;;")` is ""; gen-m10/0e3d8eba9432a18d T!A24).
-    pub(crate) fn has_empty_text_section(&self) -> bool {
-        self.parts.len() == 3 && self.ends_in_separator && !self.parts.iter().any(is_text_section)
-    }
+    /// Parses every section. A trailing `;` opens one more, empty section, as a `;` between two
+    /// sections does: Excel prints nothing for a value that falls in it (`TEXT(-5,"0;")`,
+    /// `TEXT(0,"0;0;")` and `TEXT("text",";;;")` are ""; probes/text-value-kind-sweep-b C2, D3,
+    /// gen-m10/0e3d8eba9432a18d T!A24). After four sections it is left to the section-count check.
     pub fn parse(&mut self) {
         while self.lexer.peek_token() != Token::EOF {
+            let part = self.parse_part();
+            self.parts.push(part);
+        }
+        if self.ends_in_separator && self.parts.len() < 4 {
             let part = self.parse_part();
             self.parts.push(part);
         }

@@ -336,7 +336,7 @@ Evidence: poi/TextFormatTests.xlsx A3:A10, A12:A29; poi/GeneralFormatTests.xlsx 
 A doubled quote inside a quoted literal: `;;;"h""I"` gives "hI" in Excel (A4, A14, A23), not `h"I`, so
 it is not an escape there: see "A doubled quote in a format literal is not an escape" below.
 Status: VERIFIED
-Implemented in: `format_text_value` (formatter/format.rs) used by `fn_text` (functions/text/common.rs), scalars and array elements; a text value with a format of three sections returns the text unchanged (probed, T-2975; one or two sections unprobed). An empty 4th section (`;;;`; the parser drops the empty section after a trailing `;`, so `Parser::has_empty_text_section` detects it) gives empty text (gen-m10/0e3d8eba9432a18d T!A24). A five-section format, `TEXT(TRUE,";;;")`, `"0;0;0;"` and `"0;0;General;"` on a text value match Excel (probes/text-format-text-sections, T-2975).
+Implemented in: `format_text_value` (formatter/format.rs) used by `fn_text` (functions/text/common.rs), scalars and array elements; a text value with a format of one to three sections returns the text unchanged (probed, T-2975; one and two sections probes/text-value-kind-sweep F2:F69 and -b F2:F20, T-3649). An empty 4th section (`;;;`; a trailing `;` opens an empty section in `Parser::parse`, T-3649) gives empty text (gen-m10/0e3d8eba9432a18d T!A24). A five-section format, `TEXT(TRUE,";;;")`, `"0;0;0;"` and `"0;0;General;"` on a text value match Excel (probes/text-format-text-sections, T-2975).
 Tasks: T-0935, T-2945, T-2975
 
 ## TEXT of a text value is `#VALUE!` over 255 characters
@@ -462,6 +462,51 @@ S!A31, -f Sheet1!A41:A42, -j Sheet1!A43, -q Sheet1!A16 (excel-graph); poi/Format
 A3:A50 (Excel-cached).
 Status: VERIFIED
 Tasks: T-0936 (implemented), T-1734 (implemented)
+
+## A trailing `;` opens an empty section (T-3649)
+Rule: a `;` at the end of a code adds one more section, and it is empty, exactly as `;;` between two
+sections is: a value that falls in it prints "". `TEXT(-1234.5,"0;")` and `TEXT(-1234.5,"General;")`
+are "" (a positive and zero still use the first section), `TEXT(0,"0;0;")`, `TEXT(0,"0;;")`,
+`TEXT(0,"0.0;;")` and `TEXT(0,"General;;")` are "", and an empty cell reads as zero there too
+(probes/text-value-kind-sweep D58, D63, H58, H63; probes/text-value-kind-sweep-b C2, C4, D3, D5, H3,
+H5; excel-graph 2026-11-01). The 4th section after `;;;` (`TEXT("text",";;;")` is "") is the same rule.
+A text value or a boolean under one to three sections is unchanged (`TEXT("abc","0;")` is "abc").
+Status: VERIFIED
+Implemented in: `Parser::parse` (formatter/parser.rs).
+Tasks: T-3649
+
+## A section of only a color or a condition prints General (T-3649)
+Rule: a section that holds a color (`[Red]`, `[Color10]`) or a condition (`[>100]`), or both, and
+no other token prints the value in General, where a section with nothing in it, or only a locale tag,
+prints "". The sign rules pick the section as usual: `TEXT(1234.5,"[Red]")` is "1234.5" and
+`TEXT(-1234.5,"[Red]")` "-1234.5" (one section keeps the minus); `TEXT(-1234.5,"[Red];[Blue]")`,
+`"0;[Red]"` and `"[Red]0;[Blue]"` are "1234.5" (a negative section drops it); `TEXT(0,"0;0;[Red]")`
+is "0"; `TEXT(1234.5,"[>100];0")` and `"[Red][>5];0"` are "1234.5" while `"[>100];0"` on -1234.5 is
+"-1235"; `TEXT(1234.5,"[$-409];0")` is "". A text value or a boolean in a 4th section of only a
+color is unchanged (`TEXT("abc","0;;;[Red]")` and `"[Red];[Blue];[Green];[Cyan]"` are "abc",
+TRUE gives "TRUE"). Evidence: probes/text-value-kind-sweep B69:H69, probes/text-value-kind-sweep-b
+rows 6-20 (excel-graph 2026-11-01). The condition-only first section settles the open question in
+"Conditional sections" for a section with no literals: it prints General.
+Status: VERIFIED
+Implemented in: `is_bracket_only_section` (formatter/parser.rs), used by `format_number` and
+`format_text_value` (formatter/format.rs). The cell keeps the section's color.
+Tasks: T-3649
+
+## Which codes are `#VALUE!` for which value kind (T-3649)
+Rule: across 68 codes, one per format-code family and section shape, the value kind changes whether
+`TEXT` is `#VALUE!` only through the sign rules and the date range: a negative number under a date or
+clock code with one section (`yyyy-mm-dd`, `d`, `mmm`, `dddd`, `hh:mm:ss`, `ss.000`, `mm:ss.0`,
+`[h]:mm`, `[mm]:ss`, `h AM/PM`, `h:mm A/P`, `AM/PM`, `[$-409]mmmm`, `[$-411]ge`) is `#VALUE!`, while `[s]`
+and `[h]` print the negative ("-106660800", "-29628"), and 45000.25 under `?/8` is `#VALUE!` while
+1234.5 gives "9876/8" (row 10; see "Fraction formats"). Every other `#VALUE!` holds for every kind,
+text, TRUE and the empty cell included: a code mixing `@` with a number or date token in one section
+(`@ 0`, `0 @`, `yyyy @`, `[h] @`, `0.0E+0 @`, rows 41-45), five sections (`0;0;0;0;0`, row 56) and a
+text section before a number section (`@;0`, row 64). A text section after a number section is fine
+for every kind (`[h];@`, `0E+0;@`, `0%;@`, `# ?/?;@`, rows 65-68). Text and TRUE are unchanged under
+any valid code with fewer than four sections, and the empty cell formats as 0. Evidence: probes/text-value-kind-sweep (B2:H69, excel-graph
+2026-11-01); the engine matched every `#VALUE!` cell there before T-3649.
+Status: VERIFIED
+Tasks: T-3649
 
 ## Scientific formats with literals after `E`
 Rule: literals may sit between `E+`/`E-` and the exponent digits; the exponent sign is printed

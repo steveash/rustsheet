@@ -26,8 +26,8 @@ use super::{
     lexer::last_section_is_bare_at,
     locale_tag::Calendar,
     parser::{
-        conditional_section, is_text_section, numeric_section_count, section_condition,
-        section_tokens, ErrorPart, GeneralPart, ParsePart, Parser, TextToken,
+        conditional_section, is_bracket_only_section, is_text_section, numeric_section_count,
+        section_condition, section_tokens, ErrorPart, GeneralPart, ParsePart, Parser, TextToken,
     },
 };
 
@@ -152,12 +152,12 @@ pub fn format_text_value(text: &str, format: &str) -> Formatted {
     }
     let section = match parts.last() {
         Some(last) if parts.len() < 4 && is_text_section(last) => parts.len() - 1,
-        _ if parser.has_empty_text_section() => return capped_text(String::new()),
         _ if parts.len() < 4 => return capped_text(text.to_string()),
         _ => 3,
     };
     let tokens = match parser.parts.get(section) {
         Some(ParsePart::Error(_)) => return format_error(),
+        Some(part) if is_bracket_only_section(part) => return capped_text(text.to_string()),
         Some(part) => match section_tokens(part) {
             Some(tokens) => tokens,
             None => return capped_text(text.to_string()),
@@ -403,6 +403,16 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                 text: "#VALUE!".to_owned(),
                 color: None,
                 error: Some("Too many parts".to_owned()),
+                unshowable: false,
+            };
+        }
+    }
+    if let ParsePart::Number(p) = part {
+        if is_bracket_only_section(part) {
+            return Formatted {
+                text: general_text(value, locale),
+                color: p.color,
+                error: None,
                 unshowable: false,
             };
         }
