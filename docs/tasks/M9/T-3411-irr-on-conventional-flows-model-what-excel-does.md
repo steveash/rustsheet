@@ -76,4 +76,7 @@ stage (PR #2529, blocked on its hold-out) and unblocks T-3347.
   8.2E+5 for n = 60 (A83 at 1.35E+7 is `#NUM!` again), never for n = 20 or 30. That fits a trial rate near -1 whose
   n-th discount power leaves the double range (1 + r below 10^(-308/n): 2E-8 at n = 40, 7.6E-6 at n = 60, out of reach
   at n = 20). Untested hypothesis: after the secant fails, Excel's search moves r toward -1, and the outlay decides how far.
+- Excel's returned level-annuity roots are 1E-18 to 9E-12 from the exact root (roots.tsv), and the outlay-family roots
+  1E-18 to 2E-16: consistent with any fast solver stopped at |step| < 1e-7 with a 1e-7 residual, so the digits do not
+  separate a Newton step from a secant step. The search's reach, not its final steps, is what the model must find.
 - Do not repeat: Newton in r and the secant in r as fallbacks; an unbounded XIRR-style bracket walk.
