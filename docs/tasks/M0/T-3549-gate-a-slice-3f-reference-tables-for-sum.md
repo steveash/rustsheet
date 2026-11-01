@@ -3,7 +3,7 @@ id: T-3549
 title: "Gate A slice 3f: reference tables for SUM and AVERAGE, with the near-zero snap ruled on"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -53,19 +53,53 @@ points.
   `rustsheet-eval accuracy`, then `rustsheet-accuracy math --suite probes-numeric`).
 
 ## Acceptance criteria
-- [ ] One definition each for SUM and AVERAGE. Their unit tests cover `SUM(0.1,0.2,-0.3)`,
+- [x] One definition each for SUM and AVERAGE. Their unit tests cover `SUM(0.1,0.2,-0.3)`,
       `SUM(0.1,0.2,-0.3,0)` = 5.551115123125783e-17 (the trailing-zero case), `AVERAGE(0.1,0.2,-0.3)`, and
       `SUM(9E+307,9E+307,-9E+307)` (a domain error) against `SUM(9E+307,-9E+307,9E+307)` (9E+307). Each test
       checks the value or domain-error outcome the recorded rules give.
-- [ ] A decision record states the snap rule (a), (b) or (c) and the overflow rule, and the definitions cite it.
-- [ ] `eval/accuracy/tables/{SUM,AVERAGE}/s1.{case,math,oracle}.json` are generated, filled and committed.
+- [x] A decision record states the snap rule (a), (b) or (c) and the overflow rule, and the definitions cite it.
+- [x] `eval/accuracy/tables/{SUM,AVERAGE}/s1.{case,math,oracle}.json` are generated, filled and committed.
       `rustsheet-eval accuracy` reports `missing tables` 2 lower than before the change. The Outcome names every
       failing point with its owner task (`known-failures.tsv` under T-3379's rules) and gives the count of points
       that pass only through the math side.
-- [ ] The probes-numeric math sidecars are regenerated with the new definitions and committed. `make eval` shows no
+- [x] The probes-numeric math sidecars are regenerated with the new definitions and committed. `make eval` shows no
       `snap-addsub/*` cell of probes-numeric leaving the R1(c) envelope.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - SUMIF, SUMIFS, SUMPRODUCT, SUBTOTAL and AGGREGATE (T-3550, and T-3551 filed with it in #2656).
 - Changing the engine's snap or summation (file any failing point as its own task).
+
+## Outcome
+Done (2026-11-01).
+- **Decision 0224 (option (a)):** SUM's and AVERAGE's definitions include the near-zero snap and the running-total
+  overflow. Both rules depend only on the doubles. Both read Excel's running total: each addition rounded to 64 bits,
+  then to a double (`fitlab.exact.double_round`, the engine's `extended_sum`).
+  - The math is 0 where the final addition snaps; elsewhere it is the exact sum, or the exact sum over the count.
+  - A running total beyond the double range is a domain error (Excel's `#NUM!`).
+- **Definitions** (`tools/src/rustsheet_tools/accuracy/defs/aggregate.py`):
+  - Variadic: `Definition.variadic` and `params_for(n)` repeat the last parameter. `check_domain`, `fit_args`,
+    `compute`, `parse_formula` and the sampler's `draw` path use it.
+  - Arity: 2 to 10 scalars in typical, tail and edge draws; 50 to 255 in extreme; log-uniform 1 to 255. No array
+    literals.
+  - The tail stratum draws near-cancelling sums of short decimals, some with a trailing 0. The edge stratum draws
+    both overflow orders, one argument, zeros, an exact cancellation and 255 arguments.
+  - Tests (`tools/tests/test_accuracy_aggregate.py`) cover `SUM(0.1,0.2,-0.3)` = 0, `AVERAGE(0.1,0.2,-0.3)` = 0,
+    `SUM(0.1,0.2,-0.3,0)` (the exact 2.7755575615628914e-17; Excel's 5.551115123125783e-17 is a double rounding
+    away), the T-3145 and T-3248 8-ULP bounds with AVERAGE's values, T-2714's subnormal flush, and
+    `SUM(9E+307,9E+307,-9E+307)` (a domain error) against `SUM(9E+307,-9E+307,9E+307)` = 9E+307.
+- **Tables:** `SUM/s1` and `AVERAGE/s1`, 120 points each, filled from excel-graph.
+  - All 240 points are inside the envelope: 0 failing, 0 table defects, no known failures added. `missing tables`
+    drops by two (308 to 306).
+  - 0 points pass only through the math side.
+  - Excel is more than G off the math at 13 SUM and 10 AVERAGE points. All are non-snapped near-cancellations, and
+    all pass on Excel's side, where the engine matches Excel to the bit.
+  - The tail points bracket the snap bound: snapped at 0, 1 and 7 ULP of the running total, kept from 9 ULP. Excel
+    agrees with the definition at every one.
+  - Both `#NUM!` overflow points (`SUM(9.09501882444508E+307,9.09501882444508E+307,-9.09501882444508E+307)` and the
+    AVERAGE one) are `#NUM!` in Excel.
+- **probes-numeric math sidecars:** new for the SUM and AVERAGE cells of `30bc5f8fab02d0a2` (the 216 SUM cells of
+  `snap-addsub/*`), `double-rounding-accumulators`, `double-rounding-chained` and `double-rounding-ops`.
+  - Every one has Excel within 1e-9 of the math, so no `snap-addsub/*` cell leaves the R1(c) envelope.
+  - The probes-numeric R1(c) count is unchanged (39207 counted, 32150 Phase 1b).
+  - The `+`/`-` cells of `snap-addsub/*` are not SUM calls and get no sidecar from this definition.
