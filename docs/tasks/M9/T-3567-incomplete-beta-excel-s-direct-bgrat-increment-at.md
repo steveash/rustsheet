@@ -3,7 +3,7 @@ id: T-3567
 title: "Incomplete beta: Excel's direct bgrat increment at b != 1/2 to the bit, and F at a df of 1 through bgrat_half"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
