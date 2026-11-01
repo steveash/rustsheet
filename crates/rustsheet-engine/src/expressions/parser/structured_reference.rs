@@ -213,7 +213,7 @@ impl StructuredReference {
     }
 
     /// [`Self::text`] with the table name, whether or not it was written.
-    pub(crate) fn qualified_text(&self) -> String {
+    fn qualified_text(&self) -> String {
         let name = &self.table_name;
         if self.bare {
             return name.clone();
@@ -324,6 +324,11 @@ impl Parser {
         node
     }
 
+    /// Sets the table a formula being moved with it is parsed in ([`Parser::moved_table`]).
+    pub(crate) fn set_moved_table(&mut self, table: Option<String>) {
+        self.moved_table = table;
+    }
+
     /// The table `name` names in the parser's table list. Table names match ignoring case
     /// (gen-m8b names-case 5b5c0e20e82153bb): an exact hit is deterministic; the case-folded scan
     /// covers the rest.
@@ -351,6 +356,9 @@ impl Parser {
     /// The name of the table whose range (headers and totals row included) holds the formula's
     /// cell, if any.
     fn containing_table_name(&self) -> Option<String> {
+        if let Some(name) = &self.moved_table {
+            return Some(name.clone());
+        }
         let context = &self.context;
         self.tables.values().find_map(|table| {
             (table.is_on_sheet(&context.sheet)

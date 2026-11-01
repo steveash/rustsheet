@@ -410,13 +410,43 @@ impl Model {
     }
 
     /// The row insert (`delta > 0` rows above `row`) or delete (rows `row..row - delta`) on
-    /// `sheet`, and the lowercase names of the tables whose structured references keep their text
-    /// through it (`TableEdits::kept`): its cell moves keep the text of their `#This Row`
-    /// references to them ([`Model::moved_text`], T-3037).
+    /// `sheet`, and, for an insert, the lowercase names of the tables that follow it
+    /// (`TableEdits::kept`): the formulas it moves keep the text of their `#This Row` references
+    /// to them ([`Model::moved_text`]) and are parsed in the table they move with
+    /// ([`Model::kept_table_holding`]), as Excel keeps them (T-2845, T-3037). None for a delete:
+    /// Excel's rule is unprobed there (T-3739), so a moved `#This Row` keeps reading its row.
     pub(crate) fn row_edit(&self, sheet: u32, row: i32, delta: i32) -> (DisplaceData, Vec<String>) {
         let displace_data = DisplaceData::Row { sheet, row, delta };
-        let kept = self.table_edits(&displace_data).kept;
+        let kept = if delta > 0 {
+            self.table_edits(&displace_data).kept
+        } else {
+            Vec::new()
+        };
         (displace_data, kept)
+    }
+
+    /// The table in `kept` (lowercase names) on `sheet` whose range holds (`row`, `column`): a
+    /// formula a row insert moves from there moves with the table, so an unqualified structured
+    /// reference in it (`[@Qty]*2` in a calculated column) names that table at its new place,
+    /// which the table reaches only after the move (T-3037: before, the last row's formula of a
+    /// table an insert moved did not parse).
+    pub(crate) fn kept_table_holding(
+        &self,
+        sheet: u32,
+        (row, column): (i32, i32),
+        kept: &[String],
+    ) -> Option<String> {
+        if kept.is_empty() {
+            return None;
+        }
+        let sheet_name = self.workbook.worksheet(sheet).ok()?.get_name();
+        let table = self.workbook.tables.values().find(|table| {
+            let holds = bounds(table).is_some_and(|b| {
+                (b.left..=b.right).contains(&column) && (b.top..=b.bottom).contains(&row)
+            });
+            holds && table.is_on_sheet(&sheet_name) && kept.contains(&table.name.to_lowercase())
+        })?;
+        Some(table.name.clone())
     }
 
     /// What the structural edit `displace_data` does to the tables of the sheet it edits. Tables

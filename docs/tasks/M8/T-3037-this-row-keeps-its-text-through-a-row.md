@@ -42,7 +42,7 @@ table. Each one then evaluates at its own row against the table as it is after t
 - [x] The value cells that fail today pass in `make eval` (this-row-above-header F!A4:A7, this-row-inside-data
       F!A6:A7; C8, D8 and H1:H6 already pass and must keep passing), and `make eval-baseline` removes their lines.
       The FORMULATEXT cells (B4:B8, G1:G6, calc-column A1:A6) also need T-1683's spelling.
-- [x] Unit tests in `table_edits` cover a moved cell beside the table, a fixed cell on another sheet that goes from
+- [x] Unit tests (in `test/test_this_row.rs`, the `#This Row` model tests) cover a moved cell beside the table, a fixed cell on another sheet that goes from
       off the data rows to on them, and a formula inside the table.
 - [x] references.md's "Implemented in" for the T-2845 paragraph is updated.
 - [x] `make check` green; reviewers approve.
@@ -52,18 +52,18 @@ table. Each one then evaluates at its own row against the table as it is after t
 - Row deletes and column edits (unprobed for `#This Row`; file a probe task if needed).
 
 ## Outcome
-- A `#This Row` reference to a table that follows a structural edit now keeps its text like every other structured
-  reference: the `Rewrite::Displace` kept-table branch no longer excludes it (cells that stay put), and the row
-  insert's and delete's cell moves lower `#This Row` only for tables that do not follow the edit
-  (`Rewrite::LowerThisRow` carries the followed tables, `Model::row_edit`, `Model::moved_text`). A moved formula is
-  re-entered with its structured references' table names, so a calculated column's `[@Qty]*2` moved below the
-  table's old last row still parses (it gave `#ERROR!`).
+- Through a row insert its table follows (moves or grows), a `#This Row` reference to it now keeps its text like every
+  other structured reference: the `Rewrite::Displace` kept-table branch takes it on a row insert (cells that stay
+  put), and the insert's cell moves lower `#This Row` only for tables that do not follow it (`Rewrite::LowerThisRow`
+  carries the followed tables; `Model::row_edit`, `Model::moved_text`). A formula the insert moves with its table is
+  parsed in that table (`Parser::moved_table`, `Model::kept_table_holding`), so an unqualified `[@Qty]*2` or
+  `SUM([Qty])` moved below the table's old range keeps its text and value (it was `#ERROR!`).
+- Row deletes and column edits keep today's rule (review round 1: unprobed, so out of scope); T-3739 probes them.
 - Eval: probes fixed 15 cells, 0 regressions (this-row-above-header F!A4:A7, this-row-inside-data F!A6:A7, and the
   calc-column cases' FORMULATEXT cells A1:A6 / A3, A4, A6, which pass fully now). The this-row cases' FORMULATEXT cells
   (B4:B8, G1:G6) still wait on T-1683's `Sales[@Qty]` spelling.
-- Tests: `test_this_row::a_row_insert_the_table_follows_keeps_this_row` (probe layout: a fixed cell on another sheet
-  going onto the data rows, a moved cell beside the table, the calculated column), and `structural_edits_keep_values`
-  now pins the kept text and the new-row reads where the table follows (insert above, insert inside, delete inside).
-- Hand generalisation: row deletes the table follows get the same rule (unprobed); T-3739 probes deletes and column
-  edits.
-
+- Tests: `a_row_insert_the_table_follows_keeps_this_row` (probe layout: a fixed cell on another sheet going onto the
+  data rows, a moved cell beside the table, the calculated column), `a_moved_unqualified_reference_keeps_its_text`
+  (`=SUM([Qty])` through two inserts and a delete), and `structural_edits_keep_values` now pins the kept text and the
+  new-row reads where an insert's table follows.
+- `move_cell` takes its source and target as (row, column) pairs, to stay within clippy's argument limit with `kept`.

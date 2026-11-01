@@ -2502,12 +2502,13 @@ rows (`Displacement::range_corners`, T-2338). Every other edit that crosses a ta
 header row, a column edit inside it, row and column moves, cell shifts) leaves the table as it is, and an
 edit that changes the area a
 structured reference resolves to rewrites it to the displaced plain range (the fallback of SPEC-0016); one
-that leaves the area unchanged keeps the text. A `#This Row` reference to a table that follows the edit keeps
-its text too, on every row (T-3037): a cell on another sheet that stays put, a cell beside the table that moves
-with its row, and a formula inside the table (`Model::moved_text` with the followed tables, `Model::row_edit`),
-and each reads its cell's row in the edited table, as the T-2845 bullet above shows. A moved formula is re-entered
-with its structured references' table names, so `[@Qty]*2` moved below the table's old last row still parses.
-That a row delete the table follows does the same is a hand generalisation (unprobed; T-3037 Outcome).
+that leaves the area unchanged keeps the text. Through a row insert its table follows, a `#This Row` reference keeps its
+text too, on every row (T-3037): a cell on another sheet that stays put, a cell beside the table that moves with its
+row, and a formula inside the table (`Model::row_edit`, `Model::moved_text`), and each reads its cell's row in the
+edited table, as the T-2845 bullet above shows. A formula the insert moves with the table is parsed in that table
+(`Model::kept_table_holding`), so an unqualified `[@Qty]*2` or `SUM([Qty])` keeps its text where the move takes it below
+the table's old range (before T-3037 that cell did not parse, `#ERROR!`). Under every other edit a `#This Row` reference
+keeps the fallback rule (a row delete or a column edit the table follows is unprobed for it, T-3739).
 FORMULATEXT prints the long `Sales[[#This Row],[Qty]]` where Excel prints `Sales[@Qty]` (T-1683). An insert at
 the first row of a table without a header row is a fallback too (unprobed, T-3039). An insert that would
 carry a table past the last row or column is refused with an error and changes nothing, as Excel does
@@ -2526,7 +2527,7 @@ registers a spec table with its totals row; an insert above the totals row grows
 Under an edit its table does not follow (a fallback, a row move) or a cut and paste, a `#This Row` reference keeps its text
 only where its cell keeps its row: one that moves the formula to another row rewrites it to the area it read on its old row
 (`$A$3`, or `#VALUE!` off the data rows), its value before step 2. Through a row insert the table follows, Excel keeps
-`Sales[@Qty]` and reads the new row, and so do we (T-2845, above; T-3037); cut and paste is desktop-only and unprobed (T-2325).
+`Sales[@Qty]` and reads the new row, and so do we (T-2845, above; T-3037); a row delete is unprobed (T-3739); cut and paste is desktop-only and unprobed (T-2325).
 A copy and paste (not a cut) keeps the text, so the copy reads the row it lands on (hand expectation, unprobed; before step 2 it
 kept reading the old row). A duplicated sheet, which gets no table, lowers each `#This Row` cell on its own row, so it reads
 what it read (`#VALUE!` off the data rows). A formula on another sheet that refers to a deleted sheet's table is `#REF!` on

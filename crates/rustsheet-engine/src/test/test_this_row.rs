@@ -267,14 +267,13 @@ fn retype_twins(model: &mut Model, sheet: u32, first_column: i32) {
     model.evaluate();
 }
 
-/// Structural edits keep today's values where the table does not follow them; one whose
+/// Structural edits other than a row insert the table follows keep today's values; one whose
 /// displaced area differs, or that moves the formula's cell to another row, prints that area
-/// (T-2297). Where the table follows the edit (moves, grows or shrinks), every `#This Row`
-/// reference to it keeps its text and reads the cell's row in the edited table: on the table's
-/// sheet the cells move with their rows and read the same values, and on another sheet they stay
-/// and read the row they are on now, as Excel does for inserts (T-2845
-/// table-insert-row-this-row-above-header, -inside-data; T-3037). That a row delete does the
-/// same is a hand generalisation (unprobed, T-3037 Outcome).
+/// (T-2297; Excel's rule for them is unprobed, T-3739). Through a row insert the table follows
+/// (it moves or grows), every `#This Row` reference to it keeps its text and reads the cell's
+/// row in the edited table: on the table's sheet the cells move with their rows and read the
+/// same values, and on another sheet they stay and read the row they are on now, as Excel does
+/// (T-2845 table-insert-row-this-row-above-header, -inside-data; T-3037).
 #[test]
 fn structural_edits_keep_values() {
     type Edit = fn(&mut Model);
@@ -308,7 +307,7 @@ fn structural_edits_keep_values() {
         }),
         ("insert column left", |m| m.insert_columns(1, 1, 1).unwrap()),
     ];
-    let followed = ["insert above", "insert inside", "delete inside"];
+    let followed = ["insert above", "insert inside"];
     let row_column = 2 * TEMPLATES.iter().position(|t| *t == "=ROW({x})").unwrap() as i32 + 1;
     let mut all = Vec::new();
     for (name, edit) in edits {
@@ -547,4 +546,32 @@ fn a_row_insert_the_table_follows_keeps_this_row() {
     assert_eq!(column_values(&model, 0, 5, 4..=8), ["1", "2", "", "4", "8"]);
     assert_eq!(formula(&model, 0, 8, 5), "=Sales[[#This Row],[Qty]]");
     assert_eq!(column_values(&model, 0, 3, 7..=8), ["4", "8"]);
+}
+
+/// An unqualified structured reference in a formula a row insert or delete moves keeps its text,
+/// written without the table name, as an unmoved one beside it does (Excel never rewrites a
+/// structured reference to a table that follows the edit); the insert above the table moves its
+/// last row's formula below the table's old range, where it still names the table (T-3037).
+#[test]
+fn a_moved_unqualified_reference_keeps_its_text() {
+    type Edit = fn(&mut Model);
+    // Each edit with the first and last rows of the formulas after it.
+    let edits: [(Edit, [i32; 2]); 3] = [
+        (|m| m.insert_rows(0, 3, 1).unwrap(), [5, 8]),
+        (|m| m.insert_rows(0, 6, 1).unwrap(), [4, 8]),
+        (|m| m.delete_rows(0, 1, 1).unwrap(), [3, 6]),
+    ];
+    for (edit, rows) in edits {
+        let mut model = probe_model();
+        for row in 4..=7 {
+            let sum = "=SUM([Qty])".to_string();
+            model.set_user_input(0, row, 4, sum).unwrap();
+        }
+        edit(&mut model);
+        model.evaluate();
+        for row in rows {
+            assert_eq!(formula(&model, 0, row, 4), "=SUM([Qty])", "row {row}");
+            assert_eq!(value(&model, 0, row, 4), "15", "row {row}");
+        }
+    }
 }

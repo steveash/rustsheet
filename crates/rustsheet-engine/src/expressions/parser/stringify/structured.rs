@@ -131,15 +131,20 @@ pub(super) fn reference_text(
             data: DisplaceData::None,
             ..
         }) => return written(),
-        // A `#This Row` reference keeps its text too, and then reads the cell's row of the edited
-        // table: Excel gives `#VALUE!` on a row the insert makes the header row, and 0 on the
-        // blank data row it adds (T-2845 table-insert-row-this-row-above-header, -inside-data;
-        // T-3037).
+        // Through a row insert a `#This Row` reference keeps its text too, and then reads the
+        // cell's row of the edited table: Excel gives `#VALUE!` on a row the insert makes the
+        // header row, and 0 on the blank data row it adds (T-2845
+        // table-insert-row-this-row-above-header, -inside-data; T-3037). Under any other edit
+        // it keeps today's rule below: Excel's is unprobed (T-3739).
         Rewrite::Displace(Displacement {
+            data,
             kept_tables,
             deleted_columns,
             ..
-        }) if kept_tables.contains(&reference.table_name.to_lowercase()) => {
+        }) if kept_tables.contains(&reference.table_name.to_lowercase())
+            && (!matches!(lowered, Node::ThisRowKind { .. })
+                || matches!(data, DisplaceData::Row { delta, .. } if *delta > 0)) =>
+        {
             // A column delete inside the table turns a reference to a deleted column into
             // `#REF!` (T-2324 table-delete-column-qty: `=SUM(#REF!)`, -region: `=COUNTA(#REF!)`).
             // A column range that loses one end is printed as the area it is displaced to below,
@@ -166,15 +171,12 @@ pub(super) fn reference_text(
                 written()
             };
         }
-        // The moved text is parsed at the cell's new place, before the tables follow the edit,
-        // so it names its table: written without it (`[@Qty]*2` in a calculated column), it
-        // would not parse in the row an insert at the table's last data row moves it to (T-3037).
         Rewrite::LowerThisRow(kept) => {
             let kept = kept.contains(&reference.table_name.to_lowercase());
             return if !kept && matches!(lowered, Node::ThisRowKind { .. }) {
                 print(lowered, &NO_REWRITE)
             } else {
-                reference.qualified_text()
+                written()
             };
         }
         Rewrite::Displace(..) | Rewrite::Move(_) => {}
@@ -229,7 +231,7 @@ fn deleted_column(reference: &StructuredReference, deleted: &[(String, String)])
 /// Whether the cut and paste `rewrite` moves the formula cell `context` to another row, for a
 /// `#This Row` area `lowered` (false for any other node and any other rewrite: a structural edit
 /// re-enters the formulas it moves to another row with their `#This Row` areas lowered first,
-/// except those to a table that follows it, `Model::moved_text`). The cell's sheet is the area's when the area names no sheet; when
+/// but those to a table a row insert follows, `Model::moved_text`). The cell's sheet is the area's when the area names no sheet; when
 /// it names one, the cell is on another sheet, which may be the cut one.
 fn row_may_move(lowered: &Node, context: Option<&CellReferenceRC>, rewrite: &Rewrite) -> bool {
     let (
