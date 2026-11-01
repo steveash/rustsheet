@@ -68,7 +68,8 @@ what the committed cases support.
   no sidecar at all (amordegrc-a76-bisect-a/b/d/h, the date-system daycount pair, t3352,
   t3443-basym-a/hold/sweep). Five probes sidecars held stale or missing cells
   (fin-argument-modes, solver-iteration-traces, stat-argument-modes, t2435-dist-extremes,
-  t3349-t-inv-2t-near-one). The other regenerated sidecars only gained `skipped`. After
-  regenerating, the check passes. `make eval-gates` is unchanged (no regressions); the sidecars
+  t3349-t-inv-2t-near-one). The other regenerated sidecars only gained `skipped`. T-3555's ROUND,
+  ROUNDUP and ROUNDDOWN definitions, merged meanwhile, made 16 more probes cases candidates; their
+  sidecars are written too. After regenerating on current main, the check passes. `make eval-gates` is unchanged (no regressions); the sidecars
   move only R1(c)'s report counts.
 - Eval delta: gate none.

@@ -1,0 +1,67 @@
+{
+ "format": "rustsheet-math/v1",
+ "source": {
+  "generator": "rustsheet-accuracy",
+  "version": "1",
+  "dps": 80,
+  "input_sha256": "7b17f2bea36c630257bd4d68c5530db3cfc8e8c19abe8594198a1ca7d2fd90ff"
+ },
+ "sheets": {
+  "Sheet1": {
+   "C22": {
+    "t": "e",
+    "why": "the rounded value 1.000E+400 overflows the double range",
+    "f": "=ROUNDUP(1.5,-400)"
+   },
+   "C28": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=ROUNDDOWN(1.5,-400)"
+   }
+  }
+ },
+ "skipped": {
+  "Sheet1": {
+   "C23": {
+    "f": "=ROUNDUP(1.5,1E10)",
+    "why": "no single value"
+   },
+   "C24": {
+    "f": "=ROUNDUP(1.5,-1E10)",
+    "why": "no single value"
+   },
+   "C25": {
+    "f": "=ROUNDUP(1.5,2^31)",
+    "why": "no single value"
+   },
+   "C26": {
+    "f": "=ROUNDUP(1.5,-(2^31))",
+    "why": "no single value"
+   },
+   "C27": {
+    "f": "=ROUNDUP(1.5,2^53)",
+    "why": "no single value"
+   },
+   "C29": {
+    "f": "=ROUNDDOWN(1.5,1E10)",
+    "why": "no single value"
+   },
+   "C30": {
+    "f": "=ROUNDDOWN(1.5,-1E10)",
+    "why": "no single value"
+   },
+   "C31": {
+    "f": "=ROUNDDOWN(1.5,2^31)",
+    "why": "no single value"
+   },
+   "C32": {
+    "f": "=ROUNDDOWN(1.5,-(2^31))",
+    "why": "no single value"
+   },
+   "C33": {
+    "f": "=ROUNDDOWN(1.5,2^53)",
+    "why": "no single value"
+   }
+  }
+ }
+}

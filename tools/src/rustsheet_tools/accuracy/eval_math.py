@@ -89,6 +89,11 @@ class CaseMath:
         """Counts one candidate cell left without a math value."""
         self.skipped[reason] = self.skipped.get(reason, 0) + 1
 
+    def drop(self, sheet: str, a1: str, text: str, reason: str) -> None:
+        """Counts a candidate the generator dropped and lists it for the sidecar's `skipped`."""
+        self.skip(reason)
+        self.dropped.setdefault(sheet, {})[a1] = {"f": text, "why": reason}
+
     @property
     def written(self) -> int:
         """The number of cells with a math value or a math domain error."""
@@ -224,12 +229,10 @@ def case_math(case_id: str, case_path: Path, sidecar: Path) -> CaseMath:
         try:
             value = compute(c.definition, c.args)
         except NoValueError:
-            out.skip(NO_VALUE)
-            out.dropped.setdefault(c.sheet, {})[c.a1] = {"f": c.text, "why": NO_VALUE}
+            out.drop(c.sheet, c.a1, c.text, NO_VALUE)
             continue
         except DroppedError:
-            out.skip(NOT_CONVERGED)
-            out.dropped.setdefault(c.sheet, {})[c.a1] = {"f": c.text, "why": NOT_CONVERGED}
+            out.drop(c.sheet, c.a1, c.text, NOT_CONVERGED)
             continue
         out.cells.setdefault(c.sheet, {})[c.a1] = {**value.to_json(), "f": c.text}
     return out
@@ -264,6 +267,7 @@ def write_suite(suite: str, workers: int | None = None) -> list[CaseMath]:
 
 
 def _spec_entries(suite: str) -> list[dict[str, Any]]:
+    """The harness's listing of `suite`'s spec cases (tools never parse xlsx values)."""
     return [e for e in suite_cases(suite) if str(e["path"]).endswith(".case.json")]
 
 
@@ -274,7 +278,10 @@ def check_case(case_id: str, case_path: Path, sidecar: Path) -> list[str]:
     path = math_path(sidecar)
     data: dict[str, Any] = {}
     if path.exists():
-        loaded = json.loads(path.read_text(encoding="utf-8"))
+        try:
+            loaded = json.loads(path.read_text(encoding="utf-8"))
+        except ValueError:
+            return [f"{case_id}: math sidecar {path.name} is not JSON"]
         data = loaded if isinstance(loaded, dict) else {}
     held: dict[tuple[str, str], str | None] = {}
     for key in ("sheets", "skipped"):
@@ -295,6 +302,7 @@ def check_case(case_id: str, case_path: Path, sidecar: Path) -> list[str]:
 
 
 def _check_job(entry: dict[str, Any]) -> list[str]:
+    """`check_case` for one listing entry, in a worker process."""
     return check_case(entry["id"], Path(entry["path"]), Path(entry["sidecar"]))
 
 

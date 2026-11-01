@@ -186,3 +186,9 @@ def test_check_names_missing_and_stale_sidecars_and_passes_after_regenerating(
         "t/c: S!A1 math sidecar entry =T.DIST(1.5,3,TRUE) is stale (the cell is =T.DIST(1.25,3,TRUE))",
         regenerate,
     ]
+
+
+def test_check_names_a_sidecar_that_is_not_json(tmp_path: Path) -> None:
+    case, sidecar = _case(tmp_path, {"A1": "=T.DIST(1.5,3,TRUE)"}, {"A1": {"t": "n", "v": 0.5}})
+    math_path(sidecar).write_text("{not json")
+    assert eval_math.check_case("t/c", case, sidecar) == ["t/c: math sidecar c.math.json is not JSON"]

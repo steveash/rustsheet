@@ -10,7 +10,9 @@
 //!
 //! The 50 digits are parsed to the nearest double (`str::parse`, correctly rounded): ε = 1e-9 is
 //! seven orders of magnitude above that rounding, so no big-decimal comparison is needed. A value
-//! whose `f` differs from the cell's formula is stale and never attaches.
+//! whose `f` differs from the cell's formula is stale and never attaches. An eval case's sidecar may
+//! also hold `"skipped"` (sheet → A1 → `{"f","why"}`): the cells the generator dropped, which only
+//! `rustsheet-accuracy math --check` reads (decision 0243); the runner skips that map.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};

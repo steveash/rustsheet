@@ -1,0 +1,370 @@
+{
+ "format": "rustsheet-math/v1",
+ "source": {
+  "generator": "rustsheet-accuracy",
+  "version": "1",
+  "dps": 80,
+  "input_sha256": "55431fa3c605880b5d0effdf5ae8397f94c2623ce951c071e3cbf6f0334dbd05"
+ },
+ "sheets": {},
+ "skipped": {
+  "Sheet1": {
+   "A1": {
+    "f": "=ROUND(5E-300,-2147483648)",
+    "why": "no single value"
+   },
+   "A10": {
+    "f": "=ROUND(5E-300,-2147483340)",
+    "why": "no single value"
+   },
+   "A11": {
+    "f": "=ROUND(5E-300,-1E+15)",
+    "why": "no single value"
+   },
+   "A12": {
+    "f": "=ROUND(5E-300,-4294967296)",
+    "why": "no single value"
+   },
+   "A13": {
+    "f": "=ROUND(9.99999999999999999,2147483646)",
+    "why": "no single value"
+   },
+   "A2": {
+    "f": "=ROUND(5E-300,-2147483647)",
+    "why": "no single value"
+   },
+   "A3": {
+    "f": "=ROUND(5E-300,-2147483640)",
+    "why": "no single value"
+   },
+   "A4": {
+    "f": "=ROUND(5E-300,-2147483639)",
+    "why": "no single value"
+   },
+   "A5": {
+    "f": "=ROUND(5E-300,-2147483638)",
+    "why": "no single value"
+   },
+   "A6": {
+    "f": "=ROUND(5E-300,-2147483360)",
+    "why": "no single value"
+   },
+   "A7": {
+    "f": "=ROUND(5E-300,-2147483350)",
+    "why": "no single value"
+   },
+   "A8": {
+    "f": "=ROUND(5E-300,-2147483349)",
+    "why": "no single value"
+   },
+   "A9": {
+    "f": "=ROUND(5E-300,-2147483348)",
+    "why": "no single value"
+   },
+   "B1": {
+    "f": "=ROUND(5E-10,-2147483648)",
+    "why": "no single value"
+   },
+   "B10": {
+    "f": "=ROUND(5E-10,-2147483340)",
+    "why": "no single value"
+   },
+   "B11": {
+    "f": "=ROUND(5E-10,-1E+15)",
+    "why": "no single value"
+   },
+   "B12": {
+    "f": "=ROUND(5E-10,-4294967296)",
+    "why": "no single value"
+   },
+   "B13": {
+    "f": "=ROUND(9.99999999999999999,2147483645)",
+    "why": "no single value"
+   },
+   "B2": {
+    "f": "=ROUND(5E-10,-2147483647)",
+    "why": "no single value"
+   },
+   "B3": {
+    "f": "=ROUND(5E-10,-2147483640)",
+    "why": "no single value"
+   },
+   "B4": {
+    "f": "=ROUND(5E-10,-2147483639)",
+    "why": "no single value"
+   },
+   "B5": {
+    "f": "=ROUND(5E-10,-2147483638)",
+    "why": "no single value"
+   },
+   "B6": {
+    "f": "=ROUND(5E-10,-2147483360)",
+    "why": "no single value"
+   },
+   "B7": {
+    "f": "=ROUND(5E-10,-2147483350)",
+    "why": "no single value"
+   },
+   "B8": {
+    "f": "=ROUND(5E-10,-2147483349)",
+    "why": "no single value"
+   },
+   "B9": {
+    "f": "=ROUND(5E-10,-2147483348)",
+    "why": "no single value"
+   },
+   "C1": {
+    "f": "=ROUND(0.5,-2147483648)",
+    "why": "no single value"
+   },
+   "C10": {
+    "f": "=ROUND(0.5,-2147483340)",
+    "why": "no single value"
+   },
+   "C11": {
+    "f": "=ROUND(0.5,-1E+15)",
+    "why": "no single value"
+   },
+   "C12": {
+    "f": "=ROUND(0.5,-4294967296)",
+    "why": "no single value"
+   },
+   "C2": {
+    "f": "=ROUND(0.5,-2147483647)",
+    "why": "no single value"
+   },
+   "C3": {
+    "f": "=ROUND(0.5,-2147483640)",
+    "why": "no single value"
+   },
+   "C4": {
+    "f": "=ROUND(0.5,-2147483639)",
+    "why": "no single value"
+   },
+   "C5": {
+    "f": "=ROUND(0.5,-2147483638)",
+    "why": "no single value"
+   },
+   "C6": {
+    "f": "=ROUND(0.5,-2147483360)",
+    "why": "no single value"
+   },
+   "C7": {
+    "f": "=ROUND(0.5,-2147483350)",
+    "why": "no single value"
+   },
+   "C8": {
+    "f": "=ROUND(0.5,-2147483349)",
+    "why": "no single value"
+   },
+   "C9": {
+    "f": "=ROUND(0.5,-2147483348)",
+    "why": "no single value"
+   },
+   "D1": {
+    "f": "=ROUND(5,-2147483648)",
+    "why": "no single value"
+   },
+   "D10": {
+    "f": "=ROUND(5,-2147483340)",
+    "why": "no single value"
+   },
+   "D11": {
+    "f": "=ROUND(5,-1E+15)",
+    "why": "no single value"
+   },
+   "D12": {
+    "f": "=ROUND(5,-4294967296)",
+    "why": "no single value"
+   },
+   "D2": {
+    "f": "=ROUND(5,-2147483647)",
+    "why": "no single value"
+   },
+   "D3": {
+    "f": "=ROUND(5,-2147483640)",
+    "why": "no single value"
+   },
+   "D4": {
+    "f": "=ROUND(5,-2147483639)",
+    "why": "no single value"
+   },
+   "D5": {
+    "f": "=ROUND(5,-2147483638)",
+    "why": "no single value"
+   },
+   "D6": {
+    "f": "=ROUND(5,-2147483360)",
+    "why": "no single value"
+   },
+   "D7": {
+    "f": "=ROUND(5,-2147483350)",
+    "why": "no single value"
+   },
+   "D8": {
+    "f": "=ROUND(5,-2147483349)",
+    "why": "no single value"
+   },
+   "D9": {
+    "f": "=ROUND(5,-2147483348)",
+    "why": "no single value"
+   },
+   "E1": {
+    "f": "=ROUND(123.456,-2147483648)",
+    "why": "no single value"
+   },
+   "E10": {
+    "f": "=ROUND(123.456,-2147483340)",
+    "why": "no single value"
+   },
+   "E11": {
+    "f": "=ROUND(123.456,-1E+15)",
+    "why": "no single value"
+   },
+   "E12": {
+    "f": "=ROUND(123.456,-4294967296)",
+    "why": "no single value"
+   },
+   "E13": {
+    "f": "=ROUND(0,2147483647)",
+    "why": "no single value"
+   },
+   "E2": {
+    "f": "=ROUND(123.456,-2147483647)",
+    "why": "no single value"
+   },
+   "E3": {
+    "f": "=ROUND(123.456,-2147483640)",
+    "why": "no single value"
+   },
+   "E4": {
+    "f": "=ROUND(123.456,-2147483639)",
+    "why": "no single value"
+   },
+   "E5": {
+    "f": "=ROUND(123.456,-2147483638)",
+    "why": "no single value"
+   },
+   "E6": {
+    "f": "=ROUND(123.456,-2147483360)",
+    "why": "no single value"
+   },
+   "E7": {
+    "f": "=ROUND(123.456,-2147483350)",
+    "why": "no single value"
+   },
+   "E8": {
+    "f": "=ROUND(123.456,-2147483349)",
+    "why": "no single value"
+   },
+   "E9": {
+    "f": "=ROUND(123.456,-2147483348)",
+    "why": "no single value"
+   },
+   "F1": {
+    "f": "=ROUND(9.99999999999999999,-2147483648)",
+    "why": "no single value"
+   },
+   "F10": {
+    "f": "=ROUND(9.99999999999999999,-2147483340)",
+    "why": "no single value"
+   },
+   "F11": {
+    "f": "=ROUND(9.99999999999999999,-1E+15)",
+    "why": "no single value"
+   },
+   "F12": {
+    "f": "=ROUND(9.99999999999999999,-4294967296)",
+    "why": "no single value"
+   },
+   "F13": {
+    "f": "=ROUND(-5,2147483647)",
+    "why": "no single value"
+   },
+   "F2": {
+    "f": "=ROUND(9.99999999999999999,-2147483647)",
+    "why": "no single value"
+   },
+   "F3": {
+    "f": "=ROUND(9.99999999999999999,-2147483640)",
+    "why": "no single value"
+   },
+   "F4": {
+    "f": "=ROUND(9.99999999999999999,-2147483639)",
+    "why": "no single value"
+   },
+   "F5": {
+    "f": "=ROUND(9.99999999999999999,-2147483638)",
+    "why": "no single value"
+   },
+   "F6": {
+    "f": "=ROUND(9.99999999999999999,-2147483360)",
+    "why": "no single value"
+   },
+   "F7": {
+    "f": "=ROUND(9.99999999999999999,-2147483350)",
+    "why": "no single value"
+   },
+   "F8": {
+    "f": "=ROUND(9.99999999999999999,-2147483349)",
+    "why": "no single value"
+   },
+   "F9": {
+    "f": "=ROUND(9.99999999999999999,-2147483348)",
+    "why": "no single value"
+   },
+   "G1": {
+    "f": "=ROUND(0.00999999999999999999,-2147483648)",
+    "why": "no single value"
+   },
+   "G10": {
+    "f": "=ROUND(0.00999999999999999999,-2147483340)",
+    "why": "no single value"
+   },
+   "G11": {
+    "f": "=ROUND(0.00999999999999999999,-1E+15)",
+    "why": "no single value"
+   },
+   "G12": {
+    "f": "=ROUND(0.00999999999999999999,-4294967296)",
+    "why": "no single value"
+   },
+   "G13": {
+    "f": "=ROUNDUP(123.456,-4294967295)",
+    "why": "no single value"
+   },
+   "G2": {
+    "f": "=ROUND(0.00999999999999999999,-2147483647)",
+    "why": "no single value"
+   },
+   "G3": {
+    "f": "=ROUND(0.00999999999999999999,-2147483640)",
+    "why": "no single value"
+   },
+   "G4": {
+    "f": "=ROUND(0.00999999999999999999,-2147483639)",
+    "why": "no single value"
+   },
+   "G5": {
+    "f": "=ROUND(0.00999999999999999999,-2147483638)",
+    "why": "no single value"
+   },
+   "G6": {
+    "f": "=ROUND(0.00999999999999999999,-2147483360)",
+    "why": "no single value"
+   },
+   "G7": {
+    "f": "=ROUND(0.00999999999999999999,-2147483350)",
+    "why": "no single value"
+   },
+   "G8": {
+    "f": "=ROUND(0.00999999999999999999,-2147483349)",
+    "why": "no single value"
+   },
+   "G9": {
+    "f": "=ROUND(0.00999999999999999999,-2147483348)",
+    "why": "no single value"
+   }
+  }
+ }
+}
