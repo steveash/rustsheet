@@ -168,18 +168,18 @@ fn permut_stops_once_its_product_is_infinite() {
 
 #[test]
 fn weighted_kernels_are_charged_their_weight() {
-    // BINOM.INV is charged 4096 per element (its search costs up to about 65 us an element):
-    // 2^27 / 4096 = 32,768 elements, so a lifted call of 40,000 is refused before it runs and one
-    // of 30,000 runs; PERMUT and PERMUTATIONA (`Constant`) run over 800,000 elements.
+    // BINOM.INV is charged 16384 per element (its search costs up to about 200 us an element,
+    // T-3444): 2^27 / 16384 = 8,192 elements, so a lifted call of 10,000 is refused before it runs
+    // and one of 8,000 runs; PERMUT and PERMUTATIONA (`Constant`) run over 800,000 elements.
     let mut model = new_empty_model();
-    model._set("A1", "=ROWS(BINOM.INV(5,0.4,SEQUENCE(40000)/40001))");
-    model._set("A2", "=ROWS(BINOM.INV(5,0.4,SEQUENCE(30000)/30001))");
-    model._set("A3", "=ROWS(CRITBINOM(5,0.4,SEQUENCE(40000)/40001))");
+    model._set("A1", "=ROWS(BINOM.INV(5,0.4,SEQUENCE(10000)/10001))");
+    model._set("A2", "=ROWS(BINOM.INV(5,0.4,SEQUENCE(8000)/8001))");
+    model._set("A3", "=ROWS(CRITBINOM(5,0.4,SEQUENCE(10000)/10001))");
     model._set("A4", "=ROWS(PERMUT(5,SEQUENCE(800000)))");
     model._set("A5", "=ROWS(PERMUTATIONA(5,SEQUENCE(800000)))");
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"#ERROR!");
-    assert_eq!(model._get_text("A2"), *"30000");
+    assert_eq!(model._get_text("A2"), *"8000");
     assert_eq!(model._get_text("A3"), *"#ERROR!");
     assert_eq!(model._get_text("A4"), *"800000");
     assert_eq!(model._get_text("A5"), *"800000");

@@ -29,3 +29,7 @@ Third-party code ported into RustSheet:
 - crates/rustsheet-engine/src/functions/statistical/hypegeom.rs contains a port of
   `Hypergeometric::cdf` from statrs 0.18.0 (https://github.com/statrs-dev/statrs, Copyright (c) 2016
   Michael Ma, MIT License); the notice is retained in that file.
+- crates/rustsheet-engine/src/functions/statistical/ets.rs contains code adapted from gridcraft's
+  `crates/functions/src/ets.rs` at 67e39fae (https://github.com/storytold/gridcraft, Copyright (c)
+  2026 ArtCraft Team and the GridCraft contributors, MIT OR Apache-2.0, used under the MIT License);
+  the notice is retained in that file.

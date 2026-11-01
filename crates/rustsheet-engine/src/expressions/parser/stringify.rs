@@ -180,8 +180,10 @@ enum Rewrite<'a> {
     /// and restore"). A `#This Row` area is resolved at the cell's row, or at the given row when
     /// the formula is printed in R1C1 for one cell (T-1699).
     Lower(&'a [String], Option<i32>),
-    /// Prints every `#This Row` as its area on the printing cell's row (T-1699).
-    LowerThisRow,
+    /// Prints every `#This Row` as its area on the printing cell's row (T-1699), except one to
+    /// these tables (lowercase names), the tables a structural edit follows, which keeps its
+    /// text (T-3037).
+    LowerThisRow(&'a [String]),
     /// Prints `#REF!` for every structured reference to one of these tables (lowercase names):
     /// the tables a table or sheet delete removes, as Excel rewrites them (T-2340).
     RefError(&'a [String]),
@@ -593,7 +595,7 @@ fn stringify(
             }
             &DisplaceData::None
         }
-        Rewrite::Lower(..) | Rewrite::LowerThisRow | Rewrite::RefError(_) => &DisplaceData::None,
+        Rewrite::Lower(..) | Rewrite::LowerThisRow(_) | Rewrite::RefError(_) => &DisplaceData::None,
     };
     let sub = |n: &Node| stringify(n, context, rewrite, export_to_excel, locale, language);
     match node {

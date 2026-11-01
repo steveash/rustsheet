@@ -1646,7 +1646,7 @@ impl Model {
         row: i32,
         column: i32,
     ) -> Result<Option<String>, String> {
-        self.formula_text_with(sheet, row, column, to_localized_string)
+        self.formula_text_with(sheet, row, column, &to_localized_string)
     }
 
     /// Returns the text for the formula in (`sheet`, `row`, `column`) in English if any

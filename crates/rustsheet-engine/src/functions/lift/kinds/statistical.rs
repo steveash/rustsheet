@@ -77,14 +77,16 @@ const DISCRETE_SUM_4: ArgKinds =
 const DISCRETE_SUM_3_OF_4: ArgKinds =
     ArgKinds::fixed(3, &[Lift, Lift, Lift, Lift], Weighted(DISCRETE_SUM_WEIGHT));
 /// `BINOM.INV(trials, probability_s, alpha)` and CRITBINOM: a search that halves `[0, trials]`
-/// (a `u64`) at most 64 times, its own per-call cap (`statistical/binom.rs`), with one statrs
-/// incomplete-beta cdf (up to 140 continued-fraction steps) each. Measured in release: up to
-/// about 65 us an element (`BINOM.INV(1E12,0.3,alpha)`; 37 us at 1E6 trials, 13 us at a tiny
-/// `probability_s`). The weight caps a lifted call at 2^27 / 4096 = 32,768 elements: 2.14 s
-/// measured at the worst case, the budget of the Bessel entries (a DEVIATION, statistics.md).
+/// (`trials` under 2^31 - 1) at most 31 times, its own per-call cap (`statistical/binom.rs`), with
+/// one BINOM.DIST cdf each: the bratio port, else the double-double walk of up to 2^10 terms, else
+/// statrs (T-3444). Measured in release over n 1E3 to 2^31 - 2, p 1E-9 to 1 - 1E-6 and alpha
+/// 1E-300 to 1 - 1E-12 (T-3444, 2026-11-01): up to about 200 us an element
+/// (`BINOM.INV(1E4,0.999,0.999999999999)`; 20 us at 2^31 - 2 trials and p = 0.3). The weight caps a
+/// lifted call at 2^27 / 16384 = 8,192 elements, about 1.6 s at the worst case measured, inside the
+/// budget of the Bessel entries (a DEVIATION, statistics.md).
 const BINOM_INV: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Weighted(BINOM_INV_WEIGHT));
 /// The units one BINOM.INV element is charged against `MAX_LIFTED_CELL_VISITS`.
-const BINOM_INV_WEIGHT: u32 = 1 << 12;
+const BINOM_INV_WEIGHT: u32 = 1 << 14;
 // --- End statistical (T-1290) ---------------------------------------------------------------
 
 // --- Statistical quantiles (T-1848) ---------------------------------------------------------

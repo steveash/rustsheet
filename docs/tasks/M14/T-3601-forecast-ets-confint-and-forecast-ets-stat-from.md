@@ -1,0 +1,36 @@
+---
+id: T-3601
+title: "FORECAST.ETS.CONFINT and FORECAST.ETS.STAT from the shared AAA fit (owner ruling, unverified against Excel)"
+milestone: M14
+lane: functions-stat
+status: todo
+priority: P3
+size: M
+tier: opus
+depends_on: [T-3600]
+---
+
+## Goal
+FORECAST.ETS.CONFINT and FORECAST.ETS.STAT return the interval half-width and the fit statistics of T-3600's model, adapted from gridcraft, under decision 0221.
+
+## Context
+Owner request (2026-11-01, session https://claude.ai/code/session_0179K7WDtouX929jBuhJCWHr): after the gridcraft
+head-to-head (docs/research/gridcraft-head-to-head-2026-10-31.md, branch `claude/wonderful-cray-9q8ljx`), implement
+the FORECAST.ETS family taking inspiration from gridcraft's `crates/functions/src/ets.rs` (67e39fae; MIT OR Apache-2.0,
+clean-room from Hyndman et al. 2008). Excel for the web never computes the family and no desktop value exists
+(statistics.md "FORECAST.ETS family: excel-graph never computes it", T-1553), so the owner ruled to ship the model
+unverified (decision 0221). The argument step evidenced on excel-graph (T-2424, `forecast_ets_lifted`) runs first and
+does not change; T-2425 matches desktop values once they exist.
+
+Adapt gridcraft's `Fit::forecast_sd` (the h-step variance, Hyndman et al. Table 6.1 class 1, with NORM.S.INV of
+(1 + confidence_level) / 2; reuse RustSheet's normal quantile) and `forecast_ets_stat` (1 α, 2 β, 3 γ, 4 MASE, 5 SMAPE,
+6 MAE, 7 RMSE, 8 step size); `confidence_level` outside (0, 1) and `statistic_type` outside 1 to 8 are `#NUM!`.
+
+## Acceptance criteria
+- [ ] CONFINT and STAT compute; unit tests show the values on exact data and each statistic type.
+- [ ] statistics.md's model section gains their rules (UNVERIFIED).
+- [ ] `make eval-baseline` shows no regression (or each one is named and accepted under decision 0221 by the owner).
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+- Matching desktop Excel (T-2425).
