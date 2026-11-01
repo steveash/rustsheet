@@ -121,15 +121,17 @@ def _cancelling(rng: random.Random) -> list[float]:
 
 
 def _edge(rng: random.Random) -> list[float]:
-    shape = rng.randrange(5)
-    if shape == 0:  # overflow in one order, not in the other (T-0192)
-        big = rng.uniform(5e307, MAX_LITERAL)
-        return [big, big, -big] if rng.random() < 0.5 else [big, -big, big]
-    if shape == 1:  # one argument: no addition, no snap
+    shape = rng.randrange(6)
+    big = rng.uniform(5e307, MAX_LITERAL)
+    if shape == 0:  # a running total overflows although the final sum is finite: #NUM! (T-0192)
+        return [big, big, -big]
+    if shape == 1:  # the same addends in an order that never overflows
+        return [big, -big, big]
+    if shape == 2:  # one argument: no addition, no snap
         return [_signed(rng, 1e-3, 1e6)]
-    if shape == 2:  # zeros among the addends
+    if shape == 3:  # zeros among the addends
         return [0.0 if rng.random() < 0.5 else _signed(rng, 1e-3, 1e6) for _ in range(rng.randint(2, 6))]
-    if shape == 3:  # an exact cancellation
+    if shape == 4:  # an exact cancellation
         x = _signed(rng, 1e-3, 1e6)
         return [x, -x]
     return [_signed(rng, 1e-3, 1e6) for _ in range(MAX_ARGS)]
