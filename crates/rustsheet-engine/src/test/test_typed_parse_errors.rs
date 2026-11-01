@@ -157,3 +157,22 @@ fn typed_formulas_past_the_sign_cap_are_refused_as_not_parsing() {
         assert_eq!(model._get_text("A2"), "1", "{sign}{operand}");
     }
 }
+
+/// T-3262: Graph PATCH refuses a typed `ANCHORARRAY(` call at any depth (probes/t3143-anchor-typed-*)
+/// while the `#` operator is accepted (probes/t3143-anchor-inner-64-typed); stored text keeps it.
+#[test]
+fn typed_anchorarray_call_is_refused_but_the_hash_operator_is_not() {
+    let mut model = new_empty_model();
+    model._set("A1", "7");
+    for formula in ["=ANCHORARRAY(C1)", "=SUM(ANCHORARRAY(C1))"] {
+        let result = model.set_typed_user_input(0, 1, 1, formula.to_string());
+        assert!(result.is_err(), "{formula}");
+    }
+    assert_eq!(model._get_text("A1"), "7");
+    assert_eq!(
+        model.set_typed_user_input(0, 2, 1, "=SUM(C1#)".to_string()),
+        Ok(())
+    );
+    model._set("A3", "=ANCHORARRAY(C1)");
+    assert_eq!(model._get_formula("A3"), "=C1#");
+}

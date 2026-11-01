@@ -227,7 +227,7 @@ then cannot load back once saved, since the saved text spells `@` and `#` as cal
 call counts like any call: 64 ABS calls around `SINGLE(C1:C2)` are accepted and 65 refused (400
 `InvalidArgument`). `ANCHORARRAY(` typed as a call through Graph is refused at any depth, even
 `=ANCHORARRAY(C1)` and `=SUM(ANCHORARRAY(C1))` with C1 spilling (400 `InvalidArgument`;
-probes/t3143-anchor-typed-bare and -sum, dropped after the run; the engine accepts it, T-3262); a
+probes/t3143-anchor-typed-bare and -sum, dropped after the run; typed entry refuses it too, T-3262); a
 stored `ANCHORARRAY(D1)` loads (probes/at-operand-formulatext J30).
 Defined names (T-3143): a name body of 65 nested ABS calls loads and evaluates
 (probes/t3143-name-body-65, tagged M8 as defined-name bodies are, decision 0051), and one of 66 makes Excel refuse the workbook (createSession 501). The

@@ -505,7 +505,7 @@ impl Parser {
     /// or it calls a function with fewer or more arguments than the function takes (`=PV(1)`,
     /// also `=LET(Pv,LAMBDA(a,a),Pv(1))`, where the typed call is the function: T-2567 Graph
     /// PATCH 400, T-2568), or it nests more function calls than Excel takes
-    /// ([`MAX_NESTED_CALLS`], T-3097). `None` when parsing stored text or nothing is refused.
+    /// ([`MAX_NESTED_CALLS`], T-3097), or it spells `ANCHORARRAY(` as a call (T-3262). `None` when parsing stored text or nothing is refused.
     pub(crate) fn typed_refusal(&self) -> Option<String> {
         if !self.typed {
             return None;
@@ -517,6 +517,14 @@ impl Parser {
             return Some(format!(
                 "Formula: the LET or LAMBDA name '{name}' is spelled like a cell"
             ));
+        }
+        if self.spelled_anchorarray {
+            // Graph PATCH 400 for `=ANCHORARRAY(C1)` and `=SUM(ANCHORARRAY(C1))` at any depth,
+            // while typed `C1#` is accepted (probes/t3143-anchor-typed-*,
+            // probes/t3143-anchor-inner-64-typed; docs/excel-semantics/syntax.md, T-3143).
+            return Some(
+                "Formula: ANCHORARRAY cannot be typed as a call; use the # operator".to_string(),
+            );
         }
         let name = self.wrong_count_call.as_ref()?;
         Some(format!(
@@ -596,6 +604,7 @@ impl Parser {
         // The spill range operator; typed `ANCHORARRAY(D1)` is `D1#` for Excel too
         // (probes/at-operand-formulatext J1, T-1109).
         if display_name.eq_ignore_ascii_case("ANCHORARRAY") {
+            self.spelled_anchorarray = true;
             if args.len() != 1 {
                 return Node::ParseErrorKind {
                     formula: self.lexer.get_formula(),
