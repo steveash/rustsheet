@@ -3,7 +3,7 @@ id: T-3544
 title: "Owner ruling: Gate A T.INV and F.INV points where Excel is more than G off outside the R3 region"
 milestone: M0
 lane: harness
-status: todo
+status: blocked
 priority: P2
 size: S
 tier: opus
@@ -47,3 +47,21 @@ a decision record and R3 marks, or keeps Excel as the target. The record says wh
 ## Out of scope
 - The two-tailed points (T-3386).
 - Changing the engine.
+
+## Blocked because
+Blocked because: needs an owner ruling (decision 0188 R3). R3 says a new `MATH-OVER-EXCEL` case needs a decision
+record carrying an owner ruling, and that no agent, steward included, adds a case on its own. A scheduled worker run
+has no owner in the session, so it cannot produce the ruling this task exists to record.
+
+What the owner is asked to decide (2026-11-01, unchanged from Context; the points are in T-3358's tables on `main`):
+- accuracy/T.INV/s1 A91 (p 8.2E-131, df 66741) and A96 (p 2.9E-116, df 91643);
+- accuracy/F.INV/s1 A164 (p 1.9E-93) and A169 (p 1.2E-69);
+- accuracy/F.INV/s1 A167, `F.INV(4.36982683607437E-189,1,1698856)`: true quantile 3.0E-377 (below the double range),
+  Excel 3.85E-145, engine 0. Marking it makes 0 the target.
+
+For each: widen the R3 region to cover it (an agent then writes the decision record, the R3 marks and the
+statistics.md region), or keep Excel as the target (an agent then files the engine-side tasks). Nothing waits on the
+ruling: the engine is within ε of the math on every point, so all of them pass Gate A today.
+
+To unblock: once the owner's ruling is in a session or a decision record, set `status: todo` and remove this section
+(agent-workflow "Unblocking is an agent's job"); the next opus run records it.
