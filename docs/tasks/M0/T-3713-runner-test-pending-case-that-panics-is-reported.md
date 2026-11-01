@@ -16,9 +16,11 @@ a loaded machine. A panicking case is reported as `Panic`, never as `Timeout`.
 
 ## Context
 - On 2026-11-01, during `make check` on a machine running a second `make check` and the sidecar generator, the test
-  failed with `left: Timeout, right: Panic` (tests.rs:75). The scripted engine's panic ("boom", tests.rs:31) did
-  happen. With `RUST_BACKTRACE=1`, which this environment sets, capturing and symbolizing the backtrace took longer
-  than the case's `Duration::from_secs(5)` (tests.rs:43), so `run_isolated` (runner.rs:435) reported a timeout.
+  failed with `left: Timeout, right: Panic`, from the test's `assert_eq!(r.status, CaseStatus::Panic)`. The
+  scripted engine's `panic!("boom")` did happen. With `RUST_BACKTRACE=1`, which this environment sets, capturing and
+  symbolizing the backtrace took longer than the test's `Duration::from_secs(5)` case limit. `run_isolated`
+  (runner.rs) decides the verdict with `rx.recv_timeout(timeout)`, and a panic that the worker sends after the
+  deadline is reported as `Timeout`.
 - Alone it passes in about 0.2 s (3 of 3 runs).
 - A Timeout verdict for a real panic would also misreport a panicking eval case under load, not only in this test.
 - Possible fixes:
