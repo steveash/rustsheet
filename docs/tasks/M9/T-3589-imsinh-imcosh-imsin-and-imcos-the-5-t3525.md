@@ -3,7 +3,7 @@ id: T-3589
 title: "IMSINH, IMCOSH, IMSIN and IMCOS: the 5 t3525 fresh-sweep texts one 15-digit tie off (|x| < 0.01 in the hyperbolic pair, |y| > 20 in the trig pair)"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -45,11 +45,11 @@ Decision 0083: each of the 5 cells shows Excel's text, or is recorded in docs/ex
 UNVERIFIED with the candidate forms and their scores.
 
 ## Acceptance criteria
-- [ ] probes-numeric/t3525-im-hyperbolic-fresh-sweep.case.json: S!A7, A12, B16, C117, D117 match Excel's text, or
+- [x] probes-numeric/t3525-im-hyperbolic-fresh-sweep.case.json: S!A7, A12, B16, C117, D117 match Excel's text, or
       each is listed in engineering.md as above.
-- [ ] Any kernel change keeps every other cell of the t3525 and t3545 sweeps and of the older IM* probes (fit lab
+- [x] Any kernel change keeps every other cell of the t3525 and t3545 sweeps and of the older IM* probes (fit lab
       `im-hyperbolic`, `im-hyperbolic-fresh`, `im-small-imag`): the counts before and after are in the Outcome.
-- [ ] R4 guards (reviewer-excel-fidelity check 7, decision 0188) for any changed cut or form:
+- [x] R4 guards (reviewer-excel-fidelity check 7, decision 0188) for any changed cut or form:
       - hold-out counts per split, stated before scoring;
       - a fresh sweep drawn after the choice is frozen (|x| < 0.01 for the hyperbolic pair, |y| 20..709 for the trig
         pair), with its counts;
@@ -57,8 +57,36 @@ UNVERIFIED with the candidate forms and their scores.
       - the `FITTED` tag and its range updated on any moved constant;
       - no step targets bits below the reproducibility floor;
       - no keep-matched branch.
-- [ ] No gated known-failure line added (`make eval-baseline` refuses regressions); `make check` green; reviewers
+- [x] No gated known-failure line added (`make eval-baseline` refuses regressions); `make check` green; reviewers
       approve.
 
 ## Out of scope
 - The 0.01..0.0105 switch itself (T-2797) and the log-space band (T-3546).
+
+## Outcome
+- **Model** (complex/trig.rs): at |x| <= 0.01 `inverse_exp_sinh_cosh` takes sinh x as the ascending Taylor sum
+  (`sinh_series`: doubles, each term the one before times x²/((2k)(2k+1)), until a term leaves the sum unchanged)
+  and cosh x as the `1/u` form; IMSIN and IMCOS (`trig_sinh_cosh`) take the `1/u` form for every |y|, the EXP pair
+  past 20 removed (`exp_sinh_cosh` deleted). For y < -20 that makes cosh y `1/EXP(y)`, not `EXP(-y)`. Structural
+  choices, no constant moved (`INVERSE_EXP_LOW`/`HIGH` keep their T-3525 `FITTED` tags and brackets).
+- **The 5 cells**: S!A7, A12, B16, C117, D117 now show Excel's text; t3525-im-hyperbolic-fresh-sweep 995 → 1000/1000.
+- **Candidates** (scored by a throwaway scorer over every oracle text in the suites: 114 IMSINH/IMCOSH texts with
+  0 < |x| <= 0.01, 97 IMSIN/IMCOS with |y| > 20): libm 111; the `1/u` form for both 25; worksheet SINH/COSH (expm1)
+  111-112; Horner series 112; ascending series + `1/u` cosh 114 (+ EXP-pair cosh 114, + libm cosh 113). Past 20:
+  EXP pair 95, libm 95, Excel SIN/COS 95, double-double 91, `1/u` form 97. Recorded in engineering.md.
+- **R4 guards** (decision 0188):
+  - hold-out split: the fit lab's fixed sha256 split (30%, `rustsheet-fitlab-holdout/v1`), set before scoring; on
+    `im-hyperbolic-fresh` train 850/850, test 350/350 (main 847, 348); `im-hyperbolic` train 965/965, test 394/394
+    (unchanged); `im-small-imag` 395/395, 205/205 (unchanged); `im-hyperbolic-log` 891/891 and `-log-fresh` 300/300 overall
+    (unchanged).
+  - fresh sweep after the freeze (docs/research/t3589/gen_sweep.py, excel-graph): t3589-im-hyperbolic-small-x-sweep
+    (600 cells, |x| in [1e-6, 0.01], IMSINH/IMCOSH/IMSECH/IMCSCH) and t3589-imsin-imcos-large-imag-sweep (300 cells,
+    |y| in [20, 709.7], both signs). Fit lab `im-hyperbolic-t3589-fresh` (new; the 600 IMSINH/IMCOSH/IMSIN/IMCOS
+    cells): model 599 (train 438/439, test 161/161), main 587, correctly rounded 578. Large-|y| case 300/300 (main 296).
+    By digits over all six functions on the small-x case: 7 misses, main 15 (IMSINH 0/5, IMCOSH 1/4, IMCSCH 3/4,
+    IMSECH 3/2); the rest are notation-only (T-3560). Follow-up T-3609 for the 7.
+  - Gate A envelope (docs/research/t3589/gate_a.py): 900/900 fresh cells within 1e-9 of the 50-digit value.
+  - `FITTED`: no constant moved. Reproducibility floor: each choice is between forms that differ by whole ulps on
+    Excel's printed 15 digits, never below. No keep-matched branch.
+- **Eval delta**: probes-numeric +5 (t3525 fresh sweep 1000/1000) and two new cases (882/900 by text; 11 notation,
+  7 digits); gated suites unchanged (`make eval-baseline`: 0 fixed, 0 regressions; probes-numeric is not gated).
