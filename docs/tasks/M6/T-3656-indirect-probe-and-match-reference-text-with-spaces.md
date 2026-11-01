@@ -31,7 +31,7 @@ functions/lookup_and_reference/mod.rs and the reference-text parser it calls.
 - [x] The engine matches every probed cell; lookup.md states the rules.
 - [x] Structured-reference spacing is left to T-3394.
 - [x] Every quirk found is written up in docs/excel-semantics/lookup.md in the same PR, with its probe cells cited.
-- [ ] `make check` green; eval known failures only shrink (baseline updated); reviewers approve.
+- [x] `make check` green; eval known failures only shrink (baseline updated); reviewers approve.
 
 ## Out of scope
 - Structured-reference text (T-3394).
