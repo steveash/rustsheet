@@ -21,7 +21,7 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        // Excel: arrays.md "A one-cell error reference is a 1x1 array in ..." (T-3667).
+        // Excel: arrays.md "A one-cell error reference in the other array functions (T-3667)".
         let data = self.eval_array_arg(&args[0], cell);
         let data = match one_cell_error_ref_as_array(&args[0], data, cell) {
             Ok(d) => d,

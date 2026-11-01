@@ -305,7 +305,8 @@ pub(crate) fn reject_empty_value(
 /// one-cell error reference shows up; only a stored cell error is evidenced, so other errors read
 /// there (a `#REF!` for a sheet index, a circular read) are wrapped unprobed.
 // Excel: docs/excel-semantics/arrays.md "A one-cell error reference is a 1x1 array in TOCOL, TOROW
-// and FILTER".
+// and FILTER" and "A one-cell error reference in the other array functions (T-3667)" (CHOOSEROWS,
+// CHOOSECOLS, VSTACK, HSTACK; TAKE and DROP keep the reference).
 pub(crate) fn one_cell_error_ref_as_array(
     arg: &Node,
     array: Result<Vec<Vec<ArrayNode>>, CalcResult>,

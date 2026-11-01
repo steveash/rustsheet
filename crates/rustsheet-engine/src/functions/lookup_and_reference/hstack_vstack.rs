@@ -55,16 +55,17 @@ impl Model {
             // The empty value is `#VALUE!` (`HSTACK(CELL("contents",<blank>),1)`,
             // probes/t2466-cell-contents-stack A41; `reject_empty_value`, T-3053).
             let result = self.evaluate_node_in_context(arg, cell);
-            // Excel: arrays.md "A one-cell error reference is a 1x1 array in TOCOL, TOROW, FILTER,
-            // TAKE, DROP, CHOOSEROWS, CHOOSECOLS, VSTACK and HSTACK": the error is an element.
-            if let CalcResult::Error { error, .. } = &result {
-                if matches!(*arg.ungrouped_at(cell.row), Node::ReferenceKind { .. }) {
-                    results.push(CalcResult::Array(vec![vec![ArrayNode::Error(
-                        error.clone(),
-                    )]]));
-                    continue;
+            // A one-cell error reference is a 1x1 array holding the error (arrays.md "A one-cell
+            // error reference in the other array functions (T-3667)").
+            let result = match result {
+                error @ CalcResult::Error { .. } => {
+                    match one_cell_error_ref_as_array(arg, Err(error), cell) {
+                        Ok(array) => CalcResult::Array(array),
+                        Err(error) => error,
+                    }
                 }
-            }
+                other => other,
+            };
             match reject_empty_value(arg, result, cell) {
                 Err(err) | Ok(err @ CalcResult::Error { .. }) => return err,
                 Ok(CalcResult::Range { left, right }) => {
