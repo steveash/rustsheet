@@ -17,10 +17,10 @@ model in doubles can.
 
 ## Context
 - T-3502 replaced the 15-digit snap with the split root `exp(ln(m·2^r)/n)·2^q` (numbers.md "GEOMEAN in-range
-  root", decision 0211). It misses 11 of 180 fresh cells (probes-numeric/t3502-geomean-fresh), 8 of 180 post-freeze cells
+  root", decision 0218). It misses 11 of 180 fresh cells (probes-numeric/t3502-geomean-fresh), 8 of 180 post-freeze cells
   (t3502-geomean-postfreeze A5, A47, A50, A70, A74, A79, A99, A115), 7 of the 69
   literal in-range probe cells, in-range-many A2 and Copies A35, and moved four probes cells one ulp off the bit
-  under decision 0211: geomean-root-refinement Sheet1!A23, A33, A34, A44 (there Excel gives `exp(ln(P)/n)`).
+  under decision 0218: geomean-root-refinement Sheet1!A23, A33, A34, A44 (there Excel gives `exp(ln(P)/n)`).
 - Excel's root behaves like a library root of up to about 0.8 ulp; earlier models are listed in numbers.md.
 - The fit lab has the candidates (`rustsheet-fitlab geomean-snap`, `geomean-snap-fresh`).
 - Phase 1b under decision 0188 R5 unless a model fixes a visibly-off cell: every miss is within 1 ulp.

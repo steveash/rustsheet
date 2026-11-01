@@ -1852,7 +1852,7 @@ the split root keeps. Against the T-1123 engine the split root fixes gen-m9 26 a
 failures and moves 4 probes cells one ulp off the bit: geomean-root-refinement A23, A33, A34 and A44,
 sets of 5 to 12 values in [0.3, 9] (|E| >= n there), where Excel gives r. Excel's root is still not
 exactly any model in doubles (see below, a library root of up to about 0.8 ulp); T-3526 owns the
-remaining misses (decision 0211).
+remaining misses (decision 0218).
 The model was chosen on the T-1123 probes and the fit lab's train side of the fresh sweep (q toward zero against
 q floored: in-range-many 71 against 53, train 110 against 104). After it was frozen, a second sweep with a new seed,
 probes-numeric/t3502-geomean-postfreeze (same strata, seed 35020), gives the split root 172 of 180 (train 118/124,

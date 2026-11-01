@@ -1,4 +1,4 @@
-# 0211 — Allow four GEOMEAN regressions from keeping the product's power of two out of the logarithm (T-3502)
+# 0218 — Allow four GEOMEAN regressions from keeping the product's power of two out of the logarithm (T-3502)
 
 - **Status:** accepted (2026-10-31, T-3502): the T-3502 PR's review panel (security, architecture, quality,
   Excel fidelity) approved this record. It applies CLAUDE.md directive 2's decision-record exception to four

@@ -95,6 +95,6 @@ no fitted constant: P = m·2^E is rooted as `exp(ln(m·2^r)/n)·2^q`, E = q·n +
 
   GEOMEAN has no eval/accuracy table yet.
 - **Eval delta:** gen-m9 known failures 2888 -> 2862 (26 fixed: 25 GEOMEAN cells and a PPMT over GEOMEAN). probes 2661 -> 2633 (32 fixed, 4 one-ulp
-  regressions: geomean-root-refinement A23, A33, A34, A44, allowed by decision 0211). ironcalc-calc unchanged.
+  regressions: geomean-root-refinement A23, A33, A34, A44, allowed by decision 0218). ironcalc-calc unchanged.
   In-scope visibly-off cells 2427 -> 2424.
 - **Follow-up:** T-3526 (defer: phase-1b) owns the cells the split root misses.
