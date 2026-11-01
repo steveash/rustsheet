@@ -1092,10 +1092,13 @@ impl UserModel {
     ///
     /// See also [`Model::delete_rows`].
     pub fn delete_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
-        let diff_list = if let Some(area) = self.model.last_data_row(sheet, row, row_count) {
+        // Refuse before any change: the table branch clears a row and then deletes, so a refusal of
+        // the delete would otherwise leave an unrecorded clear (T-3259).
+        self.model.check_delete_rows(sheet, row, row_count)?;
+        let diff_list = if let Some(area) = self.model.kept_data_row(sheet, row, row_count) {
             // The delete keeps a table's first data row and clears it, and deletes the table's
-            // other data rows ([`Model::delete_rows`], T-2338, T-3259): one history step of the
-            // clear and the shorter delete, so undo restores both.
+            // other data rows (the same two steps as [`Model::delete_rows`], T-2338, T-3259): one
+            // history step of the clear and the shorter delete, so undo restores both.
             let mut diff_list = self.range_clear_contents_diffs(&area)?;
             if row_count > 1 {
                 diff_list.extend(self.delete_rows_diffs(sheet, row + 1, row_count - 1)?);

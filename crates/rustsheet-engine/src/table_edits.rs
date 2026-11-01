@@ -55,8 +55,8 @@ enum Span {
 /// one-row deletes are probed, a wider one reaching a data edge is hand, T-2848). The first row of
 /// a table without a header row is a fallback, as for inserts (T-2845). A
 /// delete touching the header row is a fallback (Excel refuses it), and so is one of every data
-/// row (`Model::last_data_row` handles a delete of exactly every data row) or one straddling the table's
-/// edges (unprobed).
+/// row (`Model::kept_data_row` handles a delete of exactly every data row) or one straddling
+/// the table's edges (unprobed).
 fn row_span(
     (top, bottom): (i32, i32),
     (data_first, data_last): (i32, i32),
@@ -385,9 +385,12 @@ impl Model {
     /// `SUM(Sales[Qty])` 0, the plain `S!C4:C4` kept; table-delete-row-all-data-below, T-2338:
     /// `=S!C10` reads `=S!C7` after four deletes at row 4; table-delete-rows-all-data-once, T-3259:
     /// one delete of rows 4-7 gives the same, `ROWS(Sales[#All])` 2). Only the table's own cells of
-    /// the kept row are cleared; what Excel does to that row's cells outside the table, and to a
-    /// table with a totals row, is unprobed (T-2848).
-    pub(crate) fn last_data_row(&self, sheet: u32, row: i32, row_count: i32) -> Option<Area> {
+    /// the kept row are cleared: a one-row delete leaves the row's cells outside the table and a
+    /// table beside it untouched, and a table with a totals row keeps its cleared data row
+    /// (table-delete-row-only-data-outside, -only-data-second-table, -only-data-totals). A multi-row
+    /// delete of every data row of a table with a totals row, or across a table beside it, follows
+    /// the same rule unprobed (hand, T-3259).
+    pub(crate) fn kept_data_row(&self, sheet: u32, row: i32, row_count: i32) -> Option<Area> {
         if row_count < 1 {
             return None;
         }

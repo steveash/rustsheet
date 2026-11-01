@@ -35,7 +35,7 @@ the table's first data row, cleared, exactly as four one-row deletes do (table-d
 - A multi-row delete that covers every data row and more rows outside the table (unprobed).
 
 ## Outcome
-Done 2026-11-01. `Model::last_data_row` (table_edits.rs) now matches a row delete that covers exactly every data row of
+Done 2026-11-01. `Model::kept_data_row` (table_edits.rs, renamed from `last_data_row`) now matches a row delete that covers exactly every data row of
 a table under a header row, not only a one-row delete of its only data row: `Model::delete_rows` clears the first data
 row's table cells and deletes the other rows (actions.rs), and `UserModel::delete_rows` records the clear and the
 shorter delete as one history step (`range_clear_contents_diffs` and `delete_rows_diffs`, split out of the public
@@ -43,6 +43,11 @@ functions).
 - probes/table-edits/table-delete-rows-all-data-once: 11/11 (the 8 known failures leave eval/baseline/probes.txt);
   every gated suite otherwise unchanged, no regressions. This lifts ROWS and COUNTA, which each had this case as their
   only visibly-off attributed cells, to the Phase 1 rate.
+- Both paths refuse a bad delete before any change (`Model::check_delete_rows`, shared), so the user model never leaves
+  an unrecorded clear: unit test `a_refused_delete_of_every_data_row_changes_nothing` (an array formula across the
+  delete's end).
+- A multi-row delete of every data row of a table with a totals row, or across a table beside it, takes the same rule
+  unprobed (the one-row cases are probed: table-delete-row-only-data-totals, -outside, -second-table).
 - Unit test `deleting_every_data_row_at_once_keeps_one_cleared_row`; `row_deletes_keep_values` now expects the table to
   follow a delete of every data row.
 - Follow-up T-3634: undo restores the rows but not the table's extent, for this delete and for any delete of a table's

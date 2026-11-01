@@ -213,8 +213,8 @@ fn row_inserts_keep_values() {
 }
 
 /// The table (header row 1, data rows 2-3) shrinks with a delete of either data row (T-2338) and
-/// is left alone by one below it; a delete touching its header row, or of both data rows at once,
-/// is a fallback.
+/// is left alone by one below it; a delete of both data rows at once keeps one cleared row
+/// (T-3259), and one touching its header row is a fallback.
 #[test]
 fn row_deletes_keep_values() {
     for (row, count, follows) in [
@@ -650,8 +650,25 @@ fn deleting_every_data_row_at_once_keeps_one_cleared_row() {
     assert_eq!(value(model, 0, 10, 3), "99");
     user.redo().unwrap();
     let model = user.get_model();
+    assert_eq!(model.workbook.tables["Sales"].reference, "B3:C4");
     assert_eq!(value(model, 0, 4, 3), "");
     assert_eq!(value(model, 0, 7, 3), "99");
+}
+
+/// A delete of every data row that would cut an array formula is refused before anything
+/// changes, so no unrecorded clear is left behind (T-3259).
+#[test]
+fn a_refused_delete_of_every_data_row_changes_nothing() {
+    let mut model = edge_model(false);
+    model
+        .set_user_array_formula(0, 7, 5, 1, 2, "={1;2}")
+        .unwrap();
+    let mut user = crate::UserModel::from_model(model);
+    assert!(user.delete_rows(0, 4, 4).is_err());
+    let model = user.get_model();
+    assert_eq!(model.workbook.tables["Sales"].reference, "B3:C7");
+    assert_eq!(value(model, 0, 4, 3), "1");
+    assert_eq!(value(model, 0, 4, 2), "E");
 }
 
 #[test]
