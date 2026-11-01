@@ -1,0 +1,48 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-3609 review round 1: IMCSCH (A) and IMSECH (B) of tiny real numbers below the fresh sweep's range, rows 1-15: 1E-9, -1E-9, 1E-20, 1E-100, 1E-150, -1E-154, 1E-155, 1E-160, 1E-200, -1E-300, 1E-307, 1E-308, 2E-308, 2E-309, 1E-320. Where does the small-real reciprocal stop and #NUM! begin?",
+  "tags": [
+    "M9",
+    "engineering",
+    "probe",
+    "T-3609"
+  ],
+  "expected": {},
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A1": "=IMCSCH(\"1E-9\")",
+        "B1": "=IMSECH(\"1E-9\")",
+        "A2": "=IMCSCH(\"-1E-9\")",
+        "B2": "=IMSECH(\"-1E-9\")",
+        "A3": "=IMCSCH(\"1E-20\")",
+        "B3": "=IMSECH(\"1E-20\")",
+        "A4": "=IMCSCH(\"1E-100\")",
+        "B4": "=IMSECH(\"1E-100\")",
+        "A5": "=IMCSCH(\"1E-150\")",
+        "B5": "=IMSECH(\"1E-150\")",
+        "A6": "=IMCSCH(\"-1E-154\")",
+        "B6": "=IMSECH(\"-1E-154\")",
+        "A7": "=IMCSCH(\"1E-155\")",
+        "B7": "=IMSECH(\"1E-155\")",
+        "A8": "=IMCSCH(\"1E-160\")",
+        "B8": "=IMSECH(\"1E-160\")",
+        "A9": "=IMCSCH(\"1E-200\")",
+        "B9": "=IMSECH(\"1E-200\")",
+        "A10": "=IMCSCH(\"-1E-300\")",
+        "B10": "=IMSECH(\"-1E-300\")",
+        "A11": "=IMCSCH(\"1E-307\")",
+        "B11": "=IMSECH(\"1E-307\")",
+        "A12": "=IMCSCH(\"1E-308\")",
+        "B12": "=IMSECH(\"1E-308\")",
+        "A13": "=IMCSCH(\"2E-308\")",
+        "B13": "=IMSECH(\"2E-308\")",
+        "A14": "=IMCSCH(\"2E-309\")",
+        "B14": "=IMSECH(\"2E-309\")",
+        "A15": "=IMCSCH(\"1E-320\")",
+        "B15": "=IMSECH(\"1E-320\")"
+      }
+    }
+  ]
+}
