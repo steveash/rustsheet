@@ -3,7 +3,7 @@ id: T-3647
 title: "NUMBERVALUE separators and spaces: sweep decimal and group separator placement, repeats and whitespace"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
