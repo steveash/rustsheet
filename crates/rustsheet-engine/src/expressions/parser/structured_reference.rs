@@ -213,7 +213,7 @@ impl StructuredReference {
     }
 
     /// [`Self::text`] with the table name, whether or not it was written.
-    fn qualified_text(&self) -> String {
+    pub(crate) fn qualified_text(&self) -> String {
         let name = &self.table_name;
         if self.bare {
             return name.clone();

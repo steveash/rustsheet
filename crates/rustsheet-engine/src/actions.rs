@@ -474,14 +474,14 @@ impl Model {
     ///
     /// It assumes that the caller has already checked that the move is valid
     /// (e.g. it does not split an array formula). And that dynamic array spills have been reset.
-    /// A legacy N/T marker moves with the formula (T-1852).
+    /// A legacy N/T marker moves with the formula (T-1852). `kept` names (lowercase) the tables
+    /// that follow the edit, whose `#This Row` references keep their text ([`Model::moved_text`]).
     fn move_cell(
         &mut self,
         sheet: u32,
-        source_row: i32,
-        source_column: i32,
-        target_row: i32,
-        target_column: i32,
+        (source_row, source_column): (i32, i32),
+        (target_row, target_column): (i32, i32),
+        kept: &[String],
     ) -> Result<(), String> {
         let source_cell = match self
             .workbook
@@ -545,7 +545,12 @@ impl Model {
         }
         let legacy = self.cell_has_legacy_marker(sheet, source_row, source_column)?;
         let formula_or_value = self
-            .moved_text(sheet, source_row, source_column, target_row - source_row)?
+            .moved_text(
+                sheet,
+                (source_row, source_column),
+                target_row - source_row,
+                kept,
+            )?
             .unwrap_or_else(|| {
                 source_cell.get_localized_text(
                     &self.workbook.shared_strings,
@@ -634,7 +639,7 @@ impl Model {
             let sorted_columns = self.get_columns_for_row(sheet, row, true)?;
             for col in sorted_columns {
                 if col >= column {
-                    self.move_cell(sheet, row, col, row, col + column_count)?;
+                    self.move_cell(sheet, (row, col), (row, col + column_count), &[])?;
                 } else {
                     // Break because columns are in descending order.
                     break;
@@ -757,7 +762,7 @@ impl Model {
             for col in columns {
                 if col >= column_start {
                     if col > column_end {
-                        self.move_cell(sheet, r, col, r, col - column_count)?;
+                        self.move_cell(sheet, (r, col), (r, col - column_count), &[])?;
                     } else {
                         self.workbook.worksheet_mut(sheet)?.remove_cell(r, col)?;
                     }
@@ -1008,6 +1013,7 @@ impl Model {
                     .to_string(),
             );
         }
+        let (disp, kept) = self.row_edit(sheet, row, row_count);
         self.displace_pivots(sheet, PivotLines::Rows, row, row_count)?;
         self.reset_dynamic_array_spills(sheet)?;
         // Merged ranges are remapped at the end; take them out so the cell moves
@@ -1022,7 +1028,7 @@ impl Model {
                 // We do not really need the columns in any order
                 let columns: Vec<i32> = self.get_columns_for_row(sheet, r, false)?;
                 for column in columns {
-                    self.move_cell(sheet, r, column, r + row_count, column)?;
+                    self.move_cell(sheet, (r, column), (r + row_count, column), &kept)?;
                 }
             } else {
                 // Rows are in descending order
@@ -1077,11 +1083,6 @@ impl Model {
         );
 
         // Update all formulas in the workbook
-        let disp = DisplaceData::Row {
-            sheet,
-            row,
-            delta: row_count,
-        };
         self.displace_formulas(sheet, &disp)?;
 
         Ok(())
@@ -1111,6 +1112,7 @@ impl Model {
             // A table keeps its last data row, cleared (Model::last_data_row, T-2338).
             return self.range_clear_contents(&area);
         }
+        let (disp, kept) = self.row_edit(sheet, row, -row_count);
         self.displace_pivots(sheet, PivotLines::Rows, row, -row_count)?;
         self.reset_dynamic_array_spills(sheet)?;
         // Merged ranges are remapped at the end; take them out so the cell moves
@@ -1127,7 +1129,7 @@ impl Model {
                 if r >= row + row_count {
                     // displace all cells in column
                     for column in columns {
-                        self.move_cell(sheet, r, column, r - row_count, column)?;
+                        self.move_cell(sheet, (r, column), (r - row_count, column), &kept)?;
                     }
                 } else {
                     // remove all cells in row
@@ -1189,11 +1191,6 @@ impl Model {
             },
         );
 
-        let disp = DisplaceData::Row {
-            sheet,
-            row,
-            delta: -row_count,
-        };
         self.displace_formulas(sheet, &disp)?;
         Ok(())
     }
@@ -1301,7 +1298,7 @@ impl Model {
             for c in column + 1..=target_column {
                 let refs = self.workbook.worksheet(sheet)?.column_cell_references(c)?;
                 for r in refs {
-                    self.move_cell(sheet, r.row, c, r.row, c - 1)?;
+                    self.move_cell(sheet, (r.row, c), (r.row, c - 1), &[])?;
                 }
                 let w = self.workbook.worksheet(sheet)?.get_actual_column_width(c)?;
                 let s = self.workbook.worksheet(sheet)?.get_column_style(c)?;
@@ -1314,7 +1311,7 @@ impl Model {
             for c in (target_column..=column - 1).rev() {
                 let refs = self.workbook.worksheet(sheet)?.column_cell_references(c)?;
                 for r in refs {
-                    self.move_cell(sheet, r.row, c, r.row, c + 1)?;
+                    self.move_cell(sheet, (r.row, c), (r.row, c + 1), &[])?;
                 }
                 let w = self.workbook.worksheet(sheet)?.get_actual_column_width(c)?;
                 let s = self.workbook.worksheet(sheet)?.get_column_style(c)?;
@@ -1390,7 +1387,8 @@ impl Model {
                 .cell(row, *c)
                 .ok_or("Expected Cell to exist")?;
             let style_idx = cell.get_style();
-            let formula_or_value = self.moved_text(sheet, row, *c, delta)?.unwrap_or_else(|| {
+            let moved = self.moved_text(sheet, (row, *c), delta, &[])?;
+            let formula_or_value = moved.unwrap_or_else(|| {
                 cell.get_localized_text(&self.workbook.shared_strings, self.locale, self.language)
             });
             let mut array = None;
@@ -1439,14 +1437,14 @@ impl Model {
             for r in row + 1..=target_row {
                 let cols = self.get_columns_for_row(sheet, r, false)?;
                 for c in cols {
-                    self.move_cell(sheet, r, c, r - 1, c)?;
+                    self.move_cell(sheet, (r, c), (r - 1, c), &[])?;
                 }
             }
         } else {
             for r in (target_row..=row - 1).rev() {
                 let cols = self.get_columns_for_row(sheet, r, false)?;
                 for c in cols {
-                    self.move_cell(sheet, r, c, r + 1, c)?;
+                    self.move_cell(sheet, (r, c), (r + 1, c), &[])?;
                 }
             }
         }

@@ -403,6 +403,16 @@ impl Model {
         })
     }
 
+    /// The row insert (`delta > 0` rows above `row`) or delete (rows `row..row - delta`) on
+    /// `sheet`, and the lowercase names of the tables whose structured references keep their text
+    /// through it (`TableEdits::kept`): its cell moves keep the text of their `#This Row`
+    /// references to them ([`Model::moved_text`], T-3037).
+    pub(crate) fn row_edit(&self, sheet: u32, row: i32, delta: i32) -> (DisplaceData, Vec<String>) {
+        let displace_data = DisplaceData::Row { sheet, row, delta };
+        let kept = self.table_edits(&displace_data).kept;
+        (displace_data, kept)
+    }
+
     /// What the structural edit `displace_data` does to the tables of the sheet it edits. Tables
     /// on other sheets are untouched and in neither list; a row or column move or a cell shift
     /// leaves every table a fallback.
