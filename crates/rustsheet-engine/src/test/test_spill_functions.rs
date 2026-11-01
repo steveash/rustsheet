@@ -477,6 +477,55 @@ fn filter_string_include_returns_value_error() {
     assert_eq!(model._get_text("B1"), "#VALUE!");
 }
 
+// T-3506: a one-cell reference to an error cell is a 1x1 array holding the error, as array or as
+// include, so FILTER checks the shape and the include first (gen-m7 arg-pairs, excel-graph;
+// docs/excel-semantics/arrays.md "A one-cell error reference is a 1x1 array in TOCOL, TOROW and
+// FILTER").
+#[test]
+fn filter_one_cell_error_reference_is_a_one_by_one_array() {
+    let mut model = new_empty_model();
+    model._set("G9", "=1/0");
+    for row in 1..=3 {
+        model._set(&format!("A{row}"), &row.to_string());
+    }
+    // An include of 0 leaves nothing (gen-m7/68e7f10771a7118a A10798).
+    model._set("C1", "=FILTER(G9,0)");
+    // A 1x1 array against a 3-row include (gen-m7/ee81c689b5fde629 A1160).
+    model._set("C2", "=FILTER(G9,A1:A3>0,-2.5)");
+    // A 1x1 include against 3 rows and 2 columns (gen-m7/d7a127bd9334c2b4 A2380).
+    model._set("C3", "=FILTER(A1:B3,G9,-2.5)");
+    // Kept, the error is the one element; as a fitting include it is the error (ours, unprobed).
+    model._set("C4", "=FILTER(G9,TRUE)");
+    model._set("C5", "=FILTER(A1,G9)");
+    // A literal error is still the error (gen-m7/ee81c689b5fde629 A977).
+    model._set("C6", "=FILTER(#DIV/0!,A1:A3>0)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "#CALC!");
+    assert_eq!(model._get_text("C2"), "#VALUE!");
+    assert_eq!(model._get_text("C3"), "#VALUE!");
+    assert_eq!(model._get_text("C4"), "#DIV/0!");
+    assert_eq!(model._get_text("C5"), "#DIV/0!");
+    assert_eq!(model._get_text("C6"), "#DIV/0!");
+}
+
+// T-3506 review: a wrongly shaped multi-cell include holding an error keeps its element error
+// first, as before (ours, unprobed); only a one-cell error reference is checked for shape first.
+#[test]
+fn filter_wrongly_shaped_range_include_with_an_error_is_the_error() {
+    let mut model = new_empty_model();
+    for row in 1..=3 {
+        model._set(&format!("A{row}"), &row.to_string());
+        model._set(&format!("B{row}"), &row.to_string());
+    }
+    model._set("C1", "=1/0");
+    model._set("C2", "TRUE");
+    model._set("D1", "=FILTER(A1:B3,C1:C2)");
+    model._set("D2", "=FILTER(A1:B3,(C1:C2))");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "#DIV/0!");
+    assert_eq!(model._get_text("D2"), "#DIV/0!");
+}
+
 #[test]
 fn filter_string_include_in_range_returns_value_error() {
     // A range whose cells contain strings is also invalid as an include mask.

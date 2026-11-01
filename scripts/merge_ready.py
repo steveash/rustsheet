@@ -309,9 +309,11 @@ def records_mode(text: str | None) -> str:
 
 
 def applicable_reviewers(paths: Iterable[str] | None) -> tuple[str, ...]:
-    """The reviewers a diff of `paths` needs; every reviewer when the paths are unknown (None)."""
+    """The reviewers a diff of `paths` needs: all when unknown (None), none if all `docs/tasks/*.md` (0231)."""
     if paths is None:
         return REVIEWERS
+    if (paths := list(paths)) and all(p.startswith("docs/tasks/") and p.endswith(".md") for p in paths):
+        return ()
     touches = any(p == root or p.startswith(root + "/") for p in paths for root in EXCEL_FIDELITY_PATHS)
     return REVIEWERS if touches else ALWAYS_REVIEWERS
 
