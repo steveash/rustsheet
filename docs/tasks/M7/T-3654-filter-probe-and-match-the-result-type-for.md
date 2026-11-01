@@ -14,7 +14,7 @@ depends_on: []
 FILTER returns values of Excel's type (number, text, boolean, blank-as-0, error, `#CALC!`) for every kind of `include` element, array element and `if_empty` value.
 
 ## Context
-Lead: the 2026-11-01 holdout themes note (docs/research/holdout-themes-2026-11-01.md, branch `claude/sharp-mendel-13x2km`). It names a class of input that fails, never a case, and it is not Excel evidence: every behaviour change here needs fresh oracle cells from the excel-probe skill, and the probe cases must not copy the note's wording. If the probes show the engine already matches Excel across the class, record that in the Outcome and close the task.
+Lead: the 2026-11-01 holdout themes note (docs/research/holdout-themes-2026-11-01.md). It names a class of input that fails, never a case, and it is not Excel evidence: every behaviour change here needs fresh oracle cells from the excel-probe skill, and the probe cases must not copy the note's wording. If the probes show the engine already matches Excel across the class, record that in the Outcome and close the task.
 
 The holdout themes note reports a few FILTER results of the wrong type. Known rules: arrays.md "FILTER: an array
 `if_empty` spills as an array", references.md "FILTER's scalar if_empty is a value", T-3497 (a one-cell error

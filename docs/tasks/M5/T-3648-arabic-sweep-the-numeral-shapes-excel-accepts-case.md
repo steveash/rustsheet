@@ -14,7 +14,7 @@ depends_on: []
 ARABIC accepts exactly the numeral texts Excel accepts, with Excel's value, and gives Excel's error for the rest.
 
 ## Context
-Lead: the 2026-11-01 holdout themes note (docs/research/holdout-themes-2026-11-01.md, branch `claude/sharp-mendel-13x2km`). It names a class of input that fails, never a case, and it is not Excel evidence: every behaviour change here needs fresh oracle cells from the excel-probe skill, and the probe cases must not copy the note's wording. If the probes show the engine already matches Excel across the class, record that in the Outcome and close the task.
+Lead: the 2026-11-01 holdout themes note (docs/research/holdout-themes-2026-11-01.md). It names a class of input that fails, never a case, and it is not Excel evidence: every behaviour change here needs fresh oracle cells from the excel-probe skill, and the probe cases must not copy the note's wording. If the probes show the engine already matches Excel across the class, record that in the Outcome and close the task.
 
 The holdout themes note reports ARABIC rejecting some inputs Excel accepts. Done: T-2153 (blank is 0, outer spaces
 and tabs trimmed), T-2159 (lifting), T-2200; numbers.md "ARABIC of a blank cell, and padded numerals". Not probed:

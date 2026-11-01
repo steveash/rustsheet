@@ -14,7 +14,7 @@ depends_on: []
 INDIRECT resolves, or refuses with Excel's error, reference text that holds spaces or a reversed range, in A1 and R1C1 style.
 
 ## Context
-Lead: the 2026-11-01 holdout themes note (docs/research/holdout-themes-2026-11-01.md, branch `claude/sharp-mendel-13x2km`). It names a class of input that fails, never a case, and it is not Excel evidence: every behaviour change here needs fresh oracle cells from the excel-probe skill, and the probe cases must not copy the note's wording. If the probes show the engine already matches Excel across the class, record that in the Outcome and close the task.
+Lead: the 2026-11-01 holdout themes note (docs/research/holdout-themes-2026-11-01.md). It names a class of input that fails, never a case, and it is not Excel evidence: every behaviour change here needs fresh oracle cells from the excel-probe skill, and the probe cases must not copy the note's wording. If the probes show the engine already matches Excel across the class, record that in the Outcome and close the task.
 
 The holdout themes note reports INDIRECT failing on reference text with spaces or a reversed range. Known:
 lookup.md INDIRECT sections (missing sheet, structured references, names, a1 coercion, R1C1 offsets), references.md

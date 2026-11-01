@@ -14,7 +14,7 @@ depends_on: []
 For IMSIN, IMCOS, IMTAN, IMSEC, IMCSC, IMCOT, IMSINH, IMCOSH, IMSECH and IMCSCH, the engine gives `#NUM!` exactly where Excel does over the whole range of both parts, very large and very small, and the rule is one stated overflow/loss-of-meaning test per function family, not a list of points.
 
 ## Context
-Lead: the 2026-11-01 holdout themes note (docs/research/holdout-themes-2026-11-01.md, branch `claude/sharp-mendel-13x2km`). It names a class of input that fails, never a case, and it is not Excel evidence: every behaviour change here needs fresh oracle cells from the excel-probe skill, and the probe cases must not copy the note's wording. If the probes show the engine already matches Excel across the class, record that in the Outcome and close the task.
+Lead: the 2026-11-01 holdout themes note (docs/research/holdout-themes-2026-11-01.md). It names a class of input that fails, never a case, and it is not Excel evidence: every behaviour change here needs fresh oracle cells from the excel-probe skill, and the probe cases must not copy the note's wording. If the probes show the engine already matches Excel across the class, record that in the Outcome and close the task.
 
 Excel returns `#NUM!` for some inputs where the engine still returns a complex string, mostly at large or tiny
 components. Earlier work pinned edges one function at a time: T-1827/T-2003 (IMSIN, IMCOS, IMSINH, IMCOSH overflow),

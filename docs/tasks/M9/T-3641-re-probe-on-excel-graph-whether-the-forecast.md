@@ -14,7 +14,7 @@ depends_on: []
 Know whether Excel for the web (excel-graph) now computes the FORECAST.ETS family (FORECAST.ETS, FORECAST.ETS.CONFINT, FORECAST.ETS.SEASONALITY, FORECAST.ETS.STAT) on valid calls, or still gives `#N/A`, so T-2425 is either unblocked on excel-graph evidence or stays blocked on the `excel-desktop` backend for a recorded reason.
 
 ## Context
-Lead: the 2026-11-01 holdout themes note (docs/research/holdout-themes-2026-11-01.md, branch `claude/sharp-mendel-13x2km`). It names a class of input that fails, never a case, and it is not Excel evidence: every behaviour change here needs fresh oracle cells from the excel-probe skill, and the probe cases must not copy the note's wording. If the probes show the engine already matches Excel across the class, record that in the Outcome and close the task.
+Lead: the 2026-11-01 holdout themes note (docs/research/holdout-themes-2026-11-01.md). It names a class of input that fails, never a case, and it is not Excel evidence: every behaviour change here needs fresh oracle cells from the excel-probe skill, and the probe cases must not copy the note's wording. If the probes show the engine already matches Excel across the class, record that in the Outcome and close the task.
 
 The ETS family is still the engine's `#N/IMPL!` on every call that passes argument checks (T-2424), and is the largest
 block of failing cells in the holdout themes note. T-2425 (implement) and T-1553 (desktop probe) are blocked on the

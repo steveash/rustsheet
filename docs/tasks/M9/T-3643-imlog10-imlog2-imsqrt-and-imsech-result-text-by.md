@@ -14,7 +14,7 @@ depends_on: []
 IMLOG10, IMLOG2, IMSQRT and IMSECH print Excel's text (value and formatting) in every region of the complex plane, with any difference found stated as a rule on the region, not a list of points.
 
 ## Context
-Lead: the 2026-11-01 holdout themes note (docs/research/holdout-themes-2026-11-01.md, branch `claude/sharp-mendel-13x2km`). It names a class of input that fails, never a case, and it is not Excel evidence: every behaviour change here needs fresh oracle cells from the excel-probe skill, and the probe cases must not copy the note's wording. If the probes show the engine already matches Excel across the class, record that in the Outcome and close the task.
+Lead: the 2026-11-01 holdout themes note (docs/research/holdout-themes-2026-11-01.md). It names a class of input that fails, never a case, and it is not Excel evidence: every behaviour change here needs fresh oracle cells from the excel-probe skill, and the probe cases must not copy the note's wording. If the probes show the engine already matches Excel across the class, record that in the Outcome and close the task.
 
 The holdout themes note reports these four producing text that differs from Excel's in some regions. Done work:
 T-2117 (hypot modulus of IMLN/IMLOG10/IMLOG2/IMSQRT), T-2530 (IMLOG2's ln 2 division), T-2539 (logs at 1E+200 and

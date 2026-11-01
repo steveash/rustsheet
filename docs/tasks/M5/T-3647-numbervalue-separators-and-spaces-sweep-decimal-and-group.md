@@ -14,7 +14,7 @@ depends_on: []
 NUMBERVALUE gives Excel's value or `#VALUE!` for every placement of its decimal and group separators and of whitespace in the text, including repeats, separators in the wrong place and custom separators.
 
 ## Context
-Lead: the 2026-11-01 holdout themes note (docs/research/holdout-themes-2026-11-01.md, branch `claude/sharp-mendel-13x2km`). It names a class of input that fails, never a case, and it is not Excel evidence: every behaviour change here needs fresh oracle cells from the excel-probe skill, and the probe cases must not copy the note's wording. If the probes show the engine already matches Excel across the class, record that in the Outcome and close the task.
+Lead: the 2026-11-01 holdout themes note (docs/research/holdout-themes-2026-11-01.md). It names a class of input that fails, never a case, and it is not Excel evidence: every behaviour change here needs fresh oracle cells from the excel-probe skill, and the probe cases must not copy the note's wording. If the probes show the engine already matches Excel across the class, record that in the Outcome and close the task.
 
 The holdout themes note reports NUMBERVALUE's handling of separators and spaces disagreeing in both directions (we
 accept some texts Excel refuses, and refuse some it accepts). Done: T-2151 (reads as VALUE does), T-2152 (empty text,

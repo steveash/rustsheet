@@ -14,7 +14,7 @@ depends_on: []
 TEXT gives `#VALUE!` exactly where Excel does for each combination of value kind (number, negative, zero, date serial, text, boolean, empty) and format-code family, found by a sweep rather than by single codes.
 
 ## Context
-Lead: the 2026-11-01 holdout themes note (docs/research/holdout-themes-2026-11-01.md, branch `claude/sharp-mendel-13x2km`). It names a class of input that fails, never a case, and it is not Excel evidence: every behaviour change here needs fresh oracle cells from the excel-probe skill, and the probe cases must not copy the note's wording. If the probes show the engine already matches Excel across the class, record that in the Outcome and close the task.
+Lead: the 2026-11-01 holdout themes note (docs/research/holdout-themes-2026-11-01.md). It names a class of input that fails, never a case, and it is not Excel evidence: every behaviour change here needs fresh oracle cells from the excel-probe skill, and the probe cases must not copy the note's wording. If the probes show the engine already matches Excel across the class, record that in the Outcome and close the task.
 
 The holdout themes note reports TEXT returning a string for some format/value combinations where Excel gives
 `#VALUE!`. TEXT's validity rules are spread over many tasks: T-1393 and follow-ups (complexity limit), T-1366 and

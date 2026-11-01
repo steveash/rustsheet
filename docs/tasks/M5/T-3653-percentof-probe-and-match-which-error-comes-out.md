@@ -14,7 +14,7 @@ depends_on: []
 PERCENTOF gives Excel's error (and the right value) for every kind of argument: errors in either argument and in ranges, text, numeric text, booleans, blanks, arrays and mismatched shapes.
 
 ## Context
-Lead: the 2026-11-01 holdout themes note (docs/research/holdout-themes-2026-11-01.md, branch `claude/sharp-mendel-13x2km`). It names a class of input that fails, never a case, and it is not Excel evidence: every behaviour change here needs fresh oracle cells from the excel-probe skill, and the probe cases must not copy the note's wording. If the probes show the engine already matches Excel across the class, record that in the Outcome and close the task.
+Lead: the 2026-11-01 holdout themes note (docs/research/holdout-themes-2026-11-01.md). It names a class of input that fails, never a case, and it is not Excel evidence: every behaviour change here needs fresh oracle cells from the excel-probe skill, and the probe cases must not copy the note's wording. If the probes show the engine already matches Excel across the class, record that in the Outcome and close the task.
 
 The holdout themes note reports PERCENTOF returning the wrong error for error and coerced arguments. Done:
 T-0192 (overflow and error precedence of sums, includes PERCENTOF), T-1336 (near-zero snap), T-1325 (GROUPBY

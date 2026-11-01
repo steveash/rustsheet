@@ -14,7 +14,7 @@ depends_on: [T-3298]
 PROPER gives Excel's text over non-ASCII text: which characters start a word, and the title or upper and lower mapping of each cased character, across the scripts and blocks Excel case-maps.
 
 ## Context
-Lead: the 2026-11-01 holdout themes note (docs/research/holdout-themes-2026-11-01.md, branch `claude/sharp-mendel-13x2km`). It names a class of input that fails, never a case, and it is not Excel evidence: every behaviour change here needs fresh oracle cells from the excel-probe skill, and the probe cases must not copy the note's wording. If the probes show the engine already matches Excel across the class, record that in the Outcome and close the task.
+Lead: the 2026-11-01 holdout themes note (docs/research/holdout-themes-2026-11-01.md). It names a class of input that fails, never a case, and it is not Excel evidence: every behaviour change here needs fresh oracle cells from the excel-probe skill, and the probe cases must not copy the note's wording. If the probes show the engine already matches Excel across the class, record that in the Outcome and close the task.
 
 The holdout themes note reports some non-ASCII case mappings of PROPER and LOWER differing from Excel's. LOWER
 (and UPPER) over every cased character is T-3298's sweep; PROPER adds two rules of its own that T-3298 does not

@@ -14,7 +14,7 @@ depends_on: []
 IM* functions read, or refuse with Excel's error, every malformed complex-number text the same way Excel does, across the grammar: signs, exponents, the i/j suffix, spacing and repeated or missing parts.
 
 ## Context
-Lead: the 2026-11-01 holdout themes note (docs/research/holdout-themes-2026-11-01.md, branch `claude/sharp-mendel-13x2km`). It names a class of input that fails, never a case, and it is not Excel evidence: every behaviour change here needs fresh oracle cells from the excel-probe skill, and the probe cases must not copy the note's wording. If the probes show the engine already matches Excel across the class, record that in the Outcome and close the task.
+Lead: the 2026-11-01 holdout themes note (docs/research/holdout-themes-2026-11-01.md). It names a class of input that fails, never a case, and it is not Excel evidence: every behaviour change here needs fresh oracle cells from the excel-probe skill, and the probe cases must not copy the note's wording. If the probes show the engine already matches Excel across the class, record that in the Outcome and close the task.
 
 The holdout themes note points at how Excel validates and parses complex strings. engineering.md "How an inumber is
 read" lists the probed shapes: T-1766 (empty text, mixed i/j, booleans), T-2420 (leading plus), T-2541/T-2641
