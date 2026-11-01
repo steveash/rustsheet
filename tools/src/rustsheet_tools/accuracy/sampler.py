@@ -147,7 +147,7 @@ class Sampler:
         d = self.definition
         if d.draw is not None:
             drawn = d.draw(stratum, self.rng)
-            return [self.finish(p, a) for p, a in zip(d.params, drawn, strict=True)]
+            return [self.finish(p, a) for p, a in zip(d.params_for(len(drawn)), drawn, strict=True)]
         if stratum == "tail":
             return self._tail(index)
         if stratum == "edge":

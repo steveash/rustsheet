@@ -135,10 +135,11 @@ def fit_arg(param: Param, value: Any) -> literal.Arg | str:
 
 def fit_args(definition: Definition, values: list[Any]) -> list[literal.Arg] | str:
     """`values` as the definition's arguments, or why they do not fit."""
-    if len(values) != len(definition.params):
+    params = definition.params_for(len(values))
+    if len(values) != len(params):
         return "argument count"
     out: list[literal.Arg] = []
-    for param, value in zip(definition.params, values, strict=True):
+    for param, value in zip(params, values, strict=True):
         arg = fit_arg(param, value)
         if isinstance(arg, str):
             return arg

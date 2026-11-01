@@ -92,8 +92,9 @@ class Definition:
     `NoValueError` where no single value exists; `domain` adds rules beyond the parameters'
     intervals (returns why the point is invalid, or None). `tail` sets parameter `tail_param`
     from a tail probability (a distribution's x). `draw` replaces the per-parameter sampler for a
-    solver (`solver`: the 300-point count). `sources` cite where the definition's math and
-    ranges come from."""
+    solver (`solver`: the 300-point count). With `variadic` the last parameter repeats (SUM's
+    number2, number3, ...) and `draw` sets the argument count. `sources` cite where the
+    definition's math and ranges come from."""
 
     function: str
     params: tuple[Param, ...]
@@ -104,6 +105,14 @@ class Definition:
     tail_param: str | None = None
     draw: Draw | None = None
     solver: bool = False
+    variadic: bool = False
+
+    def params_for(self, count: int) -> tuple[Param, ...]:
+        """The parameters of a call with `count` arguments: `params`, with a variadic definition's
+        last parameter repeated to fill `count`."""
+        if not self.variadic or count <= len(self.params):
+            return self.params
+        return self.params + (self.params[-1],) * (count - len(self.params))
 
     def numeric_arity(self) -> int:
         """The number of real or integer parameters."""
@@ -111,7 +120,7 @@ class Definition:
 
     def check_domain(self, args: Sequence[MathArg]) -> None:
         """Raises `DomainError` when `args` are outside the parameters' intervals or `domain`."""
-        for p, a in zip(self.params, args, strict=True):
+        for p, a in zip(self.params_for(len(args)), args, strict=True):
             if p.kind in ("bool", "array") or isinstance(a, (bool, tuple)):
                 continue  # an array's rules are the definition's `domain`
             if not p.domain.contains(float(a)):
