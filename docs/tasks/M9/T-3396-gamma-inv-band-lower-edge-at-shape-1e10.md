@@ -23,6 +23,10 @@ GAMMA.INV, CHISQ.INV and the other gamma quantiles at a huge shape are `#NUM!` e
 - Probe p between 1E-70 and 1E-90 at shapes 7E9 to 1.2E10 (and CHISQ.INV at df 2a) to pin the edge there, with a
   hold-out split (decision 0188 R4).
 
+- More of the same at 1.1E10, from T-3530's fit audit (probes-numeric/fit-audit-*, excel-graph 2026-10-31, scored on main 4e2f5f3df after T-3350; docs/research/fit-audit/README.md): fit-audit-t3070-band-upper A47 `GAMMA.INV(4.11E-29,11000000000,1)`, A48
+  `(3.38E-27,..)` and A49 `(2.89E-26,..)` are `#NUM!` in Excel and values in the engine. T-3409 (a model of
+  Excel's search) may explain them together with A122; check it first.
+
 ## Acceptance criteria
 - [ ] A filled probe pins the lower edge at shapes 7E9 to 1.2E10; the rule separates every huge-shape quantile cell
       in eval/, A122 included, or the remaining misses are listed with the reason.

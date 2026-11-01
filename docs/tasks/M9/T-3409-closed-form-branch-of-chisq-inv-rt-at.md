@@ -40,6 +40,19 @@ up), not because of more fitted cuts. In particular `CHISQ.INV.RT(1E-300,df)` fo
   docs/excel-semantics/statistics.md "GAMMA.INV and CHISQ.INV at a huge shape"; docs/research/t3350/sweep.py (the
   mpmath reference).
 
+- **Wrong-type cells from T-3530's fit audit (probes-numeric/fit-audit-*, excel-graph 2026-10-31, scored on main 4e2f5f3df after T-3350; docs/research/fit-audit/README.md).** These are semantic (an error against a number), so the model must place them:
+  - `HUGE_SHAPE_MIN` (1E9) is not Excel's edge. Excel is already `#NUM!` at shapes 6E8 to 9E8 at a tiny p, where the
+    engine (below the huge-shape path) gives the true quantile: fit-audit-t3070-shape-min A19, A22, A23, A25, A26,
+    A28, A29, A30 (`GAMMA.INV(1E-300,6E+8,1)` to `GAMMA.INV(1E-200,9E+8,1)`).
+  - The band's upper edge (`BAND_UPPER_SLOPE`, `BAND_UPPER_EDGE`): Excel is `#NUM!` where the engine is inside the band
+    in the upper tail at shapes 3E9 to 5E9: fit-audit-t3070-band-upper A1, A2, A3, A5, A6, A7, A12, A13 (for example
+    `GAMMA.INV(1-3.84E-12,3000000000,1)`).
+  - The reverse, Excel a value where the engine is `#NUM!`, in the lower tail at shapes 7E9 to 9E9:
+    fit-audit-t3070-band-upper A26, A32, A33, A38, A39 (for example `GAMMA.INV(0.00434,7000000000,1)`, Excel
+    6999780428.321592).
+  - At 1.1E10 in the lower tail Excel is `#NUM!` where the engine has a value: A47, A48, A49 (T-3396's edge).
+  - The lower edge (`BAND_LOWER_EDGE` after T-3350) separates all 42 cells of fit-audit-t3070-band-lower.
+
 ## Acceptance criteria
 - [ ] A written model of Excel's search (start, step rule, step limit, the value on giving up), with probes designed
       to tell it apart from the alternatives (for example p just either side of a predicted step count, and shapes
@@ -47,6 +60,7 @@ up), not because of more fitted cuts. In particular `CHISQ.INV.RT(1E-300,df)` fo
 - [ ] Reviewer check 7 (decision 0188 R4): the model's free parameters are frozen on a training set and stated before a
       held-out set is scored; then a fresh probes-numeric sweep, drawn after the freeze, is scored against Excel and
       the 50-digit math. The Outcome puts train, held-out and fresh-sweep results side by side.
+- [ ] The fit audit's wrong-type cells above have Excel's type.
 - [ ] Cells A205-A289 above are Excel's value (within 15 significant digits), and no cell of the probes above that
       matches Excel now regresses.
 - [ ] Where the model replaces a fitted constant, its FITTED tag goes and quality/fitted.json's count falls; any constant
