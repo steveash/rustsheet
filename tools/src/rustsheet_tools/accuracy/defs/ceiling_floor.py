@@ -82,7 +82,8 @@ def cut15(ratio: Fraction) -> Fraction:
 # number/significance overflows"): a ratio of 0.5563 x DBL_MAX is a number (CEILING/s1 A75, FLOOR/s1
 # A72), one of 48.98 x DBL_MAX is #NUM! (FLOOR.PRECISE/s1 A119). Between them nothing is evidenced.
 LARGEST_NUMBER_RATIO = DOUBLE_MAX * Fraction(5563, 10000)
-SMALLEST_OVERFLOW_RATIO = DOUBLE_MAX * 48
+# The exact A119 ratio, so the domain error covers only ratios at or past an evidenced #NUM!.
+SMALLEST_OVERFLOW_RATIO = Fraction("3.85290564465378E+92") / Fraction("4.37553180951326E-218")
 
 
 def ratio_overflows(ratio: Fraction) -> bool:

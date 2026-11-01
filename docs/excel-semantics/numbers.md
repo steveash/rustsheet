@@ -1046,7 +1046,7 @@ Status: VERIFIED (excel-graph)
 Implemented in: `snap_ratio` in crates/rustsheet-engine/src/functions/math_and_trigonometry/ceiling_floor.rs
 Tasks: T-2715, T-2756 (ROUNDUP)
 
-## CEILING and FLOOR cut the binary quotient, so CEILING can fall below its argument (T-3673)
+## CEILING and FLOOR cut the binary quotient, so CEILING can fall below its argument and FLOOR above it (T-3673)
 Rule: the CEILING/FLOOR family's 15-digit cut ("FLOOR.PRECISE: a 16th-digit tie in the ratio cut goes away from zero")
 is taken of the double quotient `number/significance`, not of the decimal ratio of the written arguments. Where the
 two sit on different sides of a 16th-digit tie, Excel's result is one unit of the cut's 15th digit away from the

@@ -50,7 +50,8 @@ CEILING, CEILING.MATH, CEILING.PRECISE, FLOOR, FLOOR.MATH and FLOOR.PRECISE each
 - Tables: `eval/accuracy/tables/{CEILING,CEILING.PRECISE,FLOOR,FLOOR.PRECISE}/s1` (120 points each) and
   `{CEILING.MATH,FLOOR.MATH}/s1` (200 points each, with a whole-number `mode`), filled from excel-graph on 2026-11-01.
   `FLOOR/e-T-3673` (60 log-uniform points) evidences FLOOR's overflow `#NUM!` (Excel-fidelity review).
-  `rustsheet-eval accuracy`: 4056 points in 22 tables, 0 failing, 0 table defects; missing tables 277 to 271. No
+  `rustsheet-eval accuracy` at the head (after merging main): 4776 points in 28 tables, 0 failing, 0 table defects;
+  missing tables 6 fewer (265 at the head). No
   known-failures lines: every new point is in the envelope.
 - All 41 math domain errors (32 in s1, 9 in FLOOR/e-T-3673) are errors of the same code in Excel (CEILING/FLOOR `#NUM!` for a positive number over a
   negative significance, FLOOR `#DIV/0!` for a zero significance, and `#NUM!` at all 20 points whose ratio overflows, between 0.556 and 49 times the double range at the boundary).
@@ -67,6 +68,7 @@ CEILING, CEILING.MATH, CEILING.PRECISE, FLOOR, FLOOR.MATH and FLOOR.PRECISE each
 - Review history: blocked at the review-round limit after three excel-fidelity rounds (each round's findings were in
   the docs and in unevidenced corners, all fixed); resumed per work-loop step 5c, merged `origin/main` (the trig
   definitions landed alongside), and the full panel approved on cfbfeff6. The TIE_SOURCE anchor now carries its
-  `-t-2652` suffix (excel-fidelity nit). `SMALLEST_OVERFLOW_RATIO` stays at 48 x DBL_MAX, a round-down of the
-  48.98 x evidenced at FLOOR.PRECISE/s1 A119: no sampled ratio falls between them, and Excel's double quotient
-  already overflows from 1 x DBL_MAX.
+  `-t-2652` suffix (excel-fidelity nit). `SMALLEST_OVERFLOW_RATIO` is now the exact FLOOR.PRECISE/s1 A119 ratio
+  (48.98 x DBL_MAX) instead of a round-down to 48 x, so no unevidenced band is a domain error; no sampled ratio lies
+  between the two, so the tables are unchanged. The numbers.md binary-quotient title names FLOOR's mirror case too.
+  A duplicated import block with rounding.py (duplication ratchet) is gone: the model's errors are imported qualified.

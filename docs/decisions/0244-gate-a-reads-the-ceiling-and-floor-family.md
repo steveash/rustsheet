@@ -18,11 +18,11 @@
     forms; a nonzero `mode` of the .MATH forms steps a negative number away from zero), times the significance
     exactly. The .MATH and .PRECISE forms take |significance|.
   - Domain errors, each matched by Excel's code: CEILING and FLOOR of a positive number by a negative significance
-    (`#NUM!`), FLOOR of a nonzero number by a zero significance (`#DIV/0!`), and a ratio of 48 times the double range or more
+    (`#NUM!`), FLOOR of a nonzero number by a zero significance (`#DIV/0!`), and a ratio at least that of FLOOR.PRECISE/s1 A119 (48.98 times the double range)
     (`#NUM!`, numbers.md "CEILING and FLOOR are #NUM! when number/significance overflows", which this task found).
   - A ratio below 2^-1022 in magnitude is 0, so the result is 0 (numbers.md, "CEILING and FLOOR of a subnormal ratio
     are 0", VERIFIED).
-  - A ratio between 0.5563 and 48 times the double range has no math value: the evidence brackets Excel's overflow
+  - A ratio between 0.5563 and 48.98 times the double range has no math value: the evidence brackets Excel's overflow
     boundary there (CEILING/s1 A75 and FLOOR/s1 A72 are numbers, FLOOR.PRECISE/s1 A119 is `#NUM!`) but does not pin
     it, nor whether the binary quotient or its 15-digit cut overflows.
   - A result beyond the double range, which no literal draw reaches, has no math value (not evidenced), nor does
