@@ -51,7 +51,7 @@ current treatment is either VERIFIED or owned by an engine task.
   and lookup columns). Keep it under about 600 formula cells. Milestone tag M2 (decision 0051).
 
 ## Acceptance criteria
-- [ ] A probe case `probes/t3398-collation-ignorables` (milestone M2) is committed with its excel-graph
+- [ ] A probe case `probes/t3662-collation-ignorables` (milestone M2) is committed with its excel-graph
       oracle sidecar and answers questions 1-5 for every character listed above.
 - [ ] coercion.md gains a section stating, per character or per group of characters that behave alike,
       the observed equality, order, criteria and lookup behaviour with the case id and cells (VERIFIED),
