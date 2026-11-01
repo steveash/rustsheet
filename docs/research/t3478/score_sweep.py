@@ -8,12 +8,11 @@ from __future__ import annotations
 
 import collections
 import json
-import math
-import struct
 import sys
 from decimal import Decimal
 from pathlib import Path
 
+from rustsheet_tools.fitlab.score import CLOSE_RELATIVE, ulp_distance, within_fifteen_digits
 from rustsheet_tools.snapshot import show_cells
 
 REPO = Path(sys.argv[1])
@@ -27,18 +26,6 @@ def num(s: str) -> float | None:
         return float(s)
     except (TypeError, ValueError):
         return None
-
-
-def ulps(a: float, b: float) -> int:
-    def key(x: float) -> int:
-        i = struct.unpack("<q", struct.pack("<d", x))[0]
-        return i if i >= 0 else -(i & 0x7FFFFFFFFFFFFFFF)
-
-    return abs(key(a) - key(b))
-
-
-def digits15(a: float, b: float) -> bool:
-    return a == b or (f"{a:.14e}" == f"{b:.14e}")
 
 
 case = json.loads((CASES / f"{NAME}.case.json").read_text())
@@ -67,8 +54,8 @@ for key, hyp in case["hypotheses"].items():
     if ex is not None and a is not None:
         c["excel number"] += 1
         c["bit-exact"] += a == ex
-        c["<=4ulp"] += ulps(a, ex) <= 4
-        c["<=15d"] += digits15(a, ex)
+        c["<=4ulp"] += ulp_distance(a, ex) <= 4
+        c["<=15d"] += within_fifteen_digits(ex, a)
     elif ex is None and a is None and str(excel) == actual:
         c["both error"] += 1
         c["bit-exact"] += 1
@@ -84,10 +71,10 @@ for key, hyp in case["hypotheses"].items():
     in_math = False
     if a is not None and mv is not None:
         rel = abs(Decimal(a) - mv) / max(abs(mv), Decimal("1e-300"))
-        in_math = rel <= Decimal("1e-9")
+        in_math = rel <= Decimal(repr(CLOSE_RELATIVE))
     c["<=1e-9 math"] += in_math
     same_error = ex is None and a is None and str(excel) == actual
-    in_excel = (ex is not None and a is not None and digits15(a, ex)) or same_error
+    in_excel = (ex is not None and a is not None and within_fifteen_digits(ex, a)) or same_error
     # R2: an error against a number fails, and so does one error kind against another
     mismatch = (ex is None) != (a is None) or (ex is None and a is None and not same_error)
     inside = (in_excel or in_math) and not mismatch
@@ -98,8 +85,8 @@ for key, hyp in case["hypotheses"].items():
     if mv is not None and ex is not None:
         cr = float(mv)
         c["CR bit-exact"] += cr == ex
-        c["CR <=4ulp"] += ulps(cr, ex) <= 4
-        c["CR <=15d"] += digits15(cr, ex)
+        c["CR <=4ulp"] += ulp_distance(cr, ex) <= 4
+        c["CR <=15d"] += within_fifteen_digits(ex, cr)
     elif mv is None and ex is None:
         c["CR bit-exact"] += 1
         c["CR <=4ulp"] += 1

@@ -17,8 +17,8 @@ import mpmath
 
 from rustsheet_tools.accuracy.defs.annuity import rate as rate_math
 from rustsheet_tools.accuracy.literal import round15, text
-from rustsheet_tools.accuracy.sampler import log_uniform
 from rustsheet_tools.accuracy.model import DomainError, NoValueError
+from rustsheet_tools.accuracy.sampler import log_uniform
 
 REPO = Path(sys.argv[1])
 OUT = REPO / "eval" / "suites" / "probes-numeric" / "cases"
@@ -83,16 +83,26 @@ def rate_point(rng: random.Random, stratum: int):
         return None
     args = [nper, round15(pmt), round15(pv), round15(fv), 1 if due else 0]
     try:
-        m = converged(lambda: rate_math(nper, mpmath.mpf(args[1]), mpmath.mpf(args[2]), mpmath.mpf(args[3]), due))
+        m = converged(
+            lambda: rate_math(nper, mpmath.mpf(args[1]), mpmath.mpf(args[2]), mpmath.mpf(args[3]), due)
+        )
     except NoValueError:
         return None
     except DomainError:
         m = "#NUM!"
     if m is None:
         return None
-    f = "=RATE({},{},{},{},{},{})".format(text(nper), lit(args[1]), lit(args[2]), lit(args[3]), args[4], lit(guess))
-    names = ["rate -0.999..-0.75", "rate 2..100", "nper 1000..1E+5", "|pv|, |fv| 1E-8..1E-4 or 1E+8..1E+12",
-             "guess -0.999..-0.5 or 10..1000", "all axes wide"]
+    f = "=RATE({},{},{},{},{},{})".format(
+        text(nper), lit(args[1]), lit(args[2]), lit(args[3]), args[4], lit(guess)
+    )
+    names = [
+        "rate -0.999..-0.75",
+        "rate 2..100",
+        "nper 1000..1E+5",
+        "|pv|, |fv| 1E-8..1E-4 or 1E+8..1E+12",
+        "guess -0.999..-0.5 or 10..1000",
+        "all axes wide",
+    ]
     return f, f"rate/{names[stratum]}", m
 
 
@@ -109,7 +119,10 @@ def irr_math(values: list[float]):
 
         # one sign change: unique positive v; bracket on (0, inf) in ln v
         lo, hi = mpmath.mpf(-1), mpmath.mpf(1)
-        f = lambda u: npv(mpmath.exp(u))
+
+        def f(u):
+            return npv(mpmath.exp(u))
+
         for _ in range(60):
             if (f(lo) > 0) != (f(hi) > 0):
                 break
