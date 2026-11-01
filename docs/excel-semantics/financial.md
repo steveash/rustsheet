@@ -1239,8 +1239,12 @@ t3478-irr-r4-wide (excel-graph, 2026-10-31; T-3478; inputs and 50-digit roots in
 - `#DIV/0!` with guesses near -1 or above 100: A261, A275, A281 (the engine returns the root), A277, A290, A298
   (the engine is `#NUM!`), and A289 (flows near 1E-11, guess 9.6E+7; the engine returns 0.10121131912486914, not the
   root 0.000174819..., because every |NPV| there is under the absolute 1e-7 stop).
+- Gate A's IRR table (accuracy/IRR/s1, excel-graph, T-3586) adds long conventional series:
+  - `#NUM!` on series of 51 to 164 flows with roots 0.044 to 0.25, where the engine returns the root: A216, A221, A233,
+    A238, A240, A242, A258 and A270.
+  - `#DIV/0!` on series of about 180 flows with roots 0.0125 to 0.019, where the engine is `#NUM!`: A237, A248 and A268.
 `IRR({-1,1E+15})`'s `#DIV/0!` ("IRR's far-root bound") and t3406-irr-num-boundary's (T-3407) may share a cause.
-Evidence: probes-numeric/t3478-irr-r4-wide; docs/research/t3478/score_sweep.py lists the cells
+Evidence: probes-numeric/t3478-irr-r4-wide; docs/research/t3478/score_sweep.py lists the cells; accuracy/IRR/s1
 Status: VERIFIED (excel-graph) for the cells; the rule is UNVERIFIED
 Ours: the root on 13 of the 17 cells (a wrong value on A289), `#NUM!` on A277, A290, A298
 Tasks: T-3548, T-3407

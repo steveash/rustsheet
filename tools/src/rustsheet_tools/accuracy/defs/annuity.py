@@ -92,7 +92,8 @@ def rate(nper: int, pmt: mpmath.mpf, pv: mpmath.mpf, fv: mpmath.mpf, due: bool) 
 
 def _rate(args: Sequence[MathArg]) -> mpmath.mpf:
     nper, pmt, pv, fv, kind = args
-    assert not any(isinstance(a, bool) for a in args)
+    assert not any(isinstance(a, (bool, tuple)) for a in args)
+    assert not isinstance(nper, (bool, tuple))
     return rate(int(nper), mpmath.mpf(pmt), mpmath.mpf(pv), mpmath.mpf(fv), kind != 0)
 
 
@@ -212,7 +213,7 @@ def nper(r: mpmath.mpf, pmt: mpmath.mpf, pv: mpmath.mpf, fv: mpmath.mpf, due: bo
 
 def _nper(args: Sequence[MathArg]) -> mpmath.mpf:
     r, pmt, pv, fv, kind = args
-    assert not any(isinstance(a, bool) for a in args)
+    assert not any(isinstance(a, (bool, tuple)) for a in args)
     return nper(mpmath.mpf(r), mpmath.mpf(pmt), mpmath.mpf(pv), mpmath.mpf(fv), kind != 0)
 
 
