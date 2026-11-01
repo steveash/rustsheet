@@ -279,12 +279,9 @@ impl Parser {
                 .get_defined_name(bare, sheet)
                 .unwrap_or((scope, String::new())),
             None => {
-                let bare_lower = bare.to_lowercase();
                 let formula = self
-                    .defined_names
-                    .iter()
-                    .find(|(n, s, _)| s.is_none() && n.to_lowercase() == bare_lower)
-                    .map(|(.., formula)| formula.clone())
+                    .defined_name_formula(None, &bare.to_lowercase())
+                    .map(str::to_owned)
                     .unwrap_or_default();
                 (None, formula)
             }
@@ -838,18 +835,16 @@ impl Parser {
         match specifier {
             // Decided at the evaluating cell's row (`Node::ThisRowKind`), below.
             Some(token::TableSpecifier::ThisRow) => {}
-            Some(token::TableSpecifier::Totals) => {
-                if totals_row_count != 0 {
-                    row_start = totals_row;
-                    row_end = row_start;
-                } else {
-                    // Table1[#Totals] is #REF! if Table1 does not have totals
-                    return Node::ErrorKind(token::Error::REF);
-                }
-            }
-            Some(token::TableSpecifier::Headers) => {
+            Some(token::TableSpecifier::Totals) if totals_row_count != 0 => {
+                row_start = totals_row;
                 row_end = row_start;
             }
+            // [#Totals] is #REF! without a totals row, [#Headers] without a header row (T-3260).
+            Some(token::TableSpecifier::Totals) => return Node::ErrorKind(token::Error::REF),
+            Some(token::TableSpecifier::Headers) if header_row_count == 0 => {
+                return Node::ErrorKind(token::Error::REF);
+            }
+            Some(token::TableSpecifier::Headers) => row_end = row_start,
             Some(token::TableSpecifier::Data) => {
                 row_start = data_start;
             }

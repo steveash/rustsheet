@@ -7,9 +7,10 @@
 //! correctly rounded for this family, docs/excel-semantics/statistics.md "Incomplete gamma:
 //! accurate kernel"): the prefactor of TOMS 654, the power series for P below x = a + 1
 //! and a continued fraction for Q above it, Q computed directly for a small shape, and a = 1 as
-//! `-expm1(-x)`. `inverse_cdf_within` is statrs 0.18.0's `Gamma::inverse_cdf` (halve and double
-//! a bracket, then 8 bisections and 4 Newton steps) over that cdf; the quantile the functions
-//! call is [`gamma_quantile`], which refines it to the crossing in the tails (T-1634). Neither loop is open: the
+//! `-expm1(-x)`. The quantile is [`gamma_quantile`], the crossing of that cdf, refined from a
+//! Wilson-Hilferty start or from the whole range where that start is NaN, in at most 129 cdfs
+//! (T-1634, T-3131; statrs 0.18.0's `Gamma::inverse_cdf` search was its start until T-3131).
+//! Neither loop is open: the
 //! series needs about 6.8 * sqrt(a) terms where x is near a (6.4 million at a = 1E12), and never
 //! converges once `a + 1 == a` (a of 2^53 or more: `GAMMA.DIST(1E16,1E16,1,TRUE)`), so every
 //! call is NaN, which its callers turn into `#NUM!` (docs/excel-semantics/statistics.md
@@ -42,8 +43,7 @@
 
 use std::cell::RefCell;
 
-use statrs::distribution::{Continuous, ContinuousCDF, Gamma};
-use statrs::prec;
+use statrs::distribution::{ContinuousCDF, Gamma, Normal};
 
 use super::gammaln::excel_gammaln;
 use super::incomplete_beta::{rlog1, stirling_correction};
@@ -109,10 +109,10 @@ pub(crate) fn cdf_terms_bound(a: f64) -> u32 {
     series.max(continued_fraction_budget(a)).min(MAX_TERMS)
 }
 
-/// The cdfs one inversion ([`gamma_quantile`]) runs at most: statrs' search (1,075 halvings,
-/// 1,025 doublings, 8 bisections, 4 Newton steps), then one check and at most 129 more of the
-/// refinement (T-1634, T-1872). The lifting table charges an inversion by it (T-2795).
-pub(crate) const INVERSION_CDFS: u32 = 2_250;
+/// The cdfs one inversion ([`gamma_quantile`]) runs at most: the refinement's
+/// `REFINE_MAX_EXPANSIONS` (64) + 65 (`special::refine_increasing`; T-3131, which dropped statrs'
+/// search of up to 2,120 cdfs before it). The lifting table charges an inversion by it (T-2795).
+pub(crate) const INVERSION_CDFS: u32 = 129;
 
 /// The terms a cdf or an inversion has left. Once spent, the cdf in progress is NaN.
 struct Terms(u32);
@@ -138,6 +138,12 @@ pub(crate) fn gamma_ur(a: f64, x: f64) -> f64 {
     }
     // POISSON.DIST and the large-shape beta paths: the ratio form is unprobed for them (T-3252).
     pair_with(a, x, &mut Terms(MAX_TERMS), Exponent::Accurate).1
+}
+
+/// POISSON's cdf Q(k + 1, mean): Excel's far upper tail ([`excel_tail`], T-3269) where it applies,
+/// else [`gamma_ur`].
+pub(crate) fn poisson_upper(a: f64, x: f64) -> f64 {
+    excel_tail::excel_far_upper(a, x, &mut Terms(MAX_TERMS)).unwrap_or_else(|| gamma_ur(a, x))
 }
 
 /// statrs' `Gamma::cdf` within `terms`: its closed branches are statrs' own.
@@ -411,122 +417,19 @@ fn excel_form_lower(a: f64, x: f64, exponent: f64) -> Option<f64> {
     Some(lead * excel_exp(-x) * sum)
 }
 
-/// Below this quantile (at scale 1) GAMMA.INV at a shape below 1 takes the closed form
-/// [`excel_small_shape_quantile`] and not the search (T-3013). This is a choice inside the
-/// evidence bracket (4.15E-22, 6.75E-21), not a measured Excel constant. A28
-/// `GAMMA.INV(1E-16,0.75,1)` = 4.147567013992107E-22 is the closed form, while A18 and B18
-/// `GAMMA.INV(1E-5,0.25,..)` (6.75E-21 at scale 1) are neither it nor one Newton step from it on
-/// the engine's model of Excel's cdf; so are A34 `(1E-16,0.9,1)` (1.6E-18) and
-/// gen-m9/60b0b6e69ad35a45 A210 (shape 1/60, 4.9E-19). The cut is on x, not on p or a·LN(x): A28
-/// and A34 share p = 1E-16 and nearly the same a·LN(x) (about -36.9), and only A28 is the closed
-/// form. Below it the series' correction (about x / (a + 1)) is far below an ulp, so the closed
-/// form is the quantile of the leading factor alone. T-3265 probes the gap.
-/// FITTED(T-3013, 5 cells, x 4.15E-22..1.6E-18, shape 1/60..0.9)
-const CLOSED_FORM_QUANTILE_MAX: f64 = 1e-21;
-
-/// GAMMA.INV takes one Newton step from the closed form where that step is more than this
-/// relative part of x, and keeps the closed form otherwise (T-3013). The step is (p - F)/(a F) of
-/// x to first order, so a test on the cdf's distance from p alone does not fit. This value is a
-/// point inside the evidence bracket (2.78E-14, 4.1E-14), not an Excel constant: 2^-45
-/// (2.84E-14) fits too. The step is kept at 2.78E-14 (gen-m9/146b46e74f2dac3b A396
-/// `GAMMA.INV(0.05,0.01,EOMONTH(58733,-18))`, where F at the closed form is 2.2E-16 below p) and at
-/// 1.33E-14 (A6 `GAMMA.INV(1E-5,0.05,1)`). It is taken at 4.1E-14 (A26 `GAMMA.INV(1E-100,0.75,1)`:
-/// F is 3.09E-14 below p at the closed form, and 2.60E-14 above p at the result, Excel's
-/// 4.1475670139922064E-134) and at 4.4E-14 (gen-m9/3a25a03eb94fcfbd A254 `GAMMAINV(0.5,0.01,100)`:
-/// F is 4.4E-16 below p at the closed form; the result is Excel's 4.4655350189103716E-29). F is
-/// [`excel_form_lower`], the leading-factor series form, even where a·LN(x) is above
-/// [`EXCEL_EXPONENT_MAX`] and the engine's GAMMA.DIST is the pair. A254 and A396 need that: on
-/// GAMMA.DIST's value their steps would be 2.2E-14 (kept) and 4.2E-14 (taken), both against Excel.
-/// So either Excel's GAMMA.INV steps on an internal form, or the engine's GAMMA.DIST is off there
-/// (T-3265 probes it). One step only: at A26 a second would be 3.46E-14 of x and Excel takes none.
-/// A loop under the same test, with the threshold in [3.46E-14, 4.1E-14), fits as well. T-3265
-/// probes steps from 2.9E-14 to 4.0E-14.
-/// FITTED(T-3013, 4 cells, step 1.33E-14..4.4E-14 of x, shape 0.01..0.75)
-const CLOSED_FORM_STEP_MIN: f64 = 3.5e-14;
-
-/// Excel's GAMMA.INV(p, a, 1) at a shape below 1 other than 1/2, where its quantile is tiny
-/// (T-3013; docs/excel-semantics/statistics.md, T-3013 bullet): the closed form
-/// `EXP((LN(p)+GAMMALN(a)+LN(a))/a)`, the root of the leading factor p = x^a / Gamma(a + 1),
-/// summed in that order (probes/t3012-gamma-inv-small-shape: bit-exact at 14 cells of column A,
-/// A9 `GAMMA.INV(1E-30,0.1,1)` = 6.073048362407713E-301 and A16 `(1E-16,0.25,1)` =
-/// 6.749697893111757E-65 among them, where `GAMMALN(a+1)` in place of the last two terms is one
-/// ulp of the exponent off). Where the Newton step on the leading-factor series form
-/// ([`excel_form_lower`]) is more than [`CLOSED_FORM_STEP_MIN`] of x, it takes that one step
-/// (A26). The value may be 0 or subnormal (Excel's `#DIV/0!`, the caller's to decide). `None` outside [`CLOSED_FORM_QUANTILE_MAX`], at a
-/// p outside (0, 1), and where a cdf or density fails: the search applies there.
-pub(crate) fn excel_small_shape_quantile(a: f64, p: f64) -> Option<f64> {
-    if !(a > 0.0 && a < 1.0 && a != 0.5 && p > 0.0 && p < 1.0) {
-        return None;
-    }
-    let mut x = leading_factor_root(a, p);
-    if x.is_nan() || x >= CLOSED_FORM_QUANTILE_MAX {
-        return None;
-    }
-    if x < f64::MIN_POSITIVE {
-        return Some(x);
-    }
-    let step = (excel_form_lower(a, x, a * excel_ln(x))? - p) / gamma_density(a, x, 1.0)?;
-    // A subnormal step is no step. The only evidence is one cell (A9, and B9 at scale 1E+15):
-    // `GAMMA.INV(1E-30,0.1,1)` = 6.073048362407713E-301 is the closed form though its step, 8.5E-14
-    // of x, is about 5E-314, as if Excel flushed it to zero. A NaN step fails both tests, so it
-    // is no step either.
-    if step.abs() >= f64::MIN_POSITIVE && step.abs() > CLOSED_FORM_STEP_MIN * x {
-        x -= step;
-    }
-    (x > 0.0 && x.is_finite()).then_some(x)
-}
-
-/// The root of the cdf's leading factor, p = x^a / Gamma(a + 1), as Excel forms it:
-/// `EXP((LN(p)+GAMMALN(a)+LN(a))/a)`, summed in that order (T-3013 at a shape below 1, T-2561
-/// above it). NaN where a logarithm is.
-fn leading_factor_root(a: f64, p: f64) -> f64 {
-    excel_exp((excel_ln(p) + excel_gammaln(a) + excel_ln(a)) / a)
-}
-
-/// How far, relative to p, GAMMA.DIST at [`leading_factor_root`] may be from p for
-/// [`excel_tiny_quantile`] to return that root. A fit, not an Excel constant, and a proxy for
-/// Excel's own test, which is unknown. Two cells set the bracket [4.09E-14, 5.88E-14): gen-m9/
-/// 0a9226016e8f5f33 A240 `CHISQ.INV(1E-200,7)`, the root bit for bit with our cdf 4.09E-14 from
-/// p, and d8266bc15533702a A212 `CHISQ.INV(1E-200,10)`, not the root (Excel 111 ulp above it)
-/// with our cdf 5.88E-14 from p. Over the cells it was fitted on, 7 distinct (shape, p) points are
-/// in and bit-exact and 2 are out. The ones in: (2, 1E-300) at A293 and A123, (2.5, 1E-300) A217,
-/// (3.5, 1E-200) A240, (2, 1E-100) A283, (4.5, 1E-200) A252, (3, 1E-100) A184 and A399, and
-/// (1.500000000000001, 1E-100) A142. The ones out: (5, 1E-200) A212 and (2.5, 1E-200) at A128, A98
-/// and caa1eed48b1883fe A282. The test is not Excel's: at shape 25 Excel's
-/// `CHISQ.INV(1E-300,50)` is the root (probes-numeric t1543-inverse-cdf-tiny-p A31) with our cdf
-/// 9.8E-12 off (TODO(T-3294)).
-/// FITTED(T-2561, 13 cells, shape 1.5..5, p 1E-300..1E-100)
-const TINY_QUANTILE_CHECK: f64 = 5e-14;
-
-/// Excel's lower-tail quantile at a shape above 1 (and below [`DIRECT_SHAPE_MAX`]) where it is
-/// tiny (T-2561): the root of the leading factor, [`leading_factor_root`], with no Newton step.
-/// It applies where GAMMA.DIST (the pair with Excel's prefactor) at that root is within
-/// [`TINY_QUANTILE_CHECK`] of p. The check also limits the form to tiny quantiles. The cdf's other
-/// factors, e^-x and the series, are 1 - x a / (a + 1) to first order, so above x of about 5E-14
-/// they move the cdf past the check. At `CHISQ.INV(1E-16,3)` (x = 2.6E-11, 1.6E-11 off)
-/// the search takes over. The check is not Excel's own test. At shape 25, `CHISQ.INV(1E-300,50)`
-/// is the root bit for bit in Excel (probes-numeric t1543-inverse-cdf-tiny-p A31), though the cdf
-/// there is 9.8E-12 off; the shape bound keeps that cell on the search (TODO(T-3294)). The root
-/// differs from the true quantile by the rounding of Excel's exponent: `CHISQ.INV(1E-300,4)` is
-/// Excel's 2.828427124746146E-150, 82 ulp below the crossing. `None` elsewhere.
-fn excel_tiny_quantile(a: f64, p: f64) -> Option<f64> {
-    if !(a > 1.0 && a < DIRECT_SHAPE_MAX && p > 0.0 && p < 1.0) {
-        return None;
-    }
-    let x = leading_factor_root(a, p);
-    if !(f64::MIN_POSITIVE..1.0).contains(&x) {
-        return None;
-    }
-    // One cdf of a shape below 20 at x below 1: the series, at most `cdf_terms_bound(20)` terms.
-    let cdf = pair_with(a, x, &mut Terms(MAX_TERMS), Exponent::Excel).0;
-    ((cdf / p - 1.0).abs() <= TINY_QUANTILE_CHECK).then_some(x)
-}
-
 /// The shape from which the pair is Temme's uniform asymptotic expansion ([`temme_pair`]) and not a
 /// loop: the series needs about 6.8 * sqrt(a) terms near x = a, past [`MAX_TERMS`] from a shape of
 /// about 5.9E9, and never ends once `a + 1 == a`, while the expansion takes a fixed number of
 /// operations at any shape (T-1891).
 const TEMME_SHAPE_MIN: f64 = 1e8;
+
+/// The shape from which [`gamma_quantile`]'s cdfs are [`temme_pair`] (one term each). One
+/// inversion's cdfs share [`MAX_TERMS`], and a series cdf near the median takes about 7.3 * sqrt(a)
+/// terms, so its cdfs could pass it from about 2.6E5; they did from about 5E6 (`CHISQ.INV(0.5,2E7)`
+/// was `#NUM!`, Excel the true quantile, probes/t3350-chisq-inv-huge-df; T-3350). From here the
+/// expansion's variable is at most 0.13 where a tail is above e^-800 and its dropped terms below
+/// 1E-20 of the first.
+const QUANTILE_TEMME_SHAPE_MIN: f64 = 1e5;
 
 /// Above this a·phi (`temme_pair`'s exponent) the smaller tail is below e^-800, so 0 in doubles,
 /// and the expansion's polynomials are not evaluated (their variable may overflow there).
@@ -647,17 +550,22 @@ fn incomplete_gamma_pair(a: f64, x: f64, terms: &mut Terms) -> (f64, f64) {
     pair_with(a, x, terms, Exponent::Excel)
 }
 
+/// [`temme_pair`], a fixed amount of work charged to `terms` as one term; NaN once they are spent.
+fn charged_temme_pair(a: f64, x: f64, terms: &mut Terms) -> (f64, f64) {
+    if terms.take() {
+        temme_pair(a, x)
+    } else {
+        (f64::NAN, f64::NAN)
+    }
+}
+
 /// [`incomplete_gamma_pair`] with the prefactor's large-shape `exponent`.
 fn pair_with(a: f64, x: f64, terms: &mut Terms, exponent: Exponent) -> (f64, f64) {
     if a == 1.0 {
         return (-(-x).exp_m1(), (-x).exp());
     }
     if a >= TEMME_SHAPE_MIN {
-        // A fixed amount of work, charged as one term.
-        if !terms.take() {
-            return (f64::NAN, f64::NAN);
-        }
-        return temme_pair(a, x);
+        return charged_temme_pair(a, x, terms);
     }
     let prefactor = gamma_prefactor(a, x, exponent);
     if prefactor == 0.0 {
@@ -689,36 +597,9 @@ fn pair_with(a: f64, x: f64, terms: &mut Terms, exponent: Exponent) -> (f64, f64
         }
         return (lower, 1.0 - lower);
     }
-    // Q = prefactor / (x + 1 - a - 1(1-a)/(x + 3 - a - 2(2-a)/(x + 5 - a - ...))).
-    let tiny = f64::MIN_POSITIVE / f64::EPSILON;
-    let mut b = x + 1.0 - a;
-    let mut c = 1.0 / tiny;
-    let mut d = 1.0 / b;
-    let mut h = d;
-    let mut i = 1.0;
-    let mut budget = Terms(continued_fraction_budget(a));
-    loop {
-        if !terms.take() || !budget.take() {
-            return (f64::NAN, f64::NAN);
-        }
-        let an = -i * (i - a);
-        b += 2.0;
-        d = an * d + b;
-        if d.abs() < tiny {
-            d = tiny;
-        }
-        c = b + an / c;
-        if c.abs() < tiny {
-            c = tiny;
-        }
-        d = 1.0 / d;
-        let delta = d * c;
-        h *= delta;
-        if (delta - 1.0).abs() <= f64::EPSILON * 0.25 {
-            break;
-        }
-        i += 1.0;
-    }
+    let Some((h, _)) = fraction::continued_fraction(a, x, terms) else {
+        return (f64::NAN, f64::NAN);
+    };
     let upper = prefactor * h;
     (1.0 - upper, upper)
 }
@@ -726,6 +607,14 @@ fn pair_with(a: f64, x: f64, terms: &mut Terms, exponent: Exponent) -> (f64, f64
 /// [`gamma_cdf`]'s and [`gamma_sf`]'s value at a positive, finite `scaled` = x * rate: the
 /// accurate pair's `upper` or lower tail.
 fn accurate_tail(a: f64, scaled: f64, upper: bool) -> f64 {
+    if upper {
+        if let Some(q) = excel_tail::excel_far_upper(a, scaled, &mut Terms(MAX_TERMS)) {
+            return q;
+        }
+        if let Some(q) = half_integer::half_integer_upper(a, scaled, &mut Terms(MAX_TERMS)) {
+            return q;
+        }
+    }
     let (p, q) = incomplete_gamma_pair(a, scaled, &mut Terms(MAX_TERMS));
     if upper {
         q
@@ -755,84 +644,6 @@ pub(crate) fn gamma_sf(dist: &Gamma, x: f64) -> f64 {
     accurate_tail(dist.shape(), scaled, true)
 }
 
-/// statrs' `Gamma::inverse_cdf` (and `ChiSquared::inverse_cdf`) for `p` in [0, 1]: the quantile,
-/// or NaN where statrs panics, would not finish, or its cdfs together pass [`MAX_TERMS`] terms.
-/// It evaluates at most about 2,120 cdfs (about 1,075 halvings, 1,025 doublings, 8 bisections,
-/// 4 Newton steps), all of them sharing the one budget. The functions call [`gamma_quantile`],
-/// which adds at most 130 more cdfs of refinement to that same budget; this is its test shim.
-#[cfg(test)]
-fn gamma_inverse_cdf(dist: &Gamma, p: f64) -> f64 {
-    inverse_cdf_within(dist, p, &mut Terms(MAX_TERMS))
-}
-
-fn inverse_cdf_within(dist: &Gamma, p: f64, terms: &mut Terms) -> f64 {
-    // statrs panics outside [0, 1]; its callers never pass such a p.
-    if !(0.0..=1.0).contains(&p) {
-        return f64::NAN;
-    }
-    if p == 0.0 {
-        return 0.0;
-    }
-    if p == 1.0 {
-        return f64::INFINITY;
-    }
-    // A NaN cdf is where statrs panicked or the budget ran out: the search ends there.
-    let mut cdf = |x: f64| -> Option<f64> {
-        let value = cdf_within(dist, x, terms, Exponent::Accurate);
-        (!value.is_nan()).then_some(value)
-    };
-
-    let mut high = 2.0;
-    let mut low = 1.0;
-    // Each loop ends within about 1,075 steps: `low` reaches 0, where the cdf is 0, and `high`
-    // infinity, where it is 1.
-    loop {
-        let Some(at_low) = cdf(low) else {
-            return f64::NAN;
-        };
-        if at_low <= p {
-            break;
-        }
-        low /= 2.0;
-    }
-    loop {
-        let Some(at_high) = cdf(high) else {
-            return f64::NAN;
-        };
-        if at_high >= p {
-            break;
-        }
-        high *= 2.0;
-    }
-    let mut x_0 = (high + low) / 2.0;
-
-    for _ in 0..8 {
-        let Some(at_x) = cdf(x_0) else {
-            return f64::NAN;
-        };
-        if at_x >= p {
-            high = x_0;
-        } else {
-            low = x_0;
-        }
-        if prec::convergence(&mut x_0, (high + low) / 2.0) {
-            break;
-        }
-    }
-
-    for _ in 0..4 {
-        let Some(at_x) = cdf(x_0) else {
-            return f64::NAN;
-        };
-        let x_next = x_0 - (at_x - p) / dist.pdf(x_0);
-        if prec::convergence(&mut x_0, x_next) {
-            break;
-        }
-    }
-
-    x_0
-}
-
 /// Which tail's probability a quantile is given: CHISQ.INV and GAMMA.INV the lower,
 /// CHISQ.INV.RT (and CHIINV) the upper.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -850,16 +661,21 @@ pub(crate) enum Tail {
 /// (`GAMMA.INV(0.95,1,1000000)` = 2995732.27355399, probes-numeric m9-gamma-inv A26).
 ///
 /// Other shapes take the crossing of the smaller tail of the cdf of rate 1 / scale
-/// (`special::refine_increasing`: below [`HUGE_SHAPE_MIN`] at most 129 cdfs, from statrs' search,
-/// [`inverse_cdf_within`], when it has a result; from it at most 65, halving the whole range).
-/// Excel is close to the true quantile (against mpmath, 509 of 545
-/// literal-argument quantile cells are within half a unit of the 15th digit), so statrs' result
-/// is never kept as it is: it can be 7E-15 off (`GAMMA.INV(0.5,9,1)`). The smaller tail is `p` or
+/// (`special::refine_increasing` from [`wilson_hilferty_start`], or halving the bit patterns of
+/// the whole range where that start is NaN: at most 129 cdfs; from [`QUANTILE_TEMME_SHAPE_MIN`]
+/// each cdf is one Temme term). Excel is close to the true quantile (against mpmath, 509 of 545
+/// literal-argument quantile cells are within half a unit of the 15th digit); statrs' search,
+/// the start until T-3131, could be 7E-15 off it (`GAMMA.INV(0.5,9,1)`). The smaller tail is `p` or
 /// its exact complement `1 - p`, so a tiny right-tail `p` keeps the digits `1 - p` loses, as in
 /// F.INV (T-0974), and the lower tail is the accurate pair's series, which has no shortcut at a
 /// tiny x, so `CHISQ.INV(1E-100,1)` is Excel's 1.5707963267948966E-200 (T-1543, T-1634). All cdfs
 /// share one budget of [`MAX_TERMS`] terms; NaN once it is spent.
 pub(crate) fn gamma_quantile(shape: f64, scale: f64, p: f64, tail: Tail) -> f64 {
+    gamma_quantile_within(shape, scale, p, tail, MAX_TERMS)
+}
+
+/// [`gamma_quantile`] with its cdfs sharing a budget of `budget` terms (NaN once it is spent).
+fn gamma_quantile_within(shape: f64, scale: f64, p: f64, tail: Tail, budget: u32) -> f64 {
     let rate = 1.0 / scale;
     if !((0.0..=1.0).contains(&p) && rate > 0.0 && rate.is_finite()) {
         return f64::NAN;
@@ -881,13 +697,22 @@ pub(crate) fn gamma_quantile(shape: f64, scale: f64, p: f64, tail: Tail) -> f64 
         (Tail::Upper, false) => (Tail::Lower, 1.0 - p),
     };
     // Only a lower-tail p of at most 1/2: the lower tail is both the tail given and the smaller one.
-    let tiny = (tail == Tail::Lower && small == Tail::Lower)
-        .then(|| excel_tiny_quantile(shape, target))
+    // Then Newton steps from the root where it is close, the lower tail being the smaller one
+    // in either function: `CHISQ.INV.RT(1-1E-16,3)` is Excel's first step (T-3311).
+    let tiny = (small == Tail::Lower)
+        .then(|| {
+            (tail == Tail::Lower)
+                .then(|| excel_tiny_quantile(shape, target))
+                .flatten()
+                .or_else(|| excel_newton_quantile(shape, target))
+        })
         .flatten();
     let x = if shape == 1.0 {
         exponential_quantile(small, target) * scale
     } else if let Some(unit) = tiny {
         // The scale multiplies the unit quantile, as at shape 1 and below 1 (T-3013, T-3016).
+        // Excel's `CHISQ.INV(p,2a)` and `GAMMA.INV(p,a,2)` are twice `GAMMA.INV(p,a,1)` at all 88
+        // points of probes-numeric/t3311-gamma-inv-lower-tail-cdf sheet W (T-3311).
         unit * scale
     } else {
         let Ok(dist) = Gamma::new(shape, rate) else {
@@ -895,17 +720,14 @@ pub(crate) fn gamma_quantile(shape: f64, scale: f64, p: f64, tail: Tail) -> f64 
         };
         // One budget for every cdf below. Each `borrow_mut` lasts one cdf call and none nests
         // (`probability` calls no cdf of its own), so no borrow can overlap.
-        let terms = RefCell::new(Terms(MAX_TERMS));
+        let terms = RefCell::new(Terms(budget));
         let probability = |x: f64| quantile_tail(&dist, x, small, &mut terms.borrow_mut());
-        // From a huge shape statrs' search is NaN or far off (its 8 bisections leave Newton too
-        // far out: 4714346327.59633 for `CHISQ.INV(5.6221E-26,4715100000)`, whose quantile is
-        // Excel's 4714082845.627977, probes/incomplete-gamma-cap E15), so the refinement halves
-        // the whole range instead: at most 65 cdfs, each one Temme term.
-        let estimate = if shape >= HUGE_SHAPE_MIN {
-            f64::NAN
-        } else {
-            inverse_cdf_within(&dist, lower, &mut terms.borrow_mut())
-        };
+        // The crossing does not depend on the start, which only saves cdfs: near x = a each
+        // series cdf costs about 6.8 sqrt(a) terms of the one budget, so from no start (64
+        // halvings of the whole range) the inversions from a shape of about 2E6 would run out
+        // of it, and even from this start they did from about 5E6 before the cdfs became
+        // Temme's ([`QUANTILE_TEMME_SHAPE_MIN`]).
+        let estimate = wilson_hilferty_start(shape, lower) * scale;
         let crossing = match small {
             Tail::Lower => refine_increasing(probability, target, estimate, 0.0, f64::MAX),
             Tail::Upper => refine_increasing(|x| -probability(x), -target, estimate, 0.0, f64::MAX),
@@ -921,6 +743,26 @@ pub(crate) fn gamma_quantile(shape: f64, scale: f64, p: f64, tail: Tail) -> f64 
         return 0.0;
     }
     x
+}
+
+/// The start of [`gamma_quantile`]'s refinement for a scale of 1 (T-3131, in place of statrs'
+/// search): the textbook Wilson and Hilferty a (1 - 1/(9a) + z / (3 sqrt a))^3, z the standard
+/// normal quantile of `lower` by statrs' closed form, relative error about 1E-3 / a in the body.
+/// NaN where it is not a positive finite number (a small shape in a far tail, or `lower` rounded
+/// to 1), where the refinement halves the whole range instead. It is not
+/// [`huge_shape::wilson_hilferty_quantile`], Excel's fitted form with an offset, a spread and higher
+/// terms, which is Excel's value from a huge shape: this one only places the bracket, and since
+/// the doubles next to a crossing are not always monotone in the cdf, changing it can move a
+/// landing by an ulp.
+fn wilson_hilferty_start(shape: f64, lower: f64) -> f64 {
+    let z = Normal::standard().inverse_cdf(lower);
+    let cube_root = 1.0 - 1.0 / (9.0 * shape) + z / (3.0 * shape.sqrt());
+    let start = shape * cube_root * cube_root * cube_root;
+    if start > 0.0 && start.is_finite() {
+        start
+    } else {
+        f64::NAN
+    }
 }
 
 /// The quantile of the unit exponential (shape 1, rate 1) where the probability of `tail` is `t`
@@ -970,16 +812,26 @@ fn quantile_tail(dist: &Gamma, x: f64, tail: Tail, terms: &mut Terms) -> f64 {
             return power * rest * lower_series(a, scaled, terms);
         }
     }
-    let (lower, upper) = pair_with(a, scaled, terms, Exponent::Accurate);
+    let (lower, upper) = if a >= QUANTILE_TEMME_SHAPE_MIN {
+        charged_temme_pair(a, scaled, terms)
+    } else {
+        pair_with(a, scaled, terms, Exponent::Accurate)
+    };
     match tail {
         Tail::Lower => lower,
         Tail::Upper => upper,
     }
 }
 
+mod closed_form;
 mod density;
+mod excel_tail;
+mod fraction;
+mod half_integer;
 mod huge_shape;
 
+pub(crate) use closed_form::excel_small_shape_quantile;
+use closed_form::{excel_newton_quantile, excel_tiny_quantile};
 pub(crate) use density::{accurate_gamma_density, gamma_density};
 pub(crate) use huge_shape::{huge_shape_quantile, HUGE_SHAPE_MIN};
 

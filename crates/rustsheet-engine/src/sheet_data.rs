@@ -31,7 +31,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use bitcode::{Decode, Encode};
 
 use crate::constants::{LAST_COLUMN, LAST_ROW};
-use crate::sheet_reads::ReadLog;
+use crate::sheet_reads::{PositionHint, ReadLog};
 use crate::types::Cell;
 
 const CHUNK_BITS: u32 = 10;
@@ -86,6 +86,9 @@ pub struct SheetData {
     /// serialised.
     #[bitcode(skip)]
     pub(crate) reads: ReadLog,
+    /// Where in its row [`SheetData::cell`] found its last cell (`PositionHint`).
+    #[bitcode(skip)]
+    hint: PositionHint,
 }
 
 #[derive(Encode, Decode, Debug, Clone)]
@@ -222,7 +225,11 @@ impl SheetData {
     pub fn cell(&self, row: i32, column: i32) -> Option<&Cell> {
         self.reads.cell(row, column);
         let row = self.row(row)?;
+        if let Some((_, cell)) = row.cells.get(self.hint.get()).filter(|(c, _)| *c == column) {
+            return Some(cell);
+        }
         let index = row.position(column).ok()?;
+        self.hint.set(index);
         Some(&row.cells[index].1)
     }
 
@@ -547,6 +554,29 @@ impl SheetData {
                 .map(|(column, _)| *column)
                 .take_while(|column| *column <= column2),
         );
+    }
+
+    /// The places of the cells that exist in the `height` by `width` block from (`row`, `column`),
+    /// row by row: a walk costs the cells there are, not the area, which can be the whole sheet
+    /// (T-2896).
+    pub(crate) fn places_in_block(
+        &self,
+        (row, column): (i32, i32),
+        (width, height): (i32, i32),
+    ) -> Vec<(i32, i32)> {
+        let (last_row, last_column) = (
+            row.saturating_add(height - 1),
+            column.saturating_add(width - 1),
+        );
+        let mut places = Vec::new();
+        let mut columns = Vec::new();
+        let mut from = row;
+        while let Some(found) = self.next_row_between(from, last_row).row {
+            self.columns_in_row_between(found, column, last_column, &mut columns);
+            places.extend(columns.iter().map(|&c| (found, c)));
+            from = found + 1;
+        }
+        places
     }
 
     /// The cells of a row with their column, in ascending order of column.

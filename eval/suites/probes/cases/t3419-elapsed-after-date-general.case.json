@@ -1,0 +1,43 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-3419: TEXT with an elapsed token after a date or clock token in a section that also holds General, plus the T-3378 extrapolations left unprobed. One question per cell in column A.",
+  "tags": ["M10", "number-formats", "text", "probe", "T-3419"],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=TEXT(5,\"d [h] General\")",
+        "A2": "=TEXT(5,\"d [m] General\")",
+        "A3": "=TEXT(5,\"d [s] General\")",
+        "A4": "=TEXT(5,\"d [h]\")",
+        "A5": "=TEXT(5,\"h [h] General\")",
+        "A6": "=TEXT(45000,\"d [h] General\")",
+        "A7": "=TEXT(12345.678,\"d [h] General\")",
+        "A8": "=TEXT(5,\"General d [h]\")",
+        "A9": "=TEXT(3000000,\"[h] General\")",
+        "A10": "=TEXT(-5,\"[s] General\")",
+        "A11": "=TEXT(-5,\"[m] General\")",
+        "A12": "=TEXT(5,\"[s].0 General\")",
+        "A13": "=TEXT(5,\"d 0 General\")",
+        "A14": "=TEXT(45000,\"mmm d, yyyy General\")",
+        "A15": "=TEXT(12345.678,\"s.0 General\")",
+        "A16": "=TEXT(0.99999,\"s.00 General\")",
+        "A17": "=TEXT(5.25,\"d [h] General\")",
+        "A18": "=TEXT(5.25,\"d [m] General\")",
+        "A19": "=TEXT(5,\"d [h]:mm General\")",
+        "A20": "=TEXT(5,\"d [h] [m] General\")",
+        "A21": "=TEXT(12345.678,\"d [m] General\")",
+        "A22": "=TEXT(12345.678,\"d [s] General\")",
+        "A23": "=TEXT(5.5,\"h [h] General\")",
+        "A24": "=TEXT(5,\"mm:ss [h] General\")",
+        "A25": "=TEXT(5,\"d General [h]\")",
+        "A26": "=TEXT(0.5,\"d [h] General\")",
+        "A27": "=TEXT(12345.678,\"d [h]\")",
+        "A28": "=TEXT(5,\"yyyy [h] General\")",
+        "A29": "=TEXT(5,\"d [hh] General\")",
+        "A30": "=TEXT(12345.678,\"s.0 [h] General\")"
+      },
+      "expected": {}
+    }
+  ]
+}

@@ -621,3 +621,124 @@ fn test_sheet_qualified_valid_corner_pairs_stay_ranges() {
         );
     }
 }
+
+/// Reference lexing reads the column and row without building their text (T-3384). These tokens,
+/// error positions included, were recorded from the lexer before that change: valid and
+/// off-grid columns and rows, overflowing letter and digit runs, lower case, `$`, sheet prefixes,
+/// ranges and their corners.
+#[test]
+fn reference_tokens_are_unchanged() {
+    let expected = [
+        ("A1", "Reference { sheet: None, row: 1, column: 1, absolute_column: false, absolute_row: false }@2 EOF@2"),
+        ("a1", "Reference { sheet: None, row: 1, column: 1, absolute_column: false, absolute_row: false }@2 EOF@2"),
+        ("$A$1", "Reference { sheet: None, row: 1, column: 1, absolute_column: true, absolute_row: true }@4 EOF@4"),
+        ("XFD1048576", "Reference { sheet: None, row: 1048576, column: 16384, absolute_column: false, absolute_row: false }@10 EOF@10"),
+        ("XFE1", "Ident(\"XFE1\")@4 EOF@4"),
+        ("A1048577", "Ident(\"A1048577\")@8 EOF@8"),
+        ("A0", "Ident(\"A0\")@2 EOF@2"),
+        ("A00", "Ident(\"A00\")@3 EOF@3"),
+        ("H01", "Reference { sheet: None, row: 1, column: 8, absolute_column: false, absolute_row: false }@3 EOF@3"),
+        ("A2147483647", "Ident(\"A2147483647\")@11 EOF@11"),
+        ("A2147483648", "Ident(\"A2147483648\")@11 EOF@11"),
+        ("A99999999999999", "Ident(\"A99999999999999\")@15 EOF@15"),
+        ("AAAAAAAAAAAA1", "Ident(\"AAAAAAAAAAAA1\")@13 EOF@13"),
+        ("'S'!A1", "Reference { sheet: Some(\"S\"), row: 1, column: 1, absolute_column: false, absolute_row: false }@6 EOF@6"),
+        ("'S'!XFE1", "Ident(\"S!XFE1\")@8 EOF@8"),
+        ("'S'!A0", "Ident(\"S!A0\")@6 EOF@6"),
+        ("'S'!AAAAAAAAAAAAAAA1", "Ident(\"S!AAAAAAAAAAAAAAA1\")@20 EOF@20"),
+        ("'S'!A99999999999", "Ident(\"S!A99999999999\")@16 EOF@16"),
+        ("'S'!A1:B2", "Range { sheet: Some(\"S\"), left: ParsedReference { column: 1, row: 1, absolute_column: false, absolute_row: false }, right: ParsedReference { column: 2, row: 2, absolute_column: false, absolute_row: false } }@9 EOF@9"),
+        ("'S'!A1:XFE2", "Illegal(LexerError { position: 7, message: \"Expecting reference in range\" })@11 EOF@11"),
+        ("'S'!B9:A1", "Range { sheet: Some(\"S\"), left: ParsedReference { column: 2, row: 9, absolute_column: false, absolute_row: false }, right: ParsedReference { column: 1, row: 1, absolute_column: false, absolute_row: false } }@9 EOF@9"),
+        ("'S'!$A$1:$b2", "Range { sheet: Some(\"S\"), left: ParsedReference { column: 1, row: 1, absolute_column: true, absolute_row: true }, right: ParsedReference { column: 2, row: 2, absolute_column: true, absolute_row: false } }@12 EOF@12"),
+        ("Sheet1!A1:B", "Ident(\"Sheet1!A1:B\")@11 EOF@11"),
+        ("'S'!A", "Ident(\"S!A\")@5 EOF@5"),
+        ("'S'!$A$", "Illegal(LexerError { position: 4, message: \"Expecting reference in range\" })@7 EOF@7"),
+        ("'S'!$", "Illegal(LexerError { position: 4, message: \"Expecting reference in range\" })@5 EOF@5"),
+        ("'S'!1", "Illegal(LexerError { position: 4, message: \"Expecting reference in range\" })@5 EOF@5"),
+        ("'S'!1:2", "Range { sheet: Some(\"S\"), left: ParsedReference { column: 1, row: 1, absolute_column: true, absolute_row: false }, right: ParsedReference { column: 16384, row: 2, absolute_column: true, absolute_row: false } }@7 EOF@7"),
+        ("'S'!A1048576:A1048577", "Reference { sheet: Some(\"S\"), row: 1048576, column: 1, absolute_column: false, absolute_row: false }@12 Colon@13 Ident(\"A1048577\")@21 EOF@21"),
+        ("Data!ISERRORS1", "Ident(\"Data!ISERRORS1\")@14 EOF@14"),
+        ("Data!ISERROR(", "Illegal(LexerError { position: 5, message: \"Expecting reference in range\" })@13 EOF@13"),
+        ("$A$1:$B$2", "Range { sheet: None, left: ParsedReference { column: 1, row: 1, absolute_column: true, absolute_row: true }, right: ParsedReference { column: 2, row: 2, absolute_column: true, absolute_row: true } }@9 EOF@9"),
+        ("A1:B2 C3", "Range { sheet: None, left: ParsedReference { column: 1, row: 1, absolute_column: false, absolute_row: false }, right: ParsedReference { column: 2, row: 2, absolute_column: false, absolute_row: false } }@5 Reference { sheet: None, row: 3, column: 3, absolute_column: false, absolute_row: false }@8 EOF@8"),
+        ("'S'!a1:b2", "Range { sheet: Some(\"S\"), left: ParsedReference { column: 1, row: 1, absolute_column: false, absolute_row: false }, right: ParsedReference { column: 2, row: 2, absolute_column: false, absolute_row: false } }@9 EOF@9"),
+        ("'S'!ZZZZZZ1", "Ident(\"S!ZZZZZZ1\")@11 EOF@11"),
+        ("'S'!A2147483647", "Ident(\"S!A2147483647\")@15 EOF@15"),
+        // Absolute corners and the error paths of a reference read in a range.
+        ("$A", "Illegal(LexerError { position: 0, message: \"Expecting reference in range\" })@2 EOF@2"),
+        ("$A$", "Illegal(LexerError { position: 0, message: \"Expecting reference in range\" })@3 EOF@3"),
+        ("A1:$B", "Reference { sheet: None, row: 1, column: 1, absolute_column: false, absolute_row: false }@2 Colon@3 Illegal(LexerError { position: 3, message: \"Expecting reference in range\" })@5 EOF@5"),
+        ("$A$1:$B", "Illegal(LexerError { position: 5, message: \"Expecting reference in range\" })@7 EOF@7"),
+        ("'S'!$A1:$B", "Illegal(LexerError { position: 8, message: \"Expecting reference in range\" })@10 EOF@10"),
+        ("A1:B", "Reference { sheet: None, row: 1, column: 1, absolute_column: false, absolute_row: false }@2 Colon@3 Ident(\"B\")@4 EOF@4"),
+        ("$A1:B$", "Illegal(LexerError { position: 4, message: \"Expecting reference in range\" })@6 EOF@6"),
+        ("A1:$B$", "Reference { sheet: None, row: 1, column: 1, absolute_column: false, absolute_row: false }@2 Colon@3 Illegal(LexerError { position: 3, message: \"Expecting reference in range\" })@6 EOF@6"),
+        ("$A1:$B$0", "Illegal(LexerError { position: 4, message: \"Expecting reference in range\" })@8 EOF@8"),
+        ("A1:$B$2147483648", "Reference { sheet: None, row: 1, column: 1, absolute_column: false, absolute_row: false }@2 Colon@3 Illegal(LexerError { position: 3, message: \"Expecting reference in range\" })@16 EOF@16"),
+        ("A1:$XFE$1", "Reference { sheet: None, row: 1, column: 1, absolute_column: false, absolute_row: false }@2 Colon@3 Illegal(LexerError { position: 3, message: \"Expecting reference in range\" })@9 EOF@9"),
+        ("A1:$AAAAAAAAAAAAAA$1", "Reference { sheet: None, row: 1, column: 1, absolute_column: false, absolute_row: false }@2 Colon@3 Illegal(LexerError { position: 3, message: \"Expecting reference in range\" })@20 EOF@20"),
+        ("$XFE$1", "Illegal(LexerError { position: 0, message: \"Expecting reference in range\" })@6 EOF@6"),
+        ("$AAAAAAAAAAAAAAAA$1", "Illegal(LexerError { position: 0, message: \"Expecting reference in range\" })@19 EOF@19"),
+        ("$A$0", "Illegal(LexerError { position: 0, message: \"Expecting reference in range\" })@4 EOF@4"),
+        ("$A$2147483648", "Illegal(LexerError { position: 0, message: \"Expecting reference in range\" })@13 EOF@13"),
+        ("$A$1048577", "Illegal(LexerError { position: 0, message: \"Expecting reference in range\" })@10 EOF@10"),
+        ("'S'!$A$", "Illegal(LexerError { position: 4, message: \"Expecting reference in range\" })@7 EOF@7"),
+        ("'S'!$A$0", "Illegal(LexerError { position: 4, message: \"Expecting reference in range\" })@8 EOF@8"),
+        ("'S'!$XFE$1", "Illegal(LexerError { position: 4, message: \"Expecting reference in range\" })@10 EOF@10"),
+        ("'S'!$A$2147483648", "Illegal(LexerError { position: 4, message: \"Expecting reference in range\" })@17 EOF@17"),
+        ("A1:$A$", "Reference { sheet: None, row: 1, column: 1, absolute_column: false, absolute_row: false }@2 Colon@3 Illegal(LexerError { position: 3, message: \"Expecting reference in range\" })@6 EOF@6"),
+        ("'S'!A1:$B$", "Illegal(LexerError { position: 7, message: \"Expecting reference in range\" })@10 EOF@10"),
+        ("'S'!A1:$XFE$2", "Illegal(LexerError { position: 7, message: \"Expecting reference in range\" })@13 EOF@13"),
+        ("'S'!A1:$AAAAAAAAAAAAAAAAAAA$2", "Illegal(LexerError { position: 7, message: \"Expecting reference in range\" })@29 EOF@29"),
+        ("Sheet1!$A$2147483648", "Illegal(LexerError { position: 7, message: \"Expecting reference in range\" })@20 EOF@20"),
+        ("$A1", "Reference { sheet: None, row: 1, column: 1, absolute_column: true, absolute_row: false }@3 EOF@3"),
+        ("$1", "Illegal(LexerError { position: 0, message: \"Expecting reference in range\" })@2 EOF@2"),
+        // Row and column ranges, and their error messages.
+        ("1:2", "Range { sheet: None, left: ParsedReference { column: 1, row: 1, absolute_column: true, absolute_row: false }, right: ParsedReference { column: 16384, row: 2, absolute_column: true, absolute_row: false } }@3 EOF@3"),
+        ("$1:$2", "Range { sheet: None, left: ParsedReference { column: 1, row: 1, absolute_column: true, absolute_row: true }, right: ParsedReference { column: 16384, row: 2, absolute_column: true, absolute_row: true } }@5 EOF@5"),
+        ("0:5", "Range { sheet: None, left: ParsedReference { column: 1, row: 0, absolute_column: true, absolute_row: false }, right: ParsedReference { column: 16384, row: 5, absolute_column: true, absolute_row: false } }@3 EOF@3"),
+        ("1048576:1048576", "Range { sheet: None, left: ParsedReference { column: 1, row: 1048576, absolute_column: true, absolute_row: false }, right: ParsedReference { column: 16384, row: 1048576, absolute_column: true, absolute_row: false } }@15 EOF@15"),
+        ("1048577:2", "Illegal(LexerError { position: 9, message: \"Row too large in reference\" })@9 EOF@9"),
+        ("2:1048577", "Illegal(LexerError { position: 9, message: \"Row too large in reference\" })@9 EOF@9"),
+        ("99999999999:2", "Illegal(LexerError { position: 13, message: \"Failed parsing row 99999999999\" })@13 EOF@13"),
+        ("2:99999999999", "Illegal(LexerError { position: 13, message: \"Failed parsing row 99999999999\" })@13 EOF@13"),
+        ("A:B", "Range { sheet: None, left: ParsedReference { column: 1, row: 1, absolute_column: false, absolute_row: true }, right: ParsedReference { column: 2, row: 1048576, absolute_column: false, absolute_row: true } }@3 EOF@3"),
+        ("$A:$B", "Range { sheet: None, left: ParsedReference { column: 1, row: 1, absolute_column: true, absolute_row: true }, right: ParsedReference { column: 2, row: 1048576, absolute_column: true, absolute_row: true } }@5 EOF@5"),
+        ("a:b", "Range { sheet: None, left: ParsedReference { column: 1, row: 1, absolute_column: false, absolute_row: true }, right: ParsedReference { column: 2, row: 1048576, absolute_column: false, absolute_row: true } }@3 EOF@3"),
+        ("A:XFD", "Range { sheet: None, left: ParsedReference { column: 1, row: 1, absolute_column: false, absolute_row: true }, right: ParsedReference { column: 16384, row: 1048576, absolute_column: false, absolute_row: true } }@5 EOF@5"),
+        ("A:XFE", "Illegal(LexerError { position: 5, message: \"Column is not valid.\" })@5 EOF@5"),
+        ("XFE:A", "Ident(\"XFE\")@3 Colon@4 Ident(\"A\")@5 EOF@5"),
+        ("AAAAAAAAAAAAAAAA:B", "Ident(\"AAAAAAAAAAAAAAAA\")@16 Colon@17 Ident(\"B\")@18 EOF@18"),
+        ("A:AAAAAAAAAAAAAAAA", "Illegal(LexerError { position: 18, message: \"Column is not valid.\" })@18 EOF@18"),
+        ("'S'!$A:$A", "Range { sheet: Some(\"S\"), left: ParsedReference { column: 1, row: 1, absolute_column: true, absolute_row: true }, right: ParsedReference { column: 1, row: 1048576, absolute_column: true, absolute_row: true } }@9 EOF@9"),
+        ("'S'!1:3", "Range { sheet: Some(\"S\"), left: ParsedReference { column: 1, row: 1, absolute_column: true, absolute_row: false }, right: ParsedReference { column: 16384, row: 3, absolute_column: true, absolute_row: false } }@7 EOF@7"),
+        ("'S'!99999999999:3", "Illegal(LexerError { position: 17, message: \"Failed parsing row 99999999999\" })@17 EOF@17"),
+        ("'S'!A:XFE", "Ident(\"S!A\")@5 Colon@6 Ident(\"XFE\")@9 EOF@9"),
+        ("'S'!A1B:C", "Ident(\"S!A1B\")@7 Colon@8 Ident(\"C\")@9 EOF@9"),
+        ("'S'!1A:2", "Illegal(LexerError { position: 8, message: \"Error parsing Range\" })@8 EOF@8"),
+        ("'S'!A:2", "Ident(\"S!A\")@5 Colon@6 Number(2.0)@7 EOF@7"),
+        ("'S'!1:B", "Illegal(LexerError { position: 7, message: \"Error parsing Range\" })@7 EOF@7"),
+        ("'S'!:B", "Illegal(LexerError { position: 6, message: \"Column identifier cannot be empty.\" })@6 EOF@6"),
+        ("'S'!A:", "Ident(\"S!A\")@5 Colon@6 EOF@6"),
+        ("'S'!1:", "Illegal(LexerError { position: 6, message: \"Error parsing Range\" })@6 EOF@6"),
+        ("Sheet1!$A:$C", "Range { sheet: Some(\"Sheet1\"), left: ParsedReference { column: 1, row: 1, absolute_column: true, absolute_row: true }, right: ParsedReference { column: 3, row: 1048576, absolute_column: true, absolute_row: true } }@12 EOF@12"),
+        ("Sheet1!3:$5", "Range { sheet: Some(\"Sheet1\"), left: ParsedReference { column: 1, row: 3, absolute_column: true, absolute_row: false }, right: ParsedReference { column: 16384, row: 5, absolute_column: true, absolute_row: true } }@11 EOF@11"),
+        ("'S'!$:$A", "Illegal(LexerError { position: 8, message: \"Column identifier cannot be empty.\" })@8 EOF@8"),
+        ("'S'!0001:2", "Range { sheet: Some(\"S\"), left: ParsedReference { column: 1, row: 1, absolute_column: true, absolute_row: false }, right: ParsedReference { column: 16384, row: 2, absolute_column: true, absolute_row: false } }@10 EOF@10"),
+        ("'S'!A:B C:D", "Range { sheet: Some(\"S\"), left: ParsedReference { column: 1, row: 1, absolute_column: false, absolute_row: true }, right: ParsedReference { column: 2, row: 1048576, absolute_column: false, absolute_row: true } }@7 Range { sheet: None, left: ParsedReference { column: 3, row: 1, absolute_column: false, absolute_row: true }, right: ParsedReference { column: 4, row: 1048576, absolute_column: false, absolute_row: true } }@11 EOF@11"),
+    ];
+    for (formula, tokens) in expected {
+        let mut lexer = new_lexer(formula);
+        let mut read = Vec::new();
+        loop {
+            let token = lexer.next_token();
+            let end = token == EOF;
+            read.push(format!("{token:?}@{}", lexer.get_position()));
+            if end || read.len() > 20 {
+                break;
+            }
+        }
+        assert_eq!(read.join(" "), tokens, "{formula}");
+    }
+}

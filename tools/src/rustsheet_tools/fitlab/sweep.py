@@ -58,6 +58,29 @@ def number_literal(text: str) -> float:
 
 _UNSIGNED = r"(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?"
 _NUMBER = re.compile(rf"[+-]?{_UNSIGNED}")
+
+_COMPLEX_TEXT = re.compile(
+    rf"(?P<re>[+-]?{_UNSIGNED})?"
+    rf"(?:(?P<sign>[+-]?)(?P<im>{_UNSIGNED})?(?P<unit>[ij]))?"
+)
+
+
+def parse_complex_text(text: str) -> tuple[float, float]:
+    """An IM* function's text result (`1.5-2i`, `-0.5j`, `i`, `3`, `1E+307+1.6E+308i`) as its
+    real and imaginary parts; ValueError for anything else. The imaginary part needs its own sign
+    when a real part precedes it, so `1.5i` is 0+1.5i, not 1.5+1i."""
+    m = _COMPLEX_TEXT.fullmatch(text)
+    if m is None or (m["re"] is None and m["unit"] is None):
+        msg = f"not a complex number: {text!r}"
+        raise ValueError(msg)
+    if m["unit"] is None:
+        return float(m["re"]), 0.0
+    if m["re"] is not None and not m["sign"]:
+        return 0.0, float(m["re"])  # `1.5i`: the greedy real part took the coefficient
+    im = float(m["im"]) if m["im"] is not None else 1.0
+    return (float(m["re"]) if m["re"] is not None else 0.0), (-im if m["sign"] == "-" else im)
+
+
 _REF = re.compile(
     r"(?:(?P<sheet>'(?:[^']|'')+'|[A-Za-z_][\w.]*)!)?(?P<first>\$?[A-Za-z]{1,3}\$?\d+)"
     r"(?:\s*:\s*(?P<last>\$?[A-Za-z]{1,3}\$?\d+))?"
@@ -84,8 +107,9 @@ class Cell:
     address: str
     formula: str
     args: tuple[Arg, ...]
-    expected: float  # NaN when Excel's value is an error (`error` names it)
+    expected: float  # NaN when Excel's value is an error (`error` names it); a complex text's real part
     error: str | None = None  # Excel's error value (`#NUM!`) when the cell holds one
+    expected_im: float | None = None  # a complex text's imaginary part (`Fit.complex_text`), else None
 
     @property
     def key(self) -> str:
@@ -417,10 +441,13 @@ def select(
     where: Any = None,
     *,
     errors: bool = False,
+    complex_text: bool = False,
 ) -> None:
     """Adds `book`'s cells whose formula matches `pattern` to `sweep`. `where(cell)`, when given,
     keeps only the cells it returns true for. With `errors`, cells whose Excel value is an error
-    are kept too (a `Cell` with `error` set), so a candidate is scored on rejecting them."""
+    are kept too (a `Cell` with `error` set), so a candidate is scored on rejecting them. With
+    `complex_text`, a cell whose Excel value is an IM* function's text (`parse_complex_text`) is
+    kept with its two parts (`expected`, `expected_im`)."""
     for sheet, cells in book.sheets.items():
         for address, raw in cells.items():
             if not (isinstance(raw, str) and (m := pattern.match(raw))):
@@ -430,7 +457,8 @@ def select(
             is_error = (
                 errors and isinstance(entry, dict) and entry.get("t") == "e" and not is_undecoded(entry)
             )
-            if not isinstance(entry, dict) or (entry.get("t") != "n" and not is_error):
+            parts = _complex_parts(entry) if complex_text else None
+            if not isinstance(entry, dict) or (entry.get("t") != "n" and not is_error and parts is None):
                 sweep.non_numeric += 1
                 continue
             try:
@@ -440,6 +468,8 @@ def select(
                 continue
             if is_error:
                 cell = Cell(case_id, sheet, address, raw, args, math.nan, str(entry["v"]))
+            elif parts is not None:
+                cell = Cell(case_id, sheet, address, raw, args, parts[0], expected_im=parts[1])
             else:
                 cell = Cell(case_id, sheet, address, raw, args, float(entry["v"]))
             if where is not None and not where(cell):
@@ -448,15 +478,47 @@ def select(
             sweep.cells.append(cell)
 
 
+def _complex_parts(entry: Any) -> tuple[float, float] | None:
+    """The parts of a text oracle value that is a complex number, else None."""
+    if not (isinstance(entry, dict) and entry.get("t") == "s"):
+        return None
+    try:
+        return parse_complex_text(str(entry.get("v")))
+    except ValueError:
+        return None
+
+
+class RefusedSweepError(ValueError):
+    """A sweep the fit lab may not tune on (Gate A's tables, SPEC-0029 "The R4 guards")."""
+
+
+def refuse_accuracy(case_ids: list[str], holdout_only: bool) -> None:
+    """Gate A's reference tables (`accuracy/*`) never feed a fit: a table used to tune a constant
+    would stop measuring generalization (decision 0188 R4, SPEC-0029). They may be read only to
+    measure a frozen fit (`holdout_only`)."""
+    tables = [c for c in case_ids if c.split("/", 1)[0] == "accuracy"]
+    if tables and not holdout_only:
+        msg = (
+            f"refusing Gate A tables as a sweep ({', '.join(tables)}): they are a hold-out, never "
+            "fit data (SPEC-0029, decision 0188 R4); pass --holdout-only to measure a frozen fit"
+        )
+        raise RefusedSweepError(msg)
+
+
 def load_sweep(
     case_ids: list[str],
     pattern: str,
     where: Any = None,
     errors: bool = False,
     calls: list[str] | None = None,
+    *,
+    holdout_only: bool = False,
+    complex_text: bool = False,
 ) -> Sweep:
     """The matching cells of every case in `case_ids` (`suite/name`); a nested call in an argument
-    reads Excel's value of the same call from the `calls` cases (`call_values`)."""
+    reads Excel's value of the same call from the `calls` cases (`call_values`). Gate A tables are
+    refused unless `holdout_only` (`refuse_accuracy`)."""
+    refuse_accuracy([*case_ids, *(calls or [])], holdout_only)
     regex = re.compile(pattern)
     sweep = Sweep()
     known = call_values(calls) if calls else {}
@@ -464,5 +526,5 @@ def load_sweep(
         entry = case_entry(case_id)
         book = load_workbook(Path(entry["path"]), Path(entry["sidecar"]))
         book = Workbook(book.sheets, book.oracle, known)
-        select(entry["id"], book, regex, sweep, where, errors=errors)
+        select(entry["id"], book, regex, sweep, where, errors=errors, complex_text=complex_text)
     return sweep
