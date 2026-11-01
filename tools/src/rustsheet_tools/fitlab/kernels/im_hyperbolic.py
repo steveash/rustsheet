@@ -104,6 +104,9 @@ FITS = [
     _fit(
         "im-small-imag",
         "IMSIN/IMCOS with a small imaginary part, T-3545's sweep drawn after the freeze",
-        ["probes-numeric/t3545-imsin-imcos-small-imag-sweep"],
+        [
+            "probes-numeric/t3545-imsin-imcos-small-imag-sweep",
+            "probes-numeric/t3545-imsin-imcos-tiny-imag-sweep",
+        ],
     ),
 ]

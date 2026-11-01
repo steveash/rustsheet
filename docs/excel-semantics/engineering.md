@@ -925,12 +925,15 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   pair 13, libm sinh and Kahan expm1 0), so IMSIN and IMCOS have no lower cut: the form holds for every |y| <= 20.
   Frozen, then checked on a sweep drawn afterwards (probes-numeric/t3545-imsin-imcos-small-imag-sweep, 300 cells,
   |y| log-uniform in [1e-7, 0.0105], excel-graph): the form's values match all 300 (hold-out train 200/200, test
-  100/100), the EXP pair 227 (150/77), the correctly rounded value 79. `IMSIN("1E-200+1E-200i")` is still "1E-200"
+  100/100), the EXP pair 227 (150/77), the correctly rounded value 79; and on a second one below it
+  (probes-numeric/t3545-imsin-imcos-tiny-imag-sweep, 300 cells, |y| log-uniform in [1e-300, 1e-7]) all 300 by text,
+  the EXP pair 297. `IMSIN("1E-200+1E-200i")` is still "1E-200"
   (u = 1) and `IMCOS("150-0.002i")` keeps its digits. Still open: `IMSIN("0.981793650815856-183.167307387565i")`
   (|y| above the band, EXP pair) differs in the 15th digit. Status: VERIFIED (excel-graph). Ours: `trig_sinh_cosh`.
 - **An IM* part with 14 significant digits at exponent -6 is plain text (T-3545).** `IMSIN("0-1.03615953980931E-06i")`
-  is `-0.0000010361595398356i` (21 characters without the sign), and so are three more parts of
-  probes-numeric/t3545-imsin-imcos-small-imag-sweep (A43, B49 and one more, all 14 digits at exponent -6), where the
+  is `-0.0000010361595398356i` (21 characters without the sign, probes-numeric/t3545-imsin-imcos-small-imag-sweep
+  A128), and so are A43, B49 and B81 there (`IMCOS("-0.856146645807608+1.42428827512383E-06i")` is
+  `0.655352852954647+0.0000010757975078242i`; all 14 digits at exponent -6), where the
   15-digit `1.23456789012345E-06` is E notation (probes/eng-im-small-part, T-2056 above). Ours writes E notation
   past 20 characters (number_format.rs `value_to_text`). Status: VERIFIED (excel-graph), not implemented (T-3560).
 - **IMSQRT of a negative real is polar through COS and ATAN2.** `IMSQRT("-1")` (`IMSQRT(TEXT(-1,"0"))`) is

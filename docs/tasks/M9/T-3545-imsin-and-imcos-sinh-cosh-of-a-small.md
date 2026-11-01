@@ -57,14 +57,21 @@ choice among candidates, so it carries no `FITTED` tag (decision 0188 R4) but ha
 | main (EXP pair below 0.01) | 150 (75.0%) / 150 / 150 | 77 (77.0%) / 77 / 77 | accept, below |
 | correctly rounded | 55 (27.5%) / 55 / 55 | 24 (24.0%) / 24 / 24 | reference |
 
-  By text the harness counts 296/300 (main 224): the other 4 have equal digits and differ only in notation (14-digit
+  Review asked for the rest of the changed domain, so a second sweep followed with the model unchanged:
+  probes-numeric/t3545-imsin-imcos-tiny-imag-sweep (300 cells, |y| log-uniform in [1e-300, 1e-7], seed 35451,
+  `gen_sweep.py --tiny`): engine 300/300 by text, main 297. Fit lab `im-small-imag` over both sweeps (600 cells):
+  engine train 395/395, test 205/205 (accept); main 343/181; correctly rounded 100/54. So the form is evidenced for
+  |y| from 1e-300 to 0.0105, and inside the band by T-2796 and T-3525.
+- **Gate A envelope (R2)** on both sweeps: 600 of 600 inside, 0 outside (every cell equals Excel's value by digits;
+  the fit lab's within-15-digits and within-1e-9 columns are 600/600).
+- By text the harness counts 296/300 on the first sweep (main 224): the other 4 have equal digits and differ only in notation (14-digit
   parts at exponent -6 are plain in Excel), a separate number-to-text quirk, recorded in engineering.md and filed as
-  T-3560.
+  T-3560 (A128, A43, B49, B81).
 - **Old cells**: fit lab `im-hyperbolic` (1,359 IMSINH/IMCOSH/IMSIN/IMCOS cells of the T-2231/T-2535/T-2629/T-2778
   probes) 1,359/1,359 before and after; `im-hyperbolic-fresh` 1,151 -> 1,185 of 1,200 (train 815 -> 839, test 336 ->
   346). `IMSIN("1E-200+1E-200i")` stays "1E-200" and `IMCOS("150-0.002i")` keeps its digits.
 - **Eval delta**: gated suites unchanged (`make eval-baseline` records nothing: no fix, no regression). probes-numeric
-  (not gated): t3525 fresh sweep 961 -> 995 of 1,000; the new t3545 sweep 296 of 300.
+  (not gated): t3525 fresh sweep 961 -> 995 of 1,000; the new t3545 sweeps 296 of 300 and 300 of 300.
 - IMSEC and IMCOT are unchanged (`sec_sinh_cosh` keeps libm below the band). Still open: `IMSIN`/`IMCOS("0.98…-183.17…i")`
   (|y| above the band) differ from the EXP pair in the 15th digit; 3 IMSINH/IMCOSH cells below |x| = 0.01.
 - Follow-up: T-3560 (IM* part notation).

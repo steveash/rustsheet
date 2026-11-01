@@ -101,7 +101,8 @@ fn inverse_exp_form(x: f64) -> (f64, f64) {
 /// here: below it the EXP pair cancels where the reciprocal does not, and `IMSIN("0+0.0080407127044978i")`
 /// is 0.00804079934755902i, this form's digits (EXP pair ...908i). By digits the form fits all 300
 /// cells of probes-numeric/t3545-imsin-imcos-small-imag-sweep (|y| in [1e-7, 0.0105], drawn after the
-/// form was chosen; 4 differ only in notation, T-3560), where the EXP pair fits 227 (fit lab
+/// form was chosen; 4 differ only in notation, T-3560), where the EXP pair fits 227, and all 300 of
+/// t3545-imsin-imcos-tiny-imag-sweep (|y| in [1e-300, 1e-7]), where it fits 297 (fit lab
 /// `im-small-imag`). The small-t cells the EXP pair was fitted to keep their digits: the imaginary
 /// part of `IMCOS("1.5E+2-2E-3i")` is -0.0014297538124271 (libm sinh ...242709), and
 /// `IMSIN("1E-200+1E-200i")` is "1E-200" since u = 1 (gen-m9, T-2535;
