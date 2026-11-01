@@ -328,6 +328,8 @@ C	probes/date-text-grammar.case.json	138
 C	probes/date-text-locale.case.json	10
 C	probes/date-text-non-glued-timevalue.case.json	44
 C	probes/date-text-rejected-clock-formats.case.json	16
+C	probes/date-text-shape-survey-2.case.json	128
+C	probes/date-text-shape-survey.case.json	360
 C	probes/date-text-single-letter-ap.case.json	48
 C	probes/date-text-typed-clock-shapes.case.json	85
 C	probes/date-text-weekend-3d.case.json	129
