@@ -1517,8 +1517,12 @@ text included: `RANK(4,A1:A8,"1")` is `#VALUE!`. `order` is read before the data
 `RANK(4,D1:D3,"x")` and `RANK(1,D1:D3,"x")` are `#VALUE!` and `RANK(4,D1:D3,1/0)` is `#DIV/0!`. So an element reads
 `number`, then `order`, then the data's error, then ranks (`#N/A` when absent). Before T-1999 a direct boolean was `#VALUE!`,
 `"1"` was an ascending order and the data's error came before `order`'s. Not probed: an `order` from a cell holding text, and `number`'s error against `order`'s (T-2019).
-Not yet probed (T-2000): T.TEST's `type` against the samples' error, FORECAST's `x` against the data's
-own validation, and an error data argument of PERCENTRANK, QUARTILE, PROB and FREQUENCY.
+Probed in T-2000 (probes/stat-error-orders-t2000, excel-graph; D1:D3 = 1, `#N/A`, 3): T.TEST's `type` is read before the
+samples' error: `T.TEST(D1:D3,A1:A3,1,4)` is `#NUM!` and `T.TEST(D1:D3,A1:A3,1,"a")` is `#VALUE!`. FORECAST's `x` is read before the data's
+own validation: `FORECAST("a",A1:A2,B1:B3)` (unequal sizes, `#N/A` for a numeric `x`), `FORECAST("a",A1:A1,B1:B1)` (one
+point) and `FORECAST("a",{1;1},{2;2})` (all x equal, `#DIV/0!` for a numeric `x`) are all `#VALUE!`. An error value as the data argument is that error: `PERCENTRANK(NA(),1)`, `QUARTILE(NA(),1)`,
+`PERCENTILE.INC(NA(),0.5)`, `PROB(NA(),F1:F4,1)` and `FREQUENCY(NA(),{1;2})` are all `#N/A`. All ten already matched
+the engine; no code change.
 Status: VERIFIED (excel-graph)
 Tasks: T-1813, T-1982, T-1999, T-2000
 
@@ -1625,13 +1629,60 @@ before the `#N/A`. So the web oracle gives no evidence for the algorithm or for 
 golden only for the type-coercion step (decision 0039). Catalog `oracle: none` is not used: the canary does not
 refuse these workbooks, Excel for the web just does not calculate the family.
 Consequence: a validation-only engine (`#N/A` like excel-graph) would score on excel-graph values but would be wrong on
-desktop Excel, so the family stays `#N/IMPL!` until desktop values exist (M14, Phase 4, T-1553).
+desktop Excel. Until decision 0221 the family therefore stayed `#N/IMPL!` until desktop values exist (M14, Phase 4,
+T-1553). Since that owner ruling, it computes gridcraft's AAA model, unverified (the section "FORECAST.ETS family: the
+model before Excel evidence").
 Evidence: probes/forecast-ets-longer-series.case.json K1:K42 (excel-graph, 2026-10-14, T-1293).
-Ours: `#N/IMPL!` for every call that passes the argument step (next section, T-2424). Before that, `target_date` (FORECAST.ETS, CONFINT) or `statistic_type` (STAT) is lifted and read as a number: text there is `#VALUE!`, and an array or two-cell range gives that many `#N/IMPL!` elements (T-2028). UNVERIFIED (T-2028 follow-up probe): the optional settings (seasonality, data_completion, aggregation, confidence_level) also lift in ours, as the catalog's `value` mode says, with no Excel cell showing the shape of an array or range there (since T-2424 settled for SEASONALITY's data_completion
+Ours: for every call that passes the argument step (next section, T-2424), FORECAST.ETS.SEASONALITY computes the model ("FORECAST.ETS family: the model before Excel evidence", T-3599) and the other three are `#N/IMPL!` until T-3600 and T-3601. Before that, `target_date` (FORECAST.ETS, CONFINT) or `statistic_type` (STAT) is lifted and read as a number: text there is `#VALUE!`, and an array or two-cell range gives that many `#N/IMPL!` elements (T-2028). UNVERIFIED (T-2028 follow-up probe): the optional settings (seasonality, data_completion, aggregation, confidence_level) also lift in ours, as the catalog's `value` mode says, with no Excel cell showing the shape of an array or range there (since T-2424 settled for SEASONALITY's data_completion
 and aggregation by gen-m9 `#SPILL!` cells 67f5e0fe790e6bec A47, A307 and 22656c225ff4f22a A60; see the T-2255 section); and text `target_date` in CONFINT and text `statistic_type` in STAT (K38 covers FORECAST.ETS only), and a boolean, number-text or error `target_date`/`statistic_type` reads by the usual scalar coercion (an error is returned as itself;
 settled by gen-m9 22656c225ff4f22a A1, fa25422d6f18c157 A181 and 43a13a091907b402 A261, see the T-2255 section).
 Status: VERIFIED (web) that the family is `#N/A` there; desktop behavior UNKNOWN
 Tasks: T-1293, T-1553, T-2028 (the text `target_date` and the lifting cells)
+
+## FORECAST.ETS family: the model before Excel evidence
+Rule (UNVERIFIED, owner ruling, decision 0221): once the argument step passes (the T-2255 section), the family computes
+the AAA exponential-smoothing model as gridcraft implements it (Hyndman, Koehler, Ord & Snyder 2008). Steps and
+errors, in the order the code takes them (every ordering UNVERIFIED; T-2425's desktop probe should cover each):
+1. Reading `values` and `timeline`: a range across two sheets is `#VALUE!`, and more than 200,000 cells in either is
+   `#NUM!` (the "work caps" section).
+2. The settings, in argument order: `data_completion` (default 1) truncates to 1 (a missing point is the straight line
+   between its known neighbours, or the nearest known value at an end) or 0 (a missing point is zero); `aggregation`
+   (default 1) truncates to 0 or 1 AVERAGE, 2 COUNT, 3 COUNTA, 4 MAX, 5 MEDIAN, 6 MIN or 7 SUM, which combines values
+   that share a time stamp. Under COUNT and COUNTA a time stamp whose values are all blank is a known point of 0, not
+   a missing point. Anything else is `#NUM!`.
+3. An error cell or element in `values`, then in `timeline`, is that error (the web is `#N/A` on such cells, as on
+   every call, T-2255 section).
+4. Different cell counts in `values` and `timeline` are `#N/A`, as Microsoft's documentation states. They pair in
+   reading order.
+5. A value or time stamp that is text or a boolean is `#VALUE!`. A row with both blank is skipped, a blank value
+   with a time stamp is a missing point, and a blank time stamp beside a value is `#VALUE!`.
+6. The distinct time stamps (at least two, or `#NUM!`) must lie on a constant step, which is the smallest gap, within
+   1E-6 steps. Otherwise they must be whole-day dates a constant number of calendar months apart, on one day of the
+   month or all on month ends. Otherwise the result is `#NUM!`. A completed series of 200,000 steps or more is
+   `#NUM!` (the "work caps" section). More than 30% of the steps missing is `#NUM!`.
+- FORECAST.ETS.SEASONALITY is the detected season length, or 0 when there is none. It takes the autocorrelation of
+  the series' residuals from its least-squares line, at lags 2 to n/2 (at most 8,760), and returns the lag of the
+  highest local peak above 2/√n. Fewer than four points is 0.
+Evidence: none from Excel for the model. Excel for the web is `#N/A` for every valid call (the section "FORECAST.ETS
+family: excel-graph never computes it"), and no desktop value exists yet (T-1553). gen-m9 SEASONALITY cells whose
+`values` and `timeline` differ in size match the web's `#N/A` (275 cells fixed by T-3599, e.g. gen-m9/0072265d385d8ab2
+Calc!A58, 1068c44afcd56d53 A207), but the web gives `#N/A` whatever the size, so that is not evidence for the rule.
+On probes/forecast-ets-longer-series, which has a period-4 signal, ours is 4 (K3, K8, K14, K19, K25, K30); the web is
+`#N/A`.
+Status: UNVERIFIED (desktop probe pending, T-1553, T-2425). Decision 0221 lets the family ship it.
+Implemented in: crates/rustsheet-engine/src/functions/statistical/ets.rs (`build_series`, `detect_season`) and
+statistical/forecast.rs (`forecast_ets_lifted`).
+Tasks: T-3599, T-3600 (FORECAST.ETS), T-3601 (CONFINT, STAT), T-2425 (match desktop values)
+
+## FORECAST.ETS family: work caps
+Rule: Excel's limits on the family's series are unknown. Microsoft's documentation allows seasonality up to 8,760.
+Ours: a `values` or `timeline` of more than 200,000 cells is `#NUM!` before any cell is read, and so is a completed
+series of 200,000 steps or more (time stamps spread so far apart, with missing points between them). So is season detection
+on a series of 16,385 points or more, where n × min(n/2, 8,760) multiply-adds exceed 2^27 (`MAX_ACF_WORK`). That
+applies to SEASONALITY and to any member that detects seasonality.
+Status: DEVIATION (decision 0014)
+Implemented in: crates/rustsheet-engine/src/functions/statistical/ets.rs (`MAX_POINTS`, `MAX_ACF_WORK`)
+Tasks: T-3599
 
 ## Database function argument modes
 Rule: in the database functions (DAVERAGE, DCOUNT, DCOUNTA, DGET, DMAX, DMIN, DPRODUCT, DSTDEV, DSTDEVP, DSUM,
@@ -3881,9 +3932,15 @@ counts are in T-3349's Outcome). In that sweep Excel is more than 1E-4 off the e
 p from 1.38E-300 to 1.73E-110 and df from 2490 up (42 points, A211-A300; `T.INV.2T(6.68863396408457E-199,2490)` is
 100.83724584548176 in Excel, exact 33.047211122914894): the tiny-p pattern of "MATH-OVER-EXCEL" case 1, which lists
 T.INV only and from p 1E-150; whether it extends to T.INV.2T needs an owner ruling (T-3386).
+The same sweep shows the centre is not always within 15 digits (gap triage 2026-10-31, mpmath 1.4.1 at 60+ digits, at
+the double p): at 21 of its points with p from 0.99943 to 1.0000000006 and df from 2 to 5.7E9, Excel is 0.8E-15 to
+3.7E-15 relative off the true quantile while the engine is within 4E-16 of it, for example
+`T.INV.2T(0.999999999999996,402)` = 5.0123657350064685E-15 in Excel, true 5.01236573500648...E-15 (A187), and
+`T.INV.2T(0.999999999999998,2)` = 2.8261664256307887E-15, 2.2E-15 off (A122). The probe cells above happen to sit
+within 15 digits; Excel's centre form is still unidentified (T-3414 sweeps it, T-3415 fits it, both Phase 1b).
 Ours: the centre crossing of `student_t_centre` (T-2724), within about 5E-16 of the exact value.
 Status: VERIFIED (excel-graph)
-Tasks: T-3349, T-2724, T-2858
+Tasks: T-3349, T-2724, T-2858, T-3414, T-3415
 
 ## Inverse CDF functions at a tiny or near-1 probability (T-1543)
 Rule: NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and BETA.INV return a value (or `#NUM!`) for p from 1E-300 to 1-1E-16; none panics or hangs in Excel.
@@ -4462,11 +4519,24 @@ Unequal sizes and single points follow "Array arguments given a scalar, a single
   (`STEYX({1.8,1.9,...,2.4},{1,...,7})`), when it rounds above zero a tiny number (`STEYX({0.1,...,1.1},{1,...,11})`
   4.967053731282552E-09), and exactly 0 when it cancels (probes/steyx-exact-fit, excel-graph 2026-10-20, T-1723). The fit
   matches only with the probe's literals read to 15 significant digits (its `0.30000000000000004` taken as 0.3), as the engine reads them.
+- Inexact constants: a constant series whose mean is inexact is `#DIV/0!` for CORREL, PEARSON and RSQ in both orders (0.3,
+  0.3333333333333333, 1.1, five 0.1s), but `CORREL({0.1,0.1,0.1},{1,2,3})` is 0 (0.1 is the one constant whose mean is
+  exact enough; the engine matches all of them, T-2080).
+- Overflow: when Σ(x-x̄)² or Σ(y-ȳ)² overflows (data of scale 1E154 and up, or two series of 1E200) CORREL, PEARSON and RSQ
+  are `#NUM!`, checked before the zero-variance `#DIV/0!` (x of 1E200 against a constant y is `#NUM!`) but after the pair
+  count (one pair is `#DIV/0!`). SLOPE, INTERCEPT, STEYX and FORECAST are `#NUM!` when the x sum Σ(x-x̄)² overflows
+  (SLOPE of x = 1,2,3 on y = 1E200.. is 1E200 and COVARIANCE.P is finite: only the x sum matters there). Before T-2080 ours
+  gave 0, 2 or `#DIV/0!` for these (probes/correl-inexact-constant-overflow, excel-graph 2026-11-01). The model is the sums about the means, not raw sums:
+  a constant 1E200 series against {1,2,3} is `#DIV/0!` in both orders (CORREL, SLOPE), and x = 1.00E155, 1.01E155, 1.02E155
+  (raw squares overflow, deviation squares do not) gives finite CORREL 1.0000000000000002, SLOPE 1.0000000000000014E-153 and
+  STEYX 0 (Z73-Z79). Two pairs: STEYX, CORREL, SLOPE and RSQ of {1,2} on {1E200,2E200} are all `#NUM!` (Z69-Z72), so the
+  overflow check also comes before STEYX's n < 3 `#DIV/0!`. Unprobed: y's overflow alone for STEYX, and a sum of products
+  that overflows alone while both sums of squares are finite (ours is `#DIV/0!`).
 Evidence: probes/regression-pairs-a, regression-pairs-b, regression-forecast (excel-graph, 2026-10-16, T-1620); the
 error cells in these cases are `#DIV/0!`, so whether a range error propagates or is replaced is unprobed.
 Ours: the unequal-size `#N/A` matches since T-1292, single points since T-1401; CORREL, PEARSON, RSQ, SLOPE, INTERCEPT, STEYX and FORECAST compute from the sums about the means in Excel's order, a typed text or boolean argument is one value with no number, and STEYX of a negative difference is `#NUM!` (T-1723). COVAR with text, blank or boolean cells (`#N/A` in ours) is still open.
 Status: VERIFIED (web)
-Tasks: T-1723, T-1724, T-1725 (overlaps T-1292, T-1707, T-1401, T-1290)
+Tasks: T-1723, T-1724, T-1725, T-2080 (overlaps T-1292, T-1707, T-1401, T-1290)
 
 ## TREND: defaults, shapes, single points and error inputs
 Rule: TREND treats an empty known_x or new_x argument as the default (`TREND(A1:A6,B1:B6,,FALSE)` fits the known x's: 6 rows,
@@ -4729,9 +4799,11 @@ Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), e.g. 22656c225ff4f22a Calc!A
 1782efcecd5d4b1b A27, 3462856259a37891 A28 (the earlier section's two `#VALUE!` cells are this rule).
 Ours: since T-2424, the argument step (`statistical/forecast.rs` `forecast_ets_lifted`). Every scalar argument lifts and
 reads as a number in turn, and `values` and `timeline` are evaluated once for a direct error. A reference to an
-error cell, even a one-cell one, is not a direct error here: the call stays `#N/IMPL!`, and no oracle cell covers it yet
-(the gen-m9 Data sheets hold "#N/A" only as text; T-2425 probe). The first failure in
-argument order decides, and only a call with none stays `#N/IMPL!` (T-2425 the values, after T-1553). FORECAST.ETS.SEASONALITY
+error cell, even a one-cell one, is not a direct error here: the argument step passes it, and no oracle cell covers it
+yet (the gen-m9 Data sheets hold "#N/A" only as text; T-2425 probe). The first failure in argument order decides. A
+call with none goes on to the model: since T-3599, FORECAST.ETS.SEASONALITY computes it, and an error cell in `values`
+or `timeline` is then that error (UNVERIFIED, decision 0221, the section "FORECAST.ETS family: the model before Excel
+evidence"); the other members stay `#N/IMPL!` until T-3600 and T-3601 (T-2425 the desktop values, after T-1553). FORECAST.ETS.SEASONALITY
 lifts its data_completion and aggregation too. Counts: the task names 1,215 known-failure lines (1,196 from T-2255
 and 19 from T-2256); with the 19 visibly-off lines of T-2257 and T-2258 it owns 1,234 cells. 656 of them leave the
 baseline with T-2424, 481 had already passed on main before it, and 97 still differ. The 97 are:
@@ -5822,11 +5894,16 @@ Tasks: T-3354, T-3479
 
 ## T.DIST's density is #NUM! at a huge x, and T.INV.2T and TINV at p = 2.2E-308 (T-3358)
 Rule:
-- `T.DIST(x,df,FALSE)` is `#NUM!` in Excel at a huge positive x, from 1.0E+236 to 1.4E+307 at df 2 to 824733515.
-  A smaller huge x gives 0, not `#NUM!`: `T.DIST(9.93424108915371E+137,24,FALSE)` (A97), although the density
-  underflows there too. The positive cut lies between 9.9E+137 and 1.0E+236, which fits the x² overflow cut (about
-  1.34E+154) of the cumulative t functions (T-2474 entry above). A negative x is 0 up to |x| 7.6E+87 (A92, A94, A106)
-  and is not probed beyond. The engine returns 0.
+- `T.DIST(x,df,FALSE)` is `#NUM!` in Excel at a huge |x|:
+  - positive x from 4.2E+220 to 1.4E+307 at df 2 to 2.4E+249: `T.DIST(4.20674629135061E+220,2.42593594707487E+249,FALSE)`
+    (T-3425's e-T-3425 A116) joins the s1 cells;
+  - negative x too: `T.DIST(-4.62236657470614E+224,11,FALSE)` and `T.DIST(-1.3895161258545E+237,16,FALSE)` (e-T-3425
+    A103 and A90). A negative x is 0 up to |x| 7.6E+87 (s1 A92, A94, A106), so the negative cut lies between 7.6E+87
+    and 4.6E+224.
+
+  A smaller huge x gives 0, not `#NUM!`: `T.DIST(9.93424108915371E+137,24,FALSE)` (s1 A97), although the density
+  underflows there too. The positive cut lies between 9.9E+137 and 4.2E+220, which fits the x² overflow cut (about
+  1.34E+154) of the cumulative t functions (T-2474 entry above). The engine returns 0.
 - `T.INV.2T(2.22507385850721E-308,df)` and `TINV(2.22507385850721E-308,df)` are `#NUM!` at df 8, 9, 12 and 14, although
   the quantile is a finite double (about 3.2E+22 to 6.9E+38). T.INV accepts p down to 1E-300 (T-1531).
 - `F.INV(0,d1,d2)` is 0, the lower end of the support.
@@ -5835,7 +5912,7 @@ Rule:
 
 The exact x where T.DIST's density turns `#NUM!` and the p below which the two-tailed quantile does are not yet probed.
 Evidence: Gate A tables, excel-graph:
-- accuracy/T.DIST/s1 A85, A95, A105 and A110;
+- accuracy/T.DIST/s1 A85, A95, A105 and A110, and accuracy/T.DIST/e-T-3425 A90, A103 and A116 (T-3425);
 - accuracy/T.INV.2T/s1 A68 and A78, and accuracy/TINV/s1 A68 and A78;
 - accuracy/T.DIST/s1 A94 and A97 (density 0 below the cut);
 - accuracy/F.INV/s1 A111 (`F.INV(0,38,10)`) and A125 (`F.INV(0,9,50)`), and probes-numeric/t1049-finv A16 (`F.INV(0,3,7)`).

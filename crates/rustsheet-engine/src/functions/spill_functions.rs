@@ -292,6 +292,45 @@ pub(crate) fn reject_empty_value(
     Ok(result)
 }
 
+/// `array`, an array argument evaluated from `arg`, with an error read through a reference
+/// argument made a 1x1 array holding it, as Excel reads a one-cell range: the other arguments are
+/// checked first and the error survives only as an element of the result. With Data!G9 `#DIV/0!`,
+/// `TOROW(Data!G9,7)` is `#VALUE!`, `TOCOL(Data!G9,3)` `#CALC!`, and `FILTER(Data!G9,Data!B1:B12>-1)`
+/// `#VALUE!` for its shape (gen-m7 arg-pairs, excel-graph, T-3506). A literal error is still the
+/// error: `TOROW(#N/A,-1)` is `#N/A` and `FILTER(#DIV/0!,Data!C1:C12<>0.3)` `#DIV/0!`
+/// (gen-m7/20df23f84a528470 A8907, ee81c689b5fde629 A977).
+///
+/// No size check is needed: a `Node::ReferenceKind` is one cell by construction (a range is a
+/// `RangeKind`, which this never wraps). Any error read through it is wrapped, which is how a
+/// one-cell error reference shows up; only a stored cell error is evidenced, so other errors read
+/// there (a `#REF!` for a sheet index, a circular read) are wrapped unprobed.
+// Excel: docs/excel-semantics/arrays.md "A one-cell error reference is a 1x1 array in TOCOL, TOROW
+// and FILTER".
+pub(crate) fn one_cell_error_ref_as_array(
+    arg: &Node,
+    array: Result<Vec<Vec<ArrayNode>>, CalcResult>,
+    cell: CellReferenceIndex,
+) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
+    wrap_one_cell_error_ref(arg, array, cell).0
+}
+
+/// [`one_cell_error_ref_as_array`], and whether it wrapped an error (FILTER checks such an
+/// include's shape before its elements).
+pub(crate) fn wrap_one_cell_error_ref(
+    arg: &Node,
+    array: Result<Vec<Vec<ArrayNode>>, CalcResult>,
+    cell: CellReferenceIndex,
+) -> (Result<Vec<Vec<ArrayNode>>, CalcResult>, bool) {
+    match array {
+        Err(CalcResult::Error { error, .. })
+            if matches!(*arg.ungrouped_at(cell.row), Node::ReferenceKind { .. }) =>
+        {
+            (Ok(vec![vec![ArrayNode::Error(error)]]), true)
+        }
+        array => (array, false),
+    }
+}
+
 impl Model {
     /// Evaluate a node and convert the result to a 2-D array of `ArrayNodes`.
     /// Handles Range references, inline Arrays, and scalar values.

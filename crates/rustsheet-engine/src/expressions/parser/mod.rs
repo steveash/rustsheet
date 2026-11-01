@@ -78,6 +78,7 @@ pub(crate) use depth::is_limit_error;
 pub use depth::{
     MAX_FORMULA_DEPTH, MAX_NESTED_CALLS, MAX_PARENTHESES, MAX_SIGNS, MAX_VALUE_OPERATORS,
     TOO_DEEP_MESSAGE, TOO_MANY_NESTED_CALLS_MESSAGE, TOO_MANY_OPERATORS_MESSAGE,
+    TOO_MANY_SIGNS_MESSAGE,
 };
 pub(crate) use spacing::Run;
 pub use spacing::Spacing;
@@ -589,6 +590,8 @@ pub struct Parser {
     /// Where the pending operand's text starts (a char index), for the intersection that reads
     /// it back ([`Parser::parse_intersection`]).
     pending_start: usize,
+    /// The signs written before the pending operand, read ahead with it.
+    pending_prefix: Option<depth::Prefix>,
     /// Written groups open on the current parse path, bounded by [`MAX_PARENTHESES`].
     open_groups: usize,
     /// A group's content is about to be parsed: its first operand, unless another group, reserves
@@ -671,6 +674,7 @@ impl Parser {
             inner_depth: 0,
             pending_operand: None,
             pending_start: 0,
+            pending_prefix: None,
             open_groups: 0,
             group_head: false,
             open_signs: 0,
@@ -760,6 +764,7 @@ impl Parser {
         self.depth = 0;
         self.inner_depth = 0;
         self.pending_operand = None;
+        self.pending_prefix = None;
         self.open_groups = 0;
         self.group_head = false;
         self.open_signs = 0;
@@ -857,17 +862,12 @@ impl Parser {
     /// before and after the operand is in helpers of their own, to keep this frame small in
     /// unoptimized builds (T-1110).
     pub(super) fn parse_power(&mut self) -> Node {
-        let (before, signs, counted) = self.parse_prefix();
-        if self.open_signs + counted > MAX_SIGNS {
-            return self.too_deep();
-        }
-        self.open_signs += counted;
-        let t = self.parse_bare_union();
-        self.open_signs -= counted;
+        let prefix = self.parse_prefix();
+        let t = self.parse_signed_operand(&prefix);
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
-        match self.finish_power(t, before, signs) {
+        match self.finish_power(t, prefix.before, prefix.signs) {
             Ok(node) | Err(node) => node,
         }
     }
@@ -882,7 +882,7 @@ impl Parser {
         signs: Vec<(bool, Run)>,
     ) -> Result<Node, Node> {
         // A sign adds no depth: its consumers walk a run in a loop (`Model::apply_unary_chain`),
-        // and [`MAX_SIGNS`] bounds how many are open at once.
+        // and [`MAX_SIGNS`] bounds how many are open at once (`Parser::parse_signed_operand`).
         for (is_minus, after_sign) in signs.into_iter().rev() {
             t = t.spaced(after_sign, Run::default());
             let right = Box::new(t);
