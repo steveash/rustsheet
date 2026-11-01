@@ -3,7 +3,7 @@ id: T-3650
 title: "D-function front end: probe and match criteria block grammar, field resolution and error precedence across all 12"
 milestone: M9
 lane: functions-criteria
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
