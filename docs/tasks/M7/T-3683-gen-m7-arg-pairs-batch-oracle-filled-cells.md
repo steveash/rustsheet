@@ -3,7 +3,7 @@ id: T-3683
 title: "gen-m7 arg-pairs batch: oracle-filled cells for the unseen argument-class pairs of LET, MAKEARRAY, REDUCE and SCAN"
 milestone: M7
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
