@@ -5926,7 +5926,6 @@ F	probes/table-edits/table-insert-row-this-row-inside-data.case.json	F!G4
 F	probes/table-edits/table-insert-row-this-row-inside-data.case.json	F!G5
 F	probes/table-edits/table-insert-row-this-row-inside-data.case.json	F!G6
 F	probes/text-locale-calendars.case.json	S!A140
-F	probes/xirr-back-dated-stop.case.json	Sheet1!A31
 F	probes/xnpv-empty-values-cell.case.json	Sheet1!C8
 F	probes/yield-below-par-sweep.case.json	Y!A10
 F	probes/yield-below-par-sweep.case.json	Y!A9

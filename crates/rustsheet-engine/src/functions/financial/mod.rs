@@ -69,6 +69,7 @@ impl Model {
             result,
             cell,
             accept_number_node,
+            false,
             handle_empty_cell,
             handle_non_number_cell,
         )
@@ -80,6 +81,7 @@ impl Model {
         result: CalcResult,
         cell: &CellReferenceIndex,
         accept_number_node: bool,
+        range_text_as_number: bool,
         handle_empty_cell: impl Fn() -> Result<Option<f64>, CalcResult>,
         handle_non_number_cell: impl Fn() -> Result<Option<f64>, CalcResult>,
     ) -> Result<Vec<f64>, CalcResult> {
@@ -120,6 +122,16 @@ impl Model {
                             CalcResult::EmptyCell => {
                                 if let Some(value) = handle_empty_cell()? {
                                     values.push(value);
+                                }
+                            }
+                            CalcResult::String(text) if range_text_as_number => {
+                                match self.cast_number(&text) {
+                                    Some(value) => values.push(value),
+                                    None => {
+                                        if let Some(value) = handle_non_number_cell()? {
+                                            values.push(value);
+                                        }
+                                    }
                                 }
                             }
                             _ => {
@@ -226,6 +238,7 @@ impl Model {
             result,
             cell,
             true, // accept_number_node
+            false,
             refuse(Error::NUM),
             refuse(non_number),
         )
@@ -240,6 +253,7 @@ impl Model {
             arg,
             cell,
             false,            // Do not accept a single number node
+            true, // numeric text in a range cell reads as its number (probes/xirr-back-dated-stop A31)
             || Ok(Some(0.0)), // Treat empty cells as zero
             || {
                 Err(CalcResult::new_error(
@@ -486,6 +500,7 @@ impl Model {
                             array,
                             &cell,
                             true,
+                            false,
                             || Ok(None),
                             || Ok(None),
                         ) {
@@ -526,7 +541,7 @@ impl Model {
         } else if is_marked_number(values, &evaluated, cell.row) {
             Err(CalcResult::new_error(Error::VALUE, cell, String::new()))
         } else {
-            self.array_of_numbers_from(evaluated, &cell, true, || Ok(None), || Ok(None))
+            self.array_of_numbers_from(evaluated, &cell, true, false, || Ok(None), || Ok(None))
                 .map_err(|_| CalcResult::new_error(Error::VALUE, cell, String::new()))
         }
         .map_err(CalcResult::without_message);
@@ -657,8 +672,8 @@ impl Model {
                 // the dates' error, the size checks and the values' cells (T-2611:
                 // `XIRR(1E+21,<#VALUE!>,<#NUM!>)` is `#NUM!`, gen-m9/1dce4774f5c0e736 A189;
                 // `XIRR(<4 values>,<16 dates>,<#N/A>)` `#N/A`, 1b60bf99d71424e7 A29). A text guess
-                // that is not a number is its `#VALUE!` at the same point; a boolean guess reads as
-                // 1 or 0, as before, and only skips the size checks (its order is unprobed).
+                // that is not a number is its `#VALUE!` at the same point; a boolean guess beside
+                // different counts is `#VALUE!` (A226 below); beside equal counts it reads as 1 or 0.
                 if let Some(error) = &values_error {
                     return error.clone();
                 }
@@ -685,6 +700,23 @@ impl Model {
                 );
                 if let (true, Some(size_error)) = (number_guess, &size_error) {
                     return size_error.clone();
+                }
+                // A boolean guess beside flows of different counts is `#VALUE!`, not the count's
+                // `#NUM!`: `XIRR(Data!C7:E8,{3 dates},<TRUE>)` (gen-m9/b6a02893a8d6b151 A226).
+                // Only a guess cell holding TRUE is evidenced; a literal TRUE and a boolean guess
+                // beside equal counts are unprobed (financial.md "XIRR", T-3267).
+                if matches!(arguments.get(2), Some(CalcResult::Boolean(_)))
+                    && size_error.as_ref().is_some_and(|error| {
+                        matches!(
+                            error,
+                            CalcResult::Error {
+                                error: Error::NUM,
+                                ..
+                            }
+                        )
+                    })
+                {
+                    return CalcResult::new_error(Error::VALUE, cell, String::new());
                 }
                 let (values, dates) = match &flows {
                     Ok(flows) => flows,
@@ -768,9 +800,14 @@ impl Model {
             // is 6527 with D1 empty, also through `IF(..,B3,B9)` (gen-m9/30e20ba3302fea8b A250,
             // 6376e27be7a05871 A140; T-2428).
             CalcResult::EmptyCell => Ok(Vec::new()),
-            result => {
-                self.array_of_numbers_from(result, &cell, true, || Ok(None), || Err(not_a_number()))
-            }
+            result => self.array_of_numbers_from(
+                result,
+                &cell,
+                true,
+                false,
+                || Ok(None),
+                || Err(not_a_number()),
+            ),
         }
         .map_err(CalcResult::without_message);
         self.lift_call_costed(
