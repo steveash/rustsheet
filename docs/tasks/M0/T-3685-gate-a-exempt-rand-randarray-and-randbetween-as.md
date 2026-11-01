@@ -3,7 +3,7 @@ id: T-3685
 title: "Gate A: exempt RAND, RANDARRAY and RANDBETWEEN as composite once T-3631's invariant-cell probe lands (decision 0228)"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -27,7 +27,7 @@ invariant-cell probe that drives them, so Gate A no longer counts them as missin
 - [x] Once T-3631 has merged, `exempt.tsv` gains the three `composite` lines, each naming the probe case T-3631 adds and
       decision 0225 (the change is covered by decision 0228; no new record is needed unless the ruling changes).
 - [x] `rustsheet-eval accuracy` reports `missing tables` lower by 3, with no stale exemption.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Any engine change.
