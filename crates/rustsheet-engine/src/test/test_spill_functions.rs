@@ -399,6 +399,31 @@ fn filter_no_match_with_if_empty() {
     assert_eq!(model._get_text("C1"), "No results");
 }
 
+// Excel: probes/t3654-filter-result-types (docs/excel-semantics/arrays.md "FILTER: the type of
+// each include element and of the result").
+#[test]
+fn filter_include_text_lone_blank_and_blank_if_empty() {
+    let mut model = new_empty_model();
+    model._set("A1", "10");
+    model._set("A2", "20");
+    model._set("A3", "30");
+    model._set("D1", "=ARRAYTOTEXT(FILTER(A1:A3,{\"true\";0;\"FALSE\"}))");
+    model._set("D2", "=FILTER(A1:A3,{\" TRUE\";1;0})");
+    model._set("D3", "=ISBLANK(FILTER(Z1,TRUE))");
+    model._set("D4", "=FILTER(Z1,TRUE)&\"|\"");
+    model._set("D5", "=FILTER(A1:A3,{0;0;0},Z1)&\"|\"");
+    model._set("D6", "=ROWS(FILTER(A1:A3,{0;0;0},Z1))");
+    model._set("D7", "=FILTER(A1:A3,{0;#N/A;0},\"none\")");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "10");
+    assert_eq!(model._get_text("D2"), "#VALUE!");
+    assert_eq!(model._get_text("D3"), "TRUE");
+    assert_eq!(model._get_text("D4"), "|");
+    assert_eq!(model._get_text("D5"), "0|");
+    assert_eq!(model._get_text("D6"), "1");
+    assert_eq!(model._get_text("D7"), "#N/A");
+}
+
 // Excel: upstream MAX_MIN.xlsx H39/H40/H43; probes/min-max-reference-forms E1-E3.
 #[test]
 fn filter_if_empty_is_the_value_itself() {

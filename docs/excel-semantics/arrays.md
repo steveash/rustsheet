@@ -499,8 +499,35 @@ block, `SUM(..)` of it is 6. A blocked spill area (a value in the neighbouring c
 Evidence: probes/filter-if-empty-array (oracle: excel-graph, 2026-10-06); upstream ISREF.xlsx D9 (`#SPILL!`),
 J17:L17 (spilled 1,2,3).
 Status: VERIFIED (web)
-Implemented in: `fn_filter` (crates/rustsheet-engine/src/functions/spill_functions.rs)
+Implemented in: `fn_filter` (crates/rustsheet-engine/src/functions/lookup_and_reference/filter.rs)
 Tasks: T-0964
+
+## FILTER: the type of each include element and of the result
+Rule (with C1:C3 = 10, 20, 30 and `if_empty` "none"):
+- **include**: a number keeps its row unless 0 (`{0.5;-1;0}` keeps 10, 20; `-0.000001` keeps), TRUE keeps, FALSE
+  and a blank cell do not (`N1:N3` = 1, blank, 1 keeps 10, 30). Text is `#VALUE!` (`{"a";1;0}`, `{"1";1;0}`,
+  `{"";1;1}`, `" TRUE"`, `"yes"`, and the same as cells: `"x"`, `="1"`, `=""`) **except** text that spells
+  TRUE or FALSE in any case, which is that boolean: `{"TRUE";1;0}` and a `="TRUE"` cell keep 10, 20,
+  `{"FALSE";1;1}` 20, 30, `{"true";0;"false"}` 10. An error anywhere in include is returned, even on a row
+  that would be dropped (`{1;#N/A;0}` and `{0;#N/A;0}` `#N/A`, a `=1/0` cell `#DIV/0!`, `=NA()` with all
+  others 0 `#N/A`).
+- **array elements** keep their type in the spill: 5, a blank cell, `=""`, TRUE, "txt", `#DIV/0!`, `="7"`, -0.5
+  spill as 5, 0, "", TRUE, "txt", `#DIV/0!`, "7", -0.5. The blank's spilled cell is 0 (`TYPE` 1, `ISBLANK` FALSE,
+  `=""` FALSE), but inside the formula it is still blank: `ISBLANK(FILTER(..))` and `MAP(FILTER(..),LAMBDA(x,
+  ISBLANK(x)))` are TRUE for it, `TYPE` of the element 1. A lone blank cell as `array` stays blank too:
+  `ISBLANK(FILTER(A2,TRUE))` and `ISBLANK(FILTER(A2,1))` are TRUE, `FILTER(A2,TRUE)&"|"` is "|", `TYPE` 64.
+- **if_empty** (no row kept): omitted, with or without a trailing comma, is `#CALC!` (`ERROR.TYPE` 14, `TYPE` 16);
+  `""`, `"5"`, TRUE, 0, `NA()` and a one-cell reference are that value (`TYPE` 2, 2, 4, 1, 16; ROWS 1;
+  `ISREF` FALSE). A **blank one-cell reference is 0** (`TYPE` 1, `ISBLANK` FALSE, `&"|"` "0|", MAX 0), while a
+  blank inside a multi-cell `if_empty` range stays blank (`FILTER(..,R1:R2)` with R1 blank: `ISBLANK` TRUE,
+  `&"|"` "|", ROWS 2). An error cell is its error.
+Evidence: probes/t3654-filter-result-types D1:L12 (array elements), P20:P42 (include), P45:X55 and P60:Q67
+(if_empty, lone blank) (oracle: excel-graph, 2026-11-01, T-3654).
+Status: VERIFIED (web)
+Implemented in: `fn_filter` and `include_keeps` (crates/rustsheet-engine/src/functions/lookup_and_reference/filter.rs).
+Before T-3654 the engine refused TRUE/FALSE text in include, read a lone blank `array` cell as 0 and a blank
+one-cell `if_empty` as blank.
+Tasks: T-3654
 
 ## Dynamic-array and LAMBDA function argument modes
 Rule: the scalar arguments of the M7 functions lift over a multi-cell range and over an array, one call per element:
