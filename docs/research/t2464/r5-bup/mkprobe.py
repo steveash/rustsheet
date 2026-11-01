@@ -9,7 +9,7 @@ Regions: beta (BETA.DIST, non-integer b), bint (integer b, c = 1), f (F.DIST(f, 
 binom (BINOM.DIST(k, N, p, TRUE): the swapped call I_{1-p}(N-k, k+1)), negb (NEGBINOM.DIST(f, r, p, TRUE) = I_p(r, f+1)).
 The D point's own branch (bgrat, or the a0 = 1 closed form at c = 1) is recorded in the meta, so scorers can split on
 it. Meta: [[row, region, a0, b0, x0, y0, n, c, d_branch], ...].
-usage: mkprobe.py [--write]"""
+usage: mkprobe.py [--fresh] [--write]   (--fresh: t3568-r5-bup-fresh, seed 35689, built after the freeze)"""
 from __future__ import annotations
 
 import json
@@ -91,7 +91,12 @@ def build(seed: int):
 
 
 def main() -> None:
-    for name, seed in (("t3568-r5-bup-tune", 35681), ("t3568-r5-bup-hold", 35682)):
+    probes = (("t3568-r5-bup-tune", 35681), ("t3568-r5-bup-hold", 35682))
+    if "--fresh" in sys.argv:  # the post-freeze sweep (built after model.py was committed), half size
+        for k in SIZES:
+            SIZES[k] //= 2
+        probes = (("t3568-r5-bup-fresh", 35689),)
+    for name, seed in probes:
         cells, meta = build(seed)
         case = {"format": "rustsheet-case/v1",
                 "description": f"T-3568 r5-bup: L140 bup+bgrat cells with n >= 2 bup terms, Excel's D and density there "
