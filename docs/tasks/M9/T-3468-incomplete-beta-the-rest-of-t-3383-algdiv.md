@@ -3,7 +3,7 @@ id: T-3468
 title: "Incomplete beta, the rest of T-3383: algdiv's stored intermediates from the r4-algdiv pins, Excel's direct bgrat increment to the bit, lnGamma(a0 < 1) in bpser, the b < 1 bpser ceiling, bfrac and bup arithmetic"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
