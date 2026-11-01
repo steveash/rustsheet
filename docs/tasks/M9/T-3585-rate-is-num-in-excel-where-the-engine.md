@@ -3,7 +3,7 @@ id: T-3585
 title: "RATE is #NUM! in Excel where the engine finds a root: type-1 annuities at a high rate, huge-pv annuities near rate 0"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
