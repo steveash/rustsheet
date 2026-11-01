@@ -95,12 +95,12 @@ the math, so they are `visible` gaps. Where they are and who owns them:
 | Region | Off | Owner |
 |---|---|---|
 | GAMMA.DIST cdf/pdf, shape 2.5–20, x/a below 0.5 | 25 + 23 | T-3219 (evidence added; T-3412 on T-3311's branch is the same form) |
-| GAMMA.DIST cdf/pdf elsewhere: shape 0.5–2.5 at x/a below 1E-6, shape 20–1E3 at x/a below 0.5, single cells | 19 + 18 | none yet |
+| GAMMA.DIST cdf/pdf elsewhere: shape 0.5–2.5 at x/a below 1E-6, shape 20–1E3 at x/a below 0.5, single cells | 19 + 18 | T-3617 |
 | GAMMA.INV median (p = 0.5) at shape below 0.5 | 34 | T-3519 |
 | GAMMA.INV deep lower tail (p below 1E-10), shape 0.5–20 | 16 | T-3520 (after T-3311; T-3403 inside T-3311's region) |
 | GAMMA.INV other: two lower-tail cells below shape 0.5, one at shape 20–1E3 (T-3294), one at 2.5–20 upper, the `#NUM!` | 5 | — |
 | CHISQ.DIST.RT, shape 20–1E3, x/df 1.4–10 | 8 | T-3521 |
 | CHISQ.DIST.RT far upper tail at shape below 20 | 16 | T-3310's region (df 3–22) |
 | POISSON cdf, mean 1.4 times k + 1 and above (deep upper tail) | 35 | T-3269's region |
-| POISSON cdf near the mean (0.5–1.4) | 5 | none yet |
+| POISSON cdf near the mean (0.5–1.4) | 5 | T-3618 |
 | POISSON pmf, mean 0.5–1.4 times k + 1, k above 20 (12 above 1000) | 14 | T-3522 (T-3295 and T-3247 stop at k = 1000) |
