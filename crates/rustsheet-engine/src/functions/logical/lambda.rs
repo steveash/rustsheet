@@ -7,7 +7,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::{util::array_node_to_calc_result, Function},
+    functions::{kinds::arg_counts, util::array_node_to_calc_result, Function},
     language::get_default_language,
     model::Model,
     reference_operators::RefArg,
@@ -342,6 +342,39 @@ impl Model {
             trimrange_references: false,
             root_snap: false,
         }
+    }
+
+    /// The caller a LAMBDA helper (MAKEARRAY, MAP, BYROW, BYCOL, SCAN, REDUCE) makes of its
+    /// function argument `function` to call it with `provided` arguments per element, its root
+    /// snapping (`LambdaCaller::snapping_root`); the whole call's `#VALUE!` for anything it cannot
+    /// call so: an error (`MAKEARRAY(2,2,NA())` is `#VALUE!`, not `#N/A`), a number, text, a
+    /// reference or an array, a LAMBDA whose parameters do not fit `provided` (optional ones may go
+    /// unpassed: `MAKEARRAY(2,2,LAMBDA(r,[c],r))` works, `LAMBDA(x,7)` and `LAMBDA(a,b,c,a+b)` do
+    /// not), and a function passed by name that does not take `provided` arguments
+    /// ([`eta_takes_count`]). Excel: see docs/excel-semantics/arrays.md "LAMBDA helpers refuse a
+    /// function they cannot call" (probes/t3655-makearray-arity-sizes,
+    /// probes/t3655-lambda-helper-function-argument).
+    pub(crate) fn helper_caller(
+        &self,
+        function: &CalcResult,
+        provided: usize,
+        cell: CellReferenceIndex,
+    ) -> Result<LambdaCaller, CalcResult> {
+        let callable = match self.function_value(function) {
+            Some(FunctionValue::Lambda { required, total }) => {
+                (required..=total).contains(&provided)
+            }
+            Some(FunctionValue::Eta(kind)) => eta_takes_count(&kind, provided),
+            None => false,
+        };
+        if !callable {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                format!("Expected a LAMBDA taking {provided} argument(s)"),
+            ));
+        }
+        Ok(self.lambda_caller(function, provided).snapping_root())
     }
 
     /// What the LAMBDA `lambda_result` is ([`FunctionValue`]); `None` for anything else.
@@ -703,6 +736,17 @@ impl Model {
 
 /// How a function passed by name is stored in a file (docs/excel-semantics/xlsx-storage.md).
 const ETA_PREFIX: &str = "_xleta.";
+
+/// Whether a LAMBDA helper may call the function passed by name `kind` with `provided`
+/// arguments: the catalog's counts (`arg_counts::takes_count`), so `MAKEARRAY(2,2,ROUND)` and
+/// `MAP(r,ABS)` run while `MAKEARRAY(2,2,ABS)`, `MAKEARRAY(2,2,NOW)`, `MAKEARRAY(2,2,XLOOKUP)`,
+/// `MAP(r,POWER)` and `BYROW(r,NOW)` are `#VALUE!` (probes/t3655-makearray-arity-sizes rows 14-16,
+/// probes/t3655-lambda-helper-function-argument rows 15-19); IF also takes one argument, giving
+/// `#VALUE!` per call (probes/eta-if-one-argument, T-1947).
+fn eta_takes_count(kind: &Function, provided: usize) -> bool {
+    (*kind == Function::If && provided == 1)
+        || arg_counts::takes_count(&kind.to_localized_name(get_default_language()), provided)
+}
 
 /// The LAMBDA a function passed by name stands for when called with `provided` arguments: it
 /// takes as many parameters as it is given and passes them all on, so `BYROW(r,SUM)` is

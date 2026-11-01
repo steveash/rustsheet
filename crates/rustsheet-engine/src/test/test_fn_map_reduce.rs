@@ -316,14 +316,16 @@ fn defined_name_lambda_calls_reuse_their_body_and_stay_independent() {
 }
 
 #[test]
-fn map_wrong_lambda_arity_is_value_in_every_element() {
+fn map_wrong_lambda_arity_is_one_value_error() {
+    // One `#VALUE!` for the whole call, not a spill of them (probes/t3655-makearray-arity-sizes
+    // row 57, T-3655).
     let mut model = new_empty_model();
     model._set("A1", "1");
     model._set("A2", "2");
     model._set("B1", "=MAP(A1:A2, LAMBDA(x, y, x))");
     model.evaluate();
     assert_eq!(model._get_text("B1"), "#VALUE!");
-    assert_eq!(model._get_text("B2"), "#VALUE!");
+    assert_eq!(model._get_text("B2"), "");
 }
 
 #[test]
@@ -799,4 +801,46 @@ fn reduce_step_trimrange_of_a_range_is_a_reference() {
     assert_eq!(model._get_text("B1"), "4");
     assert_eq!(model._get_text("B2"), "9");
     assert_eq!(model._get_text("B3"), "");
+}
+
+// ── A function argument the helper cannot call (T-3655) ─────────────────────
+
+/// Every LAMBDA helper is one whole-call `#VALUE!` for a function it cannot call with its
+/// argument count, an error argument included; optional parameters fill the count
+/// (probes/t3655-makearray-arity-sizes, probes/t3655-lambda-helper-function-argument).
+#[test]
+fn helpers_refuse_a_function_they_cannot_call() {
+    let mut model = new_empty_model();
+    let refused = [
+        "=ROWS(MAKEARRAY(2,2,LAMBDA(x,7)))",
+        "=ROWS(MAKEARRAY(2,2,LAMBDA(a,b,c,a+b)))",
+        "=ROWS(MAKEARRAY(2,2,NA()))",
+        "=ROWS(MAKEARRAY(2,2,5))",
+        "=ROWS(MAKEARRAY(2,2,_xleta.NOW))",
+        "=ROWS(MAP({1,2},LAMBDA(a,b,a)))",
+        "=ROWS(MAP({1,2},NA()))",
+        "=ROWS(MAP({1,2},_xleta.POWER))",
+        "=ROWS(BYROW({1;2},LAMBDA(a,b,a)))",
+        "=ROWS(SCAN(0,{1,2},LAMBDA(a,a)))",
+        "=ROWS(REDUCE(0,{1,2},NA()))",
+    ];
+    for (row, formula) in refused.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), formula);
+    }
+    model._set("B1", "=INDEX(MAKEARRAY(2,2,LAMBDA(r,[c],r)),2,2)");
+    model._set("B2", "=INDEX(MAKEARRAY(2,2,_xleta.ROUND),2,2)");
+    model._set("B3", "=ROWS(MAKEARRAY(NA(),1,5))");
+    model._set("B4", "=INDEX(MAP({1,2},{3,4},LAMBDA(a,b,[c],a+b)),1,2)");
+    model.evaluate();
+    for (row, formula) in refused.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("A{}", row + 1)),
+            "#VALUE!",
+            "{formula}"
+        );
+    }
+    assert_eq!(model._get_text("B1"), "2");
+    assert_eq!(model._get_text("B2"), "2");
+    assert_eq!(model._get_text("B3"), "#N/A");
+    assert_eq!(model._get_text("B4"), "6");
 }
