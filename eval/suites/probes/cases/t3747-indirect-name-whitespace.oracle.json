@@ -19,6 +19,18 @@
     "t": "s",
     "v": " MyName"
    },
+   "E54": {
+    "t": "s",
+    "v": "MyName\n\n"
+   },
+   "E55": {
+    "t": "s",
+    "v": "MyName \n"
+   },
+   "E56": {
+    "t": "s",
+    "v": "MyName\n "
+   },
    "F50": {
     "t": "n",
     "v": 7.0
@@ -34,16 +46,28 @@
    "F53": {
     "t": "e",
     "v": "#REF!"
+   },
+   "F54": {
+    "t": "n",
+    "v": 7.0
+   },
+   "F55": {
+    "t": "n",
+    "v": 7.0
+   },
+   "F56": {
+    "t": "n",
+    "v": 7.0
    }
   },
   "Sheet2": {}
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "f5cfb0f5c22f2c4ca4ca84006edb26a4109ab53a9239d1e93a203dd979c78430",
+  "input_sha256": "da5d14be287b217fdac200d82601d5562ad6a18c55d8b8d63c980dadc9800328",
   "kind": "excel-graph",
-  "produced_at": "2026-11-01T22:24:58+00:00",
+  "produced_at": "2026-11-01T23:28:37+00:00",
   "version": null,
-  "workbook_name": "55b456997a35c3f744b85e5e33580d98666ebf6ecadba6a8017677e21f8686f8.xlsx"
+  "workbook_name": "6301b6fc0d0b09996566afcecafae6d43b35159490e538f1641d5de64f02d547.xlsx"
  }
 }

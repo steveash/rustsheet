@@ -19,7 +19,13 @@
         "E52": "=\"MyName\"&CHAR(10)",
         "F52": "=SUM(INDIRECT(\"MyName\"&CHAR(10)))",
         "E53": "=\" MyName\"",
-        "F53": "=SUM(INDIRECT(\" MyName\"))"
+        "F53": "=SUM(INDIRECT(\" MyName\"))",
+        "E54": "=\"MyName\"&CHAR(10)&CHAR(10)",
+        "F54": "=SUM(INDIRECT(\"MyName\"&CHAR(10)&CHAR(10)))",
+        "E55": "=\"MyName \"&CHAR(10)",
+        "F55": "=SUM(INDIRECT(\"MyName \"&CHAR(10)))",
+        "E56": "=\"MyName\"&CHAR(10)&\" \"",
+        "F56": "=SUM(INDIRECT(\"MyName\"&CHAR(10)&\" \"))"
       }
     },
     {
