@@ -1496,6 +1496,7 @@ C	probes/t2816-lift-stdevs.case.json	1
 C	probes/t2816-lift-sumsq-row2.case.json	1
 C	probes/t2816-lift-sumsq.case.json	1
 C	probes/t2816-lift-vars.case.json	1
+C	probes/t2828-whitespace-join-folded-plus.case.json	30
 C	probes/t2829-ftest-a306-shapes.case.json	12
 C	probes/t2829-ftest-ln-beta-grid.case.json	99
 C	probes/t2829-ftest-tail-over-b.case.json	22
