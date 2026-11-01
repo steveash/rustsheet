@@ -255,7 +255,9 @@ impl Model {
     }
 
     /// Calls the implementation of `kind`: through [`Self::call_per_reference_element`] for a
-    /// per-element consumer ([`Function::per_reference_element`]), directly otherwise.
+    /// per-element consumer ([`Function::per_reference_element`]), directly otherwise. Every
+    /// built-in call's value leaves here, so this is where an array element's error tag is
+    /// dropped ([`CalcResult::untagged`], T-3080).
     pub(crate) fn call_by_reference_elements(
         &mut self,
         kind: &Function,
@@ -263,12 +265,13 @@ impl Model {
         cell: CellReferenceIndex,
         implementation: Implementation,
     ) -> CalcResult {
-        match kind.per_reference_element(args.len()) {
+        let value = match kind.per_reference_element(args.len()) {
             Some(per_element) => {
                 self.call_per_reference_element(args, per_element, cell, implementation)
             }
             None => implementation(self, args, cell),
-        }
+        };
+        value.untagged()
     }
 
     /// Calls `implementation` once per element of every array of references among its reference

@@ -9,7 +9,7 @@ mod count_and_average;
 mod covariance;
 mod devsq;
 mod discrete;
-pub(crate) mod element_errors;
+pub(super) mod element_errors;
 pub(super) mod erf;
 mod ets;
 mod exponential;

@@ -4,7 +4,6 @@ use std::collections::HashMap;
 
 use crate::defined_names::ParsedDefinedName;
 use crate::functions::logical::{Captures, NamedLambdas, SharedLambda};
-use crate::functions::statistical::element_errors::is_array_element_error;
 use crate::{
     calc_result::{CalcResult, Range},
     cell::{spill_value_to_calc_result, CellValue},
@@ -603,21 +602,9 @@ impl Model {
                 self.tailed_operand(node, cell, &range).unwrap_or(range)
             }
             // A `ROW()` position leaf of a tailed argument (`tailed_array.rs`).
-            FunctionKind { kind, args } => {
-                let result = self
-                    .tailed_position(node, kind, cell)
-                    .unwrap_or_else(|| self.evaluate_function(kind, args, cell));
-                // An array element's error is tagged so the call that read it can let another
-                // argument's error win; once it is the call's own value it is a plain error, so an
-                // outer call sees it as its data argument's error (statistics.md "An error element
-                // of an array argument is that error"; `SMALL(SMALL({1,#N/A,3},2)/1.005,"a*")` is
-                // #N/A, gen-m9/1b31092a0d79e5f1 A363, T-3080).
-                if is_array_element_error(&result) {
-                    result.without_message()
-                } else {
-                    result
-                }
-            }
+            FunctionKind { kind, args } => self
+                .tailed_position(node, kind, cell)
+                .unwrap_or_else(|| self.evaluate_function(kind, args, cell)),
             NamedFunctionKind { name, args, id } => {
                 self.evaluate_named_function_call(name, args, *id, cell)
             }

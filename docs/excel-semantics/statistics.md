@@ -4956,8 +4956,8 @@ Another argument's error beats the array's error element: `PERCENTILE({1,#N/A,3}
 are `#VALUE!`, as is `TRIMMEAN({1,#N/A,3},{"a"})` (the percent does not coerce); an error value as the first (data) argument still comes first
 (gen-m9/31f09e6c48ca245c A14, 165db58d1540f014 A353, 9735c5ab72fa5ecf A36). That holds for an element's error that an inner call has already
 returned as a value: `SMALL((SMALL({1,#N/A,3},2)/1.005),Data!C8)` with Data!C8 = `a*` is `#N/A`, not k's `#VALUE!` (gen-m9/1b31092a0d79e5f1
-A363). Ours drops an element error's tag when it leaves a call as the call's value (`Model::evaluate_node_in_context`,
-T-3080), so the outer call sees its data argument's own error.
+A363). Ours drops an element error's tag when it leaves a call as the call's value (`Model::call_by_reference_elements`,
+`CalcResult::untagged`, T-3080), so the outer call sees its data argument's own error.
 Probed on excel-graph (T-2636, probes/array-error-element-order): PROB (`PROB({1,#N/A,3},{0.2,0.3,0.5},1)`, an element in
 either data argument, with a limit error or an extra upper limit) and SLOPE, INTERCEPT, STEYX, RSQ, FORECAST.LINEAR and
 CHISQ.TEST with the element in either position are all `#N/A`; with an element error in each data argument the first

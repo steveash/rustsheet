@@ -16,7 +16,7 @@ instead of a statistical module.
 
 ## Context
 - T-3080 (2026-11-01) drops the element-error tag (`functions/statistical/element_errors.rs`, the message "Error in
-  array argument") where a function call's result leaves `Model::evaluate_node_in_context`. Its only oracle cell is
+  array argument") where a built-in call's result leaves `Model::call_by_reference_elements`. Its only oracle cell is
   gen-m9/1b31092a0d79e5f1 A363, `SMALL((SMALL({1,#N/A,3},2)/1.005),"a*")` = `#N/A`. These unit expectations are
   extrapolated, not probed: `SMALL(SMALL({1,#N/A,3},2),"x")`, `SMALL(LARGE({1,#N/A,3},2),"x")` (both `#N/A`).
 - The other producers of the tag change the same way when nested, consistently with statistics.md but unevidenced:
@@ -30,7 +30,9 @@ instead of a statistical module.
 ## Acceptance criteria
 - [ ] A probe case (excel-probe skill) with the forms above, filled from the oracle; the engine matches, or the
       differences are filed.
-- [ ] The tag lives in calc_result.rs; `element_errors` re-exports or is removed; no behaviour change (eval unchanged).
+- [ ] The rest of the tag moves to calc_result.rs (T-3080 moved the constant and `CalcResult::untagged` there):
+      `array_element_error` and `is_array_element_error`, or a flag on `CalcResult::Error` instead of the message;
+      no behaviour change (eval unchanged).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

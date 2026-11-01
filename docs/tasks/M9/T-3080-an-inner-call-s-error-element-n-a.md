@@ -49,10 +49,11 @@ argument still comes first"). Only an error element inside an array value still 
 
 ## Outcome
 Done 2026-11-01. The element-error tag (`element_errors::ARRAY_ELEMENT_ERROR`, a message) is dropped in one place: when a
-function call's result leaves the call (`Model::evaluate_node_in_context`, the `FunctionKind` arm), so an inner call's
+built-in call's result leaves the call (`Model::call_by_reference_elements`, through `CalcResult::untagged`), so an inner call's
 error reaches an outer call, or an operator, as a plain error, and the outer call returns it as its data argument's own.
 An element error read from an array literal or range is tagged by the outer call's own reader and still loses to a text
-k (`SMALL({1,#N/A,3},"x")` stays `#VALUE!`). `element_errors` is now `pub(crate)`.
+k (`SMALL({1,#N/A,3},"x")` stays `#VALUE!`). model.rs and functions/mod.rs (oversized, may only shrink) are
+untouched.
 - gen-m9/1b31092a0d79e5f1 Calc!A363 passes (its line leaves eval/baseline/gen-m9.txt); every other gated suite
   unchanged, no regressions. SMALL had this as its only visibly-off attributed cell, so it reaches the Phase 1 rate.
 - Unit cases in test_fn_array_error_elements.rs: the three nested forms the gap triage listed are `#N/A`; the two
