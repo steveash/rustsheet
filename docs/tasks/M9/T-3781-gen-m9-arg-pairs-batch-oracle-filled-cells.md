@@ -3,7 +3,7 @@ id: T-3781
 title: "gen-m9 arg-pairs batch: oracle-filled cells for the unseen argument-class pairs of the M9 order, rank and paired-regression statistics (SMALL, LARGE, RANK*, PERCENTILE*, QUARTILE*, PERCENTRANK*, TRIMMEAN, CORREL, PEARSON, COVAR*, SLOPE, INTERCEPT, RSQ, STEYX, FORECAST*, FREQUENCY, PROB, STANDARDIZE, PERMUT, PERMUTATIONA)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -58,18 +58,18 @@ fails is owned by a task.
   one bullet (decision 0159). Record any new Excel quirk in docs/excel-semantics/ (statistics.md), citing the cells.
 
 ## Acceptance criteria
-- [ ] New gen-m9 cases from `--policy arg-pairs --spill --functions` with the 31 functions above are committed with
+- [x] New gen-m9 cases from `--policy arg-pairs --spill --functions` with the 31 functions above are committed with
       their excel-graph oracle sidecars and 0 fill failures.
-- [ ] After `make eval`, each of the 31 functions has a `pairwise` share of at least 0.9 in report.json
+- [x] After `make eval`, each of the 31 functions has a `pairwise` share of at least 0.9 in report.json
       `argument_coverage`, or the PR lists the pairs left unseen and why (a hard domain, a pair Excel refuses to
       load).
-- [ ] Failing cells are known failures in eval/baseline/gen-m9.txt (`make eval-baseline`, 0 regressions), each owned
+- [x] Failing cells are known failures in eval/baseline/gen-m9.txt (`make eval-baseline`, 0 regressions), each owned
       by an open task, and `make exit-owners MILESTONE=M9` and `make unowned-off ALL=1` report no new unowned cell
       from the batch.
-- [ ] Any fit task filed for the batch's cells lists the R4 guards of reviewer-excel-fidelity check 7 (hold-out
+- [x] Any fit task filed for the batch's cells lists the R4 guards of reviewer-excel-fidelity check 7 (hold-out
       counts, fresh sweep, Gate A envelope result, `FITTED` tag and range, reproducibility floor, no keep-matched
       branch) in its acceptance criteria.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine fixes for the cells this batch finds (the owning tasks make them), beyond a one-line coercion fix in the
@@ -77,3 +77,16 @@ fails is owned by a task.
 - The distribution functions, LINEST/LOGEST/TREND/GROWTH, the FORECAST.ETS family (M14 owners), the criteria
   aggregates (AVERAGEIF(S), MAXIFS, MINIFS: functions-criteria lane), single argument-kind probes (T-3185, T-3129,
   T-3369), and other milestones.
+
+## Outcome
+- 48 new gen-m9 cases (8,806 checked cells) from `rustsheet-gen --policy arg-pairs --milestone M9 --spill --functions`
+  over the 31 functions, filled on excel-graph (48 sidecars, 0 fill failures). After `make eval` every one of the 31
+  has `pairwise` 1.0 in report.json `argument_coverage` (0 unseen pairs; was 0.18-0.37 and 4,336 unseen).
+- 8,652 pass. The 154 failing cells are four rules, each recorded in statistics.md and owned by a new sonnet task:
+  T-3788 (a text scalar is `#VALUE!` before an error data cell, 30 cells), T-3789 (PERCENTRANK's text or error
+  significance before the `#N/A`, 63 cells; settles the T-2256 entry's UNVERIFIED line), T-3790 (TRIMMEAN of a typed
+  numeric text or boolean literal, 15 cells), T-3791 (FREQUENCY with no numeric bin is a bin at 0, and an error cell as
+  the bins is skipped, 46 cells).
+- Eval delta: gen-m9 +48 cases, +8,806 cells checked, +8,652 passing; known failures 2,531 -> 2,685 (154 new-coverage
+  failures, 0 regressions); visible-parity lock 3,114 -> 3,268 cells (the same 154). Evidence floor unchanged (0 below).
+
