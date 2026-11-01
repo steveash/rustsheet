@@ -92,7 +92,10 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   - **The janitor** (`make janitor`, decision 0224; `DRY_RUN=1` lists its actions; `STEP=1`
     prints each GitHub write as a step-mode action to perform and ack with `make merge-train-ack
     SEQ=<n>`, as the merger does, when the session cannot write through `gh api`) runs after
-    every merger pass, in `train` mode only, and does the two steps above for ejected PRs idle
+    once per merger routine run, after its train passes, in `train` mode only, within a 25-min
+    budget (no catch-up or renumber starts after it; the rest waits for the next run). It skips
+    PRs labelled `merge-hold`: label a PR so to hold it against the janitor's pushes and
+    re-marks. It does the two steps above for ejected PRs idle
     1 h or more (time since the head was pushed). It comments a `merge-janitor v1` note naming the
     head it pushed and re-marks the PR with `CARRY` on a later run, once CI on that head is green.
     It re-marks a PR whose marker names an older head, idle 2 h, when the head is a carry-over
@@ -120,10 +123,11 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   PR head), is not ejected, and is unmerged 2 h after its marker. Ejected PRs, PRs waiting on
   their worker and PRs whose marker names an older head (the janitor's) never count.
   1. On a stranded PR, the steward (or any session that finds one) runs one `make merge-train
-     TRAIN=1` pass and `make janitor`, and files a P0 task with the cause it found. No flip.
-  2. If nothing has merged 6 h later, ready PRs are still waiting and the steward's own pass
-     fails, file a P0 for the owner (under "Needs owner" in docs/status.md). Flip to `lock` only
-     with the owner's approval.
+     TRAIN=1` pass and `make janitor STEP=1`, and files a P0 task with the cause it found. No flip.
+  2. The janitor checks this every merger run: when the oldest stranded PR was marked 8 h ago
+     and nothing has merged in the last 6 h, it files a P0 for the owner in a task-only PR (once
+     per head of that PR). The steward lists it under "Needs owner" in docs/status.md. Flip to
+     `lock` only with the owner's approval.
   3. The p90-latency and CI-runs-per-train thresholds ("Merge-train daily check" below) escalate
      the same way.
 - **Emergency flip to `lock`** (decision 0157; any agent, any mode, no reviewers, no decision
@@ -222,7 +226,7 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   more than 6 CI runs; a stranded PR. The report's thresholds line says `-> flip to lock` or
   `-> escalate`. In `shadow` mode the numbers are only reported: they are
   T-2991's evidence (its bar needs zero `tree-check: mismatch`). In `train` mode the daily run ends with one `make merge-train TRAIN=1`
-  pass, after marking orphaned PRs ready, and then `make janitor` (decision 0224).
+  pass, after marking orphaned PRs ready, and then `make janitor STEP=1` (decision 0224).
 - **Merge style**: squash merge; title `T-XXXX: <task title>`; keep the Co-Authored-By trailer.
   Exception: the daily steward PR uses branch `agent/steward/<YYYY-MM-DD>` and title
   `steward: <YYYY-MM-DD> health` (docs/process/routines.md).

@@ -34,6 +34,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 
 import gh_client
+import merge_lock
 import merge_ready
 import visible_lock
 from merge_lock import GitError, git
@@ -49,9 +50,17 @@ class Refused(Exception):
     """The PR cannot be caught up here; nothing was pushed."""
 
 
-def checked_only(paths: Sequence[str], lists: set[str]) -> bool:
-    """Whether every one of the conflicted `paths` is one of the eval-gated `lists` (and there is one)."""
-    return bool(paths) and all(p in lists for p in paths)
+def outside_lists(paths: Sequence[str], lists: set[str]) -> list[str]:
+    """The conflicted `paths` the catch-up cannot resolve: those not in `lists` (`resolvable_lists`)."""
+    return [p for p in paths if p not in lists]
+
+
+def conflicts_outside(repo: merge_ready.Repo, head: str, main: str) -> list[str] | None:
+    """The one "does the merge conflict only in the lists?" check, before any merge is made (`make
+    renumber`, the janitor): the paths where merging `main` into `head` conflicts outside
+    `resolvable_lists`; None when the merge cannot be computed. Needs `repo.fetch_base` first."""
+    merged = merge_lock.merge_tree(repo.root, head, main)
+    return None if merged is None else outside_lists(merged[1], resolvable_lists(repo))
 
 
 def resolvable_lists(repo: merge_ready.Repo) -> set[str]:
@@ -89,12 +98,14 @@ def catch_up(
     record: Callable[[Path, Path], int] = rerecord,
     rewrite: Rewrite = plain,
     record_clean: bool = True,
+    before_push: Callable[[str], None] | None = None,
 ) -> str:
     """Merges `main` into `branch` as the module docstring says, as one merge commit that the carry
     rule accepts, and pushes it; returns the pushed head. Raises Refused when it cannot (nothing
     pushed). The checkout's branch, or detached HEAD, is restored either way. `rewrite` gives the
     commit the merge starts from (the merge commit's parents are still the PR head and `main`);
-    without `record_clean`, the lists are re-recorded only when one conflicted."""
+    without `record_clean`, the lists are re-recorded only when one conflicted. `before_push` gets
+    the merge commit's sha before it is pushed."""
     branch = gh_client.branch_name(branch)
     if git("status", "--porcelain", "--untracked-files=no", root=root).stdout.strip():
         raise Refused("the checkout has local changes")
@@ -115,8 +126,8 @@ def catch_up(
         if git("rev-parse", "-q", "--verify", "MERGE_HEAD", root=root, check=False).returncode:
             raise Refused(f"git could not start merging {merge_ready.BASE_BRANCH} into {branch}")
         conflicted = git("diff", "--name-only", "--diff-filter=U", root=root).stdout.split()
-        if conflicted and not checked_only(conflicted, lists):
-            outside = [p for p in conflicted if p not in lists]
+        outside = outside_lists(conflicted, lists)
+        if outside:
             raise Refused(f"conflicts outside the eval-gated baseline lists: {', '.join(outside)}")
         for path in conflicted:
             if path == visible_lock.RETIRED_LOCK:
@@ -158,6 +169,8 @@ def catch_up(
         # `make renumber`, ids renumbered). A push the branch moved under is refused, not forced.
         tree = git("write-tree", root=root).stdout.strip()
         pushed = git("commit-tree", tree, "-p", head, "-p", main_sha, "-m", message, root=root).stdout.strip()
+        if before_push is not None:
+            before_push(pushed)  # the janitor records the head before it exists, never after
         git("push", "-q", REMOTE, f"{pushed}:refs/heads/{branch}", root=root)
         return pushed
     finally:

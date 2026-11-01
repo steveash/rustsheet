@@ -34,7 +34,7 @@ from collections.abc import Mapping
 from pathlib import Path
 
 import id_registry
-from merge_lock import GitError, git
+from merge_lock import GitError, git, merge_tree
 
 TASK_PATH = re.compile(r"^(docs/tasks/(?:[^/]+/)*)(T-\d{4})(-[^/]*\.md)$")
 DECISION_PATH = re.compile(r"^(docs/decisions/)(\d{4})(-[a-z0-9-]+\.md)$")
@@ -262,18 +262,6 @@ def renumbered_commit(root: Path, base: str, head: str, mapping: Mapping[str, st
         tree = raw(root, "write-tree", env=env).decode().strip()
     message = "renumber " + ", ".join(f"{old} -> {new}" for old, new in sorted(mapping.items()))
     return raw(root, *IDENTITY, "commit-tree", tree, "-p", head, "-m", message).decode().strip()
-
-
-def merge_tree(root: Path, a: str, b: str) -> tuple[str, list[str]] | None:
-    """(tree, conflicted paths) of the merge of commits `a` and `b` (`git merge-tree
-    --write-tree`, conflicts written with markers); None when it cannot be computed."""
-    merged = git("merge-tree", "--write-tree", "--name-only", a, b, root=root, check=False)
-    if merged.returncode not in (0, 1):
-        return None
-    lines = merged.stdout.split("\n")
-    # After the tree: the conflicted paths, a blank line, then informational messages.
-    rest = lines[1:]
-    return lines[0].strip(), rest[: rest.index("")] if "" in rest else rest
 
 
 def implied_mapping(root: Path, base: str, prev: str, tree: str, head: str) -> dict[str, str]:

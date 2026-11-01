@@ -500,7 +500,7 @@ class Repo:
         main = f"refs/merge-ready/{BASE_BRANCH}"
         if git("merge-base", "--is-ancestor", parents[1], main, root=self.root, check=False).returncode:
             return f"the merged commit is not on {BASE_BRANCH}"
-        plain = id_renumber.merge_tree(self.root, *parents)
+        plain = merge_lock.merge_tree(self.root, *parents)
         if plain is None:
             return "the merge could not be computed"
         problem = self.tree_problem(*plain, parents, head)

@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """The merge janitor: clears what the merge train leaves behind (decision 0224).
 
-  scripts/merge_janitor.py [--dry-run] [--step]   # exit 0: done (with --dry-run: the actions listed); 2: error
+  scripts/merge_janitor.py [--dry-run] [--step] [--budget MIN]   # exit 0: done; 2: an error
 
-The merger routine runs it after every pass; any session may. It acts only in `train` mode, on the
-open, non-draft PRs of this repository based on `main`. A branch is *idle* for the time since its
+The merger routine runs it once per run, after its train passes; any session may. It acts only in
+`train` mode, on the open, non-draft PRs of this repository based on `main`, except those labelled
+`merge-hold` (an owner's hold against its pushes and re-marks). A catch-up can build and run the
+eval, so none starts, nor a renumber, after `--budget` minutes (25); the rest waits for the next
+run. A branch is *idle* for the time since its
 current head was pushed (the newest push of that head in the activity API); a PR whose idle time
 cannot be read is skipped. Per PR, at most one action:
 
@@ -14,7 +17,8 @@ cannot be read is skipped. Per PR, at most one action:
     `make catch-up` (scripts/merge_catchup.py, decision 0207);
   - `id collision`: `make renumber` (scripts/merge_renumber.py).
 
-  The janitor then comments a note naming the head it pushed. CI takes minutes, so it does not
+  The janitor comments a note naming the head it is about to push, before the push (a failed
+  note leaves no unrecorded push). CI takes minutes, so it does not
   wait: a later run finds the note, and once CI is green on that head, marks the PR again with the
   carried verdicts (`make mark-ready CARRY=1`, through `merge_ready.plan_mark`).
 - **Orphaned**: an ejected PR the janitor cannot clear (`ci-red`, a real conflict, a refused
@@ -25,6 +29,10 @@ cannot be read is skipped. Per PR, at most one action:
   (`merge_ready.Repo.carry_problem`, catch-ups and renumbers included) and CI is green on it, the
   PR is marked again with `CARRY`; when the carry rule refuses it, CI is red or a marking was
   refused, `ready-to-merge` is removed, as V2 does. Pending CI waits.
+
+After the PRs, escalation step 2 (`Janitor.escalate`): when the oldest stranded PR
+(`merge_train_stats.stranded_since`) was marked 8 h ago and nothing merged in the last 6 h, it
+files a P0 for the owner through the merge train's task filing, once per head of that PR.
 
 Its own notes end with a `merge-janitor v1` block (head and action); only notes by writers count.
 Reads go through scripts/gh_client.py and merge_ready; writes through the same client (`gh api`),
@@ -38,9 +46,11 @@ Pushes and marks need a checkout with no local changes; `--dry-run` reads only a
 from __future__ import annotations
 
 import argparse
+import math
 import os
 import re
 import sys
+import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -55,14 +65,24 @@ import merge_ready
 import merge_renumber
 import merge_step
 import merge_train
-from gh_client import Client, GhError, int_of, label_names, text_of
+import merge_train_filing
+import merge_train_stats
+from gh_client import Client, GhError, int_of, iso, label_names, text_of, when
 from merge_lock import GitError, git
-from merge_train_stats import iso, when
 
 ROOT = Path(__file__).resolve().parent.parent
 MECHANICAL_IDLE = timedelta(hours=1)
 STALE_IDLE = timedelta(hours=2)
 ORPHAN_IDLE = timedelta(hours=4)
+# A catch-up or renumber can build and run the eval (`make eval-baseline`); none starts after
+# this much of a run, and what is left waits for the next merger run (30 min later).
+BUDGET = timedelta(minutes=25)
+# The owner's P0 (escalation step 2, decision 0224): the oldest stranded PR this old, with no
+# merge in the last QUIET.
+ESCALATE_AFTER = timedelta(hours=8)
+QUIET = timedelta(hours=6)
+# An owner's or reviewer's hold: the janitor never touches a PR with this label (no push, no mark).
+HOLD_LABEL = "merge-hold"
 # Pushes older than this are not read; the newest push of a head is on the first page anyway.
 ACTIVITY_WINDOW = timedelta(days=1)
 
@@ -70,7 +90,7 @@ ACTIVITY_WINDOW = timedelta(days=1)
 REMOVED = f"merge train: {merge_ready.READY_LABEL} removed: "
 CONFLICT, COLLISION, CI_RED, OTHER = "conflict with main", "id collision", "ci-red", "other"
 
-# The janitor's actions; the first five are recorded in its notes.
+# The janitor's actions; all but MARK and UNLABEL are recorded in its notes.
 CATCH_UP, RENUMBER, ORPHANED, REFUSED, MARK, UNLABEL = (
     "catch-up",
     "renumber",
@@ -79,6 +99,7 @@ CATCH_UP, RENUMBER, ORPHANED, REFUSED, MARK, UNLABEL = (
     "mark",
     "unlabel",
 )
+ESCALATED = "escalated"
 NOTE_OPEN = "<!-- merge-janitor v1"
 NOTE = re.compile(r"<!-- merge-janitor v1 head: ([0-9a-f]{40}) action: ([a-z-]{1,20}) -->\Z")
 
@@ -206,10 +227,11 @@ def idle_for(client: Client, branch: str, head: str, now: datetime) -> timedelta
 
 def read_state(client: Client, pull: object, authors: merge_ready.Authors, now: datetime) -> State | None:
     """The State of one open PR, or None when the janitor leaves it alone (a draft, a fork, another
-    base, or no ejection label and no marker)."""
+    base, a `merge-hold` label, or no ejection label and no marker)."""
     pr, head, branch = int_of(pull, "number"), text_of(pull, "head", "sha"), text_of(pull, "head", "ref")
     if (
-        gh_client.field_of(pull, "draft") is not False
+        HOLD_LABEL in label_names(pull)
+        or gh_client.field_of(pull, "draft") is not False
         or text_of(pull, "base", "ref") != merge_ready.BASE_BRANCH
         or text_of(pull, "head", "repo", "full_name") != text_of(pull, "base", "repo", "full_name")
         or not gh_client.SHA.fullmatch(head)
@@ -258,34 +280,42 @@ class GitFacts:
     def lists_only(self, state: State) -> bool:
         self.fetch(state)
         main = f"refs/merge-ready/{merge_ready.BASE_BRANCH}"
-        merged = id_renumber.merge_tree(self.repo.root, state.head, main)
-        lists = merge_catchup.resolvable_lists(self.repo)  # what `make catch-up` would resolve
-        return merged is not None and all(p in lists for p in merged[1])
+        return merge_catchup.conflicts_outside(self.repo, state.head, main) == []
 
     def carries(self, state: State, prev: str) -> bool:
         self.fetch(state)
         return self.repo.carry_problem(prev, state.head) is None
 
 
-class Effects(Protocol):
-    """The janitor's pushes and marks; each returns the pushed head or raises a refusal."""
+# Called with the merge commit's sha before it is pushed: the janitor's note goes first.
+Announce = Callable[[str], None]
 
-    def catch_up(self, state: State) -> str: ...
-    def renumber(self, state: State) -> str: ...
+
+class Effects(Protocol):
+    """The janitor's pushes, marks and P0 filing; a push returns its head, and each may raise a
+    refusal."""
+
+    def catch_up(self, state: State, announce: Announce) -> str: ...
+    def renumber(self, state: State, announce: Announce) -> str: ...
     def mark(self, state: State) -> None: ...
+    def file_p0(self, log: list[str], title: str, context: str) -> None: ...
 
 
 class Checkout:
-    """`Effects` in the clean checkout `root`: the catch-up, the renumber, and `mark-ready --carry`."""
+    """`Effects` in the clean checkout `root`: the catch-up, the renumber, `mark-ready --carry`, and
+    the merge train's task filing (a task-only PR)."""
 
     def __init__(self, client: Client, root: Path, by: str) -> None:
         self.client, self.root, self.by = client, root, by
 
-    def catch_up(self, state: State) -> str:
-        return merge_catchup.catch_up(self.root, state.branch)
+    def catch_up(self, state: State, announce: Announce) -> str:
+        return merge_catchup.catch_up(self.root, state.branch, before_push=announce)
 
-    def renumber(self, state: State) -> str:
-        return merge_renumber.renumber(self.root, state.branch)
+    def renumber(self, state: State, announce: Announce) -> str:
+        return merge_renumber.renumber(self.root, state.branch, before_push=announce)
+
+    def file_p0(self, log: list[str], title: str, context: str) -> None:
+        merge_train_filing.file_tasks(self.root, self.client, log, [("P0", title, context)])
 
     def mark(self, state: State) -> None:
         """`make mark-ready CARRY=1` with the PR head checked out; the checkout is restored."""
@@ -312,59 +342,54 @@ class Janitor:
     effects: Effects
     dry_run: bool = False
     log: list[str] = field(default_factory=list)
+    # `clock()` past `deadline` (both monotonic seconds) starts no new catch-up or renumber.
+    deadline: float = math.inf
+    clock: Callable[[], float] = time.monotonic
 
     def note(self, pr: int, head: str, action: str, text: str) -> None:
         self.client.comment(pr, f"merge janitor: {text}\n\n{note_block(head, action)}")
 
     def act(self, s: State, action: Action) -> None:
         """Performs `action` on PR `s`, or with `dry_run` only logs it."""
+        if action.kind in (CATCH_UP, RENUMBER) and self.clock() >= self.deadline:
+            self.log.append(f"#{s.pr}: {action.kind} left for the next run: this run's budget is spent")
+            return
         self.log.append(f"#{s.pr}: {action.kind}: {action.why}")
         if self.dry_run:
             return
         if action.kind == ORPHANED:
-            self.note(
-                s.pr,
-                s.head,
-                ORPHANED,
-                (
-                    f"this PR is orphaned ({action.why}; branch idle {hours(s.idle)}). It needs an opus run or "
-                    'the owner: the steward skill\'s "Orphaned agent PRs" (decision 0224).'
-                ),
-            )
+            self.note(s.pr, s.head, ORPHANED, (
+                f"this PR is orphaned ({action.why}; branch idle {hours(s.idle)}). It needs an opus run or "
+                'the owner: the steward skill\'s "Orphaned agent PRs" (decision 0224).'
+            ))
             return
         if action.kind == UNLABEL:
             self.client.remove_label(s.pr, merge_ready.READY_LABEL)
             self.client.comment(
-                s.pr,
-                f"merge janitor: {merge_ready.READY_LABEL} removed: {action.why}; mark again after CI and review",
+                s.pr, f"merge janitor: {merge_ready.READY_LABEL} removed: {action.why}; mark again after CI and review"
             )
             return
-        step: Callable[[State], object] = {
-            CATCH_UP: self.effects.catch_up,
-            RENUMBER: self.effects.renumber,
-            MARK: self.effects.mark,
-        }[action.kind]
+
+        def announce(head: str) -> None:
+            # Before the push: a note that fails leaves no push nobody recorded.
+            self.note(s.pr, head, action.kind, (
+                f"pushing `{head}` (`make {action.kind}`, decision 0224). Once CI is green on it, a later "
+                "janitor run marks this PR ready again with the carried verdicts (`make mark-ready CARRY=1`)."
+            ))
+
         try:
-            pushed = step(s)
+            if action.kind == MARK:
+                self.effects.mark(s)
+                return
+            push = self.effects.catch_up if action.kind == CATCH_UP else self.effects.renumber
+            self.log.append(f"#{s.pr}: pushed {push(s, announce)}")
         except REFUSALS as refusal:
             self.log.append(f"#{s.pr}: {action.kind} refused: {refusal}")
             self.note(s.pr, s.head, REFUSED, f"`{action.kind}` refused: {refusal}. Left to the PR's worker.")
-            return
-        if isinstance(pushed, str):
-            self.log.append(f"#{s.pr}: pushed {pushed}")
-            self.note(
-                s.pr,
-                pushed,
-                action.kind,
-                (
-                    f"pushed `{pushed}` (`make {action.kind}`, decision 0224). Once CI is green on it, a later "
-                    "janitor run marks this PR ready again with the carried verdicts (`make mark-ready CARRY=1`)."
-                ),
-            )
 
     def run(self, now: datetime) -> int:
-        """One pass over the open PRs; returns how many failed with an error (each is logged, and
-        the pass goes on with the next PR)."""
+        """One pass over the open PRs, then the escalation check; returns how many failed with an
+        error (each is logged, and the pass goes on with the next PR)."""
         pulls = self.client.pulls()
         owner_type = text_of(pulls[0], "base", "repo", "owner", "type") if pulls else ""
         authors = merge_ready.Authors(self.client, owner_type == "User")
@@ -378,7 +403,45 @@ class Janitor:
             except (GhError, GitError, id_renumber.RenumberError) as error:
                 errors += 1
                 self.log.append(f"#{int_of(pull, 'number')}: error: {error}")
+        try:
+            self.escalate(pulls, authors, now)
+        except (GhError, GitError) as error:
+            errors += 1
+            self.log.append(f"escalation check: error: {error}")
         return errors
+
+    def escalate(self, pulls: Sequence[object], authors: merge_ready.Authors, now: datetime) -> None:
+        """Escalation step 2 (decision 0224), checked every merger run: when the oldest stranded PR
+        was marked ESCALATE_AFTER ago and nothing merged in the last QUIET, file a P0 for the
+        owner once per head of that PR (a merge-janitor note records it). The steward runs only
+        twice a day, so this is the check that does not wait for it."""
+        stranded = merge_train_stats.stranded_since(self.client, now)
+        if not stranded:
+            return
+        pr, marked = min(stranded, key=lambda found: found[1])
+        if now - marked < ESCALATE_AFTER:
+            return
+        quiet_since = now - QUIET
+        merged = [p for p in self.client.updated_pulls(iso(quiet_since)) if (at := when(text_of(p, "merged_at"))) and at >= quiet_since]
+        if merged:
+            return
+        pull = next((p for p in pulls if int_of(p, "number") == pr), None)
+        head = text_of(pull, "head", "sha")
+        comments = [c for c in self.client.comments(pr) if authors.writer(c)]
+        if any(parse_note(text_of(c, "body")) == (head, ESCALATED) for c in comments) or not gh_client.SHA.fullmatch(head):
+            return
+        title = f"Merge train: nothing merged in {hours(QUIET)} with #{pr} stranded {hours(now - marked)}"
+        self.log.append(f"#{pr}: escalate to the owner: {title}")
+        if self.dry_run:
+            return
+        context = (
+            f"The janitor found #{pr} marked ready on its current head `{head}` since {iso(marked)}, not "
+            f"ejected and unmerged, and no PR merged since {iso(quiet_since)} (decision 0224, escalation "
+            "step 2). For the owner: find why the merger's passes fail; flip to `lock` only with the "
+            "owner's approval."
+        )
+        self.effects.file_p0(self.log, title, context)
+        self.note(pr, head, ESCALATED, f"filed a P0 for the owner: {title} (decision 0224).")
 
 
 def hours(idle: timedelta | None) -> str:
@@ -393,6 +456,12 @@ def main(argv: Sequence[str] | None = None, root: Path = ROOT) -> int:
         "--step",
         action="store_true",
         help="print each GitHub write as a step-mode action and wait for its ack",
+    )
+    parser.add_argument(
+        "--budget",
+        type=float,
+        default=BUDGET.total_seconds() / 60,
+        help="minutes after which no catch-up or renumber starts (the rest waits for the next run)",
     )
     args = parser.parse_args(argv)
     if not args.dry_run and not merge_lock.valid_id(args.by):
@@ -411,6 +480,7 @@ def main(argv: Sequence[str] | None = None, root: Path = ROOT) -> int:
     client: Client = merge_step.StepClient(real, merge_step.AckFile(root)) if args.step else real
     repo = merge_ready.Repo(root)
     janitor = Janitor(client, GitFacts(client, repo), Checkout(client, root, args.by), args.dry_run)
+    janitor.deadline = janitor.clock() + args.budget * 60
     try:
         errors = janitor.run(datetime.now(UTC))
     except merge_step.StepError as error:

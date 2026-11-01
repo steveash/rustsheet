@@ -11,6 +11,7 @@ import sys
 import tempfile
 import unittest
 import urllib.parse
+from collections.abc import Callable
 from unittest import mock
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -156,21 +157,30 @@ class Effects:
     def __init__(self, refuse: str | None = None) -> None:
         self.calls: list[str] = []
         self.refuse = refuse
+        self.filed: list[str] = []
+        # Set to see the order of the note and the push.
+        self.events: list[str] = []
 
-    def step(self, name: str, state: State) -> str:
+    def step(self, name: str, state: State, announce: Callable[[str], None] | None = None) -> str:
         self.calls.append(f"{name} #{state.pr}")
         if self.refuse == name:
             raise Refused("the merge with main conflicts outside the eval-gated baseline lists")
+        if announce is not None:
+            announce(PUSHED)
+            self.events.append("pushed")
         return PUSHED
 
-    def catch_up(self, state: State) -> str:
-        return self.step(CATCH_UP, state)
+    def catch_up(self, state: State, announce: Callable[[str], None]) -> str:
+        return self.step(CATCH_UP, state, announce)
 
-    def renumber(self, state: State) -> str:
-        return self.step(RENUMBER, state)
+    def renumber(self, state: State, announce: Callable[[str], None]) -> str:
+        return self.step(RENUMBER, state, announce)
 
     def mark(self, state: State) -> None:
         self.step(MARK, state)
+
+    def file_p0(self, log: list[str], title: str, context: str) -> None:
+        self.filed.append(title)
 
 
 def comment(ident: int, body: str, login: str = "owner") -> dict[str, object]:
@@ -310,10 +320,67 @@ class Pass(unittest.TestCase):
         fork["head"] = {**fork["head"], "repo": {"full_name": "someone/r"}}  # type: ignore[dict-item]
         draft = pull(10, HEAD, (EJECTED,))
         draft["draft"] = True
-        self.pulls = [pull(8, HEAD, ()), fork, draft]
+        held = pull(11, HEAD, (EJECTED, merge_janitor.HOLD_LABEL))  # an owner's merge-hold
+        self.pulls = [pull(8, HEAD, ()), fork, draft, held]
+        self.comments[11] = list(self.comments[7])
+        self.pushed[11] = self.pushed[7]
         effects = Effects()
         _, writes = self.run_once(effects)
         self.assertEqual((effects.calls, writes), ([], []))
+
+    def test_the_note_is_posted_before_the_push(self) -> None:
+        client = self.fake()
+        effects = Effects()
+        order: list[str] = []
+        renumber = effects.renumber
+
+        def watched(state: State, announce: Callable[[str], None]) -> str:
+            def note_then(head: str) -> None:
+                announce(head)
+                order.append(f"noted {len([r for r in client.requests if r.method == 'POST'])}")
+
+            pushed = renumber(state, note_then)
+            order.append("pushed")
+            return pushed
+
+        effects.renumber = watched  # type: ignore[method-assign]
+        merge_janitor.Janitor(client, Facts(), effects).run(NOW)
+        self.assertEqual(order, ["noted 1", "pushed"])
+
+    def test_no_catch_up_or_renumber_starts_once_the_budget_is_spent(self) -> None:
+        effects = Effects()
+        janitor = merge_janitor.Janitor(self.fake(), Facts(), effects, deadline=10.0, clock=lambda: 11.0)
+        self.assertEqual(janitor.run(NOW), 0)
+        self.assertEqual(effects.calls, [])
+        self.assertIn("#7: renumber left for the next run: this run's budget is spent", janitor.log)
+
+    def escalation(self, merged_at: str | None, *notes: str) -> tuple[Effects, FakeGh]:
+        """One run with PR 8 marked ready on its current head at 01:00 (11 h before NOW), not
+        ejected, its branch's `notes`, and one PR updated in the window, merged at `merged_at`."""
+        self.pulls = [pull(8, HEAD, (READY,))]
+        self.comments = {8: [comment(1, merge_ready.marker_body(marker(HEAD)))]}
+        self.comments[8] += [comment(2 + i, f"x\n\n{note}") for i, note in enumerate(notes)]
+        self.pushed = {8: "2026-11-01T00:30:00Z"}
+        client = self.fake()
+        recent = [{"number": 3, "updated_at": "2026-11-01T11:00:00Z", "merged_at": merged_at}]
+        query = "state=all&sort=updated&direction=desc&per_page=100&page=1"
+        client.replies[("GET", f"repos/o/r/pulls?{query}")] = Reply(recent)
+        effects = Effects()
+        janitor = merge_janitor.Janitor(client, Facts(), effects)
+        self.assertEqual(janitor.run(NOW), 0, janitor.log)
+        return effects, client
+
+    def test_a_long_stranded_pr_with_no_merge_files_one_owner_p0(self) -> None:
+        effects, client = self.escalation(None)
+        self.assertEqual(effects.filed, ["Merge train: nothing merged in 6.0 h with #8 stranded 11.0 h"])
+        [posted] = [r.body for r in client.requests if r.method == "POST"]
+        self.assertEqual(merge_janitor.parse_note(str(posted["body"])), (HEAD, merge_janitor.ESCALATED))  # type: ignore[index]
+
+    def test_the_escalation_is_filed_once_per_head_and_not_after_a_merge(self) -> None:
+        noted, _ = self.escalation(None, merge_janitor.note_block(HEAD, merge_janitor.ESCALATED))
+        self.assertEqual(noted.filed, [])
+        merged, _ = self.escalation("2026-11-01T10:00:00Z")
+        self.assertEqual(merged.filed, [])
 
     # Step mode (decision 0169): the janitor's writes go through merge_step.StepClient.
     def perform(self, action: dict[str, object]) -> None:

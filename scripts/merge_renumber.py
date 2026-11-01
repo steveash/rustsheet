@@ -37,13 +37,18 @@ import tasks
 from merge_catchup import Refused
 from merge_lock import git
 
-# (old id, the task's milestone or "" for a decision, ids already taken) -> a reserved fresh id.
-Allocate = Callable[[str, str, set[str]], str]
+# (the checkout, old id, the task's milestone or "" for a decision, ids already taken) -> a
+# reserved fresh id.
+Allocate = Callable[[Path, str, str, set[str]], str]
 
 
-def reserve(old: str, milestone: str, taken: set[str]) -> str:
+def reserve(root: Path, old: str, milestone: str, taken: set[str]) -> str:
     """A fresh id of `old`'s kind, reserved in the id registry by the rule `make new-task` (in
-    `milestone`) or `make new-decision` uses; Refused when the registry cannot reserve it."""
+    `milestone`) or `make new-decision` uses; Refused when the registry cannot reserve it. Those
+    rules read the task files and branches of the checkout this script belongs to, so `root`
+    must be that checkout."""
+    if root.resolve() != tasks.ROOT.resolve():
+        raise Refused(f"ids are reserved from the checkout of {tasks.ROOT}, not {root}")
     if id_renumber.TASK_ID.fullmatch(old):
         known = tasks.load()
         used = taken | {str(t["id"]) for t in known} | tasks.git_task_ids(fetch=True)
@@ -87,9 +92,8 @@ def renumbering(allocate: Allocate) -> merge_catchup.Rewrite:
             found = id_renumber.colliding(root, base, head, main)
             if not found:
                 raise Refused(f"the PR adds no task or decision file whose id {merge_ready.BASE_BRANCH} has")
-            merged = id_renumber.merge_tree(root, head, main)
-            lists = merge_catchup.resolvable_lists(merge_ready.Repo(root))
-            if merged is None or any(p not in lists for p in merged[1]):
+            conflicts = merge_catchup.conflicts_outside(merge_ready.Repo(root), head, main)
+            if conflicts is None or conflicts:
                 raise Refused("the merge with main conflicts outside the eval-gated baseline lists")
             # Before any id is reserved: an old id in a line the PR added outside docs/ is the worker's.
             outside = id_renumber.uses_outside_docs(root, base, head, {old: old for old in found})
@@ -101,7 +105,7 @@ def renumbering(allocate: Allocate) -> merge_catchup.Rewrite:
             taken = id_renumber.ids_in(root, main) | id_renumber.ids_in(root, head)
             mapping: dict[str, str] = {}
             for old, path in sorted(found.items()):
-                mapping[old] = allocate(old, milestone_of(root, head, path), taken | set(mapping.values()))
+                mapping[old] = allocate(root, old, milestone_of(root, head, path), taken | set(mapping.values()))
             id_renumber.check_mapping(root, base, head, main, mapping)
             commit = id_renumber.renumbered_commit(root, base, head, mapping)
         except id_renumber.RenumberError as error:
@@ -117,10 +121,13 @@ def renumber(
     branch: str,
     allocate: Allocate = reserve,
     record: Callable[[Path, Path], int] = merge_catchup.rerecord,
+    before_push: Callable[[str], None] | None = None,
 ) -> str:
     """The module docstring's steps on `branch`; returns the pushed head. Raises Refused (nothing
-    pushed)."""
-    return merge_catchup.catch_up(root, branch, record, renumbering(allocate), record_clean=False)
+    pushed). `before_push` gets the merge commit's sha before the push (the janitor's note)."""
+    return merge_catchup.catch_up(
+        root, branch, record, renumbering(allocate), record_clean=False, before_push=before_push
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:

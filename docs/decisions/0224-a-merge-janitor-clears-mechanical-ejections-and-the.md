@@ -45,7 +45,9 @@
      `main` owns, an edit in a renamed file, a rename of `main`'s file and a rename onto an id `main` has.
   3. **`make janitor`** (scripts/merge_janitor.py; `DRY_RUN=1` lists actions only; `STEP=1` makes each GitHub
      write a step-mode action of decision 0169, which the merger routine uses), run by the
-     merger routine after every pass, in `train` mode only. Idle means time since the PR's current
+     merger routine once per run, after its train passes, in `train` mode only, within a
+     25-minute budget (`--budget`): no catch-up or renumber starts after it, and what is left
+     waits for the next run. A PR labelled `merge-hold` is never touched (an owner's hold). Idle means time since the PR's current
      head was pushed (the activity API). For open, non-draft, same-repository PRs:
      - ejected for `conflict with main` with conflicts only in the eval-gated lists, idle 1 h:
        `make catch-up`; ejected for an id collision, idle 1 h: `make renumber`. It comments a
@@ -59,10 +61,12 @@
   4. **Escalation replaces the flip for a stranded PR** (amends 0157 and 0194). A PR marked ready
      on its current head, not ejected and unmerged 2 h later is stranded. Ejected PRs, PRs waiting
      on their worker and stale-marker PRs never count. Then:
-     1. the steward runs one `make merge-train TRAIN=1` pass and `make janitor`, and files a P0
+     1. the steward runs one `make merge-train TRAIN=1` pass and `make janitor STEP=1`, and files a P0
         with the cause; no flip;
-     2. if nothing has merged 6 h later, with ready PRs waiting and the steward's own pass failing,
-        it files a P0 for the owner, and flips to `lock` only with the owner's approval;
+     2. if nothing has merged in 6 h and the oldest stranded PR was marked 8 h ago, the janitor
+        files a P0 for the owner (a task-only PR, once per head of that PR, checked every merger
+        run, since the steward runs only twice a day); flip to `lock` only with the owner's
+        approval;
      3. the immediate emergency flip is kept only for correctness failures: `main` got a tree no
         train tested (a revert PR, or a P0 tree mismatch), or a train merged something CI
         rejected. The other daily thresholds (p90 latency, CI runs per train) escalate like a

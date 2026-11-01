@@ -522,7 +522,8 @@ The fallback replaces today's "wait for the lock and merge it yourself" as the s
 
 **The janitor** (*as built, decision 0224*). After its last `make merge-train` run, each merger
 routine run runs `make janitor STEP=1` once (`scripts/merge_janitor.py`, `train` mode only; its
-writes are step-mode actions, its pushes direct). On PRs whose
+writes are step-mode actions, its pushes direct; within a 25-min budget, after which no catch-up or
+renumber starts; PRs labelled `merge-hold` are skipped). On PRs whose
 branch is idle (time since the current head was pushed, from the activity API) it:
 - runs `make catch-up` on a PR ejected for `conflict with main` whose conflicts are only in the
   eval-gated lists, and `make renumber` on one ejected for an id collision, after 1 h idle. It
@@ -1134,7 +1135,10 @@ A push trigger is three lines and tests exactly the sha the merger built.
   - set labels and post comments.
 
   It never pushes to `main` or to a PR branch it did not create, and it never merges a revert
-  PR that review has not marked ready.
+  PR that review has not marked ready. *As built (decision 0224):* the merger routine's janitor
+  step pushes a merge of `main` to an idle ejected PR's branch (`make catch-up`, `make
+  renumber`, never forced) and reserves fresh ids in the id registry for a renumber. The carry
+  rule then checks that push mechanically before any verdict is carried over.
 - **Who may push train branches.** All agent sessions push as the owner's account, so no ruleset
   can tell the merger apart today. The merger's own checks are the safeguard: green counts only
   for the sha it built in this run. The owner can still add a ruleset that restricts creating
@@ -1503,10 +1507,10 @@ These escalate instead:
   ejected, unmerged after 2 h. Ejected PRs, PRs waiting on their worker and PRs whose marker
   names an older head never count.
 
-Escalation: the steward runs one `make merge-train TRAIN=1` pass and `make janitor` and files a
-P0 with the cause, with no flip. If nothing has merged 6 h later, with ready PRs waiting and the
-steward's own pass failing, it files a P0 for the owner and flips to `lock` only with the owner's
-approval. `make merge-train-stats` marks each trigger `-> escalate` or `-> flip to lock`.
+Escalation: the steward runs one `make merge-train TRAIN=1` pass and `make janitor STEP=1` and files a
+P0 with the cause, with no flip. The janitor checks every merger run: when the oldest stranded PR
+was marked 8 h ago and nothing has merged in the last 6 h, it files a P0 for the owner (once per
+head of that PR). The flip to `lock` then needs the owner's approval. `make merge-train-stats` marks each trigger `-> escalate` or `-> flip to lock`.
 
 ### Rollback
 - **Fast:** any agent opens the one-line flip PR that sets `mode = "lock"`, labels it

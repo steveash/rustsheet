@@ -84,7 +84,7 @@ class Renumber(TempOrigin):
     def edit(self, path: str, old: str, new: str) -> None:
         self.write(path, (self.clone / path).read_text().replace(old, new, 1))
 
-    def allocate(self, old: str, milestone: str, taken: set[str]) -> str:
+    def allocate(self, root: Path, old: str, milestone: str, taken: set[str]) -> str:
         self.allocated.append((old, milestone))
         self.assertNotIn(FRESH[old], taken)
         return FRESH[old]
@@ -261,7 +261,7 @@ class Renumber(TempOrigin):
         self.assertEqual(run("git", "rev-parse", "agent/x", cwd=self.origin), self.before)
 
     def test_a_registry_refusal_pushes_nothing(self) -> None:
-        def refuse(old: str, milestone: str, taken: set[str]) -> str:
+        def refuse(root: Path, old: str, milestone: str, taken: set[str]) -> str:
             raise Refused("the id registry could not reserve a new id")
 
         with self.assertRaisesRegex(Refused, "id registry"):
@@ -292,6 +292,11 @@ class Renumber(TempOrigin):
     def test_milestone_of(self) -> None:
         self.assertEqual(merge_renumber.milestone_of(self.clone, self.before, PR_TASK), "M2")
         self.assertEqual(merge_renumber.milestone_of(self.clone, self.before, PR_RECORD), "")
+
+    def test_the_real_allocator_reserves_only_for_its_own_checkout(self) -> None:
+        # Its rules read this checkout's tasks and branches, so another root is refused, not misread.
+        with self.assertRaisesRegex(Refused, "ids are reserved from the checkout"):
+            merge_renumber.reserve(self.clone, "T-0101", "M2", set())
 
 
 if __name__ == "__main__":

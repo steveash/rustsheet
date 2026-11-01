@@ -40,7 +40,9 @@ Filed by the merge train (SPEC-0027 section 4) from what it saw; every value bel
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- Turning the merge train off: anyone may open the flip to `lock` at once (decision 0157).
+- Turning the merge train off: flip to `lock` at once only on a correctness failure (`main` got
+  a tree no train tested, or a train merged something CI rejected); otherwise escalate, and flip
+  only with the owner's approval (decision 0224).
 """
 
 

@@ -37,6 +37,12 @@ train to `lock` (decision 0224, the owner's ruling).
   PR added elsewhere refuses both the renumber and the carry; the carry requires each old id to
   collide with a file on `main` and each new id to be claimed in the id registry (read fresh,
   failing closed). `stranded()` counts only writers' markers.
+- [x] Architecture review of #2699: step 2 of the train ejects a `dirty` ready PR with the label,
+  as step 3 does; the janitor posts its note before it pushes, starts no catch-up or renumber after
+  a 25-min budget, skips `merge-hold` PRs, and files the owner's P0 (escalation step 2) every run;
+  one pre-merge "conflicts only in the lists" helper (`merge_catchup.conflicts_outside`);
+  `merge_tree` lives in merge_lock and `iso`/`when` in gh_client; the flip texts in
+  agent-workflow.md, merge_train_filing.py and decision 0208 follow decision 0224.
 - [x] `make janitor [DRY_RUN=1]` (scripts/merge_janitor.py) catches up or renumbers ejected PRs
   idle 1 h, notes the pushed head and re-marks with `CARRY` on a later run once CI is green,
   comments orphans idle 4 h once per head, and re-marks or unlabels stale markers idle 2 h

@@ -215,11 +215,24 @@ class CatchUp(TempOrigin):
         with self.assertRaisesRegex(Refused, "local changes"):
             merge_catchup.catch_up(self.clone, "agent/x", self.record(0))
 
-    def test_checked_only(self) -> None:
+    def test_outside_lists(self) -> None:
         lists = {"eval/baseline/a.txt", "eval/baseline/b.txt"}
-        self.assertTrue(merge_catchup.checked_only(["eval/baseline/a.txt", "eval/baseline/b.txt"], lists))
-        self.assertFalse(merge_catchup.checked_only(["eval/baseline/a.txt", "eval/baseline/c.txt"], lists))
-        self.assertFalse(merge_catchup.checked_only([], lists))
+        self.assertEqual(merge_catchup.outside_lists(["eval/baseline/a.txt", "eval/baseline/b.txt"], lists), [])
+        self.assertEqual(
+            merge_catchup.outside_lists(["eval/baseline/a.txt", "eval/baseline/c.txt"], lists), ["eval/baseline/c.txt"]
+        )
+        self.assertEqual(merge_catchup.outside_lists([], lists), [])
+
+    def test_conflicts_outside_is_the_shared_pre_merge_check(self) -> None:
+        # Decision 0224: make renumber and the janitor ask this before merging; catch-up agrees.
+        repo = merge_ready.Repo(self.clone)
+        before = self.branch({"code.txt": "pr\n", BASELINE: "F\tprobes/pr\tP1\n"})
+        self.move_main({"code.txt": "main\n", BASELINE: "F\tprobes/main\tM1\n"})
+        repo.fetch_base()
+        main = f"refs/merge-ready/{merge_ready.BASE_BRANCH}"
+        self.assertEqual(merge_catchup.conflicts_outside(repo, before, main), ["code.txt"])
+        lists_only = self.branch({BASELINE: "F\tprobes/pr\tP1\n"})
+        self.assertEqual(merge_catchup.conflicts_outside(repo, lists_only, main), [])
 
 
 if __name__ == "__main__":

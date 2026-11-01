@@ -165,8 +165,8 @@ file and its acceptance criteria.
      `origin/main` onto the marked head that is clean, a catch-up or a renumber, and nothing else
      (no other conflict resolution, no other commit) may you carry the old verdicts over with
      `CARRY=1`; the script checks that mechanically. Marking again removes `merge-train-ejected`
-     (decision 0177). If you leave an ejected branch idle, the janitor (`make janitor`, run after
-     every merger pass) does the catch-up or renumber after 1 h and comments the PR orphaned
+     (decision 0177). If you leave an ejected branch idle, the janitor (`make janitor`, run once per
+     merger routine run) does the catch-up or renumber after 1 h and comments the PR orphaned
      after 4 h when it cannot (the `steward` skill's "Merge train").
    - **Revert PRs** the merger opens (`revert: merge train mismatch at #k`) are handled by
      whoever takes their P0 task: full review panel, then merge under the lock (`lock`, `shadow`)
