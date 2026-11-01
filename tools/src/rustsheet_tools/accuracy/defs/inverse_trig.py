@@ -22,7 +22,6 @@ Sources:
 from __future__ import annotations
 
 import random
-import sys
 from collections.abc import Callable, Sequence
 
 import mpmath
@@ -31,13 +30,13 @@ from rustsheet_tools.accuracy.defs.annuity import scalars
 from rustsheet_tools.accuracy.literal import MAX_LITERAL, Arg
 from rustsheet_tools.accuracy.model import Definition, Interval, MathArg, Param, register
 from rustsheet_tools.accuracy.sampler import log_uniform
+from rustsheet_tools.accuracy.tables import DOUBLE_MAX
 
 DOMAIN_SOURCE = "numbers.md#out-of-domain-acosasinacoshatanh-are-num-at-once-even-nested-t-1202"
 ACOS_SOURCE = "numbers.md#acos-is-pi2---asinx"
 ACOT_SOURCE = "gen-m5 ACOT(-0.1) Calc!A278 (excel-graph)"
 ATAN2_SOURCE = "numbers.md#atan2-is-atanyx-plus-or-minus-π"
 RADIANS_SOURCE = "numbers.md#radians-sqrtpi-and-munit"
-DOUBLE_MAX = mpmath.mpf(sys.float_info.max)
 
 
 def _one(args: Sequence[MathArg]) -> mpmath.mpf:
@@ -55,6 +54,13 @@ def _atan2_domain(args: Sequence[MathArg]) -> str | None:
 def _atan2(args: Sequence[MathArg]) -> mpmath.mpf:
     x, y = scalars(args)
     return mpmath.atan2(y, x)
+
+
+def _acot(x: mpmath.mpf) -> mpmath.mpf:
+    """Arccotangent on (0, π) without cancellation: π/2 - atan(x) loses every digit once x is beyond about 1e80."""
+    if x == 0:
+        return mpmath.pi / 2
+    return mpmath.acot(x) if x > 0 else mpmath.pi + mpmath.acot(x)
 
 
 def _signed(rng: random.Random, lo: float, hi: float) -> float:
@@ -129,7 +135,7 @@ _UNIT = Interval(-1, 1, lo_open=False, hi_open=False)
 ASIN = _one_arg("ASIN", mpmath.asin, _UNIT, _unit_draw, (DOMAIN_SOURCE,))
 ACOS = _one_arg("ACOS", mpmath.acos, _UNIT, _unit_draw, (DOMAIN_SOURCE, ACOS_SOURCE))
 ATAN = _one_arg("ATAN", mpmath.atan, Interval(), _real_draw, ("catalog",))
-ACOT = _one_arg("ACOT", lambda x: mpmath.pi / 2 - mpmath.atan(x), Interval(), _real_draw, (ACOT_SOURCE,))
+ACOT = _one_arg("ACOT", _acot, Interval(), _real_draw, (ACOT_SOURCE,))
 DEGREES = _one_arg(
     "DEGREES", lambda x: x * 180 / mpmath.pi, Interval(), _real_draw, (RADIANS_SOURCE,), name="angle"
 )

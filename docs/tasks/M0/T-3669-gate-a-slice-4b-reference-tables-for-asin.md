@@ -59,6 +59,10 @@ Done (2026-11-01).
   - All 840 points are inside the envelope: 0 failing, 0 table defects, no known failures added.
   - `missing tables` drops by 7 (277 to 270).
   - Every domain-error point is an Excel error, and every number point is an Excel number.
-  - Excel is more than G = 1e-4 off the math at one point: `RADIANS(2.22507385850721E-308)` (A83). Excel shows 0 for
-    a subnormal true value of 3.9E-310; the point is inside Gate A's absolute floor. Graph reports a kept subnormal as
-    0 too and the table has no `(x)=0` companion, so whether Excel's 0 is a true 0 is not told here.
+  - Excel is more than G = 1e-4 off the math at five points, all subnormal true values that Excel shows as 0, inside
+    Gate A's absolute floor: `RADIANS(2.22507385850721E-308)` (A83, true 3.9E-310) and `ACOT(9.99999999999999E+307)`
+    (ACOT A70, A73, A74, A78, true 1.0E-308). Graph reports a kept subnormal as 0 too and the tables have no `(x)=0`
+    companion, so whether Excel's 0 is a true 0 is not told here. Elsewhere the worst point is 2.5E-16 relative.
+  - ACOT's math is acot(x) on (0, π), not π/2 - atan(x): that form cancels to 0 beyond about 1e80 even at 80 digits,
+    and the excel-fidelity review caught 15 such zeros in the first draft of the table. The regenerated case is
+    byte-identical, so the oracle fill stands.
