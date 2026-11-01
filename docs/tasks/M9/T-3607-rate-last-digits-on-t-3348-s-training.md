@@ -54,8 +54,8 @@ that T-3579's evidence pins down for RATE's noise floor, not from a rule for the
 ## Acceptance criteria
 - [ ] Each owned cell is bit-exact against Excel. Or the Outcome names it with the residual and step forms tried, and
       it stays a known failure.
-- [ ] These 5 known-failure lines disappear from eval/baseline with no new ones (`make eval-baseline` refuses
-      regressions). RATE's fit set stays bit-exact (960 cells, as T-3348 counts it), and so does every other RATE
+- [ ] These 5 cells score as passing in `make eval` for probes-numeric (the suite is `gate = false`, so they have
+      no eval/baseline line), and `make eval-baseline` records no regression elsewhere. RATE's fit set stays bit-exact (960 cells, as T-3348 counts it), and so does every other RATE
       oracle cell that passes today.
 - [ ] Any constant or residual form fitted or refitted here follows decision 0188 R4 (reviewer-excel-fidelity check
       7), shown in the Outcome:
