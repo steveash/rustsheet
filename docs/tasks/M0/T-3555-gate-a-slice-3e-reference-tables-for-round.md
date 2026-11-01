@@ -3,7 +3,7 @@ id: T-3555
 title: "Gate A slice 3e: reference tables for ROUND, ROUNDUP and ROUNDDOWN, with the math read at the written decimal"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
