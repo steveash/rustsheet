@@ -476,28 +476,13 @@ impl Parser {
                     tokens.push(TextToken::Literal('%'));
                     percent += 1;
                 }
-                // `.0`, `.00`, `.000` after any clock token (s, m, h, elapsed or not) are the fraction of the second
-                // (number-formats.md "Elapsed-time tokens", "Fractional seconds in clock
-                // formats"); more zeros are unprobed and stay an error.
+                // `.0`, `.00`, `.000` after a clock token are the second fraction (number-formats.md
+                // "`.0` after an hour or minute token"); more zeros are unprobed and stay an error.
                 Token::Period
                     if next_token == Token::Zero
-                        && matches!(
-                            tokens.last(),
-                            Some(
-                                TextToken::Second
-                                    | TextToken::SecondPadded
-                                    | TextToken::ElapsedSecond
-                                    | TextToken::ElapsedSecondPadded
-                                    | TextToken::Hour
-                                    | TextToken::HourPadded
-                                    | TextToken::Minute
-                                    | TextToken::MinutePadded
-                                    | TextToken::ElapsedHour
-                                    | TextToken::ElapsedHourPadded
-                                    | TextToken::ElapsedMinute
-                                    | TextToken::ElapsedMinutePadded
-                            )
-                        ) =>
+                        && tokens
+                            .last()
+                            .is_some_and(super::elapsed::takes_second_fraction) =>
                 {
                     let mut digits = 0;
                     while next_token == Token::Zero {
@@ -695,9 +680,8 @@ impl Parser {
                     let minute = (is_time && !minute_read)
                         || self.minute_before_seconds(&next_token)
                         || fraction_follows;
-                    is_time |= fraction_follows;
                     minute_read |= minute;
-                    is_date |= !minute;
+                    is_date |= !minute || fraction_follows;
                     tokens.push(match (minute, padded) {
                         (true, false) => TextToken::Minute,
                         (true, true) => TextToken::MinutePadded,

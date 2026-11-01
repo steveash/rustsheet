@@ -4,6 +4,26 @@ use super::date_clock::SECONDS_PER_DAY_F64;
 use super::parser::TextToken;
 use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 
+/// Whether `.0` right after this token is the fraction of the second: any clock token, elapsed or
+/// not (probes/t3575-elapsed-fraction; number-formats.md "`.0` after an hour or minute token").
+pub(super) fn takes_second_fraction(token: &TextToken) -> bool {
+    matches!(
+        token,
+        TextToken::Second
+            | TextToken::SecondPadded
+            | TextToken::ElapsedSecond
+            | TextToken::ElapsedSecondPadded
+            | TextToken::Hour
+            | TextToken::HourPadded
+            | TextToken::Minute
+            | TextToken::MinutePadded
+            | TextToken::ElapsedHour
+            | TextToken::ElapsedHourPadded
+            | TextToken::ElapsedMinute
+            | TextToken::ElapsedMinutePadded
+    )
+}
+
 /// The unit of an elapsed `[h]`/`[m]`/`[s]` token (or of a clock `h`/`m`/`s`), smallest first so
 /// the derived order ranks them.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
