@@ -1,0 +1,118 @@
+{
+ "format": "rustsheet-math/v1",
+ "source": {
+  "generator": "rustsheet-accuracy",
+  "version": "1",
+  "dps": 80,
+  "input_sha256": "181999e2f3fb9d66e7382e9372c46e0fe7985b8059293d06a5ca6a8234b72381"
+ },
+ "sheets": {
+  "Sheet1": {
+   "B1": {
+    "t": "n",
+    "v": "355.2912515016429806851354618309084903970654811806",
+    "f": "=ASINH(A1)"
+   },
+   "B10": {
+    "t": "e",
+    "why": "x*x overflows a double",
+    "f": "=ASINH(A10)"
+   },
+   "B11": {
+    "t": "e",
+    "why": "x*x overflows a double",
+    "f": "=ASINH(A11)"
+   },
+   "B12": {
+    "t": "e",
+    "why": "x*x overflows a double",
+    "f": "=ASINH(A12)"
+   },
+   "B13": {
+    "t": "e",
+    "why": "x*x overflows a double",
+    "f": "=ASINH(A13)"
+   },
+   "B14": {
+    "t": "e",
+    "why": "x*x overflows a double",
+    "f": "=ASINH(A14)"
+   },
+   "B15": {
+    "t": "n",
+    "v": "355.2912515016429806851354618309084903970654811806",
+    "f": "=ACOSH(A15)"
+   },
+   "B16": {
+    "t": "n",
+    "v": "355.55361576611047165701741972931390313641204640152",
+    "f": "=ACOSH(A16)"
+   },
+   "B17": {
+    "t": "e",
+    "why": "x*x overflows a double",
+    "f": "=ACOSH(A17)"
+   },
+   "B18": {
+    "t": "e",
+    "why": "x*x overflows a double",
+    "f": "=ACOSH(A18)"
+   },
+   "B19": {
+    "t": "e",
+    "why": "x*x overflows a double",
+    "f": "=ACOSH(A19)"
+   },
+   "B2": {
+    "t": "n",
+    "v": "355.55361576611047165701741972931390313641204640152",
+    "f": "=ASINH(A2)"
+   },
+   "B20": {
+    "t": "e",
+    "why": "x*x overflows a double",
+    "f": "=ACOSH(A20)"
+   },
+   "B21": {
+    "t": "e",
+    "why": "x*x overflows a double",
+    "f": "=ACOSH(A21)"
+   },
+   "B3": {
+    "t": "e",
+    "why": "x*x overflows a double",
+    "f": "=ASINH(A3)"
+   },
+   "B4": {
+    "t": "e",
+    "why": "x*x overflows a double",
+    "f": "=ASINH(A4)"
+   },
+   "B5": {
+    "t": "e",
+    "why": "x*x overflows a double",
+    "f": "=ASINH(A5)"
+   },
+   "B6": {
+    "t": "e",
+    "why": "x*x overflows a double",
+    "f": "=ASINH(A6)"
+   },
+   "B7": {
+    "t": "e",
+    "why": "x*x overflows a double",
+    "f": "=ASINH(A7)"
+   },
+   "B8": {
+    "t": "n",
+    "v": "-355.2912515016429806851354618309084903970654811806",
+    "f": "=ASINH(A8)"
+   },
+   "B9": {
+    "t": "n",
+    "v": "-355.55361576611047165701741972931390313641204640152",
+    "f": "=ASINH(A9)"
+   }
+  }
+ }
+}
