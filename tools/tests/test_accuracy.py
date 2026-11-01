@@ -341,6 +341,7 @@ def test_cli_lists_and_generates(tmp_path: Path, capsys: pytest.CaptureFixture[s
         "F.DIST",
         "F.INV",
         "NEGBINOM.DIST",
+        "NPER",
         "POISSON.DIST",
         "RATE",
         "T.DIST",

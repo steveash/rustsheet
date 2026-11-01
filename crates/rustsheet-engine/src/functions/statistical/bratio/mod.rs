@@ -258,7 +258,7 @@ pub(super) fn t_kernel_tails(a: f64, y: f64, z: f64) -> Option<(f64, f64)> {
 }
 
 /// [`ported_tails`], with bratio's bgrat branches at a0 = 1/2 when `half_bgrat`.
-// TODO(T-3567): drop `half_bgrat` once Excel's F at a df of 1 and bgrat for every b are found.
+// TODO(T-3580): drop `half_bgrat` once F takes its own arguments and bgrat at b = 1/2 (T-3567).
 fn ported_tails_with(a: f64, b: f64, x: f64, y: f64, half_bgrat: bool) -> Option<(f64, f64)> {
     if a == 1.0 || b == 1.0 {
         return None;
@@ -274,7 +274,7 @@ fn ported_tails_with(a: f64, b: f64, x: f64, y: f64, half_bgrat: bool) -> Option
             let w1 = bpser(d.b0, d.a0, d.y0)?;
             (other(w1), w1)
         }
-        // bgrat's b is a0: only b = 1/2 is ported (T-2509; T-2510 and T-3567 own the rest).
+        // bgrat's b is a0: only b = 1/2 is ported (T-2509; T-3582 owns the rest).
         Branch::Bgrat if half_bgrat && d.a0 == 0.5 => {
             let w1 = bgrat_half(d.b0, d.y0, d.x0, 0.0)?;
             (other(w1), w1)

@@ -1,0 +1,7 @@
+s          all 444/642/659 (engine 393/629)  bgrat 32/33/38 (eng 7/21), bup+bgrat 23/54/60 (eng 9/49), w1_bpser 28/39/40 (eng 22/38), w_bpser 206/285/285 (eng 188/285), w_bpser/sw 155/231/236 (eng 167/236)
+r side2    all 460/646/659 (engine 393/629)  bgrat 37/38/38 (eng 7/21), bup+bgrat 28/60/60 (eng 9/49), w1_bpser 33/40/40 (eng 22/38), w_bpser 210/285/285 (eng 188/285), w_bpser/sw 152/223/236 (eng 167/236)
+r side1    all 426/635/659 (engine 393/629)  bgrat 25/29/38 (eng 7/21), bup+bgrat 14/49/60 (eng 9/49), w1_bpser 24/38/40 (eng 22/38), w_bpser 202/283/285 (eng 188/285), w_bpser/sw 161/236/236 (eng 167/236)
+r sides    all 417/622/659 (engine 393/629)  bgrat 25/29/38 (eng 7/21), bup+bgrat 14/49/60 (eng 9/49), w1_bpser 24/38/40 (eng 22/38), w_bpser 202/283/285 (eng 188/285), w_bpser/sw 152/223/236 (eng 167/236)
+---
+r>=1       all 469/659/659 (engine 393/629)  bgrat 37/38/38 (eng 7/21), bup+bgrat 28/60/60 (eng 9/49), w1_bpser 33/40/40 (eng 22/38), w_bpser 210/285/285 (eng 188/285), w_bpser/sw 161/236/236 (eng 167/236)
+r>=1 (<)   all 469/659/659 (engine 393/629)  bgrat 37/38/38 (eng 7/21), bup+bgrat 28/60/60 (eng 9/49), w1_bpser 33/40/40 (eng 22/38), w_bpser 210/285/285 (eng 188/285), w_bpser/sw 161/236/236 (eng 167/236)

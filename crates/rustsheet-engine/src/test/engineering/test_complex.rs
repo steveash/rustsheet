@@ -309,6 +309,35 @@ fn im_overflow_edges() {
     assert_eq!(model._get_text("B6"), *"0");
 }
 
+// IMSINH and IMCOSH take the log form below x = -708 (not -709) and past x = 709, with Excel's EXP:
+// probes-numeric/t3546-imsinh-neg-cut-fine A1, A2, B1, B2, C2, D2 and
+// t3525-im-hyperbolic-log-band-sweep A48 (excel-graph, T-3546).
+#[test]
+fn im_hyperbolic_log_form_cuts_and_exp() {
+    let cases = [
+        (
+            r#"=IMSINH("-708-0.5i")"#,
+            "-1.32663416266498E+307-7.24743546175708E+306i",
+        ),
+        (r#"=IMSINH("-708.000000000001-0.5i")"#, "#NUM!"),
+        (
+            r#"=IMCOSH("-708+2i")"#,
+            "-6.29085665580216E+306-1.37457725669918E+307i",
+        ),
+        (r#"=IMCOSH("-708.000000000001+2i")"#, "#NUM!"),
+        (r#"=IMSINH("-708.000000000001-1E-200i")"#, "#NUM!"),
+        (
+            r#"=IMSINH("-708.000000000001+1i")"#,
+            "-8.16770442188487E+306+1.27204459593408E+307i",
+        ),
+        (
+            r#"=IMSINH("-709.183834084079+1.0222540398548i")"#,
+            "-2.5751552985321E+307+4.21395787753335E+307i",
+        ),
+    ];
+    assert_texts(&cases);
+}
+
 // Excel: probes-numeric/im-last-digit-sweep E55:I55, K42:L42 and gen-m9/b5aef3645cec1b95 A154,
 // probes/eng-im-overflow-edges A82 (T-2335): where the reciprocal's denominator overflows, a normal
 // tiny part is kept and a subnormal one prints as 0.

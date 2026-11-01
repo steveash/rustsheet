@@ -615,7 +615,8 @@ impl Model {
         )
     }
 
-    /// The cached values of `range` ([`Model::range_values`]) for the SUMIFS-shaped walks' value range.
+    /// The cached values of `range` ([`Model::range_values`]) for the SUMIFS-shaped walks' value
+    /// range.
     pub(super) fn ifs_values(&mut self, range: &Range) -> Option<RangeView> {
         self.range_values(rect_of(range))
     }

@@ -2314,9 +2314,10 @@ bratio's dispatch picks and returns the other as `(0.5 - w) + 0.5`, x87 stored.
   pair shows the computed tail (1,208), bratio predicts it every time and a mean switch misses 8 (e.g. F(1,1,100)).
   NEGBINOM.DIST(f,r,p,TRUE) and BINOM.DIST(r-1,f+r,p,TRUE) are exact complements on 441 of 460 pairs (the rest are
   BINOM's k = 0 shortcut and closed-form edges), and bratio predicts the computed tail on 348 of 348.
-- Caller arguments. BETA.DIST: x and y = fl(1 - x) (after the [A, B] rescale). F (d truncated): x = 1/(1 + d2/(d1·X)),
-  y = 1/(1 + (d1·X)/d2), 197 of 197 b0 = 1 closed cells against 180 for d1X/(d1X + d2) (1/(1 + (d2/d1)/X) is not
-  separated). BINOM.DIST(k,n,p,TRUE) is the upper tail of I_p(k+1, n-k) and NEGBINOM.DIST(f,r,p,TRUE) is I_p(r, f+1),
+- Caller arguments. BETA.DIST: x and y = fl(1 - x) (after the [A, B] rescale). F (d truncated): the smaller of x and y
+  is 1/(1 + r) and the larger r/(1 + r), with r = n/(mX) or mX/n, whichever is >= 1 ("F's incomplete-beta arguments
+  keep r >= 1" below; T-3567). The 197 of 197 b0 = 1 closed cells read only the smaller one, so they did not separate
+  this from 1/(1 + .) for both (against 180 for d1X/(d1X + d2)). BINOM.DIST(k,n,p,TRUE) is the upper tail of I_p(k+1, n-k) and NEGBINOM.DIST(f,r,p,TRUE) is I_p(r, f+1),
   with x = p, y = fl(1 - p); a running sum of Excel's own pmfs matches only 501 of 1,371. T: "Student t tails are one
   kernel call" below.
 - Positive control: the port in R configuration equals R's compiled `bratio` on 36,431 of 36,433 points.
@@ -2918,13 +2919,36 @@ m9-t-dist-*; docs/research/t2464/r2-tdist (`hx.py`, `hx_ctl.py`, `xlk.py`, `tsco
 - Other callers at a0 = 1/2 (T-2510, `main` 5638599): BETA.DIST through the same bgrat and bup+bgrat goes from 30
   visibly-off cells to 0 on probes-numeric (+289 BETA.DIST cells bit-exact; e.g. `BETA.DIST(0.9,5,0.5,TRUE)` Excel
   0.31664291502001235, `BETADIST(1E-10,0.5,10000000000.5)` 0.8427007929652814), with no cell newly visibly off. F with a
-  df of 1 does not fit it: `FDIST(x,1,9)` at Excel 0.190947117169724 comes out 0.19094711716972382 (7 ulp), and
-  F.DIST/F.DIST.RT on probes-numeric go from 10/11 visibly-off cells to 15/15. So Excel's F at a df of 1 is not this
-  bgrat on the same (x, y); F (and F.TEST's large-shape tail) keeps today's kernel there. UNVERIFIED why.
+  df of 1 did not fit it on F's (x, y) of the time: `FDIST(x,1,9)` at Excel 0.190947117169724 came out
+  0.19094711716972382 (7 ulp), and F.DIST/F.DIST.RT on probes-numeric went from 10/11 visibly-off cells to 15/15.
+  The cause was the argument form, not this bgrat (T-3567): on Excel's own F arguments ("F's incomplete-beta
+  arguments keep r >= 1") the same bgrat is 991 of 1,000 bit-exact on F's d1 = 1 bgrat cells. `FDIST(2,1,9)` itself
+  is a bup+bgrat cell, still 1 ulp off in the research kernel (bup's arithmetic, open). F (and F.TEST's
+  large-shape tail) keeps today's kernel until T-3580 ports it.
 Ours: K(n/2, 1/2, y, z) from df 3 (`student_t::kernel_tail`); df 1 and 2 keep `student_t.rs`'s own composite (a
 double-double series, a Cephes deep tail, incbcf/incbd from z, and df 2's closed forms).
 Status: VERIFIED (excel-graph) for the call form and bgrat at b = 1/2; the bup arithmetic and the T density UNVERIFIED
 Tasks: T-2509, T-2513, T-0969
+
+## F's incomplete-beta arguments keep r >= 1 (T-3567)
+Rule: F.DIST(x,m,n,TRUE), F.DIST.RT and FDIST (m, n truncated) form mx = fl(m·x) and r = fl(n/mx) when mx <= n, else
+r = fl(mx/n), so r >= 1. The smaller incomplete-beta argument is fl(1/fl(1 + r)) and the larger fl(r/fl(1 + r)):
+(x, y) = (1/(1 + r), r/(1 + r)) when mx <= n, else (r/(1 + r), 1/(1 + r)). bratio then runs on (m/2, n/2, x, y);
+F.DIST(., TRUE) is its w and F.DIST.RT its w1. At a df of 1 (b = 1/2) that includes bgrat at b = 1/2 exactly as in
+"Student t tails are one kernel call".
+- Hold-out probe t3567-r5-fdf1-hold (3,578 cells, model frozen before the fill): 2,787/3,419/3,463 (bit-exact / within
+  4 ulp / within 15 digits) against 2,486/3,143/3,208 for x = fl(mx/fl(n + mx)) on the same kernel and 1,857/2,843/
+  3,025 for the engine today. Its d1 = 1 bgrat region (d2 31-400): 991/1,000/1,000 against 758/820/820 and
+  298/572/659.
+- On cells.tsv's 3,435 F cdf/tail cells: r >= 1 2,300/3,295, n + mx 2,178/3,237, the density's own sides (r <= 1)
+  1,994/3,113, 1/(1 + .) for both 2,194/3,193. The b0 = 1 and a0 = 1 closed forms read only the smaller argument and
+  cannot separate r >= 1 from 1/(1 + .); bgrat (ln of the larger) can: 71 against 46 of 94 bit-exact.
+- The F density takes the opposite sides (r = fl(mx/n) when mx <= n, "F density is not the beta density" below).
+Evidence: probes-numeric t3567-r5-fdf1-hold; cells.tsv's F cells (t2220-f-dist-sweep-*, gen-m9, m9-f-dist*);
+docs/research/t2464/r5-bgrat-fdf1 (`c3.py`, `c4.py`, `c5.py`, `score_hold.py`).
+Ours: `fisher.rs` `f_beta_arguments` forms both arguments as 1/(1 + .), and F does not take bgrat at b = 1/2 (T-3580).
+Status: VERIFIED (excel-graph)
+Tasks: T-3567, T-3580
 
 ## F density is not the beta density, R's df or a GAMMALN formula (T-2513)
 Rule (PARTIAL): F.DIST(x,d1,d2,FALSE) is its own formula. With m = d1, n = d2, a = m/2, b = n/2, h = a + b and
@@ -3035,13 +3059,18 @@ Rule: the entries above assembled in one TOMS 708 port (Excel's EXP, LN, GAMMALN
   - CR scores 208/1,598/2,091. The best tried, RN(F·Q(b, z_s)/Q(b, z_e)), scores 246/1,881/2,357.
   - Excel's D is a median 4 units of 2^-53 below the true value. It is not TOMS in any precision tried, so D to the
     bit is open (T-3383).
+  - Along runs of 1,024 consecutive doubles at (30.7, 0.7) and (40, 0.03), D's error against the exact I at its
+    stored ln x is white noise of sd 5.7 and 8.5 units of 2^-53 (lag autocorrelation within ±0.07). Of the stored
+    intermediates only z = fl(-ν·ln x) shows (coefficient ≈ -z); the rest of the noise is unexplained. No better
+    model came from: the prefactor exp(-(algdiv + b ln ν)) rounded in any way (206-210 bit-exact), ln x by log1p
+    (158, 189) or grat1's CF in doubles (200 at best, and more noise, not Excel's) (T-3567,
+    docs/research/t2464/r5-bgrat-fdf1).
 - **The b = 1/2 identity cannot be tested at generic b through the worksheet (T-2512).** No worksheet function
   returns Q(b, z) there. CHISQ.DIST.RT truncates its df to an integer (2b < 1 is `#NUM!`). 1 - GAMMA.DIST loses the
   digits, because Q < 0.01 on 5,196 of the 5,228 BETA.DIST cells that reach bgrat (probe t2512-r3-bgrat-qgamma).
   The same probe's GAMMA.DIST(z, b, 1, TRUE) column (fractional b < 1, P near 1) is one the engine misses on 1,268 of
   4,980 cells, mostly by 1-2 ulp and on 117 at the 15th digit (T-3383 records it for the incomplete-gamma work).
-- Open: D to the bit, n > 1 bup terms and F/BINOM/NEGBINOM callers of L140 bup+bgrat (T-3383); F's bgrat at a df
-  of 1 (b = 1/2); algdiv for b0 >= 8 (about 1 unit off TOMS, in bpser and the density; in the density it looks like rounding noise of a few ulps, not
+- Open: D to the bit, n > 1 bup terms and F/BINOM/NEGBINOM callers of L140 bup+bgrat (T-3383); algdiv for b0 >= 8 (about 1 unit off TOMS, in bpser and the density; in the density it looks like rounding noise of a few ulps, not
   a smooth approximation error, T-3383 r4-algdiv); lnΓ(a0 < 1) in L
   and the 55-84% ceiling of b < 1 bpser shapes; bfrac's fraction (sd 3.8 units) and bup's arithmetic in bup+bgrat;
   a0 < 1e-15 at 0.04 <= y < 0.25 (Excel 1e-14 to 3.8e-13 relative off the truth, in bgrat's incomplete-gamma ratio);
