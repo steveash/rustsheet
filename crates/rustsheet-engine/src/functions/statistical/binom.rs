@@ -412,7 +412,7 @@ impl Model {
 /// BINOM.DIST(0,n,p) cells of the T-2464 research set; at k = n it is EXP(fl(n·LN(p))), 172 of
 /// 172. Off those a subnormal pmf is 0, as in Excel (`(x)=0` TRUE: probes-numeric/
 /// t2513-r3-binom-pmf-n E1729:E1792; numbers.md "Distribution densities"). Past the walk's budget
-/// it is Excel's own interior kernel, Loader's dbinom_raw (T-3352: statrs' log-gamma difference
+/// it is Excel's own interior kernel, Loader's `dbinom_raw` (T-3352: statrs' log-gamma difference
 /// was 1E-11 off at n = 1E4 and 1E-6 at 1E9).
 fn excel_binom_pmf(n: u64, p: f64, k: u64) -> Option<f64> {
     if k == 0 {
@@ -428,7 +428,7 @@ fn excel_binom_pmf(n: u64, p: f64, k: u64) -> Option<f64> {
 
 /// Excel's binomial cdf `P(X <= k)` for `0 < p < 1`, as BINOM.DIST computes it, or
 /// `None` where only statrs is left. At k = 0 it is BINOM.DIST's closed form (below). Excel's cdf is the upper tail of the incomplete beta
-/// I_p(k+1, n-k) at x = p, y = fl(1 - p), which at k = n - 1 takes Excel's closed form (T-2464
+/// `I_p(k+1, n-k)` at x = p, y = fl(1 - p), which at k = n - 1 takes Excel's closed form (T-2464
 /// w5-triangulation, T-2502), then the bratio port's branches (T-2847), basym among them
 /// (T-3352). k = 0 is BINOM.DIST's own shortcut, not the kernel's (T-2645). Off k = 0 a
 /// subnormal cdf is 0, as in Excel (`(x)=0` TRUE: probes/t2706-subnormal-density-paths B5:B7).
