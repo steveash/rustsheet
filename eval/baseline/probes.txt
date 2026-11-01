@@ -1133,6 +1133,7 @@ C	probes/sortby-lifted-element-corners.case.json	180
 C	probes/sqrtpi-range-operands.case.json	10
 C	probes/stat-a-computed-arrays.case.json	18
 C	probes/stat-argument-modes.case.json	573
+C	probes/stat-error-orders-t2000.case.json	11
 C	probes/stat-later-argument-lift.case.json	141
 C	probes/stat-order-floor-batch.case.json	301
 C	probes/stat-overflow-arguments-b.case.json	10

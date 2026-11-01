@@ -1517,8 +1517,12 @@ text included: `RANK(4,A1:A8,"1")` is `#VALUE!`. `order` is read before the data
 `RANK(4,D1:D3,"x")` and `RANK(1,D1:D3,"x")` are `#VALUE!` and `RANK(4,D1:D3,1/0)` is `#DIV/0!`. So an element reads
 `number`, then `order`, then the data's error, then ranks (`#N/A` when absent). Before T-1999 a direct boolean was `#VALUE!`,
 `"1"` was an ascending order and the data's error came before `order`'s. Not probed: an `order` from a cell holding text, and `number`'s error against `order`'s (T-2019).
-Not yet probed (T-2000): T.TEST's `type` against the samples' error, FORECAST's `x` against the data's
-own validation, and an error data argument of PERCENTRANK, QUARTILE, PROB and FREQUENCY.
+Probed in T-2000 (probes/stat-error-orders-t2000, excel-graph; D1:D3 = 1, `#N/A`, 3): T.TEST's `type` is read before the
+samples' error: `T.TEST(D1:D3,A1:A3,1,4)` is `#NUM!` and `T.TEST(D1:D3,A1:A3,1,"a")` is `#VALUE!`. FORECAST's `x` is read before the data's
+own validation: `FORECAST("a",A1:A2,B1:B3)` (unequal sizes, `#N/A` for a numeric `x`), `FORECAST("a",A1:A1,B1:B1)` (one
+point) and `FORECAST("a",{1;1},{2;2})` (all x equal, `#DIV/0!` for a numeric `x`) are all `#VALUE!`. An error value as the data argument is that error: `PERCENTRANK(NA(),1)`, `QUARTILE(NA(),1)`,
+`PERCENTILE.INC(NA(),0.5)`, `PROB(NA(),F1:F4,1)` and `FREQUENCY(NA(),{1;2})` are all `#N/A`. All ten already matched
+the engine; no code change.
 Status: VERIFIED (excel-graph)
 Tasks: T-1813, T-1982, T-1999, T-2000
 

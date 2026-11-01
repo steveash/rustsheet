@@ -1,0 +1,50 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Error orders of T.TEST type, FORECAST x and error data arguments of PERCENTRANK, QUARTILE, PERCENTILE.INC, PROB and FREQUENCY (T-2000).",
+  "tags": [
+    "M9",
+    "statistics",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "D1": 1,
+        "D2": "=NA()",
+        "D3": 3,
+        "A1": 1,
+        "B1": 2,
+        "A2": 2,
+        "B2": 3,
+        "A3": 4,
+        "B3": 5,
+        "A4": 3,
+        "B4": 4,
+        "A5": 7,
+        "B5": 9,
+        "A6": 5,
+        "B6": 6,
+        "A7": 8,
+        "B7": 10,
+        "A8": 6,
+        "B8": 8,
+        "F1": 0.1,
+        "F2": 0.2,
+        "F3": 0.3,
+        "F4": 0.4,
+        "H1": "=T.TEST(D1:D3,A1:A3,1,4)",
+        "H2": "=T.TEST(D1:D3,A1:A3,1,\"a\")",
+        "H3": "=FORECAST(\"a\",A1:A2,B1:B3)",
+        "H4": "=FORECAST(\"a\",A1:A1,B1:B1)",
+        "H5": "=FORECAST(\"a\",{1;1},{2;2})",
+        "H6": "=PERCENTRANK(NA(),1)",
+        "H7": "=QUARTILE(NA(),1)",
+        "H8": "=PERCENTILE.INC(NA(),0.5)",
+        "H9": "=PROB(NA(),F1:F4,1)",
+        "H10": "=FREQUENCY(NA(),{1;2})"
+      }
+    }
+  ],
+  "expected": {}
+}
