@@ -4,12 +4,13 @@ use super::date_clock::SECONDS_PER_DAY_F64;
 use super::parser::TextToken;
 use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 
-/// The unit of an elapsed `[h]`/`[m]`/`[s]` token.
-#[derive(Clone, Copy)]
+/// The unit of an elapsed `[h]`/`[m]`/`[s]` token (or of a clock `h`/`m`/`s`), smallest first so
+/// the derived order ranks them.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(super) enum ElapsedUnit {
-    Hour,
-    Minute,
     Second,
+    Minute,
+    Hour,
 }
 
 /// A non-negative serial counted in the shown fraction of a second (`.0`, `.00`, `.000`). Excel
@@ -140,12 +141,12 @@ pub(super) fn elapsed_token(token: &TextToken) -> Option<(ElapsedUnit, bool)> {
     }
 }
 
-/// The unit of a clock `h`, `m` (as minutes) or `s` token, ranked hour 3, minute 2, second 1.
-fn clock_unit_rank(token: &TextToken) -> Option<u8> {
+/// The unit of a clock `h`, `m` (as minutes) or `s` token.
+fn clock_unit(token: &TextToken) -> Option<ElapsedUnit> {
     match token {
-        TextToken::Hour | TextToken::HourPadded => Some(3),
-        TextToken::Minute | TextToken::MinutePadded => Some(2),
-        TextToken::Second | TextToken::SecondPadded => Some(1),
+        TextToken::Hour | TextToken::HourPadded => Some(ElapsedUnit::Hour),
+        TextToken::Minute | TextToken::MinutePadded => Some(ElapsedUnit::Minute),
+        TextToken::Second | TextToken::SecondPadded => Some(ElapsedUnit::Second),
         _ => None,
     }
 }
@@ -157,17 +158,12 @@ fn clock_unit_rank(token: &TextToken) -> Option<u8> {
 /// Evidence: probes/t3419-elapsed-after-date-general A5, A23; t3419-elapsed-after-date-b A1-A3,
 /// A7, A8, A15, A23; t3419-elapsed-after-clock-c (excel-graph, 2026-10-31, T-3419).
 pub(super) fn elapsed_after_larger_clock(tokens: &[TextToken]) -> bool {
-    let mut largest_clock = 0;
+    let mut largest_clock = None;
     for token in tokens {
-        if let Some(rank) = clock_unit_rank(token) {
-            largest_clock = largest_clock.max(rank);
+        if let Some(unit) = clock_unit(token) {
+            largest_clock = largest_clock.max(Some(unit));
         } else if let Some((unit, _)) = elapsed_token(token) {
-            let rank = match unit {
-                ElapsedUnit::Hour => 3,
-                ElapsedUnit::Minute => 2,
-                ElapsedUnit::Second => 1,
-            };
-            if largest_clock >= rank {
+            if largest_clock >= Some(unit) {
                 return true;
             }
         }
