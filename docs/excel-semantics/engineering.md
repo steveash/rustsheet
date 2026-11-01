@@ -927,7 +927,11 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   |y| log-uniform in [1e-7, 0.0105], excel-graph): the form's values match all 300 (hold-out train 200/200, test
   100/100), the EXP pair 227 (150/77), the correctly rounded value 79; and on a second one below it
   (probes-numeric/t3545-imsin-imcos-tiny-imag-sweep, 300 cells, |y| log-uniform in [1e-300, 1e-7]) all 300 by text,
-  the EXP pair 297. `IMSIN("1E-200+1E-200i")` is still "1E-200"
+  the EXP pair 297. Only 3 of its cells separate the two forms (|y| above about 5e-17, where they can differ: A79, B79,
+  A118), so 5e-17 < |y| < 1e-7 rests on those 3. They show the reciprocal form's cancellation exactly:
+  `IMSIN("0+5.67641786435809E-15i")` (A118) is 5.77315972805081E-15i, where the math is 5.6764178643581E-15 (relative
+  error 1.7e-2; A79 4.6e-4). That is above decision 0188 R3's threshold, but R3 lists no case for it and there is
+  no owner ruling, so Excel's value is matched (directive 1). `IMSIN("1E-200+1E-200i")` is still "1E-200"
   (u = 1) and `IMCOS("150-0.002i")` keeps its digits. Still open: `IMSIN("0.981793650815856-183.167307387565i")`
   (|y| above the band, EXP pair) differs in the 15th digit. Status: VERIFIED (excel-graph). Ours: `trig_sinh_cosh`.
 - **An IM* part with 14 significant digits at exponent -6 is plain text (T-3545).** `IMSIN("0-1.03615953980931E-06i")`

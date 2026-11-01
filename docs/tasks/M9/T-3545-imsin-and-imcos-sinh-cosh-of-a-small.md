@@ -60,8 +60,12 @@ choice among candidates, so it carries no `FITTED` tag (decision 0188 R4) but ha
   Review asked for the rest of the changed domain, so a second sweep followed with the model unchanged:
   probes-numeric/t3545-imsin-imcos-tiny-imag-sweep (300 cells, |y| log-uniform in [1e-300, 1e-7], seed 35451,
   `gen_sweep.py --tiny`): engine 300/300 by text, main 297. Fit lab `im-small-imag` over both sweeps (600 cells):
-  engine train 395/395, test 205/205 (accept); main 343/181; correctly rounded 100/54. So the form is evidenced for
-  |y| from 1e-300 to 0.0105, and inside the band by T-2796 and T-3525.
+  engine train 395/395, test 205/205 (accept); main 343/181; correctly rounded 100/54. Most tiny-sweep cells cannot
+  separate the forms (below about 5e-17 both give the same digits): only A79, B79 and A118 do, and they match the
+  reciprocal form, so 5e-17 < |y| < 1e-7 rests on those 3 cells. A118, `IMSIN("0+5.67641786435809E-15i")`, is
+  5.77315972805081E-15i in Excel and in the form, against the math's 5.6764178643581E-15 (relative error 1.7e-2; A79
+  4.6e-4). That is above decision 0188 R3's threshold with no R3 case or owner ruling, so it is matched under
+  directive 1 and recorded in engineering.md for the owner.
 - **Gate A envelope (R2)** on both sweeps: 600 of 600 inside, 0 outside (every cell equals Excel's value by digits;
   the fit lab's within-15-digits and within-1e-9 columns are 600/600).
 - By text the harness counts 296/300 on the first sweep (main 224): the other 4 have equal digits and differ only in notation (14-digit
