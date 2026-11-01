@@ -34,12 +34,13 @@ The code lives in `crates/rustsheet-engine/src/functions/statistical/`: `gamma.r
 | PR | Task | What it does |
 |---|---|---|
 | [#2599](https://github.com/steveash/rustsheet/pull/2599) | T-3311 | Deep lower-tail gamma quantiles: Newton steps from Excel's leading-factor root on Excel's staircase cdf. Includes T-3313's move to `closed_form.rs`. Decision 0210. |
-| [#2612](https://github.com/steveash/rustsheet/pull/2612) | T-3285 | Half-integer shapes: accurate double-double Q for x ≥ a+1 (`half_integer.rs`, `fraction.rs`). Decision 0202. |
-| [#2629](https://github.com/steveash/rustsheet/pull/2629) | T-3269 | Stacked on #2612. Far-tail form (Stirling-ratio prefactor × fraction) at half-integer shapes 3/2..11, x > 30 (`excel_tail.rs`). Decision 0203. |
+| [#2612](https://github.com/steveash/rustsheet/pull/2612) | T-3285 | **MERGED** 2026-10-31. Half-integer shapes: accurate double-double Q for x ≥ a+1 (`half_integer.rs`, `fraction.rs`). Decision 0202. |
+| [#2629](https://github.com/steveash/rustsheet/pull/2629) | T-3269 | Was ejected (conflict) when #2612 merged. Main merged in at 71c1f7beb (`make check` green; the ruled `CHIDIST(100,9)` caa1eed A59 baseline line re-recorded with `update-baseline --allow-regressions`, owner-approved). A merge with code conflicts cannot `--carry`, so the four reviewers were re-run on 71c1f7beb; if the PR is not back on the train, check their verdict records and run `make mark-ready PR=2629`. Far-tail form (Stirling-ratio prefactor × fraction) at half-integer shapes 3/2..11, x > 30 (`excel_tail.rs`). Decision 0203. |
 
 **What to do with them:**
 - Watch them, and re-mark any the train ejects.
 - Common causes of ejection:
+  - **Conflict with main** after a sibling merges. Merge origin/main, resolve, `make check`; a merge that only re-records eval baselines can `make mark-ready PR=<n> CARRY=1`, any other conflict needs fresh `make verdict-record`s from all four reviewers.
   - **Task or decision id collisions with main.** Renumber with `make new-task` / `make new-decision` and update every reference.
   - **A stale `quality/duplication.json` after main moves.** Merge origin/main, run `python3 scripts/check_duplication.py --update`, and commit. This is legitimate only when the merged tree measures no more than main's own lock.
 
