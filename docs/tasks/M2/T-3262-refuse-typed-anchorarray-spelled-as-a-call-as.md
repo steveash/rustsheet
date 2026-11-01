@@ -3,7 +3,7 @@ id: T-3262
 title: "Refuse typed ANCHORARRAY spelled as a call, as Excel for the web's Graph entry does"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
