@@ -3,7 +3,7 @@ id: T-3382
 title: "Incomplete beta L140 bup+bgrat at 1 < b < 2: Excel's density in bup's orientation times x y over b0, plus an accurate bgrat increment (T-2512)"
 milestone: M9
 lane: engine
-status: done
+status: in-progress
 priority: P2
 size: M
 tier: opus
@@ -37,10 +37,10 @@ today's kernel is visibly off on almost all of them.
 - [x] L140 bup+bgrat with one bup term, b0 != 1/2, takes the composition above in `bratio::beta_dist_lower_tail`.
       On the 3,072 cells of the three w2f cases at least 3,000 are within 15 digits (`make eval` per-case deltas in
       the Outcome).
-- [x] No probes-numeric or gated cell goes from within 15 digits to visibly off. Any that does is listed with
+- [ ] No probes-numeric or gated cell goes from within 15 digits to visibly off. Any that does is listed with
       Excel / new / exact values, or the branch is narrowed.
 - [x] Unit tests pin a few Excel cells from the cases above, with the case and cell named.
-- [x] `make check` green; reviewers approve.
+- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - n > 1 bup terms (2 <= b < 40) and F, BINOM, NEGBINOM callers: no probe covers them yet (T-3383).
@@ -55,5 +55,9 @@ Legendre's continued fraction (no grat1) and ln Gamma(b) from `ln_gamma_1p_small
 Eval, the 3,070 L140 cdf cells of t2464-w2f-absweep, -xruns-1 and -xruns-2 that change: bit-exact 26 -> 278, within
 15 digits 342 -> 3,037 (absweep 38 -> 1,008 of 1,023, xruns-1 63 -> 1,006 of 1,024, xruns-2 241 -> 1,023 of 1,023).
 Two cells leave 15 digits by under 2 ulp, ours nearer the exact value than Excel's (listed in statistics.md
-"L140 bup+bgrat at 1 < b < 2"). No other probes-numeric or gated cell moved (`make eval-check`). Not a fit: a fixed
+"L140 bup+bgrat at 1 < b < 2"). No gated cell moved (`make eval-check`: 0 regressions, 0 fixed in every gated suite). Not a fit: a fixed
 composition from T-2512's research, no constants chosen by score. Follow-up: n > 1 terms stay T-3383's.
+
+Left to do (session budget ran out, 2026-11-01): compare the rest of probes-numeric (outside the gate) against main.
+Every cell the branch reaches in any other case must be checked, for example by `rustsheet-eval show` on main's binary
+and on this branch's, as was done for the three w2f cases. Then run the review panel. `make check` passed on 8711a50.
