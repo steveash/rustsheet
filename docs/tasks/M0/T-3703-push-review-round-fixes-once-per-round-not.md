@@ -3,7 +3,7 @@ id: T-3703
 title: "Push review-round fixes once per round, not per finding"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -21,10 +21,20 @@ runs were cancelled because a newer push superseded them (about 77 runner-minute
 then be pushed piecemeal.
 
 ## Acceptance criteria
-- [ ] The `review` and `work-loop` skills say to collect all of a round's findings, fix them in
+- [x] The `review` and `work-loop` skills say to collect all of a round's findings, fix them in
       one or more local commits, run `make check`, and push once per round (verdict records still
       name the reviewed head, as decision 0178 requires).
-- [ ] A decision record (protected path `.claude/`); `make check` green; reviewers approve.
+- [x] A decision record (protected path `.claude/`); `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing the review-round limit or the panel (T-3702).
+
+## Outcome
+Decision 0240 adds "Push once per round" to the `review` skill (step 4), and work-loop step 5
+points to it. A worker waits until every reviewer of the round has reported, fixes all of the
+round's findings locally, runs `make check`, and pushes once.
+
+Baseline for later measurement (2026-11-01, 05:53-09:16Z): 20 of 78 PR runs were cancelled
+because a newer push superseded them, and PRs averaged 1.9 runs.
+
+Stacked on T-3702 (#2740), which also edits the review skill.

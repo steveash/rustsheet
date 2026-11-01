@@ -36,6 +36,11 @@ description: Run RustSheet's multi-agent code review on the current branch versu
    - A re-run on the same head posts a new record; the newest per reviewer counts.
 4. Consolidate into a table: reviewer | verdict | blocking findings. A PR is mergeable only when
    every reviewer returned `APPROVE` (MINOR findings may be deferred as follow-up tasks).
+   **Push once per round** (decision 0240): wait until every reviewer of the round has reported,
+   fix all of the round's findings in local commits, run `make check`, then push once and start
+   the next round on that head. Do not push while a reviewer of the round is still running, and
+   do not push fix by fix: each push starts a full CI run and cancels the one in flight, and a
+   reviewer still running is then reviewing a head that no longer counts (step 3).
 5. For each MINOR finding you choose not to fix, create a follow-up task or note why it is moot.
 6. Paste the table into the PR body ("Agent review" section).
 
