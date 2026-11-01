@@ -3,7 +3,7 @@ id: T-3699
 title: "Rebalance the Rust CI tests into three shards"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -28,16 +28,34 @@ take python 5.1 min, eval 4.2, hygiene 2.5, so three shards around 4-4.5 min bri
 below python (T-3700 shortens python).
 
 ## Acceptance criteria
-- [ ] `make test-shard-1`, `make test-shard-2` and `make test-shard-3` run disjoint test sets whose
+- [x] `make test-shard-1`, `make test-shard-2` and `make test-shard-3` run disjoint test sets whose
       union is exactly what `make test` runs (shown by comparing the test lists of the four runs).
-- [ ] The split is chosen from measured per-test times (recorded in the decision record), with the
+- [x] The split is chosen from measured per-test times (recorded in the decision record), with the
       memory-bound whole-grid tests in different shards; a new test still lands in a default shard.
-- [ ] CI's rust matrix has three shards with their own rust-cache keys; `rust (fmt, clippy, test)`
+- [x] CI's rust matrix has three shards with their own rust-cache keys; `rust (fmt, clippy, test)`
       still passes only when every shard passed or a docs-only PR skipped them.
-- [ ] A decision record amends 0122 (protected paths: Makefile, .github/), with before/after
+- [x] A decision record amends 0122 (protected paths: Makefile, .github/), with before/after
       shard times from real PR runs.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - cargo-nextest or any other new test runner (decision 0122 weighed it).
 - The python job (T-3700) and path-scoped job selection (T-3701).
+
+## Outcome
+`make test-shard-1/2/3` (decision 0232, amending 0122). `TEST_SHARD_1` keeps 0122's list and adds
+lookup_and_reference, test_collation, test_formula_work and statistical. `TEST_SHARD_2` holds
+test_fn_pivotby, test_nested_groupby_cells and the keyed/index/lookup/small_and_large
+test_tailed_array tests. Shard 3 is the rest. The lists hold 651 + 44 + 5,359 tests with no
+overlap, and their union equals `make test -- --list` (6,054). The split was chosen from a
+`--report-time` run: `test_tailed_array` is 988 of the 2,184 local test-seconds and had all run in
+shard 2. Local balance is 803 / 748 / 793 test-seconds, counting 160 for clippy in shard 1.
+
+CI on this PR (run 41292018501) against the 10 sampled runs of 2026-11-01:
+- Whole run: 6.6 min, against a 10.2 min p50.
+- Test steps: shard 1 246 s (plus clippy 46 s), shard 2 277 s, shard 3 330 s. Before: shard 2
+  p50 544 s, shard 1 172 s.
+- Slowest job: 6.0 min (shard 3); python is now 5.1 min.
+
+Follow-up T-3709 is for the tailed-array tests themselves.
+

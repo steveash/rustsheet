@@ -36,6 +36,10 @@
   - CI's rust matrix is `shard: [1, 2, 3]`, one rust-cache key per shard. The check names are
     `rust (fmt, clippy, test 1/3)`, `rust (test 2/3)` and `rust (test 3/3)`. The required check
     is still the summary `rust (fmt, clippy, test)` of 0122, so no required-check name changes.
+- **Measured (PR #2730, run 41292018501):**
+  - Test steps: shard 1 246 s (plus clippy 46 s), shard 2 277 s, shard 3 330 s.
+  - Whole run: 6.6 min, against a 10.2 min p50 for heavy PR runs that day.
+  - The python job (5.1 min) is now within a minute of the slowest shard; T-3700 shortens it.
 - **Consequences:**
   - Every gate still runs on every PR, and `make test` and `make check` are unchanged.
   - Each heavy PR uses one more runner, and each shard compiles the tests (about 1-1.5 min in CI).
