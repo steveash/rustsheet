@@ -307,21 +307,30 @@ Status: VERIFIED
 Implemented in: `effective_digits` in crates/rustsheet-engine/src/decimal_round.rs (T-0218).
 Tasks: T-0218, T-0268
 
-## ROUNDUP of a huge value at a huge negative num_digits
-Observation (T-3555): `ROUNDUP(6.4421516092447E+265,-43376)` is 6.4421516092447E+265, the value unchanged. The rule
-above says ROUNDUP keeps the sign of `num_digits` and takes its magnitude modulo 65,536, which leaves -43,376. The unit
-10^43376 then overflows, so the rule predicts `#NUM!`, which is what the engine returns. In the same draw,
-`ROUNDUP(-3.41521682833705E-207,-11541)`, `ROUNDUP(-2.33253918200575E+106,-678)` and `ROUNDUP(7712487.6865209,-400)`
-were `#NUM!`, and `ROUNDUP(4.72880001004526E+149,22178)` was the value. Every earlier huge-`num_digits` probe used a
-small value. The same value at -320 is `#NUM!` (committed: eval/accuracy/tables/ROUNDUP/s1 Calc!A111, `ROUNDUP(6.4421516092447E+265,-320)`).
-One candidate fits every cell above: a 16-bit count of the kept digits, `num_digits` + e + 1. At -320 the count is -54
-(`#NUM!`); at -43,376 it is -43,110, which wraps to +22,426 (the value comes back). But it does not fit
-`ROUNDUP(123.456,-65535)`, which is `#NUM!` (probes/round-huge-digits-wrap) though its count -65,532 wraps to +4, so
-the count alone is not the rule.
-Evidence: excel-graph, 2026-11-01, T-3555's first ROUNDUP Gate A draw. That batch was replaced before commit (its
-point was a math domain error against an Excel number), so T-3627 re-probes the cell.
-Status: UNVERIFIED (one cell; T-3627 probes for the rule)
-Tasks: T-3627
+## ROUNDUP and ROUNDDOWN round at 100 places past a 16-bit num_digits
+Rule: ROUNDUP and ROUNDDOWN narrow `num_digits` to k as above (sign kept, magnitude modulo 65,536). When |k| is
+32,768 or more, which no longer fits a signed 16-bit integer, they round the 15-digit cut at 100 places instead of k:
+at 10^-100 for positive k and at 10^100 for negative k. ROUNDUP still adds its unit 10^-k as a double (see "ROUNDUP adds
+the unit in binary"). For positive k that unit underflows to 0, so ROUNDUP returns the rounded-down value. For negative
+k it overflows, so ROUNDUP is `#NUM!` whenever a digit is dropped. Excel is right, however odd:
+- `ROUNDDOWN(1.23456789012345E-95,65535)` = `ROUNDUP(…,65535)` = 1.23456E-95.
+- `ROUNDUP(1.5E-100,65535)` = 1E-100, and `ROUNDUP(1.5E-120,65535)` = 0.
+- `ROUNDDOWN(1.23456789012345E+105,-32768)` = 1.23456E+105, but `ROUNDUP(…)` = `#NUM!`.
+- `ROUNDDOWN(1.5E+80,-65535)` = 0, as is `ROUNDDOWN(123.456,-65535)` above, and `ROUNDUP(123.456,-65535)` is `#NUM!`.
+- `ROUNDUP(1.5E+120,-65535)` = 1.5E+120, and `ROUNDUP(6.4421516092447E+265,-43376)` = 6.4421516092447E+265 (the T-3555
+  observation): nothing is dropped at 10^100, so no unit is added.
+- k = 40,000 and 98,304 (narrowed to 32,768) act the same. Below 32,768 the plain rule holds: `ROUNDDOWN(1.5E-300,32767)`
+  = 1.5E-300, every k = -32,767 cell is 0 (ROUNDDOWN) or `#NUM!` (ROUNDUP), and so are T-3555's
+  `ROUNDUP(-3.41521682833705E-207,-11541)` and `ROUNDUP(6.4421516092447E+265,-320)` (`#NUM!`), while
+  `ROUNDUP(4.72880001004526E+149,22178)` is the value.
+ROUND's narrowing differs and shows no such step: every probed ROUND cell follows the 32-bit rule above. TRUNC was not
+probed past 32,767.
+Evidence: probes/t3627-roundup-rounddown-digits-by-exponent (x = 1.5E-300 to 1.5E+300 in steps of 10^20; k = ±400,
+±1000, ±32767, ±32768, ±65535) and probes/t3627-roundup-rounddown-huge-digits-place (x = 1.23456789012345E∓90 to
+E∓112; k = ±32768, ±40000, ±65535, 98304), excel-graph, 2026-11-01. The rule fits all 942 formula cells of the two cases.
+Status: VERIFIED (excel-graph)
+Implemented in: not yet in the engine (T-3635).
+Tasks: T-3555, T-3627, T-3635
 
 ## ROUND one ulp above the nearest double (observation)
 Observation (T-3555): `ROUND(4.91499999999999E-06,8)` is 4.9100000000000004E-06 in Excel, 1 ulp above 4.91E-06, the

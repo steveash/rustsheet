@@ -3,7 +3,7 @@ id: T-3627
 title: "Probe ROUNDUP of a huge value at a huge negative num_digits (6.44E+265 at -43376 is the value, not #NUM!)"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -34,10 +34,35 @@ file the engine task if the engine differs.
   (and ROUND as a control) should separate them. Use the `excel-probe` skill.
 
 ## Acceptance criteria
-- [ ] A probe case with oracle values separates the candidates; numbers.md states the rule (VERIFIED) or the narrowed
+- [x] A probe case with oracle values separates the candidates; numbers.md states the rule (VERIFIED) or the narrowed
       observation, citing the cells.
-- [ ] If the engine differs, an engine task is filed with the cells.
-- [ ] `make check` green; reviewers approve.
+- [x] If the engine differs, an engine task is filed with the cells.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Gate A tables: T-3555's tables draw `num_digits` within ±400 only.
+
+## Outcome
+- Rule found (VERIFIED, excel-graph, 2026-11-01): ROUNDUP and ROUNDDOWN narrow `num_digits` to k as before. When
+  |k| >= 32,768, which no longer fits a signed 16-bit integer, they round the 15-digit cut at 100 places: at 10^-100
+  for positive k and at 10^100 for negative k. ROUNDUP's unit 10^-k, added as a double, underflows to 0 for positive k,
+  so ROUNDUP rounds down. For negative k it overflows, so ROUNDUP is `#NUM!` whenever a digit is dropped. The rule
+  explains the T-3555 cell: `ROUNDUP(6.4421516092447E+265,-43376)` has no digit below 10^100, so nothing is added.
+  numbers.md, "ROUNDUP and ROUNDDOWN round at 100 places past a 16-bit num_digits", replaces the UNVERIFIED observation.
+- How the candidates were separated:
+  - **A 16-bit kept-digit count** is ruled out. `ROUNDDOWN(1.23456789012345E-95,65535)` keeps 6 digits, which no count
+    wrap gives, and the step is at 10^∓100 for every k from 32,768 to 65,535.
+  - **A threshold at |k| > 32,767** is ruled in: 32,767 is plain and 32,768 is not.
+  - **The value's exponent** matters only through the fixed 100-place rounding.
+- Probes (probes/, M2, excel-graph):
+  - t3627-roundup-rounddown-digits-by-exponent: 620 formula cells. x = 1.5E-300 to 1.5E+300 in steps of 10^20,
+    k = ±400, ±1000, ±32767, ±32768, ±65535, for ROUNDUP and ROUNDDOWN.
+  - t3627-roundup-rounddown-huge-digits-place: 322 formula cells. x = 1.23456789012345E∓90 to E∓112, k = ±32768,
+    ±40000, ±65535 and 98304.
+  - A model of the rule, the Gate A ROUNDUP/ROUNDDOWN math with the 100-place step added, matches all 942 cells. It
+    also matches every literal-argument ROUNDUP/ROUNDDOWN cell of probes/round-huge-digits*, which still pass.
+  - ROUND was not re-probed: every ROUND cell already follows the 32-bit rule. TRUNC was not probed past 32,767.
+- Engine: it differs (it rounds at k itself), so 309 of the 942 cells fail. They are baselined as F lines in
+  eval/baseline/probes.txt and owned by **T-3635** (functions-math, sonnet, S), filed here.
+- Gate A is unchanged: T-3555's definitions draw `num_digits` within ±400 and give no math value past it.
+- Eval delta: 2 new probe cases with 942 cells, 633 passing; known failures +309, all owned by T-3635. No regressions.
