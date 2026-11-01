@@ -3,7 +3,7 @@ id: T-3588
 title: "Keep eval math sidecars current: make check fails when a probes or probes-numeric case has a Gate A one-call cell with no math value or a stale one"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
