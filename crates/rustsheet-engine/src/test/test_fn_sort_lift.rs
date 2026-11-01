@@ -131,7 +131,7 @@ fn a_blank_key_beats_a_later_error_and_text_loses() {
 
 /// An error in the array, `sort_index` or `sort_order` is every lifted call's result, so it fills
 /// a multi-cell `by_col`'s shape (gen-m7/8217549f0b417328 A855:B856, d2945e939d6fe742
-/// A5979:B5980; arrays.md "SORT's lifted by_col spreads an argument error", T-3508).
+/// A5979:B5980; arrays.md "SORT's lifted `by_col` spreads an argument error", T-3508).
 #[test]
 fn an_argument_error_fills_the_lifted_shape() {
     check(&[
