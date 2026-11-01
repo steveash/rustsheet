@@ -514,7 +514,7 @@ Verified in text.md (T-3178): `- 5`, `1-1-1` and mixed fractions in a criterion.
 - An operand VALUE rejects is text, and `<` / `>` then compare it as text against the text cells only:
   `Jan 1 2020 12:00` (H19 #VALUE!; rows 19-22: `<Jan 1 2020 12:00` matches all ten text cells, no number) and
   `1e2$` (H39 #VALUE!; rows 39-42: plain and `=` match nothing, `<1e2$` eight text cells, `>1e2$` the two that
-  sort after it). A trailing `$` is not a currency form. Ours reads `1e2$` as 100 (VALUE and criteria; follow-up T-3404).
+  sort after it). A trailing `$` is not a currency form. Implemented (T-3404): `1e2$` is text in VALUE and as an operand, and VALUE is #VALUE! for number text padded with CHAR(160) (H47, H51, H55, H59); only the space character is trimmed.
 - Month-name dates with a time are numbers when VALUE reads them: `January 1, 2020 0:00` (H27 43831; rows 27-30),
   `>=January 2, 2020 12:00` (row 63), and `1-Jan 6:00 PM`, read in the current year (H23 is its offset 0.75 from
   January 1; rows 23-26).

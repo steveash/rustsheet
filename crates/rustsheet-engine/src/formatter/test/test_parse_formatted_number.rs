@@ -139,15 +139,9 @@ fn currency() {
         parse("4.456$", &["$"]),
         Ok((4.456, Some("#,##0.00$".to_string())))
     );
-    // Currencies in scientific notation will not be formatted as currencies
-    assert_eq!(
-        parse("23e-12$", &["$"]),
-        Ok((2.3e-11, Some("0.00E+00".to_string())))
-    );
-    assert_eq!(
-        parse("2.3e-12$", &["$"]),
-        Ok((2.3e-12, Some("0.00E+00".to_string())))
-    );
+    // A trailing `$` after E-notation is not a number (probes/t3334-criteria-operand-forms H39).
+    assert!(parse("23e-12$", &["$"]).is_err());
+    assert!(parse("2.3e-12$", &["$"]).is_err());
     assert_eq!(
         parse("€23e-12", &["€"]),
         Ok((2.3e-11, Some("0.00E+00".to_string())))
