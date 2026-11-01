@@ -14,7 +14,9 @@ use coupon_schedule::{
     find_pcd_ncd, is_last_day_of_month, last_day_of_month, next_coupon_date, prev_coupon_date,
 };
 use odd_last::odd_l_func;
-use yield_solver::{excel_yield_newton, odd_first_yield, yield_start, yield_start_term};
+use yield_solver::{
+    excel_yield_newton, odd_first_yield, yield_start, yield_start_term, NEWTON_CHECKS,
+};
 
 use super::number_or_error;
 use crate::{
@@ -188,6 +190,12 @@ fn compute_price(
 /// computes it, from its closed-form start over the term in years ([`yield_start_term`]). Where
 /// that Newton leaves PRICE's domain YIELD is #NUM!, with no fallback, even where PRICE has a root
 /// (`YIELD(36665,44491,42,106,100,4,0)`, `YIELD(39448,43831,0.05,1E+5,100,2)`; T-2391).
+///
+/// A Newton whose step meets its test on the 100th and last check is #NUM! too, though one that
+/// meets it on the 99th, or on no check at all (the 100th iterate), is a value: Excel's
+/// "out of steps" test looks one check early (`YIELD(39681,45662,22.75,20,102,4)` is #NUM!, at
+/// rates 22.74375 and 22.75625 it is a value; probes/yield-newton-step-cap, T-2747; financial.md
+/// "YIELD's #NUM! cells and its 100-step cap").
 fn compute_yield(bond: &BondArgs, schedule: &CouponSchedule) -> Result<f64, String> {
     let term = yield_start_term(bond.settlement, bond.maturity, bond.basis)
         .ok_or_else(|| "#NUM!".to_string())?;
@@ -198,6 +206,8 @@ fn compute_yield(bond: &BondArgs, schedule: &CouponSchedule) -> Result<f64, Stri
         |y| schedule.price(rate, y, redemption, frequency, discount_growth),
         |y| schedule.dprice(rate, y, redemption, frequency),
     )
+    .filter(|stop| stop.converged_on != Some(NEWTON_CHECKS))
+    .map(|stop| stop.value)
     .ok_or_else(|| "#NUM!".to_string())
 }
 

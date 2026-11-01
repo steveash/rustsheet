@@ -426,7 +426,7 @@ pub fn summarize(
     let at_rate = functions.iter().filter(|f| f.meets_rate).count();
     let at_strict_rate = functions.iter().filter(|f| f.strict.meets_rate).count();
     let visibly_off = report.visibly_off_cells();
-    let gate_b = gate_b::summarize(results, exceptions, &functions);
+    let gate_b = gate_b::summarize(results, exceptions, &functions, &report.r1c);
     let mut checkpoint = V15Checkpoint {
         in_scope: functions.len(),
         met: !functions.is_empty() && covered == functions.len() && visibly_off == 0,

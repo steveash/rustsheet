@@ -3,10 +3,9 @@
 
   scripts/new_decision.py --title "..." [--no-fetch]   # docs/decisions/NNNN-<slug>.md
 
-NNNN is one above the highest number on the working tree and on every `origin/*` branch (read
-after a fetch), so a record pushed by another session is never reused. Push the record with the
-first commit on the branch so other sessions see the number. Allocation only makes clashes rare:
-`check_decisions.py` and the merge-time up-to-date check (decision 0028) still catch the rest.
+NNNN is one above the highest number on the working tree, on every `origin/*` branch (read after
+a fetch) and in the id registry, which reserves it atomically (scripts/id_registry.py, decision
+0215). `check_decisions.py` and the merge train's id check still catch a collision made offline.
 """
 
 from __future__ import annotations
@@ -16,6 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import check_decisions  # noqa: E402 (the sys.path line above must run first)
+import id_registry  # noqa: E402
 import tasks  # noqa: E402
 
 # check_decisions.py fails a record that still holds this placeholder.
@@ -47,11 +47,11 @@ def new_decision(title: str, fetch: bool = True) -> int:
     taken = numbers_in_tree(directory) | tasks.git_branch_names(
         str(directory.relative_to(tasks.ROOT)), check_decisions.NAME, fetch
     )
-    number = next_number(taken)
+    number, reserved = id_registry.allocate(lambda claimed: next_number(taken | claimed), id_registry.DECISION, fetch)
     path = directory / f"{number}-{tasks.slug(title, 'decision')}.md"
     path.write_text(TEMPLATE.format(number=number, title=title))
     print(
-        f"wrote {path.relative_to(tasks.ROOT)}: fill in the TODO(fill) lines, then commit and push it now to claim {number}"
+        f"wrote {path.relative_to(tasks.ROOT)}: {number} is {id_registry.note(reserved)}; fill in the TODO(fill) lines"
     )
     return 0
 

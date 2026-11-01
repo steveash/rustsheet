@@ -205,7 +205,7 @@ fn matrix_arg(
 
 /// A running SUM: the total and the two addends of the latest addition, which
 /// [`snap_near_zero`] needs.
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 pub(crate) struct SumParts {
     total: f64,
     before_last: f64,
@@ -269,6 +269,12 @@ impl Model {
     ) -> Result<SumParts, CalcResult> {
         if args.is_empty() {
             return Err(CalcResult::new_args_number_error(cell));
+        }
+        // A running total, from the prefix cache (T-3456).
+        if let [arg] = args {
+            if let Some(sum) = self.prefix_sum(arg, cell) {
+                return sum;
+            }
         }
         let mut sum = SumParts::default();
         self.for_each_aggregate_number(args, cell, SUM_ARGS, NumberRules::SUM_LIKE, |value| {

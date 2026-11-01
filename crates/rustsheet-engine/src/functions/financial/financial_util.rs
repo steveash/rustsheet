@@ -44,11 +44,13 @@ pub(crate) const RATE_MAX_STEPS: u32 = 200;
 /// twice-rounded `-`, `*` and `/`. It stops at the first iterate with |r2 - r1| < 1e-7 and
 /// |f(r2)| < 1e-7. The iterate of step [`RATE_MAX_STEPS`] is returned unconverged when it passes
 /// a looser test: |r2 - r1|, |f(r2)| and 1 + r2 against 1e-4, all absolute
-/// (probes/rate-cap-return-rule, rate-pmt-zero-cap, rate-step-cap A30). An
-/// iterate at or below -1, a flat secant (f1 = f0), a residual Excel's `^` cannot form and a run
-/// that has not stopped by then are `#NUM!`. Microsoft documents Newton's method and 20 steps;
-/// neither fits. The fit, its scores and the rules not yet probed are in financial.md "RATE is a
-/// secant on the FV residual" (T-2005).
+/// (probes/rate-cap-return-rule, rate-pmt-zero-cap, rate-step-cap A30). The modelled outcome of a
+/// flat secant (f1 = f0) is a hold at r1, judged by the same two tests, and an iterate at or below
+/// -1 runs on (T-3348, decision 0198; the rule, its evidence and its known misses are in
+/// financial.md "RATE holds on a flat secant and runs on below -1"). A residual Excel's `^`
+/// cannot form and a run that has not stopped by then are `#NUM!`. Microsoft documents Newton's
+/// method and 20 steps; neither fits. The fit, its scores and the rules not yet probed are in
+/// financial.md "RATE is a secant on the FV residual" (T-2005).
 pub(crate) fn compute_rate(
     pv: f64,
     fv: f64,
@@ -57,14 +59,31 @@ pub(crate) fn compute_rate(
     annuity_type: i32,
     guess: f64,
 ) -> Result<f64, Error> {
+    // The start offset was chosen by scoring (T-2005; fit lab `rate_candidates` scores +-1E-3 and
+    // 1E-4): on the 782 cells of the fit lab's `rate` set the model is bit-exact on all, with
+    // nper 1..1000, |pmt| 1E-6..1E+6, pv -100..1E+7, guess -0.5..10 and rates -0.75..2. T-3478
+    // measured it past that box on a fresh 300-point sweep (probes-numeric/t3478-rate-r4-wide):
+    // bit-exact on all 100 points where Excel returns a number, where 1E-4 or the other side's
+    // -1E-3 gets 8 and 14 (financial.md "RATE and IRR secant constants past their fit sets").
+    // The tag's second range is where those 100 roots lie; past it (rates to 100, nper to 1E+5)
+    // the sweep only agrees with Excel's `#NUM!`. Its 14 cells off Excel are not this constant's
+    // (T-3547, the spurious root r = -1; T-3424).
+    /// FITTED(T-2005, 782 cells, RATE nper 1..1000, |pmt| 1E-6..1E+6, guess -0.5..10, rate -0.75..2; T-3478 sweep, 100 returned roots: nper 1..22908, |pmt| 1.6E-47..1.9E+10, |pv| and |fv| 1.1E-8..9.7E+11, guess -0.97..980, rate -0.985..21.3)
     const OFFSET: f64 = 0.001;
+    // Two uses. The step stop is not a fit: Microsoft's RATE documentation gives 0.0000001 as the
+    // convergence bound. The residual stop |f| < 1e-7 is not documented and was chosen by scoring
+    // (financial.md "RATE is a secant on the FV residual": |f| < 1e-6 scores 188, < 1e-8 181), as
+    // IRR's is (`irr_secant`). On T-3478's sweep 1e-7 keeps 100 of 100, 1e-6 92 and 1e-8 93.
+    /// FITTED(T-2005, 782 cells, RATE nper 1..1000, |pmt| 1E-6..1E+6, guess -0.5..10, rate -0.75..2; T-3478 sweep, 100 returned roots: nper 1..22908, |pmt| 1.6E-47..1.9E+10, |pv| and |fv| 1.1E-8..9.7E+11, guess -0.97..980, rate -0.985..21.3; the residual stop)
     const TOLERANCE: f64 = 1e-7;
     // Excel's looser test at the cap (T-2689): the 200th iterate is returned when its step and
     // |f| are below 1e-4 and it is above -1 + 1e-4. probes/rate-cap-return-rule: steps of 7.3e-5
     // (A68) and 7.8e-5 (A72) return and 1.3e-4 (A70) is `#NUM!`, also where the step is 4e-4 of
     // the rate (A72);
     // |f| 7.3e-5 returns (rate-step-cap A30) and 1.06e-4 is `#NUM!` (A53); 1 + r 1.02e-4 returns (A1)
-    // and 9.4e-5 is `#NUM!` (A16).
+    // and 9.4e-5 is `#NUM!` (A16). One value sits inside all three brackets, so it is a cut placed
+    // on the cells of the three cap probes (T-3395 counted them).
+    /// FITTED(T-2689, 178 cells, RATE at the 200-step cap; one cut for all three tests bracketed 9.4E-5..1.02E-4)
     const RATE_CAP_TOLERANCE: f64 = 1e-4;
     if guess <= -1.0 {
         return Err(Error::VALUE);
@@ -76,30 +95,51 @@ pub(crate) fn compute_rate(
     let mut r1 = r0 - OFFSET.copysign(f0);
     let mut f1 = residual(r1)?;
     for step in 1..=RATE_MAX_STEPS {
-        if f1 == f0 {
-            return Err(Error::NUM);
-        }
-        let r2 = extended_sum(
-            r1,
-            -extended_quotient(
-                extended_product(f1, extended_sum(r1, -r0)),
-                extended_sum(f1, -f0),
-            ),
-        );
-        if !r2.is_finite() || r2 <= -1.0 {
-            return Err(Error::NUM);
-        }
-        let f2 = residual(r2)?;
+        // A flat secant (f1 = f0) has no finite step: 0/0 after a zero-step stall (r1 = r0),
+        // a nonzero number over 0 otherwise. Holding at r1 is the modelled outcome that fits the
+        // evidence; the engine stopped with `#NUM!` here before T-3348. The held point is judged
+        // by the convergence test and by the cap's test, as the 200th iterate would be. Near the
+        // root of a long annuity |f| is rounding noise above 1e-7: `RATE(239,-14841.27102594,
+        // 344293.4825124,-155496.6323522,0)` is held at |f| 3.2e-7 and is 0.04310546919282547
+        // in Excel (probes/t3348-rate-fv-nonzero A1). A residual of exactly 0 on both sides is
+        // `#NUM!` (`RATE(1,0,0,0)`, probes/rate-zero-residual-guess A1, A2). Excel errs on 13
+        // holds the rule returns (decision 0198, T-3424).
+        let flat = f1 == f0;
+        let (r2, f2) = if flat {
+            if f1 == 0.0 {
+                return Err(Error::NUM);
+            }
+            (r1, f1)
+        } else {
+            let r2 = extended_sum(
+                r1,
+                -extended_quotient(
+                    extended_product(f1, extended_sum(r1, -r0)),
+                    extended_sum(f1, -f0),
+                ),
+            );
+            if !r2.is_finite() {
+                return Err(Error::NUM);
+            }
+            // An iterate at or below -1 does not end the run (Excel's `^` takes the negative
+            // base at an integer nper): only the result must be above -1
+            // (probes/t3348-rate-below-minus-one, 50/50; T-3348). At a non-integer nper the
+            // residual's `^` errs there and the run is `#NUM!`; Excel is unprobed (financial.md).
+            (r2, residual(r2)?)
+        };
         let step_size = (r2 - r1).abs();
         if step_size < TOLERANCE && f2.abs() < TOLERANCE {
-            return Ok(r2);
+            return if r2 > -1.0 { Ok(r2) } else { Err(Error::NUM) };
         }
-        if step == RATE_MAX_STEPS
+        if (flat || step == RATE_MAX_STEPS)
             && step_size < RATE_CAP_TOLERANCE
             && f2.abs() < RATE_CAP_TOLERANCE
             && 1.0 + r2 > RATE_CAP_TOLERANCE
         {
             return Ok(r2);
+        }
+        if flat {
+            return Err(Error::NUM);
         }
         (r0, f0, r1, f1) = (r1, f1, r2, f2);
     }
@@ -162,6 +202,9 @@ fn irr_npv(values: &[f64], v: f64) -> Option<f64> {
 /// the secant or the fallback alike (financial.md "IRR's far-root bound"): `IRR({-1,3E+6})` and
 /// `IRR({-1,0,1E+14})` (1 + r = 9999999.994) return, `IRR({-1,1E+7})` and every larger
 /// two-flow root are `#NUM!` (probes/irr-fallback-roots A25-A39, irr-guess-edges-2 A15-A34).
+/// The exact edge between 9999999.994 and 1E+7 is not pinned: the round value is placed in that
+/// bracket (T-2727).
+/// FITTED(T-2727, 35 cells, IRR roots with 1 + r 1E+4..2E+15; cut bracketed 9999999.994..1E+7)
 const IRR_FAR_ROOT_BOUND: f64 = 1e7;
 
 /// The most Newton steps of [`irr_fallback`]: a run that needs 119 is `#NUM!` in Excel
@@ -178,6 +221,18 @@ fn irr_from_discount(v: f64) -> Option<f64> {
 /// is not a positive discount factor, or no stop in 50 steps). The state is d = 1 - v = r/(1 + r),
 /// so from v = 0.5 down the iterates' v = 1 - d sit on Excel's grid of multiples of 2^-53
 /// (probes/t2565-irr-guess-sweeps), and each step is anchored on the newer iterate.
+/// Chosen by scoring on the fit set (financial.md "IRR is a secant in d = 1 - v"): the start offset
+/// of 1E-3 toward larger |NPV| (+1E-3 on both sides scores 121 of 263) and the 1E-7 residual stop
+/// (1E-6 scores 188, 1E-8 180). Not fits: the 1E-7 step stop is Microsoft's documented 0.00001
+/// percent, and `MAX_STEPS` is a directive-5 cap (financial.md "The IRR and XIRR solver caps").
+/// T-3478 measured both past the fit set on a fresh 300-point sweep (probes-numeric/t3478-irr-r4-wide):
+/// in aggregate the shipped pair scores 232 of 300 against Excel, against 146 and 126 for offsets
+/// 1E-4 and 1E-2 and 224 and 217 for residuals 1E-6 and 1E-8 (financial.md "RATE and IRR secant
+/// constants past their fit sets"). The tag covers these constants only: the sweep's 50 cells off
+/// Excel come from the step cap, the fallback, the residual's absolute scale and Excel errors not
+/// yet explained (T-3548).
+/// FITTED(T-1533, 263 cells, IRR of 2..41 flows, |c| 1E-6..1E+9, guess -0.99..100, roots -0.99..99; T-3478 sweep, 231 Excel roots: 2..148 flows, |c| 2.3E-15..4.0E+12, guess -0.9997..9.8E+7, roots -0.9997..9.0E+5)
+/// The zero-step stop's bound (below):
 /// FITTED(T-3120, 36 cells, IRR of {-2.5,-1,123456789.123} over a guess sweep)
 fn irr_secant(values: &[f64], guess: f64) -> Option<f64> {
     const MAX_STEPS: usize = 50;

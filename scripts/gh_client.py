@@ -442,3 +442,26 @@ def from_remote(root: Path = ROOT, remote: str = "origin") -> GhApi | None:
         return GhApi(*pair)
     except GhError:
         return None
+
+
+# GitHub objects are JSON; these read one field of one without trusting its shape.
+def field_of(value: object, *keys: str) -> object:
+    for key in keys:
+        value = value.get(key) if isinstance(value, dict) else None
+    return value
+
+
+def text_of(value: object, *keys: str) -> str:
+    found = field_of(value, *keys)
+    return found if isinstance(found, str) else ""
+
+
+def label_names(pull: object) -> list[str]:
+    """The names of a PR's (or issue's) labels."""
+    labels = field_of(pull, "labels")
+    return [text_of(label, "name") for label in labels] if isinstance(labels, list) else []
+
+
+def int_of(value: object, *keys: str) -> int:
+    found = field_of(value, *keys)
+    return found if isinstance(found, int) and not isinstance(found, bool) else 0

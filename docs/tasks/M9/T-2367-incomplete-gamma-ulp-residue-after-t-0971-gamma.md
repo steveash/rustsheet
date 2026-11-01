@@ -96,3 +96,14 @@ tail T-3269 owns. Examples, Excel vs ours:
 
 ## Phase 1 triage (T-0090, 2026-10-27)
 Two visibly-off gen-m9 cells matched this parked task: IRR gen-m9/d0854366830dcdee Calc!A216 is handed to T-2131 and FREQUENCY gen-m9/fd9fa22d212080d6 Calc!A32 (an error-kind cell) to T-2636.
+
+## Cells added by gap triage (2026-10-31m)
+`make eval` on origin/main 900fbc1bf (excel-graph). An ownership check over every failing Excel cell
+(`scripts/exit_owners.py`'s `owned` rule over the open task files of origin/main and of every `origin/agent/*` branch
+pushed since 2026-10-29) found these cells named by no open task. All are within 15 significant digits of Excel (Phase
+1b), so they join this deferred owner of their kernel. POISSON.DIST/POISSON cumulative cells, 1 to 2 ulp (the upper
+incomplete gamma at a small integer shape): `POISSON(2,3,TRUE)` Excel 0.4231900811268434, ours ...4353, and its coerced-
+argument twins on t1048; POISSON.xlsx D8, D10.
+- probes-numeric/t1048-poisson.case.json (12): Calc!A3, B3, A5, B5, A13, B13, A17, B17, A22, B22, A27, B27
+- ironcalc-calc/STATISTICAL/POISSON.xlsx (2): POISSON.DIST!D8, D10
+- gen-m9/b9a32ce9a1fd0d71.case.json (1): Calc!A69

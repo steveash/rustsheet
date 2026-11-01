@@ -8,8 +8,9 @@ twice.
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from rustsheet_tools.fitlab.holdout import (
@@ -21,7 +22,16 @@ from rustsheet_tools.fitlab.holdout import (
     split,
     verdict,
 )
-from rustsheet_tools.fitlab.score import Candidate, ExcelError, Score, families, merged, rank, score
+from rustsheet_tools.fitlab.score import (
+    Candidate,
+    CandidateValue,
+    ExcelError,
+    Score,
+    families,
+    merged,
+    rank,
+    score,
+)
 from rustsheet_tools.fitlab.sweep import Cell, Sweep, load_sweep
 from rustsheet_tools.snapshot import show_cells
 
@@ -46,30 +56,35 @@ class Fit:
     calls: list[str] = field(default_factory=list)  # cases giving Excel's value of nested calls
     notes: list[str] = field(default_factory=list)
     margin: float = DEFAULT_MARGIN
+    complex_text: bool = False  # score IM* text results part by part (sweep.parse_complex_text)
 
 
-def engine_candidate(case_ids: list[str]) -> Candidate:
+def engine_candidate(case_ids: list[str], binary: Path | None = None, name: str = ENGINE) -> Candidate:
     """Today's engine as a pseudo-candidate: its value per cell from `rustsheet-eval show --all`
-    (a release build of the harness; see snapshot.eval_binary)."""
+    (a release build of the harness; see snapshot.eval_binary). `binary` and `name` score another
+    build instead, such as one with a selector removed (decision 0188 R4: a selector against its
+    accurate form, two engine builds)."""
     actual: dict[str, str] = {}
     for case_id in case_ids:
-        for key, shown in show_cells(case_id).items():
+        for key, shown in show_cells(case_id, binary).items():
             actual[f"{case_id} {key}"] = shown.get("actual", "")
 
-    def evaluate(cell: Cell) -> float:
+    def evaluate(cell: Cell) -> CandidateValue:
         text = actual.get(f"{cell.case} {cell.key}")
         if text is None:
             msg = f"the engine did not score {cell.key}"
             raise KeyError(msg)
         if text.startswith("#"):
             raise ExcelError(code=text)
+        if cell.expected_im is not None or text.startswith('"'):
+            return text.strip('"')  # text (an IM* result, which the scorer parses on a complex-text cell)
         try:
             return float(text)  # Rust's `{:?}` of an f64 round-trips exactly
         except ValueError:
             msg = f"engine value {text}"
             raise ValueError(msg) from None
 
-    return Candidate(ENGINE, evaluate, "engine")
+    return Candidate(name, evaluate, "engine" if name == ENGINE else name)
 
 
 @dataclass
@@ -131,14 +146,30 @@ class FitResult:
 
 
 def run(
-    fit: Fit, *, engine: bool = True, only: str | None = None, keep: int = 10, holdout_only: bool = False
+    fit: Fit,
+    *,
+    engine: bool = True,
+    only: str | None = None,
+    keep: int = 10,
+    holdout_only: bool = False,
+    builds: Mapping[str, Path] | None = None,
 ) -> FitResult:
-    """Loads the sweep and scores the engine (unless `engine` is false) and every candidate whose
-    name matches the regex `only`. `holdout_only` allows Gate A tables (a measurement of a frozen
-    fit, never a selection; `sweep.refuse_accuracy`)."""
-    sweep = load_sweep(fit.cases, fit.pattern, fit.where, fit.errors, fit.calls, holdout_only=holdout_only)
+    """Loads the sweep and scores the engine (unless `engine` is false), each other harness build
+    of `builds` (name -> binary) and every candidate whose name matches the regex `only`.
+    `holdout_only` allows Gate A tables (a measurement of a frozen fit, never a selection;
+    `sweep.refuse_accuracy`)."""
+    sweep = load_sweep(
+        fit.cases,
+        fit.pattern,
+        fit.where,
+        fit.errors,
+        fit.calls,
+        holdout_only=holdout_only,
+        complex_text=fit.complex_text,
+    )
     cases = sorted({c.case for c in sweep.cells})
     candidates = [engine_candidate(cases)] if engine and cases else []
+    candidates += [engine_candidate(cases, path, f"engine build: {n}") for n, path in (builds or {}).items()]
     wanted = re.compile(only) if only else None
     candidates += [c for c in fit.candidates() if wanted is None or wanted.search(c.name)]
     train, test = split(sweep.cells)
