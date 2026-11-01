@@ -1,5 +1,5 @@
 ---
-id: T-3404
+id: T-3660
 title: "Merge lock: acquire by the current holder for a different PR must queue, not silently retarget the held lock"
 milestone: M2
 lane: harness
