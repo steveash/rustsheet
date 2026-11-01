@@ -36,7 +36,7 @@ is since T-3352, instead of grossly wrong.
 ## Out of scope
 - BINOM.DIST and NEGBINOM.DIST (T-3352).
 
-## Handoff
+## Handoff (resumed)
 Opus session ran out of its time budget mid-task (2026-11-01). State of `agent/functions-stat/T-3444-binom-large-n`:
 - Probe probes/t3444-binom-range-inv-large-n (756 cells, excel-graph): Excel's BINOM.INV/CRITBINOM is the smallest k
   whose own BINOM.DIST cdf reaches alpha (126/126 rows); BINOM.DIST.RANGE is its own cdf difference on 105/126 rows,
