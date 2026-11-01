@@ -29,6 +29,9 @@ stage (PR #2529, blocked on its hold-out) and unblocks T-3347.
   a double replica, since a flat step in double may not be flat there; a secant in r rather than d after the first
   failure; a bisection or bracket walk like XIRR's (financial.md "XIRR is a bracketing bisection"); Excel's NPV
   overflow surfacing as `#DIV/0!` (T-3407) as a sign of which iteration runs.
+- Type cells of T-3347's hold-out (Excel returns the root, the engine is `#NUM!`; gap triage 2026-11-01, `make eval` on
+  origin/main 408444f20):
+- probes-numeric/t3347-irr-conventional-holdout.case.json (30): P!A1, A3, A7, A13, A18, A21, A23, A39, A44, A45, A46, A47, A49, A50, A53, A54, A56, A57, A61, A66, A67, A69, A71, A90, A95, A103, A105, A107, A110, A119
 - Decision 0188 R4: state the hold-out split and margin before scoring; fill a fresh sweep after the model is frozen.
 
 ## Acceptance criteria
