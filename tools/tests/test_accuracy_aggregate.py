@@ -8,8 +8,11 @@ import mpmath
 import pytest
 
 from rustsheet_tools.accuracy.defs.aggregate import AVERAGE, MAX_ARGS, SUM, _draw, running_total
+from rustsheet_tools.accuracy.defs.student_t import T_DIST
+from rustsheet_tools.accuracy.eval_math import fit_args
 from rustsheet_tools.accuracy.model import DomainError
 from rustsheet_tools.accuracy.sampler import STRATA, Sampler
+from rustsheet_tools.accuracy.tables import compute, parse_formula
 
 mp = mpmath.mpf
 ULP1 = 2.0**-52
@@ -84,3 +87,30 @@ def test_draws_write_between_one_and_255_literals() -> None:
     rng = random.Random(3)
     tails = [_draw("tail", rng) for _ in range(200)]
     assert any(len(t) >= 2 and t[-1] == 0 for t in tails)  # the trailing-zero form is drawn
+
+
+def test_params_for_repeats_only_a_variadic_last_parameter() -> None:
+    (number,) = SUM.params
+    assert SUM.params_for(0) == (number,)  # below the declared count: unchanged, so a count check still fires
+    assert SUM.params_for(1) == (number,)
+    assert SUM.params_for(3) == (number, number, number)
+    assert T_DIST.params_for(5) == T_DIST.params  # fixed arity: never repeated
+
+
+def test_the_variadic_path_reads_any_argument_count() -> None:
+    for count in (1, 3, MAX_ARGS):
+        literals = ",".join(["0.1"] * (count - 1) + ["-0.3"])
+        args = parse_formula(SUM, f"=SUM({literals})")
+        assert args == [0.1] * (count - 1) + [-0.3]
+        assert fit_args(SUM, [0.1] * (count - 1) + [-0.3]) == args
+        value = compute(SUM, args).value
+        assert value is not None
+        assert mpmath.almosteq(mp(value), mpmath.fsum([mp(0.1)] * (count - 1)) - mp(0.3), mp("1e-40"))
+
+
+def test_a_fixed_arity_definition_still_rejects_another_count() -> None:
+    assert fit_args(T_DIST, [1.5, 3]) == "argument count"
+    with pytest.raises(ValueError, match="2 arguments, the definition has 3"):
+        parse_formula(T_DIST, "=T.DIST(1.5,3)")
+    with pytest.raises(ValueError):
+        T_DIST.check_domain([mp(1.5), mp(3)])

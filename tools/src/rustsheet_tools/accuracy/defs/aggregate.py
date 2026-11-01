@@ -12,8 +12,8 @@ that depend only on those doubles are part of the definition (decision 0224):
 Both read Excel's running total: each addition rounded to a 64-bit significand and then to a double ("Division
 rounds twice", the same for `+`; `fitlab.exact.double_round`), added left to right.
 
-The arity is drawn per stratum (`variadic`): mostly 2 to 10 scalars (typical, tail, edge), 50 to 255 (extreme,
-Excel's argument limit) and log-uniform 1 to 255. No array literals.
+The arity is drawn per stratum (`variadic`): 2 to 10 scalars (typical), 2 to 7 (tail), 1 to 6 or 255 (edge), 50 to
+255 (extreme; Excel's argument limit) and log-uniform 1 to 255 (log-uniform). No array literals.
 """
 
 from __future__ import annotations
@@ -71,7 +71,7 @@ def sum_value(xs: Sequence[mpmath.mpf]) -> mpmath.mpf:
     doubles = [float(x) for x in xs]
     if len(doubles) >= 2:
         before, total = running_total(doubles)
-        if snaps(before, doubles[-1], total):
+        if snaps(before, doubles[-1], total):  # the final addition: `before + doubles[-1]`
             return mpmath.mpf(0)
     return mpmath.fsum(xs)
 
@@ -100,7 +100,9 @@ def _signed(rng: random.Random, lo: float, hi: float, negative: float = 0.3) -> 
 
 
 def _decimal(rng: random.Random) -> float:
-    """A short decimal (0.1, 2.75, 0.0003): the literals whose doubles leave a residue when they cancel."""
+    """A short decimal (0.1, 2.75, 0.0003): the literals whose doubles leave a residue when they cancel. The drawn
+    double need not be the decimal's nearest double: the sampler writes `round15` of it (`Sampler.finish`), and the
+    math reads the written literal."""
     return rng.randint(1, 9999) / 10.0 ** rng.randint(0, 5)
 
 
@@ -108,16 +110,16 @@ def _cancelling(rng: random.Random) -> list[float]:
     """A near-cancelling sum: short decimals, then a last addend that cancels them to within a few units of its
     15th digit, around the snap's 8-ULP bound (as probes-numeric `snap-addsub/*` does with k·2^-52); some points end
     with a 0, which is never snapped (numbers.md, "M2 pickers ... trailing numeric 0")."""
-    head = [_decimal(rng) * (-1 if rng.random() < 0.3 else 1) for _ in range(rng.randint(1, 5))]
-    _, total = running_total([round15(x) for x in head])
+    head = [round15(_decimal(rng) * (-1 if rng.random() < 0.3 else 1)) for _ in range(rng.randint(1, 5))]
+    _, total = running_total(head)  # the head as written, so `last` cancels the literals' doubles
     last = -total
     shift = rng.randint(-3, 3)
     if shift and last != 0:
         last += shift * 10 ** (math.floor(math.log10(abs(last))) - 14)
-    xs = [*head, last]
+    values = [*head, last]
     if rng.random() < 0.2:
-        xs.append(0.0)
-    return xs
+        values.append(0.0)
+    return values
 
 
 def _edge(rng: random.Random) -> list[float]:
@@ -134,22 +136,20 @@ def _edge(rng: random.Random) -> list[float]:
     if shape == 4:  # an exact cancellation
         x = _signed(rng, 1e-3, 1e6)
         return [x, -x]
+    # shape 5, the argument limit: 255 mixed-sign addends
     return [_signed(rng, 1e-3, 1e6) for _ in range(MAX_ARGS)]
 
 
 def _draw(stratum: str, rng: random.Random) -> list[Arg]:
-    xs: list[float]
     if stratum == "tail":
-        xs = _cancelling(rng)
-    elif stratum == "edge":
-        xs = _edge(rng)
-    elif stratum == "extreme":  # long sums of mixed magnitudes and signs: left-to-right order shows
-        xs = [_signed(rng, 1e-20, 1e20, 0.5) for _ in range(rng.randint(50, MAX_ARGS))]
-    elif stratum == "log-uniform":
-        xs = [_signed(rng, 1e-300, 1e300, 0.5) for _ in range(round(log_uniform(rng, 1, MAX_ARGS)))]
-    else:
-        xs = [_signed(rng, 1e-3, 1e6) for _ in range(rng.randint(2, 10))]
-    return list(xs)
+        return list(_cancelling(rng))
+    if stratum == "edge":
+        return list(_edge(rng))
+    if stratum == "extreme":  # long sums of mixed magnitudes and signs: left-to-right order shows
+        return [_signed(rng, 1e-20, 1e20, 0.5) for _ in range(rng.randint(50, MAX_ARGS))]
+    if stratum == "log-uniform":
+        return [_signed(rng, 1e-300, 1e300, 0.5) for _ in range(round(log_uniform(rng, 1, MAX_ARGS)))]
+    return [_signed(rng, 1e-3, 1e6) for _ in range(rng.randint(2, 10))]
 
 
 def _definition(function: str, value: Callable[[Sequence[MathArg]], mpmath.mpf]) -> Definition:
