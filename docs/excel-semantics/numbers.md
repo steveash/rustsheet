@@ -307,6 +307,31 @@ Status: VERIFIED
 Implemented in: `effective_digits` in crates/rustsheet-engine/src/decimal_round.rs (T-0218).
 Tasks: T-0218, T-0268
 
+## ROUNDUP of a huge value at a huge negative num_digits
+Observation (T-3555): `ROUNDUP(6.4421516092447E+265,-43376)` is 6.4421516092447E+265, the value unchanged. The rule
+above says ROUNDUP keeps the sign of `num_digits` and takes its magnitude modulo 65,536, which leaves -43,376. The unit
+10^43376 then overflows, so the rule predicts `#NUM!`, which is what the engine returns. In the same draw,
+`ROUNDUP(-3.41521682833705E-207,-11541)`, `ROUNDUP(-2.33253918200575E+106,-678)` and `ROUNDUP(7712487.6865209,-400)`
+were `#NUM!`, and `ROUNDUP(4.72880001004526E+149,22178)` was the value. Every earlier huge-`num_digits` probe used a
+small value. The same value at -320 is `#NUM!` (committed: eval/accuracy/tables/ROUNDUP/s1 Calc!A111, `ROUNDUP(6.4421516092447E+265,-320)`).
+One candidate fits every cell above: a 16-bit count of the kept digits, `num_digits` + e + 1. At -320 the count is -54
+(`#NUM!`); at -43,376 it is -43,110, which wraps to +22,426 (the value comes back). But it does not fit
+`ROUNDUP(123.456,-65535)`, which is `#NUM!` (probes/round-huge-digits-wrap) though its count -65,532 wraps to +4, so
+the count alone is not the rule.
+Evidence: excel-graph, 2026-11-01, T-3555's first ROUNDUP Gate A draw. That batch was replaced before commit (its
+point was a math domain error against an Excel number), so T-3627 re-probes the cell.
+Status: UNVERIFIED (one cell; T-3627 probes for the rule)
+Tasks: T-3627
+
+## ROUND one ulp above the nearest double (observation)
+Observation (T-3555): `ROUND(4.91499999999999E-06,8)` is 4.9100000000000004E-06 in Excel, 1 ulp above 4.91E-06, the
+double nearest the decimal result. That contradicts "ROUND family rounds in two decimal stages", which says ROUND returns
+the nearest double. It is the only such cell among the 120 ROUND points. The engine returns 4.91E-06, which is within
+Gate A's envelope and below the reproducibility floor, so it is not a fit target.
+Evidence: eval/accuracy/tables/ROUND/s1 Calc!A61 (excel-graph, 2026-11-01).
+Status: UNVERIFIED (one cell)
+Tasks: T-3555
+
 ## MOD is #NUM! for a huge quotient
 Rule: `MOD(n,d)` is `#NUM!` when `|n/d| >= 1.1259E+12` (exactly that decimal, not a power of two):
 `MOD(1125899999999,1)` = 0, `MOD(1125900000000,1)` = `#NUM!`. It depends only on the quotient, not on
@@ -1058,6 +1083,9 @@ probes/t2771-roundup-subnormal-cuts (20 subnormal arguments from 5E-324 to 2.2E-
 num_digits rows 22-33), t2771-roundup-subnormal-sign (eleven arguments from 1E-320 to 2E-309, ten forms each) and
 t2771-roundup-subnormal-threshold (k = 2^48 - 2 to 2^49) and t2771-roundup-subnormal-sign-controls (negative arguments
 built without unary minus, cell references, huge num_digits), all excel-graph, 2026-10-27.
+Also eval/accuracy/tables/ROUNDUP/s1 Calc!A76 (excel-graph, 2026-11-01, T-3555): `ROUNDUP(8.90029543402884E-308,309)` is
+8.9E-308. The rounded-down part stays normal and the unit 1E-309 is flushed, so the result is below its argument.
+ROUND/s1 A73 and ROUNDDOWN/s1 A81 and A84 (±2.22507385850721E-308 at 320) are 0.
 Status: VERIFIED (excel-graph)
 Implemented in: `round_function` and `round_decimal` in crates/rustsheet-engine/src/decimal_round.rs
 Tasks: T-2756, T-2771
