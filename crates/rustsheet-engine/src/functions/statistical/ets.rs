@@ -53,7 +53,7 @@ const MAX_MISSING: f64 = 0.3;
 /// DEVIATION, statistics.md "FORECAST.ETS family: work caps").
 pub(super) const MAX_ACF_WORK: usize = 1 << 27;
 /// Most work one FORECAST.ETS-family call may spend over all its lifted elements: season
-/// detections (length × lags) plus fits (length × [`MAX_FILTER_RUNS`]), each charged once per
+/// detections (length × lags) plus fits ([`fit_work`]: (length + season) × the filter runs of one fit), each charged once per
 /// distinct series and season. Past it the element is `#NUM!` (directive 5, a DEVIATION,
 /// statistics.md "FORECAST.ETS family: work caps"): two fits of the longest series fit.
 pub(super) const MAX_CALL_WORK: usize = 1 << 30;
@@ -497,7 +497,7 @@ pub(super) fn detect_season(y: &[f64]) -> Result<usize, Error> {
 }
 
 mod model;
-pub(super) use model::{fit, Fit, MAX_FILTER_RUNS};
+pub(super) use model::{fit, fit_work, Fit};
 
 #[cfg(test)]
 mod tests;

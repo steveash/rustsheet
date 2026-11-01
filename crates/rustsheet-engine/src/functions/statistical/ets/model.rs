@@ -187,8 +187,24 @@ fn optimise(y: &[f64], initial: &Initial) -> Parameters {
             f64::INFINITY
         }
     };
+    let best = grid_start(&objective, active);
+    let mut simplex = initial_simplex(best, &objective, active);
+    for _ in 0..NELDER_MEAD_ITERATIONS {
+        if !nelder_mead_step(&mut simplex, &objective, active) {
+            break;
+        }
+    }
+    simplex.sort_by(|a, b| a.1.total_cmp(&b.1));
+    clamp(simplex.first().map_or(best.0, |vertex| vertex.0), active)
+}
+
+/// A point of the simplex and its objective value.
+type Vertex = (Parameters, f64);
+
+/// The best point of the [`GRID`] (γ only with seasonality): 125 filter runs at most.
+fn grid_start(objective: &impl Fn(Parameters) -> f64, active: usize) -> Vertex {
     let gammas: &[f64] = if active == 3 { &GRID } else { &GRID[..1] };
-    let mut best: (Parameters, f64) = ([0.5, 0.1, 0.1], f64::INFINITY);
+    let mut best: Vertex = ([0.5, 0.1, 0.1], f64::INFINITY);
     for alpha in GRID {
         for beta in GRID {
             for &gamma in gammas {
@@ -200,7 +216,17 @@ fn optimise(y: &[f64], initial: &Initial) -> Parameters {
             }
         }
     }
-    let mut simplex: Vec<(Parameters, f64)> = vec![best];
+    best
+}
+
+/// The starting simplex: `best` and, for each active parameter, `best` with that one moved 0.1
+/// towards the middle of the box.
+fn initial_simplex(
+    best: Vertex,
+    objective: &impl Fn(Parameters) -> f64,
+    active: usize,
+) -> Vec<Vertex> {
+    let mut simplex = vec![best];
     for index in 0..active {
         let mut parameters = best.0;
         if let Some(value) = parameters.get_mut(index) {
@@ -213,77 +239,92 @@ fn optimise(y: &[f64], initial: &Initial) -> Parameters {
         let parameters = clamp(parameters, active);
         simplex.push((parameters, objective(parameters)));
     }
-    let towards = |from: Parameters, to: Parameters, t: f64| -> Parameters {
-        let mut out = [0.0; 3];
-        for ((out, a), b) in out.iter_mut().zip(from).zip(to) {
-            *out = a + t * (b - a);
-        }
-        clamp(out, active)
+    simplex
+}
+
+/// The point `t` of the way from `from` to `to` (negative: beyond `from`), held to the box.
+fn towards(from: Parameters, to: Parameters, t: f64, active: usize) -> Parameters {
+    let mut out = [0.0; 3];
+    for ((out, a), b) in out.iter_mut().zip(from).zip(to) {
+        *out = a + t * (b - a);
+    }
+    clamp(out, active)
+}
+
+/// One Nelder–Mead step: reflect the worst vertex through the others' centroid, expand,
+/// contract or shrink (5 filter runs at most). `false` once the simplex has converged.
+fn nelder_mead_step(
+    simplex: &mut [Vertex],
+    objective: &impl Fn(Parameters) -> f64,
+    active: usize,
+) -> bool {
+    simplex.sort_by(|a, b| a.1.total_cmp(&b.1));
+    let (Some(&lowest), Some(&highest)) = (simplex.first(), simplex.last()) else {
+        return false;
     };
-    for _ in 0..NELDER_MEAD_ITERATIONS {
-        simplex.sort_by(|a, b| a.1.total_cmp(&b.1));
-        let (Some(&lowest), Some(&highest)) = (simplex.first(), simplex.last()) else {
-            break;
-        };
-        let second_highest = simplex
-            .len()
-            .checked_sub(2)
-            .and_then(|index| simplex.get(index))
-            .map_or(highest.1, |vertex| vertex.1);
-        let size = simplex
-            .iter()
-            .map(|vertex| {
-                vertex
-                    .0
-                    .iter()
-                    .zip(lowest.0)
-                    .map(|(a, b)| (a - b).abs())
-                    .fold(0.0, f64::max)
-            })
-            .fold(0.0, f64::max);
-        if (highest.1 - lowest.1).abs() <= 1e-12 * lowest.1.abs() + 1e-300 || size < 1e-7 {
-            break;
+    let second_highest = simplex
+        .len()
+        .checked_sub(2)
+        .and_then(|index| simplex.get(index))
+        .map_or(highest.1, |vertex| vertex.1);
+    let size = simplex
+        .iter()
+        .map(|vertex| {
+            vertex
+                .0
+                .iter()
+                .zip(lowest.0)
+                .map(|(a, b)| (a - b).abs())
+                .fold(0.0, f64::max)
+        })
+        .fold(0.0, f64::max);
+    if (highest.1 - lowest.1).abs() <= 1e-12 * lowest.1.abs() + 1e-300 || size < 1e-7 {
+        return false;
+    }
+    let others = simplex.len().saturating_sub(1);
+    let mut centroid = [0.0; 3];
+    for vertex in simplex.iter().take(others) {
+        for (c, value) in centroid.iter_mut().zip(vertex.0) {
+            *c += value / others.max(1) as f64;
         }
-        let others = simplex.len().saturating_sub(1);
-        let mut centroid = [0.0; 3];
-        for vertex in simplex.iter().take(others) {
-            for (c, value) in centroid.iter_mut().zip(vertex.0) {
-                *c += value / others.max(1) as f64;
-            }
-        }
-        let reflected = towards(centroid, highest.0, -1.0);
-        let reflected_value = objective(reflected);
-        let replacement = if reflected_value < lowest.1 {
-            let expanded = towards(centroid, highest.0, -2.0);
-            let expanded_value = objective(expanded);
-            Some(if expanded_value < reflected_value {
-                (expanded, expanded_value)
-            } else {
-                (reflected, reflected_value)
-            })
-        } else if reflected_value < second_highest {
-            Some((reflected, reflected_value))
+    }
+    let reflected = towards(centroid, highest.0, -1.0, active);
+    let reflected_value = objective(reflected);
+    let replacement = if reflected_value < lowest.1 {
+        let expanded = towards(centroid, highest.0, -2.0, active);
+        let expanded_value = objective(expanded);
+        Some(if expanded_value < reflected_value {
+            (expanded, expanded_value)
         } else {
-            let contracted = towards(centroid, highest.0, 0.5);
-            let contracted_value = objective(contracted);
-            (contracted_value < highest.1).then_some((contracted, contracted_value))
-        };
-        match replacement {
-            Some(vertex) => {
-                if let Some(last) = simplex.last_mut() {
-                    *last = vertex;
-                }
+            (reflected, reflected_value)
+        })
+    } else if reflected_value < second_highest {
+        Some((reflected, reflected_value))
+    } else {
+        let contracted = towards(centroid, highest.0, 0.5, active);
+        let contracted_value = objective(contracted);
+        (contracted_value < highest.1).then_some((contracted, contracted_value))
+    };
+    match replacement {
+        Some(vertex) => {
+            if let Some(last) = simplex.last_mut() {
+                *last = vertex;
             }
-            None => {
-                for vertex in simplex.iter_mut().skip(1) {
-                    let shrunk = towards(lowest.0, vertex.0, 0.5);
-                    *vertex = (shrunk, objective(shrunk));
-                }
+        }
+        None => {
+            for vertex in simplex.iter_mut().skip(1) {
+                let shrunk = towards(lowest.0, vertex.0, 0.5, active);
+                *vertex = (shrunk, objective(shrunk));
             }
         }
     }
-    simplex.sort_by(|a, b| a.1.total_cmp(&b.1));
-    clamp(simplex.first().map_or(best.0, |vertex| vertex.0), active)
+    true
+}
+
+/// The work a fit of `n` points with season length `m` is charged: every filter run walks the
+/// points and copies the `m` seasonal states, and the initial states are O(n + m) more.
+pub(in crate::functions::statistical) fn fit_work(n: usize, m: usize) -> usize {
+    MAX_FILTER_RUNS.saturating_mul(n.saturating_add(m))
 }
 
 /// A fitted model.

@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use super::ets::{
-    self, build_series, completion_setting, detect_season, fit, season_setting, season_work,
-    DuplicateAggregate, Fit, Point, Season, Series, SeriesOptions,
+    self, build_series, completion_setting, detect_season, fit, fit_work, season_setting,
+    season_work, DuplicateAggregate, Fit, Point, Season, Series, SeriesOptions,
 };
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
@@ -291,7 +291,7 @@ impl EtsData {
             return Ok(Rc::clone(fitted));
         }
         let series = self.series(options)?;
-        self.spend(series.y.len().saturating_mul(ets::MAX_FILTER_RUNS))?;
+        self.spend(fit_work(series.y.len(), m))?;
         let fitted = Rc::new(fit(&series.y, m));
         self.fits.insert((options, m), Rc::clone(&fitted));
         Ok(fitted)
@@ -368,7 +368,7 @@ fn array_point(node: &ArrayNode, cell: CellReferenceIndex) -> Result<Point, Calc
 
 #[cfg(test)]
 mod tests {
-    use super::{ets, EtsData};
+    use super::{ets, fit_work, EtsData};
     use crate::expressions::token::Error;
 
     #[test]
@@ -377,7 +377,11 @@ mod tests {
         assert_eq!(data.spend(ets::MAX_CALL_WORK), Ok(()));
         assert_eq!(data.spend(1), Err(Error::NUM));
         // A fit of the longest series costs less than half the budget: two fit, a third does not.
-        const { assert!(2 * ets::MAX_POINTS * ets::MAX_FILTER_RUNS <= ets::MAX_CALL_WORK) };
-        const { assert!(3 * ets::MAX_POINTS * ets::MAX_FILTER_RUNS > ets::MAX_CALL_WORK) };
+        assert!(2 * fit_work(ets::MAX_POINTS, 0) <= ets::MAX_CALL_WORK);
+        assert!(3 * fit_work(ets::MAX_POINTS, 0) > ets::MAX_CALL_WORK);
+        // A short series charges its season length too: a lifted `seasonality` array of long
+        // seasons over three points is cut off after about 57 fits, not run for thousands.
+        let fits = ets::MAX_CALL_WORK / fit_work(3, ets::MAX_SEASON);
+        assert!((50..64).contains(&fits), "{fits}");
     }
 }

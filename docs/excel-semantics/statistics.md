@@ -1678,8 +1678,9 @@ Calc!A58, 1068c44afcd56d53 A207), but the web gives `#N/A` whatever the size, so
 On probes/forecast-ets-longer-series, which has a period-4 signal, ours is 4 (K3, K8, K14, K19, K25, K30); the web is
 `#N/A`.
 Status: UNVERIFIED (desktop probe pending, T-1553, T-2425). Decision 0221 lets the family ship it.
-Implemented in: crates/rustsheet-engine/src/functions/statistical/ets.rs (`build_series`, `detect_season`) and
-statistical/forecast.rs (`forecast_ets_lifted`).
+Implemented in: crates/rustsheet-engine/src/functions/statistical/ets.rs (`build_series`, `detect_season`),
+statistical/ets/model.rs (`initial_states`, `filter`, `optimise`, `fit`, `Fit::forecast`) and statistical/forecast.rs
+(`forecast_ets_lifted`, `forecast_element`).
 Tasks: T-3599, T-3600 (FORECAST.ETS), T-3601 (CONFINT, STAT), T-2425 (match desktop values)
 
 ## FORECAST.ETS family: work caps
@@ -1689,10 +1690,13 @@ series of 200,000 steps or more (time stamps spread so far apart, with missing p
 on a series of 16,385 points or more, where n × min(n/2, 8,760) multiply-adds exceed 2^27 (`MAX_ACF_WORK`). That
 applies to SEASONALITY and to any member that detects seasonality. One call, over all its lifted elements, may also
 spend at most 2^30 units of work (`MAX_CALL_WORK`, T-3600): each distinct series and season charges its detection
-(length × lags) and its fit (length × 2,129 filter runs, `MAX_FILTER_RUNS`) once. Two fits of the longest series fit
-in the budget; past it the element is `#NUM!`, e.g. a `seasonality` array of many lengths over a long series.
+(length × lags) and its fit ((length + season length) × 2,129 filter runs, `fit_work`) once: each run walks the
+points and copies the seasonal states. Two fits of the longest series fit
+in the budget, and about 57 fits of a three-point series at season 8,760; past it the element is `#NUM!`, e.g. a
+`seasonality` array of many lengths.
 Status: DEVIATION (decision 0014)
-Implemented in: crates/rustsheet-engine/src/functions/statistical/ets.rs (`MAX_POINTS`, `MAX_ACF_WORK`)
+Implemented in: crates/rustsheet-engine/src/functions/statistical/ets.rs (`MAX_POINTS`, `MAX_ACF_WORK`, `MAX_CALL_WORK`),
+statistical/ets/model.rs (`fit_work`) and statistical/forecast.rs (`EtsData::spend`)
 Tasks: T-3599, T-3600
 
 ## Database function argument modes
