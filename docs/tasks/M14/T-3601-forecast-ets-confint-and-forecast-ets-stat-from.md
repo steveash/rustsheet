@@ -27,6 +27,8 @@ Adapt gridcraft's `Fit::forecast_sd` (the h-step variance, Hyndman et al. Table 
 6 MAE, 7 RMSE, 8 step size); `confidence_level` outside (0, 1) and `statistic_type` outside 1 to 8 are `#NUM!`.
 
 ## Acceptance criteria
+- [ ] test_tailed_array.rs `fill` gives H4 a formula that is still `#N/IMPL!` (it uses FORECAST.ETS.STAT until this
+      task; an error literal does not do, the tailed reading meets it as `#ERROR!`), and its tests pass.
 - [ ] CONFINT and STAT compute; unit tests show the values on exact data and each statistic type.
 - [ ] statistics.md's model section gains their rules (UNVERIFIED).
 - [ ] `make eval-baseline` shows no regression (or each one is named and accepted under decision 0221 by the owner).
