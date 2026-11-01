@@ -53,12 +53,11 @@ then the mode stays `lock`.
 the merger stopped at step 7.2 on every stale GitHub test merge until #2589 (18:25 UTC; decision
 0200), so no train merged anything; a batch took only the 5 oldest ready PRs, so ejections shrank
 it (0206); a baseline-only conflict waited for its ended session (0207, #2610); and per-PR merges
-took the lock in `train` mode, so the train queued behind them (0204, #2605). Every listed PR met
-the first cause; those marked after 15:00 (#2584, #2590) also queued behind the per-PR claim on
-#2601. #2590 was the T-3455 duplicate of the merged #2589 and was closed unmerged. The rest
+took the lock in `train` mode, so the train queued behind them (0204, #2605). Every listed PR's
+marker was set before 18:25 (the newest, #2590's, at 15:37), so each met the first cause. #2590 was the T-3455 duplicate of the merged #2589 and was closed unmerged. The rest
 merged: #2550, #2580, #2582, #2583 and #2586 between 19:43 and 22:00 UTC; #2584 at 01:40, #2581
 at 07:02, #2437 at 09:15 and #2104 at 09:23 on 2026-11-01. #2609 (fill past ejections) was closed
-for #2606's T-3500 version (0206). The re-flip to `train` went through its own PR by owner ruling
+unmerged; the same fix (T-3500, decision 0206) merged inside #2610. The re-flip to `train` went through its own PR by owner ruling
 (decision 0208, as decision 0192 allows); this task flips nothing.
 
 **2026-11-01 (re-check, 13:30 UTC).** `make merge-train-stats STRANDED=1` listed 21 stranded
