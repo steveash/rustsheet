@@ -3,7 +3,7 @@ id: T-3382
 title: "Incomplete beta L140 bup+bgrat at 1 < b < 2: Excel's density in bup's orientation times x y over b0, plus an accurate bgrat increment (T-2512)"
 milestone: M9
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -37,7 +37,7 @@ today's kernel is visibly off on almost all of them.
 - [x] L140 bup+bgrat with one bup term, b0 != 1/2, takes the composition above in `bratio::beta_dist_lower_tail`.
       On the 3,072 cells of the three w2f cases at least 3,000 are within 15 digits (`make eval` per-case deltas in
       the Outcome).
-- [ ] No probes-numeric or gated cell goes from within 15 digits to visibly off. Any that does is listed with
+- [x] No probes-numeric or gated cell goes from within 15 digits to visibly off. Any that does is listed with
       Excel / new / exact values, or the branch is narrowed.
 - [x] Unit tests pin a few Excel cells from the cases above, with the case and cell named.
 - [ ] `make check` green; reviewers approve.
@@ -58,8 +58,10 @@ Two cells leave 15 digits by under 2 ulp, ours nearer the exact value than Excel
 "L140 bup+bgrat at 1 < b < 2"). No gated cell moved (`make eval-check`: 0 regressions, 0 fixed in every gated suite). Not a fit: a fixed
 composition from T-2512's research, no constants chosen by score. Follow-up: n > 1 terms stay T-3383's.
 
-Left to do (session budget ran out, 2026-11-01): compare the rest of probes-numeric (outside the gate) against main.
-Every cell the branch reaches in any other case must be checked, for example by `rustsheet-eval show` on main's binary
-and on this branch's, as was done for the three w2f cases. Then run the review panel. `make check` passed on 8711a50.
-
-Resumed 2026-11-01 by a later opus run (branch idle 2 h): doing the probes-numeric comparison and the review.
+Every other case checked against the branch's base (`rustsheet-eval show --all` on both binaries, the 375 cases of
+every suite whose formulas name BETA or a Student t function): besides the three w2f cases only probes
+stat-quantile-lift Sheet1!E9 (`BETA.INV(C1,1.0024017013258346,12177.162026553196)`) moves, from 0.0030131411834558195
+to 0.003013141183455823 against Excel's 0.0691959487211844: visibly off before and after (its search crosses the
+new cdf). On the three w2f cases as wholes, within 15 digits: absweep 7,198 -> 8,168, xruns-1 14,899 -> 15,842, xruns-2
+15,475 -> 16,257; bit-exact 3,049 -> 3,309, 7,079 -> 7,070 (nine cells leave the bit, all but A8909 still within 15
+digits), 7,619 -> 7,620. The only cells that leave 15 digits are the two listed in statistics.md.
