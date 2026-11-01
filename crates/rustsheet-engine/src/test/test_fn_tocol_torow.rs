@@ -113,3 +113,39 @@ fn torow_lone_blank_cell_is_ignored() {
     assert_eq!(model._get_text("B2"), "x");
     assert_eq!(model._get_text("B3"), "5");
 }
+
+// T-3506: a one-cell reference to an error cell is a 1x1 array holding the error, so the other
+// arguments are checked first (gen-m7 arg-pairs, excel-graph; docs/excel-semantics/arrays.md "A
+// one-cell error reference is a 1x1 array in TOCOL, TOROW and FILTER").
+#[test]
+fn tocol_torow_one_cell_error_reference_is_a_one_by_one_array() {
+    let mut model = new_empty_model();
+    model._set("G9", "=1/0");
+    model._set("C3", "7");
+    model._set("D3", "abc");
+    model._set("C4", "2");
+    model._set("D4", "1");
+    // An invalid ignore is `#VALUE!` (gen-m7/20df23f84a528470 A8724).
+    model._set("A1", "=TOROW(G9,7)");
+    // Ignore 3 and 2 drop the error, so nothing is left (gen-m7/7cd94f345acd55bb A8480).
+    model._set("A2", "=TOCOL(G9,3,0)");
+    model._set("A3", "=TOROW(G9,2)");
+    // Ignore 0 and 1 keep it as the one element.
+    model._set("A4", "=TOCOL(G9,1)");
+    model._set("A5", "=TOROW(G9)");
+    // A range ignore lifts: 7 and "abc" are `#VALUE!`, 2 is `#CALC!`, 1 keeps the error.
+    model._set("A6", "=TOCOL(G9,C3:D4)");
+    // A literal error is still the error (gen-m7/20df23f84a528470 A8907).
+    model._set("A9", "=TOROW(#N/A,-1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#VALUE!");
+    assert_eq!(model._get_text("A2"), "#CALC!");
+    assert_eq!(model._get_text("A3"), "#CALC!");
+    assert_eq!(model._get_text("A4"), "#DIV/0!");
+    assert_eq!(model._get_text("A5"), "#DIV/0!");
+    assert_eq!(model._get_text("A6"), "#VALUE!");
+    assert_eq!(model._get_text("B6"), "#VALUE!");
+    assert_eq!(model._get_text("A7"), "#CALC!");
+    assert_eq!(model._get_text("B7"), "#DIV/0!");
+    assert_eq!(model._get_text("A9"), "#N/A");
+}

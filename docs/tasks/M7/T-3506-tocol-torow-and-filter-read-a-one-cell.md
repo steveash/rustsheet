@@ -3,7 +3,7 @@ id: T-3506
 title: "TOCOL, TOROW and FILTER read a one-cell error reference in an array argument as a 1x1 array (gen-m7 arg-pairs)"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -40,9 +40,24 @@ TOCOL, TOROW and FILTER read a one-cell reference to an error cell, passed as an
 Decision 0083: every cell listed under Context is visibly off (a wrong error type, or an error where Excel spills), so this task is in the campaign. Its target is that every cell it owns has Excel's type, error and text; the acceptance criteria state it.
 
 ## Acceptance criteria
-- [ ] Every cell listed under Context matches Excel (`make eval-show` on each case), with unit tests for the TOCOL/TOROW ignore paths and the FILTER shape check over a one-cell error reference.
-- [ ] Their lines leave eval/baseline/gen-m7.txt (`make eval-baseline`, 0 regressions); the visible-parity lock falls by the same count.
+- [x] Every cell listed under Context matches Excel (`make eval-show` on each case), with unit tests for the TOCOL/TOROW ignore paths and the FILTER shape check over a one-cell error reference.
+- [x] Their lines leave eval/baseline/gen-m7.txt (`make eval-baseline`, 0 regressions); the visible-parity lock falls by the same count.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - The argument-check order of TOCOL/TOROW/SORT (T-3507) and SORT's lifted by_col (T-3508).
+
+## Outcome
+An error read through a one-cell reference is now a 1x1 array holding it for TOCOL's and TOROW's `array` and FILTER's
+`array` and `include` (`one_cell_error_ref_as_array`, functions/spill_functions.rs), so the other arguments are checked
+first: an invalid ignore is `#VALUE!`, ignore 2/3 leave `#CALC!`, a range ignore lifts per element, and FILTER's shape
+check sees a 1x1 array. FILTER checks a one-cell reference include's shape before its elements (`include_axis`). A literal
+error is still the error, as Excel has it (gen-m7/20df23f84a528470 A8907, ee81c689b5fde629 A977); a wrongly shaped
+multi-cell include holding an error keeps its old order (unprobed). Unit tests:
+`tocol_torow_one_cell_error_reference_is_a_one_by_one_array`, `filter_one_cell_error_reference_is_a_one_by_one_array`.
+arrays.md "A one-cell error reference is a 1x1 array in TOCOL, TOROW and FILTER" is marked implemented.
+Eval delta: all 57 owned cells pass (all 8 cases pass in full); eval/baseline/gen-m7.txt -57 lines, 0 regressions.
+gen-m7 visibly off 109 -> 52 of 50,476 scored cells, allowance 50: M7's gen row is still not met (52/50). The other 52
+are T-3507's 25 and T-3508's 27; `scripts/exit_owners.py --milestone M7` finds 0 unowned. The visible-parity lock is
+lowered by the steward's daily run (`make eval-lower-visible-lock`), not in this PR (2744 visibly off against 2830
+allowed after this change).

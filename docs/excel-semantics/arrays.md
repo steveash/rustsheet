@@ -2135,9 +2135,15 @@ of the result. With Data!G9 holding `#DIV/0!`:
 - `FILTER(Data!G9,Data!G2)` (include 0) is `#CALC!` (gen-m7/68e7f10771a7118a A10798).
 - `FILTER(Data!G9,(Data!A1:A12>0),Data!G4)` is `#VALUE!`: a 1x1 array against a 12-row include (gen-m7/ee81c689b5fde629 A1160).
 - `FILTER(Data!A1:D12,Data!G9,Data!G3)` is `#VALUE!` (gen-m7/d7a127bd9334c2b4 A2380).
+- A literal error is not a reference and is still the error: `TOROW(#N/A,-1)` is `#N/A` (gen-m7/20df23f84a528470
+  A8907) and `FILTER(#DIV/0!,(Data!C1:C12<>0.3),-1)` is `#DIV/0!` (gen-m7/ee81c689b5fde629 A977).
 Evidence: gen-m7 arg-pairs batch (excel-graph, 2026-10-31, T-3497); the full cell list is in T-3506.
-Ours: the referenced error is returned before the other arguments are read (`#DIV/0!` in every cell above).
-Status: VERIFIED (excel-graph); not implemented
+Ours: implemented (T-3506): `one_cell_error_ref_as_array` in functions/spill_functions.rs makes an error read through a
+one-cell reference a 1x1 array for TOCOL's and TOROW's array and FILTER's array and include; FILTER checks a one-cell
+reference include's shape before its elements. Unprobed, so kept as before: a one-cell error include that fits the
+array's shape (a one-row or one-column array) is its error, and a wrongly shaped multi-cell include holding an error still
+returns the error first.
+Status: VERIFIED (excel-graph)
 Tasks: T-3506
 
 ## TOCOL, TOROW and SORT: which bad argument wins (T-3497)
