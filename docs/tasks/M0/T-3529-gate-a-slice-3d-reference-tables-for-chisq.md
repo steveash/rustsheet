@@ -3,7 +3,7 @@ id: T-3529
 title: "Gate A slice 3d: reference tables for CHISQ.INV, CHISQ.INV.RT, GAMMA.INV, BETA.DIST and BETA.INV"
 milestone: M0
 lane: harness
-status: done
+status: in-progress
 priority: P0
 size: M
 tier: opus
@@ -35,14 +35,14 @@ cited mpmath definition, the decision 0188 R3 points marked, and `make check` ru
 - [x] Definitions for the five functions, unit-tested against published values; tables generated, filled and
       committed (BETA.INV's table split to T-3578, see the Outcome); each failing point named with its owner task in the Outcome.
 - [ ] The R3 points are marked and the MATH-OVER-EXCEL entries cite them: split to T-3578 (no s1 point is in an R3 region).
-- [x] The probes-numeric math sidecars are regenerated with the new definitions and committed.
-- [x] `make check` green; reviewers approve.
+- [ ] The probes-numeric math sidecars are regenerated with the new definitions and committed.
+- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - The fixes for failing points (their owner tasks).
 
 ## Outcome
-Done (2026-11-01) for four of the five tables; the rest is split to T-3578.
+In progress (2026-11-01): four of the five tables have landed on the branch, and the rest is split to T-3578.
 - **Definitions** (`tools/src/rustsheet_tools/accuracy/defs/`):
   - gamma.py: GAMMA.INV, CHISQ.INV and CHISQ.INV.RT. The quantile solves the smaller tail in log scale. The tails are
     the incomplete gamma's power series and continued fraction (A&S 6.5.29, 6.5.31), summed at the working precision,
@@ -65,7 +65,13 @@ Done (2026-11-01) for four of the five tables; the rest is split to T-3578.
     uniform-asymptotic incomplete gamma in the generator.
   - The tiny-p R3 points of BETA.INV and CHISQ.INV.RT. No point is marked here, so no decision record is needed;
     T-3578 fixes their regions.
-- **probes-numeric math sidecars:** regenerated with the new definitions.
+- **probes-numeric math sidecars:** not done yet. The first session (budget reached) stopped
+  `rustsheet-accuracy math --suite probes-numeric` after more than 20 minutes and discarded its partial output.
+  T-3358's run took about 2 minutes. The slowdown is probably the new gamma definitions on probes-numeric's huge-shape
+  cells (shape 1E9 and above, where the series needs about 20·sqrt(a) terms). Before rerunning, make gamma.py's
+  `lower_tail`/`upper_tail` raise NoValueError above a shape cap (for example 1E8, the generator's reach; T-3578 owns
+  the larger shapes), so those cells are skipped rather than ground through.
+- **Remaining:** the sidecars as above, then `make check`, the review panel and marking the PR ready (#2668, draft).
 - **Eval delta:** none. Gate A gains 4 tables (1391 points in 10 tables), and the eval suites, baselines and gates
   are unchanged.
 
