@@ -811,6 +811,8 @@ merge-train-ack SEQ=<n>` (`REFUSED=1` when GitHub or the tool refused it), and t
 state back. Done must read exactly as expected, refused must read unchanged (and then fails like a
 refused direct write); anything else, no ack within 10 min, or an ack for another `seq` aborts the
 run (exit 2, lock released). Comment and PR bodies read back with or without the session's footer.
+Since decision 0238 (T-3716) the ack then waits up to 90 s for the run's next action and prints it, and
+`make merge-train-next` blocks until one is pending, so the session needs no fixed sleep between actions.
 
 ### 5. Why `main` ends with the tested tree, and how a difference is caught
 Notation:
