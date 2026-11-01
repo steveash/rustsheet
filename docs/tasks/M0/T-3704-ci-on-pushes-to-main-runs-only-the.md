@@ -3,7 +3,7 @@ id: T-3704
 title: "CI on pushes to main runs only the eval report"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
