@@ -18,6 +18,8 @@ by part on the IM* text (`Fit.complex_text`).
 - `im-hyperbolic-log`: the log form's cells (|x| near 708-710.5) T-3546 chose Excel's EXP on, and
   `im-hyperbolic-log-fresh`, its sweep drawn after that choice (docs/research/t3546/libm-exp.patch
   makes the libm build).
+- `im-near-half-pi`: IMSIN and IMCOS with x near k*pi/2, drawn after T-3726 froze sin x and cos x as SIN and COS's
+  x87 reduction (docs/research/t3726/gen_sweep.py), with the T-3616 probe whose K1, L1, K22 and L22 found it.
 """
 
 from __future__ import annotations
@@ -138,5 +140,13 @@ FITS = [
         "im-hyperbolic-log-fresh",
         "IMSINH/IMCOSH in log space on T-3546's sweep drawn after choosing Excel's EXP (decision 0188 R4.2)",
         ["probes-numeric/t3546-im-hyperbolic-log-exp-fresh-sweep"],
+    ),
+    _fit(
+        "im-near-half-pi",
+        "IMSIN/IMCOS with x near k*pi/2: T-3726's sweep drawn after the x87 reduction was frozen, and the T-3616 probe",
+        [
+            "probes-numeric/t3726-imsin-imcos-near-half-pi-sweep",
+            "probes-numeric/t3616-imsin-imcos-positive-cut-probe",
+        ],
     ),
 ]

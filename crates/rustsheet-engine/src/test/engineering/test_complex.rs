@@ -140,6 +140,38 @@ fn imsin_imcos_small_imaginary_part_takes_the_reciprocal_form() {
     assert_eq!(model._get_text("A4"), "1E-200");
 }
 
+/// IMSIN and IMCOS of a complex number take sin x and cos x from SIN and COS's own kernel (x
+/// reduced by the x87 64-bit π), not libm: near k·π/2 the small part keeps Excel's remainder
+/// (probes-numeric/t3616-imsin-imcos-positive-cut-probe K1, L1; t3726-imsin-imcos-near-half-pi-sweep
+/// A183, B183; T-3726). libm gave ...2.88917292436455E+293 and ...2223053845294390000 here.
+#[test]
+fn imsin_imcos_near_half_pi_take_the_x87_reduction() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=IMSIN("1.5707963267949+709.7i")"#);
+    model._set("A2", r#"=IMCOS("1.5707963267949+709.7i")"#);
+    model._set("A3", r#"=IMSIN("4.71238898038469+79.1718046156471i")"#);
+    model._set("A4", r#"=IMCOS("4.71238898038469+79.1718046156471i")"#);
+
+    model.evaluate();
+
+    assert_eq!(
+        model._get_text("A1"),
+        "8.27492013840132E+307-2.88915216855774E+293i"
+    );
+    assert_eq!(
+        model._get_text("A2"),
+        "-2.88915216855774E+293-8.27492013840132E+307i"
+    );
+    assert_eq!(
+        model._get_text("A3"),
+        "-1.2101741480848E+34-2223964481544680000i"
+    );
+    assert_eq!(
+        model._get_text("A4"),
+        "-2223964481544680000+1.2101741480848E+34i"
+    );
+}
+
 #[test]
 fn fn_imaginary_misc() {
     let mut model = new_empty_model();
