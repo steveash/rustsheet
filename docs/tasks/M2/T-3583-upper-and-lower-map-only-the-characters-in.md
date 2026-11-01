@@ -3,7 +3,7 @@ id: T-3583
 title: "UPPER and LOWER map only the characters in Excel's old case table (probes/t3298-case-mapping-sweep)"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: sonnet
