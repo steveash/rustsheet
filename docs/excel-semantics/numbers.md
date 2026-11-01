@@ -1212,6 +1212,8 @@ off libm the reciprocals follow them. All 66 pairs of `probes-numeric/t0917-hype
 negatives, including x where TANH or SINH is 1 to 1.8 ulp from the true value) agree bit for bit; the earlier note that the
 exp forms regressed COTH_CSCH_SECH B10, B47 and C54 came from the engine's TANH/SINH misses, not from the reciprocal.
 The division is the worksheet `/` (twice-rounded, like COT/CSC/SEC); no probed cell tells it from a plain division.
+At 0 the division is 1/0, so `COTH(0)` and `CSCH(0)` are `#DIV/0!`: accuracy/COTH/s1 Calc!A68, A70, A74 and A76
+(excel-graph, 2026-11-01, T-3670) and gen-m5/4a971c8636db937d Calc!A289.
 Status: VERIFIED (excel-graph). Implemented in `fn_coth`, `fn_csch`, `fn_sech` (mathematical.rs) on `hyperbolic::{tanh, sinh, cosh}`.
 
 ### SINH and COSH overflow is `#NUM!` at once; SECH there is 0 (T-2169)
@@ -1229,7 +1231,14 @@ gen-m5/38b1b8e51dbad326 Calc!A331, gen-m5/bbbd316c346ce645 Calc!A327, gen-m5/977
 gen-m5/4febabc66cfdf9a1 Calc!A156, gen-m5/6ba5e4aceeef8209 Calc!A316, gen-m5/d9fb1e918971111b Calc!A108, gen-m5/fc81c2f704bef138 Calc!A46,
 gen-m5/ecd1b828aebad1e8 Calc!A185; the full list of 37 cells is in T-2169. A156 still fails, for ARRAYTOTEXT's own reason
 (text.md, T-2250).
-Unprobed: COSH and SECH on (700, 710). libm's cosh was finite up to 710.47 and ours now overflows just above 709.78, as SINH does.
+Past the smallest normal double the reciprocals read 0 too: `SECH(709.78)`, `SECH(-709.78)`, `CSCH(709.78)` and
+`CSCH(-709.78)` are 0 (accuracy/SECH/s1 Calc!A83, A84; accuracy/CSCH/s1 Calc!A84, A72, A79; excel-graph, 2026-11-01, T-3670),
+where the true values ±1.1156E-308 are subnormal (as are CSCH(-713.44) and CSCH(-717.64), 2.9E-310 and 4.3E-312). Graph
+reports a kept subnormal as 0 as well and those tables hold no `(x)=0` companion, so whether Excel flushes these is not
+told. From about |x| = 745 on (the tables' 803 to 993) the true value is below the smallest subnormal, so 0 is its
+correctly rounded double and no flush question arises.
+COSH(702.659631014027) and COSH(±709.78) are numbers within 1.2E-16 of the true value (accuracy/COSH/s1, T-3670); the cut in
+(709.78, 710) stays unprobed for COSH and SECH as for SINH. libm's cosh was finite up to 710.47 and ours now overflows just above 709.78, as SINH does.
 Status: VERIFIED (excel-graph) for SINH, COSH and EXP. Implemented (T-2169): `hyperbolic::{sinh,cosh}` overflow to infinity and
 `number_fn` maps a non-finite result to `#NUM!`. That mapping applies to every one-number math function through `number_fn`
 (DEGREES, RADIANS, FACT, the reciprocal trig functions, ...); outside SINH, COSH and EXP it is unprobed (hand: Excel has no
