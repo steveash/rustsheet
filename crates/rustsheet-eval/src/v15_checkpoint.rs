@@ -324,40 +324,37 @@ pub(crate) fn rate_count(
 /// generated list holds every known failure M14 owns, within 15 digits or not. A listed cell
 /// whose suite (the first segment of its case id) has no case in `results` is returned as
 /// unchecked instead: the run cannot tell whether it is stale. Only the suites `keep` accepts are
-/// read (Gate B's, or every suite).
+/// read (Gate B's, or every suite). With `phase1b`, the cells it classes as decision 0188 R1(c)
+/// Phase 1b evidence are left out too (decision 0227): the every-suite rate passes the run's
+/// classes; Gate B passes `None`, since its rate is the 15-digit share whatever the math says.
 pub(crate) fn excepted_cells(
     results: &[CaseResult],
     exceptions: &Phase1Exceptions,
     keep: impl Fn(&str) -> bool,
+    phase1b: Option<&R1cCells>,
 ) -> (Vec<LeftOut>, Vec<String>, Vec<String>) {
     let scored: BTreeSet<&str> = results.iter().map(|r| r.suite.as_str()).collect();
     let mut left_out = Vec::new();
     let mut found = BTreeSet::new();
     for r in results.iter().filter(|r| keep(&r.suite)) {
         for c in &r.cells {
-            let key = c.key();
-            let listed = exceptions.contains(&r.id, &key);
-            if !(listed || exceptions.desktop_owns(&r.id, &key))
-                || !c.from_excel
-                || c.verdict == Verdict::Deviation
-                || !Visible::is_off(c)
-            {
+            if !c.from_excel || c.verdict == Verdict::Deviation || !Visible::is_off(c) {
                 continue;
             }
+            let key = c.key();
+            let kind = if exceptions.contains(&r.id, &key) {
+                found.insert((r.id.clone(), key));
+                LeftOutKind::Listed
+            } else if exceptions.desktop_owns(&r.id, &key) {
+                LeftOutKind::Desktop
+            } else if phase1b.is_some_and(|r1c| r1c.class(&cell_id(&r.id, &key)) == R1c::Phase1b) {
+                LeftOutKind::Phase1b
+            } else {
+                continue;
+            };
             let called = c.formula.as_deref().map(functions_in).unwrap_or_default();
             let sole = sole_call(&called).cloned();
-            left_out.push(LeftOut {
-                called,
-                sole,
-                kind: if listed {
-                    LeftOutKind::Listed
-                } else {
-                    LeftOutKind::Desktop
-                },
-            });
-            if listed {
-                found.insert((r.id.clone(), key));
-            }
+            left_out.push(LeftOut { called, sole, kind });
         }
     }
     let (mut stale, mut unchecked) = (Vec::new(), Vec::new());
@@ -377,39 +374,6 @@ pub(crate) fn excepted_cells(
     (left_out, stale, unchecked)
 }
 
-/// The visibly-off, non-deviation Excel cells of `results` that decision 0188 R1(c) classes as
-/// Phase 1b evidence and that `exceptions` neither lists nor gives to M14 (those are left out
-/// already): the every-suite rate leaves them out (decision 0227). Gate B does not call this.
-fn phase1b_cells(
-    results: &[CaseResult],
-    exceptions: &Phase1Exceptions,
-    r1c: &R1cCells,
-) -> Vec<LeftOut> {
-    let mut out = Vec::new();
-    for r in results {
-        for c in &r.cells {
-            let key = c.key();
-            if !c.from_excel
-                || c.verdict == Verdict::Deviation
-                || !Visible::is_off(c)
-                || exceptions.contains(&r.id, &key)
-                || exceptions.desktop_owns(&r.id, &key)
-                || r1c.class(&cell_id(&r.id, &key)) != R1c::Phase1b
-            {
-                continue;
-            }
-            let called = c.formula.as_deref().map(functions_in).unwrap_or_default();
-            let sole = sole_call(&called).cloned();
-            out.push(LeftOut {
-                called,
-                sole,
-                kind: LeftOutKind::Phase1b,
-            });
-        }
-    }
-    out
-}
-
 /// How many of `left_out` are of `kind`.
 fn count_kind(left_out: &[LeftOut], kind: LeftOutKind) -> usize {
     left_out.iter().filter(|c| c.kind == kind).count()
@@ -425,9 +389,8 @@ pub fn summarize(
     generated: &[&str],
     exceptions: &Phase1Exceptions,
 ) -> V15Checkpoint {
-    let (mut left_out, stale_exceptions, unchecked_exceptions) =
-        excepted_cells(results, exceptions, |_| true);
-    left_out.extend(phase1b_cells(results, exceptions, &report.r1c));
+    let (left_out, stale_exceptions, unchecked_exceptions) =
+        excepted_cells(results, exceptions, |_| true, Some(&report.r1c));
     let mut outer: BTreeMap<String, usize> = BTreeMap::new();
     for r in results
         .iter()

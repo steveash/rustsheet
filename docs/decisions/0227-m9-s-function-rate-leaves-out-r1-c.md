@@ -28,10 +28,14 @@
     classes as Phase 1b and that neither list above holds, from both `rate_cells` and `rate_visible`
     (`LeftOutKind::Phase1b`, `rate_phase1b`, `phase1b_left_out`). The report says how many, per function.
   - Gate B does not change: it still counts every such cell of its suites.
-  - `exit_owners.py` leaves the same cells out of a rate criterion (`counted_in_rate`).
+  - `exit_owners.py` leaves the same cells out of a rate criterion (`counted_in_rate`). It already left out R3
+    passes (decision 0211), which the every-suite rate still counts; only Gate B reads them as passing. That
+    difference predates this decision and is left as it is.
 - **Consequences:**
   - No user-representative cell stops counting: Gate B, the `function rate` line of `make phase1-exit`, is
-    untouched. What leaves is the every-suite share's count of cells that already sit within 1e-9 of the true
+    untouched. Within 1e-9 can still show in a 10th or 11th displayed digit, so Gate B is what keeps that gap
+    out of users' files. On the 2026-11-01 report all 32,473 Phase 1b cells were in probes (233) and
+    probes-numeric (32,240), and none was in a Gate B suite. What leaves is the every-suite share's count of cells that already sit within 1e-9 of the true
     value on both sides. They stay known failures, stay in `visible`, and are worked in Phase 1b.
   - On the 2026-11-01 report this lifts T.DIST to the rate (571 of its 572 counted off cells are Phase 1b) and
     takes 31,814 Phase 1b cells out of F.DIST's count. It leaves 65 M9 functions below the rate: their off cells

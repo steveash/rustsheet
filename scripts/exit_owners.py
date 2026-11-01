@@ -169,9 +169,10 @@ def counted(name: str, left_out: dict[str, str], gate_b: bool) -> bool:
 
 
 def counted_in_rate(name: str, left_out: dict[str, str]) -> bool:
-    """Whether M9's every-suite function rate counts the visibly-off cell `name`: it leaves out
-    the R3 passes (decision 0188 R3) and the Phase 1b evidence (decision 0227), not the M14-owned
-    probe-row cells, which decision 0143 already takes out of the rate's own count."""
+    """Whether M9's every-suite function rate counts the visibly-off cell `name`. It leaves out
+    only `r3_pass` (decision 0188 R3) and `phase1b` (decision 0227) cells. Every other class, such
+    as `m14_owned`, stays listed here, because the Rust rate handles those through its own lists
+    (decision 0143)."""
     return left_out.get(name) not in RATE_LEFT_OUT
 
 
