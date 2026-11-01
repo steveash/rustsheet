@@ -406,6 +406,33 @@ fn fn_imcsc_imlog2_imcot_of_zero_are_num() {
     assert_eq!(model._get_text("A3"), "#NUM!");
 }
 
+// Excel: probes-numeric/t3589-im-hyperbolic-small-x-sweep C42, C58, C68 and D102 (excel-graph, T-3609): a small real
+// IMSECH is 1 over libm's cosh and a small real IMCSCH 1 over the series sinh, down to the smallest normal x; a
+// subnormal x is #NUM! (probes-numeric/t3609-imcsch-tiny-real-probe A9, A11, A12, A14).
+#[test]
+fn small_real_imsech_imcsch_take_the_reciprocal() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=IMSECH("6.17632662504393E-06")"#);
+    model._set("A2", r#"=IMSECH("-1.71603860095587E-05")"#);
+    model._set("A3", r#"=IMSECH("9.70217965965262E-05")"#);
+    model._set("A4", r#"=IMCSCH("-1.05118886127103E-06")"#);
+    model._set("A5", r#"=IMCSCH("1E-200")"#);
+    model._set("A6", r#"=IMCSCH("1E-307")"#);
+    model._set("A7", r#"=IMCSCH("1E-308")"#);
+    model._set("A8", r#"=IMCSCH("2E-309")"#);
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "0.999999999980927");
+    assert_eq!(model._get_text("A2"), "0.999999999852761");
+    assert_eq!(model._get_text("A3"), "0.999999995293386");
+    assert_eq!(model._get_text("A4"), "-951303.839721704");
+    assert_eq!(model._get_text("A5"), "1E+200");
+    assert_eq!(model._get_text("A6"), "1E+307");
+    assert_eq!(model._get_text("A7"), "#NUM!");
+    assert_eq!(model._get_text("A8"), "#NUM!");
+}
+
 // Excel: gen-m9 (excel-graph, T-2258): IMLN and IMLOG10 of 0 or 0i are #NUM!, not "-inf" (T-2389).
 #[test]
 fn fn_imln_imlog10_of_zero_are_num() {

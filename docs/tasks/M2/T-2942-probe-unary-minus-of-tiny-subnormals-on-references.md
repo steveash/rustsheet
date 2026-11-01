@@ -19,6 +19,9 @@ Excel evidence for unary minus of a tiny subnormal (below 2^-1026) in the forms 
   (numbers.md "Unary minus of a tiny subnormal"; probes/t2771-roundup-subnormal-sign-controls).
 - The engine applies that rule to the parity of a whole chain and to every operand kind (cast.rs `apply_unary_chain`).
   Only inline parenthesized operands were probed.
+- Since T-3338 the chain walks through written groups and applies the rule once per group under an odd minus
+  count (`-(-x)` of a tiny negative x is +|x|, `--x` is x; unchanged from before). Probe `-(-x)`, `-(-(A1))`,
+  `--(-x)` and `-(--x)` with the forms below (test_multiplication_overflow.rs pins ours).
 - Build a tiny value as `2^-1022*(1+k*2^-52)-2^-1022` (k < 2^48), and its negative as `2^-1022-2^-1022*(1+k*2^-52)`.
   Graph shows a subnormal as 0, so read every result back through `*2^100`.
 

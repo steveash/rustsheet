@@ -163,11 +163,20 @@ group itself, reserves one and a half levels of the parser's bound instead of tw
 adds one level to the tree, so a level of `(ABS(` costs three and a half: Excel's 64 and 65 levels
 of `(ABS(` load and match (probes/t3097-nesting-paren-abs-*), up to 72 levels parse and 73 are too
 deep (T-3197, decision 0184). Each unary minus is a node (T-0132), and so is each unary plus kept in the formula text
-(T-2723), but a sign costs no depth level: the evaluator walks a run of them in a loop. Instead at
-most 1,023 signs may be open at once (`MAX_SIGNS`, T-3193), a minus written directly before a number
-literal not counted, so a run matches Excel's caps before a number literal (1,024 signs), a reference,
-`TRUE` or a string (1,023), and one more sign is too deep. Signs in several runs on one path
-(`=-(-(...))`) count together, as in Excel.
+(T-2723), but a sign costs no depth level: the evaluator walks a run of them in a loop. Instead the
+signs open at an operand plus its cost may be at most 1,024 (`MAX_SIGNS`, T-3193, T-3338), Excel's
+rule below: every sign counts, a plus folded into a number too, and the operand costs 0 for a number
+literal written directly after the signs, 2 for a parenthesis or a function call (a LAMBDA, a called
+name and a called group are unprobed and cost 2 too), 1 otherwise; one more sign is refused. Typed, the
+refusal is a formula that does not parse (`TOO_MANY_SIGNS_MESSAGE`, not a resource limit), so the cell
+stays blank, as Excel's PATCH 400 leaves it; stored, it loads as a parse error. Signs in
+several runs on one path (`=-(-(...))`) count together, as in Excel. A group whose content is exactly a
+signed group (`(-(x))`, whitespace around the signs allowed) is read in the same loop as a run of
+parentheses and adds no depth level, as a merged run does: the evaluator walks signs and groups in one
+loop (`Model::apply_unary_chain`) and the printer too, so `-(` nests to the 256-parenthesis cap, as in
+Excel. In the evaluator a minus run under groups keeps the tiny-subnormal rule of each group (numbers.md
+"Unary minus of a tiny subnormal"): `-(-(x))` of a tiny negative x is +|x|, as when each group was
+evaluated alone; `--x` keeps its one-pass parity.
 Excel's rule (T-3266, probes/t3266-*, excel-graph 2026-10-31, stored and typed alike; T-3172 for the
 first three shapes): the signs open at an operand (every unary sign on its path not yet applied,
 across nested runs) plus that operand's cost may be at most 1,024. A number literal written
@@ -183,14 +192,16 @@ outer signs stay open and the parentheses add nothing: 200 levels of `-(` around
 refused stored formula makes Excel for the web refuse the workbook (createSession 501
 `FileCorruptTryRepair`), so it keeps no sidecar and was dropped after the run, as T-3172's were. A
 refused typed one is a PATCH 400 `InvalidArgument` that leaves A1 blank, so its sidecar has no A1 and
-`ISFORMULA(A1)` FALSE. Four such typed cases are kept, the ones where ours disagrees:
-minus-paren-, minus-paren2-, plus-paren- and minus-abs-1023-typed. The typed refusals ours shares
+`ISFORMULA(A1)` FALSE. Four such typed cases are kept, the ones where ours disagreed before T-3338:
+minus-paren-, minus-paren2-, plus-paren- and minus-abs-1023-typed. The typed refusals ours shared
 (the 1,024 and 1,025 sign runs, nested-200-825, nested-50-975, nested-paren-257) were dropped, because
-the harness scores a typed input the engine refuses as an engine error, not as a blank cell. Ours differs in two places (T-3338): a
-sign run before a parenthesis or a call admits 1,023 signs, one more than Excel (the four typed
-cases above fail on S!B1), and `-(` nesting is
-bounded by `MAX_FORMULA_DEPTH`, so 100 levels of `-(` parse but 128 are too deep (nested-paren-128,
--200, -255, -256 and nested-200-823, -824 fail as `EngineError`). In ours a plus directly before a
+the harness then scored a typed input the engine refuses as an engine error, not as a blank cell. Since
+T-3338 a sign-cap refusal is a typed formula that does not parse (`TYPED_FORMULA_DOES_NOT_PARSE`) and
+scores as the blank cell Excel leaves, so the sign-run ones (1,024, 1,025, nested-200-825, nested-50-975)
+could be kept; nested-paren-257 and the 66-call refusal are still limit errors, scored as engine errors
+(T-3689 makes them blank too and restores the dropped cases). Ours matches all of it since T-3338 (the 2026-11-01 eval had the four typed
+1,023 cases above failing on S!B1 and nested-paren-128, -200, -255, -256 and nested-200-823, -824
+not running, `EngineError`, stored and typed). In ours a plus directly before a
 number literal folds into it and adds no node. Typed whitespace adds no
 level either (SPEC-0023, decision 0127): `=SUM( - SUM( - …` nests as deep as `=SUM(-SUM(-…`. Calls are further capped at 65 (below).
 Excel caps function nesting at 64
@@ -295,13 +306,15 @@ operator cap. The xlsx importer refuses a workbook holding one, as Excel does (s
 8,192 characters refuse the workbook" above).
 Before T-0128 chains were capped at 255 terms.
 These bounds keep the recursive parser, evaluator, printer and tree copy/drop from overflowing the
-stack on untrusted formulas (CLAUDE.md directive 5); before T-0931, 200 nested parentheses crashed
+stack on untrusted formulas (CLAUDE.md directive 5). The heaviest shapes the sign and parenthesis caps admit (256 levels of spaced
+`- ( `, 1,023 spaced signs) fit a 1 MiB stack optimized, but an unoptimized build needs about 16 MiB
+for them, in the derived `Clone`/`Drop` of the tree (T-3338 measured; T-3691 makes those walks iterative); before T-0931, 200 nested parentheses crashed
 the process. A new recursive consumer of the tree (or a heavier evaluator frame) must be
 re-measured against these limits (the at-limit tests run on a 1 MiB stack in release builds), and
 must walk operator chains with `expressions/parser/chain.rs`.
-Evidence: probes/operator-chain-limit (chains at and one character past the published limit), the T-1091 refusals above and probes/t3097-nesting-* (Excel's 65-call cap; all of them match since T-3191 and T-3197) and probes/t3172-* (Excel's 256-parenthesis and 1,023/1,024-sign caps, T-3172); this is a resource limit.
+Evidence: probes/operator-chain-limit (chains at and one character past the published limit), the T-1091 refusals above and probes/t3097-nesting-* (Excel's 65-call cap; all of them match since T-3191 and T-3197) and probes/t3172-* (Excel's 256-parenthesis and 1,023/1,024-sign caps, T-3172) and probes/t3266-* (the sign cap's operand costs and `-(` to 256 levels; all of them match since T-3338); this is a resource limit.
 Status: DEVIATION (decision 0014)
-Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `MAX_VALUE_OPERATORS`, `MAX_NESTED_CALLS`, `MAX_PARENTHESES`, `MAX_SIGNS`, `Parser::in_call`, `Parser::parse_primary`, `Parser::grow`, `Parser::grow_chain`); expressions/parser/mod.rs (`Parser::parse_signs`); expressions/parser/chain.rs; expressions/parser/reference_operators.rs (`Parser::parse_parenthesis_run`); model.rs (`Model::parse_cell_formula`, `Model::evaluate_operator_chain`); rustsheet-xlsx `import::worksheets::from_a1_to_rc` and `import::call_cap` (`refuse_too_many_calls`, `check_rule_formulas`) (the call cap on load: cells, name bodies, rule formulas)
+Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `MAX_VALUE_OPERATORS`, `MAX_NESTED_CALLS`, `MAX_PARENTHESES`, `MAX_SIGNS`, `TOO_MANY_SIGNS_MESSAGE`, `Parser::in_call`, `Parser::parse_primary`, `Parser::parse_signs`, `Parser::parse_signed_operand`, `Parser::grow`, `Parser::grow_chain`); expressions/parser/mod.rs (`Parser::parse_power`); cast.rs (`Model::apply_unary_chain`); expressions/parser/chain.rs; expressions/parser/reference_operators.rs (`Parser::parse_parenthesis_run`); model.rs (`Model::parse_cell_formula`, `Model::evaluate_operator_chain`); rustsheet-xlsx `import::worksheets::from_a1_to_rc` and `import::call_cap` (`refuse_too_many_calls`, `check_rule_formulas`) (the call cap on load: cells, name bodies, rule formulas)
 
 ## Input left over after a complete formula is a syntax error
 Rule: text after a complete expression (`=1 2`, `=1+2 3`, `=SUM(A1:A2))`, `="a" "b"`, `=SIN(1)(3)`,
@@ -479,7 +492,7 @@ Ours (T-2781, SPEC-0023 step 1; line feeds T-2782, step 2): the parser keeps eac
 `Node::Spaced` around the operand it touches and drops the runs Excel drops, so FORMULATEXT, the formula text, the
 R1C1 storage text, row and column edits, sheet renames and moves print the runs back. Two runs that the parser joins
 around one operand (a folded plus) add their line feeds and keep the earlier spaces only when the later run has none;
-a later run of exactly 256 line feeds counts as none there (unprobed). A cell stores two trees: the written one, which
+a later run of exactly 256 line feeds counts as none there. Probed (probes/t2828-whitespace-join-folded-plus, excel-graph 2026-10-27, T-2828; ours matches all 30 cells): `=  +` LF `5` prints back as typed (6 chars, one LF, two spaces), as do `=` LF `+  5` (2 spaces), `=- ` LF ` 5` (`=-` LF ` 5`: the space before the LF is dropped) and `=1+   +` + 256 LF + `5` (`=1+   +5`: the wrapped 256 LF print nothing, the three spaces stay); `=1+ ` LF ` +` LF ` 5` prints `=1+` LF ` +` LF ` 5` (the space before the first LF dropped, 2 LF, 2 spaces). Values match the whitespace-free formula (5, 5, 6, -5, 6). A cell stores two trees: the written one, which
 prints, and one with no whitespace, which evaluation, units and static analysis read, so no argument-shape test sees a
 `Spaced` (`formula_cells::ParsedFormula`); defined names, conditional formats and outside-cell formulas evaluate the
 stripped tree too. A file's stored text drops the spaces it starts with (`Parser::loaded`; E1, E2, E7, E8, E10 pass);

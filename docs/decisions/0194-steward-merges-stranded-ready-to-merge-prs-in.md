@@ -1,7 +1,8 @@
 # 0194 — Steward merges stranded ready-to-merge PRs in shadow mode
 
 - **Status:** accepted (2026-10-31, T-3344). It amends 0050 (orphaned agent PRs) and 0157 (the
-  merge-train modes) for `shadow` mode only.
+  merge-train modes) for `shadow` mode only. *Amended by 0224: item 4 no longer holds; in `train`
+  mode a stranded PR escalates (a merger pass, the janitor, then a P0) instead of flipping.*
 - **Context:** In `shadow` mode a worker marks its PR `ready-to-merge` and then must merge it
   itself under the merge lock. On 2026-10-30 the lock was held 86% of the day, its wait p90 was
   54 min, and the queue reached 15 waiters. Workers' 110-minute sessions ended in the queue, and
