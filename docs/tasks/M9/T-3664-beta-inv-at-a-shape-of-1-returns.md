@@ -99,8 +99,8 @@ ironcalc-calc BETADIST_BETAINV.xlsx H72, probes t2435-dist-extremes A112). The f
 - `beta.rs::beta_quantile_shape_one`: at a shape of exactly 1 and p >= 1E-15, BETA.INV and BETAINV return the closed
   form (p; -expm1(log1p(-p)/beta); exp(ln(p)/alpha)) instead of the crossing of BETA.DIST's cdf, which is flat there.
   Shapes above 1E5 still take `beta_quantile_crossing` first, and p below 1E-15 keeps the search (t1543 A73:A75).
-- Eval, every BETA.INV/BETAINV cell, against origin/main 038a711f9: 69 cells change. Bit-exact among them goes from
-  18 to 31: 31 cells become bit-exact and 18 move from bit-exact to 1 ulp. No cell becomes visibly off.
+- Eval, every BETA.INV/BETAINV cell, against origin/main 038a711f9: 71 cells change. Bit-exact among them goes from
+  18 to 32: 32 cells become bit-exact and 18 move from bit-exact to 1 ulp. No cell becomes visibly off.
   - The task's own cells: m9-beta-inv A149 and t1745 J144 are bit-exact. A69 and t1745 J67 go from 44 ulp to 3,
     within 15 digits.
   - Gated suites: gen-m9 +1 fixed (2a18b2f5a4dc43ac A44), 1 regressed (589f42e67f4b4b8d A221); ironcalc-calc
