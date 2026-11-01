@@ -3,7 +3,7 @@ id: T-3488
 title: "Merge train stranded ready PRs: find the cause and meet SPEC-0027's bar before re-flipping to train"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P0
 size: S
 tier: opus
