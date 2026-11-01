@@ -520,13 +520,14 @@ def split_cell_name(name: str) -> tuple[str, str]:
 
 
 def unowned_off(
-    report: dict[str, Any], tasks_dir: Path
+    report: dict[str, Any], tasks_dir: Path, names: dict[str, tuple[str, ...]] | None = None
 ) -> list[tuple[OffCell, bool]]:
     """`all_off_cells` that no open, non-deferred task owns, each with whether a deferred task
     owns it. Texts are narrowed to the ones naming the case once per case: the naive loop over
-    every cell and task is minutes on a full report."""
+    every cell and task is minutes on a full report. `names` (`case_names` of a wider case list)
+    replaces the report's own when the report is a partial run (T-3793)."""
     cells = all_off_cells(report)
-    called = report_case_names(report, [o.cell for o in cells])
+    called = names if names is not None else report_case_names(report, [o.cell for o in cells])
     live = open_task_texts(tasks_dir, None, deferred=False)
     parked = open_task_texts(tasks_dir, None, deferred=True)
     naming: dict[str, tuple[list[str], list[str]]] = {}

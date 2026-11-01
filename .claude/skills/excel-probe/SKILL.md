@@ -36,3 +36,7 @@ right: if the answer looks wrong, arbitrary or inconsistent, record it and match
    rule in one sentence, the probe case id as evidence, and any surprising consequences. Record
    every finding, including ones that look like Excel bugs and ones no task implements yet.
    Cite it in code comments where the quirk is implemented (`// Excel: see docs/excel-semantics/rounding.md#round-half`).
+   File or amend an owner task for every visibly-off cell the probe's cases add (name the case,
+   and its cells as single cells or colon spans, never hyphen spans); `make check` fails a branch
+   whose added or refilled cases have an unowned one (`scripts/new_case_owners.py`, decision
+   0245). `make unowned-off ALL=1` after `make eval` lists them.
