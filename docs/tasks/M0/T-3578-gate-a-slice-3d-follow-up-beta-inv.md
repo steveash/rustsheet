@@ -33,6 +33,11 @@ CHISQ.INV.RT with the decision 0188 R3 points of "GAMMA.INV at a huge shape, clo
 ## Acceptance criteria
 - [ ] BETA.INV s1 filled and committed (or a decision on the refused formulas, recorded in docs/excel-semantics).
 - [ ] A huge-shape batch for the three gamma quantiles, filled, with the R3 points marked and cited.
+- [ ] The beta and gamma `quantile` definitions give no value (NoValueError) where the root is below the smallest
+      double, as their docstrings and statistics.md "BETAINV is #NUM! where its quantile underflows (T-2435)" say. Today
+      `solve_log_bracket(..., -1500, ...)` returns roots down to about 1E-652. For example, probes-numeric
+      t1543-inverse-cdf-tiny-p A91 `BETA.INV(1E-300,0.5,100)` has math 7.87E-603, and CHISQ.INV(1E-300,1) has about
+      1.6E-600 where Excel is 0. This was a T-3529 review minor, and it matters once BETA.INV s1 is generated.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

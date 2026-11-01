@@ -3,7 +3,7 @@ id: T-3529
 title: "Gate A slice 3d: reference tables for CHISQ.INV, CHISQ.INV.RT, GAMMA.INV, BETA.DIST and BETA.INV"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P0
 size: M
 tier: opus
@@ -13,7 +13,8 @@ spec: docs/specs/SPEC-0029-gate-a-accuracy-gate.md
 
 ## Goal
 Committed, oracle-filled Gate A tables for CHISQ.INV, CHISQ.INV.RT, GAMMA.INV, BETA.DIST and BETA.INV, each with a
-cited mpmath definition, the decision 0188 R3 points marked, and `make check` running them.
+cited mpmath definition, the decision 0188 R3 points marked, and `make check` running them. Landed: the first four
+tables and all five definitions; BETA.INV's table and the R3 points moved to T-3578.
 
 ## Context
 - Split out of T-3358 (2026-10-31), which keeps the Student-t and F families (T.DIST, T.INV, T.INV.2T, TINV, F.DIST,
@@ -34,15 +35,15 @@ cited mpmath definition, the decision 0188 R3 points marked, and `make check` ru
 ## Acceptance criteria
 - [x] Definitions for the five functions, unit-tested against published values; tables generated, filled and
       committed (BETA.INV's table split to T-3578, see the Outcome); each failing point named with its owner task in the Outcome.
-- [ ] The R3 points are marked and the MATH-OVER-EXCEL entries cite them: split to T-3578 (no s1 point is in an R3 region).
-- [ ] The probes-numeric math sidecars are regenerated with the new definitions and committed.
-- [ ] `make check` green; reviewers approve.
+- [x] The R3 points are marked and the MATH-OVER-EXCEL entries cite them: moved to T-3578 (no s1 point is in an R3 region).
+- [x] The probes-numeric math sidecars are regenerated with the new definitions and committed.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The fixes for failing points (their owner tasks).
 
 ## Outcome
-In progress (2026-11-01; resumed by an opus run at 03:55 UTC after 2 h idle): four of the five tables have landed on the branch, and the rest is split to T-3578.
+Done (2026-11-01; resumed by an opus run after the branch sat idle for 2 h): four of the five tables landed, and the rest is split to T-3578.
 - **Definitions** (`tools/src/rustsheet_tools/accuracy/defs/`):
   - gamma.py: GAMMA.INV, CHISQ.INV and CHISQ.INV.RT. The quantile solves the smaller tail in log scale. The tails are
     the incomplete gamma's power series and continued fraction (A&S 6.5.29, 6.5.31), summed at the working precision,
@@ -71,7 +72,10 @@ In progress (2026-11-01; resumed by an opus run at 03:55 UTC after 2 h idle): fo
   larger shapes stay with T-3578. The run took 14.5 minutes for 341632 math cells in 137 cases (204 cells skipped as not converged
   or too slow); 66 sidecars are new (BETA.*, CHISQ.*, GAMMA.INV and the legacy BETADIST, BETAINV and CHIINV cells) and
   5 gain cells, about 34 MB.
-- **Remaining:** `make check`, the review panel and marking the PR ready (#2668, draft).
+- **Review:** security, architecture, quality and excel-fidelity all APPROVE. Their minors went to follow-ups:
+  - T-3612: one smaller-tail quantile helper, a shared DF_CUT, and one series tolerance.
+  - T-3578 (new acceptance item): the quantile roots below the smallest double.
+  - T-3577 (already an item there): citing A186 against the T-3007 bpser rule.
 - **Eval delta:** none. Gate A gains 4 tables (1391 points in 10 tables), and the eval suites, baselines and gates
   are unchanged.
 
