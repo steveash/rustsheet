@@ -70,7 +70,9 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
     GitHub MCP tools, exactly as printed (never add, skip, reorder or change one), then `make
     merge-ready-verify PR=<n>`. Who may mark: the PR's own worker after its panel approved, the
     steward for an orphaned PR after running the reviewers itself, and an opus run after
-    work-loop step 5c. The merger never marks or reviews.
+    work-loop step 5c. A task-only PR (every changed path a `.md` file under `docs/tasks/`) needs no
+    reviewer: any session may mark it once CI is green and it is not a draft (decision 0231). The
+    merger never marks or reviews.
   - **Any push** makes the marker stale: mark again after CI and the reviewers the change
     concerns. `CARRY=1` carries the verdicts over only for a head that is a merge of
     `origin/main` onto the marked head that is clean, a `make catch-up` or a `make renumber`,
