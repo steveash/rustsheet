@@ -1,0 +1,57 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2828: whitespace runs joined across a folded plus or a sign when they hold line feeds. A1 `=  +`LF`5`, A2 `=`LF`+  5`, A3 `=1+ `LF` +`LF` 5`, A4 `=- `LF` 5`, A5 `=1+   +` 256 LF `5`. B FORMULATEXT, C its length, D line-feed count, E space count, F value.",
+ "tags": [
+  "M2",
+  "syntax",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": {
+     "entered": "=  +\n5"
+    },
+    "B1": "=FORMULATEXT(A1)",
+    "C1": "=LEN(FORMULATEXT(A1))",
+    "D1": "=LEN(FORMULATEXT(A1))-LEN(SUBSTITUTE(FORMULATEXT(A1),CHAR(10),\"\"))",
+    "E1": "=LEN(FORMULATEXT(A1))-LEN(SUBSTITUTE(FORMULATEXT(A1),\" \",\"\"))",
+    "F1": "=A1",
+    "A2": {
+     "entered": "=\n+  5"
+    },
+    "B2": "=FORMULATEXT(A2)",
+    "C2": "=LEN(FORMULATEXT(A2))",
+    "D2": "=LEN(FORMULATEXT(A2))-LEN(SUBSTITUTE(FORMULATEXT(A2),CHAR(10),\"\"))",
+    "E2": "=LEN(FORMULATEXT(A2))-LEN(SUBSTITUTE(FORMULATEXT(A2),\" \",\"\"))",
+    "F2": "=A2",
+    "A3": {
+     "entered": "=1+ \n +\n 5"
+    },
+    "B3": "=FORMULATEXT(A3)",
+    "C3": "=LEN(FORMULATEXT(A3))",
+    "D3": "=LEN(FORMULATEXT(A3))-LEN(SUBSTITUTE(FORMULATEXT(A3),CHAR(10),\"\"))",
+    "E3": "=LEN(FORMULATEXT(A3))-LEN(SUBSTITUTE(FORMULATEXT(A3),\" \",\"\"))",
+    "F3": "=A3",
+    "A4": {
+     "entered": "=- \n 5"
+    },
+    "B4": "=FORMULATEXT(A4)",
+    "C4": "=LEN(FORMULATEXT(A4))",
+    "D4": "=LEN(FORMULATEXT(A4))-LEN(SUBSTITUTE(FORMULATEXT(A4),CHAR(10),\"\"))",
+    "E4": "=LEN(FORMULATEXT(A4))-LEN(SUBSTITUTE(FORMULATEXT(A4),\" \",\"\"))",
+    "F4": "=A4",
+    "A5": {
+     "entered": "=1+   +\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n5"
+    },
+    "B5": "=FORMULATEXT(A5)",
+    "C5": "=LEN(FORMULATEXT(A5))",
+    "D5": "=LEN(FORMULATEXT(A5))-LEN(SUBSTITUTE(FORMULATEXT(A5),CHAR(10),\"\"))",
+    "E5": "=LEN(FORMULATEXT(A5))-LEN(SUBSTITUTE(FORMULATEXT(A5),\" \",\"\"))",
+    "F5": "=A5"
+   }
+  }
+ ],
+ "expected": {}
+}

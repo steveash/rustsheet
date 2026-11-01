@@ -127,7 +127,8 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
    - `train`: mark the PR ready and move on to the next task; the merger merges it, and an
      ejection comes back to its worker as a PR comment.
 
-   Any agent may flip the switch back to `lock` at once with a one-file flip PR (the `steward`
+   Any agent may flip the switch back to `lock` at once on a correctness failure, and otherwise
+   only with the owner's approval (decision 0224), with a one-file flip PR (the `steward`
    skill's "Emergency flip to `lock`"). Once the merge queue is on, enqueue with auto-merge
    instead and skip the up-to-date check (decision 0053; dormant). The squash commit title and
    the task's Outcome are the record; the steward's daily run lists merged work in
