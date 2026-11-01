@@ -314,7 +314,10 @@ option records `prev:` and checks mechanically that the PR's own diff did not ch
   resolved and the lists re-recorded (`make catch-up`), because the eval gate, which marking
   requires green, checks exactly those lists against the engine. A re-recorded list may not
   add a failure line that neither parent's list has: the gate cannot tell that regression from
-  a correct list (decision 0207).
+  a correct list (decision 0207). The visible-parity lock `eval/baseline/visible-parity.txt` is
+  such a list too. A merge may not leave a case that `main` has above `main`'s line for it, and
+  catch-up merges a conflict on it three-way per case. A PR from before the lock may delete the
+  retired `visible-parity.json` once `main` has none (decision 0219).
 
 Any other push needs the reviewers that the change concerns to run again, as today.
 

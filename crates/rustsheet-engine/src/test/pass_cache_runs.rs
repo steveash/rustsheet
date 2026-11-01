@@ -15,8 +15,8 @@ pub(crate) fn cell(name: String, value: &str) -> (String, String) {
     (name, value.to_string())
 }
 
-/// What [`cached_and_walked`] measured: `(name, cached, walked)` per cell set, with
-/// a last `(work)` row, and `probe` of each model.
+/// What [`cached_and_walked`] measured: `(name, cached, walked)` per cell set, with a last
+/// `(work)` row; and what the probe read of the cached run's model and of the walked run's.
 pub(crate) struct Runs {
     pub(crate) rows: Vec<(String, String, String)>,
     pub(crate) cached: usize,

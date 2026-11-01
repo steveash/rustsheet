@@ -29,8 +29,11 @@ fn hyperbolic_exp_overflows(x: f64, y: f64) -> bool {
 /// `IMCOSH("710.4+1.5i")` is 1.17873946358278E+307+1.6621900184285E+308i, `IMSINH("709.5+1E-200i")`
 /// has real part 6.77493159657354E+307 where `IMSINH("709.5")` is 6.77493159657316E+307
 /// (probes/eng-im-overflow-edges A6, A14; eng-im-overflow-edges-2, T-2231). The exact cut between
-/// 709 and 709.0000000001 is not pinned.
-/// FITTED(T-2231, 84 cells, |x| 100..800 with a nonzero imaginary part; cut bracketed 709..709.0000000001)
+/// 709 and 709.0000000001 is not pinned. Re-validated on fresh sweeps (T-3525, decision 0188 R4):
+/// on probes-numeric/t3525-im-hyperbolic-log-band-sweep the log form gives 178 of the 180 cells with
+/// 709 < |x| < 710.5, the product form alone 2. For x < 0 Excel switches earlier, below |x| = 708.94
+/// (`IMSINH("-708.993723853194-0.284042075249253i")` is `#NUM!`), which this cut misses (T-3546).
+/// FITTED(T-3525, 617 cells, |x| 100..800 with a nonzero imaginary part; cut bracketed 709..709.0000000001 for x > 0)
 const HYPERBOLIC_LOG_CUT: f64 = 709.0;
 
 /// IMCOSH's (`sinh` false) or IMSINH's value past [`HYPERBOLIC_LOG_CUT`], `None` below the cut or
@@ -57,13 +60,10 @@ fn hyperbolic_log_form(
     Some(finite_complex_result(re, im, suffix, cell))
 }
 
-/// `(sinh t, cosh t)` as IMSIN and IMCOS build them from the imaginary part: `(EXP(t) ∓ EXP(-t))/2`
-/// with Excel's EXP outside [`inverse_exp_sinh_cosh`]'s band ([`trig_sinh_cosh`]), small t too, where
-/// the worksheet SINH switches to expm1
-/// (numbers.md). So the imaginary part of `IMCOS("1.5E+2-2E-3i")` is -0.0014297538124271 (libm
-/// sinh gives ...242709) and `IMSIN("1E-200+1E-200i")` is "1E-200": EXP(1E-200) = EXP(-1E-200),
-/// so sinh is 0 (gen-m9, T-2258 triage; engineering.md, T-2535). IMSINH, IMCOSH, IMSECH and
-/// IMCSCH take [`inverse_exp_sinh_cosh`] instead (T-2629, T-2841).
+/// `(sinh t, cosh t)` as IMSIN and IMCOS build them from the imaginary part past `INVERSE_EXP_HIGH`
+/// (|t| > 20): `(EXP(t) ∓ EXP(-t))/2` with Excel's EXP. Below that they take the reciprocal form
+/// ([`trig_sinh_cosh`], T-3545). IMSINH, IMCOSH, IMSECH and IMCSCH take [`inverse_exp_sinh_cosh`]
+/// instead (T-2629, T-2841).
 fn exp_sinh_cosh(t: f64) -> (f64, f64) {
     let (a, b) = (excel_exp(t), excel_exp(-t));
     ((a - b) / 2.0, (a + b) / 2.0)
@@ -84,21 +84,34 @@ fn inverse_exp_sinh_cosh(x: f64) -> (f64, f64) {
     if !in_inverse_exp_band(x) {
         return (x.sinh(), x.cosh());
     }
+    inverse_exp_form(x)
+}
+
+/// `(1/u ∓ u)/2` with `u = EXP(-x)`: [`inverse_exp_sinh_cosh`]'s form, whatever `x`.
+fn inverse_exp_form(x: f64) -> (f64, f64) {
     let u = excel_exp(-x);
     let v = 1.0 / u;
     ((v - u) / 2.0, (v + u) / 2.0)
 }
 
-/// `(sinh y, cosh y)` for IMSIN and IMCOS: IMSINH's kernel at `-y` (sin z = -i·sinh(i·z)) inside
-/// its band, the EXP pair outside, where `IMSIN("1E-200+1E-200i")` is "1E-200" and
-/// `IMCOS("150-0.002i")` needs it (T-2535). `IMSIN("-4i")` is -27.2899171971278i, `IMSINH("4")`'s
-/// digits, where the EXP pair gives ...277i (probes/t2778-imsinh-sign-sweep C2); the 1,023
-/// IMSIN/IMCOS cells of the suites still pass (docs/excel-semantics/engineering.md, T-2796).
+/// `(sinh y, cosh y)` for IMSIN and IMCOS: IMSINH's form at `-y` (sin z = -i·sinh(i·z)), that is
+/// `(u - 1/u)/2` and `(u + 1/u)/2` with `u = EXP(y)`, for every |y| up to `INVERSE_EXP_HIGH`, the
+/// EXP pair above. `IMSIN("-4i")` is -27.2899171971278i, `IMSINH("4")`'s digits, where the EXP pair
+/// gives ...277i (probes/t2778-imsinh-sign-sweep C2, T-2796). IMSINH's lower cut does not apply
+/// here: below it the EXP pair cancels where the reciprocal does not, and `IMSIN("0+0.0080407127044978i")`
+/// is 0.00804079934755902i, this form's digits (EXP pair ...908i). By digits the form fits all 300
+/// cells of probes-numeric/t3545-imsin-imcos-small-imag-sweep (|y| in [1e-7, 0.0105], drawn after the
+/// form was chosen; 4 differ only in notation, T-3560), where the EXP pair fits 227, and all 300 of
+/// t3545-imsin-imcos-tiny-imag-sweep (|y| in [1e-300, 1e-7]), where it fits 297 (fit lab
+/// `im-small-imag`). The small-t cells the EXP pair was fitted to keep their digits: the imaginary
+/// part of `IMCOS("1.5E+2-2E-3i")` is -0.0014297538124271 (libm sinh ...242709), and
+/// `IMSIN("1E-200+1E-200i")` is "1E-200" since u = 1 (gen-m9, T-2535;
+/// docs/excel-semantics/engineering.md, T-3545).
 fn trig_sinh_cosh(y: f64) -> (f64, f64) {
-    if !in_inverse_exp_band(y) {
+    if y.abs() > INVERSE_EXP_HIGH {
         return exp_sinh_cosh(y);
     }
-    let (sinh, cosh) = inverse_exp_sinh_cosh(-y);
+    let (sinh, cosh) = inverse_exp_form(-y);
     (-sinh, cosh)
 }
 
@@ -125,11 +138,15 @@ fn in_inverse_exp_band(x: f64) -> bool {
 /// Neither end is pinned (T-2797): Excel's lower switch lies between 0.01 (libm's digits,
 /// probes/t2535-imsinh-imcosh-kernel-sweep) and 0.0105 (the form's, probes/t2778-imsinh-sign-sweep),
 /// its upper one between 18.2 (t2778) and 100 (t2535); 20 is where the worksheet TANH turns to ±1
-/// (numbers.md).
-/// FITTED(T-2629, 306 cells, |x| 0.00012..100; cuts bracketed 0.01..0.0105 and 18.2..100)
+/// (numbers.md). Re-validated on a fresh sweep (T-3525, decision 0188 R4): with the band, the
+/// engine gives all 1,242 older cells with |x| <= 100 and 663 of the 700 fresh ones
+/// (probes-numeric/t3525-im-hyperbolic-fresh-sweep), against 998 and 634 with libm and the EXP
+/// pair alone; no cell on either side of a cut changes with the cut's place (0..0.01: 220 cells,
+/// 18.2..100: 110 cells), so neither cut is pinned further (docs/excel-semantics/engineering.md).
+/// FITTED(T-3525, 1942 cells, |x| 0.0001..100; cuts bracketed 0.01..0.0105 and 18.2..100)
 const INVERSE_EXP_LOW: f64 = 0.01;
 /// See [`INVERSE_EXP_LOW`].
-/// FITTED(T-2629, 306 cells, |x| 0.00012..100; cuts bracketed 0.01..0.0105 and 18.2..100)
+/// FITTED(T-3525, 1942 cells, |x| 0.0001..100; cuts bracketed 0.01..0.0105 and 18.2..100)
 const INVERSE_EXP_HIGH: f64 = 20.0;
 
 /// IMSIN, IMCOS, IMTAN, IMSEC, IMCSC and IMCOT of a real number `x` (imaginary part 0): `value` of
