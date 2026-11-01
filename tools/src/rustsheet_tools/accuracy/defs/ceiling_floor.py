@@ -8,7 +8,7 @@ above (CEILING) or below (FLOOR) and multiplied by the significance exactly. The
 design, not an error (numbers.md, "FLOOR.PRECISE: a 16th-digit tie in the ratio cut goes away from
 zero", VERIFIED for all seven functions of the family): without it the math of
 `CEILING(100,1.01010101010101)` would be 101.010101010101, while the ratio 99.0000000000000099 cuts to
-99 and Excel's rule gives 99.9999999999999. A plain ceiling would mark such points as Excel being a
+99 and Excel's rule gives 99.99999999999999. A plain ceiling would mark such points as Excel being a
 step (here 1%) off the math, a false decision 0188 R3 mark.
 
 The sign and argument rules, all cited from numbers.md and gen/probe cells:
@@ -38,7 +38,7 @@ from fractions import Fraction
 
 import mpmath
 
-from rustsheet_tools.accuracy.literal import MAX_LITERAL, MIN_LITERAL, Arg, decimal15
+from rustsheet_tools.accuracy.literal import MAX_LITERAL, MIN_LITERAL, Arg, decimal15, exponent10
 from rustsheet_tools.accuracy.model import Definition, DomainError, Interval, MathArg, Param, register
 from rustsheet_tools.accuracy.sampler import decimal_literal, log_uniform, random_sign
 
@@ -129,10 +129,6 @@ def _value(function: str) -> Callable[[Sequence[MathArg]], mpmath.mpf]:
     return value
 
 
-def _exponent(x: float) -> int:
-    return decimal15(x).adjusted()
-
-
 def _signs(function: str, rng: random.Random) -> tuple[float, float]:
     """Signs of (number, significance). The signed forms rarely draw a positive number over a
     negative significance (their `#NUM!`); the others draw both signs freely."""
@@ -151,7 +147,7 @@ def _typical(function: str, rng: random.Random) -> list[Arg]:
     times smaller."""
     xs, ss = _signs(function, rng)
     x = decimal_literal(rng, rng.randint(1, 15), rng.randint(-4, 8), xs)
-    s = decimal_literal(rng, rng.randint(1, 6), _exponent(x) - rng.randint(0, 6), ss)
+    s = decimal_literal(rng, rng.randint(1, 6), exponent10(x) - rng.randint(0, 6), ss)
     return [x, s]
 
 
@@ -215,7 +211,7 @@ def _draw(function: str) -> Callable[[str, random.Random], list[Arg]]:
         elif stratum == "extreme":
             xs, ss = _signs(function, rng)
             x = decimal_literal(rng, rng.randint(1, 15), rng.randint(-300, 306), xs)
-            e = _exponent(x)
+            e = exponent10(x)
             s_exp = max(-307, min(306, e - rng.randint(-5, 300)))
             args = [x, decimal_literal(rng, rng.randint(1, 15), s_exp, ss)]
         elif stratum == "log-uniform":

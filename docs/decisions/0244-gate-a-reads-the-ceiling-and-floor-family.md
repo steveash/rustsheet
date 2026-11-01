@@ -31,5 +31,7 @@
     decimal ratio. There Excel is one step from this math: CEILING/s1 A58 `CEILING(9023487987474.29,0.002)` (exact
     ratio 4511743993737145, a tie that goes up to ...7474.3; Excel 9023487987474.28) and FLOOR.MATH/s1 A99 and A173,
     CEILING.MATH/s1 A170, at most 4.9e-15 relative. Such a step is a relative 1e-15 at the ratios where it can occur
-    (1E+15 and more, or a near-tie), far inside ε = 1e-9, so it needs no rule here.
+    (1E+15 and more, or a near-tie), far inside ε = 1e-9, so it needs no rule here. The
+    accuracy check passes these points through both sides of the envelope (within ε of the math, and the engine within
+    15 digits of Excel), with no known-failures line.
   - MROUND, TRUNC, ISO.CEILING and ECMA.CEILING are not covered; they need their own reading when they get tables.

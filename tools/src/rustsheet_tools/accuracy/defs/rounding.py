@@ -43,7 +43,7 @@ from decimal import ROUND_DOWN, ROUND_HALF_UP, ROUND_UP, Context, Decimal
 
 import mpmath
 
-from rustsheet_tools.accuracy.literal import MAX_LITERAL, MIN_LITERAL, Arg, decimal15
+from rustsheet_tools.accuracy.literal import MAX_LITERAL, MIN_LITERAL, Arg, decimal15, exponent10
 from rustsheet_tools.accuracy.model import (
     Definition,
     DomainError,
@@ -112,13 +112,9 @@ def _value(function: str) -> Callable[[Sequence[MathArg]], mpmath.mpf]:
     return value
 
 
-def _exponent(x: float) -> int:
-    return decimal15(x).adjusted()
-
-
 def _dropping_digits(rng: random.Random, x: float) -> int:
     """A `num_digits` from one past the leading digit (all dropped) to the 15th digit (none)."""
-    e = _exponent(x) if x != 0 else 0
+    e = exponent10(x) if x != 0 else 0
     return rng.randint(-e - 2, 14 - e)
 
 
@@ -144,7 +140,7 @@ def _edge(rng: random.Random) -> list[Arg]:
     `num_digits` bounds."""
     shape = rng.randrange(6)
     x = decimal_literal(rng, rng.randint(1, 15), rng.randint(-6, 12), random_sign(rng))
-    e = _exponent(x)
+    e = exponent10(x)
     if shape == 0:
         return [0.0, rng.randint(-6, 10)]
     if shape == 1:  # rounding at the leading digit, or one above it
