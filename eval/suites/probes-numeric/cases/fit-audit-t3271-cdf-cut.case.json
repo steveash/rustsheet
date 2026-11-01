@@ -1,0 +1,59 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Fit audit (decision 0188 R4): GAMMA.DIST cdf of a positive x at shapes 1E45 to 1E200, to pin gamma.rs HUGE_SHAPE_CDF_CUT (T-3271, bracket 1E40..1.85E76).",
+ "tags": [
+  "M9",
+  "statistical",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=GAMMA.DIST(2,1E+45,1E+10,TRUE)",
+    "A2": "=GAMMA.DIST(2,1E+50,1E+10,TRUE)",
+    "A3": "=GAMMA.DIST(2,1E+55,1E+10,TRUE)",
+    "A4": "=GAMMA.DIST(2,1E+60,1E+10,TRUE)",
+    "A5": "=GAMMA.DIST(2,1E+65,1E+10,TRUE)",
+    "A6": "=GAMMA.DIST(2,1E+70,1E+10,TRUE)",
+    "A7": "=GAMMA.DIST(2,1E+72,1E+10,TRUE)",
+    "A8": "=GAMMA.DIST(2,1E+74,1E+10,TRUE)",
+    "A9": "=GAMMA.DIST(2,1E+75,1E+10,TRUE)",
+    "A10": "=GAMMA.DIST(2,3E+75,1E+10,TRUE)",
+    "A11": "=GAMMA.DIST(2,6E+75,1E+10,TRUE)",
+    "A12": "=GAMMA.DIST(2,1E+76,1E+10,TRUE)",
+    "A13": "=GAMMA.DIST(2,1.2E+76,1E+10,TRUE)",
+    "A14": "=GAMMA.DIST(2,1.4E+76,1E+10,TRUE)",
+    "A15": "=GAMMA.DIST(2,1.6E+76,1E+10,TRUE)",
+    "A16": "=GAMMA.DIST(2,1.7E+76,1E+10,TRUE)",
+    "A17": "=GAMMA.DIST(2,1.8E+76,1E+10,TRUE)",
+    "A18": "=GAMMA.DIST(2,1.84E+76,1E+10,TRUE)",
+    "A19": "=GAMMA.DIST(1,1E+60,1,TRUE)",
+    "A20": "=GAMMA.DIST(1E+50,1E+60,1,TRUE)",
+    "A21": "=GAMMA.DIST(1E-100,1E+60,1,TRUE)",
+    "A22": "=GAMMA.DIST(1,1E+75,1,TRUE)",
+    "A23": "=GAMMA.DIST(1E+50,1E+75,1,TRUE)",
+    "A24": "=GAMMA.DIST(1E-100,1E+75,1,TRUE)",
+    "A25": "=GAMMA.DIST(1,1.5E+76,1,TRUE)",
+    "A26": "=GAMMA.DIST(1E+50,1.5E+76,1,TRUE)",
+    "A27": "=GAMMA.DIST(1E-100,1.5E+76,1,TRUE)",
+    "A28": "=GAMMA.DIST(1,1.85E+76,1,TRUE)",
+    "A29": "=GAMMA.DIST(1E+50,1.85E+76,1,TRUE)",
+    "A30": "=GAMMA.DIST(1E-100,1.85E+76,1,TRUE)",
+    "A31": "=GAMMA.DIST(1,1E+77,1,TRUE)",
+    "A32": "=GAMMA.DIST(1E+50,1E+77,1,TRUE)",
+    "A33": "=GAMMA.DIST(1E-100,1E+77,1,TRUE)",
+    "A34": "=GAMMA.DIST(1,1E+100,1,TRUE)",
+    "A35": "=GAMMA.DIST(1E+50,1E+100,1,TRUE)",
+    "A36": "=GAMMA.DIST(1E-100,1E+100,1,TRUE)",
+    "A37": "=GAMMA.DIST(1,1E+200,1,TRUE)",
+    "A38": "=GAMMA.DIST(1E+50,1E+200,1,TRUE)",
+    "A39": "=GAMMA.DIST(1E-100,1E+200,1,TRUE)",
+    "A40": "=GAMMADIST(2,1.7E+76,1E+10,TRUE)",
+    "A41": "=GAMMA.DIST(2,1.85E+76,1E+10,FALSE)",
+    "A42": "=GAMMA.DIST(2,1E+70,1E+10,FALSE)"
+   }
+  }
+ ],
+ "expected": {}
+}

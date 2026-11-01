@@ -4,7 +4,8 @@ title: "Probe GAMMA.DIST's huge-shape #NUM! cuts one cell per workbook and pin t
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P3
+priority: P1
+campaign: semantics
 size: S
 tier: opus
 depends_on: [T-3271]
@@ -24,6 +25,23 @@ GAMMA.DIST's two huge-shape `#NUM!` cuts sit where Excel's do, not merely at the
   workbook and bisect each bracket. Also check whether the density cut depends on (alpha - 1)·LN alone, by varying
   x and beta at a fixed product, and whether the cdf cut depends on x/beta.
 - Opus: the evidence is unclear, and the probing may need a workaround for the refusal.
+- **Wrong-type cells, from T-3530's fit audit (probes-numeric/fit-audit-*, excel-graph; scored on main 4e2f5f3df after T-3350;
+  docs/research/fit-audit/README.md)** (fit-audit-t3271-density-cut, 50 cells): the density cut's variable is not
+  (alpha - 1)·(-LN(x/beta)). Excel is 0 at A43 `GAMMA.DIST(0.5,1E+15,1,FALSE)`, where the engine is `#NUM!`; and
+  Excel is `#NUM!` at A9 `GAMMA.DIST(2.17173678289098E-300,1E+9,1,FALSE)` (product 6.9E11) and A48
+  `GAMMA.DIST(1E-300,1E+9,1E-6,FALSE)` (6.77E11), where the engine is 0. The scale does not count: A45
+  `GAMMA.DIST(1E-200,1E+9,1E+100,FALSE)` is 0. At the probed shapes 1E8 to 1E15 every cell (with t2435 A25, A26,
+  A92) fits `#NUM!` where x / shape is below a cut in (2.17E-309, 1E-308], else 0 (UNVERIFIED as a form: probe
+  smaller shapes, x/shape between those values). That bracket is the subnormal range, so the cut may be "x/shape is
+  not a normal double". It does not explain fit-audit-t3271-cdf-cut A41 `GAMMA.DIST(2,1.85E+76,1E+10,FALSE)` and A42
+  `GAMMA.DIST(2,1E+70,1E+10,FALSE)`: `#NUM!` densities at x/shape about 1E-76 and 2E-70 (the engine agrees). So from
+  a shape of 1E70 a second mechanism, likely the cdf's, applies.
+- The cdf cut (`HUGE_SHAPE_CDF_CUT` 1.85E76) is refuted too: fit-audit-t3271-cdf-cut (38 of 42 cells; A5, A8, A31 and A33 have no value; filled one cell
+  per workbook) has 21 wrong-type cells. Excel is `#NUM!` where the engine is 0 at A4, A6, A7, A9, A10, A11, A13, A14,
+  A15, A16, A17 and A40 (`GAMMA.DIST(2,1E+60,1E+10,TRUE)` up to 1.8E76; `GAMMADIST` too). Excel is 0 where the engine
+  is `#NUM!` at A28, A29, A32, A34, A35, A36, A37, A38 and A39 (beta = 1, shapes 1.85E76 to 1E200). Excel is not
+  monotone in the shape: A12 (1E76) and A18 (1.84E76) are 0 between `#NUM!`s, and the refill agreed. So look for an
+  intermediate of Excel's arithmetic that overflows, not for a cut.
 
 ## Acceptance criteria
 - [ ] Each cut is pinned (or narrowed by at least 10x, with the remaining bracket recorded) by excel-graph probe cells; statistics.md is updated; the constants move if the evidence says so; `make eval-check` shows no regressions and the visible-parity lock does not rise.
