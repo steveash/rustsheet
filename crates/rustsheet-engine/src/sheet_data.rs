@@ -125,6 +125,13 @@ impl Row {
             }
             Err(self.cells.len())
         } else {
+            // A dense row holds its cells at their offset from the first: tried before bisecting.
+            let offset =
+                |&(first, _): &(i32, Cell)| usize::try_from(column.checked_sub(first)?).ok();
+            let at = |&g: &usize| self.cells.get(g).is_some_and(|(c, _)| *c == column);
+            if let Some(g) = self.cells.first().and_then(offset).filter(at) {
+                return Ok(g);
+            }
             self.cells.binary_search_by_key(&column, |(c, _)| *c)
         }
     }

@@ -160,6 +160,19 @@ def git(*args: str, root: Path = ROOT, check: bool = True) -> subprocess.Complet
     return result
 
 
+def merge_tree(root: Path, a: str, b: str) -> tuple[str, list[str]] | None:
+    """(tree, conflicted paths) of the merge of commits `a` and `b` (`git merge-tree
+    --write-tree`, conflicts written with markers); None when it cannot be computed. The carry
+    rule, `make catch-up`, `make renumber` and the janitor share it."""
+    merged = git("merge-tree", "--write-tree", "--name-only", a, b, root=root, check=False)
+    if merged.returncode not in (0, 1):
+        return None
+    lines = merged.stdout.split("\n")
+    # After the tree: the conflicted paths, a blank line, then informational messages.
+    rest = lines[1:]
+    return lines[0].strip(), rest[: rest.index("")] if "" in rest else rest
+
+
 def parse_lock(sha: str, committed: int, message: str) -> Lock:
     """The lock a commit message describes. Malformed lines are dropped one by one; a commit
     without `version` is version 1 (no queue, and the commit time is `renewed`)."""

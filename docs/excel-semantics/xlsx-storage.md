@@ -444,14 +444,20 @@ constant in C3 and `*3` typed into C4). A column that was not filled (rule 4) ge
 A table that grew by typing beside it gets the new `<tableColumn name="Column1">` with the column formula, or
 `name="0"` and none for the header-row case. With a totals row, the table keeps `totalsRowCount="1"` and the
 label column's `totalsRowLabel`; the filled column gets no totals metadata.
-A stored `calculatedColumnFormula` does not fill blank cells on load (next entry, T-2969); the engine neither
-reads nor writes it.
+A stored `calculatedColumnFormula` does not fill blank cells on load (next entry, T-2969).
+Ours (T-3033): import keeps its text on `TableColumn::calculated_column_formula`; a typed fill stores the first data
+row's formula in the same file form, and export writes the stored text, so an exception in a data row does not change
+it. Whether Excel opens our exported column formula without repair is unprobed.
+The stored text is not rewritten when rows or columns are inserted or deleted (an engine gap: Excel's file form
+follows the edit; unprobed here). An empty `<calculatedColumnFormula/>` reads as no column formula, and an
+`array="1"` attribute is dropped on import (export writes the plain element): engine choices, what Excel does with
+either is unprobed.
 Evidence: the saved `xl/tables/table1.xml` and `xl/worksheets/sheet1.xml` of probes/t2957-fill-one-totals,
 -refill-second, -constant-exception, -constant-then-refill, -existing-constant, -a1-reference and -expand-right-*
 (the eval/.cache/oracle/excel-graph/<input_sha256>.xlsx of each sidecar).
 Status: VERIFIED (excel-graph)
-Implemented in: no (T-2958 for export; load needs nothing, the engine ignores the formula)
-Tasks: T-2957, T-2958, T-2969
+Implemented in: crates/rustsheet-xlsx/src/import/tables.rs, crates/rustsheet-xlsx/src/export/tables.rs
+Tasks: T-2957, T-2958, T-2969, T-3033
 
 ## Excel does not fill a calculated column on load
 Rule: a table part whose `<tableColumn>` holds `<calculatedColumnFormula>` does not make Excel fill the
@@ -462,8 +468,8 @@ Evidence: probes/t2969-calculated-column-load (excel-graph, 2026-10-30), column 
 `T[[#This Row],[Val]]*2` on C:F of T A1:F5: FORMULATEXT is #N/A for every cell of C (all blank), for D3:D5
 (only D2 holds the formula, `=[@Val]*2`) and for E2:E5 (E3 holds 99); F4 typed `=B4*3` fills F2:F5.
 Status: VERIFIED (excel-graph)
-Implemented in: yes (the engine does not read `calculatedColumnFormula`)
-Tasks: T-2969
+Implemented in: yes (import only marks the column as calculated; nothing fills on load)
+Tasks: T-2969, T-3033
 
 ## A table part without a name attribute is named by its displayName
 Rule: Excel opens a workbook whose `xl/tables/tableN.xml` has `displayName` but no `name` attribute (as

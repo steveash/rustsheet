@@ -2481,9 +2481,51 @@ of the same flows ÷ f; MDURATION = DURATION/q; each cell's distance from it in 
   gen-m9 0a957119475760c5 A279's `PRICE(38136,44737,1E+300,7,100,2)` (Calc!A181) is Excel +0.5 ulp, ours +8.5 (
 against the double that 1E+300 parses to).
 So a more accurate kernel would fix the short-stub DURATION and MDURATION cells but not the grid's PRICE cells,
-where only Excel's own operation order gives its digits: T-2733 keeps the `visible` stage.
+where only Excel's own operation order gives its digits: T-2733 keeps the `visible` stage. T-2733 found that order
+("PRICE, DURATION and MDURATION sum order at a huge coupon rate and yield").
 Status: VERIFIED (excel-graph)
 Tasks: T-2207, T-2732, T-2733
+
+## PRICE, DURATION and MDURATION sum order at a huge coupon rate and yield
+Rule: PRICE takes the accrued interest as `rate/f · A/E · 100` (left to right, `A/E` one quotient) and discounts
+coupon k (k = 0..N-1) at the exponent `k + DSC/E`; the redemption keeps `DSC/E + N - 1`, and each discount is
+Excel's `^` ("PRICE and ODDFPRICE discount with Excel's `^`"). The single-coupon (N = 1) branch, which discounts
+linearly, keeps the accrued `coupon · (A/E)`: on the post-freeze fresh sweep probes-numeric/t2733-price-r4-fresh
+(excel-graph, 2026-11-01) all 78 PRICE rows with COUPNUM = 1 are bit-exact with it and 62 with `rate/f · A/E · 100`
+(A56 `PRICE(38927,38971,0.828072,1.77301,1.21553,1,2)` is Excel -3.3520514477410757, 32 ulp from the latter); the
+re-check sweep probes-numeric/t2733-price-n1-fresh confirms it (T-2733 Outcome). DURATION and MDURATION discount
+coupon k at the same `k + DSC/E`. Written this way every cell of probes/bond-extreme-coupon-yield is within half a
+unit of Excel's 15th significant digit, among them the probe rows that mirror gen-m9 0a957119475760c5 A279,
+a91bad4e84f49739 A142 and 30e20ba3302fea8b A90 with literal arguments: `PRICE(38136,44737,1E+300,7,100,2)`
+(Calc!A181) is 8.95449454935698e+300, `PRICE(43830,45293,100,278,50,4,1)` (Calc!A182) -133.76680342333566 and
+`MDURATION(39697,44449,58988,44270,2,0)` (Calc!C183) 5.029680055838246e-07; the three gen-m9 cells pass too. The order before (accrued `coupon · (A/E)`,
+exponent `DSC/E + k - 1` for k = 1..N) left 62 cells visibly off, Calc!A20 `PRICE(38136,44737,1E+10,7,100,1,0)` at
+55709579072.88501 against Excel's 55709579072.88489.
+Offline fit (T-2733: the candidate orders scored outside the engine, over 239 PRICE cells of the case with more
+than one coupon left, plain doubles unless named; bit-exact / within 15 digits by display; it ranks the candidates and
+is not the eval result, below):
+- before: 63 / 176; exponent `k + DSC/E` with accrued `coupon·A/E`: 146 / 215; with `coupon·(A/E)`: 142 / 214;
+- accrued `rate/f·(A/E)·100`, `rate·(A/E)·(100/f)` or `A/E·rate·100/f` (the same doubles here): **196 / 238**;
+  `rate·A/E·100/f`: 166 / 223; every other order of the five factors scored lower;
+- each operation rounded twice (x87, "Division rounds twice"): the same 196 / 238; an extended (64-bit) accumulator:
+  65 / 191; everything exact with one final rounding: 61 / 189;
+- the power: Excel's `^` 196, `EXP(t·LN v)` with libm or Excel's kernels and a double product 181, the product in an
+  x87 register 164, `1/EXP(-t·LN v)` 154, libm `pow` and a correctly rounded pow 119 (with the earlier accrued);
+- the coupon `100·rate/f`, `rate·(100/f)` or `rate/f·100`: tie; summing from the last coupon: 85 at best; a
+  closed-form annuity, `v^k·v^(DSC/E)`, a running product of `v`, or discounting the coupon-date value by
+  `v^(DSC/E)` once: 79 at best; the exponent written `(k·E + DSC)/E` (one rounding): no change.
+Eval (the engine at T-2733, `rustsheet-eval show`): every one of the case's 240 PRICE cells (Calc!A1-A198,
+Parts!B1-B6 and E1-J6) is bit-exact. The redemption term alone (rate 0, Parts!B1-B6) is 100 over the worksheet's
+`(1+yld/2)^(COUPDAYSNC/COUPDAYS+COUPNUM-1)` (Parts!D1-D6, Excel's own `^`) to the bit in all six rows in Excel, and
+the engine matches; for example `PRICE(38136,44737,0,42,100,2,0)` (Parts!B3) is 3.012159688249292e-47 = 100/Parts!D3.
+The 47 cells of the case left are all DURATION or MDURATION (Calc columns B and C), numeric and within 2 ulp:
+last-digit residue, T-2972's except Calc!B7, B43, C7 and C43, which T-2733 moved by 1 or 2 ulp (T-2973). YIELD
+prices with the same sum: on top of T-3215's start it fixes 16 cells of the yield-* probes and moves none.
+Evidence: probes/bond-extreme-coupon-yield (579 cells, excel-graph, 2026-10-26, T-2732); gen-m9/0a957119475760c5
+Calc!A279, a91bad4e84f49739 Calc!A142, 30e20ba3302fea8b Calc!A90 (excel-graph, 2026-10-23).
+Ours: `CouponSchedule::price` and `duration_of` in functions/financial/financial_bonds.rs since T-2733.
+Status: VERIFIED (excel-graph)
+Tasks: T-2733, T-2972, T-2973
 
 ## PMT when (1+rate)^nper overflows or underflows
 Rule: when `pv*P` overflows (`P = (1+rate)^nper`, overflowing or not), PMT is not an error but the annuity quotient
@@ -3249,7 +3291,26 @@ redemptions and negative roots; excel-graph, 2026-10-24, T-2391); the gen-m9 cel
 probes/yield-deep-discount-sweep (160 cells: 20 coupon rates 1 to 100 by 8 prices 1 to 20 at the P!A214 bond) and
 probes/yield-deep-discount-cut (36 cells: R = 20.5 to 24.5 in steps of 0.5 by P = 1, 3.14159, 10, 20); excel-graph,
 2026-10-31, T-2747.
-Ours: matches since T-2391 (`excel_yield_newton` in functions/financial/financial_bonds/yield_solver.rs).
+probes/yield-below-par-sweep (184 cells) and probes/yield-newton-step-cap (15 cells) (excel-graph, 2026-10-31, T-2747).
+- A Newton whose step meets its 1e-10 test on the 100th and last check is `#NUM!`, though one that meets it on the
+  99th check is a value and one that meets it on no check returns the 100th iterate: Excel's "out of steps" test is
+  one check early. At `YIELD(39681,45662,R,P,102,4)` our uncapped Newton meets its test on checks 98 to 102 at
+  R = 22.7375, 22.74375, 22.75, 22.75625 and 22.7625 (P = 20), and at the matching rates for P = 10 and 5; Excel is
+  `#NUM!` on exactly the check-100 cell of each column (yield-newton-step-cap A3, B3, C3) and within 3 ulp of ours on
+  the other 12. `YIELD(39681,45662,23,20,102,4)`, where no check of the 100 passes (the uncapped Newton would need 166),
+  is -2.2823895460582744, the 100th iterate, far below PRICE's root. The check counts are our Newton's, whose
+  iterates are within a few ulp of Excel's; the rule is inferred from them, the 12 neighbours on checks 98, 99, 101
+  and 102 bracketing each check-100 cell.
+- Far below par at a huge coupon (T-2747, probes/yield-below-par-sweep: `YIELD(39681,45662,R,P,102,4)`, rates 1 to
+  100, prices 1 to 20): the first step from the fitted start jumps to a negative yield where 1 + y/4 is small and
+  PRICE is huge, and Newton then climbs back by small steps. Where the climb takes more than 100 steps the value is
+  the 100th iterate, a negative yield that is no root (`YIELD(39681,45662,21.25,1,102,4)` = -1.853031327841678,
+  `YIELD(39681,45662,22,10,102,4)` = -0.8519602400469752); where a step leaves PRICE's domain it is `#NUM!` (every
+  price from rate 24 up, and from about rate 21.5 at price 1 to 23 at price 20). 183 of the 184 cells match ours in
+  type and the values within 2.5e-12 relative; the 184th (H16) is the check-100 cell above.
+Ours: matches since T-2391 (`excel_yield_newton` in functions/financial/financial_bonds/yield_solver.rs); the
+check-100 `#NUM!` since T-2747 (`compute_yield` in financial_bonds.rs). ODDFYIELD runs the same Newton; whether
+its check-100 stop is `#NUM!` too is not probed (T-3625).
 Status: VERIFIED
 Tasks: T-2391, T-1592, T-2747
 

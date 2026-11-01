@@ -74,21 +74,23 @@ impl Model {
                 let ignore = values.get(1).filter(|v| !matches!(v, CalcResult::EmptyArg));
                 let scan_by_col = values.get(2).filter(|v| !matches!(v, CalcResult::EmptyArg));
                 // An error argument comes before an invalid one: `TOCOL(Data!B1:B5,Data!B8,NA())`
-                // with an invalid ignore is `#N/A` (gen-m7/8044dce50616cfe9 A1508).
-                for value in [ignore, scan_by_col].into_iter().flatten() {
-                    if value.is_error() {
-                        return value.clone();
-                    }
+                // with an invalid ignore is `#N/A` (gen-m7/8044dce50616cfe9 A1508). An ignore that is
+                // not a number at all is the exception: it is `#VALUE!` before a scan_by_column error
+                // is read (`TOCOL(Data!C5,"x",#DIV/0!)`), while an out-of-range number such as 7
+                // still loses to it (docs/excel-semantics/arrays.md "TOCOL, TOROW and SORT: which
+                // bad argument wins", T-3507). Casting returns an error ignore as it is.
+                let ignore = match ignore.map(|value| model.cast_number_ref(value, cell)) {
+                    None => None,
+                    Some(Ok(n)) => Some(n),
+                    Some(Err(error)) => return error,
+                };
+                if let Some(error) = scan_by_col.filter(|value| value.is_error()) {
+                    return error.clone();
                 }
-                let ignore = match ignore {
+                let ignore = match ignore.map(|n| ignore_mode(n, cell)) {
                     None => 0,
-                    Some(value) => match model
-                        .cast_number_ref(value, cell)
-                        .and_then(|n| ignore_mode(n, cell))
-                    {
-                        Ok(ignore) => ignore,
-                        Err(error) => return error,
-                    },
+                    Some(Ok(ignore)) => ignore,
+                    Some(Err(error)) => return error,
                 };
                 let scan_by_col = match scan_by_col {
                     None => false,
