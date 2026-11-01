@@ -8,7 +8,7 @@ import mpmath
 import pytest
 
 from rustsheet_tools.accuracy.defs import beta, gamma
-from rustsheet_tools.accuracy.model import REGISTRY, DomainError
+from rustsheet_tools.accuracy.model import REGISTRY, DomainError, NoValueError
 
 mp = mpmath.mpf
 
@@ -50,6 +50,16 @@ def test_gamma_quantile_at_a_large_shape_round_trips() -> None:
     assert close(gamma.lower_tail(y, a) / p, "1", 30)
     y = gamma.quantile(p, a, upper=True)
     assert close(gamma.upper_tail(y, a) / p, "1", 30)
+
+
+def test_gamma_tails_have_no_value_above_the_shape_cap() -> None:
+    # Above 1E8 the summed expansions would take minutes per evaluation (probes-numeric has shapes from 1E9); the
+    # huge-shape branch is T-3578's, so those cells get no value rather than a slow one.
+    for tail in (gamma.lower_tail, gamma.upper_tail):
+        with pytest.raises(NoValueError):
+            tail(mp("1e9"), mp("1e9"))
+    with pytest.raises(NoValueError):
+        REGISTRY["CHISQ.INV.RT"].evaluate([mp("0.5"), mp("1e10")])
 
 
 def test_beta_matches_the_published_examples() -> None:

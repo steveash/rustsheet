@@ -36,6 +36,10 @@ TABLE_DF = 2e7  # the s1 batches' largest drawn df (shape 1E7), see CHISQ_INV_RT
 
 
 MAX_TERMS = 10**7  # far above the about 20 sqrt(a) terms a 1E7 shape needs at 50 digits
+# The largest shape the series and continued fraction are summed at: about 20 sqrt(a) terms each, so a 1E9 shape
+# (probes-numeric's huge-shape cells) would take minutes per tail evaluation. Above it there is no value here; the
+# huge-shape branch (a uniform-asymptotic expansion) is T-3578's.
+SHAPE_CAP = mpmath.mpf(10) ** 8
 
 
 def _log_prefix(y: mpmath.mpf, a: mpmath.mpf) -> mpmath.mpf:
@@ -82,17 +86,26 @@ def _continued_fraction(y: mpmath.mpf, a: mpmath.mpf) -> mpmath.mpf:
     raise NoValueError(msg)
 
 
+def _check_shape(a: mpmath.mpf) -> None:
+    if a > SHAPE_CAP:
+        msg = f"shape {mpmath.nstr(a, 3)} is above the summed expansions' cap of 1E8 (T-3578)"
+        raise NoValueError(msg)
+
+
 def lower_tail(y: mpmath.mpf, a: mpmath.mpf) -> mpmath.mpf:
     """P(a, y), y ≥ 0 (unit scale). mpmath's `gammainc` does not converge from a shape of about 1E5, so the classic
     series and continued fraction are summed here at the working precision; each side's complement is taken only
-    where the other tail is below about 1/2, so no digits cancel."""
+    where the other tail is below about 1/2, so no digits cancel. NoValueError above SHAPE_CAP."""
+    _check_shape(a)
     if y == 0:
         return mpmath.mpf(0)
     return _series(y, a) if y < a + 1 else 1 - _continued_fraction(y, a)
 
 
 def upper_tail(y: mpmath.mpf, a: mpmath.mpf) -> mpmath.mpf:
-    """Q(a, y), y ≥ 0, from the continued fraction past a + 1 (no 1 - P cancellation in the upper tail)."""
+    """Q(a, y), y ≥ 0, from the continued fraction past a + 1 (no 1 - P cancellation in the upper tail).
+    NoValueError above SHAPE_CAP."""
+    _check_shape(a)
     if y == 0:
         return mpmath.mpf(1)
     return 1 - _series(y, a) if y < a + 1 else _continued_fraction(y, a)
