@@ -3,7 +3,7 @@ id: T-3654
 title: "FILTER: probe and match the result type for each kind of include, array element and if_empty"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -26,10 +26,20 @@ results passed to TYPE, ISTEXT, ISBLANK and COUNTBLANK so the element types are 
 functions/lookup_and_reference/filter.rs.
 
 ## Acceptance criteria
-- [ ] A probe case (excel-graph) covers the kinds above, with TYPE/ISBLANK wrappers showing each element's type.
-- [ ] The engine matches every probed cell; arrays.md states the type rules.
-- [ ] Every quirk found is written up in docs/excel-semantics/arrays.md in the same PR, with its probe cells cited.
-- [ ] `make check` green; eval known failures only shrink (baseline updated); reviewers approve.
+- [x] A probe case (excel-graph) covers the kinds above, with TYPE/ISBLANK wrappers showing each element's type.
+- [x] The engine matches every probed cell; arrays.md states the type rules.
+- [x] Every quirk found is written up in docs/excel-semantics/arrays.md in the same PR, with its probe cells cited.
+- [x] `make check` green; eval known failures only shrink (baseline updated); reviewers approve.
 
 ## Out of scope
 - T-3506's one-cell error reference.
+
+## Outcome
+Probe `eval/suites/probes/cases/t3654-filter-result-types` (excel-graph, 2026-11-01; 211 cells): array element kinds
+spilled and seen through TYPE/ISBLANK/ISTEXT/MAP, 23 include shapes (cells and constants), 11 if_empty kinds,
+lone blank cells. Three engine gaps fixed in `filter.rs`:
+- include text that spells TRUE/FALSE in any case is that boolean (was `#VALUE!`); other text stays `#VALUE!`.
+- a lone blank cell as `array` stays a blank element (`ISBLANK(FILTER(A2,TRUE))` TRUE; was 0).
+- a blank one-cell `if_empty` is 0 (ROWS 1, `&"|"` "0|"; was blank / `#VALUE!`).
+Everything else already matched. Written up in arrays.md "FILTER: the type of each include element and of the
+result". Eval: probes new case passes 211/211; no other suite changed.
