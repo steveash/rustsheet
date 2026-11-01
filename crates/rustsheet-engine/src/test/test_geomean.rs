@@ -137,6 +137,30 @@ fn test_fn_geomean_exact_roots_are_exact() {
 }
 
 #[test]
+fn test_fn_geomean_keeps_the_power_of_two_out_of_the_logarithm() {
+    // P = m·2^E is rooted as `exp(ln(m·2^r)/n)·2^q` with E = q·n + r: `exp(ln(P)/n)` carries ln's
+    // rounding error at |ln P| near 100 into the root, 0.5 to 200 ulps (numbers.md, "GEOMEAN
+    // in-range root"; probes-numeric/t3502-geomean-fresh A41, A93, A130, A176; T-3502). Each
+    // Excel value has 15 digits, so the literal is that double.
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=(GEOMEAN(1.03908E+87,4.05961E+81,2.31055E+83)-9.91477561834331E+83)",
+    );
+    model._set(
+        "A2",
+        "=(GEOMEAN(4.455775033895E-68,5.622040981674E-42,1.225386951298E-70,4.743160354953E-51,\
+         8.483811149277E-53)-6.58187852667849E-57)",
+    );
+    model._set("A3", "=(GEOMEAN(58000,58000)-58000)");
+    model._set("A4", "=(GEOMEAN(7,7)-7)");
+    model.evaluate();
+    for cell in ["A1", "A2", "A3", "A4"] {
+        assert_eq!(model._get_text(cell), "0", "{cell}");
+    }
+}
+
+#[test]
 fn test_fn_harmean_no_numbers_is_na() {
     let mut model = new_empty_model();
     model._set("A1", "=HARMEAN(D3:D4)");
