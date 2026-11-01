@@ -173,7 +173,22 @@
         "F70": "=SUM(INDIRECT(\"R1C1:\"&CHAR(10)&\"R2C2\",FALSE))",
         "G70": "=ROWS(INDIRECT(\"R1C1:\"&CHAR(10)&\"R2C2\",FALSE))",
         "H70": "=COLUMNS(INDIRECT(\"R1C1:\"&CHAR(10)&\"R2C2\",FALSE))",
-        "I70": "=CELL(\"address\",INDIRECT(\"R1C1:\"&CHAR(10)&\"R2C2\",FALSE))"
+        "I70": "=CELL(\"address\",INDIRECT(\"R1C1:\"&CHAR(10)&\"R2C2\",FALSE))",
+        "E71": "=\"A1\"&CHAR(10)&\"B2\"",
+        "F71": "=SUM(INDIRECT(\"A1\"&CHAR(10)&\"B2\"))",
+        "G71": "=ROWS(INDIRECT(\"A1\"&CHAR(10)&\"B2\"))",
+        "H71": "=COLUMNS(INDIRECT(\"A1\"&CHAR(10)&\"B2\"))",
+        "I71": "=CELL(\"address\",INDIRECT(\"A1\"&CHAR(10)&\"B2\"))",
+        "E72": "=\"Sheet2\"&CHAR(10)&\"!A1\"",
+        "F72": "=SUM(INDIRECT(\"Sheet2\"&CHAR(10)&\"!A1\"))",
+        "G72": "=ROWS(INDIRECT(\"Sheet2\"&CHAR(10)&\"!A1\"))",
+        "H72": "=COLUMNS(INDIRECT(\"Sheet2\"&CHAR(10)&\"!A1\"))",
+        "I72": "=CELL(\"address\",INDIRECT(\"Sheet2\"&CHAR(10)&\"!A1\"))",
+        "E73": "=\"A1:B2\"&CHAR(10)&\"B1:C2\"",
+        "F73": "=SUM(INDIRECT(\"A1:B2\"&CHAR(10)&\"B1:C2\"))",
+        "G73": "=ROWS(INDIRECT(\"A1:B2\"&CHAR(10)&\"B1:C2\"))",
+        "H73": "=COLUMNS(INDIRECT(\"A1:B2\"&CHAR(10)&\"B1:C2\"))",
+        "I73": "=CELL(\"address\",INDIRECT(\"A1:B2\"&CHAR(10)&\"B1:C2\"))"
       }
     },
     {

@@ -426,7 +426,7 @@ fn indirect_reference_text_keeps_only_the_spaces_excel_accepts() {
 
 #[test]
 fn indirect_reference_text_line_feed_and_inner_spaces() {
-    // probes/t3747-indirect-whitespace rows 20-70 (Excel for the web, T-3747)
+    // probes/t3747-indirect-whitespace rows 20-73 (Excel for the web, T-3747)
     for (text, expected) in [
         ("A1:\nB2", "A1:B2"),
         ("A1\n:B2", "A1:B2"),
