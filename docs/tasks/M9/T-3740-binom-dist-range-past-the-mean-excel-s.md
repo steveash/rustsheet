@@ -23,6 +23,9 @@ BINOM.DIST.RANGE ranges whose lower end is past the mean are bit-exact with Exce
   double-double walk: 18 of the 21 rows land within 1E-15 relative, none bit-exact; A6 and A12 (n = 1E4) stay 1.6E-14
   and 2.4E-14 off, A54 9E-15; A18 and A36 are walked and stay 1E-16 and 4.6E-15 off.
 - Cells (probes/t3444-binom-range-inv-large-n, Range!): A6, A12, A18, A24, A30, A36, A42, A48, A54, A60, A66, A72, A78, A84, A90, A96, A102, A108, A114, A120, A126
+- T-3444's guard (lower - 1 past the mean) is wider than its evidence: the probe has no range starting between the mean
+  and mean + 3 sd, so probe that region first (architecture review of PR #2752) and narrow the guard if Excel is its
+  own cdf difference there.
 - Candidates to score: the tails' other bratio branch (w1 complement), a pmf sum over the range from the mode side, a
   threshold other than the mean (the mode, cdf(s1 - 1) > 0.5), and the walk's behavior at n = 1E4 to 1E5. Score them
   against the 21 rows plus the 105 cdf-difference rows (none may move off). A choice among ranked forms owes the

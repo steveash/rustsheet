@@ -415,3 +415,28 @@ fn test_binom_dist_range_above_the_mean_is_a_difference_of_upper_tails() {
         );
     }
 }
+
+#[test]
+fn test_binom_dist_range_from_0_at_a_large_n_is_a_probability() {
+    // T-3444 security review: a range from 0 can pass the cdf kernel (no branch for it) and reach
+    // the upper-tail branch, whose `lower - 1` must not underflow. Every result is in [0, 1].
+    let mut formulas = Vec::new();
+    for n in ["10000", "1000000", "1000000000", "2147483646"] {
+        for p in ["1E-9", "0.001", "0.3", "0.999", "0.999999"] {
+            for upper in ["1", "2", "50", "5000"] {
+                formulas.push(format!("=BINOM.DIST.RANGE({n},{p},0,{upper})"));
+            }
+        }
+    }
+    let mut model = new_empty_model();
+    for (row, formula) in formulas.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, formula) in formulas.iter().enumerate() {
+        let value: f64 = round_trip_value(&model, &format!("A{}", row + 1))
+            .parse()
+            .unwrap_or(f64::NAN);
+        assert!((0.0..=1.0).contains(&value), "{formula}: {value}");
+    }
+}

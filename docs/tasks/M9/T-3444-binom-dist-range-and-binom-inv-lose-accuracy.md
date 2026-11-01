@@ -31,7 +31,7 @@ is since T-3352, instead of grossly wrong.
       right type and error. BINOM.INV and CRITBINOM: 252 of 252 cells. BINOM.DIST.RANGE: every row now takes Excel's
       form (one point the pmf, from 0 the cdf, else the cdf difference, past the mean the upper-tail difference); the
       cells still off miss by BINOM.DIST's own last digits (49, now T-3447's) or the upper-tail form's (21, T-3740).
-- [ ] Gate A floor on a fresh sweep (decision 0188 R2): split out to T-3741 (Definitions for BINOM.DIST.RANGE and
+- [x] Gate A floor on a fresh sweep (decision 0188 R2): split out to T-3741 (Definitions for BINOM.DIST.RANGE and
       BINOM.INV, as T-3553 was split out of T-3358).
 - [x] No gated cell regresses; the rule is in docs/excel-semantics/statistics.md.
 - [x] `make check` green; reviewers approve.
@@ -40,6 +40,8 @@ is since T-3352, instead of grossly wrong.
 - BINOM.DIST and NEGBINOM.DIST (T-3352).
 
 ## Handoff (resumed)
+Superseded by the Outcome below: every "Not done" item was finished or split out (T-3740, T-3741).
+
 Opus session ran out of its time budget mid-task (2026-11-01). State of `agent/functions-stat/T-3444-binom-large-n`:
 - Probe probes/t3444-binom-range-inv-large-n (756 cells, excel-graph): Excel's BINOM.INV/CRITBINOM is the smallest k
   whose own BINOM.DIST cdf reaches alpha (126/126 rows); BINOM.DIST.RANGE is its own cdf difference on 105/126 rows,
