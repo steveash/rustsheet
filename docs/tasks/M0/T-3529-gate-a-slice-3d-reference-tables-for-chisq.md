@@ -3,7 +3,7 @@ id: T-3529
 title: "Gate A slice 3d: reference tables for CHISQ.INV, CHISQ.INV.RT, GAMMA.INV, BETA.DIST and BETA.INV"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P0
 size: M
 tier: opus
