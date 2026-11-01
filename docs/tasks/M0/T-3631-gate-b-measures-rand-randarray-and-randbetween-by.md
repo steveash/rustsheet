@@ -3,7 +3,7 @@ id: T-3631
 title: "Gate B measures RAND, RANDARRAY and RANDBETWEEN by their semantic probes, not the 99.9% rate (decision record)"
 milestone: M0
 lane: harness
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -25,20 +25,38 @@ invariant cells, per decision 0225, so Gate B can reach 506/506.
   call) also needs a change.
 
 ## Acceptance criteria
-- [ ] A new probe case under eval/suites/probes/cases/ (milestone tags per decision 0057), filled by
+- [x] A new probe case under eval/suites/probes/cases/ (milestone tags per decision 0057), filled by
       excel-graph, with at least 20 invariant cells per function: for example `RANDBETWEEN(5,5)`,
       `RANDBETWEEN(-3,-3)`, `ROWS(RANDARRAY(3,2))`, `COLUMNS(RANDARRAY(3,2))`,
       `AND(RAND()>=0,RAND()<1)`, `INT(RANDBETWEEN(1,9))=RANDBETWEEN(1,9)`-style integer checks with one
       draw, `RANDARRAY(2,2,1,1,TRUE)`, `RANDARRAY(,,7,7)`, coerced arguments (text numbers, booleans)
       and argument errors (`RANDBETWEEN(2,1)`, `RANDARRAY(0)`, `RANDARRAY(-1)`, non-integer bounds).
       Every cell's value must not depend on the draw; the case says why for each form.
-- [ ] The eval report counts those cells for the three functions: `v15_checkpoint` and `gate_b` show
+- [x] The eval report counts those cells for the three functions: `v15_checkpoint` and `gate_b` show
       each with ≥ 20 cells; if attribution drops them (sole call), fix it for these three functions
       only, as decision 0225 says.
-- [ ] Any cell where the engine differs from Excel is fixed in this task or owned by a new task.
-- [ ] Quirks found go into docs/excel-semantics/.
-- [ ] `make check` green; reviewers approve.
+- [x] Any cell where the engine differs from Excel is fixed in this task or owned by a new task.
+- [x] Quirks found go into docs/excel-semantics/.
+- [x] `make check` green.
+- [ ] Reviewers approve.
 
 ## Out of scope
 - Comparing drawn values with Excel, and any distribution test of the draws.
 - Other volatile functions (NOW, TODAY, OFFSET, INDIRECT, CELL, INFO).
+
+## Outcome
+- Probe, split by milestone (decision 0057): probes/t3631-rand-randbetween-invariant (M5; RAND R!A1:A30,
+  RANDBETWEEN R!B1:B30) and probes/t3631-randarray-invariant (M7; RANDARRAY A!A1:A30, B1:B5 shape
+  readers, D1:E2 spill): 30 + 30 + 36 listed invariant cells, 99 scored with the three spill members, filled by excel-graph twice with no
+  cell varying; the description says why each form does not depend on the draw. The engine matches
+  all 99; new quirks (RANDARRAY takes boolean bounds and counts, RANDBETWEEN padded number text,
+  more CEILING/FLOOR points) are in docs/excel-semantics/numbers.md.
+- Attribution needed no change (sole call vs every call): every function's sole-call cells are
+  above the evidence floor. The gap was the suite filter: Gate B never read the probes suite. Now
+  `gate_b::summarize` reads probes cells toward RAND, RANDARRAY and RANDBETWEEN only (decision
+  0225), via `report::attribute_cell_to` (`attribute_cell` delegates to it); test
+  `probe_cells_count_toward_the_random_functions_only`.
+- Eval (local, calipers/poi/corpus-bench not fetched, so Gate B overall reads n/a): Gate B rows
+  RAND 38/38, RANDARRAY 53/53, RANDBETWEEN 53/53 cells within 15 digits, all meet the rate (were
+  0 cells); v15_checkpoint the same, attribution `sole`. Baseline: 2 new probe cases, 0 known
+  failures, 0 regressions.

@@ -2,7 +2,8 @@
 //! cells, the evidence-floor fallback, the cells decisions 0134 and 0143 leave out) counted on
 //! user-representative evidence only: the gen-* suites, ironcalc-calc, corpus-bench, calipers,
 //! poi, smoke and fixtures. Probes and probes-numeric, the fit-lab research sweeps among them,
-//! never count here (their visibly-off numbers are Phase 1b evidence). A run that did not score
+//! never count here (their visibly-off numbers are Phase 1b evidence), except that RAND, RANDARRAY
+//! and RANDBETWEEN are read on their invariant probe cells (decision 0225). A run that did not score
 //! calipers, poi or corpus-bench measures nothing: Gate B is `n/a` there, never met. Coverage
 //! stays decision 0094's, over every suite. A report, never a gate.
 
@@ -14,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use crate::formula_calls::functions_in;
 use crate::phase1_exceptions::Phase1Exceptions;
 use crate::r1c::{R1c, R1cCells};
-use crate::report::{attribute_cell, FunctionStat};
+use crate::report::{attribute_cell_to, FunctionStat};
 use crate::runner::{cell_id, CaseResult, CellResult};
 use crate::v15_checkpoint::{excepted_cells, rate_count, share, V15Function};
 use crate::value::Verdict;
@@ -33,10 +34,24 @@ const GENERATED_PREFIX: &str = "gen-";
 /// Without these (fetched) suites the run does not measure Gate B.
 const REQUIRED: [&str; 3] = ["calipers", "poi", "corpus-bench"];
 
+/// The functions read on their invariant probe cells (decision 0225): their drawn values are
+/// never scored (T-0005), so no user-representative suite can hold a cell of theirs that matches
+/// Excel by more than chance.
+const PROBED: [&str; 3] = ["RAND", "RANDARRAY", "RANDBETWEEN"];
+/// The suite whose cells Gate B counts toward [`PROBED`] functions only (decision 0225).
+const PROBE_SUITE: &str = "probes";
+
 /// Whether Gate B counts the cells of `suite`.
 #[must_use]
 pub fn counts(suite: &str) -> bool {
     suite.starts_with(GENERATED_PREFIX) || SUITES.contains(&suite)
+}
+
+/// Whether Gate B counts a cell of `suite` toward `function`: every function on a counted suite,
+/// and on the probes suite the [`PROBED`] functions only (decision 0225). The probes suite holds
+/// only scored, so invariant, cells of those functions: the volatile ones are skipped (T-0005).
+fn counts_toward(suite: &str, function: &str) -> bool {
+    counts(suite) || (suite == PROBE_SUITE && PROBED.contains(&function))
 }
 
 /// One in-scope function's Gate B count.
@@ -124,7 +139,11 @@ pub fn summarize(
 ) -> GateB {
     let mut stats: BTreeMap<String, FunctionStat> = BTreeMap::new();
     let scored: BTreeSet<&str> = results.iter().map(|r| r.suite.as_str()).collect();
-    for r in results.iter().filter(|r| counts(&r.suite)) {
+    for r in results
+        .iter()
+        .filter(|r| counts(&r.suite) || r.suite == PROBE_SUITE)
+    {
+        let keep = |f: &str| counts_toward(&r.suite, f);
         // A by-design value says nothing about how well a function matches Excel.
         for c in r.cells.iter().filter(|c| c.verdict != Verdict::Deviation) {
             let called = c.formula.as_deref().map(functions_in).unwrap_or_default();
@@ -134,9 +153,9 @@ pub fn summarize(
                     verdict: Verdict::Pass,
                     ..c.clone()
                 };
-                attribute_cell(&mut stats, &called, &passing);
+                attribute_cell_to(&mut stats, &called, &passing, keep);
             } else {
-                attribute_cell(&mut stats, &called, c);
+                attribute_cell_to(&mut stats, &called, c, keep);
             }
         }
     }

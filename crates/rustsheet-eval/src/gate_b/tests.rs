@@ -220,3 +220,50 @@ fn an_r3_cell_that_returns_the_math_passes() {
     assert_eq!(gate.functions[0].rate_visible, 1);
     assert!(!gate.met);
 }
+
+#[test]
+fn probe_cells_count_toward_the_random_functions_only() {
+    let excel = |formula: &str| CellResult {
+        from_excel: true,
+        ..cell(formula, Verdict::Pass)
+    };
+    let mut probe = case("probes/t3631", 1);
+    probe.cells = [
+        vec![excel("RANDBETWEEN(5,5)"); 20],
+        vec![excel("ROWS(_xlfn.RANDARRAY(3,2))"); 20],
+        vec![excel("AND(RAND()>=0,RAND()<1)"); 20],
+        vec![excel("PI()"); 20],
+    ]
+    .concat();
+    let mut sweep = case("probes-numeric/sweep", 1);
+    sweep.cells = vec![excel("RAND()*0"); 50];
+    let results = [vec![probe, sweep], fetched()].concat();
+    let functions: Vec<V15Function> = ["PI", "RAND", "RANDARRAY", "RANDBETWEEN", "ROWS"]
+        .into_iter()
+        .map(|name| V15Function {
+            name: name.into(),
+            covered: true,
+            ..V15Function::default()
+        })
+        .collect();
+    let gate = summarize(
+        &results,
+        &Phase1Exceptions::default(),
+        &functions,
+        &R1cCells::default(),
+    );
+    let row = |name: &str| {
+        gate.functions
+            .iter()
+            .find(|f| f.name == name)
+            .map(|f| (f.rate_cells, f.meets_rate))
+    };
+    // Decision 0225: the probe counts toward the three random functions (RANDARRAY by every
+    // call, below the evidence floor of sole calls), never toward PI or ROWS.
+    assert_eq!(row("RANDBETWEEN"), Some((20, true)));
+    assert_eq!(row("RAND"), Some((20, true)), "probes-numeric never counts");
+    assert_eq!(row("RANDARRAY"), Some((20, true)));
+    assert_eq!(row("ROWS"), Some((0, false)));
+    assert_eq!(row("PI"), Some((0, false)));
+    assert!(!gate.suites.contains(&"probes".to_string()));
+}
