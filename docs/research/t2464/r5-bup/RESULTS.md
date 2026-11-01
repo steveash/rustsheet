@@ -5,7 +5,7 @@ Base: r3-bgrat's n = 1 composition (RN(W + D) on Excel's density in bup's orient
 kernel (`fmodel.CFG`) for the dispatch and as the M0 baseline. Imported, not copied. Scores are bit-exact / within
 4 ulp / within half a unit of the 15th significant digit (w15).
 
-Python: `/home/user/rustsheet/bindings/python/.venv/bin/python` (`make py-bindings`, plus `uv pip install mpmath
+Python: `bindings/python/.venv/bin/python` (repo-relative) (`make py-bindings`, plus `uv pip install mpmath
 numpy scipy` into it), run from this directory.
 
 ## 1. Headline
@@ -37,6 +37,16 @@ numpy scipy` into it), run from this directory.
    | t3568-r5-bup-tune (in-sample) | 1,650 | 397/1,190/1,424 | 152/784/1,162 | 115/568/887 | 27/177/381 |
    | t3568-r5-bup-hold (filled with tune, scored after the freeze) | 1,650 | **394/1,163/1,383** | 139/742/1,125 | 102/575/892 | 33/195/389 |
    | t3568-r5-bup-fresh (built and filled after the freeze) | 825 | **186/574/696** | 68/382/583 | 56/286/450 | 16/85/197 |
+
+   Guards (decision 0188 R4):
+   - Hold-out (R4.1). FROZEN beats CR on the hold-out, and its exact rate holds between train and hold-out (397 and
+     394 of 1,650). The split is by probe seed, 50/50, not about 30% by hash, and no margin was fixed before scoring.
+     It passes on the numbers above.
+   - Gate A envelope on the post-freeze sweep (R4.5; `gatea.py` → `gatea_fresh.out`): a cell is inside when it is
+     within 15 digits of Excel's, or within 1e-9 relative of the 50-digit I at the oriented call. With D = RN(x0^a0)
+     at c = 1, 825 of 825 are inside. With the committed D column, 812 of 825 are inside. The 13 outside are F rows
+     503, 511, 551 and 561, BINOM rows 696, 706 and 711, and NEGBINOM rows 739, 743, 744, 750, 780 and 817, all at
+     c = 1. There the D column is the a0 = 1 complement, or P was taken at a point neighbouring F's (item 4).
 
    Per region on the hold-out (FROZEN): BETA.DIST non-integer b 183/578/685 of 788; F (b0 half-integer, c = 1/2)
    32/104/132 of 154; at c = 1 with D = RN(x0^a0) (below): BINOM 63/166/190 of 200, NEGBINOM 78/165/181 of 200,
@@ -95,15 +105,18 @@ within 15 digits on 1,344 of 1,344 cells already.
 | t3568-r5-bup-terms-tune, -terms-hold | 5,898, 5,967 | BETA.DIST(y0, c + j, a0, FALSE) for every j < n at 300 BETA.DIST points of each half (the loop hypothesis) | `mkterms.py` |
 
 Every point takes L140 bup+bgrat with n >= 2 in `fmodel.CFG`. The meta files record the oriented call and the D
-point's own branch. `sha256.txt` holds the sidecars' hashes as filled. mkterms.py read the hold probe's P column
+point's own branch, as the research kernel dispatches it. At c = 1 with x0 > 0.9 that label says bgrat, but Excel takes
+the a0 = 1 complement there (item 4): every such D is a multiple of 2^-53, and every D = 0 has a true value below 5.6e-17. `sha256.txt` holds the sidecars' hashes as filled. mkterms.py read the hold probe's P column
 only to drop P = 0 rows before the hold-out was scored.
 
 ## 5. Not attempted (handed on)
 
 - The a0 < 1e-15 band at 0.04 <= y < 0.25 (Excel 1e-14 to 3.8e-13 relative off the true value, bgrat's
-  incomplete-gamma ratio): not in this round.
+  incomplete-gamma ratio): not in this round. Follow-up T-3719.
 - The exponent-binade leftover at n >= 10 (finding 5). Next: a run probe along consecutive doubles of y0 at a fixed
   (a0, b0) with n near 30, to see which stored quantity makes the sawtooth (playbook section 2). Excel's own POWER
   at (y0, i) is a candidate for x^i as well.
+- Today's engine on these probes (`engcols.py` → `engcols.out`, from `make eval` on this branch, research w15): column
+  A is visibly off on 1,403, 1,371 and 672 cells of tune, hold and fresh; column C, the density, on 30, 29 and 13.
 - The pins are excel-graph values. Residuals of a few ulps are inside the documented web/desktop floor
   (docs/research/oracle-calibration.md).

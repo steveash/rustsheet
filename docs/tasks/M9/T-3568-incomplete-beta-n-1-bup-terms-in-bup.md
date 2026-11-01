@@ -52,15 +52,18 @@ Scores (exact/4 ulp/15 digits):
 - TOMS's recurrence on the same density: 139/742/1,125 and 68/382/583. The research kernel: 102/575/892 and
   56/286/450. CR: 33/195/389.
 - BINOM, NEGBINOM and F take the same composition at their oriented call (at c = 1 with D = x0^a0).
+- Guards: the hold-out passes R4.1 on the numbers, with no margin fixed beforehand. The Gate A envelope on the fresh
+  sweep is 825 of 825 with D = RN(x0^a0) at c = 1, and 812 of 825 with Excel's D column (13 F, BINOM and NEGBINOM
+  rows at c = 1, listed in `gatea_fresh.out`).
 
 What is left:
 - A residual at n >= 10 grows with the binade of (n - 1)·|ln y0| (median 5-9 units there).
 - The form does not carry to the min <= 1 bup+bgrat branch: T at n <= 30 gives 411 against 412 for the recurrence,
   and the exact sum stays best at 598 of 1,344.
-- The a0 < 1e-15 band was not attempted.
+- The a0 < 1e-15 band was not attempted: follow-up T-3719.
 
 Probes (probes-numeric): t3568-r5-bup-tune, -hold, -fresh, -terms-tune and -terms-hold (24,240 cells, excel-graph).
-Engine follow-up: T-3712 (depends on T-3382). Eval delta: none in gated suites (research only). The five new
+Follow-ups: T-3712 (engine, depends on T-3382), T-3719 (research, the a0 < 1e-15 band). Eval delta: none in gated suites (research only). The five new
 probes-numeric cases add cells the engine misses: column A is visibly off on 1,403, 1,371 and 672 cells of tune,
 hold and fresh.
 

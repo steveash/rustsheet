@@ -3209,10 +3209,10 @@ Rule: the entries above assembled in one TOMS 708 port (Excel's EXP, LN, GAMMALN
   digits, because Q < 0.01 on 5,196 of the 5,228 BETA.DIST cells that reach bgrat (probe t2512-r3-bgrat-qgamma).
   The same probe's GAMMA.DIST(z, b, 1, TRUE) column (fractional b < 1, P near 1) is one the engine misses on 1,268 of
   4,980 cells, mostly by 1-2 ulp and on 117 at the 15th digit (T-3383 records it for the incomplete-gamma work).
-- Open: D to the bit (T-3383); the n >= 10 exponent-binade leftover of L140's n-term bup (T-3568); algdiv for b0 >= 8 (about 1 unit off TOMS, in bpser and the density; in the density it looks like rounding noise of a few ulps, not
+- Open: D to the bit (T-3383); the n >= 10 exponent-binade leftover of L140's n-term bup (T-3568, engine port T-3712); algdiv for b0 >= 8 (about 1 unit off TOMS, in bpser and the density; in the density it looks like rounding noise of a few ulps, not
   a smooth approximation error, T-3383 r4-algdiv); lnΓ(a0 < 1) in L
   and the 55-84% ceiling of b < 1 bpser shapes; bfrac's fraction (sd 3.8 units) and bup's arithmetic in bup+bgrat;
-  a0 < 1e-15 at 0.04 <= y < 0.25 (Excel 1e-14 to 3.8e-13 relative off the truth, in bgrat's incomplete-gamma ratio);
+  a0 < 1e-15 at 0.04 <= y < 0.25 (Excel 1e-14 to 3.8e-13 relative off the truth, in bgrat's incomplete-gamma ratio; T-3719);
   the densities after T-2513's round 3 (each in its entry): Loader's constant residual of 2-4 units and bd0's series,
   the T density's per-df constant, BINOM's interior pmf, NEGBINOM's final step, the F density, and the density's
   algdiv lnB for min < 1 < 8 < max (min(a,b) <= 1 is otherwise model M2).
