@@ -3,7 +3,7 @@ id: T-3505
 title: "GAMMA.INV returns #NUM! at shapes near 8E6 where Excel returns a number"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P0
 size: M
 tier: opus
@@ -47,13 +47,13 @@ huge-shape band (1E9, T-3070) where the engine gives up today.
 - [x] The failing region is measured and recorded (shape and p ranges, per function).
 - [x] A probe case under eval/suites/probes/cases/ (tag M9), filled by the oracle (excel-graph), covers the region and
       points on both sides of it.
-- [ ] Every cell of that case has Excel's type, and its numbers are within 15 significant digits of Excel's (decision
+- [x] Every cell of that case has Excel's type, and its numbers are within 15 significant digits of Excel's (decision
       0083's rule), or the residue is listed.
-- [ ] Per-call work stays bounded (directive 5): no cap removed.
-- [ ] The finding is recorded in docs/excel-semantics/statistics.md.
-- [ ] No gated regression and no cell newly visibly off (decisions 0083, 0111); main-vs-HEAD per-cell comparison in
+- [x] Per-call work stays bounded (directive 5): no cap removed.
+- [x] The finding is recorded in docs/excel-semantics/statistics.md.
+- [x] No gated regression and no cell newly visibly off (decisions 0083, 0111); main-vs-HEAD per-cell comparison in
       the Outcome.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The huge-shape band from 1E9 (T-3070) and the last-digit work of T-3269, T-3285 and T-3311.
@@ -80,3 +80,23 @@ huge-shape band (1E9, T-3070) where the engine gives up today.
   finish this fix instead: unit test (`gamma_quantile(7990464.81598859,1.0,0.5,Lower)` = 7990464.482655259 within 4
   ulp), retire the DEVIATION in statistics.md "Incomplete gamma: per-call cap and lifting", `make check`.
 - Left: statistics.md entry, unit test, `make check`, baseline, Outcome, review.
+
+## Outcome
+Resolved by T-3350 (PR #2597, merged 2026-10-31), which fixed the same root cause: from shape 1E5 every cdf of a
+gamma inversion is Temme's expansion, one term each, so the shared 2^19-term budget no longer runs out. This branch's
+own WIP fix (a Temme-crossing start from shape 3E5) was dropped in the merge of origin/main, and the PR has no engine
+changes. It adds:
+- the probe probes/t3505-gamma-inv-budget-band (525 cells, excel-graph): GAMMA.INV, GAMMAINV, CHISQ.INV,
+  CHISQ.INV.RT and CHIINV across the old failing band at shapes 2.9E5 to 1E8, at scale 1 and at shapes that are not a
+  whole df/2, which T-3350's probe did not cover;
+- unit test `gamma_inv_at_scale_one_in_the_budget_band_is_excel_s` (incomplete_gamma/tests.rs): A104, A234 (the
+  held-out sweep's `GAMMA.INV(0.5,7990464.81598859,1)` = 7990464.482655259), A231 and A252, each within 4 ulp;
+- a note in statistics.md "GAMMA.INV and CHISQ.INV at a huge shape".
+
+Main against the probe: 525 of 525 cells have Excel's type (on main before T-3350, 120 were `#NUM!`). 228 are
+bit-exact, 291 within 4 ulp, and 6 within Gate A but not within 4 ulp. 5 of those 6 are visibly off, all GAMMA.INV at
+p = 1E-300 (A1, A13, A85, A97, A145). There Excel is not the true quantile, so they belong to T-3294, whose Context
+lists them. The owner approved recording them on 2026-11-01. The baseline change is additive only: 297 new-coverage
+known failures in eval/baseline/probes.txt, and one visible-parity line (5) for the new case. No other cell in any
+suite changed: the branch has no engine code. `make eval-check`: 0 regressions.
+

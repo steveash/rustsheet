@@ -28,6 +28,13 @@ docs/excel-semantics/statistics.md, in the T-2561 entry.
 - From T-3350 (2026-10-31): probes/t3350-chisq-inv-huge-df A25 `CHISQ.INV(1E-300,5E6)`: Excel 4883759.33683749,
   ours 4883759.3368374165, the 50-digit math 4883759.3368374156 (Excel 1.5E-14 off it; the same deep lower tail at a
   larger shape).
+- From T-3505 (2026-11-01): probes/t3505-gamma-inv-budget-band, GAMMA.INV at p = 1E-300 at a large shape, visibly off
+  Excel (ours unchanged from main before T-3505; Excel up to 2.2E-14 from the math):
+  - A1 `GAMMA.INV(1E-300,290000,1)`: Excel 270504.056927792, ours 270504.05692779087;
+  - A13 `GAMMA.INV(1E-300,300000,1)`: Excel 280163.04318130726, ours 280163.04318130354;
+  - A85 `GAMMA.INV(1E-300,7990464.81598859,1)`: Excel 7886198.933526138, ours 7886198.933525968;
+  - A97 `GAMMA.INV(1E-300,8000000,1)`: Excel 7895671.652693168, ours 7895671.652692964;
+  - A145 `GAMMA.INV(1E-300,35481338.9233576,1)`: Excel 35261120.321770474, ours 35261120.3217704.
 
 ## Acceptance criteria
 - [ ] A31 is within half a unit of Excel's 15th digit, or the Outcome records why it cannot be reached.

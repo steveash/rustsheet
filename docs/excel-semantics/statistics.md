@@ -4994,9 +4994,14 @@ from shape 1E9, its true quantile the crossing of the accurate cdf (Temme's expa
 T-3350). Before that, from about shape 5E6 the series cdfs used up the inversion's shared budget of 2^19 terms near
 the median, and the quantile was `#NUM!`: `CHISQ.INV(0.5,2E7)`, `CHISQ.INV.RT(0.999,1E7)` and `CHIINV(0.5,1E8)`
 (Excel 19999999.333333336, 9986185.76048885, 99999999.33333333) and 43 other cells of probes/t3350-chisq-inv-huge-df,
-for df 1E7 to 1E8 and the smaller tail being the lower one.
+for df 1E7 to 1E8 and the smaller tail being the lower one. GAMMA.INV and GAMMAINV at scale 1 and shapes that are not a
+whole df/2 failed the same way, with the same edges (T-3505, probes/t3505-gamma-inv-budget-band, 525 cells at shapes
+2.9E5 to 1E8 by p from 1E-300 to 1-1E-10; 120 were `#NUM!`, among them the held-out sweep's
+`GAMMA.INV(0.5,7990464.81598859,1)`, Excel 7990464.482655259). Since T-3350 every one of the 525 has Excel's type, and
+all but 5 are within 15 digits of Excel. The 5 are GAMMA.INV at p = 1E-300 (A1, A13, A85, A97, A145, shapes 2.9E5
+to 3.5E7), where Excel is not the true quantile (up to 2.2E-14 off the math, the deep lower-tail root of T-3294).
 Status: VERIFIED (excel-graph) for the cells; the band's edges and the closed form's terms are fits (UNVERIFIED as forms)
-Tasks: T-2982, T-3070, T-3350, T-3396, T-3409
+Tasks: T-2982, T-3070, T-3350, T-3396, T-3409, T-3505
 
 ## GAMMA.DIST at a huge shape: #NUM! for a density at a tiny x, for the cdf above about 1E+76 (T-2435)
 Rule: GAMMA.DIST's density is `#NUM!`, not 0, where the shape is large and x/beta tiny:
