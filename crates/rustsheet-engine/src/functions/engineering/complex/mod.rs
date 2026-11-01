@@ -1,4 +1,4 @@
-use crate::arithmetic::power;
+use crate::arithmetic::{extended_sqrt, power};
 use crate::cast::number_text_too_long;
 use crate::functions::lift::{num_error, value_error};
 use crate::functions::math_and_trigonometry::{
@@ -345,7 +345,7 @@ impl Model {
             // ([`atan2_or_libm`]); its subnormal angle is 0 (`IMPOWER("1E20+1E-300i",1)` is
             // "1E+20") and a -0 imaginary part with x < 0 is +π, where `atan2` gave a tiny part and
             // -π.
-            let angle = atan2_or_libm(x, y) * n;
+            let angle = atan2_or_libm(x, y, None) * n;
             // An underflowed radius of 0 is "0" without reading the angle
             // (`IMPOWER("0.5i",134217728)`; probes/eng-impower-imdiv-edges A28-A35).
             if radius == 0.0 {
@@ -612,7 +612,7 @@ fn imabs((x, y, _): ComplexParts, _: CellReferenceIndex) -> CalcResult {
     CalcResult::Number(scaled_modulus(x, y))
 }
 
-/// IMABS's modulus, `a·sqrt(1 + (b/a)²)` with a = max(|x|, |y|) (IMLOG2 takes it too).
+/// IMABS's modulus, `a·sqrt(1 + (b/a)²)` with a = max(|x|, |y|).
 fn scaled_modulus(x: f64, y: f64) -> f64 {
     let (x, y) = (x.abs(), y.abs());
     let (large, small) = if x >= y { (x, y) } else { (y, x) };
@@ -701,66 +701,92 @@ fn flushed_square(part: f64) -> f64 {
     }
 }
 
-/// IMLN, IMLOG10 and IMLOG2: the real and imaginary parts that `parts` makes of the parts the
-/// modulus is taken of and the argument `atan2(y, x)` (eng-imln-modulus-range, T-2117, T-2572):
+/// IMLN, IMLOG10 and IMLOG2: the real and imaginary parts that `parts` makes of the
+/// [`log_modulus`] and the argument (eng-imln-modulus-range, T-2117, T-2572, T-3643):
 /// - with both parts nonzero a part whose square is subnormal drops out of the modulus
 ///   ([`flushed_square`]), so the log is `#NUM!` when both squares flush to 0 or their sum
 ///   overflows (`IMLN("1E-154+1E-154i")`, `IMLN("1E154+1E154i")`);
-/// - a pure real or imaginary number keeps its part (`IMLN("1E-160+0i")` is -368.413614879047).
+/// - a pure real or imaginary number keeps its part (`IMLN("1E-160+0i")` is -368.413614879047);
+/// - the argument is libm `atan2`, but an overflowing `y/x` is `#NUM!`, as in ATAN2
+///   ([`angle_quotient_overflows`]): `IMLOG10("1E-300+1E20i")` and `IMLOG2("1E-300-1E300i")` are
+///   `#NUM!` while `IMLOG10("1E-20+1E20i")` answers (probes/t3643-imlog10-grid J2, J3, U2;
+///   T-3643). ATAN2's `atan(y/x)` as the value misses `IMLOG10("0.999999999999999+1i")`'s
+///   0.341094088460461 by one digit (t3643-imlog10-grid F5), where `atan2` fits.
 ///
 /// The log of 0 is `#NUM!`, not "-inf" (T-2389).
 fn complex_log(
     p: ComplexParts,
     c: CellReferenceIndex,
-    parts: fn(f64, f64, f64) -> (f64, f64),
+    parts: fn(f64, f64) -> (f64, f64),
 ) -> CalcResult {
     let (x, y, suffix) = p;
-    let (mut mx, mut my) = (x, y);
-    if x != 0.0 && y != 0.0 {
-        let (xx, yy) = (flushed_square(x), flushed_square(y));
-        if !(xx + yy).is_normal() {
-            return num_error(c);
-        }
-        if xx == 0.0 {
-            mx = 0.0;
-        }
-        if yy == 0.0 {
-            my = 0.0;
-        }
+    if x != 0.0 && y != 0.0 && !(flushed_square(x) + flushed_square(y)).is_normal() {
+        return num_error(c);
     }
-    let (re, im) = parts(mx, my, f64::atan2(y, x));
+    if angle_quotient_overflows(x, y) {
+        return num_error(c);
+    }
+    let (re, im) = parts(log_modulus(x, y), f64::atan2(y, x));
     finite_complex_result(re, im, suffix, c)
 }
 
-/// IMLN is `ln` of the [`modulus`] and the argument.
-fn imln_parts(x: f64, y: f64, angle: f64) -> (f64, f64) {
-    (modulus(x, y).ln(), angle)
+/// The modulus the logs take: the double sum of the parts' [`flushed_square`]s, its root taken
+/// in x87 extended precision and rounded again to a double ([`extended_sqrt`]). The second
+/// rounding shows near |z| = 1: `0.999999999999999+1E-8i` sums to 1-17·2^-53, whose root rounds
+/// to the midpoint 1-8.5·2^-53 and then to even, 1-8·2^-53, so `IMLOG10` is
+/// -3.85730986621315E-16 (`hypot` and IMABS's scaled modulus give 1-9·2^-53, -4.33947359948979E-16;
+/// probes/t3643-imlog10-grid D5, E4, t3643-imlog2-grid D5; T-3643). It also gives 1-6·2^-53 for
+/// `0.707106781186547+0.707106781186547i`, as `hypot` does (eng-imln-modulus A1; T-2117).
+/// A pure real or imaginary number is its part's absolute value, never flushed.
+fn log_modulus(x: f64, y: f64) -> f64 {
+    if y == 0.0 {
+        return x.abs();
+    }
+    if x == 0.0 {
+        return y.abs();
+    }
+    extended_sqrt(flushed_square(x) + flushed_square(y))
+}
+
+/// IMLN is `ln` of the [`log_modulus`] and the argument.
+fn imln_parts(modulus: f64, angle: f64) -> (f64, f64) {
+    (modulus.ln(), angle)
 }
 
 /// IMLOG10 divides the argument by ln 10: multiplying by log10 e misses
 /// `IMLOG10("711+1.5i")`'s 0.000916231724847909 (probes/eng-im-overflow-edges A95) and the
 /// reciprocal `1/ln 10` misses `IMLOG10("1.5+710.4i")`; the division fits all 36 IMLOG10 cells
 /// of the eval suites (T-2231).
-fn imlog10_parts(x: f64, y: f64, angle: f64) -> (f64, f64) {
-    (modulus(x, y).log10(), angle / std::f64::consts::LN_10)
+fn imlog10_parts(modulus: f64, angle: f64) -> (f64, f64) {
+    (modulus.log10(), angle / std::f64::consts::LN_10)
 }
 
-/// IMLOG2 is `ln` of IMABS's [`scaled_modulus`] and the argument, both times the double one ulp
-/// above log2 e (`1/ln 2` rounded from the double below ln 2): it fits all 103 distinct real and
-/// 103 imaginary parts of IMLOG2 in the eval suites, `IMLOG2("710.4+0i")` 9.47248777146275 and
-/// `IMLOG2("1E-20")` -66.4385618977473 among them, where `log2` and `atan2·log2 e` print the digit
-/// below (probes/eng-im-overflow-edges A104, A107, A109; probes-numeric im-last-digit-sweep N, O;
-/// T-2231). `hypot` instead of the scaled modulus misses `-0.66925-0.233532i` (sweep row 53).
-fn imlog2_parts(x: f64, y: f64, angle: f64) -> (f64, f64) {
+/// IMLOG2 is `ln` of the [`log_modulus`] and the argument, both times the double one ulp
+/// above log2 e (`1/ln 2` rounded from the double below ln 2): `IMLOG2("710.4+0i")`
+/// 9.47248777146275 and `IMLOG2("1E-20")` -66.4385618977473, where `log2` and `atan2·log2 e` print
+/// the digit below (probes/eng-im-overflow-edges A104, A107, A109; probes-numeric
+/// im-last-digit-sweep N, O; T-2231).
+fn imlog2_parts(modulus: f64, angle: f64) -> (f64, f64) {
     let k = std::f64::consts::LOG2_E.next_up();
-    (scaled_modulus(x, y).ln() * k, angle * k)
+    (modulus.ln() * k, angle * k)
+}
+
+/// Whether the quotient `y/x` of Excel's ATAN2 kernel overflows (`#NUM!` in ATAN2): the logs are
+/// then `#NUM!` (probes/t3643-imlog10-grid J2; T-3643).
+fn angle_quotient_overflows(x: f64, y: f64) -> bool {
+    matches!(excel_atan2(x, y), Err(Error::NUM))
 }
 
 /// The angle of `x + yi` for IMPOWER and IMSQRT: Excel's ATAN2 kernel ([`excel_atan2`]), and libm
 /// `atan2` where that kernel errs: a subnormal x, an overflowing y/x, or x = y = 0 (a zero modulus,
-/// whose angle does not change the result). The fallback is unprobed (T-2736).
-fn atan2_or_libm(x: f64, y: f64) -> f64 {
-    excel_atan2(x, y).unwrap_or_else(|_| f64::atan2(y, x))
+/// whose angle does not change the result). The fallback is unprobed (T-2736). `on_overflow`, when
+/// given, replaces the angle where y/x overflows: IMSQRT's 0 (probes/t3643-imsqrt-grid J2; T-3643).
+fn atan2_or_libm(x: f64, y: f64, on_overflow: Option<f64>) -> f64 {
+    match excel_atan2(x, y) {
+        Ok(angle) => angle,
+        Err(Error::NUM) => on_overflow.unwrap_or_else(|| f64::atan2(y, x)),
+        Err(_) => f64::atan2(y, x),
+    }
 }
 
 fn imreal((x, _, _): ComplexParts, _: CellReferenceIndex) -> CalcResult {
@@ -778,9 +804,11 @@ fn imreal((x, _, _): ComplexParts, _: CellReferenceIndex) -> CalcResult {
 /// 6.12323399573677E-17 (gen-m9 59a16b5ab566ee5c A6, 516488da78a6b08c A52; excel-graph, T-2536).
 /// Decision 0188 R6 follows the web over the Mac 16.0300 cache of ironcalc-calc COMPLEXs.xlsx
 /// AL12 and AL26, which has libm's digits (T-1075 item 16). Every other IMSQRT cell of the suites
-/// prints the same either way. Where that kernel errs (a subnormal x or an overflowing y/x) libm
-/// `atan2` stands in ([`atan2_or_libm`]), and a -0 imaginary part with x < 0 takes +π, as in
-/// IMPOWER (unprobed, T-2736).
+/// prints the same either way. An overflowing y/x makes the angle 0, so the root is real:
+/// `IMSQRT("1E-300+1E20i")`, `IMSQRT("-1E-300+1E20i")` and `IMSQRT("1E-300-1E20i")` are all
+/// "10000000000" (probes/t3643-imsqrt-grid J2, J12, T2; T-3643). Where the kernel errs otherwise
+/// (a subnormal x) libm `atan2` stands in ([`atan2_or_libm`]), and a -0 imaginary part with x < 0
+/// takes +π, as in IMPOWER (unprobed, T-2736).
 fn imsqrt((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     let (xx, yy) = (flushed_square(x), flushed_square(y));
     if !xx.is_finite() || !yy.is_finite() {
@@ -790,7 +818,7 @@ fn imsqrt((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult 
         return complex_result(0.0, 0.0, suffix);
     }
     let r = f64::sqrt(xx + yy).sqrt();
-    let a = atan2_or_libm(x, y);
+    let a = atan2_or_libm(x, y, Some(0.0));
     let (sin, cos) = excel_sin_cos(a / 2.0);
     complex_result(r * cos, r * sin, suffix)
 }

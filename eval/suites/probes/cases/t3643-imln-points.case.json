@@ -1,0 +1,28 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3643: IMLN at the grid points where IMLOG10 and IMLOG2 showed the doubly rounded modulus near |z| = 1 and #NUM! for an overflowing y/x.",
+ "tags": [
+  "M9",
+  "probe",
+  "engineering",
+  "T-3643"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=IMLN(\"0.999999999999999+1E-8i\")",
+    "A2": "=IMLN(\"1E-8+0.999999999999999i\")",
+    "A3": "=IMLN(\"-0.999999999999999-1E-8i\")",
+    "A4": "=IMLN(\"0.999999999999999+1i\")",
+    "A5": "=IMLN(\"1E-300+1E20i\")",
+    "A6": "=IMLN(\"-1E-300-1E20i\")",
+    "A7": "=IMLN(\"1E-20+1E20i\")",
+    "A8": "=IMLN(\"1E300+1E20i\")",
+    "A9": "=IMLN(\"10+1E8i\")",
+    "A10": "=IMLN(\"0.999999999999999\")"
+   }
+  }
+ ],
+ "expected": {}
+}

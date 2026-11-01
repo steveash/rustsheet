@@ -429,7 +429,36 @@ Tasks: T-2793, T-2810
   (below, "neither `sqrt(x²+y²)` nor `hypot`"), unexplained. See "IMPOWER past the angle cut" for bases past the cut.
 - IMLN, IMLOG10 and IMLOG2 use the same modulus: `IMLN("0.7071067811865476+0.7071067811865476i")` is
   `-6.66133814775094E-16+0.785398163397448i` (ln of 0.9999999999999993; `sqrt` would give -7.77E-16), IMLOG10 `-2.89298239965986E-16+..`,
-  IMLOG2 `-9.61027951144476E-16+..` (probes/eng-imln-modulus A1, A6, A11; T-2117). IMSQRT keeps `sqrt(x²+y²)`: its first cell cannot tell (15 digits agree) and Excel's "0" for `3E-200+4E-200i` and `1E-170+1E-170i` (x² underflows; A18, A20) matches only that form.
+  IMLOG2 `-9.61027951144476E-16+..` (probes/eng-imln-modulus A1, A6, A11; T-2117). IMSQRT keeps `sqrt(x²+y²)`: its first cell cannot tell (15 digits agree) and Excel's "0" for `3E-200+4E-200i` and `1E-170+1E-170i` (x² underflows; A18, A20) matches only that form. That modulus is the double sum of the squares with
+  its root taken in x87 extended precision and rounded again to a double (`extended_sqrt`, numbers.md "Division
+  rounds twice"), not `hypot` and not IMABS's scaled form (T-3643). The second rounding shows near |z| = 1:
+  `0.999999999999999+1E-8i` sums to 1-17·2^-53, whose extended root is the midpoint 1-8.5·2^-53, which rounds to
+  even, 1-8·2^-53, so `IMLOG10("0.999999999999999+1E-8i")` is `-3.85730986621315E-16+4.34294481903252E-09i`,
+  IMLOG2 `-1.28137060152597E-15+..` and IMLN `-8.88178419700126E-16+..` (`hypot`, the scaled modulus and a plain
+  `sqrt` give 1-9·2^-53, -4.33947359948979E-16; probes/t3643-imlog10-grid D5, E4, D15, E14, N5, O4, N15, O14,
+  t3643-imlog2-grid the same cells, t3643-imln-points A1-A3). It gives 1-6·2^-53 for the 0.707106781186547 pair,
+  as `hypot` does, and fits all 441 cells of each 21x21 log grid (0, ±1E-300, ±1E-20, ±1E-8, ±(1-1E-15), ±1,
+  ±(1+1E-15), ±10, ±1E8, ±1E20, ±1E300 for each part) except IMLOG10's `10±1E8i` (I8, S8), whose imaginary part
+  `atan2/ln 10` prints 0.682188133491472 for Excel's ...473, one digit in the 15th (phase-1b). The logs' angle is
+  libm `atan2`, not ATAN2's `atan(y/x)`, which misses `IMLOG10("0.999999999999999+1i")`'s 0.341094088460461 (F5).
+- IMLN, IMLOG10 and IMLOG2 are `#NUM!` when ATAN2's quotient `y/x` overflows (ATAN2 is `#NUM!` there, numbers.md
+  "ATAN2 is ATAN(y/x) plus or minus π"): `IMLOG10("1E-300+1E20i")`, `IMLOG10("-1E-300-1E20i")`,
+  `IMLOG2("1E-300+1E300i")` and `IMLN("1E-300+1E20i")` are `#NUM!`, while `IMLOG10("1E-20+1E20i")` is
+  `20+0.682188176920921i` and `IMLOG10("1E-300+1E8i")` is `8+0.682188176920921i` (t3643-imlog10-grid J2, J12, T2,
+  K2, J3, I2; t3643-imln-points A5-A7). The reverse quotient underflows harmlessly: `IMLOG10("1E20+1E-300i")` is 20
+  (B10). Implemented (T-3643).
+- IMSQRT takes an angle of 0 when ATAN2's `y/x` overflows, so the root is real whatever the signs:
+  `IMSQRT("1E-300+1E20i")`, `IMSQRT("-1E-300+1E20i")`, `IMSQRT("1E-300-1E20i")` and `IMSQRT("-1E-300-1E20i")` are
+  all `10000000000` (t3643-imsqrt-grid J2, J12, T2, T12), while `IMSQRT("1E-20+1E20i")` is
+  `7071067811.86548+7071067811.86547i` (J3). Implemented (T-3643). IMSQRT of a part one ulp-band below 1 prints one
+  digit high: `IMSQRT("0.999999999999999")` is `1` and `IMSQRT("-0.999999999999999")` `6.1257422745431E-17+1i`
+  (ours 0.999999999999999: the engine's root is 1-5·2^-53, Excel's at least 1-4·2^-53; A5, A15 and the 1E-300,
+  1E-20, 1E-8 imaginary columns of rows 5 and 15, 14 cells, phase-1b, unexplained).
+- IMSECH over the same grid: `#NUM!` for |y| ≥ 1E20 when |x| ≤ 10 (rows 1-8 and 12-18 of columns J, K, T, U; 60
+  cells, T-3642's argument cut), while |x| ≥ 1E8 gives "0" there (`IMSECH("1E8+1E20i")`, `IMSECH("-1E300+1E20i")`,
+  `IMSECH("1E300+1E300i")`: J9, J10, J11, J19-J21, K19; the cosh overflow wins). `IMSECH("0.999999999999999±10i")` and
+  its negation are one digit off in the 15th (H5, H15, R5, R15; phase-1b, T-3795). Every other IMSECH grid cell
+  agrees with ours (t3643-imsech-grid).
 - IMLN, IMLOG10 and IMLOG2 are `#NUM!` when both parts are nonzero and `x²+y²` is infinite or subnormal: `1E153+1E153i` works,
   `1E154+1E154i` (sum 2E308) and `1E-154+1E-154i` (sum 2E-308 < 2.2250738585072014E-308) are `#NUM!`, `1.5E-154+1.5E-154i`
   (2.25E-308), `1E-160+1i` and `1.1E154+0.1E154i` work, and a zero part exempts the number (`IMLN("1E-160+0i")`,
@@ -447,7 +476,7 @@ Tasks: T-2793, T-2810
   `flushed_square` (functions/engineering/complex/mod.rs; probes/eng-imln-modulus-range A43-A56, A79, A80,
   eng-imln-modulus A17; excel-graph). Extrapolated, not probed: parts of about 1.06E-154 to 1.49E-154, where each
   square is subnormal but their sum is normal (`IMLN("1.2E-154+1.2E-154i")`; ours `#NUM!`, IMSQRT "0"; T-2894).
-Evidence: probes/eng-impower, eng-imsub, eng-imdiv (excel-graph, 2026-10-17, T-1625); probes/eng-impower-imdiv-edges, eng-impower-angle-cut (excel-graph, 2026-10-19, T-1892); probes/eng-impower-past-cut (excel-graph, 2026-10-20, T-1950); probes/eng-imln-modulus, eng-imln-modulus-range (excel-graph, 2026-10-21, T-2117).
+Evidence: probes/eng-impower, eng-imsub, eng-imdiv (excel-graph, 2026-10-17, T-1625); probes/eng-impower-imdiv-edges, eng-impower-angle-cut (excel-graph, 2026-10-19, T-1892); probes/eng-impower-past-cut (excel-graph, 2026-10-20, T-1950); probes/eng-imln-modulus, eng-imln-modulus-range (excel-graph, 2026-10-21, T-2117); probes/t3643-imlog10-grid, t3643-imlog2-grid, t3643-imsqrt-grid, t3643-imsech-grid, t3643-imln-points (excel-graph, 2026-11-01, T-3643).
 Status: VERIFIED (excel-graph)
 Tasks: T-1766, T-1892, T-1950, T-2117, T-2572, T-2894
 
@@ -617,7 +646,8 @@ angle"); cosh and sinh are libm's, except IMSECH's and IMCSCH's (IMSINH's `1/u` 
   `IMCSC("1+1E-9i")` is `1.18839510577812-7.6305972223263E-10i` and `IMCOT("1+1E-9i")`
   `0.642092615934331-1.41228292743739E-09i` (a real part of 1 keeps the kernel well conditioned).
 - UNVERIFIED: for |x| ≥ 2^27 (SIN's own `#NUM!` cut) the reciprocal kernels take libm's sine and cosine.
-- IMLOG2 (T-2231, superseding the T-2044 time-box): `ln` of IMABS's scaled modulus and the argument (`atan2`),
+- IMLOG2 (T-2231, superseding the T-2044 time-box; modulus model replaced by T-3643): `ln` of the logs' doubly
+  rounded modulus (above) and the argument (`atan2`),
   both times K = 1.4426950408889636, the double one ulp above log2 e (= `1/ln 2` with the double one ulp below ln 2).
   It fits all 103 distinct real and 103 imaginary parts of IMLOG2 cells in the eval suites (sweep N/O, COMPLEXs AH19,
   eng-im-overflow-edges A104-A109, gen-m9, eng-im-overflow-edges-2 A35-A44). The earlier candidate, dividing
