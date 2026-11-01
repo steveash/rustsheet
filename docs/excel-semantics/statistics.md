@@ -3516,6 +3516,31 @@ m9-f-inv-rt, m9-legacy-finv, t1049-finvrt, m9-t-inv, m9-t-inv-2t, t1048-tinv. Fi
 Status: VERIFIED (crossing at 155/188); the 11 misses and the solver's start, step and stop are UNVERIFIED
 Tasks: T-1745, T-0974
 
+## BETA.INV at a shape of 1 is the closed form to 15 digits for p of 1E-15 or more (T-3664)
+Rule: with alpha = 1 or beta = 1 and 1E-15 <= p < 1, Excel's BETA.INV(p,alpha,beta) (and BETAINV) is within half a
+unit of the 15th significant digit of the closed form p (both 1), -expm1(log1p(-p)/beta) (alpha = 1) or
+exp(ln(p)/alpha) (beta = 1), and is not always the crossing of its own BETA.DIST, which is flat there (one ulp of w,
+"Incomplete beta at a shape of 1 outside the closed forms (T-3007)").
+Evidence: every literal shape-1 cell in eval/ with p in that range, 127 (probes-numeric m9-beta-inv 63,
+t1745-beta-inv-roundtrip 62, probes t2435-dist-extremes 2): against the closed form in double with libm, 80 bit-exact,
+34 at 1 ulp, 5 at 2, 6 at 3, 2 at 12 (m9-beta-inv A78 `BETA.INV(1E-10,2.5,1)` = 0.00010000000000000007 and its t1745
+row). Examples: m9-beta-inv A69 `BETA.INV(0.999,1,100)` = 0.06674569920300899 (50-digit root 0.066745699203008956)
+and A149 `BETA.INV(0.001,100,1)` = 0.933254300796991 (root 0.93325430079699104), where Excel's own BETA.DIST is flat
+across tens of doubles. 1 - (1-p)^(1/beta) with POWER is not Excel's (A51 `BETA.INV(0.001,1,2.5)`, 640 ulp off).
+Below 1E-15 Excel leaves the closed form: probes-numeric t1543-inverse-cdf-tiny-p A73:A75 (`BETA.INV(1E-300,1,1)` =
+1.0000000000000237E-300, `BETA.INV(1E-200,1,1)` = 9.99999999999978E-201) and A86 (`BETA.INV(1E-200,1000,1)` = 0.2064,
+the quantile 0.63), and `BETA.INV(1E-20,1000,1)` is `#NUM!` (see "Inverse CDF functions at a tiny or near-1
+probability (T-1543)"); `BETA.INV(1E-20,1,1)` still matches.
+In the eval as a whole (T-3664's run, every BETA.INV/BETAINV cell): the closed form makes 32 cells bit-exact and moves
+18 that the crossing of our cdf matched to 1 ulp, among them the gated gen-m9/589f42e67f4b4b8d A221
+`BETAINV(0.001,1,42)` (Excel 2.3821152785727803E-5, closed form 2.3821152785727806E-5; the 50-digit root
+2.38211527857278045E-5 sits half way between them), probes-numeric m9-beta-inv A12 `BETA.INV(0.95,0.5,1)` (Excel
+0.9024999999999999, not 0.95^2 = 0.9025) and A40 `BETA.INV(0.95,1,0.5)` (Excel 0.9975, closed form 0.9974999999999999).
+So at a shape of 1 Excel is not the libm closed form either: its last bit is UNVERIFIED.
+Status: VERIFIED (15 digits; Excel's bits, 1 to 12 ulp from the closed form at 47 points, are UNVERIFIED)
+Implemented in: crates/rustsheet-engine/src/functions/statistical/beta.rs `beta_quantile_shape_one`
+Tasks: T-3664
+
 ## Incomplete gamma sweep (T-1045)
 Rule: Excel's incomplete-gamma values (the targets for T-0971 and T-0972) are plain numbers on the whole in-domain grid, and the CDF saturates to exactly 1 deep in the upper tail while the pdf stays finite.
 Oracle sweep (excel-graph) of `GAMMA.DIST` (a in {0.5, 1, 2, 9, 50, 500}, b in {1, 2, 1E6}, x = 0.1, 0.5, 1, 1.5, 3 times the mean a*b,

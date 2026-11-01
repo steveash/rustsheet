@@ -3157,7 +3157,6 @@ F	probes/t2435-dist-extremes.case.json	S!A108
 F	probes/t2435-dist-extremes.case.json	S!A109
 F	probes/t2435-dist-extremes.case.json	S!A110
 F	probes/t2435-dist-extremes.case.json	S!A111
-F	probes/t2435-dist-extremes.case.json	S!A112
 F	probes/t2435-dist-extremes.case.json	S!A115
 F	probes/t2435-dist-extremes.case.json	S!A116
 F	probes/t2435-dist-extremes.case.json	S!A117
