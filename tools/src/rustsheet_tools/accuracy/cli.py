@@ -5,6 +5,7 @@
   rustsheet-accuracy generate RATE --batch e-T-1234 --count 40 --stratum tail
   rustsheet-accuracy verify T.INV                          recompute committed math at dps 80
   rustsheet-accuracy math --suite probes-numeric           math sidecars for an eval suite's cells
+  rustsheet-accuracy math --check --suite probes            fail when a suite's sidecars are missing or stale
 
 Then `uv run rustsheet-oracle fill -b excel-graph --suite accuracy` fills Excel's values, and
 `rustsheet-eval accuracy` (run by `make check`) checks the engine against both.
@@ -18,7 +19,7 @@ from pathlib import Path
 
 from rustsheet_tools import repo_root
 from rustsheet_tools.accuracy import defs
-from rustsheet_tools.accuracy.eval_math import write_suite
+from rustsheet_tools.accuracy.eval_math import check_suite, write_suite
 from rustsheet_tools.accuracy.model import REGISTRY, Definition
 from rustsheet_tools.accuracy.sampler import STRATA
 from rustsheet_tools.accuracy.tables import draw_points, verify_batch, write_batch
@@ -34,6 +35,29 @@ def _definition(name: str) -> Definition:
     return found
 
 
+def _math(suites: list[str], *, check: bool, workers: int | None) -> int:
+    """`math`: write one suite's sidecars, or (`--check`) report the suites' missing or stale ones."""
+    if check:
+        stale = [line for suite in suites for line in check_suite(suite)]
+        for line in stale:
+            print(line)
+        print(f"math sidecars: {', '.join(suites)}: {'stale' if stale else 'current'}")
+        return 1 if stale else 0
+    if len(suites) != 1:
+        raise SystemExit("math writes one suite at a time")
+    (suite,) = suites
+    results = write_suite(suite, workers)
+    skipped: dict[str, int] = {}
+    for math in results:
+        for reason, n in math.skipped.items():
+            skipped[reason] = skipped.get(reason, 0) + n
+    cases = sum(1 for m in results if m.written)
+    print(f"{suite}: {sum(m.written for m in results)} math cells in {cases} cases")
+    for reason, n in sorted(skipped.items()):
+        print(f"  skipped {n}: {reason}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="rustsheet-accuracy", description=__doc__.split("\n")[0])
     parser.add_argument("--tables", type=Path, help="tables directory (default eval/accuracy/tables)")
@@ -47,7 +71,8 @@ def main(argv: list[str] | None = None) -> int:
     ver = sub.add_parser("verify", help="recompute a function's committed math values")
     ver.add_argument("function")
     mth = sub.add_parser("math", help="write math sidecars for an eval suite's one-call cells (T-3380)")
-    mth.add_argument("--suite", required=True)
+    mth.add_argument("--suite", required=True, action="append", help="suite (repeatable with --check)")
+    mth.add_argument("--check", action="store_true", help="check the sidecars without mpmath (T-3588)")
     mth.add_argument("--workers", type=int, help="processes (default: one per CPU)")
     args = parser.parse_args(argv)
     tables: Path = args.tables or repo_root() / "eval" / "accuracy" / "tables"
@@ -57,16 +82,7 @@ def main(argv: list[str] | None = None) -> int:
             print(name)
         return 0
     if args.command == "math":
-        results = write_suite(args.suite, args.workers)
-        skipped: dict[str, int] = {}
-        for math in results:
-            for reason, n in math.skipped.items():
-                skipped[reason] = skipped.get(reason, 0) + n
-        cases = sum(1 for m in results if m.written)
-        print(f"{args.suite}: {sum(m.written for m in results)} math cells in {cases} cases")
-        for reason, n in sorted(skipped.items()):
-            print(f"  skipped {n}: {reason}")
-        return 0
+        return _math(args.suite, check=args.check, workers=args.workers)
     definition = _definition(args.function)
     if args.command == "generate":
         if args.count is not None and args.count < 1:

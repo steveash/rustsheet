@@ -24,5 +24,13 @@
     "f": "=F.DIST(0,3,1,FALSE)"
    }
   }
+ },
+ "skipped": {
+  "Calc": {
+   "A1": {
+    "f": "=F.DIST(0,1,1,FALSE)",
+    "why": "no single value"
+   }
+  }
  }
 }

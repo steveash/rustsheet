@@ -132,6 +132,9 @@ jobs:
       # Decision 0125: one run of the suites judges both the baseline gate (eval-check) and the
       # evidence floor; running them as two steps rebuilt the release binary and reran the suites.
       - run: make eval-gates
+      # Decision 0243: the math sidecar check needs the release binary eval-gates built and tools/.
+      - uses: astral-sh/setup-uv@v6
+      - run: make eval-math-check
       # Decision 0054: the report reruns every suite (about 2.5 min). PRs, merge groups, merge trains
       # and dispatches on other branches only need it to debug a failed gate (decision 0147); main
       # keeps one per merge.

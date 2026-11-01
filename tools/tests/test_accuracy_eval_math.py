@@ -13,7 +13,14 @@ import pytest
 from rustsheet_tools.accuracy import eval_math
 from rustsheet_tools.accuracy.defs.cashflow import IRR, XIRR
 from rustsheet_tools.accuracy.defs.student_t import T_DIST, cdf
-from rustsheet_tools.accuracy.eval_math import case_math, fit_args, math_path, single_call, write_suite
+from rustsheet_tools.accuracy.eval_math import (
+    case_math,
+    check_suite,
+    fit_args,
+    math_path,
+    single_call,
+    write_suite,
+)
 from rustsheet_tools.accuracy.model import Definition, Interval, MathArg, NoValueError, Param
 from rustsheet_tools.accuracy.tables import DroppedError, compute
 
@@ -137,3 +144,45 @@ def test_an_mpmath_value_error_drops_the_point_but_a_domain_error_does_not() -> 
     with pytest.raises(NoValueError):
         compute(Definition("ROOTS", (x,), several_roots, ("test",)), [0.5])
     assert compute(Definition("GIVES.UP", (x,), gives_up, ("test",)), [2.0]).why == "x outside (0, 1)"
+
+
+def test_check_names_missing_and_stale_sidecars_and_passes_after_regenerating(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cells = {"A1": "=T.DIST(1.5,3,TRUE)", "A2": "=T.DIST(2.5,3,TRUE)", "A3": "=T.DIST(1.5,2.5,TRUE)"}
+    case, sidecar = _case(tmp_path, cells, {a: {"t": "n", "v": 0.5} for a in cells})
+    entries = [{"id": "t/c", "path": str(case), "sidecar": str(sidecar)}]
+    monkeypatch.setattr(eval_math, "suite_cases", lambda _suite: entries)
+    regenerate = "regenerate: cd tools && uv run rustsheet-accuracy math --suite t"
+
+    # No sidecar: both candidates are missing; A3 (non-integer df) is no candidate.
+    assert check_suite("t") == [
+        "t/c: S!A1 =T.DIST(1.5,3,TRUE) has no math value and is not listed as skipped",
+        "t/c: S!A2 =T.DIST(2.5,3,TRUE) has no math value and is not listed as skipped",
+        regenerate,
+    ]
+
+    # The generator drops A2: the sidecar lists it as skipped, and the check passes.
+    real = eval_math.compute
+
+    def drops_a2(definition: Definition, args: list[Any]) -> Any:
+        if args and args[0] == 2.5:
+            raise DroppedError("did not converge")
+        return real(definition, args)
+
+    monkeypatch.setattr(eval_math, "compute", drops_a2)
+    write_suite("t", workers=None)
+    data = json.loads(math_path(sidecar).read_text())
+    assert set(data["sheets"]["S"]) == {"A1"}
+    assert data["skipped"] == {"S": {"A2": {"f": "=T.DIST(2.5,3,TRUE)", "why": "not converged or too slow"}}}
+    assert check_suite("t") == []
+
+    # The formula changes after the sidecar was written: its entry is stale.
+    cells["A1"] = "=T.DIST(1.25,3,TRUE)"
+    case.write_text(
+        json.dumps({"format": "rustsheet-case/v1", "sheets": [{"name": "S", "cells": cells}], "expected": {}})
+    )
+    assert check_suite("t") == [
+        "t/c: S!A1 math sidecar entry =T.DIST(1.5,3,TRUE) is stale (the cell is =T.DIST(1.25,3,TRUE))",
+        regenerate,
+    ]

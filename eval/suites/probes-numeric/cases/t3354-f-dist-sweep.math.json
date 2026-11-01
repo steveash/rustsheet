@@ -1969,5 +1969,41 @@
     "f": "=F.DIST(5.02824196137377E-09,7,10488424,FALSE)"
    }
   }
+ },
+ "skipped": {
+  "S": {
+   "A143": {
+    "f": "=F.DIST(2.16799546326883,342803,2854227132,TRUE)",
+    "why": "not converged or too slow"
+   },
+   "A147": {
+    "f": "=F.DIST(1.02116129394823,190947,27778394,TRUE)",
+    "why": "not converged or too slow"
+   },
+   "A156": {
+    "f": "=F.DIST(209.424122480307,7060,3773718,TRUE)",
+    "why": "not converged or too slow"
+   },
+   "A166": {
+    "f": "=F.DIST(1.72722188446467,39156,221533825,TRUE)",
+    "why": "not converged or too slow"
+   },
+   "A172": {
+    "f": "=F.DIST(42.3848153674102,2186,435169886,TRUE)",
+    "why": "not converged or too slow"
+   },
+   "A176": {
+    "f": "=F.DIST(703.636422113855,245074,3356096504,TRUE)",
+    "why": "not converged or too slow"
+   },
+   "A179": {
+    "f": "=F.DIST(0.0913607421277438,175832,3213016,TRUE)",
+    "why": "not converged or too slow"
+   },
+   "A198": {
+    "f": "=F.DIST(2313.80552950754,70,446969,TRUE)",
+    "why": "not converged or too slow"
+   }
+  }
  }
 }

@@ -27,6 +27,7 @@ On docs-only PRs (decision 0049) CI skips the rust, eval and python jobs; hygien
 | Spelling | `typos` | clean (Excel names allow-listed in `_typos.toml`) |
 | Docs readers | `scripts/check_docs_readers.py` | code may read `docs/` or `.claude/` only under `CODE_READ_PATHS` in `scripts/ci_changes.py`, which CI never skips (decision 0066) |
 | CI rights | `scripts/check_ci_workflow.py` | `.github/workflows/ci.yml` references no secret or job token and every `permissions` block is exactly `contents: read`; its tests pin `on.push.branches` to `main`, `merge-train/current` and `merge-train/shadow` (decision 0147) |
+| Math sidecars | `make eval-math-check` | every Gate A one-call cell of the probe suites has a math value or a recorded generator skip in its `*.math.json`, and no entry's `f` is stale; regenerate with `cd tools && uv run rustsheet-accuracy math --suite <suite>` (decision 0243) |
 | Governance | `scripts/check_governance.py origin/main` | protected-path changes need a decision record; test deletions flagged |
 
 ## Ratchet mechanics

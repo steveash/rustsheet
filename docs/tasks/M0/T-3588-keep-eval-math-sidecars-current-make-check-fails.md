@@ -3,7 +3,7 @@ id: T-3588
 title: "Keep eval math sidecars current: make check fails when a probes or probes-numeric case has a Gate A one-call cell with no math value or a stale one"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -34,13 +34,41 @@ what the committed cases support.
   crates/rustsheet-eval/src/accuracy/math.rs.
 
 ## Acceptance criteria
-- [ ] `make check` fails on a case with a candidate cell that its sidecar neither holds nor lists as skipped, and on a
+- [x] `make check` fails on a case with a candidate cell that its sidecar neither holds nor lists as skipped, and on a
       sidecar entry whose `f` differs from the cell's formula, naming the case and the regenerate command.
       Tests show both failures and the pass after regenerating.
-- [ ] On main after T-3587 the check passes. It adds at most 10 s to `make check` on the CI runner (quote the timing).
-- [ ] The probe-authoring docs (the `excel-probe` skill's sidecar step, or docs/process/quality-gates.md) say to run
+- [x] On main after T-3587 the check passes. It adds at most 10 s to `make check` on the CI runner (quote the timing).
+- [x] The probe-authoring docs (the `excel-probe` skill's sidecar step, or docs/process/quality-gates.md) say to run
       `rustsheet-accuracy math --suite <suite>` after an oracle fill.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - New Gate A definitions. Sidecars for xlsx suites (tools never parse xlsx values).
+
+## Outcome
+- **Design (skips in the sidecar):** a generator skip ("no single value", "not converged or too
+  slow") can only be decided by mpmath. So `rustsheet-accuracy math` now writes those candidates
+  to the sidecar as an optional `skipped` map (sheet → A1 → `f`, `why`; `rustsheet-math/v1`, which
+  the runner reads past). The cheap pass can then tell a dropped cell from a missing one. Limiting
+  the check to the mpmath-free reasons would have left those cells looking missing.
+- **The check:** `rustsheet-accuracy math --check --suite probes --suite probes-numeric`
+  (`make eval-math-check`, part of `make check`; CI's eval job runs it after `make eval-gates`)
+  reports two things, each line naming the case, with the regenerate command last:
+  - a candidate cell that the sidecar neither holds nor lists as skipped;
+  - a sidecar entry whose `f` is not its cell's formula.
+- **One definition:** `eval_math.candidates` is the single candidate rule, and both `math` and
+  `math --check` use it. The check memoizes each case's arithmetic-over-literals cells and runs
+  one case per process.
+- **Timing:** 5.1 s for both suites on a 4-CPU container, the size of the CI runner. It was 14 s
+  single-process.
+- **Decision 0243** (protected paths: Makefile, ci.yml). The tests in
+  `tools/tests/test_accuracy_eval_math.py` show a missing cell, a stale entry, a dropped cell
+  listed as skipped, and the pass after regenerating.
+- **Main was not current:** the first run listed 1,427 problems. Fresh sidecars for 10 cases had
+  no sidecar at all (amordegrc-a76-bisect-a/b/d/h, the date-system daycount pair, t3352,
+  t3443-basym-a/hold/sweep). Five probes sidecars held stale or missing cells
+  (fin-argument-modes, solver-iteration-traces, stat-argument-modes, t2435-dist-extremes,
+  t3349-t-inv-2t-near-one). The other regenerated sidecars only gained `skipped`. After
+  regenerating, the check passes. `make eval-gates` is unchanged (no regressions); the sidecars
+  move only R1(c)'s report counts.
+- Eval delta: gate none.
