@@ -45,9 +45,25 @@ does, which is below |x| = 708.94, not at |x| > 709 as for x > 0; and the log fo
   one constant, not a y rule: `HYPERBOLIC_LOG_CUT_NEGATIVE = -708` (evidenced bracket, not a fit). The ln DBL_MIN
   hypothesis (-708.3964) is refuted.
 - Digits: the log form now takes Excel's EXP (`excel_exp`) instead of libm `exp`. Structural model choice from two
-  candidates (decision 0188 R4): libm misses 4 of 188 log-form cells of the T-2231/T-3525/T-3546 probes (all x < 0,
-  15th digit, incl. T-3525's `-709.183834084079+1.0222540398548i` pair), Excel's EXP none. Fresh sweep drawn after the
-  freeze, probes-numeric/t3546-im-hyperbolic-log-exp-fresh-sweep (random.Random(35461), 150 rows x 2, 76 `#NUM!`):
-  Excel's EXP 300/300, libm 218/224 numbers. No FITTED tag (no fitted value).
+  candidates (decision 0188 R4, check 7 kind (c), no `FITTED` tag: nothing is fitted). The libm build is
+  docs/research/t3546/libm-exp.patch. Fit lab `im-hyperbolic-log` (891 cells: eng-im-overflow-edges(-2),
+  t3525-im-hyperbolic-log-band-sweep, t3546 cut probes; hold-out T-3360, 30% by hash, margin 5 points fixed by the lab
+  before scoring):
+
+| candidate | train exact / <=4 ulp / <=15 digits | test exact / <=4 ulp / <=15 digits | verdict |
+|---|---|---|---|
+| engine (Excel's EXP) | 650 (100%) / 650 / 650 | 241 (100%) / 241 / 241 | accept |
+| libm `exp` build | 646 (99.4%) / 646 / 646 | 240 (99.6%) / 240 / 240 | accept, below |
+| correctly rounded | 51 (7.8%) / 51 / 51 | 24 (10.0%) / 24 / 24 | reference |
+
+- Fresh sweep after the freeze (R4.2): probes-numeric/t3546-im-hyperbolic-log-exp-fresh-sweep (150 rows x 2, 76
+  `#NUM!`; random.Random(35461), generator in the case description: x < 0 with |x| uniform in [708, 710.5], x > 0 in
+  [709, 710.5]; uniform rather than log-uniform, which over this 0.4%-wide |x| window is the same distribution to
+  within 0.2%). Fit lab `im-hyperbolic-log-fresh`: engine train 214/214, test 86/86 (accept); libm 209/85 (max 50 ulp);
+  correctly rounded 2/0.
+- Gate A envelope (R2) on the fresh sweep: 300 of 300 inside, 0 outside (every cell equals Excel's result by text,
+  the `#NUM!` cells included; within 1e-9 of the math 300/300 for the engine).
+- Not changed: the log form keeps libm `sin`/`cos` of y (UNVERIFIED in engineering.md for a large y; within
+  |y| < 3.1 every probe cell matches, so no follow-up is filed until a large-y probe shows a difference).
 - Eval (probes-numeric, ungated, no baseline): t3525-im-hyperbolic-log-band-sweep 190 -> 200/200 (the 8 cut cells and the 2 digit cells); new cases
   t3546-* 868/868; eng-im-overflow-edges(-2) unchanged at 116/116, 114/114. engineering.md updated.

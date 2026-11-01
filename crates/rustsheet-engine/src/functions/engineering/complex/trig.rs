@@ -21,21 +21,19 @@ fn hyperbolic_exp_overflows(x: f64, y: f64) -> bool {
     y == 0.0 && x.abs().exp().is_infinite()
 }
 
-/// Past x = 709 (709 itself takes the product form) or below x = -708, IMCOSH and IMSINH of a number with a
-/// nonzero imaginary part take both parts in log space, `EXP(|x| + ln(cos y / 2))` and
-/// `EXP(|x| + ln(sin y / 2))` with Excel's EXP, the sign of x then going to sinh's factor. Hence `#NUM!` whenever
-/// cos y or sin y is negative (`IMCOSH("709.05+2i")`, `"709.3-0.5i"`, `"-710.4-2i"`, while
-/// `"709+2i"` and `"-710.4+1.5i"` answer), and digits that differ from `cosh x·cos y`:
+/// Past x = 709 (709 itself takes the product form) or below x = -708, IMCOSH and IMSINH of a
+/// number with a nonzero imaginary part take both parts in log space, `EXP(|x| + ln(cos y / 2))` and
+/// `EXP(|x| + ln(sin y / 2))` with Excel's EXP, the sign of x then going to sinh's factor. Hence
+/// `#NUM!` whenever cos y or sin y is negative (`IMCOSH("709.05+2i")`, `"709.3-0.5i"`, `"-710.4-2i"`,
+/// while `"709+2i"` and `"-710.4+1.5i"` answer), and digits that differ from `cosh x·cos y`:
 /// `IMCOSH("710.4+1.5i")` is 1.17873946358278E+307+1.6621900184285E+308i, `IMSINH("709.5+1E-200i")`
 /// has real part 6.77493159657354E+307 where `IMSINH("709.5")` is 6.77493159657316E+307
-/// (probes/eng-im-overflow-edges A6, A14; eng-im-overflow-edges-2, T-2231). The exact cut between
-/// 709 and 709.0000000001 is not pinned. Re-validated on fresh sweeps (T-3525, decision 0188 R4):
-/// on probes-numeric/t3525-im-hyperbolic-log-band-sweep the log form gives 178 of the 180 cells with
-/// 709 < |x| < 710.5, the product form alone 2; both misses were x < 0 digits that Excel's EXP
-/// fixes where libm `exp` misses 4 of the 188 log-form cells of the T-2231, T-3525 and T-3546 probes. A fresh
-/// sweep drawn after that choice, probes-numeric/t3546-im-hyperbolic-log-exp-fresh-sweep, matches in all
-/// 300 cells (libm `exp` misses 6 of its 224 numbers; decision 0188 R4, T-3546). For x < 0 the cut is
-/// [`HYPERBOLIC_LOG_CUT_NEGATIVE`].
+/// (probes/eng-im-overflow-edges A6, A14; eng-im-overflow-edges-2, T-2231).
+///
+/// Excel's EXP, not libm `exp`: libm misses the 15th digit of `IMSINH("-708.82+1i")` and of
+/// `IMSINH("-709.183834084079+1.0222540398548i")` (fit lab `im-hyperbolic-log` and its fresh sweep
+/// `im-hyperbolic-log-fresh`; docs/excel-semantics/engineering.md, T-3546).
+///
 /// FITTED(T-3525, 617 cells, |x| 100..800 with a nonzero imaginary part; cut bracketed 709..709.0000000001 for x > 0)
 const HYPERBOLIC_LOG_CUT: f64 = 709.0;
 
