@@ -3,7 +3,7 @@ id: T-3649
 title: "TEXT: sweep format codes against each value kind to find where Excel gives #VALUE! and ours a string"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
