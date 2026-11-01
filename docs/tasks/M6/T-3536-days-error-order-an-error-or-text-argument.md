@@ -3,7 +3,7 @@ id: T-3536
 title: "DAYS error order: an error or text argument beats #VALUE! (gen-m6 arg-pairs cells)"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
