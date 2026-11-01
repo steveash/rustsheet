@@ -49,6 +49,15 @@ def column_number(letters: str) -> int:
     return number
 
 
+def column_letters(number: int) -> str:
+    """The column letters of a 1-based column number (2 is `B`); the inverse of `column_number`."""
+    letters = ""
+    while number:
+        number, rem = divmod(number - 1, 26)
+        letters = chr(ord("A") + rem) + letters
+    return letters
+
+
 def _is_column(value: object) -> bool:
     """Whether `value` is a column letter within Excel's XFD."""
     return (
@@ -130,11 +139,7 @@ def sheet_op(op: Any) -> tuple[str, str, str | int | None]:
             if last > _LAST_COLUMN:
                 msg = f"sheet op {op!r}: the columns run past XFD"
                 raise ValueError(msg)
-            letters = ""
-            while last:
-                last, rem = divmod(last - 1, 26)
-                letters = chr(ord("A") + rem) + letters
-            to = f"{first}:{letters}"
+            to = f"{first}:{column_letters(last)}"
         elif count > 1:
             to = f"{to}:{to + count - 1}"
     elif _is_row_span(to) and not recorded:

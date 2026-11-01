@@ -26,9 +26,7 @@ Code: table_edits.rs `edit_columns`, `column_span`; stringify/structured.rs `del
 ## Acceptance criteria
 - [ ] The three probes above (eval/suites/probes/cases/table-edits/) pass and leave eval/baseline/probes.txt.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
 - Column ranges that lose one end (T-3734).
 

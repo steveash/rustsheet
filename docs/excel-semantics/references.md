@@ -2608,7 +2608,7 @@ Right/Left):
   reference is `#REF!` printed `=SUM(#REF!)`, `ISREF(Sales)` FALSE, `COUNTA(Sales[Region])` 1, plain `S!C4:C7`
   `=SUM(S!#REF!)` (table-delete-all-columns). A delete that straddles an edge keeps the table without the deleted
   columns: B:C with the table on C3:E7 leaves two columns, `INDEX(Sales[#Headers],1,1)` "Qty", `Sales[Qty]` text kept,
-  `Sales[Region]` `#REF!`; D:E with the table on B3:D7 drops Val the same way (table-delete-columns-straddle-left,
+  `Sales[Region]` `#REF!`, and the plain `S!D4:D7` shrinks to `=SUM(S!B4:B7)`; D:E with the table on B3:D7 drops Val the same way, the fully deleted plain `S!D4:D7` becoming `=SUM(S!#REF!)` (table-delete-columns-straddle-left,
   -right). A column range `Sales[[Qty]:[Val]]` is `#REF!`, printed `=SUM(#REF!)`, when either end column is
   deleted, and when both are, in one edit or two (table-column-range-delete-end, -start, -both-ends, -both-ends-separate);
   the plain `S!C4:D7` shrinks to `S!C4:C7` after a one-column delete. The engine matches the naming and the

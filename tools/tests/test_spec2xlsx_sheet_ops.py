@@ -9,6 +9,7 @@ import pytest
 from rustsheet_tools.oracle.backends import GraphBackend, OracleError, recorded_sheet_ops
 from rustsheet_tools.oracle.canary import SHEET as CANARY
 from rustsheet_tools.oracle.package import patch_parts
+from rustsheet_tools.sheetop import column_letters, column_number
 from rustsheet_tools.spec2xlsx import build_xlsx, sheet_ops
 
 
@@ -199,3 +200,17 @@ def test_graph_replay_deletes_a_sheet_and_converts_or_deletes_a_table() -> None:
 def test_graph_replay_never_deletes_the_canary_sheet() -> None:
     with pytest.raises(OracleError, match="canary"):
         _FakeGraph(["S", CANARY])._replay_sheet_ops("item", {}, [("delete_sheet", CANARY, None)])
+
+
+def test_column_letters_invert_column_number() -> None:
+    assert [column_letters(n) for n in (1, 2, 26, 27, 52, 702, 703, 16384)] == [
+        "A",
+        "B",
+        "Z",
+        "AA",
+        "AZ",
+        "ZZ",
+        "AAA",
+        "XFD",
+    ]
+    assert all(column_number(column_letters(n)) == n for n in range(1, 800))
