@@ -2400,6 +2400,23 @@ gen-m5/e0087a1fb9a36188 Calc!A25, gen-m5/6a511beadb56b932 Calc!A106, gen-m5/b0d5
 other cells listed in T-2153.
 Status: VERIFIED (excel-graph); implemented in `fn_arabic` (T-2153).
 
+## ARABIC reads any Roman-letter string, right to left (T-3648)
+Rule: ARABIC checks no numeral grammar. After the padding trim above, it takes an optional leading `-`, then one or more
+ASCII letters I, V, X, L, C, D, M in either case, and scans them right to left: a letter worth less than the largest letter
+seen so far is subtracted, any other is added. So `ARABIC("IIX")` = 8, `"IXI"` = 10, `"IVX"` = 4, `"MIM"` = 1999, `"DCM"` =
+400, `"VV"` = 10, `"VX"` = 5, `"IIII"` = 4, `"MMMMM"` = 5000, `"xiv"` and `"XiV"` = 14, `"-XIV"`, `" -XIV"` and `"-xiv"` = -14, `"-IIX"` = -8;
+every ROMAN form reads back (`ARABIC(ROMAN(n,k))` = n for n 1..3999 and k 0..4, TRUE, FALSE).
+A lone `-` (also `"- "`, `" - "`) is `#NUM!`. Everything else is `#VALUE!`: `+XIV`, `--X`, `- XIV`, `-0`, a tab after the
+minus, numeric text (`"12"`, `"0"`, `"1E3"`), mixed digits (`X1`, `1X`), `X-`, `(X)`, `N`, the Unicode Roman numerals
+U+2160..U+2188 alone or mixed with letters (sampled: U+2160, U+2163, U+2169, U+2170, U+217E with "X", U+217F, U+2180, U+2183, U+2188; the rest of the block is inferred), full-width `Ｘ`, `ı` (U+0131), `İ` (U+0130) and a trailing CHAR(0).
+The text may be at most 255 characters counted *before* the trim: `REPT("M",255)` = 255000 and `"-"&REPT("M",254)` = -254000,
+but `REPT("M",256)`, `" "&REPT("M",255)`, `REPT("M",255)&" "`, `"-"&REPT("M",255)` and `REPT(" ",256)` are `#VALUE!`.
+Ours before T-3648: classic grammar with Excel's ROMAN subtractive pairs, at most three repeats, no sign and no length limit,
+so most non-canonical forms and every signed numeral were `#VALUE!`. Ours since: as Excel (`from_roman` and `fn_arabic`).
+Evidence (excel-graph, 2026-11-01): probes/t3648-arabic-numeral-shapes Calc!A1:A118 (shapes), C1:D7 (round-trip mismatch
+counts, all 0), F1:J20 (`ARABIC(ROMAN(n,k))` for 20 n and k 0..4).
+Status: VERIFIED (excel-graph); implemented in `fn_arabic` (T-3648).
+
 ## ROMAN truncates before its sign check; BASE checks the sign first (T-2154)
 Rule: ROMAN truncates its number before refusing a negative, so `ROMAN(-0.5025)` is "" (it truncates to 0); it reads and
 checks its form even when the number is 0: `ROMAN(0,<#N/A>)` is `#N/A` and `ROMAN(0.2,8.09)` (form `LOG10(123456789.123)`,

@@ -1,15 +1,38 @@
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::lift::value_error;
+use crate::functions::lift::{num_error, value_error};
 use crate::functions::Function;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
-/// Parse Roman (classic or Excel variants) → number
-fn from_roman(s: &str) -> Result<u32, String> {
-    if s.is_empty() {
-        return Err("empty numeral".into());
-    }
-    fn val(c: char) -> Option<u32> {
-        Some(match c {
+/// The longest text ARABIC reads, counted before any trimming: 255 characters work, 256 are
+/// `#VALUE!` (numbers.md "ARABIC reads any Roman-letter string"; probes/t3648-arabic-numeral-shapes
+/// A81:A87, A104:A106, A117).
+const ARABIC_MAX_LEN: usize = 255;
+
+/// Why ARABIC refuses a (trimmed, non-empty) text.
+#[derive(Debug, PartialEq, Eq)]
+enum ArabicError {
+    /// A lone minus sign: `#NUM!` (probes/t3648-arabic-numeral-shapes A66, A109, A110).
+    LoneMinus,
+    /// Any character other than the ASCII letters IVXLCDM in either case: `#VALUE!`.
+    NotANumeral,
+}
+
+/// Reads a Roman numeral the way Excel's ARABIC does (numbers.md "ARABIC reads any Roman-letter
+/// string"; probes/t3648-arabic-numeral-shapes): an optional leading `-`, then one or more ASCII
+/// letters I, V, X, L, C, D, M in either case, with no grammar check at all. Scanning from the
+/// right, a letter worth less than the largest letter seen so far is subtracted, any other letter
+/// is added, so `IIX` is 8, `IXI` is 10, `MMMMM` is 5000 and every ROMAN form reads back.
+fn from_roman(s: &str) -> Result<i32, ArabicError> {
+    let (sign, digits) = match s.strip_prefix('-') {
+        Some("") => return Err(ArabicError::LoneMinus),
+        Some(rest) => (-1, rest),
+        None => (1, s),
+    };
+    // At most 255 letters of 1000 each, so an i32 cannot overflow.
+    let mut total = 0i32;
+    let mut largest = 0i32;
+    for c in digits.chars().rev() {
+        let v = match c.to_ascii_uppercase() {
             'I' => 1,
             'V' => 5,
             'X' => 10,
@@ -17,73 +40,16 @@ fn from_roman(s: &str) -> Result<u32, String> {
             'C' => 100,
             'D' => 500,
             'M' => 1000,
-            _ => return None,
-        })
-    }
-
-    // Accept the union of subtractive pairs used by the tables above (Excel-compatible).
-    fn allowed_subtractive(a: char, b: char) -> bool {
-        matches!(
-            (a, b),
-            // classic:
-            ('I','V')|('I','X')|('X','L')|('X','C')|('C','D')|('C','M')
-            // Excel forms:
-            |('V','L')|('L','D')|('L','M') // VL, LD, LM
-            |('X','D')|('X','M')          // XD, XM
-            |('V','M')                    // VM
-            |('I','L')|('I','C')|('I','D')|('I','M') // IL, IC, ID, IM
-            |('V','D')|('V','C') // VD, VC
-        )
-    }
-
-    let chars: Vec<char> = s.chars().map(|c| c.to_ascii_uppercase()).collect();
-    let mut total = 0u32;
-    let mut i = 0usize;
-
-    // Repetition rules similar to classic Romans:
-    // V, L, D cannot repeat; I, X, C, M max 3 in a row.
-    let mut last_char: Option<char> = None;
-    let mut run_len = 0usize;
-
-    while i < chars.len() {
-        let c = chars[i];
-        let v = val(c).ok_or_else(|| format!("invalid character '{c}'"))?;
-
-        if Some(c) == last_char {
-            run_len += 1;
-            match c {
-                'V' | 'L' | 'D' => return Err(format!("invalid repetition of '{c}'")),
-                _ if run_len >= 3 => return Err(format!("invalid repetition of '{c}'")),
-                _ => {}
-            }
+            _ => return Err(ArabicError::NotANumeral),
+        };
+        if v < largest {
+            total -= v;
         } else {
-            last_char = Some(c);
-            run_len = 0;
+            largest = v;
+            total += v;
         }
-
-        if i + 1 < chars.len() {
-            let c2 = chars[i + 1];
-            let v2 = val(c2).ok_or_else(|| format!("invalid character '{c2}'"))?;
-            if v < v2 {
-                if !allowed_subtractive(c, c2) {
-                    return Err(format!("invalid subtractive pair '{c}{c2}'"));
-                }
-                // Disallow stacked subtractives like IIV, XXL:
-                if run_len > 0 {
-                    return Err(format!("malformed numeral near position {i}"));
-                }
-                total += v2 - v;
-                i += 2;
-                last_char = None;
-                run_len = 0;
-                continue;
-            }
-        }
-
-        total += v;
-        i += 1;
     }
-    Ok(total)
+    Ok(sign * total)
 }
 
 /// Classic Roman (strict) encoder used as a base for all forms.
@@ -263,10 +229,14 @@ impl Model {
     /// is, and spaces, tabs, line feeds and carriage returns either side of the numeral are
     /// ignored, but not inside it nor CHAR(160); any other non-text (`0`, `FALSE`) is `#VALUE!`
     /// (numbers.md "ARABIC of a blank cell, and padded numerals";
-    /// probes/t2200-blank-and-padded-m5-args A47:A70).
+    /// probes/t2200-blank-and-padded-m5-args A47:A70). A text longer than 255 characters before
+    /// trimming is `#VALUE!`; the rest is read by [`from_roman`].
     pub(crate) fn fn_arabic(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Arabic, args, cell, &mut |_, values| {
             let roman_numeral = match values {
+                [CalcResult::String(s)] if s.chars().count() > ARABIC_MAX_LEN => {
+                    return value_error(cell)
+                }
                 [CalcResult::String(s)] => s.trim_matches([' ', '\t', '\n', '\r']),
                 // A blank cell, or the empty value a lookup hands on for one (lookup.md "VLOOKUP
                 // and HLOOKUP hand a blank result cell"; gen-m5/6a511beadb56b932 Calc!A106).
@@ -280,8 +250,39 @@ impl Model {
             }
             match from_roman(roman_numeral) {
                 Ok(value) => CalcResult::Number(f64::from(value)),
-                Err(_) => value_error(cell),
+                Err(ArabicError::LoneMinus) => num_error(cell),
+                Err(ArabicError::NotANumeral) => value_error(cell),
             }
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{from_roman, ArabicError};
+
+    #[test]
+    fn reads_any_letter_string_right_to_left() {
+        // Excel cells: probes/t3648-arabic-numeral-shapes column A.
+        for (text, value) in [
+            ("xiv", 14),
+            ("IIX", 8),
+            ("IXI", 10),
+            ("IVX", 4),
+            ("MIM", 1999),
+            ("DCM", 400),
+            ("MMMMM", 5000),
+            ("LDVLIV", 499),
+            ("-IIX", -8),
+            ("-xiv", -14),
+        ] {
+            assert_eq!(from_roman(text), Ok(value), "{text}");
+        }
+        assert_eq!(from_roman("-"), Err(ArabicError::LoneMinus));
+        for text in [
+            "N", "+XIV", "--X", "- XIV", "-0", "12", "X-", "\u{2160}", "\u{131}",
+        ] {
+            assert_eq!(from_roman(text), Err(ArabicError::NotANumeral), "{text}");
+        }
     }
 }

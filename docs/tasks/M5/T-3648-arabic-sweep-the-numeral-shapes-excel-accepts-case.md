@@ -3,7 +3,7 @@ id: T-3648
 title: "ARABIC: sweep the numeral shapes Excel accepts (case, non-canonical forms, sign, length, non-Roman characters)"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -25,10 +25,19 @@ MMMMM); repeats past three; a leading minus (-XIV) and plus; the empty and 255-c
 functions/math_and_trigonometry/arabic_roman.rs.
 
 ## Acceptance criteria
-- [ ] A probe case (excel-graph) covers the shapes above, including ARABIC(ROMAN(n,k)) for k 0-4 over a range of n.
-- [ ] The engine matches every probed cell; numbers.md states the accepted grammar.
-- [ ] Every quirk found is written up in docs/excel-semantics/numbers.md in the same PR, with its probe cells cited.
-- [ ] `make check` green; eval known failures only shrink (baseline updated); reviewers approve.
+- [x] A probe case (excel-graph) covers the shapes above, including ARABIC(ROMAN(n,k)) for k 0-4 over a range of n.
+- [x] The engine matches every probed cell; numbers.md states the accepted grammar.
+- [x] Every quirk found is written up in docs/excel-semantics/numbers.md in the same PR, with its probe cells cited.
+- [x] `make check` green; eval known failures only shrink (baseline updated); reviewers approve.
 
 ## Out of scope
 - ROMAN.
+
+## Outcome
+Probed 232 cells (probes/t3648-arabic-numeral-shapes, excel-graph, 2026-11-01). Excel's ARABIC has no numeral
+grammar: an optional leading `-`, then ASCII IVXLCDM letters in either case, summed right to left (a letter below the
+largest seen so far is subtracted). A lone `-` is `#NUM!`; any other character, a `+`, numeric text and the Unicode Roman
+numerals are `#VALUE!`; the text may be 255 characters before trimming. Every ROMAN form reads back. `from_roman` is
+rewritten to that rule (the old classic-grammar parser rejected most non-canonical and every signed numeral), with unit
+tests; numbers.md "ARABIC reads any Roman-letter string, right to left" records the grammar.
+Eval delta: the new probe case passes 232/232 cells (`make eval-check`: probes fixed 0, new cases 1, REGRESSIONS 0); no regressions.
