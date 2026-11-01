@@ -3,7 +3,7 @@ id: T-3497
 title: "gen-m7 arg-pairs batch: oracle-filled cells for the unseen argument-class pairs of the M7 array-shaping functions (FILTER, SORT, SORTBY, UNIQUE, TAKE, DROP, EXPAND, TOCOL, TOROW, WRAPCOLS, WRAPROWS)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -24,7 +24,7 @@ gen-m7 gains an oracle-filled batch from `rustsheet-gen --policy arg-pairs` (T-3
 - T-3279 is the same batch for the M2 functions (its out of scope: batches for other milestones). GROUPBY (0.11) and PIVOTBY (0.09) are left out: their 2256 and 4964 unseen pairs mostly involve LAMBDA arguments and need their own batch. T-3496 is the M6 lookup batch.
 - Run `make eval` first so the policy reads current unseen pairs, then
   `cd tools && uv run rustsheet-gen --policy arg-pairs --milestone M7 --functions FILTER,SORT,SORTBY,UNIQUE,TAKE,DROP,EXPAND,TOCOL,TOROW,WRAPCOLS,WRAPROWS`
-  (checked on 32c4a203: the policy honours `--functions`; a dry run for SWITCH,IFS,IFNA wrote 5 cases, 702 cells),
+  (the policy honours `--functions`; on 32c4a203 this wrote 41 cases),
   fill with `uv run rustsheet-oracle fill -b excel-graph --suite gen-m7`, and score.
 - M7's exit is gen-m7 at ≥ 99.9% with 0 spill-extent failures, at visible parity (docs/milestones.md, decision
   0140), and the Phase 1 rate counts gen-* cells (decision 0188), so a failing cell here matters: own each one in the same PR (an existing open task that covers the rule, or a new
@@ -35,16 +35,33 @@ gen-m7 gains an oracle-filled batch from `rustsheet-gen --policy arg-pairs` (T-3
 - Tier: opus: every result is a spilled array whose footprint the arg-pairs policy has not been used with yet (T-3278 and T-3279 are scalar M2 functions), so the run may need generator judgment before cells are trustworthy.
 
 ## Acceptance criteria
-- [ ] New gen-m7 cases from `--policy arg-pairs --functions FILTER,SORT,SORTBY,UNIQUE,TAKE,DROP,EXPAND,TOCOL,TOROW,WRAPCOLS,WRAPROWS` with their excel-graph oracle sidecars
+- [x] New gen-m7 cases from `--policy arg-pairs --functions FILTER,SORT,SORTBY,UNIQUE,TAKE,DROP,EXPAND,TOCOL,TOROW,WRAPCOLS,WRAPROWS` with their excel-graph oracle sidecars
       are committed.
-- [ ] After `make eval`, each of the 11 functions above has a `pairwise` share of at least 0.9 in report.json
+- [x] After `make eval`, each of the 11 functions above has a `pairwise` share of at least 0.9 in report.json
       `argument_coverage`, or the PR lists the pairs left unseen and why (a hard domain, a pair Excel refuses to load).
-- [ ] Failing cells are known failures in eval/baseline/gen-m7.txt (`make eval-baseline`, 0 regressions), each
+- [x] Failing cells are known failures in eval/baseline/gen-m7.txt (`make eval-baseline`, 0 regressions), each
       owned by an open task, and `make exit-owners MILESTONE=M7` and `make unowned-off ALL=1` report no new
       unowned cell from the batch.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fixing the engine for the cells this batch finds (the owning tasks), beyond a one-line coercion fix in the
   function's own module that the PR also tests.
 - Single argument-kind probes (the research tasks named above) and other functions or milestones.
+
+## Outcome
+- **Generator** (tools/src/rustsheet_tools/gen/arg_pairs.py; synthetic-generator.md §6.7):
+  - A `dynamic_array` function's calls sit 61 rows apart (`SPILL_ROW_STRIDE`), taller than any result over the 12 x 5 Data block (TOCOL, or WRAPROWS with a count of 1). No result is a `#SPILL!` from the layout.
+  - Their cases list no `check`, so every cell the oracle records is scored, spill members included.
+  - A unit test covers both strides.
+- **Batch**: 41 new gen-m7 cases from `--policy arg-pairs --functions FILTER,SORT,SORTBY,UNIQUE,TAKE,DROP,EXPAND,TOCOL,TOROW,WRAPCOLS,WRAPROWS`, excel-graph sidecars, 0 fill failures.
+  - After `make eval`, each of the 11 functions has a pairwise share of 1.0 with 0 unseen pairs (before: 0.05 to 0.32, 3648 unseen pairs).
+- **Eval delta**:
+  - gen-m7 grows from 55 to 96 cases and from 100% (0 known failures) to 99.78% (50,476 cells, 111 new-coverage failures, 0 regressions; baseline updated by `make eval-baseline`).
+  - Visible-parity lock 2427 to 2536 (+109, all new cases).
+  - This puts gen-m7 under its M7 exit bar of 99.9% until the three owning tasks land.
+- **Owners**: `make exit-owners MILESTONE=M7` reports 0 unowned. The failures are three Excel rules, each recorded in docs/excel-semantics/arrays.md:
+  - **T-3506** (57 cells, sonnet): a one-cell error reference is a 1x1 array in TOCOL, TOROW and FILTER.
+  - **T-3507** (27 cells, opus): which bad argument wins in TOCOL, TOROW and SORT.
+  - **T-3508** (27 cells, sonnet): SORT's lifted by_col spreads an argument error.
+- SORTBY, UNIQUE, TAKE, DROP, EXPAND, WRAPCOLS and WRAPROWS pass every new cell.

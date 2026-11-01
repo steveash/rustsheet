@@ -1,8 +1,9 @@
 //! The values of a range read once per pass (T-0449, moved here by T-3534): a range whose cells
 //! can all be read without evaluating anything has the same values for the rest of the pass, so
 //! its readers share one copy. The criteria aggregates (`ifs_cache.rs`), SUMPRODUCT's masked
-//! blocks (T-3230), operator range operands (`evaluate_range`, T-3471) and the running totals
-//! (`sum_prefix.rs`, T-3456) read through it.
+//! blocks (T-3230) and operator range operands (`evaluate_range`, T-3471) read through it. The
+//! running totals (`sum_prefix.rs`, T-3456) keep their own states and use only its rule for a read
+//! a later call may skip (`Model::read_is_inert`).
 //!
 //! A range is cached only when reading it evaluates nothing (`Model::read_is_inert`): every formula
 //! cell of it is already evaluated in this pass (spill cells: their anchor), and none is circular

@@ -21,36 +21,45 @@ fn hyperbolic_exp_overflows(x: f64, y: f64) -> bool {
     y == 0.0 && x.abs().exp().is_infinite()
 }
 
-/// Past |x| = 709 (709 itself takes the product form), IMCOSH and IMSINH of a number with a
-/// nonzero imaginary part take both parts in log space, `exp(|x| + ln(cos y / 2))` and
-/// `exp(|x| + ln(sin y / 2))`, the sign of x then going to sinh's factor. Hence `#NUM!` whenever
-/// cos y or sin y is negative (`IMCOSH("709.05+2i")`, `"709.3-0.5i"`, `"-710.4-2i"`, while
-/// `"709+2i"` and `"-710.4+1.5i"` answer), and digits that differ from `cosh x·cos y`:
+/// Past x = 709 (709 itself takes the product form) or below x = -708, IMCOSH and IMSINH of a
+/// number with a nonzero imaginary part take both parts in log space, `EXP(|x| + ln(cos y / 2))` and
+/// `EXP(|x| + ln(sin y / 2))` with Excel's EXP, the sign of x then going to sinh's factor. Hence
+/// `#NUM!` whenever cos y or sin y is negative (`IMCOSH("709.05+2i")`, `"709.3-0.5i"`, `"-710.4-2i"`,
+/// while `"709+2i"` and `"-710.4+1.5i"` answer), and digits that differ from `cosh x·cos y`:
 /// `IMCOSH("710.4+1.5i")` is 1.17873946358278E+307+1.6621900184285E+308i, `IMSINH("709.5+1E-200i")`
 /// has real part 6.77493159657354E+307 where `IMSINH("709.5")` is 6.77493159657316E+307
-/// (probes/eng-im-overflow-edges A6, A14; eng-im-overflow-edges-2, T-2231). The exact cut between
-/// 709 and 709.0000000001 is not pinned. Re-validated on fresh sweeps (T-3525, decision 0188 R4):
-/// on probes-numeric/t3525-im-hyperbolic-log-band-sweep the log form gives 178 of the 180 cells with
-/// 709 < |x| < 710.5, the product form alone 2. For x < 0 Excel switches earlier, below |x| = 708.94
-/// (`IMSINH("-708.993723853194-0.284042075249253i")` is `#NUM!`), which this cut misses (T-3546).
+/// (probes/eng-im-overflow-edges A6, A14; eng-im-overflow-edges-2, T-2231).
+///
+/// Excel's EXP, not libm `exp`: libm misses the 15th digit of `IMSINH("-708.82+1i")` and of
+/// `IMSINH("-709.183834084079+1.0222540398548i")` (fit lab `im-hyperbolic-log` and its fresh sweep
+/// `im-hyperbolic-log-fresh`; docs/excel-semantics/engineering.md, T-3546).
+///
 /// FITTED(T-3525, 617 cells, |x| 100..800 with a nonzero imaginary part; cut bracketed 709..709.0000000001 for x > 0)
 const HYPERBOLIC_LOG_CUT: f64 = 709.0;
 
-/// IMCOSH's (`sinh` false) or IMSINH's value past [`HYPERBOLIC_LOG_CUT`], `None` below the cut or
+/// For x < 0 the log form starts below -708, not -709: `IMSINH("-708-0.5i")` answers (product form)
+/// while `"-708.000000000001-0.5i"` is `#NUM!` (sin y < 0), the same for IMCOSH of `x+2i` (cos y < 0)
+/// and for `IMSINH(x-1E-200i)`, whatever y, so the cut lies between -708.000000000001 and -708
+/// (probes-numeric/t3546-imsinh-neg-cut-coarse, t3546-imsinh-neg-cut-fine, excel-graph; T-3546).
+/// An evidenced bracket, not a fit.
+const HYPERBOLIC_LOG_CUT_NEGATIVE: f64 = -708.0;
+
+/// IMCOSH's (`sinh` false) or IMSINH's value past [`HYPERBOLIC_LOG_CUT`] or below
+/// [`HYPERBOLIC_LOG_CUT_NEGATIVE`], `None` between the cuts or
 /// for a zero y. `#NUM!` where cos y or sin y is not positive (Excel takes its log).
 fn hyperbolic_log_form(
     (x, y, suffix): ComplexParts,
     sinh: bool,
     cell: CellReferenceIndex,
 ) -> Option<CalcResult> {
-    if y == 0.0 || x.abs() <= HYPERBOLIC_LOG_CUT {
+    if y == 0.0 || (HYPERBOLIC_LOG_CUT_NEGATIVE..=HYPERBOLIC_LOG_CUT).contains(&x) {
         return None;
     }
     let (sin_y, cos_y) = (y.sin(), y.cos());
     if sin_y <= 0.0 || cos_y <= 0.0 {
         return Some(num_error(cell));
     }
-    let part = |t: f64| (x.abs() + (t / 2.0).ln()).exp();
+    let part = |t: f64| excel_exp(x.abs() + (t / 2.0).ln());
     let (re, im) = (part(cos_y), part(sin_y));
     let (re, im) = if sinh {
         (x.signum() * re, im)

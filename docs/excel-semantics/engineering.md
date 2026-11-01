@@ -1091,9 +1091,9 @@ Status: VERIFIED (excel-graph)
 Tasks: T-2626
 
 ## IMCOSH and IMSINH past |x| = 709 work in log space (T-2231)
-Evidence: probes/eng-im-overflow-edges A6-A21, probes/eng-im-overflow-edges-2 A1-A24, A58-A114 (excel-graph, 2026-10-24).
-Rule: for |x| > 709 and a nonzero imaginary part, IMCOSH and IMSINH compute `exp(|x| + ln(cos y / 2))` and
-`exp(|x| + ln(sin y / 2))`, then give sinh's factor the sign of x (IMCOSH `(a, sign(x)·b)`, IMSINH `(sign(x)·a, b)`).
+Evidence: probes/eng-im-overflow-edges A6-A21, probes/eng-im-overflow-edges-2 A1-A24, A58-A114 (excel-graph, 2026-10-24); probes-numeric/t3546-imsinh-neg-cut-coarse, t3546-imsinh-neg-cut-fine (excel-graph, 2026-11-01).
+Rule: for x > 709 or x < -708 and a nonzero imaginary part, IMCOSH and IMSINH compute `EXP(|x| + ln(cos y / 2))` and
+`EXP(|x| + ln(sin y / 2))` (Excel's EXP), then give sinh's factor the sign of x (IMCOSH `(a, sign(x)·b)`, IMSINH `(sign(x)·a, b)`).
 - Consequences: `#NUM!` whenever cos y or sin y is negative, even far below the overflow: `IMCOSH("709.05+2i")`,
   `"709.0000000001+2i"`, `"709.3-0.5i"`, `"-709.3-0.5i"`, `"-710.4-2i"`, `"709.5+3.14159265358979i"`, `IMSINH("709.4+2i")`,
   while `IMCOSH("709+2i")` is `-1.71003213329077E+307+3.73648837869846E+307i` (product form) and `"-710.4+1.5i"` answers
@@ -1103,15 +1103,23 @@ Rule: for |x| > 709 and a nonzero imaginary part, IMCOSH and IMSINH compute `exp
   `6.77493159657316E+307`; the candidates `exp(x - ln 2 + ln t)`, `exp(x + ln t)/2` and `exp(x/2)·exp(x/2)·t/2` all miss.
 - A zero imaginary part keeps the real path (`cosh x`, `sinh x`; `#NUM!` once `exp |x|` overflows): `IMCOSH("709.5")`,
   `"709.5+0i"`, `IMCOSH(709.5)` are `6.77493159657316E+307`, `IMSINH("-709.5")` its negative.
-- The cut lies in (709, 709.0000000001] for x > 0; implemented as `|x| > 709`. For x < 0 it lies lower, below
-  |x| = 708.94 (probes-numeric/t3525-im-hyperbolic-log-band-sweep, excel-graph, T-3525):
-  `IMSINH("-708.993723853194-0.284042075249253i")` and `IMCOSH` of it are `#NUM!` (sin y < 0), so is
-  `"-708.952568260886+1.74023049176272i"` (cos y < 0), and `IMSINH("-708.931415280617+0.631619003955773i")` is
-  `-3.09659439784082E+307+2.26546023028534E+307i`, the log form's digits (product form ...096E+307+...528E+307i), while
-  `"708.959727…+1.343…i"` keeps the product form. The negative-side rule may depend on y rather than on one |x| (the
-  three cells above sit within 0.07 of each other). Not yet implemented, and the negative-side cut is not bracketed
-  (T-3546); `IMSINH("-709.183834084079+1.0222540398548i")` also differs from ours in the 15th digit of the imaginary part.
-- On that fresh sweep the log form gives 178 of the 180 cells with 709 < |x| < 710.5 (both misses are x < 0, above),
+- The cut lies in (709, 709.0000000001] for x > 0; implemented as `x > 709`. For x < 0 it is lower, in
+  [-708.000000000001, -708): `IMSINH("-708-0.5i")` answers `-1.32663416266498E+307-...` (product form) while
+  `IMSINH("-708.000000000001-0.5i")` is `#NUM!` (sin y < 0), and the same holds for `IMCOSH(x+2i)` (cos y < 0) and
+  `IMSINH(x-1E-200i)`, so the cut does not depend on y; every x from -708.01 down to -709.2 (step 0.01) is `#NUM!` in all
+  three, -707.99 and -707.5 answer (probes-numeric/t3546-imsinh-neg-cut-coarse, t3546-imsinh-neg-cut-fine, excel-graph,
+  T-3546). Implemented as `x < -708`. This explains T-3525's x < 0 cells below |x| = 709
+  (`IMSINH("-708.993723853194-0.284042075249253i")` and `"-708.952568260886+1.74023049176272i"` are `#NUM!`,
+  `IMSINH("-708.931415280617+0.631619003955773i")` is `-3.09659439784082E+307+2.26546023028534E+307i`, the log form's
+  digits), while `"708.959727…+1.343…i"` keeps the product form. The 1-ulp-of-ln(2) asymmetry (708 against 709) is
+  unexplained; neither cut is ln(DBL_MAX) = 709.78 or -ln(DBL_MIN) = 708.40.
+- The exponential is Excel's EXP (`excel_exp`), not libm `exp`: with libm, 4 of the 188 log-form cells of the T-2231,
+  T-3525 and T-3546 probes miss in the 15th digit, all x < 0 (`IMSINH("-709.183834084079+1.0222540398548i")` has
+  imaginary part ...335E+307, libm ...334; `IMSINH("-708.82+1i")`, `"-708.8+1i"`, `"-708.000000000001+1i"` real
+  part); Excel's EXP fits all of them, and on the fresh sweep drawn afterwards
+  (probes-numeric/t3546-im-hyperbolic-log-exp-fresh-sweep, 300 cells, 76 of them `#NUM!`) it fits all 300 where
+  libm misses 6 of the 224 numbers (T-3546, decision 0188 R4).
+- On that fresh sweep the log form gives 178 of the 180 cells with 709 < |x| < 710.5 (both misses are x < 0 digits that Excel's EXP fixes),
   the product form alone 2 (T-3525, decision 0188 R4).
 - UNVERIFIED: a large y with |x| > 709 (ours takes
   libm sin and cos; SIN's own reduction could matter), and whether IMSIN/IMCOS and IMSECH/IMCSCH share the
@@ -1121,5 +1129,5 @@ Rule: for |x| > 709 and a nonzero imaginary part, IMCOSH and IMSINH compute `exp
 - IMPRODUCT of a range holding a blank, and of a blank alone, is "0" (`IMPRODUCT(C1:C3)` with C2 blank, `IMPRODUCT(C2:C3)`,
   `IMPRODUCT(C2)`; A55-A57).
 Status: VERIFIED (excel-graph)
-Implemented in: `hyperbolic_log_form` and `HYPERBOLIC_LOG_CUT` in functions/engineering/complex/trig.rs
-Tasks: T-2231
+Implemented in: `hyperbolic_log_form`, `HYPERBOLIC_LOG_CUT` and `HYPERBOLIC_LOG_CUT_NEGATIVE` in functions/engineering/complex/trig.rs
+Tasks: T-2231, T-3525, T-3546

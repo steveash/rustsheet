@@ -1261,10 +1261,21 @@ t3478-irr-r4-wide (excel-graph, 2026-10-31; T-3478; inputs and 50-digit roots in
 - `#DIV/0!` with guesses near -1 or above 100: A261, A275, A281 (the engine returns the root), A277, A290, A298
   (the engine is `#NUM!`), and A289 (flows near 1E-11, guess 9.6E+7; the engine returns 0.10121131912486914, not the
   root 0.000174819..., because every |NPV| there is under the absolute 1e-7 stop).
+- Gate A's IRR table (accuracy/IRR/s1, excel-graph, T-3586) adds long conventional series. Excel errs on 54 of its 60
+  series of 51 to 200 flows (flow scale 1E+9 to 1E+14), though each has one root: 51 `#NUM!` and 3 `#DIV/0!`. The engine
+  is `#NUM!` on 43 of the `#NUM!` series, which pass. The rest:
+  - `#NUM!` where the engine returns the root (51 to 164 flows, roots 0.044 to 0.25): accuracy/IRR/s1 A216, A221, A233,
+    A238, A240, A242, A258 and A270.
+  - `#DIV/0!` where the engine is `#NUM!` (about 180 flows, roots 0.0125 to 0.019): accuracy/IRR/s1 A237, A248 and
+    A268.
+  - Excel is also `#NUM!`, as is the engine, on four log-uniform series (21 to 97 flows) with roots near 0:
+    accuracy/IRR/s1 A273, A276, A279 and A293 (roots -5.0E-7 to 2.4E-5).
 `IRR({-1,1E+15})`'s `#DIV/0!` ("IRR's far-root bound") and t3406-irr-num-boundary's (T-3407) may share a cause.
-Evidence: probes-numeric/t3478-irr-r4-wide; docs/research/t3478/score_sweep.py lists the cells
+Evidence: probes-numeric/t3478-irr-r4-wide; docs/research/t3478/score_sweep.py lists the cells; accuracy/IRR/s1
 Status: VERIFIED (excel-graph) for the cells; the rule is UNVERIFIED
-Ours: the root on 13 of the 17 cells (a wrong value on A289), `#NUM!` on A277, A290, A298
+Ours: on t3478, the root on 13 of the 17 cells (a wrong value on A289) and `#NUM!` on A277, A290, A298. On
+accuracy/IRR/s1, `#NUM!` with Excel on 47 cells, the root on the 8 `#NUM!` cells listed, and `#NUM!` on the 3 `#DIV/0!`
+cells.
 Tasks: T-3548, T-3407
 
 ## RATE: an empty guess is guess 0, not the default 0.1
@@ -3899,7 +3910,11 @@ Rule: PV's growth factor `P = (1+rate)^nper` is Excel's `^`, errors included, an
 
 NPER divides by ln(1+rate):
 - a rate so small that 1+rate is 1 is `#DIV/0!`, start-of-period type 1 too (`NPER(1E-300,-113,3037,368,1)`);
-- a rate of -1 is `#NUM!` (LN(0); `NPER(-1,-31,1)`).
+- a rate of -1 is `#NUM!` (LN(0); `NPER(-1,-31,1)`);
+- a ratio whose denominator pmt·(1 + rate·type) + pv·rate cancels to exactly 0 in doubles is `#NUM!`, not `#DIV/0!`,
+  though the true count is finite: `NPER(0.0787082899943479,-44696304.3306312,567872892.853356,-198914751.586312,0)`
+  is `#NUM!` where the math is 499.1157 (accuracy/NPER/s1 A263, excel-graph, T-3535). The engine matches (`annuity.rs`,
+  the infinite ratio).
 
 DB's `month` reads a boolean as 1 or 0, from a cell too, as DDB's factor does ("VDB, DDB and ACCRINT argument types").
 `DB(15779,385,37,<FALSE>,<FALSE>)`, with period and month both FALSE cells, is `#NUM!`, not `#VALUE!`. Only the FALSE
@@ -3916,12 +3931,17 @@ Status: VERIFIED for the probed cells; DB's boolean month beyond the FALSE pair 
 (T-2749 probes them).
 Tasks: T-2620, T-2698, T-2749
 
-## NPER at a tiny positive rate: Excel is up to 4% off, RustSheet returns the math (MATH-OVER-EXCEL)
-Rule: NPER at 0 < rate < 1e-14 is up to 4% off the true period count in Excel, above G = 1e-4, so RustSheet returns the
-math there (decision 0188 R3). Excluded: rates so small that 1 + rate == 1, which are `#DIV/0!` in Excel ("NPER divides
+## NPER at a tiny positive rate: Excel is far off, RustSheet returns the math (MATH-OVER-EXCEL)
+Rule: NPER at 0 < rate < 1e-14 is far off the true period count in Excel, above G = 1e-4, so RustSheet returns the
+math there (decision 0188 R3). The owner's assessment found up to 4%. The Gate A table finds up to 35% as the rate
+nears the 1 + rate = 1 cut: `NPER(3.04353262019695E-16,370.793811118894,-6303.49478902119,0,0)` is 23.0 in Excel
+against a true 17.0, and at rate 5.1E-16 Excel is 15% off. Excluded: rates so small that 1 + rate == 1, which are `#DIV/0!` in Excel ("NPER divides
 by ln(1+rate)" above, VERIFIED) and stay `#DIV/0!`. Negative tiny rates are not covered.
-Evidence: the owner's 2026-10-31 assessment (decision 0188), 50-digit mpmath against Excel for the web. The committed
-probe case and the bounded region come with T-3367, before the engine changes.
+Evidence:
+- The owner's 2026-10-31 assessment (decision 0188), 50-digit mpmath against Excel for the web.
+- The R3-marked points of the Gate A table: accuracy/NPER/s1 A121, A130, A133, A135, A142, A143, A151, A152, A153,
+  A156, A158 and A162, at rates 3.0E-16 to 7.6E-15 (excel-graph, T-3535, decision 0220).
 Status: MATH-OVER-EXCEL (decision 0188)
-Ours: today the engine matches Excel bit for bit; T-3367 moves it to the math in the region.
-Tasks: T-3367
+Ours: today the engine matches Excel bit for bit; T-3367 moves it to the math in the region. Until then the marked
+points are Gate A known failures owned by T-3367.
+Tasks: T-3367, T-3535
