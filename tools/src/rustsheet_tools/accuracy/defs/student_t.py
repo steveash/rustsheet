@@ -31,30 +31,39 @@ CF_GUARD_DPS = 20
 
 
 def lower_tail(x: mpmath.mpf, df: mpmath.mpf) -> mpmath.mpf:
-    """P(T ≤ x) for x ≤ 0: I_y(df/2, 1/2)/2, y = df/(df + x²); exact in the far tail since no
-    complement is taken. From |x| = `CF_MIN_X` on, the continued fraction (T-3425): mpmath's
-    hypergeometric series stalls there for a df above about 5E6 (from |x| ≈ 90 up to about √df,
-    tails below e^-4000 that T.INV's root search still evaluates)."""
+    """P(T ≤ x) for x ≤ 0: I_y(df/2, 1/2)/2, y = df/(df + x²) (T-3425 for both branches):
+    - |x| < `CF_MIN_X`: 1/2 - I_z(1/2, df/2)/2 with z = 1 - y = x²/(df + x²), which keeps x² that y = df/(df + x²)
+      rounds away (at df 1E10 and x = -e^-60, y is 1 at 60 digits); the series has about x²/2 terms and the
+      subtraction from 1 loses at most two digits (the tail is at least 0.0227);
+    - from |x| = `CF_MIN_X` on: the continued fraction for I_y itself, exact in the far tail since no complement is
+      taken. mpmath's hypergeometric series stalls there for a df above about 5E6 (from |x| ≈ 90 up to about √df,
+      tails below e^-4000 that T.INV's root search still evaluates)."""
     if x == 0:
         return mpmath.mpf(1) / 2
     a, b = df / 2, mpmath.mpf(1) / 2
-    if -x < CF_MIN_X:
-        return mpmath.betainc(a, b, 0, df / (df + x * x), regularized=True) / 2
     with mpmath.extradps(CF_GUARD_DPS):  # ln B(a, b) cancels about log10(df) digits of loggamma(a)
         x2 = x * x
-        log_prefactor = (
-            -a * mpmath.log1p(x2 / df)  # a·ln y
-            + b * mpmath.log(x2 / (df + x2))  # b·ln(1 - y)
-            - mpmath.log(a)
-            - (mpmath.loggamma(a) + mpmath.loggamma(b) - mpmath.loggamma(a + b))
-        )
-        tol = mpmath.mpf(10) ** -(mpmath.mp.dps + 2)
-        fraction, converged = betacf(a, b, df / (df + x2), tol, CF_MAX_TERMS)
-        if not converged:
-            msg = f"the t continued fraction did not converge in {CF_MAX_TERMS} terms"
-            raise mpmath.libmp.NoConvergence(msg)
-        tail = mpmath.exp(log_prefactor) * fraction / 2
-    return +tail
+        if -x < CF_MIN_X:
+            tail = (1 - mpmath.betainc(b, a, 0, x2 / (df + x2), regularized=True)) / 2
+        else:
+            tail = _far_tail(a, b, x2, df)
+    return +tail  # rounded to the caller's precision
+
+
+def _far_tail(a: mpmath.mpf, b: mpmath.mpf, x2: mpmath.mpf, df: mpmath.mpf) -> mpmath.mpf:
+    """I_y(a, b)/2 for y = df/(df + x²) by the continued fraction, at the current precision."""
+    log_prefactor = (
+        -a * mpmath.log1p(x2 / df)  # a·ln y
+        + b * mpmath.log(x2 / (df + x2))  # b·ln(1 - y)
+        - mpmath.log(a)
+        - (mpmath.loggamma(a) + mpmath.loggamma(b) - mpmath.loggamma(a + b))
+    )
+    tol = mpmath.mpf(10) ** -(mpmath.mp.dps + 2)
+    fraction, converged = betacf(a, b, df / (df + x2), tol, CF_MAX_TERMS)
+    if not converged:
+        msg = f"the t continued fraction did not converge in {CF_MAX_TERMS} terms"
+        raise mpmath.libmp.NoConvergence(msg)
+    return mpmath.exp(log_prefactor) * fraction / 2
 
 
 def cdf(x: mpmath.mpf, df: mpmath.mpf) -> mpmath.mpf:
