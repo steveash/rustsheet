@@ -22,7 +22,7 @@ time box).
   Excel cell used `scripts/exit_owners.py`'s `owned` rule over the open task files of origin/main and of every
   `origin/agent/*` branch pushed since 2026-10-29. It found these cumulative cells named by no open task. None is
   visibly off, so this task carries no campaign key (decision 0083). The visibly-off cdf cells of the same grids are
-  T-3482's (shapes 5 to 100) and T-3475's on their branches; the density cells of the a = 0.5 grid go to T-2821, and
+  T-3592's (shapes 5 to 100) and T-3475's on their branches; the density cells of the a = 0.5 grid go to T-2821, and
   those of the a = 5 and 10 grids to T-3392 (this triage adds them there).
 - Scored in triage against 50-digit mpmath (`mp.betainc(a, b, 0, x, regularized=True)`), in ulps of Excel's value:
   Excel is not correctly rounded on most of them, so the target is Excel's arithmetic, not the math:
@@ -59,5 +59,5 @@ probes, so its line leaves eval/baseline/probes.txt when fixed.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- The visibly-off cdf cells of the same grids (T-3482, T-3475) and every density cell (T-2821, T-3392).
+- The visibly-off cdf cells of the same grids (T-3592, T-3475) and every density cell (T-2821, T-3392).
 - The incomplete-beta models themselves: T-3383 builds them; this task ports and scores them on these cells.
