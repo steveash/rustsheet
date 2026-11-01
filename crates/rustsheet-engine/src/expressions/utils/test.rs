@@ -394,8 +394,6 @@ fn indirect_reference_text_keeps_only_the_spaces_excel_accepts() {
         ("A1 ", "A1"),
         ("A1\n", "A1"),
         ("A1 : B2", "A1:B2"),
-        ("A1:\nB2", "A1:B2"),
-        ("A1\n\n", "A1"),
         ("A1 :B2", "A1:B2"),
         ("Sheet2! A1", "Sheet2!A1"),
         ("Sheet2!A1 :B2", "Sheet2!A1:B2"),
@@ -416,12 +414,6 @@ fn indirect_reference_text_keeps_only_the_spaces_excel_accepts() {
         "A1\t",
         "A1\u{a0}",
         "A1:\tB2",
-        "A1\r",
-        "\nA1",
-        "A1\u{2003}",
-        "A 1",
-        "$A $1",
-        "A1\nB2",
         "Sheet2 !A1",
         "'My Sheet' !A1",
         "A1 B2",
@@ -430,4 +422,22 @@ fn indirect_reference_text_keeps_only_the_spaces_excel_accepts() {
     for text in refused {
         assert_eq!(indirect_reference_text(text), None, "{text:?}");
     }
+}
+
+#[test]
+fn indirect_reference_text_line_feed_and_inner_spaces() {
+    // probes/t3747-indirect-whitespace rows 20-39 (Excel for the web, T-3747)
+    let text = |t: &str| indirect_reference_text(t);
+    assert_eq!(text("A1:\nB2").as_deref(), Some("A1:B2"));
+    assert_eq!(text("A1\n\n").as_deref(), Some("A1"));
+    let refused = [
+        "A1\r",
+        "\nA1",
+        "A1\u{2003}",
+        "A 1",
+        "$A $1",
+        "A1\nB2",
+        "R1 C1",
+    ];
+    assert!(refused.iter().all(|t| text(t).is_none()));
 }
