@@ -47,7 +47,8 @@ Excel's direct bgrat increment D at b != 1/2 is modelled to the bit, and F at a 
   r = n/(mx) or mx/n, whichever is >= 1, passes the smaller argument as fl(1/fl(1+r)) and the larger as
   fl(r/fl(1+r)), and at b = 1/2 takes the same bgrat_half as T. Hold-out probe t3567-r5-fdf1-hold (3,578 cells,
   model frozen first): 2,787/3,419/3,463 (bit-exact / within 4 ulp / within 15 digits) against the engine's
-  1,857/2,843/3,025; d1 = 1 bgrat region 991/1,000/1,000 against 298/572/659. The r >= 1 form also wins for every
+  1,857/2,843/3,025 and the correctly rounded value's 1,407/2,484 (bit-exact / 4 ulp); d1 = 1 bgrat region
+  991/1,000/1,000 against 298/572/659. The r >= 1 form also wins for every
   df on cells.tsv's 3,435 F cells (2,300/3,295 against 2,178/3,237 for n + mx). Engine port: T-3580.
 - **D at b != 1/2: still open, negatives recorded.** Excel's D is white noise of sd 5.7-8.5 units around the exact
   value along runs of consecutive doubles. Only the stored z shows. Prefactor variants (206-210 bit-exact of

@@ -34,6 +34,9 @@ then `r3-bgrat/exact.py -a`; both git-ignored).
    | tie: m·x = n | 178 | 135/177/178 | 135/177/178 | 138/177/178 |
    | all | 3,578 | **2,787/3,419/3,463** | 2,486/3,143/3,208 | 1,857/2,843/3,025 |
 
+   The correctly rounded value (mpmath, 50 digits; computed by the excel-fidelity review of PR #2669) is
+   1,407/2,484 of 3,578 bit-exact / within 4 ulp: bg1 311/612, d1 298/631, d2 283/416, gen 432/673, tie 83/152.
+
    Per branch (fmodel): bgrat 1,012/1,023/1,025 of 1,028, bgrat/sw 155/158/158, closed a0 = 1 and b0 = 1 48/48 and
    54/54; what is left is in bpser(a, b > 1), bfrac and L140 bup+bgrat at b ≠ 1/2, each open in its own entry.
 3. **The r >= 1 form is F's for every df, not only a df of 1.** On cells.tsv's 3,435 F cdf/tail cells (`c5.py` →

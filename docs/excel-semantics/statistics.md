@@ -2868,7 +2868,8 @@ m9-t-dist-*; docs/research/t2464/r2-tdist (`hx.py`, `hx_ctl.py`, `xlk.py`, `tsco
   df of 1 did not fit it on F's (x, y) of the time: `FDIST(x,1,9)` at Excel 0.190947117169724 came out
   0.19094711716972382 (7 ulp), and F.DIST/F.DIST.RT on probes-numeric went from 10/11 visibly-off cells to 15/15.
   The cause was the argument form, not this bgrat (T-3567): on Excel's own F arguments ("F's incomplete-beta
-  arguments keep r >= 1") the same bgrat is 991 of 1,000 bit-exact on F's d1 = 1 bgrat cells. F (and F.TEST's
+  arguments keep r >= 1") the same bgrat is 991 of 1,000 bit-exact on F's d1 = 1 bgrat cells. `FDIST(2,1,9)` itself
+  is a bup+bgrat cell, still 1 ulp off in the research kernel (bup's arithmetic, open). F (and F.TEST's
   large-shape tail) keeps today's kernel until T-3580 ports it.
 Ours: K(n/2, 1/2, y, z) from df 3 (`student_t::kernel_tail`); df 1 and 2 keep `student_t.rs`'s own composite (a
 double-double series, a Cephes deep tail, incbcf/incbd from z, and df 2's closed forms).
