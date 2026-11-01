@@ -3,7 +3,7 @@ id: T-3544
 title: "Owner ruling: Gate A T.INV and F.INV points where Excel is more than G off outside the R3 region"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
