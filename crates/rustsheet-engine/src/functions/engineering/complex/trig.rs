@@ -4,7 +4,9 @@ use super::{complex_result, finite_complex_result, ComplexParts, Suffix};
 use crate::calc_result::CalcResult;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::num_error;
-use crate::functions::math_and_trigonometry::{excel_sin_cos, excel_tan, EXCEL_TRIG_LIMIT};
+use crate::functions::math_and_trigonometry::{
+    excel_sin_cos, excel_tan, EXCEL_INNER_TRIG_LIMIT, EXCEL_TRIG_LIMIT,
+};
 use crate::x87_exp::excel_exp;
 
 /// IMSIN and IMCOS are `#NUM!` once `exp(|y|)` overflows (|y| above about 709.78), whatever the
@@ -17,6 +19,31 @@ use crate::x87_exp::excel_exp;
 /// t3589-imsin-imcos-subnormal-exp-probe; engineering.md, T-3589).
 fn trig_exp_overflows(y: f64) -> bool {
     y.abs().exp().is_infinite() || excel_exp(y) < f64::MIN_POSITIVE
+}
+
+/// The sine argument of a complex IM* trig or hyperbolic function (x of IMTAN, IMSEC, IMCSC and
+/// IMCOT; y of IMSINH, IMCOSH, IMSECH and IMCSCH) is past SIN's own limit: `#NUM!` from |arg| = 2^27
+/// whatever the other part, `IMTAN("134217728+1i")`, `IMSINH("1+134217728i")`, while 134217727.99
+/// answers (probes/im-trig-argument-cut rows 5 to 13; im-trig-magnitude-grid, T-3642). IMSIN and
+/// IMCOS cut sooner, at [`EXCEL_INNER_TRIG_LIMIT`] ([`inner_trig_overflows`]). The cut only bites
+/// where Excel takes the sine: see [`reciprocal_flushes`] and IMTAN's and IMCOT's `±i`.
+fn past_trig_limit(arg: f64) -> bool {
+    arg.abs() >= EXCEL_TRIG_LIMIT
+}
+
+/// IMSIN and IMCOS of a complex number are `#NUM!` once |x| passes 134217727, below SIN's own 2^27,
+/// as IMPOWER's and BESSELJ's inner sine: `IMSIN("134217727+1i")` answers, `"134217727.5+1i"` is
+/// `#NUM!` (probes/im-trig-argument-cut rows 5 and 6, T-3642).
+fn inner_trig_overflows(x: f64) -> bool {
+    x.abs() > EXCEL_INNER_TRIG_LIMIT
+}
+
+/// IMSEC, IMCSC (other part y), IMSECH and IMCSCH (other part x) are `0` past the sine limit once
+/// the overflowed-reciprocal scale `2e^-|v|` is below the smallest normal double (|v| above about
+/// 709.09), where Excel never takes the sine: `IMSEC("1E+10+709.5i")` and `IMSECH("709.5+1E+10i")`
+/// are 0, `IMSEC("1E+10+709i")` is `#NUM!` (probes/im-trig-magnitude-grid, T-3642).
+fn reciprocal_flushes(v: f64) -> bool {
+    2.0 * (-v.abs()).exp() < f64::MIN_POSITIVE
 }
 
 /// IMCOSH and IMSINH are `#NUM!` for a zero imaginary part once `exp(|x|)` overflows, although
@@ -260,7 +287,7 @@ pub(super) fn imcos((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
     if y == 0.0 {
         return real_trig(x, suffix, cell, None, |x| excel_sin_cos(x).1);
     }
-    if trig_exp_overflows(y) {
+    if trig_exp_overflows(y) || inner_trig_overflows(x) {
         return num_error(cell);
     }
     let (y_sinh, y_cosh) = trig_sinh_cosh(y);
@@ -268,7 +295,7 @@ pub(super) fn imcos((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
 }
 
 pub(super) fn imcosh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
-    if hyperbolic_exp_overflows(x, y) {
+    if hyperbolic_exp_overflows(x, y) || past_trig_limit(y) {
         return num_error(cell);
     }
     if let Some(result) = hyperbolic_log_form((x, y, suffix), false, cell) {
@@ -301,6 +328,9 @@ pub(super) fn imcot((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
     if cosh_2y.is_infinite() {
         return complex_result(0.0, -y.signum(), suffix);
     }
+    if past_trig_limit(x) {
+        return num_error(cell);
+    }
     let (_, cos_x) = trig_sin_cos(x);
     let (sin_2x, _) = trig_sin_cos(2.0 * x);
     let t = cosh_2y + 1.0 - 2.0 * cos_x * cos_x;
@@ -319,6 +349,9 @@ pub(super) fn imcot((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
 pub(super) fn imcsc((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     if y == 0.0 {
         return real_trig(x, suffix, cell, None, |x| 1.0 / excel_sin_cos(x).0);
+    }
+    if past_trig_limit(x) && !reciprocal_flushes(y) {
+        return num_error(cell);
     }
     let (x_sin, x_cos) = trig_sin_cos(x);
     let y_cosh = y.cosh();
@@ -356,6 +389,9 @@ pub(super) fn imcsch((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> 
         return complex_result(1.0 / x_sinh, 0.0, suffix);
     }
 
+    if past_trig_limit(y) && !reciprocal_flushes(x) {
+        return num_error(cell);
+    }
     let y_cos = y.cos();
     let y_sin = y.sin();
 
@@ -383,6 +419,9 @@ pub(super) fn imsec((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
     if y == 0.0 {
         return real_trig(x, suffix, cell, None, |x| 1.0 / excel_sin_cos(x).1);
     }
+    if past_trig_limit(x) && !reciprocal_flushes(y) {
+        return num_error(cell);
+    }
     let (x_sin, x_cos) = trig_sin_cos(x);
     let (y_sinh, y_cosh) = sec_sinh_cosh(y);
 
@@ -403,7 +442,7 @@ pub(super) fn imsec((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
 /// sum (one rounding, `mul_add`): all 62 finite cells of probes-numeric im-last-digit-sweep (T-2750).
 /// The unfused sum (T-2044) misses only `IMSECH("1.34384-77.6742i")`, whose imaginary part Excel
 /// prints as ...306336 (J34; exact 0.37667538230633553); fusing cos²y instead also misses it.
-pub(super) fn imsech((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
+pub(super) fn imsech((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     let (x_sinh, x_cosh) = inverse_exp_sinh_cosh(x);
     if y == 0.0 {
         // At |x| <= `INVERSE_EXP_LOW` a real IMSECH is 1 over libm's cosh, not over the `1/u`
@@ -416,6 +455,9 @@ pub(super) fn imsech((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> Cal
             x_cosh
         };
         return complex_result(1.0 / cosh, 0.0, suffix);
+    }
+    if past_trig_limit(y) && !reciprocal_flushes(x) {
+        return num_error(cell);
     }
     let (y_sin, y_cos) = trig_sin_cos(y);
 
@@ -430,7 +472,7 @@ pub(super) fn imsin((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
     if y == 0.0 {
         return real_trig(x, suffix, cell, None, |x| excel_sin_cos(x).0);
     }
-    if trig_exp_overflows(y) {
+    if trig_exp_overflows(y) || inner_trig_overflows(x) {
         return num_error(cell);
     }
     let (y_sinh, y_cosh) = trig_sinh_cosh(y);
@@ -438,7 +480,7 @@ pub(super) fn imsin((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
 }
 
 pub(super) fn imsinh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
-    if hyperbolic_exp_overflows(x, y) {
+    if hyperbolic_exp_overflows(x, y) || past_trig_limit(y) {
         return num_error(cell);
     }
     if let Some(result) = hyperbolic_log_form((x, y, suffix), true, cell) {
@@ -481,6 +523,11 @@ pub(super) fn imtan((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
     // 0188 R6 follows the web (T-1075 item 17).
     if y == 0.0 {
         return real_trig(x, suffix, cell, None, excel_tan);
+    }
+    // Past `cosh 2y`'s range the value is `±0 ± i` and Excel takes no sine of x
+    // (`IMTAN("1E+10+700i")` is i; probes/im-trig-magnitude-grid, T-3642).
+    if past_trig_limit(x) && f64::cosh(2.0 * y).is_finite() {
+        return num_error(cell);
     }
     let (x, y) = tan_parts(x, y);
     complex_result(x, y, suffix)

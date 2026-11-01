@@ -700,6 +700,14 @@ Evidence: probes/eng-first-vs-second-error A1:D11 (excel-graph, 2026-10-19); pro
 Status: VERIFIED (excel-graph)
 Tasks: T-1816, T-2545
 
+## IM* trig and hyperbolic functions past SIN's argument limit (T-3642)
+Rule: with a nonzero other part, IMTAN, IMSEC, IMCSC and IMCOT are `#NUM!` from |x| = 2^27 = 134217728, and IMSINH, IMCOSH, IMSECH and IMCSCH from |y| = 2^27, whatever the other part (1E-300, 1, 20, 700, either sign): `IMTAN("134217728+1i")`, `IMSINH("1+134217728i")`, `IMCOSH("1E-300-1E+10i")` are `#NUM!` and 134217727.99 answers. IMSIN and IMCOS cut sooner, as IMPOWER's and BESSELJ's inner sine (`EXCEL_INNER_TRIG_LIMIT`): `IMSIN("134217727+1i")` answers, `"134217727.5+1i"` and `"134217727.99+1i"` are `#NUM!`.
+Rule: the cut only applies where Excel takes the sine. IMTAN and IMCOT stay `±0 ± i` once cosh 2y overflows (`IMTAN("1E+10+700i")` is i, `IMCOT("134217728+700i")` -i, `IMTAN("1E+10+20i")` `#NUM!`). IMSEC and IMCSC are 0 once their overflowed-reciprocal scale 2e^-|y| is below the smallest normal double, |y| above about 709.09 (`IMSEC("1E+10+709.5i")` 0, `"1E+10+709i"` `#NUM!`), and IMSECH and IMCSCH the same in x (`IMSECH("709.5+1E+10i")` 0, `"709+1E+10i"` `#NUM!`); the 709.09 point is inferred from that formula, the probe brackets it in (709, 709.5]. A zero other part keeps the real rules ("IMSIN, IMCOS, ... of a real number" (T-2534): `IMCOT("134217728")` is 0).
+Not covered here: IMSIN and IMCOS at y = 709.78 are `#NUM!` for every x probed (T-3616's band). The complex IMSIN, IMCOS and IMTAN paths still take libm's sine of large x, so their last digits differ from Excel's x87 reduction (`IMSIN(COMPLEX(710,1E-300))` is 0.0000602887066915739, the real `IMSIN("710")` value; ours ...853), 152 grid cells in all.
+Evidence: probes/im-trig-magnitude-grid (4360 cells: 19x19 magnitudes 0, 1E-308 to 1E+300 with 700 to 720 around exp overflow, plus sign variants, columns A:J = the ten functions) and probes/im-trig-argument-cut (190 cells around 2^27), excel-graph, 2026-11-01.
+Status: VERIFIED (excel-graph); implemented (`past_trig_limit`, `inner_trig_overflows`, `reciprocal_flushes` in complex/trig.rs).
+Tasks: T-3642
+
 ## IM* results that overflow (T-1827)
 
 Rule: for IMSUM, IMPRODUCT, IMEXP, IMPOWER and IMDIV (the functions probed), a result that

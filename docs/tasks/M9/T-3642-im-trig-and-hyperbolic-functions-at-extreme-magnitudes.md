@@ -39,3 +39,11 @@ T-2914), hand the cells to it rather than duplicating it.
 ## Out of scope
 - Last-digit text fits (T-2538, T-3609 and the like).
 - IMEXP, IMPOWER, IMLN/IMLOG*, IMSQRT (T-3643).
+
+## Progress (in flight, 2026-11-01)
+Probes filled (excel-graph): probes/im-trig-magnitude-grid (4360 cells) and probes/im-trig-argument-cut (190 cells).
+complex/trig.rs gives `#NUM!` past SIN's argument limit (engineering.md "IM* trig and hyperbolic functions past SIN's
+argument limit (T-3642)"). After the change every type mismatch left is IMSIN/IMCOS at y = 709.78 (32 cells, T-3616's
+band); 152 cells differ in last digits only (libm sine in the complex IMSIN/IMCOS/IMTAN paths, follow-up to file).
+Left to do: list the y = 709.78 cells in T-3616, file the last-digit follow-up (`defer: phase-1b`), unit tests,
+`make eval-baseline`, `make check`, review, PR.
