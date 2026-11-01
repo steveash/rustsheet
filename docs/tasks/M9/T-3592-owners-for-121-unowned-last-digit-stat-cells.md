@@ -1,6 +1,6 @@
 ---
 id: T-3592
-title: "Owners for 121 unowned last-digit stat cells inside Gate A: BETA.DIST (39), F.DIST.RT (36), the T-3478 F density sweep (45) and CONFIDENCE.T (1)"
+title: "Owners for 76 unowned last-digit stat cells inside Gate A: BETA.DIST (39), F.DIST.RT (36) and CONFIDENCE.T (1)"
 milestone: M9
 lane: functions-stat
 status: todo
@@ -34,8 +34,8 @@ the reason Excel's digits cannot be derived.
     `F.DIST.RT(1,100,100)`, Excel 0.49999999999999967 and ours 0.5000000000000002 (the math is 1/2 exactly);
     `F.DIST.RT(1,100,50)`, Excel 0.5108794921920699 and ours ...683. T-3199 owns the same family's cells where Excel is
     5-50 ulp off the math.
-  - **F density past the T-3478 fit set (45).** statistics.md "F density's small-shape constant past its fit set";
-    T-3158, T-3173 and T-3174 hold the model work.
+  - **F density past the T-3478 fit set (45).** Moved to T-3595, which owns these 45 t3478-f-density-r4-wide cells
+    with 3 more of that probe (statistics.md "F density's small-shape constant past its fit set").
   - **CONFIDENCE.T at alpha near 1, df 2 (1).** `CONFIDENCE.T(0.999999999989522,1,3)` is Excel 8.555211852081089E-12
     and ours 8.555211852081079E-12, where the math is 8.5552118520810793E-12 (Excel is 1.1e-15 off). It comes from
     T.INV.2T(p,2) near p = 1, the T-2724 centre path.
@@ -48,7 +48,6 @@ the reason Excel's digits cannot be derived.
   - probes-numeric/t1538-beta-dist-at-excel-inv.case.json (1): Calc!A15
   - probes-numeric/t2220-f-dist-sweep-d2-1.case.json (2): Calc!A318, A675
   - probes-numeric/t2220-f-dist-sweep-rt.case.json (33): Calc!A84, A97, A98, A399, A467, A504, A567, A579, A589, A594, A596, A669, A680, A697, A795, A800, A804, A868, A878, A879, A885, A890, A897, A900, A954, A960, A978, A984, A990, A994, A997, A999, A1000
-  - probes-numeric/t3478-f-density-r4-wide.case.json (45): Calc!A53, A54, A59, A60, A62, A63, A64, A75, A78, A81, A82, A85, A90, A94, A95, A96, A98, A99, A154, A156, A161, A162, A166, A174, A178, A184, A187, A188, A189, A197, A249, A252, A257, A261, A262, A264, A267, A268, A272, A273, A274, A275, A278, A282, A300
   - probes/t3349-t-inv-2t-near-one.case.json (1): Calc!A5
 - Split (T-3229 check): T-3414 and T-3415 also list probes/t3349-t-inv-2t-near-one A5; this task owns it.
 

@@ -39,6 +39,12 @@ pub(super) fn parse_time_string(
 ) -> Option<f64> {
     let raw = text;
     let text = trim_spaces(text);
+    // Whitespace other than the space character is #VALUE! anywhere in time text, also between
+    // a date and its clock (`"7/1/2025\u{a0}10:00"`; probes/value-clock-text rows 38, 42-45,
+    // date-text-shape-survey-2 E31-E32). The chrono patterns below would match it as a space.
+    if text.contains(|c: char| c.is_whitespace() && c != ' ') {
+        return None;
+    }
     if let Some(serial) = parse_limited_clock_text(raw, text) {
         return Some(serial - serial.floor());
     }

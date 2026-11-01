@@ -8,6 +8,7 @@ from rustsheet_tools.accuracy.defs import (
     inverse_hyperbolic,
     rounding,
     student_t,
+    trig,
 )
 
-__all__ = ["annuity", "cashflow", "discrete", "fisher", "inverse_hyperbolic", "rounding", "student_t"]
+__all__ = ["annuity", "cashflow", "discrete", "fisher", "inverse_hyperbolic", "rounding", "student_t", "trig"]
