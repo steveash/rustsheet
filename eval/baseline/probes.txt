@@ -120,6 +120,7 @@ C	probes/atan2-quadrants.case.json	249
 C	probes/atanh-unit-argument.case.json	12
 C	probes/average-value-args.case.json	32
 C	probes/averagea-array-constant-elements.case.json	25
+C	probes/base-conv-boundaries.case.json	422
 C	probes/base-min-length.case.json	14
 C	probes/base-number-upper-bound.case.json	50
 C	probes/base-zero-empty-min-length.case.json	9

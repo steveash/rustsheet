@@ -3,7 +3,7 @@ id: T-3651
 title: "Base conversions: probe and match digit-count, two's-complement range, places and coerced-argument validation across all 12"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -29,11 +29,24 @@ spaces, an exponent ("1E3") or a decimal point, fractional and negative DEC2* in
 functions/engineering/number_basis.rs.
 
 ## Acceptance criteria
-- [ ] A probe case (excel-graph) covers the boundaries above through all twelve functions.
-- [ ] The engine matches every probed cell through one shared validation path; engineering.md states the rules.
-- [ ] Kinds T-3124 owns are left to it.
-- [ ] Every quirk found is written up in docs/excel-semantics/engineering.md in the same PR, with its probe cells cited.
-- [ ] `make check` green; eval known failures only shrink (baseline updated); reviewers approve.
+- [x] A probe case (excel-graph) covers the boundaries above through all twelve functions.
+- [x] The engine matches every probed cell through one shared validation path; engineering.md states the rules.
+- [x] Kinds T-3124 owns are left to it.
+- [x] Every quirk found is written up in docs/excel-semantics/engineering.md in the same PR, with its probe cells cited.
+- [x] `make check` green; eval known failures only shrink (baseline updated); reviewers approve.
 
 ## Out of scope
 - BASE and DECIMAL (math).
+
+## Outcome
+New probe probes/base-conv-boundaries (422 cells, excel-graph, 2026-11-01) covers every boundary in the Context
+through all twelve functions; three date-text cells ("1/2", whose serial moves with the year) were left out.
+`number_basis.rs` now has one path for all twelve: `signed_base_value` reads a BIN/OCT/HEX number as at most ten
+radix digits (a number as its displayed text) and sign-extends it, `write_base` range-checks against the target
+radix and applies `places`, and `number_and_places` is unchanged. The probe showed ours was wrong for BIN2* of numeric
+text that is not plain binary digits (`" 101"`, `"+101"`, `"1E2"`, `"1.0"`, `"101.0"`, 11 characters with leading
+zeros: values, Excel `#NUM!`), OCT2BIN of 11 characters (not length-checked) and a leading `+` in HEX2*/OCT2*
+(`from_str_radix` accepted it). DEC2* (truncate toward zero, numeric text read as a number) and places already matched.
+engineering.md "Base conversions: digit text, two's-complement ranges and places (T-3651)" states the rules.
+Eval delta: probes +1 case, 422/422 cells pass (baseline records the new case); every other suite unchanged, 0 regressions,
+0 fixed elsewhere (no existing gen/probe cell hit the mismatches). Kinds T-3124 owns (empty text, errors, zero) untouched.
