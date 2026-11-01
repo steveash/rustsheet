@@ -177,8 +177,9 @@ After the merge (in `train` mode, after marking the PR ready), run `make ready-t
 and/or the `planner` agent for the current milestone, telling it to cut sonnet-sized tasks by the
 tier rubric, until 10–15 are ready or no sonnet-sized work remains. Land the new task files in
 their own PR (task-only PRs need no task id of their own; title `tasks: refill sonnet queue`) or
-with your next PR. A task-only PR (every path under `docs/tasks/`) skips the reviewer panel: once
-CI is green, run `make mark-ready PR=<n>` with no `REVIEW` (decision 0231). Never mark a task `sonnet` just to reach the number.
+with your next PR. A task-only PR (every path a `.md` file under `docs/tasks/`) skips the reviewer
+panel: once CI is green, run `make mark-ready PR=<n>` with no `REVIEW` (decision 0231). Never mark
+a task `sonnet` just to reach the number.
 This planning is part of the same session and does not count as a task.
 
 ## 6.6 Landing window (both tiers, decision 0229)

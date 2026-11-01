@@ -30,4 +30,4 @@ which the train runs on every built train.
 
 ## Outcome
 `applicable_reviewers` returns `()` for a task-only diff, so `mark-ready` and the train's V4 accept
-it with no verdicts (decision 0231). Tests: `scripts.test_merge_ready` 41 OK.
+it with no verdicts (decision 0231). Tests: `scripts.test_merge_ready` 42 OK. Only `.md` files under `docs/tasks/` count (security review).

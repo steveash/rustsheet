@@ -165,6 +165,7 @@ class Applicability(unittest.TestCase):
         self.assertEqual(merge_ready.applicable_reviewers(["docs/tasks.md"]), merge_ready.ALWAYS_REVIEWERS)
         self.assertEqual(merge_ready.applicable_reviewers(["docs/tasks/README.md", "scripts/x.py"]), merge_ready.ALWAYS_REVIEWERS)
         self.assertEqual(merge_ready.applicable_reviewers([]), merge_ready.ALWAYS_REVIEWERS)
+        self.assertEqual(merge_ready.applicable_reviewers(["docs/tasks/M9/run.sh"]), merge_ready.ALWAYS_REVIEWERS)
 
     def test_the_list_matches_the_review_skill(self) -> None:
         skill = (ROOT / ".claude/skills/review/SKILL.md").read_text()
@@ -421,6 +422,12 @@ class Verify(PrFixture):
         self.assertEqual(self.failures(), [])
         self.assertEqual(self.git("rev-parse", "--is-shallow-repository"), "false")
         # A full clone is left as it is (a second `--unshallow` would fail).
+        self.assertEqual(self.failures(), [])
+
+    def test_a_task_only_marker_needs_no_verdict(self) -> None:
+        self.head = self.push_head(TASK.format(status="done", outcome="## Outcome\n"), work=None)
+        self.pull["head"]["sha"] = self.head
+        self.comments = [self.comment(1, marker(self.head, reviewers={}).render())]
         self.assertEqual(self.failures(), [])
 
     def test_verdicts_must_cover_the_applicable_reviewers(self) -> None:
