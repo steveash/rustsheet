@@ -3,7 +3,7 @@ id: T-3568
 title: "Incomplete beta: n > 1 bup terms in bup+bgrat, bup's arithmetic and the a0 < 1e-15 band"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
