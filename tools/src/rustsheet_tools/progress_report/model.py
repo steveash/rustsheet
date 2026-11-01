@@ -169,6 +169,36 @@ class TierCount:
 
 
 @dataclass(frozen=True)
+class GateB:
+    """`v15_checkpoint.gate_b`: the Phase 1 rate on user-representative evidence (T-3359)."""
+
+    measured: bool
+    missing: tuple[str, ...]
+    in_scope: int
+    at_rate: int
+    met: bool
+
+    @property
+    def verdict(self) -> str:
+        """`met`, `not met`, or `n/a` when the run did not measure it."""
+        if not self.measured:
+            return "n/a"
+        return "met" if self.met else "not met"
+
+
+@dataclass(frozen=True)
+class GateA:
+    """Gate A (decision 0188 R2) read from `eval/runs/accuracy.json` (`Check` in accuracy.rs)."""
+
+    points: int
+    inside: int
+    known_failures: int
+    failing: int
+    missing_tables: int
+    holds: bool
+
+
+@dataclass(frozen=True)
 class Phase1:
     """The Phase 1 numbers of report.json `v15_checkpoint` (decisions 0114 and 0118, T-0080)."""
 
@@ -183,6 +213,10 @@ class Phase1:
     """In-scope functions with decision 0094's coverage."""
     visibly_off: int
     """In-scope visibly-off cells over the checkpoint's suites."""
+    gate_b: GateB | None = None
+    """Gate B (decision 0188 R1(b)); `None` for a report that predates it (shown `n/a`)."""
+    phase1b: int | None = None
+    """Phase 1b evidence left out of the every-suite rate (`phase1b_left_out`, T-3427); `None` before."""
 
 
 @dataclass(frozen=True)
@@ -223,6 +257,8 @@ class Parity:
     """The milestones whose report.json `milestone_exit` row is met (decision 0085)."""
     real_world_suites: tuple[str, ...] = ()
     """The suites whose formula cells `real_world_calls` counts (report.json `real_world_suites`)."""
+    gate_a: GateA | None = None
+    """Gate A from `eval/runs/accuracy.json`; `None` when the file is absent."""
 
     def tier_functions(self, tier: str) -> int:
         """In-scope functions in `tier` (report.json `tiers`)."""
@@ -262,8 +298,42 @@ def _tiers(report: dict[str, Any]) -> list[TierCount]:
     return tiers
 
 
+def _gate_b(v15: Any) -> GateB | None:
+    raw = v15.get("gate_b")
+    if raw is None:
+        return None
+    where = "report.json v15_checkpoint.gate_b"
+    return GateB(
+        flag(raw, "measured", where),
+        tuple(str(m) for m in items(raw, "missing", where)),
+        count(raw, "in_scope", where),
+        count(raw, "at_rate", where),
+        flag(raw, "met", where),
+    )
+
+
+def load_gate_a(path: Path) -> GateA | None:
+    """Gate A from the accuracy check's JSON; `None` when the file is absent (shown `n/a`).
+
+    It holds as `Check::holds` says: nothing failing, stale, pending or missing a table, and no
+    known failure (SPEC-0029, "Gate A holds")."""
+    if not path.exists():
+        return None
+    top = load_object(path)
+    where = str(path)
+    raw = mapping(top, "check", where)
+    points = items(raw, "points", where)
+    standing = Counter(str(p.get("standing")) for p in points if isinstance(p, dict))
+    problems = sum(len(items(raw, k, where)) for k in ("stale_known_failures", "bad_marks", "bad_exemptions"))
+    missing = len(items(raw, "missing_tables", where))
+    bad = len(points) - standing["inside"] - standing["known_failure"]
+    holds = flag(top, "holds", where)
+    return GateA(len(points), standing["inside"], standing["known_failure"], bad + problems, missing, holds)
+
+
 def _phase1(v15: Any) -> Phase1:
     where = "report.json v15_checkpoint"
+    p1b = v15.get("phase1b_left_out")
     return Phase1(
         count(v15, "in_scope", where),
         count(v15, "at_rate", where, "T-0080"),
@@ -272,6 +342,8 @@ def _phase1(v15: Any) -> Phase1:
         flag(v15, "met", where),
         count(v15, "covered", where),
         count(v15, "visibly_off", where),
+        _gate_b(v15),
+        count(v15, "phase1b_left_out", where) if p1b is not None else None,
     )
 
 
@@ -324,6 +396,7 @@ def compute(
     scope: dict[str, Any],
     baseline_dir: Path,
     priors: Mapping[str, float | None] | None = None,
+    accuracy: Path | None = None,
 ) -> Parity:
     """The parity section's data for every in-scope catalog function of `scope`.
 
@@ -405,7 +478,8 @@ def compute(
         if flag(row, "exit", f"report.json milestone_exit[{i}]")
     )
     corpora = tuple(str(s) for s in items(report, "real_world_suites", "report.json", "T-0079"))
-    return Parity(rows, tiers, _phase1(v15), suites, exited, corpora)
+    gate_a = load_gate_a(accuracy) if accuracy is not None else None
+    return Parity(rows, tiers, _phase1(v15), suites, exited, corpora, gate_a=gate_a)
 
 
 def load_object(path: Path) -> dict[str, Any]:

@@ -3,7 +3,7 @@ id: T-3429
 title: "Progress dashboard shows Gate B, Gate A and the Phase 1b evidence counts (decision 0188)"
 milestone: M0
 lane: harness
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -30,3 +30,6 @@ Gate A (from `eval/runs/accuracy.json`; `n/a` when absent) and the Phase 1b evid
 
 ## Out of scope
 - Changing what the measures count (T-3359, T-3427).
+
+## Outcome
+Progress dashboard Parity block gains `gate_lines`: Gate B (verdict, functions at rate, every-suite count as information, `n/a` for older reports), Gate A from `eval/runs/accuracy.json` (`--accuracy`, `n/a` when absent) and the Phase 1b count (`v15_checkpoint.phase1b_left_out`, `n/a` before). Three tools/tests added. Eval delta: none (tools only).

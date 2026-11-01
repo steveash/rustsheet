@@ -69,6 +69,37 @@ def phase1_lines(p: Parity) -> str:
     )
 
 
+def gate_lines(p: Parity) -> str:
+    """Gate B (beside the every-suite rate above), Gate A and the Phase 1b evidence count.
+
+    Each reads `n/a` when the run's files predate it (T-3359, T-3427) or the accuracy check was
+    not run."""
+    ph = p.phase1
+    gb = ph.gate_b
+    if gb is None:
+        b = "n/a (the report predates Gate B)"
+    else:
+        b = f"{gb.verdict}, {gb.at_rate:,} of {gb.in_scope:,} functions at rate"
+        if not gb.measured:
+            b += f"; not measured, the run did not score {', '.join(gb.missing)}"
+    ga = p.gate_a
+    if ga is None:
+        a = "n/a (no `eval/runs/accuracy.json`; run `rustsheet-eval accuracy`)"
+    else:
+        a = (
+            f"{'holds' if ga.holds else 'does not hold'}, {ga.inside:,} of {ga.points:,} points inside "
+            f"the envelope, {ga.known_failures:,} known failures, {ga.failing:,} failing or listed "
+            f"stale, {ga.missing_tables:,} functions without a table"
+        )
+    n = "n/a" if ph.phase1b is None else f"{ph.phase1b:,} visibly-off cells"
+    return (
+        f"- **Gate B (decision 0188 R1(b)): {b}.** The every-suite count above "
+        f"({ph.at_rate:,} of {ph.in_scope:,}) is information.\n"
+        f"- **Gate A (decision 0188 R2): {a}.**\n"
+        f"- **Phase 1b evidence** left out of the every-suite rate: {n}."
+    )
+
+
 def tier_table(p: Parity) -> str:
     """Functions per tier (report.json `tiers`), with the fallbacks placed by every Excel cell."""
     n = sum(t.functions for t in p.tiers)
@@ -186,6 +217,8 @@ def block(p: Parity) -> str:
     return f"""## Parity
 
 {phase1_lines(p)}
+
+{gate_lines(p)}
 
 {real_world_line(p)}
 
