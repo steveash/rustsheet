@@ -1576,6 +1576,9 @@ C	probes/t3029-b2-calendar-weekday.case.json	128
 C	probes/t3030-cell-contents-blank-shapers.case.json	51
 C	probes/t3030-cell-contents-nested-sheet.case.json	39
 C	probes/t3030-cell-first-sheet.case.json	20
+C	probes/t3033-calculated-overwrite-after-load.case.json	8
+C	probes/t3033-calculated-refill-after-load-structured.case.json	8
+C	probes/t3033-calculated-refill-after-load.case.json	8
 C	probes/t3047-snap-array-operands.case.json	70
 C	probes/t3048-snap-conditional-sums.case.json	86
 C	probes/t3049-snap-under-pickers.case.json	57
