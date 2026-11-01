@@ -13,6 +13,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import merge_lock  # noqa: E402 (the sys.path line above must run first)
+import merge_ready  # noqa: E402
 import merge_train_stats as stats  # noqa: E402
 from gh_client import FakeGh, GhError, Request  # noqa: E402
 from merge_train_shadow import PREDICTION_HEADER, SHADOW_BRANCH  # noqa: E402
@@ -295,25 +296,49 @@ class Stranded(unittest.TestCase):
             return (now - timedelta(hours=hours_ago)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         def pull(n: int, *labels: str) -> dict[str, object]:
-            return {"number": n, "labels": [{"name": label} for label in labels]}
+            return {"number": n, "labels": [{"name": label} for label in labels], "head": {"sha": sha(n)}}
 
-        def marker(hours_ago: float) -> dict[str, object]:
-            return {"created_at": iso(hours_ago), "body": "Marked ready.\n\n<!-- merge-train-ready v1\n-->"}
+        def marker(hours_ago: float, head: str, login: str = "owner") -> dict[str, object]:
+            body = merge_ready.marker_body(merge_ready.Marker(head, None, None, {}, "session-1"))
+            stamp = iso(hours_ago)
+            return {"created_at": stamp, "updated_at": stamp, "body": body, "user": {"login": login}}
 
         ready, ejected = "ready-to-merge", "merge-train-ejected"
+        pulls = [pull(5, ready), pull(6, ready, ejected), pull(7, ready), pull(8, ready), pull(9), pull(10, ready)]
         return {
-            "pulls": [pull(5, ready), pull(6, ready, ejected), pull(7, ready), pull(8, ready), pull(9)],
-            # 5: marked 5 h and 3 h ago (the newest counts); 6: ejected; 7: marked 1 h ago; 8: no marker.
-            "issues/5/comments": [marker(5), marker(3)],
-            "issues/6/comments": [marker(5)],
-            "issues/7/comments": [marker(4), marker(1)],
+            "pulls": [*pulls, pull(11, ready), pull(12, ready, merge_ready.HOLD_LABEL)],
+            "collaborators/owner/permission": {"permission": "admin"},
+            "collaborators/stranger/permission": {"permission": "read"},
+            # 5: marked 5 h and 3 h ago (the newest counts); 6: ejected; 7: marked 1 h ago; 8: no marker;
+            # 10: its newest marker names an older head (decision 0224: waiting on its worker or the janitor);
+            # 11: a non-writer's newer marker naming another head does not hide it.
+            "issues/5/comments": [marker(5, sha(5)), marker(3, sha(5))],
+            "issues/6/comments": [marker(5, sha(6))],
+            "issues/7/comments": [marker(4, sha(7)), marker(1, sha(7))],
             "issues/8/comments": [{"created_at": iso(5), "body": "a plain comment"}],
+            "issues/10/comments": [marker(5, sha(10)), marker(3, sha(11))],
+            "issues/11/comments": [marker(5, sha(11)), marker(3, sha(12), "stranger")],
+            # 12: held by its owner (merge-hold, decision 0224): not stranded.
+            "issues/12/comments": [marker(5, sha(12))],
         }
 
     def test_only_old_markers_on_ready_unejected_prs(self) -> None:
         now = at(10)
         found = stats.Stats(Routed(self.routes(now)), NoGit(), now, now - stats.DAY).stranded()
-        self.assertEqual(found, [5])
+        self.assertEqual(found, [5, 11])
+
+    def test_a_stranded_pr_escalates_and_only_a_tree_check_failure_flips(self) -> None:
+        # Decision 0224: the immediate flip is for correctness failures only.
+        now = at(10)
+        report = stats.Stats(Routed(self.routes(now)), NoGit(), now, now - stats.DAY)
+        report.thresholds([], [], [5], 0)
+        report.thresholds([], [], [5], 1)
+        report.thresholds([], [], [], 0)
+        self.assertEqual(report.out, [
+            "daily thresholds: stranded #5 -> escalate",
+            "daily thresholds: stranded #5 -> escalate | 1 tree-check failure(s) -> flip to lock",
+            "daily thresholds: ok",
+        ])
 
     def test_the_flag_prints_only_the_stranded_line(self) -> None:
         now = datetime.now(UTC)
@@ -324,7 +349,7 @@ class Stranded(unittest.TestCase):
             contextlib.redirect_stdout(out),
         ):
             self.assertEqual(stats.main(["--stranded"]), 0)
-        self.assertEqual(out.getvalue().splitlines(), ["stranded PRs: #5"])
+        self.assertEqual(out.getvalue().splitlines(), ["stranded PRs: #5, #11"])
 
 
 if __name__ == "__main__":

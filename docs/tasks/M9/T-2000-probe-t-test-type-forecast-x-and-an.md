@@ -3,7 +3,7 @@ id: T-2000
 title: "Probe T.TEST type, FORECAST x and an error data argument of PERCENTRANK, PROB and FREQUENCY against data errors"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -27,10 +27,13 @@ A1:A8 = 1,2,4,3,7,5,8,6; B1:B8 = 2,3,5,4,9,6,10,8. Use the `excel-probe` skill.
   via `numeric_flat_of` in statistical/prob.rs).
 
 ## Acceptance criteria
-- [ ] A probes case holding these cells, filled from excel-graph and committed with its oracle.
-- [ ] The findings are written into statistics.md. Every mismatch either gets its own fix task
+- [x] A probes case holding these cells, filled from excel-graph and committed with its oracle.
+- [x] The findings are written into statistics.md. Every mismatch either gets its own fix task
   or is fixed in this PR if it is a one-line reader change.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - RANK (T-1999).
+
+## Outcome
+Probe case `probes/stat-error-orders-t2000` (11 cells) filled from excel-graph. All ten questions already matched the engine (PROB and FREQUENCY with an error data argument had been fixed by earlier tasks), so no code change; the new case is added to the probes baseline; findings recorded in statistics.md.

@@ -70,10 +70,13 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
     GitHub MCP tools, exactly as printed (never add, skip, reorder or change one), then `make
     merge-ready-verify PR=<n>`. Who may mark: the PR's own worker after its panel approved, the
     steward for an orphaned PR after running the reviewers itself, and an opus run after
-    work-loop step 5c. The merger never marks or reviews.
+    work-loop step 5c. A task-only PR (every changed path a `.md` file under `docs/tasks/`) needs no
+    reviewer: any session may mark it once CI is green and it is not a draft (decision 0231). The
+    merger never marks or reviews.
   - **Any push** makes the marker stale: mark again after CI and the reviewers the change
-    concerns. `CARRY=1` carries the verdicts over only for a head that is a clean merge of
-    `origin/main` onto the marked head, checked by the script.
+    concerns. `CARRY=1` carries the verdicts over only for a head that is a merge of
+    `origin/main` onto the marked head that is clean, a `make catch-up` or a `make renumber`,
+    checked by the script (decisions 0207, 0224).
   - **Ejections** (`merge-train-ejected` label and a comment with the reason: `ci-red`,
     `conflict with main`, an id collision, or invalidated) are the PR's worker's to fix per
     work-loop step 6.3; an idle ejected branch is resumed like any idle agent branch. `make
@@ -83,8 +86,25 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
     eval-gated, non-fetched suites' `eval/baseline/<suite>.txt` lists and
     `eval/baseline/visible-parity.txt` (decision 0219): run `make catch-up
     PR=<n>`, which merges `main` in, re-records the lists and pushes, then `make mark-ready
-    PR=<n> CARRY=1` once CI is green (decision 0207). Any other conflict stays with the PR's
-    worker.
+    PR=<n> CARRY=1` once CI is green (decision 0207). Likewise any session may clear an `id
+    collision` ejection with `make renumber PR=<n>` (decision 0224): it reserves fresh ids in the
+    id registry, renames the PR's own colliding files, rewrites the old id only under `docs/`, in what the PR
+    added, merges `main` in and pushes; then `make mark-ready PR=<n> CARRY=1` once CI is green.
+    Any other conflict stays with the PR's worker.
+  - **The janitor** (`make janitor`, decision 0224; `DRY_RUN=1` lists its actions; `STEP=1`
+    prints each GitHub write as a step-mode action to perform and ack with `make merge-train-ack
+    SEQ=<n>`, as the merger does, when the session cannot write through `gh api`; the ack prints the
+    next action, and `make merge-train-next` waits for one, decision 0238) runs after
+    once per merger routine run, after its train passes, in `train` mode only, within a 25-min
+    budget (no catch-up or renumber starts after it; the rest waits for the next run). It skips
+    PRs labelled `merge-hold`: label a PR so to hold it against the janitor's pushes and
+    re-marks. It does the two steps above for ejected PRs idle
+    1 h or more (time since the head was pushed). It comments a `merge-janitor v1` note naming the
+    head it pushed and re-marks the PR with `CARRY` on a later run, once CI on that head is green.
+    It re-marks a PR whose marker names an older head, idle 2 h, when the head is a carry-over
+    merge and CI is green, and otherwise removes `ready-to-merge`. An ejected PR it cannot clear
+    (`ci-red`, a real conflict, a refused step, red CI on its push) gets one comment per head once
+    idle 4 h: it is orphaned and needs an opus run or the owner ("Orphaned agent PRs" below).
   - **Stall fallback** (`train` mode only): any session may run one `make merge-train TRAIN=1`
     pass when a PR has been ready for more than 45 min (by its marker's `updated_at`), the last
     CI run on `merge-train/current` was created more than 45 min ago (workflow-runs
@@ -101,9 +121,23 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   - **Housekeeping.** In `lock` mode the merger does none: the steward removes `ready-to-merge`
     from closed PRs, and may at once merge (per-PR flow) or unlabel a PR still labelled
     `ready-to-merge`, without the 24 h orphan clock (decision 0157 amending 0050).
+- **Stranded in `train` mode: escalate, do not flip** (decision 0224 amending 0157 and 0194). A
+  PR is stranded when it has been marked ready on its current head (the newest marker names the
+  PR head), is not ejected, and is unmerged 2 h after its marker. Ejected PRs, PRs waiting on
+  their worker, PRs whose marker names an older head (the janitor's) and PRs labelled
+  `merge-hold` never count.
+  1. On a stranded PR, the steward (or any session that finds one) runs one `make merge-train
+     TRAIN=1` pass and `make janitor STEP=1`, and files a P0 task with the cause it found. No flip.
+  2. The janitor checks this every merger run: when the oldest stranded PR was marked 8 h ago
+     and nothing has merged in the last 6 h, it files a P0 for the owner in a task-only PR (once
+     per head of that PR). The steward lists it under "Needs owner" in docs/status.md. Flip to
+     `lock` only with the owner's approval.
+  3. The p90-latency and CI-runs-per-train thresholds ("Merge-train daily check" below) escalate
+     the same way.
 - **Emergency flip to `lock`** (decision 0157; any agent, any mode, no reviewers, no decision
-  record). When the train must stop (a daily threshold below, a merge that should not have
-  landed, `main` broken by a train):
+  record). Flip at once only on a correctness failure (decision 0224): `main` got a tree no train
+  tested (a revert PR the merger opened, or a P0 tree mismatch), or a train merged something CI
+  rejected. Otherwise flip only with the owner's approval ("Stranded in `train` mode" above):
   1. Branch from `origin/main`; change only `mode = "lock"` in `scripts/merge_train.toml` (one
      file, nothing else in it); push and open the **flip PR**; label it `merge-train-stop` at once
      (a live train stops at its next checkpoint, within about 1 min).
@@ -152,7 +186,10 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   the blocker, or mark the task blocked with reasons.
   In `train` mode (decision 0157 amending 0050) these are the conditions for **marking** an
   orphaned PR ready (`make mark-ready` with the verdict records of your own panel), not for
-  merging it, and the up-to-date condition drops out: the train provides it. A PR whose worker
+  merging it, and the up-to-date condition drops out: the train provides it. In `train` mode the
+  age condition is that its branch has not moved for 6 h or more, with no 24 h minimum, and
+  `claude/*` branches count as well as `agent/*` (decision 0224); a `claude/*` branch has no task
+  id, so its marker says `task: none`. The janitor's orphan comment points at such PRs. A PR whose worker
   already marked it ready, on its current head, is not orphaned (in `shadow` mode, see "Stranded
   ready PRs" below). In `shadow` mode, mark it ready and then merge it per the per-PR flow, as its
   worker would.
@@ -163,7 +200,8 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
     PRs" line in seconds; the full report takes minutes. If even that cannot run, build the same
     list with the GitHub MCP tools, by `stranded()`'s definition: open PRs labelled
     `ready-to-merge`, not labelled `merge-train-ejected`, whose newest merge-ready marker comment
-    is older than `STRANDED_AFTER` (2 h). A PR with no marker is not on the list.
+    is older than `STRANDED_AFTER` (2 h) and names the PR's current head (decision 0224). A PR
+    with no marker is not on the list.
   - **Merging one requires all of:**
     - verdicts that hold on its current head: `make merge-ready-verify PR=<n>` passes, or you
       run the applicable reviewers yourself on that head, as for an orphaned PR, and mark it
@@ -180,18 +218,19 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   - **When a condition fails:** comment the blocker on the PR and leave it.
   - **Report:** name each PR merged this way in the daily report.
   - **Other modes:** in `lock` mode nothing is marked ready, and in `train` mode a stranded PR
-    triggers the emergency flip instead (below).
+    escalates ("Stranded in `train` mode" above, decision 0224).
 - **Merge-train daily check** (SPEC-0027 "Daily thresholds"): in `shadow` and `train` mode, the
   daily run runs `make merge-train-stats` (T-3076) and records p90 latency, stranded PRs, the
   red-train rate and the bisection runs in docs/status.md. The full report reads every run and
   job of the window and takes several minutes: let it finish (run it in the background), and if
   it cannot, record the stranded PRs from "Stranded ready PRs" above and say the rest is
-  missing. In `train` mode, any of these triggers the emergency flip to `lock`
-  ("Emergency flip to `lock`" above) and a P0: p90 latency over 60 min on any day; more than 2
-  trains in a day needing more than 6 CI runs; a stranded PR (marked ready, unmerged after 2 h,
-  not ejected); any tree-check failure. In `shadow` mode the numbers are only reported: they are
+  missing. In `train` mode (decision 0224), any tree-check failure triggers the emergency flip to
+  `lock` ("Emergency flip to `lock`" above) and a P0; these escalate instead ("Stranded in
+  `train` mode" above): p90 latency over 60 min on any day; more than 2 trains in a day needing
+  more than 6 CI runs; a stranded PR. The report's thresholds line says `-> flip to lock` or
+  `-> escalate`. In `shadow` mode the numbers are only reported: they are
   T-2991's evidence (its bar needs zero `tree-check: mismatch`). In `train` mode the daily run ends with one `make merge-train TRAIN=1`
-  pass, after marking orphaned PRs ready.
+  pass, after marking orphaned PRs ready, and then `make janitor STEP=1` (decision 0224).
 - **Merge style**: squash merge; title `T-XXXX: <task title>`; keep the Co-Authored-By trailer.
   Exception: the daily steward PR uses branch `agent/steward/<YYYY-MM-DD>` and title
   `steward: <YYYY-MM-DD> health` (docs/process/routines.md).
