@@ -3,7 +3,7 @@ id: T-3389
 title: "RATE in the residual's noise floor: Excel's iterates where the model is beyond 15 digits"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
