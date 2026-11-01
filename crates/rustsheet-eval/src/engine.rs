@@ -232,6 +232,12 @@ impl Engine for RustSheetEngine {
                                 )?;
                                 for (letter, formula) in &table.calculated {
                                     let column = calculated_column_index(&table.range, letter)?;
+                                    // The text is exported as is, so it must already be file form.
+                                    if formula.contains("[@") {
+                                        return Err(rustsheet::EditError::Table(format!(
+                                            "calculated column {letter}: write {formula} in file form"
+                                        )));
+                                    }
                                     tx.set_table_column_formula(
                                         &table.name,
                                         column,

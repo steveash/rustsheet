@@ -189,9 +189,9 @@ pub struct TableSpec {
     #[serde(default = "crate::suite::default_true")]
     pub header_row: bool,
     /// Calculated columns as spec2xlsx writes them (`calculatedColumnFormula`, T-2969): column
-    /// letter to its formula, with or without `=`, already in file form (the adapter does not
-    /// translate `[@Col]`). The engine adapter marks each with `Txn::set_table_column_formula`
-    /// (T-3033).
+    /// letter to its formula, with or without `=`, in file form (`T[[#This Row],[Col]]`): the
+    /// adapter does not translate a `[@Col]` shorthand and refuses one. The engine adapter marks
+    /// each with `Txn::set_table_column_formula` (T-3033).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub calculated: BTreeMap<String, String>,
 }
