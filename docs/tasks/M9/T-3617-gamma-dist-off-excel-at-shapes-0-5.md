@@ -30,6 +30,11 @@ shape below 0.5 and 1E3 and up; or the Outcome lists the forms tried with their 
   deep lower tail, e.g. `GAMMA.DIST(0.0590345556575017,85.4270502412247,1,FALSE)` Excel 7.564388379429032E-232, ours
   7.564388379428603E-232, math 7.564388379429098E-232. The cdf and the density at one point are off together, so
   the shared prefactor (its log or its Gamma) is the first suspect.
+- More evidence for the shape-20-1E3 region (not a hold-out, free to fit on): T-3530's fit audit
+  (branch claude/hopeful-meitner-5oxf0g-fit-audit, probes-numeric/fit-audit-t2638-ratio-min, 62 cells, GAMMA.DIST
+  density and cdf at shapes 25 to 200, x/a 0.0021 to 0.03, excel-graph) has 46 cells beyond 15 digits of Excel,
+  with Excel within 8.3E-14 of the math, on both sides of `RATIO_FORM_MIN` (0.005, incomplete_gamma/mod.rs, T-2638).
+  So the cut is not the cause; the region's prefactor is.
 - Shape 1E3 and up (density, 5 cells; cdf 1): near the mode and at x/a 1.4 to 10 (Loader's saddle-point form,
   `loader.rs`).
 - Code: `statistical/gamma.rs` (GAMMA.DIST), `statistical/incomplete_gamma/` (`density.rs`, `mod.rs`'s lower tail),
