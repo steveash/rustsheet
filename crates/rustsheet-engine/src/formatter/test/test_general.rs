@@ -438,3 +438,34 @@ fn number_format_ties_round_half_away_from_zero() {
         );
     }
 }
+
+#[test]
+fn general_in_date_section() {
+    // T-3378: probes/t3378-general-in-date-section (excel-graph, 2026-10-31). Beside a date or clock
+    // token General prints the clock residue after the half-second step, wherever it stands; beside
+    // only an elapsed token it prints the value's magnitude.
+    let ctx = FormatContext::new(get_default_locale());
+    let cases = [
+        (5.0, "d General", "5 0.5"),
+        (45000.0, "d General", "15 0.499999803"),
+        (12345.678, "d General", "18 19.69999995"),
+        (0.999_994_212_962_963, "d General", "1 0"),
+        (45000.0, "General d", "0.499999803 15"),
+        (45000.0, "s.0 General", "0.0 0.499997288"),
+        (5.0, "[h] General", "120 5"),
+        (5.25, "[h] General", "126 5.25"),
+        (-5.0, "[h] General", "-120 5"),
+        (5.0, "General d", "0.5 5"),
+        (5.5, "[h]:mm General", "132:00 0.5"),
+    ];
+    for (value, format, expected) in cases {
+        assert_eq!(
+            format_number(value, format, &ctx).text,
+            expected,
+            "{format} on {value}"
+        );
+    }
+    assert_eq!(format_number(-5.0, "d General", &ctx).text, "#VALUE!");
+    // A digit placeholder beside General in a date section stays an error (T-1614).
+    assert_eq!(format_number(5.0, "d 0 General", &ctx).text, "#VALUE!");
+}

@@ -14,6 +14,7 @@ fn func(name: &str, v15_reason: Option<&str>) -> CatalogFunction {
         oracle: None,
         v15: v15_reason.map(|_| V15::Exempt),
         v15_reason: v15_reason.map(String::from),
+        returns: None,
         params: Vec::new(),
     }
 }

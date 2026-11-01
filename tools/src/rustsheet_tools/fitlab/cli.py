@@ -3,6 +3,7 @@
   rustsheet-fitlab --list                          the shipped fits
   rustsheet-fitlab erfc                            run a shipped fit (or `package.module:FIT`)
   rustsheet-fitlab erfc-tail --top 10 --worst 5    more or fewer rows and worst cells
+  rustsheet-fitlab im-hyperbolic --build no-band=PATH   also score another harness build
   rustsheet-fitlab --case probes-numeric/t1040-erfc --pattern '^=ERFC\\((.*)\\)$' \\
       --candidate math:erfc                        ad hoc: any callables on any sweep
 
@@ -64,6 +65,15 @@ def _fit(args: argparse.Namespace) -> Fit:
     return Fit("adhoc", "ad hoc fit", args.case, args.pattern, lambda: adhoc)
 
 
+def _build(spec: str) -> tuple[str, Path]:
+    """`NAME=PATH` of `--build` → (name, binary)."""
+    name, sep, path = spec.partition("=")
+    if not (sep and name and path):
+        msg = f"--build {spec!r} is not of the form NAME=PATH"
+        raise SystemExit(msg)
+    return name, Path(path)
+
+
 def _side(s: Score) -> str:
     return f"{s.exact:>6} {pct(s.exact, s.total)} {s.ulp:>6} {s.digits15:>6}"
 
@@ -122,6 +132,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--candidate", action="append", help="ad hoc: package.module:callable (repeatable)")
     parser.add_argument("--only", help="score only candidates whose name matches this regex")
     parser.add_argument("--no-engine", action="store_true", help="skip the engine pseudo-candidate")
+    parser.add_argument(
+        "--build",
+        action="append",
+        default=[],
+        metavar="NAME=PATH",
+        help="also score another rustsheet-eval binary as a pseudo-candidate (repeatable)",
+    )
     parser.add_argument("--top", type=int, default=20, help="rows of the ranked table (default 20)")
     parser.add_argument("--worst", type=int, default=5, help="worst cells per candidate (default 5)")
     parser.add_argument("--json", type=Path, help="JSON output (default eval/runs/fitlab/<fit>.json)")
@@ -136,6 +153,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{name:<16} {fit.description}")
         return 0
     fit = _fit(args)
+    builds = dict(_build(spec) for spec in args.build)
     try:
         result = run(
             fit,
@@ -143,6 +161,7 @@ def main(argv: list[str] | None = None) -> int:
             only=args.only,
             keep=max(args.worst, 1),
             holdout_only=args.holdout_only,
+            builds=builds,
         )
     except RefusedSweepError as err:
         print(f"fit {fit.name}: {err}", file=sys.stderr)

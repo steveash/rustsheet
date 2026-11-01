@@ -41,6 +41,7 @@ import subprocess
 import sys
 import time
 from collections import Counter
+from collections.abc import Callable
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -611,6 +612,22 @@ TODO(fill): why; failing case ids; semantics notes; code paths.
 """
 
 
+def reserve_id(pick: Callable[[set[str]], str], fetch: bool) -> tuple[str, str]:
+    """(id, note): the id `pick` chooses, reserved in the id registry when it can be (decision
+    0215). `python -I` (the merger's filing) leaves this directory off sys.path, so it is added; a
+    tasks.py copied alone (as test fixtures do) falls back to the plain scan, unreserved."""
+    here = str(Path(__file__).resolve().parent)
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    try:
+        import id_registry  # here, not at the top: id_registry imports merge_lock, which imports tasks
+    except ImportError:
+        print("warning: no id registry beside tasks.py; the id is not reserved", file=sys.stderr)
+        return pick(set()), "NOT reserved: commit and push it now to claim it"
+    chosen, reserved = id_registry.allocate(pick, id_registry.TASK, fetch)
+    return chosen, id_registry.note(reserved)
+
+
 def new_task(tasks: list[dict[str, object]], fetch: bool = True) -> int:
     """Writes a task file with the next free id (`--no-fetch` skips `git fetch`, e.g. offline)."""
     milestone, lane, title = arg("--milestone"), arg("--lane"), arg("--title")
@@ -623,12 +640,12 @@ def new_task(tasks: list[dict[str, object]], fetch: bool = True) -> int:
         print(f"priority must be one of {PRIORITIES}; size one of S, M (split L tasks); tier one of {TIERS}")
         return 2
     taken = {str(t["id"]) for t in tasks} | git_task_ids(fetch)
-    tid = next_id(milestone, tasks, taken)
+    tid, note = reserve_id(lambda claimed: next_id(milestone, tasks, taken | claimed), fetch)
     path = TASKS / milestone / f"{tid}-{slug(title)}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(TEMPLATE.format(id=tid, title=quote(title), milestone=milestone,
                                     lane=lane, priority=priority, size=size, tier=tier))
-    print(f"wrote {path.relative_to(ROOT)}: fill in the TODO(fill) lines, then commit and push it now to claim {tid}")
+    print(f"wrote {path.relative_to(ROOT)}: {tid} is {note}; fill in the TODO(fill) lines")
     return 0
 
 
