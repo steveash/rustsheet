@@ -87,46 +87,13 @@ impl Model {
             };
             return Ok(if hit { 1.0 } else { 0.0 });
         }
-        // Loader's (2000) end branches, Excel's own closed forms (statistics.md "BINOM.DIST pmf:
-        // closed forms at k = 0 and k = n"; T-2464 r2-log1p, T-2513 r3-binom-pmf): at k = 0 the
-        // pmf, and so the cdf, is EXP(fl(n·l)) with l Excel's ln(1 - p), bit-exact on all 345
-        // BINOM.DIST(0,n,p) cells of the T-2464 research set; at k = n the pmf is
-        // EXP(fl(n·LN(p))), 172 of 172.
-        if k == 0 {
-            return Ok(excel_exp(trials * excel_ln_one_minus(p)));
-        }
-        if k == n && !cumulative {
-            return Ok(excel_exp(trials * excel_ln(p)));
-        }
-        // Excel's cdf is the upper tail of the incomplete beta I_p(k+1, n-k) at x = p, y = fl(1 - p),
-        // which at k = n - 1 takes Excel's closed form (T-2464 w5-triangulation, T-2502). k = 0 is
-        // BINOM's own shortcut, not the kernel's (T-2645).
-        if cumulative && k >= 1 && k < n {
-            // Then the bratio port's branches (T-2847), basym among them (T-3352).
-            let (x, y, a, b) = (p, 1.0 - p, number_s + 1.0, trials - number_s);
-            if let Some((_, upper)) = closed_or_ported_tails(x, y, a, b) {
-                return Ok(flush_subnormal(upper));
-            }
-        }
-        // Off k = 0 a subnormal cdf is 0, as in Excel (`(x)=0` TRUE: probes/
-        // t2706-subnormal-density-paths B5:B7), while the k = 0 one is kept (B4).
-        let walked = if cumulative {
-            binomial_cdf(n, odds(p), k).map(flush_subnormal)
+        let kernel = if cumulative {
+            excel_binom_cdf(n, p, k)
         } else {
-            // Off the k = 0 and k = n closed forms a subnormal pmf is 0, as in Excel (`(x)=0` TRUE:
-            // probes-numeric/t2513-r3-binom-pmf-n E1729:E1792), while the k = 0 one is kept
-            // (t2513-verify-r3-binom-pmf-h I229, I238; docs/excel-semantics/numbers.md "Distribution densities").
-            binomial_pmf(n, odds(p), k).map(|pmf| flush_subnormal(pmf.to_f64()))
+            excel_binom_pmf(n, p, k)
         };
-        if let Some(prob) = walked {
+        if let Some(prob) = kernel {
             return Ok(prob);
-        }
-        // Past the walk's budget the pmf is Excel's own interior kernel, Loader's dbinom_raw
-        // (T-3352: statrs' log-gamma difference was 1E-11 off at n = 1E4 and 1E-6 at 1E9).
-        if !cumulative {
-            if let Some(pmf) = loader_pmf(number_s, trials, p) {
-                return Ok(pmf);
-            }
         }
         let dist = Binomial::new(p, n).map_err(|_| num_error(cell))?;
         let prob = flush_subnormal(if cumulative { dist.cdf(k) } else { dist.pmf(k) });
@@ -187,14 +154,31 @@ impl Model {
                 0.0
             });
         }
+        // A one-point range is Excel's BINOM.DIST pmf and a range from 0 its cdf, to the bit on
+        // every such row of probes/t3444-binom-range-inv-large-n (statistics.md "BINOM.DIST.RANGE
+        // and BINOM.INV at a large n sit on BINOM.DIST's own cdf").
+        let own = if lower == upper {
+            excel_binom_pmf(n, p, lower)
+        } else if lower == 0 {
+            excel_binom_cdf(n, p, upper)
+        } else {
+            None
+        };
+        if let Some(prob) = own {
+            return Ok(prob);
+        }
         if let Some(prob) = binomial_range(n, odds(p), lower, upper) {
             return Ok(prob);
         }
+        // Past the walk's budget Excel's range is its own BINOM.DIST cdf difference, to the bit
+        // on 105 of the 126 probes/t3444-binom-range-inv-large-n Range rows (column A = column B);
+        // the other 21, ranges from mean + 3 sd to mean + 5 sd, take a form not identified (T-3740).
         let dist = Binomial::new(p, n).map_err(|_| num_error(cell))?;
+        let cdf = |k: u64| binom_cdf_or_statrs(&dist, p, k);
         let prob = if lower == 0 {
-            dist.cdf(upper)
+            cdf(upper)
         } else {
-            dist.cdf(upper) - dist.cdf(lower - 1)
+            cdf(upper) - cdf(lower - 1)
         };
         if prob.is_nan() || prob.is_infinite() {
             return Err(num_error(cell));
@@ -205,8 +189,8 @@ impl Model {
     /// `BINOM.INV(trials, probability_s, alpha)`, and CRITBINOM. The search halves
     /// `[0, trials]` with `trials` under [`TRIALS_LIMIT`], so it stops after at most 31 steps of
     /// one cdf each,
-    /// its own per-call cap: up to about 65 us an element in release, which the lifting table
-    /// charges as `Weighted(4096)` (SPEC-0011 security rule; lift/kinds/statistical.rs
+    /// its own per-call cap: up to about 200 us an element in release (T-3444), which the lifting
+    /// table charges as `Weighted(16384)` (SPEC-0011 security rule; lift/kinds/statistical.rs
     /// `BINOM_INV`).
     pub(crate) fn fn_binom_inv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::BinomInv, args, cell, &mut |model, values| {
@@ -238,12 +222,15 @@ impl Model {
         }
         let n = trials as u64;
         let dist = Binomial::new(p, n).map_err(|_| num_error(cell))?;
-        // Smallest k with CDF(k) >= alpha. statrs' generic `inverse_cdf` can panic
-        // (an unwrap inside its bisection), e.g. for BINOM.INV(1, 0.001, 0.1).
+        // Smallest k with CDF(k) >= alpha, CDF being BINOM.DIST's own: Excel's result is that k
+        // against its BINOM.DIST on all 126 probes/t3444-binom-range-inv-large-n Inv rows (n 1E4
+        // to 2^31 - 2), where statrs' cdf was grossly off near the mean. statrs' generic
+        // `inverse_cdf` can panic (an unwrap inside its bisection), e.g. for BINOM.INV(1, 0.001, 0.1).
+        let cdf = |k: u64| binom_cdf_or_statrs(&dist, p, k);
         let (mut lo, mut hi) = (0u64, n);
         while lo < hi {
             let mid = lo + (hi - lo) / 2;
-            if DiscreteCDF::cdf(&dist, mid) >= alpha {
+            if cdf(mid) >= alpha {
                 hi = mid;
             } else {
                 lo = mid + 1;
@@ -417,6 +404,61 @@ impl Model {
             },
         )
     }
+}
+
+/// Excel's binomial pmf for `0 < p < 1`, as BINOM.DIST computes it, or `None` where only statrs
+/// is left. Loader's (2000) end branches are Excel's own closed forms (statistics.md "BINOM.DIST
+/// pmf: closed forms at k = 0 and k = n"; T-2464 r2-log1p, T-2513 r3-binom-pmf): at k = 0 the
+/// pmf, and so the cdf, is EXP(fl(n·l)) with l Excel's ln(1 - p), bit-exact on all 345
+/// BINOM.DIST(0,n,p) cells of the T-2464 research set; at k = n it is EXP(fl(n·LN(p))), 172 of
+/// 172. Off those a subnormal pmf is 0, as in Excel (`(x)=0` TRUE: probes-numeric/
+/// t2513-r3-binom-pmf-n E1729:E1792; numbers.md "Distribution densities"). Past the walk's budget
+/// it is Excel's own interior kernel, Loader's `dbinom_raw` (T-3352: statrs' log-gamma difference
+/// was 1E-11 off at n = 1E4 and 1E-6 at 1E9).
+fn excel_binom_pmf(n: u64, p: f64, k: u64) -> Option<f64> {
+    if k == 0 {
+        return Some(excel_binom_at_zero(n, p));
+    }
+    if k == n {
+        return Some(excel_exp(n as f64 * excel_ln(p)));
+    }
+    binomial_pmf(n, odds(p), k)
+        .map(|pmf| flush_subnormal(pmf.to_f64()))
+        .or_else(|| loader_pmf(k as f64, n as f64, p))
+}
+
+/// Excel's binomial cdf `P(X <= k)` for `0 < p < 1`, as BINOM.DIST computes it, or `None` where
+/// only statrs is left. At k = 0 it is BINOM.DIST's own closed form ([`excel_binom_at_zero`]), not
+/// the kernel's (T-2645). Elsewhere it is the upper tail of the incomplete beta `I_p(k+1, n-k)` at
+/// x = p, y = fl(1 - p): Excel's closed form at k = n - 1 (T-2464 w5-triangulation, T-2502), then
+/// the bratio port's branches (T-2847), basym among them (T-3352), then the walk. Off k = 0 a
+/// subnormal cdf is 0, as in Excel (`(x)=0` TRUE: probes/t2706-subnormal-density-paths B5:B7).
+fn excel_binom_cdf(n: u64, p: f64, k: u64) -> Option<f64> {
+    if k == 0 {
+        return Some(excel_binom_at_zero(n, p));
+    }
+    if k >= n {
+        return Some(1.0);
+    }
+    if k >= 1 {
+        let (x, y, a, b) = (p, 1.0 - p, k as f64 + 1.0, (n - k) as f64);
+        if let Some((_, upper)) = closed_or_ported_tails(x, y, a, b) {
+            return Some(flush_subnormal(upper));
+        }
+    }
+    binomial_cdf(n, odds(p), k).map(flush_subnormal)
+}
+
+/// The pmf, and so the cdf, at k = 0: EXP(fl(n·l)) with l Excel's ln(1 - p), BINOM.DIST's closed
+/// form (statistics.md "BINOM.DIST pmf: closed forms at k = 0 and k = n").
+fn excel_binom_at_zero(n: u64, p: f64) -> f64 {
+    excel_exp(n as f64 * excel_ln_one_minus(p))
+}
+
+/// [`excel_binom_cdf`], else statrs' cdf of `dist` (`Binomial::new(p, n)`), the last resort of
+/// BINOM.DIST.RANGE and BINOM.INV.
+fn binom_cdf_or_statrs(dist: &Binomial, p: f64, k: u64) -> f64 {
+    excel_binom_cdf(dist.n(), p, k).unwrap_or_else(|| DiscreteCDF::cdf(dist, k))
 }
 
 /// Excel's binomial pmf `dbinom_raw(k, n, p, fl(1 - p))` for 0 < k < n: EXP of Loader's saddle-point
