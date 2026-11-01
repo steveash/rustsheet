@@ -39,8 +39,8 @@ up), not because of more fitted cuts. In particular `CHISQ.INV.RT(1E-300,df)` fo
   probes-numeric/t3350-r4-chisq-inv-sweep, probes/t3070-gamma-inv-band, probes/t2982-gamma-inv-huge-shape;
   docs/excel-semantics/statistics.md "GAMMA.INV and CHISQ.INV at a huge shape"; docs/research/t3350/sweep.py (the
   mpmath reference).
-
-- **Wrong-type cells from T-3530's fit audit (probes-numeric/fit-audit-*, excel-graph 2026-10-31, scored on main 4e2f5f3df after T-3350; docs/research/fit-audit/README.md).** These are semantic (an error against a number), so the model must place them:
+- **Wrong-type cells from T-3530's fit audit (probes-numeric/fit-audit-*, excel-graph; scored on main 4e2f5f3df after T-3350;
+  docs/research/fit-audit/README.md).** These are semantic (an error against a number), so the model must place them:
   - `HUGE_SHAPE_MIN` (1E9) is not Excel's edge. Excel is already `#NUM!` at shapes 6E8 to 9E8 at a tiny p, where the
     engine (below the huge-shape path) gives the true quantile: fit-audit-t3070-shape-min A19, A22, A23, A25, A26,
     A28, A29, A30 (`GAMMA.INV(1E-300,6E+8,1)` to `GAMMA.INV(1E-200,9E+8,1)`).

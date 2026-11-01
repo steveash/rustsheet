@@ -1,5 +1,5 @@
 {
- "note": "fit-audit-t3271-cdf-cut filled one cell per workbook (rustsheet-oracle fill -b excel-graph on single-cell copies of the case, 2026-11-01); A5 and A8 failed at createSession on every attempt.",
+ "note": "fit-audit-t3271-cdf-cut filled one cell per workbook (rustsheet-oracle fill -b excel-graph on single-cell copies of the case, 2026-11-01); A5 and A8 failed at createSession on every attempt. A4, A12 and A18 were filled again in fresh workbooks to check that the non-monotone pattern reproduces (key \"refill\").",
  "cells": {
   "A1": {
    "formula": "=GAMMA.DIST(2,1E+45,1E+10,TRUE)",
@@ -570,6 +570,53 @@
     "version": null,
     "workbook_name": "ed1b0cf3543848ea7675e0f62dea1321180884c69198a82131c0a44663a9cb06.xlsx"
    }
+  }
+ },
+ "refill": {
+  "A4": {
+   "value": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "31f30579a389ed3c64fc87c07f80bf9e96395a3036956c8d08c973db518efa89",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T07:05:51+00:00",
+    "version": null,
+    "workbook_name": "5288ad8f9f90e39312e80e5a39ebe847e0a0f7d958e40501b584676bbaa09ffe.xlsx"
+   },
+   "same_as_first_fill": true
+  },
+  "A12": {
+   "value": {
+    "t": "n",
+    "v": 0.0
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "6ea66c1aaf8ae91618d1872b1fb514b1270a64f10046d5313a78242969c4aa4f",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T07:05:51+00:00",
+    "version": null,
+    "workbook_name": "f7a49f52630738f233afc53861fcac22799dedd35a7db2356e40cb0fe61ceba8.xlsx"
+   },
+   "same_as_first_fill": true
+  },
+  "A18": {
+   "value": {
+    "t": "n",
+    "v": 0.0
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "5aa94567333cb79fdb8021d75e7307fec8d2bf2f52a617abe2363c5d84c914d0",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T07:05:51+00:00",
+    "version": null,
+    "workbook_name": "790cb67487d1a0d8defb685c0ef7253a11999c7efe142822b7b51f49064cfedf.xlsx"
+   },
+   "same_as_first_fill": true
   }
  }
 }

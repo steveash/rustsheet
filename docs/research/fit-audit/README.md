@@ -12,18 +12,22 @@ changes on this branch.
 Branches: T-3311 (PR #2599) moves `CLOSED_FORM_QUANTILE_MAX` and `CLOSED_FORM_STEP_MIN` to `closed_form.rs`
 without changing them. T-3285 and T-3269 add new FITTED constants but change none of these.
 
+**The table and "Findings so far" below are the first scoring, on 744815d06 before T-3350, and are
+superseded where they differ from the section "Re-score on main"**, notably on `BAND_LOWER_EDGE` (no longer refuted)
+and the counts. They are kept as the record of what the audit found first.
+
 Notation: "exact" means bit-exact, "≤15" means within 15 significant digits but not bit-exact, "off" means numeric and
 beyond 15 digits, "err" means Excel's error differs from the engine's value (or the reverse).
 
 | Constant (file, old tag) | Old evidence | New evidence (case, cells) | Verdict | Change |
 |---|---|---|---|---|
-| `HUGE_SHAPE_DENSITY_CUT` 6.9187E11 (gamma.rs:36, T-3271, 3 cells) | t2435 A26 `#NUM!`, A92 and A31 0 | fit-audit-t3271-density-cut, 50: 46 agree, 4 err | **(b) refuted** | Restriction or replacement needs a follow-up probe and task (see below) |
+| `HUGE_SHAPE_DENSITY_CUT` 6.9187E11 (gamma.rs:36, T-3271, 3 cells) | t2435 A26 `#NUM!`, A92 and A31 0 | fit-audit-t3271-density-cut, 50: 46 agree, 4 err | **(b) refuted** | T-3316 |
 | `HUGE_SHAPE_CDF_CUT` 1.85E76 (gamma.rs:44, T-3271, 2 cells) | t2435 A100 0, A101 `#NUM!` | fit-audit-t3271-cdf-cut, 38 of 42 filled one cell per workbook: 17 agree, **21 err** | **(b) refuted** | T-3316 |
 | `LOG_FORM_SHAPE_MAX` 3.0 (gamma.rs:67, T-2852, 6 cells) | t1049, gen-m9, m9-chisq-dist, m9-gamma-dist-a9 | fit-audit-t2852-shape-max, 52: 13 exact, 35 ≤15, 4 off (A25, A29 at 3 and 3.01; A34 3.2; A46 4.5) | provisional: not scored on both sides | none |
 | `LOG_FORM_SHAPE_MIN` 0.5 (gamma.rs:84, T-2852, 2 cells) | gen-m9 A367, A386 | fit-audit-t2852-shape-min, 48: 12 exact, 36 ≤15, 0 off | provisional (a) candidate: no cell off on either side; bit-level split not scored | none |
-| `HUGE_SHAPE_MIN` 1E9 (huge_shape.rs:17, T-3070, 1 cell) | t3070 A1 | fit-audit-t3070-shape-min, 39: 29 agree, 9 err, 1 off | **(b) refuted** | Follow-up task |
-| `BAND_UPPER_EDGE` 27.25 (huge_shape.rs:74, T-3070, 2 cells) | t3070 A77, t2982 A45 | fit-audit-t3070-band-upper, 52: 37 agree, 10 err, 5 off | **(b) refuted** | Follow-up task |
-| `BAND_LOWER_EDGE` 39 (huge_shape.rs:83, T-3070, 3 cells) | t2982 A44, t3070 A44, A370 | fit-audit-t3070-band-lower, 42: 24 agree, 12 err, 6 off | **(b) refuted** | Follow-up task |
+| `HUGE_SHAPE_MIN` 1E9 (huge_shape.rs:17, T-3070, 1 cell) | t3070 A1 | fit-audit-t3070-shape-min, 39: 29 agree, 9 err, 1 off | **(b) refuted** | T-3409 |
+| `BAND_UPPER_EDGE` 27.25 (huge_shape.rs:74, T-3070, 2 cells) | t3070 A77, t2982 A45 | fit-audit-t3070-band-upper, 52: 37 agree, 10 err, 5 off | **(b) refuted** | T-3409, T-3396 |
+| `BAND_LOWER_EDGE` 39 (huge_shape.rs:83, T-3070, 3 cells) | t2982 A44, t3070 A44, A370 | fit-audit-t3070-band-lower, 42: 24 agree, 12 err, 6 off | refuted on 744815d06; **holds after T-3350** (0 err, re-score) | none |
 | closed-form density cut, `f64::MIN_POSITIVE` (huge_shape.rs:103, T-3070, 2 cells) | t3070 A110, A210 | fit-audit-t3070-closed-form-cut, 59: 31 exact, 28 ≤15, 0 off, 0 err; ln density at the start from -760 to -695, shapes 1.3E10 to 2.3E10 | **(d) Excel's own boundary**: the closed form holds exactly where the density at the start is below the smallest normal double | Tag to be narrowed and its count raised to 61 (not done: the tag edit goes through `check_fitted.py --update` with `make check`) |
 | `RATIO_FORM_MIN` 0.005 (incomplete_gamma/mod.rs:253, T-2638, 6 cells) | gen-m9 A333, A341; t2753 A47, A48, B47, B48 | fit-audit-t2638-ratio-min, 62: 11 exact, 5 ≤15, **46 off** (Excel within 8.3E-14 of the math) | provisional: the large-shape density at x/a 0.002 to 0.03 is beyond 15 digits on both sides of the cut. Whether the cut matters cannot be said until the two-sided score is run | none; likely its own task |
 | `CLOSED_FORM_QUANTILE_MAX` 1E-21 (mod.rs:424, T-3013, 5 cells) | t3012 A18, A28, A34, B18; gen-m9 A210 | fit-audit-t3013-quantile-max, 54: 20 exact, 16 ≤15, 18 off | provisional; evidence for T-3265 | none (T-3265 owns it) |
@@ -44,13 +48,16 @@ beyond 15 digits, "err" means Excel's error differs from the engine's value (or 
   9E8 for 1E-200 (A19–A33). The engine gives the true quantile there because its band rule starts at 1E9. At 1.2E8
   and p = 1E-300, Excel is 119594626.4274513 and the engine and the math are ...483. Excel is 2.5E-14 off the
   math there: within R3's G, so Excel's value is the target.
-- **GAMMA.INV band edges**: on both edges Excel is `#NUM!` at cells the engine puts inside the band. The lower edge
-  fails at 1E9 to 3.5E9, at offset - z of 37.6 to 38.8, below 39 (band-lower A1–A21). The upper edge fails at 3E9 to
+- **GAMMA.INV band edges**: on both edges Excel is `#NUM!` at cells the engine puts inside the band. The old lower edge
+  failed at 1E9 to 3.5E9, at offset - z of 37.6 to 38.8, below 39 (band-lower A1–A21); T-3350's edge, on main since,
+  separates all 42. The upper edge fails at 3E9 to
   5E9 in the upper tail (band-upper A1–A13). The reverse also happens: Excel has a value where the engine is
-  `#NUM!` at 7E9 to 9E9 in the lower tail (A26, A32, A33, A38). So neither edge is a fixed constant in the
+  `#NUM!` at 7E9 to 9E9 in the lower tail (A26, A32, A33, A38, A39). So neither edge is a fixed constant in the
   engine's variables. The slope (1.35) or the variables themselves (offset, z) differ from Excel's search.
 - **Closed form**: confirmed on 59 fresh cells. Excel's value is the Wilson–Hilferty start exactly where the density
-  there is not a normal double, at 2.66E-4 off the math (the MATH-OVER-EXCEL case 3 of decision 0188 R3).
+  there is not a normal double, at 2.66E-4 off the math (the MATH-OVER-EXCEL case 3 of decision 0188 R3). Verdict (d)
+  is about where the boundary lies and the type on either side. Inside the region decision 0188 R3 makes the math the
+  target, not Excel's x0 (T-3364); this audit does not change that.
 
 ## Follow-up tasks
 
@@ -85,7 +92,7 @@ within 4 ulp, `15d` within 15 digits, `off` beyond, `err` a different type or er
 - **`HUGE_SHAPE_CDF_CUT`**: refuted both ways, and Excel's cut is not monotone in the shape. At x/beta = 2E-10 (x = 2,
   beta = 1E10) Excel is `#NUM!` from shape 1E60 (A4) through 1.8E76, except 0 at 1E76 (A12) and 1.84E76 (A18). At
   beta = 1 it is 0 at shapes from 1E60 to 1E200 for x = 1 and x = 1E50, and for x = 1E-100 it is 0 except at 1.85E76
-  (A30, `#NUM!`). A refill of A4, A12 and A18 gave the same values. No rule in the shape alone fits. The `#NUM!`
+  (A30, `#NUM!`). A refill of A4, A12 and A18 in fresh workbooks gave the same values (`refill` in `cdf-cut-slices.json`). No rule in the shape alone fits. The `#NUM!`
   probably comes from an intermediate in Excel's arithmetic (UNVERIFIED). excel-graph refused the 42-cell workbook,
   so each cell was filled in its own workbook. A5 and A8 failed at createSession every time and have no value. The
   per-cell sources are in `cdf-cut-slices.json`, and the oracle sidecar's source names that file.

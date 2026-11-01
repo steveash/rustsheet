@@ -25,8 +25,8 @@ GAMMA.DIST's two huge-shape `#NUM!` cuts sit where Excel's do, not merely at the
   workbook and bisect each bracket. Also check whether the density cut depends on (alpha - 1)·LN alone, by varying
   x and beta at a fixed product, and whether the cdf cut depends on x/beta.
 - Opus: the evidence is unclear, and the probing may need a workaround for the refusal.
-
-- **Wrong-type cells, from T-3530's fit audit (probes-numeric/fit-audit-*, excel-graph 2026-10-31, scored on main 4e2f5f3df after T-3350; docs/research/fit-audit/README.md)** (fit-audit-t3271-density-cut, 50 cells): the density cut's variable is not
+- **Wrong-type cells, from T-3530's fit audit (probes-numeric/fit-audit-*, excel-graph; scored on main 4e2f5f3df after T-3350;
+  docs/research/fit-audit/README.md)** (fit-audit-t3271-density-cut, 50 cells): the density cut's variable is not
   (alpha - 1)·(-LN(x/beta)). Excel is 0 at A43 `GAMMA.DIST(0.5,1E+15,1,FALSE)`, where the engine is `#NUM!`; and
   Excel is `#NUM!` at A9 `GAMMA.DIST(2.17173678289098E-300,1E+9,1,FALSE)` (product 6.9E11) and A48
   `GAMMA.DIST(1E-300,1E+9,1E-6,FALSE)` (6.77E11), where the engine is 0. The scale does not count: A45
