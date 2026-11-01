@@ -99,7 +99,7 @@ fn beta_crossing(f: impl Fn(f64) -> f64, target: f64, estimate: f64, shapes: (f6
 /// `1 - (1-p)^(1/beta)` is not (A51 `BETA.INV(0.001,1,2.5)`, 640 ulp). Below 1E-15 Excel leaves
 /// the closed form (probes-numeric/t1543-inverse-cdf-tiny-p A73:A75, A86), so the search stays
 /// there. docs/excel-semantics/statistics.md "BETA.INV at a shape of 1 is the closed form to 15
-/// digits for p of 1E-15 or more (T-3457)".
+/// digits for p of 1E-15 or more (T-3664)".
 fn beta_quantile_shape_one(alpha: f64, beta: f64, p: f64) -> Option<f64> {
     if p < BETA_QUANTILE_STATRS_P_MIN {
         return None;

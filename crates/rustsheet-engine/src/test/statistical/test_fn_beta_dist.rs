@@ -86,7 +86,7 @@ fn test_fn_beta_inv_tiny_probability_is_bounded() {
     assert_eq!(model._get_text("A5"), "7.8736E-203");
 }
 
-// T-3457: at a shape of exactly 1 and p of 1E-15 or more the quantile is the closed form, not the
+// T-3664: at a shape of exactly 1 and p of 1E-15 or more the quantile is the closed form, not the
 // crossing of BETA.DIST's cdf, which is flat over tens of doubles there (T-3007). Excel values from
 // probes-numeric/m9-beta-inv A69 and A149 (the same points as t1745-beta-inv-roundtrip J67, J144);
 // below 1E-15 the search stays (t1543-inverse-cdf-tiny-p A73 `BETA.INV(1E-300,1,1)`, Excel
