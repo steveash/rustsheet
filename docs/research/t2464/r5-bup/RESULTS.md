@@ -19,7 +19,7 @@ numpy scipy` into it), run from this directory.
 2. **bup's powers of x go through an exponent: term i is fl(R_i · EXP(fl(i·LN(y0))))**, with R_i the product of
    TOMS's stored ratios fl(apb + l)/fl(ap1 + l) kept in doubles and the sum in doubles. TOMS's recurrence
    d = ratio·x·d in any arithmetic (doubles, r2-bratio's w4, x87, exact) leaves the same sd (17.7 to 17.8 units,
-   `sforms.out`); the exponent form takes the n <= 9 leftover from sd 4.7 to 1.6 and the n >= 10 one from 19.8 to
+   `sforms_tune.out`); the exponent form takes the n <= 9 leftover from sd 4.7 to 1.6 and the n >= 10 one from 19.8 to
    15.0 (tune; hold 17.1 to 9.6), and BETA.DIST rows from 72/379/567 to 179/574/689 of 768 (`powforms2.py`).
    `model.py` freezes it (commit c8cee195a, before the hold-out was scored):
    ```
