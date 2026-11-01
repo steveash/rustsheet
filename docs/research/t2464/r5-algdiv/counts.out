@@ -1,0 +1,8 @@
+a: 78 pinned shapes
+  best storage variant (ar=e st=u aln=ser lnb=xl fin=toms t2=sq gsum=d): exact 36, within 4 ulp 77, same 15 digits 75
+  TOMS algdiv in doubles: exact 26, within 4 ulp 76, same 15 digits 68
+  correctly rounded lnB: exact 33, within 4 ulp 78, same 15 digits 73
+hold: 78 pinned shapes
+  best storage variant (ar=e st=u aln=ser lnb=xl fin=toms t2=sq gsum=d): exact 33, within 4 ulp 77, same 15 digits 70
+  TOMS algdiv in doubles: exact 30, within 4 ulp 77, same 15 digits 69
+  correctly rounded lnB: exact 35, within 4 ulp 77, same 15 digits 71

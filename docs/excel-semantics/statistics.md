@@ -2734,7 +2734,12 @@ The products' rounding errors are not carried. EXP(hi)·EXP(lo) and EXP(hi)·(1 
   no large smooth error, so the offset is most likely rounding of stored intermediates. That is an inference until a
   model reproduces it (T-3569). The pins are Excel for the web values, inside the web/desktop floor of up to 4 ulp. Fixed candidates reach at most 34 and 37 of 80 shapes
   (CR lnB, the best); TOMS-d 26 and 30. Excel's GAMMALN difference carried past 8, in either association, gets 0 and
-  1. Still open (T-3569: x87 storage variants of algdiv scored against the 156 per-shape pins).
+  1. **No x87 storage variant of TOMS algdiv explains the pins (T-3569 r5-algdiv, negative).** 65,792 variants (all 512
+  store subsets of h c x d s w u v r, extended, double or x87-stored, times alnrel, log b, final order, t² and the
+  GL + algdiv sum) were scored per shape. The best frozen tier (u stored, series alnrel, Excel's LN) reproduces 36 of 78
+  pinned shapes in-sample and 33 of 78 on the hold-out. The correctly rounded lnB gets 33 and 35, and TOMS-d 26 and 30.
+  All three are within 4 ulp on 76-78 shapes. The next evidence needed is desktop cells for these shapes (M14), not
+  more web-pin scoring (docs/research/t2464/r5-algdiv/RESULTS.md).
 - Rejected (T-2464): a cdf prefactor over x or x·y; x87 base-2 pow forms; GAMMA-ratio B; R lbeta, NSWC/Apache logBeta;
   TOMS gamln/gamln1 or LN(GAMMA) for lnΓ(v < 1) (GL beats them in every combination, `lgam_*.out`). For algdiv
   (`lnbcands.out`, `algsearch.out`): accurate algdiv, TOMS fully extended, correctly rounded or series alnrel, and

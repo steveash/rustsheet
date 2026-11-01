@@ -3,7 +3,7 @@ id: T-3569
 title: "Incomplete beta: x87 storage variants of algdiv for b0 >= 8 against the r4-algdiv pins, then bpser's L"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -34,14 +34,25 @@ algdiv for b0 >= 8 is modelled as Excel stores it, first on the density's pinned
     for min(a,b) <= 1").
 
 ## Acceptance criteria
-- [ ] A RESULTS.md records a model with exact, within-4-ulp and within-15-digit counts on a held-out probe, or the
+- [x] A RESULTS.md records a model with exact, within-4-ulp and within-15-digit counts on a held-out probe, or the
       negatives tried with their counts.
-- [ ] New oracle probes are committed under eval/suites/probes-numeric/cases/ with their sidecars.
-- [ ] statistics.md's T-2464 entries are updated with what is found.
-- [ ] Engine follow-ups are filed for any solved piece, or the owning engine task's criteria are amended.
-- [ ] `make check` green; reviewers approve.
+- [ ] New oracle probes are committed under eval/suites/probes-numeric/cases/ with their sidecars. (Not needed: the
+      scoring reused r4-algdiv's probes; the next probe has to be desktop, T-3750.)
+- [x] statistics.md's T-2464 entries are updated with what is found.
+- [x] Engine follow-ups are filed for any solved piece, or the owning engine task's criteria are amended.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine changes (T-3382 ports the L140 one-term composition).
 - The other items split from T-3468: T-3567 (bgrat increment, F at df 1), T-3568 (bup), T-3569 (algdiv), T-3570
   (bpser's lnGamma and b < 1 ceiling), T-3571 (bfrac), T-3572 (GAMMA.DIST near P = 1); one each.
+
+## Outcome
+Negative (docs/research/t2464/r5-algdiv/RESULTS.md). 65,792 x87 storage variants of TOMS algdiv were scored per
+shape against r4-algdiv's 78 + 78 uniquely pinned lnB values: all 512 store subsets, double and x87-stored arithmetic,
+times alnrel, log b, final order, t² and the GL + algdiv sum. A positive control recovers a planted variant (78 of 78,
+256 tied). The best frozen in-sample tier (u stored, series alnrel, Excel's LN: 36 of 78) gets 33 of 78 on the
+hold-out, against 35 for the correctly rounded lnB and 30 for TOMS-d. Within 4 ulp: 76-78 for all three. No model is
+frozen, so there is no fit and no engine follow-up. bpser's L was not checked because no variant won. The web pins
+cannot separate noise from model, so desktop cells are the next step: T-3750 (M14, blocked on excel-desktop),
+which also carries the wider (0.4, 8.6) rescan. statistics.md's T-2464 algdiv entry is updated.
