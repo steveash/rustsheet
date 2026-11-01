@@ -51,20 +51,22 @@ pub(crate) fn to_rc_lowering_at(node: &Node, row: i32, tables: &[String]) -> Str
     stringify(node, None, &rewrite, false, locale, language)
 }
 
-/// [`super::to_localized_string`] with every `#This Row` structured reference printed as the
-/// area it is on `context`'s row (`$A$3`, or `#VALUE!` off the data rows): the text of a formula
-/// that a structural edit moves to another row, which then reads the row it read, as before
-/// SPEC-0016 step 2 (T-1699).
+/// [`super::to_localized_string`] with every `#This Row` structured reference to a table not in
+/// `kept` (lowercase names) printed as the area it is on `context`'s row (`$A$3`, or `#VALUE!` off
+/// the data rows): the text of a formula that a structural edit moves to another row, which then
+/// reads the row it read, as before SPEC-0016 step 2 (T-1699). One to a table in `kept`, a table
+/// that follows the edit, keeps its text (T-3037).
 pub(crate) fn to_localized_string_this_row_lowered(
     node: &Node,
     context: &CellReferenceRC,
+    kept: &[String],
     locale: &Locale,
     language: &Language,
 ) -> String {
     stringify(
         node,
         Some(context),
-        &Rewrite::LowerThisRow,
+        &Rewrite::LowerThisRow(kept),
         false,
         locale,
         language,
@@ -129,14 +131,19 @@ pub(super) fn reference_text(
             data: DisplaceData::None,
             ..
         }) => return written(),
-        // A `#This Row` area keeps today's rule below: whether Excel then reads the cell's row
-        // of the moved table, or the row it read, is unprobed (T-2845).
+        // Through a row insert a `#This Row` reference keeps its text too, and then reads the
+        // cell's row of the edited table: Excel gives `#VALUE!` on a row the insert makes the
+        // header row, and 0 on the blank data row it adds (T-2845
+        // table-insert-row-this-row-above-header, -inside-data; T-3037). Under any other edit
+        // it keeps today's rule below: Excel's is unprobed (T-3739).
         Rewrite::Displace(Displacement {
+            data,
             kept_tables,
             deleted_columns,
             ..
-        }) if !matches!(lowered, Node::ThisRowKind { .. })
-            && kept_tables.contains(&reference.table_name.to_lowercase()) =>
+        }) if kept_tables.contains(&reference.table_name.to_lowercase())
+            && (!matches!(lowered, Node::ThisRowKind { .. })
+                || matches!(data, DisplaceData::Row { delta, .. } if *delta > 0)) =>
         {
             // A column delete inside the table turns a reference to a deleted column into
             // `#REF!` (T-2324 table-delete-column-qty: `=SUM(#REF!)`, -region: `=COUNTA(#REF!)`).
@@ -164,8 +171,9 @@ pub(super) fn reference_text(
                 written()
             };
         }
-        Rewrite::LowerThisRow => {
-            return if matches!(lowered, Node::ThisRowKind { .. }) {
+        Rewrite::LowerThisRow(kept) => {
+            let kept = kept.contains(&reference.table_name.to_lowercase());
+            return if !kept && matches!(lowered, Node::ThisRowKind { .. }) {
                 print(lowered, &NO_REWRITE)
             } else {
                 written()
@@ -223,7 +231,7 @@ fn deleted_column(reference: &StructuredReference, deleted: &[(String, String)])
 /// Whether the cut and paste `rewrite` moves the formula cell `context` to another row, for a
 /// `#This Row` area `lowered` (false for any other node and any other rewrite: a structural edit
 /// re-enters the formulas it moves to another row with their `#This Row` areas lowered first,
-/// `Model::moved_text`). The cell's sheet is the area's when the area names no sheet; when
+/// but those to a table a row insert follows, `Model::moved_text`). The cell's sheet is the area's when the area names no sheet; when
 /// it names one, the cell is on another sheet, which may be the cut one.
 fn row_may_move(lowered: &Node, context: Option<&CellReferenceRC>, rewrite: &Rewrite) -> bool {
     let (

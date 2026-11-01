@@ -1,0 +1,9 @@
+t3568-r5-bup-fresh column A: 672 listed failures, 672 visibly off
+t3568-r5-bup-fresh column B: 303 listed failures, 303 visibly off
+t3568-r5-bup-fresh column C: 13 listed failures, 13 visibly off
+t3568-r5-bup-hold column A: 1371 listed failures, 1371 visibly off
+t3568-r5-bup-hold column B: 665 listed failures, 665 visibly off
+t3568-r5-bup-hold column C: 29 listed failures, 29 visibly off
+t3568-r5-bup-tune column A: 1403 listed failures, 1403 visibly off
+t3568-r5-bup-tune column B: 651 listed failures, 651 visibly off
+t3568-r5-bup-tune column C: 30 listed failures, 30 visibly off

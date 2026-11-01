@@ -5,8 +5,8 @@ use crate::expressions::parser::ArrayNode;
 use crate::expressions::token::TableReference;
 use crate::expressions::types::{CellReferenceIndex, CellReferenceRC};
 use crate::expressions::utils::{
-    is_indirect_unquoted_sheet, is_out_of_range_r1c1_name, quote_digit_leading_sheet,
-    unquote_sheet_prefix,
+    indirect_reference_text, is_indirect_unquoted_sheet, is_out_of_range_r1c1_name,
+    quote_digit_leading_sheet, unquote_sheet_prefix,
 };
 use crate::external_reference::{one_external_area, PickedReference};
 use crate::functions::util::array_node_to_calc_result;
@@ -14,7 +14,10 @@ use crate::functions::Function;
 use crate::limits::check_array_size;
 use crate::reference_operators::{several_areas_ref, Picked, Ranges, RefArg};
 use crate::{
-    calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
+    calc_result::{CalcResult, Range},
+    expressions::parser::Node,
+    expressions::token::Error,
+    model::Model,
     utils::ParsedReference,
 };
 
@@ -803,21 +806,28 @@ impl Model {
             None => true,
         };
 
-        let parsed_reference = if a1 {
-            // The lexer takes no unquoted sheet name that starts with a digit; INDIRECT text
-            // does (`INDIRECT("2024!B1")` reads sheet `2024`; probes/indirect-sheet-scoped-name
-            // Summary!D3, docs/excel-semantics/lookup.md), so quote it for the parser.
-            let ref_text = quote_digit_leading_sheet(&ref_text);
-            ParsedReference::parse_reference_formula(
-                Some(cell.sheet),
-                &ref_text,
-                self.locale,
-                |name| self.get_sheet_index_by_name(name),
-            )
-        } else {
-            ParsedReference::parse_r1c1_reference(cell, &ref_text, |name| {
-                self.get_sheet_index_by_name(name)
-            })
+        // Spaces Excel accepts are taken out first; whitespace it refuses makes the text no
+        // reference (docs/excel-semantics/lookup.md "INDIRECT reference text: where spaces are
+        // allowed"). The name and structured-reference fallbacks still see the text as written.
+        let parsed_reference = match indirect_reference_text(&ref_text) {
+            None => Err("Invalid reference. Whitespace is not allowed there.".to_string()),
+            Some(reference_text) if a1 => {
+                // The lexer takes no unquoted sheet name that starts with a digit; INDIRECT text
+                // does (`INDIRECT("2024!B1")` reads sheet `2024`; probes/indirect-sheet-scoped-name
+                // Summary!D3, docs/excel-semantics/lookup.md), so quote it for the parser.
+                let reference_text = quote_digit_leading_sheet(&reference_text);
+                ParsedReference::parse_reference_formula(
+                    Some(cell.sheet),
+                    &reference_text,
+                    self.locale,
+                    |name| self.get_sheet_index_by_name(name),
+                )
+            }
+            Some(reference_text) => {
+                ParsedReference::parse_r1c1_reference(cell, &reference_text, |name| {
+                    self.get_sheet_index_by_name(name)
+                })
+            }
         };
 
         match parsed_reference {
@@ -825,7 +835,12 @@ impl Model {
                 left: reference,
                 right: reference,
             },
-            Ok(ParsedReference::Range(left, right)) => CalcResult::Range { left, right },
+            // A reversed range (`B2:A1`, `C:A`, `3:1`) is the range with its corners in order, as
+            // in a formula (probes/t3656-indirect-spaces-reversed rows 34-43).
+            Ok(ParsedReference::Range(left, right)) => {
+                let Range { left, right } = Range::between(left, right);
+                CalcResult::Range { left, right }
+            }
             Err(message) => match self.indirect_defined_name(&ref_text, cell).or_else(|| {
                 a1.then(|| self.indirect_structured(&ref_text, cell))
                     .flatten()

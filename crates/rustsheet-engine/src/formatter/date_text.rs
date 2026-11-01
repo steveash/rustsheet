@@ -78,14 +78,17 @@ fn parse_month_name(name: &str, locale: &Locale) -> Option<(u32, &'static str)> 
     Some((month(m)?, "mmmm"))
 }
 
-/// A two- or four-digit year; two-digit years below 30 are 20xx, the rest 19xx
-/// (probes/date-text-grammar A21/A22: "Jul 1, 26" is 2026, "Jul 1, 30" is 1930).
+/// A one-, two- or four-digit year; one- and two-digit years below 30 are 20xx, the rest 19xx
+/// (probes/date-text-grammar A21/A22: "Jul 1, 26" is 2026, "Jul 1, 30" is 1930; a three-digit
+/// year is #VALUE!). A one-digit year is 200x after a month name as after a month number:
+/// "1 Jul 5", "Jul 1, 5", "1-Jul-5", "7/1/5" are 2005-07-01 (probes/date-text-shape-survey
+/// rows 22-26, date-text-shape-survey-2 rows 24-28).
 fn parse_year(year_str: &str) -> Result<(i32, &'static str), String> {
-    if !matches!(year_str.len(), 2 | 4) || !is_digits(year_str, 2..=4) {
+    if !matches!(year_str.len(), 1 | 2 | 4) || !is_digits(year_str, 1..=4) {
         return Err("Not a valid year".to_string());
     }
     let year = year_str.parse::<i32>().map_err(|e| e.to_string())?;
-    Ok(if year_str.len() == 2 {
+    Ok(if year_str.len() <= 2 {
         (two_digit_year(year), "yy")
     } else {
         (year, "yyyy")
@@ -224,8 +227,15 @@ fn parse_separated(
         .filter(|&s| s != '.' || short_format.contains('.'))
         .find(|&s| word.contains(s))
         .ok_or("Not a valid date")?;
-    // At most 4 parts: enough to reject longer text without splitting all of it.
-    let parts: Vec<&str> = word.splitn(4, separator).collect();
+    // `/` and `-` may be mixed in one date: "7/1-2025", "2025-07/01", "1-Jul/2025" are dates
+    // (probes/date-text-shape-survey rows 73-78, date-text-shape-survey-2 rows 15-20). A dot
+    // separator stays on its own. At most 4 parts: enough to reject longer text without
+    // splitting all of it.
+    let parts: Vec<&str> = if separator == '.' {
+        word.splitn(4, separator).collect()
+    } else {
+        word.splitn(4, ['/', '-']).collect()
+    };
     let (day_str, month_str, year_str) = match parts.as_slice() {
         [first, second] => {
             return match parse_month_name(second, locale) {
@@ -264,14 +274,7 @@ fn parse_separated(
     // Excel: `VALUE("1-1-1")` and `VALUE("1/1/1")` are 2001-01-01, a one-digit year being 200x
     // (docs/excel-semantics/text.md "VALUE reads a sign before a space...",
     // probes/value-sign-space-mixed-fraction-dash-date A13, A14, A18, A19).
-    let (year, year_format) = if is_digits(year_str, 1..=1) {
-        (
-            two_digit_year(year_str.parse::<i32>().map_err(|e| e.to_string())?),
-            "yy",
-        )
-    } else {
-        parse_year(year_str)?
-    };
+    let (year, year_format) = parse_year(year_str)?;
     let format = if short_format.starts_with('d') {
         format!("{day_format}{separator}{month_format}{separator}{year_format}")
     } else {
@@ -365,8 +368,10 @@ pub(crate) fn parse_date(
     }
     // At most 5 words: one more than the longest form (4), enough to reject longer text without
     // splitting all of it. The cap cannot hide a word after a glued month: a 5th word already
-    // makes the text too long for every form below.
-    let words: Vec<&str> = value.split_whitespace().take(5).collect();
+    // makes the text too long for every form below. Words are split on the space character
+    // only: a tab or a no-break space inside date text is #VALUE! (`"July\u{a0}1, 2025"`,
+    // `"1\tJul\t2025"`; probes/date-text-shape-survey row 89, date-text-shape-survey-2 rows 29-30).
+    let words: Vec<&str> = value.split(' ').filter(|w| !w.is_empty()).take(5).collect();
     // A month name glued to digits reads as with spaces between them ("July1" is "July 1",
     // "1JUN2021" is "1 JUN 2021"), except that a month glued to a number must end the text: a
     // month glued to a day that a year follows is #VALUE! ("July1,2026", "July12026",
@@ -468,6 +473,73 @@ mod tests {
         assert_eq!(en("12/31/99"), Some(36525));
         assert_eq!(en("2026/1/13"), Some(46035));
         assert_eq!(en("2026-01-01"), Some(46023));
+    }
+
+    #[test]
+    fn shape_survey_one_digit_years_and_mixed_separators() {
+        // probes/date-text-shape-survey rows 22-26, 73-78; date-text-shape-survey-2 rows 15-28
+        for (text, serial) in [
+            ("1 Jul 5", 38534),
+            ("Jul 1, 5", 38534),
+            ("1-Jul-5", 38534),
+            ("July 1, 5", 38534),
+            ("1/Jul/5", 38534),
+            ("1-Jul-0", 36708),
+            ("7/1-2025", 45839),
+            ("7-1/2025", 45839),
+            ("2025/07-01", 45839),
+            ("2025-07/01", 45839),
+            ("1-Jul/2025", 45839),
+            ("1/Jul-2025", 45839),
+            ("7/1-25", 45839),
+            ("7-1/5", 38534),
+        ] {
+            assert_eq!(en(text), Some(serial), "{text}");
+        }
+        // Three-digit years, doubled separators, dots and inner tabs or no-break spaces stay
+        // #VALUE! (rows 10-16, 89; survey-2 rows 22-23, 29-30).
+        for text in [
+            "7/1/025",
+            "0025-07-01",
+            "007/01/2025",
+            "7//1/2025",
+            "7/1--2025",
+            "1.7.2025",
+            "July\u{a0}1, 2025",
+            "July\t1, 2025",
+            "1\tJul\t2025",
+        ] {
+            assert_eq!(en(text), None, "{text}");
+        }
+    }
+
+    #[test]
+    fn clock_may_come_before_the_date() {
+        let locale = get_locale("en").expect("en locale");
+        let serial = |text: &str| parse_date_clock_serial(text, locale, &|| Some(2026));
+        // probes/date-text-shape-survey row 113, date-text-shape-survey-2 rows 1-13
+        for (text, expected) in [
+            ("10:00 7/1/2025", 45_839.416_666_666_664),
+            ("10:00 AM 7/1/2025", 45_839.416_666_666_664),
+            ("10 AM 7/1/2025", 45_839.416_666_666_664),
+            ("10:00 PM 7/1/2025", 45_839.916_666_666_664),
+            ("10:00 July 1, 2025", 45_839.416_666_666_664),
+            ("10:00  7/1/2025", 45_839.416_666_666_664),
+            ("25:00 7/1/2025", 45_840.041_666_666_664),
+        ] {
+            let actual = serial(text).unwrap_or(f64::NAN);
+            assert!((actual - expected).abs() < 1e-9, "{text}: {actual}");
+        }
+        for text in [
+            "10:00 7/1/2025 10:00",
+            "10:00 7/1/2025 PM",
+            "10:00,7/1/2025",
+            " 10:00 7/1/2025",
+            "7/1/2025\t10:00",
+            "10:00\t7/1/2025",
+        ] {
+            assert_eq!(serial(text), None, "{text}");
+        }
     }
 
     #[test]

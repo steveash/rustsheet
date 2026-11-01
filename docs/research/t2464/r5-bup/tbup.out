@@ -1,0 +1,10 @@
+FINAL model (r2-tdist) [all]: 356/1334/1343 of 1344
+exact W, exact B [all]: 598/1344/1344 of 1344
+exact W, exact B [hold]: 273/648/648 of 648
+exact W, exact B [tune]: 325/696/696 of 696
+pow: fl(x87 ret * W) [all]: 411/1342/1344 of 1344
+pow: fl(x87 ret * W) [hold]: 210/648/648 of 648
+pow: fl(x87 ret * W) [tune]: 201/694/696 of 696
+rec: fl(x87 ret * W) [all]: 412/1339/1343 of 1344
+rec: fl(x87 ret * W) [hold]: 211/647/648 of 648
+rec: fl(x87 ret * W) [tune]: 201/692/695 of 696

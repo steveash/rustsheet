@@ -1,7 +1,7 @@
 # 0122 — CI runs the Rust tests as two parallel shards
 
 - **Status:** accepted (2026-10-25, owner request to shorten PR CI, T-2754). It changes where the
-  Rust tests run, not which tests run.
+  Rust tests run, not which tests run. Amended by 0232: three shards, with the same rules.
 - **Context:** PR CI wall time is how long the merge lock (decision 0075) is held. Over the 48 h
   before 2026-10-25 PR runs took p50 6.7 / p90 7.4 min, bounded by the rust job (p50 5.6, p90 6.5
   min). Its `make test` step took 4.8-6.0 min in six PR runs that day; in run 40242056004 the
