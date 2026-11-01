@@ -3,7 +3,7 @@ id: T-3589
 title: "IMSINH, IMCOSH, IMSIN and IMCOS: the 5 t3525 fresh-sweep texts one 15-digit tie off (|x| < 0.01 in the hyperbolic pair, |y| > 20 in the trig pair)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
