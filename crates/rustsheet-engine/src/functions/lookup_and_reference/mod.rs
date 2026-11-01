@@ -934,7 +934,7 @@ impl Model {
     /// defined names").
     fn indirect_defined_name(&self, text: &str, cell: CellReferenceIndex) -> Option<CalcResult> {
         let sheet = cell.sheet;
-        let text = text.trim_end_matches(' ');
+        let text = text.trim_end_matches([' ', '\n']);
         if is_out_of_range_r1c1_name(text) {
             return None;
         }
