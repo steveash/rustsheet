@@ -3,7 +3,7 @@ id: T-3651
 title: "Base conversions: probe and match digit-count, two's-complement range, places and coerced-argument validation across all 12"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
