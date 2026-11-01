@@ -4092,6 +4092,40 @@ Tasks: T-1543, T-1634, T-2561, T-3336, T-3337
   3.5E-14 of x, on the leading-factor series form. Neither matches. A169 is 71 ulp off with a step; A355 is 6 ulp
   off with the loop against 5 for the search.
 
+  T-3311 (probes-numeric/t3311-gamma-inv-lower-tail-cdf and t3311-fresh-sweep, excel-graph) found how Excel lands
+  there:
+  - **Excel's GAMMA.DIST and CHISQ.DIST in the lower tail at a shape above 1 are a staircase.** They are the
+    leading-factor series form of T-3060 (`EXP(a*LN(x))/EXP(GAMMALN(a+1))` times e^-x and the series), within an
+    ulp at 304 of 330 probed cells (the engine's accurate pair: 46). LN(x) moves by an ulp only every few ulps of x
+    (every 128 at x = 1.6E-80), so Excel's cdf is flat across ±4 ulp of x around every quantile of sheet S (9 equal
+    values per row) and around most of sheet W, and its levels are up to 3E-14 of p apart.
+  - **The quantile is Newton steps from the leading-factor root on that form.** Excel's value is exactly one of the
+    iterates x(k+1) = x(k) - (F(x(k)) - p) / f(x(k)), from x(0) = `EXP((LN(p)+GAMMALN(a)+LN(a))/a)`, F the
+    form and f the density, at most points: `CHISQ.INV(1E-200,10)` and `CHISQ.INV.RT(1-1E-16,3)` are the first
+    iterate, `GAMMAINV(1E-16,2.5,1)` the second, and T-2561's root cells are iterate 0. The steps soon cycle between
+    two or three levels of the staircase, so the iterate Excel returns is not pinned: of the rules tried (stop on
+    |F - p| under 1E-15 to 1E-13, stop on a step under 1E-15 to 3.5E-14 of x with or without taking it, the iterate
+    with F nearest p over 2 to 50 steps), the nearest-F rule fits best (37 of 97 probe points bit-exact against
+    the engine's 34, 94 against 93 within 15 digits). At gen-m9/c18dbf21f11093f3 A107
+    `CHISQ.INV(POISSON.DIST(9,100,FALSE),8)` (p = 1.03E-31) no iterate is Excel's (the nearest is 1 ulp above).
+  - Excel's `CHISQ.INV(p,2a)` and `GAMMA.INV(p,a,2)` are exactly twice `GAMMA.INV(p,a,1)` at all 88 points of
+    sheet W (shapes 1.5 to 15, p 1E-3 to 1E-50).
+  - Out of sample (t3311-fresh-sweep, 240 cells drawn after the model froze): of the 64 cells still visibly off at
+    shapes 1 to 20, 58 are an exact iterate and the nearest-F rule, unrestricted, is bit-exact at 50 and within 15
+    digits at 62. 61 of them are at p below 1E-20, where Excel is up to 350 ulp from the true quantile; the root
+    (iterate 0) is Excel's at 8 of them, at shapes 2.2 to 18. That is the deep-tail root test T-3294 looks for.
+
+  Ours (T-3311, `incomplete_gamma::closed_form::excel_newton_quantile`): after T-2561's root, the nearest-F rule over
+  50 steps where the form at the root is within 1E-6 of p, at shapes 1.5 to 7.5 and p 1E-200 to 1.0000000827E-10
+  (the measured range of that cut; the search elsewhere), times the scale. The cut is a fit. On a 30% hold-out
+  (docs/research/t3311) the train part is best at 3E-7 and 1E-6, and 1E-6 leads on test and on the second fresh sweep
+  (filled after it was frozen: 23 of its 30 in-region cells bit-exact, against 1 for the search). It moves
+  gen-m9/c18dbf21f11093f3 A107 `CHISQ.INV(POISSON.DIST(9,100,FALSE),8)` from bit-exact to 1 ulp off (Excel
+  7.92099982566666E-8, ours 7.920999825666661E-8), taken by owner ruling under decision 0083's allowance (decision
+  0210; T-3403). Bit-exact now: A212, A301, A338, gen-m9 4e55500bb8ad3cd8 A111, 58e3253bbd3a7a82 A287,
+  a7bf0d8d81d33ba6 A216; within 15 digits: A128 and A98 (2 ulp), A169 (4 ulp). Still visibly off: A355
+  (`CHISQ.INV(1E-20,10)`, 2.2E-4 off at the root, where the steps are no better than the search).
+
 - `1-1E-16` is a different double from 1 (`NORM.INV(1-1E-16,0,1)` = 8.209536151601386), but `1-1E-17` is 1 and gives `#NUM!`.
 - Excel's CHISQ.INV and GAMMA.INV are exact in the lower tail (`CHISQ.INV(1E-100,1)` = 1.5707963267948966E-200, `GAMMA.INV(1E-300,1,1)` = 1E-300, `CHISQ.INV(1E-300,1)` = 0) and CHISQ.INV.RT is `#NUM!` for p below about 1E-15 with df = 1 but finite for df = 50 (`CHISQ.INV.RT(1E-300,50)` = 1592.68...). Before T-1634 ours gave `#NUM!` for CHISQ.INV(p<=1E-200,1), GAMMA.INV(p<=1E-20,1,1) and CHISQ.INV.RT(p<=1E-20,df) (Excel: values), and wrong digits elsewhere in the tails (`CHISQ.INV(1E-300,50)` 0.0033 vs 2.04E-11; `CHISQ.INV(1-1E-16,50)` 179.80 vs 180.68; `GAMMA.INV(1E-300,100,1)` 1.0165 vs 0.0380) (fixed by T-1634, below).
   The lower tail is not always correctly rounded at a shape below 1 (T-3012). `GAMMA.INV(1E-16,0.25,1E+15)`
