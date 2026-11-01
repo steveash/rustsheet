@@ -3,7 +3,7 @@ id: T-3251
 title: "Typed minus-dollar mixed fraction with percent must stay text, not #ERROR!"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
