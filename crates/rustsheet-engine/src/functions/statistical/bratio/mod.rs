@@ -20,7 +20,7 @@ use basym::basym;
 use bfrac::bfrac;
 use bgrat::bgrat_half;
 use bpser::bpser;
-use bup::{bup, l140_bup_bpser};
+use bup::{bup, l140_bup_bgrat, l140_bup_bpser};
 
 /// TOMS 708's `eps` in `bratio`: max(2^-52, 1e-15).
 pub(super) const EPS: f64 = 1e-15;
@@ -256,7 +256,8 @@ pub(super) fn t_kernel_tails(a: f64, y: f64, z: f64) -> Option<(f64, f64)> {
     ported_tails_with(a, 0.5, y, z, true)
 }
 
-/// [`ported_tails`], with bratio's bgrat branches at a0 = 1/2 when `half_bgrat`.
+/// [`ported_tails`], with bratio's bgrat branches at a0 = 1/2 and L140 bup+bgrat with one bup
+/// term (BETA.DIST's and the Student t's callers) when `half_bgrat`.
 // TODO(T-3580): drop `half_bgrat` once F takes its own arguments and bgrat at b = 1/2 (T-3567).
 fn ported_tails_with(a: f64, b: f64, x: f64, y: f64, half_bgrat: bool) -> Option<(f64, f64)> {
     if a == 1.0 || b == 1.0 {
@@ -282,6 +283,11 @@ fn ported_tails_with(a: f64, b: f64, x: f64, y: f64, half_bgrat: bool) -> Option
             let up = bup(d.b0, d.a0, d.y0, d.x0, BUP_BGRAT_TERMS)?;
             let w1 = bgrat_half(d.b0 + BUP_BGRAT_TERMS, d.y0, d.x0, up)?;
             (other(w1), w1)
+        }
+        // One bup term, 1 < b0 < 2 (T-3382); BETA.DIST's callers only, as at b = 1/2.
+        Branch::L140BupBgrat if half_bgrat => {
+            let w = l140_bup_bgrat(d.a0, d.b0, d.x0, d.y0)?;
+            (w, other(w))
         }
         Branch::L140BupBpser => {
             let w = l140_bup_bpser(d.a0, d.b0, d.x0, d.y0)?;

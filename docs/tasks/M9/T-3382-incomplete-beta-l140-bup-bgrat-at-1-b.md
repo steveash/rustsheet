@@ -3,7 +3,7 @@ id: T-3382
 title: "Incomplete beta L140 bup+bgrat at 1 < b < 2: Excel's density in bup's orientation times x y over b0, plus an accurate bgrat increment (T-2512)"
 milestone: M9
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -34,14 +34,26 @@ today's kernel is visibly off on almost all of them.
   `bratio/bgrat.rs`, `beta_density.rs`.
 
 ## Acceptance criteria
-- [ ] L140 bup+bgrat with one bup term, b0 != 1/2, takes the composition above in `bratio::beta_dist_lower_tail`.
+- [x] L140 bup+bgrat with one bup term, b0 != 1/2, takes the composition above in `bratio::beta_dist_lower_tail`.
       On the 3,072 cells of the three w2f cases at least 3,000 are within 15 digits (`make eval` per-case deltas in
       the Outcome).
-- [ ] No probes-numeric or gated cell goes from within 15 digits to visibly off. Any that does is listed with
+- [x] No probes-numeric or gated cell goes from within 15 digits to visibly off. Any that does is listed with
       Excel / new / exact values, or the branch is narrowed.
-- [ ] Unit tests pin a few Excel cells from the cases above, with the case and cell named.
-- [ ] `make check` green; reviewers approve.
+- [x] Unit tests pin a few Excel cells from the cases above, with the case and cell named.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - n > 1 bup terms (2 <= b < 40) and F, BINOM, NEGBINOM callers: no probe covers them yet (T-3383).
 - Excel's D or density to the bit (T-3383, the density's algdiv lnB).
+
+## Outcome
+`bratio::beta_dist_lower_tail` (BETA.DIST's cdf; BETA.INV's search crosses it too) takes L140 bup+bgrat with one bup
+term as RN(W + D): `bup.rs` `l140_bup_bgrat`, W = fl(x87(P·fl(x0·y0)/b0')) from the engine's density in bup's
+orientation, D from `bgrat.rs` `bgrat_increment`, TOMS bgrat at 0 < b < 1 in double-double with J_0 = Q(b, z)/r by
+Legendre's continued fraction (no grat1) and ln Gamma(b) from `ln_gamma_1p_small`. `bgrat_half` now shares that core
+(`bgrat_dd`, `algdiv_small`, `asymptotic_sum` take b; at b = 1/2 the arithmetic is unchanged and its tests pass bit for bit).
+Eval, the 3,070 L140 cdf cells of t2464-w2f-absweep, -xruns-1 and -xruns-2 that change: bit-exact 26 -> 278, within
+15 digits 342 -> 3,037 (absweep 38 -> 1,008 of 1,023, xruns-1 63 -> 1,006 of 1,024, xruns-2 241 -> 1,023 of 1,023).
+Two cells leave 15 digits by under 2 ulp, ours nearer the exact value than Excel's (listed in statistics.md
+"L140 bup+bgrat at 1 < b < 2"). No other probes-numeric or gated cell moved (`make eval-check`). Not a fit: a fixed
+composition from T-2512's research, no constants chosen by score. Follow-up: n > 1 terms stay T-3383's.

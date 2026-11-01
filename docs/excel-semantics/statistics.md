@@ -3175,6 +3175,12 @@ Rule: the entries above assembled in one TOMS 708 port (Excel's EXP, LN, GAMMALN
   LN or log1p by its own x, so the two orientations take different paths). With the exact increment in place of D it is still 1,726/3,072/3,072. With r2-bratio's density
   and D it falls to 89/2,154/2,356, so the visible gap there is the density's algdiv lnB, not bgrat. The engine's
   density with an accurate increment scores 282/2,824/3,042, against today's kernel at 26/113/344 (T-3382).
+  Ours since T-3382 (BETA.DIST's cdf and BETA.INV's search): `bup.rs` `l140_bup_bgrat`, W from the engine's density
+  and D from `bgrat.rs` `bgrat_increment` (bgrat in double-double, J_0 by Legendre's fraction); on the three w2f cases
+  the 3,070 cells it moves are 278 bit-exact and 3,037 within 15 digits (before: 26 and 342). Two cells
+  leave 15 digits by under 2 ulp, each nearer the true value than Excel's (xruns-1 Calc!A9161: Excel
+  0.00691741571126998, ours 0.006917415711269989, exact 0.0069174157112699826; A8909: 0.006917415711266625,
+  0.00691741571126663, exact 0.0069174157112666308). n > 1 bup terms stay on today's kernel (T-3383).
 - **Why TOMS bgrat lost at b ≠ 1/2 (T-2512).** TOMS passes bgrat's 15·eps = 15e-15 to grat1, whose continued fraction
   (z >= 1.1 on every such cell) stops tens of ulps short. On 2,908 direct bgrat cells (t2512-r3-bgrat-split):
   - TOMS in doubles with Excel's pieces scores 13/142/162, and 139/1,263/1,834 at eps 1e-15.
