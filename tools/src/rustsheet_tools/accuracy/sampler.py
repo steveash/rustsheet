@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import math
 import random
+from decimal import Decimal
 
 import mpmath
 
@@ -60,6 +61,20 @@ def math_arg(param: Param, a: Arg) -> MathArg:
 def log_uniform(rng: random.Random, lo: float, hi: float) -> float:
     """A draw log-uniform over [lo, hi], 0 < lo ≤ hi."""
     return math.exp(rng.uniform(math.log(lo), math.log(hi)))
+
+
+def decimal_literal(rng: random.Random, digits: int, exponent: int, sign: float) -> float:
+    """A number with `digits` significant digits (the last one nonzero) and decimal exponent
+    `exponent`: a literal whose written decimal a decimal-rounding definition reads."""
+    mantissa = rng.randrange(10 ** (digits - 1), 10**digits)
+    if mantissa % 10 == 0:
+        mantissa += rng.randrange(1, 10)
+    return sign * float(Decimal(mantissa).scaleb(exponent - digits + 1))
+
+
+def random_sign(rng: random.Random) -> float:
+    """+1.0 or -1.0 with equal odds."""
+    return 1.0 if rng.random() < 0.5 else -1.0
 
 
 def _spread(rng: random.Random, lo: float, hi: float) -> float:

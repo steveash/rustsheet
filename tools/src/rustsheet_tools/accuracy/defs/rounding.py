@@ -53,7 +53,7 @@ from rustsheet_tools.accuracy.model import (
     Param,
     register,
 )
-from rustsheet_tools.accuracy.sampler import log_uniform
+from rustsheet_tools.accuracy.sampler import decimal_literal, log_uniform, random_sign
 
 TWO_STAGE_SOURCE = "numbers.md#round-family-rounds-in-two-decimal-stages"
 WRAP_SOURCE = "numbers.md#round-family-huge-num_digits-wrap"
@@ -112,20 +112,8 @@ def _value(function: str) -> Callable[[Sequence[MathArg]], mpmath.mpf]:
     return value
 
 
-def _literal(rng: random.Random, digits: int, exponent: int, sign: float) -> float:
-    """A number with `digits` significant digits (the last one nonzero) and decimal exponent `exponent`."""
-    mantissa = rng.randrange(10 ** (digits - 1), 10**digits)
-    if mantissa % 10 == 0:
-        mantissa += rng.randrange(1, 10)
-    return sign * float(Decimal(mantissa).scaleb(exponent - digits + 1))
-
-
 def _exponent(x: float) -> int:
     return decimal15(x).adjusted()
-
-
-def _sign(rng: random.Random) -> float:
-    return 1.0 if rng.random() < 0.5 else -1.0
 
 
 def _dropping_digits(rng: random.Random, x: float) -> int:
@@ -137,7 +125,7 @@ def _dropping_digits(rng: random.Random, x: float) -> int:
 def _tie(rng: random.Random) -> list[Arg]:
     """A decimal half at the rounding digit (2.675 at 2, -2.5 at 0), or a 15-digit near-half
     just below or above it (…49999… / …50000…1)."""
-    sign, e = _sign(rng), rng.randint(-8, 12)
+    sign, e = random_sign(rng), rng.randint(-8, 12)
     if rng.random() < 0.5:
         kept = rng.randint(1, 14)  # digits kept before the dropped 5
         mantissa = rng.randrange(10 ** (kept - 1), 10**kept) * 10 + 5
@@ -155,7 +143,7 @@ def _edge(rng: random.Random) -> list[Arg]:
     """Zero, the leading digit exactly, nothing dropped, the literal range's ends and the
     `num_digits` bounds."""
     shape = rng.randrange(6)
-    x = _literal(rng, rng.randint(1, 15), rng.randint(-6, 12), _sign(rng))
+    x = decimal_literal(rng, rng.randint(1, 15), rng.randint(-6, 12), random_sign(rng))
     e = _exponent(x)
     if shape == 0:
         return [0.0, rng.randint(-6, 10)]
@@ -166,12 +154,12 @@ def _edge(rng: random.Random) -> list[Arg]:
     if shape == 3:  # everything dropped: 0, or ROUNDUP's unit, which overflows below -308
         return [x, -rng.choice((e + 2, 330, MAX_DIGITS))]
     if shape == 4:  # the largest literals, rounded near the double range's top
-        top = _literal(rng, rng.randint(1, 15), 307, _sign(rng))
+        top = decimal_literal(rng, rng.randint(1, 15), 307, random_sign(rng))
         return [
             min(top, MAX_LITERAL) if top > 0 else max(top, -MAX_LITERAL),
             rng.choice((-306, -307, -308, -309)),
         ]
-    low = _sign(rng) * MIN_LITERAL * rng.choice((1.0, 1.5, 4.0))
+    low = random_sign(rng) * MIN_LITERAL * rng.choice((1.0, 1.5, 4.0))
     return [low, rng.choice((300, 307, 308, 309, 320))]
 
 
@@ -183,12 +171,12 @@ def _draw(stratum: str, rng: random.Random) -> list[Arg]:
         return _tie(rng)
     if stratum == "edge":
         return _edge(rng)
-    sign = _sign(rng)
+    sign = random_sign(rng)
     if stratum == "log-uniform":
         x = sign * log_uniform(rng, MIN_LITERAL, MAX_LITERAL)
-        return [x, int(_sign(rng) * round(log_uniform(rng, 1, MAX_DIGITS)))]
+        return [x, int(random_sign(rng) * round(log_uniform(rng, 1, MAX_DIGITS)))]
     span = (-300, 306) if stratum == "extreme" else (-4, 8)
-    x = _literal(rng, rng.randint(1, 15), rng.randint(*span), sign)
+    x = decimal_literal(rng, rng.randint(1, 15), rng.randint(*span), sign)
     return [x, _dropping_digits(rng, x)]
 
 
