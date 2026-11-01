@@ -112,6 +112,14 @@ def test_drawn_arguments_are_writable_literals_inside_the_domain_except_edges() 
     assert {(1, 1), (1, 2), (1, 0), (1, 10**10), (1, 10**10 - 1), (1, 10**10 + 1)} <= edges
 
 
+def test_draw_hi_caps_whole_domain_draws_without_an_edge() -> None:
+    count = Param("n", "int", Interval(0, float("inf"), lo_open=False), typical=(0, 5), draw_hi=1e6)
+    definition = Definition("X", (count,), value=lambda _args: mp(0), sources=("test",))
+    sampler = Sampler(definition, random.Random(5))
+    assert all(0 <= int(sampler.whole_domain(count)) <= 10**6 for _ in range(200))
+    assert {v for _, v in sampler.edges} == {0, 1, -1}  # the cap is not a bound, so no edge sits at it
+
+
 def test_tail_map_puts_a_distribution_point_in_its_tail() -> None:
     sampler = Sampler(T_DIST, random.Random(3))
     tails = [sampler.draw("tail", i) for i in range(20)]
@@ -293,6 +301,11 @@ def test_fill_writes_excels_values_and_leaves_the_rest_pending(
     accuracy = tmp_path / "eval" / "accuracy"
     accuracy.mkdir()
     (accuracy / "suite.toml").write_text((repo_root() / "eval" / "accuracy" / "suite.toml").read_text())
+    # The check reads the catalog view for its missing-table count (T-3379).
+    (tmp_path / "eval" / "catalog").mkdir()
+    (tmp_path / "eval" / "catalog" / "scope.json").write_text(
+        (repo_root() / "eval" / "catalog" / "scope.json").read_text()
+    )
     write_batch(accuracy / "tables", T_INV, "s1", draw_points(T_INV, "s1", 4, stratum="typical"))
     monkeypatch.setattr(snapshot, "repo_root", lambda: tmp_path)
 
@@ -323,7 +336,21 @@ def test_fill_writes_excels_values_and_leaves_the_rest_pending(
 
 def test_cli_lists_and_generates(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     assert accuracy_cli.main(["list"]) == 0
-    assert capsys.readouterr().out.split() == ["RATE", "T.DIST", "T.INV"]
+    assert capsys.readouterr().out.split() == [
+        "BINOM.DIST",
+        "F.DIST",
+        "F.INV",
+        "IRR",
+        "NEGBINOM.DIST",
+        "NPER",
+        "POISSON.DIST",
+        "RATE",
+        "T.DIST",
+        "T.INV",
+        "T.INV.2T",
+        "TINV",
+        "XIRR",
+    ]
     assert accuracy_cli.main(["--tables", str(tmp_path), "generate", "t.dist", "--count", "5"]) == 0
     assert (tmp_path / "T.DIST" / "s1.case.json").exists()
     assert accuracy_cli.main(["--tables", str(tmp_path), "verify", "T.DIST"]) == 0

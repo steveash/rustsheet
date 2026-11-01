@@ -8,7 +8,12 @@
 
 Exit codes of `acquire` and `wait`: 0 the lock is yours; 1 busy (you are in the queue), or `wait`
 timed out; 2 an error; 3 PR N is already merged or closed; 4 lost, for `acquire --renew` only:
-you held the lock and it was taken over.
+you held the lock and it was taken over; 5 refused, `--pr N` in `train` mode (below).
+
+In `train` mode only merge trains (`--train`) and the emergency-flip PR (labelled
+`merge-train-stop`) take the lock; any other `--pr N` claim exits 5 and names `make mark-ready`
+(decision 0204). A failed read of the mode (it reads as `lock`) or of the PR's labels lets the
+claim through, so a GitHub outage never blocks an emergency flip.
 
 The lock is the branch `merge-lock` on origin: an orphan commit with an empty tree whose message
 (format `version: 2`, SPEC-0027 section 1) names the holder and the PR, or says `state: free`, and
@@ -94,7 +99,7 @@ QUEUE_FULL = f"queue full ({QUEUE_MAX} waiters)"
 # The start of what `busy_message` says to a caller that is in the queue.
 IN_QUEUE = "you are waiter"
 
-HELD, BUSY, ERROR, DONE, LOST = 0, 1, 2, 3, 4
+HELD, BUSY, ERROR, DONE, LOST, REFUSED = 0, 1, 2, 3, 4, 5
 
 
 class GitError(Exception):
@@ -153,6 +158,19 @@ def git(*args: str, root: Path = ROOT, check: bool = True) -> subprocess.Complet
     if check and result.returncode != 0:
         raise GitError(f"git {' '.join(args)}: {result.stderr.strip()}")
     return result
+
+
+def merge_tree(root: Path, a: str, b: str) -> tuple[str, list[str]] | None:
+    """(tree, conflicted paths) of the merge of commits `a` and `b` (`git merge-tree
+    --write-tree`, conflicts written with markers); None when it cannot be computed. The carry
+    rule, `make catch-up`, `make renumber` and the janitor share it."""
+    merged = git("merge-tree", "--write-tree", "--name-only", a, b, root=root, check=False)
+    if merged.returncode not in (0, 1):
+        return None
+    lines = merged.stdout.split("\n")
+    # After the tree: the conflicted paths, a blank line, then informational messages.
+    rest = lines[1:]
+    return lines[0].strip(), rest[: rest.index("")] if "" in rest else rest
 
 
 def parse_lock(sha: str, committed: int, message: str) -> Lock:
@@ -265,11 +283,11 @@ def lock_commit(lock: Lock, root: Path = ROOT) -> str:
     return git(*IDENTITY, "commit-tree", tree, "-m", message, root=root).stdout.strip()
 
 
-def push_lease(expected: str, new: str, root: Path = ROOT) -> bool:
-    """Sets the lock to the commit `new` only if origin still has `expected` there ("" for absent).
-    False when another agent moved it first."""
-    lease = f"--force-with-lease={LOCK_REF}:{expected}"
-    result = git("push", "-q", lease, REMOTE, f"{new}:{LOCK_REF}", root=root, check=False)
+def push_lease(expected: str, new: str, root: Path = ROOT, ref: str = LOCK_REF) -> bool:
+    """Sets `ref` (the lock) to the commit `new` only if origin still has `expected` there ("" for
+    absent). False when another agent moved it first. id_registry.py shares this CAS."""
+    lease = f"--force-with-lease={ref}:{expected}"
+    result = git("push", "-q", lease, REMOTE, f"{new}:{ref}", root=root, check=False)
     return result.returncode == 0
 
 
@@ -286,6 +304,38 @@ def describe(lock: Lock, now: float, ttl_minutes: float) -> str:
         f" ({' '.join(lock.prs) or 'between batches'})" if lock.pr == TRAIN else ""
     )
     return f"held by {lock.holder} for {pr}, {lock.age_minutes(now):.0f} min ago{stale}"
+
+
+def train_mode_refusal(pr: str, root: Path = ROOT) -> str | None:
+    """Why a `--pr` claim is refused in `train` mode, or None when it may proceed (decision 0204).
+
+    Sessions still on the per-PR flow after the switch to `train` queued ahead of the trains and
+    stranded the ready PRs (2026-10-31: 27 per-PR holds against about 12 train holds). Only the
+    emergency-flip PR merges under the lock in `train` mode (`steward` skill, "Emergency flip to
+    `lock`" step 4). The mode is `make merge-mode`'s read; unreadable reads as `lock`, and an
+    unreadable label lets the claim through, so neither failure can block a flip."""
+    # Imported here, not at the top: both modules import merge_lock, so a top-level import would
+    # be circular.
+    import merge_ready
+    import merge_train
+
+    if merge_train.read_mode(root) != merge_train.TRAIN:
+        return None
+    client = gh_client.from_remote(root, REMOTE)
+    if client is None or not valid_pr(pr):
+        return None
+    try:
+        labels = merge_ready.label_names(client.pull(pr))
+    except gh_client.GhError:
+        return None
+    if merge_ready.STOP_LABEL in labels:
+        return None
+    return (
+        f"merge lock refused: the merge train is on (`make merge-mode` says train), so PR {pr} does not "
+        f"take the lock. Mark it ready with `make mark-ready PR={pr}` and move on; the train merges it "
+        f"(work-loop step 3, decision 0204). Only the emergency-flip PR, labelled "
+        f"{merge_ready.STOP_LABEL}, merges under the lock in train mode."
+    )
 
 
 def pr_finished(pr: str, root: Path = ROOT) -> bool | None:
@@ -449,17 +499,24 @@ def wait(
     timeout_minutes: float = WAIT_MINUTES,
     ttl_minutes: float = TTL_MINUTES,
     root: Path = ROOT,
+    refusal: Callable[[], str | None] | None = None,
 ) -> int:
     """`acquire` every POLL seconds until the lock is held (0), the PR is finished (3), or the
     timeout (1). Prints only changed messages. A bad claim, or a queue that is full when the
     waiter first tries to join, exits 2 at once. A git error, a lost race or an unreadable marker
     (a racing write) is printed and retried at the next poll, keeping the queue place; the
-    UNREADABLE_POLLS-th unreadable marker in a row is raised (exit 2)."""
+    UNREADABLE_POLLS-th unreadable marker in a row is raised (exit 2). `refusal` is asked before
+    every poll: a reason ends the wait with exit 5 and takes the waiter out of the queue, so a
+    per-PR wait that began before a switch to `train` stops at the switch (decision 0209)."""
     check_claim(holder, pr, prs or ())
     finished = FinishedReads(root)
     deadline = time.time() + timeout_minutes * 60
     last, unreadable, queued = "", 0, False
     while True:
+        if refusal is not None and (reason := refusal()) is not None:
+            print(reason, file=sys.stderr, flush=True)
+            leave(holder, root)
+            return REFUSED
         try:
             code, message = attempt(
                 holder, pr, prs=prs, ttl_minutes=ttl_minutes, root=root, renew=False, finished=finished
@@ -486,6 +543,27 @@ def wait(
             return BUSY
         time.sleep(POLL)
         finished.next_poll()
+
+
+def leave(holder: str, root: Path = ROOT) -> None:
+    """Takes `holder` out of the queue, if it is there (a refused waiter). Best effort: a lost race
+    or a git error leaves the entry to expire after WAITER_TTL like any silent waiter's."""
+    for _ in range(ATTEMPTS):
+        try:
+            lock = read_lock(root)
+        except (GitError, LockFormatError):
+            return
+        if lock is None or all(w.id != holder for w in lock.waiters):
+            return
+        new = dataclasses.replace(lock, sha="", waiters=tuple(w for w in lock.waiters if w.id != holder))
+        if lock.free and lock.waiters[0].id == holder:
+            # As in drop_head: the next head gets its own HEAD_CLAIM window, not the rest of ours.
+            new = dataclasses.replace(new, freed=int(time.time()))
+        try:
+            if write(lock, new, root):
+                return
+        except GitError:
+            return
 
 
 def release(holder: str, root: Path = ROOT) -> int:
@@ -564,9 +642,16 @@ def main(argv: list[str], root: Path = ROOT) -> int:
         if args.command == "release":
             return release(holder, root)
         pr = TRAIN if args.train else str(args.pr)
+        check_claim(holder, pr)  # a malformed claim is exit 2 before the mode's git fetch
+        if pr != TRAIN and (refusal := train_mode_refusal(pr, root)) is not None:
+            print(refusal, file=sys.stderr)
+            return REFUSED
         prs = None if args.prs is None else [str(p) for p in args.prs]
         if args.command == "wait":
-            return wait(holder, pr, prs=prs, timeout_minutes=args.timeout, ttl_minutes=args.ttl, root=root)
+            refuse = None if pr == TRAIN else (lambda: train_mode_refusal(pr, root))
+            return wait(
+                holder, pr, prs=prs, timeout_minutes=args.timeout, ttl_minutes=args.ttl, root=root, refusal=refuse
+            )
         return acquire(holder, pr, args.ttl, root=root, prs=prs, renew=args.renew)
     except (GitError, LockFormatError) as e:
         print(f"merge lock: {e}", file=sys.stderr)

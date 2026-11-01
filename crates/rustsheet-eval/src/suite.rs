@@ -168,6 +168,10 @@ pub const ACCURACY_SUITE: &str = "accuracy";
 /// eval gate and every report measure never see the tables (SPEC-0029).
 pub const ACCURACY_MANIFEST: &str = "eval/accuracy/suite.toml";
 
+/// The directory of [`ACCURACY_MANIFEST`]: Gate A's committed lists (`known-failures.tsv`,
+/// `math-over-excel.tsv`) live here.
+pub const ACCURACY_DIR: &str = "eval/accuracy";
+
 /// File inside a fetched suite recording the pin it was fetched at.
 pub const FETCH_MARKER: &str = ".rustsheet-fetched";
 
@@ -177,7 +181,7 @@ fn default_root() -> String {
 fn default_include() -> Vec<String> {
     vec!["**/*".into()]
 }
-fn default_true() -> bool {
+pub(crate) fn default_true() -> bool {
     true
 }
 

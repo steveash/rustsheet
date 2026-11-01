@@ -17,15 +17,7 @@ from collections.abc import Sequence
 
 import mpmath
 
-from rustsheet_tools.accuracy.model import (
-    Definition,
-    Interval,
-    MathArg,
-    NoValueError,
-    Param,
-    register,
-    solve_bracket,
-)
+from rustsheet_tools.accuracy.model import Definition, Interval, MathArg, Param, register, solve_log_bracket
 
 DF_SOURCE = "statistics.md#student-t-sweep-df-truncation-df-limits-tinv2t-above-1-t-1043"
 TINY_P_SOURCE = "statistics.md#student-t-quantile-at-a-tiny-probability-t-1531"
@@ -70,12 +62,7 @@ def lower_quantile(p: mpmath.mpf, df: mpmath.mpf) -> mpmath.mpf:
 
     # e^-60 ≈ 9E-27 is closer to 0 than any 15-digit p below 1/2 puts the quantile; e^710 is past
     # the double range, where the quantile would overflow.
-    try:
-        s = solve_bracket(f, mpmath.mpf(-60), mpmath.mpf(710))
-    except NoValueError as err:
-        msg = f"quantile outside the double range ({err})"
-        raise NoValueError(msg) from err
-    return -mpmath.exp(s)
+    return -mpmath.exp(solve_log_bracket(f, -60, 710))
 
 
 def quantile(p: mpmath.mpf, df: mpmath.mpf) -> mpmath.mpf:
@@ -86,7 +73,7 @@ def quantile(p: mpmath.mpf, df: mpmath.mpf) -> mpmath.mpf:
 
 def _tail_x(q: mpmath.mpf, upper: bool, args: Sequence[MathArg]) -> mpmath.mpf:
     df = args[1]
-    if isinstance(df, bool) or df < 1:
+    if isinstance(df, (bool, tuple)) or df < 1:
         msg = "no tail map below df 1"
         raise ValueError(msg)
     x = lower_quantile(q, mpmath.floor(df))
@@ -101,7 +88,7 @@ def _t_dist(args: Sequence[MathArg]) -> mpmath.mpf:
 
 def _t_dist_domain(args: Sequence[MathArg]) -> str | None:
     df, cumulative = args[1], args[2]
-    if cumulative and not isinstance(df, bool) and df > DF_CUT:
+    if cumulative and not isinstance(df, (bool, tuple)) and df > DF_CUT:
         return "cumulative df above 1E+10"
     return None
 
@@ -110,6 +97,21 @@ def _t_inv(args: Sequence[MathArg]) -> mpmath.mpf:
     p, df = args
     assert not isinstance(p, bool) and not isinstance(df, bool)
     return quantile(p, df)
+
+
+def bounded_df(name: str, typical: tuple[float, float], source: str, edges: tuple[float, ...] = ()) -> Param:
+    """A df parameter the function rejects above DF_CUT, so tables stay inside [1, DF_CUT]: the
+    inverses here and every F function (statistics.md, "Student-t sweep" and "F-distribution df
+    limit")."""
+    return Param(
+        name,
+        "int",
+        Interval(1, DF_CUT, lo_open=False, hi_open=False),
+        typical=typical,
+        extreme=(1e3, DF_CUT),
+        edges=edges,
+        source=source,
+    )
 
 
 _DF = Param(
@@ -158,16 +160,49 @@ T_INV = register(
                 extreme=(1e-300, 1e-15),
                 source=TINY_P_SOURCE,
             ),
-            Param(
-                "deg_freedom",
-                "int",
-                Interval(1, DF_CUT, lo_open=False, hi_open=False),
-                typical=(1, 30),
-                extreme=(1e3, DF_CUT),
-                source=DF_SOURCE,
-            ),
+            bounded_df("deg_freedom", (1, 30), DF_SOURCE),
         ),
         value=_t_inv,
         sources=(DF_SOURCE, TINY_P_SOURCE, "Abramowitz and Stegun 26.7.1"),
     )
 )
+
+
+def two_tailed_quantile(p: mpmath.mpf, df: mpmath.mpf) -> mpmath.mpf:
+    """T.INV.2T(p, df) = T.INV(1 - p/2, df): the positive x with P(|T| > x) = p for p ≤ 1, and the
+    negative quantile T.INV(1 - p/2) for p in (1, 2) (statistics.md, "T.INV.2T does not reject p in
+    (1,2)"). p/2 and 1 - p/2 are exact at the working precision, so no tail is lost."""
+    half = p / 2
+    return -lower_quantile(half, df) if p <= 1 else lower_quantile(1 - half, df)
+
+
+def _t_inv_2t(args: Sequence[MathArg]) -> mpmath.mpf:
+    p, df = args
+    assert not isinstance(p, bool) and not isinstance(df, bool)
+    return two_tailed_quantile(p, df)
+
+
+def _two_tailed(function: str) -> Definition:
+    return Definition(
+        function=function,
+        params=(
+            Param(
+                "probability",
+                "real",
+                Interval(0, 2),
+                typical=(0.001, 1.999),
+                extreme=(1e-300, 1e-15),
+                edges=(1.0,),
+                source=DF_SOURCE,
+            ),
+            bounded_df("deg_freedom", (1, 30), DF_SOURCE),
+        ),
+        value=_t_inv_2t,
+        sources=(DF_SOURCE, TINY_P_SOURCE, "Abramowitz and Stegun 26.7.1"),
+    )
+
+
+T_INV_2T = register(_two_tailed("T.INV.2T"))
+# TINV is T.INV.2T's legacy name with the same rules (statistics.md, "T.INV.2T(p,1) and TINV(p,1)
+# are t2(p) for p up to 1, and -t2(2-p) for p in (1, 2)").
+TINV = register(_two_tailed("TINV"))

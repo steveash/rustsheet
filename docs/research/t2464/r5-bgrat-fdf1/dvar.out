@@ -1,0 +1,38 @@
+| E | Q | half | n | exact/w4/w15 |
+|---|---|---|---|---|
+| E extended (r3) | Q cf | ALL | 2908 | 206/1672/2158 |
+| E extended (r3) | Q cf | hold | 1412 | 109/833/1069 |
+| E extended (r3) | Q cf | tune | 1496 | 97/839/1089 |
+| E extended (r3) | Q exact | ALL | 2908 | 191/1587/2069 |
+| E extended (r3) | Q exact | hold | 1412 | 96/784/1019 |
+| E extended (r3) | Q exact | tune | 1496 | 95/803/1050 |
+| EXP(-fl(algdiv_d + fl(b LN(nu_d)))) | Q cf | ALL | 2908 | 210/1615/2097 |
+| EXP(-fl(algdiv_d + fl(b LN(nu_d)))) | Q cf | hold | 1412 | 93/799/1032 |
+| EXP(-fl(algdiv_d + fl(b LN(nu_d)))) | Q cf | tune | 1496 | 117/816/1065 |
+| EXP(-fl(algdiv_d + fl(b LN(nu_d)))) | Q exact | ALL | 2908 | 177/1533/2019 |
+| EXP(-fl(algdiv_d + fl(b LN(nu_d)))) | Q exact | hold | 1412 | 87/763/999 |
+| EXP(-fl(algdiv_d + fl(b LN(nu_d)))) | Q exact | tune | 1496 | 90/770/1020 |
+| EXP(-fl(algdiv_ld + b LN(nu_d))) | Q cf | ALL | 2908 | 208/1659/2141 |
+| EXP(-fl(algdiv_ld + b LN(nu_d))) | Q cf | hold | 1412 | 97/824/1057 |
+| EXP(-fl(algdiv_ld + b LN(nu_d))) | Q cf | tune | 1496 | 111/835/1084 |
+| EXP(-fl(algdiv_ld + b LN(nu_d))) | Q exact | ALL | 2908 | 199/1592/2078 |
+| EXP(-fl(algdiv_ld + b LN(nu_d))) | Q exact | hold | 1412 | 101/789/1025 |
+| EXP(-fl(algdiv_ld + b LN(nu_d))) | Q exact | tune | 1496 | 98/803/1053 |
+| EXP(fl(-arg_ld)) | Q cf | ALL | 2908 | 206/1688/2170 |
+| EXP(fl(-arg_ld)) | Q cf | hold | 1412 | 99/840/1073 |
+| EXP(fl(-arg_ld)) | Q cf | tune | 1496 | 107/848/1097 |
+| EXP(fl(-arg_ld)) | Q exact | ALL | 2908 | 204/1603/2089 |
+| EXP(fl(-arg_ld)) | Q exact | hold | 1412 | 102/796/1032 |
+| EXP(fl(-arg_ld)) | Q exact | tune | 1496 | 102/807/1057 |
+| EXPX(-arg_ld) | Q cf | ALL | 2908 | 206/1688/2170 |
+| EXPX(-arg_ld) | Q cf | hold | 1412 | 99/840/1073 |
+| EXPX(-arg_ld) | Q cf | tune | 1496 | 107/848/1097 |
+| EXPX(-arg_ld) | Q exact | ALL | 2908 | 204/1603/2089 |
+| EXPX(-arg_ld) | Q exact | hold | 1412 | 102/796/1032 |
+| EXPX(-arg_ld) | Q exact | tune | 1496 | 102/807/1057 |
+| fl(E) | Q cf | ALL | 2908 | 206/1688/2170 |
+| fl(E) | Q cf | hold | 1412 | 99/840/1073 |
+| fl(E) | Q cf | tune | 1496 | 107/848/1097 |
+| fl(E) | Q exact | ALL | 2908 | 204/1603/2089 |
+| fl(E) | Q exact | hold | 1412 | 102/796/1032 |
+| fl(E) | Q exact | tune | 1496 | 102/807/1057 |

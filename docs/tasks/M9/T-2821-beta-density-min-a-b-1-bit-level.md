@@ -43,3 +43,11 @@ explained.
 
 ## Phase 1 triage (T-0090, 2026-10-27)
 This task depends on T-2122 and T-2512, both `defer: phase-1b`, so it could never be picked before Phase 1 exits; its goal is bit-level, so it now carries `defer: phase-1b` too (decision 0114). Its Context names whole probes-numeric cases, which made it the nominal owner of about 6,800 BETA.DIST, 1,400 F.DIST and 2,100 T.DIST.RT visibly-off cells it does not set out to fix. T-2981 owns and routes those cells; the visibly-off cells listed above (m9-beta-dist-a0p0001, m9-beta-dist-a50, t2464-w2f-absweep, t2513-r3-m1-residual-a) are among them.
+
+## Cells added by gap triage (2026-10-31m)
+`make eval` on origin/main 900fbc1bf (excel-graph). An ownership check over every failing Excel cell
+(`scripts/exit_owners.py`'s `owned` rule over the open task files of origin/main and of every `origin/agent/*` branch
+pushed since 2026-10-29) found these cells named by no open task. All are within 15 significant digits of Excel (Phase
+1b), so they join this deferred owner of their kernel. BETA.DIST densities at a = 0.5 against b 50 and 100, 1 to 4 ulp
+(min(a,b) <= 1, this task's algdiv branch).
+- probes-numeric/m9-beta-dist-a0p5.case.json (6): Calc!A44, A46, A48, A50, A52, A54

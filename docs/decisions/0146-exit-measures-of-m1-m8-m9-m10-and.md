@@ -4,6 +4,7 @@
   ratchet or CI check changes. T-0089 implements the rows. It answers the questions of T-2889 (M8),
   T-2890 (M9), T-2891 (M10) and T-0487 (M11), which are dropped as superseded.
   Amended by decision 0188 R1(c) (2026-10-31): the probe and ironcalc-calc rows count only semantic and Gate-A-failing cells.
+- **Amended by:** decision 0227 (item 3): the every-suite rate also leaves out decision 0188 R1(c)'s Phase 1b cells.
 - **Context:**
   - docs/milestones.md's Phase 1 exit needs "the exit criteria of M1, M2, M5–M10 and M11" met.
     `milestone_exit.rs` has rows for M2 (decision 0135), M5 and M6 (decision 0085) and M7 (decision

@@ -45,20 +45,28 @@ from pathlib import Path
 
 import ci_changes
 import gh_client
+import id_renumber
 import merge_lock
 import tasks
-from gh_client import Client, GhError
+from gh_client import Client, GhError, field_of, int_of, label_names, text_of  # noqa: F401 (re-exported)
 from merge_lock import GitError, git
+from suite_meta import suites_on
+from visible_lock import RETIRED_LOCK, VISIBLE_PARITY, case_on, in_commit, visible_rises
 
 ROOT = Path(__file__).resolve().parent.parent
 REMOTE = "origin"
 BASE_BRANCH = "main"
+# The known-failure lists; a carry-over merge may re-record the eval-gated ones (decision 0207).
+BASELINE_DIR = "eval/baseline/"
 
 # Labels of the merge train (SPEC-0027 sections 2, 4 and "The switch").
 READY_LABEL = "ready-to-merge"
 EJECTED_LABEL = "merge-train-ejected"
 STOP_LABEL = "merge-train-stop"
-LABELS = (READY_LABEL, EJECTED_LABEL, STOP_LABEL)
+TRAIN_LABELS = (READY_LABEL, EJECTED_LABEL, STOP_LABEL)
+# An owner's hold against the merge janitor (decision 0224); `make merge-labels` creates it.
+HOLD_LABEL = "merge-hold"
+LABELS = (*TRAIN_LABELS, HOLD_LABEL)
 
 # Reviewer applicability. The one definition is the `review` skill (.claude/skills/review/SKILL.md,
 # step 3); scripts/test_merge_ready.py fails when this copy differs from it.
@@ -93,10 +101,12 @@ PERMISSION_REFUSED = "HTTP 403"
 ACTIONS_APP_ID = 15368
 CI_WORKFLOW = ".github/workflows/ci.yml"
 CHANGES_JOB = "changes (docs-only?)"
+# The rust shards' summary job: `failure` unless every shard succeeded, cancelled ones included.
+RUST_SUMMARY_JOB = "rust (fmt, clippy, test)"
 REQUIRED_JOBS = (
     CHANGES_JOB,
     "hygiene (ratchets, deny, machete, typos, governance)",
-    "rust (fmt, clippy, test)",
+    RUST_SUMMARY_JOB,
 )
 # Skipped counts as green for these only when the PR's diff is docs-only (`run_heavy=false`).
 HEAVY_JOBS = ("eval (Excel-compatibility gate)", "python (tools + bindings)")
@@ -315,29 +325,6 @@ def task_of_branch(branch: str) -> str | None:
     return match[1] if match else None
 
 
-# GitHub objects are JSON; these read one field of one without trusting its shape.
-def field_of(value: object, *keys: str) -> object:
-    for key in keys:
-        value = value.get(key) if isinstance(value, dict) else None
-    return value
-
-
-def text_of(value: object, *keys: str) -> str:
-    found = field_of(value, *keys)
-    return found if isinstance(found, str) else ""
-
-
-def label_names(pull: object) -> list[str]:
-    """The names of a PR's (or issue's) labels."""
-    labels = field_of(pull, "labels")
-    return [text_of(label, "name") for label in labels] if isinstance(labels, list) else []
-
-
-def int_of(value: object, *keys: str) -> int:
-    found = field_of(value, *keys)
-    return found if isinstance(found, int) and not isinstance(found, bool) else 0
-
-
 @dataclass
 class Authors:
     """Who counts as a writer of the repository (module docstring), one lookup per login."""
@@ -366,14 +353,15 @@ def ci_state(
     check_runs: Sequence[object],
     docs_only: bool | None,
     events: Sequence[str] = ("pull_request",),
+    early: bool = False,
 ) -> tuple[str, list[str]]:
     """GREEN, PENDING or RED for a PR head, with the jobs that are not green.
 
     `runs` are the head's workflow runs, `check_runs` its check runs, and `docs_only` whether the
     PR's diff is docs-only (`run_heavy=false`; None when it cannot be told, which counts as no).
     `events` are the run events that count: a PR head's `pull_request`, a train's `push` and
-    `workflow_dispatch` (SPEC-0027 section 4, step 6).
-    """
+    `workflow_dispatch` (SPEC-0027 section 4, step 6). With `early` (the train, decision 0212), a
+    running run is RED once a job concluded `failure` (`early_failures`)."""
     ci = [
         r
         for r in runs
@@ -382,18 +370,12 @@ def ci_state(
     if not ci:
         return PENDING, ["no ci.yml run yet"]
     run = max(ci, key=lambda r: int_of(r, "id"))
+    latest = latest_checks(run, check_runs)
     if text_of(run, "status") != "completed":
-        return PENDING, ["the ci.yml run is still running"]
+        failed = early_failures(latest) if early else []
+        return (RED, failed) if failed else (PENDING, ["the ci.yml run is still running"])
     if text_of(run, "conclusion") != "success":
         return RED, [f"the ci.yml run concluded {text_of(run, 'conclusion') or 'nothing'}"]
-    suite = field_of(run, "check_suite_id")
-    latest: dict[str, object] = {}
-    for check in check_runs:
-        if field_of(check, "app", "id") != ACTIONS_APP_ID or field_of(check, "check_suite", "id") != suite:
-            continue
-        name = text_of(check, "name")
-        if int_of(check, "id") > int_of(latest.get(name), "id"):
-            latest[name] = check
     pending, red = [], []
     for name in (*REQUIRED_JOBS, *HEAVY_JOBS):
         check = latest.get(name)
@@ -409,6 +391,27 @@ def ci_state(
     if red:
         return RED, red
     return (PENDING, pending) if pending else (GREEN, [])
+
+
+def latest_checks(run: object, check_runs: Sequence[object]) -> dict[str, object]:
+    """The newest check run per job name in `run`'s check suite (GitHub Actions only)."""
+    suite = field_of(run, "check_suite_id")
+    latest: dict[str, object] = {}
+    for check in check_runs:
+        if field_of(check, "app", "id") != ACTIONS_APP_ID or field_of(check, "check_suite", "id") != suite:
+            continue
+        name = text_of(check, "name")
+        if int_of(check, "id") > int_of(latest.get(name), "id"):
+            latest[name] = check
+    return latest
+
+
+def early_failures(latest: Mapping[str, object]) -> list[str]:
+    """A running suite's jobs that concluded `failure`, as "name: failure" (decision 0212). Not
+    `cancelled` or `timed_out` (infrastructure, read once the run completes), and not
+    RUST_SUMMARY_JOB, which fails for cancelled shards too; a failed shard reports itself."""
+    done = {n: c for n, c in latest.items() if text_of(c, "status") == "completed"}
+    return sorted(f"{n}: failure" for n, c in done.items() if n != RUST_SUMMARY_JOB and text_of(c, "conclusion") == "failure")
 
 
 @dataclass(frozen=True)
@@ -451,8 +454,16 @@ class Repo:
         return self.git("rev-parse", "--verify", f"{ref}^{{commit}}").strip()
 
     def fetch_base(self) -> None:
+        """Fetches `main`, first turning a shallow clone into a full one (T-3499, decision 0201).
+
+        `ci_changes.classify_range` counts every diff in a shallow clone as code, because the
+        merge base cannot be trusted there. Cloud sessions clone shallow, so without this step
+        every docs-only PR with skipped heavy jobs read as CI red and was ejected (#2574,
+        #2577). Every docs-only check in the merge tooling runs after this fetch."""
+        shallow = self.git("rev-parse", "--is-shallow-repository").strip() == "true"
+        deepen = ("--unshallow",) if shallow else ()
         self.git(
-            "fetch", "-q", "--no-tags", REMOTE, f"+refs/heads/{BASE_BRANCH}:refs/merge-ready/{BASE_BRANCH}"
+            "fetch", "-q", "--no-tags", *deepen, REMOTE, f"+refs/heads/{BASE_BRANCH}:refs/merge-ready/{BASE_BRANCH}"
         )
 
     def changed_paths(self, base: str, head: str) -> list[str] | None:
@@ -464,21 +475,85 @@ class Repo:
         out = self.git("diff", "-z", "--no-renames", "--name-only", bases[0], head, "--")
         return [p for p in out.split("\0") if p]
 
+    def checked_baselines(self) -> set[str]:
+        """The lists CI's eval gate checks against the engine: `eval/baseline/<suite>.txt` of every
+        suite on the fetched `main` with `gate = true` and no `[fetch]` (the eval job fetches
+        nothing), and the visible-parity lock (decision 0219). Fetched suites (poi, corpus-bench)
+        and ungated ones are out."""
+        suites = suites_on(self.root, f"refs/merge-ready/{BASE_BRANCH}")
+        # CI names each list after the suite's `name`.
+        return {VISIBLE_PARITY} | {f"{BASELINE_DIR}{s.name}.txt" for s in suites if s.gated and not s.fetched}
+
     def carry_problem(self, prev: str, head: str) -> str | None:
-        """Why `head` is not a clean merge of `main` into `prev` (SPEC-0027 section 2,
+        """Why `head` is not a carry-over merge of `main` into `prev` (SPEC-0027 section 2,
         "Carry-over"), or None when it is: a merge commit whose first parent is `prev`, whose
-        second parent is on `main`, and whose tree `git merge-tree --write-tree` reproduces."""
+        second parent is on `main`, and whose tree is the plain merge of its parents
+        (`git merge-tree --write-tree`), except that the content of a list in `checked_baselines`
+        may differ, without a failure line neither parent had or a visible-parity line that
+        `visible_rises` refuses (decision 0219): a conflict there resolved and the
+        lists re-recorded (decision 0093). The retired `RETIRED_LOCK` may be deleted when `main`
+        has none (a PR from before decision 0219 modified it). The eval
+        gate on the head, which marking requires green, checks exactly those lists (decision 0207).
+        Or, with the same exceptions, the tree is that of `prev` renumbered as `make renumber` does,
+        merged with `main` (`id_renumber.renumbered_merge`, decision 0224).
+        Anything else (another file, an addition, deletion, rename or mode change) breaks the carry."""
         parents = self.git("rev-list", "--parents", "-n", "1", head).split()[1:]
         if len(parents) != 2 or parents[0] != prev:
             return "the head is not a merge commit whose first parent is the marked head"
         main = f"refs/merge-ready/{BASE_BRANCH}"
         if git("merge-base", "--is-ancestor", parents[1], main, root=self.root, check=False).returncode:
             return f"the merged commit is not on {BASE_BRANCH}"
-        merged = git("merge-tree", "--write-tree", *parents, root=self.root, check=False)
-        tree = merged.stdout.split("\n", 1)[0].strip()
-        if merged.returncode != 0 or tree != self.git("rev-parse", f"{head}^{{tree}}").strip():
-            return "the merge is not clean: its tree differs from a plain merge of its parents"
+        plain = merge_lock.merge_tree(self.root, *parents)
+        if plain is None:
+            return "the merge could not be computed"
+        problem = self.tree_problem(*plain, parents, head)
+        try:
+            renumbered = id_renumber.renumbered_merge(self.root, parents, plain[0], head) if problem else None
+        except id_renumber.RenumberError as error:
+            return f"{problem} (as a renumber: {error})"
+        return problem if renumbered is None else self.tree_problem(*renumbered, parents, head)
+
+    def tree_problem(self, tree: str, conflicted: Sequence[str], parents: Sequence[str], head: str) -> str | None:
+        """`carry_problem`'s comparison of `head` with an expected merge `tree` and its conflicts."""
+        retired = not in_commit(self.root, parents[1], RETIRED_LOCK)
+        lists = self.checked_baselines() | ({RETIRED_LOCK} if retired else set())
+        if any(p not in lists for p in conflicted):
+            return "the merge is not clean: it conflicts outside the eval-gated baseline lists"
+        raw = self.git("diff-tree", "-r", "-z", "--no-renames", tree, head).split("\0")
+        # `-z --raw`: ":<old mode> <new mode> <old sha> <new sha> <status>" then the path, per entry.
+        for meta, path in zip(raw[0::2], raw[1::2], strict=False):
+            if not meta:
+                continue
+            old_mode, new_mode, *_, status = meta.lstrip(":").split()
+            if path == RETIRED_LOCK and retired and status == "D":
+                continue
+            if path == RETIRED_LOCK or path not in lists or status != "M" or old_mode != "100644" or new_mode != "100644":
+                return (f"the merge is not clean: {path} differs from a plain merge of its parents, "
+                        "and only the content of an eval-gated baseline list may")
+            added = self.new_failures(path, parents, head)
+            if added:
+                return (f"{path} records failures neither parent had ({added[0]}): a regression "
+                        "needs the reviewers again, not a carry")
         return None
+
+    def new_failures(self, path: str, parents: Sequence[str], head: str) -> list[str]:
+        """The known-failure lines (`F` and `TF`) of list `path` in `head` that no parent's list has;
+        for the visible-parity lock, its `visible_rises` against `main` (the second parent). The eval
+        gate only checks that a list matches the engine (and holds each case to the lock), so a
+        regression recorded in a merge would pass it; the carry refuses one (decisions 0207, 0219)."""
+
+        def text(commit: str) -> str:
+            shown = git("show", f"{commit}:{path}", root=self.root, check=False)
+            return shown.stdout if shown.returncode == 0 else ""
+
+        if path == VISIBLE_PARITY:
+            return visible_rises(text(head), text(parents[1]), case_on(self.root, parents[1]))
+
+        def failures(commit: str) -> set[str]:
+            return {line for line in text(commit).splitlines() if line.startswith(("F\t", "TF\t"))}
+
+        known = set().union(*(failures(c) for c in parents))
+        return sorted(failures(head) - known)
 
     def task_file(self, head: str, task: str) -> str | None:
         """The text of task `task`'s file in `head`'s tree, or None when it has none."""
@@ -628,7 +703,8 @@ def record_check(
 LABEL_STYLES = {
     READY_LABEL: ("0e8a16", "Marked ready for the merge train (make mark-ready, SPEC-0027)"),
     EJECTED_LABEL: ("d93f0b", "Ejected from a merge train; mark again after fixing (SPEC-0027)"),
-    STOP_LABEL: ("b60205", "Stops the merge train while any open PR carries it (SPEC-0027)"),
+    STOP_LABEL: ("b60207", "Stops the merge train while any open PR carries it (SPEC-0027)"),
+    HOLD_LABEL: ("fbca04", "The merge janitor leaves this PR alone: no push, no re-mark (decision 0224)"),
 }
 # The step-mode actions `mark` prints (SPEC-0027 section 4, "GitHub access"); scripts/merge_step.py
 # holds the whole schema, the merger's actions included, and validates these (decision 0169).
@@ -784,9 +860,9 @@ def plan_mark(client: Client, pr: int, repo: Repo, review: str | None, carry: bo
     )
 
 
-def missing_labels(client: Client) -> list[str]:
+def missing_labels(client: Client, names: Sequence[str] = LABELS) -> list[str]:
     """The merge-train labels the repository does not have."""
-    return [name for name in LABELS if client.label(name) is None]
+    return [name for name in names if client.label(name) is None]
 
 
 def create_labels(client: Client, names: Iterable[str]) -> None:
@@ -799,7 +875,7 @@ def create_labels(client: Client, names: Iterable[str]) -> None:
 def apply(client: Client, plan: Plan) -> None:
     """Performs the plan's writes through the client (CI, or a session allowed to write), in
     `Plan.actions`' order. A push in between is caught by the caller's `verify` (V2)."""
-    create_labels(client, missing_labels(client))
+    create_labels(client, missing_labels(client, TRAIN_LABELS))  # the labels marking may write
     if plan.body is not None:
         client.comment(plan.pr, plan.body)
     if plan.label:
@@ -826,7 +902,7 @@ def main(argv: list[str], root: Path = ROOT) -> int:
     mark = sub.add_parser("mark", help="mark a green, approved PR ready (the marker and the label)")
     mark.add_argument("--pr", required=True)
     mark.add_argument("--review", help='"security=APPROVE architecture=APPROVE quality=APPROVE ..."')
-    mark.add_argument("--carry", action="store_true", help="carry the verdicts over a clean merge of main")
+    mark.add_argument("--carry", action="store_true", help="carry the verdicts over a merge of main (clean, re-recording eval-gated baseline lists, or make renumber)")
     mark.add_argument("--by", default=os.environ.get("CLAUDE_CODE_SESSION_ID", ""), help="the marker id")
     mark.add_argument("--step", action="store_true", help="print the writes as step-mode actions")
     record = sub.add_parser("record", help="post a reviewer's verdict record for the local HEAD")

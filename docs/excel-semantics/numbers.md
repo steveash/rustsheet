@@ -65,7 +65,7 @@ Array and range operands (T-3047, probes/t3047-snap-array-operands, excel-graph 
 
 Pickers, LET, LAMBDA and unary signs (T-3049, probes/t3049-snap-under-pickers, excel-graph 2026-10-28): the snap follows the **tree root**, not the last operator Excel executes. A root `+`/`-` that a picker or a unary sign returns is not snapped: `IF(TRUE,..)`, `IF(FALSE,0,..)`, `IFS(TRUE,..)`, `IFERROR(..,0)`, `IFNA(..,0)`, `CHOOSE(1,..)`, `SWITCH(1,1,..)`, `LET(x,..,x)`, `LET(x,0.1,x+0.2-0.3)`, `-(..)`, `+(..)`, `--(..)`, `IF(TRUE,(..))`, `IF(TRUE,IF(TRUE,..))` and `LET(x,..,x)+0` all keep 5.551115123125783e-17 over `0.1+0.2-0.3` and 1.5543122344752192e-15 at k = 7 (`1+7*2^-52-1`, which snaps as a bare root), negated under the minus (rows 3-16 and 19 of B:D). A **LAMBDA body is snapped at its own root**, as a defined-name body is: `=LAMBDA(x,x+0.2-0.3)(0.1)` and `=LAMBDA(x,x+7*2^-52-1)(1)` are 0, and k = 8 keeps 1.7763568394002505e-15 (B17:D17), while the same body under LET (row 16) is not snapped. `=-0.1-0.2+0.3` snaps (its root is the `+`; the minus binds to 0.1 only), and so does its k = 7 form `-1-7*2^-52+1` (B18:D18; k = 8 keeps -1.7763568394002505e-15). A plain reference to a snapped cell under `+0` reads the 0 (row 20). The 8-ULP boundary is unchanged wherever the snap applies (k = 7 snaps, k = 8 keeps). **Every call of a LAMBDA snaps its body's root; the body's own shape decides** (T-3094, probes/t3094-snap-lambda-call-forms, excel-graph 2026-10-29; rows 2-5 are `x+0.2-0.3` at 0.1, k = 7, k = 8 and `-x-0.2+0.3` at 0.1, column B the in-place control): a workbook-scoped name `f` = `=LAMBDA(x,..)` called as `=f(..)`, `=f(..)+0`, `=(f(..))` or `=SUM(f(..))` (C:F), `=LET(g,LAMBDA(x,..),g(..))` (G), a LAMBDA whose body calls another, in place (I) or by name (`h` = `=LAMBDA(y,f(y))`, J), all give 0 in rows 2, 3 and 5, so the call is the root in every position probed (C:G, I, J): `f(..)+0` reads an already snapped 0, unlike `LET(x,..,x)+0`. A body that is not itself the `+`/`-` keeps the residue: a grouped body `LAMBDA(x,(..))` (H, as a grouped name body, T-1164), a picker body `LAMBDA(x,IF(TRUE,..))` (K) and a LET body `LAMBDA(x,LET(z,x,..))` (L) keep 5.551115123125783e-17, 1.5543122344752192e-15 and -5.551115123125783e-17. k = 8 (row 4) keeps 1.7763568394002505e-15 in every form. The engine matches every cell, the calls through a defined name (C2:F2, C3:F3, C5:F5, J2, J3, J5) included: `Model::call_lambda` evaluates every called body, named or not, through `Model::evaluate_formula_root` (T-3105). A sheet-scoped name snaps the same way in the engine; that is unprobed (T-3149).
 
-**The LAMBDA helpers snap every call's root, and REDUCE and SCAN every step** (T-3095, probes/t3095-snap-lambda-helpers, excel-graph 2026-10-29, Calc!B): MAP, MAKEARRAY, BYROW and BYCOL give 0 in every element read through `INDEX(..,n)` and in a `SUM` over the spill, for `x+0.2-0.3` at 0.1, k = 7 and `-x-0.2+0.3` at 0.1 (rows 1-40 and 61-80; a BYROW/BYCOL body `SUM(r)-0.3` or `INDEX(r,1)+INDEX(r,2)-0.3` snaps like the in-place call of the same body, rows 10-20), while k = 8 keeps 1.7763568394002505e-15 per element (rows 41-60). REDUCE and SCAN with `LAMBDA(a,x,a+x)` snap the accumulator at the step that cancels, so later steps start from 0: over 0.1, 0.2, -0.3, 1E-16 SCAN reads 0.1, 0.30000000000000004, 0, 1E-16 and REDUCE is 1E-16, where the plain sum `=A+B+C+D` keeps 1.5551115123125782e-16 (rows 88-95); over 1, 7*2^-52, -1, 1E-15 REDUCE is 1E-15 against the plain 2.5543122344752192e-15 (rows 111-118); the k = 8 accumulator keeps 1.7763568394002505e-15 and adds to it (rows 119-133). Four nested in-place calls `LAMBDA(a,x,a+x)(LAMBDA(a,x,a+x)(..),..)` give the same as REDUCE (rows 94, 117), so an in-place call passed as a LAMBDA argument snaps too. The engine snaps none of the helper calls nor the nested argument calls (65 cells; T-3111). Unprobed: GROUPBY/PIVOTBY aggregation LAMBDAs and eta-reduced helpers (`MAP(r,SUM)`; T-3112). T-3093 owns the engine's other call forms (an in-place LAMBDA as an aggregate argument or under ISREF, not snapped; a parameter-passed or chained LAMBDA or a call under a picker, snapped as a direct call). The engine matches every t3049-snap-under-pickers cell (the LAMBDA cells B17 and C17 since T-3083). Status: VERIFIED.
+**The LAMBDA helpers snap every call's root, and REDUCE and SCAN every step** (T-3095, probes/t3095-snap-lambda-helpers, excel-graph 2026-10-29, Calc!B): MAP, MAKEARRAY, BYROW and BYCOL give 0 in every element read through `INDEX(..,n)` and in a `SUM` over the spill, for `x+0.2-0.3` at 0.1, k = 7 and `-x-0.2+0.3` at 0.1 (rows 1-40 and 61-80; a BYROW/BYCOL body `SUM(r)-0.3` or `INDEX(r,1)+INDEX(r,2)-0.3` snaps like the in-place call of the same body, rows 10-20), while k = 8 keeps 1.7763568394002505e-15 per element (rows 41-60). REDUCE and SCAN with `LAMBDA(a,x,a+x)` snap the accumulator at the step that cancels, so later steps start from 0: over 0.1, 0.2, -0.3, 1E-16 SCAN reads 0.1, 0.30000000000000004, 0, 1E-16 and REDUCE is 1E-16, where the plain sum `=A+B+C+D` keeps 1.5551115123125782e-16 (rows 88-95); over 1, 7*2^-52, -1, 1E-15 REDUCE is 1E-15 against the plain 2.5543122344752192e-15 (rows 111-118); the k = 8 accumulator keeps 1.7763568394002505e-15 and adds to it (rows 119-133). Four nested in-place calls `LAMBDA(a,x,a+x)(LAMBDA(a,x,a+x)(..),..)` give the same as REDUCE (rows 94, 117), so an in-place call passed as a LAMBDA argument snaps too. The engine matches every cell (T-3111): MAP, MAKEARRAY, BYROW, BYCOL, REDUCE and SCAN call their LAMBDA through `LambdaCaller::snapping_root`, and an in-place call read in reference context (a LAMBDA argument, bound by `bind_argument`) snaps a root `+`/`-` body, which can never be a reference. That reference path is also the one an in-place call as an aggregate argument takes (`=SUM(LAMBDA(x,x+0.2-0.3)(0.1))`), so the engine snaps it too, as Excel snaps `=SUM(f(..))` over a defined-name LAMBDA (T-3094, F2:F5); the in-place aggregate form itself is unprobed (T-3093). Unprobed: GROUPBY/PIVOTBY aggregation LAMBDAs, not snapped by the engine, and eta-reduced helpers (`MAP(r,SUM)`; T-3112). T-3093 also owns a parameter-passed or chained LAMBDA and a call under a picker (snapped as a direct call). The engine matches every t3049-snap-under-pickers cell (the LAMBDA cells B17 and C17 since T-3083). Status: VERIFIED.
 
 M2 pickers, wrappers and summing functions in both operand orders (T-3139, gen-m2 `numeric-fp` cases
 fde64eeac1b5122d, 4fcaec656703fa15 and 2f543197a3445de1 from `rustsheet-gen --policy numeric-fp --seed 0`, 5,200 cells,
@@ -1258,6 +1258,15 @@ sweep's 1035 COSH cells).
   The switch is bracketed by the sweep's cells, not derived (T-3385): the exp forms already miss
   `TANH(0.995054655025377)` and `TANH(±0.9950546550253772)`, where the expm1 forms match, and the expm1 forms first miss at
   `SINH(1.0375)` and `TANH(1.0375)` (and at 1.0625 and `TANH(1.4875)`; they match at 1.0125), so Excel's cut lies in 0.99505..1.0375 (`EXPM1_FORM_LIMIT` = 1 is tagged FITTED).
+- The switch lies between 1 - 5 ulp and 1 + 2 ulp (T-3395). probes-numeric `t3395-hyperbolic-form-switch` takes 60 six-decimal
+  points in 0.99505..1.0375 where the engine's expm1 and exp forms give different doubles for both functions: all 60
+  SINH and 60 TANH cells take the expm1 forms through 0.999773 and the exp forms from 1.000377 on. `-2` takes 47 more
+  where either function's forms differ, on (0.99977, 1.00038) and within 12 ulp of 1: every discriminating cell up to
+  0.9999999999999994 (1 - 5 ulp) is the expm1 forms, every one from 1.0000000000000004 (1 + 2 ulp) the exp forms.
+  At the doubles in between, 1 itself included, the two forms give the same double, so no cell can place the cut
+  more finely; `|x| < 1` fits every cell. Both probes are excel-graph (Excel for the web) only, and the cells that
+  discriminate differ by about 1 ulp, inside the 4-ulp web-against-desktop floor (docs/research/oracle-calibration.md):
+  the narrowed bracket is web-only until a desktop fill confirms it. Nothing is fitted to it (the cut stays 1).
 Ours: `functions/math_and_trigonometry/hyperbolic.rs` `sinh`, `tanh` (`expm1_pair`, `excel_expm1`).
 Status: VERIFIED (excel-graph); the expm1 kernel is below.
 
@@ -1812,8 +1821,48 @@ Values are from Excel for the web, which can differ from desktop in the last dig
 Status: VERIFIED (these two values, web).
 
 ## GEOMEAN in-range root
-Rule: when the plain product P of the values is a normal double, GEOMEAN is closest to
-`r = exp(ln(P) / n)` in doubles, with two exceptions: a single value is returned as is, and when
+Rule: when the plain product P of the values is a normal double, GEOMEAN keeps P's power of two out of
+the logarithm. With P = m·2^E (m in [1, 2)) and E = q·n + r, q truncated toward zero, it is closest to
+`exp(ln(m·2^r)/n)·2^q` in doubles, and a single value is returned as is (T-3502). Where |E| < n (most
+probes with values near 1) that is `r = exp(ln(P)/n)`. Past it, r carries ln's rounding error at
+|ln P| up to 700 into the root: on the fresh log-uniform sweep probes-numeric/t3502-geomean-fresh
+(180 sets of 2 to 200 values within spans of up to 1E+100, centres 1E-150 to 1E+150, and 60 sets
+whose product is an exact n-th power; excel-graph, 2026-10-31) r is up to 194 ulps off and visibly
+off on 79 cells, while the split root matches 169 cells bit for bit and is within 1 ulp on all 180.
+`GEOMEAN(1.03908E+87,4.05961E+81,2.31055E+83)` is 9.91477561834331E+83, where r is
+9.914775618343302E+83 (A41). Exact roots mostly come out exact without any special case:
+GEOMEAN(3,3), GEOMEAN(1,9), GEOMEAN(7,7) and n copies of 3, 7 or 0.1 (n = 2 to 200) are 3, 3, 7 and
+3, 7 and 0.1. Scored (T-3502, fit lab `geomean-snap` and `geomean-snap-fresh`, decision 0188 R4
+hold-out split; in-range-many and the Copies sheet by hand, their SEQUENCE arguments are not literals):
+
+| model | literal probes (69) | train / test | in-range-many (72) | Copies (35) | fresh sweep (180) | train / test |
+|---|---|---|---|---|---|---|
+| split root, q toward zero | 62 | 43/49, 19/20 | 71 | 34 | 169 | 110/119, 59/61 |
+| split root, q floored | 62 | 43/49, 19/20 | 53 | 35 | 154 | 104/119, 50/61 |
+| correctly rounded root of P | 52 | 36/49, 16/20 | 70 | 34 | 159 | 105/119, 54/61 |
+| correctly rounded geometric mean | 47 | 31/49, 16/20 | 70 | 34 | 150 | 101/119, 49/61 |
+| r, snapped to the root of P when it multiplies back | 38 | 26/49, 12/20 | 71 | 34 | 83 | 55/119, 28/61 |
+| r, snapped to its 15-digit value (T-1123) | 36 | 25/49, 11/20 | 71 | 34 | 58 | 40/119, 18/61 |
+| r | 25 | 19/49, 6/20 | 67 | 12 | 17 | 11/119, 6/61 |
+
+The T-1123 snap (below, "Before T-3502") was a fit on values near 1, where |E| < n and the split
+root is r: it did not generalize (58 of 180 fresh cells). The correctly rounded root of P breaks
+ironcalc-calc GEOMEAN C23 and G27 and the P = 3 and P = 10.704 sets of geomean-same-product, which
+the split root keeps. Against the T-1123 engine the split root fixes gen-m9 26 and probes 32 known
+failures and moves 4 probes cells one ulp off the bit: geomean-root-refinement A23, A33, A34 and A44,
+sets of 5 to 12 values in [0.3, 9] (|E| >= n there), where Excel gives r. Excel's root is still not
+exactly any model in doubles (see below, a library root of up to about 0.8 ulp); T-3526 owns the
+remaining misses (decision 0218).
+The model was chosen on the T-1123 probes and the fit lab's train side of the fresh sweep (q toward zero against
+q floored: in-range-many 71 against 53, train 110 against 104). After it was frozen, a second sweep with a new seed,
+probes-numeric/t3502-geomean-postfreeze (same strata, seed 35020), gives the split root 172 of 180 (train 118/124,
+test 54/56), the correctly rounded geometric mean 165 (110/124, 55/56), the 15-digit snap 70 and r 25. The
+hold-out that decided is the first sweep's (test 59/61 against 49/61, the model chosen on train only); pooled
+over the T-1123 probes and both sweeps (fit lab `geomean-all`, supplementary since it includes the cells that chose
+the model) the split root is 271/292 on train and 132/137 on test, the correctly rounded mean 242/292 and 120/137. Every split-root miss on both sweeps is within 1.3E-16
+relative of the 50-digit mpmath root, inside Gate A's envelope.
+
+Before T-3502: GEOMEAN was taken as closest to `r = exp(ln(P) / n)` in doubles, with two exceptions: a single value is returned as is, and when
 r's 15-digit value c differs from r and c multiplied by itself n times (left to right, as P is
 formed) gives P back, the result is c. So an exact root is exact: GEOMEAN(3,3), GEOMEAN(1,9),
 GEOMEAN(1,1,27), GEOMEAN(2,4.5), GEOMEAN(3,27) are 3, 3, 3, 3, 9, and n copies of 3, 7 or 0.1
@@ -1889,10 +1938,12 @@ copies of one value, 50-1100; T-1113), probes/geomean-single-and-copies (Single:
 n copies with Excel's PRODUCT, EXP(LN(P)/n), P^(1/n), LN(P); T-1123), probes/geomean-root-refinement
 (T-1123), probes/geomean-same-product (T-0288), ironcalc-calc GEOMEAN C23, B27, G27, probes/geomean-overflow-count H1,
 probes/geomean-overflow-cut-3 C1, C5, C11, E1. Oracle: excel-graph, 2026-10-07 and 2026-10-08.
-Status: VERIFIED for the probed cells; the formulation is a best fit (26 one-ulp misses in the 159 cells
-scored above, plus 8 in geomean-same-product and subtotal-reference-operands-d H28).
-Implemented in: functions/statistical/geomean.rs
-Tasks: T-1113, T-1108, T-1123, T-0288, T-1284, T-2794
+probes-numeric/t3502-geomean-fresh and t3502-geomean-postfreeze (180 cells each, excel-graph, 2026-10-31, T-3502).
+Status: VERIFIED for the probed cells; the split root is a structural model, not exact: one-ulp misses on 11 of
+180 fresh cells, 8 of 180 post-freeze cells, 7 of the 69 literal in-range probe cells (geomean-root-refinement
+A17, A23, A28, A33, A34, A37, A44), geomean-in-range-many A2 and Copies A35 (T-3526).
+Implemented in: functions/statistical/geomean.rs (`split_root`)
+Tasks: T-1113, T-1108, T-1123, T-0288, T-1284, T-2794, T-3502, T-3526
 
 ## GCD / LCM argument bound
 Rule: GCD and LCM accept arguments up to and including 2^53 (as doubles) and `#NUM!` above:

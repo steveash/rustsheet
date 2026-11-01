@@ -10,6 +10,22 @@
 /// A currency symbol and a `%` together are `#VALUE!` (`"$3 1/2%"`, probes/typed-input-sign-space-
 /// mixed-fraction F8); the signed `"-$3 1/2%"` is text too (probes/typed-mixed-fraction-number-format A15).
 pub(crate) fn mixed_fraction(text: &str, currencies: &[&str]) -> Option<f64> {
+    let (value, percent, currency) = read_mixed_fraction(text, currencies)?;
+    (!(percent && currency)).then_some(value)
+}
+
+/// Whether `text` is a minus-signed mixed fraction with both a currency symbol and a `%`
+/// (`-$3 1/2%`): not a number, and typed it stays text with the `0.00%` format (not a formula
+/// despite the leading `-`; probes/typed-mixed-fraction-number-format A15/B15, excel-graph).
+pub(crate) fn is_negative_currency_percent_fraction(text: &str, currencies: &[&str]) -> bool {
+    text.starts_with('-')
+        && read_mixed_fraction(text, currencies)
+            .is_some_and(|(_, percent, currency)| percent && currency)
+}
+
+/// The value, whether a `%` ended it and whether a currency symbol led it, for any well-formed
+/// mixed fraction (the caller rejects the currency + percent pair).
+fn read_mixed_fraction(text: &str, currencies: &[&str]) -> Option<(f64, bool, bool)> {
     let (sign, rest) = match text.as_bytes().first()? {
         b'-' => (-1.0, text[1..].trim_start_matches(' ')),
         b'+' => (1.0, text[1..].trim_start_matches(' ')),
@@ -21,9 +37,6 @@ pub(crate) fn mixed_fraction(text: &str, currencies: &[&str]) -> Option<f64> {
         Some(rest) => (rest, true),
         None => (rest, false),
     };
-    if percent && unprefixed.is_some() {
-        return None;
-    }
     let (whole, fraction) = rest.split_once(' ')?;
     let (numerator, denominator) = fraction.split_once('/')?;
     let digits = |part: &str| -> Option<f64> {
@@ -43,5 +56,7 @@ pub(crate) fn mixed_fraction(text: &str, currencies: &[&str]) -> Option<f64> {
     } else {
         whole + fraction
     };
-    value.is_finite().then_some(sign * value)
+    value
+        .is_finite()
+        .then_some((sign * value, percent, unprefixed.is_some()))
 }

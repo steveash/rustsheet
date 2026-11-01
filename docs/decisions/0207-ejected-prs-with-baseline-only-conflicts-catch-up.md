@@ -1,0 +1,43 @@
+# 0207 — Ejected PRs with baseline-only conflicts catch up without a new review
+
+- **Status:** accepted (2026-10-31, T-3487; the owner asked for the fix). *Amended by decision
+  0219: the visible-parity lock is an eval-gated list too, merged three-way by catch-up. Extended by
+  decision 0224: the carry rule also accepts a `make renumber` merge.*
+- **Context:**
+  - The merge train ejects a PR whose merge with `main` conflicts ("conflict with main"). Only
+    the PR's worker could clear it: merge `main` in, re-mark, and run the reviewers again,
+    because `make mark-ready CARRY=1` carried verdicts only over a clean merge.
+  - Workers' sessions usually end before their PR merges, so ejected PRs stranded. On
+    2026-10-31, seven PRs sat ejected for hours.
+  - Most of these conflicts are only in `eval/baseline/`, the known-failure lists that almost
+    every engine PR edits. The per-PR flow already resolves those mechanically: take `main`'s
+    side, then `make eval-baseline` (decision 0093).
+- **Decision:**
+  - **Carry rule.** The carry check (`merge_ready.Repo.carry_problem`, SPEC-0027 "Carry-over")
+    accepts a merge of `main` into the marked head whose tree is the plain merge of its parents
+    except for the *content* of the lists CI's eval gate checks: `eval/baseline/<suite>.txt`
+    for each suite on `main` with `gate = true` and no `fetch` (`Repo.checked_baselines`). Only
+    those lists may conflict, and only their content may differ (no added, removed or
+    mode-changed file). Fetched suites (poi, corpus-bench), ungated suites and
+    `visible-parity.json` are excluded because CI does not check them against the engine. A
+    conflict or edit anywhere else still breaks the carry. The eval gate, which marking requires
+    green on the head, checks that the accepted lists match the engine. That gate cannot tell a
+    regression recorded in the merge from a correct list, so the carry also refuses any `F` or
+    `TF` line in the head's list that neither parent's list has: a regression needs the
+    reviewers again.
+  - **`make catch-up PR=<n>`** (scripts/merge_catchup.py), in the caller's checkout:
+    - merges `origin/main` into the PR branch;
+    - refuses any conflict outside those checked lists;
+    - takes `main`'s side of the lists and runs `make eval-baseline`, which refuses regressions;
+    - refuses if the re-record changed any file other than those lists;
+    - commits everything as one merge commit and pushes (never forced), then restores the
+      checkout's branch or commit.
+    Once CI is green, `make mark-ready PR=<n> CARRY=1` re-marks with the old verdicts. Any session
+    may do this (steward skill, "Ejections").
+- **Consequences:**
+  - A baseline-only ejection is cleared in one catch-up and one CI run, with no new review and
+    without the PR's original session.
+  - A PR whose own diff touches `eval/` still needs excel-fidelity's verdict, which carries over
+    with the others. A catch-up that re-records lists for a PR that had no eval change makes
+    excel-fidelity required, so the carry is refused and the reviewers run again.
+  - Conflicts in code, docs or task files still go to the PR's worker.

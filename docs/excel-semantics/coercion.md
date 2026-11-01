@@ -215,6 +215,19 @@ Microsoft's Windows sorting weight table (`Windows Server 2022 Sorting Weight Ta
     the pairwise comparison and its output on a cycle depends on its algorithm.
   - `UNIQUE` of two U+0342 and U+0327 (equal sums, nothing shared after the letter) is one row
     (arrays Calc!B2).
+  - **SORT and SORTBY in detail (T-3211).** Evidence: probes/t3211-collation-sort-cycles, excel-graph 2026-10-31,
+    Status: VERIFIED. SORT and SORTBY give the same order in all 88 probed rows (Calc!A = C, B = D). Descending is
+    not the reverse of ascending: `SORT` of U+0342 once, twice, U+0327 is once, twice, U+0327 and with -1 twice,
+    once, U+0327 (row 1). Every order of each three-text cycle (rows 1-12) comes out as a natural merge sort
+    gives it: an ascending input run stays, a strictly descending one is reversed, so a cyclic input order is
+    kept and an anti-cyclic one reversed (`ạ, á, ạạạ` gives `ạạạ, á, ạ`, row 8). On shuffles of eight texts
+    holding both cycles (rows 13-44) Excel's order follows no simple algorithm tried (T-3418 lists them). The
+    probed comparison matrix (Calc!L1:T9) is the engine's on all 81 pairs.
+  - **UNIQUE groups by Excel's `=`** (T-3211, same case, Calc!G1:J15): `"ß"` and `"ss"`, `"á"` and
+    `"a"&UNICHAR(769)` are one row (the first kept), as `=` finds them equal; `"Ａ"` and `"A"`, `"coop"` and
+    `"co-op"` are two, as `=` finds them unequal; exactly_once drops both of an equal pair (`#CALC!` when none is
+    left). On a cycle the grouping follows Excel's sort, not equality with any kept row: U+0327, U+0342, two
+    U+0342 is three rows although U+0327 = two U+0342 (G4), while U+0342, two U+0342, U+0327 is two (G3).
   Ours (T-3181): the operators and the criteria compare texts with `cmp_text_pairwise`, which
   applies the rule (the criteria index still hashes the `CollationKey` of the wrapped sums,
   which every pair the rule finds equal shares, and tests each candidate with the rule); so do
@@ -222,8 +235,13 @@ Microsoft's Windows sorting weight table (`Windows Server 2022 Sorting Weight Ta
   lookups do too: `compare_values_pairwise` orders texts for MATCH/VLOOKUP/HLOOKUP/XMATCH/XLOOKUP
   (approximate, descending and linear searches) and SWITCH, and the hashed exact XMATCH/XLOOKUP
   index keeps the `CollationKey` but tests the first (last) cell with the key and walks when that
-  cell is not equal. Sorts keep the total order of the wrapped sums (`cmp_text`; `slice::sort_by`
-  may panic on a non-total order): the SORT, SORTBY and UNIQUE cells fail (T-3211). Open: T-3211.
+  cell is not equal. Since T-3211 SORT and SORTBY compare texts with `cmp_text_pairwise` too and sort
+  with `sort_indices_pairwise`, a stable natural merge sort that cannot panic on a non-total order (`slice::sort_by`
+  may): every t3181 array cell passes, and every three-text cycle of t3211, but 40 cells of its eight-text rows do not
+  (T-3418). UNIQUE keys a text by its `CollationKey` and keeps a line unless `cmp_text_pairwise` finds it equal to
+  a kept line of its bucket, each comparison charged to the formula's work budget (texts can share a key and be
+  unequal): all t3211 UNIQUE cells but G4:I4 pass (T-3418). GROUPBY and PIVOTBY still sort with
+  the total `cmp_text`. Open: T-3418.
 - **Shared leading units are skipped before the sum (T-3201).** Evidence:
   probes/t3201-collation-long-mark-runs (1,000 cells: a ladder of 246 texts `"a"` plus up to three
   marks, one per weight 2, 5, 8, 11 and 14 to 255, self-ranked in order (Calc!A1:A246); `"a"` with
@@ -386,7 +404,10 @@ letters (it sorts above `"ab"`, below the kana: U8).
 Evidence: probes/t3276-collation-other-scripts (excel-graph, 2026-10-31): 99 strings in Data!A; Calc!A =
 count less, B = count equal, C = exact MATCH position, D = XMATCH position, E = COUNTIF `"="&x`,
 G1:G36 = `(x<y)+2*(x=y)+4*(x>y)` for chosen pairs, H1:H13 single cells. "Rank" cites Calc!A by Data row.
-The engine fails the collation cells (T-3324) and the digit cells (T-3325). VERIFIED (cells cited):
+The engine fails the collation cells (T-3324); the digit cells pass (T-3325): `cast::number_text_in` maps the three digit blocks, so VALUE, arithmetic coercion and criteria read them. UNPROBED (follow-up T-3446): text typed into a cell stays text; other digit blocks are not mapped;
+date text is mapped by inference (`"٢٠٢٠-١-١"+0` reads as a date) while clock text is not (`"١٢:٣٠"+0` is
+`#VALUE!`); percent, currency, parenthesis, group-separator and exponent forms, NUMBERVALUE and TEXT's
+reading of number text follow the mapping through `number_text_in` without evidence. VERIFIED (cells cited):
 - **Block order is not code-point order.** Lowest first: Latin, Greek, Cyrillic, **kana**, Hebrew,
   Arabic, Devanagari, Thai, Lao, the astral `𝐀` (U+1D400) and `😀` (U+1F600), Hangul, CJK ideographs,
   then the astral ideograph `𠀀` (U+20000): `"я" < "ア" < "あ" < "א"` (ranks A18, A20, A19, A21 = 32,
