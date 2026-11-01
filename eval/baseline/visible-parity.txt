@@ -218,6 +218,7 @@ probes/stat-argument-modes.case.json	11
 probes/stat-order-floor-batch.case.json	1
 probes/stat-quantile-lift.case.json	9
 probes/t1924-locale-tag-extended-hex.case.json	17
+probes/t1925-numeral-digits.case.json	109
 probes/t2429-hypgeom-huge-count.case.json	2
 probes/t2429-hypgeom-threshold.case.json	2
 probes/t2435-dist-extremes.case.json	29
