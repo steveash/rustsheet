@@ -319,15 +319,15 @@ def load_gate_a(path: Path) -> GateA | None:
     known failure (SPEC-0029, "Gate A holds")."""
     if not path.exists():
         return None
-    raw = load_object(path)
+    top = load_object(path)
     where = str(path)
+    raw = mapping(top, "check", where)
     points = items(raw, "points", where)
     standing = Counter(str(p.get("standing")) for p in points if isinstance(p, dict))
-    pending = sum(1 for p in points if isinstance(p, dict) and p.get("excel") is None)
     problems = sum(len(items(raw, k, where)) for k in ("stale_known_failures", "bad_marks", "bad_exemptions"))
     missing = len(items(raw, "missing_tables", where))
     bad = len(points) - standing["inside"] - standing["known_failure"]
-    holds = problems == 0 and bad == 0 and missing == 0 and standing["known_failure"] == 0 and pending == 0
+    holds = flag(top, "holds", where)
     return GateA(len(points), standing["inside"], standing["known_failure"], bad + problems, missing, holds)
 
 

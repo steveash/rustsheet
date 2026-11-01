@@ -625,14 +625,18 @@ def test_gate_lines_with_gate_b_gate_a_and_phase1b(tmp_path: Path) -> None:
     acc.write_text(
         json.dumps(
             {
-                "points": [
-                    {"standing": "inside", "excel": 1.0},
-                    {"standing": "known_failure", "excel": 2.0},
-                ],
-                "stale_known_failures": [],
-                "bad_marks": [],
-                "bad_exemptions": [],
-                "missing_tables": ["FOO"],
+                "passes": True,
+                "holds": False,
+                "check": {
+                    "points": [
+                        {"standing": "inside", "excel": {"t": "n", "v": 1.0}},
+                        {"standing": "known_failure", "excel": {"t": "n", "v": 2.0}},
+                    ],
+                    "stale_known_failures": [],
+                    "bad_marks": [],
+                    "bad_exemptions": [],
+                    "missing_tables": ["FOO"],
+                },
             }
         )
     )
