@@ -92,7 +92,8 @@ functions/statistical/bratio/
   mod.rs        K(): the dispatch, the swap, `finish`, the `Branch` enum, delegation to the old kernel
   bpser.rs      bpser, fpser, apser (T-2505)
   bup.rs        bup and L140's combinations (T-2506)
-  bfrac.rs      bfrac and basym (T-2508)
+  bfrac.rs      bfrac (T-2508)
+  basym.rs      basym (T-3352; the binomial family only until T-3443)
   bgrat.rs      bgrat, and bgrat at b = 1/2 in extended precision (T-2509, T-2510)
   ln_beta.rs    GL53 / glalgdiv ln B (T-2505), reusing gammaln.rs and incomplete_beta's algdiv pieces
 ```

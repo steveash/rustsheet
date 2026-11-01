@@ -904,7 +904,7 @@ mod tests {
         use crate::functions::spill_functions::sort_key_cmp;
         let pool = sort_pool();
         for ascending in [true, false] {
-            // SORT, SORTBY and UNIQUE (through `compare_values`), and GROUPBY/PIVOTBY.
+            // SORT and SORTBY (texts aside: `compare_values_pairwise`), and GROUPBY/PIVOTBY.
             assert_total_order(&pool, "sort_key_cmp", |a, b| {
                 sort_key_cmp(a, b, ascending, CELL)
             });

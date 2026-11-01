@@ -293,6 +293,11 @@ def test_fill_writes_excels_values_and_leaves_the_rest_pending(
     accuracy = tmp_path / "eval" / "accuracy"
     accuracy.mkdir()
     (accuracy / "suite.toml").write_text((repo_root() / "eval" / "accuracy" / "suite.toml").read_text())
+    # The check reads the catalog view for its missing-table count (T-3379).
+    (tmp_path / "eval" / "catalog").mkdir()
+    (tmp_path / "eval" / "catalog" / "scope.json").write_text(
+        (repo_root() / "eval" / "catalog" / "scope.json").read_text()
+    )
     write_batch(accuracy / "tables", T_INV, "s1", draw_points(T_INV, "s1", 4, stratum="typical"))
     monkeypatch.setattr(snapshot, "repo_root", lambda: tmp_path)
 
@@ -323,7 +328,15 @@ def test_fill_writes_excels_values_and_leaves_the_rest_pending(
 
 def test_cli_lists_and_generates(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     assert accuracy_cli.main(["list"]) == 0
-    assert capsys.readouterr().out.split() == ["RATE", "T.DIST", "T.INV"]
+    assert capsys.readouterr().out.split() == [
+        "F.DIST",
+        "F.INV",
+        "RATE",
+        "T.DIST",
+        "T.INV",
+        "T.INV.2T",
+        "TINV",
+    ]
     assert accuracy_cli.main(["--tables", str(tmp_path), "generate", "t.dist", "--count", "5"]) == 0
     assert (tmp_path / "T.DIST" / "s1.case.json").exists()
     assert accuracy_cli.main(["--tables", str(tmp_path), "verify", "T.DIST"]) == 0

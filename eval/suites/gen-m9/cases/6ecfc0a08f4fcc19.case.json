@@ -1,0 +1,103 @@
+{
+ "check": [
+  "Calc!A1",
+  "Calc!A4",
+  "Calc!A7",
+  "Calc!A10"
+ ],
+ "description": "generated arg-pairs seed=0 milestone=M9 OCT2HEX part 2/2: 4 calls over 102 unseen pairs; skipped: none",
+ "expected": {},
+ "format": "rustsheet-case/v1",
+ "sheets": [
+  {
+   "cells": {
+    "A1": 1e-15,
+    "A10": 1000000000000000.0,
+    "A11": true,
+    "A12": 2.5,
+    "A2": 42,
+    "A3": 1,
+    "A4": "abc",
+    "A5": 1e-15,
+    "A6": " x ",
+    "A7": "1",
+    "A8": 0.1,
+    "A9": 0,
+    "B1": -2.5,
+    "B10": "x",
+    "B11": 0.2,
+    "B12": false,
+    "B3": -0.5,
+    "B5": false,
+    "B6": "a*",
+    "B7": 2.5,
+    "B8": 100,
+    "B9": 0.2,
+    "C10": "1",
+    "C11": -0.5,
+    "C12": 100,
+    "C2": 0.5,
+    "C4": -0.0001,
+    "C5": 0,
+    "C6": 2,
+    "C8": 42,
+    "C9": 3.14159,
+    "D1": 0,
+    "D10": "ABC",
+    "D11": 0.2,
+    "D12": "1.5",
+    "D3": 2,
+    "D4": "a",
+    "D5": 42,
+    "D6": -0.0001,
+    "D7": 0,
+    "D8": true,
+    "D9": false,
+    "E1": "ABC",
+    "E11": "a",
+    "E2": "a*",
+    "E3": "\u00fc",
+    "E4": 7,
+    "E5": 42,
+    "E6": 1.005,
+    "E7": false,
+    "E8": 0.2,
+    "E9": 3.14159,
+    "G1": 7,
+    "G2": 0,
+    "G3": -2.5,
+    "G4": 1.5,
+    "G5": {
+     "t": "s",
+     "v": "12"
+    },
+    "G6": {
+     "t": "s",
+     "v": "x"
+    },
+    "G7": "",
+    "G8": false,
+    "G9": {
+     "t": "e",
+     "v": "#DIV/0!"
+    }
+   },
+   "name": "Data"
+  },
+  {
+   "cells": {
+    "A1": "=OCT2HEX(Data!A1:B2,Data!H1)",
+    "A10": "=OCT2HEX(Data!C3:D4,Data!C3:D4)",
+    "A4": "=OCT2HEX(Data!C3:D4,Data!H2)",
+    "A7": "=OCT2HEX(Data!A1:B2,Data!A1:B2)"
+   },
+   "name": "Calc"
+  }
+ ],
+ "tags": [
+  "generated",
+  "arg-pairs",
+  "M9",
+  "OCT2HEX"
+ ]
+}
