@@ -753,7 +753,10 @@ struct RunLevel {
 /// Whether `group` is a written group whose content is exactly a group under unary signs and the
 /// whitespace around them (`(-(x))`, `( - (x) )`): the loops that walk signs and groups
 /// (`Model::apply_unary_chain`, the printer's `wrapped_text`) walk it with the group inside in one
-/// frame, so it adds no depth (T-3338). A `%` or any operator after the inner group stops it.
+/// frame, so it adds no depth (T-3338; 256 levels print and evaluate on a 2 MiB unoptimized stack,
+/// `signed_parentheses_at_the_parenthesis_cap_evaluate_on_a_small_stack`). The recursive walks
+/// (analysis, `Clone`, `Drop`) take a frame per node, bounded by [`MAX_PARENTHESES`] and
+/// [`super::MAX_SIGNS`] (T-3691). A `%` or any operator after the inner group stops it.
 fn is_signed_nest(group: &Node) -> bool {
     let Node::Group { child, .. } = group else {
         return false;

@@ -115,6 +115,8 @@ pub const TOO_MANY_NESTED_CALLS_MESSAGE: &str = "Formula nests more than 65 func
 /// Whether a parse error `message` is a resource limit ([`TOO_DEEP_MESSAGE`] or
 /// [`TOO_MANY_OPERATORS_MESSAGE`] or the lexer's string-literal limit, T-2762) rather than a syntax error: no edit of the
 /// formula's ending makes it parse.
+/// [`TOO_MANY_SIGNS_MESSAGE`] is deliberately not one: the sign cap is Excel's syntax, which Excel
+/// refuses typed as a formula that does not parse (T-3338).
 pub(crate) fn is_limit_error(message: &str) -> bool {
     message == TOO_DEEP_MESSAGE
         || message == TOO_MANY_OPERATORS_MESSAGE
@@ -314,7 +316,8 @@ impl Parser {
 
 /// Whether the leftmost operand of `node`, a [`Parser::parse_bare_union`] result, is a function
 /// call, which costs [`SIGNED_GROUP_COST`] after a run of signs as a parenthesis does
-/// (probes/t3266-minus-abs-1022, -1023). Unprobed for a LAMBDA, a name or a group called.
+/// (probes/t3266-minus-abs-1022, -1023). Unprobed for a LAMBDA, a name or a group called:
+/// TODO(T-3690) probes them.
 fn is_call_operand(node: &Node) -> bool {
     let mut node = node;
     loop {

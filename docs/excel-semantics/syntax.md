@@ -193,9 +193,13 @@ refused stored formula makes Excel for the web refuse the workbook (createSessio
 `FileCorruptTryRepair`), so it keeps no sidecar and was dropped after the run, as T-3172's were. A
 refused typed one is a PATCH 400 `InvalidArgument` that leaves A1 blank, so its sidecar has no A1 and
 `ISFORMULA(A1)` FALSE. Four such typed cases are kept, the ones where ours disagreed before T-3338:
-minus-paren-, minus-paren2-, plus-paren- and minus-abs-1023-typed. The typed refusals ours shares
+minus-paren-, minus-paren2-, plus-paren- and minus-abs-1023-typed. The typed refusals ours shared
 (the 1,024 and 1,025 sign runs, nested-200-825, nested-50-975, nested-paren-257) were dropped, because
-the harness scores a typed input the engine refuses as an engine error, not as a blank cell. Ours matches all of it since T-3338 (the 2026-11-01 eval had the four typed
+the harness then scored a typed input the engine refuses as an engine error, not as a blank cell. Since
+T-3338 a sign-cap refusal is a typed formula that does not parse (`TYPED_FORMULA_DOES_NOT_PARSE`) and
+scores as the blank cell Excel leaves, so the sign-run ones (1,024, 1,025, nested-200-825, nested-50-975)
+could be kept; nested-paren-257 and the 66-call refusal are still limit errors, scored as engine errors
+(T-3689 makes them blank too and restores the dropped cases). Ours matches all of it since T-3338 (the 2026-11-01 eval had the four typed
 1,023 cases above failing on S!B1 and nested-paren-128, -200, -255, -256 and nested-200-823, -824
 not running, `EngineError`, stored and typed). In ours a plus directly before a
 number literal folds into it and adds no node. Typed whitespace adds no
@@ -302,7 +306,9 @@ operator cap. The xlsx importer refuses a workbook holding one, as Excel does (s
 8,192 characters refuse the workbook" above).
 Before T-0128 chains were capped at 255 terms.
 These bounds keep the recursive parser, evaluator, printer and tree copy/drop from overflowing the
-stack on untrusted formulas (CLAUDE.md directive 5); before T-0931, 200 nested parentheses crashed
+stack on untrusted formulas (CLAUDE.md directive 5). The heaviest shapes the sign and parenthesis caps admit (256 levels of spaced
+`- ( `, 1,023 spaced signs) fit a 1 MiB stack optimized, but an unoptimized build needs about 16 MiB
+for them, in the derived `Clone`/`Drop` of the tree (T-3338 measured; T-3691 makes those walks iterative); before T-0931, 200 nested parentheses crashed
 the process. A new recursive consumer of the tree (or a heavier evaluator frame) must be
 re-measured against these limits (the at-limit tests run on a 1 MiB stack in release builds), and
 must walk operator chains with `expressions/parser/chain.rs`.

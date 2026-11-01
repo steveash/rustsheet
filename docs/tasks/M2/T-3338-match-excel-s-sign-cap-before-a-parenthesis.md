@@ -94,3 +94,9 @@ M2 probe row (M0-M2): before (eval of main b6c931bd, 2026-11-01) 198 known failu
 12 blocked cases, not met. After (this branch, full run) 182 known failures, 182 visibly off, 0 blocked
 cases, still not met. The cells left are the collation and criteria probes (T-3324, T-3325, T-3329,
 T-3404), none of them T-3266's.
+
+Review round 1: added `unary_minus_of_a_tiny_subnormal_through_groups` (test_multiplication_overflow.rs). It gives the
+same values on origin/main's `apply_unary_chain`, so the per-group subnormal rule changes no behaviour. Follow-ups:
+T-3689 (score the parenthesis-cap and call-cap typed refusals as blank cells, restore the dropped probes), T-3690 (probe
+the unprobed cost-2 operands), T-3691 (iterative `Node` Clone/Drop, debug-stack note), T-3692 (split the unary chain
+out of cast.rs).
