@@ -1790,6 +1790,8 @@ C	probes/t3410-irr-zero-root-imcos.case.json	13
 C	probes/t3419-elapsed-after-clock-c.case.json	14
 C	probes/t3419-elapsed-after-date-b.case.json	25
 C	probes/t3419-elapsed-after-date-general.case.json	30
+C	probes/t3575-fraction-after-elapsed-b.case.json	30
+C	probes/t3575-fraction-after-elapsed.case.json	15
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
 C	probes/table-edits/plain-range-delete-rows-across-edge.case.json	10
@@ -2555,7 +2557,6 @@ F	probes/bond-extreme-coupon-yield.case.json	Parts!J3
 F	probes/bond-extreme-coupon-yield.case.json	Parts!J4
 F	probes/bond-extreme-coupon-yield.case.json	Parts!J6
 F	probes/coup-calendar-edges.case.json	S!J12
-F	probes/elapsed-no-seconds-boundary.case.json	S!A32
 F	probes/eng-convert-boolean-unit.case.json	Sheet1!A29
 F	probes/eng-convert-boolean-unit.case.json	Sheet1!A7
 F	probes/eng-convert-boolean-unit.case.json	Sheet1!B8
@@ -5298,7 +5299,6 @@ F	probes/t3406-irr-num-boundary.case.json	P!A95
 F	probes/t3406-irr-num-boundary.case.json	P!A96
 F	probes/t3406-irr-num-boundary.case.json	P!A97
 F	probes/t3406-irr-num-boundary.case.json	P!A98
-F	probes/t3419-elapsed-after-date-b.case.json	Sheet1!A19
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F10
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F2
 F	probes/table-edits/table-convert-names-this-row.case.json	T!A2
