@@ -59,6 +59,6 @@ within 15 digits today moves off. Bit-level criteria still unmet then move to a 
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- L140 bup+bgrat with one bup term at a0 > 15 (T-3382) and the bulk with several bup terms (T-3401, on branch
-  agent/functions/tasks-refill-opus when this was filed).
+- L140 bup+bgrat with one bup term at a0 > 15 (T-3382) and the bulk with several bup terms (T-3561, which owns the
+  bulk cdf cells).
 - Excel's bits where Excel is off the math (Phase 1b, decision 0188 R5).
