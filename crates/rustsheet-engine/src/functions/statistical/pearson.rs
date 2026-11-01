@@ -1,6 +1,6 @@
 use crate::expressions::types::CellReferenceIndex;
 use crate::{
-    calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
+    calc_result::CalcResult, expressions::parser::Node, model::Model,
 };
 
 impl Model {
@@ -18,8 +18,8 @@ impl Model {
             Err(error) => return error,
         };
         match moments.correlation(moments.n - 1.0) {
-            Some(r) => CalcResult::Number(r * r),
-            None => CalcResult::new_error(Error::DIV, cell, "Divide by 0".to_string()),
+            Ok(r) => CalcResult::Number(r * r),
+            Err(error) => super::correl::moment_error(error, cell),
         }
     }
 }
