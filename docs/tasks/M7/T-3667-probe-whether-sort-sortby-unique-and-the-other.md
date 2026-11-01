@@ -3,7 +3,7 @@ id: T-3667
 title: "Probe whether SORT, SORTBY, UNIQUE and the other array functions read a one-cell error reference as a 1x1 array"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
