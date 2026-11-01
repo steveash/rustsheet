@@ -17,9 +17,10 @@ import mpmath
 
 from rustsheet_tools.accuracy.literal import MAX_LITERAL, Arg
 
-Kind = Literal["real", "int", "bool"]
-MathArg: TypeAlias = "mpmath.mpf | bool"
-"""An argument as the math sees it: the exact double (or integer) of the literal, or a logical."""
+Kind = Literal["real", "int", "bool", "array"]
+MathArg: TypeAlias = "mpmath.mpf | bool | tuple[mpmath.mpf, ...]"
+"""An argument as the math sees it: the exact double (or integer) of the literal, a logical, or an
+array literal's elements."""
 
 
 class DomainError(ValueError):
@@ -111,7 +112,9 @@ class Definition:
     def check_domain(self, args: Sequence[MathArg]) -> None:
         """Raises `DomainError` when `args` are outside the parameters' intervals or `domain`."""
         for p, a in zip(self.params, args, strict=True):
-            if p.kind != "bool" and not isinstance(a, bool) and not p.domain.contains(float(a)):
+            if p.kind in ("bool", "array") or isinstance(a, (bool, tuple)):
+                continue  # an array's rules are the definition's `domain`
+            if not p.domain.contains(float(a)):
                 msg = f"{p.name} outside {p.domain.describe()}"
                 raise DomainError(msg)
         if self.domain is not None and (why := self.domain(args)) is not None:

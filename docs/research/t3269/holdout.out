@@ -1,0 +1,57 @@
+1058 cells; fit set 145, of which in test: 0
+all: label | train: n exact <=4ulp 15dig envelope max-rel-err | test: n exact <=4ulp 15dig envelope max-rel-err
+   correctly rounded |  792   89  238  334  792  1.05e-16 |  266   24   74  105  266  9.55e-17
+                main |  792   73  240  359  792  5.44e-14 |  266   17   65  107  266  5.38e-14
+               t3285 |  792   75  246  369  792  5.39e-14 |  266   17   69  110  266  5.40e-14
+        unrestricted |  792  185  675  727  792  9.78e-14 |  266   51  234  244  266  5.53e-14
+                head |  792  157  591  661  792  9.73e-14 |  266   43  202  216  266  5.53e-14
+x <= 30: label | train: n exact <=4ulp 15dig envelope max-rel-err | test: n exact <=4ulp 15dig envelope max-rel-err
+   correctly rounded |  173   54  137  157  173  1.01e-16 |   50   13   41   45   50  9.55e-17
+                main |  173   37  125  152  173  2.28e-15 |   50    8   35   45   50  1.70e-15
+               t3285 |  173   41  135  159  173  1.43e-15 |   50    8   39   45   50  1.03e-15
+        unrestricted |  173   41  135  159  173  1.43e-15 |   50    8   39   45   50  1.03e-15
+                head |  173   41  135  159  173  1.43e-15 |   50    8   39   45   50  1.03e-15
+form's range (30 < x <= 600, a <= 11): label | train: n exact <=4ulp 15dig envelope max-rel-err | test: n exact <=4ulp 15dig envelope max-rel-err
+   correctly rounded |  455    6   65  124  455  1.05e-16 |  157    1   19   40  157  9.01e-17
+                main |  455    8   69  136  455  5.39e-14 |  157    1   17   43  157  5.38e-14
+               t3285 |  455    7   66  138  455  5.39e-14 |  157    1   17   44  157  5.40e-14
+        unrestricted |  455   89  411  430  455  9.73e-14 |  157   27  150  150  157  5.53e-14
+                head |  455   89  411  430  455  9.73e-14 |  157   27  150  150  157  5.53e-14
+x > 30 outside it: label | train: n exact <=4ulp 15dig envelope max-rel-err | test: n exact <=4ulp 15dig envelope max-rel-err
+   correctly rounded |  164   29   36   53  164  1.03e-16 |   59   10   14   20   59  8.63e-17
+                main |  164   28   46   71  164  5.44e-14 |   59    8   13   19   59  5.37e-14
+               t3285 |  164   27   45   72  164  5.39e-14 |   59    8   13   21   59  5.37e-14
+        unrestricted |  164   55  129  138  164  9.78e-14 |   59   16   45   49   59  5.37e-14
+                head |  164   27   45   72  164  5.39e-14 |   59    8   13   21   59  5.37e-14
+
+30 < x <= 45, gaps over 4 ulp: shape | split closer/farther ...
+  1.5 | test 0/0  train 0/0
+  2.0 | test 0/0  train 15/1
+  2.5 | test 1/0  train 18/0
+  3.0 | test 0/0  train 11/0
+  3.5 | test 1/0  train 13/3
+  4.0 | test 2/0  train 9/5
+  4.5 | test 1/0  train 1/0
+  5.0 | test 0/0  train 0/0
+  5.5 | test 0/0  train 1/0
+  6.0 | test 1/1  train 3/1
+  6.5 | test 0/0  train 0/1
+  7.0 | test 0/0  train 3/0
+  7.5 | test 0/0  train 2/1
+  8.0 | test 0/0  train 1/0
+  8.5 | test 0/0  train 1/0
+  9.0 | test 2/0  train 0/0
+  9.5 | test 0/0  train 0/0
+ 10.5 | test 0/0  train 1/0
+ 11.0 | test 0/0  train 1/0
+ 11.5 | test 0/0  train 1/1
+ 13.5 | test 0/0  train 0/1
+ 15.0 | test 0/1  train 0/0
+ 15.5 | test 0/0  train 0/0
+ 17.5 | test 1/0  train 0/0
+ 18.0 | test 0/0  train 0/1
+ 18.5 | test 1/0  train 0/0
+test shapes 1.5..11: 18 cells, closer 8, farther 1
+test shapes 11.5..19.5: 6 cells, closer 2, farther 1
+train shapes 1.5..11: 148 cells, closer 80, farther 12
+train shapes 11.5..19.5: 5 cells, closer 1, farther 3
