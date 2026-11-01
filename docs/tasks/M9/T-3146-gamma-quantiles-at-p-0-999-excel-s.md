@@ -71,6 +71,13 @@ Excel vs ours (Excel's offset from the truth; the cdf offset in ulps of p):
   22.18775145350798. At the correctly rounded `T.DIST(6,6,TRUE)` = 0.9995177324027924 Excel is -70 ulp (-0.47) and
   ours -1; at the double below, Excel is +78 (+0.53).
 
+### Also owned: T-3311's fresh sweep 2, A199 (gap triage 2026-11-01f)
+`make eval` near origin/main fa5b844d6, excel-graph, `scripts/exit_owners.py --all-off`: no open task named this
+visibly-off cell. T-3311 left right-tail p above 1E-5 here (its Outcome: Excel's value is never a Newton iterate
+there). Excel vs ours (offset from the 50-digit math, docs/research/t3311/reference_fresh-sweep-2.json):
+- probes-numeric/t3311-fresh-sweep-2.case.json (1): S!A199 `CHISQ.INV.RT(1-2.09E-4,36)`: 13.357697643687183 vs
+  13.357697643687537 (-198 / +1 ulp). The same case's lower-tail cells are T-3659's.
+
 ### Also owned: T-3148's probe (gap triage 2026-10-29)
 `make eval` on main a2ecf005b, `python3 scripts/exit_owners.py --all-off`: T-3148 (done) added
 probes-numeric/t3148-gamma-quantile-flat-band, and its visibly-off quantile cells had no owner. Same cause as the 12

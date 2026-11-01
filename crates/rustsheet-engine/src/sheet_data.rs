@@ -49,8 +49,8 @@ const LINEAR_SEARCH_LIMIT: usize = 8;
 /// here, so such rows survive a round trip. Removing the last cell of a row
 /// with `remove_cell` removes the row.
 ///
-/// Rows outside the sheet, below 1 or beyond the last row, cannot hold cells:
-/// writing to them does nothing and reading them finds nothing.
+/// Rows and columns outside the sheet (below 1, or beyond the last) hold no
+/// cells: writing to them does nothing and reading them finds nothing.
 #[derive(Encode, Decode, Debug, Clone, Default)]
 pub struct SheetData {
     /// `chunks[i]` holds rows `i * CHUNK_ROWS ..`, if any of them exists.
@@ -251,6 +251,7 @@ impl SheetData {
 
     /// Puts a cell at a position and returns the one that was there.
     pub fn set_cell(&mut self, row: i32, column: i32, cell: Cell) -> Option<Cell> {
+        (1..=LAST_COLUMN).contains(&column).then_some(())?;
         let previous = self.row_or_insert(row)?.insert(column, cell);
         if previous.is_none() {
             self.index_cell(row, column);
@@ -628,10 +629,10 @@ impl SheetData {
         let Some(row_data) = self.row_or_insert(row) else {
             return;
         };
-        // Collected at its exact size: a row grown cell by cell from empty
-        // starts with room for four, and a sheet with a million short rows
-        // paid for that four times over.
-        let mut cells: Vec<(i32, Cell)> = cells.into_iter().collect();
+        // Collected at its exact size: a row grown cell by cell from empty starts with room for
+        // four, and a sheet with a million short rows paid for that four times over.
+        let on_sheet = |(column, _): &(i32, Cell)| (1..=LAST_COLUMN).contains(column);
+        let mut cells: Vec<(i32, Cell)> = cells.into_iter().filter(on_sheet).collect();
         cells.sort_by_key(|(column, _)| *column);
         // Of two cells in the same column the later one stays: it is moved
         // into the slot of the earlier one, which `dedup_by` then keeps.
