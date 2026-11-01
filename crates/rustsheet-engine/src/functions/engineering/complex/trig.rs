@@ -218,6 +218,9 @@ fn real_trig(
 /// libm's beyond 2^27, where the reciprocal IM* functions are unprobed. IMCSC, IMSEC, IMSECH and
 /// IMCOT take these: the sweep's rows with a large real part (`956.615+0.00387493i`,
 /// `-9447.72-0.00486262i`) need Excel's reduction (probes-numeric im-last-digit-sweep, T-2044).
+/// IMSIN and IMCOS of a complex number too: near k·π/2 their small part is Excel's x87 remainder
+/// (`IMSIN("1.5707963267949+709.7i")` is ...-2.88915216855774E+293i, libm ...917292436455...;
+/// 400 of 400 texts of probes-numeric/t3726-imsin-imcos-near-half-pi-sweep, libm 28; T-3726).
 fn trig_sin_cos(x: f64) -> (f64, f64) {
     if x.abs() < EXCEL_TRIG_LIMIT {
         excel_sin_cos(x)
