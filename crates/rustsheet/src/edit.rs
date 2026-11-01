@@ -674,27 +674,6 @@ impl Txn<'_> {
         self.add_table_with_rows(range, name, filtered, (true, totals_row))
     }
 
-    /// Makes column `column` (0-based, within the table) of table `table` a calculated column
-    /// whose formula is `formula`, in file form without `=` (xlsx's `calculatedColumnFormula`), as
-    /// a workbook Excel saved with one loads: no cell changes, and a formula typed into the column
-    /// later re-fills every data row (docs/excel-semantics/references.md "Calculated columns",
-    /// rule 9).
-    ///
-    /// # Errors
-    /// [`EditError::Table`] when there is no such table or column.
-    pub fn set_table_column_formula(
-        &mut self,
-        table: &str,
-        column: usize,
-        formula: &str,
-    ) -> Result<(), EditError> {
-        let before = (self.model.set_table_column_formula(table, column, formula))
-            .map_err(EditError::Table)?;
-        self.sheet_op = true;
-        self.undo.push(Undo::TableBefore(Box::new(before)));
-        Ok(())
-    }
-
     /// [`Txn::add_table_with_totals`] for a table with or without a header row
     /// (`(header_row, totals_row)`). Without one the data starts on the first row of `range` and
     /// the columns are named `Column1`, `Column2`, ...; such a table takes no filter.
