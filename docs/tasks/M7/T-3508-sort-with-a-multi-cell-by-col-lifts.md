@@ -3,7 +3,7 @@ id: T-3508
 title: "SORT with a multi-cell by_col lifts an argument error to by_col's shape (gen-m7 arg-pairs)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
