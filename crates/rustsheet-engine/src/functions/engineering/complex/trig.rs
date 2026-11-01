@@ -344,6 +344,12 @@ pub(super) fn imcsc((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
 /// included, where libm's parts fit 33 of 44 (T-2841).
 pub(super) fn imcsch((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     let (x_sinh, x_cosh) = inverse_exp_sinh_cosh(x);
+    if y == 0.0 && x != 0.0 && x.abs() <= INVERSE_EXP_LOW {
+        // A small real IMCSCH is `1/sinh x`, not `sinh x/sinh²x`: all 75 real IMCSCH texts at
+        // 0 < |x| <= `INVERSE_EXP_LOW`, `IMCSCH("-1.05118886127103E-06")` -951303.839721704 included
+        // (the quotient's ...703; t3589-im-hyperbolic-small-x-sweep D102), against 74 (T-3609).
+        return complex_result(1.0 / x_sinh, 0.0, suffix);
+    }
 
     let y_cos = y.cos();
     let y_sin = y.sin();
@@ -395,7 +401,16 @@ pub(super) fn imsec((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
 pub(super) fn imsech((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
     let (x_sinh, x_cosh) = inverse_exp_sinh_cosh(x);
     if y == 0.0 {
-        return complex_result(1.0 / x_cosh, 0.0, suffix);
+        // At |x| <= `INVERSE_EXP_LOW` a real IMSECH is 1 over libm's cosh, not over the `1/u`
+        // form's: all 75 real IMSECH texts there, `IMSECH("6.17632662504393E-06")` 0.999999999980927
+        // included (the form's ...926; probes-numeric/t3589-im-hyperbolic-small-x-sweep C42, C58,
+        // C68), against 72 (engineering.md "IMSECH and IMCSCH of a small real number", T-3609).
+        let cosh = if x.abs() <= INVERSE_EXP_LOW {
+            x.cosh()
+        } else {
+            x_cosh
+        };
+        return complex_result(1.0 / cosh, 0.0, suffix);
     }
     let (y_sin, y_cos) = trig_sin_cos(y);
 
