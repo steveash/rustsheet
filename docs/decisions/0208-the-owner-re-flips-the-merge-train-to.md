@@ -2,7 +2,9 @@
 
 - **Status:** accepted (2026-10-31, T-3488; owner ruling in session
   https://claude.ai/code/session_018kHzCtGoS4gXMYKAZWDHEd: "i want to fix this right now", then
-  chose "flip and drain" when asked whether to re-flip to `train` and drain the ready PRs)
+  chose "flip and drain" when asked whether to re-flip to `train` and drain the ready PRs).
+  *Amended by 0224: a stranded PR no longer triggers the emergency flip; it escalates (a merger
+  pass, the janitor, a P0), and only a correctness failure flips at once.*
 - **Context:**
   - The steward's emergency flip to `lock` (#2613, 19:17 UTC) followed SPEC-0027's stranded-PR
     threshold: 10 PRs marked ready more than 2 h earlier. Decision 0192 requires a re-flip to
