@@ -40,6 +40,8 @@ iterate", which would replace `TINY_QUANTILE_CHECK` and widen that range; the fr
 any more, so a new sweep is owed (decision 0188 R4). Note the two tests measure the root on different cdfs:
 `TINY_QUANTILE_CHECK` on the accurate pair, `excel_newton_quantile` on `excel_form_lower` (Excel's form); a unified
 root test should use one (T-3403 has the same note).
+- Gap triage 2026-11-01f: T-3659 (deferred, Phase 1b) owns the 73 visibly-off deep-tail cells below shape 20 of
+  T-3311's second fresh sweep (that case is named there, not here), evidence for the same root test.
 
 ## Acceptance criteria
 - [ ] A31 is within half a unit of Excel's 15th digit, or the Outcome records why it cannot be reached.
