@@ -62,8 +62,11 @@ Done (2026-11-01).
     A121, A130, A133, A135, A142, A143, A151, A152, A153, A156, A158 and A162.
   - **T-3585** (new), 7 points: RATE is `#NUM!` in Excel where the math has a root. A19, A128, A129, A137 and A158
     are type-1 annuities at a high rate, where the engine returns a bogus root near -1. A278 and A291 have a huge pv
-    and a root near 0, where the engine returns the math.
+    and a root near 0: at A278 the engine's root has the wrong sign, at A291 it is near the math.
 - **R3 (decision 0220):** the 12 NPER points sit inside decision 0188's approved region. Excel is up to 35% off there,
   not the 4% the assessment found, and financial.md's entry now says so and cites them. The other NPER points with
   Excel more than G off are ill-conditioned annuities outside the region; the engine matches Excel to the bit there.
 - **probes-numeric math sidecars:** regenerated with the NPER definition.
+- **New quirk** (financial.md, "Annuity and DB argument domains at their limits"): NPER is `#NUM!` when the ratio's
+  denominator pmt·k + pv·r cancels to exactly 0 in doubles, though the math is finite (accuracy/NPER/s1 A263). The
+  engine already matches.

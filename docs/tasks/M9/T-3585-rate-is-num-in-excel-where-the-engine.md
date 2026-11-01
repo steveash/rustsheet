@@ -24,17 +24,19 @@ predicts them.
     - A129 `RATE(329,613.284600034776,-815.966938950879,0,1)`, root 3.03;
     - A137 `RATE(280,92693.8285831394,-125054.343644821,0,1)`, root 2.86;
     - A158 `RATE(257,-53538.3890651085,83315.7312547417,0,1)`, root 1.80.
-  - **Huge pv, small fv, root near 0.** The engine returns the math:
-    - A278 `RATE(29,622792052.26538,-18060969526.6562,179.964221458841,0)`, root 6.24E-10;
-    - A291 `RATE(43,-1768871036.99479,76057734597.4655,-42.6330901500337,0)`, root 2.22E-6.
+  - **Huge pv, small fv, root near 0:**
+    - A278 `RATE(29,622792052.26538,-18060969526.6562,179.964221458841,0)`, root 6.24E-10. The engine returns
+      -9.45E-10, a root of the wrong sign: neither the math nor Excel's error.
+    - A291 `RATE(43,-1768871036.99479,76057734597.4655,-42.6330901500337,0)`, root 2.22E-6. The engine is near the
+      math (1.7E-8 relative).
 - They are carried in `eval/accuracy/known-failures.tsv` with this task as owner.
 - Prior work: financial.md "IRR, RATE and XIRR stop early" and "RATE is a secant on the FV residual" (T-2005, T-0916,
   T-1525 probed the iteration). T-3348 fixed the opposite case (Excel's value where the engine gave `#NUM!`).
 - Code: `fn_rate` in `crates/rustsheet-engine/src/functions/financial/annuity.rs`.
 
 ## Acceptance criteria
-- [ ] A probe brackets each group's `#NUM!` (rate, type and nper for the first; pv/pmt scale and fv for the second), and
-      financial.md records the rule with evidence.
+- [ ] A probe brackets each group's `#NUM!` (rate, type and nper for the first; pv/pmt scale and fv for the second, and
+      the sign of the engine's root there), and financial.md records the rule with evidence.
 - [ ] The engine returns `#NUM!` on the probed cells and the seven points; their known-failures lines are removed.
 - [ ] `make check` green; reviewers approve.
 

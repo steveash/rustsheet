@@ -3877,7 +3877,11 @@ Rule: PV's growth factor `P = (1+rate)^nper` is Excel's `^`, errors included, an
 
 NPER divides by ln(1+rate):
 - a rate so small that 1+rate is 1 is `#DIV/0!`, start-of-period type 1 too (`NPER(1E-300,-113,3037,368,1)`);
-- a rate of -1 is `#NUM!` (LN(0); `NPER(-1,-31,1)`).
+- a rate of -1 is `#NUM!` (LN(0); `NPER(-1,-31,1)`);
+- a ratio whose denominator pmt·(1 + rate·type) + pv·rate cancels to exactly 0 in doubles is `#NUM!`, not `#DIV/0!`,
+  though the true count is finite: `NPER(0.0787082899943479,-44696304.3306312,567872892.853356,-198914751.586312,0)`
+  is `#NUM!` where the math is 499.1157 (accuracy/NPER/s1 A263, excel-graph, T-3535). The engine matches (`annuity.rs`,
+  the infinite ratio).
 
 DB's `month` reads a boolean as 1 or 0, from a cell too, as DDB's factor does ("VDB, DDB and ACCRINT argument types").
 `DB(15779,385,37,<FALSE>,<FALSE>)`, with period and month both FALSE cells, is `#NUM!`, not `#VALUE!`. Only the FALSE
@@ -3894,11 +3898,11 @@ Status: VERIFIED for the probed cells; DB's boolean month beyond the FALSE pair 
 (T-2749 probes them).
 Tasks: T-2620, T-2698, T-2749
 
-## NPER at a tiny positive rate: Excel is up to 4% off, RustSheet returns the math (MATH-OVER-EXCEL)
+## NPER at a tiny positive rate: Excel is far off, RustSheet returns the math (MATH-OVER-EXCEL)
 Rule: NPER at 0 < rate < 1e-14 is far off the true period count in Excel, above G = 1e-4, so RustSheet returns the
-math there (decision 0188 R3). The owner's assessment found up to 4%. The Gate A table finds up to 35% as the rate nears
-the 1 + rate = 1 cut: `NPER(3.04353262019695E-16,370.793811118894,-6303.49478902119,0,0)` is 23.0 in Excel against a
-true 17.0, and at rate 5.1E-16 Excel is 15% off. Excluded: rates so small that 1 + rate == 1, which are `#DIV/0!` in Excel ("NPER divides
+math there (decision 0188 R3). The owner's assessment found up to 4%. The Gate A table finds up to 35% as the rate
+nears the 1 + rate = 1 cut: `NPER(3.04353262019695E-16,370.793811118894,-6303.49478902119,0,0)` is 23.0 in Excel
+against a true 17.0, and at rate 5.1E-16 Excel is 15% off. Excluded: rates so small that 1 + rate == 1, which are `#DIV/0!` in Excel ("NPER divides
 by ln(1+rate)" above, VERIFIED) and stay `#DIV/0!`. Negative tiny rates are not covered.
 Evidence:
 - The owner's 2026-10-31 assessment (decision 0188), 50-digit mpmath against Excel for the web.

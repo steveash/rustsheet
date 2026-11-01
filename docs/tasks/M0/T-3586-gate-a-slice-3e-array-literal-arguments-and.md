@@ -1,6 +1,6 @@
 ---
 id: T-3586
-title: "Gate A slice 3e: array-literal arguments and reference tables for IRR and XIRR"
+title: "Gate A slice 3f: array-literal arguments and reference tables for IRR and XIRR"
 milestone: M0
 lane: harness
 status: todo
