@@ -4,7 +4,8 @@
 //! as a constant does (T-3218); either typed just below it grows it by a row (T-3273).
 
 use crate::constants::{LAST_COLUMN, LAST_ROW};
-use crate::expressions::parser::Node;
+use crate::expressions::parser::{stringify::to_excel_string, Node};
+use crate::expressions::types::CellReferenceRC;
 use crate::expressions::utils::number_to_column;
 use crate::model::Model;
 use crate::table_edits::{append_column, bounds, Bounds};
@@ -369,7 +370,7 @@ impl Model {
     /// Writes the formula of (`sheet`, `row`, `column`) into `fill`'s targets, the cells
     /// [`Model::calculated_column_fill`] found before it was typed, each with its own style, and
     /// makes the column a calculated column (`calculated_column_formula`, the first data row's
-    /// text in English; only whether it is set is read). The formula is stored relative to its
+    /// text in file form). The formula is stored relative to its
     /// cell, so an A1 reference fills shifted, like a fill down (`=A2*2` gives `=A3*2` a row
     /// below; probes/t2957-a1-reference). Nothing is written when the cell holds no formula: a typed
     /// constant fills nothing. A target the write guards refuse (`prepare_cell_for_user_input`)
@@ -395,8 +396,19 @@ impl Model {
             let style = self.formula_style_index(sheet, r, c)?;
             self.set_formula_index_with_units(sheet, r, c, formula_index, style)?;
         }
-        let text = self.get_english_cell_formula(sheet, fill.first_row, column)?;
-        let text = text.map(|text| text.strip_prefix('=').unwrap_or(&text).to_string());
+        // File form (xlsx-storage.md, "A calculated column is saved as `calculatedColumnFormula`
+        // plus one formula per row"), as the first data row reads it: an exception typed into a
+        // data row later does not change it, as in Excel.
+        let sheet_name = self.workbook.worksheet(sheet)?.get_name();
+        let context = CellReferenceRC {
+            sheet: sheet_name,
+            row: fill.first_row,
+            column,
+        };
+        let text = usize::try_from(formula_index)
+            .ok()
+            .and_then(|i| self.parsed_formulas.get(sheet as usize)?.get(i))
+            .map(|parsed| to_excel_string(&parsed.evaluated, &context));
         if let Some(table_column) = (self.workbook.tables.get_mut(&fill.table))
             .and_then(|table| table.columns.get_mut(fill.index))
         {

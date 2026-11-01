@@ -340,11 +340,12 @@ fn a_calculated_column_keeps_its_column_formula() {
     }
     model.add_table(0, "T", (1, 1, 3, 2), false).unwrap();
     model
-        .set_user_input(0, 2, 2, "=T[@Qty]*2".to_string())
+        .set_user_input(0, 2, 2, "=T[@Qty]*4".to_string())
         .unwrap();
-    // The fill on typed entry is the facade's; here the column is marked as it would be.
+    // The fill on typed entry is the facade's; here the column is marked as the fill records it,
+    // in file form, and the data row holds a different formula (an exception does not change it).
     model.workbook.tables.get_mut("T").unwrap().columns[1].calculated_column_formula =
-        Some("T[@Qty]*2".to_string());
+        Some("T[[#This Row],[Qty]]*2".to_string());
     model.evaluate();
 
     let temp_file_name = "temp_file_test_calculated_column.xlsx";

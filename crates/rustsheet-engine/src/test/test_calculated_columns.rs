@@ -126,6 +126,25 @@ fn a_typed_fill_records_the_column_formula() {
     assert_eq!(column_formula(&model).as_deref(), Some("A2*3"));
 }
 
+/// The recorded column formula is in file form, and an exception typed into the first data row
+/// does not change it (xlsx-storage.md; probes/t2957-constant-then-refill; T-3033).
+#[test]
+fn the_column_formula_is_file_form_and_survives_an_exception() {
+    let mut model = model(false);
+    typed(&mut model, 2, "=T[@Col]*2");
+    assert_eq!(
+        column_formula(&model).as_deref(),
+        Some("T[[#This Row],[Col]]*2")
+    );
+    typed(&mut model, 3, "5");
+    typed(&mut model, 2, "=T[@Col]*4");
+    assert_eq!(calc(&model, 4), ["4", "5", "8"]);
+    assert_eq!(
+        column_formula(&model).as_deref(),
+        Some("T[[#This Row],[Col]]*2")
+    );
+}
+
 /// probes/t2957-existing-constant: no fill beside a value.
 #[test]
 fn no_fill_when_another_data_cell_holds_a_value() {

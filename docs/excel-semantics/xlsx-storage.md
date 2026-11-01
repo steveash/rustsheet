@@ -445,8 +445,9 @@ A table that grew by typing beside it gets the new `<tableColumn name="Column1">
 `name="0"` and none for the header-row case. With a totals row, the table keeps `totalsRowCount="1"` and the
 label column's `totalsRowLabel`; the filled column gets no totals metadata.
 A stored `calculatedColumnFormula` does not fill blank cells on load (next entry, T-2969).
-Ours (T-3033): import keeps its text on `TableColumn::calculated_column_formula`; export writes it in file form
-(the first data row's formula as exported, the stored text when that cell holds no formula) for a column that has one.
+Ours (T-3033): import keeps its text on `TableColumn::calculated_column_formula`; a typed fill stores the first data
+row's formula in the same file form, and export writes the stored text, so an exception in a data row does not change
+it. Whether Excel opens our exported column formula without repair is unprobed.
 Evidence: the saved `xl/tables/table1.xml` and `xl/worksheets/sheet1.xml` of probes/t2957-fill-one-totals,
 -refill-second, -constant-exception, -constant-then-refill, -existing-constant, -a1-reference and -expand-right-*
 (the eval/.cache/oracle/excel-graph/<input_sha256>.xlsx of each sidecar).

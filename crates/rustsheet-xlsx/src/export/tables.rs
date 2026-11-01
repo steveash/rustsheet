@@ -19,7 +19,7 @@ use rustsheet_engine::{
         types::CellReferenceRC,
         utils::number_to_column,
     },
-    types::{Cell, FilterColumn, FilterCriterion, Table, TableColumn, Workbook, Worksheet},
+    types::{Cell, FilterColumn, FilterCriterion, Table, Workbook, Worksheet},
     ParsedFormula,
 };
 
@@ -118,40 +118,6 @@ fn totals_row_metadata(
         },
         _ => (String::new(), String::new()),
     }
-}
-
-/// The `<calculatedColumnFormula>` of a calculated column, in file form (xlsx-storage.md, "A
-/// calculated column is saved as `calculatedColumnFormula` plus one formula per row"): the first
-/// data row's formula as exported, or the stored text when that cell holds none. Empty for a
-/// column that is not calculated.
-fn calculated_column_formula(
-    column: &TableColumn,
-    worksheet: &Worksheet,
-    (col, top_row): (i32, i32),
-    header_row_count: u32,
-    parsed_formulas: &[ParsedFormula],
-) -> String {
-    let Some(stored) = &column.calculated_column_formula else {
-        return String::new();
-    };
-    let row = top_row.saturating_add(i32::try_from(header_row_count).unwrap_or(0));
-    let from_cell = worksheet
-        .cell(row, col)
-        .and_then(Cell::get_formula)
-        .and_then(|f| usize::try_from(f).ok())
-        .and_then(|i| parsed_formulas.get(i))
-        .map(|parsed| {
-            let context = CellReferenceRC {
-                sheet: worksheet.get_name(),
-                row,
-                column: col,
-            };
-            to_excel_string(&parsed.evaluated, &context)
-        });
-    format!(
-        "<calculatedColumnFormula>{}</calculatedColumnFormula>",
-        escape_xml(&from_cell.unwrap_or_else(|| stored.clone()))
-    )
 }
 
 /// The `<autoFilter>` of a table with a header row, over its header and data rows, as Excel writes
@@ -259,16 +225,18 @@ pub(crate) fn get_table_xml(
             }
             None => (String::new(), String::new()),
         };
-        let calculated_formula = calculated_column_formula(
-            column,
-            worksheet,
-            (
-                first_column.saturating_add(i32::try_from(index).unwrap_or(0)),
-                area.1,
-            ),
-            table.header_row_count,
-            parsed_formulas,
-        );
+        // The column's own formula, kept in file form by the fill that set it (an exception in a
+        // data row does not change it, xlsx-storage.md), not read back from a data cell.
+        let calculated_formula = column
+            .calculated_column_formula
+            .as_ref()
+            .map(|f| {
+                format!(
+                    "<calculatedColumnFormula>{}</calculatedColumnFormula>",
+                    escape_xml(f)
+                )
+            })
+            .unwrap_or_default();
         columns.push_str(&format!(
             "<tableColumn id=\"{}\" name=\"{}\"{totals_attributes}{}{}{}>{calculated_formula}{totals_formula}</tableColumn>",
             column.id,

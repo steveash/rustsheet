@@ -36,6 +36,8 @@ after a typed formula.
 
 ## Outcome
 Import keeps `<calculatedColumnFormula>` text on `TableColumn::calculated_column_formula` (no fill on load, per
-T-2969). Export writes it in file form: the first data row's formula as exported, the stored text if that cell has
-none. Round-trip test `a_calculated_column_keeps_its_column_formula`; xlsx-storage.md and references.md updated.
-Eval delta: none.
+T-2969). A typed fill now records the column formula in file form (first data row, `to_excel_string`), and export
+writes the stored text, so an exception typed into a data row does not change it (probes/t2957-constant-then-refill).
+Tests: `a_calculated_column_keeps_its_column_formula` (xlsx round trip, data row differs from the column formula) and
+`the_column_formula_is_file_form_and_survives_an_exception` (engine). xlsx-storage.md and references.md updated; that
+Excel opens our exported column formula without repair is unprobed. Eval delta: none.
