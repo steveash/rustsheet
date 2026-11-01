@@ -59,7 +59,11 @@ class Param:
     `typical` and `extreme` are inclusive draw ranges inside the domain; a range spanning more
     than two decades is drawn log-uniform. `extreme` is a magnitude range: for a parameter whose
     domain has negative values the sign is drawn uniformly. `edges` are extra values worth a point
-    beside the domain bounds (a documented limit such as df = 1E10 and its neighbour).
+    beside the domain bounds (a documented limit such as df = 1E10 and its neighbour). `draw_hi` caps
+    the magnitude of whole-domain draws where the math cannot evaluate the domain's far end (a
+    50-digit incomplete beta at a count of 1E+300) or the oracle cannot hold a point (a huge
+    negative POISSON.DIST mean); unlike a domain bound it claims nothing about Excel, so it gets no
+    edge points.
     """
 
     name: str
@@ -69,6 +73,7 @@ class Param:
     extreme: tuple[float, float] | None = None
     edges: tuple[float, ...] = ()
     source: str = ""
+    draw_hi: float | None = None
 
     def finite_bounds(self) -> list[tuple[float, bool, bool]]:
         """The finite domain bounds as (value, open, is_lower)."""

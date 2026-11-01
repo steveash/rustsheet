@@ -1,0 +1,18 @@
+{
+ "format": "rustsheet-math/v1",
+ "source": {
+  "generator": "rustsheet-accuracy",
+  "version": "1",
+  "dps": 80,
+  "input_sha256": "04b5c113b80dd199becda599863125f5dec55412c54f096c651e305651aad3e6"
+ },
+ "sheets": {
+  "S": {
+   "A11": {
+    "t": "e",
+    "why": "deg_freedom1 outside [1, 1e+10]",
+    "f": "=F.DIST(0.1,1E+300,1,TRUE)"
+   }
+  }
+ }
+}

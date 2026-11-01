@@ -112,6 +112,14 @@ def test_drawn_arguments_are_writable_literals_inside_the_domain_except_edges() 
     assert {(1, 1), (1, 2), (1, 0), (1, 10**10), (1, 10**10 - 1), (1, 10**10 + 1)} <= edges
 
 
+def test_draw_hi_caps_whole_domain_draws_without_an_edge() -> None:
+    count = Param("n", "int", Interval(0, float("inf"), lo_open=False), typical=(0, 5), draw_hi=1e6)
+    definition = Definition("X", (count,), value=lambda _args: mp(0), sources=("test",))
+    sampler = Sampler(definition, random.Random(5))
+    assert all(0 <= int(sampler.whole_domain(count)) <= 10**6 for _ in range(200))
+    assert {v for _, v in sampler.edges} == {0, 1, -1}  # the cap is not a bound, so no edge sits at it
+
+
 def test_tail_map_puts_a_distribution_point_in_its_tail() -> None:
     sampler = Sampler(T_DIST, random.Random(3))
     tails = [sampler.draw("tail", i) for i in range(20)]
@@ -330,10 +338,13 @@ def test_cli_lists_and_generates(tmp_path: Path, capsys: pytest.CaptureFixture[s
     assert accuracy_cli.main(["list"]) == 0
     assert capsys.readouterr().out.split() == [
         "AVERAGE",
+        "BINOM.DIST",
         "F.DIST",
         "F.INV",
         "IRR",
+        "NEGBINOM.DIST",
         "NPER",
+        "POISSON.DIST",
         "RATE",
         "SUM",
         "T.DIST",
