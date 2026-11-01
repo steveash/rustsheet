@@ -1817,6 +1817,7 @@ C	probes/t3575-fraction-after-elapsed-b.case.json	30
 C	probes/t3575-fraction-after-elapsed.case.json	15
 C	probes/t3631-rand-randbetween-invariant.case.json	61
 C	probes/t3631-randarray-invariant.case.json	45
+C	probes/t3656-indirect-spaces-reversed.case.json	291
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
 C	probes/table-edits/plain-range-delete-rows-across-edge.case.json	10
