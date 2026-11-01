@@ -46,7 +46,7 @@ stage (PR #2529, blocked on its hold-out) and unblocks T-3347.
 - The last digits (T-3408) and `#DIV/0!` (T-3407).
 
 ## Landing notes
-2026-11-01, opus run (session window closed at minute 80 of the run; no PR opened, no code changed).
+2026-11-01, opus run (stopped at the session's landing window; no PR opened, no code changed).
 - Branch head: the claim commit plus these notes. Nothing is implemented; CI and reviewers have not run.
 - Scored on the type (number, `#NUM!`, `#DIV/0!` read as an error) of 288 cells: probes/t3406-irr-num-boundary (144)
   and probes-numeric/t3347-irr-conventional-holdout (144). T-3347's probe and sweep cases are on T-3347's branch, not
@@ -69,4 +69,11 @@ stage (PR #2529, blocked on its hold-out) and unblocks T-3347.
   -0.12 for n = 20 / 30 / 40 / 60) and test whether it is a fixed trial-rate set (for example rates stepped from the guess
   by a factor, as XIRR's trial chain does) whose NPV signs bracket the root, scoring with the engine's extended operators
   (`irr_npv`), not plain doubles.
+- The level-annuity cutoffs in outlay P (t3406, flows `{-P,1,...,1}`): Excel returns up to P = 649.62 and is `#NUM!`
+  from 1003.96 at n = 20; 2133.94 / 4033.97 at n = 30; 2970.92 / 6672.71 at n = 40; 17850.72 / 60801.44 at n = 60.
+  Neither P/n nor the NPV at the guess is constant across n at the cutoff, and v^n at the last returned root is 144,
+  391, 416 and 2140, so a cap on the discount power is not it either. `#DIV/0!` starts at P = 1.57E+8 for n = 40 and
+  8.2E+5 for n = 60 (A83 at 1.35E+7 is `#NUM!` again), never for n = 20 or 30. That fits a trial rate near -1 whose
+  n-th discount power leaves the double range (1 + r below 10^(-308/n): 2E-8 at n = 40, 7.6E-6 at n = 60, out of reach
+  at n = 20). Untested hypothesis: after the secant fails, Excel's search moves r toward -1, and the outlay decides how far.
 - Do not repeat: Newton in r and the secant in r as fallbacks; an unbounded XIRR-style bracket walk.
