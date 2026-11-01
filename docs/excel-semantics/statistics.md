@@ -2592,18 +2592,83 @@ that kernel is off by the same order but not by the same amount (up to 4.4E-12 f
   within 1E-9 of the math (worst 5.2E-12, Excel's own worst 5.2E-12). The 75 others are the Loader kernel's unidentified
   arithmetic and basym, bfrac or walk tails, at most 4.4E-12 from Excel (T-3447). A48 `BINOM.DIST(600,600000,0.001,TRUE)`
   was within 15 digits on statrs and is 1 digit short on basym.
-- Only the binomial family takes basym so far. With it under BETA.DIST too, `BETA.DIST(0.555,1000,1000,TRUE,0.1,1)`
-  becomes Excel's 0.6903551301985376 bit for bit, but BETA.INV of that value is then 0.5550000000000002, not Excel's
-  0.555 (ironcalc-calc BETADIST_BETAINV.xlsx G29, H29), whether its search crosses Cephes' fraction or basym (T-3443).
+- Since T-3443 BETA.DIST, F.DIST and F.DIST.RT (and BETA.INV's and F.INV's searches) take basym too ("BETA.DIST and
+  F.DIST at basym points; BETA.INV takes the nearest end there (T-3443)"). T.DIST never reaches it: its kernel call
+  has b = 1/2.
 - BINOM.DIST.RANGE and BINOM.INV still take statrs past the walk: `BINOM.DIST.RANGE(1000000000,0.3,300000000,300000100)`
   is 1.47 and `BINOM.INV(1000000000,0.3,0.5)` 299998246 (T-3444).
 Evidence: probes/t3352-binom-negbinom-large-n (excel-graph), probes-numeric/t3352-binom-negbinom-sweep (excel-graph,
 scored against 50-digit mpmath; T-3352's Outcome).
-Implemented in: `crates/rustsheet-engine/src/functions/statistical/bratio/basym.rs`, `bratio::basym_tails`, and
+Implemented in: `crates/rustsheet-engine/src/functions/statistical/bratio/basym.rs`, `bratio::ported_tails`, and
 `binom_dist_of` and `negbinom_dist_of` (`loader_pmf`) in `binom.rs`.
 Status: VERIFIED (excel-graph) to 1E-11 of the math; last digits UNVERIFIED (Excel's arithmetic in basym and in Loader's
 kernel at a large n not identified)
 Tasks: T-3352, T-3447, T-3443, T-3444, T-2586, T-2146
+
+## BETA.DIST and F.DIST at basym points; BETA.INV takes the nearest end there (T-3443)
+Rule: where TOMS 708 bratio takes basym (both shapes above 100, |λ| <= 0.03 min(a, b)), Excel's BETA.DIST and F.DIST
+cdfs are basym's, like BINOM.DIST's (T-3352), and BETA.INV returns the end of the final bracket whose cdf tail is
+nearer p, not the even-significand end it takes elsewhere ("BETA.INV solves Excel's own CDF to the crossing").
+`BETA.DIST(0.555,1000,1000,TRUE,0.1,1)` is 0.6903551301985376, our basym bit for bit, and BETA.INV of it is 0.555
+(ironcalc-calc BETADIST_BETAINV.xlsx G29, H29). At the root double basym's lower tail equals p exactly, but its upper
+tail (0.5 - w) + 0.5 is one ulp above fl(1 - p), so the p > 1/2 search on the upper tail brackets (root, next), and the
+even end is the next double, 0.5550000000000002 after the map back.
+- Probes (excel-graph, 220 cells each, generator docs/research/t3443/gen_probe.py, split fixed before scoring):
+  probes-numeric/t3443-basym-a (in-sample) and t3443-basym-hold (hold-out, scored once on the frozen rule). Main (Cephes'
+  fraction, even end) against T-3443 (basym, nearest end at basym points), as exact / within 15 digits / visibly off:
+
+  | case, cells | main | T-3443 |
+  |---|---|---|
+  | a, BETA.DIST + BETADIST (50) | 1 / 6 / 43 | 3 / 14 / 33 |
+  | a, F.DIST + F.DIST.RT + FDIST (40) | 3 / 5 / 32 | 7 / 16 / 17 |
+  | a, BETA.INV + BETAINV (90) | 33 / 52 / 5 | 49 / 37 / 4 |
+  | a, F.INV + F.INV.RT + FINV (40) | 5 / 22 / 13 | 4 / 23 / 13 |
+  | hold, BETA.DIST + BETADIST (50) | 1 / 12 / 37 | 7 / 23 / 20 |
+  | hold, F.DIST + F.DIST.RT + FDIST (40) | 0 / 5 / 35 | 2 / 15 / 23 |
+  | hold, BETA.INV + BETAINV (90) | 30 / 49 / 11 | 46 / 36 / 8 |
+  | hold, F.INV + F.INV.RT + FINV (40) | 5 / 21 / 14 | 3 / 24 / 13 |
+
+  The fresh sweep probes-numeric/t3443-basym-sweep (seed 34432, generated and filled after the rule was frozen) on
+  T-3443: BETA.DIST 2 / 20 / 28, F 6 / 16 / 18, BETA.INV 48 / 33 / 9, F.INV 2 / 21 / 17.
+
+- The crossing rule on its own (same basym kernel, even end against nearest end; BETA.INV + BETAINV, 90 cells, exact
+  / within 4 ulp / within 15 digits / visibly off; split fixed before scoring, hold-out scored once, sweep filled after
+  the freeze):
+
+  | case | even end | nearest end | exact margin |
+  |---|---|---|---|
+  | t3443-basym-a (in-sample) | 39 / 46 / 1 / 4 | 49 / 35 / 2 / 4 | +10 (15 gained, 5 lost) |
+  | t3443-basym-hold (hold-out) | 35 / 45 / 3 / 7 | 46 / 34 / 3 / 7 | +11 (16 gained, 5 lost) |
+  | t3443-basym-sweep (fresh) | 43 / 36 / 1 / 10 | 48 / 30 / 3 / 9 | +5 (14 gained, 9 lost) |
+
+  The reference candidate is the even end because it is the rule BETA.INV takes everywhere else and what this branch
+  took before; the two candidates differ only in which end of the same final bracket is returned, so a correctly
+  rounded math quantile is not a candidate of this choice. R4.1 margin: the hold-out exact rate may fall at most 5
+  points below the in-sample rate. In-sample 49/90 = 54.4%, hold-out 46/90 = 51.1% (3.3 points below), fresh sweep
+  48/90 = 53.3%. The margin was not named before scoring; the sweep, filled after the freeze, confirms it.
+  So the nearest end is not Excel's at every basym point (in-sample it loses A136, A151, A155, A170, A173). Applied
+  off basym it regresses gated cells at small shapes (BETADIST_BETAINV H16 visibly, H60, H61; T-3352 found H2, H63 and
+  others), so it is limited to basym points, bratio's own branch criterion, not a set of matched cells. UNVERIFIED
+  hypothesis (T-3597): Excel searches the tail bratio computes directly rather than its complement (0.5 - w) + 0.5,
+  which would name H29's mechanism and may hold off basym too. F.INV keeps the even end: the probes give no rule for
+  it (in-sample 4 exact either way).
+- Gate A (decision 0188 R2): eval/accuracy has no BETA.DIST, BETA.INV or F table, so the envelope is checked on the
+  fresh sweep directly: all 220 t3443-basym-sweep cells are within 3.2E-13 relative of Excel (worst A24
+  `BETA.DIST(0.00197427734733206,137,69670.555,TRUE)`, 3.1E-13), and its BETA.DIST and F.DIST cdf cells within
+  1.4E-13 of 50-digit math (A30, a 5-argument BETADIST; Excel 1.3E-13 there, its own worst 3.2E-13 at A24). Of the
+  inverse cells, 148 resolved against 50-digit math (the round trip's literal x, or a bisected quantile): the worst is
+  A160 `BETA.INV(0.999998459208763,783.408,15042.295)`, 1.9E-13 for ours and for Excel; the other 14 (literal
+  BETA.INV, no mpmath convergence) are within 3.2E-13 of Excel. None is outside 1E-9.
+- Excel's cdf at these points is basym's to about 1E-13, not to the last digit: against 50-digit math (a continued
+  fraction at 60 digits) Excel's BETA.DIST and F.DIST are closer than ours on 26 of the in-sample cdf cells and further
+  on 44, Excel up to 3.3E-13 relative off (A26 `BETA.DIST(0.995975869785456,40036,161,TRUE)`) where ours is 1.3E-13,
+  both inside basym's 100·eps tolerance. Its arithmetic inside basym (term count, x87 storage) is not identified, so
+  the visibly-off cells above are owned by T-3597; the round trips' visibly-off cells follow from the cdf's last digits.
+Evidence: probes-numeric/t3443-basym-a, t3443-basym-hold and t3443-basym-sweep (excel-graph); ironcalc-calc
+STATISTICAL/BETADIST_BETAINV.xlsx G29, H29 (desktop-cached).
+Implemented in: `bratio::ported_tails` (`Branch::Basym`), `beta.rs` `beta_crossing`.
+Status: VERIFIED (excel-graph) for the branch and H29; last digits UNVERIFIED (T-3597)
+Tasks: T-3443, T-3597, T-3352
 
 ## Beta density for min(a,b) <= 1: lnB and a double-double exponent split (T-2464, T-2513)
 Rule: BETA.DIST(x,a,b,FALSE) with min(a,b) <= 1 is model M2 (r3-m1-residual, verifier-confirmed), for every b, b = 1
