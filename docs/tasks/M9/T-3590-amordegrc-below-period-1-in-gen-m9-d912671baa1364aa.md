@@ -3,7 +3,7 @@ id: T-3590
 title: "AMORDEGRC below period 1 in gen-m9 d912671baa1364aa A76: find which cell leaves Excel's 1 (bisect the workbook with probes)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -46,12 +46,40 @@ Decision 0083: the cell is visibly off (1 against 0). The target is Excel's valu
 is an UNEXPLAINED entry naming the probes.
 
 ## Acceptance criteria
-- [ ] Probe cases (probes/, tag M9, excel-graph) that bisect the workbook, each listed in the Outcome with its
+- [x] Probe cases (probes/, tag M9, excel-graph) that bisect the workbook, each listed in the Outcome with its
       result.
-- [ ] gen-m9/d912671baa1364aa.case.json (1): Calc!A76 passes and its line leaves eval/baseline/gen-m9.txt, or
+- [x] gen-m9/d912671baa1364aa.case.json (1): Calc!A76 passes and its line leaves eval/baseline/gen-m9.txt, or
       financial.md states the rule ruled in or out and the cell stays a known failure.
-- [ ] Every amordegrc-* and amor-* probe still passes. `make eval-baseline` records no regression.
-- [ ] `make check` green; reviewers approve.
+- [x] Every amordegrc-* and amor-* probe still passes. `make eval-baseline` records no regression.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Dynamic-array formulas in the order (T-3393).
+
+## Outcome
+Excel's 1 does not reproduce, so there was nothing to bisect. The cell stays a known failure, and financial.md
+("AMORDEGRC below period 1") records it as UNEXPLAINED and not reproducible.
+
+Probes (probes/, M9, excel-graph, 2026-11-01). Each checks Calc!A76 only, except -g:
+
+| probe | workbook | Excel A76 |
+|---|---|---|
+| amordegrc-a76-bisect-a | gen-m9 d912671baa1364aa unchanged (same input sha256 685de544… as the 10-28 run) | 0 |
+| -b | without the pivot table | 0 |
+| -c | Calc A1:A76 only | 0 |
+| -d | Calc A76:A400 only | 0 |
+| -e | Calc A76 only (Data, Pivot and Db kept) | 0 |
+| -f | Calc A76:A96 only | 0 |
+| -g | a lone `AMORDEGRC(2400,39679,39813,300,2,0.15,1)`, filled just before -h | 485 (Sheet1!A1) |
+| -h | the whole workbook plus a constant Data!Z1, filled 9 s after -g | 0 |
+
+- In -a, the 10-28 run differs from today's in one cell of 413: A76. The bytes are identical, so the 10-28 value
+  is not a function of the workbook alone. That puts it with WEEKNUM's state after edits (decision 0038), not with
+  the fresh-load rule.
+- -g then -h shows the left-over value does not carry from one workbook to the next one the service calculates.
+- Every subset agrees with the documented rule (no AMOR* call leaves a value for A76: 0), so hypotheses 1 to 3 cannot
+  be told apart.
+- Not done: re-filling gen-m9 d912671baa1364aa's oracle to today's 0. Picking the run that matches us would be
+  choosing evidence by outcome. The sidecar stays as Excel produced it.
+- Eval delta: 8 new probe cases, all passing (ours 0 and 485). No baseline line added or removed: gen-m9 A76 stays F.
+
