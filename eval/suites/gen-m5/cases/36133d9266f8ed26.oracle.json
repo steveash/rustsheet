@@ -764,7 +764,7 @@
    },
    "A270": {
     "t": "s",
-    "v": "\u0130"
+    "v": " x "
    },
    "A271": {
     "t": "b",
@@ -1079,8 +1079,8 @@
     "v": "TRUETRUETRUETRUETRUE"
    },
    "A341": {
-    "t": "e",
-    "v": "#VALUE!"
+    "t": "s",
+    "v": "VCII"
    },
    "A342": {
     "t": "n",
@@ -1104,7 +1104,7 @@
    },
    "A347": {
     "t": "e",
-    "v": "#NUM!"
+    "v": "#VALUE!"
    },
    "A348": {
     "t": "n",
@@ -1307,8 +1307,8 @@
     "v": 64.0
    },
    "A393": {
-    "t": "n",
-    "v": 0.0
+    "t": "s",
+    "v": "Hello World"
    },
    "A394": {
     "t": "b",
@@ -1621,8 +1621,8 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "b5e81014202f131080a4cf3ba52e72ba0e0723e415222efed69c749e85764f12",
   "kind": "excel-graph",
-  "produced_at": "2026-10-25T03:33:56+00:00",
+  "produced_at": "2026-10-28T15:48:49+00:00",
   "version": null,
-  "workbook_name": "a5136737b5aa55fedaa041a7ae1d84a71c06d38adc037704a1a9cb649a6efd0c.xlsx"
+  "workbook_name": "fcd530e1bdaf1958d19ded454fa2b651270312e2eef001097d640f06332e3dda.xlsx"
  }
 }

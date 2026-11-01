@@ -16,7 +16,6 @@ use crate::{
         lift::{grid_dims, LiftCost, LiftOptions, LiftedArg},
         util::array_node_to_calc_result,
     },
-    limits::too_many_visits,
     model::Model,
 };
 
@@ -102,7 +101,7 @@ impl Model {
     ) -> CalcResult {
         let lifts = operands.iter().any(LiftedArg::is_grid);
         if let Some(error) =
-            too_many_visits(text_call_cost(&operands, scanned, bytes_per_visit), cell)
+            self.spend_visits(text_call_cost(&operands, scanned, bytes_per_visit), cell)
         {
             return error;
         }

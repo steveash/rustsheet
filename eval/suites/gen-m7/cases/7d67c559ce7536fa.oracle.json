@@ -638,6 +638,10 @@
     "t": "s",
     "v": ""
    },
+   "A1743": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
    "A1755": {
     "t": "n",
     "v": -0.0001
@@ -3329,8 +3333,8 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "23cd7f6bd48d2411cd0bc8e115f22ccf603bef2166e7dbb9c89c2ce1a9e9e12b",
   "kind": "excel-graph",
-  "produced_at": "2026-10-21T16:20:34+00:00",
+  "produced_at": "2026-10-28T16:49:31+00:00",
   "version": null,
-  "workbook_name": "f4bce2210de1c1a66cffdb181b9d4287162401ee436c340e50ab4950554945ce.xlsx"
+  "workbook_name": "6c348510f8b4ed1192509e27175e82567190f67002ed691969930a109966a66c.xlsx"
  }
 }

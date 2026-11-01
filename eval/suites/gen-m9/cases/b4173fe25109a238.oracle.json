@@ -670,6 +670,10 @@
     "t": "e",
     "v": "#NUM!"
    },
+   "A25": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
    "A250": {
     "t": "e",
     "v": "#NUM!"
@@ -1490,6 +1494,10 @@
     "t": "e",
     "v": "#VALUE!"
    },
+   "A75": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
    "A76": {
     "t": "e",
     "v": "#NUM!"
@@ -1533,6 +1541,10 @@
    "A85": {
     "t": "n",
     "v": 1.0
+   },
+   "A86": {
+    "t": "e",
+    "v": "#VALUE!"
    },
    "A87": {
     "t": "e",
@@ -1610,8 +1622,8 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "43723e9eba54e0087d063515ff1cdd7b0e68340a853bed7d82ca596f6129a689",
   "kind": "excel-graph",
-  "produced_at": "2026-10-22T23:49:45+00:00",
+  "produced_at": "2026-10-28T16:57:40+00:00",
   "version": null,
-  "workbook_name": "eb1e8e2ecc8a33cb7d153bdfb806ecccc8784385eacef27e94d3f11492394031.xlsx"
+  "workbook_name": "064c3eaabb6a81d23d082760c5e1b61cf52af974a6a4891c12364ecd07915b19.xlsx"
  }
 }

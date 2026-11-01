@@ -49,6 +49,7 @@ Cells:
 ## Acceptance criteria
 - [ ] These 27 known-failure lines disappear from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new
       known-failure lines in any baseline.
+- [ ] The im-last-digit-sweep Calc!B33 cell added by gap triage 2026-10-30 is bit-exact (`make eval-show`; probes-numeric is ungated), or the Outcome names it with the hypot forms tried.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -56,3 +57,7 @@ Cells:
 
 ## Deferred (decision 0114)
 `defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).
+
+## Cells added by gap triage (2026-10-30)
+`make eval` on origin/main 6a26b992a (excel-graph), `scripts/exit_owners.py`'s `owned` rule over every failing cell and the task files of origin/main and every pushed branch: one IMABS cell of the probes-numeric IM sweep, 1 ulp off, that no open task names. Same modulus computation as this task's IMABS cells. Calc!B33 `=IMABS(A33)` with A33 `"956.615+0.00387493i"`: Excel 956.6150000078482, ours 956.6150000078479.
+- probes-numeric/im-last-digit-sweep.case.json (1): Calc!B33

@@ -656,7 +656,7 @@
    },
    "A246": {
     "t": "n",
-    "v": 0.0
+    "v": 0.5
    },
    "A247": {
     "t": "n",
@@ -1617,8 +1617,8 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "42f39216e2b56851355f09be26abc90658a43bc0a44895584a80b264a2ff29fd",
   "kind": "excel-graph",
-  "produced_at": "2026-10-20T12:45:33+00:00",
+  "produced_at": "2026-10-28T16:05:22+00:00",
   "version": null,
-  "workbook_name": "f929cff0f5d4b19e7a813b84b0de235ff2dcc4e166ad764149c92ea74f1fcabf.xlsx"
+  "workbook_name": "41da1506e898eb4040d544a659c7556c682908069b104c5a3f6dd87201716528.xlsx"
  }
 }

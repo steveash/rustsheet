@@ -1,0 +1,61 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-3030: which sheet CELL(\"contents\",Data!ref) reads when nested (the T-1230 own-sheet rule is top-level evidence; T-2466 nested stacks read Data). Data!B1=7 vs Calc!B1=99; Data!C11 blank vs Calc!C11=5; Data!B3=8 vs Calc!B3 blank.",
+  "tags": [
+    "M7",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=CELL(\"contents\",Data!B1)",
+        "A11": "=CELL(\"contents\",Data!B1)+0",
+        "A21": "=N(CELL(\"contents\",Data!B1))",
+        "A31": "=(CELL(\"contents\",Data!B1))",
+        "A41": "=LET(x,CELL(\"contents\",Data!B1),x)",
+        "A51": "=IF(TRUE,CELL(\"contents\",Data!B1))",
+        "A61": "=CELL(\"contents\",Data!B1)&\"\"",
+        "A71": "=VSTACK(CELL(\"contents\",Data!B1))",
+        "A81": "=VSTACK(CELL(\"contents\",Data!B1),1)",
+        "A91": "=SUM(CELL(\"contents\",Data!B1))",
+        "A101": "=INDEX(CELL(\"contents\",Data!B1),1)",
+        "A111": "=IFERROR(CELL(\"contents\",Data!B1),0)",
+        "A121": "=CELL(\"contents\",Data!B1)=7",
+        "A131": "=-CELL(\"contents\",Data!B1)",
+        "A141": "=CHOOSE(1,CELL(\"contents\",Data!B1))",
+        "A151": "=@CELL(\"contents\",Data!B1)",
+        "A161": "=SORT(CELL(\"contents\",Data!B1))",
+        "A171": "=TOCOL(CELL(\"contents\",Data!B1))",
+        "A181": "=CELL(\"contents\",Data!C11)",
+        "A191": "=ISBLANK(CELL(\"contents\",Data!C11))",
+        "A201": "=TYPE(CELL(\"contents\",Data!C11))",
+        "A211": "=CELL(\"contents\",Data!C11)&\"|\"",
+        "A221": "=VSTACK(CELL(\"contents\",Data!C11),1)",
+        "A231": "=TOCOL(CELL(\"contents\",Data!C11))",
+        "A241": "=LET(x,CELL(\"contents\",Data!C11),x)",
+        "A251": "=IF(TRUE,CELL(\"contents\",Data!C11))",
+        "A261": "=CELL(\"contents\",Data!B3)",
+        "A271": "=ISBLANK(CELL(\"contents\",Data!B3))",
+        "A281": "=CELL(\"contents\",Data!B3)&\"|\"",
+        "A291": "=VSTACK(CELL(\"contents\",Data!B3),1)",
+        "A301": "=TOCOL(CELL(\"contents\",Data!B3))",
+        "A311": "=LET(x,CELL(\"contents\",Data!B3),x)&\"|\"",
+        "A321": "=CELL(\"type\",Data!B3)",
+        "A331": "=VSTACK(CELL(\"type\",Data!B3))",
+        "A341": "=CELL(\"contents\",B1)",
+        "A351": "=VSTACK(CELL(\"contents\",B1),1)",
+        "B1": 99,
+        "C11": 5
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "B1": 7,
+        "B3": 8
+      }
+    }
+  ],
+  "expected": {}
+}

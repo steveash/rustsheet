@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::test::util::new_empty_model;
+use crate::test::util::{new_empty_model, whole_column_arms};
 
 #[test]
 fn test_fn_choose_args_number() {
@@ -167,4 +167,73 @@ fn test_fn_choose_arithmetic_arm_under_dynamic_index_spills() {
     assert_eq!(model._get_text("D3"), "6");
     assert_eq!(model._get_text("E1"), "#DIV/0!");
     assert_eq!(model._get_text("E2"), "1");
+}
+
+#[test]
+fn test_fn_choose_index_array_unpicked_arms_are_not_copied() {
+    // 120 whole-column arms would be 120 x 1,048,576 cells copied, past the formula's work budget
+    // (`#VALUE!` before T-1564); an arm no index element picks is only sized, so only C:C is.
+    let mut model = new_empty_model();
+    model._set("C1", "5");
+    model._set("C2", "7");
+    model._set("D1", "100");
+    model._set(
+        "A1",
+        &format!("=SUM(CHOOSE({{1}},{}))", whole_column_arms(120)),
+    );
+    // Three picked whole columns side by side are past the array-cell limit: refused from the
+    // arms' extents before any is copied.
+    model._set(
+        "A2",
+        &format!("=ROWS(CHOOSE({{1,2,3}},{}))", whole_column_arms(120)),
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "12");
+    assert_eq!(model._get_text("A2"), "#ERROR!");
+}
+
+#[test]
+fn test_fn_choose_index_array_unpicked_arm_still_sizes_the_result() {
+    // lookup.md "CHOOSE over an index array broadcasts its value arguments": the result spans
+    // every arm, picked or not.
+    let mut model = new_empty_model();
+    model._set("C1", "5");
+    model._set("A1", "=ROWS(CHOOSE({1},C1,D1:D5))");
+    model._set("A2", "=SUM(CHOOSE({1},C1,D1:D5))");
+    model._set("A3", "=COLUMNS(CHOOSE({1},C1,D1:G1))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "5");
+    assert_eq!(model._get_text("A2"), "25");
+    assert_eq!(model._get_text("A3"), "4");
+}
+
+#[test]
+fn test_fn_choose_index_array_unpicked_arm_reads_its_cells() {
+    // An unpicked range arm is still read (not kept), so a cycle through it is a cycle, as
+    // through a picked one: both formulas read their own cell.
+    let mut model = new_empty_model();
+    model._set("A1", "=ROWS(CHOOSE({1},5,A1:A2))");
+    model._set("B1", "=ROWS(CHOOSE({2},5,B1:B2))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "0");
+    assert_eq!(model._get_text("B1"), "0");
+}
+
+#[test]
+fn test_fn_choose_index_array_cycle_wins_over_an_oversized_result() {
+    // Every range arm is read before the result's size is checked, so a formula that reads its
+    // own cell through an arm is circular (0), not the cell-count `#ERROR!` (T-1564).
+    for formula in [
+        "=ROWS(CHOOSE({1,2},A:A,1:1))",
+        "=ROWS(CHOOSE({1},B:B,1:1))",
+        "=ROWS(CHOOSE({1,2},A:A,1/0))",
+        "=ROWS(IF({TRUE,FALSE},A:A,1:1))",
+        "=ROWS(IF({TRUE},B:B,1:1))",
+        "=ROWS(IF({TRUE;FALSE},A1:A2,B1:XFD1048576))",
+    ] {
+        let mut model = new_empty_model();
+        model._set("A1", formula);
+        model.evaluate();
+        assert_eq!(model._get_text("A1"), "0", "{formula}");
+    }
 }

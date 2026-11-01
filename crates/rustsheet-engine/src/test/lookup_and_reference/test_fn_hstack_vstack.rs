@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::test::util::new_empty_model;
+use crate::test::util::{new_empty_model, whole_column_arms};
 
 // ── HSTACK ────────────────────────────────────────────────────────────────────
 
@@ -64,4 +64,36 @@ fn test_vstack_unequal_cols() {
     assert_eq!(model._get_text("E1"), "2");
     assert_eq!(model._get_text("D2"), "3");
     assert_eq!(model._get_text("E2"), "#N/A");
+}
+
+#[test]
+fn test_hstack_refuses_an_oversized_stack_before_copying() {
+    // 300 whole columns side by side are past the array-cell limit: refused from the arguments'
+    // extents before any column is copied (T-1564), while an error argument still wins.
+    let mut model = new_empty_model();
+    model._set("A1", &format!("=ROWS(HSTACK({}))", whole_column_arms(300)));
+    model._set("A2", "=ROWS(HSTACK(C:C,D:D,1/0))");
+    model._set("A3", "=ROWS(VSTACK(C1:XFD2,C1:XFD100))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#ERROR!");
+    assert_eq!(model._get_text("A2"), "#DIV/0!");
+    assert_eq!(model._get_text("A3"), "#ERROR!");
+}
+
+#[test]
+fn test_hstack_reads_its_ranges_before_the_size_check() {
+    // A range argument is read before the stack is checked, so a cycle through it is circular
+    // (0) rather than the cell-count `#ERROR!`, and so is one beside an error argument
+    // as before T-1564 (probes/scalar-lift-open-c3 W1; its oracle 0 is flagged untrusted).
+    let mut model = new_empty_model();
+    model._set("W1", "=ROWS(HSTACK(A:A,1:1))");
+    model._set("G1", "=ROWS(HSTACK(G1:G2,NA()))");
+    model.evaluate();
+    assert_eq!(model._get_text("W1"), "0");
+    assert_eq!(model._get_text("G1"), "0");
+    // VSTACK alike: each range is under the range-size limit, the stack past the cell-count one.
+    let mut model = new_empty_model();
+    model._set("A1", "=ROWS(VSTACK(A1:XFD60,B1:XFD60))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "0");
 }

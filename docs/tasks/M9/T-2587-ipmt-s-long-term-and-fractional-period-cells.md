@@ -3,7 +3,7 @@ id: T-2587
 title: "IPMT's long-term and fractional-period cells off in the 13th to 15th digit"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -52,9 +52,28 @@ Cells:
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9): these 9 cells are within half a unit of the 15th significant digit of Excel's
       value (their lines leave eval/baseline/gen-m9.txt, or stay only as last-digit NumericUlp lines), with
-      no new known-failure lines in any baseline.
-- [ ] financial.md records IPMT's formulation and its evidence.
-- [ ] `make check` green; reviewers approve.
+      no new known-failure lines in any baseline. Partly: 8 of the 10 pass; A202 moved to T-2943 and A177
+      (a BETAINV miss, not IPMT's) to T-2936.
+- [x] financial.md records IPMT's formulation and its evidence.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Bit parity (T-2243, T-1528).
+
+## Outcome
+- Of the ten cells, A158, A207 (6376e27be7a05871), A364 (b72d952c5f52cb4d) and A268 (b73c6cc96e093f03) already
+  passed on `main` (fixed by T-2242 and T-2490). This task fixes A385 (e168be7f6d3f84c2), A104 (c0681a8b150ce301),
+  A35 (b6a02893a8d6b151) and A227 (1cd3096e3e87c965), all now bit-exact.
+- Rule (financial.md "IPMT follows Excel's own discount where it moves the value"): where the balance does not
+  cancel, Excel's IPMT is `-rate*((pv+fv)*Y - fv)` in doubles with `Y` from Excel's expm1 and PPMT's L wherever that
+  differs from the exact balance by more than 6E-16 relative; below that the exact balance stays (it has Excel's bits
+  more often). The switch is fitted: 5E-16 to 7E-16 fit the same cells, and it moves no other cell of gen-m9, probes,
+  probes-numeric, ironcalc-calc, corpus-bench or poi. `discounted_interest` and `DISCOUNTED_INTEREST_FROM` in
+  functions/financial/annuity.rs; unit test `interest_on_excels_discount`.
+- Split out: A202 (0a957119475760c5) cancels on fv and needs the same form there without breaking A207 and four
+  huge-rate probe cells (T-2943). A177 (5ded7594e597e31e) is not IPMT's miss: Excel's `BETAINV(1E-15,1E+8,1)`
+  differs from `p^(1/alpha)` by 3.6E-10 relative (T-2936).
+- Eval: gen-m9 known failures 3724 -> 3720 (4 fixed, 0 regressions); IPMT visibly-off cells 12 -> 9 over gen-m9,
+  probes, probes-numeric and ironcalc-calc. calipers: the same 26 known regressions (T-0458) with and
+  without the change.
+- Resumed by the next opus run for `make check`, review and merge; renumbered the A202 follow-up to T-2943 (T-2935 was taken on main). statistics.md records the BETAINV miss as Open.

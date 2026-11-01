@@ -3,7 +3,7 @@ id: T-2344
 title: "Probe a single cell, name or INDEX result holding a boolean or text as the data of QUARTILE/PERCENTILE/PERCENTRANK"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -133,3 +133,9 @@ Decision 0083 (gap triage 2026-10-23, T-2256): it now owns 72 visibly-off gen-m9
 campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th
 significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it. Bit-level criteria
 still unmet then move to a follow-up task without the key.
+
+## Outcome
+The 84 listed gen-m9 cells were already fixed by T-2429/T-2621 (none is in the baseline). T-2344 probed the name,
+INDEX, OFFSET, IF and CHOOSE forms (probes/t2344-percentile-name-index-data, 30 cells, oracle sidecar): a reference of
+any form holding text or a boolean is no number. `percentile_numbers` now asks `is_reference` instead of matching
+`ReferenceKind`; all 30 cells pass. statistics.md updated.

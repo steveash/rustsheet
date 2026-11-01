@@ -1,0 +1,32 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2185: VDB switching from a fractional start period, edges: the last piece of life under one period, salvage near or above cost on the first partial period, a fractional life.",
+  "tags": [
+    "M9",
+    "probe",
+    "financial",
+    "T-2185"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A1": "=VDB(1000,5,10,9.25,10,4)",
+        "A2": "=VDB(1000,15,6.5,5.75,6.5,3)",
+        "A3": "=VDB(1000,900,5,0.5,1,2)",
+        "A4": "=VDB(1000,900,5,0.5,2,2)",
+        "A5": "=VDB(1000,800,5,0.5,1.5,3)",
+        "A6": "=VDB(1000,950,4,1.5,3,2)",
+        "A7": "=VDB(2400,3000,10,0.5,1.5,2)",
+        "A8": "=VDB(2400,3000,10,2.5,4,2)",
+        "A9": "=VDB(2400,300,7.5,6.5,7.5,2)",
+        "A10": "=VDB(2400,300,7.5,0.5,7.5,2)",
+        "A11": "=VDB(2400,300,7.5,2.5,7,1.5)",
+        "A12": "=VDB(1000,100,6.5,5.25,6.5,1)",
+        "A13": "=VDB(1000,0,10,0.5,10,2)",
+        "A14": "=VDB(1000,100,10,0.5,10,1.5)"
+      }
+    }
+  ],
+  "expected": {}
+}

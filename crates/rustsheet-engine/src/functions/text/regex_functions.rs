@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use regex_automata::Match;
 
 use super::{
-    lifted::COMPARED_BYTES_PER_VISIT,
+    lifted::{to_u64, COMPARED_BYTES_PER_VISIT},
     pcre::{self, BacktrackCache, FinalLf, Form},
     regex_engine::{within_size_limits, BuildFailure, Engine, Spent},
     regex_replacement::Replacement,
@@ -36,6 +36,14 @@ const HELD_LIMIT: usize = 64 << 20;
 /// about 1 s of the slowest searches, or 250 MB of text a simple pattern scans. A call past it
 /// is `#ERROR!` (DEVIATION, decision 0014).
 const SEARCH_BUDGET: u64 = 1 << 30;
+
+/// Bytes of [`COMPILE_BUDGET`] charged as one unit of the formula's work budget
+/// (`area_budget::MAX_FORMULA_WORK`): the whole compile budget, about 1 s, is 2^25 units.
+const COMPILE_BYTES_PER_WORK_UNIT: u64 = 4;
+
+/// Units of [`SEARCH_BUDGET`] (about a nanosecond each) charged as one unit of the formula's work
+/// budget (`area_budget::MAX_FORMULA_WORK`): the whole search budget, about 1 s, is 2^25 units.
+const SEARCH_UNITS_PER_WORK_UNIT: u64 = 32;
 
 /// A compiled pattern (`None` when invalid), its search caches and the heap they last held.
 struct Compiled {
@@ -181,13 +189,53 @@ impl PatternCache {
         })
     }
 
-    /// The call's result: `#ERROR!` when its work ran out in any element.
-    fn finish(&self, result: CalcResult, cell: CellReferenceIndex) -> CalcResult {
-        if self.exhausted {
-            too_much_regex_work(cell)
+    /// The call's result: `#ERROR!` when its work ran out in any element. What the call spent of
+    /// its compile and search budgets is charged to the formula's work budget too, so a LAMBDA
+    /// cannot multiply a call within these budgets past the formula's (SPEC-0024). A call that ran
+    /// out is charged both whole budgets: it may have spent them, and a failed charge leaves the
+    /// counters short of what was done.
+    fn finish(
+        &self,
+        model: &mut Model,
+        result: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        self.finish_after(model, result, cell, 0)
+    }
+
+    /// The work units the call has spent so far: what [`Self::finish`] charges.
+    fn spent_units(&self) -> u64 {
+        let (compiled, searched) = if self.exhausted {
+            (to_u64(COMPILE_BUDGET), SEARCH_BUDGET)
         } else {
-            result
+            (
+                to_u64(COMPILE_BUDGET.saturating_sub(self.budget)),
+                SEARCH_BUDGET.saturating_sub(self.work),
+            )
+        };
+        (compiled / COMPILE_BYTES_PER_WORK_UNIT)
+            .saturating_add(searched / SEARCH_UNITS_PER_WORK_UNIT)
+    }
+
+    /// [`Self::finish`] of a call whose earlier finish already charged `charged` units: only the
+    /// rest is charged, so the finishes of one call's parts charge what one finish would.
+    fn finish_after(
+        &self,
+        model: &mut Model,
+        result: CalcResult,
+        cell: CellReferenceIndex,
+        charged: u64,
+    ) -> CalcResult {
+        let units = self.spent_units().saturating_sub(charged);
+        #[cfg(test)]
+        REGEX_UNITS.with(|total| total.set(total.get().saturating_add(units)));
+        if let Err(error) = model.spend_work(units, cell) {
+            return error;
         }
+        if self.exhausted {
+            return too_much_regex_work(cell);
+        }
+        result
     }
 }
 
@@ -199,12 +247,23 @@ impl PatternCache {
 /// XLOOKUP regex mode".
 pub(crate) struct LookupRegexes {
     cache: PatternCache,
+    /// The work units an earlier [`Self::finish`] charged: a keyed lookup's tail continues its
+    /// head's call (SPEC-0020 Amendment 2, section 3; `Model::keyed_regexes`).
+    charged: u64,
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Tests sum the work units regex finishes charge, to compare a keyed lookup's head and tail
+    /// with its one call (SPEC-0020 Amendment 2, section 3).
+    pub(crate) static REGEX_UNITS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
 }
 
 impl LookupRegexes {
     pub(crate) fn new() -> Self {
         LookupRegexes {
             cache: PatternCache::new(),
+            charged: 0,
         }
     }
 
@@ -225,9 +284,19 @@ impl LookupRegexes {
         })
     }
 
-    /// The call's result: `#ERROR!` when its work ran out in any element.
-    pub(crate) fn finish(&self, result: CalcResult, cell: CellReferenceIndex) -> CalcResult {
-        self.cache.finish(result, cell)
+    /// The call's result: `#ERROR!` when its work ran out in any element. Charges the work
+    /// units spent since an earlier finish of the same call, so a keyed lookup's head and tail,
+    /// finishing one cache in turn, charge and fail as its one call does (SPEC-0020 Amendment 2,
+    /// section 3): the units are a function of the cache's counters, which the tail continues.
+    pub(crate) fn finish(
+        &mut self,
+        model: &mut Model,
+        result: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let result = self.cache.finish_after(model, result, cell, self.charged);
+        self.charged = self.cache.spent_units();
+        result
     }
 
     #[cfg(test)]
@@ -480,7 +549,7 @@ impl Model {
                 CalcResult::Array(vec![row])
             },
         );
-        cache.finish(result, cell)
+        cache.finish(self, result, cell)
     }
 
     /// REGEXREPLACE(text, `regular_expression`, replacement, [occurrence], [`case_sensitivity`])
@@ -580,9 +649,9 @@ impl Model {
         );
         if over_budget {
             // As a text broadcast past its cap: one `#VALUE!` (text.md, first entry).
-            return cache.finish(too_long(cell), cell);
+            return cache.finish(self, too_long(cell), cell);
         }
-        cache.finish(result, cell)
+        cache.finish(self, result, cell)
     }
 
     /// REGEXTEST(text, `regular_expression`, [`case_sensitivity`])
@@ -618,7 +687,7 @@ impl Model {
                 }
             },
         );
-        cache.finish(result, cell)
+        cache.finish(self, result, cell)
     }
 }
 
@@ -666,7 +735,11 @@ mod tests {
             .and_then(|mut p| p.is_match(&text, CELL));
         assert!(is_error(&spent));
         assert!(matches!(
-            regexes.finish(CalcResult::Number(1.0), CELL),
+            regexes.finish(
+                &mut crate::test::util::new_empty_model(),
+                CalcResult::Number(1.0),
+                CELL
+            ),
             CalcResult::Error {
                 error: Error::ERROR,
                 ..

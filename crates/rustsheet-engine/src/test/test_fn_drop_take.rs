@@ -374,3 +374,80 @@ fn take_cols_error_beats_zero_rows() {
     assert_eq!(model._get_text("D4"), "#CALC!");
     assert_eq!(model._get_text("D5"), "1");
 }
+
+// A one-cell TAKE/DROP of a range is a reference, so it is a scalar under `+0` or `N()`, while an
+// array constant still lifts (probes/t2454-offset-one-cell-array-args A5:D5, A9:D9; T-2519).
+#[test]
+fn one_cell_take_drop_of_a_range_is_a_scalar_height() {
+    let mut model = new_empty_model();
+    model._set("H2", "3");
+    model._set("H3", "4");
+    model._set("A1", "=ROWS(OFFSET(B9:C12,5,1,TAKE(H2:H3,1)+0))");
+    model._set("A2", "=ROWS(OFFSET(B9:C12,5,1,N(DROP(H2:H3,-1,0))))");
+    model._set("A3", "=ROWS(OFFSET(B9:C12,5,1,{3}+0))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "3");
+    assert_eq!(model._get_text("A2"), "3");
+    assert_eq!(model._get_text("A3"), "1");
+}
+
+// A TAKE/DROP of a one-cell reference keeps the reference, as one of `E7:E7` does: under
+// arithmetic it is a scalar, so a text cell makes the operator `#VALUE!` (not a 1x1 array), and
+// ISREF sees a reference (probes/t3072-take-drop-one-cell-reference P1-P4, P42; T-3072).
+#[test]
+fn take_drop_of_a_one_cell_reference_is_a_reference() {
+    let mut model = new_empty_model();
+    model._set("E7", "a*");
+    model._set("C8", "5");
+    model._set("A1", "=ROWS(E9-TAKE(E7,2,42))");
+    model._set("A2", "=ROWS(E9-DROP(E7,0))");
+    model._set("A3", "=ROWS(TAKE(E7,1)+0)");
+    model._set("A4", "=ISREF(TAKE(E7,1))");
+    model._set("A5", "=CELL(\"address\",TAKE(E7,1))");
+    model._set("A6", "=SUMXMY2(TAKE(C11,-1,1),B6:C10)");
+    model._set("A7", "=SUMXMY2(TAKE(C8,1),B6:C10)");
+    model._set("A8", "=TYPE(1+TAKE(C8,{1}))");
+    model.add_sheet("Data").unwrap();
+    model._set("Data!A1", "x");
+    model._set("A9", "=ROWS(E9-TAKE(Data!A1,1))");
+    model._set("A10", "=ISREF(DROP(Data!A1,0))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#VALUE!");
+    assert_eq!(model._get_text("A2"), "#VALUE!");
+    assert_eq!(model._get_text("A3"), "#VALUE!");
+    assert_eq!(model._get_text("A4"), "TRUE");
+    assert_eq!(model._get_text("A5"), "$E$7");
+    assert_eq!(model._get_text("A6"), "#VALUE!");
+    assert_eq!(model._get_text("A7"), "#N/A");
+    assert_eq!(model._get_text("A8"), "64");
+    assert_eq!(model._get_text("A9"), "#VALUE!");
+    assert_eq!(model._get_text("A10"), "TRUE");
+}
+
+/// A variable bound to one cell is that reference as TAKE's, DROP's or TRIMRANGE's array, while one
+/// bound to a value stays a 1x1 array (probes/t2622-take-let-reference-lambda-text P1-P30; T-2622).
+#[test]
+fn take_drop_of_a_variable_bound_to_one_cell() {
+    let mut model = new_empty_model();
+    model._set("A2", "5");
+    model._set("A3", "t");
+    model._set("B1", "=TYPE(TAKE(LET(v,A2,v),1))");
+    model._set("B2", "=ISREF(TAKE(LET(v,A2,v),1))");
+    model._set("B3", "=LET(v,A2,TYPE(TAKE(IF(TRUE,v),1)))");
+    model._set("B4", "=TYPE(LAMBDA(v,TAKE(v,1))(A2))");
+    model._set("B5", "=ISREF(TRIMRANGE(LET(v,A2,v)))");
+    model._set("B6", "=ROWS(A2-TAKE(LET(v,A3,v),2,42))");
+    model._set("B7", "=TAKE(LET(v,A1,acc,v,acc),-1,-1)&\"\"");
+    model._set("B8", "=TYPE(TAKE(LET(v,5,v),1))");
+    model._set("B9", "=TYPE(TAKE(LET(v,A1,v),{1;1}))");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "1");
+    assert_eq!(model._get_text("B2"), "TRUE");
+    assert_eq!(model._get_text("B3"), "1");
+    assert_eq!(model._get_text("B4"), "1");
+    assert_eq!(model._get_text("B5"), "TRUE");
+    assert_eq!(model._get_text("B6"), "#VALUE!");
+    assert_eq!(model._get_text("B7"), "");
+    assert_eq!(model._get_text("B8"), "64");
+    assert_eq!(model._get_text("B9"), "64");
+}

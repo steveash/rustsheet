@@ -1,0 +1,49 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2827: ACCRINT with a boolean in each of issue, first_interest, settlement, rate, par, frequency, basis. A1:A28 in argument order, four rows each: typed TRUE, typed FALSE, TRUE cell C1, FALSE cell C2; A29 is the all-numeric baseline.",
+ "tags": [
+  "M9",
+  "probe",
+  "financial",
+  "T-2827"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "C1": true,
+    "C2": false,
+    "A1": "=ACCRINT(TRUE,35000,37554,0.05,1000,2,0)",
+    "A2": "=ACCRINT(FALSE,35000,37554,0.05,1000,2,0)",
+    "A3": "=ACCRINT(C1,35000,37554,0.05,1000,2,0)",
+    "A4": "=ACCRINT(C2,35000,37554,0.05,1000,2,0)",
+    "A5": "=ACCRINT(33853,TRUE,37554,0.05,1000,2,0)",
+    "A6": "=ACCRINT(33853,FALSE,37554,0.05,1000,2,0)",
+    "A7": "=ACCRINT(33853,C1,37554,0.05,1000,2,0)",
+    "A8": "=ACCRINT(33853,C2,37554,0.05,1000,2,0)",
+    "A9": "=ACCRINT(33853,35000,TRUE,0.05,1000,2,0)",
+    "A10": "=ACCRINT(33853,35000,FALSE,0.05,1000,2,0)",
+    "A11": "=ACCRINT(33853,35000,C1,0.05,1000,2,0)",
+    "A12": "=ACCRINT(33853,35000,C2,0.05,1000,2,0)",
+    "A13": "=ACCRINT(33853,35000,37554,TRUE,1000,2,0)",
+    "A14": "=ACCRINT(33853,35000,37554,FALSE,1000,2,0)",
+    "A15": "=ACCRINT(33853,35000,37554,C1,1000,2,0)",
+    "A16": "=ACCRINT(33853,35000,37554,C2,1000,2,0)",
+    "A17": "=ACCRINT(33853,35000,37554,0.05,TRUE,2,0)",
+    "A18": "=ACCRINT(33853,35000,37554,0.05,FALSE,2,0)",
+    "A19": "=ACCRINT(33853,35000,37554,0.05,C1,2,0)",
+    "A20": "=ACCRINT(33853,35000,37554,0.05,C2,2,0)",
+    "A21": "=ACCRINT(33853,35000,37554,0.05,1000,TRUE,0)",
+    "A22": "=ACCRINT(33853,35000,37554,0.05,1000,FALSE,0)",
+    "A23": "=ACCRINT(33853,35000,37554,0.05,1000,C1,0)",
+    "A24": "=ACCRINT(33853,35000,37554,0.05,1000,C2,0)",
+    "A25": "=ACCRINT(33853,35000,37554,0.05,1000,2,TRUE)",
+    "A26": "=ACCRINT(33853,35000,37554,0.05,1000,2,FALSE)",
+    "A27": "=ACCRINT(33853,35000,37554,0.05,1000,2,C1)",
+    "A28": "=ACCRINT(33853,35000,37554,0.05,1000,2,C2)",
+    "A29": "=ACCRINT(33853,35000,37554,0.05,1000,2,0)"
+   }
+  }
+ ],
+ "expected": {}
+}

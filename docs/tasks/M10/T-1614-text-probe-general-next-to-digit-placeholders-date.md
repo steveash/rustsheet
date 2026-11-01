@@ -3,7 +3,7 @@ id: T-1614
 title: "TEXT: probe General next to digit placeholders, date tokens, % and a second General"
 milestone: M10
 lane: functions-text
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -27,3 +27,8 @@ probes/text-format-bare-literals A75, A76). Any other company is unprobed and th
 
 ## Out of scope
 - `General` in the text (4th) section.
+
+## Outcome
+Probed (probes/text-format-general-company, 16 cells, excel-graph). Fixed `General%` (prints, no scaling) and
+case-insensitive `General`; the rest already matched. `"d General"` ("5 0.5") is an unexplained Excel oddity, recorded
+in number-formats.md and left as a known failure.

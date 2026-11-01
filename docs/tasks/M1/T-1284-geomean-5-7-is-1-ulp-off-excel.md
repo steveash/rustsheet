@@ -57,3 +57,13 @@ the style of T-1524 or T-1778. A new dependency landing does not reopen it.
 
 ## Deferred (decision 0114)
 `defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).
+
+## More cells of the same root-rounding class (gap triage 2026-10-30)
+No open task named these one-ulp GEOMEAN probe cells (`make eval-show CASE=probes/<case>.case.json`). They are owned
+here, by case, with the in-range root and the over/underflow root (T-1099's class) in one model question:
+probes/geomean-root-refinement, probes/geomean-same-product, probes/geomean-in-range-many,
+probes/geomean-single-and-copies, probes/geomean-root-models, probes/geomean-exponent-sum,
+probes/geomean-exponent-sum-2, probes/geomean-overflow-count, probes/geomean-overflow-cut,
+probes/geomean-overflow-cut-2, probes/geomean-overflow-cut-3, probes/geomean-pow2-count,
+probes/geomean-stored-3ulps-low (51 cells, all NumericUlp). An example is `GEOMEAN(0.01,1)`, where Excel gives 0.1 and
+we give 0.10000000000000002. A reopening hypothesis is scored on all of them.

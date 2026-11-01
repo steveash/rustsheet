@@ -135,3 +135,30 @@ fn test_cell_has_formula() {
     // Assert
     assert!(result);
 }
+
+/// `CELL("contents", <blank>)`, like IFERROR of a blank, is the empty value: COUNTA counts it and
+/// array arguments reject it through wrappers, while a blank reference through the same wrappers
+/// stacks as 0 (probes/t3030-cell-contents-blank-shapers, t3053-blank-reference-wrappers; T-3053).
+#[test]
+fn cell_contents_of_a_blank_is_the_empty_value() {
+    let mut model = new_empty_model();
+    model._set("A1", "=COUNTA(CELL(\"contents\",Z1))");
+    model._set("A2", "=VSTACK(LET(x,CELL(\"contents\",Z1),x),1)");
+    model._set("A4", "=TOCOL(IF(TRUE,CELL(\"contents\",Z1)))");
+    model._set("A5", "=VSTACK(IFERROR(Z1,5),1)");
+    model._set("A6", "=TAKE(CELL(\"contents\",Z1),1)");
+    model._set("B1", "=VSTACK(IF(TRUE,Z1),1)");
+    model._set("C1", "=SORT(CELL(\"contents\",Z1))");
+    model._set("D1", "=MAP(CELL(\"contents\",Z1),LAMBDA(v,v))");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "1");
+    assert_eq!(model._get_text("A2"), "#VALUE!");
+    assert_eq!(model._get_text("A4"), "#VALUE!");
+    assert_eq!(model._get_text("A5"), "#VALUE!");
+    assert_eq!(model._get_text("A6"), "#VALUE!");
+    assert_eq!(model._get_text("B1"), "0");
+    assert_eq!(model._get_text("B2"), "1");
+    assert_eq!(model._get_text("C1"), "0");
+    assert_eq!(model._get_text("D1"), "#VALUE!");
+}

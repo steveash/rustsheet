@@ -172,7 +172,7 @@ fn the_export_keeps_the_reference() {
         row: 1,
         column: 1,
     };
-    let node = &model.parsed_formulas[1][0].0;
+    let node = &model.parsed_formulas[1][0].evaluated;
     // The export writes the table parts, so the file keeps the reference (T-2196).
     assert_eq!(to_excel_string(node, &context), "SUM(Sales[Qty])");
     assert_eq!(
@@ -190,18 +190,17 @@ fn the_export_of_a_missing_table_is_a_ref_error() {
         row: 1,
         column: 1,
     };
-    let node = &model.parsed_formulas[1][0].0;
+    let node = &model.parsed_formulas[1][0].evaluated;
     assert_eq!(to_excel_string(node, &context), "#REF!");
 }
 
 /// The table (header row 1, data rows 2-3) moves with an insert at its header row, grows with
-/// one inside its data and is left alone by one below it; an insert at its first data row is a
-/// fallback (Excel grows it, T-2321).
+/// one at its first data row or inside its data (T-2321) and is left alone by one below it.
 #[test]
 fn row_inserts_keep_values() {
     for (row, follows) in [
         (1, true),
-        (2, false),
+        (2, true),
         (3, true),
         (4, true),
         (5, true),
@@ -213,14 +212,15 @@ fn row_inserts_keep_values() {
     }
 }
 
-/// With two data rows no delete is strictly inside them (see `a_table_shrinks_and_moves_left`):
-/// every delete that touches the table is a fallback, one below it leaves it alone.
+/// The table (header row 1, data rows 2-3) shrinks with a delete of either data row (T-2338) and
+/// is left alone by one below it; a delete touching its header row, or of both data rows at once,
+/// is a fallback.
 #[test]
 fn row_deletes_keep_values() {
     for (row, count, follows) in [
         (1, 1, false),
-        (2, 1, false),
-        (3, 1, false),
+        (2, 1, true),
+        (3, 1, true),
         (2, 2, false),
         (4, 1, true),
         (5, 1, true),
@@ -232,23 +232,76 @@ fn row_deletes_keep_values() {
     }
 }
 
-/// The table over columns A:B moves with an insert at A and is left alone right of B; any other
-/// column edit changes its column list, a fallback (T-2339).
+/// The table over columns A:B moves with an insert at A, grows with one at B and is left alone
+/// right of B (T-2339); column deletes inside it are `column_deletes_inside_drop_the_column`.
 #[test]
 fn column_inserts_and_deletes_keep_values() {
-    for (column, insert_follows, delete_follows) in [
-        (1, true, false),
-        (2, false, false),
-        (3, true, true),
-        (5, true, true),
-    ] {
-        check_edit(&format!("insert column {column}"), insert_follows, |m| {
+    // An insert at the second column grows the table (T-2339).
+    for column in [1, 2, 3, 5] {
+        check_edit(&format!("insert column {column}"), true, |m| {
             m.insert_columns(0, column, 1).unwrap();
         });
-        check_edit(&format!("delete column {column}"), delete_follows, |m| {
+    }
+    for column in [3, 5] {
+        check_edit(&format!("delete column {column}"), true, |m| {
             m.delete_columns(0, column, 1).unwrap();
         });
     }
+}
+
+/// A column delete inside the table shrinks it and drops the column (T-2339): a reference to the
+/// deleted column prints `#REF!`, as Excel does (probes/table-edits/table-delete-column-qty), and
+/// the others keep their text and read the shrunk table. A column range that loses one end prints
+/// the area it is displaced to, as under a fallback; its value is the plain range's, whose own
+/// column-delete gaps are T-2851's (Excel is unprobed for both).
+#[test]
+fn column_deletes_inside_drop_the_column() {
+    let qty = [
+        ("=SUM(#REF!)", "#REF!"),
+        ("=SUM(Sales[#All])", "30"),
+        ("=ROWS(Sales)", "2"),
+        // The plain range's column-delete corner gap, as above (T-2851).
+        ("=SUM(#REF!:$A$3)", "#REF!"),
+        ("=COUNTA(Sales[#Headers])", "1"),
+        ("=SUM(Sales[[#Data],[Val]])", "30"),
+    ];
+    let val = [
+        ("=SUM(Sales[Qty])", "3"),
+        ("=SUM(Sales[#All])", "3"),
+        ("=ROWS(Sales)", "2"),
+        // Not Excel's value: the plain range's column-delete corner gap (T-2851).
+        ("=SUM(Data!$A$2:#REF!)", "#ERROR!"),
+        ("=COUNTA(Sales[#Headers])", "1"),
+        ("=SUM(#REF!)", "#REF!"),
+    ];
+    for (column, expected) in [(1, qty), (2, val)] {
+        let mut model = model();
+        model.delete_columns(0, column, 1).unwrap();
+        model.evaluate();
+        for (row, (text, result)) in (1..).zip(expected) {
+            assert_eq!(formula(&model, 1, row, 1), text, "delete column {column}");
+            assert_eq!(
+                value(&model, 1, row, 1),
+                result,
+                "delete column {column}: {text}"
+            );
+        }
+    }
+}
+
+/// A column inserted inside the table is named `Column1`, in its header cell too (T-2339,
+/// probes/table-edits/table-insert-column-inside-header).
+#[test]
+fn a_column_inserted_inside_is_named_in_its_header() {
+    let mut model = model();
+    model.insert_columns(0, 2, 1).unwrap();
+    model
+        .set_user_input(1, 10, 1, "=INDEX(Sales[#Headers],1,2)".to_string())
+        .unwrap();
+    model.evaluate();
+    assert_eq!(value(&model, 0, 1, 2), "Column1");
+    assert_eq!(value(&model, 1, 10, 1), "Column1");
+    assert_eq!(formula(&model, 1, 1, 1), "=SUM(Sales[Qty])");
 }
 
 #[test]
@@ -326,11 +379,11 @@ fn wide_state(model: &Model) -> (Vec<String>, String, String, String) {
     )
 }
 
-/// A delete strictly inside the data rows shrinks the table, a column delete left of it moves it
+/// A delete inside the data rows shrinks the table, a column delete left of it moves it
 /// left, and a row insert inside its data grows it: every reference keeps its text, from another
 /// sheet, from the table's sheet, through a defined name and from a conditional format, and reads
 /// the table as it now is (references.md "Structured references under row deletes, column edits,
-/// convert, table and sheet delete", T-2324). A delete at an edge of the data is a fallback.
+/// convert, table and sheet delete", T-2324), a delete at an edge of the data too (T-2338).
 #[test]
 fn a_table_shrinks_and_moves_left() {
     let kept = |calc: [&str; 4]| {
@@ -360,15 +413,15 @@ fn a_table_shrinks_and_moves_left() {
     model.evaluate();
     assert_eq!(value(&model, 1, 9, 1), "6");
 
-    // The last data row (8) is an edge, a fallback (T-2338): the reference prints its displaced
-    // area, as before, and the table stays.
+    // A delete of the last data row (8) shrinks the table too (T-2338).
     model.delete_rows(0, 8, 1).unwrap();
     model.evaluate();
     let (_, text, _, cf) = wide_state(&model);
-    assert_eq!(formula(&model, 1, 1, 1), "=SUM(Data!$A$3:#REF!)");
-    assert_eq!(text, "=SUM($A$3:#REF!)");
-    assert_eq!(cf, "SUM($A$3:#REF!)>30");
-    assert_eq!(model.workbook.tables["Sales"].reference, "A2:B8");
+    assert_eq!(formula(&model, 1, 1, 1), "=SUM(Sales[Qty])");
+    assert_eq!(text, "=SUM(Sales[Qty])");
+    assert_eq!(cf, "SUM(Sales[Qty])>30");
+    assert_eq!(model.workbook.tables["Sales"].reference, "A2:B7");
+    assert_eq!(value(&model, 1, 9, 1), "5");
 }
 
 /// An edit on another sheet leaves the table, and so its references, alone.
@@ -394,11 +447,12 @@ fn a_formula_on_the_table_sheet_keeps_its_value() {
     // The table moved with the data (T-2297).
     assert_eq!(formula(&model, 0, 2, 6), "=SUM(Sales[Qty])");
     assert_eq!(value(&model, 0, 2, 6), "3");
-    // Its first data row is a fallback (T-2321): the area moves with the data, the table does not.
+    // An insert at its first data row grows it (T-2321).
     model.insert_rows(0, 3, 1).unwrap();
     model.evaluate();
-    assert_eq!(formula(&model, 0, 2, 6), "=SUM($A$4:$A$5)");
+    assert_eq!(formula(&model, 0, 2, 6), "=SUM(Sales[Qty])");
     assert_eq!(value(&model, 0, 2, 6), "3");
+    assert_eq!(model.workbook.tables["Sales"].reference, "A2:B5");
     model.insert_rows(0, 20, 1).unwrap();
     model
         .set_user_input(0, 10, 6, "=SUM(Sales[Qty])".to_string())
@@ -406,6 +460,160 @@ fn a_formula_on_the_table_sheet_keeps_its_value() {
     model.insert_rows(0, 20, 1).unwrap();
     model.evaluate();
     assert_eq!(formula(&model, 0, 10, 6), "=SUM(Sales[Qty])");
+}
+
+/// T-2197's `Sales` on S!B3:C7 (header row 3, data rows 4-7, Qty 1, 2, 4, 8), with a totals row
+/// 8 when `totals` is set, and on `F` the formulas `=SUM(Sales[Qty])`, `=ROWS(Sales)` and the
+/// plain ranges `=SUM(S!C4:C7)` (the data column), `=SUM(S!C5:C7)` (inside it, off its edges)
+/// and `=SUM(S!B4:D7)` (wider than the table).
+fn edge_model(totals: bool) -> Model {
+    let mut model = Model::new_empty("book", "en", "UTC", "en").unwrap();
+    model.rename_sheet("Sheet1", "S").unwrap();
+    model.add_sheet("F").unwrap();
+    let mut cells = vec![(3, 2, "Region"), (3, 3, "Qty")];
+    for (row, (region, qty)) in [("E", "1"), ("W", "2"), ("N", "4"), ("S", "8")]
+        .into_iter()
+        .enumerate()
+    {
+        let row = row as i32 + 4;
+        cells.extend([(row, 2, region), (row, 3, qty)]);
+    }
+    for (row, column, input) in cells {
+        model
+            .set_user_input(0, row, column, input.to_string())
+            .unwrap();
+    }
+    let bottom = if totals { 8 } else { 7 };
+    model
+        .add_table_with_totals(0, "Sales", (3, 2, bottom, 3), false, totals)
+        .unwrap();
+    if totals {
+        let total = "=SUBTOTAL(109,Sales[Qty])".to_string();
+        model.set_user_input(0, 8, 3, total).unwrap();
+    }
+    for (row, input) in [
+        "=SUM(Sales[Qty])",
+        "=ROWS(Sales)",
+        "=SUM(S!C4:C7)",
+        "=SUM(S!C5:C7)",
+        "=SUM(S!B4:D7)",
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        model
+            .set_user_input(1, row as i32 + 1, 1, input.to_string())
+            .unwrap();
+    }
+    model.evaluate();
+    model
+}
+
+/// The formulas of `F` column A after inserting one row above `row`, and the table's reference.
+fn edge_insert(totals: bool, row: i32) -> (Vec<String>, String) {
+    let mut model = edge_model(totals);
+    model.insert_rows(0, row, 1).unwrap();
+    model.evaluate();
+    let formulas = (1..=5).map(|r| formula(&model, 1, r, 1)).collect();
+    (formulas, model.workbook.tables["Sales"].reference.clone())
+}
+
+/// Excel grows the table on an insert at its first data row and at its totals row, and a plain
+/// range onto its data column grows with it (T-2197 table-insert-row-above-first-data and
+/// -above-totals: `=SUM(S!C4:C7)` becomes `=SUM(S!C4:C8)`); a range off that edge, or wider than
+/// the table, displaces as usual.
+#[test]
+fn a_table_and_ranges_onto_its_data_grow_at_its_edges() {
+    let formulas = |plain: [&str; 3]| {
+        let mut all = vec!["=SUM(Sales[Qty])".to_string(), "=ROWS(Sales)".to_string()];
+        all.extend(plain.map(str::to_string));
+        all
+    };
+    // Only `=SUM(S!C4:C8)` is oracle-backed; the off-edge and wider ranges are hand expectations
+    // (an ordinary displacement) until T-2846 probes them.
+    // Above the first data row.
+    let grown = formulas(["=SUM(S!C4:C8)", "=SUM(S!C6:C8)", "=SUM(S!B5:D8)"]);
+    for totals in [false, true] {
+        let bottom = if totals { 9 } else { 8 };
+        assert_eq!(
+            edge_insert(totals, 4),
+            (grown.clone(), format!("B3:C{bottom}"))
+        );
+    }
+    // Above the totals row.
+    let above_totals = formulas(["=SUM(S!C4:C8)", "=SUM(S!C5:C8)", "=SUM(S!B4:D7)"]);
+    assert_eq!(edge_insert(true, 8), (above_totals, "B3:C9".to_string()));
+    // Just below the table: nothing changes.
+    let unchanged = formulas(["=SUM(S!C4:C7)", "=SUM(S!C5:C7)", "=SUM(S!B4:D7)"]);
+    assert_eq!(
+        edge_insert(false, 8),
+        (unchanged.clone(), "B3:C7".to_string())
+    );
+    assert_eq!(edge_insert(true, 9), (unchanged, "B3:C8".to_string()));
+
+    // The values read the grown table: one blank data row, the totals row still sums the data.
+    let mut model = edge_model(true);
+    model.insert_rows(0, 8, 1).unwrap();
+    model.evaluate();
+    let values: Vec<String> = (1..=3).map(|r| value(&model, 1, r, 1)).collect();
+    assert_eq!(values, ["15", "5", "15"]);
+    assert_eq!(value(&model, 0, 9, 3), "15");
+}
+
+/// A row delete that takes a plain range's first or last rows shrinks it to the rows left
+/// (plain-range-delete-row-first and -last, T-2338); one that takes all of it is `#REF!`.
+#[test]
+fn a_row_delete_at_a_range_edge_shrinks_it() {
+    let text = |delete: (i32, i32), input: &str| {
+        let mut model = Model::new_empty("book", "en", "UTC", "en").unwrap();
+        model.rename_sheet("Sheet1", "S").unwrap();
+        model.add_sheet("F").unwrap();
+        model.set_user_input(1, 1, 1, input.to_string()).unwrap();
+        model.delete_rows(0, delete.0, delete.1).unwrap();
+        formula(&model, 1, 1, 1)
+    };
+    assert_eq!(text((4, 1), "=SUM(S!C4:C7)"), "=SUM(S!C4:C6)");
+    assert_eq!(text((7, 1), "=SUM(S!C4:C7)"), "=SUM(S!C4:C6)");
+    assert_eq!(text((4, 1), "=SUM(S!$C$4:$C$7)"), "=SUM(S!$C$4:$C$6)");
+    assert_eq!(text((7, 1), "=SUM(S!C7:C9)"), "=SUM(S!C7:C8)");
+    // Across an edge with more than one row (hand: only one-row deletes are probed).
+    assert_eq!(text((3, 3), "=SUM(S!C4:C7)"), "=SUM(S!C3:C4)");
+    assert_eq!(text((6, 3), "=SUM(S!C4:C7)"), "=SUM(S!C4:C5)");
+    // Inside or around the range: as before.
+    assert_eq!(text((5, 1), "=SUM(S!C4:C7)"), "=SUM(S!C4:C6)");
+    assert_eq!(text((1, 1), "=SUM(S!C4:C7)"), "=SUM(S!C3:C6)");
+    assert!(text((4, 1), "=SUM(S!C4:C4)").contains("#REF!"));
+}
+
+/// Deleting a table's only data row keeps the row, cleared: nothing below moves
+/// (table-delete-row-all-data-below, T-2338), and undo restores the row without moving anything.
+#[test]
+fn deleting_the_last_data_row_clears_it_and_undo_restores_it() {
+    let mut model = edge_model(false);
+    model.set_user_input(0, 10, 3, "99".to_string()).unwrap();
+    model.set_user_input(1, 6, 1, "=S!C10".to_string()).unwrap();
+    for _ in 0..3 {
+        model.delete_rows(0, 4, 1).unwrap();
+    }
+    model.evaluate();
+    assert_eq!(model.workbook.tables["Sales"].reference, "B3:C4");
+    assert_eq!(formula(&model, 1, 6, 1), "=S!C7");
+    let mut user = crate::UserModel::from_model(model);
+    user.delete_rows(0, 4, 1).unwrap();
+    let model = user.get_model();
+    assert_eq!(model.workbook.tables["Sales"].reference, "B3:C4");
+    assert_eq!(formula(model, 1, 6, 1), "=S!C7");
+    assert_eq!(value(model, 1, 2, 1), "1");
+    assert_eq!(value(model, 1, 1, 1), "0");
+    assert_eq!(value(model, 0, 4, 3), "");
+    user.undo().unwrap();
+    let model = user.get_model();
+    assert_eq!(model.workbook.tables["Sales"].reference, "B3:C4");
+    assert_eq!(value(model, 0, 4, 3), "8");
+    assert_eq!(value(model, 0, 7, 3), "99");
+    user.redo().unwrap();
+    assert_eq!(value(user.get_model(), 0, 4, 3), "");
+    assert_eq!(value(user.get_model(), 0, 7, 3), "99");
 }
 
 #[test]
@@ -465,7 +673,7 @@ fn a_sheet_rename_keeps_text_and_values() {
         row: 1,
         column: 1,
     };
-    let node = &model.parsed_formulas[1][0].0;
+    let node = &model.parsed_formulas[1][0].evaluated;
     // The table part is written on the renamed sheet, so the file keeps the reference (T-2196).
     assert_eq!(to_excel_string(node, &context), "SUM(Sales[Qty])");
     assert_eq!(model.workbook.tables["Sales"].sheet_name, "Facts");
@@ -706,4 +914,27 @@ fn convert_to_range_lowers_this_row_at_each_row() {
     assert_eq!(value(&model, 0, 3, 4), "4");
     assert_eq!(model.get_localized_cell_content(0, 3, 4).unwrap(), "=$A3*2");
     assert_eq!(value(&model, 1, 5, 4), "#VALUE!");
+}
+
+/// INDIRECT of structured-reference text is the table area; a column the table lacks, a table
+/// the workbook lacks are `#REF!` (docs/excel-semantics/lookup.md, T-2911).
+#[test]
+fn indirect_of_structured_reference_text() {
+    let mut model = model();
+    for (row, formula) in [
+        "=SUM(INDIRECT(\"Sales[Val]\"))",
+        "=ROWS(INDIRECT(\"Sales[Val]\"))",
+        "=INDIRECT(\"Sales[Nope]\")",
+        "=INDIRECT(\"Nope[Val]\")",
+    ]
+    .iter()
+    .enumerate()
+    {
+        model
+            .set_user_input(1, row as i32 + 1, 5, formula.to_string())
+            .unwrap();
+    }
+    model.evaluate();
+    let got: Vec<String> = (1..=4).map(|row| value(&model, 1, row, 5)).collect();
+    assert_eq!(got, ["30", "2", "#REF!", "#REF!"]);
 }

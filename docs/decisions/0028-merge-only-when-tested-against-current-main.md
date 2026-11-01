@@ -6,7 +6,9 @@
   happens under the lock; before it, only to fix a conflict or a known id collision. It refines
   0023 (a clash caught by the second PR's CI now also has to be caught at merge time) and the up-to-date clause of the steward
   merge policy, fits 0020 (merge `main` in, never rebase), and leaves 0016's allocator as best
-  effort.
+  effort. Amended by 0157: in `train` mode a
+  head is tested when the green train built on the current `main` held it, the squash is checked
+  detectively, and the strict-mode recommendation is withdrawn.
 - **Context:** On 2026-10-05, steward PR #79 and T-0109 PR #81 each added a task numbered T-0129.
   Each PR's CI was green, because CI tests the PR merged with the `main` of its last push, and
   #81 was merged after #79 landed. GitHub reported `mergeable_state: clean`, which only means "no

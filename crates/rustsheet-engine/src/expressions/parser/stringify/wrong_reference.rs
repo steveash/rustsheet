@@ -3,7 +3,9 @@
 
 use super::{open_range_flags, stringify_reference, DisplaceData};
 use crate::expressions::parser::{Node, Reference};
+use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceRC;
+use crate::expressions::utils::quote_name;
 
 /// The sheet printed in place of a missing one: none, after a `#REF!` prefix.
 const NO_SHEET: &Option<String> = &None;
@@ -19,6 +21,15 @@ fn is_missing_sheet(
     export_to_excel: bool,
 ) -> bool {
     sheet_name.is_some_and(|name| !name.starts_with('[')) && context.is_some() && !export_to_excel
+}
+
+/// `#REF!` written for a deleted reference, after the sheet prefix Excel keeps (`S!#REF!`) when
+/// there is one (references.md "A sheet-qualified #REF! is #REF!", T-2855).
+pub(super) fn ref_error_text(sheet_name: Option<&str>) -> String {
+    match sheet_name {
+        Some(name) => format!("{}!{}", quote_name(name), Error::REF),
+        None => Error::REF.to_string(),
+    }
 }
 
 /// The text of a `WrongReferenceKind` or `WrongRangeKind` node (empty for any other node).

@@ -1,0 +1,45 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "CHAR, UNICHAR, CODE, UNICODE, CONCAT and TEXTJOIN over ranges and computed arrays, including error elements (T-3302)",
+ "tags": [
+  "M2",
+  "probe",
+  "textjoin"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 72,
+    "A2": 105,
+    "A3": 33,
+    "B1": "Hi!",
+    "B2": "abc",
+    "B3": "€x",
+    "C1": 72,
+    "C2": "=NA()",
+    "C3": 33,
+    "E1": "=CONCAT(CHAR(A1:A3))",
+    "E2": "=TEXTJOIN(\"-\",TRUE,CHAR(A1:A3))",
+    "E3": "=CONCAT(UNICHAR(A1:A3))",
+    "E4": "=TEXTJOIN(\",\",FALSE,UNICHAR(A1:A3))",
+    "E5": "=CODE(B1:B3)",
+    "E6": "=UNICODE(B1:B3)",
+    "E7": "=CONCAT(CODE(B1:B3))",
+    "E8": "=TEXTJOIN(\"+\",TRUE,UNICODE(B1:B3))",
+    "E9": "=CONCAT(CHAR(C1:C3))",
+    "E10": "=TEXTJOIN(\"-\",TRUE,CHAR(C1:C3))",
+    "E11": "=CONCAT(CHAR({72,105;33,63}))",
+    "E12": "=TEXTJOIN(\"|\",TRUE,UNICODE({\"a\",\"b\";\"c\",\"d\"}))",
+    "E13": "=CONCAT(CODE(B1:B3&\"\"))",
+    "E14": "=CONCAT(A1:A3,CHAR(A1:A3))",
+    "E15": "=CONCAT(CHAR(SEQUENCE(3,1,65)))",
+    "E16": "=TEXTJOIN(CHAR(A1:A2),TRUE,\"a\",\"b\",\"c\")",
+    "E17": "=CONCAT(CHAR(1.9))",
+    "E18": "=CONCAT(CHAR({0,72}))",
+    "E19": "=CONCAT(UNICHAR({0,72}))",
+    "E20": "=CONCAT(CHAR(C1:C3),\"z\")"
+   }
+  }
+ ]
+}

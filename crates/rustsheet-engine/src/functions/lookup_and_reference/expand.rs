@@ -86,17 +86,21 @@ impl Model {
                 // A2686; arrays.md "EXPAND, WRAPROWS and WRAPCOLS"; T-2415). A one-cell reference
                 // is its value.
                 let pad = values.get(3);
-                if pad.is_some_and(CalcResult::is_multi_value) {
-                    return CalcResult::new_error(
+                // It comes after the size errors, though: rows past the grid are `#NUM!` beside an
+                // array pad_with (`EXPAND(1,1048577,1,{0;1})`, probes/t2479-expand-padarray-past-grid
+                // G1; T-2479).
+                let pad = if pad.is_some_and(CalcResult::is_multi_value) {
+                    Err(CalcResult::new_error(
                         Error::VALUE,
                         cell,
                         "pad_with must be a single value".to_string(),
-                    );
-                }
-                let pad = pad.map(|pad| match pad {
-                    CalcResult::Range { .. } => model.dereference(pad.clone(), cell),
-                    other => other.clone(),
-                });
+                    ))
+                } else {
+                    Ok(pad.map(|pad| match pad {
+                        CalcResult::Range { .. } => model.dereference(pad.clone(), cell),
+                        other => other.clone(),
+                    }))
+                };
                 // A written empty pad_with pads with blank elements too, where WRAPCOLS's is
                 // `#N/A`: `ISBLANK(INDEX(EXPAND(1,2,2,),2,2))` is TRUE, `WRAPCOLS({1,2,3},2,)`'s
                 // FALSE (probes/t2461-blank-array-sources A18, A30).
@@ -104,7 +108,7 @@ impl Model {
                     data,
                     target_rows,
                     target_cols,
-                    pad_with_of(pad.as_ref()),
+                    pad.map(|pad| pad_with_of(pad.as_ref())),
                     cell,
                 )
             },
@@ -116,12 +120,13 @@ impl Model {
 /// 1048576 and `(1,1,1048577)` is `#NUM!` (probes/t2452-expand-cols-1048576, -1048577; T-2452).
 const COLUMNS_REFUSED: usize = 1_048_577;
 
-/// One EXPAND call: `data` padded with `pad` to `target_rows` x `target_cols`.
+/// One EXPAND call: `data` padded with `pad` to `target_rows` x `target_cols`. `pad` is `Err` for an
+/// array `pad_with`, whose `#VALUE!` is reported after the rows-past-the-grid check only.
 fn expand_kernel(
     data: &[Vec<ArrayNode>],
     target_rows: usize,
     target_cols: usize,
-    pad: ArrayNode,
+    pad: Result<ArrayNode, CalcResult>,
     cell: CellReferenceIndex,
 ) -> CalcResult {
     let src_rows = data.len();
@@ -141,6 +146,11 @@ fn expand_kernel(
         );
     }
 
+    // Rows past the grid are `#NUM!` even beside an array pad_with (probes/t2479-expand-padarray-
+    // past-grid G1; T-2479); zero columns make this the grid test alone, the cell bound comes last.
+    if let Some((error, message)) = check_stack_size(target_rows, 0) {
+        return CalcResult::new_error(error, cell, message);
+    }
     // Excel refuses columns past a cap of its own after the sizes above: 1,048,576 are built and
     // 1,048,577 are `#NUM!` in one row (probes/t2452-expand-cols-*), and the cap counts columns,
     // not cells (`COLUMNS(EXPAND(1,2,524289))` is 524289, probes/t2452-expand-2x524289); a
@@ -154,9 +164,17 @@ fn expand_kernel(
         );
     }
 
-    // Rows past the grid are `#NUM!` and columns past it are allowed, as for VSTACK (arrays.md
-    // "Stacked results past the grid"; T-1967); a target above the cell bound is refused before
-    // padding it (DEVIATION, arrays.md "Array results above 1,048,576 cells"; T-1786).
+    // The columns cap above beat an array pad_with (`EXPAND(1,3,1048577,{0;1})` is `#NUM!`,
+    // probes/t2479-expand-padarray-cellbound G2); any other size is `#VALUE!` (-small, -cellbound
+    // G1), so the pad error precedes the cell bound, a DEVIATION directive 5 needs only to allocate.
+    let pad = match pad {
+        Ok(pad) => pad,
+        Err(error) => return error,
+    };
+
+    // Columns past the grid are allowed, as for VSTACK (arrays.md "Stacked results past the grid";
+    // T-1967); a target above the cell bound is refused before padding it (DEVIATION, arrays.md
+    // "Array results above 1,048,576 cells"; T-1786).
     if let Some((error, message)) = check_stack_size(target_rows, target_cols) {
         return CalcResult::new_error(error, cell, message);
     }

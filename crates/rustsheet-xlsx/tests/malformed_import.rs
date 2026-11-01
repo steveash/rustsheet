@@ -3,6 +3,8 @@
 use std::error::Error;
 use std::io::{Cursor, Read, Write};
 
+use rustsheet_xlsx::base::expressions::utils::number_to_column;
+use rustsheet_xlsx::base::types::MergedCell;
 use rustsheet_xlsx::base::Model;
 use rustsheet_xlsx::error::{ImportLimit, XlsxError};
 use rustsheet_xlsx::import::{
@@ -109,8 +111,10 @@ fn sheet_without_relationship_is_an_error() -> TestResult {
     Ok(())
 }
 
+/// The workbook decodes, but its style 0 points at a font that is not there, so the first read of
+/// a cell's style would index past the fonts: the model refuses it (T-2913).
 #[test]
-fn empty_fonts_with_an_xf_pointing_at_a_font_imports() -> TestResult {
+fn empty_fonts_with_an_xf_pointing_at_a_font_is_an_error() -> TestResult {
     let bytes = rewrite(|name, content| {
         if name != "xl/styles.xml" {
             return content;
@@ -123,7 +127,13 @@ fn empty_fonts_with_an_xf_pointing_at_a_font_imports() -> TestResult {
             &content[end..]
         )
     })?;
-    assert_imports(&bytes)
+    let workbook = load_from_xlsx_bytes(&bytes, "case", "en", "UTC")?;
+    let err = Model::from_workbook(workbook, "en").err();
+    assert!(
+        err.as_ref().is_some_and(|e| e.contains("font 0")),
+        "expected a dangling-font error, got {err:?}"
+    );
+    Ok(())
 }
 
 #[test]
@@ -386,6 +396,151 @@ fn formula_longer_than_8192_characters_refuses_the_workbook() -> TestResult {
     Ok(())
 }
 
+/// A sheet whose A100 holds the stored formula `formula`.
+fn sheet_with_a100_formula(formula: &str) -> Result<Vec<u8>, Box<dyn Error>> {
+    let cell = format!("<sheetData><row r=\"100\"><c r=\"A100\"><f>{formula}</f></c></row>");
+    rewrite(|name, content| {
+        if name == "xl/worksheets/sheet1.xml" {
+            content.replacen("<sheetData>", &cell, 1)
+        } else {
+            content
+        }
+    })
+}
+
+/// A sheet whose A100 holds `calls` nested function calls as Excel stores them: levels of `open`
+/// (each closed by `)`) around `inner` (probes/t3097-nesting-*).
+fn sheet_with_nested_calls(
+    open: &str,
+    inner: &str,
+    calls: usize,
+) -> Result<Vec<u8>, Box<dyn Error>> {
+    // An innermost other than `1` (the LET or the called LAMBDA) is itself one of the calls.
+    let outer = calls - usize::from(inner != "1");
+    sheet_with_a100_formula(&format!(
+        "{}{inner}{}",
+        open.repeat(outer),
+        ")".repeat(outer)
+    ))
+}
+
+// Excel for the web loads 65 nested function calls and refuses the workbook at 66 (createSession
+// 501; probes/t3097-nesting-*, docs/excel-semantics/syntax.md "Formula nesting depth cap", T-3097).
+#[test]
+fn formula_nesting_more_than_65_calls_refuses_the_workbook() -> TestResult {
+    for (open, inner) in [
+        ("ABS(", "1"),
+        ("IF(TRUE,", "1"),
+        ("SUM(", "1"),
+        ("ABS(1+", "1"),
+        ("ABS(", "_xlfn.LET(_xlpm.x,1,_xlpm.x)"),
+        ("ABS(", "_xlfn.LAMBDA(_xlpm.x,_xlpm.x)(1)"),
+    ] {
+        assert_imports(&sheet_with_nested_calls(open, inner, 65)?)?;
+        assert_import_error(
+            &sheet_with_nested_calls(open, inner, 66)?,
+            "Formula in Sheet1!A100 nests more than 65 function calls",
+        );
+    }
+    // A mixed chain, three calls a level: 63 load and 66 are refused.
+    let mixed =
+        |levels: usize| format!("{}1{}", "ABS(SUM(INT(".repeat(levels), ")))".repeat(levels));
+    assert_imports(&sheet_with_a100_formula(&mixed(21))?)?;
+    assert_import_error(
+        &sheet_with_a100_formula(&mixed(22))?,
+        "Formula in Sheet1!A100 nests more than 65 function calls",
+    );
+    Ok(())
+}
+
+// Stored, `_xlfn.SINGLE(` (`@`) and `_xlfn.ANCHORARRAY(` (`#`) are calls like any other: 65 calls
+// with one of them load and 66 are refused (createSession 501; probes/t3143-single-*-stored and
+// t3143-anchor-inner-*-stored, T-3143).
+#[test]
+fn stored_single_and_anchorarray_count_toward_the_nesting_cap() -> TestResult {
+    let abs = |n: usize, inner: &str| format!("{}{inner}{}", "ABS(".repeat(n), ")".repeat(n));
+    for calls in [65, 66] {
+        for formula in [
+            abs(calls - 1, "_xlfn.SINGLE(C1:C2)"),
+            format!("ABS(_xlfn.SINGLE({}))", abs(calls - 2, "1")),
+            abs(calls - 2, "SUM(_xlfn.ANCHORARRAY(C1))"),
+        ] {
+            let sheet = sheet_with_a100_formula(&formula)?;
+            if calls == 65 {
+                assert_imports(&sheet)?;
+            } else {
+                assert_import_error(
+                    &sheet,
+                    "Formula in Sheet1!A100 nests more than 65 function calls",
+                );
+            }
+        }
+    }
+    Ok(())
+}
+
+// A defined-name body is held to the same cap: a body of 65 nested calls loads and one of 66 makes
+// Excel refuse the workbook (createSession 501; probes/t3143-name-body-65, T-3143).
+#[test]
+fn name_body_nesting_more_than_65_calls_refuses_the_workbook() -> TestResult {
+    let body = |n: usize| format!("{}1{}", "ABS(".repeat(n), ")".repeat(n));
+    assert_imports(&workbook_with_name_body(&body(65))?)?;
+    assert_import_error(
+        &workbook_with_name_body(&body(66))?,
+        "definedName nm body nests more than 65 function calls",
+    );
+    Ok(())
+}
+
+// A formula conditional format and a custom data validation are held to the same cap: 65 nested
+// calls load and 66 make Excel refuse the workbook (createSession 501; probes/t3263-cf-abs-65 and
+// t3263-dv-abs-65, T-3263). A 299-character rule formula with no call loads (t3263-*-long-299).
+#[test]
+fn rule_formula_nesting_more_than_65_calls_refuses_the_workbook() -> TestResult {
+    let abs = |n: usize| format!("{}1{}", "ABS(".repeat(n), ")".repeat(n));
+    let cf = |f: &str| {
+        format!(
+            "<conditionalFormatting sqref=\"A1\"><cfRule type=\"expression\" priority=\"1\">\
+             <formula>{f}</formula></cfRule></conditionalFormatting>"
+        )
+    };
+    let dv = |f: &str| {
+        format!(
+            "<dataValidations count=\"1\"><dataValidation type=\"custom\" sqref=\"A1\">\
+             <formula1>{f}</formula1></dataValidation></dataValidations>"
+        )
+    };
+    let long = vec!["1"; 150].join("+");
+    for (rule, kind) in [
+        (&cf as &dyn Fn(&str) -> String, "conditional format"),
+        (&dv, "data validation"),
+    ] {
+        assert_imports(&sheet_with_rules(&rule(&abs(65)))?)?;
+        assert_imports(&sheet_with_rules(&rule(&long))?)?;
+        assert_import_error(
+            &sheet_with_rules(&rule(&abs(66)))?,
+            &format!("Formula of a {kind} on Sheet1!A1 nests more than 65 function calls"),
+        );
+    }
+    // Another data-validation type is not checked (unprobed): a whole-number rule keeps 66 calls.
+    let whole =
+        "<dataValidations count=\"1\"><dataValidation type=\"whole\" operator=\"greaterThan\" \
+                 sqref=\"A1\"><formula1>{}</formula1></dataValidation></dataValidations>";
+    assert_imports(&sheet_with_rules(&whole.replace("{}", &abs(66)))?)?;
+    Ok(())
+}
+
+/// A sheet with `rules` (conditional formatting or data validation XML) after its cells.
+fn sheet_with_rules(rules: &str) -> Result<Vec<u8>, Box<dyn Error>> {
+    rewrite(|name, content| {
+        if name == "xl/worksheets/sheet1.xml" {
+            content.replacen("</sheetData>", &format!("</sheetData>{rules}"), 1)
+        } else {
+            content
+        }
+    })
+}
+
 /// A workbook whose only defined name `nm` has `body` as its stored text.
 fn workbook_with_name_body(body: &str) -> Result<Vec<u8>, Box<dyn Error>> {
     let names = format!(
@@ -400,9 +555,22 @@ fn workbook_with_name_body(body: &str) -> Result<Vec<u8>, Box<dyn Error>> {
     })
 }
 
-/// A sheet whose A100 holds `-LEN("<emoji_count emoji>")`, `8 + 2 * emoji_count` UTF-16 units.
+/// `emoji_count` emoji as `&`-joined (XML-escaped) string literals of at most 2,000 emoji each (a literal over
+/// 4,095 units is refused, T-2762): `2 * emoji_count + 4 * pieces + (pieces - 1)` UTF-16 units.
+fn emoji_literals(emoji_count: usize) -> String {
+    let mut pieces = Vec::new();
+    let mut left = emoji_count;
+    while left > 0 {
+        let n = left.min(2_000);
+        pieces.push(format!("\"{}\"", "\u{1F600}".repeat(n)));
+        left -= n;
+    }
+    pieces.join("&amp;")
+}
+
+/// A sheet whose A100 holds `-LEN(<emoji_count emoji>)` (`6 + literal` UTF-16 units).
 fn sheet_with_emoji_formula(emoji_count: usize) -> Result<Vec<u8>, Box<dyn Error>> {
-    let f = format!("-LEN(\"{}\")", "\u{1F600}".repeat(emoji_count));
+    let f = format!("-LEN({})", emoji_literals(emoji_count));
     let cell = format!("<sheetData><row r=\"100\"><c r=\"A100\"><f>{f}</f></c></row>");
     rewrite(|name, content| {
         if name == "xl/worksheets/sheet1.xml" {
@@ -430,17 +598,217 @@ fn name_body_longer_than_8191_characters_refuses_the_workbook() -> TestResult {
 // 4,097 and 4,099 scalars, so a scalar count would accept the second.
 #[test]
 fn non_bmp_text_counts_two_utf16_units_toward_the_limits() -> TestResult {
-    let emoji = "\u{1F600}".repeat(4_093);
-    assert_imports(&workbook_with_name_body(&format!("\"{emoji}\"&amp;1"))?)?;
+    // Three literals (none over 4,095 units, T-2762): 4,090 emoji + 10 = 8,190 units.
+    let emoji = emoji_literals(4_090);
+    assert_imports(&workbook_with_name_body(&format!("{emoji}&amp;1"))?)?;
     assert_import_error(
-        &workbook_with_name_body(&format!("\"{emoji}\"&amp;1&amp;1"))?,
+        &workbook_with_name_body(&format!("{emoji}&amp;1&amp;1"))?,
         "definedName nm body is longer than 8191 UTF-16 code units",
     );
-    // 4,092 emoji + 8 = 8,192 units loads; one more emoji is 8,194 and is refused.
-    assert_imports(&sheet_with_emoji_formula(4_092)?)?;
+    // 4,089 emoji + 14 = 8,192 units loads; one more emoji is 8,194 and is refused.
+    assert_imports(&sheet_with_emoji_formula(4_089)?)?;
     assert_import_error(
-        &sheet_with_emoji_formula(4_093)?,
+        &sheet_with_emoji_formula(4_090)?,
         "Formula in Sheet1!A100 is longer than 8192 UTF-16 code units",
     );
+    Ok(())
+}
+
+/// A sheet whose A100 holds `LEN("<literal>")`.
+fn sheet_with_literal(literal: &str) -> Result<Vec<u8>, Box<dyn Error>> {
+    let cell =
+        format!("<sheetData><row r=\"100\"><c r=\"A100\"><f>LEN(\"{literal}\")</f></c></row>");
+    rewrite(|name, content| {
+        if name == "xl/worksheets/sheet1.xml" {
+            content.replacen("<sheetData>", &cell, 1)
+        } else {
+            content
+        }
+    })
+}
+
+// Excel refuses a workbook with a string literal of 4,096 UTF-16 units and loads 4,095; a doubled
+// quote counts once and emoji twice (T-2739 probes t2739-stored-4095, t2739-typed-dq-4095,
+// t2739-typed-emoji-2047; T-2762).
+#[test]
+fn string_literal_longer_than_4095_units_refuses_the_workbook() -> TestResult {
+    let message =
+        "Formula in Sheet1!A100 holds a string literal longer than 4095 UTF-16 code units";
+    assert_imports(&sheet_with_literal(&"a".repeat(4_095))?)?;
+    assert_import_error(&sheet_with_literal(&"a".repeat(4_096))?, message);
+    assert_imports(&sheet_with_literal(&format!("{}\"\"", "a".repeat(4_094)))?)?;
+    assert_import_error(
+        &sheet_with_literal(&format!("{}\"\"", "a".repeat(4_095)))?,
+        message,
+    );
+    assert_imports(&sheet_with_literal(&"\u{1F600}".repeat(2_047))?)?;
+    assert_import_error(&sheet_with_literal(&"\u{1F600}".repeat(2_048))?, message);
+    // A defined-name body too (T-2739 notes: a single 4,090-emoji literal body was refused).
+    assert_imports(&workbook_with_name_body(&format!(
+        "\"{}\"",
+        "a".repeat(4_095)
+    ))?)?;
+    assert_import_error(
+        &workbook_with_name_body(&format!("\"{}\"", "a".repeat(4_096)))?,
+        "definedName nm body holds a string literal longer than 4095 UTF-16 code units",
+    );
+    Ok(())
+}
+
+/// Re-zips `tests/basic_text.xlsx` with the `sheetData` of its first sheet replaced by `rows`.
+fn with_first_sheet_rows(rows: &str) -> Result<Vec<u8>, Box<dyn Error>> {
+    rewrite(|name, content| {
+        if name == "xl/worksheets/sheet1.xml" {
+            replace_sheet_data(&content, rows)
+        } else {
+            content
+        }
+    })
+}
+
+/// A worksheet part `content` with its `sheetData` holding `rows`.
+fn replace_sheet_data(content: &str, rows: &str) -> String {
+    let (Some(start), Some(end)) = (content.find("<sheetData"), content.find("</sheetData>"))
+    else {
+        return content.to_string();
+    };
+    format!("{}<sheetData>{rows}{}", &content[..start], &content[end..])
+}
+
+/// One array formula whose `ref` names two whole columns: the importer would put 2^21 cells in
+/// its map before the load check, so it refuses the formula at once (T-3437).
+#[test]
+fn an_array_formula_ref_past_one_column_is_an_error() -> TestResult {
+    let rows = r#"<row r="1"><c r="A1"><f t="array" ref="A1:B1048576">1</f><v>1</v></c></row>"#;
+    assert_import_error(&with_first_sheet_rows(rows)?, "spills over more than");
+    Ok(())
+}
+
+/// A thousand array formulas of a few bytes each, each naming a whole column the file does not
+/// store: refused before the map takes 2^30 cells (T-3437).
+#[test]
+fn array_formula_refs_naming_more_cells_than_the_sheet_holds_are_an_error() -> TestResult {
+    let mut cells = String::new();
+    for column in 1..=1000 {
+        let name = number_to_column(column).ok_or("column")?;
+        cells.push_str(&format!(
+            r#"<c r="{name}1"><f t="array" ref="{name}1:{name}1048576">1</f><v>1</v></c>"#
+        ));
+    }
+    let rows = format!(r#"<row r="1">{cells}</row>"#);
+    assert_import_error(
+        &with_first_sheet_rows(&rows)?,
+        "more cells than the sheets read so far store",
+    );
+    Ok(())
+}
+
+/// An array formula whose covered cells are all written imports as before.
+#[test]
+fn an_array_formula_with_its_cells_imports() -> TestResult {
+    let rows = r#"<row r="1"><c r="A1"><f t="array" ref="A1:A3">ROW(A1:A3)</f><v>1</v></c></row><row r="2"><c r="A2"><v>2</v></c></row><row r="3"><c r="A3"><v>3</v></c></row>"#;
+    assert_imports(&with_first_sheet_rows(rows)?)
+}
+
+/// Re-zips `tests/basic_text.xlsx` with its first sheet holding `rows` and the merged ranges
+/// `refs`.
+fn with_first_sheet_merges(rows: &str, refs: &[String]) -> Result<Vec<u8>, Box<dyn Error>> {
+    let mut merge_cells = format!(r#"</sheetData><mergeCells count="{}">"#, refs.len());
+    for r in refs {
+        merge_cells.push_str(r#"<mergeCell ref=""#);
+        merge_cells.push_str(r);
+        merge_cells.push_str(r#""/>"#);
+    }
+    merge_cells.push_str("</mergeCells>");
+    rewrite(|name, content| {
+        if name == "xl/worksheets/sheet1.xml" {
+            replace_sheet_data(&content, rows).replacen("</sheetData>", &merge_cells, 1)
+        } else {
+            content
+        }
+    })
+}
+
+/// A hundred thousand merged ranges, ten thousand more that each intersect one of them and a few
+/// disjoint ones last: the import keeps the first of any that intersect, as checking each range
+/// against every kept one did, without its 5 x 10^9 checks (T-3454). The load takes about 2 s in a
+/// debug build and 0.3 s in release; the old checks took 46 s in a debug build, so the bound of
+/// 20 s leaves room for a slow runner and still fails them.
+#[test]
+fn many_merged_ranges_import_quickly_and_keep_the_first_of_intersecting_ones() -> TestResult {
+    let pair = |row: i32, column: i32| -> String {
+        let first = number_to_column(column).unwrap_or_default();
+        let second = number_to_column(column + 1).unwrap_or_default();
+        format!("{first}{row}:{second}{row}")
+    };
+    let mut refs = Vec::new();
+    let mut expected = Vec::new();
+    for row in 1..=100 {
+        for column in (1..=2_000).step_by(2) {
+            refs.push(pair(row, column));
+            expected.push(MergedCell {
+                row,
+                column,
+                width: 2,
+                height: 1,
+            });
+        }
+    }
+    for i in 0..10_000 {
+        // Straddles two kept pairs, or covers several rows of them.
+        if i % 2 == 0 {
+            refs.push(pair(1 + i % 100, 2 + 2 * (i % 999)));
+        } else {
+            let column = number_to_column(1 + 2 * (i % 1_000)).unwrap_or_default();
+            refs.push(format!("{column}{}:{column}{}", 1 + i % 90, 11 + i % 90));
+        }
+    }
+    for row in [101, 500, 1_048_576] {
+        refs.push(format!("A{row}:XFD{row}"));
+        expected.push(MergedCell {
+            row,
+            column: 1,
+            width: 16_384,
+            height: 1,
+        });
+    }
+    let rows = r#"<row r="1"><c r="A1"><v>1</v></c></row>"#;
+    let bytes = with_first_sheet_merges(rows, &refs)?;
+    let started = std::time::Instant::now();
+    let workbook = load_from_xlsx_bytes(&bytes, "case", "en", "UTC")?;
+    assert!(
+        started.elapsed().as_secs() < 20,
+        "took {:?}",
+        started.elapsed()
+    );
+    assert_eq!(workbook.worksheets[0].merged_cells, expected);
+    Ok(())
+}
+
+/// Whole-column merged ranges, a thousand of them: clearing their covered cells walks the cells
+/// stored, not the 2^30 cells the ranges name, and still empties the ones covered (T-3442). It
+/// takes about 0.1 s; the bound of 10 s leaves room for a slow runner, while the old walk, about
+/// 10^9 lookups, took minutes.
+#[test]
+fn many_whole_column_merges_import_quickly_and_clear_covered_cells() -> TestResult {
+    let refs: Vec<String> = (1..=1000)
+        .map(|column| {
+            let name = number_to_column(column).unwrap_or_default();
+            format!("{name}1:{name}1048576")
+        })
+        .collect();
+    let rows = r#"<row r="1"><c r="A1"><v>1</v></c></row><row r="500000"><c r="A500000"><v>2</v></c><c r="B500000"><v>3</v></c></row>"#;
+    let started = std::time::Instant::now();
+    let workbook =
+        load_from_xlsx_bytes(&with_first_sheet_merges(rows, &refs)?, "case", "en", "UTC")?;
+    assert!(
+        started.elapsed().as_secs() < 10,
+        "took {:?}",
+        started.elapsed()
+    );
+    let model = Model::from_workbook(workbook, "en")?;
+    assert_eq!(model.get_formatted_cell_value(0, 1, 1)?, "1");
+    assert_eq!(model.get_formatted_cell_value(0, 500_000, 1)?, "");
+    assert_eq!(model.get_formatted_cell_value(0, 500_000, 2)?, "");
     Ok(())
 }

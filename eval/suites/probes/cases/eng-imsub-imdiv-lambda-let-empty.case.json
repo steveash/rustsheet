@@ -1,0 +1,30 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2770: IMSUB and IMDIV with an omitted LAMBDA parameter and a LET-bound empty value.",
+ "tags": [
+  "M9",
+  "probe",
+  "engineering",
+  "T-2770"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=LAMBDA(a,b,IMSUB(a,b))(\"1\",)",
+    "A2": "=LAMBDA(a,b,IMSUB(a,b))(,\"1\")",
+    "A3": "=LAMBDA(a,b,IMDIV(a,b))(\"1\",)",
+    "A4": "=LAMBDA(a,b,IMDIV(a,b))(,\"1\")",
+    "A5": "=LAMBDA(a,b,IMSUB(a,b))(\"1\")",
+    "A6": "=LAMBDA(a,b,IMSUB(a,b))(\"1\",Q1)",
+    "A7": "=LET(e,IFERROR(Q1,\"x\"),IMSUB(\"1\",e))",
+    "A8": "=LET(e,IFERROR(Q1,\"x\"),IMDIV(\"1\",e))",
+    "A9": "=LET(e,IFERROR(Q1,\"x\"),IMSUB(e,\"1\"))",
+    "A10": "=LET(e,IFERROR(Q1,\"x\"),IMDIV(e,\"1\"))",
+    "A11": "=LET(e,IF(TRUE,Q1),IMSUB(\"1\",e))",
+    "A12": "=LET(e,,IMSUB(\"1\",e))"
+   }
+  }
+ ],
+ "expected": {}
+}

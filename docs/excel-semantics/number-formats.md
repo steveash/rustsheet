@@ -35,16 +35,96 @@ below, T-1450), non-ASCII letters (only `ü` is probed; the engine treats every 
 - Letters that are date tokens make the section a date one: `TEXT(PI(),"ab")` = "a43" (`b`, Buddhist year), and
   `TEXT(12.3,"a.b")` is `#VALUE!` (a point and a date token). `n`/`N` and a bare `E` are `#VALUE!`.
 - `General` may stand among literals: `TEXT(5,"General x")` = "5 x", `TEXT(5,"x General")` = "x 5".
+- The word `General` is case-insensitive (`"general x"`, `"GENERAL x"` give "5 x"). `%` and `,` beside it
+  print and do not scale: `TEXT(5,"General%")` = "5%", `TEXT(0.5,"General%")` = "0.5%", `TEXT(5,"General,")` = "5,".
+  `General` beside a digit placeholder (`"0 General"`, `"General 0"`, `"General0"`, `"General.0"`, `"0.0 General"`), a
+  point (`"General."`), or a second `General` is `#VALUE!`, as is `TEXT(-5,"x General;y")`; `TEXT(-5,"General x")` =
+  "-5 x"; `TEXT(1234567890123,"x General")` = "x 1.23457E+12". `General` in a date section is
+  its own entry, "`General` in a date section" below.
+  Evidence: probes/text-format-general-company (excel-graph, 2026-10-31, T-1614).
+- **`General` in a date section** (T-3378). One `General` among date, clock or elapsed tokens prints a value of its
+  own, and the date and clock tokens print as usual. Which value depends on what else the section holds:
+  - With a date or clock token anywhere in the section (`d`, `m`, `yyyy`, `h`, `mm:ss`, `AM/PM`), General prints the
+    seconds within the minute of `y = x + 0.5/86400`, the serial after Excel's half-second rounding step. That is
+    `(frac(y) * 86400) mod 60`, with the step's float error left in, in General's 11-character form.
+    - At a whole serial it is the half second itself. `TEXT(5,"d General")` = "5 0.5", `TEXT(45000,"d General")` =
+      "15 0.499999803", `TEXT(2958465,"d General")` = "31 0.500017405".
+    - With a time of day it is the shown second plus a half. `TEXT(12345.678,"d General")` = "18 19.69999995",
+      `TEXT(0.99999,"d General")` = "0 59.636", `TEXT(1E-10,"d General")` = "0 0.50000864".
+    - At exactly half a second before midnight it is 0 and the day rolls over: `TEXT(0.999994212962963,"d General")` =
+      "1 0", and one ulp later "1 9.59233E-11".
+    - The position does not matter: `TEXT(45000,"General d")` = "0.499999803 15".
+    - With fraction digits `s.0`, `s.00` or `s.000`, the step is half of the last shown digit and General prints in
+      units of that digit. `TEXT(5,"s.0 General")` = "0.0 0.5", `TEXT(45000,"s.0 General")` = "0.0 0.499997288",
+      `TEXT(5,"s.00 General")` = "0.00 0.500000003", `TEXT(45000,"s.000 General")` = "0.000 0.499770977".
+      With a time of day that has seconds it is the shown fraction alone, in its own units, not the seconds within
+      the minute: `TEXT(12345.678,"s.0 General")` = "19.2 2.500000331", `TEXT(0.99999,"s.00 General")` = "59.14 14.1".
+      Fraction digits split the serial by themselves: `TEXT(5,"[s].0 General")` = "432000.0 0.5" and
+      `TEXT(5.25,"[s].0 General")` = "453600.0 0.5", not the value as with `[s]` alone.
+  - With only elapsed tokens (`[h]`, `[m]`, `[s]`), General prints the value's magnitude. `TEXT(5.25,"[h] General")` =
+    "126 5.25", `TEXT(0.001,"[s] General")` = "86 0.001", `TEXT(-5,"[h] General")` = "-120 5". A negative stays
+    formattable in the 1900 system, as with a lone elapsed token (`TEXT(-5,"[s] General")` = "-432000 5",
+    `TEXT(-5,"[m] General")` = "-7200 5"), and so does a serial past 9999-12-31 (`TEXT(3000000,"[h] General")` =
+    "72000000 3000000").
+  - Otherwise as other date sections: `TEXT(-5,"d General")` and `TEXT(3000000,"d General")` are `#VALUE!`, text
+    and booleans print as themselves (`TEXT("abc","d General")` = "abc"). In a 1904 workbook the day reads the 1904
+    epoch and the residue is the same (`TEXT(0,"d General")` = "1 0.5").
+  - **One register** (T-3419). The value General prints is Excel's one value register, and an elapsed `[h]`, `[m]`
+    or `[s]` that stands after a date or clock token (`d`, `yyyy`, `mm` as a month or a minute, `s`, `dddd`, `AM/PM`)
+    counts from it as a serial, with or without General in the section. The count rounds the register to the shown
+    second and truncates, as for a lone elapsed token. `TEXT(5,"d [h] General")` = "5 12 0.5", `"d [m] General"`
+    "5 720 0.5", `"d [s] General"` "5 43200 0.5", `TEXT(5,"d [h]")` = "5 12", `TEXT(12345.678,"d [h]")` = "18 472"
+    (19.69999995 days), `TEXT(12345.678,"d [m] General")` = "18 28368 19.69999995", `TEXT(45000,"d [h] General")` =
+    "15 12 0.499999803" (43199.98 s rounds to 12 h), `TEXT(5,"AM/PM [h]")` = "AM 12", `TEXT(5,"General d [h]")` =
+    "0.5 5 12". With fraction digits the register is the fraction residue: `TEXT(12345.678,"s.0 [h] General")` =
+    "19.2 60 2.500000331", and `TEXT(12345.678,"d [s].0 General")` = "18 216000.2 2.500000331", whose fraction digit
+    still reads the serial. An elapsed token before every date or clock token counts from the serial:
+    `TEXT(5,"[h] d General")` = "120 5 0.5". Clock tokens after the elapsed one read the serial:
+    `TEXT(12345.678,"d [h]:mm:ss")` = "18 472:16:19"; a bare `h` after `[h]` repeats the count
+    (`"d [h] h:mm"` is "18 472 472:16").
+  - An elapsed token after a clock token of its own unit or a larger one is `#VALUE!` for any value: `"h [h]"`,
+    `"hh [h]"`, `"h [m]"`, `"h [s]"`, `"h:mm [h]"`, `"d h [h]"`, `"h d [h]"`, `"mm:ss [m]"`, `"mm:ss [s]"`, `"s [s]"`,
+    `"ss [s]"`, `"s.0 [s]"`, with or without General. A smaller unit first is valid: `TEXT(12345.678,"s [h]")` =
+    "19 472", `TEXT(5,"ss [m] General")` = "00 720 0.5", `TEXT(5,"mm:ss [h] General")` = "00:00 12 0.5". A month `mm`
+    is no clock token: `TEXT(5,"mm [h] General")` = "01 12 0.5".
+  - **Fraction digits after an hour or minute token** (T-3575). `.0`, `.00`, `.000` right after any hour or minute
+    token (`h`, `hh`, `m`, `mm`, `[h]`, `[hh]`, `[m]`, `[mm]`), with or without a colon or space before it, is the
+    fraction of the second, as after `s`; four zeros are `#VALUE!` (`"h.0000"`, as `"s.0000"`). The digit is the
+    serial's own fraction of a second: on 12345.678 (16:16:19.2) `"[h].0"` = "296296.2", `"[h].00"` "296296.20",
+    `"[h].000"` "296296.200", `"[m].0"` "17777776.2", `"[hh].0"` "296296.2", `"h.0"` "16.2", `"mm.0"` "16.2"; on
+    0.1234567 (2:57:46.659) `"h.000"` "2.659", `"hh.0"` "02.7", `"mm.00"` "57.66", `"[mm].0"` "177.7", `"h:mm.0"`
+    "2:57.7", `"hh:mm.0"` "02:57.7", `"h mm.0"` "2 57.7", `"h:mm.000"` "2:57.659", `"[h]:mm.00"` "2:57.66",
+    `"h:mm.0 AM/PM"` "2:57.7 AM"; `TEXT(5,"[h].0")` = "120.0", `"mm.0"` "00.0", `TEXT(0.6,"h.0 AM/PM")` = "2.0 PM";
+    `TEXT(12345.678,"[h].0 General")` = "296296.2 2.500000331", `TEXT(5.25,"[h].0 General")` = "126.0 0.5".
+  - **`m`/`mm` before `.0` is always a minute**, wherever it stands, even beside date tokens with no hour or colon:
+    on 12345.678 (1933-10-18) `"mm.0 yyyy"` = "16.2 1933", `"mm.0 d"` "16.2 18", `"yyyy mm.0"` "1933 16.2",
+    `"d mm.0"` "18 16.2", `"m.0"` "16.2", `"mm.0 General"` "16.2 2.500000331". Such a minute does not count for "`mm`
+    after a minute is a month" below: `TEXT(0.1234567,"mm.0 h:mm")` = "57.7 2:57" (the second `mm` is still a minute),
+    and `"mm.0 h"` = "57.7 2", `"mm.0 ss"` = "57.7 46".
+  - `TEXT(5,"d 0 General")` is `#VALUE!` (a digit placeholder beside a date token), and a literal comma in a date
+    section stays a literal: `TEXT(45000,"mmm d, yyyy General")` = "Mar 15, 2023 0.499999803".
+  Evidence: probes/t3378-general-in-date-section (64 cells) and t3378-general-in-date-section-1904 (7 cells),
+  probes/t3419-elapsed-after-date-general (30 cells), t3419-elapsed-after-date-b (25 cells) and
+  t3419-elapsed-after-clock-c (14 cells), t3575-fraction-after-elapsed (15 cells) and t3575-fraction-after-elapsed-b
+  (30 cells), excel-graph 2026-10-31 and 2026-11-01.
 - A one-section format holding `@` and other text applies General to a number: `TEXT(5,"x@")` = "5".
 Evidence: probes/text-format-bare-literals A1-A31, A57-A76 (excel-graph, 2026-10-15, T-1262); gen-m6/2c1a6e93a1974f48
 Calc!A15, gen-m6/63012866a9d8b7db Calc!A3 (excel-graph, 2026-10-09, T-1239).
 Status: VERIFIED
 Implemented in: `Lexer::next_token` (formatter/lexer.rs), `Parser::parse_part` (formatter/parser.rs, the implicit `#`
-before a point and `General` among literals), `format_number` (formatter/format.rs). Unprobed: `General` next to digit
-placeholders or date tokens, or twice (the engine says `#VALUE!`; T-1614), a negative's minus for a value that rounds to
-zero under a literal-only format or `.` (`TEXT(-0.4,"x")` is "x" and `TEXT(-0.5,".")` is "-1." here, unprobed; T-1129), and a lowercase
+before a point and `General` among literals), `format_number` (formatter/format.rs). Unprobed: a lowercase
 scientific `0.0e+0` (always the year token here, so `#VALUE!` as before).
-Tasks: T-1262, T-1450
+Tasks: T-1262, T-1450, T-1129
+
+## Sign of a negative that rounds to zero or to one unit (VERIFIED, probes/text-negative-round-sign, excel-graph, 2026-10-30, T-1129)
+Rule: the minus follows the value rounded at the last shown place. A negative that rounds to zero loses it (`TEXT(-0.4,"0")` = "0",
+`TEXT(-0.04,"0.0")` = "0.0", `TEXT(-0.004,"0.00")` = "0.00", `TEXT(-0.004,"0%")` = "0%", `TEXT(-499,"0,")` = "0", `TEXT(-1,"0.00,")`
+= "0.00", `TEXT(-0.4,".")` = ".", `TEXT(-0.04,".0")` = ".0", `TEXT(-0.04,"x.0")` = "x.0") and a negative that rounds to one unit keeps it
+(`TEXT(-0.5,"0")` = "-1", `TEXT(-0.06,"0.0")` = "-0.1", `TEXT(-0.005,"0.00")` = "-0.01", `TEXT(-500,"#,")` = "-1", `TEXT(-500,"0,")` = "-1",
+`TEXT(-0.06,".0")` = "-.1"). `#` formats print nothing for zero (`TEXT(-0.4,"#")` = "", `TEXT(-400,"#,")` = "", `TEXT(-0.004,"#.##")` = ".").
+A format with no digit placeholder and no decimal point rounds nothing, so every negative keeps its minus (`TEXT(-0.4,"x")` and
+`TEXT(-0.0001,"x")` = "-x", `TEXT(-0.4,"x%")` and `TEXT(-0.004,"x%")` = "-x%"). Implemented in `format_number` (formatter/format.rs).
+
 
 ## Buddhist-era year, era and calendar tokens
 Rule: in a date section `b`/`bb` is the two-digit Buddhist-era year (year + 543) and `bbb`+ the four-digit one;
@@ -79,15 +159,143 @@ names are joined by a no-break space ("ذو\u00a0الحجة"). Months from Muhar
 Rule (quirk): every name token after the first in a `B2` section reads the first name token's value. A weekday after a
 month name is weekday number min(month, 7), Sunday being 1: `B2mmmm|dddd` of 45000 (Wednesday, 1444-08-23) is "شعبان|السبت"
 (Saturday, as for every month from 7 on), of 45148 (Muharram) "محرم|الأحد" (Sunday), of 45177 (Safar) Monday. A month
-name after a weekday prints the weekday again: `B2dddd|mmmm` is "الأربعاء|الأربعاء". Numeric tokens in between change
-nothing (`B2m|dddd`, `B2d|dddd`, `B2yyyy|dddd` show the real weekday). Gregorian sections do not do this
-(`mmmm|dddd` of 45148 is "August|Thursday"). Unprobed combinations, which the engine decides by the same rule: a second weekday after `dddd|mmmm`, `dddd|mmmmm`, `mmmm|dddd|mmmm`, `mmmm|dddd|dddd`, and `mmmmm` as the first name token (T-2729).
-Evidence: probes/t1613-hijri-b2 (144 cells), probes/t1613-hijri-b2-weekday (78 cells) (excel-graph, 2026-10-25, T-1613).
-Unprobed: the 1904 date system (the engine converts through the 1900 serial); a serial-0 weekday; `B2` as a cell number format (only TEXT was probed; the same formatter serves both).
+name after a weekday prints the weekday again, `mmmmm` the whole of it: `B2dddd|mmmm` and `B2dddd|mmmmm` are
+"الأربعاء|الأربعاء", `B2dddd|mmmm|dddd` the weekday three times. `mmmmm` first counts as the month (`B2mmmmm|dddd` is
+"ش|السبت", `B2mmmmm|mmmm` "ش|شعبان"), and `mmmm|dddd|mmmm` is "شعبان|السبت|شعبان", `mmmm|dddd|dddd` "شعبان|السبت|السبت".
+Rule (quirk): `mmm` always prints the month and becomes the value the names after it read: `B2dddd|mmm|dddd` is
+"الأربعاء|شعبان|السبت" and `B2ddd|mmm|mmmm` "الأربعاء|شعبان|شعبان" (probes/t2729-hijri-locale-tag-names A239-A277,
+under the unresolved `[$-zzz]`, which leaves a bare `B2`).
+Rule (quirk): a day, month or year number before the first name token turns the quirk off for the section:
+`B2yyyy-mm-dd|mmmm|dddd` is "1444-08-23|شعبان|الأربعاء" (probes/text-locale-calendars A124). Numbers after it change
+nothing (`B2mmmm|dddd|d` is "شعبان|السبت|23"), and a lone name after a number is the real one (`B2m|dddd`, `B2d|dddd`,
+`B2yyyy|dddd`). Whether a number between two names (`B2mmmm|d|dddd`) turns it off is unprobed; the engine keeps it on.
+Gregorian sections do not do this (`mmmm|dddd` of 45148 is "August|Thursday").
+Rule: as a cell number format `B2` shows the same text as TEXT: `B2yyyy-mm-dd` is "1444-08-23" and `B2mmmm|dddd` "شعبان|السبت" (Range.text, probes/t2729-hijri-locale-tag B1, B2).
+Evidence: probes/t1613-hijri-b2 (144 cells), probes/t1613-hijri-b2-weekday (78 cells) (excel-graph, 2026-10-25, T-1613);
+probes/t2729-hijri-locale-tag A151-A168 (excel-graph, 2026-10-27, T-2729).
+Unprobed: the 1904 date system (the engine converts through the 1900 serial); a serial-0 weekday.
 Implemented in: formatter/date_names.rs (`hijri_ymd`, `NameTokens`), the `hijri` flag of `DatePart` (formatter/parser.rs).
-Not modelled: `B2` before a locale tag and calendar digit 6 (T-2729).
+Under a locale tag: "`B2` before a locale tag and calendar digit 6" below.
 Status: VERIFIED (excel-graph)
-Tasks: T-1613
+Tasks: T-1613, T-2729
+
+## `B2` before a locale tag and calendar digit 6 (T-2729)
+Rule: calendar digit 6 (`[$-6LLLL]`) is the Hijri calendar of "The `B2` (Hijri) calendar" above, and so is a `B2` written
+anywhere before a tag whose calendar digit is 0 (`B2[$-40C]`, `B2"x"[$-40C]`, `B2mmmm[$-40C]`, `b2[$-fr-FR]`). Every date
+token prints the Hijri date: `yy` "44", `yyyy`, `e` and `ee` "1444", `b` and `bb` "44", `bbbb` "1444" (no Buddhist 543
+as under a bare `B2`), `g` nothing. Serial 0 is serial 1's date, 60 and negatives are `#VALUE!`, 2958465 is
+"9666-04-03". Day halves follow the LCID (`[$-60401]h AM/PM` of 45000 is "12 ص").
+Rule: the names are the LCID's Hijri names, `mmm` = `mmmm` and `mmmmm` the first letter, each token reading its own value
+(no first-name quirk: `[$-60409]mmmm|dddd` of 45000 is "Sha'ban|AlArbia'a"):
+- An Arabic LCID (401, 801, C01, 2801), LCID 0 and any LCID with no locale (`[$-60000]`, `[$-608DE]`, `B2[$-0]`,
+  `B2[$-FFFF]`): the Arabic names of the bare `B2`, ar-SA weekdays.
+- French (40C, C0C, `[$-6000C]`): Mouharam, Safar, Rabi' Aoual, Rabi' Thani, Jamada El Oula, Jamada El Thaniah, Rajab,
+  Chaaban, Ramadan, Chaoual, Zoul Ki'dah, Zoul Hijjah, with the ordinary French weekdays ("mer.", "mercredi").
+- Turkish (41F): Muharrem, Safer, Rebiyülevvel, Rebiyülahir, Cemaziyelevvel, Cemaziyelahir, Recep, Şaban, Ramazan,
+  Şevval, Zilkade, Zilhicce, with the ordinary Turkish weekdays ("Çar", "Çarşamba").
+- Every other probed LCID (409, 809, 400, 404, 407, 807, C07, 40A, C0A, 80A, 2C0A, 410, 411, 412, 413, 414, 415, 416,
+  816, 419, 41B, 41D, 41E, 422, 405, 406, 408, 40B, 40D, 40E, 439, 804, 1004, C04): English transliterations, Muharram,
+  Safar, Rabi' Awwal, Rabi' Thani, Jamada El Oula, Jamada El Thaniah, Rajab, Sha'ban, Ramadan, Shawwal, Thoul Ki'dah,
+  Thoul Hijjah, and weekdays (`ddd` = `dddd`) AlAhad, AlEthnien, AthThulatha, AlArbia'a, AlKhamis, AlJumaa, AsSabt.
+  Plain spaces; the Arabic names keep their no-break spaces.
+Rule (quirk): after a `B2` before the tag, `mmm` prints the Arabic month instead, and from it on every name token takes
+the bare `B2` path with its first-name quirk, `mmm` being the first name: `B2[$-409]mmmm|mmm|mmmm` is
+"Sha'ban|شعبان|شعبان", `B2[$-409]dddd|mmm|dddd` "AlArbia'a|شعبان|السبت", `B2[$-40C]mmm|dddd` "شعبان|السبت", while
+`B2[$-409]mmmmm|mmmm|dddd` is "S|Sha'ban|AlArbia'a". `B2[$-60409]mmm` is Arabic too; `[$-60409]mmm` and
+`[$-60409]B2mmm` are "Sha'ban". The same as a cell number format (B1-B3 of t2729-hijri-locale-tag-names).
+Rule: any other calendar digit wins over a `B2` before the tag: `B2[$-10409]`, `B2[$-20409]`, `B2[$-90409]` and
+`B2[$-A0409]` print as without the `B2` ("2023-03-15|March"), `B2[$-110409]` the lunar date, `B2[$-80409]` the Hebrew
+date. An unresolved tag leaves a bare `B2` (`B2[$-zzz]`, `B2[$-]`).
+Rule (quirk, T-2932): before a calendar-3, -5 or -7 tag `B2` converts every year token once more than it would without
+the `B2`, wherever in the section before the tag it stands (`b2`, `B2B2`, `B2"x"` and `B2mmmm` before the tag too; `B1`
+before the tag and `B2` after it change nothing):
+- Thai (7): `yy`, `yyyy`, `b`, `bbbb` add 543 twice, `e` and `ee` once: `B2[$-70409]yyyy|yy|e|ee|b|bb|bbbb|g` of 45000 is
+  "3109|09|2566|2566|09|09|3109|", of 9999-12-31 "11085|85|10542|10542|08|08|11085|". Under a Japanese LCID the whole
+  year after a `g` is converted once (`B2[$-70411]g|yyyy` is "|2566").
+- Korean (5): `yy` and `yyyy` add 2333 twice, `e`, `b` and `bbbb` once: `B2[$-50409]yyyy|yy|e|b|bbbb` is
+  "6689|89|4356|56|4356", of 9999-12-31 "14665|65|12332|33|12332".
+- Japanese (3, any LCID): the era year is read as the Gregorian year of a date with the same month and day and converted
+  again. Every year below 1868 is Meiji, so the era year is year - 1867, negative, printed as an unsigned 32-bit number
+  by `yy`, `yyyy`, `e` and `ee` alike, and `g` is Meiji: 2023-03-15 (Reiwa 5) is "4294965434|M" (5 - 1867 = -1862),
+  2019-05-01 (Reiwa 1) 4294965430, 2019-04-30 (Heisei 31) 4294965460, 1989-01-07 (Showa 64) 4294965493, 1920-01-01
+  (Taisho 9) 4294965438, 1900-01-01 (Meiji 33) 4294965462. 9999-12-31 (Reiwa 7981) is "5963|R": 7981 is in Reiwa again.
+  From Gregorian 3886 to 4037 (Reiwa 1868 to 2019) the twice-converted year falls among the modern eras, and the era
+  changes on its own day of that year (`e|g` shown): 3930-07-29 (Reiwa 1912) is "45|M", 3930-07-30 "1|T"; 4007-01-07
+  "64|S", 4007-01-08 "1|H"; 4037-04-30 "31|H", 4037-05-01 "1|R"; 3886-01-01 is "1|M" (A69-A80). The Taisho-Showa
+  boundary is not probed (A72, A73 fall in Reiwa 1927).
+- Month and day tokens and names print as without the `B2` (`B2[$-30411]yyyy-mm-dd|mmmm|dddd` is
+  "4294965434-03-15|3月|水曜日"), except a weekday after `mmm` (the next rule).
+- Before calendar 4 (Taiwan) the years are neither: `B2[$-40409]yyyy|yy|e|b|bbbb` is "01|01|01|2\u{1c}|01" (matched
+  since T-3028). probes/t3028-b2-taiwan-years and t3028-b2-taiwan-cuts (excel-graph, 2026-10-28/29) show every year
+  token prints the Minguo year m = year - 1911, where the tag alone prints the Gregorian year: `yyyy`, `yy`, `y`, `yyy`,
+  `e`, `ee` and `bbbb` all print the same text. For m ≥ 1000 that is m in full (2911-01-01, m = 1000: "1000"; 2995-01-23
+  "1084", 4637 "2726", 9999-12-31 "8088"); below 1000 it is "0" and m's first digit (2910-12-31, m = 999: "09"; 2023,
+  m = 112: "01"; 2173, 262: "02"; 2000, 89: "08"; 1912-01-01, 1: "01"); m below 1 (1911-12-31, m = 0; 1900-01-01) is
+  `#VALUE!` in every year token. `g` and `ggg` print nothing. `b` and `bb` print m's third and fourth characters and read
+  past the end of m's text: m ≥ 1000 gives its third and fourth digits ("00", "84", "88"); a missing third character is
+  U+0F01, and a missing fourth one is a character whose code is set by the section's first date or time token, literals
+  skipped, whatever comes after the `b` and whatever the serial: `d` 13, `dd` 14, `ddd` 15, `dddd` (and longer) 16,
+  `m` 17, `mm` 18 (also as minutes, `mm:ss|b`), `mmm` 19, `mmmm` 20, `h` 21, `hh` 22, `s` 25, `ss` 26 (also `ss.00`),
+  `y` and `yy` 27, `yyy` to `yyyyy` 28, `AM/PM` and `A/P` (any case) 34, `[h]` and `[hh]` 48, `[m]` and `[mm]` 49,
+  `[s]` and `[ss]` 50, `aaa` 51, `g` 53, `gg` 54, `ggg` 55, `e` 56, `ee` 57, `mmmmm` 59, `b` and `bb` 88 ("X", also when
+  the `b` is first itself), `bbbb` 89 ("Y"). So `B2[$-40409]b` of 2023-03-15 is "2X", `yyyy|b` "01|2\u{1c}", `e|b`
+  "01|28", `"x"b` "x2X", of 2000-01-01 `b` "\u{f01}X". (A guess, not evidence: the codes look like Excel's internal token codes.) `yyyy|e|b` is
+  the same under zh-TW (`B2[$-40404]`). Status: VERIFIED (excel-graph). The engine gives `aaa` `ddd`'s 15 (T-3089);
+  `aaaa` and other year tokens' effect on non-year tokens (`B2[$-40409]d` of 1911) are unprobed.
+- The same as a cell number format (B1-B5).
+Rule (quirk, T-3029): after a `B2` before a tag whose calendar wins over it (every digit probed: 1, 2, 3, 4, 5, 7, 9, A
+and 11), every weekday token (`ddd`, `dddd`, `aaa`) after a `mmm` prints weekday number min(month, 7), Sunday being 1,
+of the calendar's month, in the tag's names: the Arabic path's first-name quirk without the Arabic names.
+`B2[$-70409]mmm|ddd` of 2023-03-15 is "มี.ค.|อ." (Tuesday) and of every month from July on "ส." (Saturday);
+`B2[$-70409]dddd|mmm|dddd` "พุธ|มี.ค.|อังคาร" (the weekday before the `mmm` is the real one); `mmm|ddd|ddd` both
+Tuesday. Numbers anywhere in the section change nothing (`yyyy-mm-dd|mmm|dddd`, `mmm|d|ddd`), nor does a `mmmm` after
+the `mmm` (`mmm|mmmm|ddd` is "มี.ค.|มีนาคม|อ."), and a month name after the weekday is the real month
+(`B2[$-7041E]mmm|dddd|mmmm`). Only `mmm` starts it: `mmmm|dddd`, `mmmmm|ddd` and `ddd|mmm` print the real weekday.
+The lunar calendar reads its own month: `B2[$-110409]mmm|ddd` of 2023-03-15 (lunar month 2) is "二月|周一" (Monday).
+`[$-70409]mmm|ddd` with no `B2` is the real weekday ("มี.ค.|พ."). The same as a cell number format (B1-B3).
+Rule (quirk, T-3101): under calendars 1, 3 and 5 the `B2` also changes the names' language from that `mmm` on: every name
+token from the section's first `mmm` on (`mmm`, `mmmm`, `mmmmm`, `ddd`, `dddd`) prints the ar-SA Gregorian names under
+calendar 1 and the en-US names under calendars 3 and 5, whatever the LCID; name tokens before it, and sections with no
+`mmm`, keep the tag's names. `B2[$-10409]mmm|ddd` of 2023-03-15 is "مارس|الثلاثاء" (where `[$-10409]` is English),
+`B2[$-10411]mmmm|ddd|mmm|mmmm|dddd` "3月|水|مارس|مارس|الثلاثاء", `B2[$-10409]mmm|mmmmm|mmmm|dddd` "مارس|م|مارس|الثلاثاء",
+`B2[$-1040C]mmmm|dddd` "mars|mercredi" and `B2[$-1040C]mmm` "مارس"; `B2[$-30411]mmm|ddd` and `B2[$-50412]mmm|ddd` are
+"Mar|Tue" (the tags alone print "3|水" and "3|수"), `B2[$-30411]dddd|mmm|mmmm` "水曜日|Mar|March",
+`B2[$-30411]mmm|mmmm|mmmmm|dddd` "Mar|March|M|Tuesday", while `B2[$-30411]mmmm|dddd` is "3月|水曜日". Probed LCIDs: 409,
+411, 40C, 401, 407, 412 and 41E under 1; 409, 411, 412, 40C and 404 under 3; 409, 411, 412 and 40C under 5. A number token
+before the `mmm` changes nothing (`B2[$-10409]yyyy-mm-dd|mmm|dddd` is "2023-03-15|مارس|الثلاثاء"), nor does a literal
+between the `B2` and the tag (`B2"x"[$-30411]mmm|mmmm` is "xMar|March"). Calendar 2 prints en-US names with or without
+the `B2` (`[$-20411]mmm` is "Mar"). `B2[$-70411]`, `B2[$-90411]` (French) and `B2[$-A0411]` (Levantine Arabic) keep the
+tag's names, as do `B2[$-30409]`, `B2[$-50409]`, `B2[$-7041E]`, `B2[$-90409]` and `B2[$-A0409]`.
+Evidence: probes/t3029-b2-calendar-weekday (128 TEXT cells, 3 cell formats; excel-graph, 2026-10-29), t2932-b2-calendar-twice A55;
+probes/t3101-b2-calendar-names (194 TEXT cells, 3 cell formats; excel-graph, 2026-10-29).
+It starts under a calendar-3 Japanese LCID too, where the tag alone prints `mmm` as a number: `B2[$-30411]mmm|ddd` of
+2023-03-15 is "Mar|Tue" (A79-A84).
+Unprobed for the names: calendars B, C, 14 and 15 and above after `B2`, an LCID with no locale under 1, 3 or 5, and a
+currency tag (`B2[$€-10409]`).
+Unprobed: calendar 8 (Hebrew) and Saka.
+Rule: `b` and `bb` print the year's third and fourth digits, not its last two, which differ past year 9999: with no tag
+`b|bbbb|yy` of 9999-12-31 is "54|10542|99", `[$-70409]b|yy` "54|42", and the `B2` cases above "08" and "33"
+(probes/t2932-b2-calendar-twice A24, A64-A68). `yy` stays the last two digits.
+Rule (quirk): under a tag, a number token before the `mmm` switch does not turn the first-name quirk off, unlike in a bare
+`B2` section: `B2[$-409]yyyy|mmm|dddd` is "1444|شعبان|السبت" (Saturday, from the month) and so are `d|mmm|dddd` and
+`e|mmm|dddd`.
+`TEXT(45000,"B1@")` and `"B2@"` are "45000".
+Evidence: probes/t2932-b2-calendar-twice (85 cells), excel-graph 2026-10-28.
+Rule: a second calendar prefix after a tag is `#VALUE!` (`B2[$-409]B2mmmm`, `B2[$-409]B1mmmm`, `B1[$-409]B2mmmm`,
+`B2[$-60409]B1mmmm`, `[$-60409]B2B1mmmm`), as is any number token in a `B2` section (`B2[$-409]0`), but two before
+the tag are fine (`B2B2[$-409]mmmm` is "Sha'ban") and so is `B1` before a tag (`B1[$-40C]mmmm` is "mars").
+Evidence: probes/t2729-hijri-locale-tag (278 cells), probes/t2729-hijri-locale-tag-names (320 cells), excel-graph
+2026-10-27; text-locale-calendars A47-A49, A87, A88, A124; text-locale-calendars-detail A7, A8; text-locale-era-gregorian A21.
+Unprobed: calendar digits 15 and above after `B2` (the engine lets them win like the others); the extended-hex tags that
+resolve to a locale (`B2[$-g]`; the engine leaves them Gregorian); Hijri names of LCIDs with no table here (TODO(T-1875); the engine gives them the Arabic names
+of an LCID with no locale, so Persian `[$-60429]` prints "شعبان").
+Implemented in: `resolve_after_hijri_prefix`, `hijri_names` and `Calendar::Hijri` (formatter/locale_tag.rs), the
+lexer's `hijri_prefix`, `NameTokens` (formatter/date_names.rs), the Hijri tables in locale/excel_date_names.rs;
+the names after `mmm` in `Localized::names_after_mmm`; the twice-converted years in `Localized::year_twice`,
+`japanese_era` (locale_tag.rs) and `year_token_text`
+(formatter/calendar_dates.rs).
+Status: VERIFIED (excel-graph)
+Tasks: T-2729, T-2932, T-3029, T-3101
 
 ## Bare digits beside a date token
 Rule: a bare (unquoted, unescaped) digit 1-9 is a literal in a number section (`TEXT(5,"2")` = "2", `"4a"` = "4a",
@@ -99,24 +307,37 @@ a quoted or escaped digit prints (`"\4b"` and `"""4""b"` are "443"). The check c
 value does not use: `TEXT(3.14159,"0;4b")` is `#VALUE!`, while `"4;b"` gives "4" and `"b;4"` "43". A text or boolean value
 is rejected too (`TEXT("x","42abc")`, `TEXT(TRUE,"42abc")` and `TEXT("5","42abc")` are `#VALUE!`; `TEXT("x","4;b")` is "x";
 column D), as "TEXT checks the code before it looks at a text or boolean value" describes. `TEXT(-3,"b1")` is "-": a
-calendar prefix alone is no date token for a negative value. Ours is `#VALUE!` there (T-2388).
+calendar prefix alone is no date token for a negative value: `"b1"` and `"B1"` give "" for 3 and 0 and "-" for -3, `"b1 x"`
+is " x", " x" and "- x", `"[$-40C]B1"` is "", "", "-" (probes/t2388-b1-negative, excel-graph, 2026-10-28; `"B1@"` prints the
+number, "3", "0", "-3"). A section of only literals plus the prefix prints the minus and the literals. The same holds for a lone `B2`
+(`"b2"` -> "-", `"B2 x"` "- x"), a tagged `"[$-40C]B2"` and `"[$-409]B2"` ("-"), and a magnitude past the maximum
+serial (`TEXT(-3000000,"b1")` is "-"). A positive value past it (and at or just past 2958465) prints
+only the literals: `TEXT(3000000,"b1")` and `"b2"`/`"B1"` are "", `"b1 x"` is " x", while `"d b1"` is `#VALUE!` and
+`"0;b1"` is the number "3000000" (probes/t3050-b1-positive-large, excel-graph, 2026-10-29). The same holds for a huge value and for locale-tagged prefixes: `TEXT(1E15,"b1")` and `"b2"` are "", `"b1 x"` is " x", `"0;b1"` is "1000000000000000"; `TEXT(3000000,"[$-40C]B1")` is "" and `"[$-40D]B1 x"` is " x" (probes/t3188-b1-huge-tagged, excel-graph, 2026-10-30; already implemented). In an explicit negative section no minus is printed: `TEXT(-3,"0;b1")` and
+`"b1;b1"` are "", `"0;b1 x"` is " x" (probes/t2388-b1-negative A6-A13).
 Evidence: probes/text-format-digits-date-token (excel-graph, 2026-10-22, T-2377, 132 cells); gen-m5/2b01cadfd03df4b5 Calc!A211.
 Status: VERIFIED
 Implemented in: `Parser::parse_part` (`bare_digit`, `is_calendar_or_clock`, formatter/parser.rs); `format_number` rejects a
-code with any bad number section (formatter/format.rs).
+code with any bad number section (formatter/format.rs); the literal-only date section (a lone calendar prefix) of a negative value is
+exempt from the negative-date refusal and the maximum-serial check in `format_number`.
 Tasks: T-2377, T-2388
 
 ## Text and booleans use the format's text section
 Rule: for a text or boolean value, `TEXT` applies the 4th (text) section; `@` stands for the
 value's text and booleans become "TRUE"/"FALSE". `;;;"hi"` → "hi" (A3), `;;;\@@\@` → "@jello@"
 (A6), `;;;-@-@-` → "-jello-jello-" (A10), `TRUE` with `;;;-@-` → "-TRUE-" (A17), and
-`TEXT(TRUE,"General")` = "TRUE".
-Evidence: poi/TextFormatTests.xlsx A3:A10, A12:A29; poi/GeneralFormatTests.xlsx A72, A73.
+`TEXT(TRUE,"General")` = "TRUE". An empty 4th section prints nothing: `TEXT("text",";;;")` is ""
+(gen-m10/0e3d8eba9432a18d T!A24; ours "text", T-2945), as `;;;` hides a number (gen-m10/810fee377a42575b A19).
+Empty and missing text sections (probes/text-format-text-sections B2:J15, excel-graph 2026-10-28, T-2975): an empty
+4th section gives "" for text, TRUE, FALSE and "" alike (`;;;`, `0;0;0;`, `0;0;General;`; LEN 0), while numbers keep their own sections there (5 and -5 give "5", 0 "0"); `;;;` hides numbers
+too. A format with no 4th section (`0;0;0`) and `0;0;0;@` give the text, "TRUE" or "FALSE" unchanged. Any format with
+five or more sections (`0;;;;`, `0;;;;@`, `0;0;0;;`, `;;;@;`) is `#VALUE!` for every value, text and booleans included.
+Evidence: poi/TextFormatTests.xlsx A3:A10, A12:A29; poi/GeneralFormatTests.xlsx A72, A73; gen-m10/0e3d8eba9432a18d T!A24; probes/text-format-text-sections.
 A doubled quote inside a quoted literal: `;;;"h""I"` gives "hI" in Excel (A4, A14, A23), not `h"I`, so
 it is not an escape there: see "A doubled quote in a format literal is not an escape" below.
 Status: VERIFIED
-Implemented in: `format_text_value` (formatter/format.rs) used by `fn_text` (functions/text/common.rs), scalars and array elements; a text value with a format of fewer than four sections is unprobed and returns the text unchanged.
-Tasks: T-0935
+Implemented in: `format_text_value` (formatter/format.rs) used by `fn_text` (functions/text/common.rs), scalars and array elements; a text value with a format of three sections returns the text unchanged (probed, T-2975; one or two sections unprobed). An empty 4th section (`;;;`; the parser drops the empty section after a trailing `;`, so `Parser::has_empty_text_section` detects it) gives empty text (gen-m10/0e3d8eba9432a18d T!A24). A five-section format, `TEXT(TRUE,";;;")`, `"0;0;0;"` and `"0;0;General;"` on a text value match Excel (probes/text-format-text-sections, T-2975).
+Tasks: T-0935, T-2945, T-2975
 
 ## TEXT of a text value is `#VALUE!` over 255 characters
 Rule: `TEXT` of a text value (a boolean's "TRUE"/"FALSE" included) is `#VALUE!` once its result is over
@@ -130,10 +351,11 @@ Evidence: probes/text-format-text-limit A1-A25 (excel-graph, 2026-10-08, T-0935)
 Status: VERIFIED
 Implemented in: `format_text_value` (formatter/format.rs), `MAX_TEXT_FORMAT_CHARS`, checked as the
 result grows so a format of many `@` cannot allocate a huge string (CLAUDE.md directive 5).
-Unprobed (T-0935 follow-up): a text value with a 1-3 section format and no `@` section (the
-engine returns the text unchanged) and a General 4th section. `0;@`-style formats, `_x`/`*x` and
-digit or date tokens beside `@` are now probed: see "TEXT of a text value: `@` with other tokens in
-one section" (T-1656).
+Also probed (T-1130, probes/text-text-value-sections A1-A20, excel-graph, 2026-10-31): a text value or boolean
+with a 1-3 section format and no `@` comes back unchanged (`TEXT("x","0.0")`, `"0;-0"`, `"0;0;0"`, `"0;@"` is "x" via its `@`
+section, `"#,##0.00"` too); a General 4th section prints the text (`"0;0;0;General"`, `";;;General"`,
+`"General;General;General;General"` give "x"/"TRUE"); `"0;0;0;General@"` is `#VALUE!` (General beside `@`); an empty
+4th section (`"0;0;0;"`) gives "". The engine already matched all 20 cells.
 Tasks: T-0935
 
 ## A doubled quote in a format literal is not an escape
@@ -162,7 +384,7 @@ Rule (observed, ElapsedFormatTests, a 1904-date-system workbook):
 - Past 9999-12-31 a fraction of a second is #VALUE! with or without an elapsed token:
   `TEXT(1234567890,"[mm]:ss.0")` and `TEXT(1234567890,"h:mm:ss.00")` (gen-m10 810fee377a42575b
   T!A16, b4f66526f822ff2c T!A20; fbdab487cb11409e T!A25 on 123456789012345). Four or more zeros
-  (`s.0000`) are unprobed; the engine keeps them #VALUE!. Also unprobed: where that cutoff sits
+  (`s.0000`, `h.0000`) are #VALUE! (probes/t3575-fraction-after-elapsed-b A6, A27). Unprobed: where that cutoff sits
   (the engine uses serial 2958466, also in a 1904 workbook) and whether a date token rolls over
   with a fraction that rounds past midnight (the engine's does not); T-2135 probes them.
 - A negative value prints one leading "-" before any literal text:
@@ -298,7 +520,9 @@ Rule: a `,` anywhere between digit placeholders (not only in `#,##0`) means "gro
 part in threes". It is not a literal at that position. `0`/`?` placeholders beyond the number's
 digits pad the grouped result, and the padding is grouped too: with `0` a padded group shows its
 separator, and with `?` the padded separator becomes a space. A trailing `,` still scales by 1000
-and keeps the sign.
+and keeps the sign. A `,` right after a `%` does not scale: it prints as a literal (`0%,` on 0.5 is "50%,", on 1234567
+"123456700%,"; probes/fraction-overflow-scaled A79-A80, excel-graph 2026-10-27, T-2522; see "Scaling commas in fraction
+formats").
 - `0,0000000` on 1234567 → "01,234,567" (A67); `0,00000000` → "001,234,567" (A68);
   `0,000000000` → "0,001,234,567" (A69); `$000,000,000` on 314159 → "$000,314,159" (A335).
 - `?,???????` → " 1,234,567" (A44); `?,????????` → "  1,234,567" (A45); `?,?????????` →
@@ -338,6 +562,17 @@ time of day).
 Status: VERIFIED
 Implemented in: `Token::AP` / `Token::AMPM` (formatter/lexer.rs), `TextToken::AP` (formatter/format.rs); tests in formatter/test/test_time.rs.
 Tasks: T-0954
+
+## `mm` after a minute is a month
+Rule: once an `m`/`mm` has been read as a minute, every later `m`/`mm` in the section is a month, whatever time
+token came before it. `h:mm|yyyy-mm-dd` on 0.25 is "6:00|1900-01-00" and on 45000.75 "18:00|2023-03-15"; `hh mm|dd mm`
+is "06 00|00 01"; `mm:ss|yyyy-mm` is "00:00|1900-01". With an hour but no minute yet, `mm` is a minute even after a
+date token: `h|yyyy-mm` is "6|1900-00".
+Evidence: probes/mm-after-time-and-date-token (22 cells, excel-graph 2026-10-30), probes/t2779-hebrew-saka-more E7.
+A minute read only because `.0` follows (`mm.0`) does not set it: `mm.0 h:mm` on 0.1234567 is "57.7 2:57"
+(probes/t3575-fraction-after-elapsed-b A30, T-3575).
+Status: VERIFIED (excel-graph). Implemented in: `minute_read` (formatter/parser.rs). Unprobed: `h:mm:ss mm`.
+Tasks: T-2961
 
 ## `m`/`mm` directly before `:ss` is minutes, with no hour
 Rule: `m` or `mm` followed by `:` and a plain `s`/`ss` is a minute even when the code has no hour
@@ -382,7 +617,8 @@ Rule: `TEXT` is `#VALUE!` when the format code is too complex, which happens lon
   - **Quoted text followed by more** pays 4 extra when a token follows it directly, or when the literal run that closes the section goes on with unquoted text after it: 122 quoted + `d` works and 123 fails; `"d"` + 121 quoted + `d` works and 122 fails; 124 quoted + `@` (on text) fails; `"d"` + 120 quoted + 2 spaces works and 3 fails, + 122 quoted + 1 space fails, 110 + 8 spaces works and 9 fails, 100 + 15 works and 16 fails, 50 + 48 works and 50 fails; 120 quoted + 2 dashes works and 3 fails. Unquoted text that is followed by more quoted text or by a token does not pay it: `"d"` + 61 quoted + a space + 61 quoted works (247), `"d"` + 120 quoted + `" d"` works (247); nor does unquoted text before quoted text (50 spaces + 50 quoted works, 52 fails).
   - **Date, time and text tokens are free** in a section whose closing literal run holds quoted text: `"d"`, `"dd"`, `"m"`, `"h"`, `"yyyy"` or `"@"` + 125 quoted works like 125 quoted alone, and + 126 fails; `"d "` or `"dd "` + 123 quoted works and 124 fails; `"h:mm"` + 123 quoted works (both `h` and `mm` free); `"0;d"` + 122 quoted works and 123 fails. They keep their 2 before unquoted text (`"d"&REPT(" ",83)` fails) and before quoted text that a token follows (above). Elapsed tokens, `AM/PM`, `%` and placeholders are not free: `"[h]"` + 124 quoted works and 125 fails, `"%"` + 124 works and 125 fails, after `0`, `#`, `?` or `00` quoted text stops at 122, after `0.0` or `0 ` at 121. Seconds, `ddd`, `dddd`, `mmm`, `mmmm` are free too (`"ss"`, `"ddd"`, `"mmm"`, `"dddd"`, `"mmmm"` + 125 quoted works, 126 fails; probes/text-format-length-limit-l A27:A38); `A/P` is not (+ 125 quoted fails, A33; the engine already treats it like `AM/PM`). **`@` is refunded 1 more than the others** (T-1481): `TEXT("x","@ "&<124 quoted>)` works and 125 fails (`"@-"` and `"@\-"` the same), `"@  "` (two spaces) + 122 quoted works and 123 fails, `"@ - "` + 121 works and 122 fails, `" @ "` + 122 works and 123 fails (probes/text-format-length-limit-l A1:A3, A7:A9, A16:A18, -m), while `"d "` + 124 fails; `@` + unquoted text alone (no quoted) is unchanged (`"@"` + 82 spaces works, 83 fails). On a number the section prints General and the same limit applies (`TEXT(5,"@ "&<124 quoted>)` is "5", 125 is #VALUE!).
 - **Currency tags** (`[$€]`, `[$€-40C]`, `[$USD]`) cost like quoted text of their symbol plus 13, and the locale part of a currency tag costs nothing (a bare `[$-409]` costs 14): `[$€]` and `[$€-40C]` + 117 quoted work and 118 fail (15 + 2 per character), `[$USD]` and `[$USD-40C]` + 115 work and 116 fail (19). Followed by unquoted text the tag pays 2 (not quoted text's 4) for the literal run going on unquoted: `[$€-40C]` and `[$€]` + 77 spaces work and 78 fail, `[$USD]` + 76 spaces works and 77 fails (probes/t2836-dollar-run-cost A63:A73; 4 would reject 76). A system-locale tag's locale costs nothing too: `[$€-F800]` + 117 quoted works and 118 fails (A74:A81). Evidence: probes/t1883-currency-locale-edges A9:A63, probes/t2812-currency-tag-cost (excel-graph, T-2812), probes/t2836-dollar-run-cost (T-2836).
-- **Unquoted `$`** costs 1 per character, and a section holding one but no digit placeholder pays 3 once, like the 3 a placeholder section pays (2 when the section also holds a date token): `REPT("$",247)` (250) works and 248 fails; `"d"&REPT("$",246)` and `REPT("$",246)&"d"` (250) work and 247 fail; `"0"&REPT("$",245)` (250) works and 246 fails, so `$` adds nothing to a placeholder section's 3. Quoted text whose closing literal run goes on with only `$` pays 2 for it, not 4 (quoted `"a"` + 243 `$` works and 244 fails, `[$€]` + 230 `$` works and 231 fails, `[$USD]` + 226 works and 227 fails), while quoted text followed by spaces pays 4 (`"d"` + 122 quoted + 1 space fails). Unquoted text directly after a locale tag pays 1 (`[$-409]` + 232 `$` works and 233 fails; `[$-409]` + 78 spaces works and 79 fails). These are fitted per context: no single additive `$` cost fits every ladder. Inferred, not probed: other date or time tokens than `d` (the engine gives them `d`'s 2), an escaped `\$` (priced like `$`), a `$` in a section holding `@`, and unquoted text after a locale tag other than `$` and spaces (T-2842). Evidence: probes/t2836-dollar-run-cost (excel-graph, 2026-10-26, T-2836).
+- **Unquoted `$`** costs 1 per character, and a section holding one but no digit placeholder pays 3 once, like the 3 a placeholder section pays (2 when the section also holds a date token): `REPT("$",247)` (250) works and 248 fails; `"d"&REPT("$",246)` and `REPT("$",246)&"d"` (250) work and 247 fail; `"0"&REPT("$",245)` (250) works and 246 fails, so `$` adds nothing to a placeholder section's 3. Quoted text whose closing literal run goes on with only `$` pays 2 for it, not 4 (quoted `"a"` + 243 `$` works and 244 fails, `[$€]` + 230 `$` works and 231 fails, `[$USD]` + 226 works and 227 fails), while quoted text followed by spaces pays 4 (`"d"` + 122 quoted + 1 space fails). Unquoted text directly after a locale tag pays 1 (`[$-409]` + 232 `$` works and 233 fails; `[$-409]` + 78 spaces works and 79 fails). These are fitted per context: no single additive `$` cost fits every ladder. Probed in more contexts (probes/t2842-dollar-run-contexts, excel-graph, 2026-10-27, T-2842): `m`, `yyyy`, `h` and `ss` pay the section's 2 like `d` (+ 246 `$` works, 247 fails), `AM/PM` the full 3 (+ 236 works, 237 fails), and `@` on text the 2 of a date token (`"@"` + 246 `$` works, 247 fails). An escaped `\$` is an ordinary escaped literal: 3 each and no `$` section cost (`REPT("\$",83)` works, 84 fails), and quoted text followed by `\$` pays the full 4 (`"a"` + 81 works, 82 fails). Dashes after a locale tag pay its 1 like spaces (`[$-409]` + 78 `-` works, 79 fails). Evidence: probes/t2836-dollar-run-cost (excel-graph, 2026-10-26, T-2836), t2842-dollar-run-contexts.
+- **A format code over 255 characters is `#VALUE!`** in TEXT, whatever its cost; only runs of free characters (colons after the first, commas in a placeholder run) reach it: `"0"` + 254 commas (255 characters) works and 255 fails, `"d"` + 254 colons works and 255 fails, `[$-409]` + 248 colons works and 249 fails, `[$-409]0` + 247 commas works and 248 fails (probes/t2842-dollar-run-contexts J, K; T-2842). Codes with characters outside the BMP, and the limit on a text value, are unprobed (the engine counts characters and applies it to every value; T-2964).
 - **Two conditions in one section** are `#VALUE!` whatever the value and length: `TEXT(7,"[>5][<9]0")`, `TEXT(1,..)`, `TEXT(10,..)`, `"[>5]0[<9]"` (probes/text-format-length-limit-j A31:A34; also g A37:A41; only the first section is probed, the engine applies the rule to every section, inferred). A color with a condition works in either order (`"[Red][>5]0"` and `"[>5][Red]0"` on 7 give "7"). Next to spaces a condition costs 6 to 8 whatever its threshold (`"[>55555]0"` plus 79 spaces works and 80 fails, like `"[>5]0"`).
 - **An unterminated code is `#VALUE!`**, whatever the value and whichever section it would use: `TEXT("x","0""")`, `TEXT("x","""")`, `TEXT("x","0;0;0;""")`, `TEXT("x","@;""")`, `TEXT(5,"0;""")`, `TEXT(-5,"0;""")`, `TEXT("x","0;[Red")` are `#VALUE!` (an unclosed quote or bracket; probes/text-format-length-limit-q A4:A13; T-1486). So are codes left with an unclosed quote after `_` or `*`, which take the next `"` as their character (`@_"a"`, `@_""`, `@*""`, `@"`, and `@_"` + 123 to 125 quoted characters; -n A3, A5, -o A36, A41, -l A13:A15). A valid code without a text section still leaves text unchanged: `TEXT("x","0:a:")`, `"0\x"` and `"0 a"` are "x" (-q A1:A3). A code ending in `\`, `_` or `*` is `#VALUE!` the same way: `TEXT("x","0\")`, `"0_"`, `"0*"`, `"@\"`, `TEXT(7,"0_")`, `TEXT(5,"0;0\")`, `TEXT(5,"0;0_")`, `TEXT(-5,"0;0\")` (-s). Only unterminated codes (a quote or bracket left open, a `\`, `_` or `*` at the end) are probed; the engine rejects exactly those (`is_unterminated` in formatter/complexity.rs), not every code our parser fails on. Other parse failures in a section the value does not use (e.g. `TEXT(5,"0;0 n")`: our lexer rejects `n`, as Excel does in a section it uses, probes/text-format-unquoted-letters A14, A40) are unprobed.
 - **Text section with a number:** a single section holding `@` does not apply to a number, which prints in General: `TEXT(1,"@"&""""&REPT("a",118)&"""")` is "1" (probes/text-format-length-limit-i A19:A26).
@@ -465,7 +701,7 @@ Tasks: T-1880
 
 ## TEXT of a text value: `@` with other tokens in one section (T-1656)
 
-Rule: a format whose section holds `@` is `#VALUE!` (for a text value, and for numbers too: see Sections below) when the same section also holds a date or number token, whichever side of the `@` it sits on: `y yy yyyy m mm mmm d dd ddd aaa h hh s ss b bb e ee g gg ggg`, `[h] [m] [s]`, `0 # ? . /`, `E+0`, `General`, `%` and a condition such as `[>5]`. These are literals, not errors: `a`, `,`, space, `\y`, `"y"`, `*-`, `_x`, `[Red]`, `[$-409]` (`TEXT("abc","x@\y")` is "xabcy"; `"x@_x"` prints a space for the spacer). `A/P` and `AM/PM` give a stray first letter or two: `TEXT("abc","x@A/P")` is "xabcA" and `"x@AM/PM"` "xabcAM" (`"A/P@"` "Aabc", `"AM/PM@"` "AMabc"). `@@` prints the text twice. A fill `*x` prints nothing in the text section (`"x@*-"` is "xabc") while `_x` leaves a space.
+Rule: a format whose section holds `@` is `#VALUE!` (for a text value, and for numbers too: see Sections below) when the same section also holds a date or number token, whichever side of the `@` it sits on: `y yy yyyy m mm mmm d dd ddd aaa h hh s ss b bb e ee g gg ggg`, `[h] [m] [s]`, `0 # ? . /`, `E+0`, `General`, `%` and a condition such as `[>5]`. The calendar prefixes are not among them: `TEXT(45000,"B2[$-409]@")` is "45000" (probes/t2729-hijri-locale-tag-names A289; `B1@` and a bare `B2@` too, probes/t2932-b2-calendar-twice A58, A59). These are literals, not errors: `a`, `,`, space, `\y`, `"y"`, `*-`, `_x`, `[Red]`, `[$-409]` (`TEXT("abc","x@\y")` is "xabcy"; `"x@_x"` prints a space for the spacer). `A/P` and `AM/PM` give a stray first letter or two: `TEXT("abc","x@A/P")` is "xabcA" and `"x@AM/PM"` "xabcAM" (`"A/P@"` "Aabc", `"AM/PM@"` "AMabc"). `@@` prints the text twice. A fill `*x` prints nothing in the text section (`"x@*-"` is "xabc") while `_x` leaves a space.
 Sections (probes/text-at-token-sections, 96 cells: text, 1, -1 and 0 on each format): `@` may stand only in the last section, and a format that breaks either rule is `#VALUE!` for every value, numbers included. `"@;0"`, `"x@;0"`, `"[Red]x@;0"` and `"x@\y;0;0;@"` are `#VALUE!`; `"x@y;0"`, `"0;x@y"`, `"0;0;x@y"`, `"x@y;0;0;@"`, `"0;0;x@y;@"` and `"0;x@0"` are `#VALUE!` because one section holds `@` beside a token. A last section with `@` is the text section whatever the count: `TEXT("abc","0;x@")` and `"0;0;x@"` are "xabc", and numbers use the sections before it (`TEXT(-1,"0;x@")` is "-1", `TEXT(-1,"0;0;x@")` "1", `TEXT(0,"0;0;x@")` "0"). `"0;0;0;y"` stays `#VALUE!` (4th-section rule) and `"0;0;0;x@\y"` gives "xabcy". This reconciles the poi 4th-section entry: literals in a text section print, but a number or date token beside `@` invalidates the format.
 Evidence: probes/text-at-with-tokens (89 cells), probes/text-at-token-sections (96 cells) (excel-graph, 2026-10-16, T-1656).
 Implemented in: `exceeds_complexity_limit` (formatter/complexity.rs, both placement rules, checked by TEXT before formatting); `format_text_value` and `format_number` (formatter/format.rs: a trailing `@` section, `*x`, `AM/PM` as "AM"). `A/P` and `[$-409]` pass since T-1702. The same formatter paths serve cell display, where the trailing `@` section and `*x` follow TEXT's probed behavior (inferred for display: unprobed, and a display fill would repeat to the column width).
@@ -520,6 +756,7 @@ month and weekday of A, B, C and 14, with day halves under 401 ("6 م") and 412 
 | 4 | Gregorian, zh-TW names; `yy` prints four digits | `[$-40409]ddd\|mmm\|yy` is "週三\|三月\|2023" |
 | 5 | Korean years (Gregorian + 2333) for `yy`/`yyyy`; Korean names under a Korean LCID, en-US otherwise | "4356" |
 | 7 | Thai years (+ 543) for `yy`/`yyyy` and `b`; Thai names | "2566", "มีนาคม" |
+| 6 | Hijri, the LCID's Hijri names ("`B2` before a locale tag and calendar digit 6" above) | "1444-08-23", "Sha'ban", "Chaaban" |
 | 9 | Gregorian, French names | "mars", "mer." |
 | A | Gregorian, Levant Arabic months (`mmm` the same; two-word names joined by a no-break space: "كانون الثاني"), ar-SA weekdays | "آذار", "الأربعاء" |
 | B, C | Gregorian, ar-SA names (`mmm` the same) | "مارس", "الأربعاء" |
@@ -529,38 +766,89 @@ Under A, B, C and 14, `e` and `g` are probed ("2023", ""); `yy`, `b` and `bbbb` 
 
 Under every one of these, `e` stays the Gregorian four-digit year, and so do `b` and `bbbb` except under Thai. Day halves follow the LCID under every calendar digit: `[$-20411]`, `[$-40411]` and `[$-50411]h AM/PM` are "6 午後", and `[$-70412]`/`[$-90412]` give "6 오후".
 
-**Not modelled** (the tag prints English and keeps `A/P`):
-- 6 is Hijri ("1444-08-23", "Sha'ban", or French "Chaaban" under 40C; T-2729).
-- 8 is Hebrew ("5783-06-22", "Adar", "Yom Revi'i"; T-2779), probed across 2023-2024 in probes/t1923-calendar-digits
-  A145:A213. Months number from Tishrei (1), so a leap year has 13: 5784's AdarI is month 6, AdarII 7, Elul 13
-  (2024-09-20 is "5784-13-17|Elul"). The year turns at Rosh Hashanah (2023-09-16 is "5784-01-01"). `yy` prints two
-  digits, `e` and `b` the Hebrew year. `ddd` is "Yom Rishon" … "Shabat". Under 40D and 401 the names are Hebrew script
-  (AdarII is "אדר ב" with a plain space; the weekday "יום רביעי" joins with a no-break space, A211, A212). 9999-12-31 is `#VALUE!`, and serials 0 and 1 are "5660-05-01|Shvat".
-- 10 is Saka ("1944-12-24", "Phalguna", "Budhavara"; T-2779), probed in A85:A144. The year turns on 22 March, or 21
-  March in a Gregorian leap year (2023-03-22 is "1945-01-01", 2024-03-21 "1946-01-01"), and Chaitra then has 31 days.
-  `yy` prints two digits ("44"), `e` and `b` the Saka year. Months are Chaitra … Phalguna. `ddd` is a short
-  Sanskrit weekday, Sunday "Ravi" to Saturday "Sani" (the seven in A85:A144). Serial 1 is "1821-10-11|Pausa", and so is serial 0. 9999-12-31 is
-  "9921-10-10" with `yy` "21".
-- Under both, serial 60 (the fictitious 1900-02-29) is `#VALUE!`.
-- Numeral digits `[$-8000411]e` print native digits ("୫"; T-1925).
+**Hebrew (8) and Saka (10)** (T-2779; probes/t1923-calendar-digits A85:A213, t2779-hebrew-saka-names, t2779-hebrew-saka-more, excel-graph 2026-10-26/27):
+- 8 is Hebrew ("5783-06-22", "Adar", "Yom Revi'i"), the arithmetic calendar. Months number from Tishrei (1), so a leap
+  year has 13: 5784's AdarI is month 6, AdarII 7, Elul 13 (2024-09-20 is "5784-13-17|Elul"). The year turns at Rosh
+  Hashanah (2023-09-16 is "5784-01-01"). `yy`, `b`, `bb` and `y` print two digits, `e`, `ee`, `yyy`, `yyyyy` and `bbbb`
+  the Hebrew year; `g` prints nothing. With a locale, `mmm`, `mmmm` and `mmmmm` all print the whole month name.
+  - Under a Hebrew or Arabic LCID (40D, 401, 801, C01, 3C01, neutral D) the names are Hebrew script: months "תשרי" …
+    "אלול", AdarI "אדר א" and AdarII "אדר ב" with a plain space; `ddd` is the weekday's letter ("א" … "ו", "ש") and
+    `dddd` the he-IL name ("יום רביעי" with a no-break space, "שבת"; A211, A212).
+  - Under every other LCID with a locale (409, 40C, 407, 411, 412, 404, 41E, 419, 439, every other table LCID, 400, 800
+    and neutral C and 39) they are Latin: Tishrei, Cheshvan, Kislev, Tevet, Shvat, Adar (AdarI and AdarII in a leap
+    year), Nisan, Iyar, Sivan, Tamuz, Av, Elul, and `ddd` = `dddd` = "Yom Rishon" … "Yom Shishi", "Shabat".
+  - Serials 0 and 1 are "5660-05-01|Shvat", 59 "5660-06-29|AdarI".
+  - **Excel reads a year table, which wraps past 2238** (T-2954; probes/t2954-hebrew-drift, 512 cells, and
+    t2954-hebrew-value-limit, excel-graph 2026-10-28). A date's Hebrew month and day come from the table entry of its
+    Gregorian year: the Hebrew date of 1 January (always in Hebrew year Gregorian + 3760) and the length of the Hebrew
+    year it falls in. Excel walks forward from 1 January by that year's month lengths and takes the next Gregorian
+    year's entry from 1 Tishrei on. Entries to 2238 agree with the arithmetic calendar. Past 2238, Gregorian year `y`
+    reads the entry of 1585 + (y - 1585) mod 654. So 5999 (Tishrei 2238) takes 1586's year length: Cheshvan has 29
+    days, 2238-11-08 is "5999-03-01" (the arithmetic 5999-02-30), and 2238-12-01 is "5999-03-24". 2239-01-01 is
+    "5999-05-01", as 1585-01-01 is 5345-05-01. 2239-09-24 is "6000-01-01", 2241-10-01 "6001-13-28" (a leap year by the
+    table, not by the 19-year cycle), 4000-01-01 "7760-04-24" and 9999-12-31 "13760-04-22". The leap years of the
+    month names follow the table too: 4502-03-01 (8262-06-24) is "AdarI".
+  - The month names stop at Hebrew year 8262. From 1 Tishrei 8263 (4502-09-30), a month name token under a locale
+    (`[$-80409]mmm`, `mmmm`, `mmmmm`) is `#VALUE!`; 4502-09-29 is still "8262-13-29|Elul". The numbers and weekday names
+    still print (`yyyy-mm-dd|ddd` of 4502-09-30 is "8263-01-01|Shabat"). With no locale (`[$-80000]`) the Gregorian
+    names by month number still print ("8263-01-01|Jan|January|J"). So t2779-hebrew-saka-more's `yyyy-mm-dd|mmmm` is
+    `#VALUE!` from 5000-01-01 on, while `yyyy-mm-dd` of every date to 9999-12-31 prints.
+- 10 is Saka ("1944-12-24", "Phalguna", "Budhavara"). The year turns on 22 March, or 21 March in a Gregorian leap year
+  (2023-03-22 is "1945-01-01", 2024-03-21 "1946-01-01"), and Chaitra then has 31 days; months 2-6 have 31, 7-12 30.
+  `yy`, `b`, `bb` and `y` print two digits ("44"), `e`, `ee`, `yyy`, `yyyyy` and `bbbb` the Saka year. Serial 1 is
+  "1821-10-11|Pausa", and so is serial 0; 59 is "1821-12-09". 9999-12-31 is "9921-10-10" with `yy` "21".
+  - Latin names under every LCID with a locale but an Arabic or Hindi one (40D and bn-IN 445 included): months Chaitra,
+    Vaisakha, Jyaistha, Asadha, Sravana, Bhadra, Asvina, Karthika, Agrahayana, Pausa, Magha, Phalguna (`mmm` the same,
+    `mmmmm` the first letter); `ddd` Ravi, Som, Mangal, Budh, Guru, Sukra, Sani; `dddd` Ravivara, Somavara, Mangalvara,
+    Budhavara, Guruvara, Sukravara, Sanivara.
+  - Under an Arabic or Hindi LCID (401, 801, 439, neutral 39) the months are Devanagari ("चैत्र" … "फल्गुण", `mmmmm` the first
+    character) and `ddd` and `dddd` both the hi-IN `dddd` ("बुधवार").
+- Under both, serial 60 (the fictitious 1900-02-29) is `#VALUE!`, even for a section with only time tokens
+  (`TEXT(60.5,"[$-80409]h:mm")`); `TEXT(0.25,"[$-80409]h:mm|yyyy-mm-dd")` is "6:00|5660-05-01". A `B2` before the tag
+  changes nothing (`B2[$-80409]yyyy-mm-dd|mmmm` is "5783-06-22|Adar"). Day halves follow the LCID (`[$-8040D]h A/P` is
+  "6 PM").
+- LCID 1 has no locale under both (`[$-80001]mmmm` of 2024-03-21 is "July", `[$-100001]` "December"), unlike
+  neutral C, D and 39. With no locale the month names are en-US by the calendar's month number (`[$-80000]mmmm` of
+  AdarII 5784 is "July", `[$-100000]` of 1 Chaitra "January"), and Hebrew month 13 prints nothing for `mmm` and
+  `mmmm` and U+0001 for `mmmmm` (`[$-80000]m|mmm|mmmm|mmmmm` of 2024-09-20 is "13|||\u{1}").
+- Digits A, B, C and 14 are Gregorian for `yy`, `b`, `bbbb` and `e` too (`[$-A0409]yy|b|bbbb|e` is "23|23|2023|2023").
+
+**Numeral digits and LCIDs with no locale**:
+- Numeral digits `[$-8000411]e` print native digits ("୫"; not modelled, T-1925).
 - A calendar digit over an LCID with no locale (LCID 0 included) keeps its calendar's date. The names are en-US, except under 7 (Thai names) and A, B, C (Arabic), and `A/P` stays as written: `[$-E08DE]mmmm|yyyy-mm-dd` of 45000 is "February|2023-02-24", `[$-708DE]` "มีนาคม|2566-03-15", `[$-10D90B]` the Saka "December|1944-12-24", and `h A/P` is "6 P" under each (probes/t1924-locale-tag-extended-hex A13-A15, B13-B15). Underscore tags reach these through the extended hex reading above: `[$-de_DE]` (0xE0FDE), `[$-en_US]` (0xFA0FC) and `[$-ja_JP]` (0x13D049) give the lunar date in English, `[$-a_b_c]` (0xCFDFC) ar-SA names (T-1924). Digits 3, 4, 5, 9 and 14 over such an LCID are unprobed; ours leaves them unresolved.
 
 **Lunar calendars (E, F, 11, 12, 13; T-1922).** Every date token prints the lunar date: serial 45000 (2023-03-15) is lunar 2023, month 2, day 24, and `yyyy`, `yy`, `e`, `b` and `bbbb` all print the lunar year (`[$-110409]bbbb|b|e|yyyy|yy` of 45300, 2024-01-09, is "2023|23|2023|2023|23"). `g` prints nothing.
 - Months are numbered 1 to 13 (or 14) through the year, a leap month included: 2023's leap second month (from 2023-03-22) prints `m` "3" and `mmmm` "三月", and the twelfth month of lunar 2023 (from 2024-01-11) is month 13. Months 13 and 14 take the twelfth month's name ("十二月", "December", "섣달").
 - Names: E gives the lunar months "正月", "二月" … "十二月" (`mmm` the same, `mmmmm` its first character, "正") with Japanese weekdays ("水", "水曜日"), or under a Korean LCID the Korean lunar months "정월", "이월", "삼월", "사월", "오월", "유월", "칠월", "팔월", "구월", "시월", "동짓달", "섣달" with Korean weekdays. F and 11 give the same Chinese months with zh-CN weekdays ("周三", "星期三") under every LCID, Korean included. 12 and 13 give en-US names by lunar month ("Feb", "February", "Wednesday"). Day halves follow the LCID ("6 午後", "6 下午", "6 PM").
 - Two month tables: F and 11 follow the Chinese calendar; E, 12 and 13 start some months a day later (lunar month 5 of 2023 starts on 2023-05-19 under 11, 2023-05-20 under E). Between lunar new years 1960 and 2051 every month has 29 or 30 days; outside that Excel's calendar is not the published one: 1-, 15- and 28-day months, 13- and 14-month years (`[$-110409]m|d` of 1949-02-11 is "14|1"), new years off by up to a fortnight (1901-02-18 is "1/15"), and on 1960-01-01 and 2051-01-01 the year turns a month early (1959-12-31 is "1959/12/18", 1960-01-01 "1960/12/19", 1960-01-28 "1960/1/1").
-- Serial 60 (the fictitious 1900-02-29) and negative values are `#VALUE!`; serial 0 reads as serial 1 ("1899/12/16"), its weekday aside. A lunar digit wins over `B2` before the tag (`B2[$-110409]yyyy|m` of 45300 is "2023|12"; not modelled, T-2764).
+- Serial 60 (the fictitious 1900-02-29) and negative values are `#VALUE!`; serial 0 reads as serial 1 ("1899/12/16"), its weekday aside. A lunar digit wins over `B2` before the tag (`B2[$-110409]yyyy|m` of 45300 is "2023|12"; since T-2729).
 - Under LCID 0 the calendar still applies but the names stay en-US (`[$-110000]mmmm|d` and `[$-120000]mmmm|d` are "February|24"; modelled since T-1924, which keeps a calendar digit over any LCID without a locale).
-- Implemented from 1900 to 2100 as tables of Excel's own output (probes/text-locale-lunar-months-1900); past 2100-12-31 RustSheet prints the Gregorian date (TODO T-2759; Excel: 2101-06-01 is "2101/4/19", 9999-12-31 "9999/11/26").
+- Implemented as tables of Excel's own output, to 2100 from probes/text-locale-lunar-months-1900 and past it as below.
+- Past 2100 (probes/t2759-lunar-months-2101 and t2759-lunar-packed-2101 to -9101, excel-graph 2026-10-27, T-2759): Excel's lunar year follows the Gregorian year closely (2101-01-01 is "2100/12/17", 9999-01-01 "9998/12/16", 9999-12-31 "9999/11/26"), the 1900-1960 artefacts return (1-day months at the year turn, as 2105-01-30 month 13 then 2105-01-31 month 1; a 1-day month 14 on 2109-02-15; 15-, 28- and 31-day months), and month starts are not the true new moons (at 2101 about half a lunation off). Day numbers always count up by one within a month and months by one through a year, and the year turns only at month 1, with one exception: the early year of 1960 and 2051 recurs every 91 years (every 33,236 to 33,238 days) to 9999. On 1 January 2142, 2233, 2324, …, 9968 the year turns while the month is 12 (2141-12-31 is "2141/12/18", 2142-01-01 "2142/12/19"), and month 1 starts 27 days later without turning it again; both tables do this on the same days. No closed form was found (T-2759's progress notes: the starts track neither the true nor a mean new moon), so RustSheet stores Excel's month lengths to 9999 (formatter/lunar_2101.bin, packed from the probes by docs/research/t2759_lunar_tables.py). Only digits 11 and E were probed past 2100; F (with 11) and 12, 13 (with E) are assumed to keep their 1900-2100 pairing.
 - `[$-E0411]h AM/PM|A/P|aaa|aaaa|B1yyyy|bbbb` is `#VALUE!` though each token alone prints (probes/text-locale-lunar-edges A32, text-locale-lunar-tokens A10-A49); RustSheet gives `#VALUE!` too, but which token causes it is not isolated, so the match may be by chance.
 Evidence: probes/text-locale-lunar-months-1900 (1206 cells), text-locale-lunar-edges (61), text-locale-lunar-tokens (85) (excel-graph, 2026-10-26).
 
-**`b` and `B1`/`B2` under a tag.** With no tag, `b` is the Buddhist year ("66|2566"). Under any resolved tag it is the Gregorian year ("23|2023"), except under calendar 7. `B1` and `B2` after a tag change nothing: `[$-40C]B2mmmm` is "mars" and `[$-401]B2yyyy-mm-dd` is "2023-03-15". An unresolved tag ignores `B2` too: `[$-zzz]B2mmmm` is "March", and `[$-FFFF]B2yyyy` and `[$-]B2yyyy` are "2023". The Hijri calendar digit is not ignored: `[$-60409]B2yyyy` is "1444". `B2` before a tag still selects Hijri: `B2[$-40C]mmmm` is "Chaaban" (not modelled, T-2729).
+**`b` and `B1`/`B2` under a tag.** With no tag, `b` is the Buddhist year ("66|2566"). Under any resolved tag it is the Gregorian year ("23|2023"), except under calendar 7. `B1` and `B2` after a tag change nothing: `[$-40C]B2mmmm` is "mars" and `[$-401]B2yyyy-mm-dd` is "2023-03-15". An unresolved tag ignores `B2` too: `[$-zzz]B2mmmm` is "March", and `[$-FFFF]B2yyyy` and `[$-]B2yyyy` are "2023". The Hijri calendar digit is not ignored: `[$-60409]B2yyyy` is "1444". `B2` before a tag still selects Hijri: `B2[$-40C]mmmm` is "Chaaban" ("`B2` before a locale tag and calendar digit 6" above).
 
 Evidence: probes/text-locale-calendars (145 cells), text-locale-calendars-detail (41), text-locale-japanese-year (20), text-locale-era-gregorian (23) (excel-graph, 2026-10-18).
-Implemented in: formatter/locale_tag.rs (`resolve_lcid`, `Calendar`, `japanese_era`), formatter/lunar_calendar.rs (lunar tables), format.rs (years, `e`, `g`).
+Implemented in: formatter/locale_tag.rs (`resolve_lcid`, `Calendar`, `japanese_era`), formatter/lunar_calendar.rs (lunar tables, `lunar_2101.bin` past 2100), format.rs (years, `e`, `g`).
 Status: VERIFIED (excel-graph)
-Tasks: T-1859, T-1613, T-1922, T-1923, T-1924, T-1925, T-2759
+
+### Numeral-system digits (bits 24-31 of a locale tag; T-1925)
+
+Evidence: probes/t1925-numeral-digits (cell row = N + 1; D: `#,##0.00` of 1020304.05 under `[$-N000409]`; A: `yyyy-mm-dd|e|mmmm` of 45000 under `[$-N000409]`, B: the same under `[$-N000411]`, C: `0.00|#,##0` of 1234567.89 under `[$-N000409]`).
+
+- The byte N changes the digits of the probed date fields (`yyyy`, `mm`, `dd`, `e`) and of plain numbers (the grouping `,` and decimal `.` stay ASCII); `mmmm` is untouched, and so is the month number of ja-JP's `3月` (the `3` stays ASCII under every numeral byte in the B column) while `e` in the same cell becomes native. Weekday, time fields and AM/PM are unprobed. With N = 0, 1 or 20-26 the LCID still applies: `[$-1000411]` prints the `5` and `3月` of ja-JP (B column), so a numeral byte must not drop the LCID's names or era. N = 0, 1 and 20-26 print ASCII digits.
+- Positional digit sets: 2 Arabic-Indic, 3 Persian, 4 Devanagari, 5 Bengali, 6 Gurmukhi, 7 Gujarati, 8 Odia, 9 Tamil, 10 Telugu, 11 Kannada, 12 Malayalam, 13 Thai, 14 Lao, 15 Tibetan, 16 Myanmar, 17 Ethiopic, 18 Khmer, 19 Mongolian. Tamil (9) and Ethiopic (17) have no zero digit, so a zero stays ASCII `0` (N=9: `௨0௨௩-0௩-௧௫`); column D confirms it in plain numbers (N=9 `௧,0௨0,௩0௪.0௫`, N=17 `፩,0፪0,፫0፬.0፭`).
+- 27-31 are CJK numerals. Date: 27 `二〇二三-〇三-十五` (positional year, day with 十), 28 `弐〇弐参-〇参-壱拾伍`, 29 fullwidth `２０２３-０３-１５`, 30 `二○二三-○三-十五` (N=27 uses 〇 U+3007, N=30 uses ○ U+25CB), 31 `贰零贰叁-零叁-壹拾伍`. Plain numbers are positional (D, N=27 `一,〇二〇,三〇四.〇五`, N=28 `壱,〇弐〇,参〇四.〇伍`, N=31 `壹,零贰零,叁零肆.零伍`; C, 27 `一二三四五六七.八九`, 28 `壱弐参四伍六七.八九`, 31 `壹贰叁肆伍陆柒.捌玖`).
+- Not implemented. Ours: a nonzero numeral byte drops the LCID entirely, so we also lose the ja-JP era and month names (B2 expects "2023-03-15|5|3月", we print "2023-03-15|2023|March"). `resolve_lcid` returns `Silent` for any N (TODO(T-3532) there). The probe cells are known failures in the baseline; the implementation is filed as T-3532.
+
+**Unrelated quirk the probe found (column C). Rule:** `TEXT(1234567.89,"[$-409]0.00|#,##0")` is "1234567.89|0": with a `#,##0` run after the decimal point and a literal, the integer part gets no thousands grouping and the trailing run prints just `0`. We print "1,234,567.89|0". This is why C1 fails with no numeral byte (probes/t1925-numeral-digits C1, C2, C21-C27); filed as T-3598.
+
+Status: VERIFIED (excel-graph)
+Implemented in: not implemented (T-3532)
+
+Tasks: T-1859, T-1613, T-1922, T-1923, T-1924, T-1925, T-2759, T-3532, T-3598
 
 ## Displayed text (`Range.text`) of a formatted cell (T-1610)
 Rule: excel-graph's `Range.text` is the cell's value under its number format, and it does not
@@ -619,9 +907,22 @@ TEXT() with the same codes. Points the earlier probes did not show:
 - The accounting formats' text section `_(@_)` pads a text, a boolean or an empty string with one space on each side:
   `_(* #,##0_);_(* \(#,##0\);_(* "-"_);_(@_)` on "text" is " text " (gen-m10 05c1c646c95a2d60 F!M4), on TRUE " TRUE "
   (eec351e03ccedfe0 F!R2) and on `=""` two spaces (5255389143dbcef6 F!H11); the `$` variants do the same
-  (0e3d8eba9432a18d F!A13, F!A20). 27 cells across the four built-in accounting codes (gap triage 2026-10-25). Ours shows
-  the plain value (T-1736).
-- A minus goes before a leading literal: `"x"General` on -1.5 is "-x1.5". A value that rounds to
+  (0e3d8eba9432a18d F!A13, F!A20). 27 cells across the four built-in accounting codes (gap triage 2026-10-25).
+  Implemented (T-1736): `Cell::formatted_value` sends a text or boolean cell through `format_text_value`; an error cell is
+  shown as it is. All 10,400 gen-m10 displayed-text cells pass.
+  Past 255 characters (VERIFIED, probes/displayed-text-long-text A1:A22, B1:B2 and -long-text-b A1:A10, B1,
+  excel-graph, T-3282), where TEXT() is `#VALUE!`: a text section that changes the text shows 255 `#`, like an
+  unshowable date: `"pre "@`, `_(@_)`, the accounting code, `0;0;0;"pre "@`, `@@`, and even `[Red]@`, `[$-409]@`,
+  `@""`, `""@`, `@*-` on a 256-character text; so do shorter texts whose result passes 255 (250 under
+  `"prefix"@`, 254 under `_(@_)`, 128 under `@@`, 252 under `"pre "@`), while 251 under `"pre "@` and 253 under
+  `_(@_)` (255 characters) show in full. A format that leaves the text unchanged shows it whole however long: no
+  text section (`General`, `0.00`) or a section that is exactly `@` (`@`, `0;@`, `0;0;0;@`,
+  `General;General;General;@`; 300 characters shown). `;;;` shows nothing. A literal and a formula text behave
+  the same. Implemented in formatter/format.rs `displayed_text`.
+  Unprobed (T-3314): a workbook whose cell carries a code TEXT() rejects as invalid (`42abc`, `@;0`, `x@0`) is refused whole by
+  excel-graph (`FileCorruptTryRepair`, T-3282 probe attempt), so that displayed text cannot be probed; the engine
+  keeps the plain text for it.
+- A minus goes before a leading literal: `"x"General` on -1.5 is "-x1.5" (implemented, T-2097: the minus leads and the General token prints the absolute value; gen-m10 F!D19 -1E15 is "-x1E+15"). A value that rounds to Unprobed: literals after General on a negative (`General x`, unchanged here).
   nothing shows no minus: `#,` on -0.5 "", `0.0,,` on -1234.5678 "0.0"; `#,` on 1.5 is "" and on
   1000 "1".
 - `?.??` keeps the point on an integer ("1000.  "); `#%` on 0.0049 is "%".
@@ -636,8 +937,18 @@ TEXT() with the same codes. Points the earlier probes did not show:
 - Implemented (VERIFIED, gen-m10, T-2226): an engineering mantissa (two or more integer placeholders) rounds after
   the shift, to its own integer digits plus the decimals (`##0.0E+0` on 1/3 "333.3E-3", on -1/7 "-142.9E-3",
   `##0.00E+00` on 1/3 "333.33E-03", `00.0E+0` on 0.125 "12.5E-2"; 28 gen-m10 text cells). Ours: a rounding carry
-  into the next power of ten moves the exponent to the next multiple (`##0.0E+0` on 999.96 "1.0E+3"), which is
-  unprobed for engineering codes.
+  into the next power of ten moves the exponent to the next multiple (`##0.0E+0` on 999.96 "1.0E+3"); see the
+  T-2598 bullet below for the probe evidence.
+- Implemented (T-2598; VERIFIED, probes/t2598-engineering-scientific, excel-graph 2026-10-27; ours matches all 12
+  cells): an engineering mantissa that rounds up to the next power of ten renormalises only when it reaches 10 to the
+  number of integer placeholders. `##0.0E+0` on 999.96 is "1.0E+3", on 9999.96 "10.0E+3", on -999.96 "-1.0E+3", but on
+  99.96 it stays "100.0E+0" (100 is a legal three-digit mantissa). `00.0E+0` on 9.96 is "10.0E+0" and on 99.96 it is
+  "01.0E+2" (100 needs three digits, so the exponent moves to the next multiple of 2 and the mantissa is padded).
+  `##0.00E+00` on 999.995 is "1.00E+03". The mantissa rounds on the 15-digit decimal, half away from zero (T-2206):
+  `##0E+0` on 0.0145 is "15E-3" (the double is 0.01449999…, so only this cell tells decimal from binary
+  rounding), on 0.0125 "13E-3", on 1.5E-5 "15E-6". The group size of a grouped code counts
+  as integer placeholders: `#,##0.0E+0` has four integer placeholders, so the exponent is a multiple of 4 and the mantissa keeps its
+  group separator: 1/3 is "3,333.3E-4" and 12345.6 is "1.2E+4".
 - Not implemented (VERIFIED, gen-m10): zero prints all integer placeholders (`##0.0E+0` on 0
   "000.0E+0", `##0.00E+00` "000.00E+00", `#E+0` "0E+0") and a carry renormalises (`0.0E+00` on 99.5
   "1.0E+02") (T-2227).
@@ -676,9 +987,9 @@ A `?` that pads the first decimal prints the point before its space, whatever fo
 probes/t1738-question-first-decimal, excel-graph 2026-10-25): `TEXT(3,"0.?")` and `TEXT(3,"#.?")` are "3. ",
 `"0.?0"` "3. 0", `"0.??"` and `"#,##0.??"` "3.  ", `"0.?#"` "3. ", `"?.??E+00"` on 1000 "1.  E+03", `"?.??"` on 0
 " .  " and `"0.?"` on -3 "-3. "; implemented in formatter/format.rs. `#%` on 0.0049 is "%" since T-2206's rounding.
+Implemented since: `[$USD]` currency text (T-2157) and `[Cyan]` (T-1737).
 Not implemented: before T-2206 ours passed 8,797 of 10,400 text cells (84.6%). fraction overflow (T-1740), second rounding (T-1732), `mm:ss` (T-1733), conditions (T-1734),
-the text section on text and booleans (T-1736), `[Cyan]` (T-1737; `[$USD]` currency text is implemented since T-2157, which needed it),
-scientific (T-1730), fractions (T-2029, T-2030, T-0982; "Fraction formats" below), the sign of a value that rounds to zero and `#,` on -500 (T-1129), fractional seconds (done in T-0934), 15 significant digits (T-0980), `"x"General` (T-1614).
+the text section on text and booleans (T-1736), scientific (T-1730), fractions (T-2029, T-2030, T-0982; "Fraction formats" below), the sign of a value that rounds to zero and `#,` on -500 (T-1129), fractional seconds (done in T-0934), 15 significant digits (T-0980), `"x"General` (T-1614).
 Status: VERIFIED (Excel for the web)
 Tasks: T-1611, T-1711, T-1730 to T-1738, T-1740, T-2029, T-2030, T-2206
 
@@ -729,8 +1040,45 @@ Rule (gen-m10 `F!` text cells, TEXT() on sheet T gives the same text; cells name
   -2147483647 and 2147483648 255 `#`; -2147483646 is "-2147483646/1" (overflow A43-A64, overflow2 A58-A64).
   A whole part takes the rest: `# ?/100` on 1E15 is "1000000000000000      ", `# ?/?` on 2147483648.5
   "2147483648 1/2" and `0 ?/10` on 1E14+0.5 "100000000000000 5/10" (overflow A37-A42, A74-A76).
-  Implemented in `format_fraction` (formatter/fraction.rs). UNVERIFIED: the engine applies both bounds to the
-  value after `%` and `,` scaling, and the fixed bound to denominators past 32767; neither is probed (T-2233).
+  Implemented in `format_fraction` (formatter/fraction.rs). Both bounds apply to the value after `%` scaling
+  (VERIFIED, probes/fraction-overflow-scaled A1-A27, excel-graph 2026-10-27, T-2522): `?/?%` on 21474836.469 is
+  "2147483647/1%" and on 21474836.47, 21474836.48 and -21474836.48 255 `#`; `??/??%` on 21474836.46 "2147483646/1 %";
+  `# ?/?%` on 21474836.48 "2147483648    %"; `?/100%` on 3.27674 "32767/100%" and on 3.27675 255 `#`; the 2^30 stop
+  rule below too (`?/?%` on 10737418.245 "1073741825/1%", 10737418.235 "2147483647/2%"). For `,` scaling see
+  "Scaling commas in fraction formats"; for denominators past 32767 "Fixed denominators past 32768".
+- **Many scaling commas wrap** (VERIFIED, probes/t2842-dollar-run-contexts K1:K3, K10:K11, excel-graph 2026-10-27, T-2842):
+  outside a fraction, Excel keeps the scaling exponent -3n of n trailing commas in a signed byte, so `TEXT(5,"0"&REPT(",",252))`
+  is "5000000000000" (-756 wraps to 12), 253 commas "5000000000" (9), 254 "5000000" (6), and `[$-409]0` + 246 commas
+  5 followed by 30 zeros. Counts from 43 (where -129 first wraps) to 245 are unprobed; the engine applies the same wrap.
+- **Scaling commas in fraction formats** (VERIFIED, probes/fraction-overflow-scaled, excel-graph 2026-10-27, T-2522).
+  A `,` right after the denominator (`?/?,`, `# ?/4,`, `?/4,%`) multiplies the value by 10^((-3n) mod 256) for n such
+  commas, as if Excel kept the exponent -3n in an unsigned byte: 10^253 for one, 10^250 for two, 10^247 for three. So
+  `?/?,` on 1E-250 is "1000/1", on 1E-290 and 1E-300 "0/1", and on 0.5, 1, 1500 or 1E-200 255 `#` (TEXT `#VALUE!`)
+  under the 2^31 - 1 bound; `?/4,` on 1E-250 "4000/4"; `?/?,,` on 1E-250 "1/1", 1E-247 "1000/1"; `?/?,,,` on 1E-238
+  "1000000000/1". With an integer part the integer prints in full: `# ?/4,` on 1E-12 is "1" + 241 zeros + 4 spaces,
+  and on 2 the text would pass 255 characters, so 255 `#` and `#VALUE!`. Zero is unscaled (`?/?,` on 0 "0/1", `# ?/4,`
+  "0    "). The scaled value is cut to 15 significant digits: `?/?,,` on 1E-251 is "0/1" (0.1, whose double product
+  0.10000000000000002 would pick 1/9; A65, the only cell that tells). A `,` anywhere else prints or vanishes: after a
+  `%` or a literal it is a literal (`?/?%,` on 1E-252 "0/1%,", `?/?% ,` "0/1% ,", `?/? ,` "0/1 ,"), and a `,` after the
+  integer neither scales nor groups (`0, ?/4` on 2 is "2    ", on 1234567.5 "1234567 2/4"; `#, ?/4` alike). Outside a
+  fraction a `,` after `%` is a literal too: `0%,` on 0.5 is "50%," and on 1234567 "123456700%,". Implemented in the
+  parser (`Token::Comma`) and `fraction_scale` (formatter/fraction.rs). Unprobed: 86 or more commas (the exponent wraps
+  past 0), a `,` between the numerator and the `/`.
+- **Fixed denominators past 32768** (VERIFIED, probes/fraction-large-fixed-denominator and -six-digit-denominator,
+  excel-graph 2026-10-27, T-2522). Up to 32768 a fixed denominator is used as written (`?/32768` on 0.5 is
+  "16384/32768", on 1 255 `#`, the numerator bound 32767). From 32769 to 99999 Excel ignores it and picks the
+  denominator as for placeholders, the last convergent with a denominator up to 9999999 whatever the code's digit
+  count, under the placeholder value bound and 2^31 stop rule (`?/40000` on 0.5 "1/4    ", 0.8192 "512/400  ",
+  0.8191874 "4095937/40000", 1/9999999 "1/40000", 1E-7 "0/4    ", 2147483646.9 "2147483647/4    ", 2147483647 255 `#`;
+  `?/32769` on 1/9999999 "1/32769"). The code's digits print in place of the denominator's, cut to its digit count
+  (625 shows "400", 5000000 "40000"), and pad with spaces to the code's width under a `?` numerator and not under a `#`
+  or `0` one (`??/40000` on 0.5 " 1/4    ", `0/40000` and `#/40000` "1/4", `# #/40000` on 1.5 "1 1/4", `# ?/40000`
+  "1 1/4    "). Six or more digits (`?/100000`, `?/123456`) are #VALUE! from TEXT for every value, and Excel for the
+  web refuses a workbook that applies one as a cell format (FileCorruptTryRepair), so its displayed text is unknown.
+  Implemented in `format_fraction` (`MAX_FIXED_DENOMINATOR`, `LARGE_FIXED_MAX_DENOMINATOR`) and the parser. Unprobed: a
+  numerator mixing `?` with `#` or `0`, a blank fraction (`# ?/40000` on a whole number), and
+  whether the #VALUE! rule is about the digit count or the value (only 6-digit codes of 100000 or more were probed;
+  7+ digits and leading zeros are extrapolated).
 - **Placeholder fractions past 2^30** are not the last convergent (VERIFIED, excel-graph 2026-10-21, T-1740,
   probe cells kept out of the suites until the follow-up implements them; T-2233): `?/?` on 1073741824.5 is
   "1073741825/1" (not 2147483649/2), -1073741824.5 "-1073741825/1", 1431655765.5 "1431655766/1",
@@ -747,7 +1095,7 @@ Rule (gen-m10 `F!` text cells, TEXT() on sheet T gives the same text; cells name
   integer over 1: 1073741824.5 "1073741825/1", 1073741824.25 "1073741824/1". At the bound: 1073741823.5 "2147483647/2"
   (2 x 1073741823 = 2^31 - 2 is taken). The sum alone passing 2^31 is taken: 1500000000.6 "3000000001/2", and
   715827883+1/3 (the double 715827883.3333334, partial quotients 2 then 1) "2147483650/3", where 1 x 1431655767 is under
-  the bound but 1431655767 + 715827883 is past 2^31; 715827882+1/3 "2147483647/3". UNVERIFIED: the bound under `%` and `,` scaling.
+  the bound but 1431655767 + 715827883 is past 2^31; 715827882+1/3 "2147483647/3". Under `%` scaling the rule applies to the scaled value (T-2522, above).
 Evidence: eval/suites/gen-m10 (excel-graph `text`, 2026-10-16, T-1611); 829 numeric text cells under 12 fraction
 codes, all failing in the 2026-10-19 report.
 - **The numerator rounds at 15 significant digits**, as ROUND does: `?/100` on 12.345 is "1235/100" (05c1c646 D11)
@@ -762,9 +1110,8 @@ B1:I1 = 1.5, -0.5, 0, 1.99, -0.001, 1, 0.5, 1234.5):
 - **A trailing `,` after the denominator scales the value up, not down by 1000**: `# ?/4,` is #VALUE! for every value but 0, which prints
   "0    " (B5:I5); `# ?/4,,` multiplies the value by 1E250 and prints the integer in full with the fraction blanked ("15" + 249
   zeros + 4 spaces on 1.5, B6; -0.001 "-1" + 247 zeros, F6; 253 to 255 characters), and is #VALUE! on 1234.5 (I6),
-  whose result would pass the 255-character TEXT limit. The single `,` row is #VALUE! on the same pattern (a larger
-  factor, or the limit); the per-comma factor and the limit's role are hypotheses to probe (T-2072). Not
-  implemented: we print "0    ".
+  whose result would pass the 255-character TEXT limit. The single `,` row is #VALUE! because one comma multiplies
+  by 10^253 (settled by T-2522, "Scaling commas in fraction formats" above; implemented, rows 5-6 pass).
 - **`0` numerator placeholders print**: a zero numerator is not blanked, it pads with zeros: `# 00/16` on 0 "00/16",
   on 1.99 "2 00/16" (D8, E8), and `# 0/4` on 0 "0/4", 1 "1 0/4" (D15, G15); the integer part is dropped under `#` when
   zero and the separator goes with it (`# 00/16` on 0.5 "08/16", H8; `# 0/4` on 0.5 "2/4", H15; -0.5 "-08/16", "-2/4",
@@ -814,4 +1161,10 @@ A `*x` fill (repeat) character contributes nothing to the displayed text or to T
 `TEXT(3,"*.0.00")` is "3.00", PI() under `0.00*-` is "3.14", and 1000 under `_(* #,##0_);...` is " 1,000 " (only the `_(`
 and `_)` skips add spaces). Evidence: gen-m10 accounting built-ins and `*.0.00`/`0.00*-` text cells (excel-graph,
 2026-10-16, T-1611), gen-m5/3e134e52393061b1 A240, probes/text-format-length-limit-o A37. Implemented in both the number and the date
-branch of `format_number` (formatter/format.rs, T-1735). Status: VERIFIED (excel-graph) for number sections; a fill in a date or clock code (`TEXT(1,"d*x")`) and in a fraction code (fraction.rs still prints a space) is UNVERIFIED (T-2480).
+branch of `format_number` (formatter/format.rs, T-1735). Date, clock and fraction codes alike (T-2480, probes/text-fill-char-date-clock-fraction, 12 cells, excel-graph 2026-10-28): `TEXT(1,"d*x")` is "1", `TEXT(0.5,"h:mm*-")` "12:00", `TEXT(0.75,"h*x:mm AM/PM")` "6:00 PM", `TEXT(1,"*xd")` "1", `TEXT(1,"d*xm")` "11", `TEXT(1.5,"# ?/?*x")` "1 1/2", `TEXT(0.5,"?/?*x")` "1/2", `TEXT(0.5,"*x# ?/?")` " 1/2". Ours printed a space for a fraction fill; fixed in T-2480. A fill inside a blank fraction adds nothing either (T-3057, probes/text-fill-char-blank-fraction, 10 cells, excel-graph 2026-10-29): zero under a bare `?/?` is not blank but "0/1", fill or not (`TEXT(0,"?/?*x")` "0/1", length 3); only with an integer placeholder is it blank, `TEXT(0,"# ?/?*x")` is "0" plus four spaces (length 5, the fill adds no sixth); `TEXT(0,"?/?*xy")` is `#VALUE!` (a fill takes one character); a literal space after the fill still counts (`LEN(TEXT(0,"?/?*x "))` 4) and a fill between the numerator and the `/` adds nothing (`LEN(TEXT(0,"?*x/?"))` 3). Ours already matched.
+Status: VERIFIED (excel-graph); implemented (T-1735, T-2480).
+
+- Implemented (T-2227; VERIFIED, gen-m10 659cd5776d423ce3 F!J14, 4c6a49fe4a6fa404 F!R4, 5eb95c63c7d6180c F!G13, bfbcd16cee266336 F!W12, excel-graph): a scientific
+  code on zero prints every integer placeholder of the mantissa as `0`, `#` included (`##0.0E+0` → "000.0E+0",
+  `##0.00E+00` → "000.00E+00", `#E+0` → "0E+0"). A carry out of the mantissa renormalises (`0.0E+00` on 99.5 is
+  "1.0E+02"; already correct, pinned by test). "-x1E+15" is the General sign rule (T-2097, T-2850); no gen-m10 scientific cell with an empty text remains. Still open: `#E+0` ties. UNVERIFIED: grouped (`#,##0.0E+0`) and `?` (`??0.0E+0`) codes on zero.

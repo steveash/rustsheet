@@ -1,5 +1,6 @@
 # Cells that differ from Excel by design (decision 0036, crates/rustsheet-eval/src/deviations.rs):
 # case, cell, decision, accepted DEVIATION entry, RustSheet's pinned by-design value.
+# A `*` cell pins a whole case the engine refuses; its value reads `refused "<message>"` (decision 0168).
 lifted-range-rows.case.json	Sheet1!C1	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
 lifted-range-rows.case.json	Sheet1!C2	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
 lifted-range-rows.case.json	Sheet1!E1	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!

@@ -3,7 +3,7 @@ id: T-2667
 title: "IPMT's cancelling pv-0 cells at rates 10 and 0.1: Excel's own Y to the last bit (probes, 7 cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -27,9 +27,12 @@ dense pv-0 grid at rates 2, 10 and 0.1 with nper 5 to 400 before choosing, and k
 The `|B| < |fv|` switch is fitted (0.1 to 1 fit), not an identified formulation: re-fit it on the new grid.
 
 ## Acceptance criteria
-- [ ] The 7 cells of the goal pass to 15 digits, with no new known-failure lines in any baseline.
-- [ ] financial.md "IPMT cancels on fv" states the fitted rule.
-- [ ] `make check` green; reviewers approve.
+- [x] The 7 cells of the goal pass to 15 digits, with no new known-failure lines in any baseline.
+- [x] financial.md "IPMT cancels on fv" states the fitted rule.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Past-range PPMT and fractional nper (T-2665, T-2666).
+
+## Outcome
+Done by T-2243. IPMT now splits Excel's discounted PMT (docs/excel-semantics/financial.md "IPMT and PPMT split Excel's discounted payment"), one form bit-exact on all 1495 IPMT cells with constant arguments, so no fitted switch is needed. The 7 pv-0 cells pass to the bit; `IPMT(10,2,10,0,315)` is 1.2144607808295405E-6.

@@ -70,8 +70,10 @@ impl Model {
     /// with each logical value the arguments give, read through the SPEC-0009 walker
     /// ([`LOGICAL_ARGS`]):
     /// - a boolean is itself, a number is TRUE unless 0, in any source;
-    /// - direct text "TRUE" or "FALSE" (any case) counts; other text, referenced text and array
-    ///   text are skipped (probes/and-or-xor-text-arguments, T-0258);
+    /// - direct text "TRUE" or "FALSE" (any case, untrimmed) counts, literal or computed (`&`, IF,
+    ///   T, LOWER, LET); other text, padded text, referenced text and array-element text are
+    ///   skipped (probes/and-or-xor-text-arguments, T-0258;
+    ///   probes/t3135-and-or-xor-computed-bool-text, T-3135);
     /// - an empty argument is FALSE when nothing came before and changes nothing after; empty
     ///   cells are skipped; a whole-column range is clipped to the used area (`OR(F:LSE)`, T-0230);
     /// - the first error in argument order wins, and every argument is evaluated: Excel does not

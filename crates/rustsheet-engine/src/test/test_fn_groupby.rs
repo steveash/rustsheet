@@ -119,10 +119,35 @@ fn number_keys_compare_exactly() {
     assert_eq!(model._get_text("G1"), "TRUE");
 }
 
+/// Inside the array the blank key is a true blank: INDEX gives TYPE 1 and `&""` "" (probes/
+/// t2360-array-lambda-holidays G!A12), COUNT skips it; IFERROR reads it as 0, as it reads a blank
+/// range cell (probes/groupby-sort-filter-args G!B55). T-2460, T-2854.
 #[test]
-fn total_row_fillers_are_empty_text_and_blank_key_is_zero() {
+fn blank_key_is_a_true_blank_inside_the_array() {
+    let mut model = region_sales();
+    model._set(
+        "J1",
+        "=TYPE(INDEX(GROUPBY(A2:A11,B2:B11,LAMBDA(x,SUM(x))),5,1))&INDEX(GROUPBY(A2:A11,B2:B11,LAMBDA(x,SUM(x))),5,1)",
+    );
+    model._set("J2", "=COUNT(GROUPBY(A2:A11,B2:B11,LAMBDA(x,SUM(x))))");
+    model._set(
+        "J3",
+        "=TEXTJOIN(\"|\",FALSE,IFERROR(GROUPBY(A2:A11,B2:B11,LAMBDA(x,SUM(x)),,0),\"#\"))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("J1"), "1");
+    // The six sums; the blank key is not a number (it was 0, giving 7).
+    assert_eq!(model._get_text("J2"), "6");
+    assert_eq!(
+        model._get_text("J3"),
+        "East|45|North|7|South|-3|West|72.5|0|9"
+    );
+}
+
+#[test]
+fn total_row_fillers_are_empty_text_and_blank_key_spills_as_zero() {
     // G!AB25 and G!AC33: the second key cell of the Total row is "" (text), the blank key group
-    // shows the number 0.
+    // displays 0 when spilled (a true blank inside the array).
     let mut model = region_sales();
     for row in 2..=11 {
         model._set(&format!("C{row}"), "k");
@@ -966,6 +991,8 @@ fn one_parameter_calls_are_charged_against_the_visit_cap_too() {
     // Every call is charged the cells it is given: one group of 1048575 records and its total
     // row cost 2^21 cells per function, so 10 functions compute and 100 (2E8 cells) are #ERROR!.
     let mut model = new_empty_model();
+    // The visit cap under test, not the formula work budget, which the reads now also charge.
+    model.area_budget.limit = u64::MAX;
     model._set(
         "A1",
         "=549755289600=INDEX(GROUPBY(SEQUENCE(1048575,,1,0),SEQUENCE(1048575),HSTACK(_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM,_xleta.SUM)),3,11)",
@@ -1073,4 +1100,31 @@ fn nested_groupby_evaluates_each_level_once() {
     model.evaluate();
     assert!(start.elapsed().as_secs() < 5, "{:?}", start.elapsed());
     assert!(!model._get_text("D1").is_empty());
+}
+
+#[test]
+fn multi_cell_reference_from_a_function_lifts_like_a_written_range() {
+    // probes/t2707-prob-orders A50, A63:A65 (T-3088): `INDEX(range,0)` returns a reference, and a
+    // multi-cell one lifts the call as the written range does, not one #VALUE!.
+    let mut model = region_sales();
+    model._set("H1", "0");
+    model._set("I1", "1");
+    model._set(
+        "D1",
+        "=GROUPBY(A2:A11,B2:B11,LAMBDA(x,SUM(x)),INDEX(H1:I1,0))",
+    );
+    model._set("D3", "=GROUPBY(A2:A11,B2:B11,LAMBDA(x,SUM(x)),H1:I1)");
+    model.evaluate();
+    assert_eq!(
+        [
+            model._get_text("D1"),
+            model._get_text("E1"),
+            model._get_text("F1")
+        ],
+        ["East", "East", ""]
+    );
+    assert_eq!(
+        [model._get_text("D3"), model._get_text("E3")],
+        ["East", "East"]
+    );
 }

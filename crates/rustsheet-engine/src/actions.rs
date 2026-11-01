@@ -4,14 +4,14 @@ use crate::cut_paste::cf_sqref_anchor;
 use crate::expressions::parser::stringify::{
     to_localized_string, to_string_displaced_keeping, DisplaceData, Displacement,
 };
-use crate::expressions::parser::Parser as ExprParser;
+use crate::expressions::parser::{Node, Parser as ExprParser};
 use crate::expressions::types::CellReferenceRC;
 use crate::expressions::utils;
+use crate::language::get_default_language;
 use crate::locale::get_default_locale;
 use crate::model::{CellStructure, Model};
 use crate::pivot::PivotLines;
 use crate::types::{ArrayKind, Cell, Link, MergedCell, Worksheet};
-use crate::{formula_cells::written_formula, language::get_default_language};
 
 /// Applies `map` to the (row, column) key of every link in the worksheet, so
 /// that links follow their cells when rows or columns are inserted, deleted or
@@ -369,7 +369,7 @@ impl Model {
             .cell(row, column)
             .and_then(|c| c.get_formula())
         {
-            let node = &written_formula(&self.parsed_formulas[sheet as usize][f as usize]).clone();
+            let node = &Node::clone(self.parsed_formulas[sheet as usize][f as usize].written());
             let cell_reference = CellReferenceRC {
                 sheet: self.workbook.worksheets[sheet as usize].get_name(),
                 row,
@@ -413,7 +413,7 @@ impl Model {
 
     /// Updates the `range` field and formula fields of every CF rule on `sheet` according to `displacement`.
     pub(crate) fn displace_cf_ranges(&mut self, sheet: u32, displacement: Displacement) {
-        let (displace_data, _) = displacement;
+        let displace_data = displacement.data;
         let count = match self.workbook.worksheets.get(sheet as usize) {
             Some(ws) => ws.conditional_formatting.len(),
             None => return,
@@ -614,10 +614,10 @@ impl Model {
                 "Cannot insert columns because that would break an array formula".to_string(),
             );
         }
-        // check if it is possible:
-        let dimensions = self.workbook.worksheet(sheet)?.dimension();
-        let last_column = dimensions.max_column + column_count;
-        if last_column > LAST_COLUMN {
+        self.refuse_table_off_sheet(sheet, column, column_count, false)?;
+        // Written so it cannot overflow: `column_count` can be any `i32` (T-2896).
+        let max_column = self.workbook.worksheet(sheet)?.dimension().max_column;
+        if !utils::is_valid_column_number(column) || column_count > LAST_COLUMN - max_column {
             return Err(
                 "Cannot shift cells because that would delete cells at the end of a row"
                     .to_string(),
@@ -730,7 +730,7 @@ impl Model {
         if !(1..=LAST_COLUMN).contains(&column) {
             return Err(format!("Column number '{column}' is not valid."));
         }
-        if column + column_count - 1 > LAST_COLUMN {
+        if column_count > LAST_COLUMN - column + 1 {
             return Err("Cannot delete columns beyond the last column of the sheet".to_string());
         }
         if !self.can_delete_columns(sheet, column, column_count)? {
@@ -999,10 +999,10 @@ impl Model {
         if !self.can_insert_rows(sheet, row, row_count)? {
             return Err("Cannot insert rows because that would break an array formula".to_string());
         }
-        // Check if it is possible:
-        let dimensions = self.workbook.worksheet(sheet)?.dimension();
-        let last_row = dimensions.max_row + row_count;
-        if last_row > LAST_ROW {
+        self.refuse_table_off_sheet(sheet, row, row_count, true)?;
+        // Written so it cannot overflow: `row_count` can be any `i32` (T-2896).
+        let max_row = self.workbook.worksheet(sheet)?.dimension().max_row;
+        if !utils::is_valid_row(row) || row_count > LAST_ROW - max_row {
             return Err(
                 "Cannot shift cells because that would delete cells at the end of a column"
                     .to_string(),
@@ -1101,11 +1101,15 @@ impl Model {
         if !(1..=LAST_ROW).contains(&row) {
             return Err(format!("Row number '{row}' is not valid."));
         }
-        if row + row_count - 1 > LAST_ROW {
+        if row_count > LAST_ROW - row + 1 {
             return Err("Cannot delete rows beyond the last row of the sheet".to_string());
         }
         if !self.can_delete_rows(sheet, row, row_count)? {
             return Err("Cannot delete rows because that would break an array formula".to_string());
+        }
+        if let Some(area) = self.last_data_row(sheet, row, row_count) {
+            // A table keeps its last data row, cleared (Model::last_data_row, T-2338).
+            return self.range_clear_contents(&area);
         }
         self.displace_pivots(sheet, PivotLines::Rows, row, -row_count)?;
         self.reset_dynamic_array_spills(sheet)?;
@@ -1674,14 +1678,10 @@ impl Model {
         if column_count <= 0 || delta == 0 {
             return Ok(());
         }
-        let target_first = column + delta;
-        let target_last = column + column_count - 1 + delta;
-        if !(1..=LAST_COLUMN).contains(&target_first) || !(1..=LAST_COLUMN).contains(&target_last) {
+        if !utils::moved_span_in_grid(column, column_count, delta, LAST_COLUMN) {
             return Err("Target column out of boundaries".to_string());
         }
-        if !(1..=LAST_COLUMN).contains(&column)
-            || !(1..=LAST_COLUMN).contains(&(column + column_count - 1))
-        {
+        if !utils::moved_span_in_grid(column, column_count, 0, LAST_COLUMN) {
             return Err("Initial column out of boundaries".to_string());
         }
         if !self.can_move_columns_action(sheet, column, column_count, delta)? {
@@ -1754,12 +1754,10 @@ impl Model {
         if row_count <= 0 || delta == 0 {
             return Ok(());
         }
-        let target_first = row + delta;
-        let target_last = row + row_count - 1 + delta;
-        if !(1..=LAST_ROW).contains(&target_first) || !(1..=LAST_ROW).contains(&target_last) {
+        if !utils::moved_span_in_grid(row, row_count, delta, LAST_ROW) {
             return Err("Target row out of boundaries".to_string());
         }
-        if !(1..=LAST_ROW).contains(&row) || !(1..=LAST_ROW).contains(&(row + row_count - 1)) {
+        if !utils::moved_span_in_grid(row, row_count, 0, LAST_ROW) {
             return Err("Initial row out of boundaries".to_string());
         }
         if !self.can_move_rows_action(sheet, row, row_count, delta)? {

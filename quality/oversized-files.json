@@ -1,11 +1,10 @@
 {
   "bindings/python/src/user_model.rs": 1049,
   "crates/rustsheet-engine/src/actions.rs": 1820,
-  "crates/rustsheet-engine/src/conditional_formatting.rs": 1757,
-  "crates/rustsheet-engine/src/functions/financial/financial_bonds.rs": 1016,
+  "crates/rustsheet-engine/src/conditional_formatting.rs": 1687,
   "crates/rustsheet-engine/src/functions/mod.rs": 2177,
-  "crates/rustsheet-engine/src/model.rs": 3256,
-  "crates/rustsheet-engine/src/user_model/common.rs": 2370,
+  "crates/rustsheet-engine/src/model.rs": 3230,
+  "crates/rustsheet-engine/src/user_model/common.rs": 2367,
   "crates/rustsheet-engine/src/user_model/ui.rs": 1088,
-  "crates/rustsheet-engine/src/user_model/undo_redo.rs": 1052
+  "crates/rustsheet-engine/src/user_model/undo_redo.rs": 1051
 }

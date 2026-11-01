@@ -1,0 +1,67 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3054: IMTAN of a real number. Row 1 is ironcalc-calc COMPLEXs.xlsx row 6 (N6 `IMREAL(IMTAN(D6))`, D6 `COMPLEX(5,0,\"i\")`), whose Mac cache -3.38051500624658 is the double-angle form; rows 2-11 are real arguments where TAN's x87 kernel and the double-angle form `sin 2x / (cos 2x + 1)` print different text (A), with TAN of the same number (B).",
+ "tags": [
+  "M9",
+  "complex",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "5",
+    "B1": "0",
+    "C1": "i",
+    "D1": "=COMPLEX(A1,B1,C1)",
+    "N1": "=IMREAL(IMTAN(D1))",
+    "O1": "=IMAGINARY(IMTAN(D1))",
+    "A2": "=IMTAN(\"3.14159\")",
+    "B2": "=TAN(3.14159)",
+    "A3": "=IMTAN(\"4\")",
+    "B3": "=TAN(4)",
+    "A4": "=IMTAN(\"-17.2737\")",
+    "B4": "=TAN(-17.2737)",
+    "A5": "=IMTAN(\"-17.3011\")",
+    "B5": "=TAN(-17.3011)",
+    "A6": "=IMTAN(\"-17.26\")",
+    "B6": "=TAN(-17.26)",
+    "A7": "=IMTAN(\"-19.3013\")",
+    "B7": "=TAN(-19.3013)",
+    "A8": "=IMTAN(\"-14.5885\")",
+    "B8": "=TAN(-14.5885)",
+    "A9": "=IMTAN(\"-14.246\")",
+    "B9": "=TAN(-14.246)",
+    "A10": "=IMTAN(\"-18.3423\")",
+    "B10": "=TAN(-18.3423)",
+    "A11": "=IMTAN(\"-17.6436\")",
+    "B11": "=TAN(-17.6436)"
+   }
+  }
+ ],
+ "check": [
+  "Sheet1!N1",
+  "Sheet1!O1",
+  "Sheet1!A2",
+  "Sheet1!B2",
+  "Sheet1!A3",
+  "Sheet1!B3",
+  "Sheet1!A4",
+  "Sheet1!B4",
+  "Sheet1!A5",
+  "Sheet1!B5",
+  "Sheet1!A6",
+  "Sheet1!B6",
+  "Sheet1!A7",
+  "Sheet1!B7",
+  "Sheet1!A8",
+  "Sheet1!B8",
+  "Sheet1!A9",
+  "Sheet1!B9",
+  "Sheet1!A10",
+  "Sheet1!B10",
+  "Sheet1!A11",
+  "Sheet1!B11"
+ ],
+ "expected": {}
+}

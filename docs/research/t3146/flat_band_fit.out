@@ -1,0 +1,16 @@
+quantile cells 140; S (shape not 0.5 or 1) 112; S99 (and 0.99 <= p <= 0.9999) 99
+all 140: our double cdf at Excel's quantile is p on 105, below on 17, above on 18
+S: our double cdf at Excel's quantile is p on 77, below on 17, above on 18
+S99: our double cdf at Excel's quantile is p on 64, below on 17, above on 18
+candidate                                                  S: bit / 4ulp / vis    S99: bit / 4ulp / vis
+crossing (correctly rounded quantile)                           11 /  38 /  47            2 /  25 /  34
+statrs' search                                                   6 /  25 /  36            5 /  21 /  32
+Newton from a, stop at cdf = p                                   3 /  19 /  33            3 /  19 /  33
+Newton from a, stop at step < 1E-15                              3 /  19 /  33            3 /  19 /  33
+Newton from Wilson-Hilferty, stop at cdf = p                     4 /  24 /  33            4 /  24 /  33
+Newton from Wilson-Hilferty, stop at step < 1E-15                4 /  25 /  34            4 /  25 /  34
+Newton from crossing x (1 + 1E-3), stop at cdf = p               4 /  17 /  26            4 /  17 /  25
+Newton from crossing x (1 - 1E-3), stop at cdf = p               3 /  19 /  27            3 /  19 /  27
+Newton on ln cdf from a                                          3 /  20 /  35            3 /  20 /  35
+Newton in ln x from a                                            4 /  21 /  32            4 /  21 /  32
+bisection from [0, 2^k], stop at cdf = p                         4 /  21 /  29            4 /  21 /  29

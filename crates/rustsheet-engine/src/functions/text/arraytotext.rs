@@ -15,6 +15,15 @@ impl Model {
         if args.is_empty() || args.len() > 2 {
             return CalcResult::new_args_number_error(cell);
         }
+        // Excel: an error value in the first argument is the result before the format is looked at,
+        // so `ARRAYTOTEXT(SINH(134217727),2)` is `#NUM!` and `ARRAYTOTEXT(NA(),1/0)` is `#N/A`; an
+        // error inside an array does not count (`ARRAYTOTEXT({1,#N/A},2)` is `#VALUE!`)
+        // (docs/excel-semantics/text.md#arraytotext-error-before-format,
+        // probes/arraytotext-error-vs-format).
+        let first = self.evaluate_node_in_context(&args[0], cell);
+        if matches!(first, CalcResult::Error { .. }) {
+            return first;
+        }
         let format = if args.len() == 2 {
             match self.get_number(&args[1], cell) {
                 Ok(f) => f.floor() as i32,
@@ -24,11 +33,26 @@ impl Model {
             0
         };
         if format != 0 && format != 1 {
+            // A one-cell range holding an error is that error too (`ARRAYTOTEXT(B1:B1,2)` with
+            // B1 `#N/A` is `#N/A`; probes/arraytotext-error-vs-format A14).
+            if let CalcResult::Range { left, right } = first {
+                if let Ok(array) = self.evaluate_range(left, right, cell) {
+                    if let [row] = array.as_slice() {
+                        if let [ArrayNode::Error(error)] = row.as_slice() {
+                            return CalcResult::new_error(
+                                error.clone(),
+                                cell,
+                                "ARRAYTOTEXT of an error".to_string(),
+                            );
+                        }
+                    }
+                }
+            }
             return CalcResult::new_error(Error::VALUE, cell, "format must be 0 or 1".to_string());
         }
         let strict = format == 1;
 
-        let array = match self.evaluate_node_in_context(&args[0], cell) {
+        let array = match first {
             CalcResult::Range { left, right } => match self.evaluate_range(left, right, cell) {
                 // Excel: a 1x1 range holding an empty cell is as much an empty cell as a bare reference;
                 // only a range, not an array (GROUPBY hands a one-blank group over as an array, which

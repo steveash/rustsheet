@@ -4,11 +4,11 @@ title: "Normal PDF last digits: NORM.S.DIST/NORM.DIST/LOGNORM.DIST non-cumulativ
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P3
+priority: P1
 size: S
 tier: opus
+campaign: visible
 depends_on: []
-defer: phase-1b
 ---
 
 ## Goal
@@ -28,7 +28,10 @@ correctly rounded constant `SQRT_2PI` = 2.5066282746310007; LOGNORM.DIST's densi
 - `ironcalc-calc/STATISTICAL/PHI.xlsx` `Sheet1`: B5
 
 Oracle sweep (T-1041): probes-numeric cases `m9-normpdf-norm-s-dist`, `m9-normpdf-phi`,
-`m9-normpdf-norm-dist-s0p5`, `-s1p2`, `-s3`, `-s10`, `m9-normpdf-lognorm-dist`.
+`m9-normpdf-norm-dist-s0p5`, `m9-normpdf-norm-dist-s1p2`, `m9-normpdf-norm-dist-s3`, `m9-normpdf-norm-dist-s10`, `m9-normpdf-lognorm-dist`.
+Visibly off in `m9-normpdf-lognorm-dist` on main 5b8c2ae7 (T-3021): Calc!A29 `LOGNORM.DIST(7.25,0,1,FALSE)` Excel
+0.007734043882067061, ours ...053; Calc!A41 `LOGNORM.DIST(0.25,1,0.5,FALSE)` Excel 3.6133196398262184E-5, ours ...116;
+Calc!A73 `LOGNORM.DIST(8.25,1,0.5,FALSE)` Excel 0.008220277976125383, ours ...373.
 
 Examples (expected vs actual):
 - `NORM.S.DIST(0,FALSE)` C7/C25/C45: expected 0.3989422804014327, actual 0.39894228040143265.
@@ -90,6 +93,7 @@ Cells:
 - [ ] One density helper in `special.rs` used by NORM.S.DIST, NORM.DIST, LOGNORM.DIST and PHI (or a
       comment citing cells that prove a function needs a different order).
 - [ ] The statistics.md entry is updated to VERIFIED or rewritten from the evidence.
+- [ ] The 16 t1048-normdist cells added by gap triage 2026-10-30 are bit-exact (`make eval-show`; probes-numeric is ungated), or they are listed in the bit-level follow-up.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -102,5 +106,11 @@ target is that every visibly-off cell it owns has Excel's type, error and text, 
 significant digit of Excel's value (an expected 0 exactly 0); the visible-parity criterion under Acceptance criteria states
 it. Bit-level criteria still unmet then move to a follow-up task without the key.
 
-## Deferred (decision 0114)
-`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).
+Gap triage 2026-10-25 (eval on origin/main becefc6f3): the task was deferred by decision 0114's adoption, but an eval shows a cell it owns visibly off, so, as its Deferred note asked, the `defer` key gave way to `campaign: visible`. Visibly off: gen-m9/b4173fe25109a238 Calc!A48 `=LOGNORM.DIST(40,0,(Data!A10*100%),FALSE)`: Excel 3.0218137820578166e-14, ours 3.021813782057842e-14 (5 units of the 15th digit).
+
+## Phase 1 triage (T-0090, 2026-10-27)
+It owns the 4 visibly-off LOGNORM.DIST cells and alone lifts LOGNORM.DIST. Priority raised so it leads its stage in M9.
+
+## Cells added by gap triage (2026-10-30)
+`make eval` on origin/main 6a26b992a (excel-graph), `scripts/exit_owners.py`'s `owned` rule over every failing cell and the task files of origin/main and every pushed branch: 16 NORM.DIST and NORMDIST density cells of the T-1048 probe, 1 ulp off and none visibly off, that no open task names. Columns A (NORMDIST) and B (NORM.DIST) hold the same arguments and give the same value, so these are 8 points. One of them is the T-1041 lead itself: `NORM.DIST(0,0,1,FALSE)` (A14, B14) is Excel 0.3989422804014327 (the correctly rounded 1/sqrt(2*pi), the multiplier of the best form in "Normal density oracle sweep (T-1041)") and ours 0.39894228040143265. Others, Excel vs ours: A2 `NORMDIST(0.5,0,1,FALSE)` 0.3520653267642995 vs 0.35206532676429947; A6 `NORMDIST(42,40,1.5,FALSE)` 0.10934004978399575 vs 0.10934004978399574. If the visible stage closes first, these cells move to its phase-1b follow-up with the rest of the bit-level residue.
+- probes-numeric/t1048-normdist.case.json (16): Calc!A2, A4, A6, A8, A12, A14, A21, A23, B2, B4, B6, B8, B12, B14, B21, B23

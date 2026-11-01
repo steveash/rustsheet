@@ -3,7 +3,7 @@ id: T-2398
 title: "SCAN over a GROUPBY result is one cell (#N/A, 0 or the error), not a scan of its cells"
 milestone: M7
 lane: functions-logic
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -28,9 +28,18 @@ Re-split from T-2359. probes/groupby-lifted-args (excel-graph, 2026-10-22):
   over the same. Code: functions/logical (SCAN), functions/lookup_and_reference/groupby.rs.
 
 ## Acceptance criteria
-- [ ] A probe case answers what SCAN receives, and arrays.md records the rule.
-- [ ] A153, A161, A169 and the gen-m7 cell pass with 0 regressions; unit tests cover the rule.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case answers what SCAN receives, and arrays.md records the rule.
+- [x] A153, A161, A169 and the gen-m7 cell pass with 0 regressions; unit tests cover the rule.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - GROUPBY's own result: its nested `LAMBDA(w,w)` cells come from T-2593 (SPEC-0018), which A153 and the gen-m7 cell need.
+
+## Outcome
+The probe probes/scan-over-groupby (72 cells, excel-graph, 2026-10-23; written on the earlier branch of draft #1583)
+answers what SCAN receives: a GROUPBY call is one cell to SCAN, while MAP and REDUCE see all of it. arrays.md "SCAN over
+a GROUPBY result (T-2398)" records the rule. Every cell passes on `main`'s engine with no code change here: the nested
+GROUPBY cells of T-2593 and the aggregates of T-2594 made A153, I153, A161, A169, gen-m7/b24ce74f08d3f91a A1850 and the
+probe's A36 and A68-A72 (the nested `LAMBDA(w,w)` cells) pass. Unit test
+`test_nested_groupby_cells::scan_over_a_groupby_call_is_one_cell` pins the rule. Why SCAN collapses the call to one cell is
+not understood (no task: every probed cell matches).

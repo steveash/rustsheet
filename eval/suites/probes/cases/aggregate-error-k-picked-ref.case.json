@@ -1,0 +1,37 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "AGGREGATE 14 with an error-cell k under options 1, 2, 3, 5 and 7, and a fourth argument IF or CHOOSE picks a reference for under function 9 (T-2336).",
+ "tags": [
+  "M5",
+  "aggregate",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Data",
+   "cells": {
+    "A1": 1,
+    "A2": 2,
+    "A3": 3,
+    "A4": 4,
+    "A5": 5,
+    "B1": 10,
+    "D1": "=NA()"
+   }
+  },
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=AGGREGATE(14,1,Data!A1:A5,Data!D1)",
+    "A2": "=AGGREGATE(14,2,Data!A1:A5,Data!D1)",
+    "A3": "=AGGREGATE(14,3,Data!A1:A5,Data!D1)",
+    "A4": "=AGGREGATE(14,5,Data!A1:A5,Data!D1)",
+    "A5": "=AGGREGATE(14,7,Data!A1:A5,Data!D1)",
+    "A6": "=AGGREGATE(9,0,Data!A1:A2,IF(TRUE,Data!B1))",
+    "A7": "=AGGREGATE(9,0,Data!A1:A2,CHOOSE(1,Data!B1))",
+    "A8": "=AGGREGATE(9,0,Data!A1:A2,Data!B1)"
+   }
+  }
+ ],
+ "expected": {}
+}

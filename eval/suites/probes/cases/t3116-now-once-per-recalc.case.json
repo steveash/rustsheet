@@ -1,0 +1,41 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Whether Excel reads its clock once per recalc (T-3116): Calc!A1 = NOW(), B1 = slow work that depends on A1 (a 1,000,000-cell SUM(SEQUENCE) plus a 150x150 MAKEARRAY of LAMBDA calls), C1 = NOW() after B1, D1 = C1=A1, E1 = their difference in ms; A2 = the same inside one LET (A3 its ms difference); A4 = NOW() on another sheet after B1 equals A1 (Other!A2 the difference); A7 = AND(B1>0, D1). These are FALSE / 20-50 ms on every excel-graph fill (Excel reads its clock per call), but a fixed harness clock cannot show it, so they are recorded, not scored. Scored (invariant): A5 = NOW()-NOW()=0 (two reads in one 10 ms tick) and A6 = INT(TODAY())=INT(NOW()).",
+ "tags": [
+  "M2",
+  "probe",
+  "date",
+  "volatile",
+  "T-3116"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=NOW()",
+    "B1": "=A1*0+SUM(SEQUENCE(1000,1000))+SUM(MAKEARRAY(150,150,LAMBDA(r,c,MOD(r*c,7))))",
+    "C1": "=IF(B1>=0,NOW(),0)",
+    "D1": "=C1=A1",
+    "E1": "=(C1-A1)*86400000",
+    "A2": "=LET(a,NOW(),s,a*0+SUM(SEQUENCE(1000,1000))+SUM(MAKEARRAY(150,150,LAMBDA(r,c,MOD(r*c,7)))),b,IF(s>=0,NOW(),0),b=a)",
+    "A3": "=LET(a,NOW(),s,a*0+SUM(SEQUENCE(1000,1000))+SUM(MAKEARRAY(150,150,LAMBDA(r,c,MOD(r*c,7)))),b,IF(s>=0,NOW(),0),(b-a)*86400000)",
+    "A4": "=Other!A1=A1",
+    "A5": "=NOW()-NOW()=0",
+    "A6": "=INT(TODAY())=INT(NOW())",
+    "A7": "=AND(B1>0,D1)"
+   }
+  },
+  {
+   "name": "Other",
+   "cells": {
+    "A1": "=IF(Calc!B1>=0,NOW(),0)",
+    "A2": "=Other!A1-Calc!A1"
+   }
+  }
+ ],
+ "expected": {},
+ "invariant": [
+  "Calc!A5",
+  "Calc!A6"
+ ]
+}

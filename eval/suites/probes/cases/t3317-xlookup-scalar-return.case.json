@@ -1,0 +1,40 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "XLOOKUP with a scalar return_array (text, number, boolean, error, reference-free) over a one-cell and a two-cell lookup_array (T-3317)",
+ "tags": [
+  "M2",
+  "probe",
+  "xlookup"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "a",
+    "A2": "a",
+    "A3": "b",
+    "B1": 1,
+    "C1": "=XLOOKUP(\"a\",A1,\"hit\",\"miss\")",
+    "C2": "=XLOOKUP(\"z\",A1,\"hit\",\"miss\")",
+    "C3": "=XLOOKUP(\"a\",A1,5,\"miss\")",
+    "C4": "=XLOOKUP(\"a\",A1,TRUE,\"miss\")",
+    "C5": "=XLOOKUP(\"a\",A1,#N/A,\"miss\")",
+    "C6": "=XLOOKUP(\"z\",A1,\"hit\")",
+    "C7": "=XLOOKUP(\"a\",A1,\"hit\")",
+    "C8": "=XLOOKUP(\"a\",A1:A2,\"hit\",\"miss\")",
+    "C9": "=XLOOKUP(\"z\",A1:A2,\"hit\",\"miss\")",
+    "C10": "=XLOOKUP(\"a\",{\"a\"},\"hit\",\"miss\")",
+    "C11": "=XLOOKUP(\"z\",{\"a\"},\"hit\",\"miss\")",
+    "C12": "=XLOOKUP(\"a\",A1,B1,\"miss\")",
+    "C13": "=XLOOKUP(\"a\",A1,\"\",\"miss\")",
+    "C14": "=XLOOKUP(\"a\",A1,{\"x\"},\"miss\")",
+    "C15": "=XLOOKUP(\"a\",A1,\"hit\",,0,-1)",
+    "C16": "=XLOOKUP(\"z\",A1,\"hit\",\"miss\",0,2)",
+    "C17": "=XLOOKUP(\"a\",A1,\"hit\",\"miss\",2)",
+    "C18": "=XLOOKUP(\"a\",A1,\"hit\",\"miss\",9)",
+    "C19": "=XLOOKUP(1,B1,\"hit\",\"miss\")",
+    "C20": "=XLOOKUP(\"z\",A1,A1:A2,\"miss\")"
+   }
+  }
+ ]
+}

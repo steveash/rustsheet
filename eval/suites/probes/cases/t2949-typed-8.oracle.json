@@ -1,0 +1,23 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "S": {
+   "D8": {
+    "t": "n",
+    "v": 3.0
+   },
+   "E8": {
+    "t": "s",
+    "v": "=LAMBDA(x,y,x+y)(1,2)"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "579bec34a88d2620742a6d092185de8e7fcec029c9bb6e532ad78046c8e3c1e7",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-29T20:56:19+00:00",
+  "version": null,
+  "workbook_name": "a802026b3f935fadfd8e8d866ffcd5c70856e5ac45681eb2bd006e7809dbcd78.xlsx"
+ }
+}

@@ -1,0 +1,44 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-3066: do AVERAGE, AVERAGEA and AGGREGATE(1) snap a near-zero sum's final addition as SUM does, over scalars, array constants, ranges and separate references? Column D, one form per row: 0.1, 0.2, -0.3 (cancel) and 1+k*2^-52 with -1 for k = 7 and 8.",
+  "tags": [
+    "M2",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A1": 0.1,
+        "A2": 0.2,
+        "A3": -0.3,
+        "A5": "=1+7*2^-52",
+        "A6": -1,
+        "A8": "=1+8*2^-52",
+        "A9": -1,
+        "D1": "=AVERAGE(0.1,0.2,-0.3)",
+        "D2": "=AVERAGEA(0.1,0.2,-0.3)",
+        "D3": "=AVERAGE({0.1,0.2,-0.3})",
+        "D4": "=AVERAGEA({0.1,0.2,-0.3})",
+        "D5": "=AGGREGATE(1,6,A1:A3)",
+        "D6": "=AGGREGATE(1,0,A1:A3)",
+        "D7": "=AVERAGE(1+7*2^-52,-1)",
+        "D8": "=AVERAGEA(1+7*2^-52,-1)",
+        "D9": "=AVERAGE(1+8*2^-52,-1)",
+        "D10": "=AVERAGEA(1+8*2^-52,-1)",
+        "D11": "=AVERAGE({1,-1}+{7,0}*2^-52)",
+        "D12": "=AVERAGE({1,-1}+{8,0}*2^-52)",
+        "D13": "=AGGREGATE(1,6,A5:A6)",
+        "D14": "=AGGREGATE(1,6,A8:A9)",
+        "D15": "=AVERAGE(A5:A6)",
+        "D16": "=AVERAGE(A8:A9)",
+        "D17": "=AVERAGE(A1:A3)*1",
+        "D18": "=AVERAGEA(A1:A3)*1",
+        "D19": "=AGGREGATE(1,6,A1:A3)*1",
+        "D20": "=AVERAGE(A1,A2,A3)",
+        "D21": "=AVERAGEA(A1,A2,A3)",
+        "D22": "=AGGREGATE(1,6,A1,A2,A3)"
+      }
+    }
+  ]
+}

@@ -19,8 +19,9 @@ fn simple_cases() {
     assert_eq!(model._get_text("B1"), *"Monday, Tuesday, Wednesday");
     assert_eq!(model._get_text("B2"), *"Monday and Tuesday and Wednesday");
     assert_eq!(model._get_text("B3"), *"Monday or Tuesday or Wednesday");
-    // Our text version removes the prefix, of course (and some white spaces)
-    assert_eq!(model._get_formula("B3"), *"=TEXTJOIN(\" or \",, A1:A3)");
+    // Our text version removes the prefix, and keeps the whitespace Excel keeps: the run in the
+    // missing argument's place (`=IF(1, ,2)`, probes/t2786-whitespace-structured-refs-runs I2, T-2944).
+    assert_eq!(model._get_formula("B3"), *"=TEXTJOIN(\" or \", , A1:A3)");
 }
 
 #[test]
@@ -58,6 +59,63 @@ fn whole_column_sees_a_spill_beyond_the_used_area() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "9");
     assert_eq!(model.evaluation.restarts_in_last_evaluation, 0);
+}
+
+// Excel values: probes/textjoin-whole-rows-self-reference-full-width B5, B8, D3. With ignore_empty FALSE
+// the padding passes the limit in row 2, so no later cell is read: a range holding the TEXTJOIN cell is
+// #CALC! even when the used area spans every column; with ignore_empty TRUE it is circular.
+#[test]
+fn full_width_rows_stop_reading_at_the_limit() {
+    let mut model = new_empty_model();
+    model._set("A1", "x");
+    model._set("XFD1", "z");
+    model._set("A2", "y");
+    model._set("XFD2", "w");
+    model._set("B5", "=TEXTJOIN(\",\",FALSE,1:10)");
+    model._set("B8", "=TEXTJOIN(\",\",FALSE,A1:XFD10)");
+    model._set("D3", "=TEXTJOIN(\",\",TRUE,1:10)");
+    model.evaluate();
+    assert_eq!(model._get_text("B5"), "#CALC!");
+    assert_eq!(model._get_text("B8"), "#CALC!");
+    assert_eq!(model._get_text("D3"), "0");
+}
+
+// Excel values: probes/t3293-textjoin-own-row-limit ZZ1, B3, ZZ7. The limit passed partway along the
+// formula's own row stops the read before the formula cell: #CALC!, not circular; before the limit
+// (B3) or with ignore_empty TRUE (ZZ7) the self-reference is circular (0).
+#[test]
+fn limit_passed_inside_the_formulas_own_row_stops_the_read() {
+    let mut model = new_empty_model();
+    let long = "=TEXTJOIN(\"\",TRUE,REPT(\"x\",200)&SEQUENCE(160,1,0,0))";
+    model._set("A1", long);
+    model._set("ZZ1", "=TEXTJOIN(\",\",FALSE,1:1)");
+    model._set("A3", long);
+    model._set("B3", "=TEXTJOIN(\",\",FALSE,3:3)");
+    model._set("A7", long);
+    model._set("ZZ7", "=TEXTJOIN(\",\",TRUE,7:7)");
+    // A cell value (not padding) takes the join over the limit; the formula cell comes next, after a
+    // blank, or with ignore_empty TRUE (C11, C12, D13, D14, E15).
+    let long2 = "=TEXTJOIN(\"\",TRUE,REPT(\"x\",200)&SEQUENCE(162,1,0,0))";
+    for (row, column, ignore_empty) in [
+        (11, "C", "FALSE"),
+        (12, "C", "TRUE"),
+        (13, "D", "FALSE"),
+        (14, "D", "TRUE"),
+    ] {
+        model._set(&format!("A{row}"), long2);
+        model._set(&format!("B{row}"), "=REPT(\"y\",250)");
+        model._set(
+            &format!("{column}{row}"),
+            &format!("=TEXTJOIN(\",\",{ignore_empty},{row}:{row})"),
+        );
+    }
+    model.evaluate();
+    for cell in ["C11", "C12", "D13", "D14"] {
+        assert_eq!(model._get_text(cell), "#CALC!", "{cell}");
+    }
+    assert_eq!(model._get_text("ZZ1"), "#CALC!");
+    assert_eq!(model._get_text("B3"), "0");
+    assert_eq!(model._get_text("ZZ7"), "0");
 }
 
 // Excel values: probes/textjoin-array-arguments.

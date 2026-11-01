@@ -23,6 +23,7 @@ SECTIONS = {
     "since-last-run": "## Since the last run",
     "trends": "## Trends",
     "arguments": "## Argument coverage",
+    "codebase": "## Codebase health",
 }
 
 
@@ -91,6 +92,7 @@ def test_a_first_run_writes_every_block_in_order_with_placeholders() -> None:
         "top-functions",
         "evidence",
         "arguments",
+        "codebase",
         "readiness",
         "risks",
         "method",

@@ -14,7 +14,8 @@ import hashlib
 import json
 import random
 import re
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -67,7 +68,14 @@ TEXT_POOL: list[str] = [
     "?b",
     "x~*",
 ]
-CRITERIA_POOL: list[Any] = [">0", "<5", ">=2", "<>1", "=a", "a*", "*c", "?b?", 1, "abc", "", "<>"]
+# Criteria as text; the text-number (`"1"`, `"=2"`, `"1E1"`), tilde-escape (`"x~*"`, `"~?"`; `"x~*"` is also a TEXT_POOL
+# data value) and boolean entries exercise Excel's text-to-number criteria matching (T-2717). Ints are emitted as numeric literals.
+CRITERIA_POOL: list[Any] = [
+    ">0", "<5", ">=2", "<>1", "=a", "a*", "*c", "?b?", 1, "abc", "", "<>",
+    "1", "2.5", "=2", "1E1", "x~*", "~?", "TRUE", "=FALSE",
+]  # fmt: skip
+# Criteria that are formulas rather than literals: a comparison operator joined to a date serial, i.e. a date as text.
+CRITERIA_EXPR_POOL: list[str] = ['">"&DATE(2020,1,1)', '"<="&DATE(1900,1,1)']
 # LET variables and LAMBDA parameters: none is a cell reference (`x1` is one), a function name (`N`) or `r`/`c`.
 NAME_POOL: list[str] = ["x", "y", "z", "w", "v", "acc"]
 # Functions passed by name as a LAMBDA (eta-reduced, `BYROW(A1:B3,SUM)`); Excel stores them `_xleta.SUM`
@@ -76,6 +84,10 @@ NAME_POOL: list[str] = ["x", "y", "z", "w", "v", "acc"]
 ETA_POOL: list[str] = ["SUM", "MAX", "MIN", "AVERAGE", "COUNT", "PRODUCT"]
 # Share of a `pool` parameter's values drawn from its edge pool (synthetic-generator.md §3.2).
 POOL_RATE = 0.35
+# Shares of a number- or bool-typed `value` parameter without a `hard` domain drawn as `""` and as an error literal,
+# so generated suites reach the `empty_text` and `error` argument kinds (T-2866, decision 0094; §6.5).
+EMPTY_TEXT_RATE = 0.03
+ERROR_RATE = 0.03
 MASK_OPS: list[str] = [">", "<", "=", "<>"]
 # `--spill` (synthetic-generator.md §5.2 shape 3): the largest footprint reserved under a spilling probe, and the
 # share of spilling probes given a blocker cell in it (edge class `spill_blocked`), so `#SPILL!` stays covered.
@@ -138,6 +150,12 @@ class Catalog:
         return Catalog([o for o in self.operators if ok(o)], functions)
 
 
+# Share of *IFS calls whose ranges ignore the shared shape, so the #VALUE! mismatch stays covered.
+SHAPE_MISMATCH_RATE = 0.1
+# Share of `probe` values drawn from the probed range's own cells, so the search can find them.
+PROBE_HIT_RATE = 0.95
+
+
 def pool_rate(p: dict[str, Any]) -> float:
     """Share of `p`'s values drawn from its pool: `pool_rate` when the catalog sets one (the D* database and
     criteria, whose Db pools only work together, T-2249), else POOL_RATE."""
@@ -159,6 +177,8 @@ class Gen:
     # The case's pivot (sheet `Pivot`), built from its own seeded stream at the first `pivot: true` call (T-2396).
     pivot_seed: int = 0
     pivot: PivotSource | None = None
+    # The (rows, columns) the `same_shape` ranges of the call being generated share (T-2719).
+    call_shape: tuple[int, int] | None = None
 
     # -- references into the data sheet --------------------------------------------------
     def cell_ref(self) -> str:
@@ -168,16 +188,28 @@ class Gen:
         dollar_r = "$" if self.rng.random() < 0.2 else ""
         return f"Data!{dollar_c}{col}{dollar_r}{row}"
 
-    def range_ref(self, width: int = 1, *, full: bool = False) -> str:
-        """A `width`-column range of data rows; `full` spans every row, so two full ranges are the same height."""
+    def range_ref(self, width: int = 1, *, full: bool = False, height: int | None = None) -> str:
+        """A `width`-column range of data rows; `full` spans every row, so two full ranges are the same height,
+        and `height` fixes the row count."""
         c0 = self.rng.randrange(self.data_cols - width + 1)
         r0, r1 = 1, self.data_rows
-        if not full:
+        if height is not None:
+            r0 = self.rng.randrange(1, self.data_rows - height + 2)
+            r1 = r0 + height - 1
+        elif not full:
             r0 = self.rng.randrange(1, self.data_rows)
             r1 = self.rng.randrange(r0, self.data_rows + 1)
         a = col_letter(c0)
         b = col_letter(c0 + width - 1)
         return f"Data!{a}{r0}:{b}{r1}"
+
+    def cell_in(self, ref: str) -> str:
+        """A cell inside the range `ref` (`Data!A1:C3`), or a free cell reference when `ref` is not one."""
+        m = re.fullmatch(r"(Data!)([A-Z])(\d+):([A-Z])(\d+)", ref)
+        if m is None:
+            return self.cell_ref()
+        c0, r0, c1, r1 = ord(m[2]), int(m[3]), ord(m[4]), int(m[5])
+        return f"Data!{chr(self.rng.randint(c0, c1))}{self.rng.randint(r0, r1)}"
 
     # -- literals --------------------------------------------------------------------------
     def literal(self, typ: str) -> str:
@@ -224,12 +256,40 @@ class Gen:
             if self.pivot is None:
                 self.pivot = build_source(random.Random(f"pivot-{self.pivot_seed}"))
             return pivot_call(self.rng, self.pivot, fn.get("spelled", fn["name"]))
-        args: list[str] = []
-        params: list[dict[str, Any]] = fn["params"]
+        with self.call_frame():
+            args, declared = self.call_args(fn, depth)
+        invoked = ""
+        if fn.get("invoke"):
+            # A LAMBDA left uncalled is #CALC!, so the generator calls it with one value per parameter.
+            invoked = "(" + ",".join(self.expr("any", depth + 1) for _ in range(declared)) + ")"
+        return f"{fn.get('spelled', fn['name'])}({','.join(args)}){invoked}"
+
+    @contextmanager
+    def call_frame(self) -> Iterator[None]:
+        """Generate one call's arguments: the names it declares and the shape its `same_shape` ranges share
+        stay inside it, and the outer call's are restored after."""
         outer, outer_pending = len(self.scope), self.pending
         self.pending = []
+        outer_shape, self.call_shape = self.call_shape, None
+        try:
+            yield
+        finally:
+            del self.scope[outer:]
+            self.pending = outer_pending
+            self.call_shape = outer_shape
+
+    def call_args(self, fn: dict[str, Any], depth: int) -> tuple[list[str], int]:
+        """`fn`'s generated arguments and how many names they declare (LET variables, LAMBDA parameters)."""
+        args: list[str] = []
+        params: list[dict[str, Any]] = fn["params"]
         declared = 0  # names this call declares (LET variables, LAMBDA parameters)
         repeated = 1  # how many arguments the last repeating param got (MAP's arrays fix its LAMBDA's arity)
+        # A `probe: <param>` value is drawn from the cells of that range param, so the search finds something
+        # (MATCH's lookup_value); the range is drawn first and reused when its turn comes (T-2719).
+        by_name = {q["name"]: q for q in params}
+        drawn: dict[str, str] = {
+            q["probe"]: self.argument(by_name[q["probe"]], depth) for q in params if q.get("probe")
+        }
         i = 0
         while i < len(params):
             p = params[i]
@@ -257,17 +317,16 @@ class Gen:
                 # LAMBDA's calculation sees all its parameters.
                 self.scope += self.pending
                 self.pending = []
-            args.extend(self.argument(p, depth, arity=repeated) for _ in range(count))
+            if p["name"] in drawn:
+                args.append(drawn[p["name"]])
+            elif p.get("probe") and self.rng.random() < PROBE_HIT_RATE:
+                args.append(self.cell_in(drawn[p["probe"]]))
+            else:
+                args.extend(self.argument(p, depth, arity=repeated) for _ in range(count))
             if p.get("mode") == "name":
                 declared += count
             i += 1
-        del self.scope[outer:]
-        self.pending = outer_pending
-        invoked = ""
-        if fn.get("invoke"):
-            # A LAMBDA left uncalled is #CALC!, so the generator calls it with one value per parameter.
-            invoked = "(" + ",".join(self.expr("any", depth + 1) for _ in range(declared)) + ")"
-        return f"{fn.get('spelled', fn['name'])}({','.join(args)}){invoked}"
+        return args, declared
 
     def fresh_name(self) -> str:
         taken = set(self.scope) | set(self.pending)
@@ -326,10 +385,40 @@ class Gen:
         self.pending = []
         return text
 
-    def argument_text(self, p: dict[str, Any], mode: str, depth: int) -> str:
-        if mode == "range" and p.get("cell"):
+    def shaped_range(self, p: dict[str, Any]) -> str | None:
+        """A `range` param's reference when its shape is constrained (`cell`, `same_shape`, `wide_rate`,
+        `row_rate`), else None."""
+        if p.get("cell"):
             # ISFORMULA lifts over a range; one cell keeps the result from spilling into the next formula.
             return self.cell_ref()
+        if p.get("same_shape"):
+            # The *IFS ranges of one call must agree in shape or Excel gives #VALUE!; (0, 0) is a call that
+            # keeps its ranges free so the mismatch stays covered (T-2719).
+            if self.call_shape is None:
+                free = self.rng.random() < SHAPE_MISMATCH_RATE
+                self.call_shape = (
+                    (0, 0)
+                    if free
+                    else (
+                        self.rng.randint(1, self.data_rows - 1),
+                        self.rng.randint(1, min(4, self.data_cols)),
+                    )
+                )
+            if self.call_shape != (0, 0):
+                return self.range_ref(width=self.call_shape[1], height=self.call_shape[0])
+        if p.get("vector") and self.rng.random() < p.get("wide_rate", 0.0):
+            # A small 2-D rate keeps MATCH's #N/A path for a non-vector lookup_array covered (T-2719).
+            return self.range_ref(width=self.rng.randint(2, min(4, self.data_cols)))
+        if p.get("vector") and p.get("row_rate") and self.rng.random() < p["row_rate"]:
+            row = self.rng.randrange(1, self.data_rows + 1)
+            c0 = self.rng.randrange(self.data_cols - 1)
+            c1 = self.rng.randrange(c0 + 1, self.data_cols)
+            return f"Data!{col_letter(c0)}{row}:{col_letter(c1)}{row}"
+        return None
+
+    def argument_text(self, p: dict[str, Any], mode: str, depth: int) -> str:
+        if mode == "range" and (shaped := self.shaped_range(p)) is not None:
+            return shaped
         if p.get("vector") and (mode == "range" or self.rng.random() < 0.5):
             # LOOKUP/XLOOKUP/XMATCH search one column here and WRAPROWS/WRAPCOLS wrap one; 2-D only gives an error.
             return self.range_ref(width=1, full=p.get("full", False))
@@ -342,11 +431,17 @@ class Gen:
                 width=self.rng.randint(1, min(4, self.data_cols)), full=p.get("full", False)
             )
         if mode == "criteria":
-            c = self.rng.choice(CRITERIA_POOL)
-            return repr(c) if isinstance(c, int) else '"' + str(c) + '"'
+            return self.criteria_text()
         if mode in ("aggregate", "aggregate_a") and self.rng.random() < 0.5:
             return self.range_ref()
         return self.scalar_text(p, depth)
+
+    def criteria_text(self) -> str:
+        """A `criteria` argument: a quoted text or numeric literal, or a date expression."""
+        c = self.rng.choice(CRITERIA_POOL + CRITERIA_EXPR_POOL)
+        if c in CRITERIA_EXPR_POOL:
+            return str(c)
+        return repr(c) if isinstance(c, int) else '"' + str(c) + '"'
 
     def scalar_text(self, p: dict[str, Any], depth: int) -> str:
         """A `value` param: an in-domain literal, else an edge-pool entry, else a free expression."""
@@ -357,6 +452,12 @@ class Gen:
         # A `hard` domain is never overridden: outside it Excel refuses the workbook (MUNIT).
         if p.get("pool") and not dom.get("hard") and self.rng.random() < pool_rate(p):
             return self.rng.choice(POOLS[p["pool"]])
+        if p.get("type") in ("number", "bool") and not dom.get("hard"):
+            roll = self.rng.random()
+            if roll < EMPTY_TEXT_RATE:
+                return '""'
+            if roll < EMPTY_TEXT_RATE + ERROR_RATE:
+                return self.rng.choice(POOLS["errors"])
         return self.value_expr(p, depth)
 
     def value_expr(self, p: dict[str, Any], depth: int) -> str:
@@ -376,8 +477,14 @@ class Gen:
         # A `hard` domain is never violated: outside it Excel refuses the workbook (MUNIT(10^6)).
         if not (dom.get("int") or dom.get("enum")) or not (dom.get("hard") or self.rng.random() < 0.7):
             return None
+        return self.in_domain_literal(dom)
+
+    def in_domain_literal(self, dom: dict[str, Any]) -> str | None:
+        """A literal drawn from an `int` or `enum` domain, or None when the domain is neither."""
         if dom.get("int"):
             return str(self.rng.randint(dom.get("min", 0), dom.get("max", 10)))
+        if not dom.get("enum"):
+            return None
         v = self.rng.choice(dom["enum"])
         # A number enum (a bond's frequency 1, 2 or 4) is a number literal; text would be coerced, not the same call.
         return str(v) if isinstance(v, int | float) and not isinstance(v, bool) else '"' + str(v) + '"'
@@ -397,6 +504,19 @@ class Gen:
         if r < 0.85:
             return self.rng.choice([True, False])
         return None  # blank
+
+    def data_cells(self) -> dict[str, Any]:
+        """The Data sheet's `data_rows` x `data_cols` block of `data_value` draws, by A1 (blanks left out)."""
+        cells: dict[str, Any] = {}
+        for r in range(1, self.data_rows + 1):
+            for c in range(self.data_cols):
+                v = self.data_value()
+                if v is not None:
+                    # Text that starts with `=` is a constant, not a formula.
+                    cells[f"{col_letter(c)}{r}"] = (
+                        {"t": "s", "v": v} if isinstance(v, str) and v.startswith("=") else v
+                    )
+        return cells
 
 
 def narrow_targets(
@@ -465,14 +585,7 @@ def generate_case(
             msg = f"no generator-ready functions at milestone {milestone} to focus on"
             raise ValueError(msg)
         rng.shuffle(targets)
-    data: dict[str, Any] = {}
-    for r in range(1, data_rows + 1):
-        for c in range(data_cols):
-            v = g.data_value()
-            if v is not None:
-                if isinstance(v, str) and v.startswith("="):
-                    v = {"t": "s", "v": v}
-                data[f"{chr(ord('A') + c)}{r}"] = v
+    data = g.data_cells()
     texts: list[str] = []
     for i in range(1, formulas + 1):
         if focus:

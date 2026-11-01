@@ -2,6 +2,7 @@ use std::{collections::HashMap, sync::OnceLock};
 
 // Excel's own date names for `[$-...]` format tags. They differ from the CLDR names in
 // `locales.bin` (de "Mrz" vs "Mär") on purpose: keep the two sources apart.
+pub(crate) mod calendar_date_names;
 pub mod excel_date_names;
 mod regional_date_names;
 

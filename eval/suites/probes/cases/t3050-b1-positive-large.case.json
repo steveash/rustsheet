@@ -1,0 +1,27 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3050: TEXT of a value past the maximum date serial under a lone calendar prefix. A: 3000000, B: -3000000 for reference, C: 2958465 (max serial), D: 2958466.",
+ "tags": [
+  "M10",
+  "probe",
+  "text",
+  "number-format"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=TEXT(3000000,\"b1\")",
+    "A2": "=TEXT(3000000,\"b1 x\")",
+    "A3": "=TEXT(3000000,\"b2\")",
+    "A4": "=TEXT(3000000,\"B1\")",
+    "B1": "=TEXT(-3000000,\"b1\")",
+    "C1": "=TEXT(2958465,\"b1\")",
+    "D1": "=TEXT(2958466,\"b1\")",
+    "A5": "=TEXT(3000000,\"d b1\")",
+    "A6": "=TEXT(3000000,\"0;b1\")"
+  }
+ }
+ ],
+ "expected": {}
+}

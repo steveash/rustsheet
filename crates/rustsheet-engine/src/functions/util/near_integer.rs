@@ -25,8 +25,8 @@ pub(crate) fn near_integer_floor(x: f64, tolerance: f64) -> f64 {
     whole + f64::from(u8::from(x - whole >= 1.0 - tolerance))
 }
 
-/// The whole number DATE, TIME, XMATCH and XLOOKUP read from an argument: [`near_integer_floor`]
-/// with [`NEAR_INTEGER_TOLERANCE`], half of it for a negative value, so `TIME(1-2^-22,0,0)` is
+/// The whole number DATE, TIME, XMATCH, XLOOKUP and SORTBY's `sort_order` read from an
+/// argument: [`near_integer_floor`] with [`NEAR_INTEGER_TOLERANCE`], half of it for a negative value, so `TIME(1-2^-22,0,0)` is
 /// 1:00, `TIME(1,0,-1E-7)` 1:00, `DATE(1983,12,-1E-15)` day 0 and an XMATCH mode of
 /// `0.5^1E-15` reads 1, while `-0.4` reads -1.
 // Excel: docs/excel-semantics/dates.md "TIME: an argument past 32767 is `#NUM!`" and "DATE: a
@@ -36,6 +36,7 @@ pub(crate) fn near_integer_floor(x: f64, tolerance: f64) -> f64 {
 // edges to a relative 2^-14, and the constants sit on the snapping side:
 // 1 - 2^-22*(1+2^-11) reads 1 and 1 - 2^-22*(1+9*2^-14) reads 0; -2^-23*(1+2^-11) reads 0 and
 // -2^-23*(1+9*2^-14) reads -1, the same below -2 through 3.
+// SORTBY's sort_order: probes/t2370-sortby-mixed-by-array-snap (`-1-2^-23` is -1, `-1-2^-22` is -2; T-2370).
 pub(crate) fn near_integer_whole(value: f64) -> f64 {
     let tolerance = if value < 0.0 {
         NEAR_INTEGER_TOLERANCE / 2.0

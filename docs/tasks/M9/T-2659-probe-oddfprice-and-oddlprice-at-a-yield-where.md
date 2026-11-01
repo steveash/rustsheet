@@ -3,7 +3,7 @@ id: T-2659
 title: "Probe ODDFPRICE and ODDLPRICE at a yield where the discount power overflows"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -29,3 +29,8 @@ the rule in financial.md, and match it.
 
 ## Out of scope
 - YIELD and ODDFYIELD (T-2391).
+
+## Outcome
+Probe `odd-bond-huge-yield-overflow` (excel-graph) shows ODDFPRICE is `#NUM!` once `(1+yld/frequency)^t` overflows at the
+redemption's term, as PRICE is; ODDLPRICE never overflows. `OddFirstSchedule::discount_overflows` matches; rule in
+financial.md. ODDFYIELD/ODDLYIELD stay with T-2391.

@@ -1,0 +1,33 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2939: accepted controls for the typed one-argument IF probe. Excel for the web refuses typing =IF(x) with one argument (400 InvalidArgument for =IF(TRUE), =IF(FALSE), =IF(1), =IF(0), =IF({1,0}), =IF(A1:B1), =IF(\"x\"), =IF(NA()), =ISLOGICAL(IF(TRUE)) and =IF(TRUE)+1, each typed alone; refused entries cannot be committed), while IF with an empty or given second argument is accepted (E1:E3, FORMULATEXT in F, ISFORMULA in G).",
+ "tags": [
+  "M2",
+  "probe",
+  "if"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 1,
+    "E1": {
+     "entered": "=IF(TRUE,)"
+    },
+    "F1": "=FORMULATEXT(E1)",
+    "G1": "=ISFORMULA(E1)",
+    "E2": {
+     "entered": "=IF(TRUE,1)"
+    },
+    "F2": "=FORMULATEXT(E2)",
+    "G2": "=ISFORMULA(E2)",
+    "E3": {
+     "entered": "=IF(FALSE,1)"
+    },
+    "F3": "=FORMULATEXT(E3)",
+    "G3": "=ISFORMULA(E3)"
+   }
+  }
+ ]
+}

@@ -169,6 +169,41 @@ fn test_to_excel_precision_str() {
     }
 }
 
+/// The whole-number fast path of `to_excel_precision_str` (T-0499) prints what the general
+/// 15-digit path prints, at and around the 15-digit boundary and for both zeros.
+#[test]
+fn excel_precision_str_whole_numbers_match_the_general_path() {
+    let mut values = vec![
+        0.0,
+        -0.0,
+        1.0,
+        -1.0,
+        59.0,
+        1e14,
+        999_999_999_999_999.0,
+        1e15,
+    ];
+    values.extend([
+        1e15 - 2.0,
+        -999_999_999_999_999.0,
+        -1e15,
+        1e16,
+        123_456_789_012_345.0,
+    ]);
+    let mut power = 1.0_f64;
+    while power < 1e17 {
+        values.extend([power, power - 1.0, power + 1.0, -power, 7.0 * power]);
+        power *= 10.0;
+    }
+    for value in values {
+        assert_eq!(
+            to_excel_precision_str(value),
+            crate::number_format::to_precision_str(value, 15),
+            "{value:?}"
+        );
+    }
+}
+
 #[test]
 fn test_booleans() {
     let mut model = new_empty_model();

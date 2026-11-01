@@ -3,12 +3,12 @@ id: T-2437
 title: "HARMEAN, EXPON.DIST, EXPONDIST, FISHER and FISHERINV last digits on the gen-m9 sweep (22 cells)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
+campaign: visible
 depends_on: []
-defer: phase-1b
 ---
 
 ## Goal
@@ -57,15 +57,42 @@ Cells:
 - gen-m9/4ab2ba98d26c8a5e.case.json (1): Calc!A395
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2436): this known-failure line disappears from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2436): this known-failure line disappears from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] Either the fitted order is implemented and these lines leave eval/baseline/gen-m9.txt (`make eval-baseline`) with no
+- [x] Either the fitted order is implemented and these lines leave eval/baseline/gen-m9.txt (`make eval-baseline`) with no
       new known-failure line in any baseline, or the task is `blocked` with "Blocked because: time-boxed (decision 0056)"
       and the candidates' bit-exact counts in statistics.md.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Visibly-off cells of these functions (other tasks).
 
-## Deferred (decision 0114)
-`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).
+## Visible-parity stage
+Decision 0083/0114: this task is done when every visibly-off cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value. Bit-level criteria still unmet then move to a follow-up task filed without the key and with `defer: phase-1b`.
+Gap triage 2026-10-25 (eval on origin/main becefc6f3): the task was deferred by decision 0114's adoption, but an eval shows a cell it owns visibly off, so, as its Deferred note asked, the `defer` key gave way to `campaign: visible`. Visibly off: gen-m9/4ab2ba98d26c8a5e Calc!A395 `=FISHER((Data!E4/Data!$D2))`: Excel 2.2204460492503126e-16, ours 3.3306690738754686e-16.
+
+## Outcome
+- Forms (fit lab `fisher`, `fisherinv`, `expon-cdf`, `harmean`, `fitlab/kernels/fisher_expon_harmean.py`; counts are
+  bit-exact cells, the engine before in brackets; full table in docs/excel-semantics/statistics.md "FISHER, FISHERINV,
+  EXPON.DIST and HARMEAN are Excel operators around LN and EXP"):
+  - FISHER: 0.5 * excel_ln((1 + x) / (1 - x)) with the quotient rounded twice (`extended_quotient`): 152/155 (143).
+    Fixes the visibly-off gen-m9/4ab2ba98d26c8a5e A395 (and probes/t2436/4ab2ba98d26c8a5e A256).
+  - FISHERINV: (excel_exp(2y) - 1) / (excel_exp(2y) + 1), the quotient rounded twice: 133/143 (131).
+  - EXPON.DIST/EXPONDIST cdf: -excel_expm1(-t) for t = lambda*x < 1, 1 - excel_exp(-t) from 1 on: 129/132 (98). Excel's
+    cut lies in (0.999999999999999, 1.3508); the forms agree in between wherever probed.
+  - HARMEAN: 1 / (sum(1/x) / n), every / and + twice rounded (AVERAGE's operators): 119/122 (106).
+  The fit misses are the fit lab's argument reader (blank and one-cell references), not the kernels: the eval has none.
+- New probe probes/t2437-fit-separators (114 cells, excel-graph 2026-10-28): inputs that separate the candidates, and a
+  ladder of EXPON.DIST(t,1,TRUE) bracketing the expm1 cut.
+- Eval delta: gen-m9 known failures 3552 -> 3532 (20 owned lines removed; A230 of c6cfda6bd10cae93 already passed on main);
+  probes 2156 -> 2155 (t2436/4ab2ba98d26c8a5e A256) plus the new case at 114/114. No baseline gained a line; no still-failing
+  cell of these functions moved.
+- The two owned cells still off come from their inner T.DIST.RT / T.DIST value, not from FISHER or EXPON.DIST (both
+  bit-exact on Excel's inner value), and moved to the tasks that own those kernels:
+  - gen-m9/a612e89321a6df9c A191 `FISHER(T.DIST.RT((1.005^1e-15),4))` -> T-2509 (Student t tails from df 3; T-0969 is
+    blocked): Excel's T.DIST.RT(1,4) is 0.18695048315002957 (probes-numeric/m9-t-dist-rt A49), ours 0.18695048315002943.
+  - gen-m9/caa1eed48b1883fe A382 `EXPON.DIST(T.DIST(DAYS(14246,10047),4,Data!D$11),...)` -> T-2585 (Student t density):
+    Excel's T.DIST(4199,4,FALSE) is 9.192880751152396E-18 (probed during this task), ours 9.192880751152399E-18.
+- The time-box alternative (decision 0056) was not needed: every fit raised the bit-exact count on its first attempt.
+- `make check` green; all five reviewers approved. Review follow-up: twice-rounded sums (`1 ± x`, `e ± 1`) tie the
+  chosen forms (FISHER 152/155, FISHERINV 133/143), so the sums stay plain.

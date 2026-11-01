@@ -2,7 +2,10 @@
 
 use std::fs;
 
-use rustsheet_engine::Model;
+use rustsheet_engine::{
+    types::{CustomFilter, FilterColumn, FilterCriterion},
+    Model,
+};
 
 use super::test_export::{new_empty_model, part_text};
 use crate::{export::save_to_xlsx, import::load_from_xlsx};
@@ -223,4 +226,144 @@ fn excel_authored_tables_keep_their_formula_text() {
         }
     }
     assert!(formulas > 100, "{formulas}");
+}
+
+/// The filters of the Excel-authored tables.xlsx (a custom filter on Table4, a values filter on
+/// Table16) are written back as the file had them, and read again (T-2838).
+#[test]
+fn excel_authored_table_filters_keep_their_criteria() {
+    let model = load_from_xlsx("tests/calc_test_tables/tables.xlsx", "en", "UTC", "en").unwrap();
+    let temp_file_name = "temp_file_test_excel_table_filters.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+    let parts: String = (1..=model.workbook.tables.len())
+        .map(|id| part_text(temp_file_name, &format!("xl/tables/table{id}.xml")))
+        .collect();
+    let reloaded = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    fs::remove_file(temp_file_name).unwrap();
+
+    for filter in [
+        r#"<filterColumn colId="0"><customFilters><customFilter operator="greaterThan" val="20"/></customFilters></filterColumn>"#,
+        r#"<filterColumn colId="0"><filters><filter val="Germany"/><filter val="Spain"/></filters></filterColumn>"#,
+    ] {
+        assert!(parts.contains(filter), "{filter} in {parts}");
+    }
+    assert_eq!(
+        model.workbook.tables["Table4"].filter_columns,
+        vec![FilterColumn {
+            col_id: 0,
+            criterion: FilterCriterion::Custom {
+                and: false,
+                conditions: vec![CustomFilter {
+                    operator: Some("greaterThan".to_string()),
+                    val: "20".to_string(),
+                }],
+            },
+        }]
+    );
+    for (name, table) in &model.workbook.tables {
+        assert_eq!(
+            reloaded.workbook.tables[name].filter_columns, table.filter_columns,
+            "{name}"
+        );
+        assert_eq!(
+            reloaded.workbook.tables[name].has_filters, table.has_filters,
+            "{name}"
+        );
+    }
+}
+
+/// Criteria with a blank choice, an AND of two conditions, an operand that needs escaping and a
+/// kind whose criterion is not kept survive an export.
+#[test]
+fn filter_columns_of_every_kind_survive_an_export() {
+    let mut model = new_empty_model();
+    for (row, input) in [(1, "Qty"), (2, "1"), (3, "2")] {
+        model.set_user_input(0, row, 1, input.to_string()).unwrap();
+        model.set_user_input(0, row, 2, input.to_string()).unwrap();
+        model.set_user_input(0, row, 3, input.to_string()).unwrap();
+    }
+    model.set_user_input(0, 1, 2, "B".to_string()).unwrap();
+    model.set_user_input(0, 1, 3, "C".to_string()).unwrap();
+    model.add_table(0, "Sales", (1, 1, 3, 3), true).unwrap();
+    let filter_columns = vec![
+        FilterColumn {
+            col_id: 0,
+            criterion: FilterCriterion::Values {
+                values: vec!["1".to_string(), "a<&\"b".to_string()],
+                blank: true,
+            },
+        },
+        FilterColumn {
+            col_id: 1,
+            criterion: FilterCriterion::Custom {
+                and: true,
+                conditions: vec![
+                    CustomFilter {
+                        operator: Some("greaterThanOrEqual".to_string()),
+                        val: "1".to_string(),
+                    },
+                    CustomFilter {
+                        operator: None,
+                        val: "*x*".to_string(),
+                    },
+                ],
+            },
+        },
+        FilterColumn {
+            col_id: 2,
+            criterion: FilterCriterion::Other,
+        },
+    ];
+    if let Some(table) = model.workbook.tables.get_mut("Sales") {
+        table.filter_columns.clone_from(&filter_columns);
+    }
+    let temp_file_name = "temp_file_test_filter_kinds.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+    let reloaded = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    fs::remove_file(temp_file_name).unwrap();
+
+    let table = &reloaded.workbook.tables["Sales"];
+    assert_eq!(table.filter_columns, filter_columns);
+    assert!(table.has_filters);
+}
+
+/// A calculated column is written with its `calculatedColumnFormula` in file form and read back
+/// as a calculated column (T-3033; xlsx-storage.md "A calculated column is saved as
+/// `calculatedColumnFormula` plus one formula per row"); a column that was not filled gets none.
+#[test]
+fn a_calculated_column_keeps_its_column_formula() {
+    let mut model = new_empty_model();
+    for (row, column, input) in [(1, 1, "Qty"), (1, 2, "Dbl"), (2, 1, "2"), (3, 1, "3")] {
+        model
+            .set_user_input(0, row, column, input.to_string())
+            .unwrap();
+    }
+    model.add_table(0, "T", (1, 1, 3, 2), false).unwrap();
+    model
+        .set_user_input(0, 2, 2, "=T[@Qty]*4".to_string())
+        .unwrap();
+    // The fill on typed entry is the facade's; here the column is marked as the fill records it,
+    // in file form, and the data row holds a different formula (an exception does not change it).
+    model.workbook.tables.get_mut("T").unwrap().columns[1].calculated_column_formula =
+        Some("T[[#This Row],[Qty]]*2".to_string());
+    model.evaluate();
+
+    let temp_file_name = "temp_file_test_calculated_column.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+    let table_xml = part_text(temp_file_name, "xl/tables/table1.xml");
+    let reloaded = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    fs::remove_file(temp_file_name).unwrap();
+
+    assert!(
+        table_xml
+            .contains("<calculatedColumnFormula>T[[#This Row],[Qty]]*2</calculatedColumnFormula>"),
+        "{table_xml}"
+    );
+    assert_eq!(table_xml.matches("calculatedColumnFormula>").count(), 2);
+    let columns = &reloaded.workbook.tables["T"].columns;
+    assert_eq!(columns[0].calculated_column_formula, None);
+    assert_eq!(
+        columns[1].calculated_column_formula.as_deref(),
+        Some("T[[#This Row],[Qty]]*2")
+    );
 }

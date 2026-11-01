@@ -1,0 +1,46 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "DROP's lifted grid handed on by IF/CHOOSE/OFFSET and DROP/TAKE over an error source with a lifted or invalid count (T-2919). Sheet1 A1:B3 = 1,10;2,20;3,30.",
+  "tags": [
+    "M7",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B1": 10,
+        "A2": 2,
+        "B2": 20,
+        "A3": 3,
+        "B3": 30,
+        "F1": "=ROWS(DROP(NA(),{1;2}))",
+        "F2": "=SUMPRODUCT(IF(TRUE,DROP(A1:B3,{1;2})))",
+        "F3": "=ROWS(OFFSET(DROP(A1:B3,{1;2}),1,0))",
+        "F4": "=ROWS(TAKE(NA(),{1;\"x\"}))",
+        "F5": "=ROWS(DROP(NA(),{1;\"x\"}))",
+        "F6": "=INDEX(TAKE(NA(),{1;\"x\"}),1,1)",
+        "F7": "=INDEX(DROP(NA(),{1;\"x\"}),2,1)",
+        "F8": "=INDEX(DROP(NA(),{1;\"x\"}),1,1)",
+        "F9": "=SUMPRODUCT(IF(TRUE,DROP(A1:B3,{1;2})))",
+        "F10": "=SUMPRODUCT(CHOOSE(1,DROP(A1:B3,{1;2})))",
+        "F11": "=INDEX(TAKE(NA(),{1;\"x\"}),2,1)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!F1",
+    "Sheet1!F2",
+    "Sheet1!F3",
+    "Sheet1!F4",
+    "Sheet1!F5",
+    "Sheet1!F6",
+    "Sheet1!F7",
+    "Sheet1!F8",
+    "Sheet1!F9",
+    "Sheet1!F10",
+    "Sheet1!F11"
+  ]
+}

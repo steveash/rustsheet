@@ -170,7 +170,7 @@ impl Model {
             args.get(1..).unwrap_or_default(),
             cell,
             |model, arg, cell| {
-                model.evaluate_picked_source(arg, cell, Self::evaluate_node_in_context)
+                model.evaluate_picked_source(arg, cell, Self::evaluate_node_in_context, false)
             },
         )
     }

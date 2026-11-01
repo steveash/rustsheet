@@ -1,0 +1,59 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2370: SORTBY with a one-value by_array next to a row by_array on a one-row array (A20:C20 = 3,1,2), and sort_orders at both edges of 1, -1, 2 and -2 (2^-21 to 2^-25 and LEFT's snap tolerance 2^-22 + 2^-33 around them) on A1:A3 = 3,1,2; the cells above an integer are not snap evidence for -1 and -2 (the floor is the same), those below are.",
+  "tags": [
+    "M7",
+    "probe",
+    "lookup",
+    "T-2370"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 3,
+        "A2": 1,
+        "A3": 2,
+        "A20": 3,
+        "B20": 1,
+        "C20": 2,
+        "H1": "=SORTBY(A20:C20,5,1,A20:C20,1)",
+        "H5": "=SORTBY(A20:C20,A20:C20,1,5,1)",
+        "H9": "=SORTBY(A20:C20,5,1,A20:C20,-1)",
+        "H13": "=SORTBY(A20:C20,A20:C20,-1,5,1)",
+        "H17": "=SORTBY(A20:C20,5,1,5,1)",
+        "H21": "=SORTBY(A20:C20,{7},1,A20:C20,1)",
+        "H25": "=SORTBY(A20:C20,A20:C20,1,A1,1)",
+        "H29": "=SORTBY(A1:A3,A1:A3,1-2^-22)",
+        "H33": "=SORTBY(A1:A3,A1:A3,1-2^-23)",
+        "H37": "=SORTBY(A1:A3,A1:A3,-1+2^-22)",
+        "H41": "=SORTBY(A1:A3,A1:A3,-1+2^-23)",
+        "H45": "=SORTBY(A1:A3,A1:A3,1-2^-21)",
+        "H49": "=SORTBY(A1:A3,A1:A3,-1+2^-21)",
+        "H53": "=SORTBY(A1:A3,A1:A3,1-(2^-22+2^-33))",
+        "H57": "=SORTBY(A1:A3,A1:A3,1-(2^-22+2^-32))",
+        "H61": "=SORTBY(A1:A3,A1:A3,1-2^-24)",
+        "H65": "=SORTBY(A1:A3,A1:A3,1-2^-20)",
+        "H69": "=SORTBY(A1:A3,A1:A3,-1+(2^-22+2^-33))",
+        "H73": "=SORTBY(A1:A3,A1:A3,-1+(2^-22+2^-32))",
+        "H77": "=SORTBY(A1:A3,A1:A3,2-2^-22)",
+        "H81": "=SORTBY(A1:A3,A1:A3,2-2^-21)",
+        "H85": "=SORTBY(A1:A3,A1:A3,-2+2^-22)",
+        "H89": "=SORTBY(A1:A3,A1:A3,-2+2^-21)",
+        "H93": "=SORTBY(A1:A3,A1:A3,-1-2^-22)",
+        "H97": "=SORTBY(A1:A3,A1:A3,-1-2^-23)",
+        "H101": "=SORTBY(A1:A3,A1:A3,-1-2^-24)",
+        "H105": "=SORTBY(A1:A3,A1:A3,-1-2^-25)",
+        "H109": "=SORTBY(A1:A3,A1:A3,-1-(2^-23+2^-34))",
+        "H113": "=SORTBY(A1:A3,A1:A3,-1-(2^-22+2^-33))",
+        "H117": "=SORTBY(A1:A3,A1:A3,-1-(2^-22+2^-32))",
+        "H121": "=SORTBY(A1:A3,A1:A3,-1-2^-21)",
+        "H125": "=SORTBY(A1:A3,A1:A3,-2-2^-22)",
+        "H129": "=SORTBY(A1:A3,A1:A3,-2-2^-23)",
+        "H133": "=SORTBY(A1:A3,A1:A3,-2-2^-24)",
+        "H137": "=SORTBY(A1:A3,A1:A3,-2-2^-21)"
+      }
+    }
+  ],
+  "expected": {}
+}

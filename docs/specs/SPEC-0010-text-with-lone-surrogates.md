@@ -1,6 +1,6 @@
 # SPEC-0010 — Engine text that can hold lone surrogates
 
-- **Status:** accepted (on merge of T-1483)
+- **Status:** accepted (on merge of T-1483); amended by T-2806 (the bytes are shared: "Representation")
 - **Milestone / lane:** M2 / engine (then functions-text, api, research)
 - **Tasks:** T-1483 (this spec); implementation tasks in "Rollout" below
 
@@ -95,6 +95,13 @@ pub struct LoneText {
 ```
 (As built in T-1575: `units` is a `Vec`, not a boxed slice, so `push` appends in place; the box
 around `LoneText` keeps `Text` at 24 bytes either way.)
+
+(Amended by T-2806: the variants are `Utf8(Arc<String>)` and `Lone(Arc<LoneText>)`, so a clone is
+a pointer copy and `push`/`truncate_utf16` copy only bytes another value still shares
+(`Arc::make_mut`). Owned bytes let one formula copy a 32,767-unit text into 2^20 cells, 32 GB
+(docs/excel-semantics/arrays.md "Copies of a text share its bytes"). This gives up the "no extra
+allocation" goal: each new well-formed text costs one more small allocation, the `Arc`'s. `Text` is
+now 16 bytes, smaller than `String`, and an `ArrayNode` carrying it no larger than before.)
 
 Invariant (kept by the constructors, the only way to build a `Text`): `Lone` if and only if the
 units are ill-formed UTF-16. So `Text` has one form per value and derived `PartialEq` is value

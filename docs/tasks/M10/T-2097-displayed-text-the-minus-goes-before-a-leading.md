@@ -3,7 +3,7 @@ id: T-2097
 title: "Displayed text: the minus goes before a leading literal in a General section (\"x\"General on -1.5 is -x1.5)"
 milestone: M10
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -39,14 +39,17 @@ minus, and Excel shows "-x0.5" (9a8b7d68 F!I1). `TEXT(5,"x General")` and `TEXT(
 (probes/text-format-bare-literals A75, A76) must keep passing.
 
 ## Acceptance criteria
-- [ ] The 15 gen-m10 text cells above pass in the report's "Displayed text" section. No other
+- [x] The 15 gen-m10 text cells above pass in the report's "Displayed text" section. No other
       gen-m10 or probes text cell that passes today fails.
-- [ ] No gated baseline (eval/baseline/*.txt) gains an F line.
-- [ ] A unit test covers `TEXT(-1.5,"""x""General")` = "-x1.5" and `TEXT(-0.5,"""x""General")` =
+- [x] No gated baseline (eval/baseline/*.txt) gains an F line.
+- [x] A unit test covers `TEXT(-1.5,"""x""General")` = "-x1.5" and `TEXT(-0.5,"""x""General")` =
       "-x0.5", citing the gen-m10 cells.
-- [ ] number-formats.md's entry names T-2097 as the implementation of the minus rule, not T-1614.
-- [ ] `make check` green; reviewers approve.
+- [x] number-formats.md's entry names T-2097 as the implementation of the minus rule, not T-1614.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - `General` after a digit placeholder, a date token or `%`, and a second `General` (T-1614's probe).
   A negative value with `General` before the literal (`General x`) is unprobed: keep its current output.
+
+## Outcome
+Fixed in `format.rs` (shared with T-2850); unit tests in test_general.rs. 15 gen-m10 text cells now pass.

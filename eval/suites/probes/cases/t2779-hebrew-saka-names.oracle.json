@@ -1,0 +1,587 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "S": {
+   "A1": {
+    "t": "s",
+    "v": "Ravi|Ravivara|P"
+   },
+   "A10": {
+    "t": "s",
+    "v": "3|J"
+   },
+   "A11": {
+    "t": "s",
+    "v": "4|A"
+   },
+   "A12": {
+    "t": "s",
+    "v": "5|S"
+   },
+   "A13": {
+    "t": "s",
+    "v": "6|B"
+   },
+   "A14": {
+    "t": "s",
+    "v": "7|A"
+   },
+   "A15": {
+    "t": "s",
+    "v": "8|K"
+   },
+   "A16": {
+    "t": "s",
+    "v": "9|A"
+   },
+   "A17": {
+    "t": "s",
+    "v": "10|P"
+   },
+   "A18": {
+    "t": "s",
+    "v": "11|M"
+   },
+   "A19": {
+    "t": "s",
+    "v": "12|P"
+   },
+   "A2": {
+    "t": "s",
+    "v": "Som|Somavara|P"
+   },
+   "A3": {
+    "t": "s",
+    "v": "Mangal|Mangalvara|P"
+   },
+   "A4": {
+    "t": "s",
+    "v": "Budh|Budhavara|P"
+   },
+   "A5": {
+    "t": "s",
+    "v": "Guru|Guruvara|P"
+   },
+   "A6": {
+    "t": "s",
+    "v": "Sukra|Sukravara|P"
+   },
+   "A7": {
+    "t": "s",
+    "v": "Sani|Sanivara|P"
+   },
+   "A8": {
+    "t": "s",
+    "v": "1|C"
+   },
+   "A9": {
+    "t": "s",
+    "v": "2|V"
+   },
+   "B1": {
+    "t": "s",
+    "v": "Yom Rishon|Yom Rishon|Tevet"
+   },
+   "B10": {
+    "t": "s",
+    "v": "3|Kislev|Kislev|Kislev"
+   },
+   "B11": {
+    "t": "s",
+    "v": "4|Tevet|Tevet|Tevet"
+   },
+   "B12": {
+    "t": "s",
+    "v": "5|Shvat|Shvat|Shvat"
+   },
+   "B13": {
+    "t": "s",
+    "v": "6|Adar|Adar|Adar"
+   },
+   "B14": {
+    "t": "s",
+    "v": "7|Nisan|Nisan|Nisan"
+   },
+   "B15": {
+    "t": "s",
+    "v": "8|Iyar|Iyar|Iyar"
+   },
+   "B16": {
+    "t": "s",
+    "v": "9|Sivan|Sivan|Sivan"
+   },
+   "B17": {
+    "t": "s",
+    "v": "10|Tamuz|Tamuz|Tamuz"
+   },
+   "B18": {
+    "t": "s",
+    "v": "11|Av|Av|Av"
+   },
+   "B19": {
+    "t": "s",
+    "v": "12|Elul|Elul|Elul"
+   },
+   "B2": {
+    "t": "s",
+    "v": "Yom Sheni|Yom Sheni|Tevet"
+   },
+   "B20": {
+    "t": "s",
+    "v": "6|AdarI|AdarI|AdarI"
+   },
+   "B21": {
+    "t": "s",
+    "v": "7|AdarII|AdarII|AdarII"
+   },
+   "B3": {
+    "t": "s",
+    "v": "Yom Shlishi|Yom Shlishi|Tevet"
+   },
+   "B4": {
+    "t": "s",
+    "v": "Yom Revi'i|Yom Revi'i|Tevet"
+   },
+   "B5": {
+    "t": "s",
+    "v": "Yom Chamishi|Yom Chamishi|Tevet"
+   },
+   "B6": {
+    "t": "s",
+    "v": "Yom Shishi|Yom Shishi|Tevet"
+   },
+   "B7": {
+    "t": "s",
+    "v": "Shabat|Shabat|Tevet"
+   },
+   "B8": {
+    "t": "s",
+    "v": "1|Tishrei|Tishrei|Tishrei"
+   },
+   "B9": {
+    "t": "s",
+    "v": "2|Cheshvan|Cheshvan|Cheshvan"
+   },
+   "C1": {
+    "t": "s",
+    "v": "\u05d0|\u05d9\u05d5\u05dd\u00a0\u05e8\u05d0\u05e9\u05d5\u05df"
+   },
+   "C10": {
+    "t": "s",
+    "v": "3|\u05db\u05e1\u05dc\u05d5|\u05db\u05e1\u05dc\u05d5|\u05db\u05e1\u05dc\u05d5"
+   },
+   "C11": {
+    "t": "s",
+    "v": "4|\u05d8\u05d1\u05ea|\u05d8\u05d1\u05ea|\u05d8\u05d1\u05ea"
+   },
+   "C12": {
+    "t": "s",
+    "v": "5|\u05e9\u05d1\u05d8|\u05e9\u05d1\u05d8|\u05e9\u05d1\u05d8"
+   },
+   "C13": {
+    "t": "s",
+    "v": "6|\u05d0\u05d3\u05e8|\u05d0\u05d3\u05e8|\u05d0\u05d3\u05e8"
+   },
+   "C14": {
+    "t": "s",
+    "v": "7|\u05e0\u05d9\u05e1\u05df|\u05e0\u05d9\u05e1\u05df|\u05e0\u05d9\u05e1\u05df"
+   },
+   "C15": {
+    "t": "s",
+    "v": "8|\u05d0\u05d9\u05d9\u05e8|\u05d0\u05d9\u05d9\u05e8|\u05d0\u05d9\u05d9\u05e8"
+   },
+   "C16": {
+    "t": "s",
+    "v": "9|\u05e1\u05d9\u05d5\u05df|\u05e1\u05d9\u05d5\u05df|\u05e1\u05d9\u05d5\u05df"
+   },
+   "C17": {
+    "t": "s",
+    "v": "10|\u05ea\u05de\u05d5\u05d6|\u05ea\u05de\u05d5\u05d6|\u05ea\u05de\u05d5\u05d6"
+   },
+   "C18": {
+    "t": "s",
+    "v": "11|\u05d0\u05d1|\u05d0\u05d1|\u05d0\u05d1"
+   },
+   "C19": {
+    "t": "s",
+    "v": "12|\u05d0\u05dc\u05d5\u05dc|\u05d0\u05dc\u05d5\u05dc|\u05d0\u05dc\u05d5\u05dc"
+   },
+   "C2": {
+    "t": "s",
+    "v": "\u05d1|\u05d9\u05d5\u05dd\u00a0\u05e9\u05e0\u05d9"
+   },
+   "C20": {
+    "t": "s",
+    "v": "6|\u05d0\u05d3\u05e8 \u05d0|\u05d0\u05d3\u05e8 \u05d0|\u05d0\u05d3\u05e8 \u05d0"
+   },
+   "C21": {
+    "t": "s",
+    "v": "7|\u05d0\u05d3\u05e8 \u05d1|\u05d0\u05d3\u05e8 \u05d1|\u05d0\u05d3\u05e8 \u05d1"
+   },
+   "C3": {
+    "t": "s",
+    "v": "\u05d2|\u05d9\u05d5\u05dd\u00a0\u05e9\u05dc\u05d9\u05e9\u05d9"
+   },
+   "C4": {
+    "t": "s",
+    "v": "\u05d3|\u05d9\u05d5\u05dd\u00a0\u05e8\u05d1\u05d9\u05e2\u05d9"
+   },
+   "C5": {
+    "t": "s",
+    "v": "\u05d4|\u05d9\u05d5\u05dd\u00a0\u05d7\u05de\u05d9\u05e9\u05d9"
+   },
+   "C6": {
+    "t": "s",
+    "v": "\u05d5|\u05d9\u05d5\u05dd\u00a0\u05e9\u05d9\u05e9\u05d9"
+   },
+   "C7": {
+    "t": "s",
+    "v": "\u05e9|\u05e9\u05d1\u05ea"
+   },
+   "C8": {
+    "t": "s",
+    "v": "1|\u05ea\u05e9\u05e8\u05d9|\u05ea\u05e9\u05e8\u05d9|\u05ea\u05e9\u05e8\u05d9"
+   },
+   "C9": {
+    "t": "s",
+    "v": "2|\u05d7\u05e9\u05d5\u05df|\u05d7\u05e9\u05d5\u05df|\u05d7\u05e9\u05d5\u05df"
+   },
+   "D1": {
+    "t": "s",
+    "v": "\u05d0|\u05d9\u05d5\u05dd\u00a0\u05e8\u05d0\u05e9\u05d5\u05df"
+   },
+   "D10": {
+    "t": "s",
+    "v": "\u05db\u05e1\u05dc\u05d5|\u05db\u05e1\u05dc\u05d5"
+   },
+   "D11": {
+    "t": "s",
+    "v": "\u05d8\u05d1\u05ea|\u05d8\u05d1\u05ea"
+   },
+   "D12": {
+    "t": "s",
+    "v": "\u05e9\u05d1\u05d8|\u05e9\u05d1\u05d8"
+   },
+   "D13": {
+    "t": "s",
+    "v": "\u05d0\u05d3\u05e8|\u05d0\u05d3\u05e8"
+   },
+   "D14": {
+    "t": "s",
+    "v": "\u05e0\u05d9\u05e1\u05df|\u05e0\u05d9\u05e1\u05df"
+   },
+   "D15": {
+    "t": "s",
+    "v": "\u05d0\u05d9\u05d9\u05e8|\u05d0\u05d9\u05d9\u05e8"
+   },
+   "D16": {
+    "t": "s",
+    "v": "\u05e1\u05d9\u05d5\u05df|\u05e1\u05d9\u05d5\u05df"
+   },
+   "D17": {
+    "t": "s",
+    "v": "\u05ea\u05de\u05d5\u05d6|\u05ea\u05de\u05d5\u05d6"
+   },
+   "D18": {
+    "t": "s",
+    "v": "\u05d0\u05d1|\u05d0\u05d1"
+   },
+   "D19": {
+    "t": "s",
+    "v": "\u05d0\u05dc\u05d5\u05dc|\u05d0\u05dc\u05d5\u05dc"
+   },
+   "D2": {
+    "t": "s",
+    "v": "\u05d1|\u05d9\u05d5\u05dd\u00a0\u05e9\u05e0\u05d9"
+   },
+   "D20": {
+    "t": "s",
+    "v": "\u05d0\u05d3\u05e8 \u05d0|\u05d0\u05d3\u05e8 \u05d0"
+   },
+   "D21": {
+    "t": "s",
+    "v": "\u05d0\u05d3\u05e8 \u05d1|\u05d0\u05d3\u05e8 \u05d1"
+   },
+   "D3": {
+    "t": "s",
+    "v": "\u05d2|\u05d9\u05d5\u05dd\u00a0\u05e9\u05dc\u05d9\u05e9\u05d9"
+   },
+   "D4": {
+    "t": "s",
+    "v": "\u05d3|\u05d9\u05d5\u05dd\u00a0\u05e8\u05d1\u05d9\u05e2\u05d9"
+   },
+   "D5": {
+    "t": "s",
+    "v": "\u05d4|\u05d9\u05d5\u05dd\u00a0\u05d7\u05de\u05d9\u05e9\u05d9"
+   },
+   "D6": {
+    "t": "s",
+    "v": "\u05d5|\u05d9\u05d5\u05dd\u00a0\u05e9\u05d9\u05e9\u05d9"
+   },
+   "D7": {
+    "t": "s",
+    "v": "\u05e9|\u05e9\u05d1\u05ea"
+   },
+   "D8": {
+    "t": "s",
+    "v": "\u05ea\u05e9\u05e8\u05d9|\u05ea\u05e9\u05e8\u05d9"
+   },
+   "D9": {
+    "t": "s",
+    "v": "\u05d7\u05e9\u05d5\u05df|\u05d7\u05e9\u05d5\u05df"
+   },
+   "E1": {
+    "t": "s",
+    "v": "\u05d0\u05d3\u05e8 \u05d1|\u05d0\u05d3\u05e8 \u05d1|\u05d4|\u05d9\u05d5\u05dd\u00a0\u05d7\u05de\u05d9\u05e9\u05d9|5784-07-11"
+   },
+   "E10": {
+    "t": "s",
+    "v": "AdarII|AdarII|Yom Chamishi|Yom Chamishi|5784-07-11"
+   },
+   "E11": {
+    "t": "s",
+    "v": "AdarII|AdarII|Yom Chamishi|Yom Chamishi|5784-07-11"
+   },
+   "E12": {
+    "t": "s",
+    "v": "Jul|July|Thu|Thursday|5784-07-11"
+   },
+   "E13": {
+    "t": "s",
+    "v": "Jul|July|Thu|Thursday|5784-07-11"
+   },
+   "E14": {
+    "t": "s",
+    "v": "Phalguna|Phalguna|Budh|Budhavara|1944-12-24"
+   },
+   "E15": {
+    "t": "s",
+    "v": "\u092b\u0932\u094d\u0917\u0941\u0923|\u092b\u0932\u094d\u0917\u0941\u0923|\u092c\u0941\u0927\u0935\u093e\u0930|\u092c\u0941\u0927\u0935\u093e\u0930|1944-12-24"
+   },
+   "E16": {
+    "t": "s",
+    "v": "\u092b\u0932\u094d\u0917\u0941\u0923|\u092b\u0932\u094d\u0917\u0941\u0923|\u092c\u0941\u0927\u0935\u093e\u0930|\u092c\u0941\u0927\u0935\u093e\u0930|1944-12-24"
+   },
+   "E17": {
+    "t": "s",
+    "v": "\u092b\u0932\u094d\u0917\u0941\u0923|\u092b\u0932\u094d\u0917\u0941\u0923|\u092c\u0941\u0927\u0935\u093e\u0930|\u092c\u0941\u0927\u0935\u093e\u0930|1944-12-24"
+   },
+   "E18": {
+    "t": "s",
+    "v": "Phalguna|Phalguna|Budh|Budhavara|1944-12-24"
+   },
+   "E19": {
+    "t": "s",
+    "v": "Phalguna|Phalguna|Budh|Budhavara|1944-12-24"
+   },
+   "E2": {
+    "t": "s",
+    "v": "\u05d0\u05d3\u05e8 \u05d1|\u05d0\u05d3\u05e8 \u05d1|\u05d4|\u05d9\u05d5\u05dd\u00a0\u05d7\u05de\u05d9\u05e9\u05d9|5784-07-11"
+   },
+   "E20": {
+    "t": "s",
+    "v": "Phalguna|Phalguna|Budh|Budhavara|1944-12-24"
+   },
+   "E21": {
+    "t": "s",
+    "v": "Phalguna|Phalguna|Budh|Budhavara|1944-12-24"
+   },
+   "E22": {
+    "t": "s",
+    "v": "Phalguna|Phalguna|Budh|Budhavara|1944-12-24"
+   },
+   "E23": {
+    "t": "s",
+    "v": "Phalguna|Phalguna|Budh|Budhavara|1944-12-24"
+   },
+   "E24": {
+    "t": "s",
+    "v": "Dec|December|Wed|Wednesday|1944-12-24"
+   },
+   "E25": {
+    "t": "s",
+    "v": "Dec|December|Wed|Wednesday|1944-12-24"
+   },
+   "E3": {
+    "t": "s",
+    "v": "\u05d0\u05d3\u05e8 \u05d1|\u05d0\u05d3\u05e8 \u05d1|\u05d4|\u05d9\u05d5\u05dd\u00a0\u05d7\u05de\u05d9\u05e9\u05d9|5784-07-11"
+   },
+   "E4": {
+    "t": "s",
+    "v": "AdarII|AdarII|Yom Chamishi|Yom Chamishi|5784-07-11"
+   },
+   "E5": {
+    "t": "s",
+    "v": "AdarII|AdarII|Yom Chamishi|Yom Chamishi|5784-07-11"
+   },
+   "E6": {
+    "t": "s",
+    "v": "AdarII|AdarII|Yom Chamishi|Yom Chamishi|5784-07-11"
+   },
+   "E7": {
+    "t": "s",
+    "v": "AdarII|AdarII|Yom Chamishi|Yom Chamishi|5784-07-11"
+   },
+   "E8": {
+    "t": "s",
+    "v": "AdarII|AdarII|Yom Chamishi|Yom Chamishi|5784-07-11"
+   },
+   "E9": {
+    "t": "s",
+    "v": "AdarII|AdarII|Yom Chamishi|Yom Chamishi|5784-07-11"
+   },
+   "F1": {
+    "t": "s",
+    "v": "Jul|July|J|Thu|Thursday|5784-07-11|6 PM"
+   },
+   "F10": {
+    "t": "s",
+    "v": "6 PM|6 PM"
+   },
+   "F2": {
+    "t": "s",
+    "v": "Jul|July|J|Thu|Thursday|5784-07-11|6 PM"
+   },
+   "F3": {
+    "t": "s",
+    "v": "Jul|July|J|Thu|Thursday|5784-07-11|6 PM"
+   },
+   "F4": {
+    "t": "s",
+    "v": "Dec|December|D|Wed|Wednesday|1944-12-24|6 PM"
+   },
+   "F5": {
+    "t": "s",
+    "v": "Dec|December|D|Wed|Wednesday|1944-12-24|6 PM"
+   },
+   "F6": {
+    "t": "s",
+    "v": "Dec|December|D|Wed|Wednesday|1944-12-24|6 PM"
+   },
+   "F7": {
+    "t": "s",
+    "v": "Dec|December|D|Wed|Wednesday|1944-12-24|6 PM"
+   },
+   "F8": {
+    "t": "s",
+    "v": "6 P"
+   },
+   "F9": {
+    "t": "s",
+    "v": "6 PM|6 PM"
+   },
+   "G1": {
+    "t": "s",
+    "v": "5860-04-20|Tevet"
+   },
+   "G10": {
+    "t": "s",
+    "v": "5660-05-02|Shvat"
+   },
+   "G11": {
+    "t": "s",
+    "v": "5660-06-29|AdarI"
+   },
+   "G12": {
+    "t": "s",
+    "v": "1821-10-12|Pausa"
+   },
+   "G13": {
+    "t": "s",
+    "v": "1821-12-09|Phalguna"
+   },
+   "G14": {
+    "t": "s",
+    "v": "23|23|2023|2023|2023"
+   },
+   "G15": {
+    "t": "s",
+    "v": "23|23|2023|2023|2023"
+   },
+   "G16": {
+    "t": "s",
+    "v": "23|23|2023|2023|2023"
+   },
+   "G17": {
+    "t": "s",
+    "v": "23|23|2023|2023|2023"
+   },
+   "G18": {
+    "t": "s",
+    "v": "5783|5783|83|5783|83|5783|5783"
+   },
+   "G19": {
+    "t": "s",
+    "v": "1944|1944|44|1944|44|1944|1944"
+   },
+   "G2": {
+    "t": "s",
+    "v": "5960-04-13|Tevet"
+   },
+   "G20": {
+    "t": "s",
+    "v": "5783-06-22 06:00 PM"
+   },
+   "G21": {
+    "t": "s",
+    "v": "5783-06-22|Adar"
+   },
+   "G22": {
+    "t": "s",
+    "v": "1944-12-24|Phalguna"
+   },
+   "G23": {
+    "t": "s",
+    "v": "||"
+   },
+   "G24": {
+    "t": "s",
+    "v": "5783-06-22|22|22|\u05d3"
+   },
+   "G25": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "G26": {
+    "t": "s",
+    "v": "Adar"
+   },
+   "G3": {
+    "t": "s",
+    "v": "5999-05-01|Shvat"
+   },
+   "G4": {
+    "t": "s",
+    "v": "6000-01-05|Tishrei"
+   },
+   "G5": {
+    "t": "s",
+    "v": "6000-01-06|Tishrei"
+   },
+   "G6": {
+    "t": "s",
+    "v": "6000-01-07|Tishrei"
+   },
+   "G7": {
+    "t": "s",
+    "v": "6000-01-08|Tishrei"
+   },
+   "G8": {
+    "t": "s",
+    "v": "6000-04-11|Tevet"
+   },
+   "G9": {
+    "t": "s",
+    "v": "6260-04-03|Tevet"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "3e33ada2cbca6990824815297013f45f6f3cc9069bcf1106f1ed62d5f058cc43",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-27T21:25:31+00:00",
+  "version": null,
+  "workbook_name": "1161738dd179c79f531b597dcfaf972a424065476ac166da42ff38db7da542b4.xlsx"
+ }
+}

@@ -2,6 +2,7 @@ use super::*;
 use crate::value::{ErrorKind, XlError};
 use crate::WorkbookOptions;
 
+mod calculated_column;
 mod typed_entry;
 
 fn book() -> Workbook {
@@ -707,9 +708,11 @@ fn over_nested_formula_is_rejected_not_a_crash() {
 fn formulas_at_the_depth_limit_evaluate() {
     on_small_stack(|| {
         let mut wb = book();
-        // 127 nested calls (Excel itself allows 64) and a 255-term chain are the deepest accepted.
+        // 127 nested calls and a 255-term chain are the deepest trees accepted. Typed, Excel's
+        // 65-call cap refuses the calls (T-3097), so they are entered as stored text, which the
+        // cap does not check, to keep measuring the depth bound's stack.
         let calls = format!("={}1{}", "ABS(".repeat(127), ")".repeat(127));
-        wb.set("A1", Input::Formula(calls)).unwrap();
+        wb.set("A1", Input::StoredFormula(calls)).unwrap();
         assert_eq!(wb.value("A1").unwrap(), Value::Number(1.0));
         wb.set(
             "A2",
@@ -813,6 +816,35 @@ fn table_with_totals_row_reads_totals_and_all() {
     let two_rows = wb.range_ref("F1:G2").unwrap();
     let err = wb
         .edit(|tx| tx.add_table_with_totals(two_rows, "Tiny", false, true))
+        .unwrap_err();
+    assert!(matches!(err, EditError::Table(_)));
+}
+
+#[test]
+fn table_without_a_header_row_names_its_columns_and_has_no_headers() {
+    let mut wb = keyed_book();
+    let range = wb.range_ref("A2:B4").unwrap();
+    wb.edit(|tx| {
+        tx.add_table_with_rows(range, "Data", false, (false, false))?;
+        tx.set("D1", Input::Formula("=ROWS(Data)".into()))?;
+        tx.set("D2", Input::Formula("=ROWS(Data[Column2])".into()))?;
+        tx.set("D3", Input::Formula("=ROW(Data[#Headers])".into()))
+    })
+    .unwrap();
+    // probes/table-edits table-no-header-baseline (T-3260): every row is data, no #Headers.
+    assert_eq!(wb.value(cell(&wb, "D1")).unwrap(), Value::Number(3.0));
+    assert_eq!(wb.value(cell(&wb, "D2")).unwrap(), Value::Number(3.0));
+    assert_eq!(
+        wb.value(cell(&wb, "D3")).unwrap(),
+        Value::Error(ErrorKind::Ref.into())
+    );
+    // One data row is enough; a filter is not.
+    let one_row = wb.range_ref("F1:G1").unwrap();
+    wb.edit(|tx| tx.add_table_with_rows(one_row, "One", false, (false, false)))
+        .unwrap();
+    let other = wb.range_ref("F5:G6").unwrap();
+    let err = wb
+        .edit(|tx| tx.add_table_with_rows(other, "Filtered", true, (false, false)))
         .unwrap_err();
     assert!(matches!(err, EditError::Table(_)));
 }

@@ -3,7 +3,7 @@ id: T-2336
 title: "Probe AGGREGATE error-cell k under options 1-3, 5, 7 and an IF-picked fourth argument for functions 1-13"
 milestone: M5
 lane: functions-stat
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -32,3 +32,8 @@ Rule: docs/excel-semantics/statistics.md "AGGREGATE 14-19: k is read before the 
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/aggregate-error-k-picked-ref` (8 formula cells) filled from excel-graph; ours matched every
+cell, so no code change and no follow-up. statistics.md records the results. Eval delta: 1 new probe
+case, all cells pass; recorded in eval/baseline/probes.txt by `make eval-baseline`.

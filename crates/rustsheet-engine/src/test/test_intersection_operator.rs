@@ -211,6 +211,27 @@ fn ideographic_space_intersection_is_name_error_and_keeps_its_text() {
 }
 
 #[test]
+fn ideographic_space_intersection_after_a_group_keeps_its_text() {
+    // A group inside a run of parentheses is read before the content it starts (T-3191); the
+    // name still holds the whole written text (T-3281).
+    let formulas = [
+        ("A1", "=(A1:A3\u{3000}A2:B2)"),
+        ("A2", "=((A1:A3)\u{3000}A2:B2)"),
+        ("A3", "=(((A1:A3))\u{3000}A2:B2)+1"),
+        ("A4", "=((A1)\u{3000}(A2))"),
+    ];
+    let mut model = model();
+    for (cell, formula) in formulas {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, formula) in formulas {
+        assert_eq!(model._get_text(cell), "#NAME?", "{cell}");
+        assert_eq!(model._get_formula(cell), formula, "{cell}");
+    }
+}
+
+#[test]
 fn at_operand_binds_looser_than_the_space() {
     // probes/intersection-operands H10:H11 and probes/intersection-at-operands (T-0149).
     let mut model = model();

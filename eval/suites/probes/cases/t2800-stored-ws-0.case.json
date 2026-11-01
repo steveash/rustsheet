@@ -1,0 +1,32 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2800: stored (file) formula =SUM(T[ Col ]) outside a one-row table; FORMULATEXT in B6.",
+ "tags": [
+  "M2",
+  "syntax",
+  "probe"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "S",
+   "tables": [
+    {
+     "name": "T",
+     "ref": "A1:F2"
+    }
+   ],
+   "cells": {
+    "A1": "Col",
+    "B1": "P",
+    "C1": "Q",
+    "D1": "R",
+    "E1": "U",
+    "F1": "V",
+    "A2": 5,
+    "A6": "=SUM(T[ Col ])",
+    "B6": "=FORMULATEXT(A6)"
+   }
+  }
+ ]
+}

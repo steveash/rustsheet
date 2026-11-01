@@ -54,3 +54,7 @@ harness = false
 [[bench]]
 name = "lookup"
 harness = false
+
+[[bench]]
+name = "import"
+harness = false

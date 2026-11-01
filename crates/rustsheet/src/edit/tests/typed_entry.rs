@@ -148,3 +148,91 @@ fn let_name_spelled_like_function_typed_and_stored() {
         assert_eq!(wb.value(a1).unwrap(), Value::Number(expected), "{text}");
     }
 }
+
+/// `calls` nested function calls in the shape of `form`, as typed: the innermost call is the LET or
+/// the called LAMBDA for those forms (probes/t3097-nesting-*).
+fn nested_calls(form: &str, calls: usize) -> String {
+    let (open, inner, close) = match form {
+        "abs" => ("ABS(", "1", ")"),
+        "if" => ("IF(TRUE,", "1", ")"),
+        "sum" => ("SUM(", "1", ")"),
+        "op-abs" => ("ABS(1+", "1", ")"),
+        "mixed" => ("ABS(SUM(INT(", "1", ")))"),
+        "let" => ("ABS(", "LET(x,1,x)", ")"),
+        _ => ("ABS(", "LAMBDA(x,x)(1)", ")"),
+    };
+    // A mixed level is three calls (`calls` is then a multiple of three); a LET or a called
+    // LAMBDA innermost is one of the calls.
+    let outer = match (form, inner) {
+        ("mixed", _) => calls / 3,
+        (_, "1") => calls,
+        _ => calls - 1,
+    };
+    format!("={}{inner}{}", open.repeat(outer), close.repeat(outer))
+}
+
+/// Excel takes 65 nested function calls typed and refuses 66 (Graph PATCH 400; syntax.md "Formula
+/// nesting depth cap", probes/t3097-nesting-*, T-3097), whatever the function, with an operator
+/// between levels, and with a LET or a called LAMBDA innermost.
+#[test]
+fn typed_formulas_nesting_more_than_65_calls_are_refused() {
+    let mut wb = book();
+    for (row, form) in ["abs", "if", "sum", "op-abs", "let", "lambda", "mixed"]
+        .into_iter()
+        .enumerate()
+    {
+        let accepted = format!("A{}", row + 1);
+        let refused = format!("B{}", row + 1);
+        // 63 and 66 for the mixed form, whose levels come three at a time.
+        let (fits, past) = if form == "mixed" { (63, 66) } else { (65, 66) };
+        wb.set(accepted.as_str(), Input::Formula(nested_calls(form, fits)))
+            .unwrap();
+        assert!(
+            matches!(wb.value(accepted.as_str()).unwrap(), Value::Number(_)),
+            "{form}"
+        );
+        for input in [
+            Input::Formula(nested_calls(form, past)),
+            Input::Parse(nested_calls(form, past)),
+        ] {
+            let err = wb.set(refused.as_str(), input).unwrap_err();
+            assert!(
+                matches!(err, EditError::InvalidInput { .. }),
+                "{form}: {err:?}"
+            );
+        }
+        assert_eq!(wb.value(refused.as_str()).unwrap(), Value::Empty, "{form}");
+    }
+    // Parentheses add no level: 66 calls are refused, 65 calls inside 100 parentheses are not.
+    let deep = format!("=(((((((((({}))))))))))", &nested_calls("abs", 65)[1..]);
+    wb.set("C1", Input::Formula(deep)).unwrap();
+    assert_eq!(wb.value("C1").unwrap(), Value::Number(1.0));
+}
+
+/// Typed, the `@` and `#` operators add no level (65 ABS calls around `@C1:C2`, or 64 around
+/// `SUM(C1#)`, are accepted), but `SINGLE(` spelled as a call counts like any call: 64 ABS calls
+/// around it are accepted and 65 refused (Graph PATCH 400; probes/t3143-single-*-typed,
+/// t3143-anchor-inner-*-typed and t3143-single-spelled-*-typed, T-3143). A stored formula is not
+/// checked: [`Input::StoredFormula`] keeps 66 calls, as it keeps `=SUM()`.
+#[test]
+fn typed_at_and_hash_operators_add_no_nesting_level() {
+    let abs = |n: usize, inner: &str| format!("={}{inner}{}", "ABS(".repeat(n), ")".repeat(n));
+    let mut wb = book();
+    wb.set("C1", Input::Formula("=SEQUENCE(2)".into())).unwrap();
+    // The `@` and SINGLE cells sit in rows 1-2, where `@C1:C2` meets the spill.
+    for (a1, formula) in [
+        ("A1", abs(65, "@C1:C2")),
+        ("A2", abs(64, "SINGLE(C1:C2)")),
+        ("A3", format!("=ABS(@{})", &abs(64, "1")[1..])),
+        ("A4", abs(64, "SUM(C1#)")),
+    ] {
+        wb.set(a1, Input::Formula(formula)).unwrap();
+        assert!(matches!(wb.value(a1).unwrap(), Value::Number(_)), "{a1}");
+    }
+    let err = wb
+        .set("B1", Input::Formula(abs(65, "SINGLE(C1:C2)")))
+        .unwrap_err();
+    assert!(matches!(err, EditError::InvalidInput { .. }), "{err:?}");
+    wb.set("B2", Input::StoredFormula(abs(66, "1"))).unwrap();
+    assert_eq!(wb.value("B2").unwrap(), Value::Number(1.0));
+}

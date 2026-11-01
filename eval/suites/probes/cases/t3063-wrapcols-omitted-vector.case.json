@@ -1,0 +1,18 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3063: WRAPCOLS with an omitted vector; error type, else rows.",
+ "tags": [
+  "M7",
+  "probe",
+  "dynamic-arrays",
+  "T-3063"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "G1": "=IFERROR(ERROR.TYPE(ROWS(_xlfn.WRAPCOLS(,NA()))),ROWS(_xlfn.WRAPCOLS(,NA())))"
+   }
+  }
+ ]
+}

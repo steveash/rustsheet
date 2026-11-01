@@ -3,7 +3,7 @@ id: T-2366
 title: "Probe SORT's lifted by_col elements: each call's top-left or only the first (SORTBY's rule)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -32,3 +32,8 @@ Then set the entry to `.array()` or `.array_first()` and fix the tests and array
 
 ## Out of scope
 - SORTBY (T-1839, T-2310) and TEXTJOIN (T-2318).
+
+## Outcome
+Probe `probes/t2366-sort-lifted-by-col` filled from excel-graph. SORT's lifted by_col elements are never empty
+(not SORTBY's `ArrayFirst`; `.array()` kept); arrays.md and the tests cite it. Four probe cells fail (a TRUE by_col element
+past the first column with sort_index 1 is `#VALUE!` in Excel): baselined, owned by T-2929. Eval delta: 8 of 12 probe cells pass; 4 new known failures.

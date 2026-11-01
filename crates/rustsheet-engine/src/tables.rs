@@ -67,6 +67,49 @@ pub(crate) fn lower_this_row_cells(
     }
 }
 
+impl Table {
+    /// A table named `name` over `reference` (`A1:C4`, header and totals rows included) on
+    /// `sheet_name`, with the columns `column_names` left to right, no differential formats and
+    /// no filter buttons, styled as the xlsx reader defaults a table without `tableStyleInfo`.
+    #[must_use]
+    pub fn new(
+        name: &str,
+        sheet_name: &str,
+        reference: &str,
+        (header_row_count, totals_row_count): (u32, u32),
+        column_names: impl IntoIterator<Item = String>,
+    ) -> Table {
+        Table {
+            name: name.to_string(),
+            display_name: name.to_string(),
+            sheet_name: sheet_name.to_string(),
+            reference: reference.to_string(),
+            totals_row_count,
+            header_row_count,
+            header_row_dxf_id: None,
+            data_dxf_id: None,
+            totals_row_dxf_id: None,
+            columns: (1..)
+                .zip(column_names)
+                .map(|(id, name)| TableColumn {
+                    id,
+                    name,
+                    ..TableColumn::default()
+                })
+                .collect(),
+            style_info: TableStyleInfo {
+                name: None,
+                show_first_column: false,
+                show_last_column: false,
+                show_row_stripes: true,
+                show_column_stripes: false,
+            },
+            has_filters: false,
+            filter_columns: Vec::new(),
+        }
+    }
+}
+
 impl Model {
     /// Adds a table on sheet `sheet` over rows `top..=bottom` and columns `left..=right`
     /// (1-based). The first row is the header row: its cells name the columns, so they must be
@@ -98,9 +141,28 @@ impl Model {
         &mut self,
         sheet: u32,
         name: &str,
-        (top, left, bottom, right): (i32, i32, i32, i32),
+        range: (i32, i32, i32, i32),
         has_filters: bool,
         totals_row: bool,
+    ) -> Result<(), String> {
+        self.add_table_with_rows(sheet, name, range, has_filters, (true, totals_row))
+    }
+
+    /// [`Model::add_table_with_totals`] for a table with or without a header row
+    /// (`(header_row, totals_row)`). A table without one starts its data on the first row of the
+    /// range and names its columns `Column1`, `Column2`, ... as the spec builder writes them
+    /// (probes/table-edits table-no-header-baseline, T-3260); it needs one data row and takes no
+    /// filter.
+    ///
+    /// # Errors
+    /// As [`Model::add_table`], with the range one row shorter without a header row.
+    pub fn add_table_with_rows(
+        &mut self,
+        sheet: u32,
+        name: &str,
+        (top, left, bottom, right): (i32, i32, i32, i32),
+        has_filters: bool,
+        (header_row, totals_row): (bool, bool),
     ) -> Result<(), String> {
         if !is_valid_identifier(name) {
             return Err(format!("Invalid table name '{name}'"));
@@ -125,7 +187,10 @@ impl Model {
         };
         let totals_rows = i32::from(totals_row);
         if top < 1
-            || top.saturating_add(totals_rows) >= bottom
+            || top
+                .saturating_add(totals_rows)
+                .saturating_add(i32::from(header_row))
+                > bottom
             || left > right
             || bottom > crate::constants::LAST_ROW
         {
@@ -140,42 +205,34 @@ impl Model {
         if overlaps {
             return Err("A table cannot overlap another table".to_string());
         }
-        let mut columns: Vec<TableColumn> = Vec::new();
-        for (id, column) in (1..).zip(left..=right) {
+        if !header_row && has_filters {
+            return Err("A table without a header row has no filter".to_string());
+        }
+        let mut columns: Vec<String> = Vec::new();
+        for column in left..=right {
+            if !header_row {
+                columns.push(format!("Column{}", column - left + 1));
+                continue;
+            }
             let header = self.get_formatted_cell_value(sheet, top, column)?;
             if header.is_empty()
                 || columns
                     .iter()
-                    .any(|c| c.name.to_uppercase() == header.to_uppercase())
+                    .any(|c| c.to_uppercase() == header.to_uppercase())
             {
                 return Err(format!("Table header '{header}' is empty or repeated"));
             }
-            columns.push(TableColumn {
-                id,
-                name: header,
-                ..TableColumn::default()
-            });
+            columns.push(header);
         }
         let table = Table {
-            name: name.to_string(),
-            display_name: name.to_string(),
-            sheet_name,
-            reference: format!("{first}{top}:{last}{bottom}"),
-            totals_row_count: u32::from(totals_row),
-            header_row_count: 1,
-            header_row_dxf_id: None,
-            data_dxf_id: None,
-            totals_row_dxf_id: None,
-            columns,
-            // As the xlsx reader defaults a table without `tableStyleInfo`.
-            style_info: TableStyleInfo {
-                name: None,
-                show_first_column: false,
-                show_last_column: false,
-                show_row_stripes: true,
-                show_column_stripes: false,
-            },
             has_filters,
+            ..Table::new(
+                name,
+                &sheet_name,
+                &format!("{first}{top}:{last}{bottom}"),
+                (u32::from(header_row), u32::from(totals_row)),
+                columns,
+            )
         };
         self.workbook.tables.insert(name.to_string(), table);
         self.reset_tables();
@@ -245,12 +302,11 @@ impl Model {
             return Err(format!("No table named '{name}'"));
         }
         let tables = [name.to_lowercase()];
-        let data_rows = self.workbook.tables.get(name).and_then(|table| {
-            let (_, top, _, bottom) = parse_range(&table.reference).ok()?;
-            let header = i32::try_from(table.header_row_count).ok()?;
-            let totals = i32::try_from(table.totals_row_count).ok()?;
-            Some((top.checked_add(header)?, bottom.checked_sub(totals)?))
-        });
+        let data_rows = self
+            .workbook
+            .tables
+            .get(name)
+            .and_then(|table| Some(crate::table_edits::bounds(table)?.data));
         self.lower_this_row_references(&tables, data_rows);
         self.rewrite_table_references(&tables, None, TableRewrite::Lower);
         self.remove_table(name)

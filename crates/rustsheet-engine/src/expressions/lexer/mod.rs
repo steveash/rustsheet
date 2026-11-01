@@ -47,7 +47,6 @@ use std::mem;
 use serde::{Deserialize, Serialize};
 
 use crate::expressions::token::{OpCompare, OpProduct, OpSum};
-use crate::number_format::parse_excel_number;
 
 use crate::language::Language;
 use crate::locale::Locale;
@@ -55,13 +54,21 @@ use crate::locale::Locale;
 use super::token::{starts_with_getting_data, Error, TokenType};
 use super::types::*;
 use super::utils;
+use peek::Peeked;
 
+mod peek;
 pub mod util;
+
+pub use string_literal::{
+    has_overlong_string_literal, MAX_STRING_LITERAL_UNITS, STRING_LITERAL_TOO_LONG_MESSAGE,
+};
 
 #[cfg(test)]
 mod test;
 
+mod number;
 mod ranges;
+mod string_literal;
 mod structured_references;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -110,6 +117,22 @@ pub struct Lexer {
     mode: LexerMode,
     locale: &'static Locale,
     language: &'static Language,
+    /// Whether a padded bare column (`T[ Col ]`) reads as a column: our own printed text for
+    /// `T[ [Col] ]`, which the engine re-parses after edits. Text typed or loaded from a file
+    /// reads it as no column, as Excel does (see [`Lexer::set_engine_text`]).
+    padded_bare_columns: bool,
+    /// Whether `**` is a number's exponent marker, as `E` is: text a user types, which Excel
+    /// reads so (`=2**3` stores `=2000`; see [`Lexer::set_typed`]).
+    double_star_exponent: bool,
+    /// The last token [`peek_token`](Self::peek_token) read: the parser peeks at most tokens
+    /// several times before taking them, and long imported formulas spent most of their parse
+    /// lexing the same token again (T-0499). A token depends only on the text, the start
+    /// position and the settings, so it is kept by its start position and dropped when the text
+    /// or a setting changes: a new setting's setter must drop it too.
+    peeked: Option<Peeked>,
+    /// The text of the number being read, reused from number to number (T-3384); it holds
+    /// nothing between tokens.
+    number_text: String,
 }
 
 impl Lexer {
@@ -130,22 +153,48 @@ impl Lexer {
             mode,
             locale,
             language,
+            padded_bare_columns: true,
+            double_star_exponent: false,
+            peeked: None,
+            number_text: String::new(),
         }
+    }
+
+    /// Whether the next formulas are text a user types, where Excel reads `**` in a number as
+    /// its exponent marker `E`: `=2**3` is `=2000`, `=1.5**2` `=150`, `=2**-1` `=0.2`; `**` not
+    /// written where an `E` would be (after a reference or `)`, before a space, a fraction or a
+    /// second exponent) is refused (syntax.md "`**` in a typed number is `E`",
+    /// probes/t3283-typed-double-star, t3213-typed-parse-errors A5).
+    pub(crate) fn set_typed(&mut self, typed: bool) {
+        self.double_star_exponent = typed;
+        self.peeked = None;
+    }
+
+    /// Whether the next formulas are text the engine printed itself (`true`, the default), which
+    /// reads a padded bare column (`T[ Col ]`) as a column; never text typed or read from a file,
+    /// where Excel refuses it or loads it as `#REF!` (syntax.md, probes/t2800-stored-ws-0..2,
+    /// T-3069).
+    pub(crate) fn set_engine_text(&mut self, engine_text: bool) {
+        self.padded_bare_columns = engine_text;
+        self.peeked = None;
     }
 
     /// Changes the lexer mode
     pub fn set_lexer_mode(&mut self, mode: LexerMode) {
         self.mode = mode;
+        self.peeked = None;
     }
 
     /// Sets the locale
     pub fn set_locale(&mut self, locale: &'static Locale) {
         self.locale = locale;
+        self.peeked = None;
     }
 
     /// Sets the language
     pub fn set_language(&mut self, language: &'static Language) {
         self.language = language;
+        self.peeked = None;
     }
 
     // FIXME: I don't think we should have `is_a1_mode` and   `get_formula`.
@@ -170,10 +219,15 @@ impl Lexer {
 
     /// Resets the formula
     pub fn set_formula(&mut self, content: &str) {
-        self.chars = content.chars().collect();
+        // The buffer is reused, and sized once from the byte length (at least the char count):
+        // collecting the chars grew a new one several times per loaded formula (T-0499).
+        self.chars.clear();
+        self.chars.reserve(content.len());
+        self.chars.extend(content.chars());
         self.len = self.chars.len();
         self.position = 0;
         self.next_token_position = None;
+        self.peeked = None;
     }
 
     /// Returns an error if the token is not the expected one.
@@ -183,16 +237,6 @@ impl Lexer {
             return Err(self.set_error(&format!("Error, expected {tk:?}"), self.position));
         }
         Ok(())
-    }
-
-    /// Checks the next token without advancing position
-    /// See also [`advance_token`](Self::advance_token)
-    pub fn peek_token(&mut self) -> TokenType {
-        let position = self.position;
-        let tk = self.next_token();
-        self.next_token_position = Some(self.position);
-        self.position = position;
-        tk
     }
 
     /// Whether whitespace comes right after the last token read (a [`peek_token`](Self::peek_token)
@@ -217,6 +261,12 @@ impl Lexer {
         &rest[..end]
     }
 
+    /// The formula being lexed, as chars: [`Lexer::get_position_index`] indexes it. Public for
+    /// the xlsx import's relocation key, which reads the text of the tokens it keys (T-3384).
+    pub fn chars(&self) -> &[char] {
+        &self.chars[..self.len]
+    }
+
     /// The lexer's position as a char index.
     pub fn get_position_index(&self) -> usize {
         self.position
@@ -229,18 +279,8 @@ impl Lexer {
         text.trim().to_string()
     }
 
-    /// Advances position. This is used in conjunction with [`peek_token`](Self::peek_token)
-    /// It is a noop if the has not been a previous `peek_token`
-    pub fn advance_token(&mut self) {
-        if let Some(position) = self.next_token_position {
-            self.position = position;
-            self.next_token_position = None;
-        }
-    }
-
-    /// Returns the next token
-    pub fn next_token(&mut self) -> TokenType {
-        self.next_token_position = None;
+    /// Reads the token at the current position, past any whitespace.
+    fn lex_token(&mut self) -> TokenType {
         self.consume_whitespace();
 
         match self.read_next_char() {
@@ -327,9 +367,7 @@ impl Lexer {
                         let position = self.position - 1;
                         match self.consume_number(char) {
                             Ok(number) => {
-                                if self.peek_token() == TokenType::Colon
-                                    && self.mode == LexerMode::A1
-                                {
+                                if *self.peek() == TokenType::Colon && self.mode == LexerMode::A1 {
                                     // Its a row range  3:5
                                     // FIXME: There are faster ways of parsing this
                                     // Like checking that 'number' is integer and that the next token is integer
@@ -638,72 +676,6 @@ impl Lexer {
         })
     }
 
-    // Consumes a number in the current locale.
-    // It only takes into account the decimal separator
-    // Note that we do not parse the thousands separator
-    // Let's say ',' is the thousands separator. Then 1,234 would be an error.
-    // This is ok for most cases:
-    // =IF(A1=1,234, TRUE, FALSE) will not work
-    // If a user introduces a single number in the cell 1,234 we should be able to parse
-    // and format the cell appropriately
-    fn consume_number(&mut self, first: char) -> Result<f64> {
-        let mut position = self.position;
-        let len = self.len;
-        let mut chars = first.to_string();
-        // numbers before the decimal point
-        while position < len {
-            let x = self.chars[position];
-            if x.is_ascii_digit() {
-                chars.push(x);
-            } else {
-                break;
-            }
-            position += 1;
-        }
-        if position < len && self.chars[position].to_string() == self.locale.numbers.symbols.decimal
-        {
-            // numbers after the decimal point
-            chars.push('.');
-            position += 1;
-            while position < len {
-                let x = self.chars[position];
-                if x.is_ascii_digit() {
-                    chars.push(x);
-                } else {
-                    break;
-                }
-                position += 1;
-            }
-        }
-        if position + 1 < len && (self.chars[position] == 'e' || self.chars[position] == 'E') {
-            // exponential side
-            let x = self.chars[position + 1];
-            if x == '-' || x == '+' || x.is_ascii_digit() {
-                chars.push('e');
-                chars.push(x);
-                position += 2;
-                while position < len {
-                    let x = self.chars[position];
-                    if x.is_ascii_digit() {
-                        chars.push(x);
-                    } else {
-                        break;
-                    }
-                    position += 1;
-                }
-            }
-        }
-        self.position = position;
-        match parse_excel_number(&chars) {
-            // Excel refuses a workbook whose formula holds a literal number text would not read
-            // (`=1E-310`, `=0E309`: numbers.md "Number text of 1E+308 or more is not a number").
-            None => Err(self.set_error(&format!("Failed to parse to double: {chars}"), position)),
-            // A literal below the smallest normal reads as 0 (`=1E-308=0` is TRUE,
-            // probes/subnormal-function-results A70): `parse_excel_number` flushes it.
-            Some(v) => Ok(v),
-        }
-    }
-
     /// Excel allows `\` in defined names (`poi/46535.xlsx` Others!L12 evaluates to `#NAME?`).
     /// With a comma decimal separator `\` separates array columns instead, so names there
     /// cannot contain it.
@@ -711,17 +683,20 @@ impl Lexer {
         self.locale.numbers.symbols.decimal == "."
     }
 
+    /// Whether `c` may continue a name.
+    fn is_name_char(&self, c: char) -> bool {
+        c.is_alphanumeric()
+            || c == '_'
+            || c == '.'
+            || (c == '\\' && self.backslash_in_names())
+            || utils::is_typographic_quote(c)
+    }
+
     // Consumes an identifier from the input stream
     fn consume_identifier(&mut self) -> String {
         let mut position = self.position;
         while position < self.len {
-            let next_char = self.chars[position];
-            if next_char.is_alphanumeric()
-                || next_char == '_'
-                || next_char == '.'
-                || (next_char == '\\' && self.backslash_in_names())
-                || utils::is_typographic_quote(next_char)
-            {
+            if self.is_name_char(self.chars[position]) {
                 position += 1;
             } else {
                 break;
@@ -730,33 +705,6 @@ impl Lexer {
         let chars = self.chars[self.position..position].iter().collect();
         self.position = position;
         chars
-    }
-
-    fn consume_string(&mut self) -> Result<String> {
-        let mut position = self.position;
-        let len = self.len;
-        let mut chars = "".to_string();
-        let mut terminated = false;
-        while position < len {
-            let x = self.chars[position];
-            position += 1;
-            if x != '"' {
-                chars.push(x);
-            } else if position < len && self.chars[position] == '"' {
-                chars.push(x);
-                chars.push(self.chars[position]);
-                position += 1;
-            } else {
-                terminated = true;
-                break;
-            }
-        }
-        self.position = position;
-
-        if !terminated {
-            return Err(self.set_error("Expected closing '\"' but found end of input", position));
-        }
-        Ok(chars)
     }
 
     // Consumes a quoted string from input
@@ -926,14 +874,19 @@ impl Lexer {
     }
 
     fn consume_range(&mut self, sheet: Option<String>) -> TokenType {
+        // Excel drops whitespace after a sheet prefix's `!` (`=S! B1` reads and prints `=S!B1`;
+        // docs/excel-semantics/syntax.md, probes/t2776-ws-after-bang).
+        if sheet.is_some() {
+            self.consume_whitespace();
+        }
         // Excel keeps the sheet prefix when a referenced range is deleted (`Sheet1!#REF!`); the
         // whole reference is the #REF! error (docs/excel-semantics/references.md,
         // "A sheet-qualified #REF! is #REF!").
-        if sheet.is_some() && self.peek_char() == Some('#') {
+        if let Some(name) = sheet.as_ref().filter(|_| self.peek_char() == Some('#')) {
             let start = self.position;
             self.position += 1;
             if self.consume_error() == TokenType::Error(Error::REF) {
-                return TokenType::Error(Error::REF);
+                return TokenType::SheetRefError(name.clone());
             }
             self.position = start;
         }
@@ -963,7 +916,11 @@ impl Lexer {
                 self.position = end;
             }
         }
-        if let (Err(_), Some(sheet)) = (&m, &sheet) {
+        // A cell that more of a name follows starts a qualified name (`=Data!Q1_Total`; references.md,
+        // probes/defined-name-qualified-like-reference*). A range (`Data!A1:B2x`) is unprobed.
+        let name_follows_cell = matches!(m, Ok(ParsedRange { right: None, .. }))
+            && self.peek_char().is_some_and(|c| self.is_name_char(c));
+        if let (true, Some(sheet)) = (m.is_err() || name_follows_cell, &sheet) {
             if let Some(name) = self.consume_sheet_scoped_name(sheet, start) {
                 return name;
             }

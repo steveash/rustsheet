@@ -3,11 +3,11 @@ id: T-2507
 title: "Beta density for min(a,b) > 1: Loader's saddle point with Excel's bd0 (T-2464 E5)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
-campaign: accuracy
+campaign: visible
 depends_on: [T-2645]
 spec: docs/specs/SPEC-0025-incomplete-beta-bratio-port.md
 ---
@@ -54,6 +54,31 @@ BETA.DIST(x,a,b,FALSE) with both shapes > 1 follows Excel's Loader (2000) saddle
 - Code: `incomplete_beta::beta_density` (and statrs above a + b = 171.6). Exact stirlerr can come from Excel-independent
   code (a table plus a Stirling series); it must be accurate to well under an ulp of the result.
 
+### Cases owned (T-2981)
+Routed by T-2981 (eval of 2026-10-28 at `main` 9586958b): BETA.DIST(x,a,b,FALSE) cells with min(a,b) > 1, the Loader branch this task ships (the min(a,b) <= 1 cells of the same cases are T-3035's). 43,401 visibly-off cells in 22 cases, per case:
+- probes-numeric/m9-beta-dist-a10: BETA.DIST density, min(a,b) > 1 5
+- probes-numeric/m9-beta-dist-a100: BETA.DIST density, min(a,b) > 1 13
+- probes-numeric/m9-beta-dist-a2: BETA.DIST density, min(a,b) > 1 4
+- probes-numeric/m9-beta-dist-a2p5: BETA.DIST density, min(a,b) > 1 5
+- probes-numeric/m9-beta-dist-a5: BETA.DIST density, min(a,b) > 1 4
+- probes-numeric/m9-beta-dist-a50: BETA.DIST density, min(a,b) > 1 9
+- probes-numeric/t2464-r2-density-large-p1: BETA.DIST density, min(a,b) > 1 2,889
+- probes-numeric/t2464-r2-log1p-hix: BETA.DIST density, min(a,b) > 1 5,264
+- probes-numeric/t2464-w2f-absweep: BETA.DIST density, min(a,b) > 1 1,345
+- probes-numeric/t2464-w2f-xruns-2: BETA.DIST density, min(a,b) > 1 2,048
+- probes-numeric/t2513-r3-binom-pmf-a: BETA.DIST density, min(a,b) > 1 1,945
+- probes-numeric/t2513-r3-binom-pmf-hold: BETA.DIST density, min(a,b) > 1 1,608
+- probes-numeric/t2513-r3-fdensity-a: BETA.DIST density, min(a,b) > 1 978
+- probes-numeric/t2513-r3-loader-bd0-a: BETA.DIST density, min(a,b) > 1 7,749
+- probes-numeric/t2513-r3-loader-bd0-b: BETA.DIST density, min(a,b) > 1 113
+- probes-numeric/t2513-r3-loader-bd0-hold: BETA.DIST density, min(a,b) > 1 4,633
+- probes-numeric/t2513-r3-loader-const-diverse1: BETA.DIST density, min(a,b) > 1 5,630
+- probes-numeric/t2513-r3-loader-const-grid1: BETA.DIST density, min(a,b) > 1 1,275
+- probes-numeric/t2513-r3-loader-const-sweep1: BETA.DIST density, min(a,b) > 1 5,918
+- probes-numeric/t2513-verify-r3-binom-pmf-h: BETA.DIST density, min(a,b) > 1 73
+- probes-numeric/t2513-verify-r3-loader-bd0-hold: BETA.DIST density, min(a,b) > 1 950
+- probes-numeric/t2513-verify-r3-loader-const-hold: BETA.DIST density, min(a,b) > 1 943
+
 ## Acceptance criteria
 - [ ] On the 32,264 a, b > 1 density cells of r2-density-large's data, the engine is within 15 digits on at least
       31,385 and bit-exact on at least 5,765 (M3 reaches 31,461 and 6,312).
@@ -73,4 +98,30 @@ r2-impact counts 261 visibly off pre-T2464 (224 at max >= 8, 37 at max < 8). Bit
 task without the campaign key.
 
 ## Stage (decision 0114)
-`campaign: accuracy`: a 50-digit reference shows Excel is close to correctly rounded for this family and the engine is not. Aim for a correctly rounded kernel, scored against an mpmath reference and the oracle; do not fit Excel's last bits. Cells left within 4 ulp after that go to a `defer: phase-1b` follow-up.
+`campaign: visible`, not `accuracy` (re-staged 2026-10-27 by this task's second attempt). Decision 0114's accuracy
+stage needs a high-precision reference to show Excel close to correctly rounded, and for min(a,b) > 1 it does not:
+- Against a 40-digit mpmath reference of x^(a-1) (1-x)^(b-1) / B(a,b) (exact 1 - x), a correctly rounded kernel
+  scores, exact / 4 ulp / 15 digits shown: hold1 251 / 1,738 / 2,147 of 3,296 (statistics.md's CR row, 2,435 by its
+  half-unit rule), t2464-w2f-absweep 327 / 1,997 / 2,259 of 3,072, t2464-w2f-xruns-1 299 / 4,611 / 5,013 of 6,144
+  (`docs/research/t2507/cr_score.py`), and, from the separate 60-digit run, the 928 pre-T2464 cells of
+  `docs/research/t2464/beta_exact.tsv` 123 / 744 / 737. Excel's error on those 928 reaches
+  235 ulp (`BETA.DIST(0.9,5,100,FALSE)`, m9-beta-dist-a5) and is 24-182 ulp at a dozen cells with shapes 10-100
+  (m9-beta-dist-a10, -a50, -a100), from `beta_exact.tsv`'s err_ulp column.
+- Loader's model (M3) reaches 3,176 of hold1 within 15 digits. So matching Excel's visible digits means
+  reproducing its algorithm, which is the visible stage (decision 0114, decision 0056's time-box).
+
+## Outcome
+- Landed 2026-10-30 (owner-run session https://claude.ai/code/session_01Xbmds2YtTrK9a9T4mMitSB) under decision 0181,
+  ported from `claude/hopeful-meitner-5oxf0g-t2507` (090e13ec1, 9d9fd0a0b) onto `main` ec865788:
+  - `loader.rs` keeps only Excel's pieces (`excel_beta_density`, `excel_dbinom_exponent`, `excel_bd0`,
+    `stirlerr_exact`); the R-style `stirlerr`, `bd0` and `dbinom_raw_dev` left with T-3034. Its logarithm of a
+    double-double is `x87_log10::ln_double_double_pair`. `x87_register::Register` gains `from_double_double`,
+    `to_double_double` and `neg`.
+  - `beta.rs`: the density is T-2503's small-shape form, then the Loader density for a, b > 1, then today's forms.
+- Against a `main` build over gen-m9, ironcalc-calc, probes and probes-numeric: visibly-off cells 82,100 -> 46,065
+  (36,696 fixed, 661 new, all BETA.DIST densities in probes-numeric, docs/research/t2507/newly_visibly_off.tsv).
+  Gated: ironcalc-calc 2 lines fixed, 1 regressed (BETADIST_BETAINV.xlsx G3, 1 ulp); no other suite moves.
+- Criteria: t2464-r2-density-large-p1 is within 15 digits on all 13,824 cells (3,874 bit-exact; the criterion's
+  32,264-cell r2 set is the research data, not one case); t2513-r3-loader-const-hold1 on 4,021 of 4,114 cells (1,785
+  bit-exact) against 3,172 and 952 asked on its 3,296 a, b > 1 cells. The gated regression is decision 0181's.
+- Follow-up T-3220 owns the 661 cells and G3 (T-2586's constant and bd0 series pieces).

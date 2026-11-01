@@ -4,20 +4,24 @@
 //! measures the Phase 1 exit of decision 0114: every function covered with at most one cell in a
 //! thousand visibly off, its cells counted as decision 0118 counts them (its attributed cells, or
 //! every Excel cell that calls it below the evidence floor). The stricter share, over every Excel
-//! cell that calls the function with decision 0088's blame, is kept as information. It is a
-//! report, never a gate; "both hold on two consecutive steward runs" is the steward's to check.
+//! cell that calls the function with decision 0088's blame, is kept as information. The cells of
+//! [`Phase1Exceptions`] are left out of the Phase 1 rate: its listed cells (decision 0134) and the
+//! cells only open M14 tasks own (decision 0143). It is a report, never a gate; "both hold on two
+//! consecutive steward runs" is the steward's to check.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 
 use serde::{Deserialize, Serialize};
 
 use crate::attribution::Attribution;
 use crate::catalog::Catalog;
-use crate::closeness::Closeness;
+use crate::closeness::{sole_call, Closeness, Visible};
 use crate::evidence_floor::EVIDENCE_FLOOR;
-use crate::formula_calls::outer_call;
+use crate::formula_calls::{functions_in, outer_call};
+use crate::gate_b::{self, GateB};
 use crate::milestone_exit::{meets_rate, RATE_DEN, RATE_NUM};
+use crate::phase1_exceptions::{Phase1Exceptions, DESKTOP_OWNED_PATH, PHASE1_EXCEPTIONS_PATH};
 use crate::report::{FunctionStat, RunReport};
 use crate::runner::CaseResult;
 use crate::value::Verdict;
@@ -32,6 +36,10 @@ pub const GENERATED_BAR: usize = 200;
 pub struct V15Function {
     /// Upper-case Excel name.
     pub name: String,
+    /// The catalog milestone, `M<n>`: the M9 exit reads the rows of its own milestone
+    /// (decision 0146 item 3).
+    #[serde(default)]
+    pub milestone: String,
     /// Excel-evidence cells that call it (the report's `evidence`).
     pub cells: usize,
     /// Excel-evidence cells of generated suites whose formula is one call of it.
@@ -48,12 +56,23 @@ pub struct V15Function {
     /// every Excel cell that calls it (`all`) below [`EVIDENCE_FLOOR`] attributed cells.
     #[serde(default)]
     pub attribution: Attribution,
-    /// The scored cells the Phase 1 rate counts.
+    /// The scored cells the Phase 1 rate counts, without the [`Self::rate_excepted`] and
+    /// [`Self::desktop_owned`] cells.
     #[serde(default)]
     pub rate_cells: usize,
     /// Of those, the visibly-off cells.
     #[serde(default)]
     pub rate_visible: usize,
+    /// Visibly-off cells of the attribution's count that the Phase 1 rate leaves out because
+    /// [`Phase1Exceptions`] lists them (decision 0134); they are in neither `rate_cells` nor
+    /// `rate_visible`.
+    #[serde(default)]
+    pub rate_excepted: usize,
+    /// Visibly-off cells of the attribution's count that the Phase 1 rate leaves out because
+    /// only open M14 tasks own them (decision 0143) and [`Self::rate_excepted`] does not hold
+    /// them; they are in neither `rate_cells` nor `rate_visible`.
+    #[serde(default)]
+    pub desktop_owned: usize,
     /// Covered and at least 99.9% of `rate_cells` not visibly off: the Phase 1 exit (decisions
     /// 0114 and 0118).
     #[serde(default)]
@@ -113,7 +132,8 @@ pub struct V15Checkpoint {
     /// Functions that meet the Phase 1 rate (decision 0114).
     #[serde(default)]
     pub at_rate: usize,
-    /// At least one function, and every one meets the Phase 1 rate (decision 0114).
+    /// The Phase 1 rate holds: [`GateB::met`] (decision 0188 R1(b) counts decision 0114's rate
+    /// on user-representative suites only; `at_rate` is the every-suite count, information).
     #[serde(default)]
     pub phase1_met: bool,
     /// Information only: functions that meet the strict rate ([`StrictRate::meets_rate`]).
@@ -133,6 +153,25 @@ pub struct V15Checkpoint {
     /// [`Self::phase1_line`], written out for report readers (T-0072).
     #[serde(default)]
     pub phase1_line: String,
+    /// Listed cells the Phase 1 rate left out (decision 0134): visibly-off, non-deviation Excel
+    /// cells of the run.
+    #[serde(default)]
+    pub excepted: usize,
+    /// Listed cells that are not left out because the run did not score them, or they are not
+    /// visibly off (`case!Sheet!A1`). A warning only: the line should go (decision 0134).
+    #[serde(default)]
+    pub stale_exceptions: Vec<String>,
+    /// Listed cells whose suite has no case in this run (not fetched or not selected): neither
+    /// stale nor confirmed, so the report does not tell anyone to remove their lines.
+    #[serde(default)]
+    pub unchecked_exceptions: Vec<String>,
+    /// Cells the Phase 1 rate left out because only open M14 tasks own them (decision 0143):
+    /// visibly-off, non-deviation Excel cells of the run that [`Self::excepted`] does not count.
+    #[serde(default)]
+    pub desktop_owned: usize,
+    /// Gate B (decision 0188 R1(b)): the Phase 1 rate on user-representative suites only.
+    #[serde(default)]
+    pub gate_b: GateB,
 }
 
 impl V15Checkpoint {
@@ -148,13 +187,13 @@ impl V15Checkpoint {
         )
     }
 
-    /// The Phase 1 exit line (decision 0114, counted as decision 0118 says) the steward copies
-    /// beside [`Self::verdict_line`].
+    /// The Phase 1 rate line the steward copies beside [`Self::verdict_line`]: Gate B (decision
+    /// 0188 R1(b)), with decision 0118's every-suite count beside it as information.
     #[must_use]
     pub fn phase1_line(&self) -> String {
         format!(
-            "Phase 1 (decision 0114): {} ({}/{} functions covered with ≥ 99.9% of their attributed cells within 15 digits, decision 0118)",
-            if self.phase1_met { "met" } else { "not met" },
+            "Phase 1 rate, {}; every suite, information: {}/{} (decision 0118)",
+            self.gate_b.line(),
             self.at_rate,
             self.in_scope
         )
@@ -170,14 +209,151 @@ impl V15Checkpoint {
     }
 }
 
-/// Scores `report` (already built from `results`); `generated` names the generated suites.
+/// A cell the Phase 1 rate leaves out, by the functions it counts toward.
+pub(crate) struct LeftOut {
+    /// The functions its formula calls.
+    called: BTreeSet<String>,
+    /// Its sole non-glue call ([`sole_call`]).
+    sole: Option<String>,
+    /// Left out as owned only by open M14 tasks (decision 0143), not as a listed cell (decision
+    /// 0134).
+    desktop: bool,
+}
+
+impl LeftOut {
+    /// Whether the cell is in the count `attribution` measures `name` by (decision 0118).
+    fn counts_toward(&self, name: &str, attribution: Attribution) -> bool {
+        match attribution {
+            Attribution::All => self.called.contains(name),
+            Attribution::Sole => self.sole.as_deref() == Some(name),
+        }
+    }
+}
+
+/// How many of `left_out` count toward `name` measured by `attribution`: listed (decision 0134),
+/// then desktop-owned (decision 0143).
+pub(crate) fn left_out_counts(
+    left_out: &[LeftOut],
+    name: &str,
+    attribution: Attribution,
+) -> (usize, usize) {
+    let counted: Vec<&LeftOut> = left_out
+        .iter()
+        .filter(|cell| cell.counts_toward(name, attribution))
+        .collect();
+    let desktop = counted.iter().filter(|cell| cell.desktop).count();
+    (counted.len() - desktop, desktop)
+}
+
+/// One function's Phase 1 rate count (decision 0118): which cells it is measured by, those cells
+/// less the left-out ones, and whether a covered function meets the rate on them.
+pub(crate) struct RateCount {
+    pub attribution: Attribution,
+    pub rate_cells: usize,
+    pub rate_visible: usize,
+    /// Left out as listed (decision 0134).
+    pub listed: usize,
+    /// Left out as owned only by open M14 tasks (decision 0143).
+    pub desktop: usize,
+    pub meets_rate: bool,
+}
+
+/// [`RateCount`] of `name` from its counts `stat` (none: no cell) and the `left_out` cells.
+pub(crate) fn rate_count(
+    stat: Option<&FunctionStat>,
+    left_out: &[LeftOut],
+    name: &str,
+    covered: bool,
+) -> RateCount {
+    let (attribution, counted) = stat.map_or((Attribution::All, Closeness::default()), |s| {
+        let (a, c) = s.counted();
+        (a, *c)
+    });
+    let (listed, desktop) = left_out_counts(left_out, name, attribution);
+    let rate_cells = counted.scored().saturating_sub(listed + desktop);
+    let rate_visible = counted.visible().saturating_sub(listed + desktop);
+    RateCount {
+        attribution,
+        rate_cells,
+        rate_visible,
+        listed,
+        desktop,
+        meets_rate: covered
+            && meets_rate(
+                rate_cells.saturating_sub(rate_visible),
+                rate_cells,
+                RATE_NUM,
+            ),
+    }
+}
+
+/// The cells the Phase 1 rate leaves out: each visibly-off, non-deviation Excel cell of `results`
+/// that `exceptions` lists or (decision 0143) says only M14 tasks own; and the listed cells that
+/// are not such a cell, as `case!Sheet!A1`. A desktop-owned cell that is not one is not stale: the
+/// generated list holds every known failure M14 owns, within 15 digits or not. A listed cell
+/// whose suite (the first segment of its case id) has no case in `results` is returned as
+/// unchecked instead: the run cannot tell whether it is stale. Only the suites `keep` accepts are
+/// read (Gate B's, or every suite).
+pub(crate) fn excepted_cells(
+    results: &[CaseResult],
+    exceptions: &Phase1Exceptions,
+    keep: impl Fn(&str) -> bool,
+) -> (Vec<LeftOut>, Vec<String>, Vec<String>) {
+    let scored: BTreeSet<&str> = results.iter().map(|r| r.suite.as_str()).collect();
+    let mut left_out = Vec::new();
+    let mut found = BTreeSet::new();
+    for r in results.iter().filter(|r| keep(&r.suite)) {
+        for c in &r.cells {
+            let key = c.key();
+            let listed = exceptions.contains(&r.id, &key);
+            if !(listed || exceptions.desktop_owns(&r.id, &key))
+                || !c.from_excel
+                || c.verdict == Verdict::Deviation
+                || !Visible::is_off(c)
+            {
+                continue;
+            }
+            let called = c.formula.as_deref().map(functions_in).unwrap_or_default();
+            let sole = sole_call(&called).cloned();
+            left_out.push(LeftOut {
+                called,
+                sole,
+                desktop: !listed,
+            });
+            if listed {
+                found.insert((r.id.clone(), key));
+            }
+        }
+    }
+    let (mut stale, mut unchecked) = (Vec::new(), Vec::new());
+    for cell in exceptions
+        .cells
+        .keys()
+        .filter(|cell| !found.contains(*cell))
+    {
+        let id = crate::runner::cell_id(&cell.0, &cell.1);
+        let suite = cell.0.split('/').next().unwrap_or_default();
+        if scored.contains(suite) {
+            stale.push(id);
+        } else {
+            unchecked.push(id);
+        }
+    }
+    (left_out, stale, unchecked)
+}
+
+/// Scores `report` (already built from `results`); `generated` names the generated suites, and
+/// `exceptions` the cells the Phase 1 rate leaves out (decision 0134).
 #[must_use]
 pub fn summarize(
     catalog: &Catalog,
     results: &[CaseResult],
     report: &RunReport,
     generated: &[&str],
+    exceptions: &Phase1Exceptions,
 ) -> V15Checkpoint {
+    let (left_out, stale_exceptions, unchecked_exceptions) =
+        excepted_cells(results, exceptions, |_| true);
     let mut outer: BTreeMap<String, usize> = BTreeMap::new();
     for r in results
         .iter()
@@ -217,29 +393,22 @@ pub fn summarize(
             };
             let stat = stats.get(name).copied();
             let visible = stat.map_or(0, |s| s.visible.total());
-            let (attribution, counted) =
-                stat.map_or((Attribution::All, Closeness::default()), |s| {
-                    let (a, c) = s.counted();
-                    (a, *c)
-                });
-            let (rate_cells, rate_visible) = (counted.scored(), counted.visible());
+            let rate = rate_count(stat, &left_out, name, covered);
             V15Function {
                 name: f.name.clone(),
+                milestone: f.milestone.clone(),
                 cells: n,
                 generated,
                 exempt,
                 visible,
                 covered,
                 meets: covered && visible == 0,
-                attribution,
-                rate_cells,
-                rate_visible,
-                meets_rate: covered
-                    && meets_rate(
-                        rate_cells.saturating_sub(rate_visible),
-                        rate_cells,
-                        RATE_NUM,
-                    ),
+                attribution: rate.attribution,
+                rate_cells: rate.rate_cells,
+                rate_visible: rate.rate_visible,
+                rate_excepted: rate.listed,
+                desktop_owned: rate.desktop,
+                meets_rate: rate.meets_rate,
                 strict: StrictRate {
                     meets_rate: covered && meets_rate(n.saturating_sub(visible), n, RATE_NUM),
                 },
@@ -257,11 +426,12 @@ pub fn summarize(
     let at_rate = functions.iter().filter(|f| f.meets_rate).count();
     let at_strict_rate = functions.iter().filter(|f| f.strict.meets_rate).count();
     let visibly_off = report.visibly_off_cells();
+    let gate_b = gate_b::summarize(results, exceptions, &functions, &report.r1c);
     let mut checkpoint = V15Checkpoint {
         in_scope: functions.len(),
         met: !functions.is_empty() && covered == functions.len() && visibly_off == 0,
         at_rate,
-        phase1_met: !functions.is_empty() && at_rate == functions.len(),
+        phase1_met: gate_b.met,
         at_strict_rate,
         functions,
         covered,
@@ -271,10 +441,79 @@ pub fn summarize(
         rate_den: RATE_DEN,
         verdict_line: String::new(),
         phase1_line: String::new(),
+        excepted: left_out.iter().filter(|c| !c.desktop).count(),
+        stale_exceptions,
+        unchecked_exceptions,
+        desktop_owned: left_out.iter().filter(|c| c.desktop).count(),
+        gate_b,
     };
     checkpoint.verdict_line = checkpoint.verdict_line();
     checkpoint.phase1_line = checkpoint.phase1_line();
     checkpoint
+}
+
+/// The cells left out of the Phase 1 rate (decisions 0134 and 0143), per function, and any stale
+/// line.
+fn write_exceptions(checkpoint: &V15Checkpoint, md: &mut String) {
+    if checkpoint.desktop_owned > 0 {
+        let _ = writeln!(
+            md,
+            "Left out of the Phase 1 rate as owned only by open M14 tasks (decision 0143, {DESKTOP_OWNED_PATH}): {} visibly-off cells ({}); they stay known failures.\n",
+            checkpoint.desktop_owned,
+            per_function(checkpoint, |f| f.desktop_owned)
+        );
+    }
+    if checkpoint.excepted == 0
+        && checkpoint.stale_exceptions.is_empty()
+        && checkpoint.unchecked_exceptions.is_empty()
+    {
+        return;
+    }
+    let per_function = per_function(checkpoint, |f| f.rate_excepted);
+    let _ = writeln!(
+        md,
+        "Left out of the Phase 1 rate as M14 desktop-only evidence (decision 0134, {}): {} visibly-off cells{}; they stay known failures.\n",
+        PHASE1_EXCEPTIONS_PATH,
+        checkpoint.excepted,
+        if per_function.is_empty() {
+            String::new()
+        } else {
+            format!(" ({per_function})")
+        }
+    );
+    if !checkpoint.stale_exceptions.is_empty() {
+        let _ = writeln!(
+            md,
+            "Warning: {} listed cells are not scored or not visibly off in this run; remove their lines:\n",
+            checkpoint.stale_exceptions.len()
+        );
+        for cell in &checkpoint.stale_exceptions {
+            let _ = writeln!(md, "- {cell}");
+        }
+        let _ = writeln!(md);
+    }
+    if !checkpoint.unchecked_exceptions.is_empty() {
+        let _ = writeln!(
+            md,
+            "{} listed cells were not checked: their suite was skipped:\n",
+            checkpoint.unchecked_exceptions.len()
+        );
+        for cell in &checkpoint.unchecked_exceptions {
+            let _ = writeln!(md, "- {cell}");
+        }
+        let _ = writeln!(md);
+    }
+}
+
+/// `NAME count` for each function whose `count` is not 0, comma-separated.
+fn per_function(checkpoint: &V15Checkpoint, count: impl Fn(&V15Function) -> usize) -> String {
+    checkpoint
+        .functions
+        .iter()
+        .filter(|f| count(f) > 0)
+        .map(|f| format!("{} {}", f.name, count(f)))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 /// The report section: the overall line, then the functions below the bar, worst first, then the
@@ -283,6 +522,8 @@ pub fn write_markdown(checkpoint: &V15Checkpoint, md: &mut String) {
     let _ = writeln!(md, "\n## Fifteen-digit parity checkpoint\n");
     let _ = writeln!(md, "**{}**\n", checkpoint.verdict_line());
     let _ = writeln!(md, "**{}**\n", checkpoint.phase1_line());
+    gate_b::write_markdown(&checkpoint.gate_b, md);
+    write_exceptions(checkpoint, md);
     let _ = writeln!(md, "{}.\n", checkpoint.strict_line());
     let _ = writeln!(
         md,
@@ -297,15 +538,15 @@ pub fn write_markdown(checkpoint: &V15Checkpoint, md: &mut String) {
     );
     let _ = writeln!(
         md,
-        "| function | Excel cells | generated outer-call cells | exempt | visibly off | Phase 1 cells | of them visibly off | within 15 digits | Phase 1 (≥ 99.9%) | strict share (information) |"
+        "| function | Excel cells | generated outer-call cells | exempt | visibly off | Phase 1 cells | of them visibly off | M14-owned, left out | within 15 digits | Phase 1 (≥ 99.9%) | strict share (information) |"
     );
-    let _ = writeln!(md, "|---|---|---|---|---|---|---|---|---|---|");
+    let _ = writeln!(md, "|---|---|---|---|---|---|---|---|---|---|---|");
     let pct =
         |r: Option<f64>| r.map_or_else(|| "n/a".to_string(), |r| format!("{:.2}%", r * 100.0));
     for f in below {
         let _ = writeln!(
             md,
-            "| {} | {} | {} | {} | {} | {} {} | {} | {} | {} | {} |",
+            "| {} | {} | {} | {} | {} | {} {} | {} | {} | {} | {} | {} |",
             f.name,
             f.cells,
             f.generated,
@@ -317,6 +558,7 @@ pub fn write_markdown(checkpoint: &V15Checkpoint, md: &mut String) {
                 Attribution::All => "all (fallback)",
             },
             f.rate_visible,
+            f.desktop_owned,
             pct(f.rate()),
             if f.meets_rate { "met" } else { "not met" },
             pct(f.strict_rate())
@@ -332,262 +574,4 @@ pub fn write_markdown(checkpoint: &V15Checkpoint, md: &mut String) {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::catalog::{CatalogFunction, Scope, V15};
-    use crate::report::tests::{case, cell};
-    use crate::runner::CellResult;
-    use crate::value::Value;
-
-    fn func(name: &str, v15_reason: Option<&str>) -> CatalogFunction {
-        CatalogFunction {
-            name: name.into(),
-            category: "math".into(),
-            milestone: "M5".into(),
-            scope: Scope::In,
-            reason: None,
-            oracle: None,
-            v15: v15_reason.map(|_| V15::Exempt),
-            v15_reason: v15_reason.map(String::from),
-            params: Vec::new(),
-        }
-    }
-
-    fn excel(formula: &str, n: usize) -> Vec<CellResult> {
-        let c = CellResult {
-            from_excel: true,
-            ..cell(formula, Verdict::Pass)
-        };
-        vec![c; n]
-    }
-
-    #[test]
-    fn generated_cells_count_only_for_the_outer_call() {
-        let mut g = case("gen-m5/a", 1);
-        g.cells = [
-            excel("=ABS(SQRT(4))", 3),
-            excel("ABS(1)+SQRT(4)", 2),
-            excel("=SQRT(\"(\")", 1),
-        ]
-        .concat();
-        let mut p = case("probes/a", 1);
-        p.cells = excel("ABS(2)", 5);
-        let results = [g, p];
-        let catalog = Catalog::from_functions([func("ABS", None), func("SQRT", None)]);
-        let report = RunReport::build("e", &results, &[], &catalog);
-        let v = summarize(&catalog, &results, &report, &["gen-m5"]);
-        let row = |n: &str| {
-            v.functions
-                .iter()
-                .find(|f| f.name == n)
-                .cloned()
-                .unwrap_or_default()
-        };
-        assert_eq!((row("ABS").cells, row("ABS").generated), (10, 3));
-        assert_eq!((row("SQRT").cells, row("SQRT").generated), (6, 1));
-    }
-
-    #[test]
-    fn exempt_function_needs_the_evidence_floor_only() {
-        let mut r = case("probes/a", 1);
-        r.cells = [
-            excel("PI()", EVIDENCE_FLOOR),
-            excel("ABS(1)", EVIDENCE_FLOOR),
-        ]
-        .concat();
-        let results = [r];
-        let catalog =
-            Catalog::from_functions([func("PI", Some("no arguments")), func("ABS", None)]);
-        let report = RunReport::build("e", &results, &[], &catalog);
-        let v = summarize(&catalog, &results, &report, &[]);
-        assert_eq!(v.functions[0].name, "ABS", "below the bar comes first");
-        assert!(!v.functions[0].covered);
-        assert!(v.functions[1].meets && v.functions[1].exempt.as_deref() == Some("no arguments"));
-        assert_eq!((v.covered, v.in_scope, v.met), (1, 2, false));
-        let mut md = String::new();
-        write_markdown(&v, &mut md);
-        assert!(
-            md.contains(
-                "| ABS | 20 | 0 |  | 0 | 20 attributed | 0 | 100.00% | not met | 100.00% |"
-            ),
-            "{md}"
-        );
-        assert!(md.contains("| PI | no arguments |"), "{md}");
-    }
-
-    #[test]
-    fn verdict_needs_every_function_covered_and_no_visible_cell() {
-        let mut g = case("gen-m5/a", 1);
-        g.cells = excel("PI()", 25);
-        let catalog = Catalog::from_functions([func("PI", Some("no arguments"))]);
-        let results = [g.clone()];
-        let report = RunReport::build("e", &results, &[], &catalog);
-        let v = summarize(&catalog, &results, &report, &["gen-m5"]);
-        assert!(v.met);
-        assert_eq!(
-            v.verdict_line(),
-            "Fifteen-digit parity: met (coverage 1/1, visibly-off cells 0)"
-        );
-        assert_eq!(v.suites, ["gen-m5"]);
-        g.cells.push(CellResult {
-            actual: Value::Number(2.0),
-            ..cell("PI()", Verdict::NumericMismatch)
-        });
-        let results = [g];
-        let report = RunReport::build("e", &results, &[], &catalog);
-        let v = summarize(&catalog, &results, &report, &["gen-m5"]);
-        assert_eq!(
-            v.verdict_line(),
-            "Fifteen-digit parity: not met (coverage 1/1, visibly-off cells 1)"
-        );
-        assert!(!v.functions[0].meets && v.functions[0].covered);
-    }
-
-    #[test]
-    fn report_json_carries_the_rate_and_both_lines() {
-        // T-0072: the progress dashboard reads the bar and the lines from report.json.
-        let mut g = case("gen-m5/a", 1);
-        g.cells = excel("PI()", 25);
-        let catalog = Catalog::from_functions([func("PI", Some("no arguments"))]);
-        let results = [g];
-        let report = RunReport::build("e", &results, &[], &catalog);
-        let v = summarize(&catalog, &results, &report, &["gen-m5"]);
-        let json = serde_json::to_value(&v).unwrap();
-        assert_eq!(
-            (json["rate_num"].as_u64(), json["rate_den"].as_u64()),
-            (Some(999), Some(1000))
-        );
-        assert_eq!(
-            json["verdict_line"].as_str(),
-            Some(v.verdict_line().as_str())
-        );
-        assert_eq!(json["phase1_line"].as_str(), Some(v.phase1_line().as_str()));
-    }
-
-    #[test]
-    fn phase1_allows_one_visibly_off_cell_in_a_thousand() {
-        // Decision 0114: covered and at most 0.1% of the Excel cells visibly off.
-        let off = || CellResult {
-            from_excel: true,
-            actual: Value::Number(2.0),
-            ..cell("PI()", Verdict::NumericMismatch)
-        };
-        let catalog = Catalog::from_functions([func("PI", Some("no arguments"))]);
-        let mut g = case("gen-m5/a", 1);
-        g.cells = excel("PI()", 999);
-        g.cells.push(off());
-        let results = [g.clone()];
-        let report = RunReport::build("e", &results, &[], &catalog);
-        let v = summarize(&catalog, &results, &report, &["gen-m5"]);
-        assert!(!v.met && v.phase1_met && v.functions[0].meets_rate);
-        assert_eq!(
-            v.phase1_line(),
-            "Phase 1 (decision 0114): met (1/1 functions covered with ≥ 99.9% of their attributed cells within 15 digits, decision 0118)"
-        );
-        g.cells.push(off());
-        let results = [g];
-        let report = RunReport::build("e", &results, &[], &catalog);
-        let v = summarize(&catalog, &results, &report, &["gen-m5"]);
-        assert!(!v.phase1_met && !v.functions[0].meets_rate);
-        let mut md = String::new();
-        write_markdown(&v, &mut md);
-        assert!(
-            md.contains(
-                "| PI | 1001 | 1001 | yes | 2 | 1001 attributed | 2 | 99.80% | not met | 99.80% |"
-            ),
-            "{md}"
-        );
-    }
-
-    fn off(formula: &str) -> CellResult {
-        CellResult {
-            from_excel: true,
-            actual: Value::Number(2.0),
-            ..cell(formula, Verdict::NumericMismatch)
-        }
-    }
-
-    fn checkpoint(cells: Vec<CellResult>, catalog: &Catalog) -> V15Checkpoint {
-        let mut r = case("probes/a", 1);
-        r.cells = cells;
-        let results = [r];
-        let report = RunReport::build("e", &results, &[], catalog);
-        summarize(catalog, &results, &report, &[])
-    }
-
-    #[test]
-    fn phase1_counts_attributed_cells_and_keeps_the_strict_share_as_information() {
-        // Decision 0118: an off cell of `GAMMA(BETA.DIST(..))` is attributed to neither function,
-        // so GAMMA meets the rate on its own cells while the strict count, which blames the cell
-        // on both, does not.
-        let catalog =
-            Catalog::from_functions([func("GAMMA", Some("test")), func("BETA.DIST", Some("test"))]);
-        let mut cells = excel("GAMMA(1)+GAMMA(2)", 1000);
-        cells.extend((0..10).map(|_| off("GAMMA(BETA.DIST(0.5,2,3,TRUE))")));
-        let v = checkpoint(cells, &catalog);
-        let row = |n: &str| v.functions.iter().find(|f| f.name == n).cloned();
-        let gamma = row("GAMMA").unwrap_or_default();
-        assert_eq!((gamma.cells, gamma.visible), (1010, 10));
-        assert_eq!(
-            (gamma.attribution, gamma.rate_cells, gamma.rate_visible),
-            (Attribution::Sole, 1000, 0)
-        );
-        assert!(gamma.covered && gamma.meets_rate && !gamma.strict.meets_rate);
-        assert_eq!(gamma.rate(), Some(1.0));
-        assert_eq!(gamma.strict_rate().map(|r| (r * 1e4).round()), Some(9901.0));
-        // BETA.DIST has no attributed cell: it falls back to every Excel cell that calls it.
-        let beta = row("BETA.DIST").unwrap_or_default();
-        assert_eq!(
-            (beta.attribution, beta.rate_cells, beta.rate_visible),
-            (Attribution::All, 10, 10)
-        );
-        assert!(!beta.meets_rate && !beta.strict.meets_rate);
-        assert_eq!((v.at_rate, v.at_strict_rate, v.phase1_met), (1, 0, false));
-        assert_eq!(
-            v.strict_line(),
-            "Information, gates nothing: 0/2 functions covered with ≥ 99.9% of every Excel cell \
-             that calls them within 15 digits, each visibly-off cell blamed on every non-glue \
-             function of its formula (decision 0088)"
-        );
-        let mut md = String::new();
-        write_markdown(&v, &mut md);
-        assert!(md.contains(&format!("{}.\n", v.strict_line())), "{md}");
-        assert!(
-            md.contains(
-                "| GAMMA | 1010 | 0 | yes | 10 | 1000 attributed | 0 | 100.00% | met | 99.01% |"
-            ),
-            "{md}"
-        );
-        assert!(
-            md.contains("| BETA.DIST | 10 | 0 | yes | 10 | 10 all (fallback) | 10 | 0.00% | not met | 0.00% |"),
-            "{md}"
-        );
-    }
-
-    #[test]
-    fn fewer_than_the_floor_of_attributed_cells_rates_every_excel_cell() {
-        let catalog = Catalog::from_functions([func("ABS", Some("test")), func("SQRT", None)]);
-        // 19 attributed cells: the rate counts all 20 Excel cells that call ABS, one of them off.
-        let mut cells = excel("ABS(1)", EVIDENCE_FLOOR - 1);
-        cells.push(off("ABS(SQRT(4))"));
-        let v = checkpoint(cells.clone(), &catalog);
-        let abs = v.functions.iter().find(|f| f.name == "ABS").cloned();
-        let abs = abs.unwrap_or_default();
-        assert_eq!(
-            (abs.attribution, abs.rate_cells, abs.rate_visible),
-            (Attribution::All, 20, 1)
-        );
-        assert!(abs.covered && !abs.meets_rate);
-        // At the floor the attributed cells alone count, and none of them is off.
-        cells.extend(excel("ABS(2)", 1));
-        let v = checkpoint(cells, &catalog);
-        let abs = v.functions.iter().find(|f| f.name == "ABS").cloned();
-        let abs = abs.unwrap_or_default();
-        assert_eq!(
-            (abs.attribution, abs.rate_cells, abs.rate_visible),
-            (Attribution::Sole, 20, 0)
-        );
-        assert!(abs.meets_rate && !abs.strict.meets_rate);
-        assert_eq!((abs.cells, abs.visible), (21, 1));
-    }
-}
+mod tests;

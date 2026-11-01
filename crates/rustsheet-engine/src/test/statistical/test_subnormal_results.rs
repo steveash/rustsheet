@@ -58,3 +58,45 @@ fn gamma_density_of_a_subnormal_ratio_is_num() {
         ],
     );
 }
+
+// T-2753: below x / beta = 1E-15 GAMMA.DIST's density is Excel's log-space form, not the exact
+// density (probes/t2753-gamma-density-ratio-sweep B1, A3; probes/t2738-gamma-dist-tiny-ratio A2), where
+// the engine is bit-exact; elsewhere in the regime it is 0 to 3 ulp off (T-2852).
+#[test]
+fn gamma_density_at_a_tiny_ratio_is_the_log_form() {
+    check_cells(
+        &[],
+        &[
+            (
+                "A1",
+                "=GAMMA.DIST(1,1,1E+300,FALSE)",
+                "1.0000000000000237e-300",
+            ),
+            ("A2", "=GAMMA.DIST(1E-200,1,1,FALSE)", "0.9999999999999779"),
+            (
+                "A3",
+                "=GAMMA.DIST(1,1,1E+307,FALSE)",
+                "9.999999999999768e-308",
+            ),
+            ("A4", "=GAMMA.DIST(0,9,2,FALSE)", "0"),
+        ],
+    );
+}
+
+// T-2852: from shape 0.5 to 3 and x / beta 1E-15 to 16 the density is EXP(a LN(y)) / GAMMA(a) / x *
+// EXP(-y), so its error is a times LN(y)'s: Excel's own doubles, bit for bit (probes/
+// t2753-gamma-density-switch A6, A7, A22; probes-numeric m9-gamma-dist-a1 A2, t1049-chisqdist A6),
+// where the direct form was 1 to 11 ulp off.
+#[test]
+fn gamma_density_below_shape_three_is_the_log_form() {
+    check_cells(
+        &[],
+        &[
+            ("A1", "=GAMMA.DIST(1E-14,1,1,FALSE)", "0.9999999999999888"),
+            ("A2", "=GAMMA.DIST(1E-13,1,1,FALSE)", "0.9999999999998999"),
+            ("A3", "=GAMMA.DIST(1E-12,2,1,FALSE)", "9.99999999999002e-13"),
+            ("A4", "=GAMMA.DIST(0.1,1,1,FALSE)", "0.9048374180359597"),
+            ("A5", "=CHISQ.DIST(0.1,5,FALSE)", "0.004000129828100455"),
+        ],
+    );
+}

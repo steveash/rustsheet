@@ -3,11 +3,12 @@ id: T-2441
 title: "NUMBERVALUE with a comma decimal separator and no group separator reads the text 1.5 as 15"
 milestone: M5
 lane: functions-text
-status: todo
-priority: P3
+status: done
+priority: P2
 size: S
 tier: sonnet
 depends_on: []
+campaign: semantics
 ---
 
 ## Goal
@@ -27,8 +28,18 @@ default depends on the decimal separator or is always the opposite of the locale
 | probes/numbervalue-separator-edges Sheet1!A8 | `=NUMBERVALUE("1.5",",")` | 15 | #VALUE! |
 
 ## Acceptance criteria
-- [ ] The cell above passes (and leaves eval/baseline/probes.txt); the probed default rule is in text.md.
-- [ ] `make check` green; reviewers approve.
+- [x] The cell above passes (and leaves eval/baseline/probes.txt); the probed default rule is in text.md.
+- [x] `make check` green; reviewers approve.
+
+## Outcome
+Done: omitted group separator defaults to "." when the decimal separator starts with ",", else "," (probes/numbervalue-default-group, excel-graph 2026-10-28). Cell A8 of numbervalue-separator-edges now passes.
 
 ## Out of scope
 -
+
+## Visible-parity stage
+Target (decision 0114): every visibly-off cell this task owns is within half a unit of the 15th significant digit
+of Excel's value, or has Excel's type, error and text. Bit-level criteria still unmet then move to a follow-up
+filed with `defer: phase-1b`.
+
+Phase 1 triage (T-0090, eval of 2026-10-27 at `main` 7f6b373a, task ownership as of `main` e5bc60c4): this task owns the 1 visibly-off NUMBERVALUE cell. Fixing them lifts NUMBERVALUE to the Phase 1 rate (≥ 99.9% of attributed cells within 15 digits); no other open task owns enough of those cells.

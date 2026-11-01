@@ -4,6 +4,8 @@
 - **Amended by:** decision 0052 (2026-10-13). A `deviations` file lists only directive-5 cells
   citing decision 0014. Other deviations do not exist; a cell RustSheet gets wrong for any other
   reason stays a known failure.
+- **Amended by:** decision 0168 (2026-10-30). A line whose cell is `*` pins a whole case the
+  engine refuses with a directive-5 limit (`refused "<message>"`).
 - **Context:**
   - The M1 exit asks for `smoke`, `probes` and `gen-m1` at 100% bit-exact, while the Phase 1 exit
     accepts "a filed task or a `DEVIATION` entry" for each remaining failure. The two disagree for

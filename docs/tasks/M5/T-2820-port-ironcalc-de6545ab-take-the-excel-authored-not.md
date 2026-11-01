@@ -3,7 +3,7 @@ id: T-2820
 title: "Port ironcalc de6545ab: take the Excel-authored NOT.xlsx calc test workbook"
 milestone: M5
 lane: functions-logic
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -33,3 +33,8 @@ T-1517, T-2634. Triaged by the 2026-10-26 (18:47 UTC) steward run.
 
 ## Out of scope
 - Upstream's `test_fn_not_array.rs` unit tests are IronCalc-authored, not Excel evidence.
+
+## Outcome
+Took upstream's `LOGICAL/NOT.xlsx` (de6545ab, Microsoft Macintosh Excel cache, 16,745 bytes).
+The ironcalc-calc suite now scores 115 checked cells for it, all pass; no known failures
+added (the baseline gained only the new checked-cell count line), 0 regressions.

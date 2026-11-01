@@ -89,17 +89,17 @@ fn char_to_win1252(c: char) -> Option<u32> {
 impl Model {
     /// CHAR(number) — Returns the character specified by the Windows-1252 code number.
     pub(crate) fn fn_char(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let n = match self.get_number(&args[0], cell) {
-            Ok(f) => f.floor() as u32,
-            Err(e) => return e,
-        };
-        match win1252_to_char(n) {
-            Some(c) => CalcResult::String(c.to_string().into()),
-            None => CalcResult::new_error(Error::VALUE, cell, "Invalid character code".to_string()),
-        }
+        // Lifts over a range or array argument (probes/t3302-text-funcs-arrays).
+        self.lift_text(Function::Char, args, cell, &mut |model, values| {
+            let [number] = values else {
+                return Err(Error::ERROR);
+            };
+            let n = model.calc_result_to_number(number)?.floor() as u32;
+            match win1252_to_char(n) {
+                Some(c) => Ok(ArrayNode::String(c.to_string().into())),
+                None => Err(Error::VALUE),
+            }
+        })
     }
 
     /// CODE(text) — Returns the Windows-1252 numeric code for the first character of text.

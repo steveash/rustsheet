@@ -775,8 +775,8 @@
     "v": "#N/A"
    },
    "A273": {
-    "t": "n",
-    "v": 0.0
+    "t": "e",
+    "v": "#VALUE!"
    },
    "A274": {
     "t": "e",
@@ -1618,8 +1618,8 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "b00bda26867b3788c03bdec34961e951ddea8d35949f9300cd6cbd57b8dff662",
   "kind": "excel-graph",
-  "produced_at": "2026-10-22T23:50:29+00:00",
+  "produced_at": "2026-10-28T15:51:41+00:00",
   "version": null,
-  "workbook_name": "535d3455fd0855d866bc211bfd2ec451c2a1e4e86a93130ee76af190912c5339.xlsx"
+  "workbook_name": "a162f05177696bb2e735c3e2879548df216d9e70e3449828b385f52ceb02682e.xlsx"
  }
 }

@@ -296,7 +296,7 @@ fn arguments_far_out_of_range_are_errors_without_a_panic() {
 #[test]
 fn a_lifted_call_is_charged_for_its_solver_and_schedule_work() {
     // SPEC-0011 "Security rule for kernel work": a YIELD or ODDFYIELD element is charged up to
-    // 2^24 (8 elements at the calendar's longest schedule), ODDFPRICE eight schedule walks (256)
+    // 2^26 (2 elements at the calendar's longest schedule; T-2879), ODDFPRICE eight schedule walks (256)
     // and ODDLPRICE and ODDLYIELD two (1,024), each in proportion to the element's coupon count
     // plus one (T-1869), so short schedules lift far more; financial.md "Yield and odd-coupon
     // work cap" (a DEVIATION). Past the budget the call is #ERROR! before any element runs.
@@ -308,12 +308,12 @@ fn a_lifted_call_is_charged_for_its_solver_and_schedule_work() {
         ),
         (
             "A2",
-            "=ROWS(YIELD(SEQUENCE(8)*0+1,2958465,0.05,1E300,100,4,1))",
-            "8",
+            "=ROWS(YIELD(SEQUENCE(2)*0+1,2958465,0.05,1E300,100,4,1))",
+            "2",
         ),
         (
             "A3",
-            "=ROWS(YIELD(SEQUENCE(9)*0+1,2958465,0.05,1E300,100,4,1))",
+            "=ROWS(YIELD(SEQUENCE(3)*0+1,2958465,0.05,1E300,100,4,1))",
             "#ERROR!",
         ),
         (

@@ -10,6 +10,7 @@
 /// measured exact rate 0.950 on [2.02, 3] (1,862,260 distinct x) and 0.991 through the (3, 8)
 /// reduction; see T-2122. `k2_ref.py` (W2 and reviewer 3): N's first three stages and
 /// D's first two stay in x87 registers, every op from the hand-off product on is stored.
+/// FITTED(T-1941, 524288 cells, GAMMALN x 2..3, 1024 dense clusters)
 #[rustfmt::skip]
 pub(super) const K2_N: [f64; 10] = [
     f64::from_bits(0x3CC5_7179_94EF_45D1), // 0x1.5717994ef45d1p-51
@@ -25,6 +26,7 @@ pub(super) const K2_N: [f64; 10] = [
 ];
 
 /// K2's denominator (see [`K2_N`]), the leading coefficient first.
+/// FITTED(T-1941, 524288 cells, GAMMALN x 2..3, 1024 dense clusters)
 #[rustfmt::skip]
 pub(super) const K2_D: [f64; 9] = [
     f64::from_bits(0x3ED0_3CAD_F2CC_53B6), // 0x1.03cadf2cc53b6p-18
@@ -41,6 +43,7 @@ pub(super) const K2_D: [f64; 9] = [
 /// Reviewer 3's "cand9" K2 numerator (HANDOFF2 §12.1), evaluated all-stored, used for
 /// x - 2 below 0.01 (`gammaln.rs` `K2_CAND9_BELOW`, the measured optimum, statistics.md). Excel's structure with the best known coefficients near 2,
 /// not bit-exact; measured exact rate 0.983 on (2, 2.02) (192,512 distinct x, with the cut: cand9 below 2.01, `K2_N` above); see T-2122. Only p1..p3 differ from [`K2_N`] (HANDOFF2's "p1..p5" is relative to `grid_a`).
+/// FITTED(T-1941, 524288 cells, GAMMALN x 2..3, clusters and near-2 ladders)
 #[rustfmt::skip]
 pub(super) const K2_CAND9_N: [f64; 10] = [
     f64::from_bits(0x3CC5_7179_94EF_45D1), // 0x1.5717994ef45d1p-51
@@ -56,6 +59,7 @@ pub(super) const K2_CAND9_N: [f64; 10] = [
 ];
 
 /// The cand9 denominator (see [`K2_CAND9_N`]); only q0..q2 differ from [`K2_D`].
+/// FITTED(T-1941, 524288 cells, GAMMALN x 2..3, clusters and near-2 ladders)
 #[rustfmt::skip]
 pub(super) const K2_CAND9_D: [f64; 9] = [
     f64::from_bits(0x3ED0_3CAD_F2CC_5614), // 0x1.03cadf2cc5614p-18
@@ -73,6 +77,7 @@ pub(super) const K2_CAND9_D: [f64; 9] = [
 /// raw-x Horner with every op stored, the constant term first (`w5/p4/ss_fc.txt`). Excel's structure
 /// with the best known coefficients, not bit-exact; measured exact rate 0.322 on [0.7, 1.5] (8,082,879 distinct x) and 0.869 through the
 /// x < 0.7 recursion; see T-2122.
+/// FITTED(T-1941, 8082879 cells, GAMMALN x 0.7..1.5)
 #[rustfmt::skip]
 pub(super) const K3_N: [f64; 10] = [
     f64::from_bits(0xBF45_9F97_CB25_92FF), // -0x1.59f97cb2592ffp-11
@@ -88,6 +93,7 @@ pub(super) const K3_N: [f64; 10] = [
 ];
 
 /// K3's denominator (see [`K3_N`]), the constant term first; D0 = 2^-13.
+/// FITTED(T-1941, 8082879 cells, GAMMALN x 0.7..1.5)
 #[rustfmt::skip]
 pub(super) const K3_D: [f64; 10] = [
     f64::from_bits(0x3F20_0000_0000_0000), // 0x1.0000000000000p-13
@@ -106,6 +112,7 @@ pub(super) const K3_D: [f64; 10] = [
 /// (9,9), raw-x Horner with every op stored, the constant term first (W6's
 /// `w6/data/xl_chain_d3ls.txt`; D0 is not a power of two and is not normalised away). Excel's
 /// structure with the best known coefficients, not bit-exact; measured exact rate 0.428 on (1.5, 2] (7,548,389 distinct x); see T-2122.
+/// FITTED(T-1941, 7548389 cells, GAMMALN x 1.5..2)
 #[rustfmt::skip]
 pub(super) const R15_N: [f64; 10] = [
     f64::from_bits(0x3F66_733C_BA7A_7048), // 0x1.6733cba7a7048p-9
@@ -121,6 +128,7 @@ pub(super) const R15_N: [f64; 10] = [
 ];
 
 /// The (1.5, 2] denominator (see [`R15_N`]), the constant term first.
+/// FITTED(T-1941, 7548389 cells, GAMMALN x 1.5..2)
 #[rustfmt::skip]
 pub(super) const R15_D: [f64; 10] = [
     f64::from_bits(0x3F5A_E74A_1AEB_96D0), // 0x1.ae74a1aeb96d0p-10
@@ -139,6 +147,7 @@ pub(super) const R15_D: [f64; 10] = [
 /// the constant term first (W4's `w4/k1r/plain1.txt`). Excel's structure with the best known
 /// coefficients, not bit-exact; measured exact rate 0.784 on GAMMA [1, 10) (4,229,812 distinct x), 0.838
 /// on (0, 1) and 0.876 on [-10, 0), all through G; see T-2122.
+/// FITTED(T-1941, 4229812 cells, GAMMA x 1..10)
 #[rustfmt::skip]
 pub(super) const K1_N: [f64; 8] = [
     f64::from_bits(0x40EB_5834_ABBE_A656), // 0x1.b5834abbea656p+15
@@ -152,6 +161,7 @@ pub(super) const K1_N: [f64; 8] = [
 ];
 
 /// K1's denominator (see [`K1_N`]), the constant term first; D0 = -1/16.
+/// FITTED(T-1941, 4229812 cells, GAMMA x 1..10)
 #[rustfmt::skip]
 pub(super) const K1_D: [f64; 8] = [
     f64::from_bits(0xBFB0_0000_0000_0000), // -0x1.0000000000000p-4

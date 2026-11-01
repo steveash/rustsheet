@@ -15,9 +15,11 @@
 //!   empty cache (`run_pass`). The pass that completes therefore saw no such write after any
 //!   cached build.
 //! * A read of a circular cell marks its reader circular, so a range holding one is not cached.
-//! * Iterative calculation joins each reader of a cycle member to the cycle, and Excel-order
-//!   passes stop at unevaluated reads; neither caches. Outside a pass (data tables, conditional
-//!   formats) nothing is cached either.
+//! * Iterative calculation joins each reader of a cycle member to the cycle, which a cached read
+//!   would skip: a vector whose build read a member (`Model::cycle_joins` moved) is not stored,
+//!   and a cell joins only before it is evaluated, so no cached range holds one (T-0485).
+//! * Excel-order passes stop at unevaluated reads and do not cache. Outside a pass (data tables,
+//!   conditional formats, iteration sweeps) nothing is cached either.
 //!
 //! A range of a linked workbook's cache (`LookupTable::External`, T-0474) reads values that never
 //! change during a pass, so its vector is cached whenever caching is safe at all.
@@ -110,6 +112,7 @@ impl Model {
             }
         }
         let evaluating_reads = self.evaluation.evaluating_reads;
+        let joins = self.cycle_joins();
         let vector = SearchVector::with_len(self.prepare_array(left, end, down), len);
         let cache = &self.evaluation.search_cache;
         if cacheable
@@ -117,6 +120,7 @@ impl Model {
             && self.pass_cache_safe()
             && self.evaluation.blocked_on.is_none()
             && self.evaluation.evaluating_reads == evaluating_reads
+            && self.cycle_joins() == joins
             && !self.any_circular(left, end)
         {
             let cache = &mut self.evaluation.search_cache;

@@ -1,4 +1,5 @@
 use crate::{
+    area_budget::{clone_units, too_much_work},
     calc_result::CalcResult,
     cast::calc_result_to_array_node,
     expressions::{
@@ -17,7 +18,7 @@ use std::sync::Arc;
 
 use super::r#let::assign_variable_ids;
 use super::read_once::read_once;
-use crate::evaluation::stack_address;
+use crate::evaluation_limits::stack_address;
 use crate::variable_stack::Binding;
 
 /// A LAMBDA's parameters and body as `Model::lambdas` stores them, shared with the defined name
@@ -45,49 +46,22 @@ pub(crate) struct NamedLambdas {
     prepared: HashMap<(usize, usize), PreparedLambda>,
 }
 
-/// What a LET or a LAMBDA call gives, for [`Model::close_over`]: the LAMBDAs it holds, the one it
-/// is or the elements of an array of them (`LET(k,100,SCAN(..,LAMBDA(f,x,LAMBDA(z,f(z)*k+x))))`,
-/// T-2039).
-pub(crate) trait ScopeResult {
-    fn lambdas(&self) -> Vec<usize>;
-}
-
-impl ScopeResult for CalcResult {
-    fn lambdas(&self) -> Vec<usize> {
-        match self {
-            CalcResult::Lambda(id) => vec![*id],
-            CalcResult::Array(rows) => rows
-                .iter()
-                .flatten()
-                .filter_map(|node| match node {
-                    ArrayNode::Lambda(id) => Some(*id),
-                    _ => None,
-                })
-                .collect(),
-            _ => Vec::new(),
+impl NamedLambdas {
+    /// Drops the defined-name LAMBDAs made with an id of at least `mark`, with their patched bodies,
+    /// once the root formula that named them is evaluated (`Model::evaluate_root_cell`, T-2925).
+    pub(crate) fn drop_since(&mut self, mark: usize) {
+        if self.named.is_empty() {
+            return;
         }
+        self.ids.retain(|_, (_, id)| *id < mark);
+        self.named.retain(|id| *id < mark);
+        self.prepared.retain(|(id, _), _| *id < mark);
     }
-}
 
-impl ScopeResult for RefArg {
-    fn lambdas(&self) -> Vec<usize> {
-        match self {
-            RefArg::Value(value) => value.lambdas(),
-            RefArg::Ranges(_) | RefArg::Grid(_) => Vec::new(),
-        }
-    }
-}
-
-impl ScopeResult for Binding {
-    fn lambdas(&self) -> Vec<usize> {
-        match self.resolved() {
-            Binding::Value(value) | Binding::ReadOnce(value) => value.lambdas(),
-            Binding::Omitted
-            | Binding::Areas(_)
-            | Binding::Span(_)
-            | Binding::Grid(_)
-            | Binding::Shared(_) => Vec::new(),
-        }
+    /// Whether no defined-name LAMBDA is kept (for the tests of T-2925).
+    #[cfg(test)]
+    pub(crate) fn is_empty(&self) -> bool {
+        self.ids.is_empty() && self.named.is_empty() && self.prepared.is_empty()
     }
 }
 
@@ -101,6 +75,8 @@ pub(crate) struct LambdaCaller {
     /// Whether a body that is a TRIMRANGE of a range returns the trimmed reference
     /// (`LambdaCaller::keeping_trimrange_references`).
     trimrange_references: bool,
+    /// Whether the body is a formula root that snaps a near-zero `+`/`-` (`Model::call_lambda`).
+    root_snap: bool,
 }
 
 impl LambdaCaller {
@@ -120,6 +96,16 @@ impl LambdaCaller {
     /// IMSQRT of a multi-cell reference is (probes/t2579-array-value-edges B49; T-2596).
     pub(crate) fn keeping_trimrange_references(mut self) -> Self {
         self.trimrange_references = true;
+        self
+    }
+
+    /// This caller with the body read as a formula root: a near-zero `+`/`-` there snaps
+    /// (`Model::evaluate_formula_root`), at every call. An in-place call snaps
+    /// (`Model::call_lambda`), and so does each call MAP, MAKEARRAY, BYROW, BYCOL, REDUCE and
+    /// SCAN make, REDUCE's and SCAN's at every step, so `REDUCE(0,{0.1,0.2,-0.3,1E-16},
+    /// LAMBDA(a,x,a+x))` is 1E-16 (probes/t3095-snap-lambda-helpers, T-3111).
+    pub(crate) fn snapping_root(mut self) -> Self {
+        self.root_snap = true;
         self
     }
 }
@@ -146,14 +132,6 @@ struct PreparedLambda {
 /// parameter), so the default, 1 MB, half the smallest common thread stack (2 MB), holds about
 /// 400 calls in a release build and 116 in a debug build (T-0444, decision 0100).
 const LAMBDA_STACK_SHARE: usize = 4;
-
-/// Most cells the LAMBDAs that outlive their scope may capture while one root cell is evaluated
-/// (`Model::close_over`; the cells it evaluates as dependencies share the budget, which
-/// `Model::evaluate_root_cell` resets): a REDUCE whose steps each return a closure over a fresh
-/// array keeps every step's array. Past it a capture is `#NUM!` (DEVIATION, decision 0014:
-/// docs/excel-semantics/arrays.md "LAMBDAs capture at most 4,194,304 cells"; Excel unprobed).
-/// Four whole columns.
-const MAX_CAPTURED_CELLS: usize = 1 << 22;
 
 /// `#REF!` for a reference that is called like a function.
 fn reference_called(cell: CellReferenceIndex) -> CalcResult {
@@ -238,7 +216,8 @@ impl Model {
         }
         let mut caller = self
             .lambda_caller(&callee, call_args.len())
-            .keeping_references();
+            .keeping_references()
+            .snapping_root();
         self.call_lambda_caller_with_nodes_arg(&mut caller, call_args, cell)
     }
 
@@ -310,7 +289,13 @@ impl Model {
         // A reference is passed as a reference, a single cell too, so that
         // `LAMBDA(x, MAX(x))(A2)` ignores the text in A2 (upstream MAX_MIN.xlsx H54).
         let provided = call_args.len();
-        let mut caller = self.lambda_caller(&lambda_result, provided);
+        // A called LAMBDA's body is a formula root: a `+`/`-` there snaps a near-zero result,
+        // `=LAMBDA(x,x+0.2-0.3)(0.1)` is 0, where a LET body does not
+        // (docs/excel-semantics/numbers.md "Near-zero snapping", probes/t3049-snap-under-pickers
+        // B17, C17). A defined-name LAMBDA snaps alike, also when another named LAMBDA calls it
+        // (probes/t3094-snap-lambda-call-forms C2-F5, J2-J5). The helpers' calls (MAP, REDUCE,
+        // ...) snap alike (`LambdaCaller::snapping_root`).
+        let mut caller = self.lambda_caller(&lambda_result, provided).snapping_root();
         // A defined-name LAMBDA starts from the body its last call patched (`NamedLambdas`). It
         // is taken out while this call runs, so a call inside it (recursion, `MyFn(MyFn(x))`)
         // patches its own. No LAMBDA created since it was put back reads its ids: only an
@@ -355,6 +340,7 @@ impl Model {
             prepared: None,
             references: false,
             trimrange_references: false,
+            root_snap: false,
         }
     }
 
@@ -435,6 +421,12 @@ impl Model {
         cell: CellReferenceIndex,
         bind: impl FnMut(&mut Self, usize) -> Binding,
     ) -> RefArg {
+        // Past the formula's work budget no LAMBDA runs, so a helper's loop over its remaining
+        // elements does no work and the run ends at once; the formula's value is the budget's
+        // error whatever the helper returns (SPEC-0024 section 3, `with_area_budget`).
+        if self.work_exceeded() {
+            return RefArg::Value(too_much_work(cell));
+        }
         let Some(stack_base) = self.lambda_stack_base() else {
             return RefArg::Value(CalcResult::new_error(
                 Error::NUM,
@@ -494,6 +486,13 @@ impl Model {
                 // ISREF is TRUE, SUM skips its text and GROUPBY makes it `#VALUE!`
                 // (probes/lambda-body-picked-references, take-drop-over-ifs-switch-picks A78).
                 let result = match body.ungrouped() {
+                    // A root `+`/`-` is never a reference, so a reference-keeping in-place call
+                    // snaps it too: an in-place call passed to another one is bound in reference
+                    // context (`bind_argument`), and `LAMBDA(a,x,a+x)(LAMBDA(a,x,a+x)(..),..)`
+                    // snaps at each level (probes/t3095-snap-lambda-helpers B94, B117).
+                    _ if caller.root_snap && matches!(body, Node::OpSumKind { .. }) => {
+                        RefArg::Value(self.evaluate_formula_root(body, cell, false))
+                    }
                     _ if caller.references => self.evaluate_picked_reference_arg(body, cell),
                     Node::FunctionKind {
                         kind: Function::Trimrange,
@@ -550,22 +549,28 @@ impl Model {
         provided: usize,
         cell: CellReferenceIndex,
     ) -> PreparedLambda {
-        let definition =
-            self.lambda_definition(lambda_result, provided, cell)
-                .map(|(parameters, mut body)| {
-                    let ids: Vec<usize> = parameters
-                        .iter()
-                        .map(|param| {
-                            let raw_id = self.get_next_variable_id();
-                            assign_variable_ids(&mut body, &param.name, raw_id as u32);
-                            raw_id
-                        })
-                        .collect();
-                    // After every id is patched in: a read is found by its id.
-                    let once = read_once(&body, &ids);
-                    let ids = ids.into_iter().zip(once).collect();
-                    (ids, body)
-                });
+        // The body is cloned for each fresh patch, which a body making a LAMBDA that reads its
+        // parameters needs on every call (SPEC-0024 section 1, "LAMBDA values made").
+        let definition = self
+            .lambda_definition(lambda_result, provided, cell)
+            .and_then(|definition| {
+                self.spend_work(clone_units(&definition.1), cell)
+                    .map(|()| definition)
+            })
+            .map(|(parameters, mut body)| {
+                let ids: Vec<usize> = parameters
+                    .iter()
+                    .map(|param| {
+                        let raw_id = self.get_next_variable_id();
+                        assign_variable_ids(&mut body, &param.name, raw_id as u32);
+                        raw_id
+                    })
+                    .collect();
+                // After every id is patched in: a read is found by its id.
+                let once = read_once(&body, &ids);
+                let ids = ids.into_iter().zip(once).collect();
+                (ids, body)
+            });
         PreparedLambda {
             definition,
             lambda_mark: self.last_lambda_id,
@@ -639,6 +644,9 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let last = args.len() - 1;
+        if let Err(error) = self.spend_lambda_made(&args[last], cell) {
+            return error;
+        }
         let body = args[last].clone();
         let parameters: Vec<NamedVariable> = args[..last]
             .iter()
@@ -670,104 +678,6 @@ impl Model {
         }
 
         CalcResult::Lambda(self.store_lambda(Arc::new((parameters, body))))
-    }
-
-    /// Gives the LAMBDAs a LET or a LAMBDA call made, and that outlive it, what they read of its
-    /// variables `ids` (`mark` is the first lambda id it could have made). Called at the end of
-    /// that scope, while `ids` are still bound: a LAMBDA leaves a scope only through its result
-    /// (a REDUCE or SCAN accumulator, a LET-bound `mk(5)`), so the LAMBDAs reachable from it, the
-    /// result itself and those its captures hold, capture each variable of `ids` their bodies
-    /// read, as it is bound now. Excel's closures read those values:
-    /// `LET(mk,LAMBDA(a,LAMBDA(b,a+b)),f,mk(1),a,50,f(0))` is 1
-    /// (docs/excel-semantics/arrays.md "LAMBDAs that outlive their call",
-    /// probes/lambda-escaping-closures, T-0439). A LAMBDA used only inside the scope captures
-    /// nothing, so a LAMBDA made on each REDUCE step copies nothing.
-    pub(crate) fn close_over(
-        &mut self,
-        result: &impl ScopeResult,
-        ids: &[usize],
-        mark: usize,
-        cell: CellReferenceIndex,
-    ) {
-        // Nothing made since `mark` can capture: the result is not walked (a LET giving a large
-        // array of numbers costs nothing here).
-        if ids.is_empty() || self.last_lambda_id <= mark {
-            return;
-        }
-        let mut pending = result.lambdas();
-        let mut seen = HashSet::new();
-        while let Some(lambda) = pending.pop() {
-            if lambda < mark || !seen.insert(lambda) {
-                continue;
-            }
-            let held = self.lambda_captures.get(&lambda).into_iter().flatten();
-            pending.extend(held.flat_map(|(_, binding)| binding.lambdas()));
-            let Some(definition) = self.lambdas.get(&lambda) else {
-                continue;
-            };
-            let mut read = Vec::new();
-            definition.1.reads_variable(|id| {
-                if ids.contains(&id) {
-                    read.push(id);
-                }
-                false
-            });
-            read.sort_unstable();
-            read.dedup();
-            for id in read {
-                let cells = self.variable_stack.cells_to_share(id);
-                self.captured_cells = self.captured_cells.saturating_add(cells);
-                let binding = if self.captured_cells > MAX_CAPTURED_CELLS {
-                    // DEVIATION (decision 0014): arrays.md "LAMBDAs capture at most 4,194,304 cells".
-                    Some(Arc::new(Binding::Value(CalcResult::new_error(
-                        Error::NUM,
-                        cell,
-                        "LAMBDAs capture too many cells".to_string(),
-                    ))))
-                } else {
-                    self.variable_stack.shared(id)
-                };
-                if let Some(binding) = binding {
-                    pending.extend(binding.lambdas());
-                    self.lambda_captures
-                        .entry(lambda)
-                        .or_default()
-                        .push((id, binding));
-                }
-            }
-        }
-    }
-
-    /// Binds what the LAMBDA `lambda` captured (`close_over`) for one call of it, each
-    /// variable that is not bound already, and gives back the ids it bound, for
-    /// [`Self::unbind_captures`]. A bound one is in scope still, bound to what was captured: the
-    /// same LET or call made the LAMBDA, since every evaluation of a LET, and every call of a
-    /// body that made a LAMBDA reading its parameters, binds fresh ids (`call_prepared`). So a
-    /// LAMBDA called where it was made copies nothing.
-    fn bind_captures(&mut self, lambda: &CalcResult, cell: CellReferenceIndex) -> Vec<usize> {
-        let CalcResult::Lambda(id) = lambda else {
-            return Vec::new();
-        };
-        let Some(captures) = self.lambda_captures.get(id) else {
-            return Vec::new();
-        };
-        let mut bound = Vec::new();
-        for (variable, binding) in captures {
-            if self.variable_stack.get(*variable).is_none() {
-                // Shared, not copied: an escaped closure over a large array is called once per
-                // element by MAP (`a_closure_over_a_large_array_is_called_without_copying_it`).
-                self.variable_stack.bind_shared(*variable, binding, cell);
-                bound.push(*variable);
-            }
-        }
-        bound
-    }
-
-    /// Unbinds what [`Self::bind_captures`] bound.
-    fn unbind_captures(&mut self, bound: Vec<usize>) {
-        for variable in bound {
-            self.variable_stack.remove(variable);
-        }
     }
 
     /// Stores `definition` under a new lambda id, which it returns.

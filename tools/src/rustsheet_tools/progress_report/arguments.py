@@ -1,10 +1,11 @@
-"""The progress page's `arguments` block (SPEC-0022 later phase, T-0077).
+"""The progress page's `arguments` block (SPEC-0022 later phase, T-0077, T-0083).
 
 Counts the in-scope functions per band of single-argument coverage: of the argument classes each
-catalog parameter's mode is expected to see, the share some Excel-evidence cell passes it. The
-classes, the expected set per mode and each function's share are the eval report's
-(report.json `argument_coverage[]`, crates/rustsheet-eval/src/argument_coverage.rs); this module
-only checks the shape, counts bands and takes a mean and a median.
+catalog parameter's mode is expected to see, the share some Excel-evidence cell passes it; beside
+it, pairwise coverage: of the pairs of two parameters and an expected class of each, the share one
+call passes together. The classes, the expected set per mode and each function's shares are the
+eval report's (report.json `argument_coverage[]`, crates/rustsheet-eval/src/argument_coverage.rs);
+this module only checks the shape, counts bands and takes means and medians.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from rustsheet_tools.progress_report.markdown import pct, table
 from rustsheet_tools.progress_report.model import EN, ProgressReportError, field, items
 
 TASK = "T-0077"
+PAIRWISE_TASK = "T-0083"
 # Single-argument coverage bands: (label, low, high) in percent, low inclusive, high exclusive;
 # the last band is exactly 100%.
 BANDS: tuple[tuple[str, float, float], ...] = (
@@ -27,16 +29,20 @@ BANDS: tuple[tuple[str, float, float], ...] = (
     ("100%", 100.0, 101.0),
 )
 LOWEST = 10
-# The one-off assessment of 2026-10-25 (T-0077 Context): its average single-argument coverage.
+# The one-off assessment of 2026-10-25 (T-0077, T-0083 Context): its average single-argument
+# coverage and its median pairwise coverage.
 ASSESSMENT = "94%"
+ASSESSMENT_PAIRWISE_MEDIAN = "44%"
 
 
 @dataclass(frozen=True)
 class FunctionCoverage:
-    """One in-scope function's share of expected argument classes seen (0 to 1)."""
+    """One in-scope function's share of expected argument classes seen (0 to 1), and of expected
+    class pairs seen together (`None` with fewer than two counted parameters)."""
 
     name: str
     share: float
+    pairwise: float | None
 
 
 @dataclass(frozen=True)
@@ -55,15 +61,23 @@ def load(report: dict[str, Any]) -> Coverage:
     for i, row in enumerate(rows):
         where = f"report.json argument_coverage[{i}]"
         name = field(row, "name", where)
-        share = field(row, "single", where)
+        share = _share(field(row, "single", where), f"{where}.single")
+        pairwise = _share(field(row, "pairwise", where, PAIRWISE_TASK), f"{where}.pairwise")
         if share is None:
             uncounted += 1
             continue
-        if isinstance(share, bool) or not isinstance(share, int | float) or not 0 <= share <= 1:
-            msg = f"{where}.single is not a share between 0 and 1: {share!r}"
-            raise ProgressReportError(msg)
-        functions.append(FunctionCoverage(str(name), float(share)))
+        functions.append(FunctionCoverage(str(name), share, pairwise))
     return Coverage(functions, uncounted)
+
+
+def _share(value: Any, where: str) -> float | None:
+    """`value` checked to be `None` or a share between 0 and 1."""
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int | float) or not 0 <= value <= 1:
+        msg = f"{where} is not a share between 0 and 1: {value!r}"
+        raise ProgressReportError(msg)
+    return float(value)
 
 
 def band_counts(c: Coverage) -> list[tuple[str, int]]:
@@ -93,6 +107,22 @@ def block(c: Coverage) -> str:
         f"Average single-argument coverage is **{100 * mean:.1f}%** (median {100 * median:.1f}%) "
         f"over {n:,} functions; {c.uncounted:,} have no counted parameter. The one-off assessment "
         f"of 2026-10-25 measured {ASSESSMENT} with its own classifier. Lowest: {low}.\n\n"
+        + _pairwise(c)
         + table(["Coverage", "Functions", "Share"], rows)
         + "\n"
+    )
+
+
+def _pairwise(c: Coverage) -> str:
+    """The pairwise paragraph: mean and median over the functions with two counted parameters."""
+    shares = [f.pairwise for f in c.functions if f.pairwise is not None]
+    if not shares:
+        return "No in-scope function has two counted parameters for pairwise coverage.\n\n"
+    return (
+        "Pairwise coverage counts, for each two counted parameters, the pairs of an expected class "
+        "of each that one Excel-evidence call passes together. "
+        f"Average pairwise coverage is **{100 * statistics.fmean(shares):.1f}%** "
+        f"(median {100 * statistics.median(shares):.1f}%) over {len(shares):,} functions with two "
+        f"or more counted parameters; the one-off assessment of 2026-10-25 measured a "
+        f"{ASSESSMENT_PAIRWISE_MEDIAN} median.\n\n"
     )

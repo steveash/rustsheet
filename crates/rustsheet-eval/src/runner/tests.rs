@@ -156,6 +156,27 @@ fn graph_zero_hides_only_a_subnormal() {
     assert!(!graph_hides_subnormal(&e(0.0, true), &Value::Number(0.0)));
 }
 
+/// A spec suite `t` in `dir` with a `deviations` file, and its case at `path`
+/// (`cases/a.case.json`).
+fn deviations_suite(dir: &std::path::Path, path: PathBuf) -> (Suite, CaseFile) {
+    let manifest: SuiteManifest = toml::from_str(
+        "name = \"t\"\nkind = \"spec\"\nlicense = \"MIT\"\nroot = \"cases\"\n\
+         deviations = \"deviations\"\n",
+    )
+    .expect("manifest");
+    let suite = Suite {
+        manifest,
+        dir: dir.to_path_buf(),
+        cache_dir: PathBuf::new(),
+    };
+    let case = CaseFile {
+        id: "t/a.case.json".into(),
+        sidecar: oracle_sidecar(&path),
+        path,
+    };
+    (suite, case)
+}
+
 /// A listed cell is a deviation when it gives its pinned value, a pass when it matches Excel
 /// and a failure otherwise; a deviation leaves the case passing, and a line naming an
 /// unscored cell is an error (decision 0036).
@@ -172,21 +193,7 @@ fn listed_deviations_score_apart_from_bit_exact() {
         ),
     )
     .expect("write case");
-    let manifest: SuiteManifest = toml::from_str(
-        "name = \"t\"\nkind = \"spec\"\nlicense = \"MIT\"\nroot = \"cases\"\n\
-         deviations = \"deviations\"\n",
-    )
-    .expect("manifest");
-    let suite = Suite {
-        manifest,
-        dir: dir.clone(),
-        cache_dir: PathBuf::new(),
-    };
-    let case = CaseFile {
-        id: "t/a.case.json".into(),
-        sidecar: oracle_sidecar(&path),
-        path,
-    };
+    let (suite, case) = deviations_suite(&dir, path);
     let write = |cells: &[(&str, &str)]| {
         let lines: Vec<String> = cells
             .iter()
@@ -232,6 +239,63 @@ fn listed_deviations_score_apart_from_bit_exact() {
         .is_some_and(|m| m.contains("unscored cell S!Z9")));
 }
 
+/// A whole-case line pins a case the engine refuses with its message: every scored cell is a
+/// deviation and the case passes. A refusal with another message stays an engine error, and a
+/// case that loads scores as usual with every cell listed, so a match reads stale (decision 0168).
+#[test]
+fn a_whole_case_line_pins_a_refused_case() {
+    let dir = std::env::temp_dir().join(format!("rs-runner-{}-refusal", std::process::id()));
+    std::fs::create_dir_all(dir.join("cases")).expect("mkdir");
+    let path = dir.join("cases/a.case.json");
+    let write_case = |a1: &str| {
+        std::fs::write(
+            &path,
+            format!(
+                r#"{{"format":"{CASE_FORMAT}","sheets":[{{"name":"S","cells":{{"A1":"{a1}","B1":"=2"}}}}],
+                   "expected":{{"S!A1":{{"t":"n","v":1}},"S!B1":{{"t":"n","v":2}}}}}}"#
+            ),
+        )
+        .expect("write case");
+    };
+    let (suite, case) = deviations_suite(&dir, path.clone());
+    let pin = |message: &str| {
+        std::fs::write(
+            dir.join("deviations"),
+            format!(
+                "a.case.json\t*\tdecision 0014\tdocs/excel-semantics/syntax.md#x\t\
+                 refused \"{message}\""
+            ),
+        )
+        .expect("write deviations");
+    };
+    let engine: Arc<dyn Engine + Send> = Arc::new(crate::engine::RustSheetEngine);
+    let run = || run_case(&engine, &suite, &case, Duration::from_secs(60));
+    let too_deep = format!("={}1{}", "(".repeat(300), ")".repeat(300));
+    write_case(&too_deep);
+    pin("nested too deeply");
+    let refused = run();
+    pin("another limit");
+    let other = run();
+    write_case("=1");
+    pin("nested too deeply");
+    let loaded = run();
+    let _ = std::fs::remove_dir_all(&dir);
+
+    assert_eq!(refused.status, CaseStatus::Pass);
+    assert_eq!(
+        (refused.checked, refused.passed, refused.deviations),
+        (2, 0, 2)
+    );
+    assert!(refused
+        .cells
+        .iter()
+        .all(|c| c.verdict == Verdict::Deviation && c.listed_deviation));
+    assert_eq!(other.status, CaseStatus::EngineError);
+    assert_eq!(loaded.status, CaseStatus::Pass);
+    assert_eq!((loaded.passed, loaded.deviations), (2, 0));
+    assert!(loaded.cells.iter().all(|c| c.listed_deviation));
+}
+
 /// An oracle sidecar replaces the hand expectation for the same cell, however the hand key
 /// was written; it is never scored next to it (smoke/d-function-criteria J2, 2026-10-04).
 #[test]
@@ -251,11 +315,14 @@ fn oracle_value_replaces_hand_value_for_the_same_cell() {
            "sheets":{{"S":{{"A1":{{"t":"n","v":0}},"A2":{{"t":"n","v":1}}}},"My S":{{"A1":{{"t":"n","v":2}}}}}}}}"#
     );
     std::fs::write(dir.join("a.oracle.json"), oracle).expect("write oracle");
-    let prepared = prepare_spec(&CaseFile {
-        id: "t/a".into(),
-        sidecar: oracle_sidecar(&path),
-        path,
-    });
+    let prepared = prepare_spec(
+        &CaseFile {
+            id: "t/a".into(),
+            sidecar: oracle_sidecar(&path),
+            path,
+        },
+        false,
+    );
     let _ = std::fs::remove_dir_all(&dir);
     let prepared = prepared.expect("prepare");
     let excel_flags: Vec<(String, String, bool)> = prepared
@@ -305,11 +372,14 @@ fn undecoded_rich_errors_are_not_scored() {
            "sheets":{{"S":{{"A1":{{"t":"e","v":"#UNDECODED!"}},"A2":{{"t":"n","v":2}}}}}}}}"##
     );
     std::fs::write(dir.join("a.oracle.json"), oracle).expect("write oracle");
-    let prepared = prepare_spec(&CaseFile {
-        id: "t/a".into(),
-        sidecar: oracle_sidecar(&path),
-        path,
-    });
+    let prepared = prepare_spec(
+        &CaseFile {
+            id: "t/a".into(),
+            sidecar: oracle_sidecar(&path),
+            path,
+        },
+        false,
+    );
     let _ = std::fs::remove_dir_all(&dir);
     let cells: Vec<String> = prepared
         .expect("prepare")
@@ -340,9 +410,9 @@ fn invariant_volatile_cells_are_scored() {
         sidecar: oracle_sidecar(&path),
     };
     std::fs::write(&path, case_with(r#""S!A1""#)).expect("write case");
-    let listed = prepare_spec(&file);
+    let listed = prepare_spec(&file, false);
     std::fs::write(&path, case_with(r#""S!A4""#)).expect("write case");
-    let stale = prepare_spec(&file).err();
+    let stale = prepare_spec(&file, false).err();
     let _ = std::fs::remove_dir_all(&dir);
     let listed = listed.expect("prepare");
     let mut cells: Vec<String> = listed
@@ -376,7 +446,7 @@ fn add_in_calls_are_not_scored() {
         path: path.clone(),
         sidecar: oracle_sidecar(&path),
     };
-    let prepared = prepare_spec(&file);
+    let prepared = prepare_spec(&file, false);
     let _ = std::fs::remove_dir_all(&dir);
     let prepared = prepared.expect("prepare");
     let mut cells: Vec<String> = prepared
@@ -409,13 +479,13 @@ fn duplicate_hand_keys_and_bad_oracle_keys_are_errors() {
         case_with(r#""S!A1":{"t":"n","v":1},"'S'!$A$1":{"t":"n","v":2}"#),
     )
     .expect("write case");
-    let duplicate = prepare_spec(&file).err();
+    let duplicate = prepare_spec(&file, false).err();
     std::fs::write(&path, case_with(r#""S!A1":{"t":"n","v":1}"#)).expect("write case");
     let oracle = format!(
         r#"{{"format":"{ORACLE_FORMAT}","source":{{"kind":"k","application":"x"}},"sheets":{{"S":{{"nope":{{"t":"n","v":1}}}}}}}}"#
     );
     std::fs::write(dir.join("a.oracle.json"), oracle).expect("write oracle");
-    let bad_oracle = prepare_spec(&file).err();
+    let bad_oracle = prepare_spec(&file, false).err();
     let _ = std::fs::remove_dir_all(&dir);
     assert!(duplicate.is_some_and(|e| e.contains("duplicate expectation")));
     assert!(bad_oracle.is_some_and(|e| e.contains("in oracle sidecar")));
@@ -425,4 +495,58 @@ fn duplicate_hand_keys_and_bad_oracle_keys_are_errors() {
 fn pending_case_with_engine_error_is_reported() {
     let r = run_pending("error");
     assert_eq!(r.status, CaseStatus::EngineError);
+}
+
+#[test]
+fn cell_id_joins_case_and_cell_key() {
+    assert_eq!(cell_id("suite/case", "Sheet1!A1"), "suite/case!Sheet1!A1");
+}
+
+/// A math sidecar beside the oracle sidecar attaches each cell's math value when its formula
+/// text matches; a value for another formula (stale) or a missing one leaves `math` unset, and
+/// such a cell's JSON has no `math` key. An unreadable sidecar makes the case invalid
+/// (SPEC-0029 "Math references for eval cells", T-3380).
+#[test]
+fn a_math_sidecar_attaches_math_values_to_matching_cells() {
+    let dir = std::env::temp_dir().join(format!("rs-runner-{}-math", std::process::id()));
+    std::fs::create_dir_all(dir.join("cases")).expect("mkdir");
+    let path = dir.join("cases/a.case.json");
+    std::fs::write(
+        &path,
+        format!(
+            r#"{{"format":"{CASE_FORMAT}","sheets":[{{"name":"S","cells":{{"A1":"=1/3","A2":"=2","A3":"=3"}}}}],
+               "expected":{{"S!A1":{{"t":"n","v":0.3333333}},"S!A2":{{"t":"n","v":2}},"S!A3":{{"t":"n","v":3}}}}}}"#
+        ),
+    )
+    .expect("write case");
+    let (suite, case) = deviations_suite(&dir, path);
+    std::fs::write(dir.join("deviations"), "").expect("write deviations");
+    let math = dir.join("cases/a.math.json");
+    let engine: Arc<dyn Engine + Send> = Arc::new(crate::engine::RustSheetEngine);
+    let run = || run_case(&engine, &suite, &case, Duration::from_secs(60));
+    std::fs::write(
+        &math,
+        r#"{"format":"rustsheet-math/v1","source":{"generator":"rustsheet-accuracy"},
+           "sheets":{"S":{"A1":{"t":"n","v":"0.33333333333333333333333333333333333333333333333333","f":"=1/3"},
+                          "A2":{"t":"n","v":"5","f":"=5"}}}}"#,
+    )
+    .expect("write math");
+    let attached = run();
+    std::fs::write(&math, "{not json").expect("write broken math");
+    let broken = run();
+    let _ = std::fs::remove_dir_all(&dir);
+
+    let maths: Vec<Option<MathValue>> = attached.cells.iter().map(|c| c.math.clone()).collect();
+    assert_eq!(maths, [Some(MathValue::Number(1.0 / 3.0)), None, None]);
+    assert_eq!(attached.status, CaseStatus::Fail); // A1 is still scored against Excel's value
+    let json = serde_json::to_value(&attached.cells).expect("json");
+    assert_eq!(
+        json[0]["math"],
+        serde_json::json!({"t": "n", "v": 1.0 / 3.0})
+    );
+    assert!(json[1].get("math").is_none() && json[2].get("math").is_none());
+    let back: Vec<CellResult> = serde_json::from_value(json).expect("read back");
+    assert_eq!(back[0].math, Some(MathValue::Number(1.0 / 3.0)));
+    assert_eq!(broken.status, CaseStatus::InvalidCase);
+    assert!(broken.message.is_some_and(|m| m.contains("a.math.json")));
 }

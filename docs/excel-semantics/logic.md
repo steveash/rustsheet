@@ -60,7 +60,9 @@ values (T-2621)").
 Ours: matches since T-0291 (`if_error_like` returns `CalcResult::EmptyArg`, for a blank fallback since T-2621; `lookup_key` reads it as 0 and
 `compare_values` reads any `EmptyArg`, an omitted argument included, as a blank cell; before T-0291 the six omitted-argument
 comparisons above were wrong). COUNTA reads its arguments in picked-reference context (TAKE, DROP, INDEX, OFFSET of a
-range stay references) and counts every element of an array value, the empty ones included (T-1395).
+range stay references) and counts every element of an array value, the empty ones included (T-1395). `CELL("contents", ref)` of a blank
+target is the same empty value since T-3053, and array arguments of VSTACK, HSTACK, TOCOL, TOROW, TAKE, CHOOSECOLS, FILTER
+and MAP reject it with `#VALUE!` (`VSTACK(IFERROR(Data!C11,5),1)`; information.md "CELL("contents", ref) as a VSTACK argument").
 Status: VERIFIED (excel-graph)
 Tasks: T-0235, T-0291, T-1294, T-1395
 See also lookup.md "VLOOKUP and HLOOKUP hand a blank result cell to their caller as 0": VLOOKUP, HLOOKUP and LOOKUP
@@ -99,3 +101,5 @@ Evidence: probes/t2653-ifs-text-condition-array-value, probes/t2653-ifs-text-con
 Untested: a later scalar error argument (`IFS("x",5,TRUE,1/0)`) and mismatched later shapes (`IFS("x",{1,2},TRUE,{1,2,3})`); the engine gives `#VALUE!` in every element.
 Status: VERIFIED (excel-graph); implemented (T-2653, `ifs_text_condition_error`).
 Tasks: T-2653
+
+See also: IF error arguments are recorded in criteria.md "Zero and negative SUMIFS criteria; IF error arguments; RIGHT numeric-text num_chars" (T-2980).

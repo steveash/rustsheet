@@ -129,7 +129,7 @@ pub(crate) fn violations(model: &mut Model) -> Vec<String> {
         }
 
         let node = model.parsed_formulas[sheet as usize][formula as usize]
-            .0
+            .evaluated
             .clone();
         let mut result = model.evaluate_node_in_context(&node, cell_ref);
         if let CalcResult::Range { left, right } = result {

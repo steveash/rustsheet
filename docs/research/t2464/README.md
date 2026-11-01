@@ -66,6 +66,9 @@ disagree, the verifier wins.
   - r3-m1-residual's min = 1 rule extends to a < 1 with b = 1 on one shape, (0.37, 1); the engine's GAMMALN is off on
     24 of 66 arguments below 1.
   - r3-fdensity: "ln x is a stored Excel LN product" is not established.
+- T-2512 (2026-10-31): `r3-bgrat`, bgrat for b ≠ 1/2. L140 bup+bgrat at 1 < b < 2 is RN(W + D), with W from Excel's
+  density in bup's orientation and D Excel's direct bgrat increment. The visible gap there is the density's lnB, and
+  TOMS's 15·eps hand-off to grat1 is why plain bgrat lost. Recorded in statistics.md's T-2464 integrated-model entry.
 
 ## Verifier code is deliberately independent
 Each `verify-*` directory holds a verifier's own parser, scorer and model re-implementation (`vlib.py`, `vparse.py`,
@@ -110,9 +113,8 @@ and passes (decision 0101).
   and the counts, and any data you derive. Do not edit files outside it, do not run git commit/push, and do not
   touch the engine source. The coordinator merges findings.
 
-## Rebuilding the harness
-`excelmath.py` runs the ignored test `functions::statistical::t2464_harness::t2464_kernels`
-(crates/rustsheet-engine/src/functions/statistical/t2464_harness.rs). Build it with
-`cargo test --release -p rustsheet_engine --lib t2464_kernels --no-run`, then copy the newest
-`target/release/deps/rustsheet_engine-*` executable to `docs/research/t2464/.harness-bin` (git-ignored), or point
-`T2464_HARNESS` at it.
+## Evaluating Excel's elementary functions
+`excelmath.excel` evaluates `=NAME(x)` on the engine's own kernels through the python bindings (`import rustsheet`;
+`make py-bindings` builds bindings/python/.venv, run the scripts with its python). The ignored test harness
+(`t2464_harness.rs`) that did this before is gone (T-2977); its `BRATIO` op is the engine's BETA.DIST, F.DIST and
+F.DIST.RT cells now, which take bratio's port where it reaches (`bratio::kernel_tails`).

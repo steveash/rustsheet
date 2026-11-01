@@ -297,16 +297,23 @@ Key schema elements:
   `enum` lists the usual text values of a parameter (CELL's info_type; T-1088), soft like `int`.
 - `cell: true` (a `range` parameter): the generator passes one cell. ISFORMULA lifts over a range, which would spill into
   the next formula, and Excel refuses a literal (T-1088).
-- `vector: true` (a `range` or `array` parameter): the generator passes a one-column range. LOOKUP and the XLOOKUP/XMATCH lookup
+- `vector: true` (a `range` or `array` parameter): the generator passes a one-column range (unless `wide_rate` or `row_rate` below say otherwise). LOOKUP and the XLOOKUP/XMATCH lookup
   vectors give only `#N/A` or `#VALUE!` for a 2-D range, which would hide the search itself (T-1238); WRAPROWS/WRAPCOLS
   wrap one column (T-1083).
+  `wide_rate: <share>` makes that share of the draws 2-D and `row_rate: <share>` makes it a one-row range, so MATCH's
+  lookup_array is mostly one-dimensional with a few 2-D `#N/A` cases (T-2719).
+- `same_shape: true` (`range` parameters of one call): the ranges share one rows x columns shape, except in about 1 call
+  in 10, so the *IFS functions compute a real match and the shape-mismatch `#VALUE!` stays covered (T-2719).
+- `probe: <param>` (a `value` parameter): drawn from the cells of that `range` parameter 95% of the time, so MATCH's
+  lookup_value usually exists in the array (T-2719).
 - `full: true` (an `array` parameter): every range spans all data rows, so GROUPBY's, SORTBY's and FILTER's arrays are the
   same height; `mask: true` makes FILTER's include a comparison of one full column (T-1083).
 - `mode: lambda` (with `arity`, or `arity: repeat` for MAP's one parameter per array) is a LAMBDA whose body may use its
   parameters, or 30% of the time an eta-reduced name written `_xleta.SUM`; `mode: name` declares a LET variable or LAMBDA
   parameter, visible after its value (LET) or in the `body: true` calculation; `invoke: true` calls the LAMBDA at once.
   `spelled` is the formula spelling where the case builder adds no prefix (`_xlfn.GROUPBY`; T-1083).
-- `always: true` (an optional parameter): the generator never omits it. CELL without a reference reads the cell last
+- `always: true` (an optional parameter): the generator never omits it (MATCH's match_type, whose default 1 on unsorted
+  data is mostly `#N/A`, T-2719). CELL without a reference reads the cell last
   changed, which no oracle value can match.
 - `edge_classes`: named, function-specific value or structure generators. They join the
   global type pools (§6) and become coverage-matrix columns (§13).
@@ -509,9 +516,26 @@ Each workbook draws one policy. The policy multiplies category weights and pool 
 | `structure` | deep DAGs, wide fan-in/out, cross-sheet chains, insert/delete MRs |
 
 Implemented so far (`rustsheet-gen --policy`): `random` (the catalog-driven P0 generator),
-`numeric-rules` (dense floating-point probes, suite `probes-numeric`) and `operators-refs` (M1
-operators and references only, no functions, suite `gen-m1`; T-0117). The last two are
-whole-suite policies rather than per-workbook draws.
+`numeric-rules` (dense floating-point probes, suite `probes-numeric`), `operators-refs` (M1
+operators and references only, no functions, suite `gen-m1`; T-0117), `names-3d` (suite `gen-m8a`,
+T-1606), `tables` (suite `gen-m8b`, T-1607), `number-formats` (suite `gen-m10`, T-1611) and
+`numeric-fp` (suite `gen-m2`, T-3139). All but `random` are whole-suite policies rather than
+per-workbook draws.
+
+`numeric-fp` implements the cancellation part of the `numeric_fp` row for M2 and M5: X = base·(1±k·2^-52)
+against b = base (bases 1, 2, 0.5, 2^20, 1.5; k = 0..9; both signs; exact doubles built on an
+`Inputs` sheet with `numeric_rules`' `BASES` and `fmt_k`) in three positions, each case one
+position: `root` (the `+`/`-` at the root, operands read through VLOOKUP, HLOOKUP, INDEX,
+MATCH-fed INDEX, MIN, MAX, ABS, ROUND and IF), `wrapper` (the cancellation under IF, IFERROR,
+ROUND, ABS, `&`, `=`, AND and COUNTIF) and `sum` (SUM, AVERAGE, SUMIF and SUMIFS over a range of X
+and -b, with and without a trailing 0), all in both operand orders: 5,200 cells, each tagged
+`numeric-fp/<position>/<form>/<order>/base=../sign=../k=..`. The seed only shuffles the cells.
+With `--milestone M5` (suite `gen-m5`, T-3204) it writes three more cases over the same pairs: `root` reads
+both operands through TRUNC (with and without 20 digits), INT, `MOD(..,2^21)`, ROUNDUP and ROUNDDOWN (20 digits);
+`wrapper` puts `X-b` under TRUNC (both forms), INT, `MOD(..,1)`, ROUNDUP (20 and 0 digits) and ROUNDDOWN (20); and
+`digits15` takes, per base and sign, the k one step either side of where X's rounded or truncated 15-significant-digit
+cut stops being b (computed exactly with `decimal`), with every picker (plain references included) and wrapper, each
+cell tagged `round15=eq|ne/trunc15=eq|ne`: 4,252 cells. Other milestones are refused.
 
 ---
 
@@ -610,7 +634,10 @@ These are first-class and distinct from `""`:
 All error values, appearing as literals (`#N/A`, `NA()`, `1/0`), in cells, and inside
 ranges at the first, last and middle positions. Ranges with **two different errors**
 test which error wins (the first in evaluation order). Edge class `error_order` covers
-`=#N/A+#DIV/0!` and the reverse.
+`=#N/A+#DIV/0!` and the reverse. A number- or bool-typed `value` parameter that has no `hard` domain and was
+not drawn from its edge pool receives `""` with share `EMPTY_TEXT_RATE` (3%) and an entry of the `errors`
+pool with share `ERROR_RATE` (3%), so generated suites reach the `empty_text` and `error` argument kinds
+(T-2866; decision 0094).
 
 ### 6.6 Arrays and references
 - Array literals: `{1,2,3}`, `{1;2;3}`, `{1,2;3,4}`, mixed-type `{1,"a",TRUE,#N/A}`,
@@ -622,6 +649,52 @@ test which error wins (the first in evaluation order). Edge class `error_order` 
   mixed absolute/relative `$A1`, `A$1`, `$A$1`, unions `(A1:A3,C1:C3)`, intersections
   `A1:C3 B2:D4`, an empty intersection → `#NULL!`, 3D `Sheet1:Sheet3!A1`, refs to empty
   sheets, `A1#` spill refs, references at sheet limits (`XFD1048576`).
+
+### 6.7 Argument-class pairs (`--policy arg-pairs`, T-3278)
+
+`rustsheet-gen --policy arg-pairs --milestone <M> [--functions ..] [--report <report.json>]` writes calls that
+pass the argument-class pairs the eval report lists as unseen (`argument_coverage[].unseen_pairs`, T-3277;
+default report `eval/runs/latest/report.json`) for the generator-ready functions of exactly `<M>`
+(tools/src/rustsheet_tools/gen/arg_pairs.py). Pairwise coverage (T-0083) is where argument-error precedence
+and coercion order live, and random draws rarely hit a given pair. The policy settles these choices:
+
+- **Classes come from the report, never from Python.** The classifier
+  (crates/rustsheet-eval/src/argument_coverage.rs) is the one definition; the policy only writes
+  arguments in the two shapes it reads: a literal, or a reference to a Data cell holding the class's
+  value. Nested calls and operators are never forced arguments.
+- **Forced forms.** Each class has a fixed literal (`2`, `0`, `-1`, `0.5`, `"2.5"`, `"abc"`, `""`,
+  `TRUE`, a pooled error literal such as `#N/A`) and a Data cell in column G holding another value of
+  the class (`7`, `0`, `-2.5`, `1.5`, `"12"`, `"x"`, `=""`, `FALSE`, `#DIV/0!`). `blank` is a reference
+  to an empty cell in column H; `range` is a 2 × 2 reference (`Data!A1:B2`, `Data!C3:D4`), or, for a
+  `range`-mode parameter (which counts any reference as `range`), the parameter's own shaped draw.
+- **Two calls per pair.** One is enough for coverage; the first call forces both classes as literals,
+  the second as Data references, so two different values per class reduce accidental agreement
+  between engine and Excel.
+- **Other arguments are plain.** An unforced `value` or `criteria` argument is an in-domain literal
+  (`domain` int or enum) or a plain literal of its type (`1`..`3`, `"abc"`, `TRUE`), so the forced pair
+  decides the result; ranges, arrays, aggregates, LET names and lambdas keep the generator's own draw
+  (`Gen.argument`), which respects `vector`, `same_shape` and scope.
+- **Variadic parameters.** Each parameter appears once (a repeat group once), so argument *i* fills
+  parameter *i* under the classifier's `param_of`. A call runs through the later forced parameter and
+  every required or `always` parameter; trailing optionals beyond it are omitted.
+- **Skipped pairs.** A parameter with a `hard` domain is never forced (outside it Excel refuses the
+  workbook, e.g. MUNIT), so its pairs are skipped, as are pairs naming an unknown parameter or class.
+  The skipped pairs are named in each of the function's case descriptions and printed on stderr.
+  GETPIVOTDATA (`pivot`) and LAMBDA (`invoke`) are left out: neither is a plain call.
+- **Layout.** One function per case, at most 200 calls, formulas every third row of column A on
+  `Calc`, so a 2 × 2 `range` lifted by a value parameter spills into the gap instead of onto the next
+  formula. The Data sheet is a 12 × 5 block of generator values plus the class cells. A `dynamic_array`
+  function's formulas are 61 rows apart instead (T-3497): its result can be as tall as all 60 Data cells
+  in one column (TOCOL, or WRAPROWS with a count of 1, over the whole block), so a spill never lands on
+  the next formula. Such a case has no `check` list, so every cell the oracle records is scored: each
+  anchor and every spill member Excel fills. The spill-extent check (T-1660) scores any other cell the
+  engine fills.
+- **Determinism.** Each function draws from its own stream seeded by the seed and its name: the same
+  seed and report give the same cases, and adding a function does not shift another's draws.
+
+At 2026-10-31 (report of `make eval` on main), the M2 batch is 17 cases and 2220 calls over 1110 unseen
+pairs of 12 functions; scored with the engine as if its values were Excel's, every one of those pairs is
+covered (T-3278 PR). The oracle-filled batch is T-3279.
 
 ---
 

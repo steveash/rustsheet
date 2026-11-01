@@ -3,7 +3,7 @@ id: T-2799
 title: "Name the fields of ParsedFormula (evaluated, static_result, written)"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,10 +22,14 @@ reads, `.2` the written tree printers read (`written_formula`). Call sites in th
 (minor finding) asked for names before more code depends on the positions.
 
 ## Acceptance criteria
-- [ ] `ParsedFormula` is a struct; `stored_formula` builds it; printing sites use a `written()` accessor and
+- [x] `ParsedFormula` is a struct; `stored_formula` builds it; printing sites use a `written()` accessor and
       evaluation sites an `evaluated()` one (or the fields by name).
-- [ ] No eval change (`make eval-check` clean).
-- [ ] `make check` green; reviewers approve.
+- [x] No eval change (`make eval-check` clean).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing what the export writes (T-2786).
+
+## Outcome
+`ParsedFormula` is now a struct (`evaluated`, `static_result`, `written`) with a `written()` accessor replacing
+`written_formula`; every positional read in the engine, the xlsx export and tests uses the names. No behaviour change.

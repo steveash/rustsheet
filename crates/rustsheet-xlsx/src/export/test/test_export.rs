@@ -241,7 +241,7 @@ fn test_array_formulas_keep_implicit_intersection() {
     fs::remove_file(temp_file_name).unwrap();
     assert_eq!(
         model.get_cell_formula(0, 2, 3).unwrap(),
-        Some("=POWER(@A1:A3,3)".to_string())
+        Some("=POWER(@A1:A3, 3)".to_string())
     );
     assert_eq!(
         model.get_cell_formula(0, 2, 4).unwrap(),
@@ -546,4 +546,61 @@ fn defined_name_scoped_to_a_missing_sheet_is_an_export_error() {
     });
     let result = crate::export::workbook::get_workbook_xml(&model.workbook, 0);
     assert!(matches!(result, Err(XlsxError::Workbook(_))));
+}
+
+// Excel saves the whitespace FORMULATEXT shows in the `<f>` text: `=1 + 2` is `<f>1 + 2</f>` and
+// `=SUM( 1 )` is `<f>SUM( 1 )</f>`. Excel saves a line feed as raw CR LF bytes, which an XML reader
+// reads back as LF; the export writes it as the reference `&#xA;`, which reads back the same
+// (xlsx-storage.md "Typed whitespace is saved…", probes/t2786-whitespace-structured-refs-runs
+// H14:H17, T-2948).
+#[test]
+fn test_typed_whitespace_is_saved_in_the_formula_text() {
+    let mut model = new_empty_model();
+    let formulas = [
+        ("=1 + 2", "<f>1 + 2</f>"),
+        ("=SUM( 1 )", "<f>SUM( 1 )</f>"),
+        ("=1+\n 2", "<f>1+&#xA; 2</f>"),
+        ("=- 5 * 2", "<f>- 5 * 2</f>"),
+        ("=PI( )", "<f>PI( )</f>"),
+        ("=ABS( @A1:A3 ) + 1", "<f>ABS( A1:A3 ) + 1</f>"),
+        ("=SUM( @A1:A3, 1)", "<f>SUM( _xlfn.SINGLE(A1:A3), 1)</f>"),
+        // Saved as a one-cell dynamic array, as without the spaces, so its `<f>` has attributes.
+        (
+            "=LET( x, 1, x + 1)",
+            ">_xlfn.LET( _xlpm.x, 1, _xlpm.x + 1)</f>",
+        ),
+    ];
+    for (row, (formula, _)) in (1..).zip(formulas) {
+        model.set_user_input(0, row, 1, row.to_string()).unwrap();
+        model
+            .set_user_input(0, row, 2, formula.to_string())
+            .unwrap();
+    }
+    model
+        .set_user_array_formula(0, 1, 3, 1, 1, "=SUM( @A1:A3 ) * 2")
+        .unwrap();
+    model.evaluate();
+    let temp_file_name = "temp_file_test_typed_whitespace.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+
+    let sheet_xml = part_text(temp_file_name, "xl/worksheets/sheet1.xml");
+    for (_, saved) in formulas {
+        assert!(sheet_xml.contains(saved), "{saved} in {sheet_xml}");
+    }
+    assert!(
+        sheet_xml.contains(r#"<f t="array" ref="C1:C1">SUM( _xlfn.SINGLE(A1:A3) ) * 2</f>"#),
+        "{sheet_xml}"
+    );
+
+    let mut model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    fs::remove_file(temp_file_name).unwrap();
+    model.evaluate();
+    for (row, (formula, _)) in (1..).zip(formulas) {
+        assert_eq!(
+            model.get_cell_formula(0, row, 2).unwrap(),
+            Some(formula.to_string())
+        );
+    }
+    assert_eq!(model.get_formatted_cell_value(0, 1, 2).unwrap(), "3");
+    assert_eq!(model.get_formatted_cell_value(0, 1, 3).unwrap(), "2");
 }

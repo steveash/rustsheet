@@ -71,7 +71,7 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         // results broadcast as the operators' do (probes/text-argument-modes; docs/excel-semantics/
         // arrays.md "Errors broadcast through `&`, comparisons, POWER and the element-wise
         // functions", probes/error-precedence-text). DATEVALUE and TIMEVALUE lift like them
-        // (probes/date-argument-modes F9:F10, F47:F48), and so do CODE, UNICHAR, UNICODE (T-2090), BAHTTEXT and
+        // (probes/date-argument-modes F9:F10, F47:F48), and so do CHAR (T-3302), CODE, UNICHAR, UNICODE (T-2090), BAHTTEXT and
         // FILTERXML (probes/text-argument-modes F5:F6, text-bahttext-form4, -form5,
         // filterxml-array-forms). Each element is O(1) or linear in its texts, which the
         // 32,767-unit cell text limit bounds, and the driver's 64 MiB text budget bounds the call; FIND and SEARCH are
@@ -80,6 +80,7 @@ pub(super) fn arg_kinds(function: &Function) -> Option<&'static ArgKinds> {
         Function::Len
         | Function::Lenb
         | Function::Value
+        | Function::Char
         | Function::Code
         | Function::Unichar
         | Function::Unicode

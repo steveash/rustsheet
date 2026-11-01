@@ -180,10 +180,21 @@ fn with_names<'a>(sheet: &str, formula: &'a str, names: &[DefinedName]) -> Cow<'
     Cow::Owned(out)
 }
 
+/// `FORMULATEXT(ref)` / `ISFORMULA(ref)` with a lone reference argument: they read the cell's
+/// formula, not its value, so the reference is not a value precedent (T-2956). Only a lone A1 cell
+/// or range qualifies; names, structured references and `INDIRECT` keep the taint (fails safe).
+static FORMULA_READER: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        r"(?i)\b(?:_xlfn\.)?(?:FORMULATEXT|ISFORMULA)\s*\(\s*(?:(?:'(?:[^']|'')+'|[A-Za-z_][A-Za-z0-9_.]*)!)?\$?[A-Za-z]{1,3}\$?[0-9]+(?::\$?[A-Za-z]{1,3}\$?[0-9]+)?\s*\)",
+    )
+    .unwrap_or_else(|e| unreachable!("{e}"))
+});
+
 /// Static precedents of a formula as `(lowercased sheet, top-left, bottom-right)`. Names
 /// are expanded beforehand by [`with_names`]; `INDIRECT`/`OFFSET`, whole-row/column references and 3-D references are not followed.
 fn precedents(sheet: &str, formula: &str) -> Vec<(String, Addr, Addr)> {
     let text = STRING_LITERAL.replace_all(formula, "\"\"");
+    let text = FORMULA_READER.replace_all(&text, "()");
     let bytes = text.as_bytes();
     let is_word = |b: u8| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'.' | b'$');
     let mut out = Vec::new();
@@ -405,6 +416,18 @@ mod tests {
         let mut keys: Vec<String> = set.iter().map(|(s, a)| format!("{s}!{a}")).collect();
         keys.sort();
         keys
+    }
+
+    #[test]
+    fn formula_readers_do_not_carry_the_taint_of_their_argument() {
+        let cells = vec![
+            cell("S", "H1", "NOW( )"),
+            cell("S", "I1", "FORMULATEXT(H1)"),
+            cell("S", "I2", "ISFORMULA($H$1)"),
+            cell("S", "I3", "FORMULATEXT(H1)&H1"),
+            cell("S", "I4", "FORMULATEXT(S!H1)"),
+        ];
+        assert_eq!(tainted(&cells, false), ["S!H1", "S!I3"]);
     }
 
     #[test]

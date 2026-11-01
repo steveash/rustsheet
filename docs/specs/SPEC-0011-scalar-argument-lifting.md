@@ -62,7 +62,7 @@ same date and commit. Each row has a migration task, or is a non-goal with its r
 | `TextArg`, `broadcast_text` | text/text_arg.rs | 17 call sites: LEFT, MID, FIND, REPT, TEXT, CONCATENATE, … | `Lift` entries + text kernels | T-1775 |
 | `Weekend::lift` | date_and_time.rs | WORKDAY.INTL, NETWORKDAYS.INTL `weekend` | a `Lift` entry; no mask memo, an element costs O(log holidays) (done) | T-1236 |
 | CHOOSE's index lift (`choose_array`) | lookup_and_reference/mod.rs | CHOOSE | Non-goal for now (T-1959): CHOOSE keeps its own broadcast loop, as IF does. A table entry does not fit: with a scalar index the arms stay unevaluated (cycles, cost) and the picked one is returned as a reference, and the result's extent includes every arm, picked or not, where `lift_call` reads `Whole` arms eagerly and as scalars. Handing the arms to `lift_grids` as grids gives the same results but fills every arm's slot at every element (O(arms) clones per element, where the loop clones only the picked one), so `CHOOSE(SEQUENCE(1024),<254 text rows>)` would do about 260M string copies instead of 1M. The driver would need a kernel that gets the output position and reads only the arm it picks; the loop stays until a second caller (IF's array condition is the likely one) needs that kernel. The index is read by `get_number_or_array` (a 3-D index is `#ERROR!` there, where a `Lift` read gives `#REF!`) | T-1241, T-1959 |
-| IF's `IfArg`, `if_arg_at` | logical/mod.rs | IF (condition and branches broadcast, logic.md) | non-goal: IF evaluates its branches lazily and returns references. It keeps its own broadcast, which already uses `bcast_idx` | — |
+| `BroadcastArg` (was IF's `IfArg`) | functions/lift/broadcast_arg.rs | IF (condition and branches broadcast, logic.md) | non-goal: IF evaluates its branches lazily and returns references. It keeps its own broadcast, which already uses `bcast_idx` | — |
 | `lifted_relative_to`, `lifted_groupby` | relative_to.rs, groupby.rs | GROUPBY, PIVOTBY | non-goal: LAMBDA calls with their own cell-visit budget (SPEC-0006) | — |
 | `broadcast_static_result` | expressions/parser/static_analysis.rs | the static shape of a call | stays as the shape primitive; the table-driven `lifted_static_result` calls it | T-1770 |
 | `map_elements` (N, T) | information/mod.rs, text/t_function.rs | N, T | non-goal: they read a range as a reference (its top-left cell, or "") and lift only arrays (information.md, T-1616, T-1713) | — |
@@ -604,7 +604,9 @@ solver step is a sum over the coupons (up to 32,400, 0.55 ms in release) rather 
 and ODDFYIELD are charged 2^24 (`YIELD_SOLVER_WEIGHT`: at most 397 prices, about 0.23 s an element at the bound, so 8
 elements, about 1.8 s), ODDFPRICE eight walks (256 elements) and the closed-form ODDLPRICE and ODDLYIELD two (1,024);
 financial.md "Yield and odd-coupon work cap", a DEVIATION. T-1869 narrows it to a schedule-length budget
-(`CouponWalks` above): those counts hold only at the calendar's longest schedule.
+(`CouponWalks` above): those counts hold only at the calendar's longest schedule. T-2879 raises the solver weight to
+2^26 (2 elements at the longest schedule): a price term near the power's overflow costs about 340 ns, and one call
+at the cap now takes at most 4.3 s (financial.md "Yield and odd-coupon work cap").
 As built (T-1848): BETA.INV, BETAINV, F.INV, F.INV.RT, FINV, T.INV, T.INV.2T, TINV and CONFIDENCE.T are `Lift` entries.
 Their quantile search was statrs' `inv_beta_reg`, whose loops are open (it panics or never finishes at a tiny p); it is
 now a line-for-line port with a per-call cap of its own (`statistical/inverse_beta.rs`: 512 Newton steps and 4,096
@@ -655,10 +657,11 @@ As built (T-1841): AMORLINC and AMORDEGRC are `LiftArrays` and `Weighted`. Their
 so the kernels keep the walk's values with an integer count and a bound (`functions/financial/amortization.rs`;
 financial.md "AMORLINC and AMORDEGRC over many periods"): AMORLINC jumps the steps that are exact within a binade (at
 most 616 single steps for any double, capped at 1,024, `#NUM!` past the cap), bit for bit the walk; AMORDEGRC walks
-up to 2^20 periods and finishes in a closed form that can be a unit off the walk for charges of 1E12 or more
-(financial.md "AMORDEGRC past 2^20 periods", a DEVIATION). The weights are priced from the caps in release (financial.md
+up to 2^22 periods (2^20 before T-2918) and finishes in a closed form that can be a unit off the walk for charges of
+1E12 or more (financial.md "AMORDEGRC past 2^22 periods", a DEVIATION). The weights are priced from the caps in release (financial.md
 "AMORLINC and AMORDEGRC work cap", a DEVIATION): AMORLINC 2^9 (1,024 steps at about 7.7 ns, 7.9 us an element: 2^18
-elements, about 2.1 s), AMORDEGRC 2^18 (2^20 periods, 4 ms: 512 elements, 2.1 s).
+elements, about 2.1 s), AMORDEGRC 2^20 since T-2918 (2^22 periods, about 32 ms with the twice-rounded subtraction of T-2849: 128 elements, 3.96 to
+4.35 s; 2^18 for 2^20 periods before).
 
 As built (T-1821): NPV is `[Lift]` with a repeated `WholeByCaller`, IRR `[WholeByCaller, Lift]` and MIRR
 `[WholeByCaller, Lift, Lift]`. Each caller reads its cash flows once, before the driver, and calls `lift_call_costed`
@@ -718,8 +721,8 @@ COMBIN, FACT and MULTINOMIAL (T-1197), and the RATE/IRR/YIELD solvers (they have
 they are `Constant` only if the cap is fixed). A kernel whose loop length its arguments predict in O(1)
 may instead be `ByValue(ValueWork)`: before any element runs, the driver sums each element's
 `ValueWork::units` of its argument values over the broadcast (`lift/driver.rs` `kernel_units`, one
-O(elements) pass), every estimate between 1 and the flat worst case (`ValueWork::most`). Two
-estimators exist:
+O(elements) pass), every estimate between 1 and the flat worst case (`ValueWork::most`). The
+estimators include:
 - `Loop { arg, cap, weight }` (T-1819, the Bessel functions, whose work is O(order); DB and VDB,
   T-1820): `1 + trunc(n) * weight / cap` for a number with `0 <= trunc(n) <= cap` in argument
   `arg`, `1 + weight` for a text (the kernel may read it as a number) and 1 for anything else (the
@@ -731,8 +734,9 @@ estimators exist:
   workbook does not shift), clamped to the calendar's 2958465, and `f` the frequency (1, 2 or 4):
   proportional to the period count plus one, the extra period being each pass's fixed cost, and
   `weight` per pass for the longest schedule. A solver's walk and every price sum are one pass
-  (YIELD's 397 prices, 2^24). A text date is charged as the longest schedule and a text frequency
-  as 4; an error argument or an invalid frequency is 1 (refused before any walk). The calendar
+  (YIELD's 397 prices, 2^26 since T-2879). A text is charged as the kernel reads it
+  (`Model::cast_number`, passed to `kernel_units`; T-2879): a number text as that number, any
+  other text as an error; an error argument or an invalid frequency is 1 (refused before any walk). The calendar
   bounds each walk, so no cap constant is needed.
 - `HypergeometricSum { counts, walk, extra, per_term, weight }` (T-2433, HYPGEOM.DIST): a cdf is
   either a walk (`walk` units) or a sum of at most min(counts) + 1 terms and `extra` exponents, so
@@ -740,6 +744,11 @@ estimators exist:
   being the sum's per-call cap; a text count is left out of the min (it may read as any count),
   `weight` when every count is a text, and an error, a negative count or one of
   2^31 - 1 or more (refused before either path) 1.
+- `Amortization { degressive, weight }` (T-2840, AMORLINC and AMORDEGRC): `weight`, the flat bound
+  of a walk, or 1 for an element the kernel refuses before it walks: an error or a logical in any
+  argument, a cost, salvage, period and rate, all numbers, that fail the kernel's value checks
+  (`amortization_values_valid`), or, with `degressive`, a rate whose asset life AMORDEGRC refuses
+  (`asset_life_refused`). Texts, blanks and the date calendar check are not judged.
 
 T-1776 checks a list of
 value-dependent functions against the table, so a family task cannot enter one as `Constant`
@@ -840,7 +849,7 @@ elements are `#VALUE!` instead when an entry is not 1 or -1 or the call has a la
 by_array/sort_order pair. This is one driver option the two entries opt into (T-2300 builds it for
 UNIQUE, T-1839 reuses it); TOCOL, SEQUENCE, MAKEARRAY, EXPAND, WRAPROWS, WRAPCOLS, TAKE and DROP do
 not show it (their later elements are their calls' own).
-*As built (T-2300):* the option is `CallResult::ArrayFirst` (`ArgKinds::array_first()`), an
+*As built (T-2300):* the option is `CallResult::ArrayFirstColumn` (`ArgKinds::array_first_column()`), an
 `Array` result whose elements `lift_grids` keeps per `Later`. "Entries all equal" means every
 element's grid slots equal the first element's (`ArrayNode` equality, so `{0;FALSE}` differs:
 probes/m7-unique-lift-elements row 15); with several lifted arguments they all must be uniform
@@ -902,7 +911,7 @@ m7-one-cell-operand-lift F6, F7, F16, F17); INDIRECT and TRIMRANGE keep `lifts`,
 `Unknown`, since it cannot tell a one-cell range from a 1x1 array.
 
 **4. SORTBY's arguments alternate.** `repeat` becomes a cycle of kinds. *As built (T-1839):* SORTBY's entry is
-`params: [WholeByCaller, WholeByCaller, Lift]`, `repeat: [WholeByCaller, Lift]`, `CallResult::ArrayFirst`. The array and the
+`params: [WholeByCaller, WholeByCaller, Lift]`, `repeat: [WholeByCaller, Lift]`, `CallResult::ArrayFirstColumn`. The array and the
 by_arrays are read once by `fn_sortby`, and errors are still taken left to right in its kernel. `LiftOptions::later_error`
 makes the emptied elements `#VALUE!` when a call uses its cycle (more arguments than `params`). `LiftKinds::repeat` and
 `catalog_lift.py` read the cycle as a list.

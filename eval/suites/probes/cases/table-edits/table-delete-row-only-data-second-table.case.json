@@ -1,0 +1,75 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2848: when delete_row deletes sheet row 4, the only data row of Sales on S!B3:C4, with a second table Other on S!E3:F7 (header E3:F3 Key/Val, data rows 4-7 Val 10,20,30,40) beside it in the same sheet rows, what happens to Other? Sheet F holds A1 =ROWS(Other), A2 =ROWS(Other[#All]), A3 =SUM(Other[Val]), A4 FORMULATEXT(A3), A5 =S!F4, A6 FORMULATEXT(A5), A7 =SUM(S!F4:F7), A8 FORMULATEXT(A7), A9 =ROWS(Sales), A10 =ROW(Other[#Headers]).",
+  "tags": [
+    "M8",
+    "tables",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "B3": "Region",
+        "C3": "Qty",
+        "B4": "E",
+        "C4": 1,
+        "E3": "Key",
+        "F3": "Val",
+        "E4": "a",
+        "E5": "b",
+        "E6": "c",
+        "E7": "d",
+        "F4": 10,
+        "F5": 20,
+        "F6": 30,
+        "F7": 40
+      },
+      "tables": [
+        {
+          "name": "Sales",
+          "ref": "B3:C4"
+        },
+        {
+          "name": "Other",
+          "ref": "E3:F7"
+        }
+      ]
+    },
+    {
+      "name": "F",
+      "cells": {
+        "A1": "=ROWS(Other)",
+        "A2": "=ROWS(Other[#All])",
+        "A3": "=SUM(Other[Val])",
+        "A4": "=FORMULATEXT(A3)",
+        "A5": "=S!F4",
+        "A6": "=FORMULATEXT(A5)",
+        "A7": "=SUM(S!F4:F7)",
+        "A8": "=FORMULATEXT(A7)",
+        "A9": "=ROWS(Sales)",
+        "A10": "=ROW(Other[#Headers])"
+      }
+    }
+  ],
+  "sheet_ops": [
+    {
+      "op": "delete_row",
+      "sheet": "S",
+      "row": 4
+    }
+  ],
+  "expected": {},
+  "check": [
+    "F!A1",
+    "F!A2",
+    "F!A3",
+    "F!A4",
+    "F!A5",
+    "F!A6",
+    "F!A7",
+    "F!A8",
+    "F!A9",
+    "F!A10"
+  ]
+}

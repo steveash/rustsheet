@@ -85,6 +85,14 @@ class NewTask(unittest.TestCase):
         code, files = self.run_new("--milestone", "M0", "--lane", "harness", "--title", "t", "--tier", "haiku")
         self.assertEqual((code, files), (2, []))
 
+    def test_title_with_quotes_and_backslashes_round_trips(self) -> None:
+        title = 'TEXT(x,"0;-0") is \\ ";;;" `$x`'
+        text = tasks.TEMPLATE.format(id="T-0004", title=tasks.quote(title), milestone="M0", lane="harness",
+                                     priority="P2", size="S", tier="opus")
+        self.assertIn('title: "TEXT(x,\\"0;-0\\") is \\\\ \\";;;\\" `$x`"', text)
+        self.assertEqual(tasks.front_matter(text, Path("t"))["title"], title)
+        self.assertEqual(tasks.unquote("plain"), "plain")
+
     def test_rejects_bad_arguments(self) -> None:
         for argv in (("--milestone", "M0x", "--lane", "harness", "--title", "x"),
                      ("--milestone", "M0", "--lane", "nope", "--title", "x"),
@@ -106,12 +114,18 @@ def write_task(
     depends_on: str = "",
     campaign: str | None = None,
     defer: str | None = None,
+    issue: str | None = None,
+    issue_author: str | None = None,
+    issue_origin: str | None = None,
 ) -> Path:
     path = root / "docs/tasks" / milestone / f"{tid}-x.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     tier_line = f"tier: {tier}\n" if tier else ""
     campaign_line = f"campaign: {campaign}\n" if campaign else ""
     campaign_line += f"defer: {defer}\n" if defer else ""
+    campaign_line += f"issue: {issue}\n" if issue is not None else ""
+    campaign_line += f"issue_author: {issue_author}\n" if issue_author is not None else ""
+    campaign_line += f"issue_origin: {issue_origin}\n" if issue_origin is not None else ""
     path.write_text(
         f"---\nid: {tid}\ntitle: \"x\"\nmilestone: {milestone}\nlane: {lane}\nstatus: {status}\npriority: {priority}\n"
         f"size: S\n{tier_line}{campaign_line}depends_on: [{depends_on}]\n---\n{body}"
@@ -393,6 +407,41 @@ class FunctionLanes(unittest.TestCase):
 T = "TODO"
 
 
+class DependencyCycles(unittest.TestCase):
+    """`validate` reports each `depends_on` cycle once (T-0091), whatever the tasks' status."""
+
+    @staticmethod
+    def cycles(graph: dict[str, list[str]], done: tuple[str, ...] = ()) -> list[str]:
+        parsed = [
+            {"id": tid, "depends_on": deps, "status": "done" if tid in done else "todo"}
+            for tid, deps in graph.items()
+        ]
+        return [" -> ".join(c + c[:1]) for c in tasks.dependency_cycles(parsed)]
+
+    def test_two_and_three_task_cycles_are_reported_once_from_the_smallest_id(self) -> None:
+        self.assertEqual(self.cycles({"T-0965": ["T-0963"], "T-0963": ["T-0965"]}), ["T-0963 -> T-0965 -> T-0963"])
+        three = {"T-0003": ["T-0001"], "T-0001": ["T-0002"], "T-0002": ["T-0003"], "T-0004": ["T-0002"]}
+        self.assertEqual(self.cycles(three, done=("T-0002",)), ["T-0001 -> T-0002 -> T-0003 -> T-0001"])
+
+    def test_a_self_dependency_is_a_cycle(self) -> None:
+        self.assertEqual(self.cycles({"T-0001": ["T-0001"], "T-0002": ["T-0001"]}), ["T-0001 -> T-0001"])
+
+    def test_an_acyclic_diamond_and_an_unknown_dependency_are_no_cycle(self) -> None:
+        diamond = {"T-0001": ["T-0002", "T-0003"], "T-0002": ["T-0004"], "T-0003": ["T-0004"], "T-0004": ["T-9999"]}
+        self.assertEqual(self.cycles(diamond), [])
+
+    def test_validate_reports_the_cycle(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with mock.patch.object(tasks, "ROOT", root):
+                parsed = [
+                    tasks.parse(write_task(root, "T-0001", depends_on="T-0002")),
+                    tasks.parse(write_task(root, "T-0002", depends_on="T-0001")),
+                ]
+                errors = tasks.validate(parsed)
+        self.assertEqual(errors, ["T-0001 -> T-0002 -> T-0001: depends_on cycle"])
+
+
 class StaleTodos(unittest.TestCase):
     # The TODOs are built from T so this file holds none for the check itself to flag.
     TASKS = [
@@ -528,6 +577,175 @@ class BranchClaims(unittest.TestCase):
         self.assertEqual(limited, {"T-0001": "agent/engine/T-0001-limit"})
 
 
+class Issues(unittest.TestCase):
+    """The optional `issue:` / `issue_author:` fields, the dedup lookup and the volume counts
+    (decision 0158)."""
+
+    def test_issue_must_be_a_positive_integer_with_an_author(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            good, bad = [], []
+            with mock.patch.object(tasks, "ROOT", root):
+                for i, value in enumerate(("1", "42", '"7"')):
+                    good.append(tasks.parse(write_task(root, f"T-000{i}", issue=value, issue_author="octo-cat")))
+                for i, value in enumerate(("0", "-3", "12a", "[4]", "", "\u0661")):
+                    bad.append(tasks.parse(write_task(root, f"T-001{i}", issue=value, issue_author="octo")))
+                bad.append(tasks.parse(write_task(root, "T-0020", issue="5")))
+                bad.append(tasks.parse(write_task(root, "T-0021", issue="5", issue_author="-bad")))
+                bad.append(tasks.parse(write_task(root, "T-0022", issue_author="octo")))
+                errors = tasks.validate(good + bad)
+        self.assertFalse(any("T-000" in e for e in errors), errors)
+        for tid in [f"T-001{i}" for i in range(6)] + ["T-0020", "T-0021", "T-0022"]:
+            self.assertTrue(any(tid in e and "issue" in e for e in errors), tid)
+
+    def test_issue_origin_must_be_a_positive_integer_and_never_with_issue(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with mock.patch.object(tasks, "ROOT", root):
+                good = [tasks.parse(write_task(root, f"T-000{i}", issue_origin=v)) for i, v in enumerate(("1", '"42"'))]
+                bad = [tasks.parse(write_task(root, f"T-001{i}", issue_origin=v))
+                       for i, v in enumerate(("0", "-3", "12a", "", "\u0661"))]
+                bad.append(tasks.parse(write_task(root, "T-0020", issue="5", issue_author="octo", issue_origin="5")))
+                bad.append(tasks.parse(write_task(root, "T-0021", issue_origin="5", issue_author="octo")))
+                errors = tasks.validate(good + bad)
+        self.assertFalse(any("T-000" in e for e in errors), errors)
+        for tid in [f"T-001{i}" for i in range(5)] + ["T-0020", "T-0021"]:
+            self.assertTrue(any(tid in e and "issue" in e for e in errors), tid)
+
+    def test_issue_origin_follow_ups_are_not_the_issues_tasks(self) -> None:
+        root = Path("/repo")
+        on_tree = [
+            {"id": "T-0001", "issue": "12", "issue_author": "alice", "path": root / "docs/tasks/M0/T-0001-a.md"},
+            {"id": "T-0002", "issue_origin": "12", "status": "todo", "path": root / "docs/tasks/M0/T-0002-a.md"},
+        ]
+        _, run = self.fake_git("", grep_code=1)
+        with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks.subprocess, "run", side_effect=run):
+            self.assertEqual(tasks.issue_tasks("12", on_tree, fetch=False), [("T-0001", "working tree")])
+            self.assertEqual([c["id"] for c in tasks.issue_copies(on_tree, fetch=False)], ["T-0001"])
+
+    GREP = (
+        "refs/remotes/origin/main:docs/tasks/M0/T-0001-a.md:1:---\n"
+        "refs/remotes/origin/main:docs/tasks/M0/T-0001-a.md:2:id: T-0001\n"
+        "refs/remotes/origin/main:docs/tasks/M0/T-0001-a.md:3:status: done\n"
+        "refs/remotes/origin/main:docs/tasks/M0/T-0001-a.md:4:issue: 12\n"
+        "refs/remotes/origin/main:docs/tasks/M0/T-0001-a.md:5:issue_author: alice\n"
+        "refs/remotes/origin/main:docs/tasks/M0/T-0001-a.md:6:---\n"
+        "refs/remotes/origin/agent/harness/T-0004-b:docs/tasks/M0/T-0004-b.md:1:---\n"
+        "refs/remotes/origin/agent/harness/T-0004-b:docs/tasks/M0/T-0004-b.md:2:id: T-0004\n"
+        "refs/remotes/origin/agent/harness/T-0004-b:docs/tasks/M0/T-0004-b.md:3:status: in-progress\n"
+        "refs/remotes/origin/agent/harness/T-0004-b:docs/tasks/M0/T-0004-b.md:4:issue: \"12\"\n"
+        "refs/remotes/origin/agent/harness/T-0004-b:docs/tasks/M0/T-0004-b.md:5:issue_author: bob\n"
+        "refs/remotes/origin/agent/harness/T-0004-b:docs/tasks/M0/T-0004-b.md:6:---\n"
+        # `issue: 12` only below the front matter: not this issue's task.
+        "refs/remotes/origin/agent/x:docs/tasks/M0/T-0005-c.md:1:---\n"
+        "refs/remotes/origin/agent/x:docs/tasks/M0/T-0005-c.md:2:id: T-0005\n"
+        "refs/remotes/origin/agent/x:docs/tasks/M0/T-0005-c.md:3:---\n"
+        "refs/remotes/origin/agent/x:docs/tasks/M0/T-0005-c.md:9:issue: 12\n"
+    )
+
+    def fake_git(self, grep_out: str, grep_code: int = 0) -> tuple[list[list[str]], object]:
+        calls: list[list[str]] = []
+
+        def run(cmd: list[str], **_: object) -> mock.Mock:
+            args = cmd[3:]
+            calls.append(args)
+            if args[0] == "for-each-ref":
+                return mock.Mock(returncode=0, stdout="refs/remotes/origin/main\nrefs/remotes/origin/agent/x\n")
+            return mock.Mock(returncode=grep_code, stdout=grep_out, stderr="")
+
+        return calls, run
+
+    def test_finds_the_issue_on_the_working_tree_and_on_branches_by_front_matter(self) -> None:
+        root = Path("/repo")
+        on_tree = [
+            {"id": "T-0001", "issue": "12", "issue_author": "alice", "path": root / "docs/tasks/M0/T-0001-a.md"},
+            {"id": "T-0002", "issue": "120", "path": root / "docs/tasks/M0/T-0002-a.md"},
+            {"id": "T-0003", "path": root / "docs/tasks/M0/T-0003-a.md"},
+        ]
+        calls, run = self.fake_git(self.GREP)
+        with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks.subprocess, "run", side_effect=run):
+            found = tasks.issue_tasks("12", on_tree, fetch=False)
+        self.assertEqual(
+            found, [("T-0001", "working tree"), ("T-0001", "main"), ("T-0004", "agent/harness/T-0004-b")]
+        )
+        self.assertFalse(any(a[0] == "fetch" for a in calls))
+        self.assertEqual(sum(a[0] == "grep" for a in calls), 1)
+
+    def test_no_match_on_branches_and_no_git_fall_back_to_the_working_tree(self) -> None:
+        root = Path("/repo")
+        on_tree = [{"id": "T-0001", "issue": "3", "path": root / "docs/tasks/M0/T-0001-a.md"}]
+        _, run = self.fake_git("", grep_code=1)
+        with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks.subprocess, "run", side_effect=run):
+            self.assertEqual(tasks.issue_tasks("3", on_tree, fetch=False), [("T-0001", "working tree")])
+            self.assertEqual(tasks.issue_tasks("4", on_tree, fetch=False), [])
+        _, broken = self.fake_git("", grep_code=2)
+        with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks.subprocess, "run", side_effect=broken), \
+                contextlib.redirect_stderr(io.StringIO()) as err:
+            self.assertEqual(tasks.issue_tasks("3", on_tree, fetch=False), [("T-0001", "working tree")])
+        self.assertIn("warning: could not read origin branches", err.getvalue())
+        with mock.patch.object(tasks, "ROOT", root), \
+                mock.patch.object(tasks.subprocess, "run", side_effect=OSError("no git")), \
+                contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(tasks.issue_tasks("3", on_tree, fetch=False), [("T-0001", "working tree")])
+
+    def test_stats_count_open_tasks_per_author_and_todays_filings(self) -> None:
+        copies = [
+            {"id": "T-0001", "status": "todo", "issue_author": "alice"},
+            {"id": "T-0001", "status": "done", "issue_author": "alice"},  # done on its branch
+            {"id": "T-0002", "status": "in-progress", "issue_author": "alice"},
+            {"id": "T-0003", "status": "blocked", "issue_author": "bob"},
+            {"id": "T-0004", "status": "dropped", "issue_author": "bob"},
+        ]
+        self.assertEqual(
+            tasks.issue_stats(copies, {"T-0002", "T-0003"}),
+            {"open_by_author": {"alice": 1, "bob": 1}, "filed_today": 2, "limits": tasks.ISSUE_LIMITS},
+        )
+
+    def test_filed_today_reads_the_earliest_adding_commit_on_its_own_branch_or_main(self) -> None:
+        now = 1_800_000_000.0  # 2027-01-15 08:00 UTC
+        copies = [
+            {"id": "T-0001", "ref": "refs/remotes/origin/main", "file": "a.md"},
+            {"id": "T-0002", "ref": "refs/remotes/origin/agent/harness/T-0002-x", "file": "b.md"},
+            {"id": "T-0003", "ref": "refs/remotes/origin/agent/harness/T-0009-other", "file": "c.md"},
+            {"id": "T-0004", "ref": "", "file": "d.md"},
+        ]
+        stamps = {"a.md": f"{int(now) - 60}\n", "b.md": f"{int(now) - 3600}\n{int(now) - 86400}\n",
+                  "c.md": f"{int(now)}\n", "d.md": ""}
+        seen: list[str] = []
+
+        def run(cmd: list[str], **_: object) -> mock.Mock:
+            seen.append(cmd[-1])
+            return mock.Mock(returncode=0, stdout=stamps[cmd[-1]])
+
+        with mock.patch.object(tasks.subprocess, "run", side_effect=run):
+            # T-0002 was first added yesterday; T-0003's copy is on another task's branch (not read);
+            # T-0004 is not committed.
+            self.assertEqual(tasks.filed_today(copies, now), {"T-0001"})
+        self.assertNotIn("c.md", seen)
+
+    def test_cli_rejects_a_bad_number_and_exits_1_when_nothing_is_found(self) -> None:
+        for argv, code in ((["issue"], 2), (["issue", "0"], 2), (["issue", "5\n"], 2), (["issue", "5"], 1)):
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks, "TASKS", root / "docs/tasks"), \
+                        mock.patch.object(tasks.sys, "argv", ["tasks.py", *argv, "--no-fetch"]), \
+                        mock.patch.object(tasks, "issue_tasks", return_value=[]), \
+                        contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                    self.assertEqual(tasks.main(), code, argv)
+
+    def test_cli_stats_prints_json(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            out = io.StringIO()
+            with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks, "TASKS", root / "docs/tasks"), \
+                    mock.patch.object(tasks.sys, "argv", ["tasks.py", "issue", "--stats", "--no-fetch"]), \
+                    mock.patch.object(tasks, "issue_copies", return_value=[]), \
+                    mock.patch.object(tasks, "filed_today", return_value=set()), \
+                    contextlib.redirect_stdout(out):
+                self.assertEqual(tasks.main(), 0)
+        self.assertEqual(json.loads(out.getvalue())["limits"], {"per_author": 2, "per_day": 6})
+
+
 class Stats(unittest.TestCase):
     def run_stats(self, root: Path, *argv: str, files: dict[str, str] | None = None) -> tuple[int, str, str]:
         """`tasks.py stats` on `root`'s tasks and the code `files` (path -> text, standing in for
@@ -646,6 +864,74 @@ class Stats(unittest.TestCase):
             code, out, err = self.run_stats(Path(tmp))
         self.assertEqual((code, out), (2, ""))
         self.assertIn("usage", err)
+
+
+SUITES = {"gen-m9", "ironcalc-calc", "probes", "probes-numeric"}
+
+
+class CellOverlaps(unittest.TestCase):
+    def test_reads_cell_lists_and_inline_citations(self) -> None:
+        text = (
+            "- gen-m9/abc.case.json (3): Calc!A185, A246, A9/A10\n"
+            "- ironcalc-calc/STATISTICAL/T_DIST.xlsx (2): T.DIST T.INV!E7, E8\n"
+            "  - probes-numeric/m9-t.case.json: A3-A5 `TINV(0.5,1)` Excel 1\n"
+            "owns probes/irr-fallback-roots P!A12-A13 and P!A22, and `probes/q.case.json` B2:C3.\n"
+            "Excel 3.9 vs gen-m9/def Calc!A200 `=KURT(Data!E4:E11)`; not a case: crates/x.rs A1 is code.\n"
+        )
+        self.assertEqual(tasks.cells_of(text, SUITES), {
+            "gen-m9/abc!!A185", "gen-m9/abc!!A246", "gen-m9/abc!!A9", "gen-m9/abc!!A10",
+            "ironcalc-calc/STATISTICAL/T_DIST.xlsx!T.DIST T.INV!E7", "ironcalc-calc/STATISTICAL/T_DIST.xlsx!T.DIST T.INV!E8",
+            "probes-numeric/m9-t!!A3", "probes-numeric/m9-t!!A4", "probes-numeric/m9-t!!A5",
+            "probes/irr-fallback-roots!P!A12", "probes/irr-fallback-roots!P!A13", "probes/irr-fallback-roots!P!A22",
+            "probes/q!!B2", "probes/q!!B3", "probes/q!!C2", "probes/q!!C3",
+            "gen-m9/def!!A200",
+        })
+        self.assertEqual(tasks.cells_of("- gen-m9/abc.case.json (1): A1-A99999", SUITES), set())  # a typo, not a claim
+
+    def test_hostile_text_is_bounded(self) -> None:
+        # Task text can come from a GitHub issue (decision 0158): no crash and no quadratic scan.
+        self.assertEqual(tasks.cells_of("- a/b: A" + "1" * 5000, {"a"}), set())
+        start = time.monotonic()
+        tasks.cells_of("- a/b: " + "A1/" * 20000 + "\n- a/b: " + "x " * 30000 + "!A1\n" + "a/b " * 20000, {"a"})
+        self.assertLess(time.monotonic() - start, 2.0)
+
+    def overlaps(self, new_ids: set[str], **bodies: str) -> list[str]:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for suite in SUITES:
+                (root / "eval/suites" / suite).mkdir(parents=True)
+            for tid, body in bodies.items():
+                status, _, text = body.partition(":")
+                write_task(root, tid.replace("_", "-"), status=status, body=text)
+            with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks, "TASKS", root / "docs/tasks"):
+                return tasks.cell_overlaps(tasks.load(), new_ids)
+
+    def test_a_new_task_listing_an_open_tasks_cells_fails(self) -> None:
+        errors = self.overlaps(
+            {"T-0003"},
+            T_0001="todo:- gen-m9/abc.case.json (2): A1, A2\n",
+            T_0002="done:- gen-m9/abc.case.json (1): A3\n",
+            T_0003="todo:Owns gen-m9/abc Calc!A2, A3.\n",
+        )
+        self.assertEqual(len(errors), 1)
+        self.assertIn("new task T-0003 lists 1 cell(s) that open task T-0001 already lists (gen-m9/abc!A2)", errors[0])
+        self.assertIn("record the split", errors[0])
+
+    def test_naming_the_other_task_records_a_split(self) -> None:
+        cells = "- gen-m9/abc.case.json (1): A1\n"
+        self.assertEqual(self.overlaps({"T-0002"}, T_0001="todo:" + cells, T_0002="todo:" + cells + "Split from T-0001.\n"), [])
+        self.assertEqual(self.overlaps({"T-0002"}, T_0001="todo:" + cells + "T-0002 has A1.\n", T_0002="todo:" + cells), [])
+
+    def test_paths_outside_eval_suites_are_not_cells(self) -> None:
+        code = "todo:Fix crates/x.rs A1 and docs/a.md B2.\n"
+        self.assertEqual(self.overlaps({"T-0001", "T-0002"}, T_0001=code, T_0002=code), [])
+
+    def test_only_new_tasks_are_checked_and_a_new_pair_is_reported_once(self) -> None:
+        cells = "- gen-m9/abc.case.json (1): A1\n"
+        self.assertEqual(self.overlaps(set(), T_0001="todo:" + cells, T_0002="blocked:" + cells), [])
+        errors = self.overlaps({"T-0001", "T-0002"}, T_0001="todo:" + cells, T_0002="in-progress:" + cells)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("new task T-0002", errors[0])
 
 
 class Slug(unittest.TestCase):

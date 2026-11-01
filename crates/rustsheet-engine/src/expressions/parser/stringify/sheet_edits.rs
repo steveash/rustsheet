@@ -52,6 +52,7 @@ fn for_each_sheet_reference_mut(node: &mut Node, f: &mut impl FnMut(&mut Node)) 
         | Node::NumberKind(_)
         | Node::StringKind(_)
         | Node::ErrorKind(_)
+        | Node::SheetRefErrorKind { .. }
         | Node::ParseErrorKind { .. }
         | Node::ArrayKind(_)
         | Node::NamedVariableKind { .. }
@@ -90,6 +91,33 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         }
         Node::DefinedNameKind((n, s, _)) => rename_defined_name_sheet(n, *s, sheet_index, new_name),
         _ => node.rename_reference_sheet(sheet_index, new_name),
+    });
+}
+
+/// Points every reference of `node` written without a sheet prefix at the sheet `to`. A
+/// D-function's computed criterion reads its unqualified references on the database's sheet, not
+/// its own (probes/db-computed-criteria-cross-sheet, criteria.md "D* computed criteria and an
+/// unknown header in the gen-m9 database sweep (T-2258)").
+pub(crate) fn retarget_unqualified_references(node: &mut Node, to: u32) {
+    for_each_sheet_reference_mut(node, &mut |node| {
+        if let Node::ReferenceKind {
+            sheet_name: None,
+            sheet_index,
+            ..
+        }
+        | Node::RangeKind {
+            sheet_name: None,
+            sheet_index,
+            ..
+        }
+        | Node::ThisRowKind {
+            sheet_name: None,
+            sheet_index,
+            ..
+        } = node
+        {
+            *sheet_index = to;
+        }
     });
 }
 

@@ -4,6 +4,11 @@
 /// format leaves the text unchanged (probes/text-format-text-limit A10, A11, A19-A21, A24, A25).
 pub(super) const MAX_TEXT_FORMAT_CHARS: usize = 255;
 
+/// What a cell shows for a value its format cannot show: 255 `#`, whatever the column width.
+pub(super) fn unshowable_text() -> String {
+    "#".repeat(MAX_TEXT_FORMAT_CHARS)
+}
+
 /// A formatted value: its text (`#VALUE!` when TEXT fails), the section's color and why it failed.
 pub struct Formatted {
     pub color: Option<i32>,
@@ -32,7 +37,7 @@ impl Formatted {
     #[must_use]
     pub fn displayed(self) -> String {
         if self.unshowable {
-            "#".repeat(MAX_TEXT_FORMAT_CHARS)
+            unshowable_text()
         } else {
             self.text
         }

@@ -1,0 +1,32 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2626: IMPOWER of a pure imaginary base and a lopsided base whose x^2+y^2 overflows.",
+ "tags": [
+  "M9",
+  "probe",
+  "engineering",
+  "T-2626"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=IMPOWER(\"1E+300i\",-0.5)",
+    "A2": "=IMPOWER(\"1E+300i\",-1)",
+    "A3": "=IMPOWER(\"1E+300i\",2)",
+    "A4": "=IMPOWER(\"1E+300i\",1)",
+    "A5": "=IMPOWER(\"1E+200i\",-0.5)",
+    "A6": "=IMPOWER(\"1E+200+1E-300i\",-0.5)",
+    "A7": "=IMPOWER(\"1E+200+1E-300i\",-1)",
+    "A8": "=IMPOWER(\"1E+200+1E-300i\",2)",
+    "A9": "=IMPOWER(\"1E+200+1E-300i\",1)",
+    "A10": "=IMPOWER(\"1E+300+1E-300i\",-0.5)",
+    "A11": "=IMPOWER(\"1E-300+1E+200i\",-0.5)",
+    "A12": "=IMPOWER(\"-1E+300i\",-0.5)",
+    "A13": "=IMPOWER(\"1E+200+1E+10i\",-0.5)",
+    "A14": "=IMPOWER(\"1E+200+1E+10i\",2)"
+   }
+  }
+ ],
+ "expected": {}
+}

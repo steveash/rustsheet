@@ -16,12 +16,13 @@ result is within a few ULP of zero relative to the operands, Excel returns exact
 **not** happen when the whole formula is parenthesized (`=(X-b)`) or another operation follows
 (`=X-b+0`, `=(X-b)*1`). For X = b·(1±k·2^-52): k ≤ 3 always snaps, k = 4–7 snaps for some bases only
 (15, 9, 9, 9 of 24), k = 8 never; identical for `X-b`, `X+(-b)` and `SUM(X,-b)`. The exact
-threshold (T-0110, fitted on all 1,296 cells): snap iff the two addends of the final addition
-have opposite signs and |result| < 8 ULP of the **smaller** addend in magnitude (= 2^(e-49), e
-its binary exponent). The opposite-sign condition is implied, not observed: every probe cell
-subtracts, and with equal signs |result| is at least the smaller addend. Snapped results are at most 7 ULP and kept ones at least 8. The larger
+threshold (T-0110, fitted on all 1,296 cells; refined by T-3100): snap iff the two addends of
+the final addition have opposite signs and |result| < 8 ULP of the **left** addend in magnitude
+(= 2^(e-49), e its binary exponent; for a two-addend SUM, its first; with three or more
+addends, the running total before the last addend, T-3145 below). The
+opposite-sign condition is implied, not observed: every probe cell subtracts, and with equal signs |result| is at least the smaller addend. Snapped results are at most 7 ULP and kept ones at least 8. The larger
 addend or a relative bound (|r|/max < 2^-k) does not separate them: for b = 1 the `+` side snaps
-up to k = 7 but the `-` side, whose smaller addend 1-k·2^-52 has half the ULP, only up to k = 3.
+up to k = 7 but the `-` side, whose left addend 1-k·2^-52 has half the ULP, only up to k = 3 (see "Operand order" below).
 The earlier hypothesis (no snapping with parentheses or in SUM) was wrong for SUM; it holds for `+`/`-`.
 The 8-ULP bound is itself flushed when it is subnormal (T-2714): with addends 1.5·2^-p and -(1.5·2^-p·(1+k·2^-52)),
 k = 1 and 3 snap for p = 960 to 973 (2^(e-49) is at least 2^-1022), even where the exact total is subnormal (p = 972,
@@ -31,11 +32,108 @@ column of probes/t2714-mod-near-smallest-normal (excel-graph, 2026-10-25).
 Evidence: probes/precision-and-rounding.case.json A2–A4, A15; probes-numeric/30bc5f8fab02d0a2
 `snap-addsub/*` (1,296 cells). Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
-Implemented in: `snap_near_zero` (arithmetic.rs), applied at the cell formula's root by `Model::evaluate_formula_root` (an outermost `+`/`-`) and `fn_sum` (every SUM call, functions/math_and_trigonometry/sum.rs); a wholly parenthesized formula is a root `Node::Group` (`Parser::parse_parenthesized`, T-1017, T-1341, T-1392) and is not snapped. Array operands of `+`/`-` are not snapped (unprobed); SUM over array arguments does snap (below).
+Implemented in: `snap_near_zero` (arithmetic.rs), applied at the cell formula's root by `Model::evaluate_formula_root` (an outermost `+`/`-`; also at a directly called LAMBDA's body, `Model::call_lambda` setting `LambdaCaller::root_snap`, T-3083) and `fn_sum` (every SUM call, functions/math_and_trigonometry/sum.rs); a wholly parenthesized formula is a root `Node::Group` (`Parser::parse_parenthesized`, T-1017, T-1341, T-1392) and is not snapped. Array and range operands are snapped element by element in the same `Model::handle_outermost_sum` (T-3047, below); SUM over array arguments snaps too (below).
+Three or more addends (T-3145, probes/t3145-snap-multi-addend, excel-graph 2026-10-30): the left addend of a
+SUM's final addition is the **running total before the last addend**, not the first argument and not the last
+addend. Four 16-row blocks put the last addend at -(1∓k·2^-52) for k = 1..16 after (0.5, 0.5), (2, -1), (1.5, -0.5)
+and (0.5, 0.25, 0.25), so the running total is 1 in every block while the first argument (0.5, 2, 1.5, 0.5) and
+the last addend (exponent -1 or 0) predict cut-offs of k ≤ 3 or k ≤ 15 in some block; every block snaps exactly
+k ≤ 7 (8 ULP of 1) and keeps k = 8 (1.7763568394002505e-15, negated in the second block). In every block the running
+total is the larger of the two final addends or shares its binary exponent (block 2: 1 against -(1+k·2^-52)), so
+this probe alone does not separate it from the larger addend; the two-addend `-` side above (b = 1, whose larger
+addend 1 would allow k ≤ 7, snaps only to k = 3) rules the larger addend out, and T-3248 rules it out inside SUM
+(below). SUM over the cells as arguments, over the row range and over an array argument
+(`SUM(CHOOSE({1,2,3},..))`), SUBTOTAL(9,range) and the `+` chain agree on every cell. AVERAGE snaps the sum before dividing: 0 for k ≤ 7, the kept total over the
+count from k = 8 on (5.921189464667501e-16 for three addends). Status: VERIFIED.
+Implemented in: `SumParts::snapped` (functions/math_and_trigonometry/sum.rs), which SUM, AVERAGE and SUBTOTAL
+share; the engine already matched.
+
+Running total below the last addend's exponent (T-3248, probes/t3248-snap-running-total-below-last, excel-graph
+2026-10-30): inside SUM the bound is 8 ULP of the **running total**, not of the larger of the two final addends.
+Four 16-row blocks make the running total before the last addend 1-k·2^-52 (exponent -1, bound 2^-50) while the
+last addend is ∓1 (exponent 0, bound 2^-49): (0.5, 0.5-k·2^-52, -1), its negation, (0.25, 0.25, 0.5-k·2^-52, -1)
+and (2, -1.5, 0.5-k·2^-52, -1), whose first argument 2 would allow k ≤ 15. Every block snaps exactly k ≤ 3 and
+keeps k = 4 (-8.881784197001252e-16, positive in the negated block), where the larger addend would snap to k = 7.
+SUM of the cells as arguments, of the row range and of an array argument (`SUM(CHOOSE({1,2,3},..))`),
+SUBTOTAL(9,range) and the `+` chain agree on all 384 cells; AVERAGE snaps the sum before dividing (0 for k ≤ 3,
+then the kept total over the count, -2.9605947323337506e-16 at k = 4 with three addends). Status: VERIFIED. The
+engine already matched (`SumParts::snapped`).
+
 Groups and names (T-1137, probes/near-zero-snap-groups, excel-graph 2026-10-08): `=((0.1+0.2-0.3))`, `=(((0.1+0.2-0.3)))` and `=((1-0.9-0.1))` are not snapped (5.551115123125783e-17, 5.551115123125783e-17, -2.7755575615628914e-17), like the single-level `=(0.1+0.2-0.3)`; a group that is an operand of an outer `+` (`=(0.1+0.2-0.3)+0`, `=0+(0.1+0.2-0.3)`) is not snapped either. A defined-name body **is** snapped at its own root: `nz` = `=0.1+0.2-0.3` and `nzb` = `=Sheet1!$A$1-0.3` (A1 = `=0.1+0.2`) give 0 for `=nz`, `=nzb`, `=nz+0`, `=nz*1` and `=SUM(nz)`; the engine snaps a name body at its root through `evaluate_formula_root` (T-1160). Name bodies written as a group or a SUM (T-1164, probes/near-zero-snap-name-bodies, excel-graph 2026-10-08): `nzg` = `=(0.1+0.2-0.3)` and `nzgg` = `=((0.1+0.2-0.3))` are not snapped (`=nzg`, `=nzgg`, `=nzg+0` and `=SUM(nzg)` give 5.551115123125783e-17, like the cell forms), while `nzs` = `=SUM(0.1,0.2,-0.3)` is snapped (`=nzs` and `=nzs+0` give 0). The engine keeps a grouped root on a name body (`Model::parse_internal_formula`, `user_formula_to_internal`, the xlsx import re-parse, sheet copy and rename, name display); a parenthesized reference body stays a reference (`rg` = `=(Sheet1!$B$1:$B$2)`, `ig` = `=(INDEX(...))` and `og` = `=(OFFSET(...))` give ISREF TRUE, ROWS/SUM as without the parentheses: probes/defined-name-grouped-reference, excel-graph 2026-10-08), so `is_reference` looks through the group (`Node::ungrouped`). The same parse also keeps the grouped root of a conditional-formatting formula written wholly in parentheses (`user_formula_to_internal` serves both); whether Excel snaps inside CF formulas is UNVERIFIED and not observable through the oracle (T-1171: excel-graph reads cell values only, the case format and the Graph workbook API carry no conditional-formatting rules or their rendered fill; see docs/architecture/oracle.md, Unobservable features), so it needs desktop Excel (M14, Phase 4, decision 0039, T-1204). Unprobed: a formula typed as `=(X-b` that Excel completes with `)`. FORMULATEXT of `=((0.1+0.2-0.3))` is `=((0.1+0.2-0.3))`: the engine keeps every written level around a whole formula (one root `Group` holding every level, T-1161, T-1341).
 
+Array and range operands (T-3047, probes/t3047-snap-array-operands, excel-graph 2026-10-28): the outermost `+`/`-` snaps **each element** of an array result by the scalar rule, on that element's own two addends. Spilled `=A1:A4+B1:B4-C1:C4` over rows (0.1, 0.2, 0.3), (1, 1, 2), (0.1, 0.2, 0.1), (1, -0.9, 0.1) is 0, 0, 0.20000000000000004, 0 (S!E3:E6), and `=-C1:C4+A1:A4+B1:B4` is 0, 0, 0.2, 0 (F3:F6). `=0+{0.1,1}+{0.2,1}-({0.3,2})`, a one-element `=0+{0.1}+0.2-0.3`, scalars broadcast over an array (`=0.1+{0.2;0.2}-0.3`) and a 2-D constant (K1:L2) all give 0 in every cancelling element. The 8-ULP boundary is per element and unchanged: `=1+{3;7;8}*2^-52-1` is 0, 0, 1.7763568394002505e-15 (the `+` side keeps k = 8), `=1-{3;4;7}*2^-52-1` is 0, -8.881784197001252e-16, -1.5543122344752192e-15 (the `-` side snaps only up to k = 3), and `=-1+(1+{3;7;8}*2^-52)` matches the `+` side. A plain reference to a spill cell (`=E3`), `INDEX(E3#,1)` and `SUM(E3:E6)` (0.20000000000000004) read the snapped values, while `=INDEX(A1:A4+B1:B4-C1:C4,1)` is 5.551115123125783e-17: the snap belongs to the root, not to an operator under a call. A legacy (implicitly intersected) `=A1:A4+B1:B4-C1:C4` snaps on each of its rows (L!E1:E4 = 0, 0, 0.20000000000000004, 0). A legacy root operator over an array constant shows its first element and does not spill (L!G1 0 with G2 empty, L!H2 0 with H3 empty, although H2's own row would be the 8-ULP element); the engine still spills those (T-3051). Status: VERIFIED.
+
+Pickers, LET, LAMBDA and unary signs (T-3049, probes/t3049-snap-under-pickers, excel-graph 2026-10-28): the snap follows the **tree root**, not the last operator Excel executes. A root `+`/`-` that a picker or a unary sign returns is not snapped: `IF(TRUE,..)`, `IF(FALSE,0,..)`, `IFS(TRUE,..)`, `IFERROR(..,0)`, `IFNA(..,0)`, `CHOOSE(1,..)`, `SWITCH(1,1,..)`, `LET(x,..,x)`, `LET(x,0.1,x+0.2-0.3)`, `-(..)`, `+(..)`, `--(..)`, `IF(TRUE,(..))`, `IF(TRUE,IF(TRUE,..))` and `LET(x,..,x)+0` all keep 5.551115123125783e-17 over `0.1+0.2-0.3` and 1.5543122344752192e-15 at k = 7 (`1+7*2^-52-1`, which snaps as a bare root), negated under the minus (rows 3-16 and 19 of B:D). A **LAMBDA body is snapped at its own root**, as a defined-name body is: `=LAMBDA(x,x+0.2-0.3)(0.1)` and `=LAMBDA(x,x+7*2^-52-1)(1)` are 0, and k = 8 keeps 1.7763568394002505e-15 (B17:D17), while the same body under LET (row 16) is not snapped. `=-0.1-0.2+0.3` snaps (its root is the `+`; the minus binds to 0.1 only), and so does its k = 7 form `-1-7*2^-52+1` (B18:D18; k = 8 keeps -1.7763568394002505e-15). A plain reference to a snapped cell under `+0` reads the 0 (row 20). The 8-ULP boundary is unchanged wherever the snap applies (k = 7 snaps, k = 8 keeps). **Every call of a LAMBDA snaps its body's root; the body's own shape decides** (T-3094, probes/t3094-snap-lambda-call-forms, excel-graph 2026-10-29; rows 2-5 are `x+0.2-0.3` at 0.1, k = 7, k = 8 and `-x-0.2+0.3` at 0.1, column B the in-place control): a workbook-scoped name `f` = `=LAMBDA(x,..)` called as `=f(..)`, `=f(..)+0`, `=(f(..))` or `=SUM(f(..))` (C:F), `=LET(g,LAMBDA(x,..),g(..))` (G), a LAMBDA whose body calls another, in place (I) or by name (`h` = `=LAMBDA(y,f(y))`, J), all give 0 in rows 2, 3 and 5, so the call is the root in every position probed (C:G, I, J): `f(..)+0` reads an already snapped 0, unlike `LET(x,..,x)+0`. A body that is not itself the `+`/`-` keeps the residue: a grouped body `LAMBDA(x,(..))` (H, as a grouped name body, T-1164), a picker body `LAMBDA(x,IF(TRUE,..))` (K) and a LET body `LAMBDA(x,LET(z,x,..))` (L) keep 5.551115123125783e-17, 1.5543122344752192e-15 and -5.551115123125783e-17. k = 8 (row 4) keeps 1.7763568394002505e-15 in every form. The engine matches every cell, the calls through a defined name (C2:F2, C3:F3, C5:F5, J2, J3, J5) included: `Model::call_lambda` evaluates every called body, named or not, through `Model::evaluate_formula_root` (T-3105). A sheet-scoped name snaps the same way in the engine; that is unprobed (T-3149).
+
+**The LAMBDA helpers snap every call's root, and REDUCE and SCAN every step** (T-3095, probes/t3095-snap-lambda-helpers, excel-graph 2026-10-29, Calc!B): MAP, MAKEARRAY, BYROW and BYCOL give 0 in every element read through `INDEX(..,n)` and in a `SUM` over the spill, for `x+0.2-0.3` at 0.1, k = 7 and `-x-0.2+0.3` at 0.1 (rows 1-40 and 61-80; a BYROW/BYCOL body `SUM(r)-0.3` or `INDEX(r,1)+INDEX(r,2)-0.3` snaps like the in-place call of the same body, rows 10-20), while k = 8 keeps 1.7763568394002505e-15 per element (rows 41-60). REDUCE and SCAN with `LAMBDA(a,x,a+x)` snap the accumulator at the step that cancels, so later steps start from 0: over 0.1, 0.2, -0.3, 1E-16 SCAN reads 0.1, 0.30000000000000004, 0, 1E-16 and REDUCE is 1E-16, where the plain sum `=A+B+C+D` keeps 1.5551115123125782e-16 (rows 88-95); over 1, 7*2^-52, -1, 1E-15 REDUCE is 1E-15 against the plain 2.5543122344752192e-15 (rows 111-118); the k = 8 accumulator keeps 1.7763568394002505e-15 and adds to it (rows 119-133). Four nested in-place calls `LAMBDA(a,x,a+x)(LAMBDA(a,x,a+x)(..),..)` give the same as REDUCE (rows 94, 117), so an in-place call passed as a LAMBDA argument snaps too. The engine matches every cell (T-3111): MAP, MAKEARRAY, BYROW, BYCOL, REDUCE and SCAN call their LAMBDA through `LambdaCaller::snapping_root`, and an in-place call read in reference context (a LAMBDA argument, bound by `bind_argument`) snaps a root `+`/`-` body, which can never be a reference. That reference path is also the one an in-place call as an aggregate argument takes (`=SUM(LAMBDA(x,x+0.2-0.3)(0.1))`), so the engine snaps it too, as Excel snaps `=SUM(f(..))` over a defined-name LAMBDA (T-3094, F2:F5); the in-place aggregate form itself is unprobed (T-3093). Unprobed: GROUPBY/PIVOTBY aggregation LAMBDAs, not snapped by the engine, and eta-reduced helpers (`MAP(r,SUM)`; T-3112). T-3093 also owns a parameter-passed or chained LAMBDA and a call under a picker (snapped as a direct call). The engine matches every t3049-snap-under-pickers cell (the LAMBDA cells B17 and C17 since T-3083). Status: VERIFIED.
+
+M2 pickers, wrappers and summing functions in both operand orders (T-3139, gen-m2 `numeric-fp` cases
+fde64eeac1b5122d, 4fcaec656703fa15 and 2f543197a3445de1 from `rustsheet-gen --policy numeric-fp --seed 0`, 5,200 cells,
+excel-graph 2026-10-30; X = base·(1±k·2^-52) and b = base for base 1, 2, 0.5, 2^20 and 1.5, k = 0..9, so below a
+power of two k counts half-ULPs of b, i.e. 2k ULPs of X): a root `X-b` or
+`b-X` whose operands are read through VLOOKUP, HLOOKUP, INDEX, MATCH-fed INDEX, MIN, MAX, ABS or `IF(TRUE,..)` snaps
+exactly as over plain references (the left-addend bound above: over k = 1..9, 48 of 90 pairs snap for `X-b` and 64 for
+`b-X`). A root over `ROUND(X,20)-ROUND(b,20)` snaps more often (73 and 77 of 90), because ROUND first cuts X to 15
+significant digits ("ROUND family rounds in two decimal stages"), which for most k gives b itself. Under a wrapper the
+residue is never snapped: `IF(TRUE,X-b)`, `IFERROR(X-b,0)`, `ROUND(X-b,20)` (2.2204E-16 at base 1, k = 1), `ABS(X-b)` and
+`(X-b)&""` (`2.22044604925031E-16`) keep it at every k ≥ 1, and `(X-b)=0`, `AND(X-b=0)` and `COUNTIF(<a 0 cell>,X-b)` are
+FALSE, FALSE and 0, so the comparison and COUNTIF see the kept residue. SUM and AVERAGE over a range holding X and -b
+(either order) snap as the root does; with a trailing numeric 0 cell in the range they never snap; SUMIF and SUMIFS
+(criterion `"<1E+300"`, matching every addend) never snap. The engine matches every cell. Status: VERIFIED.
+
+M5 rounding chains and 15-digit cuts (T-3204, gen-m5 `numeric-fp` cases b8981a7b5a032053 (root), 18c8298fa500477b
+(wrapper) and a513f2d1fa83dac5 (digits15) from `rustsheet-gen --policy numeric-fp --milestone M5 --seed 0`, 4,252
+cells, excel-graph 2026-10-30; same X and b as T-3139 above). **Under a rounding function the residue is kept and
+then rounded**: `TRUNC(X-b,20)`, `ROUNDUP(X-b,20)` and `ROUNDDOWN(X-b,20)` keep it at every
+k ≥ 1 (at X = 1+2^-52: 2.2204E-16 for TRUNC and ROUNDDOWN, the residue's 15-digit cut 2.22044604925031E-16 taken
+to 20 decimals, and 2.2205000000000003e-16 for ROUNDUP, see "ROUNDUP adds the unit in binary"), and the integer
+forms act on it: at X = 1+2^-52, `INT(b-X)` and `ROUNDUP(b-X,0)` are -1, `ROUNDUP(X-b,0)` is 1, `MOD(b-X,1)` is
+0.9999999999999998 (1-2^-52) and `MOD(X-b,1)` is the residue; with X below b the signs swap (`INT(X-b)` = -1). `TRUNC(X-b)` is 0 throughout. **A root over rounded operands snaps by the left-addend bound on the cut
+values**: `TRUNC(X,20)-TRUNC(b,20)`, and the same with ROUNDUP and ROUNDDOWN, are 0 wherever X's 15-digit cut is b,
+and otherwise the root `-` compares the cut difference with 8 ULP of the cut left addend, so for b = 1, X below it,
+`b-X` snaps up to k = 6 (1-0.999999999999999) and keeps 1.9984014443252818e-15 at k = 7, while `X-b` keeps
+-9.992007221626409e-16 from k = 3; at b = 0.5, k = 5 the cut 0.500000000000001 leaves 9.992007221626409e-16 (9 ULP of
+0.5, kept). `INT(X)-INT(b)` and `TRUNC(X)-TRUNC(b)` are 0 for X = 1-k·2^-52 up to k = 2 and from k = 3 are -1 (`b-X` order: 1), as "INT
+cuts to 15 significant digits first" predicts. `MOD(X,2^21)-MOD(b,2^21)` gives exactly what `X-b` gives in every
+cell ("MOD is an exact remainder"). The digits15 case puts X one step either side of the k where X's rounded or
+truncated 15-digit cut stops being b (tags `round15=` and `trunc15=`): TRUNC, ROUNDUP and ROUNDDOWN at 20 digits
+follow the **rounded** cut, never the truncated one (in each order, the 15 cells whose truncated cut is b but whose
+rounded cut is not all keep a residue, and the 14 the other way round are all 0), confirming that stage 1 rounds to
+nearest for ROUNDDOWN and TRUNC too. The engine matches every cell. Status: VERIFIED.
+
 SUM forms (T-1131, probes/near-zero-sum-forms, excel-graph 2026-10-11): a SUM call snaps its final addition **wherever it sits**, unlike `+`/`-`: `=(SUM(0.1,0.2,-0.3))`, `=SUM(A1:A3)+0` and `=SUM(A1:A3)*1` (A1:A3 = 0.1, 0.2, -0.3) all give 0, as do `=SUM({0.1,0.2,-0.3})`, `=SUM({0.1,0.2},-0.3)`, `=SUM(0.1,{0.2,-0.3})`, `=SUM(A1:A2,A3)` and a range with a blank or text between the addends. A trailing zero addend stops the snap: `=SUM(0.1,0.2,-0.3,0)` and `=SUM(A1:A3,0)` give 5.551115123125783e-17 (the last two addends are -0.3 and 0). 2-D ranges add in row-major order, so `=SUM(D1:E2)` (0.1, 0.2 / -0.3, 0) is 5.551115123125783e-17 (last addend 0) and `=SUM(J1:K2)` (0.1, -0.3 / 0.2, -0.1) is -0.09999999999999998. The engine snaps in `Model::fn_sum` for every SUM call. AGGREGATE(9, ...) and SUBTOTAL(9/109, ...) snap the same way (T-1336, probes/near-zero-aggregate-forms B1-B6, B10-B12, excel-graph 2026-10-11: `=AGGREGATE(9,4,A1:A3)`, `=AGGREGATE(9,6,A1:A3)`, `=SUBTOTAL(9,A1:A3)`, `=SUBTOTAL(109,A1:A3)` and `+0` of each give 0 over 0.1, 0.2, -0.3; `=AGGREGATE(9,4,{0.1,0.2,-0.3})` is #VALUE!); the engine snaps in `subtotal_sum` and the AGGREGATE dispatch. PERCENTOF snaps both of its sums the same way (probes/percentof-snap-overflow-union, excel-graph, 2026-10-13, T-0416; it was `#NAME?` only because the case builder stored it without `_xlfn.`): `=PERCENTOF(A1:A3,C1)` and `=PERCENTOF({0.1,0.2,-0.3},1)` are 0, and `=PERCENTOF(A1:A2,A1:A3)` and `=PERCENTOF(A1:A3,A1:A3)` are #DIV/0! (the total snaps to 0). The engine sums both arguments through `fn_sum`. 
-Tasks: T-0110 (implementation), T-1131 (SUM forms), T-1336 (AGGREGATE/SUBTOTAL), T-1017 (grouped root), T-1137 (probe), T-1160 (name bodies), T-1164 (grouped and SUM name bodies), T-2714 (subnormal bound)
+Summing functions (T-3048, probes/t3048-snap-conditional-sums, excel-graph 2026-10-28): AVERAGE and AVERAGEA snap their **sum** as SUM does and then divide: over A1:A3 = 0.1, 0.2, -0.3 both are 0 (S!D5, D6; also times 1, P5, P6), over 1+7*2^-52 and -1 both are 0 (G5, G6) while k = 8 keeps 8.881784197001252e-16 (H5, H6), and a trailing 0 addend stops it (E5, E6: 1.3877787807814457e-17, the residue over 4). A text cell after the cancel does not stop it in either (I5, I6 are 0): AVERAGEA counts the text as 0 in its count but adds no 0 addend. SUMIF (with and without sum_range), SUMIFS, AVERAGEIF (both forms), AVERAGEIFS and SUMPRODUCT (one array, `R,1+0*R`, and an `--(cond)` mask) never snap: 5.551115123125783e-17 over the cancel, 1.5543122344752192e-15 at k = 7, and the AVERAGEIF family 1.850371707708594e-17 (rows 2-4 and 7-12 of D:I and P). SUM is the control in row 1 of each column (`SUM(A10:A13)`, the cancel then 5, is 5; the criteria-rejected 5 leaves SUMIF's residue). With a text cell in the range, `SUMPRODUCT(A21:A24,1+0*A21:A24)` is `#VALUE!` (I11: `1+0*R` is `#VALUE!` on the text element), while `SUMPRODUCT(A21:A24)` and the `--(cond)` mask ignore it or treat it as 0 (I10, I12; the two cannot be told apart here). So the last-addition tracking of SPEC-0009's walker is needed by SUM and by AVERAGE and AVERAGEA (T-3066), not by the criteria sums, the AVERAGEIF family or SUMPRODUCT. The engine matches every cell (T-3066). Scalars, array constants, separate references and AGGREGATE(1) snap exactly as the range forms do (T-3066, probes/t3066-average-snap-forms, excel-graph 2026-10-29): `AVERAGE(0.1,0.2,-0.3)`, `AVERAGEA(...)`, the same over `{0.1,0.2,-0.3}`, `AGGREGATE(1,6,A1:A3)`, `AGGREGATE(1,0,A1:A3)` and `AGGREGATE(1,6,A1,A2,A3)` are 0 (D1-D6, D20-D22), 1+7*2^-52 with -1 is 0 in every form (D7, D8, D11, D13, D15) and 1+8*2^-52 with -1 keeps 8.881784197001252e-16 in every form (D9, D10, D12, D14, D16). AVERAGEA's addends (T-3092, probes/t3092-averagea-subtotal-snap, excel-graph 2026-10-29): over 0.1, 0.2, -0.3 a text element of an array constant (`AVERAGEA({0.1,0.2,-0.3,"x"})`, D5), a FALSE array element (D6) and a FALSE cell (D8-D10, range or separate) add no 0 addend, so the result is 0, while a direct `"0"` (D1), a direct FALSE (D3), a 0 array element (D7), a literal 0 argument (D12) and a 0 cell (D13) are addends and keep 1.3877787807814457e-17; a direct `"x"` is `#VALUE!` (D2) and a direct TRUE adds 1 (D4: 0.25). SUBTOTAL(1) and SUBTOTAL(101) snap their sum as SUM does (0 over the cancel, D15-D18, D25-D27; 0 at k = 7, D19-D20; 8.881784197001252e-16 at k = 8, D21-D22; a trailing 0 cell keeps 1.3877787807814457e-17, D23-D24). Unprobed (the engine's choice): a FALSE in the cached range of a linked workbook follows the FALSE-cell rule. Status: VERIFIED.
+
+Operand order (T-3100, probes/t3100-snap-operand-order, excel-graph 2026-10-29): the bound is 8 ULP of the **left**
+addend, not of the smaller one. With b = 1, 2, 1.5, 3, 0.75 and X = b±k·2^(e-52) (k = 3 to 8, read from cells), all
+540 cells of `X-b`, `b-X`, `-X+b`, `X+(-b)`, `-b+X`, `SUM(X,-b)`, `SUM(-b,X)`, `SUM(b,-X)` and `SUM(-X,b)` fit the
+left-addend bound (the left operand of the root `+`/`-`, a unary minus included, or SUM's first argument);
+the smaller-addend rule misses 32 and a larger-addend rule 40. They differ only where b is a power of two and X lies
+below it, so X has half b's ULP: `1-(1-4·2^-52)` snaps (left 1, bound 2^-49) and `(1-4·2^-52)-1` keeps
+-8.881784197001252e-16 (left X, bound 2^-50); likewise `-1+(1-4·2^-52)` and `SUM(1,-(1-4·2^-52))` snap. Every earlier
+probe had X on the left, which is why the smaller-addend fit held there. This also explains
+probes/t3073-lookup-near-equal-approximate Sheet1!E8 (`1-(1-8·2^-53)`, 0) and E16 (`(1-8·2^-53)-1`, kept);
+probes/t3106-lookup-xmatch-near-equal Sheet1!AC8 is the same pair as E8 and gives 0 too.
+The engine matches all of them since T-3100. Status: VERIFIED.
+Coerced addends (T-3140, probes/t3140-snap-coerced-operands, excel-graph 2026-10-29): the snap sees the **coerced
+value**, with the same 8-ULP bound of the left addend. Thirteen bases, each as a literal and from a text cell (T!A),
+on the left and on the right of the root `-`, under a unary minus (`-"text"+X`) and as `X+(-"text")`, against X =
+c+k·ULP(c) for k = 0..9 (S, 1,040 cells; X built from the oracle's own coerced value V!B): number text `"1"`, `"1.5"`,
+`"0.3"`; percent `"50%"`, `"23.123%"` (0.23123); time `"12:00"`, `"10:00"` (0.4166666666666667); date-time
+`"1/2/1900 12:00"` (2.5) and `"7/7/2026 4:35 PM"` (46210.69097222222); date `"1/1/2000"`; TRUE (literal and cell);
+currency `"$1.50"`; thousands `"1,000"`. In every base and every form k ≤ 7 gives 0 and k ≥ 8 keeps the residue,
+exactly as the number controls (S!E, S!F) do. The forms with several coerced operands agree with their number
+controls too (M!A1:A30 against M!B): `="30%"-0.1-0.2`, `="0.3"-0.1-0.2`, `="0.1"+"0.2"-"0.3"`, the same over text
+cells, `=-"0.3"+0.1+0.2`, `="12:00"+"12:00"-1` and `=TRUE-(1-3*2^-52)` are 0; `=TRUE-(1+8*2^-52)` and
+`=(1+8*2^-52)-TRUE` keep ∓1.7763568394002505e-15. `="7/7/2026 4:35 PM"-46210-(16+35/60)/24` keeps
+-3.2337466038256935e-12, as `VALUE(..)` in its place does: that residue is the serial's own error (dates.md), far
+above 8 ULP of the left addend 0.69097222222. A blank cell, FALSE or a FALSE cell is a 0 addend and never snaps
+(`=0.1+0.2-0.3+Z1`, `-FALSE`: 5.551115123125783e-17, like `+0`; `=Z1-2^-1000` and `="1E-300"-1E-300*(1+2^-52)`
+keep their totals, the latter a kept subnormal whose `(x)=0` companion M!C24 is FALSE, so its Graph 0 scores by decision 0042). So Excel coerces before it
+snaps, and the engine, which snaps the coerced `f64` addends in `Model::handle_outermost_sum`, needed no change; it
+matches every cell. Every X in this probe lies above c, so the left-addend and smaller-addend bounds agree here
+(the operand-order question is T-3100's, settled above). Status: VERIFIED.
+Tasks: T-0110 (implementation), T-3092 (AVERAGEA addends, SUBTOTAL 1/101), T-1131 (SUM forms), T-3048 (summing functions), T-3049 (pickers, LET, LAMBDA and unary signs), T-3083 (LAMBDA body snap), T-1336 (AGGREGATE/SUBTOTAL), T-1017 (grouped root), T-1137 (probe), T-1160 (name bodies), T-1164 (grouped and SUM name bodies), T-2714 (subnormal bound), T-3047 (array and range operands), T-3100 (operand order), T-3140 (coerced addends), T-3204 (M5 rounding chains)
 
 ## ROUND family rounds in two decimal stages
 Rule: ROUND, ROUNDUP and ROUNDDOWN never scale by a binary power of ten. They (1) cut the exact
@@ -121,23 +219,20 @@ round-to-nearest (half away from zero) to 15 significant digits, then floor, for
 1000000000000005, `INT(-4503599627370495.5)` = -4503599627370496, `INT(999999999999999.9)` = 1E+15 (still cut).
 Status: VERIFIED (excel-graph, 5 + 63 cells); implemented (T-2171, confirmed by T-2215).
 
-## ODD and EVEN above 2^53: last digits not explained (T-2173)
-Observation: `ODD(9999999999999999)` (the literal reads 9999999999999990) is 9999999999999992; ours is 9999999999999988, from
-`ceil((|x|-1)/2)*2+1` in doubles, where `|x|-1` already rounds down. `RADIANS(ODD(9999999999999999)*(-1-B11))` follows it.
-`EVEN((0.1/E5)*SERIESSUM(-2.5,B10,3,0.1))` (gen-m5/38b1b8e51dbad326 Calc!A10) was not an EVEN miss: the EVEN input was an
-ulp low through SERIESSUM's own power, and the cell passes since T-2163 raised with the `^` kernel. No formulation is fitted
-yet for the ODD cells.
-Fitting points (66 values 2^52 .. 1.8E+308, ODD and EVEN, excel-graph, T-2172): probes-numeric/trig-odd-even-sumxmy2-sweep Calc!F1:H66.
-EVEN matches Excel on all 66 cells. ODD misses 11: every miss is an even double strictly above 2^53 and up to about 1E+16 (2^53+2,
-2^53+6, ..., 9999999999999990 .. 1.000000000000001E+16, and -(2^53+2)), where Excel returns the next double away from zero (x+2) and
-ours the one toward zero (e.g. G10 `ODD(9007199254740994)` is 9007199254740996, ours 9007199254740992; G30 `ODD(9999999999999998)` is
-1E+16, an even result). Between 2^53 and at least 1.000000000000001E+16 (G36; where the band ends below 2^54 is unprobed) the rule is by residue: x = 2 (mod 4) gives x+2 (away from zero), x = 0 (mod 4) returns x unchanged, an even result
-(G11, G13, G15, G17, G27, G29, G31, G33, G35, G63). `ODD(2^53)` and values from 2^54 up return the input unchanged (F9, F20:F25, F37:F64, F66).
-`EVEN(6.223015277861143E+37)` with the stored double returns its input (H60); the gen-m5 ...144 came from a computed, 1-ulp-low input, not EVEN. T-2173 fits this.
-Evidence (excel-graph, 2026-10-20): gen-m5/6b831f5e2a20bc34 Calc!A283, gen-m5/bbbd316c346ce645 Calc!A224 (gen-m5/38b1b8e51dbad326 Calc!A10 fixed by T-2163).
-`ODD(EVEN(9999999999999999))` is 9999999999999992 as well (ours 9999999999999988): gen-m5/d88d12a62b726a0a Calc!A232 (excel-graph,
-2026-10-22, T-2252 triage).
-Status: OBSERVED; T-2173 (after the T-2172 oracle sweep).
+## ODD above 2^53 adds one in binary (T-2173)
+Rule: `ODD(number)` is `c = ceil(|number|)`, then `c + 1` when `c` is even, as one double addition, with the sign of
+`number`. Below 2^53 the addition is exact. Between 2^53 and 2^54 every double is even and `c + 1` is a tie, so it rounds
+half to even: x = 2 (mod 4) gives x+2 (away from zero; `ODD(9007199254740994)` is 9007199254740996, `ODD(9999999999999998)`
+is 1E+16), x = 0 (mod 4) returns x unchanged, an even result. `ODD(2^53)` and values from 2^54 up return the input
+unchanged (`c + 1` rounds back to `c`). The earlier `ceil((|x|-1)/2)*2+1` gave the double toward zero, because `|x|-1`
+already rounds there. EVEN (`ceil(|x|/2)*2`, exact) matched Excel on all 66 sweep points before and after.
+`ODD(9999999999999999)` (the literal reads 9999999999999990) is 9999999999999992, and `ODD(EVEN(9999999999999999))` too.
+`EVEN((0.1/E5)*SERIESSUM(-2.5,B10,3,0.1))` (gen-m5/38b1b8e51dbad326 Calc!A10) was not an EVEN miss: its input was an ulp
+low through SERIESSUM's own power (fixed by T-2163).
+Evidence (excel-graph): probes-numeric/trig-odd-even-sumxmy2-sweep Calc!F1:H66 (66 values 2^52 .. 1.8E+308, ODD and EVEN,
+T-2172; every old miss was an even double in (2^53, 2^54)); gen-m5/6b831f5e2a20bc34 Calc!A283, gen-m5/bbbd316c346ce645
+Calc!A224, gen-m5/d88d12a62b726a0a Calc!A232, gen-m5/36133d9266f8ed26 Calc!A144.
+Status: VERIFIED (excel-graph, 66 sweep cells + 4 gen-m5 cells); implemented (T-2173).
 
 ## MROUND rounds the quotient up within 5E-15 of a half, and multiplies in binary (T-2201)
 Rule: `MROUND(number, multiple)` (after the sign and zero checks) is
@@ -629,14 +724,32 @@ and a carry that takes the 14-digit mantissa to 10^14 raises the exponent (VERIF
 ## Criteria equality
 Rule: COUNTIF/SUMIF-style numeric criteria compare the 15-digit rounded values (no absolute epsilon): over {1E-300, 0, 1E-17, 2E-16, 1+2^-52},
 `COUNTIF(r,0)` = 1 and `"=0"` = 1, `COUNTIF(r,1)` = 1 (1+2^-52 matches 1), `"<>1"` = 4. Lookup ordering (MATCH/XMATCH/XLOOKUP) never equates tiny values with 0.
-Evidence: probes/tiny-vs-zero-criteria (A1-A33); the general 15-digit rule rests on the Comparison tolerance entry below. The blank-cell criterion path (`result_is_equal_to_empty`) uses the same rule but is inferred, not probed.
+Evidence: probes/tiny-vs-zero-criteria (A1-A33); the general 15-digit rule rests on the Comparison tolerance entry below. A blank-cell or omitted criterion is the criterion 0 and so uses the same 15-digit rule: it matches 0, -0 and the text "0" but not 1E-17 or -1E-300 (probes/t3138-blank-criterion; criteria.md "A blank-cell or omitted criterion is the criterion 0").
 Implemented in: `numbers_equal` (functions/criteria.rs), `Ord for CalcResult` (calc_result.rs). Tasks: T-1028. Oracle: excel-graph, 2026-10-06. Status: VERIFIED
+
+## Criteria ordering operators compare at 15 digits too
+Rule: the ordering criteria `"<1"`, `"<=1"`, `">1"` and `">=1"` of COUNTIF, SUMIF, COUNTIFS and SUMIFS compare the
+cell's 15-digit value, exactly as `"=1"` and `"<>1"` do: a cell is never at once "equal to 1" and "greater than 1".
+Over one-cell ranges holding `=1+k*2^-52` and `=1-k*2^-53`, the cells at k = 1, 2, 3, 8, 22 above and k = 1-4 below (all
+of which print as 1) counts for `"<=1"`, `">=1"` and `"=1"` and not for `"<1"` or `">1"`; `1+23*2^-52`
+(1.00000000000001) and `1-5*2^-53` (0.999999999999999) flip all six at once. The flip sits on the 15th-digit rounding
+boundary (5E-15 above 1, 5E-16 below), not at a fixed ULP count, so it is neither an exact comparison nor a relative
+tolerance. All four functions agree on all 288 criteria cells.
+Evidence: probes/t3072-criteria-near-equal-order (excel-graph, 2026-10-29): rows 1-12 (B = value, D = its text),
+E:J COUNTIF, K:P SUMIF, Q:V COUNTIFS, W:AB SUMIFS in the order `<`, `<=`, `>`, `>=`, `=`, `<>`; e.g. F5
+`COUNTIF(B5,"<=1")` = 1 and G5 `">1"` = 0 for 1+22·2^-52, G6 = 1 for 1+23·2^-52; E10 `"<1"` = 0 for 1-4·2^-53,
+E11 = 1 for 1-5·2^-53.
+Status: VERIFIED
+Implemented in: the four ordering matchers of functions/criteria.rs and the indexed *IFS cache's `number_interval`
+(functions/statistical/ifs_cache.rs), on `cmp_excel_precision`. Tasks: T-3084, T-3103
 
 ## Comparison tolerance
 Rule: comparisons round both numbers to 15 significant digits and compare the results exactly, so
 operands a few ULP apart can be equal or not depending on where the 15th digit falls. Measured with X = b·(1+k·2^-52) against b: `=`, `<>`, `<=` and `>` treat X as equal to b for
 k ≤ 2 at every base; for k = 3–8 only some bases (7 of 12 still equal at k = 8). `<` and `>=` are
-uninformative here because X ≥ b in every probe. No absolute tolerance exists: rounding both operands to 15 significant digits and comparing exactly
+uninformative there because X ≥ b in every probe; probes/t3072-criteria-near-equal-order AC:AF add them on both
+sides of 1 (`=B<1`, `=1<B`, `=B>=1`, `=1>=B` for B = 1±k ULP): `<` and `>=` follow the same 15-digit rule (AC11 `=B11<1`
+is TRUE for 1-5·2^-53, AC10 FALSE for 1-4·2^-53; AD6 `=1<B6` TRUE for 1+23·2^-52, AD5 FALSE for 1+22·2^-52). No absolute tolerance exists: rounding both operands to 15 significant digits and comparing exactly
 reproduces all 648 cells (T-0989; it also fixed the 2^-10 base, where an absolute epsilon wrongly said equal).
 Evidence: probes-numeric/99bc3137b5869417 `compare-tolerance/*` (648 cells). Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
@@ -702,6 +815,7 @@ The flush follows each function's internal path, not the size of the result: `BI
 FALSE, J229/J238 TRUE). Implemented (T-2703): the EXPON.DIST, WEIBULL, BETA.DIST and GAMMA.DIST densities, the
 BINOM.DIST pmf off its k = 0 and k = n closed forms, and the NEGBINOM.DIST pmf pass their result through
 `arithmetic::flush_subnormal`. The closed forms and the cumulative modes are left unchanged: k = n is EXP-based like k = 0.
+Implemented (T-2847): the NEGBINOM.DIST cdf off its closed forms (row 9 below) flushes the bratio port's result.
 More paths (T-2706, VERIFIED at the probed arguments, probes/t2706-subnormal-density-paths, excel-graph 2026-10-25, each
 true value between 4.9E-324 and 2.2E-308, row n is the call in An and its companion in Bn). Excel KEEPS the subnormal
 (companion FALSE) of the BINOM.DIST pmf at k = n (`BINOM.DIST(1000,1000,0.49,FALSE)`, BINOMDIST, `BINOM.DIST(500,500,
@@ -920,18 +1034,44 @@ with nothing dropped for k ≤ 7, whose kept cut is subnormal, while for k = 8 i
 `ROUND(2^-1022,310)` is 2.23E-308), ROUNDDOWN's (`ROUNDDOWN(x,308)` for k = 8, 2E-308, is 0)
 and ROUNDUP's rounded-down part and unit (`ROUNDUP(x,308)` to `ROUNDUP(x,321)` for k = 8 are 0, though the decimal
 results 3E-308 to 2.2250738585073E-308 are normal: both 2E-308 and the unit 1E-308 are flushed; `ROUNDUP(x,307)` is
-1E-307). The subnormal returned is 2.2250738585071984E-308 for every k = 0..7 and num_digits probed (read through `*2^100`:
-2.8206162122887925E-278), 3 ulps below the double nearest the cut (2.2250738585071999E-308); no product or quotient of
-the 15 digits by powers of ten (two or three exact-power factors, each order) reproduced it, so the conversion is not
-known. The engine returns the nearest double, and misses those 7 read-back cells (rows 52-58). The rule is evidenced for num_digits
-from -300 to 330 only; the engine applies it at every num_digits (a huge one such as -400 or 2^31, which is `#NUM!` or
-wraps for a normal x, is not probed here; T-2771).
+1E-307). The subnormal returned is 2.2250738585071984E-308 = 2^-1022 - 6·2^-1074 for every k = 0..7 and num_digits
+(read through `*2^100`: 2.8206162122887925E-278), 3 ulps below the double nearest the cut (2.2250738585071999E-308).
+No product or quotient of the 15 digits by powers of ten reproduced it (two or three exact-power factors, each order),
+so the conversion is not known. It does not need to be: every normal x cuts to at least 2.22507385850720E-308, so that
+is the only subnormal cut a normal argument can have, and its double is this one value. It holds at every num_digits
+probed, out-of-range ones included: -400, 1E10, -1E10, 2^31, -(2^31) and 2^53 give the same subnormal for ROUNDUP and
+ROUNDDOWN, where 1.5 gives `#NUM!` (ROUNDUP at -400 and -1E10) or wraps (ROUNDUP(1.5,2^31) = 2).
+A subnormal argument (kept by a subtraction such as `3E-308-2.5E-308`) is not cut at all:
+- ROUNDUP, ROUNDDOWN and TRUNC return x itself, bit for bit and with its sign, at every size (k·2^-1074 from k = 1
+  to 2.2E-308) and at num_digits 0, 2, 330, -400, 2^31 and 1E10;
+- ROUND returns a positive x below 2^-1026 (k < 2^48) as it is (`ROUND(x,0)`, `ROUND(x,330)` are x), and gives 0 for a
+  negative one at any size and for a positive one from 2^-1026 up. The switch is exact: k = 2^48 - 1 is kept and
+  k = 2^48 (x = 2^-1026 ≈ 1.39E-309) is 0. Probed at num_digits 0, 320 and 330 only; the engine applies it at every
+  num_digits.
+A negative normal argument whose cut is subnormal gives the negative constant (`ROUNDDOWN(-(2^-1022),0)`,
+`ROUNDUP(0-2^-1022,0)`, `TRUNC((0-1)*2^-1022)`). Arguments negated with unary minus below 2^-1026 arrive positive
+("Unary minus of a tiny subnormal" below), so `ROUNDUP(-x,0)` there is +x.
 Evidence: probes/t2756-roundup-smallest-normal-threshold (excel-graph, 2026-10-26): rows 1-28 bisect k = 0..20 and
 controls (2^-1021, 2^-1020, 3E-308, 9.99999999999999E-308, 1E-307) at num_digits 0, -2, 2, 300 and 330; rows 30-50 take
 k = 0, 7, 8 at num_digits 307 to 322 with `=0` companions; rows 52-60 read the subnormals back. probes/t2715-roundup-near-smallest-normal.
-Status: VERIFIED (excel-graph), except the subnormal's last bits
+probes/t2771-roundup-subnormal-cuts (20 subnormal arguments from 5E-324 to 2.2E-308, five functions each, and the huge
+num_digits rows 22-33), t2771-roundup-subnormal-sign (eleven arguments from 1E-320 to 2E-309, ten forms each) and
+t2771-roundup-subnormal-threshold (k = 2^48 - 2 to 2^49) and t2771-roundup-subnormal-sign-controls (negative arguments
+built without unary minus, cell references, huge num_digits), all excel-graph, 2026-10-27.
+Status: VERIFIED (excel-graph)
 Implemented in: `round_function` and `round_decimal` in crates/rustsheet-engine/src/decimal_round.rs
-Tasks: T-2756
+Tasks: T-2756, T-2771
+
+## Unary minus of a tiny subnormal (T-2771)
+Rule: `-x` of a positive subnormal x below 2^-1026 (k·2^-1074 with k < 2^48) is +x; from 2^-1026 up it is -x. `0-x`
+keeps the sign at every size, and `-1*x` is 0 (a subnormal product is flushed, "Subnormal results become 0"). Every
+probed operand is an inline expression; unary minus on a cell reference, range or array, a tiny negative operand and
+a chain such as `--x` are unprobed. The engine applies the rule to the whole chain's parity and to every operand kind (T-2942 probes the rest).
+Evidence: probes/t2771-roundup-subnormal-sign-controls B and C (k = 12345 and 2^48 - 1 against 2^48 and 2^50 + 3),
+excel-graph, 2026-10-27; t2771-roundup-subnormal-sign and -threshold read the same switch through the ROUND family.
+Status: VERIFIED (excel-graph) for a positive operand
+Implemented in: `apply_unary_chain` in crates/rustsheet-engine/src/cast.rs (`TINY_SUBNORMAL_BELOW`, arithmetic.rs)
+Tasks: T-2771, T-2942
 
 ## SINH / COSH / TANH are exp-based, not libm
 Fit against Excel-cached values in `ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx`
@@ -1115,6 +1255,18 @@ sweep's 1035 COSH cells).
   - (a + a/(a + 1))/2 for SINH: 703;
   - expm1 replaced by exp(x) - 1 above any cut from 0.2 to 1: never better than expm1 throughout.
 - At |x| >= 1 the exp forms stay: they match all 20 of the sweep's control points in (1, 1.5), and the expm1 forms 17.
+  The switch is bracketed by the sweep's cells, not derived (T-3385): the exp forms already miss
+  `TANH(0.995054655025377)` and `TANH(±0.9950546550253772)`, where the expm1 forms match, and the expm1 forms first miss at
+  `SINH(1.0375)` and `TANH(1.0375)` (and at 1.0625 and `TANH(1.4875)`; they match at 1.0125), so Excel's cut lies in 0.99505..1.0375 (`EXPM1_FORM_LIMIT` = 1 is tagged FITTED).
+- The switch lies between 1 - 5 ulp and 1 + 2 ulp (T-3395). probes-numeric `t3395-hyperbolic-form-switch` takes 60 six-decimal
+  points in 0.99505..1.0375 where the engine's expm1 and exp forms give different doubles for both functions: all 60
+  SINH and 60 TANH cells take the expm1 forms through 0.999773 and the exp forms from 1.000377 on. `-2` takes 47 more
+  where either function's forms differ, on (0.99977, 1.00038) and within 12 ulp of 1: every discriminating cell up to
+  0.9999999999999994 (1 - 5 ulp) is the expm1 forms, every one from 1.0000000000000004 (1 + 2 ulp) the exp forms.
+  At the doubles in between, 1 itself included, the two forms give the same double, so no cell can place the cut
+  more finely; `|x| < 1` fits every cell. Both probes are excel-graph (Excel for the web) only, and the cells that
+  discriminate differ by about 1 ulp, inside the 4-ulp web-against-desktop floor (docs/research/oracle-calibration.md):
+  the narrowed bracket is web-only until a desktop fill confirms it. Nothing is fitted to it (the cut stays 1).
 Ours: `functions/math_and_trigonometry/hyperbolic.rs` `sinh`, `tanh` (`expm1_pair`, `excel_expm1`).
 Status: VERIFIED (excel-graph); the expm1 kernel is below.
 
@@ -1134,7 +1286,9 @@ as a guard of ours; it cannot occur below |x| = 1 and no cell probes it.)
   64-bit expm1) are in the entry above.
 Ours: `excel_expm1` in `x87_exp.rs` (moved from hyperbolic.rs by T-2242). PPMT also uses it, for `1-EXP(-n*L)` with |x| = n*L up to
 hundreds (financial.md "PPMT discounts with an atanh-series log", probes-numeric/ppmt-log-rate-sweep), where the u - 1 = -1 guard
-is reachable (n*L above about 36.7).
+is reachable (n*L above about 36.7). PMT's `1-Q` is this expm1 only for |x| < 1 and `1 - EXP(x)` from 1 on (probes/t3014-pmt-fv-type-alone
+column C, financial.md "PMT is a discounted payment", T-3014); whether that switch belongs to Excel's expm1 itself, and so
+to PPMT's `1-Q` at |x| >= 1 too, is not established.
 Status: VERIFIED (excel-graph).
 
 ### SIN/COS/TAN/SEC/CSC/COT near multiples of PI(): oracle sweep (T-1008)
@@ -1522,8 +1676,26 @@ oracle's exponents 1..360 are unverified, so a zero or non-finite result falls b
 Status: VERIFIED (integer exponents)
 Tasks: T-0221, T-0901, T-1302
 
+### Integer exponents from 2^32 - 1: exp(y·ln x) (T-2392)
+Rule: for a positive base and an integer exponent with |n| >= 2^32 - 1 = 4294967295 (the limit at which a negative
+base is `#NUM!`, below), `x^n` and `POWER(x,n)` are not square-and-multiply but the non-integer path `exp(n·ln x)`
+("Non-integer exponents: exp(y·ln x)"): `(1+0.05/1E10)^1E10` is 1.0512711007250206, equal to
+`EXP(1E10*LN(1+0.05/1E10))` and libm `pow`, where square-and-multiply gives 1.0512711002754753. The switch is exact:
+`(1+0.05/n)^n` is the square-and-multiply value for n = 2^31, 3E9, 4E9, 4294967000 and 4294967294, and `exp(n·ln x)`
+for 4294967295, 4294967296, 5E9, 1E11, 1E12, 1E13 and 1234567890123 (and at n = 1E10 and 1E12 for rates 0.01, 0.1,
+0.5 and 1 too). A negative exponent switches at the same |n|: `(1+0.05/n)^-n` for n = 3E9 and 4294967294 is one over
+the square-and-multiply power, for 4294967295 and 1E10 the general path, and that path keeps its out-of-range results:
+`0.5^-5E9` and `0.5^-4294967294` are `#DIV/0!`, `2^-5E9` is 0, `0.5^5E9` 0 and `2^5E9` `#NUM!`. The bases that drift
+apart are the ones near 1; the T-1311 cells past 2^32 - 1 (`0.5^9007199254740992`, `1^9007199254740992`, ...) are equal
+either way, and all of probes-numeric scores the same.
+Evidence: probes/fin-effect-huge-npery (124 cells: `^`, POWER and EFFECT side by side; excel-graph, 2026-10-30, T-2392).
+Status: VERIFIED (excel-graph)
+Implemented (T-2392): `integer_power` in arithmetic/power.rs leaves |n| >= 2^32 - 1 to the general path.
+Tasks: T-2392
+
 ### Integer exponents beyond 360, subnormal results, base 10 (T-1311)
-Rule: the square-and-multiply rule above holds for every integer exponent tried up to 2^53 and
+Rule: the square-and-multiply rule above holds for every integer exponent below 2^32 - 1 (from there on see
+"Integer exponents from 2^32 - 1: exp(y·ln x)" above; the cells past it here agree with both) and
 every base except 10 (about 280 cells across `1.0000001`, `0.9999999`, `1.5`, `2`, `3`, `5`, `7`,
 `13`, `20`, `50`, `100`, `1000`, `1E5`, `1E15`, `-10`, `-1.5`, negative n by `1/`). Four additions:
 1. A result below 2.2250738585072014E-308 (subnormal) is 0, not the subnormal: `0.1^310`,
@@ -1649,8 +1821,48 @@ Values are from Excel for the web, which can differ from desktop in the last dig
 Status: VERIFIED (these two values, web).
 
 ## GEOMEAN in-range root
-Rule: when the plain product P of the values is a normal double, GEOMEAN is closest to
-`r = exp(ln(P) / n)` in doubles, with two exceptions: a single value is returned as is, and when
+Rule: when the plain product P of the values is a normal double, GEOMEAN keeps P's power of two out of
+the logarithm. With P = m·2^E (m in [1, 2)) and E = q·n + r, q truncated toward zero, it is closest to
+`exp(ln(m·2^r)/n)·2^q` in doubles, and a single value is returned as is (T-3502). Where |E| < n (most
+probes with values near 1) that is `r = exp(ln(P)/n)`. Past it, r carries ln's rounding error at
+|ln P| up to 700 into the root: on the fresh log-uniform sweep probes-numeric/t3502-geomean-fresh
+(180 sets of 2 to 200 values within spans of up to 1E+100, centres 1E-150 to 1E+150, and 60 sets
+whose product is an exact n-th power; excel-graph, 2026-10-31) r is up to 194 ulps off and visibly
+off on 79 cells, while the split root matches 169 cells bit for bit and is within 1 ulp on all 180.
+`GEOMEAN(1.03908E+87,4.05961E+81,2.31055E+83)` is 9.91477561834331E+83, where r is
+9.914775618343302E+83 (A41). Exact roots mostly come out exact without any special case:
+GEOMEAN(3,3), GEOMEAN(1,9), GEOMEAN(7,7) and n copies of 3, 7 or 0.1 (n = 2 to 200) are 3, 3, 7 and
+3, 7 and 0.1. Scored (T-3502, fit lab `geomean-snap` and `geomean-snap-fresh`, decision 0188 R4
+hold-out split; in-range-many and the Copies sheet by hand, their SEQUENCE arguments are not literals):
+
+| model | literal probes (69) | train / test | in-range-many (72) | Copies (35) | fresh sweep (180) | train / test |
+|---|---|---|---|---|---|---|
+| split root, q toward zero | 62 | 43/49, 19/20 | 71 | 34 | 169 | 110/119, 59/61 |
+| split root, q floored | 62 | 43/49, 19/20 | 53 | 35 | 154 | 104/119, 50/61 |
+| correctly rounded root of P | 52 | 36/49, 16/20 | 70 | 34 | 159 | 105/119, 54/61 |
+| correctly rounded geometric mean | 47 | 31/49, 16/20 | 70 | 34 | 150 | 101/119, 49/61 |
+| r, snapped to the root of P when it multiplies back | 38 | 26/49, 12/20 | 71 | 34 | 83 | 55/119, 28/61 |
+| r, snapped to its 15-digit value (T-1123) | 36 | 25/49, 11/20 | 71 | 34 | 58 | 40/119, 18/61 |
+| r | 25 | 19/49, 6/20 | 67 | 12 | 17 | 11/119, 6/61 |
+
+The T-1123 snap (below, "Before T-3502") was a fit on values near 1, where |E| < n and the split
+root is r: it did not generalize (58 of 180 fresh cells). The correctly rounded root of P breaks
+ironcalc-calc GEOMEAN C23 and G27 and the P = 3 and P = 10.704 sets of geomean-same-product, which
+the split root keeps. Against the T-1123 engine the split root fixes gen-m9 26 and probes 32 known
+failures and moves 4 probes cells one ulp off the bit: geomean-root-refinement A23, A33, A34 and A44,
+sets of 5 to 12 values in [0.3, 9] (|E| >= n there), where Excel gives r. Excel's root is still not
+exactly any model in doubles (see below, a library root of up to about 0.8 ulp); T-3526 owns the
+remaining misses (decision 0218).
+The model was chosen on the T-1123 probes and the fit lab's train side of the fresh sweep (q toward zero against
+q floored: in-range-many 71 against 53, train 110 against 104). After it was frozen, a second sweep with a new seed,
+probes-numeric/t3502-geomean-postfreeze (same strata, seed 35020), gives the split root 172 of 180 (train 118/124,
+test 54/56), the correctly rounded geometric mean 165 (110/124, 55/56), the 15-digit snap 70 and r 25. The
+hold-out that decided is the first sweep's (test 59/61 against 49/61, the model chosen on train only); pooled
+over the T-1123 probes and both sweeps (fit lab `geomean-all`, supplementary since it includes the cells that chose
+the model) the split root is 271/292 on train and 132/137 on test, the correctly rounded mean 242/292 and 120/137. Every split-root miss on both sweeps is within 1.3E-16
+relative of the 50-digit mpmath root, inside Gate A's envelope.
+
+Before T-3502: GEOMEAN was taken as closest to `r = exp(ln(P) / n)` in doubles, with two exceptions: a single value is returned as is, and when
 r's 15-digit value c differs from r and c multiplied by itself n times (left to right, as P is
 formed) gives P back, the result is c. So an exact root is exact: GEOMEAN(3,3), GEOMEAN(1,9),
 GEOMEAN(1,1,27), GEOMEAN(2,4.5), GEOMEAN(3,27) are 3, 3, 3, 3, 9, and n copies of 3, 7 or 0.1
@@ -1726,10 +1938,12 @@ copies of one value, 50-1100; T-1113), probes/geomean-single-and-copies (Single:
 n copies with Excel's PRODUCT, EXP(LN(P)/n), P^(1/n), LN(P); T-1123), probes/geomean-root-refinement
 (T-1123), probes/geomean-same-product (T-0288), ironcalc-calc GEOMEAN C23, B27, G27, probes/geomean-overflow-count H1,
 probes/geomean-overflow-cut-3 C1, C5, C11, E1. Oracle: excel-graph, 2026-10-07 and 2026-10-08.
-Status: VERIFIED for the probed cells; the formulation is a best fit (26 one-ulp misses in the 159 cells
-scored above, plus 8 in geomean-same-product and subtotal-reference-operands-d H28).
-Implemented in: functions/statistical/geomean.rs
-Tasks: T-1113, T-1108, T-1123, T-0288, T-1284, T-2794
+probes-numeric/t3502-geomean-fresh and t3502-geomean-postfreeze (180 cells each, excel-graph, 2026-10-31, T-3502).
+Status: VERIFIED for the probed cells; the split root is a structural model, not exact: one-ulp misses on 11 of
+180 fresh cells, 8 of 180 post-freeze cells, 7 of the 69 literal in-range probe cells (geomean-root-refinement
+A17, A23, A28, A33, A34, A37, A44), geomean-in-range-many A2 and Copies A35 (T-3526).
+Implemented in: functions/statistical/geomean.rs (`split_root`)
+Tasks: T-1113, T-1108, T-1123, T-0288, T-1284, T-2794, T-3502, T-3526
 
 ## GCD / LCM argument bound
 Rule: GCD and LCM accept arguments up to and including 2^53 (as doubles) and `#NUM!` above:
@@ -2271,6 +2485,11 @@ where TAN also misses by 1 ulp, and dividing a small tangent into 1 can double t
 So COT inherits TAN's double rounding and its unpredictable near-tie noise. Simple alternatives fit far worse: on the 38 cells with |x| <= 1.5
 (where Excel's limited-precision pi does not matter yet; no COT miss lies there) ours matches all 38, while the exact cotangent rounded once, the cotangent rounded
 to 64 bits then 53, and the quotient of a 64-bit tangent each match 20 (independent fit during review, T-2664). Ours stays as is.
+Open lead (gap triage 2026-10-28, T-3020; not shipped): the near-tie misses are not random. All 21 TAN misses lie at |x| >= 15.4784,
+where reduction happens (the 38 rows with |x| <= 1.6 all match), and 17 of them have an odd quadrant n = round(x/(π₆₄/2)).
+Taking `-1/RN64(tan r)` for odd n (r the exact π₆₄ remainder), then RN53(RN64(·)) as before, matches 145 of the 150 t2147
+TAN cells and, through COT = 1/TAN, 145 of the 150 t2664 COT cells; the misses left are rows 73, 106, 133, 135 and 145, and
+row 133 is the one cell it loses. Its fit on the other cached TAN cells is T-3020's job.
 
 ## Out-of-domain ACOS/ASIN/ACOSH/ATANH are `#NUM!` at once, even nested (T-1202)
 
@@ -2307,3 +2526,9 @@ product is 0 whenever no number is included, never 1.
 Ours: implemented (T-2269); 106 and the AGGREGATE cells share the code path and match.
 Status: VERIFIED
 Tasks: T-2269, T-2302
+
+## TEXT of DBL_MAX with a scientific format prints the full 3-digit exponent (T-2106)
+Rule: `TEXT(2^1023*(2-2^-52),"0.00E+00")` is `1.80E+308`: the mantissa rounds up to 1.80, a decimal above DBL_MAX, so it is built from the rounded digits, and exponent digits beyond the `E+00` placeholders all print at the first placeholder.
+Evidence: probes/dbl-max-text-b A1 (oracle: excel-graph) `1.80E+308`; the 2-digit analogues gen-m10/4398098060a7fa9d A13 ("01.2E+14") and gen-m5/c0651f0e0fb544d0 A74 ("1.0E+15").
+Status: VERIFIED for DBL_MAX; the 3-digit single-placeholder case (`1E+100` under `0.0E+0` as `1.0E+100`) is UNVERIFIED (probe pending), assumed from the 2-digit cells.
+Implemented in: formatter/format.rs, decimal_round.rs::round_scientific (T-2106).

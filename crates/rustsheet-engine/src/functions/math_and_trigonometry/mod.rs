@@ -1,5 +1,6 @@
 mod arabic_roman;
 mod ceiling_floor;
+mod combinatorics;
 mod decimal_text;
 mod gcd_lcm;
 mod hyperbolic;
@@ -12,6 +13,7 @@ mod random;
 mod sequence;
 mod seriessum;
 mod sum;
+pub(crate) mod sum_prefix;
 pub(crate) use sum::SumParts;
 mod sumproduct;
 mod trig;

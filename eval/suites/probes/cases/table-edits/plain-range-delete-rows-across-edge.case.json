@@ -1,0 +1,61 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-3019: one delete_row of rows 3-5 (count 3) on a plain range, no table: S!C1:C10 hold 1..10. Sheet F holds A1 =SUM(S!C4:C7) (its first two rows go: does it shrink to S!C3:C4?), A2 FORMULATEXT(A1), A3 the same absolute, A4 FORMULATEXT(A3), A5 =SUM(S!C2:C4) (its last two rows go), A6 FORMULATEXT(A5), A7 =SUM(S!C3:C5) (wholly deleted), A8 FORMULATEXT(A7), A9 =S!C10, A10 FORMULATEXT(A9).",
+  "tags": [
+    "M8",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "C1": 1,
+        "C2": 2,
+        "C3": 3,
+        "C4": 4,
+        "C5": 5,
+        "C6": 6,
+        "C7": 7,
+        "C8": 8,
+        "C9": 9,
+        "C10": 10
+      }
+    },
+    {
+      "name": "F",
+      "cells": {
+        "A1": "=SUM(S!C4:C7)",
+        "A2": "=FORMULATEXT(A1)",
+        "A3": "=SUM(S!$C$4:$C$7)",
+        "A4": "=FORMULATEXT(A3)",
+        "A5": "=SUM(S!C2:C4)",
+        "A6": "=FORMULATEXT(A5)",
+        "A7": "=SUM(S!C3:C5)",
+        "A8": "=FORMULATEXT(A7)",
+        "A9": "=S!C10",
+        "A10": "=FORMULATEXT(A9)"
+      }
+    }
+  ],
+  "sheet_ops": [
+    {
+      "op": "delete_row",
+      "sheet": "S",
+      "row": 3,
+      "count": 3
+    }
+  ],
+  "expected": {},
+  "check": [
+    "F!A1",
+    "F!A2",
+    "F!A3",
+    "F!A4",
+    "F!A5",
+    "F!A6",
+    "F!A7",
+    "F!A8",
+    "F!A9",
+    "F!A10"
+  ]
+}

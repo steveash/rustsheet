@@ -1,8 +1,11 @@
-use crate::arithmetic::flush_subnormal;
+use crate::arithmetic::{flush_subnormal, TINY_SUBNORMAL_BELOW};
 use crate::external_reference::{one_external_area, ExternalArea, PickedReference};
 use crate::formatter::date_text::CurrentYear;
+use crate::locale::Locale;
+use crate::mixed_fraction::mixed_fraction;
 use crate::number_format::{number_to_text, parse_excel_number};
 use crate::reference_operators::{several_areas_ref, Ranges, RefArg};
+use crate::types::DateSystem;
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
@@ -10,7 +13,7 @@ use crate::{
         token::{Error, OpUnary},
         types::CellReferenceIndex,
     },
-    formatter::format::parse_formatted_number,
+    formatter::format::{parse_formatted_number, script_digit_to_ascii},
     limits::check_range_size,
     model::Model,
     text::Text,
@@ -166,6 +169,62 @@ pub(crate) fn number_text_too_long(text: &str) -> bool {
     text.len() > MAX_NUMBER_TEXT_LEN && text.chars().count() > MAX_NUMBER_TEXT_LEN
 }
 
+/// [`Model::parse_number_text`] in an explicit `locale` and `date_system`, for readers that run
+/// without the model (the criteria matchers).
+pub(crate) fn number_text_in(
+    text: &str,
+    currencies: &[&str],
+    locale: &Locale,
+    year: CurrentYear,
+    date_system: DateSystem,
+) -> Option<f64> {
+    // Script digits are read as numbers by coercion, VALUE and criteria (T-3325), not by typed input.
+    let mapped: String;
+    let digits = if text.is_ascii() {
+        text
+    } else {
+        mapped = text.chars().map(script_digit_to_ascii).collect();
+        &mapped
+    };
+    if let Ok((v, _number_format)) =
+        parse_formatted_number(digits, currencies, locale, year, date_system)
+    {
+        return Some(flush_subnormal(v));
+    }
+    crate::functions::date_and_time::time_text::parse_time_serial(text, locale, year, date_system)
+}
+
+/// Text read as VALUE reads it (`Model::value_text_number`): `None` when it is over the
+/// number-text length cap or does not read as a number. VALUE trims only the space character
+/// around the text, then reads number coercion's grammar with `$` and `€`, else a mixed fraction.
+pub(crate) fn value_number_text(
+    text: &str,
+    locale: &Locale,
+    year: CurrentYear,
+    date_system: DateSystem,
+) -> Option<f64> {
+    value_number_text_with(text, &["$", "€"], &["$", "€"], locale, year, date_system)
+}
+
+/// [`value_number_text`] with the currency symbols the plain grammar reads and, apart, those a
+/// mixed fraction reads: a criterion reads `-$3 1/2` but not `€3 1/2` (probes/typed-input-sign-
+/// space-mixed-fraction I5, I6).
+pub(crate) fn value_number_text_with(
+    text: &str,
+    currencies: &[&str],
+    fraction_currencies: &[&str],
+    locale: &Locale,
+    year: CurrentYear,
+    date_system: DateSystem,
+) -> Option<f64> {
+    if number_text_too_long(text) {
+        return None;
+    }
+    let trimmed = text.trim_matches(' ');
+    number_text_in(trimmed, currencies, locale, year, date_system)
+        .or_else(|| mixed_fraction(trimmed, fraction_currencies))
+}
+
 /// The `#N/IMPL!` of a range, an array or a LAMBDA where a scalar cast expects a value.
 fn not_a_scalar(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::NIMPL, cell, "Arrays not supported yet".to_string())
@@ -219,6 +278,7 @@ impl Model {
                     currencies.push(currency);
                 }
                 self.parse_number_text(s, &currencies, current_year)
+                    .or_else(|| mixed_fraction(s.trim_matches(' '), &["$", "€"]))
             }
         }
     }
@@ -234,22 +294,15 @@ impl Model {
         currencies: &[&str],
         year: CurrentYear,
     ) -> Option<f64> {
-        if let Ok((v, _number_format)) = parse_formatted_number(
+        number_text_in(
             text,
             currencies,
             self.locale,
             year,
             self.workbook.settings.date_system,
-        ) {
-            return Some(crate::arithmetic::flush_subnormal(v));
-        }
-        crate::functions::date_and_time::time_text::parse_time_serial(
-            text,
-            self.locale,
-            year,
-            self.workbook.settings.date_system,
         )
     }
+
     /// Lifts the range `left:right` into a 2-D array of its cell values, for a function or
     /// operator that works on it element by element (or a formula that spills it).
     ///
@@ -266,7 +319,13 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        match self.evaluate_node_in_context(node, cell) {
+        let value = self.evaluate_node_in_context(node, cell);
+        self.top_left(value)
+    }
+
+    /// `value` with a range read as its top-left cell ([`Self::evaluate_node_top_left`]).
+    pub(crate) fn top_left(&mut self, value: CalcResult) -> CalcResult {
+        match value {
             CalcResult::Range { left, .. } => self.evaluate_cell(left),
             other => other,
         }
@@ -278,14 +337,30 @@ impl Model {
         right: CellReferenceIndex,
         cell: CellReferenceIndex,
     ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
-        if let Some((error, message)) = check_range_size(&left, &right) {
-            return Err(CalcResult::new_error(error, cell, message));
-        }
-        let (last_row, last_column) = self
-            .clip_to_used_area(left.sheet, left.row, left.column, right.row, right.column)
-            .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
+        let (last_row, last_column) = self.range_used_corner(left, right, cell)?;
+        // The array is built whole, so it is charged its cells before it is (SPEC-0024). A caller
+        // may consume it without it becoming a node value; when it does become one, it is charged
+        // again at the node chokepoint, which the calibration (arrays.md) includes.
+        let rows = usize::try_from(right.row - left.row + 1).unwrap_or(0);
         let width = usize::try_from(right.column - left.column + 1).unwrap_or(0);
-        let mut result = Vec::with_capacity(usize::try_from(right.row - left.row + 1).unwrap_or(0));
+        self.spend_cells(rows, width, cell)?;
+        // A range inside the used area whose cells are inert reads as the cached values: the walk
+        // below would read the same values and evaluate nothing (`range_values.rs`, T-3471). One
+        // past the used area is walked, which reads only its used cells.
+        if left.sheet == right.sheet && right.row <= last_row && right.column <= last_column {
+            let rect = (left.sheet, left.row, left.column, right.row, right.column);
+            if let Some(view) = self.range_values(rect) {
+                let element = |index: usize| {
+                    view.get(index).map_or(ArrayNode::Empty, |value| {
+                        calc_result_to_array_node(value.clone())
+                    })
+                };
+                return Ok((0..rows)
+                    .map(|i| (0..width).map(|j| element(i * width + j)).collect())
+                    .collect());
+            }
+        }
+        let mut result = Vec::with_capacity(rows);
         for row in left.row..=right.row {
             let mut row_result = Vec::with_capacity(width);
             for column in left.column..=right.column {
@@ -314,6 +389,50 @@ impl Model {
             result.push(row_result);
         }
         Ok(result)
+    }
+
+    /// The size check and used-area clip [`Model::evaluate_range`] and [`Model::read_range_cells`]
+    /// share: the last row and column of `left:right` with data, the rest recorded as read empty.
+    fn range_used_corner(
+        &mut self,
+        left: CellReferenceIndex,
+        right: CellReferenceIndex,
+        cell: CellReferenceIndex,
+    ) -> Result<(i32, i32), CalcResult> {
+        if let Some((error, message)) = check_range_size(&left, &right) {
+            return Err(CalcResult::new_error(error, cell, message));
+        }
+        self.clip_to_used_area(left.sheet, left.row, left.column, right.row, right.column)
+            .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))
+    }
+
+    /// Reads the cells of `left:right` as [`Model::evaluate_range`] does, in the same order and
+    /// under the same size check, without keeping their values: an arm a lifted IF or CHOOSE
+    /// does not pick is read so, its cycles and dependencies recorded as before, without its
+    /// copy (T-1564). Only the cells within the used area are read, so only they are charged.
+    pub(crate) fn read_range_cells(
+        &mut self,
+        left: CellReferenceIndex,
+        right: CellReferenceIndex,
+        cell: CellReferenceIndex,
+    ) -> Result<(), CalcResult> {
+        let (last_row, last_column) = self.range_used_corner(left, right, cell)?;
+        let (last_row, last_column) = (last_row.min(right.row), last_column.min(right.column));
+        let (rows, columns) = (
+            usize::try_from(last_row - left.row + 1).unwrap_or(0),
+            usize::try_from(last_column - left.column + 1).unwrap_or(0),
+        );
+        self.spend_cells(rows, columns, cell)?;
+        for row in left.row..=last_row {
+            for column in left.column..=last_column {
+                self.evaluate_cell(CellReferenceIndex {
+                    sheet: left.sheet,
+                    row,
+                    column,
+                });
+            }
+        }
+        Ok(())
     }
 
     pub(crate) fn get_number_or_array(
@@ -430,9 +549,11 @@ impl Model {
 
     /// Evaluates a unary `-` or `%` node. A chain such as `B:B%%%` or `---B:B` is applied
     /// in one element-wise pass, so a whole column is lifted once rather than once per
-    /// operator (the `formula_eval` fuzz timeout, T-1078). The operators commute (negation is
-    /// exact and the subnormal flush is sign-symmetric), so only the minus parity and the
-    /// `%` count matter, and the walk allocates nothing.
+    /// operator (the `formula_eval` fuzz timeout, T-1078). Only the minus parity and the `%` count
+    /// are kept, and the walk allocates nothing. Negation is exact and the subnormal flush is
+    /// sign-symmetric, except that `-x` of a tiny positive x is +x; the chain applies that once,
+    /// to the parity, which is unprobed for `--x`, a tiny negative operand and references
+    /// (numbers.md "Unary minus of a tiny subnormal"; TODO(T-2942): probe those forms).
     pub(crate) fn apply_unary_chain(
         &mut self,
         node: &Node,
@@ -464,6 +585,11 @@ impl Model {
                     break;
                 }
                 f = flush_subnormal(f / 100.0);
+            }
+            // Excel's `-x` of a positive x below 2^-1026 is +x, while `0-x` keeps the sign
+            // (numbers.md "Unary minus of a tiny subnormal", probes/t2771-roundup-subnormal-sign-controls).
+            if negate && f > 0.0 && f < TINY_SUBNORMAL_BELOW {
+                return Ok(f);
             }
             Ok(if negate { -f } else { f })
         })

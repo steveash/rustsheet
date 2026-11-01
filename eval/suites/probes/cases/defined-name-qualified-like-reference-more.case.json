@@ -1,0 +1,41 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2635: more sheet-prefixed cells that name characters follow: a dot (`Data!Q1.Rate`), an undefined `Data!A1B`, and a number in Data!Q1 beside `Data!Q1_Total`.",
+  "tags": [
+    "M8",
+    "names",
+    "probe"
+  ],
+  "names": {
+    "Q1_Total": "=100",
+    "Q1.Rate": "=5"
+  },
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=SUM(Data!Q1_Total,Data!Q1)",
+        "A2": "=Data!Q1.Rate",
+        "A3": "=Q1.Rate",
+        "A4": "=ISERROR(Data!A1B)",
+        "A5": "=ERROR.TYPE(Data!A1B)",
+        "A6": "=Data!Q1_Total+Data!Q1"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "Q1": 77
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!A2",
+    "Sheet1!A3",
+    "Sheet1!A4",
+    "Sheet1!A5",
+    "Sheet1!A6"
+  ]
+}

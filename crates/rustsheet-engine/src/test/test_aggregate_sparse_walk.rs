@@ -33,6 +33,8 @@ fn aggregates_beside_one_cell_in_the_last_row_read_a_few_cells() {
         ("J", "=COUNT(A:J)", "1"),
         ("J", "=SUM(FREQUENCY(A:J,1))", "1"),
         ("J", "=AND(A:J)", "TRUE"),
+        ("J", "=TEXTJOIN(\",\",TRUE,A:J)", "1"),
+        ("J", "=CONCAT(A:J)", "1"),
         ("J", "=MEDIAN(A:J)", "1"),
         ("J", "=SUMSQ(A:J)", "1"),
         ("J", "=SUBTOTAL(9,A:J)", "1"),
@@ -128,4 +130,44 @@ fn the_whole_range_walk_hands_blank_runs_on_in_row_major_order() {
         ["a", "1", "c", "7", "d", &rest.to_string(), "z"].map(String::from)
     );
     assert!(model.evaluation.cell_reads - before < 10);
+}
+
+#[test]
+fn textjoin_pads_clipped_columns_after_each_row() {
+    // The delimiters of a whole row's clipped columns follow that row's cells (row-major), so
+    // the first row's padding precedes the second row's text and pushes the join over the limit
+    // before a later error cell is reached (docs/excel-semantics/text.md, T-2713).
+    let mut model = new_empty_model();
+    model._set("A1", "x");
+    model._set("A2", "y");
+    model._set("A3", "=NA()");
+    let (value, _) = evaluate_counting_reads(&mut model, "C5", "=TEXTJOIN(\",\",FALSE,1:3)");
+    assert_eq!(value, "#CALC!");
+    let (value, _) = evaluate_counting_reads(
+        &mut model,
+        "C6",
+        "=FIND(\"y\",TEXTJOIN({\"\",\",\"},FALSE,1:2))",
+    );
+    assert_eq!(value, "8194");
+}
+
+#[test]
+fn textjoin_ignore_empty_false_stops_walking_rows_past_the_limit() {
+    // With ignore_empty FALSE the clipped columns' delimiters pass the 32,767-unit limit within a
+    // few rows, so the stored cells far below that are not read (T-3098).
+    let mut model = new_empty_model();
+    model.new_sheet();
+    for row in 500_000..501_000 {
+        model._set(&format!("Sheet1!B{row}"), "x");
+    }
+    model.evaluate();
+    let (value, reads) = evaluate_counting_reads(
+        &mut model,
+        "Sheet2!A1",
+        "=TEXTJOIN(\",\",FALSE,Sheet1!1:1048576)",
+    );
+    assert_eq!(value, "#CALC!");
+    // The 1,000 constants are read by the recalculation itself; walking the rows would read
+    // them again.
+    assert!(reads < 1500, "read {reads} cells");
 }

@@ -3,7 +3,7 @@ id: T-2826
 title: "Fit Excel's AMORDEGRC per-period arithmetic for charges of 1E12 and more (fin-amor-period-bound-c A1-A5, -b B2 to the bit)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P3
 size: M
 tier: opus
@@ -32,9 +32,20 @@ A walk past 2^20 periods costs more work per element (about 4 ms per 2^20 period
 work-cap entry ("AMORLINC and AMORDEGRC work cap") and `AMORDEGRC_WEIGHT`.
 
 ## Acceptance criteria
-- [ ] probes/fin-amor-period-bound-c A1-A5 and fin-amor-period-bound-b B2 pass (baseline lines removed), or the entry
+- [x] probes/fin-amor-period-bound-c A1-A5 and fin-amor-period-bound-b B2 pass (baseline lines removed), or the entry
   records why they cannot within the work cap, with no new failures.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - AMORDEGRC below period 1 (T-2825).
+
+## Outcome
+AMORDEGRC (and AMORLINC's left-over value) now round a charge like ROUND(x,0): the exact value cut to 15 significant
+digits, then half away (`amor_round` through `decimal_round::round_decimal`). Two new probes localise the walk
+(probes/amordegrc-walk-ties, 69 cells, and probes/amordegrc-walk-drift, 66 cells, excel-graph 2026-10-27): the final
+rounding is settled to the ulp at 1 and 2 periods, and Excel's walk drifts a few ulps from main's from about 1000
+periods on, in both directions; ten candidate operation orders fit fewer cells than main's walk (financial.md "AMORDEGRC
+rounds its charge like ROUND"). fin-amor-period-bound-b B2 passes; -c A2 passes as before; -c A1, A3, A4 would pass
+with a walk past 2^20 periods but stay on the closed form within the work cap, and A5 needs Excel's walk (entry
+"AMORDEGRC past 2^20 periods"). Eval delta: -1 known failure (B2), +147 probe cells (with probes/amordegrc-round-mid, 12
+cells for charges of 3E11 to 8E13 from the review) of which 119 pass and 28 are walk-drift known failures. Follow-up: T-2849 (Excel's per-period arithmetic).

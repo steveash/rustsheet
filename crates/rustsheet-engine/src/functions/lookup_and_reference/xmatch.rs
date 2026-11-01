@@ -4,13 +4,13 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-use super::lookup_table::{Indexed, SearchVector};
+use super::lookup_table::{cmp_searched, compare_searched, Indexed, SearchVector};
 use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
 use crate::functions::{
-    binary_search::binary_search,
+    binary_search::binary_search_by,
     criteria::wildcard_text_matcher,
     text::{LookupPattern, LookupRegexes},
-    util::{compare_values, near_integer::near_integer_whole},
+    util::near_integer::near_integer_whole,
 };
 
 #[derive(PartialEq)]
@@ -56,7 +56,7 @@ fn compare_blank_last(candidate: &CalcResult, lookup_value: &CalcResult) -> i32 
         (true, true) => 0,
         (true, false) => 1,
         (false, true) => -1,
-        (false, false) => compare_values(candidate, lookup_value),
+        (false, false) => compare_searched(candidate, lookup_value),
     }
 }
 
@@ -78,7 +78,7 @@ pub(crate) fn linear_scan<'a>(
             if is_blank(v) || blank_lookup {
                 is_blank(v) && blank_lookup
             } else {
-                compare_values(v, lookup_value) == 0
+                compare_searched(v, lookup_value) == 0
             }
         }),
         MatchMode::ExactMatchSmaller | MatchMode::ExactMatchLarger => {
@@ -102,7 +102,10 @@ pub(crate) fn linear_scan<'a>(
                 if let CalcResult::String(s) = lookup_value {
                     wildcard_text_matcher(s)
                 } else {
-                    Box::new(move |x| compare_values(x, lookup_value) == 0)
+                    // Excel: a number key matches as in the exact mode, as an exact double, not
+                    // at 15 digits: `XMATCH(1,{2;1+2^-52;0.5},2)` is #N/A
+                    // (probes/t3161-xmatch-wildcard-regex-near-equal Calc!A1:A10, C1:C10, E1:E10).
+                    Box::new(move |x| compare_searched(x, lookup_value) == 0)
                 };
             indices.into_iter().find(|&idx| {
                 let v = get(idx);
@@ -252,8 +255,11 @@ impl Model {
 
         let array = self.xmatch_vector(&args[1], cell);
         let scan = array.as_ref().map_or(1, SearchVector::scan_cells);
-        let mut regexes = LookupRegexes::new();
-        let result = self.lift_values(
+        // Over a tailed key the call is a keyed lookup (SPEC-0020 Amendment 2, section 3): its
+        // tail's lift and regex state continue its head's.
+        let mut regexes = self.keyed_regexes(args, cell);
+        let result = self.lift_values_keyed(
+            args,
             vec![lookup_value, match_mode, search_mode],
             LiftCost::Cells(scan),
             &LiftOptions::REUSE_EQUAL_RUNS,
@@ -272,7 +278,9 @@ impl Model {
                 )
             },
         );
-        regexes.finish(result, cell)
+        let result = regexes.finish(self, result, cell);
+        self.keep_keyed_regexes(args, cell, regexes);
+        result
     }
 
     /// XMATCH of one element. The errors come in argument order: `lookup_value`, `match_mode`,
@@ -361,11 +369,12 @@ impl Model {
                         "Wildcard/regex match cannot be used with binary search".to_string(),
                     );
                 }
-                match binary_search(
+                match binary_search_by(
                     lookup_value,
                     array,
                     search_mode == SearchMode::BinaryDescending,
                     match_mode.ordering(),
+                    cmp_searched,
                 ) {
                     None => CalcResult::new_error(Error::NA, cell, "Not found".to_string()),
                     Some(l) => CalcResult::Number(l as f64 + 1.0),

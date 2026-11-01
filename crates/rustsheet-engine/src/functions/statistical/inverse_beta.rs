@@ -41,7 +41,8 @@
 
 use statrs::function::beta::{checked_beta_reg, checked_ln_beta};
 
-use super::incomplete_beta::{beta_reg_complement_unoriented, ln_near_one};
+use super::bratio::beta_dist_lower_tail;
+use super::incomplete_beta::ln_near_one;
 use super::incomplete_gamma::gamma_ur;
 use super::special::nearest_crossing;
 
@@ -218,7 +219,7 @@ fn inv_beta_reg_within(
 /// BETA.INV's quantile where statrs has no reliable search (a huge shape or a tiny p): Excel's
 /// structure, AS 109's (the algorithm [`inv_beta_reg`] ports), with a converged search. For p above
 /// 1/2 the result is 1 - Q(1 - p, beta, alpha); otherwise Q(p, alpha, beta), Q the double nearest
-/// the crossing of the T-0970 incomplete beta (or of its large-shape limit, see
+/// the crossing of BETA.DIST's kernel (`bratio::beta_dist_lower_tail`; or of its large-shape limit, see
 /// [`GAMMA_LIMIT_SHAPE_RATIO`]). Excel's BETA.INV at a = 5E9 is that value where Q is near 1, and
 /// 1 minus it for p above 1/2, bit for bit on 16 of the 24 probed cells
 /// (`BETA.INV(0.975,2.5,5E9)` = 1 - `BETA.INV(0.025,5E9,2.5)` exactly); where Q itself is tiny
@@ -246,7 +247,7 @@ pub(crate) fn beta_lower_crossing(alpha: f64, beta: f64, p: f64) -> f64 {
         );
     }
     nearest_crossing(
-        |x| beta_reg_complement_unoriented(x, 1.0 - x, alpha, beta),
+        |x| beta_dist_lower_tail(x, 1.0 - x, alpha, beta),
         p,
         0.0,
         1.0,
@@ -256,9 +257,11 @@ pub(crate) fn beta_lower_crossing(alpha: f64, beta: f64, p: f64) -> f64 {
 /// Where the second shape is at most this fraction of the first, [`beta_quantile_crossing`] takes
 /// `I_x(a, b)` as its large-a limit `Q(b, -nu ln x)`, nu = a + (b - 1)/2 (the leading term of TOMS 708
 /// `bgrat`), whose relative error is about (b/a)^2 (mpmath: 1E-19 at a = 5E9, b = 2.5 or 3; 1.6E-14
-/// at a = 5E7, b = 5): the T-0970 incomplete beta's fraction does not converge there and is about
-/// 1E-7 off (T-2528), which picks the wrong neighbour of Excel's correctly rounded root
-/// (`BETA.INV(0.025,5E9,3)`, 0.9999999985550625).
+/// at a = 5E7, b = 5): the T-0970 incomplete beta's fraction did not converge there and was about
+/// 1E-7 off, which picked the wrong neighbour of Excel's correctly rounded root
+/// (`BETA.INV(0.025,5E9,3)`, 0.9999999985550625). The incomplete beta has since taken the full
+/// expansion at a first shape of 1E6 or more (`large_shape_beta.rs`, T-2528); this search keeps
+/// its leading term, bit-exact on t1538-f-inv-huge-df's near-1 cells.
 const GAMMA_LIMIT_SHAPE_RATIO: f64 = 1e-7;
 
 /// statrs' `Beta::inverse_cdf` with [`inv_beta_reg`]'s caps: the quantile of `p` in [0, 1].
@@ -271,6 +274,18 @@ pub(crate) fn beta_inverse_cdf(alpha: f64, beta: f64, p: f64) -> f64 {
 pub(crate) fn f_inverse_cdf(df1: f64, df2: f64, p: f64) -> f64 {
     let z = inv_beta_reg(df1 / 2.0, df2 / 2.0, p);
     df2 / (df1 * (1.0 / z - 1.0))
+}
+
+/// [`t_inverse_cdf`]'s y = `df/(df + t^2)` before its back-transform: AS 109's root of
+/// `I_y(df/2, 1/2)` = 2q for a one-sided q in (0, 1/2].
+pub(crate) fn t_quantile_beta_root(df: f64, q: f64) -> f64 {
+    inv_beta_reg_within(
+        0.5 * df,
+        0.5,
+        2.0 * q,
+        T_MAX_NEWTON_STEPS,
+        T_MAX_STEP_ADJUSTMENTS,
+    )
 }
 
 /// statrs' `StudentsT::inverse_cdf` (location 0, scale 1) with [`inv_beta_reg`]'s caps, at most

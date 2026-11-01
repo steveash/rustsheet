@@ -102,6 +102,10 @@
     "t": "e",
     "v": "#N/A"
    },
+   "A121": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
    "A122": {
     "t": "e",
     "v": "#N/A"
@@ -1650,8 +1654,8 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "85362144a9689385ed1812f123a939135e338a83d32d5cd1d3765e22575a9edb",
   "kind": "excel-graph",
-  "produced_at": "2026-10-22T23:51:22+00:00",
+  "produced_at": "2026-10-28T16:39:45+00:00",
   "version": null,
-  "workbook_name": "40b9b7d3157881ae4faca57d16bc880fb5b5bb718d76448d8e931d65b06c1fe3.xlsx"
+  "workbook_name": "fb30341b189c090489082ea817a694c300f53de99116ea7765a08bfc07622384.xlsx"
  }
 }

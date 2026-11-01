@@ -50,7 +50,7 @@ paragraph starting "A LAMBDA array result is shown as `#VALUE!`, but the cell ho
    (probes/groupby-lifted-args Calc!B49:B52, one-record groups included).
 3. **INDEX.** `INDEX(result,r,c)` that selects a nested cell returns its array: TYPE 64, ROWS/COLUMNS its shape,
    `INDEX(x,1,1)` its first value (P!B3..E37). `INDEX(GROUPBY(Data!A1:A4,Data!B1:B4,LAMBDA(w,w)),4,2)` spilling the Total's
-   `{1;2;3;4}` is probes/scan-over-groupby A69:A72 (and `INDEX(..,1,2)`, group a's `{1;3}`, is `#SPILL!` at A68), on the unmerged T-2398 branch (draft #1583); it lands with T-2398.
+   `{1;2;3;4}` is probes/scan-over-groupby A69:A72 (and `INDEX(..,1,2)`, group a's `{1;3}`, is `#SPILL!` at A68), landed with T-2398 (#2145).
 4. **Element-wise lifts read the top-left; aggregates flatten.**
    - A function that lifts element by element over the result reads each nested cell as its array's top-left value:
      `SUM(--ISERROR(GROUPBY(..)))` counts no error (P!C1, C9, C17, C25) unless a top-left is one. With `{1;4}`, `{#N/A;3}` and the

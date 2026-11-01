@@ -1,0 +1,43 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2929: SORT lifted by_col over a 3x3 array: which sort_index each element uses (each sort key gives a distinct top-left).",
+ "tags": ["M7", "probe", "lookup", "T-2929"],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 1, "B1": 2, "C1": 3,
+    "A2": 3, "B2": 1, "C2": 2,
+    "A3": 2, "B3": 3, "C3": 1,
+    "H1": "=SORT(A1:C3,1,1,{TRUE,TRUE,TRUE})",
+    "H2": "=SORT(A1:C3,2,1,{TRUE,TRUE,TRUE})",
+    "H3": "=SORT(A1:C3,3,1,{TRUE,TRUE,TRUE})",
+    "H4": "=SORT(A1:C3,1,1,{FALSE,FALSE,FALSE})",
+    "H5": "=SORT(A1:C3,2,1,{FALSE,FALSE,FALSE})",
+    "H6": "=SORT(A1:C3,3,1,{FALSE,FALSE,FALSE})",
+    "H7": "=SORT(A1:C3,1,1,{TRUE,FALSE,TRUE})",
+    "H8": "=SORT(A1:C3,3,1,{FALSE,TRUE,FALSE})",
+    "H9": "=SORT(A1:C3,1,-1,{TRUE,TRUE,TRUE})",
+    "H10": "=SORT(A1:C3,,,{TRUE,TRUE,TRUE})",
+    "H11": "=SORT(A1:C3,{1,2},1,{TRUE,TRUE,TRUE})",
+    "H12": "=SORT(A1:C3,1,1,{TRUE,TRUE,TRUE,TRUE})",
+    "H13": "=SORT(A1:C3,3,1,{TRUE,TRUE,TRUE,TRUE})",
+    "H14": "=SORT(A1:C3,1,1,{TRUE,TRUE;TRUE,TRUE})",
+    "H16": "=SORT(A1:C3,2,1,{TRUE,TRUE;TRUE,TRUE})",
+    "H18": "=SORT(A1:C3,1,1,{0,1,1})",
+    "H19": "=SORT(A1:C3,-1,1,{TRUE,TRUE,TRUE})",
+    "H20": "=SORT(A1:C3,1,1,{FALSE,FALSE,TRUE})",
+    "H21": "=SORT(A1:C3,2,1,{FALSE,FALSE,TRUE})",
+    "H22": "=SORT(A1:C3,3,1,{FALSE,FALSE,TRUE})",
+    "P1": "=SORT(A1:C3,1,1,{TRUE;TRUE;TRUE})",
+    "Q1": "=SORT(A1:C3,3,1,{TRUE;TRUE;TRUE})",
+    "R1": "=SORT(A1:C3,1,1,{FALSE;FALSE;FALSE})",
+    "S1": "=SORT(A1:C3,3,1,{FALSE;FALSE;FALSE})",
+    "T1": "=SORT(A1:C3,2,1,{TRUE;TRUE;TRUE})",
+    "U1": "=SORT(A1:A3,1,1,{TRUE;TRUE})",
+    "V1": "=SORT(A1:C3,2,1,{FALSE;FALSE;FALSE})"
+   }
+  }
+ ],
+ "expected": {}
+}

@@ -1,0 +1,91 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Calc": {
+   "A12": {
+    "t": "n",
+    "v": 19.0
+   },
+   "B12": {
+    "t": "n",
+    "v": 4.75
+   },
+   "C12": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "D12": {
+    "t": "n",
+    "v": 4.0
+   },
+   "E12": {
+    "t": "n",
+    "v": 4.0
+   },
+   "F12": {
+    "t": "n",
+    "v": 7.0
+   },
+   "G12": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "H12": {
+    "t": "n",
+    "v": 19.0
+   },
+   "N6": {
+    "t": "n",
+    "v": 7.0
+   },
+   "P10": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "P2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "Q10": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "Q2": {
+    "t": "n",
+    "v": 19.0
+   },
+   "R2": {
+    "t": "n",
+    "v": 14.0
+   },
+   "S2": {
+    "t": "s",
+    "v": "=DSUM(A1:C6,G1:G2,E1:E2)"
+   },
+   "T2": {
+    "t": "s",
+    "v": "=DSUM(A1:C6,@G1:G2&\"\",E1:E2)"
+   },
+   "U10": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "U2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "V12": {
+    "t": "n",
+    "v": 7.0
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "a4d716c60c8b656cd3ffa99e92600cdc43cd0884a1640492d72e8be3edd43be9",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-30T00:49:27+00:00",
+  "version": null,
+  "workbook_name": "4ddbb7d2587d8cc65c414ce3022c6b15c20d70c2c526ed0e234017f4826bfdee.xlsx"
+ }
+}

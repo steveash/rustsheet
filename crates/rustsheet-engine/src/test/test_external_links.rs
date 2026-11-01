@@ -211,7 +211,8 @@ fn sheet_qualified_defined_name() {
     assert_eq!(model._get_formula("A2"), "='Sheet 2'!Renamed+1");
 }
 
-// `[0]!Name` resolves at parse time like `Name`, so ISREF and a rename see it (T-1459).
+// `[0]!Name` resolves at parse time like `Name`, so ISREF and a rename see it (T-1459); it shows
+// the workbook's file name as its prefix (probes/workbook-name-own-book-prefix, T-2834).
 #[test]
 fn book_zero_name_is_resolved_at_parse_time() {
     let mut model = new_empty_model();
@@ -225,7 +226,7 @@ fn book_zero_name_is_resolved_at_parse_time() {
     model
         .update_defined_name("CellName", None, "Other", None, "Sheet1!$B$1")
         .unwrap();
-    assert_eq!(model._get_formula("A1"), "=ISREF([0]!Other)");
+    assert_eq!(model._get_formula("A1"), "=ISREF(model.xlsx!Other)");
 }
 
 // A local name never answers for a linked workbook's name of the same spelling (T-1459).

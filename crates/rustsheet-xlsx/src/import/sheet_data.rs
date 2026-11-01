@@ -10,18 +10,22 @@ use std::collections::HashMap;
 use std::io::BufRead;
 
 use quick_xml::events::{BytesEnd, BytesStart, Event};
+use rustsheet_engine::expressions::lexer::{has_overlong_string_literal, MAX_STRING_LITERAL_UNITS};
 use rustsheet_engine::expressions::parser::Parser;
 use rustsheet_engine::expressions::utils::{is_valid_row, number_to_column};
+use rustsheet_engine::language::get_language;
+use rustsheet_engine::locale::get_locale;
 use rustsheet_engine::types::{Cell, DataTable, DataTableInput, DateSystem, Row, SheetData};
 
 use crate::error::XlsxError;
 
+use super::array_refs::ArrayClaims;
 use super::package::ImportLimits;
 use super::shared_strings::SharedStringTable;
 use super::util::parse_bool_with_default;
 use super::worksheets::{
     find_or_add_formula, from_a1_to_rc, get_cell_from_excel, parse_cell_reference, parse_range,
-    CellArrayKind,
+    CellArrayKind, RcTextCache,
 };
 use super::xml::{attribute_value_of, reference_of, XmlNode, XmlTreeBuilder};
 use quick_xml::XmlVersion;
@@ -151,6 +155,8 @@ struct CellXml {
 struct SheetDataReader<'a> {
     sheet_name: &'a str,
     parser: &'a mut Parser,
+    /// The R1C1 text of the last formulas read, see `RcTextCache`.
+    rc_text: RcTextCache,
     shared_strings: &'a mut SharedStringTable,
     limits: &'a ImportLimits,
     /// The rich-value error of each value-metadata entry (`vm` is 1-based into it).
@@ -167,6 +173,8 @@ struct SheetDataReader<'a> {
     index_map: HashMap<i32, i32>,
     /// Cells covered by an array formula, with the anchor cell of the formula.
     array_cell: HashMap<(i32, i32), (i32, i32)>,
+    /// The cells `array_cell` has taken in this load, against the bytes read (T-3437).
+    array_claims: &'a mut ArrayClaims,
     /// The sheet's what-if data tables; their result cells load as plain values.
     data_tables: Vec<DataTable>,
 
@@ -520,6 +528,7 @@ impl SheetDataReader<'_> {
                 MAX_FORMULA_UNITS,
                 &format!("Formula in {context}"),
             )?;
+            check_string_literals(&formula_text, &format!("Formula in {context}"))?;
             match formula_type {
                 "shared" => {
                     let si = formula
@@ -529,7 +538,13 @@ impl SheetDataReader<'_> {
                     match formula.reference {
                         Some(_) => {
                             // It's the anchor cell. We do not use the ref attribute in IronCalc
-                            let formula = from_a1_to_rc(formula_text, self.parser, context, false)?;
+                            let formula = from_a1_to_rc(
+                                formula_text,
+                                self.parser,
+                                &mut self.rc_text,
+                                context,
+                                false,
+                            )?;
                             match self.index_map.get(&si) {
                                 Some(index) => {
                                     // The index for that formula already exists meaning we bumped into a daughter cell first:
@@ -605,6 +620,8 @@ impl SheetDataReader<'_> {
                             "The first cell of the range of an array formula must be the anchor cell".to_string(),
                         ));
                     }
+                    self.array_claims
+                        .claim(&range, (row1, column1, row2, column2))?;
                     for r in row1..=row2 {
                         for c in column1..=column2 {
                             if r == row1 && c == column1 {
@@ -621,7 +638,8 @@ impl SheetDataReader<'_> {
                         array_kind =
                             CellArrayKind::ArrayFormula(column2 - column1 + 1, row2 - row1 + 1);
                     }
-                    let formula = from_a1_to_rc(formula_text, self.parser, context, true)?;
+                    let formula =
+                        from_a1_to_rc(formula_text, self.parser, &mut self.rc_text, context, true)?;
                     formula_index = find_or_add_formula(
                         formula,
                         &mut self.shared_formulas,
@@ -630,7 +648,13 @@ impl SheetDataReader<'_> {
                 }
                 "normal" => {
                     // Its a cell with a simple formula
-                    let formula = from_a1_to_rc(formula_text, self.parser, context, false)?;
+                    let formula = from_a1_to_rc(
+                        formula_text,
+                        self.parser,
+                        &mut self.rc_text,
+                        context,
+                        false,
+                    )?;
                     formula_index = find_or_add_formula(
                         formula,
                         &mut self.shared_formulas,
@@ -645,7 +669,7 @@ impl SheetDataReader<'_> {
                 }
             }
         }
-        let anchor_cell = self.array_cell.get(&(r_index, column_index)).cloned();
+        let anchor_cell = self.array_cell.get(&(r_index, column_index)).copied();
         let rich_error = cell
             .value_metadata
             .as_deref()
@@ -670,6 +694,16 @@ impl SheetDataReader<'_> {
     }
 }
 
+/// What a worksheet part is read with besides the parser and the shared tables.
+pub(super) struct SheetPart<'a> {
+    /// The rich-value error of each value-metadata entry (`vm` is 1-based into it).
+    pub(super) rich_errors: &'a [Option<&'static str>],
+    /// The workbook's date system, for `t="d"` cells.
+    pub(super) date_system: DateSystem,
+    /// The cells the load's array formulas have covered so far (T-3437).
+    pub(super) array_claims: &'a mut ArrayClaims,
+}
+
 /// Reads a worksheet part: its cells into a `SheetData`, and everything else
 /// into a copy of the XML without them.
 pub(super) fn read_sheet_data<R: BufRead>(
@@ -678,9 +712,13 @@ pub(super) fn read_sheet_data<R: BufRead>(
     parser: &mut Parser,
     shared_strings: &mut SharedStringTable,
     limits: &ImportLimits,
-    rich_errors: &[Option<&'static str>],
-    date_system: DateSystem,
+    part: SheetPart<'_>,
 ) -> Result<SheetDataXml, XlsxError> {
+    let SheetPart {
+        rich_errors,
+        date_system,
+        array_claims,
+    } = part;
     let mut reader = quick_xml::Reader::from_reader(reader);
     let mut tree = XmlTreeBuilder::new();
     let mut buffer = Vec::new();
@@ -688,6 +726,7 @@ pub(super) fn read_sheet_data<R: BufRead>(
     let mut state = SheetDataReader {
         sheet_name,
         parser,
+        rc_text: RcTextCache::default(),
         shared_strings,
         limits,
         rich_errors,
@@ -698,6 +737,7 @@ pub(super) fn read_sheet_data<R: BufRead>(
         formula_lookup: HashMap::new(),
         index_map: HashMap::new(),
         array_cell: HashMap::new(),
+        array_claims,
         data_tables: Vec::new(),
         stack: Vec::new(),
         row: None,
@@ -717,11 +757,16 @@ pub(super) fn read_sheet_data<R: BufRead>(
                 in_sheet_data = false;
             }
             Event::Empty(element) if !in_sheet_data && is_sheet_data(element) => {}
-            _ if in_sheet_data => state.process(&event)?,
+            _ if in_sheet_data => {
+                state.array_claims.read_up_to(reader.buffer_position());
+                state.process(&event)?;
+            }
             _ => tree.push(&event)?,
         }
         buffer.clear();
     }
+    state.array_claims.read_up_to(reader.buffer_position());
+    state.array_claims.end_sheet();
     Ok(SheetDataXml {
         worksheet: tree.finish()?,
         sheet_data: state.sheet_data,
@@ -788,6 +833,20 @@ pub(super) fn check_stored_length(
     Ok(())
 }
 
+/// Refuses the workbook, as Excel does, when `text` holds a string literal over 4,095 UTF-16 units
+/// (T-2762).
+pub(super) fn check_string_literals(text: &str, subject: &str) -> Result<(), XlsxError> {
+    // The scan only measures literals, which no locale or language changes; "en" always exists.
+    let locale = get_locale("en").map_err(XlsxError::Workbook)?;
+    let language = get_language("en").map_err(XlsxError::Workbook)?;
+    if has_overlong_string_literal(text, locale, language) {
+        return Err(XlsxError::Workbook(format!(
+            "{subject} holds a string literal longer than {MAX_STRING_LITERAL_UNITS} UTF-16 code units"
+        )));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -805,8 +864,11 @@ mod tests {
             &mut parser,
             &mut SharedStringTable::default(),
             &ImportLimits::default(),
-            &[],
-            DateSystem::Excel1900,
+            SheetPart {
+                rich_errors: &[],
+                date_system: DateSystem::Excel1900,
+                array_claims: &mut ArrayClaims::default(),
+            },
         )?;
         let mut positions: Vec<(i32, i32)> = read
             .sheet_data
@@ -829,8 +891,11 @@ mod tests {
             &mut parser,
             &mut SharedStringTable::default(),
             &ImportLimits::default(),
-            &[],
-            date_system,
+            SheetPart {
+                rich_errors: &[],
+                date_system,
+                array_claims: &mut ArrayClaims::default(),
+            },
         )?;
         let cell = read
             .sheet_data

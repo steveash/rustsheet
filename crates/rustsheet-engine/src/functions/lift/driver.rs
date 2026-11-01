@@ -3,12 +3,14 @@
 //! the in-place single-grid path and the text budget.
 
 use super::arg_buf::ArgBuf;
-use super::kinds::{ArgKinds, ArgValue, CallResult, KernelWork};
+use super::kinds::{ArgKinds, ArgValue, CallResult, KernelWork, ValueWork};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
+use super::keyed::{tally_run, tally_visits};
+use crate::area_budget::{text_units, visit_units};
 use crate::arithmetic::{bcast_get, MISSING};
-use crate::cast::calc_result_to_array_node;
+use crate::cast::{calc_result_to_array_node, MAX_NUMBER_TEXT_LEN};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::text::util::within_text_budget;
 use crate::functions::util::{array_element_value, top_left_of_array};
@@ -77,6 +79,19 @@ impl LiftedArg {
         }
     }
 
+    /// Every argument value read by [`LiftedArg::read`], or the first one's error.
+    pub(crate) fn read_all(
+        model: &mut Model,
+        args: Vec<CalcResult>,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<LiftedArg>, CalcResult> {
+        let mut lifted = Vec::with_capacity(args.len());
+        for arg in args {
+            lifted.push(LiftedArg::read(model, arg, cell)?);
+        }
+        Ok(lifted)
+    }
+
     /// The grid slot at output position (`row`, `column`), `None` for a scalar: a dimension of
     /// length 1 stretches, a position past a shorter array is `#N/A`
     /// (probes/ifs-array-criteria H11, H33-H37). A nested GROUPBY cell is read as its top-left
@@ -131,25 +146,53 @@ pub(crate) enum LiftCost {
 /// any runs: `elements` times the table weight, or for [`KernelWork::ByValue`] the sum of each
 /// element's charge by its argument values. That sum runs over every element, reused or not, so
 /// it never charges less than the elements computed; it is one pass over the grid, O(elements).
+///
+/// A [`ValueWork::CouponWalks`] kernel reads each of its arguments as a number before any walk,
+/// so a text is charged as what `reads_as` (the kernel's own `Model::cast_number`) reads it as: a
+/// number as that number, any other text as an error, `#VALUE!` before any walk (T-2879). Each
+/// reading parses at most [`MAX_NUMBER_TEXT_LEN`] characters, and a scalar's is read once.
 pub(super) fn kernel_units(
     work: KernelWork,
     lifted: &[LiftedArg],
     rows: usize,
     columns: usize,
     elements: u64,
+    reads_as: &dyn Fn(&str) -> Option<f64>,
 ) -> u64 {
     let KernelWork::ByValue(work) = work else {
         return elements.saturating_mul(work.weight());
     };
+    let reads_numbers = matches!(work, ValueWork::CouponWalks { .. });
+    let read_text = |text: &str| {
+        // Only a shortcut for `number_text_too_long` in `cast_number`: past
+        // `4 * MAX_NUMBER_TEXT_LEN` bytes a text has more characters than a number text may, so
+        // it is not parsed (or its characters counted) once per element.
+        let number = if text.len() > 4 * MAX_NUMBER_TEXT_LEN {
+            None
+        } else {
+            reads_as(text)
+        };
+        number.map_or(ArgValue::Error, ArgValue::Number)
+    };
+    // A scalar's value is read once; a grid's per element.
+    let slots: Vec<Result<ArgValue, &Vec<Vec<ArrayNode>>>> = lifted
+        .iter()
+        .map(|arg| match arg {
+            LiftedArg::Scalar(CalcResult::String(text)) if reads_numbers => Ok(read_text(text)),
+            LiftedArg::Scalar(value) => Ok(ArgValue::of(value)),
+            LiftedArg::Grid(grid) => Err(grid),
+        })
+        .collect();
     let mut units: u64 = 0;
     for row in 0..rows {
         for column in 0..columns {
             let value = |index: usize| {
-                lifted.get(index).map(|arg| match arg {
-                    LiftedArg::Scalar(value) => ArgValue::of(value),
-                    LiftedArg::Grid(grid) => {
-                        ArgValue::of_node(bcast_get(grid, row, column).unwrap_or(&MISSING).scalar())
-                    }
+                slots.get(index).map(|slot| match slot {
+                    Ok(value) => *value,
+                    Err(grid) => match bcast_get(grid, row, column).unwrap_or(&MISSING).scalar() {
+                        ArrayNode::String(text) if reads_numbers => read_text(text),
+                        node => ArgValue::of_node(node),
+                    },
                 })
             };
             units = units.saturating_add(work.units(value));
@@ -183,7 +226,7 @@ pub(crate) struct LiftOptions {
     pub(crate) work: KernelWork,
     /// What one unlifted call returns: an `Array` entry's element is its call's top-left value.
     pub(crate) result: CallResult,
-    /// Whether a [`CallResult::ArrayFirst`] entry's emptied elements are `#VALUE!` instead: a
+    /// Whether a [`CallResult::ArrayFirstColumn`] entry's emptied elements are `#VALUE!` instead: a
     /// SORTBY call with a second `by_array`, `sort_order` pair (`lift_call_with` sets it).
     pub(crate) later_error: bool,
 }
@@ -249,7 +292,7 @@ struct Run<'r> {
 enum Later {
     /// Every element keeps its result.
     Kept,
-    /// [`CallResult::ArrayFirst`] over entries that are not all equal: an error result stays,
+    /// [`CallResult::ArrayFirstColumn`] over entries that are not all equal: an error result stays,
     /// the first other one is kept (`placed` once it is), and every later one is empty.
     EmptyAfterFirst { placed: bool },
     /// [`CallResult::ArrayFirstColumn`] over entries that are all equal: every element runs, then the
@@ -278,7 +321,7 @@ impl Run<'_> {
 }
 
 /// Whether every element's grid slots equal the first element's: then a
-/// [`CallResult::ArrayFirst`] entry keeps every element (`UNIQUE(D1:D3,{FALSE;FALSE})` is "x"
+/// [`CallResult::ArrayFirstColumn`] entry keeps every element (`UNIQUE(D1:D3,{FALSE;FALSE})` is "x"
 /// twice, probes/m7-lift-take-drop-sortby row 35). One slot comparison per element and argument,
 /// within the work the elements are charged.
 fn all_elements_equal(args: &[LiftedArg], rows: usize, columns: usize) -> bool {
@@ -290,14 +333,22 @@ fn all_elements_equal(args: &[LiftedArg], rows: usize, columns: usize) -> bool {
 /// errors excepted (`UNIQUE(D1:D3,FALSE,{FALSE,FALSE;FALSE,FALSE})` is x, x in column one and
 /// empty in column two, `by_col` or not; a 1x3 `{FALSE,FALSE,FALSE}` is 1, empty, empty;
 /// probes/m7-unique-lift-corners, T-2348; docs/excel-semantics/arrays.md "UNIQUE's and SORTBY's
-/// lifted elements").
-fn empty_past_first_column(result: CalcResult) -> CalcResult {
+/// lifted elements"). With `later_error` (SORTBY's second pair) they are `#VALUE!` instead.
+fn empty_past_first_column(result: CalcResult, later_error: bool) -> CalcResult {
+    // SORTBY with a second pair makes them `#VALUE!` instead, as for entries that differ
+    // (`SORTBY(A1:A3,C1:C3,{1,1},A1:A3,1)`: 1, `#VALUE!`; probes/sortby-lifted-element-corners
+    // row 16, T-3027).
+    let emptied = if later_error {
+        ArrayNode::Error(Error::VALUE)
+    } else {
+        ArrayNode::Empty
+    };
     match result {
         CalcResult::Array(mut rows) => {
             for row in &mut rows {
                 for node in row.iter_mut().skip(1) {
                     if !matches!(node, ArrayNode::Error(_)) {
-                        *node = ArrayNode::Empty;
+                        *node = emptied.clone();
                     }
                 }
             }
@@ -526,14 +577,10 @@ impl Model {
         if !args.iter().any(LiftedArg::is_grid) {
             return kernel(self, &args);
         }
-        let mut lifted = Vec::with_capacity(args.len());
-        for arg in args {
-            match LiftedArg::read(self, arg, cell) {
-                Ok(arg) => lifted.push(arg),
-                Err(error) => return error,
-            }
+        match LiftedArg::read_all(self, args, cell) {
+            Ok(lifted) => self.lift_grids(lifted, cost, options, cell, kernel, None),
+            Err(error) => error,
         }
-        self.lift_grids(lifted, cost, options, cell, kernel, None)
     }
 
     /// The broadcast over arguments already read, at least one of them a grid (SPEC-0011
@@ -553,9 +600,27 @@ impl Model {
         kernel: &mut Kernel<'_>,
         numbers: Option<&NumbersKernel<'_>>,
     ) -> CalcResult {
+        self.lift_grids_after(lifted, cost, options, cell, (kernel, numbers), 0)
+            .0
+    }
+
+    /// [`Self::lift_grids`] continuing a lift that charged `prior` visits up front: the per-call
+    /// cap is checked on `prior` and this lift's visits together, and only this lift's are
+    /// charged to the formula's work budget. Also returns this lift's up-front visits (0 when it
+    /// fails before charging them). `kernels` is the kernel and its number shortcut.
+    pub(super) fn lift_grids_after(
+        &mut self,
+        lifted: Vec<LiftedArg>,
+        cost: LiftCost,
+        options: &LiftOptions,
+        cell: CellReferenceIndex,
+        kernels: (&mut Kernel<'_>, Option<&NumbersKernel<'_>>),
+        prior: u64,
+    ) -> (CalcResult, u64) {
+        let (kernel, numbers) = kernels;
         let (rows, columns) = match broadcast_shape(&lifted, cell) {
             Ok(shape) => shape,
-            Err(error) => return error,
+            Err(error) => return (error, 0),
         };
         // Refuse before running anything when the elements would cost too much.
         let (plan, elements) = match options.reuse {
@@ -572,15 +637,20 @@ impl Model {
                 (plan, count_walks(&lifted, rows, columns, reuse))
             }
         };
-        let units = kernel_units(options.work, &lifted, rows, columns, elements);
+        let reads_as = |text: &str| self.cast_number(text);
+        let units = kernel_units(options.work, &lifted, rows, columns, elements, &reads_as);
         let visits = match cost {
             LiftCost::Unit => units,
             LiftCost::Cells(cells) => cells.saturating_mul(units),
             LiftCost::Prepared(cells) => cells.saturating_add(units),
         };
-        if let Some(error) = too_many_visits(visits, cell) {
-            return error;
+        let up_front = prior.saturating_add(visits);
+        if let Some(error) = too_many_visits(up_front, cell)
+            .or_else(|| self.spend_work(visit_units(visits), cell).err())
+        {
+            return (error, 0);
         }
+        tally_visits(visits);
         let mut grids = lifted
             .iter()
             .enumerate()
@@ -596,11 +666,8 @@ impl Model {
             .then_some(index),
             _ => None,
         };
-        let array_first = matches!(
-            options.result,
-            CallResult::ArrayFirst | CallResult::ArrayFirstColumn
-        );
-        let later = if array_first && !all_elements_equal(&lifted, rows, columns) {
+        let first_only = options.result == CallResult::ArrayFirstColumn;
+        let later = if first_only && !all_elements_equal(&lifted, rows, columns) {
             Later::EmptyAfterFirst { placed: false }
         } else if options.result == CallResult::ArrayFirstColumn && columns > 1 {
             Later::EmptyPastFirstColumn
@@ -608,7 +675,8 @@ impl Model {
             Later::Kept
         };
         let past_first_column = matches!(later, Later::EmptyPastFirstColumn);
-        let mut visits = visits;
+        let charged = visits;
+        let mut visits = up_front;
         let run = Run {
             options,
             visits: &mut visits,
@@ -619,10 +687,17 @@ impl Model {
             Some(index) => self.lift_in_place(lifted, index, run, kernel, numbers),
             None => self.lift_broadcast(&lifted, rows, columns, &plan, run, kernel),
         };
-        if past_first_column {
-            return empty_past_first_column(result);
+        // The elements' output charges, past the up-front cost, go to the formula's budget too.
+        if let Err(error) = self.spend_work(visit_units(visits.saturating_sub(up_front)), cell) {
+            return (error, charged);
         }
-        result
+        if past_first_column {
+            return (
+                empty_past_first_column(result, options.later_error),
+                charged,
+            );
+        }
+        (result, charged)
     }
 
     /// The lift of a call whose result is a reference (SPEC-0014 "Producers"): `kernel` runs
@@ -649,7 +724,7 @@ impl Model {
             })
             .collect();
         let elements = rows.saturating_mul(columns);
-        if let Some(error) = too_many_visits(u64::try_from(elements).unwrap_or(u64::MAX), cell) {
+        if let Some(error) = self.spend_visits(u64::try_from(elements).unwrap_or(u64::MAX), cell) {
             return RefArg::Value(error);
         }
         let mut output = Vec::with_capacity(elements);
@@ -724,6 +799,7 @@ impl Model {
                 if let Some(slot) = values.as_mut_slice().get_mut(grid_index) {
                     *slot = array_node_into_calc_result(element, cell);
                 }
+                tally_run();
                 *node = match run.element(kernel(self, values.as_slice())) {
                     Ok(node) => node,
                     Err(error) => return error,
@@ -732,6 +808,10 @@ impl Model {
                     return error;
                 }
             }
+        }
+        // The texts' bytes go to the formula's work budget (SPEC-0024 "text values").
+        if let Err(error) = self.spend_work(text_units(text_bytes), cell) {
+            return error;
         }
         CalcResult::Array(output)
     }
@@ -798,6 +878,7 @@ impl Model {
                                 *slot = array_element_value(node, cell);
                             }
                         }
+                        tally_run();
                         let value = match run.element(kernel(self, &values)) {
                             Ok(value) => value,
                             Err(error) => return error,
@@ -814,6 +895,10 @@ impl Model {
                 out_row.push(value);
             }
             output.push(out_row);
+        }
+        // The texts' bytes go to the formula's work budget (SPEC-0024 "text values").
+        if let Err(error) = self.spend_work(text_units(text_bytes), cell) {
+            return error;
         }
         CalcResult::Array(output)
     }

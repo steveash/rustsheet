@@ -8,16 +8,19 @@
 
 use statrs::distribution::{Binomial, Discrete, DiscreteCDF, NegativeBinomial};
 
+use super::bratio::{closed_or_ported_tails, dispatch, ported_tails, Branch};
 use super::discrete::{binomial_cdf, binomial_pmf, binomial_range, odds, times_ratio};
 use super::incomplete_beta::closed_form_tails;
+use super::loader::excel_dbinom_exponent;
 
 use crate::arithmetic::flush_subnormal;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{num_error, number_or_error};
 use crate::functions::Function;
-use crate::x87_exp::excel_exp;
+use crate::x87_exp::{excel_exp, excel_exp_extended};
 use crate::x87_log10::excel_ln;
 use crate::x87_log1p::excel_ln_one_minus;
+use crate::x87_register::Register;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
 /// The trial count (after truncation) from which BINOM.DIST, BINOMDIST, BINOM.DIST.RANGE,
@@ -99,9 +102,9 @@ impl Model {
         // which at k = n - 1 takes Excel's closed form (T-2464 w5-triangulation, T-2502). k = 0 is
         // BINOM's own shortcut, not the kernel's (T-2645).
         if cumulative && k >= 1 && k < n {
-            if let Some((_, upper)) =
-                closed_form_tails(p, 1.0 - p, number_s + 1.0, trials - number_s)
-            {
+            // Then the bratio port's branches (T-2847), basym among them (T-3352).
+            let (x, y, a, b) = (p, 1.0 - p, number_s + 1.0, trials - number_s);
+            if let Some((_, upper)) = closed_or_ported_tails(x, y, a, b) {
                 return Ok(flush_subnormal(upper));
             }
         }
@@ -117,6 +120,13 @@ impl Model {
         };
         if let Some(prob) = walked {
             return Ok(prob);
+        }
+        // Past the walk's budget the pmf is Excel's own interior kernel, Loader's dbinom_raw
+        // (T-3352: statrs' log-gamma difference was 1E-11 off at n = 1E4 and 1E-6 at 1E9).
+        if !cumulative {
+            if let Some(pmf) = loader_pmf(number_s, trials, p) {
+                return Ok(pmf);
+            }
         }
         let dist = Binomial::new(p, n).map_err(|_| num_error(cell))?;
         let prob = flush_subnormal(if cumulative { dist.cdf(k) } else { dist.pmf(k) });
@@ -294,11 +304,25 @@ impl Model {
         let f_u = number_f as u64;
         // Excel's cdf is the incomplete beta I_p(r, f+1) at x = p, y = fl(1 - p), which at r = 1 or
         // f = 0 takes Excel's closed form (T-2464 w5-triangulation, T-2502).
+        let walk_first = cumulative && takes_bfrac(number_s, number_f + 1.0, probability_s);
         if cumulative {
-            if let Some((lower, _)) =
-                closed_form_tails(probability_s, 1.0 - probability_s, number_s, number_f + 1.0)
-            {
+            // Then the bratio port's branches (T-2847), whose subnormal cdf is 0 in Excel
+            // (`NEGBINOM.DIST(1,1000,0.48,TRUE)` = 0: probes/t2706-subnormal-density-paths A9:B9).
+            // Not [`closed_or_ported_tails`]: the flush is backed for the port only, so the closed
+            // form's result is returned as it was.
+            let (x, y, a, b) = (probability_s, 1.0 - probability_s, number_s, number_f + 1.0);
+            if let Some((lower, _)) = closed_form_tails(x, y, a, b) {
                 return Ok(lower);
+            }
+            // bfrac's points take the double-double walk below first, and bfrac only past its
+            // budget: Excel's `NEGBINOM.DIST(1,100,0.99,TRUE)` (ironcalc-calc BINOM.xlsx
+            // NEGBINOM.DIST!E39) is the correctly rounded I_0.99(100, 2), which the walk hits and
+            // bfrac misses by one ulp (its w is correctly rounded, but 1 - w is then an exact tie
+            // that rounds the other way; T-2508).
+            if !walk_first {
+                if let Some((lower, _)) = ported_tails(a, b, x, y) {
+                    return Ok(flush_subnormal(lower));
+                }
             }
         }
         // F failures before the r-th success: P(F <= f) is P(at most f failures in f + r trials),
@@ -328,6 +352,27 @@ impl Model {
             };
             if let Some(result) = walked {
                 return Ok(result);
+            }
+            // Past the walk's budget the pmf is p times the shifted binomial kernel
+            // dbinom_raw(r - 1, f + r - 1, p, q) (statistics.md "NEGBINOM.DIST pmf sits on the
+            // shifted binomial kernel"), Loader's in the interior and q^f at r = 1 (T-3352: statrs
+            // was 3E-11 off at f = 1E4 and 9E-6 at 1E9).
+            if !cumulative {
+                let kernel = if r_u == 1 {
+                    Some(excel_exp(number_f * excel_ln_one_minus(probability_s)))
+                } else {
+                    loader_pmf(number_s - 1.0, number_f + number_s - 1.0, probability_s)
+                };
+                if let Some(kernel) = kernel {
+                    return Ok(flush_subnormal(probability_s * kernel));
+                }
+            }
+        }
+        if walk_first {
+            if let Some((lower, _)) =
+                ported_tails(number_s, number_f + 1.0, probability_s, 1.0 - probability_s)
+            {
+                return Ok(flush_subnormal(lower));
             }
         }
         let dist = NegativeBinomial::new(number_s, probability_s).map_err(|_| num_error(cell))?;
@@ -372,4 +417,19 @@ impl Model {
             },
         )
     }
+}
+
+/// Excel's binomial pmf `dbinom_raw(k, n, p, fl(1 - p))` for 0 < k < n: EXP of Loader's saddle-point
+/// exponent ([`excel_dbinom_exponent`], the kernel BETA.DIST's density shares; statistics.md
+/// "BINOM.DIST pmf: closed forms at k = 0 and k = n, and one kernel with BETA.DIST"), a subnormal
+/// result flushed to 0 as Excel's interior pmf is. `None` where a piece is not finite.
+fn loader_pmf(k: f64, n: f64, p: f64) -> Option<f64> {
+    let exponent = excel_dbinom_exponent(k, n, n - k, p, 1.0 - p)?;
+    let pmf = excel_exp_extended(Register::from_double_double(exponent));
+    pmf.is_finite().then(|| flush_subnormal(pmf))
+}
+
+/// Whether bratio takes bfrac for NEGBINOM.DIST's cdf, `I_p(r, f + 1)` at y = fl(1 - p).
+fn takes_bfrac(r: f64, f_plus_one: f64, p: f64) -> bool {
+    dispatch(r, f_plus_one, p, 1.0 - p).is_some_and(|d| d.branch == Branch::Bfrac)
 }

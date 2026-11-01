@@ -5,6 +5,6 @@ root = "cases"
 include = ["**/*.case.json"]
 license = "Apache-2.0"
 origin = "generated"
-gate = false
+gate = true
 baseline = "cells"
 milestone = ["M8"]

@@ -498,7 +498,7 @@ fn two_to_the_minus_one_series_sum(magnitude: u128, drop: u32) -> (f64, f64) {
 }
 
 /// 2^k as a double for -1022 <= k <= 1023.
-fn power_of_two(k: i32) -> f64 {
+pub(crate) fn power_of_two(k: i32) -> f64 {
     let biased = u64::try_from(k + 1023).unwrap_or(1).clamp(1, 2046);
     f64::from_bits(biased << 52)
 }
@@ -581,6 +581,42 @@ pub(crate) fn dd_div(a: (f64, f64), b: (f64, f64)) -> (f64, f64) {
     let product = dd_mul((q, 0.0), b);
     let remainder = dd_add(a, (-product.0, -product.1));
     two_sum(q, remainder.0 / b.0)
+}
+
+/// sqrt of a positive double-double: the double root and one Newton correction.
+pub(crate) fn dd_sqrt(a: (f64, f64)) -> (f64, f64) {
+    let root = a.0.sqrt();
+    let square = dd_mul((root, 0.0), (root, 0.0));
+    let residual = dd_add(a, (-square.0, -square.1));
+    two_sum(root, residual.0 / (2.0 * root))
+}
+
+/// Taylor terms of [`dd_exp`] on its reduced argument, |r| <= ln 2 / 2^9: the first omitted
+/// term is below 2^-120 relative.
+const DD_EXP_TERMS: u32 = 11;
+
+/// Squarings that undo [`dd_exp`]'s argument halving (2^8 = 256).
+const DD_EXP_SQUARINGS: u32 = 8;
+
+/// e^a in double-double (about 2^-98 relative) for |a| <= 650: a = k ln 2 + r, e^(r/256) by its
+/// Taylor series, squared 8 times, times 2^k. Below -650 the tail word turns subnormal and loses
+/// bits, and from about 709 the head overflows; callers check first.
+pub(crate) fn dd_exp(a: (f64, f64)) -> (f64, f64) {
+    let k = (a.0 / std::f64::consts::LN_2).round();
+    let reduced = dd_add(a, dd_mul((-k, 0.0), (LN_2_HI, LN_2_LO)));
+    let small = (reduced.0 / 256.0, reduced.1 / 256.0);
+    let mut term = (1.0, 0.0);
+    let mut sum = (1.0, 0.0);
+    for i in 1..=DD_EXP_TERMS {
+        term = dd_div_small(dd_mul(term, small), f64::from(i));
+        sum = dd_add(sum, term);
+    }
+    for _ in 0..DD_EXP_SQUARINGS {
+        sum = dd_mul(sum, sum);
+    }
+    // |k| <= 938 for |a| <= 650; 2^k as a double is exact.
+    let scale = power_of_two(k as i32);
+    (sum.0 * scale, sum.1 * scale)
 }
 
 /// RN64 of a positive double-double `hi + lo`: the 64-bit significand and its exponent.

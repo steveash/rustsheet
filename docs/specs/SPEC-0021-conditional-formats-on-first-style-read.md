@@ -70,14 +70,19 @@ Unchanged: every rule is evaluated by today's code. The only question is when it
   the work done eagerly.
 
 ### Resource limits (directive 5)
-This change takes the conditional-format work out of load and `evaluate()`. It does not bound
-it. A host that reads styles still pays the whole evaluation on the first read after each
-`evaluate()`: 41978's rules cost about 190 s, and a hostile workbook can cost more. A `UserModel`
-host that reads styles after every edit pays that per edit, as it does today.
+This change takes the conditional-format work out of load and `evaluate()`. On its own it did not
+bound it: the first style read after each `evaluate()` paid the whole evaluation (41978: about
+190 s).
 
-Bounding one conditional-format evaluation (a work budget per evaluation, with a DEVIATION entry,
-decision 0014) is T-0476. Evaluating only the rules whose areas hold the queried cell is a further
-option for that task.
+Revised by T-0476: a style read evaluates only the rules whose areas hold the cell read, in
+priority order, for that cell (`cf_styles.rs`, `CfState`). A rule's statistics over its area (its
+numbers, or its value counts for the unique and duplicate rules) are computed once per round,
+over the area cut at the used area, where every cell left out is empty. Styles are those of the
+evaluation of every cell, which `evaluate_conditional_formatting()` still does for a caller who
+asks for it. A read now costs the rules over its cell, each one formula at most, plus once per
+round the statistics over the used area. 41978's first eight reads take 322 ms, rows 1,047,886
+and beyond included, and a read of all 2,405 used cells takes 152 ms. Styles do not change, so
+there is no DEVIATION.
 
 ### When the evaluation happens, and what it can see
 Today the cache is a snapshot taken at the end of `evaluate()`, at load, or at `set_theme`. The
@@ -86,8 +91,14 @@ it is then. The two agree whenever nothing changes in between. That covers the e
 never reads styles) and `UserModel` while it is not paused, since `UserModel` evaluates after every
 edit, undo and redo.
 
-Once a read has cleared the flag, the cache stays as it is until the next of the four call sites,
-exactly as today's snapshot does. The differences all come from changes made through `Model`, or
+Once a read has cleared the flag, each cell's results stay as they are until the next of the four
+call sites, exactly as today's snapshot does. Since T-0476 a cell's rules run at that cell's first
+read in the round, so what follows holds for each cell's first read, not only the round's first.
+A rule's statistics are taken at the first read that needs them in the round, not after the rules
+above it have run. The two differ only when a rule above computes a formula cell written since the
+last `evaluate()` (below), so within the window this section already accepts. The thresholds of a
+value rule are evaluated at each read too, so a volatile one (`NOW()`) can differ between cells
+read at different times. The differences all come from changes made through `Model`, or
 through a paused `UserModel`, after the snapshot point but before the first read. All are accepted:
 - **The read sees those edits.** It sees edited cells, and edited rules, dxfs, rows, columns and
   sheets (`Model::add_conditional_formatting` and the other CF edits, undo/redo and clipboard

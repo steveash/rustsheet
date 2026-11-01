@@ -349,11 +349,17 @@ fn a_lifted_coupon_call_is_charged_for_its_schedule_walks() {
             "=ROWS(DURATION(SEQUENCE(4096)+39000,43831,0.05,0.06,2))",
             "4096",
         ),
-        // A text date may read as any date, so it is charged as the longest schedule.
+        // A text is charged as the engine reads it (T-2879): a date text as its date, so these
+        // one-period walks lift; a text that reads as no date is #VALUE! before any walk.
         (
             "A9",
             "=ROWS(COUPNUM(IF(SEQUENCE(1025),\"2020-01-01\"),43831,4))",
-            "#ERROR!",
+            "1025",
+        ),
+        (
+            "A10",
+            "=ROWS(COUPNUM(IF(SEQUENCE(1025),\"abc\"),2958465,4))",
+            "1025",
         ),
     ]);
 }

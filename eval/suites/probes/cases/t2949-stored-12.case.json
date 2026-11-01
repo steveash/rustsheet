@@ -1,0 +1,21 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2949: one stored <f> text, alone so a refusal is isolated: '=( (1) )'. B1:B2 hold 1 and 2.",
+ "tags": [
+  "M2",
+  "syntax",
+  "probe"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "B1": 1,
+    "B2": 2,
+    "G12": "=( (1) )",
+    "H12": "=FORMULATEXT(G12)"
+   }
+  }
+ ]
+}

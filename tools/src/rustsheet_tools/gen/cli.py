@@ -6,6 +6,9 @@
   rustsheet-gen --policy names-3d --seed 0                # suite gen-m8a (M8 names, 3-D refs)
   rustsheet-gen --policy tables --seed 0                  # suite gen-m8b (M8 tables, structured refs)
   rustsheet-gen --policy number-formats --seed 0          # suite gen-m10 (M10 displayed text)
+  rustsheet-gen --policy numeric-fp --seed 0              # suite gen-m2 (M2 near-zero snapping)
+  rustsheet-gen --policy numeric-fp --milestone M5        # suite gen-m5 (M5 rounding chains, 15-digit cuts)
+  rustsheet-gen --policy arg-pairs --milestone M2 --seed 0 # suite gen-m2 (argument-class pairs no Excel cell covers)
 
 Creates eval/suites/<suite>/suite.toml if missing (non-gating until oracle sidecars exist).
 """
@@ -13,13 +16,16 @@ Creates eval/suites/<suite>/suite.toml if missing (non-gating until oracle sidec
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 from typing import Any
 
 from rustsheet_tools import repo_root
+from rustsheet_tools.gen.arg_pairs import generate_arg_pairs, load_unseen_pairs
 from rustsheet_tools.gen.generator import Catalog, generate_case, write_case
 from rustsheet_tools.gen.names_3d import generate_names_3d
 from rustsheet_tools.gen.number_formats import generate_number_formats
+from rustsheet_tools.gen.numeric_fp import generate_numeric_fp
 from rustsheet_tools.gen.numeric_rules import generate_numeric_rules
 from rustsheet_tools.gen.operators_refs import generate_operators_refs
 from rustsheet_tools.gen.tables import generate_tables
@@ -49,6 +55,21 @@ def write_suite(root: Path, name: str, description: str, milestone: str, specs: 
         print(write_case(spec, suite_dir / "cases").relative_to(root))
 
 
+def arg_pairs_specs(
+    root: Path, args: argparse.Namespace, catalog: Catalog, names: list[str]
+) -> list[dict[str, Any]]:
+    """The `--policy arg-pairs` cases; the pairs it skips are reported on stderr."""
+    report = args.report or root / "eval" / "runs" / "latest" / "report.json"
+    if not report.exists():
+        raise SystemExit(f"rustsheet-gen: no report at {report}; run `make eval` or pass --report")
+    specs, skipped = generate_arg_pairs(
+        catalog, load_unseen_pairs(report), args.seed, milestone=args.milestone, functions=names
+    )
+    for name, pairs in skipped.items():
+        print(f"rustsheet-gen: {name}: skipped {len(pairs)} pair(s): {', '.join(pairs)}", file=sys.stderr)
+    return specs
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(prog="rustsheet-gen", description=__doc__.splitlines()[0])
     ap.add_argument("--milestone", default="M2")
@@ -59,7 +80,16 @@ def main() -> None:
     ap.add_argument("--suite", default=None, help="suite name (default gen-<milestone>)")
     ap.add_argument(
         "--policy",
-        choices=["random", "numeric-rules", "operators-refs", "names-3d", "tables", "number-formats"],
+        choices=[
+            "random",
+            "numeric-rules",
+            "operators-refs",
+            "names-3d",
+            "tables",
+            "number-formats",
+            "numeric-fp",
+            "arg-pairs",
+        ],
         default="random",
         help=(
             "numeric-rules: dense floating-point probe batches (suite probes-numeric); "
@@ -67,7 +97,11 @@ def main() -> None:
             "names-3d: M8 defined names and 3-D references (suite gen-m8a, T-1606); "
             "tables: M8 Excel tables and structured references (suite gen-m8b, T-1607); "
             "number-formats: M10 displayed text of number formats (suite gen-m10, T-1611); "
-            "all five ignore --milestone/--count/--formulas/--depth"
+            "numeric-fp: near-zero cancellations at the 8-ULP snap boundary, M2 or (--milestone M5) "
+            "the M5 rounding chains and 15-digit cuts (suite gen-m2 or gen-m5, T-3139, T-3204); "
+            "arg-pairs: calls passing the argument-class pairs --report lists as unseen for the functions of "
+            "exactly --milestone, or --functions (suite gen-<milestone>, T-3278); "
+            "all seven ignore --count/--formulas/--depth and all but numeric-fp and arg-pairs ignore --milestone"
         ),
     )
     ap.add_argument(
@@ -87,6 +121,12 @@ def main() -> None:
         help="a formula whose outer call is dynamic_array gets an empty footprint to spill into, all checked (§5.2 shape 3)",
     )
     ap.add_argument("--catalog", type=Path, default=None)
+    ap.add_argument(
+        "--report",
+        type=Path,
+        default=None,
+        help="with --policy arg-pairs: the report.json listing unseen pairs (default eval/runs/latest/report.json)",
+    )
     args = ap.parse_args()
 
     root = repo_root()
@@ -135,26 +175,43 @@ def main() -> None:
             generate_number_formats(args.seed),
         )
         return
+    if args.policy == "numeric-fp":
+        try:
+            specs = generate_numeric_fp(args.seed, args.milestone)
+        except ValueError as e:
+            raise SystemExit(f"rustsheet-gen: {e}") from e
+        write_suite(
+            root,
+            args.suite or f"gen-{args.milestone.lower()}",
+            f"Synthetic cases generated by rustsheet-gen (milestone {args.milestone}); expectations from the Excel oracle",
+            args.milestone,
+            specs,
+        )
+        return
     catalog = Catalog.load(args.catalog or root / "eval" / "catalog" / "functions.yaml")
     names = [n for n in args.functions.split(",") if n.strip()]
     if args.functions and not names:
         raise SystemExit("rustsheet-gen: --functions names no function")
     try:
-        specs = [
-            generate_case(
-                catalog,
-                args.seed * 1_000_003 + i,
-                milestone=args.milestone,
-                formulas=args.formulas,
-                max_depth=args.depth,
-                focus=args.focus,
-                case_index=i,
-                spill=args.spill,
-                functions=names,
-                category=args.category,
-            )
-            for i in range(args.count)
-        ]
+        specs = (
+            arg_pairs_specs(root, args, catalog, names)
+            if args.policy == "arg-pairs"
+            else [
+                generate_case(
+                    catalog,
+                    args.seed * 1_000_003 + i,
+                    milestone=args.milestone,
+                    formulas=args.formulas,
+                    max_depth=args.depth,
+                    focus=args.focus,
+                    case_index=i,
+                    spill=args.spill,
+                    functions=names,
+                    category=args.category,
+                )
+                for i in range(args.count)
+            ]
+        )
     except ValueError as e:
         raise SystemExit(f"rustsheet-gen: {e}") from e
     write_suite(

@@ -57,7 +57,7 @@ fn datedif_month_days(start: (i32, u32, u32), end: (i32, u32, u32)) -> i64 {
     days + i64::from(displayed_month_length(year, month))
 }
 
-// The date serial of a raw argument (DAYS360, HOUR/MINUTE/SECOND's bound), rounding the
+// The date serial of a raw argument (DAYS360), rounding the
 // time-of-day to the nearest second first: Excel rolls 46000.999999 up to 46001.
 fn days360_serial(raw: f64) -> i64 {
     ((raw * SECONDS_PER_DAY_F64).round() / SECONDS_PER_DAY_F64).floor() as i64
@@ -138,6 +138,19 @@ fn time_argument(value: f64) -> Result<f64, Error> {
         Ok(whole)
     } else {
         Err(Error::NUM)
+    }
+}
+
+/// The whole day a serial reads as in YEAR, MONTH, DAY, WEEKDAY and the bound of HOUR, MINUTE and
+/// SECOND: `floor(v + 0.5/86400)` in double precision, so a serial within half a second of the
+/// next midnight is the next day, exactly where `time_of_day_parts` rolls to hour 0. A negative
+/// serial is only floored, so it stays `#NUM!` before any carry. Excel: dates.md "YEAR, MONTH and
+/// DAY of a serial just below midnight" (probes/t3137-date-parts-near-midnight; T-3176).
+fn carried_day(v: f64) -> f64 {
+    if v < 0.0 {
+        v.floor()
+    } else {
+        (v + 0.5 / SECONDS_PER_DAY_F64).floor()
     }
 }
 
@@ -233,8 +246,12 @@ impl Model {
     ) -> CalcResult {
         let date_system = self.workbook.settings.date_system;
         self.numbers_fn(kind, args, [0.0], cell, |[serial]| {
+            let day = carried_day(serial);
+            if day > f64::from(MAXIMUM_DATE_SERIAL_NUMBER) {
+                return Err(Error::NUM);
+            }
             date_system
-                .to_1900_serial(serial.floor() as i64)
+                .to_1900_serial(day as i64)
                 .and_then(excel_serial_to_ymd)
                 .map(part)
                 .ok_or(Error::NUM)
@@ -506,7 +523,7 @@ impl Model {
     ) -> CalcResult {
         self.numbers_fn(kind, args, [0.0], cell, |[value]| {
             let last = i64::from(MAXIMUM_DATE_SERIAL_NUMBER);
-            if !(value >= 0.0 && days360_serial(value) <= last) {
+            if !(value >= 0.0 && carried_day(value) <= last as f64) {
                 return Err(Error::NUM);
             }
             Ok(part(value))
@@ -749,8 +766,7 @@ impl Model {
         // The date and the return type lift (probes/date-argument-modes F51:F52).
         let kind = Function::Weekday;
         self.numbers_fn(kind, args, [0.0, 1.0], cell, |[serial, return_type]| {
-            let s = serial.floor();
-            let date = ds.date_of_serial_from_zero(s as i64);
+            let date = ds.date_of_serial_from_zero(carried_day(serial) as i64);
             weekday_number(date.ok_or(Error::NUM)?, return_type as i32)
         })
     }

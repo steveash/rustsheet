@@ -1,0 +1,137 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2786: whitespace inside structured references typed into a table T (A1:C4; E1:E15, FORMULATEXT in F, and this-row forms in C2:C4), runs with no operand beside them and a space before a call's parenthesis (H1:H13, FORMULATEXT in I), and typed formulas whose saved <f> text is read from the workbook Excel for the web saves (H14:H17, E1:E15). Graph refuses (400 InvalidArgument, so not in this case): T[ Col], T[Col ], T[ Col ], T[[Col] : [Other]], T [Col], T[[Col], [Other]], SUM( ) and SUM (1).",
+ "tags": [
+  "M2",
+  "syntax",
+  "probe"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "S",
+   "tables": [
+    {
+     "name": "T",
+     "ref": "A1:C4"
+    }
+   ],
+   "cells": {
+    "A1": "Col",
+    "B1": "Other",
+    "C1": "Calc",
+    "A2": 1,
+    "B2": 10,
+    "A3": 2,
+    "B3": 20,
+    "A4": 4,
+    "B4": 40,
+    "C2": {
+     "entered": "=T[[#This Row], [Col]]"
+    },
+    "C3": {
+     "entered": "=T[ [#This Row] , [Col] ]"
+    },
+    "C4": {
+     "entered": "=T[[#This Row],[Col]] + [@Other]"
+    },
+    "E4": {
+     "entered": "=SUM(T[ [Col] ])"
+    },
+    "F4": "=FORMULATEXT(E4)",
+    "E5": {
+     "entered": "=SUM(T[[Col]:[Other]])"
+    },
+    "F5": "=FORMULATEXT(E5)",
+    "E7": {
+     "entered": "=SUM(T[ [#Data] , [Col] ])"
+    },
+    "F7": "=FORMULATEXT(E7)",
+    "E8": {
+     "entered": "=SUM(T[[#Data], [Col]])"
+    },
+    "F8": "=FORMULATEXT(E8)",
+    "E9": {
+     "entered": "=SUM( T[Col] )"
+    },
+    "F9": "=FORMULATEXT(E9)",
+    "E12": {
+     "entered": "=SUM(T[ [Col]:[Other] ])"
+    },
+    "F12": "=FORMULATEXT(E12)",
+    "E13": {
+     "entered": "=T[#Headers]"
+    },
+    "F13": "=FORMULATEXT(E13)",
+    "E14": {
+     "entered": "=SUM(T[[#Data],[Col]:[Other]])"
+    },
+    "F14": "=FORMULATEXT(E14)",
+    "E15": {
+     "entered": "=SUM(T[[#Data]  ,  [Col]])"
+    },
+    "F15": "=FORMULATEXT(E15)",
+    "H1": {
+     "entered": "=NOW( )"
+    },
+    "I1": "=FORMULATEXT(H1)",
+    "H2": {
+     "entered": "=IF(1, ,2)"
+    },
+    "I2": "=FORMULATEXT(H2)",
+    "H3": {
+     "entered": "=SUM(1, )"
+    },
+    "I3": "=FORMULATEXT(H3)",
+    "H4": {
+     "entered": "=SUM(1,  )"
+    },
+    "I4": "=FORMULATEXT(H4)",
+    "H5": {
+     "entered": "=IF(1,2, )"
+    },
+    "I5": "=FORMULATEXT(H5)",
+    "H8": {
+     "entered": "=IF(1,  ,2)"
+    },
+    "I8": "=FORMULATEXT(H8)",
+    "H9": {
+     "entered": "=IF(1,\n,2)"
+    },
+    "I9": "=FORMULATEXT(H9)",
+    "H10": {
+     "entered": "=SUM(1,\n)"
+    },
+    "I10": "=FORMULATEXT(H10)",
+    "H11": {
+     "entered": "=TODAY(  )"
+    },
+    "I11": "=FORMULATEXT(H11)",
+    "H12": {
+     "entered": "=SUM(,1)"
+    },
+    "I12": "=FORMULATEXT(H12)",
+    "H13": {
+     "entered": "=SUM(, 1)"
+    },
+    "I13": "=FORMULATEXT(H13)",
+    "H14": {
+     "entered": "=1 + 2"
+    },
+    "I14": "=FORMULATEXT(H14)",
+    "H15": {
+     "entered": "=SUM( 1 )"
+    },
+    "I15": "=FORMULATEXT(H15)",
+    "H16": {
+     "entered": "=1+\n2"
+    },
+    "I16": "=FORMULATEXT(H16)",
+    "H17": {
+     "entered": "=1+\n 2"
+    },
+    "I17": "=FORMULATEXT(H17)"
+   }
+  }
+ ]
+}

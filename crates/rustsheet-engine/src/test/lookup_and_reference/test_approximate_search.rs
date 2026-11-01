@@ -267,3 +267,37 @@ fn matrix_of_a_lookup_landing_past_a_short_result_vector_is_value() {
         ["0", "#VALUE!"]
     );
 }
+
+#[test]
+fn approximate_searches_compare_numbers_as_exact_doubles() {
+    // probes/t3073-lookup-near-equal-approximate A17, A30, A31, D30, D31 (excel-graph, T-3073):
+    // a number a few ULP from the key is above or below it, never equal (T-3099).
+    assert_eq!(
+        eval_over(
+            'E',
+            &[
+                "1",
+                "=1+2^-52",
+                "=1+2*2^-52",
+                "2", // ascending
+                "2",
+                "=0.1+0.2",
+                "0.5", // unsorted
+                "2",
+                "=1+2*2^-52",
+                "=1+2^-52",
+                "1",
+                "0.5", // descending
+            ],
+            &[
+                "=MATCH(0.3,E5:E7,1)",
+                "=MATCH(1,E1:E4,1)",
+                "=MATCH(1+2^-52,E1:E4,1)",
+                "=MATCH(1,E8:E12,-1)",
+                "=MATCH(1+2^-52,E8:E12,-1)",
+                "=MATCH(1,E10:E12,-1)",
+            ],
+        ),
+        ["#N/A", "1", "2", "4", "3", "2"]
+    );
+}

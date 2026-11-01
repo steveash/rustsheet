@@ -3,7 +3,7 @@ id: T-2685
 title: "PV at a rate of -0.9999999999 over many periods: probe whether Excel gives #DIV/0! (two PROB cells left by T-2468)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -26,11 +26,19 @@ Cells:
 - gen-m9/92d4fa29e5510f1e.case.json (1): Calc!A70 `=PROB(Data!C6:C9,(NPV(123456789.123,Data!D7:D8)+BETAINV(0.5,0.5,100)),PV((-0.9999999999),78,-250,878))`: Excel #DIV/0!, ours #NUM!
 
 ## Acceptance criteria
-- [ ] A probe records Excel's value of the two PV calls (and of a rate of -0.9999999999 over a few small nper).
-- [ ] PV matches the probe; the 2 known-failure lines above disappear from eval/baseline/gen-m9.txt
+- [x] A probe records Excel's value of the two PV calls (and of a rate of -0.9999999999 over a few small nper).
+- [x] PV matches the probe; the 2 known-failure lines above disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] financial.md records the rule; statistics.md's PROB entry drops the UNVERIFIED PV note.
-- [ ] `make check` green; reviewers approve.
+- [x] financial.md records the rule; statistics.md's PROB entry drops the UNVERIFIED PV note.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - PROB itself (T-2468).
+
+## Outcome
+probes/fin-pv-power-underflow (35 cells, excel-graph) records Excel's PV where `(1+rate)^nper` leaves the normal range:
+`#DIV/0!` for any subnormal or zero power, whatever pmt, fv and type (the two PROB lower limits included), a value down
+to P = 2^-1022. The engine already matched all 35 cells, and both gen-m9 PROB cells (6e18550e9fc9c1b9 A394,
+92d4fa29e5510f1e A70) had already left eval/baseline/gen-m9.txt before this task ran, so it changes no code and no
+baseline. The new case passes 35/35. The rule is in financial.md "Annuity and DB argument domains at their limits", and
+statistics.md's PROB entry no longer carries the UNVERIFIED PV note.

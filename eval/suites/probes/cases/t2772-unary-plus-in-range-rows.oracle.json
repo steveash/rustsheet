@@ -1,0 +1,95 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "S": {
+   "D2": {
+    "t": "n",
+    "v": 1.0
+   },
+   "D5": {
+    "t": "s",
+    "v": "=N(IF(+TRUE,B1:B3))"
+   },
+   "E2": {
+    "t": "n",
+    "v": 1.0
+   },
+   "E5": {
+    "t": "s",
+    "v": "=N(IF(TRUE,B1:B3))"
+   },
+   "F2": {
+    "t": "n",
+    "v": 1.0
+   },
+   "F5": {
+    "t": "s",
+    "v": "=N(IF(+TRUE,B1:B3))"
+   },
+   "G2": {
+    "t": "n",
+    "v": 1.0
+   },
+   "G5": {
+    "t": "s",
+    "v": "=N(CHOOSE(+TRUE,B1:B3,{5;6}))"
+   },
+   "H2": {
+    "t": "n",
+    "v": 1.0
+   },
+   "H5": {
+    "t": "s",
+    "v": "=N(CHOOSE(TRUE,B1:B3,{5;6}))"
+   },
+   "I2": {
+    "t": "n",
+    "v": 1.0
+   },
+   "I5": {
+    "t": "s",
+    "v": "=N(CHOOSE(+TRUE,B1:B3,{5;6}))"
+   },
+   "J2": {
+    "t": "n",
+    "v": 2.0
+   },
+   "J5": {
+    "t": "s",
+    "v": "=N(+@B1:B3)"
+   },
+   "K2": {
+    "t": "n",
+    "v": 1.0
+   },
+   "K5": {
+    "t": "s",
+    "v": "=N(B1:B3)"
+   },
+   "L2": {
+    "t": "n",
+    "v": 2.0
+   },
+   "L5": {
+    "t": "s",
+    "v": "=+@B1:B3"
+   },
+   "M2": {
+    "t": "n",
+    "v": 2.0
+   },
+   "M5": {
+    "t": "s",
+    "v": "=ABS(+@B1:B3)"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "2154f770884b37915d298dda27756c75cb0c645abc1ed2848649d6f2e3f7264d",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-27T09:38:44+00:00",
+  "version": null,
+  "workbook_name": "5afa86dee9824f069fff510da4793698d53b1ee60d5b07bb6536bcd2624939f2.xlsx"
+ }
+}

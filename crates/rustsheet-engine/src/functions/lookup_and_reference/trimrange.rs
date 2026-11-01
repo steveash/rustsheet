@@ -102,10 +102,17 @@ impl Model {
         if values.as_slice().iter().any(lifts) {
             return self.lifted_trimrange(&args[0], values, cell);
         }
-        let source = if as_reference {
-            self.evaluate_picked_source(&args[0], cell, Self::evaluate_node_in_context)
+        // The source is read as a reference wherever it is one, as TAKE/DROP's is (drop_take.rs,
+        // T-3072), so a one-cell trim of a cell, a name or a LET variable bound to a cell is a
+        // reference, not a 1x1 array (probes/t3130-concat-lambda-trimrange-cell-variable Q13-Q16).
+        let source = if !as_reference
+            && matches!(
+                args[0].ungrouped(),
+                Node::ReferenceKind { .. } | Node::DefinedNameKind(_)
+            ) {
+            self.evaluate_node_with_reference(&args[0], cell)
         } else {
-            self.evaluate_node_in_context(&args[0], cell)
+            self.evaluate_picked_source(&args[0], cell, Self::evaluate_node_in_context, true)
         };
         let reference_corner = match source {
             CalcResult::Range { left, right } if left.sheet == right.sheet => Some(left),
@@ -129,6 +136,13 @@ impl Model {
         match self.trim_of(&data, non_blank.as_ref(), values.as_slice(), cell) {
             Ok((rows, columns)) => match reference_corner {
                 Some(left) if as_reference => RefArg::from(sub_range(left, &rows, &columns)),
+                // Excel: a one-cell trim of a reference is that reference, a scalar value
+                // rather than a 1x1 array (`TYPE(TRIMRANGE(A2))` is 1,
+                // `ROWS(A2-TRIMRANGE(A3))` with text in A3 is #VALUE!; probes/t3130-concat-
+                // lambda-trimrange-cell-variable Q13-Q16).
+                Some(left) if rows.len() == 1 && columns.len() == 1 => {
+                    RefArg::from(sub_range(left, &rows, &columns))
+                }
                 _ => RefArg::Value(CalcResult::Array(
                     data[rows]
                         .iter()

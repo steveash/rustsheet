@@ -2,7 +2,7 @@
 
 use crate::{
     calc_result::{CalcResult, Range},
-    evaluation::stack_address,
+    evaluation_limits::stack_address,
     expressions::{
         lexer::LexerMode,
         parser::{
@@ -445,7 +445,7 @@ impl Model {
             }
             if !matches!(
                 node.ungrouped(),
-                Node::LambdaDefKind { .. } | Node::ErrorKind(_)
+                Node::LambdaDefKind { .. } | Node::ErrorKind(_) | Node::SheetRefErrorKind { .. }
             ) {
                 return Err("Formula: Invalid defined name formula".to_string());
             }

@@ -1,0 +1,43 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "RATE from a guess whose residual is exactly 0: does Excel return the guess or run the secant (T-2527)?",
+  "tags": [
+    "M9",
+    "financial",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=RATE(1,0,0,0)",
+        "A2": "=RATE(1,0,0,0,0,0.3)",
+        "A3": "=RATE(2,0,-1,1.5625,0,0.25)",
+        "A4": "=RATE(3,0,-1,1.953125,0,0.25)",
+        "A5": "=RATE(3,0,1,-1.953125,0,0.25)",
+        "A6": "=RATE(2,-1,-1,4.75,0,0.5)",
+        "A7": "=RATE(2,-1,-1,4.75)",
+        "A8": "=RATE(2,-1,2,0,0,0)",
+        "A9": "=RATE(10,-1E6,1E7,0,0,0)",
+        "A10": "=RATE(1,-1,1,0,0,0)",
+        "A11": "=RATE(2,-1,-1,4.75,1,0.5)",
+        "A12": "=RATE(4,0,-1,2.44140625,0,0.25)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!A2",
+    "Sheet1!A3",
+    "Sheet1!A4",
+    "Sheet1!A5",
+    "Sheet1!A6",
+    "Sheet1!A7",
+    "Sheet1!A8",
+    "Sheet1!A9",
+    "Sheet1!A10",
+    "Sheet1!A11",
+    "Sheet1!A12"
+  ]
+}

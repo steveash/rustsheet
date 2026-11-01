@@ -152,10 +152,9 @@ fn incomplete_gammas_that_hung_or_panicked_are_bounded() {
     // statrs' series never finished for a shape of 2^53 or more (E1-E3) or a mean of 1 at a shape
     // of 1E300 (E5), its continued fraction never finished once its terms were NaN (E4), and it
     // panicked where x / beta overflows (E6, which Excel also makes #NUM!) or underflows to 0
-    // (E7, now 0 as in Excel). Past the cap of 2^19 terms a call is #NUM! too (E8, E10;
-    // GAMMA.DIST(1E12,..) took 17 ms on main), and so is the converging continued fraction at a
-    // shape of 1E15 (A13). Excel gives numbers except at E6: probes/incomplete-gamma-cap, a
-    // DEVIATION; TODO(T-1891).
+    // (E7, now 0 as in Excel). From a shape of 1E8 the cdf is Temme's expansion, a fixed amount of
+    // work, so those cdfs are Excel's numbers (E1-E4, E8, E9; T-1891). The inversion at a shape
+    // of 1E300 is Excel's closed form, 1.0002658235505755 (E5; T-2982).
     let mut model = new_empty_model();
     model._set("C1", "1E300");
     model._set("C2", "1.0000001E300");
@@ -174,23 +173,23 @@ fn incomplete_gammas_that_hung_or_panicked_are_bounded() {
     // E16), which statrs' series missed (0.499998213; T-0971).
     model._set("A11", "=CHISQ.DIST(1E10,1E10,TRUE)");
     model._set("A12", "=INDEX(GAMMA.DIST({1.5;1E16},{2;1E16},1,TRUE),2)");
+    // A 16-digit literal keeps 15 digits, so x is the shape: P(1E15, 1E15).
     model._set("A13", "=GAMMA.DIST(1000000000000001,1E15,1,TRUE)");
     model.evaluate();
     let expected = [
-        ("A1", "#NUM!"),
-        ("A2", "#NUM!"),
-        ("A3", "#NUM!"),
-        // The accurate kernel's continued fraction ends here: 1, Excel's E4 (T-0971).
+        ("A1", "0.500000001"),
+        ("A2", "0.499999999"),
+        ("A3", "0.5"),
         ("A4", "1"),
-        ("A5", "#NUM!"),
+        ("A5", "1.000265824"),
         ("A6", "#NUM!"),
         ("A7", "0"),
-        ("A8", "#NUM!"),
-        ("A9", "#NUM!"),
+        ("A8", "0.50000133"),
+        ("A9", "0.500000266"),
         ("A10", "0"),
         ("A11", "0.500001881"),
-        ("A12", "#NUM!"),
-        ("A13", "#NUM!"),
+        ("A12", "0.500000001"),
+        ("A13", "0.500000004"),
     ];
     for (cell, value) in expected {
         assert_eq!(model._get_text(cell), *value, "{cell}");

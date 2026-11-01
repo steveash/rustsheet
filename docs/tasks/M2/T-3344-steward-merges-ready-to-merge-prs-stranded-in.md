@@ -1,0 +1,100 @@
+---
+id: T-3344
+title: "Steward merges ready-to-merge PRs stranded in shadow mode"
+milestone: M2
+lane: harness
+status: done
+priority: P1
+size: S
+tier: opus
+depends_on: []
+spec: docs/specs/SPEC-0027-merge-train.md
+---
+
+## Goal
+In `shadow` mode a PR that its worker marked `ready-to-merge` and then left behind still gets
+merged: the daily steward run merges every such PR that has sat idle for more than 2 hours, by
+the same per-PR flow under the merge lock that its worker would have used.
+
+## Context
+On 2026-10-30 eight PRs were stranded like this for 4 to 13 hours, all green, approved and marked
+ready: #2344, #2350, #2358, #2360, #2371, #2374, #2377 and #2386. The steward's 2026-10-30 health
+run counted 7 of them. They were merged by hand.
+
+Why they strand:
+- In `shadow` mode a worker marks its PR ready and then must merge it itself under the merge lock
+  (work-loop step 3; `steward` skill "Merge train").
+- The lock was held 86% of the day, its wait p90 was 54 min, and the queue reached 15 waiters.
+  Each holder keeps it for one CI run (about 8-10 min).
+- A worker's session lasts 110 minutes, so it often ends before its turn and leaves the PR
+  marked ready but unmerged.
+- Nobody picks such a PR up:
+  - the `steward` skill's orphaned-PR rule says "A PR whose worker already marked it ready, on
+    its current head, is not orphaned";
+  - only a train merges ready PRs, and the merger routine is not yet running (status.md "Needs
+    owner", owner step (1)).
+
+The gap closes for good when `train` mode is on (T-2991). Until then, the steward must sweep these
+PRs. In `lock` mode nothing is marked ready, so the sweep is a no-op there.
+
+Note: the edit touches `.claude/skills/steward/SKILL.md`, a protected path, so it needs the
+decision record the governance gate asks for.
+
+## Acceptance criteria
+- [x] The `steward` skill says that in `shadow` mode the steward merges a `ready-to-merge` PR when
+      all of these hold:
+      - **Idle:** the PR has been idle past `STRANDED_AFTER`. Reuse the definition in
+        `scripts/merge_train_stats.py` `stranded()` (`make merge-train-stats` lists these PRs),
+        so the 2 h threshold has one source. When `make merge-train-stats` cannot run (no `gh`
+        authentication in the container, as on the 2026-10-31 05:47 UTC run, #2523), the steward
+        builds the same list from the GitHub MCP tools, by `stranded()`'s own definition: open PRs
+        labelled `ready-to-merge`, not labelled `merge-train-ejected`, whose newest merge-ready
+        marker comment is older than `STRANDED_AFTER`. A PR with no marker comment is not on the list.
+      - **Verdicts on the current head:** `make merge-ready-verify PR=<n>` passes on the PR's
+        current head, so the steward does not rely on the PR body's table. When the marker is
+        stale or missing, the steward runs the reviewers on that head itself, as in the
+        orphaned-PR rule (decision 0050), and marks the PR ready with those verdicts.
+      - **No blockers:** no unresolved change-request thread; the task is not `status: blocked`;
+        the task file is `status: done` with an Outcome; CI is green on the head.
+
+      It then merges the PR by the per-PR flow:
+      - wait for the merge lock;
+      - merge `origin/main` in, regenerating baselines on a baseline-only conflict with
+        `make eval-baseline`, never by hand;
+      - wait for CI green on that new head;
+      - run the up-to-date check;
+      - squash-merge with `expectedHeadSha`;
+      - remove the label.
+
+      In `train` mode the rule does not apply, because the train merges these PRs.
+- [x] The `steward` skill documents both ways of finding the stranded PRs: `make merge-train-stats`,
+      and the GitHub-tools fallback above.
+- [x] The steward's daily report names each PR it merged this way.
+- [x] A decision record amends 0050 and 0157 for `shadow` mode. It reconciles the skill's line
+      "A PR whose worker already marked it ready, on its current head, is not orphaned" with this
+      sweep. It covers the edit to the protected `.claude/skills/steward/SKILL.md`.
+- [x] SPEC-0027 is unchanged, or its "stranded" paragraph gains a one-line pointer to the sweep.
+      The task's Outcome says which.
+- [x] `make check` green; reviewers approve.
+
+## Out of scope
+- Turning on `train` mode (T-2991) and the merger routine (owner step).
+- Making the merge lock faster.
+
+## Outcome
+- **The sweep:** the `steward` skill's new "Stranded ready PRs" bullet sets out, for `shadow`
+  mode only, how to find stranded PRs, the conditions for merging one, the per-PR flow under the
+  lock, and that the daily report names each PR merged. The orphaned-PR rule points to it.
+  Decision 0194 amends 0050 and 0157.
+- **Finding stranded PRs:** the 2026-10-31 steward run's "`gh` cannot authenticate" was a
+  misreading. `gh api` works through the session proxy, although `gh auth status` reports a
+  failed login. The full `make merge-train-stats` report simply takes over 5 minutes, because it
+  reads every run, job and PR of the window, and the run stopped it after 90 s. So
+  `make merge-train-stats STRANDED=1` (`--stranded` in `scripts/merge_train_stats.py`) now prints
+  only the stranded-PR line, in about 5 s. The GitHub-tools fallback is kept for when even that
+  fails, and the daily-check bullet now says to let the full report finish.
+- **Tests:** two new ones in `scripts/test_merge_train_stats.py`. One checks that only the
+  ready, unejected PR with a newest marker past 2 h is listed, and that the newest marker counts.
+  The other checks that `--stranded` prints only that line.
+- **SPEC-0027:** unchanged. Its "stranded" definition is the one the sweep uses, and decision
+  0194 defines the sweep.

@@ -1,0 +1,23 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2949: one typed formula, alone so a refusal is isolated: '=LET(a,1, b,2,a+b)'. B1:B2 hold 1 and 2.",
+ "tags": [
+  "M2",
+  "syntax",
+  "probe"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "B1": 1,
+    "B2": 2,
+    "D35": {
+     "entered": "=LET(a,1, b,2,a+b)"
+    },
+    "E35": "=FORMULATEXT(D35)"
+   }
+  }
+ ]
+}

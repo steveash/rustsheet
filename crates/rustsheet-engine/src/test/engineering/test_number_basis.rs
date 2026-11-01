@@ -429,3 +429,22 @@ fn an_invalid_places_is_num_before_the_number_is_read() {
         assert_eq!(model._get_text(cell), expected, "{formula}");
     }
 }
+
+#[test]
+fn inumber_currency_sign_and_end_whitespace() {
+    // probes/eng-inumber-currency-shapes A27:A40 and A13:A26 (excel-graph).
+    let mut model = new_empty_model();
+    model._set("A1", r#"=IMABS("- $1+$2i")=SQRT(5)"#);
+    model._set("A2", r#"=IMABS("$.5")"#);
+    model._set("A3", r#"=IMABS("1.$5")"#);
+    model._set("A4", r#"=IMABS("£1+2i")"#);
+    model._set("A5", r#"=IMABS(" "&CHAR(9)&"5")"#);
+    model._set("A6", r#"=IMABS("5"&UNICHAR(160))"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"TRUE");
+    assert_eq!(model._get_text("A2"), *"0.5");
+    assert_eq!(model._get_text("A3"), *"#NUM!");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+    assert_eq!(model._get_text("A5"), *"#NUM!");
+    assert_eq!(model._get_text("A6"), *"#NUM!");
+}

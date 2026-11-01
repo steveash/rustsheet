@@ -1,0 +1,63 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3107 probe: T of a cell holding text over 255 UTF-16 units (D1 typed, 256 x) read through a range, a defined name, INDIRECT, OFFSET, INDEX, IF, CHOOSE, LET, a spill reference, a sheet-qualified reference, parentheses, unary plus, a legacy formula and a single-cell structured reference; A16 repeats the known T(D1) as a control.",
+ "tags": [
+  "M5",
+  "probe",
+  "text",
+  "T-3107"
+ ],
+ "names": {
+  "LongName": "=S!$D$1"
+ },
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "D1": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "D2": "y",
+    "D3": "=REPT(\"x\",256)",
+    "F1": "=D1:D2",
+    "H1": "Col",
+    "H2": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "A1": "=T(D1:D2)",
+    "A2": "=T(LongName)",
+    "A3": "=T(INDIRECT(\"D1\"))",
+    "A4": "=T(OFFSET(D1,0,0))",
+    "A5": "=T(INDEX(D1:D2,1))",
+    "A6": "=T(IF(TRUE,D1))",
+    "A7": "=T(CHOOSE(1,D1))",
+    "A8": "=LET(x,D1,T(x))",
+    "A9": "=T(F1#)",
+    "A10": "=T(S!D1)",
+    "A11": "=T(O!A1)",
+    "A12": "=T((D1))",
+    "A13": "=T(+D1)",
+    "A14": "=T(D1)",
+    "A15": "=T(Tbl[Col])",
+    "A16": "=T(D1)",
+    "A17": "=T(D1:D2)",
+    "A18": "=T(LongName)",
+    "A19": "=T(INDIRECT(\"D1:D2\"))"
+   },
+   "legacy_formulas": [
+    "A14",
+    "A17",
+    "A18"
+   ],
+   "tables": [
+    {
+     "name": "Tbl",
+     "ref": "H1:H2"
+    }
+   ]
+  },
+  {
+   "name": "O",
+   "cells": {
+    "A1": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   }
+  }
+ ],
+ "expected": {}
+}

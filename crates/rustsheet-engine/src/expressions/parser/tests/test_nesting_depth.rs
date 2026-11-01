@@ -6,7 +6,8 @@ use std::collections::HashMap;
 
 use crate::expressions::parser::tests::utils::new_parser;
 use crate::expressions::parser::{
-    Node, MAX_FORMULA_DEPTH, MAX_VALUE_OPERATORS, TOO_DEEP_MESSAGE, TOO_MANY_OPERATORS_MESSAGE,
+    Node, MAX_FORMULA_DEPTH, MAX_PARENTHESES, MAX_SIGNS, MAX_VALUE_OPERATORS, TOO_DEEP_MESSAGE,
+    TOO_MANY_OPERATORS_MESSAGE,
 };
 use crate::expressions::types::CellReferenceRC;
 
@@ -49,7 +50,7 @@ fn nested(open: &str, inner: &str, close: &str, levels: usize) -> String {
 
 /// Deepest nesting of parentheses or calls that fits: every operand costs two
 /// levels, the innermost `1` included.
-const MAX_NESTING: usize = MAX_FORMULA_DEPTH / 2 - 1;
+const MAX_OPERANDS: usize = MAX_FORMULA_DEPTH / 2 - 1;
 
 #[test]
 fn excel_function_nesting_limit_fits() {
@@ -64,8 +65,8 @@ fn excel_function_nesting_limit_fits() {
 fn nesting_at_the_limit_parses() {
     on_small_stack(|| {
         for formula in [
-            nested("(", "1", ")", MAX_NESTING),
-            nested("ABS(", "1", ")", MAX_NESTING),
+            nested("(", "1", ")", MAX_OPERANDS),
+            nested("ABS(", "1", ")", MAX_OPERANDS),
         ] {
             let node = parse(&formula);
             assert!(!matches!(node, Node::ParseErrorKind { .. }), "{formula}");
@@ -77,11 +78,123 @@ fn nesting_at_the_limit_parses() {
 fn one_level_past_the_limit_is_too_deep() {
     on_small_stack(|| {
         for formula in [
-            nested("(", "1", ")", MAX_NESTING + 1),
-            nested("ABS(", "1", ")", MAX_NESTING + 1),
+            nested("ABS(", "1", ")", MAX_OPERANDS + 1),
+            nested("( ", "1", ")", MAX_OPERANDS + 1),
         ] {
             assert!(is_too_deep(&parse(&formula)), "{formula}");
         }
+    });
+}
+
+/// T-3191: a run of directly nested parentheses is parsed in a loop and merges into one group,
+/// so Excel's 256 fit (probes/t3172-paren-256) and 257 are refused, as Excel refuses them.
+#[test]
+fn parenthesis_runs_nest_as_deep_as_excel_allows() {
+    on_small_stack(|| {
+        let node = parse(&nested("(", "1", ")", MAX_PARENTHESES));
+        assert!(
+            matches!(node, Node::Group { levels, .. } if usize::from(levels) == MAX_PARENTHESES)
+        );
+        assert!(is_too_deep(&parse(&nested(
+            "(",
+            "1",
+            ")",
+            MAX_PARENTHESES + 1
+        ))));
+        assert!(is_too_deep(&parse(&"(".repeat(MAX_PARENTHESES + 1))));
+        // Groups in several runs count together (unprobed; syntax.md): split by a space, an
+        // operand or a call, 256 in all fit and 257 do not.
+        let half = MAX_PARENTHESES / 2;
+        for (open, close) in [("( ", ")"), ("(1+", ")"), ("ABS(", ")")] {
+            let fits = format!(
+                "{open}{}{close}",
+                nested("(", "1", ")", MAX_PARENTHESES - 1)
+            );
+            assert!(
+                !matches!(parse(&fits), Node::ParseErrorKind { .. }),
+                "{open}"
+            );
+            let past = format!("{open}{}{close}", nested("(", "1", ")", MAX_PARENTHESES));
+            let past = if open == "ABS(" {
+                format!("({past})")
+            } else {
+                past
+            };
+            assert!(is_too_deep(&parse(&past)), "{open}");
+        }
+        let split = nested(
+            "(",
+            &format!("1+{}", nested("(", "1", ")", half)),
+            ")",
+            half,
+        );
+        assert!(!matches!(parse(&split), Node::ParseErrorKind { .. }));
+        let split = nested(
+            "(",
+            &format!("1+{}", nested("(", "1", ")", half + 1)),
+            ")",
+            half,
+        );
+        assert!(is_too_deep(&parse(&split)));
+        let mut model = crate::test::util::new_empty_model();
+        let formula = format!("={}", nested("(", "-A2", ")", MAX_PARENTHESES));
+        model._set("A1", &formula);
+        model._set("A2", "3");
+        model.evaluate();
+        assert_eq!(model._get_text("A1"), "-3");
+        assert_eq!(model._get_formula("A1"), formula);
+        // A called group at the end of a run, and inside one (probes/paren-call-*).
+        model._set("B1", "=(((LAMBDA(x,x+1))))(2)");
+        model._set("B2", "=((LAMBDA(x,x*2))(3)+1)");
+        model.evaluate();
+        assert_eq!(model._get_text("B1"), "3");
+        assert_eq!(model._get_text("B2"), "7");
+    });
+}
+
+/// T-3197: a call at the head of a group reserves one and a half levels of nesting and adds one
+/// level to the tree, so Excel's 65 calls each wrapped in parentheses parse
+/// (probes/t3097-nesting-paren-abs-65), up to 72 levels; one more is too deep.
+#[test]
+fn calls_wrapped_in_parentheses_nest_as_deep_as_excel_allows() {
+    on_small_stack(|| {
+        let levels = (2 * MAX_FORMULA_DEPTH - 4) / 7;
+        for (open, close) in [("(ABS(", "))"), ("SUM((", "))"), ("( ABS( ", " ) )")] {
+            for fits in [65, levels] {
+                let formula = nested(open, "1", close, fits);
+                assert!(
+                    !matches!(parse(&formula), Node::ParseErrorKind { .. }),
+                    "{open} {fits}"
+                );
+            }
+            let past = nested(open, "1", close, levels + 1);
+            assert!(is_too_deep(&parse(&past)), "{open}");
+        }
+        // A group at the head of a group still costs an operand's two levels.
+        assert!(is_too_deep(&parse(&nested(
+            "( ",
+            "1",
+            ")",
+            MAX_OPERANDS + 1
+        ))));
+    });
+}
+
+/// T-3191: a run whose groups hold more than the group inside them (`(((1)+1)*2)`) still costs
+/// an operand per parenthesis, but no parser stack: it is bounded by the depth, not the stack.
+#[test]
+fn parenthesis_runs_around_operators_are_bounded_by_depth() {
+    on_small_stack(|| {
+        // Each level is a group (two levels) over a sum (one).
+        let levels = (MAX_FORMULA_DEPTH - 2) / 3;
+        let deepest = nested("(", "1", "+1)", levels);
+        assert!(!matches!(parse(&deepest), Node::ParseErrorKind { .. }));
+        assert!(is_too_deep(&parse(&nested("(", "1", "+1)", levels + 1))));
+        let mut model = crate::test::util::new_empty_model();
+        model._set("A1", &format!("={deepest}"));
+        model.evaluate();
+        assert_eq!(model._get_text("A1"), (levels + 1).to_string());
+        assert_eq!(model._get_formula("A1"), format!("={deepest}"));
     });
 }
 
@@ -110,15 +223,24 @@ fn deep_formulas_of_every_shape_are_too_deep() {
 #[test]
 fn unary_minus_runs_nest_up_to_the_limit() {
     on_small_stack(|| {
-        // Each minus is its own node (`--x` coerces, T-0132), and so is each plus
-        // kept in the formula text (T-2723), so a run nests: one under the limit
-        // parses, a very long one is a parse error, never a stack overflow. The
+        // Each minus is its own node (`--x` coerces, T-0132), and so is each plus kept in the
+        // formula text (T-2723), but a sign adds no depth: a run is bounded by `MAX_SIGNS`,
+        // Excel's cap, and a very long one is a parse error, never a stack overflow (T-3193). A
+        // minus directly before a number is not counted (Excel takes 1,024 before `1`); the
         // plus directly before a number folds into it and adds no node.
-        let node = parse(&format!("{}1", "-".repeat(MAX_FORMULA_DEPTH - 3)));
+        let node = parse(&format!("{}1", "-".repeat(MAX_SIGNS + 1)));
         assert!(matches!(node, Node::UnaryKind { .. }));
+        assert!(is_too_deep(&parse(&format!(
+            "{}1",
+            "-".repeat(MAX_SIGNS + 2)
+        ))));
         assert!(is_too_deep(&parse(&format!("{}1", "-".repeat(10_000)))));
-        let node = parse(&format!("{}1", "+".repeat(MAX_FORMULA_DEPTH - 2)));
+        let node = parse(&format!("{}\"a\"", "+".repeat(MAX_SIGNS)));
         assert!(matches!(node, Node::UnaryPlus { .. }));
+        assert!(is_too_deep(&parse(&format!(
+            "{}\"a\"",
+            "+".repeat(MAX_SIGNS + 1)
+        ))));
         assert!(is_too_deep(&parse(&format!("{}1", "+".repeat(10_000)))));
         assert!(matches!(parse("+1"), Node::NumberKind(_)));
     });
@@ -130,11 +252,13 @@ fn unary_minus_run_at_the_limit_evaluates() {
         // The longest run that parses must also evaluate (one iterative pass,
         // `apply_unary_chain`) and print on a small stack.
         let mut model = crate::test::util::new_empty_model();
-        let minuses = "-".repeat(MAX_FORMULA_DEPTH - 3);
-        model._set("A1", &format!("={minuses}TRUE"));
+        let minuses = "-".repeat(MAX_SIGNS + 1);
+        model._set("A1", &format!("={minuses}1"));
+        model._set("A2", &format!("={}TRUE", &minuses[1..]));
         model.evaluate();
-        assert_eq!(model._get_text("A1"), "-1");
-        assert_eq!(model._get_formula("A1"), format!("={minuses}TRUE"));
+        assert_eq!(model._get_text("A1"), "1");
+        assert_eq!(model._get_text("A2"), "-1");
+        assert_eq!(model._get_formula("A1"), format!("={minuses}1"));
     });
 }
 
@@ -150,7 +274,7 @@ fn parser_is_reusable_after_a_too_deep_formula() {
         assert!(is_too_deep(
             &parser.parse(&nested("(", "1", ")", 1000), &cell)
         ));
-        let node = parser.parse(&nested("(", "1", ")", MAX_NESTING), &cell);
+        let node = parser.parse(&nested("(", "1", ")", MAX_OPERANDS), &cell);
         assert!(!matches!(node, Node::ParseErrorKind { .. }));
     });
 }
@@ -225,7 +349,7 @@ fn operator_chains_as_long_as_excel_allows_evaluate_and_print() {
                 format!(
                     "{}+{}",
                     chain("+", 2048),
-                    nested("ABS(", "1", ")", MAX_NESTING - 1)
+                    nested("ABS(", "1", ")", MAX_OPERANDS - 1)
                 ),
                 "2049",
             ),
@@ -304,12 +428,69 @@ fn chain_links_add_no_depth() {
     on_small_stack(|| {
         // The deepest nesting still fits with a long chain at every level: a chain is one
         // level whatever its length.
-        let inner = format!("{}+1", nested("(", &chain("+", 30), ")", MAX_NESTING - 2));
+        let inner = format!(
+            "{}+1",
+            nested("ABS(", &chain("+", 30), ")", MAX_OPERANDS - 2)
+        );
         assert!(
             !matches!(parse(&inner), Node::ParseErrorKind { .. }),
             "{inner}"
         );
-        let too_deep = format!("{}+1", nested("(", &chain("+", 30), ")", MAX_NESTING));
+        let too_deep = format!("{}+1", nested("ABS(", &chain("+", 30), ")", MAX_OPERANDS));
         assert!(is_too_deep(&parse(&too_deep)));
+    });
+}
+
+/// `count` unary signs, `-` and `+` alternating from a minus, each followed by `space`.
+fn signs(count: usize, space: &str) -> String {
+    (0..count)
+        .map(|i| if i % 2 == 0 { "-" } else { "+" })
+        .collect::<Vec<_>>()
+        .join(space)
+        + space
+}
+
+#[test]
+fn sign_runs_at_the_cap_survive_every_walk_under_the_deepest_nesting() {
+    on_small_stack(|| {
+        // The deepest operand nesting the depth bound admits, a group and a sum per level, with
+        // a run of signs at the bottom: the deepest tree a formula can build (T-3193).
+        let nested_over = |levels: usize, run: &str, cell: &str| {
+            format!("{}{run}{cell}{}", "(1+".repeat(levels), ")".repeat(levels))
+        };
+        for space in ["", " ", "\n "] {
+            let run = signs(MAX_SIGNS, space);
+            let levels = (1..MAX_FORMULA_DEPTH)
+                .rev()
+                .find(|&levels| !is_too_deep(&parse(&nested_over(levels, &run, "C1"))))
+                .unwrap_or_default();
+            assert!(levels > 60, "{levels}");
+            let mut model = crate::test::util::new_empty_model();
+            model._set("C1", "2");
+            model._set("A1", &format!("={}", nested_over(levels, &run, "C1")));
+            model._set("A2", &format!("={run}C1"));
+            model._set("A3", &format!("=-({}C1)", signs(MAX_SIGNS - 1, space)));
+            model.evaluate();
+            for cell in ["A1", "A2", "A3"] {
+                assert!(!model._get_text(cell).starts_with('#'), "{cell}");
+            }
+            assert_eq!(model._get_formula("A2"), format!("={run}C1"));
+            assert_eq!(model.insert_rows(0, 1, 1), Ok(()));
+            assert_eq!(model.rename_sheet("Sheet1", "Renamed"), Ok(()));
+            model.evaluate();
+            assert_eq!(
+                model._get_formula("A2"),
+                format!("={}", nested_over(levels, &run, "C2"))
+            );
+            assert_eq!(model._get_formula("A3"), format!("={run}C2"));
+            assert!(is_too_deep(&parse(&format!(
+                "{}C1",
+                signs(MAX_SIGNS + 1, space)
+            ))));
+            assert!(is_too_deep(&parse(&format!(
+                "-({}C1)",
+                signs(MAX_SIGNS, space)
+            ))));
+        }
     });
 }

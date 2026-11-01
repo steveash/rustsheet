@@ -1,0 +1,58 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2641: IMABS of a currency prefix in front of, inside and after a sign of a complex number; NBSP, tab, LF and CR around a complex number. Plain reals with the same end characters, and further currency shapes. A31:A40 (opus resume): a sign spaced before the currency symbol, two symbols, a symbol after an exponent sign or inside a number, £ and ¥.",
+ "tags": [
+  "M9",
+  "probe",
+  "engineering",
+  "T-2641"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=IMABS(\"$1+2i\")",
+    "A2": "=IMABS(\"-$1+2i\")",
+    "A3": "=IMABS(\"+$1+2i\")",
+    "A4": "=IMABS(\"$i\")",
+    "A5": "=IMABS(\"-$i\")",
+    "A6": "=IMABS(\"$3i\")",
+    "A7": "=IMABS(\"$1+2j\")",
+    "A8": "=IMABS(\"1+$2i\")",
+    "A9": "=IMABS(\"€1+2i\")",
+    "A10": "=IMABS(\"$ 1+2i\")",
+    "A11": "=IMABS(\"$$1\")",
+    "A12": "=IMABS(\"$1+2i \")",
+    "A13": "=IMABS(UNICHAR(160)&\"3+4i\")",
+    "A14": "=IMABS(\"3+4i\"&CHAR(9))",
+    "A15": "=IMABS(\"3+4i\"&CHAR(10))",
+    "A16": "=IMABS(\"3+4i\"&CHAR(13))",
+    "A17": "=IMABS(CHAR(10)&\"3+4i\")",
+    "A18": "=IMABS(\"5\"&CHAR(9))",
+    "A19": "=IMABS(\"5\"&CHAR(10))",
+    "A20": "=IMABS(\"5\"&CHAR(13))",
+    "A21": "=IMABS(\"5\"&UNICHAR(160))",
+    "A22": "=IMABS(CHAR(160)&\"5\")",
+    "A23": "=IMABS(CHAR(13)&\"5\")",
+    "A24": "=IMABS(\"5\"&UNICHAR(12288))",
+    "A25": "=IMABS(\" 5\"&CHAR(9))",
+    "A26": "=IMABS(\" \"&CHAR(9)&\"5\")",
+    "A27": "=IMABS(\"1-$2i\")",
+    "A28": "=IMABS(\"1+$ 2i\")",
+    "A29": "=IMABS(\"$.5\")",
+    "A30": "=IMABS(\"$1e+$2\")",
+    "A31": "=IMABS(\"1+ $2i\")",
+    "A32": "=IMABS(\"$1+$2i\")",
+    "A33": "=IMABS(\"1E-$3\")",
+    "A34": "=IMABS(\"$.5+2i\")",
+    "A35": "=IMABS(\"£1+2i\")",
+    "A36": "=IMABS(\"¥1+2i\")",
+    "A37": "=IMABS(\"1$2\")",
+    "A38": "=IMABS(\"$ -5\")",
+    "A39": "=IMABS(\"1.$5\")",
+    "A40": "=IMABS(\"- $1+2i\")"
+   }
+  }
+ ],
+ "expected": {}
+}

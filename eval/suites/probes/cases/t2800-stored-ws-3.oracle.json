@@ -1,0 +1,23 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "S": {
+   "A6": {
+    "t": "n",
+    "v": 5.0
+   },
+   "B6": {
+    "t": "s",
+    "v": "=SUM(T[ Col ])"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "e8475005df670ff40b1f26049591b3d9f7a7be8577f735e1337576907afdffa7",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-28T20:41:17+00:00",
+  "version": null,
+  "workbook_name": "abd632df78d1da57fb14c1d4e8131e630de9c5f62fe99b76aefe4d6878137285.xlsx"
+ }
+}

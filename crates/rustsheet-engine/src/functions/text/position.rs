@@ -3,7 +3,7 @@
 
 use std::borrow::Cow;
 
-use super::casefold::fold_case;
+use crate::functions::util::collation::fold_case;
 use crate::{
     calc_result::CalcResult,
     cast::calc_result_to_text,

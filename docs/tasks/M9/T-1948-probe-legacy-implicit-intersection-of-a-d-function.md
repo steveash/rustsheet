@@ -3,7 +3,7 @@ id: T-1948
 title: "Probe legacy implicit intersection of a D-function field range, and a TRUE field over a numeric first column (T-1389 review)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -27,3 +27,6 @@ column of the probe data is text.
 
 ## Out of scope
 -
+
+## Outcome
+Probed (excel-graph 2026-10-30): legacy D-function `field` range gets no implicit intersection (`#VALUE!`, no `@`); `TRUE` field is column 1 (`FALSE` is `#VALUE!`). Engine already matched; corrected statistics.md. New probe case db-field-legacy-true-numeric-first-column, all cells pass.

@@ -91,3 +91,6 @@ Cells:
 `defer: phase-1b`: every cell this task owns is already within 15 significant digits of Excel, so it waits until
 Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells
 visibly off (then give it a `campaign:` stage instead).
+
+## Phase 1 triage (T-0090, 2026-10-27)
+The visibly-off PV, NPER, FV and CUMIPMT cells of FINANCIAL/PMT.xlsx and CUMPRINC_CUMIPMT.xlsx this task names are now worked by T-2243 (no longer parked). The visibly-off XIRR cell gen-m9/1dce4774f5c0e736 Calc!A91 (#NUM! expected, #VALUE! today) is handed to T-2611. This task keeps `defer: phase-1b` for the PMT bit work.

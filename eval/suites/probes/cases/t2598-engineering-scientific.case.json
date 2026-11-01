@@ -1,0 +1,28 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2598: engineering scientific codes: rounding carry across a power of ten, half-way mantissas, and a grouped code.",
+ "tags": [
+  "M5",
+  "number-format",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=TEXT(999.96,\"##0.0E+0\")",
+    "A2": "=TEXT(99.96,\"##0.0E+0\")",
+    "A3": "=TEXT(9999.96,\"##0.0E+0\")",
+    "A4": "=TEXT(-999.96,\"##0.0E+0\")",
+    "A5": "=TEXT(9.96,\"00.0E+0\")",
+    "A6": "=TEXT(99.96,\"00.0E+0\")",
+    "A7": "=TEXT(0.0145,\"##0E+0\")",
+    "A8": "=TEXT(0.0125,\"##0E+0\")",
+    "A9": "=TEXT(1.5e-05,\"##0E+0\")",
+    "A10": "=TEXT(999.995,\"##0.00E+00\")",
+    "A11": "=TEXT(1/3,\"#,##0.0E+0\")",
+    "A12": "=TEXT(12345.6,\"#,##0.0E+0\")"
+   }
+  }
+ ]
+}

@@ -236,6 +236,8 @@ fn flattening_and_handing_over_copies_is_bounded() {
     // its LAMBDA, pass the walk budget (2^27 cells) at the 129th copy: `#ERROR!`, in time bounded
     // by the budget (DEVIATION, arrays.md "Nested GROUPBY and PIVOTBY cells: bounds").
     let mut model = groups();
+    // The walk budget under test, not the formula work budget, which the reads now also charge.
+    model.area_budget.limit = u64::MAX;
     let copies = "LET(r,GROUPBY(A2,C2,LAMBDA(v,SEQUENCE(64,16383)),0,0),\
                   CHOOSECOLS(CHOOSEROWS(r,SEQUENCE(200)^0),2))";
     model._set("F1", &format!("=SUM({copies})"));
@@ -250,4 +252,49 @@ fn flattening_and_handing_over_copies_is_bounded() {
     assert_eq!(model._get_text("F1"), "#ERROR!");
     assert_eq!(model._get_text("G1"), "#ERROR!");
     assert_eq!(model._get_text("H1"), "100100000");
+}
+
+#[test]
+fn scan_over_a_groupby_call_is_one_cell() {
+    // probes/scan-over-groupby (T-2398), Data a,1; b,2; a,3; c,4: SCAN over a GROUPBY call is one cell, 0 for
+    // a SUM GROUPBY and `#N/A` for nested `LAMBDA(w,w)` cells, `#CALC!` when the LAMBDA uses its accumulator;
+    // MAP still sees the whole 4x2 result.
+    let mut model = new_empty_model();
+    for (i, (key, value)) in [("a", "1"), ("b", "2"), ("a", "3"), ("c", "4")]
+        .iter()
+        .enumerate()
+    {
+        model._set(&format!("A{}", i + 1), key);
+        model._set(&format!("B{}", i + 1), value);
+    }
+    model._set(
+        "F1",
+        "=ROWS(SCAN(GROUPBY(A1:A4,B1:B4,_xleta.SUM),0,_xleta.MIN))",
+    );
+    model._set(
+        "F2",
+        "=INDEX(SCAN(GROUPBY(A1:A4,B1:B4,_xleta.SUM),0,_xleta.MIN),1,1)",
+    );
+    model._set(
+        "F3",
+        "=ERROR.TYPE(SCAN(GROUPBY(A1:A4,B1:B4,LAMBDA(w,w)),0,_xleta.MIN))",
+    );
+    model._set(
+        "F4",
+        "=ERROR.TYPE(ROWS(SCAN(GROUPBY(A1:A4,B1:B4,_xleta.SUM),0,LAMBDA(a,v,a+1))))",
+    );
+    model._set(
+        "F5",
+        "=ROWS(MAP(GROUPBY(A1:A4,B1:B4,_xleta.SUM),LAMBDA(x,TYPE(x))))",
+    );
+    model.evaluate();
+    for (cell, value) in [
+        ("F1", "1"),
+        ("F2", "0"),
+        ("F3", "7"),
+        ("F4", "14"),
+        ("F5", "4"),
+    ] {
+        assert_eq!(model._get_text(cell), value, "{cell}");
+    }
 }

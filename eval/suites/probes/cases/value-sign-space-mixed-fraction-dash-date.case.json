@@ -1,0 +1,52 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-2646: edges of VALUE reading a sign before a space, mixed fractions and dash dates with one-digit years.",
+ "tags": [
+  "M2",
+  "probe",
+  "T-2646"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=IFERROR(VALUE(\"- 5\"),\"err\")",
+    "A2": "=IFERROR(VALUE(\"-  5\"),\"err\")",
+    "A3": "=IFERROR(VALUE(\"+ 5\"),\"err\")",
+    "A4": "=IFERROR(VALUE(\"- 5.5\"),\"err\")",
+    "A5": "=IFERROR(VALUE(\"-5\")+0,\"err\")",
+    "A6": "=IFERROR(\"- 5\"+0,\"err\")",
+    "A7": "=IFERROR(VALUE(\"3 1/2\"),\"err\")",
+    "A8": "=IFERROR(VALUE(\"-3 1/2\"),\"err\")",
+    "A9": "=IFERROR(VALUE(\"3  1/2\"),\"err\")",
+    "A10": "=IFERROR(VALUE(\"3 1/0\"),\"err\")",
+    "A11": "=IFERROR(VALUE(\"1 3/2\"),\"err\")",
+    "A12": "=IFERROR(VALUE(\"1 1/2 \"),\"err\")",
+    "A13": "=IFERROR(VALUE(\"1-1-1\"),\"err\")",
+    "A14": "=IFERROR(VALUE(\"1/1/1\"),\"err\")",
+    "A15": "=IFERROR(VALUE(\"13-1-1\"),\"err\")",
+    "A16": "=IFERROR(VALUE(\"1-1-30\"),\"err\")",
+    "A17": "=IFERROR(VALUE(\"1-1-31\"),\"err\")",
+    "A18": "=IFERROR(VALUE(\"1-1-99\"),\"err\")",
+    "A19": "=IFERROR(VALUE(\"1-1-0\"),\"err\")",
+    "A20": "=IFERROR(VALUE(\"0-1-1\"),\"err\")",
+    "A21": "=IFERROR(VALUE(\"12-31-1\"),\"err\")",
+    "A22": "=IFERROR(VALUE(\"12-1-1\"),\"err\")",
+    "A23": "=IFERROR(VALUE(\"1-13-1\"),\"err\")",
+    "A24": "=IFERROR(VALUE(\"123456789 1/2\"),\"err\")",
+    "A25": "=IFERROR(VALUE(\"3 01/02\"),\"err\")",
+    "A26": "=IFERROR(VALUE(\"3 1/200\"),\"err\")",
+    "A27": "=IFERROR(VALUE(\" 3 1/2\"),\"err\")",
+    "A28": "=IFERROR(VALUE(\"3 1 /2\"),\"err\")",
+    "A29": "=IFERROR(VALUE(\"3 1/ 2\"),\"err\")",
+    "A30": "=IFERROR(VALUE(\"0 1/2\"),\"err\")",
+    "A31": "=IFERROR(VALUE(\"-  3 1/2\"),\"err\")",
+    "A32": "=IFERROR(VALUE(\"- 3 1/2\"),\"err\")",
+    "A33": "=IFERROR(VALUE(\"+3 1/2\"),\"err\")",
+    "A34": "=IFERROR(VALUE(\"$3 1/2\"),\"err\")",
+    "A35": "=IFERROR(VALUE(\"3 1/2%\"),\"err\")"
+   }
+  }
+ ],
+ "expected": {}
+}

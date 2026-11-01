@@ -58,3 +58,34 @@ fn test_arraytotext_numbers_match_valuetotext() {
     assert_eq!(model._get_text("A2"), "{0.333333333333333,1E+20}");
     assert_eq!(model._get_text("A3"), "80.0277777777778");
 }
+
+/// docs/excel-semantics/text.md "ARRAYTOTEXT error before format": an error value in the first
+/// argument wins over format validation, in argument order (probes/arraytotext-error-vs-format).
+#[test]
+fn test_arraytotext_error_argument_wins_over_format() {
+    let mut model = new_empty_model();
+    model._set("B1", "=NA()");
+    let cases = [
+        ("=ARRAYTOTEXT(NA(),2)", "#N/A"),
+        ("=ARRAYTOTEXT(1/0,2)", "#DIV/0!"),
+        ("=ARRAYTOTEXT(B1,2)", "#N/A"),
+        ("=ARRAYTOTEXT(B1:B1,2)", "#N/A"),
+        ("=ARRAYTOTEXT(NA(),1/0)", "#N/A"),
+        ("=ARRAYTOTEXT(1/0,NA())", "#DIV/0!"),
+        ("=ARRAYTOTEXT(NA(),\"x\")", "#N/A"),
+        ("=ARRAYTOTEXT(1,NA())", "#N/A"),
+        ("=ARRAYTOTEXT(1,2)", "#VALUE!"),
+        ("=ARRAYTOTEXT({1,#N/A},2)", "#VALUE!"),
+    ];
+    for (i, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", i + 1), formula);
+    }
+    model.evaluate();
+    for (i, (formula, expected)) in cases.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("A{}", i + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
+}

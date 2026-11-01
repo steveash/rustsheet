@@ -82,6 +82,7 @@ Cells:
 - gen-m9/17c110a53924beb8.case.json (1): Calc!A200
 - gen-m9/1db18890916ee643.case.json (1): Calc!A312
 - gen-m9/44a8841352dc48e9.case.json (1): Calc!A400
+- gen-m9/44a8841352dc48e9.case.json (1): Calc!A251 `TTEST(..,FORECAST.ETS.SEASONALITY({-1;..;-24},..,0),1,..)`: Excel #N/A, ours #N/IMPL! (moved from T-2469)
 - gen-m9/5389dd4d5b5739d2.case.json (2): Calc!A89, A210
 - gen-m9/5919660b7bb4d195.case.json (1): Calc!A87
 - gen-m9/607e85cfee83a689.case.json (2): Calc!A201, A355

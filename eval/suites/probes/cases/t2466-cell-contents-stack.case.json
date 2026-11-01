@@ -1,0 +1,51 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2466: how far the VSTACK(CELL(\"contents\",ref),..) #VALUE! reaches: non-blank and formula targets, HSTACK, info-type case, beside error arguments, wrapped in LET/IF/arithmetic, other info types and shapers.",
+  "tags": [
+    "M7",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=VSTACK(CELL(\"contents\",Data!B1),1)",
+        "A11": "=VSTACK(CELL(\"contents\",Data!G1),1)",
+        "A21": "=VSTACK(CELL(\"contents\",Data!H1),1)",
+        "A31": "=VSTACK(CELL(\"contents\",C11),1)",
+        "A41": "=HSTACK(CELL(\"contents\",Data!C11),1)",
+        "A51": "=HSTACK(CELL(\"contents\",Data!B1),1)",
+        "A61": "=VSTACK(CELL(\"CONTENTS\",Data!C11),1)",
+        "A71": "=VSTACK(CELL(\"Contents\",Data!B1),1)",
+        "A81": "=VSTACK(CELL(\"contents\",Data!C11),1/0)",
+        "A91": "=VSTACK(1/0,CELL(\"contents\",Data!C11))",
+        "A101": "=VSTACK(NA(),CELL(\"contents\",Data!B1))",
+        "A111": "=VSTACK(LET(x,CELL(\"contents\",Data!C11),x),1)",
+        "A121": "=VSTACK(IF(TRUE,CELL(\"contents\",Data!C11)),1)",
+        "A131": "=VSTACK(LET(x,CELL(\"contents\",Data!B1),x),1)",
+        "A141": "=VSTACK(IF(TRUE,CELL(\"contents\",Data!B1)),1)",
+        "A151": "=VSTACK(CELL(Data!G2,Data!C11),1)",
+        "A161": "=VSTACK(CELL(\"type\",Data!C11),1)",
+        "A171": "=VSTACK(CELL(\"address\",Data!B1),1)",
+        "A181": "=VSTACK(CELL(\"contents\",Data!B1))",
+        "A191": "=ROWS(VSTACK(CELL(\"contents\",Data!B1),1))",
+        "A201": "=HSTACK(1,CELL(\"contents\",Data!G1))",
+        "A211": "=VSTACK(CELL(\"contents\",Data!B1:B2),1)",
+        "A221": "=VSTACK(CELL(\"contents\",Data!B1)+0,1)",
+        "A231": "=TOCOL(CELL(\"contents\",Data!B1))",
+        "A241": "=VSTACK(LET(x,CELL(\"contents\",Data!B1),x)&\"\",1)"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "B1": 7,
+        "B2": 8,
+        "G1": "abc",
+        "G2": "contents",
+        "H1": "=B1*2"
+      }
+    }
+  ],
+  "expected": {}
+}

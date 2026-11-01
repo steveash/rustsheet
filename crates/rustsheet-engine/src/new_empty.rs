@@ -247,6 +247,7 @@ impl Model {
         let defined_names = self.workbook.get_defined_names_with_scope();
         self.parser
             .set_worksheets_and_names(self.workbook.get_worksheet_names(), defined_names);
+        self.parser.set_workbook_file(self.workbook.file_name());
         self.parsed_formulas = vec![];
         self.parse_formulas();
         self.parsed_defined_names = HashMap::new();
@@ -315,6 +316,11 @@ impl Model {
             return Err("A worksheet already exists with that name".to_string());
         }
         let sheet_id = match sheet_id {
+            // Rewritten formulas and defined names find a sheet by its id, and the id of an
+            // undone delete can come from a peer's diff (T-2896).
+            Some(id) if self.workbook.worksheets.iter().any(|w| w.sheet_id == id) => {
+                return Err(format!("A worksheet already has the id {id}"));
+            }
             Some(id) => id,
             None => self.get_new_sheet_id(),
         };
@@ -808,7 +814,7 @@ impl Model {
             clock,
         );
         model.parse_formulas();
-        model.cf_stale = true;
+        model.cf.stale = true;
         Ok(model)
     }
 
@@ -818,12 +824,13 @@ impl Model {
     pub(crate) fn unparsed(
         workbook: Workbook,
         shared_strings: HashMap<String, usize>,
-        parser: Parser,
+        mut parser: Parser,
         locale: &'static Locale,
         language: &'static Language,
         tz: Tz,
         clock: Clock,
     ) -> Model {
+        parser.set_workbook_file(workbook.file_name());
         Model {
             workbook,
             shared_strings,
@@ -851,10 +858,7 @@ impl Model {
             defined_names_running: Default::default(),
             area_budget: Default::default(),
             evaluation: crate::evaluation::Evaluation::default(),
-            cf_cache: HashMap::new(),
-            cf_stale: true,
-            #[cfg(test)]
-            cf_runs: 0,
+            cf: crate::cf_styles::CfState::default(),
             links: HashMap::new(),
         }
     }

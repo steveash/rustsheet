@@ -1,0 +1,51 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2937: defined names whose body in the file uses the own-workbook prefix `[0]!loc` (what the xlsx writer emits for `<file>.xlsx!loc` inside a name), workbook- and sheet-scoped, beside a sheet with its own `loc`.",
+  "tags": [
+    "M8",
+    "names",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=wb",
+        "A2": "=SUM(wb)",
+        "A3": "=ISREF(wb)",
+        "A4": "=wb_plus",
+        "A5": "=wb_sum",
+        "A6": "=Local!lw",
+        "A7": "=ROWS(wb_rng)",
+        "A8": "=SUM(wb_rng)"
+      }
+    },
+    {
+      "name": "Local",
+      "cells": {
+        "A1": "=wb",
+        "A2": "=lw",
+        "A3": "=loc",
+        "A4": "=wb_plus"
+      }
+    },
+    {
+      "name": "Feb",
+      "cells": {
+        "A1": 5,
+        "A2": 7
+      }
+    }
+  ],
+  "names": {
+    "loc": "=Feb!$A$1",
+    "rng": "=Feb!$A$1:$A$2",
+    "Local!loc": "=Feb!$A$2",
+    "wb": "=[0]!loc",
+    "wb_plus": "=[0]!loc+1",
+    "wb_sum": "=SUM([0]!loc)",
+    "wb_rng": "=[0]!rng",
+    "Local!lw": "=[0]!loc"
+  },
+  "expected": {}
+}

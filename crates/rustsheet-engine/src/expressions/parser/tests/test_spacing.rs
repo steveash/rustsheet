@@ -64,6 +64,48 @@ fn kept_whitespace_prints_back() {
     }
 }
 
+/// A run between two commas or after the last one is the missing argument's own (T-2944,
+/// probes/t2786-whitespace-structured-refs-runs I2:I10).
+#[test]
+fn whitespace_beside_a_missing_argument_prints_back() {
+    for formula in [
+        "IF(1, ,2)",
+        "IF(1,  ,2)",
+        "IF(1,\n,2)",
+        "SUM(1, )",
+        "SUM(1,  )",
+        "SUM(1,\n)",
+        "IF(1,2, )",
+        "SUM(, 1)",
+        "SUM(,1)",
+    ] {
+        assert_prints_back(formula);
+    }
+}
+
+/// The run inside an empty call and before a missing first argument is kept (T-2966,
+/// probes/t2966-empty-call-runs, t2966-missing-first-arg-run, t2786 I1, I11). The empty call's
+/// run is no argument: the tree evaluation reads has none.
+#[test]
+fn whitespace_inside_an_empty_call_prints_back() {
+    for formula in [
+        "NOW( )",
+        "TODAY(  )",
+        "PI( )",
+        "ROW(  )",
+        "TRUE(\n)",
+        "NA(\n )",
+        "SUM( ,1)",
+        "IF(  ,1,2)",
+        "SUM(\n,3)",
+    ] {
+        assert_prints_back(formula);
+    }
+    let mut node = parser().parse("NOW( )+PI(\n)", &context());
+    node.strip_spaces();
+    assert_eq!(node, parser().parse("NOW()+PI()", &context()));
+}
+
 #[test]
 fn dropped_whitespace_prints_without_it() {
     let mut parser = parser();
@@ -156,5 +198,40 @@ fn a_spaced_operand_in_a_chain_survives_a_clone() {
     assert_eq!(
         to_english_localized_string(&node.clone(), &context()),
         "1*2 + 3"
+    );
+}
+
+#[test]
+fn an_intersection_line_feed_is_the_operator() {
+    // probes/t2949-typed-4, typed-5: the space before the line feed is dropped, the one after
+    // stays.
+    assert_prints_back("B1:B2\n B2");
+    for (typed, printed) in [
+        ("B1:B2 \n B2", "B1:B2\n B2"),
+        ("B1:B2\n\n B2", "B1:B2\n\n B2"),
+    ] {
+        let node = parser().parse(typed, &context());
+        assert_eq!(to_english_localized_string(&node, &context()), printed);
+    }
+}
+
+#[test]
+fn a_stored_leading_line_feed_is_dropped() {
+    // probes/t2949-stored-5; typed, the line feed stays (T-2784).
+    let mut parser = parser();
+    parser.set_loaded(true);
+    let node = parser.parse("\n1+2", &context());
+    assert_eq!(to_english_localized_string(&node, &context()), "1+2");
+}
+
+#[test]
+fn a_stored_even_arity_let_gets_its_last_name_as_the_result() {
+    // probes/t2949-stored-11.
+    let mut parser = parser();
+    parser.set_loaded(true);
+    let node = parser.parse("LET( a ,1, b ,a+1)", &context());
+    assert_eq!(
+        to_english_localized_string(&node, &context()),
+        "LET( a,1, b,a+1,b)"
     );
 }

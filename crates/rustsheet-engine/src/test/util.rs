@@ -37,6 +37,15 @@ pub fn within_fifteen_digits(expected: f64, actual: f64) -> bool {
     (actual - expected).abs() <= 0.5 * 10f64.powi(exponent - 14)
 }
 
+/// The whole-column references `C:C,D:D,…`, `count` of them from column C, as one argument list.
+pub fn whole_column_arms(count: i32) -> String {
+    (0..count)
+        .filter_map(|i| crate::expressions::utils::number_to_column(3 + i))
+        .map(|name| format!("{name}:{name}"))
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
 /// An empty en-US model in UTC on the fixed test clock.
 pub fn new_empty_model() -> Model {
     Model::new_empty_with_clock("model", "en", "UTC", "en", fixed_clock(TEST_CLOCK_MS)).unwrap()

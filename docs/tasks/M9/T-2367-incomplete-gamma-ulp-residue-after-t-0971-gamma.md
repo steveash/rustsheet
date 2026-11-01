@@ -47,8 +47,43 @@ budget runs out at a smaller shape than statrs' 3.5E8 (T-1872's 3-million-sample
 is now `#NUM!` (530,000 terms over its cdfs), shape 3E8 still finishes. docs/excel-semantics/statistics.md
 "Incomplete gamma: accurate kernel (T-0971)" and "Incomplete gamma: per-call cap and lifting (T-1872)".
 
+T-3131 (2026-10-31, unit test `a_call_past_its_cap_is_nan`): `gamma_quantile(1E7, 1, 0.5)` and `(3E7, 1E-6, 1E-5)`
+are already NaN on main 1248554ae, before and after T-3131's Wilson-Hilferty start, so the cap binds well below 3E8
+now. The start uses the lower tail's probability, so for a tiny upper-tail p (`CHISQ.INV.RT(1E-300,df)`, the lower tail
+rounding to 1) it is NaN and the refinement halves the whole range, which can spend the budget sooner from about
+shape 2E6 to 1E9 (statrs' search also took the lower tail). The re-run sweep should cover both tails.
+
+Gap triage 2026-10-31c (`make eval` on origin/main 0c917f9fe, excel-graph): 20 more POISSON and POISSON.DIST cdf
+cells, 1 or 2 ulp off and within 15 significant digits, that no open task listed. All have a mean below about
+4(k + 1) (mostly the lower-tail P near 1 at k above the mean, and the centre at k = mean = 100), so not the deep upper
+tail T-3269 owns. Examples, Excel vs ours:
+`POISSON(7,0.999,TRUE)` 0.9999898235766547 vs 0.9999898235766546 (0bbab6206b5c9a07 A91); `POISSON.DIST(6,0.999,TRUE)`
+0.9999172685186382 vs 0.999917268518638 (a2262ea466fcc142 A202, bcb1105c61a2649d A79, 329b177b5d5165ad A99);
+`POISSON.DIST(4,7,TRUE)` (787ba8d801105a60 A393, mean ROUNDUP(INT(7),7)) 0.17299160788207132 vs 0.17299160788207138 (+2);
+`POISSON.DIST(100,100,TRUE)` 0.5265621985299984 vs 0.5265621985299986 (ede0323c389fc703 A371, +2);
+`POISSON.DIST(1,1,TRUE)` 0.7357588823428848 vs 0.7357588823428847 (c4635963fc926284 A216).
+- gen-m9/0bbab6206b5c9a07.case.json (1): Calc!A91
+- gen-m9/2138b909d8f810ea.case.json (1): Calc!A366
+- gen-m9/329b177b5d5165ad.case.json (2): Calc!A99, A306
+- gen-m9/38e4fc309fe199ea.case.json (1): Calc!A335
+- gen-m9/44a8841352dc48e9.case.json (1): Calc!A183
+- gen-m9/5919660b7bb4d195.case.json (1): Calc!A240
+- gen-m9/787ba8d801105a60.case.json (2): Calc!A83, A393
+- gen-m9/91e167cd8d7eb652.case.json (1): Calc!A384
+- gen-m9/9e2225ead8a6a07b.case.json (1): Calc!A116
+- gen-m9/a2262ea466fcc142.case.json (1): Calc!A202
+- gen-m9/a4090567758520df.case.json (1): Calc!A378
+- gen-m9/b9a32ce9a1fd0d71.case.json (1): Calc!A107
+- gen-m9/bcb1105c61a2649d.case.json (1): Calc!A79
+- gen-m9/c4635963fc926284.case.json (1): Calc!A216
+- gen-m9/d37313406b9f6e55.case.json (1): Calc!A311
+- gen-m9/d8f44d556674c2fd.case.json (1): Calc!A343
+- gen-m9/ede0323c389fc703.case.json (1): Calc!A371
+- gen-m9/f82473275380882e.case.json (1): Calc!A213
+
 ## Acceptance criteria
 - [ ] GAMMA.xlsx F38, POISSON.xlsx D16 and the 13 gen-m9 cells above pass; no new baseline lines.
+- [ ] The 20 POISSON cdf cells added by gap triage 2026-10-31c leave eval/baseline/gen-m9.txt, or the Outcome lists each still failing with its ulp distance.
 - [ ] T-1872's inversion sweep re-run on the new kernel; the smallest shape past the cap is recorded in the cap
       section (and `MAX_TERMS`'s doc), or a faster large-shape method (Temme's expansion) keeps 3.5E8.
 - [ ] `make check` green; reviewers approve.
@@ -58,3 +93,17 @@ is now `#NUM!` (530,000 terms over its cdfs), shape 3E8 still finishes. docs/exc
 
 ## Deferred (decision 0114)
 `defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).
+
+## Phase 1 triage (T-0090, 2026-10-27)
+Two visibly-off gen-m9 cells matched this parked task: IRR gen-m9/d0854366830dcdee Calc!A216 is handed to T-2131 and FREQUENCY gen-m9/fd9fa22d212080d6 Calc!A32 (an error-kind cell) to T-2636.
+
+## Cells added by gap triage (2026-10-31m)
+`make eval` on origin/main 900fbc1bf (excel-graph). An ownership check over every failing Excel cell
+(`scripts/exit_owners.py`'s `owned` rule over the open task files of origin/main and of every `origin/agent/*` branch
+pushed since 2026-10-29) found these cells named by no open task. All are within 15 significant digits of Excel (Phase
+1b), so they join this deferred owner of their kernel. POISSON.DIST/POISSON cumulative cells, 1 to 2 ulp (the upper
+incomplete gamma at a small integer shape): `POISSON(2,3,TRUE)` Excel 0.4231900811268434, ours ...4353, and its coerced-
+argument twins on t1048; POISSON.xlsx D8, D10.
+- probes-numeric/t1048-poisson.case.json (12): Calc!A3, B3, A5, B5, A13, B13, A17, B17, A22, B22, A27, B27
+- ironcalc-calc/STATISTICAL/POISSON.xlsx (2): POISSON.DIST!D8, D10
+- gen-m9/b9a32ce9a1fd0d71.case.json (1): Calc!A69

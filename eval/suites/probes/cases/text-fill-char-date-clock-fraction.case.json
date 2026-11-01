@@ -1,0 +1,29 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "A * fill character in date, clock and fraction format codes (T-2480).",
+  "tags": [
+    "M5",
+    "text",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=TEXT(1,\"d*x\")",
+        "A2": "=TEXT(0.5,\"h:mm*-\")",
+        "A3": "=TEXT(0.5,\"# ?/?*x\")",
+        "A4": "=TEXT(1.5,\"# ?/?*x\")",
+        "A5": "=TEXT(1,\"*xd\")",
+        "A6": "=TEXT(1,\"d*xm\")",
+        "A7": "=TEXT(0.75,\"h*x:mm AM/PM\")",
+        "A8": "=TEXT(0.5,\"?/?*x\")",
+        "A9": "=TEXT(0.5,\"*x# ?/?\")",
+        "A10": "=TEXT(1.5,\"# *x?/?\")",
+        "A11": "=LEN(TEXT(1,\"d*x\"))",
+        "A12": "=LEN(TEXT(1.5,\"# ?/?*x\"))"
+      }
+    }
+  ],
+  "expected": {}
+}

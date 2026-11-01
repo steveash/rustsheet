@@ -1,7 +1,7 @@
 //! Comma-separated lists inside an operand: function arguments and the rows
 //! of an array constant.
 
-use crate::expressions::parser::{ArrayNode, ExpectedTokens, Node, Parser};
+use crate::expressions::parser::{ArrayNode, ExpectedTokens, Node, Parser, Run};
 use crate::expressions::token::{OpSum, TokenType};
 
 impl Parser {
@@ -20,7 +20,7 @@ impl Parser {
     pub(super) fn parse_array_row(&mut self) -> Result<Vec<ArrayNode>, Node> {
         let column_separator_token = self.get_argument_separator_token();
         let mut row = vec![self.parse_array_item()?];
-        while self.lexer.peek_token() == column_separator_token {
+        while *self.lexer.peek() == column_separator_token {
             self.lexer.advance_token();
             row.push(self.parse_array_item()?);
         }
@@ -67,7 +67,11 @@ impl Parser {
     pub(super) fn parse_function_args(&mut self, fn_name: &str) -> Result<Vec<Node>, Node> {
         // The names a LET binds are in scope up to its `)`.
         let scope = self.bound_names.len();
-        let args = self.parse_function_args_in_scope(fn_name);
+        // Spelled as calls, `SINGLE(x)` and `ANCHORARRAY(x)` count toward the nesting cap like any
+        // other: Excel refuses a stored formula with 65 calls and one `_xlfn.SINGLE(` or
+        // `_xlfn.ANCHORARRAY(`, and a typed one with 65 calls and one `SINGLE(`, while the `@` and
+        // `#` operators, which never reach here, add no level (probes/t3143-*, T-3143).
+        let args = self.in_call(|parser| parser.parse_function_args_in_scope(fn_name));
         self.bound_names.truncate(scope);
         args
     }
@@ -78,8 +82,9 @@ impl Parser {
         let token = binds_name.then(|| self.lexer.peek_token());
         let start = self.lexer.get_position_index();
         let node = self.parse_enclosed_expr();
+        let separator = self.get_argument_separator_token();
         match token {
-            Some(token) if self.lexer.peek_token() == self.get_argument_separator_token() => {
+            Some(token) if *self.lexer.peek() == separator => {
                 let text = self.lexer.source_since(start);
                 self.bind_name(&token, &text, node)
             }
@@ -91,14 +96,15 @@ impl Parser {
         let binds_names = fn_name.eq_ignore_ascii_case("LET");
         let arg_separator_token = &self.get_argument_separator_token();
         let mut args: Vec<Node> = Vec::new();
-        let mut next_token = self.lexer.peek_token();
-        if next_token == TokenType::RightParenthesis {
+        if *self.lexer.peek() == TokenType::RightParenthesis {
             return Ok(args);
         }
         // The cursor is currently in the first argument of `fn_name`.
         self.set_argument_hint(fn_name, 1);
-        if &self.lexer.peek_token() == arg_separator_token {
-            args.push(Node::EmptyArgKind);
+        // A run before a missing first argument is kept too (`=SUM( ,1)`,
+        // probes/t2966-missing-first-arg-run, T-2966).
+        if self.lexer.peek() == arg_separator_token {
+            args.push(self.missing_argument());
         } else {
             let t = self.parse_argument(binds_names);
             if let Node::ParseErrorKind { .. } = t {
@@ -106,28 +112,35 @@ impl Parser {
             }
             args.push(t);
         }
-        next_token = self.lexer.peek_token();
+        let mut separator_follows = self.lexer.peek() == arg_separator_token;
         let mut arg_index = 1;
-        while &next_token == arg_separator_token {
+        while separator_follows {
             self.lexer.advance_token();
             arg_index += 1;
             self.set_argument_hint(fn_name, arg_index);
-            if &self.lexer.peek_token() == arg_separator_token {
-                args.push(Node::EmptyArgKind);
-                next_token = arg_separator_token.clone();
-            } else if self.lexer.peek_token() == TokenType::RightParenthesis {
-                args.push(Node::EmptyArgKind);
+            // A run between two commas, or after the last one, is the missing argument's own and
+            // prints back (`=IF(1, ,2)`, `=SUM(1,` LF `)`; syntax.md "Whitespace beside a missing
+            // argument is kept", probes/t2786-whitespace-structured-refs-runs I2:I10, T-2944).
+            if self.lexer.peek() == arg_separator_token {
+                args.push(self.missing_argument());
+            } else if *self.lexer.peek() == TokenType::RightParenthesis {
+                args.push(self.missing_argument());
                 return Ok(args);
             } else {
                 let p = self.parse_argument(binds_names && arg_index % 2 == 1);
                 if let Node::ParseErrorKind { .. } = p {
                     return Err(p);
                 }
-                next_token = self.lexer.peek_token();
+                separator_follows = self.lexer.peek() == arg_separator_token;
                 args.push(p);
             }
         }
         Ok(args)
+    }
+
+    /// A missing argument, with the run written in its place.
+    fn missing_argument(&self) -> Node {
+        Node::EmptyArgKind.spaced(self.run_ahead(), Run::default())
     }
 
     /// Records that the position currently being parsed *starts* argument

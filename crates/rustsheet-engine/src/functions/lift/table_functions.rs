@@ -359,6 +359,7 @@ macro_rules! lifting_table_functions {
             | Function::Len
             | Function::Lenb
             | Function::Value
+            | Function::Char
             | Function::Code
             | Function::Unichar
             | Function::Unicode

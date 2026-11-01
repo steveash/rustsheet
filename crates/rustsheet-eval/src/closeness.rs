@@ -136,6 +136,13 @@ impl Visible {
     pub fn is_off(cell: &CellResult) -> bool {
         Visible::of(cell).total() > 0
     }
+
+    /// Whether `cell` is a known failure (neither bit-exact nor a pinned deviation) that is
+    /// visibly off: the cells the probe rows list and decision 0188 R1(c) classifies.
+    #[must_use]
+    pub fn is_failing_off(cell: &CellResult) -> bool {
+        cell.verdict.is_failure() && Self::is_off(cell)
+    }
 }
 
 /// Whether `actual` is within half a unit in the 15th significant digit of `expected`: the
@@ -222,6 +229,8 @@ mod tests {
             from_excel: true,
             listed_deviation: false,
             graph_subnormal: false,
+            kind: crate::runner::CellKind::Scored,
+            math: None,
         }
     }
 

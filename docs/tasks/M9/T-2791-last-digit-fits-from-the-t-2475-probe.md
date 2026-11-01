@@ -4,10 +4,11 @@ title: "Last-digit fits from the T-2475 probe: F.INV.RT(1-1E-10,8,7), NEGBINOMDI
 milestone: M9
 lane: functions-stat
 status: todo
-priority: P3
+priority: P1
 size: S
 tier: opus
 depends_on: []
+campaign: visible
 ---
 
 ## Goal
@@ -34,3 +35,10 @@ and eval/baseline/probes.txt:
 
 ## Out of scope
 - Other T-2475 follow-ups (T-2618 to T-2623).
+
+## Visible-parity stage
+Target (decision 0114): every visibly-off cell this task owns is within half a unit of the 15th significant digit
+of Excel's value, or has Excel's type, error and text. Bit-level criteria still unmet then move to a follow-up
+filed with `defer: phase-1b`.
+
+Phase 1 triage (T-0090, eval of 2026-10-27 at `main` 7f6b373a, task ownership as of `main` e5bc60c4): this task owns the 1 visibly-off SKEW cell. Fixing them lifts SKEW to the Phase 1 rate (≥ 99.9% of attributed cells within 15 digits); no other open task owns enough of those cells.

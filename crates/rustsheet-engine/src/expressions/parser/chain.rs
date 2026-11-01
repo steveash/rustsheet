@@ -259,13 +259,13 @@ impl Parser {
     /// [`Self::parse_chain_links`], so that the frame `parse_chain` keeps on the stack for every
     /// nesting level of a formula stays small in unoptimized builds (T-1110).
     fn at_chain_operator(&mut self, level: ChainLevel) -> bool {
-        ChainOperator::at(level, &self.lexer.peek_token()).is_some()
+        ChainOperator::at(level, self.lexer.peek()).is_some()
     }
 
     /// The links of a chain after its first operand `t`.
     fn parse_chain_links(&mut self, level: ChainLevel, mut t: Node) -> Node {
         let mut depth = self.depth;
-        while let Some(operator) = ChainOperator::at(level, &self.lexer.peek_token()) {
+        while let Some(operator) = ChainOperator::at(level, self.lexer.peek()) {
             self.lexer.advance_token();
             let p = self.parse_chain_operand(level);
             if let Node::ParseErrorKind { .. } = p {

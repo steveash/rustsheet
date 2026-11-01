@@ -3,8 +3,8 @@ id: T-2388
 title: "TEXT of a negative number with a lone B1 calendar prefix is a minus sign (ours #VALUE!)"
 milestone: M5
 lane: functions-text
-status: todo
-priority: P3
+status: done
+priority: P0
 size: S
 tier: sonnet
 depends_on: []
@@ -28,3 +28,9 @@ and `"[$-40C]B1"` on -3, before choosing the rule.
 
 ## Out of scope
 - B2 (Hijri), T-1613.
+
+## Outcome
+A date section holding only a calendar prefix and literals now prints the minus and the literals for a negative value
+(`TEXT(-3,"b1")` is "-", `"b1 x"` "- x"); change in `format_number` (formatter/format.rs). New probe
+probes/t2388-b1-negative (23 cells, excel-graph, all pass); probes/text-format-digits-date-token C25 left the baseline
+(known failures -1, no regressions). Rule recorded in docs/excel-semantics/number-formats.md.

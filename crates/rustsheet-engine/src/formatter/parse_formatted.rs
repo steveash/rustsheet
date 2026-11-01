@@ -1,6 +1,7 @@
 //! Reading typed text as a number together with the format it implies ("$1,234.50" ->
 //! (1234.5, "$#,##0.00")), split from format.rs, which renders numbers.
 
+use crate::mixed_fraction::mixed_fraction;
 use crate::{locale::Locale, number_format::parse_excel_number, types::DateSystem};
 
 use super::{
@@ -14,6 +15,16 @@ use super::{
 /// seconds or AM/PM get the same format (probes/date-text-non-glued-timevalue, T-1952;
 /// docs/research/non-glued-typed-input-2026-10-19.md).
 const TYPED_DATE_CLOCK_FORMAT: &str = "m/d/yyyy h:mm";
+
+/// Format Excel gives a typed mixed fraction whose denominator is a single digit (`3 1/2`,
+/// `-$3 1/2`, `+ 3 1/2`, `3 01/02`).
+const MIXED_FRACTION_FORMAT: &str = "# ?/?";
+
+/// Format of a typed mixed fraction whose denominator is 10 or more (`3 1/12`, `3 1/10000`).
+const MIXED_FRACTION_WIDE_FORMAT: &str = "# ??/??";
+
+/// Format of a typed mixed fraction with a `%` (`3 1/2%`, `-3 1/2%`).
+const MIXED_FRACTION_PERCENT_FORMAT: &str = "0.00%";
 
 /// Format of a typed clock with a fractional second (`10:00:30.5`, `10:00.5`).
 const FRACTION_CLOCK_FORMAT: &str = "mm:ss.0";
@@ -35,6 +46,21 @@ pub(crate) fn parse_typed_number(
         if let Some(parsed) = parse_bare_letter_clock(text) {
             return Ok(parsed);
         }
+        // A mixed fraction, signed, with `$` or `%`, is a number (probes/typed-input-sign-space-
+        // mixed-fraction B6, B7, B9-B12). Its format is `# ?/?`, `# ??/??` for a denominator of 10 or more, or `0.00%` with a `%` (ENTERED
+        // numberFormat, probes/typed-mixed-fraction-number-format, excel-graph 2026-10-30;
+        // docs/research/typed-mixed-fraction-number-format-2026-10-30.md).
+        let trimmed = original.trim_matches(' ');
+        if let Some(v) = mixed_fraction(trimmed, currencies) {
+            let format = if trimmed.ends_with('%') {
+                MIXED_FRACTION_PERCENT_FORMAT
+            } else if mixed_fraction_denominator_is_wide(trimmed) {
+                MIXED_FRACTION_WIDE_FORMAT
+            } else {
+                MIXED_FRACTION_FORMAT
+            };
+            return Ok((v, Some(format.to_string())));
+        }
         let Some(shape) = typed_clock_shape(text) else {
             return Err(err);
         };
@@ -42,6 +68,14 @@ pub(crate) fn parse_typed_number(
             .map(|serial| (serial, shape.format()))
             .ok_or(err)
     })
+}
+
+/// Whether the denominator of the mixed fraction `text` (already read by `mixed_fraction`) is 10
+/// or more, ignoring leading zeros: `3 1/12` and `3 1/10000` take `# ??/??`, `3 1/9` and
+/// `3 1/002` take `# ?/?` (probes/typed-mixed-fraction-number-format A9-A27).
+fn mixed_fraction_denominator_is_wide(text: &str) -> bool {
+    text.rsplit_once('/')
+        .is_some_and(|(_, denominator)| denominator.trim_start_matches('0').len() >= 2)
 }
 
 /// A bare typed clock with an `A`/`P` or `AM`/`PM` suffix as a time of day with its AM/PM clock
@@ -384,6 +418,21 @@ fn parse_plain_number(
     Ok((f, None))
 }
 
+/// Excel reads Arabic-Indic (U+0660..), Devanagari (U+0966..) and Thai (U+0E50..) digits as their
+/// values, alone or mixed with ASCII digits; full-width digits stay text. Applied by number-text
+/// coercion only (`cast::number_text_in`), not to text typed into a cell, which is unprobed. Evidence:
+/// docs/excel-semantics/coercion.md "Other scripts ... (T-3276)", probes/t3276-collation-other-scripts
+/// Calc!H1:H8 and Calc!E.
+pub(crate) fn script_digit_to_ascii(c: char) -> char {
+    let zero = match c {
+        '\u{0660}'..='\u{0669}' => 0x0660,
+        '\u{0966}'..='\u{096F}' => 0x0966,
+        '\u{0E50}'..='\u{0E59}' => 0x0E50,
+        _ => return c,
+    };
+    char::from_digit(c as u32 - zero, 10).unwrap_or(c)
+}
+
 struct NumberOptions {
     has_commas: bool,
     is_scientific: bool,
@@ -415,6 +464,14 @@ fn parse_number(
     } else {
         1.0
     };
+
+    // Excel: spaces between the sign and the digits are skipped, `VALUE("- 5")` is -5 and
+    // `VALUE("+ 5")` is 5 (docs/excel-semantics/text.md, probes/value-sign-space-mixed-fraction-dash-date A1-A6).
+    if position > 0 {
+        while position < len && characters[position] == ' ' {
+            position += 1;
+        }
+    }
 
     if position >= len {
         return Err("Cannot parse number".to_string());

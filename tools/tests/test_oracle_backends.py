@@ -98,12 +98,13 @@ class FakeGraph:
     def __call__(self, method: str, url: str, **kw: Any) -> Any:
         tail = url.rsplit("/items/1", 1)[-1] or "<item>"
         self.calls.append(f"{method} {tail}")
-        if kw.get("json") and "values" in kw["json"]:
-            self.calls.append(f"  values={kw['json']['values']}")
+        for key in ("values", "formulasR1C1"):
+            if kw.get("json") and key in kw["json"]:
+                self.calls.append(f"  {key}={kw['json'][key]}")
         if tail == "/workbook/closeSession":
             self.closed = True
         etag = "v2" if self.closed and self.saves else "v1"
-        return SimpleNamespace(json=lambda: {"id": "1", "eTag": etag}, content=b"saved")
+        return SimpleNamespace(json=lambda: {"id": "1", "eTag": etag}, content=b"saved", status_code=200)
 
 
 @pytest.fixture
@@ -189,8 +190,71 @@ def test_recalc_enters_typed_cells_before_calculating(
     ]
 
 
-def test_libreoffice_refuses_typed_cells() -> None:
-    xlsx = build_xlsx({"sheets": [{"name": "S", "cells": {"A1": {"entered": "(1)"}}}]})
+def test_recalc_types_r1c1_cells_as_formulas_r1c1(
+    graph: GraphBackend, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # T-3113: an `entered_r1c1` cell is written in R1C1 mode, beside an A1 `entered` one.
+    fake = FakeGraph()
+    monkeypatch.setattr(graph, "_call", fake)
+    spec = {"sheets": [{"name": "S", "cells": {"A1": {"entered": "(1)"}, "A2": {"entered_r1c1": "=R1C1+1"}}}]}
+    graph.recalc(build_xlsx(spec))
+    i = fake.calls.index("POST /workbook/createSession")
+    assert fake.calls[i + 1 : i + 6] == [
+        "PATCH /workbook/worksheets('S')/range(address='A1')",
+        "  values=[['(1)']]",
+        "PATCH /workbook/worksheets('S')/range(address='A2')",
+        "  formulasR1C1=[['=R1C1+1']]",
+        "POST /workbook/application/calculate",
+    ]
+
+
+def test_recalc_goes_on_when_excel_refuses_a_typed_cell(
+    graph: GraphBackend, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # Decision 0179: a 400 InvalidArgument for typed text is Excel's answer (the cell stays blank).
+    fake = FakeGraph()
+
+    def call(method: str, url: str, **kw: Any) -> Any:
+        response = fake(method, url, **kw)
+        if method == "PATCH":
+            assert kw.get("refusable") is True
+            return SimpleNamespace(status_code=400, text='{"error":{"code":"InvalidArgument"}}')
+        return response
+
+    monkeypatch.setattr(graph, "_call", call)
+    graph.recalc(build_xlsx({"sheets": [{"name": "S", "cells": {"A1": {"entered": "=S! R1C2"}}}]}))
+    assert "POST /workbook/application/calculate" in fake.calls
+    assert "REFUSED S!A1 '=S! R1C2'" in capsys.readouterr().err
+
+
+# (refusable, status, body, returned): only a refusable 400 InvalidArgument comes back (decision 0179).
+_REFUSALS = [
+    (True, 400, {"error": {"code": "InvalidArgument"}}, True),
+    (True, 400, {"error": {"code": "ItemNotFound"}}, False),
+    (True, 400, ["not", "an", "object"], False),
+    (True, 404, {"error": {"code": "InvalidArgument"}}, False),
+    (False, 400, {"error": {"code": "InvalidArgument"}}, False),
+]
+
+
+@pytest.mark.parametrize("case", _REFUSALS)
+def test_only_a_refusable_invalid_argument_is_returned(
+    graph: GraphBackend, monkeypatch: pytest.MonkeyPatch, case: tuple[bool, int, Any, bool]
+) -> None:
+    refusable, status, body, returned = case
+    response = SimpleNamespace(status_code=status, json=lambda: body, text=str(body))
+    monkeypatch.setattr(graph, "_token", lambda: "t")
+    monkeypatch.setattr(graph._session, "request", lambda *_, **__: response)
+    if returned:
+        assert graph._call("PATCH", "https://x", refusable=refusable) is response
+    else:
+        with pytest.raises(OracleError, match=str(status)):
+            graph._call("PATCH", "https://x", refusable=refusable)
+
+
+@pytest.mark.parametrize("cell", [{"entered": "(1)"}, {"entered_r1c1": "=R1C1"}])
+def test_libreoffice_refuses_typed_cells(cell: dict[str, str]) -> None:
+    xlsx = build_xlsx({"sheets": [{"name": "S", "cells": {"A1": cell}}]})
     with pytest.raises(OracleError, match="typed cell input"):
         LibreOfficeBackend().recalc(xlsx)
 

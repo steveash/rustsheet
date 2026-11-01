@@ -34,7 +34,26 @@ fn lunar_dates_of_the_probes() {
         (Chinese, 73415, Some((2100, 12, 16))),
         (Chinese, 60, None),
         (Chinese, -1, None),
-        (Chinese, 73416, None),
+        // Past the 1900-2100 tables: probes/t2759-lunar-months-2101 A1, A42, A109 and
+        // text-locale-lunar-edges A20; 2142-01-01 (88391) turns the year mid-month.
+        (Chinese, 73416, Some((2100, 12, 17))),
+        (Chinese, 88390, Some((2141, 12, 18))),
+        (Chinese, 88391, Some((2142, 12, 19))),
+        (Chinese, 2_958_465, Some((9999, 11, 26))),
+        // Eastern month 6 of 2103 starts a day after the Chinese one (t2759-lunar-months-2101 A3,
+        // B3), and B200: 2300-12-31 is "2300/12/4".
+        (Chinese, 74316, Some((2103, 6, 1))),
+        (Eastern, 74316, Some((2103, 5, 30))),
+        (Eastern, 74317, Some((2103, 6, 1))),
+        (Eastern, 146_463, Some((2300, 12, 4))),
+        // The 31-day month of 2232-12-13: 1 January 2233 repeats the day before's "12/19" and turns
+        // the year (A132, A133, B133); month 13 starts on 2233-01-13 (day 30 the day before).
+        (Chinese, 121_627, Some((2232, 12, 19))),
+        (Chinese, 121_628, Some((2233, 12, 19))),
+        (Eastern, 121_628, Some((2233, 12, 19))),
+        (Chinese, 121_639, Some((2233, 12, 30))),
+        (Chinese, 121_640, Some((2233, 13, 1))),
+        (Chinese, 2_958_466, None),
     ];
     for (table, serial, ymd) in cases {
         assert_eq!(lunar_ymd(serial, table), ymd, "{table:?} {serial}");

@@ -21,14 +21,28 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
+        // A call that can return a reference is read as SUBTOTAL reads it: the arm or cells it
+        // picks. A bare union is read the same way: its first area is the reference.
+        let picks_reference = match args[0].ungrouped() {
+            Node::FunctionKind { kind, .. } => kind.may_be_reference(),
+            node => matches!(node, Node::OpUnionKind { .. }),
+        };
         let reference = match args[0].ungrouped() {
-            // A call that can return a reference is read as SUBTOTAL reads it: the arm or cells it picks.
-            Node::FunctionKind { kind, .. } if kind.may_be_reference() => {
+            _ if picks_reference => {
                 match self.evaluate_picked_reference_arg(&args[0], cell) {
                     RefArg::Ranges(Ranges::One(Range { left, right })) => {
                         CalcResult::Range { left, right }
                     }
-                    RefArg::Ranges(Ranges::Areas(_)) => return several_areas(cell),
+                    // A multi-area reference is FORMULATEXT of its first area, which spills when it
+                    // covers several cells (probes/t2831-formulatext-indirect-multi-cell A33-A78;
+                    // docs/excel-semantics/references.md "FORMULATEXT of a multi-area reference
+                    // and of a multi-cell INDIRECT element").
+                    RefArg::Ranges(Ranges::Areas(areas)) => {
+                        let Some(Range { left, right }) = areas.first() else {
+                            return several_areas(cell);
+                        };
+                        CalcResult::Range { left, right }
+                    }
                     RefArg::Grid(grid) => return self.formula_texts_of_grid(&grid, cell),
                     // A pick that fails is its own error (`SWITCH(9,1,5)`, `XLOOKUP` not found:
                     // `#N/A`); one that gives values is `#VALUE!`, element by element over an
@@ -94,7 +108,7 @@ impl Model {
     /// FORMULATEXT of each element of a lifted reference call (`INDIRECT({"Data!A1","Data!A2"})`
     /// spills `#N/A`, `=A1+1`; probes/formulatext-pick-scalars-and-arrays K1:T1): a one-cell
     /// element is its cell's formula text, an error element itself. A multi-cell element is
-    /// `#VALUE!` (unprobed). The total text is bounded (CLAUDE.md directive 5).
+    /// its top-left cell's text. The total text is bounded (CLAUDE.md directive 5).
     fn formula_texts_of_grid(&self, grid: &RefGrid, cell: CellReferenceIndex) -> CalcResult {
         let (rows, columns) = grid.dims();
         let mut text_bytes = 0;
@@ -104,13 +118,13 @@ impl Model {
             for element in row {
                 values.push(match element {
                     RefElement::Error(error) => ArrayNode::Error(error.clone()),
-                    RefElement::Reference(Range { left, right }) if left == right => {
+                    // A multi-cell element is its top-left cell's text, with no spill of its own.
+                    RefElement::Reference(Range { left, .. }) => {
                         match self.formula_text_element(*left, cell, &mut text_bytes) {
                             Ok(value) => value,
                             Err(too_large) => return too_large,
                         }
                     }
-                    RefElement::Reference(_) => ArrayNode::Error(Error::VALUE),
                 });
             }
             array.push(values);

@@ -11,6 +11,12 @@ impl Workbook {
         }
     }
 
+    /// The workbook's file name as Excel shows it (`Budget.xlsx`), `None` for an unnamed workbook
+    /// (an empty `name`, which holds the name without its extension).
+    pub(crate) fn file_name(&self) -> Option<String> {
+        (!self.name.is_empty()).then(|| format!("{}.xlsx", self.name))
+    }
+
     pub fn get_worksheet_names(&self) -> Vec<String> {
         self.worksheets
             .iter()

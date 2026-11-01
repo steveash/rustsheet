@@ -17,6 +17,7 @@ workbook cells. Excel returns an un-converged iterate, so this means stopping wh
 not converging further.
 
 ## Context
+- probes/t2565-irr-guess-sweeps (T-2565): on large-root flows Excel's v = 1/(1+r) is a multiple of 2^-53; the model's v rounded to that grid gives Excel's bits in 173/175 cells (P!C95 0.84 grid steps off; P!C157 is an unexplained outlier, ~100 steps; financial.md "IRR is a secant in v").
 - probes/xirr-irr-empty-guess A11, A13, A15, A17, A19, A21 (T-2688): IRR from guess 0 (`IRR(v,0)`, `IRR(v,)`)
   on -70000, 12000, 15000, 18000, 21000, 26000. Excel 0.08663094803653149, ours 0.08663094803653171.
 - `financial/financial_util.rs` `compute_irr` runs:
@@ -77,6 +78,16 @@ Cells:
 - gen-m9/c0681a8b150ce301.case.json (1): Calc!A169
 - gen-m9/e168be7f6d3f84c2.case.json (1): Calc!A3
 
+Gap triage 2026-10-27: IRR.xlsx General!L17 and gen-m9/31474c20fc1dafd6 Calc!A173 and A271 take the fallback path,
+not the secant (financial.md "IRR's fallback when the secant fails"). T-2928 owns their digits, after the T-2927
+sweep. Their lines count toward the criterion below once T-2928 lands; do not fit them through the secant.
+The same triage found 7 visibly-off far-root cells that no task named. They take the secant path, so they are this
+task's (with T-2565's guess sweeps; financial.md "IRR's far-root bound"):
+- probes/irr-fallback-roots P!A25 `IRR({-1,1E+4})`: Excel 9999.0000000011, ours 9999.000000012204;
+- A26 `IRR({-1,1E+5})`: Excel 99999.0000004551, ours 99999.00000156532;
+- A28 `IRR({-1,3E+6})`: Excel 2999998.999580666, ours 2999999.000579867;
+- A36 to A39 `IRR({-1,0,X})` for X = 1E+8, 1E+10, 1E+12, 1E+14: e.g. A39 Excel 9999998.994161328, ours 9999998.996610194.
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2257): the 16 visibly-off known-failure lines listed under "T-2257 sweep" in Context disappear
       from eval/baseline/gen-m9.txt (`make eval-baseline`), with no new known-failure lines in any baseline.
@@ -95,3 +106,16 @@ Cells:
 ## Visible-parity stage
 This whole task is the visible-parity stage (decision 0083). Bit-exact iterates are a follow-up
 if the stage-1 fit does not reach them.
+
+## Cells added by the Phase 1 triage (T-0090, 2026-10-27)
+From the parked T-2367: IRR gen-m9/d0854366830dcdee Calc!A216 `IRR(Data!A4:D10)`, 831.5533435101329 expected, 831.5533435101225 today.
+
+## Cells added by the T-0087 sweep (2026-10-28)
+Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c2b6143a (`python3 scripts/exit_owners.py --all-off`; calipers, poi and corpus-bench not fetched): unattributed 1. This task now owns them:
+- gen-m9/abb7d565af89b849: Calc!A387
+
+## Split by the gap triage (2026-10-29)
+T-3120 now owns the far-root cells: probes/t2565-irr-guess-sweeps (all 181 cells) and the probes/irr-fallback-roots
+cells P!A25, A26, A28, A36, A37, A38 and A39 listed above. Their v is on Excel's 2^-53 grid (financial.md "IRR's
+far-root bound"). The gen-m9 far-root cells (c0681a8b150ce301 A218, 67a4c03afd63f988 A3, A199, A346, 1dce4774f5c0e736
+A285) stay here. T-3120 re-measures them.

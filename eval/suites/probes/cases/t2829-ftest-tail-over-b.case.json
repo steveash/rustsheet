@@ -1,0 +1,40 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2829: F.TEST's tail (2*F.DIST.RT, equal to F.TEST at the same f per t2829-ftest-a306-shapes A1/A2) at f = 1E12 for a = df2/2 of 6 and 2.5 against b = df1/2 from 8.5 to 19.5, to map the constant gap between the bpser port's accurate ln B and Excel over b.",
+  "tags": [
+    "M9",
+    "probe",
+    "statistical",
+    "T-2829"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A1": "=2*F.DIST.RT(1E+12,17,12)",
+        "A2": "=2*F.DIST.RT(1E+12,18,12)",
+        "A3": "=2*F.DIST.RT(1E+12,19,12)",
+        "A4": "=2*F.DIST.RT(1E+12,20,12)",
+        "A5": "=2*F.DIST.RT(1E+12,21,12)",
+        "A6": "=2*F.DIST.RT(1E+12,22,12)",
+        "A7": "=2*F.DIST.RT(1E+12,23,12)",
+        "A8": "=2*F.DIST.RT(1E+12,24,12)",
+        "A9": "=2*F.DIST.RT(1E+12,26,12)",
+        "A10": "=2*F.DIST.RT(1E+12,30,12)",
+        "A11": "=2*F.DIST.RT(1E+12,39,12)",
+        "A12": "=2*F.DIST.RT(1E+12,17,5)",
+        "A13": "=2*F.DIST.RT(1E+12,18,5)",
+        "A14": "=2*F.DIST.RT(1E+12,19,5)",
+        "A15": "=2*F.DIST.RT(1E+12,20,5)",
+        "A16": "=2*F.DIST.RT(1E+12,21,5)",
+        "A17": "=2*F.DIST.RT(1E+12,22,5)",
+        "A18": "=2*F.DIST.RT(1E+12,23,5)",
+        "A19": "=2*F.DIST.RT(1E+12,24,5)",
+        "A20": "=2*F.DIST.RT(1E+12,26,5)",
+        "A21": "=2*F.DIST.RT(1E+12,30,5)",
+        "A22": "=2*F.DIST.RT(1E+12,39,5)"
+      }
+    }
+  ],
+  "expected": {}
+}

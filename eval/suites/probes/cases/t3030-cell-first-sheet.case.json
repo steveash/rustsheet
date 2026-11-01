@@ -1,0 +1,52 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-3030: does CELL(\"contents\"/\"type\", ref) read the formula's own sheet only when ref is on the FIRST sheet? Sheet order Data, Calc, Other; B1 is 1/2/3, Data!C5='x', Data!C9=4, Other!C5 blank.",
+  "tags": [
+    "M7",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Data",
+      "cells": {
+        "B1": 1,
+        "B2": 10,
+        "C5": "x",
+        "C9": 4,
+        "A1": "=CELL(\"contents\",Calc!B1)",
+        "A3": "=CELL(\"contents\",Other!B1)",
+        "A5": "=CELL(\"type\",Other!C5)"
+      }
+    },
+    {
+      "name": "Calc",
+      "cells": {
+        "B1": 2,
+        "B2": 20,
+        "A1": "=CELL(\"contents\",Data!B1)",
+        "A3": "=CELL(\"contents\",Other!B1)",
+        "A5": "=CELL(\"type\",Data!C5)",
+        "A7": "=CELL(\"type\",Other!C5)",
+        "A9": "=VSTACK(CELL(\"contents\",Data!B1),1)",
+        "A12": "=CELL(\"contents\",Data!B1:B2)",
+        "A14": "=CELL(\"address\",Data!B1)",
+        "A16": "=CELL(\"contents\",Data!B1)+0",
+        "A18": "=CELL(\"row\",Data!B2)",
+        "A20": "=Data!B1",
+        "A22": "=CELL(\"contents\",Data!C9)",
+        "A24": "=ISBLANK(CELL(\"contents\",Data!C9))"
+      }
+    },
+    {
+      "name": "Other",
+      "cells": {
+        "B1": 3,
+        "A1": "=CELL(\"contents\",Data!B1)",
+        "A3": "=CELL(\"contents\",Calc!B1)",
+        "A5": "=CELL(\"type\",Data!C5)",
+        "A7": "=CELL(\"contents\",Data!B1)+0"
+      }
+    }
+  ],
+  "expected": {}
+}

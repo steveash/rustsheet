@@ -80,13 +80,14 @@ impl Spacing {
         self.before.is_empty() && self.after.is_empty()
     }
 
-    /// `text`, the printed operand, with the runs around it.
-    pub(crate) fn around(self, text: &str) -> String {
-        let mut spaced = String::with_capacity(text.len() + 4);
-        self.before.push_to(&mut spaced);
-        spaced.push_str(text);
-        self.after.push_to(&mut spaced);
-        spaced
+    /// Appends the run written ahead of the operand to `text`.
+    pub(crate) fn push_before(self, text: &mut String) {
+        self.before.push_to(text);
+    }
+
+    /// Appends the run written behind the operand to `text`.
+    pub(crate) fn push_after(self, text: &mut String) {
+        self.after.push_to(text);
     }
 }
 
@@ -96,9 +97,9 @@ impl Node {
     /// has some join them, so a `Spaced` never wraps another.
     ///
     /// A `Spaced` costs no level of [`super::MAX_FORMULA_DEPTH`]: it only ever wraps a node that
-    /// costs one, and never another `Spaced`, so the tree is at most twice as deep as counted, and
-    /// only the printers and edits walk it (evaluation reads the tree with no whitespace,
-    /// decision 0127). A formula nests as deep with spaces as without, as Excel's does; the
+    /// costs one or a unary sign (bounded by [`super::MAX_SIGNS`]), and never another `Spaced`, so
+    /// the tree is at most twice as deep as counted, and only the printers and edits walk it
+    /// (evaluation reads the tree with no whitespace, decision 0127). A formula nests as deep with spaces as without, as Excel's does; the
     /// nesting tests print and edit the spaced shapes at the limit on a 2 MiB stack.
     pub(super) fn spaced(self, before: Run, after: Run) -> Node {
         let (space, child) = self.unspaced();
@@ -125,8 +126,41 @@ impl Node {
         }
     }
 
+    /// The operator printed before `self` as the right operand of an intersection: a line feed in
+    /// its run is the operator itself, so no space is printed beside it
+    /// (probes/t2949-typed-4).
+    pub(crate) fn intersect_gap(&self) -> &'static str {
+        match self {
+            Node::Spaced { space, .. } if space.before.line_feeds > 0 => "",
+            _ => " ",
+        }
+    }
+
     /// The node under any [`Node::Spaced`] wrapper, for the printers that decide on its shape.
     pub(crate) fn unwrap_spaced(&self) -> &Node {
+        let mut node = self;
+        while let Node::Spaced { child, .. } = node {
+            node = child;
+        }
+        node
+    }
+
+    /// `self`, a call, with the run written between the parentheses of an empty call: `=NOW( )`
+    /// prints back as typed (probes/t2786-whitespace-structured-refs-runs I1, I11, T-2966). The
+    /// run is held as one spaced empty argument, which [`Node::strip_spaces`] removes, so
+    /// evaluation and the argument counts still see a call with none ([`is_empty_call_run`]).
+    pub(super) fn with_empty_call_run(mut self, run: Run) -> Node {
+        if let Node::FunctionKind { args, .. } = &mut self {
+            if args.is_empty() && !run.is_empty() {
+                args.push(Node::EmptyArgKind.spaced(run, Run::default()));
+            }
+        }
+        self
+    }
+
+    /// [`Node::unwrap_spaced`] for a mutable borrow, for a walker that rewrites the node it
+    /// decides on (one function cannot serve both borrows).
+    pub(crate) fn unwrap_spaced_mut(&mut self) -> &mut Node {
         let mut node = self;
         while let Node::Spaced { child, .. } = node {
             node = child;
@@ -138,9 +172,47 @@ impl Node {
     pub(super) fn respaced(self, space: Spacing) -> Node {
         self.spaced(space.before, space.after)
     }
+
+    /// Applies `rewrite`, a rewrite that decides on the shape of operands, as it applies to the
+    /// tree with no whitespace, the tree evaluation reads (decision 0127). On a tree written with
+    /// whitespace it runs on the bare tree and on the written one, and the written result is kept
+    /// only when it is the bare result once its whitespace is removed; otherwise the tree becomes
+    /// the bare result. A shape site that does not look past a [`Node::Spaced`] then costs the
+    /// formula its whitespace, never a value: `N( IF(1,{2;3}) )` read as a legacy formula takes
+    /// the `@`s `N(IF(1,{2;3}))` takes (T-2948).
+    pub(crate) fn rewrite_as_unspaced(&mut self, rewrite: impl Fn(&mut Node)) {
+        if !self.has_spaces() {
+            rewrite(self);
+            return;
+        }
+        let mut bare = self.clone();
+        bare.strip_spaces();
+        rewrite(&mut bare);
+        rewrite(self);
+        let mut unspaced = self.clone();
+        unspaced.strip_spaces();
+        if unspaced != bare {
+            *self = bare;
+        }
+    }
+}
+
+/// Whether `args` holds only the run of an empty call ([`Node::with_empty_call_run`]).
+pub(super) fn is_empty_call_run(args: &[Node]) -> bool {
+    matches!(args, [Node::Spaced { child, .. }] if matches!(**child, Node::EmptyArgKind))
 }
 
 impl Parser {
+    /// The run between a call's `(`, just read, and its `)` when no argument comes between them
+    /// (`=NOW( )`); none otherwise.
+    pub(super) fn empty_call_run(&mut self) -> Run {
+        if *self.lexer.peek() == TokenType::RightParenthesis {
+            self.run_ahead()
+        } else {
+            Run::default()
+        }
+    }
+
     /// The whitespace run between the last token read and the next one.
     pub(super) fn run_ahead(&self) -> Run {
         Run::of(self.lexer.separator())
@@ -149,7 +221,7 @@ impl Parser {
     /// The run after an operand, kept when a binary operator or `)` follows it (`=1 + 2`,
     /// `=SUM(B1:B2 )`); before a comma or at the end of the formula Excel drops it.
     pub(super) fn run_after_operand(&mut self) -> Run {
-        match self.lexer.peek_token() {
+        match self.lexer.peek() {
             TokenType::Compare(_)
             | TokenType::And
             | TokenType::Addition(_)

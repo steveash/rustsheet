@@ -1,0 +1,23 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3097: stored formula with 65 nested levels of the `mixed` form; ISFORMULA tells a formula from text.",
+ "tags": [
+  "M2",
+  "syntax",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=ABS(ROUND(INT(SUM(ABS(ROUND(INT(SUM(ABS(ROUND(INT(SUM(ABS(ROUND(INT(SUM(ABS(ROUND(INT(SUM(ABS(ROUND(INT(SUM(ABS(ROUND(INT(SUM(ABS(ROUND(INT(SUM(ABS(ROUND(INT(SUM(ABS(ROUND(INT(SUM(ABS(ROUND(INT(SUM(ABS(ROUND(INT(SUM(ABS(ROUND(INT(SUM(ABS(ROUND(INT(SUM(ABS(ROUND(INT(SUM(ABS(ROUND(INT(SUM(ABS(1))),0)))),0)))),0)))),0)))),0)))),0)))),0)))),0)))),0)))),0)))),0)))),0)))),0)))),0)))),0)))),0))",
+    "B1": "=ISFORMULA(A1)"
+   }
+  }
+ ],
+ "expected": {},
+ "check": [
+  "S!A1",
+  "S!B1"
+ ]
+}

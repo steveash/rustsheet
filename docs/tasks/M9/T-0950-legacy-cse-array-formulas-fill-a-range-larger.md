@@ -22,6 +22,9 @@ all 9 cells (also `MINVERSE(B54)` H54:J56, `MMULT(B58,E58)` H58:J60); `B62:C62+E
 H62:J64 repeats the row down with J62:J64 `#N/A`; `TRANSPOSE(B66:C66)` over H66:J68 has row 68
 `#N/A`. Rule recorded in docs/excel-semantics/arrays.md "Legacy (CSE) array formula over a larger
 range". Found by the gap-triager while filing T-0943 (the MDETERM/MINVERSE blank-cell part).
+Also (gap triage 2026-10-27): corpus-bench/13894/1_13894_input.xlsx Sheet1!F20:F25, the six extra cells of the CSE
+array formula over F14:F25 (`IFERROR(INDEX(ucode,SMALL(IF(MATCH(ucode,ucode,0)=...),...)),"")`, ucode = J3:J8, a
+6-row result): Excel `#N/A`, ours `#VALUE!` (6 visibly-off cells; the case's other 22 pass).
 This is an engine change to how array-formula ranges are filled from a result (the xlsx importer
 and the evaluator's array-formula path): check whether it needs a short spec first (CLAUDE.md
 directive 4) and split if it is bigger than M.
@@ -29,6 +32,8 @@ directive 4) and split if it is bigger than M.
 ## Acceptance criteria
 - [ ] The H46:J136 F lines of poi/MatrixFormulaEvalTestData.xlsx disappear from eval/baseline/poi.txt
       (those that stay need a documented reason) with no new F lines in any baseline.
+- [ ] corpus-bench/13894 F20:F25 pass, so its whole-case `F` line leaves eval/baseline/corpus-bench.txt
+      if no other cell of the case fails.
 - [ ] Unit tests for the 1x1, row and column broadcast and the `#N/A` fill.
 - [ ] `make check` green; reviewers approve.
 

@@ -243,8 +243,8 @@ fn lone_unit_is_not_a_replacement_character() {
 
 #[test]
 fn sizes() {
-    // SPEC-0010 "Representation": `Text` costs no more than `String`, and an `ArrayNode`-shaped
-    // enum carrying it stays 24 bytes.
+    // SPEC-0010 "Representation": `Text` costs no more than `String` (a shared pointer since
+    // T-2806), and an `ArrayNode`-shaped enum carrying it stays within 24 bytes.
     #[allow(dead_code)]
     enum ArrayNodeShape {
         Boolean(bool),
@@ -253,8 +253,8 @@ fn sizes() {
         Error(Error),
         Empty,
     }
-    assert_eq!(size_of::<Text>(), size_of::<String>());
-    assert_eq!(size_of::<ArrayNodeShape>(), 24);
+    assert!(size_of::<Text>() <= size_of::<String>());
+    assert!(size_of::<ArrayNodeShape>() <= 24);
 }
 
 /// The serialized shape of a `Text`, written independently of the engine's private one.

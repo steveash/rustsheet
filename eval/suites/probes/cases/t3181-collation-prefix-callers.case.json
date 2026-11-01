@@ -1,0 +1,66 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Excel's collation prefix rule outside the operators (T-3181): Data!A1:A8 hold a, a+16 U+0302 (wrapped total equal to a, a its prefix), a+U+0342, a+2 U+0342 (equal to a+U+0327), a+U+0327, a+U+0323, a+3 U+0323, á; Calc!A operators, B COUNTIF/COUNTIFS criteria, C MATCH and VLOOKUP exact and approximate on those pairs.",
+ "tags": [
+  "M2",
+  "probe",
+  "collation",
+  "T-3181"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=Data!A1=Data!A2",
+    "A2": "=Data!A1<Data!A2",
+    "A3": "=Data!A2>Data!A1",
+    "A4": "=Data!A1<>Data!A2",
+    "A5": "=Data!A1<=Data!A2",
+    "A6": "=Data!A2<=Data!A1",
+    "A7": "=Data!A3<Data!A4",
+    "A8": "=Data!A4=Data!A5",
+    "A9": "=Data!A5<Data!A3",
+    "B1": "=COUNTIF(Data!A1:A5,Data!A1)",
+    "B2": "=COUNTIF(Data!A1:A5,\"=\"&Data!A1)",
+    "B3": "=COUNTIF(Data!A1:A5,\"<>\"&Data!A1)",
+    "B4": "=COUNTIF(Data!A1:A5,\"<\"&Data!A3)",
+    "B5": "=COUNTIF(Data!A1:A5,\">\"&Data!A3)",
+    "B6": "=COUNTIF(Data!A1:A5,\"<=\"&Data!A1)",
+    "B7": "=COUNTIF(Data!A1:A5,\">\"&Data!A1)",
+    "B8": "=COUNTIF(Data!A1:A5,\">=\"&Data!A2)",
+    "B9": "=COUNTIF(Data!A6:A8,\"<\"&Data!A7)",
+    "B10": "=COUNTIF(Data!A6:A8,\">\"&Data!A7)",
+    "B11": "=COUNTIFS(Data!A1:A5,Data!A2)",
+    "B12": "=SUMPRODUCT(--(Data!A1:A5=Data!A1))",
+    "C1": "=MATCH(Data!A1,Data!A2,0)",
+    "C2": "=MATCH(Data!A2,Data!A1,0)",
+    "C3": "=MATCH(Data!A1,Data!A2,1)",
+    "C4": "=MATCH(Data!A2,Data!A1,1)",
+    "C5": "=MATCH(Data!A3,Data!A4,1)",
+    "C6": "=MATCH(Data!A4,Data!A3,1)",
+    "C7": "=MATCH(Data!A3,Data!A4,-1)",
+    "C8": "=MATCH(Data!A1,Data!A2,-1)",
+    "C9": "=MATCH(Data!A3,Data!A3:A4,1)",
+    "C10": "=MATCH(Data!A4,Data!A3:A4,1)",
+    "C11": "=VLOOKUP(Data!A1,Data!A2,1,TRUE)=Data!A2",
+    "C12": "=VLOOKUP(Data!A3,Data!A4,1,TRUE)=Data!A4",
+    "C13": "=MATCH(Data!A5,Data!A4,0)",
+    "C14": "=MATCH(Data!A7,Data!A6,1)"
+   }
+  },
+  {
+   "name": "Data",
+   "cells": {
+    "A1": "=\"a\"",
+    "A2": "=\"a\"&REPT(UNICHAR(770),16)",
+    "A3": "=\"a\"&UNICHAR(834)",
+    "A4": "=\"a\"&UNICHAR(834)&UNICHAR(834)",
+    "A5": "=\"a\"&UNICHAR(807)",
+    "A6": "=\"a\"&UNICHAR(803)",
+    "A7": "=\"a\"&REPT(UNICHAR(803),3)",
+    "A8": "=\"á\""
+   }
+  }
+ ],
+ "expected": {}
+}

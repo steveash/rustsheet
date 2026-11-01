@@ -197,6 +197,29 @@ fn names_ignore_case_and_an_item_may_be_a_label_cell() {
 }
 
 #[test]
+fn an_odd_count_of_five_or_more_arguments_is_error_but_three_stay_ref() {
+    check(&[
+        (
+            r#"=GETPIVOTDATA("Sales",$A$3,"Region","East","Product")"#,
+            "#ERROR!",
+        ),
+        (
+            r#"=GETPIVOTDATA("Sales",$A$3,"Region","East","Product","A","Sales")"#,
+            "#ERROR!",
+        ),
+        (
+            r#"=GETPIVOTDATA("Sales",$A$20,"Product","A","Region")"#,
+            "#ERROR!",
+        ),
+        (
+            r#"=GETPIVOTDATA("Sales",$H$30,"Product","A","Region")"#,
+            "#ERROR!",
+        ), // no pivot
+        (r#"=GETPIVOTDATA("Sales",$A$3,"Region")"#, "#REF!"), // H15
+    ]);
+}
+
+#[test]
 fn unknown_items_fields_repeats_and_odd_pairs_are_ref() {
     check(&[
         (r#"=GETPIVOTDATA("Sales",$A$3,"Region","North")"#, "#REF!"), // H7

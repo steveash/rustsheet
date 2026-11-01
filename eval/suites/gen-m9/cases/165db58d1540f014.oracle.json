@@ -910,6 +910,10 @@
     "t": "e",
     "v": "#NUM!"
    },
+   "A303": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
    "A304": {
     "t": "e",
     "v": "#N/A"
@@ -1630,8 +1634,8 @@
   "application": "Excel for the web (Graph)",
   "input_sha256": "ac821949f8f3f8c2820681c6949ed7212415578ef2bfd3d82af0ca9569b3f607",
   "kind": "excel-graph",
-  "produced_at": "2026-10-22T23:59:30+00:00",
+  "produced_at": "2026-10-28T16:50:59+00:00",
   "version": null,
-  "workbook_name": "9db26329bb00833ca8dcb2b34e16aa5374a53e223545e27149674ac203691fef.xlsx"
+  "workbook_name": "6fcd712212bfaddb77018c7180fbc92aadb8567fa12cc7f5a6b72d08da7ed3fc.xlsx"
  }
 }

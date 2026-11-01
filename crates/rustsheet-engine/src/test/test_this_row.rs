@@ -238,7 +238,7 @@ fn the_export_keeps_this_row_on_every_row() {
     }
     let cell = model.workbook.worksheets[0].cell(3, 4).unwrap();
     let index = cell.get_formula().unwrap();
-    let node = &model.parsed_formulas[0][index as usize].0;
+    let node = &model.parsed_formulas[0][index as usize].evaluated;
     let at = |row| CellReferenceRC {
         sheet: "T".to_string(),
         row,

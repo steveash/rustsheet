@@ -1,0 +1,27 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "A * fill character in a blank fraction, zero under ?/? (T-3057).",
+  "tags": [
+    "M5",
+    "text",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=TEXT(0,\"?/?*x\")",
+        "A2": "=TEXT(0,\"# ?/?*x\")",
+        "A3": "=TEXT(0,\"?/?*xy\")",
+        "A4": "=TEXT(0,\"?/?\")",
+        "A5": "=LEN(TEXT(0,\"?/?*x\"))",
+        "A6": "=LEN(TEXT(0,\"# ?/?*x\"))",
+        "A7": "=LEN(TEXT(0,\"?/?*xy\"))",
+        "A8": "=LEN(TEXT(0,\"?/?\"))",
+        "A9": "=LEN(TEXT(0,\"?/?*x \"))",
+        "A10": "=LEN(TEXT(0,\"?*x/?\"))"
+      }
+    }
+  ],
+  "expected": {}
+}

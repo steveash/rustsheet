@@ -210,7 +210,15 @@ impl Model {
             )
         };
         let decimal_sep = separator(1, ".")?;
-        let group_sep = separator(2, ",")?;
+        // The omitted group separator is "." when the decimal separator starts with ",", else ",":
+        // `NUMBERVALUE("1.5",",")` is 15, `("1.000,5",",")` 1000.5, `("1,5",";")` 15
+        // (probes/numbervalue-default-group A1-A14; docs/excel-semantics/text.md, T-2441).
+        let default_group = if decimal_sep.starts_with(',') {
+            "."
+        } else {
+            ","
+        };
+        let group_sep = separator(2, default_group)?;
         // A separator over 255 characters is #VALUE!, though only its first character is used
         // (probes/numbervalue-separator-edges A1, A2, A10, A11, A17-A19; T-2379).
         if number_text_too_long(&decimal_sep) || number_text_too_long(&group_sep) {

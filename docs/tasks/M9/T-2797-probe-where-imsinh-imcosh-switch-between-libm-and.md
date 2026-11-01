@@ -25,6 +25,9 @@ Excel's two switch points between libm-like digits and the `1/EXP(-x)` IMSINH/IM
 - Same probe, while at it: past |x| = 709 `hyperbolic_log_form` still takes libm `y.sin()`/`y.cos()`, where the product
   form now takes Excel's SIN/COS (`trig_sin_cos`, T-2629); add a few 709 < |x| < 710 cells with y where the two differ.
 - engineering.md "IMSINH, IMCOSH and IMSECH take sinh and cosh as (1/u ∓ u)/2" holds the evidence so far.
+- IMSEC (T-2920) switches its sinh²y form at the same band: `(cosh 2y − 1)/2` inside, `(cosh 2y + 1)/2 − 1` outside,
+  with only |y| = 0.00977722 (outside) and the fused probe's |y| (inside) as evidence. Add IMSEC cells near |y| = 0.01 and
+  |y| = 20 where the two forms print different text (engineering.md "IM* reciprocal kernels", T-2920 bullet).
 
 ## Acceptance criteria
 - [ ] A probe case under eval/suites/probes/cases/ filled by excel-graph, and engineering.md records both cuts (or the

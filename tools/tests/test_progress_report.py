@@ -156,7 +156,10 @@ def report() -> dict[str, Any]:
         ],
         "tiers": [{"tier": t, "functions": tiers[t], "fallback": fallback.get(t, 0)} for t in TIERS],
         "real_world_suites": ["calipers", "poi"],
-        "argument_coverage": [{"name": "ABS", "single": 0.5}, {"name": "PI", "single": None}],
+        "argument_coverage": [
+            {"name": "ABS", "single": 0.5, "pairwise": None},
+            {"name": "PI", "single": None, "pairwise": None},
+        ],
         "v15_checkpoint": {
             "in_scope": 6,
             "at_rate": 4,

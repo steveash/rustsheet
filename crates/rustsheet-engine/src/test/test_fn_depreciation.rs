@@ -58,6 +58,23 @@ fn fn_vdb_errors() {
     assert_eq!(model._get_text("A3"), *"#ERROR!");
 }
 
+/// An end period of 1e12 is past the period cap, so VDB returns `#NUM!` at once instead of walking
+/// 1e12 periods, in both modes (DEVIATION "DB and VDB period cap", T-1820, T-1977).
+#[test]
+fn fn_vdb_huge_period_is_capped() {
+    let mut model = new_empty_model();
+    model._set("A1", "=VDB(1,0,1e12,0,1e12)");
+    model._set("A2", "=VDB(1,0,1e12,0,1e12,2,TRUE)");
+    model._set("A3", "=VDB(1,0,1e12,999999999999,1e12)");
+    let started = std::time::Instant::now();
+    model.evaluate();
+    assert!(started.elapsed() < std::time::Duration::from_secs(5));
+
+    for cell in ["A1", "A2", "A3"] {
+        assert_eq!(model._get_text(cell), *"#NUM!", "{cell}");
+    }
+}
+
 /// VDB's `no_switch` reads as a boolean ("TRUE"/"FALSE" text in any case; other text, numeric too,
 /// is `#VALUE!` before the range checks), a factor of 0 is straight line, an empty window at 0 is 0,
 /// and DDB's factor takes a boolean and numeric text (probes/t2492-vdb-ddb-arguments, excel-graph,
@@ -209,8 +226,43 @@ fn fn_vdb_charge_order_bits() {
     assert_eq!(bits("A6"), (-600.0_f64).to_bits());
 }
 
+// Switching from a fractional start lays the periods on the start's fraction (financial.md
+// "VDB charge order"; probes/fin-vdb-fractional-start, fin-vdb-fractional-start-edges, T-2185).
+#[test]
+fn fn_vdb_fractional_start_bits() {
+    let mut model = new_empty_model();
+    // The same schedule wherever the start lies past the switch.
+    model._set("A1", "=VDB(2400,100,10,6.5,7.5)");
+    model._set("A2", "=VDB(2400,100,10,8.5,9.5)");
+    // Past the switch from 8.3: straight line from the 5.3 grid point.
+    model._set("A3", "=VDB(2400,300,10,8.3,9.9,1.5)");
+    // A clipped last piece stays declining; an unclipped one smaller than straight line switches.
+    model._set("A4", "=VDB(2400,300,10,9.25,10)");
+    model._set("A5", "=VDB(1000,5,10,9.25,10,4)");
+    // The first partial charge is clipped at cost - salvage, and at 0 with salvage above cost.
+    model._set("A6", "=VDB(1000,900,5,0.5,1)");
+    model._set("A7", "=VDB(2400,3000,10,0.5,1.5)");
+    // A window that is a hair above one period ends at its last grid point.
+    model._set("A8", "=VDB(2400,300,10,7.3,8.3)");
+    model.evaluate();
+    let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
+        Ok(CellValue::Number(n)) => n.to_bits(),
+        other => panic!("expected number, got {other:?}"),
+    };
+
+    assert_eq!(bits("A1"), 133.208_868_571_428_58_f64.to_bits());
+    assert_eq!(bits("A2"), 133.208_868_571_428_58_f64.to_bits());
+    assert_eq!(bits("A3"), 244.075_770_638_297_8_f64.to_bits());
+    assert_eq!(bits("A4"), 4.512_314_880_000_062_f64.to_bits());
+    assert_eq!(bits("A5"), 4.069_926_399_999_998_f64.to_bits());
+    assert_eq!(bits("A6"), 25.0_f64.to_bits());
+    assert_eq!(bits("A7"), (-600.0_f64).to_bits());
+    assert_eq!(bits("A8"), 94.623_498_24_f64.to_bits());
+}
+
 // RRI and DURATION use Excel's own operators (financial.md "DURATION and RRI operation order";
-// probes/fin-mduration-rri-fit A13, A37, T-1975).
+// probes/fin-mduration-rri-fit A13, A37, T-1975). RRI is `EXP(LN(fv/pv)*(1/nper))-1`, and
+// `fv/pv-1` at nper 1 (RRI.xlsx D12, probes-numeric/m9-fin-rri-nper-one row 32, T-2217).
 #[test]
 fn fn_rri_and_duration_bits() {
     let mut model = new_empty_model();
@@ -219,6 +271,8 @@ fn fn_rri_and_duration_bits() {
         "A2",
         "=DURATION(DATE(2020,3,15),DATE(2025,9,30),0,0.06,2,0)",
     );
+    model._set("A3", "=RRI(0.5,3,4)");
+    model._set("A4", "=RRI(1,826,40633)");
     model.evaluate();
     let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
         Ok(CellValue::Number(n)) => n.to_bits(),
@@ -227,6 +281,8 @@ fn fn_rri_and_duration_bits() {
 
     assert_eq!(bits("A1"), 0.698_646_464_634_247_2_f64.to_bits());
     assert_eq!(bits("A2"), 5.541_666_666_666_668_f64.to_bits());
+    assert_eq!(bits("A3"), 0.777_777_777_777_777_5_f64.to_bits());
+    assert_eq!(bits("A4"), 48.192_493_946_731_23_f64.to_bits());
 }
 
 // DB keeps the remaining balance and DDB charges `min(old * rate, old - salvage)`, in Excel's

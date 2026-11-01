@@ -25,13 +25,14 @@ from pathlib import Path
 from typing import Any
 
 from rustsheet_tools import repo_root
-from rustsheet_tools.progress_report import arguments, check, evidence, goals, history, page, parity
+from rustsheet_tools.progress_report import arguments, check, codebase, evidence, goals, history, page, parity
 from rustsheet_tools.progress_report.model import (
     Parity,
     ProgressReportError,
     ReportShapeError,
     Run,
     compute,
+    docs_dir,
     load_object,
     run_of,
     tasks_of,
@@ -90,10 +91,7 @@ def main(argv: list[str] | None = None, git: history.Git | None = None) -> None:
     )
     args = ap.parse_args(argv)
     if args.check:
-        # The default docs dir is named by the page's own path because "docs/progress.md" is in
-        # CODE_READ_PATHS (scripts/ci_changes.py, decision 0049) and a bare "docs" is not: keep it so,
-        # or scripts/check_docs_readers.py fails `make hygiene`.
-        run_check(args.out_dir or (repo / "docs/progress.md").parent)
+        run_check(args.out_dir or docs_dir(repo))
         return
     if args.out_dir is None:
         ap.error("--out-dir is required unless --check is given")
@@ -113,6 +111,7 @@ def main(argv: list[str] | None = None, git: history.Git | None = None) -> None:
                 previous,
                 coverage=outcome[3],
                 git=git,
+                repo=repo,
                 tasks=load_object(args.tasks),
                 milestones=goals.parse_milestones(_read_text(args.milestones)),
             )
@@ -169,13 +168,15 @@ def _complete_outcome(
     *,
     coverage: arguments.Coverage,
     git: history.Git,
+    repo: Path,
     tasks: dict[str, Any],
     milestones: list[goals.MilestoneDoc],
 ) -> Result:
     """A complete run: every generated block, the charts and functions.md, and its history row."""
     counts = tasks_of(tasks)
     # HEAD is read only when the report has no commit (see history.complete_row).
-    row = history.complete_row(run, data, counts, None if run.commit else git.head())
+    counts_now = codebase.measure(repo)
+    row = history.complete_row(run, data, counts, None if run.commit else git.head(), counts_now)
     rows = history.add(rows, row)
     last = history.last_complete(rows, row["date"])
     commits = (
@@ -189,6 +190,7 @@ def _complete_outcome(
         "since-last-run": history.since_block(row, last, commits),
         "trends": history.trends_block(parity.ASSETS),
         "arguments": arguments.block(coverage),
+        "codebase": codebase.block(counts_now, last),
     }
     summary = [
         f"{len(data.functions)} functions: " + ", ".join(f"{t.tier} {t.functions}" for t in data.tiers),

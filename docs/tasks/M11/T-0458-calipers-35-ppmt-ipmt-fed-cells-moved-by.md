@@ -4,7 +4,7 @@ title: "Calipers: 35 PPMT/IPMT-fed cells moved by ulps after T-2242"
 milestone: M11
 lane: functions-financial
 status: todo
-priority: P1
+priority: P3
 size: S
 tier: opus
 depends_on: []

@@ -16,6 +16,8 @@ F.INV (and BETA.INV where its shapes are extreme) gives Excel's value at a tiny 
 the engine uses saturates, panicked or never finished, instead of `#NUM!` or a wrong number.
 
 ## Context
+- Gate A known failures this task owns (T-3358, eval/accuracy/known-failures.tsv): accuracy/F.INV/s1 A154 and A168 (deep-tail F.INV, the engine far off where Excel matches the math). Removing the lines
+  once they pass is part of this task (a passing listed point fails the check as stale).
 Found by T-1848, which capped statrs' `inv_beta_reg` (`statistical/inverse_beta.rs`) so that it is `#NUM!` where statrs
 panicked or hung (statistics.md "Quantile searches: per-call cap and lifting", a DEVIATION). Excel's values,
 probes/stat-quantile-lift (excel-graph, 2026-10-18):
@@ -96,6 +98,13 @@ Cells:
 - gen-m9/f34f66fb7f81e673.case.json (1): Calc!A295
 - gen-m9/fd9fa22d212080d6.case.json (1): Calc!A209
 - gen-m9/fec39efaba9284c3.case.json (3): Calc!A14, A76, A206
+- Cells this task owns that an earlier owner rule credited to it or to another task only by an A1
+  name written beside a different case (decision 0159, T-0099):
+  - gen-m9/7c20351562a2d71d.case.json: Calc!A37, A254
+  - gen-m9/c18dbf21f11093f3.case.json: Calc!A190
+  - gen-m9/589f42e67f4b4b8d.case.json: Calc!A319
+  - gen-m9/8dd2312c96effb1b.case.json: Calc!A169
+  - gen-m9/c2974c061384fdd9.case.json: Calc!A267
 
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2255): these 118 known-failure lines disappear from eval/baseline/gen-m9.txt

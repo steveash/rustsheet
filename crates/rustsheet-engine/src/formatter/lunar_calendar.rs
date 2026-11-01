@@ -1,7 +1,9 @@
 //! The Chinese lunar calendars of locale tag calendar digits E, F, 11, 12 and 13, as Excel computes
-//! them from 1900-01-01 to 2100-12-31. Evidence: probes/text-locale-lunar-months-1900 (the start
-//! and month of every lunar month in that range, per digit), text-locale-lunar-edges,
-//! text-locale-lunar-tokens (excel-graph, 2026-10-26, T-1922); number-formats.md "Calendars of a
+//! them from 1900-01-01 to 9999-12-31. Evidence: probes/text-locale-lunar-months-1900 (the start
+//! and month of every lunar month to 2100, per digit), text-locale-lunar-edges,
+//! text-locale-lunar-tokens (excel-graph, 2026-10-26, T-1922); past 2100
+//! probes/t2759-lunar-packed-* (2101-9999), packed into `lunar_2101.bin` by `docs/research/t2759_lunar_tables.py`, and
+//! t2759-lunar-months-2101 (excel-graph, 2026-10-27, T-2759); number-formats.md "Calendars of a
 //! locale tag".
 //!
 //! The tables are Excel's output, not an astronomical calendar: from lunar new year 1960 to lunar
@@ -9,7 +11,11 @@
 //! days and years of 14 months (`[$-110409]m|d` of 1949-02-11 is "14|1"), and its new years
 //! differ from the published ones (`[$-110409]m/d` of 1901-02-18 is "1/15"). Months count from 1
 //! through the year, a leap month included (2023's leap second month is month 3), and the year
-//! changes at month 1 except on 1960-01-01 and 2051-01-01 (see [`lunar_ymd`]).
+//! changes at month 1 except on some 1 Januaries, 1960-01-01 and 2051-01-01 among them (see
+//! [`lunar_ymd`]). Past 2100 Excel's months drift from the astronomical ones and the 1-, 15- and
+//! 28-day months and 14-month years come back.
+
+use std::sync::OnceLock;
 
 use super::locale_tag::LunarTable;
 
@@ -19,12 +25,16 @@ const FIRST_MONTH_START: i64 = -14;
 /// The lunar year and month of that first month.
 const FIRST_YEAR: i32 = 1899;
 const FIRST_MONTH: u32 = 12;
-/// The last serial the tables cover, 2100-12-31. TODO(T-2759): Excel's calendar to 9999.
-pub(crate) const LAST_SERIAL: i64 = 73415;
+/// The last serial the tables cover, 9999-12-31, Excel's last date.
+pub(crate) const LAST_SERIAL: i64 = 2_958_465;
 /// Its day number.
 const LAST_DAY: i64 = LAST_SERIAL - 1;
-/// Day-number ranges that already carry the next year: from Gregorian 1 January to the day before
-/// month 1, in 1960 and 2051 (`[$-110409]yyyy/m/d` of 1959-12-31 is "1959/12/18" and of
+/// The day number of 2101-01-01, past which [`LATER`] is read (its first month starts on or after
+/// this day; the days before that start belong to the last month of [`CHINESE`]), so a table that
+/// failed to decode could only lose the dates past 2100.
+const FIRST_LATER_DAY: i64 = 73_415;
+/// Day-number ranges to 2100 that already carry the next year: from Gregorian 1 January to the day
+/// before month 1, in 1960 and 2051 (`[$-110409]yyyy/m/d` of 1959-12-31 is "1959/12/18" and of
 /// 1960-01-01 "1960/12/19"; probes/text-locale-lunar-tokens A82-A85).
 const EARLY_YEARS: [(i64, i64); 2] = [(21915, 21941), (55153, 55179)];
 /// A new-year flag on a month length: the month after this one is month 1.
@@ -217,7 +227,7 @@ static EASTERN_CHANGES: [u32; 160] = [
 
 /// The lunar year, month (1-14, counting a leap month) and day of 1900-system `serial`, or `None`
 /// where Excel shows `#VALUE!` (serial 60, the fictitious 1900-02-29, and negative serials) and
-/// past the tables. Serial 0 reads as serial 1 (`[$-110409]d` of both is "16").
+/// past 9999. Serial 0 reads as serial 1 (`[$-110409]d` of both is "16").
 pub(crate) fn lunar_ymd(serial: i64, table: LunarTable) -> Option<(i32, u32, u32)> {
     let day = match serial {
         0 => 1,
@@ -227,6 +237,16 @@ pub(crate) fn lunar_ymd(serial: i64, table: LunarTable) -> Option<(i32, u32, u32
     };
     if day > LAST_DAY {
         return None;
+    }
+    if day >= FIRST_LATER_DAY {
+        let [chinese, eastern] = later_tables()?;
+        let later = match table {
+            LunarTable::Chinese => chinese,
+            LunarTable::Eastern => eastern,
+        };
+        if day >= later.months.first()?.start {
+            return later.ymd(day);
+        }
     }
     let (mut year, mut month, mut start) = (FIRST_YEAR, FIRST_MONTH, FIRST_MONTH_START);
     for (index, &chinese) in CHINESE.iter().enumerate() {
@@ -239,20 +259,120 @@ pub(crate) fn lunar_ymd(serial: i64, table: LunarTable) -> Option<(i32, u32, u32
             break;
         }
         start = next;
-        if entry & NEW_YEAR == 0 {
-            month += 1;
-        } else {
-            (year, month) = (year + 1, 1);
-        }
+        (year, month) = next_month(entry, year, month);
     }
-    if EARLY_YEARS
-        .iter()
-        .any(|(first, last)| (*first..=*last).contains(&day))
-    {
+    if in_early_year(&EARLY_YEARS, day) {
         year += 1;
     }
     let day_of_month = u32::try_from(day - start + 1).ok()?;
     Some((year, month, day_of_month))
+}
+
+/// The lunar year and month after month `month` of `year`, whose table entry is `entry`.
+fn next_month(entry: u8, year: i32, month: u32) -> (i32, u32) {
+    if entry & NEW_YEAR == 0 {
+        (year, month + 1)
+    } else {
+        (year + 1, 1)
+    }
+}
+
+/// Whether `day` lies in one of the `early` ranges, which carry the next lunar year.
+fn in_early_year(early: &[(i64, i64)], day: i64) -> bool {
+    early
+        .iter()
+        .any(|(first, last)| (*first..=*last).contains(&day))
+}
+
+/// Excel's months from the first lunar month that starts in 2101 to 9999-12-31, per table
+/// (Chinese, then Eastern), as `docs/research/t2759_lunar_tables.py` packs probes/t2759-lunar-packed-*:
+/// the first month's start day (u32, little-endian), lunar year (u16) and month (u8); the count
+/// of months (u32) and one byte per month, its length with [`NEW_YEAR`] when the next month is
+/// month 1; the count of early years (u8) and each one's first and last day (u32 each). The days
+/// before the first month belong to the last month of [`CHINESE`].
+static LATER: &[u8] = include_bytes!("lunar_2101.bin");
+
+/// One month of a [`LaterTable`].
+struct LaterMonth {
+    start: i64,
+    year: i32,
+    month: u32,
+}
+
+/// A decoded table of [`LATER`].
+struct LaterTable {
+    months: Vec<LaterMonth>,
+    early_years: Vec<(i64, i64)>,
+}
+
+impl LaterTable {
+    /// Decodes one table from the front of `bytes`, leaving `bytes` after it.
+    fn decode(bytes: &mut &[u8]) -> Option<LaterTable> {
+        let mut start = i64::from(read_u32(bytes)?);
+        let mut year = i32::from(u16::from_le_bytes(take(bytes)?));
+        let mut month = u32::from(u8::from_le_bytes(take(bytes)?));
+        let count = usize::try_from(read_u32(bytes)?).ok()?;
+        let lengths = bytes.get(..count)?;
+        *bytes = bytes.get(count..)?;
+        let mut months = Vec::with_capacity(count);
+        for &entry in lengths {
+            months.push(LaterMonth { start, year, month });
+            start += i64::from(entry & LENGTH);
+            (year, month) = next_month(entry, year, month);
+        }
+        let early_count = u8::from_le_bytes(take(bytes)?);
+        let early_years = (0..early_count)
+            .map(|_| Some((i64::from(read_u32(bytes)?), i64::from(read_u32(bytes)?))))
+            .collect::<Option<Vec<_>>>()?;
+        Some(LaterTable {
+            months,
+            early_years,
+        })
+    }
+
+    /// The lunar date of `day`, on or after the first month.
+    fn ymd(&self, day: i64) -> Option<(i32, u32, u32)> {
+        let index = self
+            .months
+            .partition_point(|month| month.start <= day)
+            .checked_sub(1)?;
+        let month = self.months.get(index)?;
+        let early = in_early_year(&self.early_years, day);
+        // Every 31-day month holds an early year's 1 January, and from that day on Excel's day
+        // numbers run one behind: the day before reads the same (2232-12-31 and 2233-01-01 are
+        // both "12/19"; probes/t2759-lunar-months-2101 A132, A133), so the month still ends on 30.
+        let long = self
+            .months
+            .get(index + 1)
+            .is_some_and(|next| next.start - month.start == 31);
+        let day_of_month = u32::try_from(day - month.start + 1 - i64::from(early && long)).ok()?;
+        Some((month.year + i32::from(early), month.month, day_of_month))
+    }
+}
+
+/// [`LATER`] decoded on first use, indexed by [`LunarTable`]; `None` if it does not decode.
+fn later_tables() -> Option<&'static [LaterTable; 2]> {
+    static TABLES: OnceLock<Option<[LaterTable; 2]>> = OnceLock::new();
+    TABLES
+        .get_or_init(|| {
+            let mut bytes = LATER;
+            let chinese = LaterTable::decode(&mut bytes)?;
+            let eastern = LaterTable::decode(&mut bytes)?;
+            bytes.is_empty().then_some([chinese, eastern])
+        })
+        .as_ref()
+}
+
+/// The next `N` bytes of `bytes`, advancing past them.
+fn take<const N: usize>(bytes: &mut &[u8]) -> Option<[u8; N]> {
+    let (head, rest) = bytes.split_first_chunk::<N>()?;
+    *bytes = rest;
+    Some(*head)
+}
+
+/// The next little-endian `u32` of `bytes`, advancing past it.
+fn read_u32(bytes: &mut &[u8]) -> Option<u32> {
+    take(bytes).map(u32::from_le_bytes)
 }
 
 /// The [`EASTERN_CHANGES`] entry of month `index`, if any.

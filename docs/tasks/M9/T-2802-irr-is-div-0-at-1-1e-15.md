@@ -24,6 +24,14 @@ A likely shape: a division by an exact zero (a discount factor of 0, 1/v, or a f
 probe of nearby flows (X = 1E+15 +- a few ulp, other zero-first-flow sets).
 Code: `compute_irr`, `irr_secant`, `irr_fallback` in crates/rustsheet-engine/src/functions/financial/financial_util.rs.
 
+Cell added by gap triage (2026-10-31, `make eval` on origin/main, excel-graph; `scripts/exit_owners.py --all-off`
+listed it as unattributed because BITXOR is not glue, and no open task named it):
+- gen-m9/530c636749a85209 Calc!A338 `=HYPGEOM.DIST(IRR(Data!C2:D3,BITXOR(235,Data!E4)),3,2,19,NOT(..))`: Excel `#DIV/0!`,
+  ours `#NUM!`. Data!C2:D3 is " x ", -1; 1E+15, "x", so the IRR is `IRR({-1,1E+15},143)` (texts skipped,
+  BITXOR(235,100) = 143): the same `{-1,1E+15}` `#DIV/0!` as above, from a guess of 143. HYPGEOM.DIST passes the error.
+Cells:
+- gen-m9/530c636749a85209.case.json (1): Calc!A338
+
 ## Acceptance criteria
 - [ ] The cells above pass (`make eval-baseline` drops them) with no new known-failure lines; the rule is in financial.md.
 - [ ] `make check` green; reviewers approve.

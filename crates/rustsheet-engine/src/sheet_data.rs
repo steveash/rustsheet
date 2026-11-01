@@ -30,7 +30,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use bitcode::{Decode, Encode};
 
-use crate::constants::LAST_ROW;
+use crate::constants::{LAST_COLUMN, LAST_ROW};
+use crate::sheet_reads::{PositionHint, ReadLog};
 use crate::types::Cell;
 
 const CHUNK_BITS: u32 = 10;
@@ -75,6 +76,19 @@ pub struct SheetData {
     /// write (a spill) can tell that what it found before is out of date.
     #[bitcode(skip)]
     layout_version: u64,
+    /// The last row that exists (0 for none), kept in step by every write, so that `last_row`,
+    /// which every clipped walk asks, costs nothing (T-0465). `None` until known, for a sheet
+    /// decoded and not yet rebuilt, when `last_row` scans the chunks. Not serialised. Every write
+    /// that creates or removes a row (`row_or_insert`, `remove_row`) must keep it.
+    #[bitcode(skip)]
+    known_last_row: Option<i32>,
+    /// What has been read of the cells while a record is on (`sheet_reads.rs`, T-0453). Not
+    /// serialised.
+    #[bitcode(skip)]
+    pub(crate) reads: ReadLog,
+    /// Where in its row [`SheetData::cell`] found its last cell (`PositionHint`).
+    #[bitcode(skip)]
+    hint: PositionHint,
 }
 
 #[derive(Encode, Decode, Debug, Clone)]
@@ -180,8 +194,12 @@ impl SheetData {
             chunk.rows[index] = Some(Row::default());
             chunk.used += 1;
             self.row_count += 1;
+            self.known_last_row = Some(match self.known_last_row {
+                Some(last) => last.max(row),
+                None => self.scan_last_row(),
+            });
         }
-        chunk.rows[index].as_mut()
+        self.row_mut(row)
     }
 
     /// Every row that exists with its number, in ascending order.
@@ -205,14 +223,20 @@ impl SheetData {
     /// The cell at a position, if there is one.
     #[inline]
     pub fn cell(&self, row: i32, column: i32) -> Option<&Cell> {
+        self.reads.cell(row, column);
         let row = self.row(row)?;
+        if let Some((_, cell)) = row.cells.get(self.hint.get()).filter(|(c, _)| *c == column) {
+            return Some(cell);
+        }
         let index = row.position(column).ok()?;
+        self.hint.set(index);
         Some(&row.cells[index].1)
     }
 
     /// The cell at a position, to be changed in place.
     #[inline]
     pub fn cell_mut(&mut self, row: i32, column: i32) -> Option<&mut Cell> {
+        self.reads.cell(row, column);
         let row = self.row_mut(row)?;
         let index = row.position(column).ok()?;
         Some(&mut row.cells[index].1)
@@ -241,12 +265,14 @@ impl SheetData {
 
     /// True if the sheet has no rows.
     pub fn is_empty(&self) -> bool {
+        self.reads.extent();
         self.row_count == 0
     }
 
     /// Every cell of the sheet with its row and column, in natural order:
     /// by row, and within a row by column.
     pub fn cells(&self) -> impl Iterator<Item = (i32, i32, &Cell)> {
+        self.reads.rows(1, LAST_ROW);
         self.rows_in_order().flat_map(|(row, row_data)| {
             row_data
                 .cells
@@ -255,9 +281,15 @@ impl SheetData {
         })
     }
 
-    /// The number of the last row that exists, or 0 for an empty sheet. Cheap: it
-    /// looks at whole chunks, so callers can bound whole-column walks by it.
+    /// The number of the last row that exists, or 0 for an empty sheet. Kept by every write, so
+    /// callers can bound whole-column walks by it.
     pub(crate) fn last_row(&self) -> i32 {
+        self.reads.extent();
+        self.known_last_row.unwrap_or_else(|| self.scan_last_row())
+    }
+
+    /// [`Self::last_row`] from the chunks: the last chunk's slots, from the end.
+    fn scan_last_row(&self) -> i32 {
         for (chunk_index, chunk) in self.chunks.iter().enumerate().rev() {
             let Some(chunk) = chunk else { continue };
             if let Some(index) = chunk.rows.iter().rposition(Option::is_some) {
@@ -270,6 +302,7 @@ impl SheetData {
     /// The number of the last column that holds a cell, or 0 for an empty sheet.
     /// O(log columns), so callers can bound whole-row walks by it.
     pub(crate) fn last_column(&self) -> i32 {
+        self.reads.extent();
         self.column_counts.keys().next_back().copied().unwrap_or(0)
     }
 
@@ -294,7 +327,55 @@ impl SheetData {
         }
         self.column_counts = counts;
         self.column_rows = None;
+        self.known_last_row = Some(self.scan_last_row());
         self.layout_version = self.layout_version.wrapping_add(1);
+    }
+
+    /// Checks the storage of a decoded sheet, which the bytes control: every read indexes a chunk's
+    /// rows by the row number unchecked, and the counts are trusted by every write. Holds when
+    /// there are at most as many chunks as the grid has, each `CHUNK_ROWS` rows long with `used`
+    /// counting them, rows only within `1..=LAST_ROW`, `row_count` counting every row, and the
+    /// columns of a row strictly ascending within `1..=LAST_COLUMN`. One pass, linear in the
+    /// chunks and cells.
+    pub(crate) fn check_layout(&self) -> Result<(), String> {
+        if self.chunks.len() > (LAST_ROW as usize >> CHUNK_BITS) + 1 {
+            return Err("more row chunks than the sheet has rows".to_string());
+        }
+        let mut rows = 0;
+        for (chunk_index, chunk) in self.chunks.iter().enumerate() {
+            let Some(chunk) = chunk else { continue };
+            if chunk.rows.len() != CHUNK_ROWS {
+                return Err(format!(
+                    "row chunk {chunk_index} is not {CHUNK_ROWS} rows long"
+                ));
+            }
+            let mut used = 0;
+            for (index, row) in chunk.rows.iter().enumerate() {
+                let Some(row) = row else { continue };
+                let number = (chunk_index << CHUNK_BITS) | index;
+                if number == 0 || number > LAST_ROW as usize {
+                    return Err(format!("row {number} is outside the sheet"));
+                }
+                let mut previous = 0;
+                for &(column, _) in &row.cells {
+                    if column <= previous || column > LAST_COLUMN {
+                        return Err(format!(
+                            "row {number}: column {column} is out of order or outside the sheet"
+                        ));
+                    }
+                    previous = column;
+                }
+                used += 1;
+            }
+            if used != chunk.used {
+                return Err(format!("row chunk {chunk_index} miscounts its rows"));
+            }
+            rows += used;
+        }
+        if rows != self.row_count {
+            return Err("the sheet miscounts its rows".to_string());
+        }
+        Ok(())
     }
 
     /// Builds the column index from the cells if it is not built yet. One pass over the cells
@@ -351,6 +432,7 @@ impl SheetData {
         columns: &mut Vec<i32>,
     ) -> bool {
         columns.clear();
+        self.reads.columns(column1, column2);
         let Some(index) = &self.column_rows else {
             return false;
         };
@@ -383,6 +465,7 @@ impl SheetData {
         rows: &mut Vec<i32>,
     ) {
         rows.clear();
+        self.reads.area((from, column, to, column));
         let Some(index) = &self.column_rows else {
             return;
         };
@@ -399,11 +482,13 @@ impl SheetData {
 
     /// The rows that exist, in ascending order.
     pub fn rows(&self) -> Vec<i32> {
+        self.reads.rows(1, LAST_ROW);
         self.rows_in_order().map(|(row, _)| row).collect()
     }
 
     /// The columns of a row that have cells, in ascending order.
     pub fn columns_in_row(&self, row: i32) -> Vec<i32> {
+        self.reads.rows(row, row);
         match self.row(row) {
             Some(row_data) => row_data.cells.iter().map(|(column, _)| *column).collect(),
             None => Vec::new(),
@@ -416,6 +501,7 @@ impl SheetData {
     /// total work is one pass over the chunks of the span, whatever the number of rows in it.
     pub(crate) fn next_row_between(&self, from: i32, to: i32) -> RowSearch {
         let mut search = RowSearch::default();
+        self.reads.rows(from, to);
         if from > to {
             return search;
         }
@@ -457,6 +543,7 @@ impl SheetData {
         columns: &mut Vec<i32>,
     ) {
         columns.clear();
+        self.reads.area((row, column1, row, column2));
         let Some(row_data) = self.row(row) else {
             return;
         };
@@ -469,8 +556,32 @@ impl SheetData {
         );
     }
 
+    /// The places of the cells that exist in the `height` by `width` block from (`row`, `column`),
+    /// row by row: a walk costs the cells there are, not the area, which can be the whole sheet
+    /// (T-2896).
+    pub(crate) fn places_in_block(
+        &self,
+        (row, column): (i32, i32),
+        (width, height): (i32, i32),
+    ) -> Vec<(i32, i32)> {
+        let (last_row, last_column) = (
+            row.saturating_add(height - 1),
+            column.saturating_add(width - 1),
+        );
+        let mut places = Vec::new();
+        let mut columns = Vec::new();
+        let mut from = row;
+        while let Some(found) = self.next_row_between(from, last_row).row {
+            self.columns_in_row_between(found, column, last_column, &mut columns);
+            places.extend(columns.iter().map(|&c| (found, c)));
+            from = found + 1;
+        }
+        places
+    }
+
     /// The cells of a row with their column, in ascending order of column.
     pub fn cells_in_row(&self, row: i32) -> Vec<(i32, &Cell)> {
+        self.reads.rows(row, row);
         match self.row(row) {
             Some(row_data) => row_data
                 .cells
@@ -494,6 +605,9 @@ impl SheetData {
             self.row_count -= 1;
             if chunk.used == 0 {
                 self.chunks[chunk_index] = None;
+            }
+            if self.known_last_row == Some(row) {
+                self.known_last_row = Some(self.scan_last_row());
             }
             for (column, _) in &removed.cells {
                 self.unindex_cell(row, *column);
@@ -550,6 +664,55 @@ mod test {
 
     fn number(v: f64) -> Cell {
         Cell::NumberCell { v, s: 0 }
+    }
+
+    /// A sheet with cells in rows 1 and 2000, to be broken in one place at a time.
+    fn two_rows() -> SheetData {
+        let mut data = SheetData::new();
+        data.set_cell(1, 1, number(1.0));
+        data.set_cell(1, 3, number(1.0));
+        data.set_cell(2000, 2, number(1.0));
+        data
+    }
+
+    fn first_row(data: &mut SheetData) -> &mut Row {
+        data.chunks[0].as_mut().unwrap().rows[1].as_mut().unwrap()
+    }
+
+    #[test]
+    fn check_layout_accepts_what_writes_build() {
+        assert_eq!(two_rows().check_layout(), Ok(()));
+        assert_eq!(SheetData::new().check_layout(), Ok(()));
+        let mut data = SheetData::new();
+        data.set_cell(LAST_ROW, LAST_COLUMN, number(1.0));
+        assert_eq!(data.check_layout(), Ok(()));
+    }
+
+    #[test]
+    fn check_layout_refuses_what_bytes_can_forge() {
+        let broken: [fn(&mut SheetData); 8] = [
+            |d| d.chunks.resize_with(2000, || None),
+            |d| d.chunks[0].as_mut().unwrap().rows.truncate(5),
+            |d| d.chunks[0].as_mut().unwrap().rows[0] = Some(Row::default()),
+            |d| d.chunks[0].as_mut().unwrap().used = 7,
+            |d| d.row_count = 9,
+            |d| first_row(d).cells.reverse(),
+            |d| first_row(d).cells[1].0 = LAST_COLUMN + 1,
+            |d| first_row(d).cells[0].0 = 0,
+        ];
+        for (case, break_it) in broken.iter().enumerate() {
+            let mut data = two_rows();
+            break_it(&mut data);
+            assert!(data.check_layout().is_err(), "case {case}");
+        }
+        // A row past the last one, in the slots of the last chunk that the grid does not reach.
+        let mut data = SheetData::new();
+        data.set_cell(LAST_ROW, 1, number(1.0));
+        let last = data.chunks.last_mut().unwrap().as_mut().unwrap();
+        last.rows[1] = Some(Row::default());
+        last.used += 1;
+        data.row_count += 1;
+        assert!(data.check_layout().is_err());
     }
 
     #[test]
@@ -632,6 +795,33 @@ mod test {
         assert_eq!(decoded.last_column(), 6);
         decoded.remove_cell(2, 6);
         assert_eq!(decoded.last_column(), 3);
+    }
+
+    /// The kept last row (T-0465) is right before and after a decode, before the rebuild too
+    /// (it scans then), and after every kind of write.
+    #[test]
+    fn the_last_row_is_kept_by_every_write() {
+        let mut data = SheetData::new();
+        data.set_cell(9, 3, number(1.0));
+        data.set_cell(3000, 1, number(1.0));
+        let mut decoded: SheetData = bitcode::decode(&bitcode::encode(&data)).unwrap();
+        assert_eq!(decoded.last_row(), 3000);
+        decoded.set_cell(2000, 1, number(1.0));
+        assert_eq!(decoded.last_row(), 3000);
+        decoded.rebuild_column_counts();
+        assert_eq!(decoded.last_row(), 3000);
+        decoded.set_row(4000, Vec::new());
+        assert_eq!(decoded.last_row(), 4000);
+        decoded.remove_row(4000);
+        assert_eq!(decoded.last_row(), 3000);
+        decoded.remove_cell(3000, 1);
+        assert_eq!(decoded.last_row(), 2000);
+        decoded.remove_cell(9, 3);
+        decoded.remove_cell(2000, 1);
+        assert_eq!(decoded.last_row(), 0);
+        let mut fresh = SheetData::default();
+        fresh.set_cell(5, 1, number(1.0));
+        assert_eq!(fresh.last_row(), 5);
     }
 
     #[test]

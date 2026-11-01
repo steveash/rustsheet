@@ -39,6 +39,11 @@
 # the `domain` draw and never on a `hard` domain. `pool_rate: <share>` replaces the 35% (the D* database and criteria
 # take 0.8: their pools point into the case's `Db` sheet, tools/src/rustsheet_tools/gen/database.py, and match only
 # each other).
+# `same_shape: true` on the `range` params of one call (the *IFS sum and criteria ranges) gives them one shared
+# rows x columns shape, except in about 1 call in 10 (SHAPE_MISMATCH_RATE) whose ranges stay free so the
+# shape-mismatch #VALUE! stays covered (T-2719). `probe: <param>` on a `value` param draws it from the cells of that
+# `range` param (PROBE_HIT_RATE, 95%), so MATCH's lookup_value usually exists in the array (T-2719). On a `vector`
+# param, `wide_rate: <share>` makes that share of draws 2-D and `row_rate: <share>` a one-row range (T-2719).
 # `vector: true` on a `range` param makes the generator pass a one-column range (LOOKUP and XLOOKUP/XMATCH lookup
 # vectors: a 2-D one is #N/A or #VALUE!, so random widths would hide the search itself; WRAPROWS/WRAPCOLS on an
 # `array` param). `full: true` makes every range span all data rows, so the arrays of one call are the same height
@@ -253,17 +258,17 @@ functions:
     prior: 5
     returns: number
     params:
-      - { name: lookup_value, mode: value, type: any }
-      - { name: lookup_array, mode: range, type: any }
-      - { name: match_type, mode: value, type: number, optional: true, domain: { int: true, min: -1, max: 1 } }
+      - { name: lookup_value, mode: value, type: any, probe: lookup_array }
+      - { name: lookup_array, mode: range, type: any, vector: true, wide_rate: 0.05, row_rate: 0.2 }
+      - { name: match_type, mode: value, type: number, optional: true, always: true, domain: { enum: [0, 0, 0, 0, 0, 0, 0, 1, -1] } }
   - name: SUMIFS
     category: math
     milestone: M2
     prior: 3
     returns: number
     params:
-      - { name: sum_range, mode: range, type: number }
-      - { name: criteria_range, mode: range, type: any, repeat: { group: [criteria_range, criteria], min: 1, max: 127 } }
+      - { name: sum_range, mode: range, type: number, same_shape: true }
+      - { name: criteria_range, mode: range, type: any, same_shape: true, repeat: { group: [criteria_range, criteria], min: 1, max: 127 } }
       - { name: criteria, mode: criteria, type: any }
   - name: COUNTIFS
     category: statistical
@@ -271,7 +276,7 @@ functions:
     prior: 2
     returns: number
     params:
-      - { name: criteria_range, mode: range, type: any, repeat: { group: [criteria_range, criteria], min: 1, max: 127 } }
+      - { name: criteria_range, mode: range, type: any, same_shape: true, repeat: { group: [criteria_range, criteria], min: 1, max: 127 } }
       - { name: criteria, mode: criteria, type: any }
   - name: ROUNDUP
     category: math
@@ -567,8 +572,8 @@ functions:
     prior: 0.5
     returns: number
     params:
-      - { name: average_range, mode: range, type: number }
-      - { name: criteria_range, mode: range, type: any, repeat: { group: [criteria_range, criteria], min: 1, max: 127 } }
+      - { name: average_range, mode: range, type: number, same_shape: true }
+      - { name: criteria_range, mode: range, type: any, same_shape: true, repeat: { group: [criteria_range, criteria], min: 1, max: 127 } }
       - { name: criteria, mode: criteria, type: any }
   - name: BAHTTEXT
     category: text
@@ -2865,8 +2870,8 @@ functions:
     prior: 0.2
     returns: number
     params:
-      - { name: max_range, mode: range, type: number }
-      - { name: criteria_range, mode: range, type: any, repeat: { group: [criteria_range, criteria], min: 1, max: 127 } }
+      - { name: max_range, mode: range, type: number, same_shape: true }
+      - { name: criteria_range, mode: range, type: any, same_shape: true, repeat: { group: [criteria_range, criteria], min: 1, max: 127 } }
       - { name: criteria, mode: criteria, type: any }
   - name: MDETERM
     category: math
@@ -2919,8 +2924,8 @@ functions:
     prior: 0.2
     returns: number
     params:
-      - { name: min_range, mode: range, type: number }
-      - { name: criteria_range, mode: range, type: any, repeat: { group: [criteria_range, criteria], min: 1, max: 127 } }
+      - { name: min_range, mode: range, type: number, same_shape: true }
+      - { name: criteria_range, mode: range, type: any, same_shape: true, repeat: { group: [criteria_range, criteria], min: 1, max: 127 } }
       - { name: criteria, mode: criteria, type: any }
   - name: MINUTE
     category: date

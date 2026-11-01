@@ -4,8 +4,10 @@ on:
   pull_request:
   # Decision 0053: the merge queue tests each group merged with current main; every job runs.
   merge_group:
+  # Decision 0147 (SPEC-0027 section 9): the merge train's two branches, by literal name, so
+  # merge-train/revert-* and merge-train/probe start nothing (scripts/test_check_ci_workflow.py).
   push:
-    branches: [main]
+    branches: [main, merge-train/current, merge-train/shadow]
   workflow_dispatch:
 
 permissions:
@@ -25,6 +27,9 @@ jobs:
   # classify, every push to main and every merge-queue group (decision 0053) runs everything.
   # The rules live in scripts/ci_changes.py (tested by make hygiene); decision 0066 runs the copy
   # from the PR's base commit, so a PR cannot change how its own files are classified.
+  # Decision 0147 keys it on github.ref: a PR diffs from the merge base of its base and head shas
+  # to its head, a merge-train push or dispatch from the merge base of origin/main and HEAD (the
+  # classifier read from that base); every other ref runs everything.
   changes:
     name: changes (docs-only?)
     runs-on: ubuntu-24.04
@@ -39,21 +44,31 @@ jobs:
       - id: diff
         env:
           EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
           BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           code=true
-          : > "$RUNNER_TEMP/changed"
-          # --no-renames lists both sides of a rename, so moving code into docs/ still counts as
-          # code; -z keeps unusual file names intact. Every failure leaves code=true.
-          if [ "$EVENT" = "pull_request" ] && [ -n "$BASE" ] \
-            && git show "$BASE:scripts/ci_changes.py" > "$RUNNER_TEMP/ci_changes.py" \
-            && git diff -z --no-renames --name-only "$BASE" HEAD > "$RUNNER_TEMP/changed" \
-            && out=$(python3 -I "$RUNNER_TEMP/ci_changes.py" < "$RUNNER_TEMP/changed") \
+          # from/to: ci_changes.py diffs the single merge base of the two to `to` (it requires
+          # exactly one, and a full clone). src: the commit whose classifier runs (decision 0066).
+          from='' to='' src=''
+          case "$REF" in
+            refs/heads/merge-train/current | refs/heads/merge-train/shadow)
+              from=origin/main to=HEAD
+              src=$(git merge-base origin/main HEAD) || src='' ;;
+            *)
+              if [ "$EVENT" = "pull_request" ]; then from=$BASE to=$PR_HEAD src=$BASE; fi ;;
+          esac
+          # Every failure leaves code=true. A base whose classifier predates --merge-base reads
+          # the empty stdin and says code=true.
+          if [ -n "$from" ] && [ -n "$to" ] && [ -n "$src" ] \
+            && git show "$src:scripts/ci_changes.py" > "$RUNNER_TEMP/ci_changes.py" \
+            && out=$(python3 -I "$RUNNER_TEMP/ci_changes.py" --merge-base "$from" "$to" < /dev/null) \
             && [ "$out" = "code=false" ]; then
             code=false
           fi
-          # File names are attacker-controlled: never echo them raw (workflow-command injection).
-          echo "changed files: $(tr -cd '\0' < "$RUNNER_TEMP/changed" | wc -c), code=$code"
+          # File names are attacker-controlled: ci_changes.py logs only their count.
+          echo "event=$EVENT code=$code"
           echo "code=$code" >> "$GITHUB_OUTPUT"
 
   # Decision 0122: `make test` runs as two shards in parallel (the engine's unit tests took about
@@ -117,13 +132,14 @@ jobs:
       # Decision 0125: one run of the suites judges both the baseline gate (eval-check) and the
       # evidence floor; running them as two steps rebuilt the release binary and reran the suites.
       - run: make eval-gates
-      # Decision 0054: the report reruns every suite (about 2.5 min). PRs and merge groups only need it
-      # to debug a failed gate; main keeps one per merge.
+      # Decision 0054: the report reruns every suite (about 2.5 min). PRs, merge groups, merge trains
+      # and dispatches on other branches only need it to debug a failed gate (decision 0147); main
+      # keeps one per merge.
       - name: Full report (informational)
-        if: ${{ failure() || github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+        if: ${{ failure() || github.ref == 'refs/heads/main' }}
         run: make eval
       - uses: actions/upload-artifact@v4
-        if: ${{ failure() || github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+        if: ${{ failure() || github.ref == 'refs/heads/main' }}
         with:
           name: eval-report
           path: eval/runs/latest/

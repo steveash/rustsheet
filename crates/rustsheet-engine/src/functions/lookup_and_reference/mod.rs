@@ -2,13 +2,13 @@ use crate::arithmetic::bcast_get;
 use crate::cast::NumberOrArray;
 use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::ArrayNode;
-use crate::expressions::types::CellReferenceIndex;
+use crate::expressions::token::TableReference;
+use crate::expressions::types::{CellReferenceIndex, CellReferenceRC};
 use crate::expressions::utils::{
     is_indirect_unquoted_sheet, is_out_of_range_r1c1_name, quote_digit_leading_sheet,
     unquote_sheet_prefix,
 };
 use crate::external_reference::{one_external_area, PickedReference};
-use crate::functions::logical::{if_arg_at, if_arg_dims};
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
 use crate::limits::check_array_size;
@@ -18,7 +18,7 @@ use crate::{
     utils::ParsedReference,
 };
 
-use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
+use crate::functions::lift::{BroadcastArg, LiftCost, LiftOptions, LiftedArg};
 use index_arg::LookupIndexArg;
 use lookup_each::LookupSearch;
 use lookup_table::SearchVector;
@@ -31,6 +31,7 @@ mod address_areas;
 mod choosecols_chooserows;
 mod drop_take;
 mod expand;
+mod filter;
 mod formulatext;
 mod getpivotdata;
 mod group_functions;
@@ -45,6 +46,7 @@ mod lookup_each;
 pub(crate) mod lookup_table;
 pub(crate) mod offset;
 pub(crate) mod pivot_index;
+mod pivot_placement;
 mod pivotby;
 mod ref_lift;
 mod relative_to;
@@ -154,7 +156,8 @@ impl Model {
         // `MATCH({#N/A;1},A1:A3,"x")` is #N/A in slot 1 (probes/match-lookup-value-lift E17; slot 2,
         // #VALUE!, follows from the per-slot match_type check and is not probed;
         // docs/excel-semantics/lookup.md "MATCH lifts over lookup_value", T-1866).
-        self.lift_values(
+        self.lift_values_keyed(
+            args,
             vec![target, match_type],
             LiftCost::Cells(values.as_ref().map_or(1, SearchVector::scan_cells)),
             &LiftOptions::REUSE_EQUAL_RUNS,
@@ -200,8 +203,8 @@ impl Model {
         )
     }
 
-    /// MATCH's `match_type` as a number. Text that comes from a cell (a reference) and is not a
-    /// number is `#REF!`, while literal text is `#VALUE!` (docs/excel-semantics/lookup.md "MATCH
+    /// MATCH's `match_type` as a number. Text that is not a number, or an error, that comes from a
+    /// cell (a reference) is `#REF!`, while literal text is `#VALUE!` (docs/excel-semantics/lookup.md "MATCH
     /// descending search scans from the top", probes/match-descending-argcheck J9-J20; T-1313).
     fn match_type_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         // A range of several cells is its top-left cell, plain or picked by IF, IFS, SWITCH or
@@ -213,17 +216,21 @@ impl Model {
         };
         let from_cell = matches!(value, CalcResult::Range { .. });
         let value = self.dereference(value, cell);
-        // Only non-numeric text is remapped: an error in the cell, or a failed implicit
-        // intersection, propagates unchanged (no oracle evidence for remapping those).
+        // Non-numeric text and any error in the cell are #REF!, whatever the error kind
+        // (probes/match-type-error-reference E1:E8, F1:F7; docs/excel-semantics/lookup.md). A
+        // failed implicit intersection is not a cell value and propagates unchanged.
         if from_cell {
-            if let CalcResult::String(text) = &value {
-                if self.cast_number(text).is_none() {
-                    return CalcResult::Error {
-                        error: Error::REF,
-                        origin: cell,
-                        message: "Invalid reference".to_string(),
-                    };
-                }
+            let invalid = match &value {
+                CalcResult::String(text) => self.cast_number(text).is_none(),
+                CalcResult::Error { .. } => true,
+                _ => false,
+            };
+            if invalid {
+                return CalcResult::Error {
+                    error: Error::REF,
+                    origin: cell,
+                    message: "Invalid reference".to_string(),
+                };
             }
         }
         value
@@ -265,6 +272,7 @@ impl Model {
         // We look for `lookup_value` in the first row of the table
         let search_vector = table.first_row(self, cell);
         let search = LookupSearch {
+            call: args,
             search_vector: &search_vector,
             index: row_index,
             size: table.rows(),
@@ -318,6 +326,7 @@ impl Model {
         // We look for `lookup_value` in the first column of the table
         let search_vector = table.first_column(self, cell);
         let search = LookupSearch {
+            call: args,
             search_vector: &search_vector,
             index: column_index,
             size: table.columns(),
@@ -392,8 +401,9 @@ impl Model {
 
     /// A `link_location` as HYPERLINK reads it, or the error it gives whatever `friendly_name`
     /// is: the location's own error, or `#VALUE!` for more than 255 characters, a `#` of an
-    /// internal link included (probes/t2277-hyperlink-location-length A1-A15; lookup.md
-    /// "HYPERLINK: a `link_location` past 255 characters").
+    /// internal link included, counted in UTF-16 units like `LEN`
+    /// (probes/t2277-hyperlink-location-length A1-A15, probes/t2358-hyperlink-location-non-bmp
+    /// A1-A9; lookup.md "HYPERLINK: a `link_location` past 255 characters").
     fn hyperlink_location(
         location: &CalcResult,
         cell: CellReferenceIndex,
@@ -660,23 +670,39 @@ impl Model {
         index_array: &[Vec<ArrayNode>],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let mut values = Vec::with_capacity(args.len() - 1);
-        for arg in &args[1..] {
-            match self.evaluate_if_arg(arg, cell) {
-                Ok(value) => values.push(value),
+        // An argument no index element picks only sizes the result: it is not copied (T-1564).
+        let count = args.len() - 1;
+        let mut picked = vec![false; count];
+        for index in index_array.iter().flatten() {
+            if let Ok(arm) = self.choose_index_element(index, count) {
+                picked[arm] = true;
+            }
+        }
+        let mut arms = Vec::with_capacity(count);
+        for (arg, &is_picked) in args[1..].iter().zip(&picked) {
+            match self.evaluate_broadcast_arm(arg, cell, is_picked) {
+                Ok(arm) => arms.push(arm),
                 Err(error) => return error,
             }
         }
         let index_rows = index_array.len();
         let index_cols = index_array.first().map_or(0, Vec::len);
-        let (rows, cols) = values
+        let (rows, cols) = arms
             .iter()
-            .map(if_arg_dims)
+            .map(BroadcastArg::dims)
             .fold((index_rows, index_cols), |(r, c), (vr, vc)| {
                 (r.max(vr), c.max(vc))
             });
         if let Some((error, message)) = check_array_size(rows, cols) {
             return CalcResult::new_error(error, cell, message);
+        }
+        // The size is checked, so the picked range arms are copied now (T-1564).
+        let mut values = Vec::with_capacity(count);
+        for arm in arms {
+            match self.read_broadcast_arm(arm, cell) {
+                Ok(value) => values.push(value),
+                Err(error) => return error,
+            }
         }
         let mut output = Vec::with_capacity(rows);
         for row in 0..rows {
@@ -685,7 +711,7 @@ impl Model {
                 let node = match bcast_get(index_array, row, col) {
                     None => ArrayNode::Error(Error::NA),
                     Some(index) => match self.choose_index_element(index, values.len()) {
-                        Ok(picked) => if_arg_at(&values[picked], row, col),
+                        Ok(picked) => values[picked].at(row, col),
                         Err(error) => error,
                     },
                 };
@@ -800,7 +826,10 @@ impl Model {
                 right: reference,
             },
             Ok(ParsedReference::Range(left, right)) => CalcResult::Range { left, right },
-            Err(message) => match self.indirect_defined_name(&ref_text, cell) {
+            Err(message) => match self.indirect_defined_name(&ref_text, cell).or_else(|| {
+                a1.then(|| self.indirect_structured(&ref_text, cell))
+                    .flatten()
+            }) {
                 Some(found) => found,
                 None => CalcResult::Error {
                     error: Error::REF,
@@ -809,6 +838,71 @@ impl Model {
                 },
             },
         }
+    }
+
+    /// INDIRECT of the text of a structured reference (`INDIRECT("Sales[Qty]")`): the area the
+    /// parser lowers the reference to, as for the same text in a formula. A table or column the
+    /// workbook lacks stays `#REF!` (docs/excel-semantics/lookup.md "INDIRECT of a structured
+    /// reference text resolves the table area"; probes/table-edits/table-insert-column-inside-header F!A4:A5, T-2911).
+    fn indirect_structured(&mut self, text: &str, cell: CellReferenceIndex) -> Option<CalcResult> {
+        let sheet = self
+            .workbook
+            .worksheets
+            .get(cell.sheet as usize)?
+            .get_name();
+        let context = CellReferenceRC {
+            sheet,
+            row: cell.row,
+            column: cell.column,
+        };
+        // Only the evidenced `Table[Column]` shape: the specifiers, `@`, an unqualified column,
+        // spacing, a bare table name and `a1` FALSE are unprobed and stay `#REF!` (case is
+        // unprobed but matched ignoring case, as the parser does)
+        // (TODO(T-3394): probe them).
+        let Node::StructuredReferenceKind { reference, lowered } =
+            self.parser.parse(text, &context)
+        else {
+            return None;
+        };
+        let plain_column = reference.specifier.is_none()
+            && !reference.bare
+            && !reference.unqualified
+            && matches!(
+                reference.table_reference,
+                Some(TableReference::ColumnReference(_))
+            );
+        if !plain_column {
+            return None;
+        }
+        let (sheet, row1, column1, row2, column2) = match *lowered {
+            Node::ReferenceKind {
+                sheet_index,
+                row,
+                column,
+                ..
+            } => (sheet_index, row, column, row, column),
+            Node::RangeKind {
+                sheet_index,
+                row1,
+                column1,
+                row2,
+                column2,
+                ..
+            } => (sheet_index, row1, column1, row2, column2),
+            _ => return None,
+        };
+        Some(CalcResult::Range {
+            left: CellReferenceIndex {
+                sheet,
+                row: row1,
+                column: column1,
+            },
+            right: CellReferenceIndex {
+                sheet,
+                row: row2,
+                column: column2,
+            },
+        })
     }
 
     /// INDIRECT of the text of a defined name that stands for a reference (`INDIRECT("RCR")`,

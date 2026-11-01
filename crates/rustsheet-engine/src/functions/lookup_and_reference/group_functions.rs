@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::{
+    area_budget::visit_units,
     calc_result::CalcResult,
     cast::calc_result_to_array_node,
     expressions::{
@@ -608,6 +609,11 @@ impl Model {
         if let Some(error) = too_many_visits(visits, cell) {
             functions.refused = Some(error);
             return Err(ArrayNode::Error(Error::ERROR));
+        }
+        // The call's visits go to the formula's work budget too (SPEC-0024); past it the formula
+        // is the budget's error (`with_area_budget`), whatever this cell holds.
+        if self.spend_work(visit_units(cost), cell).is_err() {
+            return Err(ArrayNode::Error(Error::VALUE));
         }
         functions.visits = visits;
         let column_of = |rows: &[usize]| {

@@ -3,7 +3,7 @@ id: T-2516
 title: "DGET with an error field and one-row criteria: which error wins (T-1390 follow-up)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -35,14 +35,21 @@ Cells:
 - gen-m9/c9d7659896d95368.case.json (1): Calc!A271
 
 ## Acceptance criteria
-- [ ] Visible parity (gen-m9, T-2258): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
+- [x] Visible parity (gen-m9, T-2258): these 2 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
-- [ ] A probe answers the order, recorded in docs/excel-semantics/statistics.md "Database criteria".
-- [ ] gen-m9/7bd219ec0c0c5e22 Calc!A324 leaves eval/baseline/gen-m9.txt (`make eval-baseline`).
-- [ ] `make check` green; reviewers approve.
+- [x] A probe answers the order, recorded in docs/excel-semantics/statistics.md "Database criteria".
+- [x] gen-m9/7bd219ec0c0c5e22 Calc!A324 leaves eval/baseline/gen-m9.txt (`make eval-baseline`).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Other D-function semantics (T-1390).
 
 ## Visible-parity stage
 Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the wrong type, error, text or value (none is a last-digit difference), so the task is in the campaign. Its target is that every cell it owns has Excel's type, error and text, or is within half a unit of the 15th significant digit of Excel's value; the visible-parity criterion under Acceptance criteria states it.
+
+## Outcome
+- The question was answered by probes/db-field-error-order (13 questions, excel-graph): the field is resolved
+  before the database or criteria shape is checked, which is what `db_query` already does. The three cells this
+  task owned (gen-m9/88cabddc4935351c A14, c9d7659896d95368 A271, 7bd219ec0c0c5e22 A324) already pass on main and
+  have no known-failure lines in eval/baseline/gen-m9.txt, so no engine change was needed.
+- Recorded in docs/excel-semantics/statistics.md "Database criteria". Eval delta: none (probe adds 13 passing cells).

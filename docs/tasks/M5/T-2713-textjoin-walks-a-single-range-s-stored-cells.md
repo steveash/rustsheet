@@ -3,7 +3,7 @@ id: T-2713
 title: "TEXTJOIN walks a single range's stored cells through the shared walker, not its own dense loop (TEXTJOIN over A:J beside one cell in J1048576 takes 4 s)"
 milestone: M5
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -38,3 +38,12 @@ probes/text-result-limit-errors-refs (an error cell past the limit is dropped).
 
 ## Out of scope
 - TEXTJOIN over unions (`#VALUE!`, SPEC-0004) and the 32,767-unit limit rules.
+
+## Outcome
+`fn_textjoin`'s one-sheet range arm now walks through `for_each_cell_or_error_in_whole_range` (via
+`textjoin_push_range`), so `TEXTJOIN(",",TRUE,A:J)` beside one cell in J1048576 reads a few cells.
+With ignore_empty FALSE, ranges whose columns are clipped keep per-row padding (one walk per row) so
+the join stays row-major (reviewer found `1:3` with an error in A3 must stay `#CALC!`; unit test
+added). `CONCAT(A:J)` was already sparse; both are in the work-counter test. Eval delta: none
+(0 regressions, 0 fixes). Follow-up idea: expose the walker's clip so the second
+`clip_to_used_area` call goes away.

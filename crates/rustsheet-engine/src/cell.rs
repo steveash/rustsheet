@@ -178,25 +178,29 @@ impl Cell {
         }
     }
 
-    pub fn formatted_value<F>(
+    /// The text the cell shows: a number goes through `format_number`, a text or a boolean through
+    /// `format_text` (the format's text section: `"pre "@` on TRUE is "pre TRUE"; gen-m10 "Displayed
+    /// text", number-formats.md), and an error is shown as it is.
+    pub fn formatted_value<F, T>(
         &self,
         shared_strings: &[String],
         language: &Language,
         format_number: F,
+        format_text: T,
     ) -> String
     where
         F: Fn(f64) -> String,
+        T: Fn(&str) -> String,
     {
         match self.value(shared_strings, language) {
             CellValue::None => "".to_string(),
-            CellValue::String(value) => value,
-            CellValue::Boolean(value) => {
-                if value {
-                    language.booleans.r#true.to_string()
-                } else {
-                    language.booleans.r#false.to_string()
-                }
-            }
+            CellValue::String(value) if self.get_type() == CellType::ErrorValue => value,
+            CellValue::String(value) => format_text(&value),
+            CellValue::Boolean(value) => format_text(if value {
+                &language.booleans.r#true
+            } else {
+                &language.booleans.r#false
+            }),
             CellValue::Number(value) => format_number(value),
         }
     }

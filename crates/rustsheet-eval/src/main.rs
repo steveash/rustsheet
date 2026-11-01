@@ -10,6 +10,7 @@
 //! rustsheet-eval show <case-id> [--all]         # per-cell detail for one case
 //! rustsheet-eval snapshot <file.xlsx>           # dump stored formulas/values as JSON
 //! rustsheet-eval cases <suite>                  # cases + sidecar paths as JSON (for tools)
+//! rustsheet-eval accuracy [--json PATH]         # Gate A: reference tables within the envelope
 //! ```
 #![allow(clippy::print_stdout, clippy::print_stderr)]
 
@@ -22,6 +23,8 @@ use std::time::Duration;
 use anyhow::{anyhow, bail, Context, Result};
 use clap::{Parser, Subcommand};
 
+use rustsheet_eval::accuracy;
+use rustsheet_eval::accuracy::lists::{load_r3_marks, R3Marks};
 use rustsheet_eval::baseline::{self, Baseline};
 use rustsheet_eval::calibrate::compare_snapshots;
 use rustsheet_eval::catalog::Catalog;
@@ -34,11 +37,13 @@ use rustsheet_eval::fetch::fetch_suite;
 use rustsheet_eval::lift_kinds;
 use rustsheet_eval::milestone_exit;
 use rustsheet_eval::milestone_lists::{self, MilestoneList};
+use rustsheet_eval::phase1_exceptions::Phase1Exceptions;
 use rustsheet_eval::probe_milestones::{self, Mapping, Rules};
+use rustsheet_eval::r1c::R1cCells;
 use rustsheet_eval::report::RunReport;
 use rustsheet_eval::run_meta::RunMeta;
 use rustsheet_eval::runner::{run_suites, CaseResult, RunOptions};
-use rustsheet_eval::suite::{BaselineMode, FetchState, Suite, SuiteKind};
+use rustsheet_eval::suite::{BaselineMode, FetchState, Suite, SuiteKind, ACCURACY_DIR};
 use rustsheet_eval::text_expect;
 use rustsheet_eval::v15_checkpoint;
 use rustsheet_eval::visible_parity::{self, VisibleCount};
@@ -90,6 +95,10 @@ enum Cmd {
         /// Failing examples shown per function in report.md.
         #[arg(long, default_value_t = 3)]
         examples: usize,
+        /// Also leave out of the Phase 1 rate the cells of eval/runs/desktop-owned.tsv, which
+        /// `scripts/desktop_owned.py` writes (decision 0143; `make eval` passes it).
+        #[arg(long)]
+        desktop_owned: bool,
     },
     /// Fail if anything in the committed baselines no longer passes.
     Check {
@@ -108,10 +117,15 @@ enum Cmd {
         /// Permit removing previously passing items (requires PR justification).
         #[arg(long)]
         allow_regressions: bool,
-        /// Also record a drop in the visible-parity lock. The steward's daily run only: a PR
-        /// leaves drops to it so fix PRs do not conflict on the lock (decision 0093).
+        /// Also lower the visible-parity lock's cases to their counts and drop their lines at 0.
+        /// The steward's daily run only: a PR leaves drops to it (decisions 0093 and 0219).
         #[arg(long)]
         lower_visible_lock: bool,
+        /// A file listing the cases to treat as new for the visible-parity lock, one case id or
+        /// repository-relative case file path per line (the case files a PR adds); only these
+        /// then get a line recorded whatever their count (decision 0219).
+        #[arg(long, value_name = "FILE")]
+        new_cases: Option<PathBuf>,
     },
     /// Fail if more in-scope functions are below the evidence floor than
     /// quality/evidence-floor.json allows, or if the lock is stale (T-0056, decision 0062).
@@ -150,6 +164,17 @@ enum Cmd {
         cached: PathBuf,
         recalculated: PathBuf,
     },
+    /// Gate A (SPEC-0029, decision 0188 R2): fail when a reference-table point of eval/accuracy
+    /// is outside the envelope, a known-failure line is stale, an R3 mark lacks evidence or a
+    /// table is defective.
+    Accuracy {
+        /// Where to write every point's class and values (default: eval/runs/accuracy.json).
+        #[arg(long)]
+        json: Option<PathBuf>,
+        /// Per-batch timeout in seconds.
+        #[arg(long, default_value_t = 60)]
+        timeout: u64,
+    },
 }
 
 /// One line of `rustsheet-eval cases`.
@@ -170,10 +195,7 @@ struct CaseListing {
 }
 
 fn cmd_cases(root: &Path, name: &str) -> Result<ExitCode> {
-    let suites = Suite::load_all(&root.join("eval/suites"))?;
-    let Some(suite) = suites.iter().find(|s| s.manifest.name == name) else {
-        bail!("suite {name} not found");
-    };
+    let suite = Suite::load_named(root, name)?;
     if suite.fetch_state() == FetchState::NotFetched {
         bail!("suite {name} is not fetched (run `rustsheet-eval fetch --suite {name}`)");
     }
@@ -271,20 +293,26 @@ fn check_deviations(root: &Path, suites: &[Suite]) -> Result<()> {
     Ok(())
 }
 
-/// The frozen milestone probe lists (decision 0044), the probe-milestone rules (decision 0051)
-/// and the named exit exceptions (decision 0087).
+/// The frozen milestone probe lists (decision 0044), the probe-milestone rules (decision 0051),
+/// the named exit exceptions (decision 0087) and the Phase 1 rate exceptions (decision 0134).
 struct Milestones {
     lists: Vec<MilestoneList>,
     rules: Rules,
     exceptions: ExitExceptions,
+    phase1_exceptions: Phase1Exceptions,
+    /// `eval/accuracy/math-over-excel.tsv`: the R3 cells R1(c) and Gate B count as passing
+    /// where the engine returns the math (decision 0188 R3).
+    r3: R3Marks,
 }
 
 /// Loads the frozen lists and the probe-milestone mapping, and fails when a line of either names
 /// a case that no suite discovers, or a cell line names a cell its case holds no expectation for.
-/// A malformed line of the exit exceptions fails too.
+/// A malformed line of the exit exceptions or the Phase 1 rate exceptions fails too.
 fn load_milestones(root: &Path, catalog: &Catalog) -> Result<Milestones> {
     let lists = milestone_lists::load_all(root)?;
     let exceptions = ExitExceptions::load(root)?;
+    let phase1_exceptions = Phase1Exceptions::load(root)?;
+    let r3 = load_r3_marks(&root.join(ACCURACY_DIR))?;
     let mapping = Mapping::load(root)?;
     if !lists.is_empty() || mapping != Mapping::default() {
         let mut files = BTreeMap::new();
@@ -310,6 +338,8 @@ fn load_milestones(root: &Path, catalog: &Catalog) -> Result<Milestones> {
         lists,
         rules,
         exceptions,
+        phase1_exceptions,
+        r3,
     })
 }
 
@@ -334,7 +364,11 @@ fn score_milestones(
         .get(probe_milestones::SUITE)
         .copied()
         .unwrap_or(BaselineMode::Cells);
-    report.probe_milestones = probe_milestones::summarize(&milestones.rules, results, probes_mode);
+    report.r1c = R1cCells::build(results, &milestones.r3, &milestones.phase1_exceptions);
+    report.phase1b_evidence = report.r1c.phase1b();
+    report.r1c_left_out = report.r1c.left_out();
+    report.probe_milestones =
+        probe_milestones::summarize(&milestones.rules, results, probes_mode, &report.r1c);
     if let Some(scope) = report.function_scope.as_mut() {
         scope.apply_exceptions(&milestones.exceptions);
     }
@@ -346,7 +380,13 @@ fn score_milestones(
     report.catalog_coverage =
         catalog_coverage::summarize(catalog, results, &report.evidence, &generated);
     let generated_names: Vec<&str> = generated.keys().map(String::as_str).collect();
-    report.v15_checkpoint = v15_checkpoint::summarize(catalog, results, report, &generated_names);
+    report.v15_checkpoint = v15_checkpoint::summarize(
+        catalog,
+        results,
+        report,
+        &generated_names,
+        &milestones.phase1_exceptions,
+    );
     report.milestone_exit = milestone_exit::summarize(report);
 }
 
@@ -400,35 +440,84 @@ fn baseline_path(root: &Path, suite: &str) -> PathBuf {
     root.join("eval/baseline").join(format!("{suite}.txt"))
 }
 
+/// The ids of the cases of `suites` that the `--new-cases` file names (decision 0219).
+fn listed_new_cases(root: &Path, suites: &[Suite], file: &Path) -> Result<BTreeSet<String>> {
+    let listed = visible_parity::read_listed(file)?;
+    let mut cases = Vec::new();
+    for suite in suites.iter().filter(|s| s.manifest.fetch.is_none()) {
+        cases.extend(suite.cases()?);
+    }
+    let ids = visible_parity::listed_ids(
+        root,
+        cases.iter().map(|c| (c.id.as_str(), c.path.as_path())),
+        &listed,
+    );
+    let (ids, with_lines) = visible_parity::split_listed(&visible_parity::Lock::read(root)?, ids);
+    println!(
+        "visible parity: {} of the {} --new-cases entries name a case of the gated suites without a lock line; only those are new",
+        ids.len(),
+        listed.len()
+    );
+    for id in &with_lines {
+        println!(
+            "  {id} is listed but already has a line in {}: not new, so its line may not rise",
+            visible_parity::LOCK_PATH
+        );
+    }
+    Ok(ids)
+}
+
 /// Holds `count` to the visible-parity lock, recording it on `update` when
-/// [`visible_parity::judge`] allows (T-0061, decisions 0088 and 0093); returns whether the gate
-/// passes.
+/// [`visible_parity::judge`] allows (T-0061, decisions 0088, 0093 and 0219); returns whether the
+/// gate passes.
 fn visible_parity_gate(
     root: &Path,
-    count: VisibleCount,
+    count: &VisibleCount,
     update: Option<visible_parity::Update>,
 ) -> Result<bool> {
-    use visible_parity::{Judgement, Lock, LOCK_PATH};
+    use visible_parity::{Lock, LOCK_PATH};
     let lock = Lock::read(root)?;
     println!(
-        "visible parity: {} in-scope cells visibly off ({} in new cases), lock {}",
-        count.cells, count.new_coverage, lock.visibly_off_cells
+        "visible parity: {} in-scope cells visibly off ({} in new cases), {LOCK_PATH} allows {} in {} cases",
+        count.cells(),
+        count.new_coverage(),
+        lock.total(),
+        lock.cases.len()
     );
-    Ok(match visible_parity::judge(lock, count, update) {
-        Judgement::Holds => true,
-        Judgement::Record => {
-            Lock {
-                visibly_off_cells: count.cells,
-            }
-            .write(root)?;
-            println!("  updated {LOCK_PATH}: commit it");
-            true
-        }
-        Judgement::Regressed => {
-            println!("  REGRESSION: more cells are visibly off than {LOCK_PATH} allows; the report's \"Visibly off\" section names the functions");
-            false
-        }
-    })
+    let updating = update.is_some();
+    let judgement = visible_parity::judge(&lock, count, update);
+    for o in &judgement.over {
+        println!(
+            "  REGRESSION visible parity {}: {} cells visibly off, the lock allows {}",
+            o.case, o.off, o.allowed
+        );
+    }
+    if !judgement.holds() {
+        let over: usize = judgement.over.iter().map(|o| o.off - o.allowed).sum();
+        println!(
+            "  {} cases have {over} more visibly-off cells than {LOCK_PATH} allows. A new case needs its line: run `make eval-baseline` and commit eval/baseline/. The report's \"Visibly off\" section names the functions",
+            judgement.over.len()
+        );
+    }
+    if let Some(next) = &judgement.record {
+        next.write(root)?;
+        println!(
+            "  updated {LOCK_PATH} ({} cells in {} cases): commit it",
+            next.total(),
+            next.cases.len()
+        );
+    } else if updating
+        && std::fs::read_to_string(root.join(LOCK_PATH))
+            .ok()
+            .as_deref()
+            != Some(lock.render().as_str())
+    {
+        // The lines hold, but the file is not what the tool writes (a changed header, say): an
+        // update rewrites it in canonical form, so the file is only ever written by the tool.
+        lock.write(root)?;
+        println!("  rewrote {LOCK_PATH} in canonical form: commit it");
+    }
+    Ok(judgement.holds())
 }
 
 /// The baseline gate (`update` `None`) or the baseline ratchet; with `floor`, also the evidence
@@ -438,6 +527,7 @@ fn cmd_check(
     root: &Path,
     sel: &Selection,
     update: Option<visible_parity::Update>,
+    new_cases: Option<&Path>,
     floor: bool,
 ) -> Result<ExitCode> {
     if sel.filter.is_some() {
@@ -476,6 +566,10 @@ fn cmd_check(
     print_summary(&report);
     let mut failed = false;
     let mut visible = VisibleCount::default();
+    let listed = match new_cases {
+        Some(file) => Some(listed_new_cases(root, suites, file)?),
+        None => None,
+    };
     for suite in suites {
         if suite.manifest.baseline == BaselineMode::None {
             continue;
@@ -487,7 +581,12 @@ fn cmd_check(
         let old = Baseline::read(&path)?;
         if suite.manifest.fetch.is_none() {
             for r in &mine {
-                visible.add(&catalog, r, !old.checked.contains_key(&r.id));
+                let new_case = visible_parity::is_new_case(
+                    listed.as_ref(),
+                    old.checked.contains_key(&r.id),
+                    &r.id,
+                );
+                visible.add(&catalog, r, new_case);
             }
         }
         let delta = baseline::diff(&old, &current);
@@ -526,7 +625,7 @@ fn cmd_check(
         }
     }
     // A partial run (`--suite`) would undercount, so only a full gated run is held to the lock.
-    if sel.suites.is_empty() && !visible_parity_gate(root, visible, update)? {
+    if sel.suites.is_empty() && !visible_parity_gate(root, &visible, update)? {
         failed = true;
     }
     if let Some(floor_results) = floor_results {
@@ -630,14 +729,20 @@ fn evidence_floor_gate(
 }
 
 fn cmd_show(root: &Path, case_id: &str, all: bool) -> Result<ExitCode> {
-    let suite_name = case_id.split('/').next().unwrap_or_default().to_string();
+    let suite_name = case_id.split('/').next().unwrap_or_default();
     let sel = Selection {
-        suites: vec![suite_name],
+        suites: vec![suite_name.to_string()],
         filter: Some(case_id.to_string()),
         timeout: 120,
     };
-    let suites = select(root, &sel, false)?;
-    let results = execute(&suites, &sel);
+    // `load_named` also finds Gate A's tables, which `select` (eval/suites only) never lists.
+    let suite = Suite::load_named(root, suite_name)?;
+    if suite.fetch_state() == FetchState::NotFetched {
+        bail!(
+            "suite {suite_name} is not fetched (run `rustsheet-eval fetch --suite {suite_name}`)"
+        );
+    }
+    let results = execute(&[suite], &sel);
     let Some(r) = results.iter().find(|r| r.id == case_id) else {
         bail!("case {case_id} not found");
     };
@@ -662,6 +767,23 @@ fn cmd_show(root: &Path, case_id: &str, all: bool) -> Result<ExitCode> {
     text_expect::write_case(&r.text, all, &mut text);
     print!("{text}");
     Ok(ExitCode::SUCCESS)
+}
+
+/// Gate A's check (SPEC-0029): prints the summary and failures, writes the JSON, and fails on
+/// any failing point, stale known-failure line, bad R3 mark or table defect.
+fn cmd_accuracy(root: &Path, json: Option<PathBuf>, timeout: u64) -> Result<ExitCode> {
+    // Panics are captured per batch; keep the default hook from spamming stderr.
+    std::panic::set_hook(Box::new(|_| {}));
+    let json = json.unwrap_or_else(|| root.join(accuracy::JSON_PATH));
+    let engine: Arc<dyn Engine + Send> = Arc::new(RustSheetEngine);
+    let check = accuracy::run(root, &engine, Duration::from_secs(timeout))?;
+    print!("{}", check.render());
+    check.write_json(&json)?;
+    Ok(if check.passes() {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    })
 }
 
 fn load_snapshot(path: &Path) -> Result<WorkbookSnapshot> {
@@ -725,11 +847,20 @@ fn run() -> Result<ExitCode> {
             }
             Ok(ExitCode::SUCCESS)
         }
-        Cmd::Run { sel, out, examples } => {
+        Cmd::Run {
+            sel,
+            out,
+            examples,
+            desktop_owned,
+        } => {
             let suites = select(&root, &sel, false)?;
             check_deviations(&root, &suites)?;
             let catalog = Catalog::load(&root)?;
-            let milestones = load_milestones(&root, &catalog)?;
+            let mut milestones = load_milestones(&root, &catalog)?;
+            if desktop_owned {
+                milestones.phase1_exceptions =
+                    std::mem::take(&mut milestones.phase1_exceptions).load_desktop_owned(&root)?;
+            }
             let started = std::time::SystemTime::now();
             let results = execute(&suites, &sel);
             let mut report = RunReport::build(
@@ -755,11 +886,12 @@ fn run() -> Result<ExitCode> {
         Cmd::Check {
             sel,
             evidence_floor,
-        } => cmd_check(&root, &sel, None, evidence_floor),
+        } => cmd_check(&root, &sel, None, None, evidence_floor),
         Cmd::UpdateBaseline {
             sel,
             allow_regressions,
             lower_visible_lock,
+            new_cases,
         } => cmd_check(
             &root,
             &sel,
@@ -767,6 +899,7 @@ fn run() -> Result<ExitCode> {
                 allow_regressions,
                 lower: lower_visible_lock,
             }),
+            new_cases.as_deref(),
             false,
         ),
         Cmd::EvidenceFloor {
@@ -776,6 +909,7 @@ fn run() -> Result<ExitCode> {
         Cmd::LiftKinds { write } => cmd_lift_kinds(&root, write),
         Cmd::Show { case_id, all } => cmd_show(&root, &case_id, all),
         Cmd::Cases { suite } => cmd_cases(&root, &suite),
+        Cmd::Accuracy { json, timeout } => cmd_accuracy(&root, json, timeout),
         Cmd::Snapshot { .. } | Cmd::Compare { .. } => unreachable!("handled above"),
     }
 }

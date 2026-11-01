@@ -3,7 +3,7 @@ id: T-1130
 title: "Probe TEXT on text with 1-3 section formats, _x/*x and digit/date tokens in the text section"
 milestone: M10
 lane: functions-text
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -28,3 +28,6 @@ Use the `excel-probe` skill.
 
 ## Out of scope
 -
+
+## Outcome
+Probe probes/text-text-value-sections (20 cells, excel-graph) covers the remaining unprobed bullets (the others were resolved by T-1656/T-2975). The engine already matched every cell; no code change, baseline unchanged. Findings recorded in number-formats.md.

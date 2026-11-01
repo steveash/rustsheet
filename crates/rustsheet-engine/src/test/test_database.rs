@@ -644,7 +644,9 @@ fn cells_reached_from_a_formula_condition_evaluate_in_full() {
     }
     model._set("G2", "=A2>2");
     model._set("H2", "=K2>0");
-    model._set("M1", "=DCOUNT(A1:A6,1,H1:H2)");
+    // The database spans column K so that `=K2>0` reads its record area
+    // (probes/db-computed-criteria-cross-sheet: a reference outside the columns matches nothing).
+    model._set("M1", "=DCOUNT(A1:K6,1,H1:H2)");
     model._set("N1", "=DCOUNT(A1:A6,1,G1:G2)");
     model.evaluate();
     for row in 2..=6 {

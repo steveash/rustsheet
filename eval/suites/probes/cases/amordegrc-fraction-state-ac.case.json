@@ -1,0 +1,20 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2844: AMORDEGRC left-over value, lifted {1,2} (776, 485) above an AMORLINC (leaves 132): A1 = 485 (last), 776 (first), 132 (none).",
+  "tags": [
+    "M9",
+    "financial",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=AMORDEGRC(10000,39000,39400,500,0.3,0.3,0)",
+        "A2": "=SUM(AMORDEGRC(2400,39679,39813,300,{1,2},0.15,1))",
+        "A3": "=AMORLINC(2400,39679,39813,300,1,0.15,1)"
+      }
+    }
+  ],
+  "expected": {}
+}

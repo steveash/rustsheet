@@ -12,6 +12,9 @@ pub struct Lexer {
     /// Whether the current section has a token before this one other than a color, condition,
     /// locale or calendar prefix: a `B1`/`B2` calendar prefix is invalid after one.
     section_started: bool,
+    /// Whether the current section has had a `B2` prefix: a locale tag after it resolves with
+    /// the Hijri calendar (`locale_tag::resolve_after_hijri_prefix`).
+    hijri_prefix: bool,
 }
 
 #[derive(PartialEq, Debug)]
@@ -121,6 +124,22 @@ impl Token {
     }
 }
 
+/// Whether the last section of `format` is exactly `@`, with no color, locale or literal, not even
+/// `""`. Excel shows a text whole under it however long, where any other text section shows 255 `#`
+/// past 255 characters (probes/displayed-text-long-text-b A2, A3 vs A1, A4, A6; T-3282).
+pub(crate) fn last_section_is_bare_at(format: &str) -> bool {
+    let mut lexer = Lexer::new(format);
+    let mut start = 0;
+    loop {
+        match lexer.next_token() {
+            Token::EOF => break,
+            Token::Separator => start = lexer.position,
+            _ => {}
+        }
+    }
+    lexer.chars.get(start..) == Some(&['@'][..])
+}
+
 impl Lexer {
     pub fn new(format: &str) -> Lexer {
         let chars: Vec<char> = format.chars().collect();
@@ -133,6 +152,7 @@ impl Lexer {
             error_position: 0,
             pending_locale: None,
             section_started: false,
+            hijri_prefix: false,
         }
     }
 
@@ -343,7 +363,7 @@ impl Lexer {
 
     fn consume_color(&mut self) -> Option<i32> {
         let colors = [
-            "black", "white", "red", "green", "blue", "yellow", "magenta",
+            "black", "white", "red", "green", "blue", "yellow", "magenta", "cyan",
         ];
         let mut chars = "".to_string();
         while let Some(ch) = self.read_next_char() {
@@ -444,7 +464,21 @@ impl Lexer {
             }
             _ => true,
         };
+        match token {
+            Token::Separator => self.hijri_prefix = false,
+            Token::Calendar('2') => self.hijri_prefix = true,
+            _ => {}
+        }
         token
+    }
+
+    /// Resolves the locale tag `tag` of the current section.
+    fn resolve_tag(&self, tag: &str) -> LocaleTag {
+        if self.hijri_prefix {
+            locale_tag::resolve_after_hijri_prefix(tag)
+        } else {
+            locale_tag::resolve(tag)
+        }
     }
 
     fn read_token(&mut self) -> Token {
@@ -492,7 +526,7 @@ impl Lexer {
                                 let mut tag = String::new();
                                 while let Some(c) = self.read_next_char() {
                                     if c == ']' {
-                                        return Token::Locale(locale_tag::resolve(&tag));
+                                        return Token::Locale(self.resolve_tag(&tag));
                                     }
                                     tag.push(c);
                                 }
@@ -523,7 +557,7 @@ impl Lexer {
                                         tag.push(c);
                                         self.read_next_char();
                                     }
-                                    self.pending_locale = Some(locale_tag::resolve(&tag));
+                                    self.pending_locale = Some(self.resolve_tag(&tag));
                                 }
                                 if self.read_next_char() == Some(']') {
                                     return if text.chars().count() == 1 {
@@ -723,11 +757,9 @@ impl Lexer {
                 // `ee` "05" (probes/text-locale-calendars A13).
                 'e' => Token::EraYear(self.consume_run('e') > 1),
                 'g' | 'G' => {
-                    if self
-                        .chars
-                        .get(self.position..)
-                        .is_some_and(|rest| rest.starts_with(&['e', 'n', 'e', 'r', 'a', 'l']))
-                    {
+                    // Excel: the word is case-insensitive (`TEXT(5,"GENERAL x")` = "5 x";
+                    // probes/text-format-general-company A16).
+                    if self.looks_at("eneral") {
                         self.position += 6;
                         return Token::General;
                     }

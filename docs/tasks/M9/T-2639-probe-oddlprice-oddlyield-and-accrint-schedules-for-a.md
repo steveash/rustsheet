@@ -3,7 +3,7 @@ id: T-2639
 title: "Probe ODDLPRICE, ODDLYIELD and ACCRINT schedules for a 29th/30th date across a February (does the day drift?)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -30,3 +30,10 @@ ACCRINT with `first_interest` on such a day and an issue several periods before 
 
 ## Out of scope
 - Implementing the change (unless the probe shows ours already matches).
+
+## Outcome
+Probe `probes/oddl-accrint-february-day` (49 cells, excel-graph): Excel's ODDLPRICE, ODDLYIELD and ACCRINT coupon walks
+drift date to date across a February, unlike the COUP*, PRICE and ODDF* schedules (the 29th and 30th last-interest
+dates give identical ODDL* values; ACCRINT's stub ends on the drifted date). The engine already drifts the same way and
+matched all 49 cells, so no implementation task. financial.md records the exception to "Coupon dates keep the
+maturity's day" (the "unprobed" line replaced). Eval delta: +49 passing probe cells.

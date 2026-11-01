@@ -4,10 +4,11 @@ title: "Convert-to-range keeps an off-row #This Row reference as structured text
 milestone: M8
 lane: engine
 status: todo
-priority: P3
+priority: P1
 size: M
 tier: opus
 depends_on: [T-2643]
+campaign: semantics
 ---
 
 ## Goal
@@ -15,6 +16,8 @@ After a table is converted to a range, a cell whose `#This Row` reference was of
 structured text Excel keeps (`=Sales[@Qty]`) in FORMULATEXT and still evaluates `#VALUE!`.
 
 ## Context
+- Decision 0188 (owner's 2026-10-31 rulings, R1(c)): this task owns probe-row or text cells of its milestone's exit,
+  which Phase 1 still counts in full, so it is in the semantics stage at P1 (was P3).
 T-2643 lowers each `#This Row` cell on convert (`Model::lower_this_row_references`, tables.rs), so off-row cells
 store `#VALUE!` and their values match, but FORMULATEXT prints `=#VALUE!`. Failing: probes/table-edits/
 table-convert-names-this-row S!F2, S!F10, T!A2 (references.md, convert-to-range entry). The engine has no form for

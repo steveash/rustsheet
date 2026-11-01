@@ -29,6 +29,9 @@ Needs an oracle sweep: T-2046 (only two m→ft points exist).
   `=CONVERT((0--(-0.0001)),"in","mi")` (the number is -0.0001): Excel -1.5782828282828283E-9, ours -1.578282828282828E-9
   (one ulp). A non-base to non-base pair (in to mi), so the same factor question as m to ft; add in and mi to the
   T-2046 sweep's units if they are not there.
+- Gap triage 2026-10-30, same m to ft value, no open task named them: probes/eng-convert-boolean-unit Sheet1!A7
+  `=CONVERT(1,{"m",TRUE},"ft")`, A29 (spilled from A28 `=CONVERT(1,{TRUE;"m"},"ft")`) and B8 (spilled from A8
+  `=CONVERT(1,"m",{TRUE,"ft"})`): Excel 3.2808398950131235, ours 3.280839895013123.
 - Engine: `fn_convert` and the unit table in crates/rustsheet-engine/src/functions/engineering/convert.rs.
 
 ## Acceptance criteria

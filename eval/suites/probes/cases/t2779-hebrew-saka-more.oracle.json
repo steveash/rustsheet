@@ -1,0 +1,547 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "S": {
+   "A1": {
+    "t": "s",
+    "v": "5970-04-04|Tevet"
+   },
+   "A10": {
+    "t": "s",
+    "v": "5999-02-23|Cheshvan"
+   },
+   "A11": {
+    "t": "s",
+    "v": "5999-03-24|Kislev"
+   },
+   "A12": {
+    "t": "s",
+    "v": "5999-04-25|Tevet"
+   },
+   "A13": {
+    "t": "s",
+    "v": "5999-13-26|Elul"
+   },
+   "A14": {
+    "t": "s",
+    "v": "6000-01-01|Tishrei"
+   },
+   "A15": {
+    "t": "s",
+    "v": "6000-01-02|Tishrei"
+   },
+   "A16": {
+    "t": "s",
+    "v": "6000-01-03|Tishrei"
+   },
+   "A17": {
+    "t": "s",
+    "v": "6000-12-19|Elul"
+   },
+   "A18": {
+    "t": "s",
+    "v": "6001-01-20|Tishrei"
+   },
+   "A19": {
+    "t": "s",
+    "v": "6001-13-28|Elul"
+   },
+   "A2": {
+    "t": "s",
+    "v": "5980-04-25|Tevet"
+   },
+   "A20": {
+    "t": "s",
+    "v": "6010-05-01|Shvat"
+   },
+   "A21": {
+    "t": "s",
+    "v": "6060-04-14|Tevet"
+   },
+   "A22": {
+    "t": "s",
+    "v": "6160-04-09|Tevet"
+   },
+   "A23": {
+    "t": "s",
+    "v": "6760-04-12|Tevet"
+   },
+   "A24": {
+    "t": "s",
+    "v": "7760-04-24|Tevet"
+   },
+   "A25": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A26": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A27": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A28": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A29": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A3": {
+    "t": "s",
+    "v": "5990-04-15|Tevet"
+   },
+   "A30": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A31": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A32": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A33": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A34": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A35": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A4": {
+    "t": "s",
+    "v": "5995-04-10|Tevet"
+   },
+   "A5": {
+    "t": "s",
+    "v": "5997-04-03|Tevet"
+   },
+   "A6": {
+    "t": "s",
+    "v": "5998-04-14|Tevet"
+   },
+   "A7": {
+    "t": "s",
+    "v": "5998-09-18|Sivan"
+   },
+   "A8": {
+    "t": "s",
+    "v": "5998-12-21|Elul"
+   },
+   "A9": {
+    "t": "s",
+    "v": "5999-01-22|Tishrei"
+   },
+   "B1": {
+    "t": "s",
+    "v": "1|\u091a\u0948\u0924\u094d\u0930|\u091a\u0948\u0924\u094d\u0930|\u091a"
+   },
+   "B10": {
+    "t": "s",
+    "v": "10|\u092a\u094c\u0938\u093e|\u092a\u094c\u0938\u093e|\u092a"
+   },
+   "B11": {
+    "t": "s",
+    "v": "11|\u092e\u093e\u0918|\u092e\u093e\u0918|\u092e"
+   },
+   "B12": {
+    "t": "s",
+    "v": "12|\u092b\u0932\u094d\u0917\u0941\u0923|\u092b\u0932\u094d\u0917\u0941\u0923|\u092b"
+   },
+   "B13": {
+    "t": "s",
+    "v": "\u0930\u0935\u093f\u0935\u093e\u0930|\u0930\u0935\u093f\u0935\u093e\u0930"
+   },
+   "B14": {
+    "t": "s",
+    "v": "\u0938\u094b\u092e\u0935\u093e\u0930|\u0938\u094b\u092e\u0935\u093e\u0930"
+   },
+   "B15": {
+    "t": "s",
+    "v": "\u092e\u0902\u0917\u0932\u0935\u093e\u0930|\u092e\u0902\u0917\u0932\u0935\u093e\u0930"
+   },
+   "B16": {
+    "t": "s",
+    "v": "\u092c\u0941\u0927\u0935\u093e\u0930|\u092c\u0941\u0927\u0935\u093e\u0930"
+   },
+   "B17": {
+    "t": "s",
+    "v": "\u0917\u0941\u0930\u0941\u0935\u093e\u0930|\u0917\u0941\u0930\u0941\u0935\u093e\u0930"
+   },
+   "B18": {
+    "t": "s",
+    "v": "\u0936\u0941\u0915\u094d\u0930\u0935\u093e\u0930|\u0936\u0941\u0915\u094d\u0930\u0935\u093e\u0930"
+   },
+   "B19": {
+    "t": "s",
+    "v": "\u0936\u0928\u093f\u0935\u093e\u0930|\u0936\u0928\u093f\u0935\u093e\u0930"
+   },
+   "B2": {
+    "t": "s",
+    "v": "2|\u0935\u0948\u0936\u093e\u0916|\u0935\u0948\u0936\u093e\u0916|\u0935"
+   },
+   "B20": {
+    "t": "s",
+    "v": "1|\u091a\u0948\u0924\u094d\u0930|\u091a\u0948\u0924\u094d\u0930|\u091a"
+   },
+   "B21": {
+    "t": "s",
+    "v": "2|\u0935\u0948\u0936\u093e\u0916|\u0935\u0948\u0936\u093e\u0916|\u0935"
+   },
+   "B22": {
+    "t": "s",
+    "v": "\u0930\u0935\u093f\u0935\u093e\u0930|\u0930\u0935\u093f\u0935\u093e\u0930"
+   },
+   "B23": {
+    "t": "s",
+    "v": "\u0938\u094b\u092e\u0935\u093e\u0930|\u0938\u094b\u092e\u0935\u093e\u0930"
+   },
+   "B3": {
+    "t": "s",
+    "v": "3|\u091c\u094d\u092f\u0947\u0937\u094d\u091f|\u091c\u094d\u092f\u0947\u0937\u094d\u091f|\u091c"
+   },
+   "B4": {
+    "t": "s",
+    "v": "4|\u0906\u0937\u093e\u095d|\u0906\u0937\u093e\u095d|\u0906"
+   },
+   "B5": {
+    "t": "s",
+    "v": "5|\u0936\u094d\u0930\u093e\u0935\u0923|\u0936\u094d\u0930\u093e\u0935\u0923|\u0936"
+   },
+   "B6": {
+    "t": "s",
+    "v": "6|\u092d\u093e\u0926\u094d\u0930|\u092d\u093e\u0926\u094d\u0930|\u092d"
+   },
+   "B7": {
+    "t": "s",
+    "v": "7|\u0906\u0936\u094d\u0935\u0940\u0928|\u0906\u0936\u094d\u0935\u0940\u0928|\u0906"
+   },
+   "B8": {
+    "t": "s",
+    "v": "8|\u0958\u093e\u0930\u094d\u0924\u0940\u0915|\u0958\u093e\u0930\u094d\u0924\u0940\u0915|\u0958"
+   },
+   "B9": {
+    "t": "s",
+    "v": "9|\u0905\u0917\u094d\u0930\u0939\u093e\u092f\u0928|\u0905\u0917\u094d\u0930\u0939\u093e\u092f\u0928|\u0905"
+   },
+   "C1": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C10": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C11": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C12": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C13": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C14": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C15": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C16": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C17": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C18": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C19": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C2": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C20": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C21": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C22": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C23": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C24": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C25": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C26": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C27": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C28": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C29": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C3": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C30": {
+    "t": "s",
+    "v": "December|Wednesday"
+   },
+   "C31": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C32": {
+    "t": "s",
+    "v": "\u092b\u0932\u094d\u0917\u0941\u0923|\u092c\u0941\u0927\u0935\u093e\u0930"
+   },
+   "C33": {
+    "t": "s",
+    "v": "\u092b\u0932\u094d\u0917\u0941\u0923|\u092c\u0941\u0927\u0935\u093e\u0930"
+   },
+   "C4": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C5": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C6": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C7": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C8": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "C9": {
+    "t": "s",
+    "v": "Phalguna|Budhavara"
+   },
+   "D1": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D10": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D11": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D12": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D13": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D14": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D15": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D16": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D17": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D18": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D19": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D2": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D20": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D21": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D22": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D23": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D24": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D25": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D26": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D27": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D28": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D29": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D3": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D30": {
+    "t": "s",
+    "v": "July|Thursday"
+   },
+   "D31": {
+    "t": "s",
+    "v": "\u05d0\u05d3\u05e8 \u05d1|\u05d9\u05d5\u05dd\u00a0\u05d7\u05de\u05d9\u05e9\u05d9"
+   },
+   "D32": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D33": {
+    "t": "s",
+    "v": "\u05d0\u05d3\u05e8 \u05d1|\u05d9\u05d5\u05dd\u00a0\u05d7\u05de\u05d9\u05e9\u05d9"
+   },
+   "D4": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D5": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D6": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D7": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D8": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "D9": {
+    "t": "s",
+    "v": "AdarII|Yom Chamishi"
+   },
+   "E1": {
+    "t": "s",
+    "v": "13|||\u0001"
+   },
+   "E2": {
+    "t": "s",
+    "v": "13|Elul|Elul|Elul"
+   },
+   "E3": {
+    "t": "s",
+    "v": "Shabat|Shabat"
+   },
+   "E4": {
+    "t": "s",
+    "v": "Sanivara|Sani"
+   },
+   "E5": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "E6": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "E7": {
+    "t": "s",
+    "v": "6:00|5660-05-01"
+   },
+   "E8": {
+    "t": "s",
+    "v": "1|January|J"
+   },
+   "E9": {
+    "t": "s",
+    "v": "6|June|J"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "27636b3ef9b360e770116c24107bc18262f3caa437a345549afc0b42a3ae50ff",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-27T21:27:57+00:00",
+  "version": null,
+  "workbook_name": "e6067d2829e1146dd7340b78dd03786c66b5920c528f3e7b1e2e439a09e746f2.xlsx"
+ }
+}

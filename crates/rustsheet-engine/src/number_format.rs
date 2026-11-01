@@ -250,6 +250,13 @@ pub fn to_precision(value: f64, precision: usize) -> f64 {
 /// This intends to be equivalent to the js: `${parseFloat(value.toPrecision(precision)})`
 /// See ([ecma](https://tc39.es/ecma262/#sec-number.prototype.toprecision)).
 pub fn to_excel_precision_str(value: f64) -> String {
+    // A whole number of at most 15 digits is its own 15-digit rounding and prints without a
+    // fraction or exponent: the integer text, without the round trip through scientific text,
+    // which was most of printing the number literals of loaded formulas (T-0499). `-0` keeps
+    // the general path (it prints `-0`).
+    if value.fract() == 0.0 && value.abs() < 1e15 && !(value == 0.0 && value.is_sign_negative()) {
+        return (value as i64).to_string();
+    }
     to_precision_str(value, 15)
 }
 
@@ -285,14 +292,6 @@ fn excel_precision_canon(x: f64) -> f64 {
     } else {
         to_excel_precision(x, 15) + 0.0
     }
-}
-
-/// A key for [`cmp_excel_precision`]'s equality: two numbers are equal under it exactly when
-/// their keys are. Its shortcuts only skip the cut where the cut cannot make two numbers equal,
-/// so equality is always that of the canonical 15-digit values. The exact-match lookup index of
-/// XMATCH and XLOOKUP hashes it (T-0448).
-pub(crate) fn excel_precision_key(x: f64) -> u64 {
-    excel_precision_canon(x).to_bits()
 }
 
 pub fn to_excel_precision(value: f64, precision: usize) -> f64 {
@@ -749,12 +748,6 @@ mod tests {
                 assert_eq!(
                     cmp_excel_precision(a, b),
                     cmp_rounded(a, b),
-                    "{a:e} vs {b:e}"
-                );
-                // The lookup index's key has the same equality (T-0448).
-                assert_eq!(
-                    cmp_excel_precision(a, b) == std::cmp::Ordering::Equal,
-                    excel_precision_key(a) == excel_precision_key(b),
                     "{a:e} vs {b:e}"
                 );
                 checked += 1;

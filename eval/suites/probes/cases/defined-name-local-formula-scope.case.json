@@ -1,0 +1,50 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2635 (upstream ironcalc f8f68e27): which sheet a defined name's formula resolves its own names in. Workbook Rate = 1, Data!Rate = 10; Data!DoubleRate = Rate*2 (sheet-local), TripleRate = Rate*3 (workbook).",
+  "tags": [
+    "M8",
+    "names",
+    "probe"
+  ],
+  "names": {
+    "Rate": "=1",
+    "Data!Rate": "=10",
+    "Data!DoubleRate": "=Rate*2",
+    "TripleRate": "=Rate*3"
+  },
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=Data!DoubleRate",
+        "A2": "=Rate",
+        "A3": "=Data!Rate",
+        "A4": "=TripleRate",
+        "A5": "=Data!TripleRate",
+        "A6": "=ISERROR(DoubleRate)"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": "=DoubleRate",
+        "A2": "=Rate",
+        "A3": "=TripleRate",
+        "A4": "=Sheet1!TripleRate"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!A2",
+    "Sheet1!A3",
+    "Sheet1!A4",
+    "Sheet1!A5",
+    "Sheet1!A6",
+    "Data!A1",
+    "Data!A2",
+    "Data!A3",
+    "Data!A4"
+  ]
+}

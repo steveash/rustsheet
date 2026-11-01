@@ -1,0 +1,20 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "TEXTJOIN ignore_empty FALSE over whole rows that include its own cell, with a value in the last column so the used area spans every column: circular or #CALC! (T-3123; T-3098 had a clipped used area).",
+  "tags": ["M5", "probe", "text"],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "x",
+        "XFD1": "z",
+        "A2": "y",
+        "XFD2": "w",
+        "B5": "=TEXTJOIN(\",\",FALSE,1:10)",
+        "D3": "=TEXTJOIN(\",\",TRUE,1:10)",
+        "B8": "=TEXTJOIN(\",\",FALSE,A1:XFD10)"
+      }
+    }
+  ],
+  "expected": {}
+}

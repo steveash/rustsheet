@@ -22,8 +22,12 @@ extend-ignore-re = ["-?0x[0-9a-fA-F]\\.[0-9a-fA-F]+p[-+]?[0-9]+", "\\b[0-9a-f]{1
 # Excel function names and spreadsheet jargon
 ue = "ue"
 iif = "iif"
+# Excel's short Saka Monday, `[$-100409]ddd` (number-formats.md, T-2779)
+Som = "Som"
 # T-1941 probe case names (kmyst-gam-*)
 gam = "gam"
+# TOMS 708 routine names bgrat / grat1 (incomplete beta and gamma, statistics.md T-2464, T-2512)
+grat = "grat"
 # Excel function names / foreign-language function names that look like typos
 Permut = "Permut"
 permut = "permut"

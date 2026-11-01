@@ -1,0 +1,25 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3113: typed text Excel refuses (PATCH 400 InvalidArgument) leaves the cell blank, in A1 and R1C1 mode (decision 0179).",
+ "tags": [
+  "M2",
+  "syntax",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": {
+     "entered": "=1+"
+    },
+    "B1": "=ISBLANK(A1)",
+    "A2": {
+     "entered_r1c1": "=1+"
+    },
+    "B2": "=ISBLANK(A2)"
+   }
+  }
+ ],
+ "expected": {}
+}
