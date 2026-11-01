@@ -48,12 +48,19 @@ def needs_security(path: str) -> bool:
     return under(path, SECURITY_KEEP_PATHS) or not under(path, SECURITY_SKIP_PATHS)
 
 
+def task_only(paths: Iterable[str]) -> bool:
+    """Whether every path is a task file, a `.md` under `docs/tasks/` (decision 0231)."""
+    return all(p.startswith("docs/tasks/") and p.endswith(".md") for p in paths)
+
+
 def applicable_reviewers(paths: Iterable[str] | None) -> tuple[str, ...]:
     """The reviewers a diff of `paths` needs, in REVIEWERS order; every reviewer when the paths
-    are unknown (None) or empty."""
+    are unknown (None) or empty, and none when the diff is task-only (decision 0231)."""
     listed = None if paths is None else list(paths)
     if not listed:
         return REVIEWERS
+    if task_only(listed):
+        return ()
     needed = {DESIGN}
     if any(needs_security(p) for p in listed):
         needed.add(SECURITY)

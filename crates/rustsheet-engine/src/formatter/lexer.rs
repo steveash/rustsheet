@@ -1,4 +1,5 @@
 use super::locale_tag::{self, LocaleTag};
+use super::numerals::Numerals;
 use crate::number_format::{parse_excel_number, parse_finite_number};
 
 pub struct Lexer {
@@ -8,7 +9,7 @@ pub struct Lexer {
     error_message: String,
     error_position: usize,
     /// The locale of a `[$€-40C]` currency tag, returned by the call after its symbol.
-    pending_locale: Option<LocaleTag>,
+    pending_locale: Option<(LocaleTag, Numerals)>,
     /// Whether the current section has a token before this one other than a color, condition,
     /// locale or calendar prefix: a `B1`/`B2` calendar prefix is invalid after one.
     section_started: bool,
@@ -70,8 +71,8 @@ pub enum Token {
     AMPM,                // AM/PM
     /// `A/P`: the letters printed for the morning and for the afternoon.
     AP(char, char),
-    /// `[$-409]`: a locale with no currency symbol, which prints nothing.
-    Locale(LocaleTag),
+    /// `[$-409]`: a locale with no currency symbol, which prints nothing, and its numeral system.
+    Locale(LocaleTag, Numerals),
     ILLEGAL,
     EOF,
 }
@@ -459,7 +460,7 @@ impl Lexer {
         let token = self.read_token();
         self.section_started = match token {
             Token::Separator => false,
-            Token::Color(_) | Token::Condition(..) | Token::Locale(_) | Token::Calendar(_) => {
+            Token::Color(_) | Token::Condition(..) | Token::Locale(..) | Token::Calendar(_) => {
                 self.section_started
             }
             _ => true,
@@ -473,17 +474,18 @@ impl Lexer {
     }
 
     /// Resolves the locale tag `tag` of the current section.
-    fn resolve_tag(&self, tag: &str) -> LocaleTag {
-        if self.hijri_prefix {
+    fn resolve_tag(&self, tag: &str) -> (LocaleTag, Numerals) {
+        let locale = if self.hijri_prefix {
             locale_tag::resolve_after_hijri_prefix(tag)
         } else {
             locale_tag::resolve(tag)
-        }
+        };
+        (locale, locale_tag::numerals(tag))
     }
 
     fn read_token(&mut self) -> Token {
-        if let Some(locale) = self.pending_locale.take() {
-            return Token::Locale(locale);
+        if let Some((locale, numerals)) = self.pending_locale.take() {
+            return Token::Locale(locale, numerals);
         }
         let ch = self.read_next_char();
         match ch {
@@ -526,7 +528,8 @@ impl Lexer {
                                 let mut tag = String::new();
                                 while let Some(c) = self.read_next_char() {
                                     if c == ']' {
-                                        return Token::Locale(self.resolve_tag(&tag));
+                                        let (locale, numerals) = self.resolve_tag(&tag);
+                                        return Token::Locale(locale, numerals);
                                     }
                                     tag.push(c);
                                 }

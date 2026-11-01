@@ -10,8 +10,8 @@ use crate::{
 // (probes/gcd-lcm-bounds, lcm-result-bound, lcm-result-edge; docs/excel-semantics/numbers.md).
 const MAX_LCM_GCD: i64 = 2_i64.pow(53);
 
-// Euclidean gcd for i64 (non-negative inputs expected)
-fn gcd_i64(mut a: i64, mut b: i64) -> i64 {
+/// Euclidean gcd for i64 (non-negative inputs expected).
+pub(crate) fn gcd_i64(mut a: i64, mut b: i64) -> i64 {
     while b != 0 {
         let r = a % b;
         a = b;

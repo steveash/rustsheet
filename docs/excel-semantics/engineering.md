@@ -1000,8 +1000,10 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   is `-0.0000010361595398356i` (21 characters without the sign, probes-numeric/t3545-imsin-imcos-small-imag-sweep
   A128), and so are A43, B49 and B81 there (`IMCOS("-0.856146645807608+1.42428827512383E-06i")` is
   `0.655352852954647+0.0000010757975078242i`; all 14 digits at exponent -6), where the
-  15-digit `1.23456789012345E-06` is E notation (probes/eng-im-small-part, T-2056 above). Ours writes E notation
-  past 20 characters (number_format.rs `value_to_text`). Status: VERIFIED (excel-graph), not implemented (T-3560).
+  15-digit `1.23456789012345E-06` is E notation (probes/eng-im-small-part, T-2056 above). Probed over 12-15 digits at exponents -6 to -10 (probes/eng-im-part-plain-boundary, T-3560): a part below 1 is plain
+  when its text, with the leading `0.`, is at most 21 characters (12 digits to -8, 13 to -7, 14 to -6; one more
+  digit or exponent step is E notation; a 21-character part is evidenced at exponents -6 to -8 only, the rule below -8
+  is extrapolated), a character more than number-to-text coercion allows. Status: VERIFIED (excel-graph), implemented (T-3560).
 - **IMSQRT of a negative real is polar through COS and ATAN2.** `IMSQRT("-1")` (`IMSQRT(TEXT(-1,"0"))`) is
   "6.1257422745431E-17+i" = COS(ATAN2(-1,0)/2) with Excel's COS (libm cos(π/2) 6.12323399573677E-17), `IMSQRT(-2.5)`
   9.68564897336834E-17+1.58113883008419i, `IMSQRT(-0.0001)` 6.1257422745431E-19+0.01i, `IMSQRT(-3.85841)`
