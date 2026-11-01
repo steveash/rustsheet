@@ -1915,6 +1915,14 @@ A zero rows beats an invalid columns: `SEQUENCE(0,<negative>)` is `#CALC!` (c36f
 arguments, an error value in any of them winning, and only then checks rows (negative or past the grid `#VALUE!`, 0 `#CALC!`), then
 columns.
 Ours: `sequence_kernel` in that order; TAKE reads both counts before a zero one is `#CALC!` (`edge_spans`; T-2316).
+
+Argument classes (gen-m7 arg-pairs batch, T-3682; excel-graph, 2026-11-01): SEQUENCE's extents coerce as numbers and are
+then floored, so numeric text counts (`SEQUENCE("2.5",2)` is 2x2, gen-m7/0a1faf26e7528d04 Calc!A2563; a cell holding the
+text "12" gives 12 rows, A2990), a fraction below 1 is a zero extent (`SEQUENCE("2.5",0.5)` `#CALC!`, A2929), `TRUE` is 1
+(`SEQUENCE("2.5",TRUE)` 2x1, A3417) and a `FALSE` cell or a blank cell is 0 (`#CALC!`, A3478, A3661). Empty or other
+text is `#VALUE!` in any of the four arguments, and it is read before a zero extent is checked: `SEQUENCE(0,0,"")` is
+`#VALUE!` (A11347). Of two bad arguments the leftmost wins: `SEQUENCE("",#NAME?)` is `#VALUE!` (A5979).
+Ours: matches all 1136 formulas of the batch's six cases at their first run.
 Unprobed: whether an error start beats a negative extent (ours: it does, by the reading above).
 Status: VERIFIED (excel-graph)
 Tasks: T-2316

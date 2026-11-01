@@ -3,7 +3,7 @@ id: T-3682
 title: "gen-m7 arg-pairs batch: oracle-filled cells for the unseen argument-class pairs of SEQUENCE"
 milestone: M7
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -52,18 +52,34 @@ argument coverage of SEQUENCE, and every Excel cell the engine fails is owned by
   - Record any new Excel quirk in docs/excel-semantics/ (arrays.md), citing the cells.
 
 ## Acceptance criteria
-- [ ] New gen-m7 cases from `--policy arg-pairs --functions SEQUENCE` are committed with their excel-graph oracle
+- [x] New gen-m7 cases from `--policy arg-pairs --functions SEQUENCE` are committed with their excel-graph oracle
       sidecars and 0 fill failures.
-- [ ] After `make eval`, SEQUENCE has a `pairwise` share of at least 0.9 in report.json `argument_coverage`. Otherwise
+- [x] After `make eval`, SEQUENCE has a `pairwise` share of at least 0.9 in report.json `argument_coverage`. Otherwise
       the PR lists the pairs left unseen and why (a hard domain, a pair Excel refuses to load, a size past the grid).
-- [ ] No scored cell of the batch is a `#SPILL!` caused by the case layout. Spill-extent failures in the M7 exit row
+- [x] No scored cell of the batch is a `#SPILL!` caused by the case layout. Spill-extent failures in the M7 exit row
       stay at 0.
-- [ ] Failing cells are known failures in eval/baseline/gen-m7.txt (`make eval-baseline`, 0 regressions). Each is owned
+- [x] Failing cells are known failures in eval/baseline/gen-m7.txt (`make eval-baseline`, 0 regressions). Each is owned
       by an open task, and `make exit-owners MILESTONE=M7` and `make unowned-off ALL=1` report no new unowned cell from
       the batch.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine fixes for the cells this batch finds. The owning tasks make them. The exception is a one-line coercion fix in
   `functions/math_and_trigonometry/sequence.rs` that the PR also tests.
 - RANDARRAY (volatile), the single-kind probes of T-2874, the size edges of T-2608, and other functions or milestones.
+
+## Outcome
+- **Batch**: 6 new gen-m7 cases from `rustsheet-gen --policy arg-pairs --milestone M7 --functions SEQUENCE --spill`
+  (1136 formulas over the 568 unseen pairs; nothing skipped), with excel-graph sidecars, 0 fill failures. No generator
+  change was needed: SEQUENCE's results here are at most 12 rows (a "12" text cell) and 12 columns, inside T-3497's
+  61-row `SPILL_ROW_STRIDE`, and no oracle cell of the batch is `#SPILL!`. A multi-cell range in an extent lifts as
+  recorded (2x2 results).
+- **Coverage**: after `make eval`, SEQUENCE's pairwise share is 1.0 with 0 unseen pairs (before 0.22, 568 unseen);
+  single-kind share 1.0 (before 0.84).
+- **Eval delta**: gen-m7 grows from 192 to 198 case files; every new cell passes, so known failures stay 111 -> 111 with
+  0 regressions (`make eval-baseline` only adds the six cases' cell counts to eval/baseline/gen-m7.txt). Visible
+  parity: 0 visibly-off cells in new cases. No new owner needed; `make exit-owners`/`unowned-off` see nothing new.
+- **Semantics**: the argument-class coercion of SEQUENCE's extents (numeric text, booleans, blank, empty text, the
+  leftmost bad argument winning) is recorded in docs/excel-semantics/arrays.md under "SEQUENCE and TAKE: an argument
+  error before zero rows", citing the batch's cells.
+- Also lands T-3683 (the same batch for LET, MAKEARRAY, REDUCE and SCAN; todo, opus), filed by the 2026-11-01 gap triage.
