@@ -449,6 +449,28 @@ fn quantiles_at_a_large_shape_below_the_huge_one_are_excel_s() {
     }
 }
 
+// GAMMA.INV and GAMMAINV at scale 1 in the same band, where the shape is not a whole df/2: the
+// held-out sweep's `GAMMA.INV(0.5,7990464.81598859,1)` was `#NUM!` (probes-numeric/t3509-blind-*)
+// and probes/t3505-gamma-inv-budget-band has Excel's values (excel-graph; T-3505).
+#[test]
+fn gamma_inv_at_scale_one_in_the_budget_band_is_excel_s() {
+    let cases = [
+        // A104 `GAMMA.INV(0.5,8000000,1)`, A234 `GAMMAINV(0.5,7990464.81598859,1)`,
+        // A231 `GAMMAINV(0.01,7990464.81598859,1)`, A252 `GAMMAINV(0.5,79432823.4724282,1)`.
+        (8e6, 0.5, 7_999_999.666_666_669),
+        (7_990_464.815_988_59, 0.5, 7_990_464.482_655_259),
+        (7_990_464.815_988_59, 0.01, 7_983_890.303_685_028),
+        (79_432_823.472_428_2, 0.5, 79_432_823.139_094_87),
+    ];
+    for (shape, p, excel) in cases {
+        let ours = gamma_quantile(shape, 1.0, p, Tail::Lower);
+        assert!(
+            within_ulps(ours, excel, 4.0),
+            "{p} at shape {shape}: {ours:e}, Excel {excel:e}"
+        );
+    }
+}
+
 /// Excel's closed form at a huge shape (probes/t2982-gamma-inv-huge-shape, probes/
 /// t3070-gamma-inv-band; T-2982, T-3070): the median is 1.0002658235505755 times the shape, and
 /// the p sweeps from shape 1.5E10 are within a few ulps of the fit.
