@@ -3,7 +3,7 @@ id: T-3080
 title: "An inner call's error-element #N/A stays tagged as an array element, so an outer SMALL lets a text k win (SMALL(SMALL({1,#N/A,3},2)/1.005,"a*") is #N/A in Excel, ours #VALUE!)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
