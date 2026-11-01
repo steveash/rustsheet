@@ -1,5 +1,5 @@
 ---
-id: T-3398
+id: T-3662
 title: "Probe how Excel compares texts holding ignorable format characters: soft hyphen, zero-width space and joiners, bidi marks, BOM, word joiner, variation selector and the C1 controls"
 milestone: M2
 lane: research
@@ -64,5 +64,5 @@ current treatment is either VERIFIED or owned by an engine task.
 
 ## Out of scope
 - Changing collation.rs or criteria.rs (the engine task this files).
-- Emoji sequences (skin-tone modifiers, ZWJ emoji, VS16 after an emoji) and other scripts: T-3399.
+- Emoji sequences (skin-tone modifiers, ZWJ emoji, VS16 after an emoji) and other scripts: T-3559.
 - TRIM, CLEAN and SUBSTITUTE of these characters (text functions, not comparison).
