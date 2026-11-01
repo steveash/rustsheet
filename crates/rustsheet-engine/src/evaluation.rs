@@ -400,23 +400,6 @@ impl Default for Evaluation {
 }
 
 impl Model {
-    /// Whether the caches of this pass (`search_cache.rs`, `ifs_cache.rs`) may be read or filled
-    /// now: inside a pass that is neither abandoned, unwinding, blocked nor in Excel order, so a
-    /// value read now stays the pass's value. Under iterative calculation too: a cached range holds
-    /// no cycle member (`Model::join_stack`, T-0485). The sweeps run outside a pass.
-    pub(crate) fn pass_cache_safe(&self) -> bool {
-        let evaluation = &self.evaluation;
-        #[cfg(test)]
-        if evaluation.no_pass_caches {
-            return false;
-        }
-        evaluation.in_pass
-            && !evaluation.abandoned()
-            && !evaluation.unwinding
-            && !evaluation.excel_order
-            && !evaluation.blocking
-    }
-
     /// Evaluates every formula in the workbook, then its data tables and, if there are any,
     /// everything again so that their readers see the results (`data_tables.rs`). With
     /// iterative calculation on, each round's circular references are then iterated

@@ -59,7 +59,7 @@ use std::mem::Discriminant;
 use std::sync::Arc;
 
 use crate::calc_result::{CalcResult, Range};
-use crate::evaluation::{key, CellState, FormulaCell, KeyBuild};
+use crate::evaluation::KeyBuild;
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::criteria::{
@@ -68,7 +68,6 @@ use crate::functions::criteria::{
 use crate::functions::util::collation::{collation_key, CollationKey};
 use crate::model::Model;
 use crate::number_format::cmp_excel_precision;
-use crate::types::Cell;
 
 use super::if_ifs::Criterion;
 
@@ -332,35 +331,6 @@ fn rect_size(rect: RectKey) -> usize {
 }
 
 impl Model {
-    /// Whether reading `at` evaluates nothing and marks nothing: a constant or a blank, a formula
-    /// cell already evaluated in this pass, or a spill cell whose anchor is. `None` for a
-    /// circular cell or a cycle member under iterative calculation (whose reader joins it, where
-    /// the lazy walk may not read it), which never becomes readable this way.
-    pub(crate) fn read_is_inert(&self, at: CellReferenceIndex) -> Option<bool> {
-        if self.evaluation.circular.contains(&key(at)) || self.is_cycle_member(at) {
-            return None;
-        }
-        let evaluated = |at: CellReferenceIndex| {
-            self.evaluation.cells.get(&key(at)) == Some(&CellState::Evaluated)
-        };
-        Some(match self.fetch_cell(at) {
-            None => true,
-            Some(Cell::SpillCell { a, .. }) => {
-                let anchor = CellReferenceIndex {
-                    sheet: at.sheet,
-                    row: a.0,
-                    column: a.1,
-                };
-                if self.is_cycle_member(anchor) {
-                    return None;
-                }
-                matches!(self.fetch_cell(anchor), Some(Cell::ArrayFormula { .. }))
-                    && evaluated(anchor)
-            }
-            Some(cell) => FormulaCell::of(cell).is_none() || evaluated(at),
-        })
-    }
-
     /// The values of `rect` row by row, when they can be read without evaluating anything (module
     /// docs), from a cached range that holds it when there is one; `None` when the caller must
     /// walk.
