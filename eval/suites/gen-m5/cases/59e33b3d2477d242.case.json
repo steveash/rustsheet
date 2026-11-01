@@ -1,0 +1,98 @@
+{
+ "check": [
+  "Calc!A1",
+  "Calc!A4",
+  "Calc!A7",
+  "Calc!A10"
+ ],
+ "description": "generated arg-pairs seed=0 milestone=M5 SUBTOTAL part 1/1: 4 calls over 2 unseen pairs; skipped: none",
+ "expected": {},
+ "format": "rustsheet-case/v1",
+ "sheets": [
+  {
+   "cells": {
+    "A1": true,
+    "A10": true,
+    "A11": 0.5,
+    "A2": 0.3,
+    "A3": true,
+    "A4": true,
+    "A5": 123456789.123,
+    "A6": 42,
+    "A8": "Hello World",
+    "A9": "a*",
+    "B10": "TRUE",
+    "B12": 42,
+    "B2": -0.5,
+    "B3": 1e-15,
+    "B4": -1,
+    "B5": true,
+    "B6": "?b",
+    "B7": "1.5",
+    "B9": 0.1,
+    "C10": "1",
+    "C11": 0.5,
+    "C12": 42,
+    "C2": 2.5,
+    "C3": 123456789.123,
+    "C4": 100,
+    "C5": 1.005,
+    "C6": "TRUE",
+    "C8": 100,
+    "C9": 7,
+    "D1": false,
+    "D10": -1,
+    "D11": -2.5,
+    "D12": -0.5,
+    "D3": 0.5,
+    "D4": 7,
+    "D5": false,
+    "D6": true,
+    "D7": 1.005,
+    "E1": 0.1,
+    "E10": 2.5,
+    "E11": "x",
+    "E12": 2.5,
+    "E3": 1000000000000000.0,
+    "E4": 1.005,
+    "E5": "#N/A",
+    "E8": -0.0001,
+    "E9": false,
+    "G1": 7,
+    "G2": 0,
+    "G3": -2.5,
+    "G4": 1.5,
+    "G5": {
+     "t": "s",
+     "v": "12"
+    },
+    "G6": {
+     "t": "s",
+     "v": "x"
+    },
+    "G7": "",
+    "G8": false,
+    "G9": {
+     "t": "e",
+     "v": "#DIV/0!"
+    }
+   },
+   "name": "Data"
+  },
+  {
+   "cells": {
+    "A1": "=SUBTOTAL(\"\",Data!C2:D10)",
+    "A10": "=SUBTOTAL(Data!G9,Data!D1:D6)",
+    "A4": "=SUBTOTAL(Data!G7,Data!B7:E12)",
+    "A7": "=SUBTOTAL(#N/A,Data!C1:D8)"
+   },
+   "name": "Calc"
+  }
+ ],
+ "tags": [
+  "generated",
+  "arg-pairs",
+  "M5",
+  "SUBTOTAL"
+ ]
+}

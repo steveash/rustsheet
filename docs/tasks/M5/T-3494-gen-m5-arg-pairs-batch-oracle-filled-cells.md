@@ -3,7 +3,7 @@ id: T-3494
 title: "gen-m5 arg-pairs batch: oracle-filled cells for the unseen argument-class pairs of the M5 array, subtotal and base-conversion math functions (SUMX2MY2, SUMX2PY2, SUMXMY2, SERIESSUM, MMULT, PERCENTOF, SUBTOTAL, AGGREGATE, BASE, DECIMAL, ROMAN)"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -48,3 +48,6 @@ gen-m5 gains an oracle-filled batch from `rustsheet-gen --policy arg-pairs` (T-3
 - Fixing the engine for the cells this batch finds (the owning tasks), beyond a one-line coercion fix in the
   function's own module that the PR also tests.
 - Single argument-kind probes (the research tasks named above) and other functions or milestones.
+
+## Outcome
+17 gen-m5 cases (`--policy arg-pairs`, 11 functions) oracle-filled with excel-graph; pairwise share is 1.0 (no unseen pairs) for all 11 functions. gen-m5 now 149 cases, 50736 cells, 50710 bit-exact (99.95%). 25 new known failures in eval/baseline/gen-m5.txt, all owned: 21 PERCENTOF cells (Excel `#NUM!` for an error held in a cell reference; literal errors pass through) by T-3728, 2 MMULT cells (Excel `#VALUE!` for a blank first argument beside an error) by T-3729, and the 2 in gen-m5/f5fa1206c7466c62 (A196, A214) by T-3017 (AGGREGATE(12, ...) is MEDIAN of an even count, last-digit ulp: A196 expected 0.6499999999999999, A214 0.6000000000000001). Quirks recorded in numbers.md and arrays.md.
