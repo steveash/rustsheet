@@ -519,12 +519,8 @@ impl Parser {
             ));
         }
         if self.spelled_anchorarray {
-            // Graph PATCH 400 for `=ANCHORARRAY(C1)` and `=SUM(ANCHORARRAY(C1))` at any depth,
-            // while typed `C1#` is accepted (probes/t3143-anchor-typed-*,
-            // probes/t3143-anchor-inner-64-typed; docs/excel-semantics/syntax.md, T-3143).
-            return Some(
-                "Formula: ANCHORARRAY cannot be typed as a call; use the # operator".to_string(),
-            );
+            // Graph PATCH 400 (probes/t3143-anchor-typed-*; T-3143); typed `C1#` is accepted.
+            return Some("Formula: ANCHORARRAY is spelled as a call".to_string());
         }
         let name = self.wrong_count_call.as_ref()?;
         Some(format!(
