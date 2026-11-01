@@ -254,7 +254,10 @@ CI_WORKFLOW_FILE = Path(merge_ready.CI_WORKFLOW).name
 TRAIN_EVENTS = ("push", "workflow_dispatch")
 WINDOW = 40 * 60  # a merger run's polling window; the lock wait is capped at what is left of it
 HOLD_BUDGET = 40 * 60  # counted from the lock's acquisition
-CI_TIMEOUT = 15 * 60  # decision 0242: train CI runs take 10-11 min, so 10 min cut green trains off
+CI_RESERVE = 10 * 60  # what the budget gate reserves for a CI wait (section 4, step 6)
+# The longest a CI wait may take (decision 0242). Train CI runs take 10-11 min, so a 10-min wait cut
+# green trains off; a wait runs past CI_RESERVE only into hold budget its merges do not need.
+CI_TIMEOUT = 15 * 60
 MERGE_BUDGET = 150  # per PR a CI run can merge: the pre-squash check, the merge call, the post-squash check
 CI_POLL = 60  # every CI poll is a stop checkpoint
 DISPATCH_AFTER = 3 * 60  # no run by then: dispatch once; still none after as long again: stop
@@ -268,7 +271,8 @@ SESSION = re.compile(r"Claude-Session: https://claude\.ai/code/session_[A-Za-z0-
 
 
 # The outcome of one train CI wait (step 6). INFRA is a run that is not the PRs' fault: no run, a
-# run over CI_TIMEOUT, or a run or job that was cancelled, timed out or never started (section 6).
+# run over its wait limit (at most CI_TIMEOUT), or a run or job that was cancelled, timed out or
+# never started (section 6).
 INFRA = "infrastructure"
 INFRA_CONCLUSIONS = ("cancelled", "timed_out", "startup_failure", "missing")
 
@@ -528,13 +532,15 @@ class Stage:
 
     def gate(self, n: int) -> None:
         """Step 6's budget gate for a CI wait whose green result can merge `n` PRs."""
-        need = CI_TIMEOUT + n * MERGE_BUDGET
+        need = CI_RESERVE + n * MERGE_BUDGET
         if self.left() < need:
             raise CutOff(f"hold budget: {self.left():.0f} s left, a CI wait for {n} PR(s) needs {need} s")
 
-    def wait_ci(self, tip: str, docs_only: bool | None, prs: Sequence[int]) -> Outcome:
-        """Step 6's CI wait on `tip`, holding the lock for `prs`."""
+    def wait_ci(self, tip: str, docs_only: bool | None, prs: Sequence[int], n: int) -> Outcome:
+        """Step 6's CI wait on `tip`, holding the lock for `prs`, whose green result can merge `n`
+        PRs: at most CI_TIMEOUT, and never into the MERGE_BUDGETs those merges need (decision 0242)."""
         start = self.clock()
+        limit = max(CI_RESERVE, min(CI_TIMEOUT, self.left() - n * MERGE_BUDGET))
         dispatched: float | None = None
         while True:
             self.checkpoint()
@@ -552,8 +558,8 @@ class Stage:
                 dispatched = now
             elif not ids and dispatched is not None and now - dispatched >= DISPATCH_AFTER:
                 return Outcome(INFRA, ("no CI run on the train, even after a dispatch",))
-            if now - start >= CI_TIMEOUT:
-                return Outcome(INFRA, (f"the train CI took over {CI_TIMEOUT // 60} min",), tuple(ids))
+            if now - start >= limit:
+                return Outcome(INFRA, (f"the train CI took over {limit / 60:g} min",), tuple(ids))
             self.sleep(CI_POLL)
 
     def test(self, train: Train, n: int, prs: Sequence[int], notes: Sequence[str] = ()) -> tuple[Outcome, str]:
@@ -568,7 +574,7 @@ class Stage:
             self.renew(prs)
             docs_only = not ci_changes.classify_range(train.base, tip, cwd=self.root)
             self.checkpoint()  # before the CI wait
-            outcome = self.wait_ci(tip, docs_only, prs)
+            outcome = self.wait_ci(tip, docs_only, prs, n)
             jobs = f" ({'; '.join(outcome.jobs)})" if outcome.jobs else ""
             self.log.append(f"train CI {outcome.state} on {names}{jobs}")
             if outcome.state != INFRA:

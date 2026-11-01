@@ -70,8 +70,11 @@ was cancelled 18 s after the 13:07:36 retry push, the retry's run 41309736899 en
 13:18:21, and the lock was freed at 13:18:08 with nothing merged. Only three batches of five merged
 between 09:00 and 13:30 (about 10:08, 11:02 and 12:05 UTC).
 
-**Fix here:** decision 0242 sets `CI_TIMEOUT` to 15 min (scripts/merge_train.py, SPEC-0027
-section 4 amended); the unit test reads the constant. **Filed:** T-3736 (a timed-out wait keeps
+**Fix here:** decision 0242 (scripts/merge_train.py, SPEC-0027 section 4 amended). A CI wait may
+take up to `CI_TIMEOUT` = 15 min, into hold budget its merges do not need. The budget gate still
+reserves `CI_RESERVE` = 10 min, so section 6's bisection budgets, checked by
+scripts/test_merge_train_red.py, are unchanged. A new unit test covers a wait in a tight hold.
+**Filed:** T-3736 (a timed-out wait keeps
 its running run instead of cancelling it with a retry push), T-3737 (a hold that ends with a green
 train unmerged records why: batch #2714 ... #2725 went green at 11:23 and merged only at 12:05,
 from the next hold), T-3738 (throughput against arrivals, SPEC-0027's "Revisit"). CI wall time

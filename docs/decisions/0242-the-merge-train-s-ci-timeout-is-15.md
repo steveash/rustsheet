@@ -14,17 +14,21 @@
     cancelled it at 13:07:54 (seconds before it would have ended), the retry's run 41309736899
     ended green at 13:18:21, and the merge lock was freed at 13:18:08, before that, with nothing
     merged. Batch #2714, #2729, #2727, #2713, #2725 needed the retry too (11:44 and 11:55 UTC).
-  - The spec rejected 15 min because, without a resume, the budget gate cut bisection off and
-    livelocked (`sim6.py`, 25–237 runs per merge). Resume is always on now (section 6): a
-    cut-off records its search state on the train ref, and the next hold continues from it.
-- **Decision:** `CI_TIMEOUT` is 15 min (scripts/merge_train.py). The budget gate is unchanged in
-  form: a wait for `n` PRs needs `CI_TIMEOUT + n × MERGE_BUDGET` of the 40-min hold left, so a
-  full batch of 5 needs 27.5 min, not 22.5.
+  - The spec rejected a 15-min `CI_TIMEOUT` because the budget gate reserves `CI_TIMEOUT` per
+    wait: at 15 min it cut the section 6 bisection example off at its fourth run
+    (scripts/test_merge_train_red.py checks those examples, and fails with the gate at 15 min).
+- **Decision:** the gate's reservation and the wait's limit become two constants
+  (scripts/merge_train.py). `CI_RESERVE` = 10 min is what the gate reserves: a wait for `n` PRs
+  starts only with `CI_RESERVE + n × MERGE_BUDGET` of the hold left, as before. `CI_TIMEOUT` =
+  15 min is the longest a wait may take, but a wait runs past `CI_RESERVE` only into hold budget
+  that its `n` merges do not need: its limit is `max(CI_RESERVE, min(CI_TIMEOUT, left − n ×
+  MERGE_BUDGET))`, read when the wait starts.
 - **Consequences:**
-  - A train whose CI takes 10–15 min merges on its first run instead of costing a second run and,
-    often, the whole hold. A run that takes over 15 min is still an infrastructure failure.
-  - A hold that has spent more than 12.5 min (a full batch) before its CI wait is cut off rather
-    than starting a wait it might not finish; the next merger run, 30 min later at most, resumes.
-    A bisection fits fewer runs per hold; resume carries the search across holds.
-  - Revisit (lower it again) once T-3699 to T-3705 bring train CI back under about 7 min; keep the
-    timeout at about 1.5× the p90 of the last day's train runs (`make merge-train-stats`).
+  - In a fresh hold (40 min) a train whose CI takes 10–15 min merges on its first run instead of
+    costing a second run and, often, the whole hold. A run past its limit is still an
+    infrastructure failure.
+  - The gate and the bisection budgets of section 6 are unchanged, so a hold fits as many CI
+    waits as before; a late wait in a long bisection may still stop at 10 min and resume in the
+    next hold.
+  - Revisit (go back to one 10-min constant) once T-3699 to T-3705 bring train CI back under
+    about 7 min. T-3736 stops the timeout retry from cancelling a run still in progress.
