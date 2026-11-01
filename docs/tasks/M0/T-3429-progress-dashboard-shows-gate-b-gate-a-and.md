@@ -3,7 +3,7 @@ id: T-3429
 title: "Progress dashboard shows Gate B, Gate A and the Phase 1b evidence counts (decision 0188)"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
