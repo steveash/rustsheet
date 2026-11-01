@@ -140,7 +140,7 @@ pub fn summarize(
             }
         }
     }
-    let (left_out, _, _) = excepted_cells(results, exceptions, counts);
+    let (left_out, _, _) = excepted_cells(results, exceptions, counts, None);
     let mut rows: Vec<GateBFunction> = functions
         .iter()
         .map(|f| {

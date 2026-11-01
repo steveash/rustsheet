@@ -234,10 +234,10 @@ class ExitOwners(TaskDir):
         self.assertNotIn(f"{GEN}!Calc!A1", listed)
         self.assertIn(f"{TRIG}!S!C51", listed)
 
-    def test_r1c_left_out_cells_leave_the_rows_and_r3_passes_leave_the_rate(self) -> None:
-        # Decision 0188 R1(c), R3, R7 (T-3427, T-3428): the calc row drops every left-out class,
-        # the probe row lists `r1c_off_cells`, and the rate keeps a Phase 1b cell (Gate B is the
-        # 15-digit share) but drops an R3 pass.
+    def test_r1c_left_out_cells_leave_the_rows_and_the_rate(self) -> None:
+        # Decision 0188 R1(c), R3, R7 (T-3427, T-3428): the calc row drops every left-out class
+        # and the probe row lists `r1c_off_cells`. The rate drops an R3 pass and, since decision
+        # 0227, a Phase 1b cell, but keeps an M14-owned one (decision 0143 rules on those).
         r = report()
         r["milestone_exit"] = [
             {
@@ -255,15 +255,22 @@ class ExitOwners(TaskDir):
         r["attributed_off"] = [
             {"case": GEN, "cell": "Calc!A1", "function": "IRR", "formula": "IRR(A1:A3)"},
             {"case": GEN, "cell": "Calc!A2", "function": "IRR", "formula": "IRR(A4:A6)"},
+            {"case": GEN, "cell": "Calc!A3", "function": "IRR", "formula": "IRR(A7:A9)"},
+            {"case": GEN, "cell": "Calc!A4", "function": "IRR", "formula": "IRR(A10:A12)"},
         ]
         r["r1c_left_out"] = {
             f"{TRIG}!S!C51": "phase1b",
             f"{GEN}!Calc!A1": "r3_pass",
             f"{GEN}!Calc!A2": "phase1b",
+            f"{GEN}!Calc!A3": "m14_owned",
         }
         self.assertEqual(
             criteria_cells(r, "M9"),
-            [("rate:IRR", f"{GEN}!Calc!A2"), ("probes", f"{PROBE}!P!B2")],
+            [
+                ("rate:IRR", f"{GEN}!Calc!A3"),
+                ("rate:IRR", f"{GEN}!Calc!A4"),
+                ("probes", f"{PROBE}!P!B2"),
+            ],
         )
 
     def test_cases_that_did_not_run_are_listed_whole(self) -> None:
