@@ -5,6 +5,7 @@ use super::ets::{
     self, build_series, completion_setting, detect_season, fit, fit_work, season_setting,
     season_work, DuplicateAggregate, Fit, Point, Season, Series, SeriesOptions,
 };
+use super::normal::normal_quantile;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::date_and_time::error_kind;
@@ -140,7 +141,7 @@ impl Model {
             }
         }
         let [values, timeline] = points.map(|read| read.map_err(|error| error_kind(&error)));
-        let mut data = EtsData::new(values, timeline);
+        let mut data = EtsData::new(values, timeline, cell);
         self.lift_call(kind, args, cell, &mut |model, values| {
             let mut settings = vec![None; values.len()];
             for (index, value) in values.iter().enumerate() {
@@ -158,11 +159,6 @@ impl Model {
             match element(&mut data, &settings) {
                 Ok(number) if number.is_finite() => CalcResult::Number(number),
                 Ok(_) => num_error(cell),
-                Err(Error::NIMPL) => CalcResult::new_error(
-                    Error::NIMPL,
-                    cell,
-                    "FORECAST.ETS family not implemented".to_string(),
-                ),
                 Err(error) => CalcResult::new_error(error, cell, String::new()),
             }
         })
@@ -186,7 +182,7 @@ impl Model {
             [1, 2],
             args,
             cell,
-            not_implemented,
+            confint_element,
         )
     }
 
@@ -209,13 +205,7 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        self.forecast_ets_lifted(
-            Function::ForecastEtsStat,
-            [0, 1],
-            args,
-            cell,
-            not_implemented,
-        )
+        self.forecast_ets_lifted(Function::ForecastEtsStat, [0, 1], args, cell, stat_element)
     }
 }
 
@@ -230,10 +220,16 @@ struct EtsData {
     fits: HashMap<(SeriesOptions, usize), Rc<Fit>>,
     /// Work spent so far, against [`ets::MAX_CALL_WORK`].
     work: usize,
+    /// The formula's cell, for the normal quantile's error.
+    cell: CellReferenceIndex,
 }
 
 impl EtsData {
-    fn new(values: Result<Vec<Point>, Error>, timeline: Result<Vec<Point>, Error>) -> Self {
+    fn new(
+        values: Result<Vec<Point>, Error>,
+        timeline: Result<Vec<Point>, Error>,
+        cell: CellReferenceIndex,
+    ) -> Self {
         EtsData {
             values,
             timeline,
@@ -241,6 +237,7 @@ impl EtsData {
             seasons: HashMap::new(),
             fits: HashMap::new(),
             work: 0,
+            cell,
         }
     }
 
@@ -348,9 +345,87 @@ fn forecast_element(data: &mut EtsData, settings: &[Option<f64>]) -> Result<f64,
     Ok(data.fit(options, m)?.forecast(horizon))
 }
 
-/// The members not implemented yet (T-3601).
-fn not_implemented(_: &mut EtsData, _: &[Option<f64>]) -> Result<f64, Error> {
-    Err(Error::NIMPL)
+/// `FORECAST.ETS.CONFINT(target_date, values, timeline, [confidence_level], [seasonality],
+/// [data_completion], [aggregation])`: the half-width of the forecast's prediction interval,
+/// `NORM.S.INV((1 + confidence_level) / 2)` times the forecast error's standard deviation
+/// (unverified against Excel, decision 0221). `confidence_level` (default 0.95) outside (0, 1)
+/// is `#NUM!`, before the other settings.
+fn confint_element(data: &mut EtsData, settings: &[Option<f64>]) -> Result<f64, Error> {
+    let target = settings.first().copied().flatten().ok_or(Error::VALUE)?;
+    let level = settings.get(3).copied().flatten().unwrap_or(0.95);
+    if !(level > 0.0 && level < 1.0) {
+        return Err(Error::NUM);
+    }
+    let season = season_option(settings, 4)?;
+    let options = series_options(settings, 5, 6)?;
+    let horizon = data.series(options)?.horizon(target)?;
+    let m = data.season(options, season)?;
+    let z = normal_quantile((1.0 + level) / 2.0, 0.0, 1.0, data.cell)
+        .map_err(|error| error_kind(&error))?;
+    Ok(z * data.fit(options, m)?.forecast_sd(horizon))
+}
+
+/// `FORECAST.ETS.STAT(values, timeline, statistic_type, [seasonality], [data_completion],
+/// [aggregation])`: a statistic of the fitted model (unverified against Excel, decision 0221).
+/// `statistic_type` truncates to 1 α, 2 β, 3 γ, 4 MASE, 5 SMAPE, 6 MAE, 7 RMSE or 8 the
+/// timeline's step; anything else is `#NUM!`, before the other settings.
+fn stat_element(data: &mut EtsData, settings: &[Option<f64>]) -> Result<f64, Error> {
+    let kind = settings
+        .get(2)
+        .copied()
+        .flatten()
+        .map(f64::trunc)
+        .ok_or(Error::VALUE)?;
+    if !(1.0..=8.0).contains(&kind) {
+        return Err(Error::NUM);
+    }
+    let season = season_option(settings, 3)?;
+    let options = series_options(settings, 4, 5)?;
+    let series = data.series(options)?;
+    if kind == 8.0 {
+        return Ok(series.step);
+    }
+    let m = data.season(options, season)?;
+    let fitted = data.fit(options, m)?;
+    let [alpha, beta, gamma] = fitted.parameters();
+    let errors = fitted.errors();
+    let count = errors.len().max(1) as f64;
+    let mae = errors.iter().map(|e| e.abs()).sum::<f64>() / count;
+    Ok(if kind == 1.0 {
+        alpha
+    } else if kind == 2.0 {
+        beta
+    } else if kind == 3.0 {
+        gamma
+    } else if kind == 4.0 {
+        // The mean absolute error over that of the naive one-step forecast.
+        let naive: Vec<f64> = series
+            .y
+            .windows(2)
+            .filter_map(|pair| Some((pair.get(1)? - pair.first()?).abs()))
+            .collect();
+        let naive_mae = naive.iter().sum::<f64>() / naive.len().max(1) as f64;
+        if naive_mae == 0.0 {
+            return Err(Error::DIV);
+        }
+        mae / naive_mae
+    } else if kind == 5.0 {
+        // The mean of |e| / ((|y| + |ŷ|) / 2) over the points where that is defined.
+        let terms: Vec<f64> = series
+            .y
+            .iter()
+            .zip(errors)
+            .filter_map(|(value, error)| {
+                let denominator = (value.abs() + (value - error).abs()) / 2.0;
+                (denominator > 0.0).then(|| error.abs() / denominator)
+            })
+            .collect();
+        terms.iter().sum::<f64>() / terms.len().max(1) as f64
+    } else if kind == 6.0 {
+        mae
+    } else {
+        (errors.iter().map(|e| e * e).sum::<f64>() / count).sqrt()
+    })
 }
 
 /// One element of a `values` or `timeline` array or range as the series reads it; an error element
@@ -370,10 +445,16 @@ fn array_point(node: &ArrayNode, cell: CellReferenceIndex) -> Result<Point, Calc
 mod tests {
     use super::{ets, fit_work, EtsData};
     use crate::expressions::token::Error;
+    use crate::expressions::types::CellReferenceIndex;
 
     #[test]
     fn a_call_spends_at_most_its_work_budget() {
-        let mut data = EtsData::new(Ok(Vec::new()), Ok(Vec::new()));
+        let cell = CellReferenceIndex {
+            sheet: 0,
+            row: 1,
+            column: 1,
+        };
+        let mut data = EtsData::new(Ok(Vec::new()), Ok(Vec::new()), cell);
         assert_eq!(data.spend(ets::MAX_CALL_WORK), Ok(()));
         assert_eq!(data.spend(1), Err(Error::NUM));
         // A fit of the longest series costs less than half the budget: two fit, a third does not.

@@ -1629,7 +1629,7 @@ desktop Excel. Until decision 0221 the family therefore stayed `#N/IMPL!` until 
 T-1553). Since that owner ruling, it computes gridcraft's AAA model, unverified (the section "FORECAST.ETS family: the
 model before Excel evidence").
 Evidence: probes/forecast-ets-longer-series.case.json K1:K42 (excel-graph, 2026-10-14, T-1293).
-Ours: for every call that passes the argument step (next section, T-2424), FORECAST.ETS.SEASONALITY (T-3599) and FORECAST.ETS (T-3600) compute the model ("FORECAST.ETS family: the model before Excel evidence"), and CONFINT and STAT are `#N/IMPL!` until T-3601. Before that, `target_date` (FORECAST.ETS, CONFINT) or `statistic_type` (STAT) is lifted and read as a number: text there is `#VALUE!`, and an array or two-cell range gives that many `#N/IMPL!` elements (T-2028). UNVERIFIED (T-2028 follow-up probe): the optional settings (seasonality, data_completion, aggregation, confidence_level) also lift in ours, as the catalog's `value` mode says, with no Excel cell showing the shape of an array or range there (since T-2424 settled for SEASONALITY's data_completion
+Ours: for every call that passes the argument step (next section, T-2424), the four members compute the model ("FORECAST.ETS family: the model before Excel evidence"; SEASONALITY T-3599, FORECAST.ETS T-3600, CONFINT and STAT T-3601). Before that, `target_date` (FORECAST.ETS, CONFINT) or `statistic_type` (STAT) is lifted and read as a number: text there is `#VALUE!`, and an array or two-cell range gives that many elements (T-2028). UNVERIFIED (T-2028 follow-up probe): the optional settings (seasonality, data_completion, aggregation, confidence_level) also lift in ours, as the catalog's `value` mode says, with no Excel cell showing the shape of an array or range there (since T-2424 settled for SEASONALITY's data_completion
 and aggregation by gen-m9 `#SPILL!` cells 67f5e0fe790e6bec A47, A307 and 22656c225ff4f22a A60; see the T-2255 section); and text `target_date` in CONFINT and text `statistic_type` in STAT (K38 covers FORECAST.ETS only), and a boolean, number-text or error `target_date`/`statistic_type` reads by the usual scalar coercion (an error is returned as itself;
 settled by gen-m9 22656c225ff4f22a A1, fa25422d6f18c157 A181 and 43a13a091907b402 A261, see the T-2255 section).
 Status: VERIFIED (web) that the family is `#N/A` there; desktop behavior UNKNOWN
@@ -1658,7 +1658,8 @@ errors, in the order the code takes them (every ordering UNVERIFIED; T-2425's de
    `#NUM!` (the "work caps" section). More than 30% of the steps missing is `#NUM!`.
 - FORECAST.ETS (T-3600) checks `seasonality` before step 2: it truncates to 1 (detect, the default), 0 (none) or 2
   to 8,760 (that season length); anything else is `#NUM!`. After step 6, a `target_date` before the last time stamp
-  is `#NUM!` (Microsoft's documentation). Then the season is detected if asked (the cap below), and the model is fitted
+  is `#NUM!` (Microsoft's FORECAST.ETS page: "If target_date is chronologically before the end of the historical
+  timeline, FORECAST.ETS returns the #NUM! error"; a target equal to the last time stamp is the model's value there). Then the season is detected if asked (the cap below), and the model is fitted
   (the call's work budget, "work caps" section). The fit starts from Hyndman et al. §2.6.1: seasonal states from a
   classical decomposition of the first seasons (a centred moving average; under two seasons, deviations from a
   least-squares line), centred on 0. Level and trend come from the least-squares line through the first 10 seasonally
@@ -1668,6 +1669,15 @@ errors, in the order the code takes them (every ordering UNVERIFIED; T-2425's de
   steps it is the straight line between the forecasts at the steps either side. Exact data, such as a straight line
   or an exactly repeating season with a trend, forecasts exactly whatever α, β and γ come out, but noisy data may
   differ from Excel in the last digits or more.
+- FORECAST.ETS.CONFINT (T-3601) reads `confidence_level` (default 0.95) first: outside (0, 1) is `#NUM!`. Then come
+  `seasonality` and steps 2 to 6 as for FORECAST.ETS, and the target check. The result is NORM.S.INV((1 + level) / 2)
+  times the h-step forecast error's standard deviation (Hyndman et al. Table 6.1, class 1): σ²·(1 + Σ_{j=1}^{k}
+  (α + αβ·j + γ·[j mod m = 0])²), with k = ⌈h⌉ - 1 and σ² = SSE / n. So a fractional horizon has the variance of the
+  whole step at or past it, and exact data gives 0.
+- FORECAST.ETS.STAT (T-3601) truncates `statistic_type` first: 1 α, 2 β, 3 γ (0 without a season), 4 MASE (MAE over
+  the mean absolute one-step change; `#DIV/0!` when that is 0), 5 SMAPE (the mean of |e| / ((|y| + |ŷ|) / 2) over the
+  points where it is defined), 6 MAE, 7 RMSE (σ), 8 the timeline's step (the average step for calendar months).
+  Anything else is `#NUM!`. Then come `seasonality` and steps 2 to 6; statistic 8 needs no fit.
 - FORECAST.ETS.SEASONALITY is the detected season length, or 0 when there is none. It takes the autocorrelation of
   the series' residuals from its least-squares line, at lags 2 to n/2 (at most 8,760), and returns the lag of the
   highest local peak above 2/√n. Fewer than four points is 0.
@@ -1679,8 +1689,8 @@ On probes/forecast-ets-longer-series, which has a period-4 signal, ours is 4 (K3
 `#N/A`.
 Status: UNVERIFIED (desktop probe pending, T-1553, T-2425). Decision 0221 lets the family ship it.
 Implemented in: crates/rustsheet-engine/src/functions/statistical/ets.rs (`build_series`, `detect_season`),
-statistical/ets/model.rs (`initial_states`, `filter`, `optimise`, `fit`, `Fit::forecast`) and statistical/forecast.rs
-(`forecast_ets_lifted`, `forecast_element`).
+statistical/ets/model.rs (`initial_states`, `filter`, `optimise`, `fit`, `Fit::forecast`, `Fit::forecast_sd`) and
+statistical/forecast.rs (`forecast_ets_lifted`, `forecast_element`, `confint_element`, `stat_element`).
 Tasks: T-3599, T-3600 (FORECAST.ETS), T-3601 (CONFINT, STAT), T-2425 (match desktop values)
 
 ## FORECAST.ETS family: work caps
@@ -4792,9 +4802,9 @@ Ours: since T-2424, the argument step (`statistical/forecast.rs` `forecast_ets_l
 reads as a number in turn, and `values` and `timeline` are evaluated once for a direct error. A reference to an
 error cell, even a one-cell one, is not a direct error here: the argument step passes it, and no oracle cell covers it
 yet (the gen-m9 Data sheets hold "#N/A" only as text; T-2425 probe). The first failure in argument order decides. A
-call with none goes on to the model: since T-3599 and T-3600, FORECAST.ETS.SEASONALITY and FORECAST.ETS compute it, and an error cell in `values`
+call with none goes on to the model, which all four members compute since T-3599 to T-3601, and an error cell in `values`
 or `timeline` is then that error (UNVERIFIED, decision 0221, the section "FORECAST.ETS family: the model before Excel
-evidence"); CONFINT and STAT stay `#N/IMPL!` until T-3601 (T-2425 the desktop values, after T-1553). FORECAST.ETS.SEASONALITY
+evidence"; T-2425 the desktop values, after T-1553). FORECAST.ETS.SEASONALITY
 lifts its data_completion and aggregation too. Counts: the task names 1,215 known-failure lines (1,196 from T-2255
 and 19 from T-2256); with the 19 visibly-off lines of T-2257 and T-2258 it owns 1,234 cells. 656 of them leave the
 baseline with T-2424, 481 had already passed on main before it, and 97 still differ. The 97 are:

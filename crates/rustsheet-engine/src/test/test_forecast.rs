@@ -88,8 +88,8 @@ fn test_forecast_wrong_arg_count() {
 }
 
 /// T-2028: `target_date` and `statistic_type` read as numbers first (text is `#VALUE!`) and lift
-/// over a two-cell range; then FORECAST.ETS computes (T-3600) and CONFINT and STAT are
-/// `#N/IMPL!` until T-3601.
+/// over a two-cell range; then the family computes (T-3599 to T-3601). On the exact line of
+/// A1:B8 the interval is 0 and α is the first grid point that fits it exactly, 0.05.
 #[test]
 fn forecast_ets_family_reads_lifted_argument_first() {
     let mut model = new_empty_model();
@@ -109,7 +109,7 @@ fn forecast_ets_family_reads_lifted_argument_first() {
     let got: Vec<String> = (1..=8).map(|r| model._get_text(&format!("D{r}"))).collect();
     assert_eq!(
         got,
-        ["18", "#VALUE!", "#N/IMPL!", "#VALUE!", "#N/IMPL!", "#VALUE!", "2", "2"]
+        ["18", "#VALUE!", "0", "#VALUE!", "0.05", "#VALUE!", "2", "2"]
     );
 }
 
@@ -230,4 +230,64 @@ fn forecast_ets_seasonality_error_order() {
             "{formula}"
         );
     }
+}
+
+// FORECAST.ETS.CONFINT and FORECAST.ETS.STAT (T-3601, UNVERIFIED, decision 0221).
+#[test]
+fn forecast_ets_confint_and_stat() {
+    let mut model = new_empty_model();
+    let noise = [
+        0.3, -0.2, 0.1, -0.4, 0.2, 0.0, -0.1, 0.4, -0.3, 0.1, 0.2, -0.2,
+    ];
+    for t in 1..=12 {
+        model._set(&format!("A{t}"), &format!("{t}"));
+        model._set(&format!("B{t}"), &format!("{}", 3 + 2 * t));
+        model._set(
+            &format!("C{t}"),
+            &format!("{}", 3.0 + 2.0 * f64::from(t) + noise[(t - 1) as usize]),
+        );
+        // Month starts from 2024-01-01: the step is the average month length, 335 days / 11.
+        model._set(&format!("D{t}"), &format!("=DATE(2024,{t},1)"));
+    }
+    let cells = [
+        // An exact line has no forecast error.
+        ("=FORECAST.ETS.CONFINT(15,B1:B12,A1:A12)", "0"),
+        ("=FORECAST.ETS.STAT(B1:B12,A1:A12,6)", "0"),
+        ("=FORECAST.ETS.STAT(B1:B12,A1:A12,7)", "0"),
+        ("=FORECAST.ETS.STAT(B1:B12,A1:A12,8)", "1"),
+        ("=FORECAST.ETS.STAT(B1:B12,D1:D12,8)*11", "335"),
+        // Out-of-range settings are #NUM!.
+        ("=FORECAST.ETS.CONFINT(15,B1:B12,A1:A12,1)", "#NUM!"),
+        ("=FORECAST.ETS.CONFINT(15,B1:B12,A1:A12,0)", "#NUM!"),
+        ("=FORECAST.ETS.STAT(B1:B12,A1:A12,9)", "#NUM!"),
+        ("=FORECAST.ETS.STAT(B1:B12,A1:A12,0.5)", "#NUM!"),
+        // MASE on a constant series divides by a zero naive error.
+        ("=FORECAST.ETS.STAT({5,5,5,5},{1,2,3,4},4)", "#DIV/0!"),
+    ];
+    for (row, (formula, _)) in cells.iter().enumerate() {
+        model._set(&format!("F{}", row + 1), formula);
+    }
+    // Noisy data: a positive interval that widens with the horizon and with the level.
+    model._set("G1", "=FORECAST.ETS.CONFINT(13,C1:C12,A1:A12)");
+    model._set("G2", "=FORECAST.ETS.CONFINT(20,C1:C12,A1:A12)");
+    model._set("G3", "=FORECAST.ETS.CONFINT(13,C1:C12,A1:A12,0.99)");
+    model._set("G4", "=FORECAST.ETS.STAT(C1:C12,A1:A12,6)");
+    model._set("G5", "=FORECAST.ETS.STAT(C1:C12,A1:A12,7)");
+    model.evaluate();
+    for (row, (formula, expected)) in cells.iter().enumerate() {
+        let text = model._get_text(&format!("F{}", row + 1));
+        match expected.parse::<f64>() {
+            Ok(number) => {
+                let actual: f64 = text.parse().unwrap_or(f64::NAN);
+                assert!((actual - number).abs() < 1e-9, "{formula}: {text}");
+            }
+            Err(_) => assert_eq!(text, *expected, "{formula}"),
+        }
+    }
+    let number = |cell: &str| -> f64 { model._get_text(cell).parse().unwrap_or(f64::NAN) };
+    assert!(number("G1") > 0.0);
+    assert!(number("G2") >= number("G1"));
+    assert!(number("G3") > number("G1"));
+    // RMSE is at least MAE.
+    assert!(number("G5") >= number("G4") && number("G4") > 0.0);
 }

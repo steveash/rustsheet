@@ -334,7 +334,11 @@ pub(in crate::functions::statistical) struct Fit {
     m: usize,
     /// How many points it was fitted to.
     n: usize,
+    /// The fitted α, β and γ (γ is 0 without seasonality).
+    parameters: Parameters,
     state: State,
+    /// The one-step errors of the fitted model, one per point.
+    errors: Vec<f64>,
 }
 
 /// Fits the model to `y` with season length `m` (below 2: no seasonality).
@@ -342,11 +346,14 @@ pub(in crate::functions::statistical) fn fit(y: &[f64], m: usize) -> Fit {
     let m = if m >= 2 { m } else { 0 };
     let initial = initial_states(y, m);
     let parameters = optimise(y, &initial);
-    let state = filter(y, &initial, parameters, None);
+    let mut errors = Vec::with_capacity(y.len());
+    let state = filter(y, &initial, parameters, Some(&mut errors));
     Fit {
         m,
         n: y.len(),
+        parameters,
         state,
+        errors,
     }
 }
 
@@ -376,5 +383,89 @@ impl Fit {
         } else {
             at_below + (horizon - below) * (self.at(below + 1.0) - at_below)
         }
+    }
+
+    /// The fitted α, β and γ.
+    pub(in crate::functions::statistical) fn parameters(&self) -> [f64; 3] {
+        self.parameters
+    }
+
+    /// The fitted model's one-step errors, one per point.
+    pub(in crate::functions::statistical) fn errors(&self) -> &[f64] {
+        &self.errors
+    }
+
+    /// The standard deviation of the forecast error `horizon` steps after the last point
+    /// (Hyndman et al. 2008, Table 6.1, class 1): σ²·(1 + Σ_{j=1}^{k} (α + αβ·j + γ·[j mod m =
+    /// 0])²) with k = ⌈h⌉ - 1 and σ² = SSE / n, in closed form.
+    pub(in crate::functions::statistical) fn forecast_sd(&self, horizon: f64) -> f64 {
+        let sigma2 = self.state.sse / self.n.max(1) as f64;
+        let k = horizon.ceil().max(1.0) - 1.0;
+        let [alpha, beta, gamma] = self.parameters;
+        let trend_gain = alpha * beta;
+        let mut sum = k * alpha * alpha
+            + alpha * trend_gain * k * (k + 1.0)
+            + trend_gain * trend_gain * k * (k + 1.0) * (2.0 * k + 1.0) / 6.0;
+        if self.m > 0 {
+            let m = self.m as f64;
+            let seasons = (k / m).floor();
+            sum +=
+                2.0 * gamma * (seasons * alpha + trend_gain * m * seasons * (seasons + 1.0) / 2.0)
+                    + gamma * gamma * seasons;
+        }
+        (sigma2 * (1.0 + sum)).max(0.0).sqrt()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{filter, fit, initial_states};
+
+    fn line(n: usize) -> Vec<f64> {
+        (1..=n).map(|t| 3.0 + 2.0 * t as f64).collect()
+    }
+
+    #[test]
+    fn an_exact_line_starts_on_the_line_and_has_no_error() {
+        let y = line(12);
+        let initial = initial_states(&y, 0);
+        assert!((initial.level - 3.0).abs() < 1e-12 && (initial.trend - 2.0).abs() < 1e-12);
+        let state = filter(&y, &initial, [0.5, 0.1, 0.0], None);
+        assert!(state.sse < 1e-20);
+    }
+
+    #[test]
+    fn a_season_below_two_is_none() {
+        let fitted = fit(&line(12), 1);
+        assert_eq!(fitted.m, 0);
+        assert!(fitted.state.season.is_empty());
+        assert_eq!(fitted.parameters()[2], 0.0);
+        assert_eq!(fitted.errors().len(), 12);
+        assert!(fitted.forecast_sd(5.0) < 1e-9);
+    }
+
+    #[test]
+    fn initial_seasonal_states_are_centred() {
+        let season = [3.0, -1.0, -4.0, 2.0];
+        let y: Vec<f64> = (0..16).map(|t| 10.0 + t as f64 + season[t % 4]).collect();
+        let initial = initial_states(&y, 4);
+        assert!(initial.season.iter().sum::<f64>().abs() < 1e-12);
+        for (state, expected) in initial.season.iter().zip(season) {
+            assert!((state - expected).abs() < 1e-12, "{state} vs {expected}");
+        }
+    }
+
+    #[test]
+    fn the_forecast_variance_grows_with_the_horizon() {
+        let y: Vec<f64> = line(20)
+            .iter()
+            .enumerate()
+            .map(|(t, v)| v + if t % 3 == 0 { 0.5 } else { -0.25 })
+            .collect();
+        let fitted = fit(&y, 0);
+        let near = fitted.forecast_sd(1.0);
+        assert!(near > 0.0 && fitted.forecast_sd(6.0) >= near);
+        // A fractional horizon has the variance of the whole step at or past it.
+        assert_eq!(fitted.forecast_sd(1.5), fitted.forecast_sd(2.0));
     }
 }
