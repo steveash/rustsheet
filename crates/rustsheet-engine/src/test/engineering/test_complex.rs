@@ -638,3 +638,35 @@ fn assert_texts(cases: &[(&str, &str)]) {
         );
     }
 }
+
+/// The logs' modulus is the x87 root of the double sum of squares, and an overflowing `y/x` is
+/// `#NUM!` in the logs and an angle of 0 in IMSQRT (probes/t3643-*-grid, excel-graph; T-3643).
+#[test]
+fn logs_round_the_modulus_twice_and_overflowing_quotients() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=IMLOG10("0.999999999999999+1E-8i")"#);
+    model._set("A2", r#"=IMLOG2("1E-8-0.999999999999999i")"#);
+    model._set("A3", r#"=IMLOG10("0.999999999999999+1i")"#);
+    model._set("A4", r#"=IMLOG10("1E-300+1E20i")"#);
+    model._set("A5", r#"=IMLOG2("-1E-300-1E20i")"#);
+    model._set("A6", r#"=IMLOG10("1E-20+1E20i")"#);
+    model._set("A7", r#"=IMSQRT("1E-300+1E20i")"#);
+    model._set("A8", r#"=IMSQRT("-1E-300-1E20i")"#);
+    model._set("A9", r#"=IMSQRT("1E-20+1E20i")"#);
+    model.evaluate();
+    assert_eq!(
+        model._get_text("A1"),
+        "-3.85730986621315E-16+4.34294481903252E-09i"
+    );
+    assert_eq!(
+        model._get_text("A2"),
+        "-1.28137060152597E-15-2.26618005648665i"
+    );
+    assert_eq!(model._get_text("A3"), "0.15051499783199+0.341094088460461i");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+    assert_eq!(model._get_text("A5"), *"#NUM!");
+    assert_eq!(model._get_text("A6"), "20+0.682188176920921i");
+    assert_eq!(model._get_text("A7"), "10000000000");
+    assert_eq!(model._get_text("A8"), "10000000000");
+    assert_eq!(model._get_text("A9"), "7071067811.86548+7071067811.86547i");
+}
