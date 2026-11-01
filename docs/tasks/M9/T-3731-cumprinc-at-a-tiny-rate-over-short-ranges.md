@@ -3,7 +3,7 @@ id: T-3731
 title: "CUMPRINC at a tiny rate over short ranges, attempt 2 (decision 0056): the 37 visibly-off CUMIPMT cells of fin-cumipmt-tiny-rate-structure, on T-3552's dyadic and rate-scan evidence"
 milestone: M9
 lane: functions-financial
-status: blocked
+status: done
 priority: P1
 size: M
 tier: opus
@@ -87,11 +87,6 @@ Attempt 2 of T-3552's fit (decision 0056). On probes/fin-cumipmt-tiny-rate-struc
   2E-6 to 0.0083, nper 36 to 100, ranges up to 12 periods, both types). Outside the band the current form stays
   (R4.3).
 
-## Blocked because
-Time-boxed (decision 0056): attempt 2 scored the two hypotheses attempt 1 named, and every neighbour of them, on
-the one-period principals and found no form above 34% bit-exact (the engine has 28%). The kernel is unchanged.
-Attempt 3 needs a new idea first (see "Attempts", next step), not more candidates of these families.
-
 ## Attempts (decision 0056)
 - Attempt 2 (2026-11-01, opus): no form found; nothing changed in the kernel. Scored bit-exact on the 425 type 0
   one-period CUMPRINC cells of probes/fin-cumipmt-tiny-rate-structure, fin-cumprinc-single-period-rate-scan and
@@ -165,4 +160,5 @@ follow-up filed with `defer: phase-1b` and named in the Outcome.
 ## Outcome
 Attempt 2 (decision 0056): no form found, and the kernel is unchanged. The candidates and their counts are in
 "Attempts" above; financial.md's entry records attempt 2. The 37 visibly-off CUMIPMT cells stay off, and the task is
-blocked time-boxed. Eval delta: none.
+carried by T-3776 (attempt 3), blocked time-boxed (decision 0056) after two
+attempts. Eval delta: none.
