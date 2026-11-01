@@ -536,11 +536,16 @@ class Stage:
         if self.left() < need:
             raise CutOff(f"hold budget: {self.left():.0f} s left, a CI wait for {n} PR(s) needs {need} s")
 
+    def ci_limit(self, n: int) -> float:
+        """How long a CI wait starting now, whose green result can merge `n` PRs, may take: at most
+        CI_TIMEOUT, past the gate's CI_RESERVE only into budget those merges do not need (decision 0242)."""
+        return max(CI_RESERVE, min(CI_TIMEOUT, self.left() - n * MERGE_BUDGET))
+
     def wait_ci(self, tip: str, docs_only: bool | None, prs: Sequence[int], n: int) -> Outcome:
         """Step 6's CI wait on `tip`, holding the lock for `prs`, whose green result can merge `n`
-        PRs: at most CI_TIMEOUT, and never into the MERGE_BUDGETs those merges need (decision 0242)."""
+        PRs; it lasts at most `ci_limit(n)`."""
         start = self.clock()
-        limit = max(CI_RESERVE, min(CI_TIMEOUT, self.left() - n * MERGE_BUDGET))
+        limit = self.ci_limit(n)
         dispatched: float | None = None
         while True:
             self.checkpoint()

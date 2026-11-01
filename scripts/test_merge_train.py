@@ -134,22 +134,12 @@ class IdChecks(unittest.TestCase):
     def test_root_is_refused_outside_validate(self) -> None:
         tasks = subprocess.run(
             [sys.executable, "-I", str(self.scripts / "tasks.py"), "list", "--root", str(self.tree)],
-            capture_output=True,
-            text=True,
-            check=False,
+            capture_output=True, text=True, check=False,
         )
         self.assertEqual(tasks.returncode, 2)
         decisions = subprocess.run(
-            [
-                sys.executable,
-                "-I",
-                str(self.scripts / "check_decisions.py"),
-                "--root",
-                str(self.tree / "none"),
-            ],
-            capture_output=True,
-            text=True,
-            check=False,
+            [sys.executable, "-I", str(self.scripts / "check_decisions.py"), "--root", str(self.tree / "none")],
+            capture_output=True, text=True, check=False,
         )
         self.assertEqual(decisions.returncode, 2)
 
@@ -339,18 +329,8 @@ class DryRun(unittest.TestCase):
         self.verdicts = {
             1: verdict(1, self.heads[1], "2026-10-28T11:00:00Z"),
             2: verdict(2, self.heads[2], "2026-10-28T10:00:00Z"),
-            3: verdict(
-                3,
-                self.heads[3],
-                "2026-10-28T09:00:00Z",
-                merge_ready.Failure("V3", "CI red", merge_ready.UNLABEL),
-            ),
-            4: verdict(
-                4,
-                self.heads[4],
-                "2026-10-28T09:00:00Z",
-                merge_ready.Failure("V3", "CI pending", merge_ready.KEEP),
-            ),
+            3: verdict(3, self.heads[3], "2026-10-28T09:00:00Z", merge_ready.Failure("V3", "CI red", merge_ready.UNLABEL)),
+            4: verdict(4, self.heads[4], "2026-10-28T09:00:00Z", merge_ready.Failure("V3", "CI pending", merge_ready.KEEP)),
         }
         label = [{"name": merge_ready.READY_LABEL}]
         pulls = [{"number": pr, "labels": label} for pr in (1, 2, 3, 4)] + [{"number": 5, "labels": []}]
@@ -368,9 +348,7 @@ class DryRun(unittest.TestCase):
         return self.git("rev-parse", "HEAD")
 
     def dry_run(self) -> str:
-        with mock.patch.object(
-            merge_train.merge_ready, "verify", side_effect=lambda c, pr, repo: self.verdicts[pr]
-        ):
+        with mock.patch.object(merge_train.merge_ready, "verify", side_effect=lambda c, pr, repo: self.verdicts[pr]):
             for pr in self.heads:  # verify fetches each head; the mock does not
                 self.git("fetch", "-q", "origin", f"+refs/pull/{pr}/head:refs/merge-ready/pull/{pr}")
             return merge_train.dry_run(self.fake, self.clone)
@@ -402,21 +380,15 @@ class SquashText(unittest.TestCase):
         self.assertNotIn("\x07", title)
         self.assertNotIn("\u202e", title)
         self.assertNotIn("\u2028", title)
-        self.assertEqual(
-            merge_train.squash_title("Closed: resolve it", 1), f"C{zwj}losed: r{zwj}esolve it (#1)"
-        )
+        self.assertEqual(merge_train.squash_title("Closed: resolve it", 1), f"C{zwj}losed: r{zwj}esolve it (#1)")
 
     def test_only_well_formed_trailers_are_kept_once(self) -> None:
         good = "Co-Authored-By: Claude <noreply@anthropic.com>"
         session = "Claude-Session: https://claude.ai/code/session_01Abc"
         commits = [
             {"commit": {"message": f"T-1: a\n\nfree text @someone #3\n{good}\n{session}"}},
-            {
-                "commit": {
-                    "message": f"b\n\n{good}\nCo-Authored-By: @evil <x@y.z>\nCo-Authored-By: a#b <x@y.z>\n"
-                    "Claude-Session: https://evil.example/session_1"
-                }
-            },
+            {"commit": {"message": f"b\n\n{good}\nCo-Authored-By: @evil <x@y.z>\nCo-Authored-By: a#b <x@y.z>\n"
+                                   "Claude-Session: https://evil.example/session_1"}},
         ]
         self.assertEqual(merge_train.squash_trailers(commits), f"{good}\n{session}")
 
@@ -522,11 +494,7 @@ class GitHub(Client):
         return str(polls[0])
 
     def green_trees(self) -> set[str]:
-        return {
-            self.git("rev-parse", f"{sha}^{{tree}}")
-            for sha, polls in self.tested.items()
-            if polls[0] == "green"
-        }
+        return {self.git("rev-parse", f"{sha}^{{tree}}") for sha, polls in self.tested.items() if polls[0] == "green"}
 
     def runs(self, sha: str) -> object:
         if self.oracle is not None:
@@ -537,12 +505,8 @@ class GitHub(Client):
             return {"workflow_runs": []}
         done = state in ("green", "red", "cancelled")
         run_ = {
-            "id": 9 + len(self.tested),
-            "path": merge_ready.CI_WORKFLOW,
-            "event": "push",
-            "head_sha": sha,
-            "head_branch": self.branch,
-            "status": "completed" if done else "in_progress",
+            "id": 9 + len(self.tested), "path": merge_ready.CI_WORKFLOW, "event": "push", "head_sha": sha,
+            "head_branch": self.branch, "status": "completed" if done else "in_progress",
             "conclusion": {"green": "success", "red": "failure", "cancelled": "cancelled"}.get(state),
             "check_suite_id": 5,
         }
@@ -550,19 +514,11 @@ class GitHub(Client):
 
     def checks(self) -> object:
         jobs = (*merge_ready.REQUIRED_JOBS, *merge_ready.HEAVY_JOBS)
-        return {
-            "check_runs": [
-                {
-                    "id": k + 1,
-                    "name": name,
-                    "status": "completed",
-                    "conclusion": "success",
-                    "app": {"id": merge_ready.ACTIONS_APP_ID},
-                    "check_suite": {"id": 5},
-                }
-                for k, name in enumerate(jobs)
-            ]
-        }
+        return {"check_runs": [
+            {"id": k + 1, "name": name, "status": "completed", "conclusion": "success",
+             "app": {"id": merge_ready.ACTIONS_APP_ID}, "check_suite": {"id": 5}}
+            for k, name in enumerate(jobs)
+        ]}
 
     def send(self, request: Request) -> object:
         try:
@@ -596,17 +552,10 @@ class GitHub(Client):
             else:
                 merge_commit = self.test_merge(pr) if self.mergeable is not None else None
             return {
-                "number": pr,
-                "title": f"T-000{pr}: change {pr}",
+                "number": pr, "title": f"T-000{pr}: change {pr}",
                 "mergeable_state": "dirty" if pr in self.dirty else "clean",
-                "mergeable": self.mergeable,
-                "merged": pr in self.merged,
-                "merge_commit_sha": merge_commit,
-                "head": {
-                    "ref": f"agent/harness/T-000{pr}-x",
-                    "sha": self.heads[pr],
-                    "repo": {"full_name": "o/r"},
-                },
+                "mergeable": self.mergeable, "merged": pr in self.merged, "merge_commit_sha": merge_commit,
+                "head": {"ref": f"agent/harness/T-000{pr}-x", "sha": self.heads[pr], "repo": {"full_name": "o/r"}},
             }
         if re.fullmatch(r"pulls/(\d+)/commits", path):
             return [{"commit": {"message": "x\n\nCo-Authored-By: A <a@b.c>"}}]
@@ -632,9 +581,7 @@ class GitHub(Client):
             if pr in self.refuse or request.body["sha"] != self.heads[pr]:
                 raise GhError("HTTP 409: head moved")
             main = self.main()
-            tree = self.git(
-                "merge-tree", "--write-tree", main, self.heads[2 if pr in self.bad_squash else pr]
-            )
+            tree = self.git("merge-tree", "--write-tree", main, self.heads[2 if pr in self.bad_squash else pr])
             message = f"{request.body['commit_title']}\n\n{request.body['commit_message']}"
             squash = self.git("commit-tree", tree, "-p", main, "-m", message)
             self.git("update-ref", "refs/heads/main", squash, main)
@@ -648,12 +595,8 @@ class GitHub(Client):
             return self.runs(query["head_sha"])
         if path.endswith("/check-runs"):
             return self.checks()
-        if path == "issues" and dict(request.query) == {
-            "state": "closed",
-            "labels": merge_ready.READY_LABEL,
-            "per_page": "100",
-            "page": "1",
-        }:
+        if path == "issues" and dict(request.query) == {"state": "closed", "labels": merge_ready.READY_LABEL,
+                                                          "per_page": "100", "page": "1"}:
             closed = [pr for pr in self.closed if pr not in self.unlabelled]
             return [{"number": pr, "pull_request": {}} for pr in closed] + [{"number": 99}]  # 99: an issue
         if path.startswith(("issues/", "actions/workflows/")):
@@ -752,12 +695,8 @@ class StageFixture(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             tree = Path(tmp) / "t"
             self.gh.git("worktree", "add", "-q", "--detach", str(tree), branch)
-            check = subprocess.run(
-                [sys.executable, "-I", str(tree / "scripts/tasks.py"), "validate", "--root", str(tree)],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
+            check = subprocess.run([sys.executable, "-I", str(tree / "scripts/tasks.py"), "validate", "--root",
+                                    str(tree)], capture_output=True, text=True, check=False)
             self.gh.git("worktree", "remove", "--force", str(tree))
         self.assertEqual(check.returncode, 0, check.stdout + check.stderr)
         return self.gh.git("show", f"{branch}:{path}")
@@ -899,21 +838,15 @@ class MergeStage(StageFixture):
         self.assertEqual((self.gh.merged, sorted(self.gh.unlabelled)), ([], [1, 2]))
         self.assertEqual(self.stage.log[-1], "ejected #2: ci-red")
         # An infrastructure failure is retried once on a fresh commit, then stops ejecting nobody.
-        for ci, dispatches, words in (
-            (["none"], 2, "even after a dispatch, twice"),
-            (["pending"], 0, f"took over {merge_train.CI_TIMEOUT // 60} min, twice"),
-        ):
+        for ci, dispatches, words in ((["none"], 2, "even after a dispatch, twice"),
+                                      (["pending"], 0, f"took over {merge_train.CI_TIMEOUT // 60} min, twice")):
             with self.subTest(ci=ci):
                 self.setUp()
                 self.gh.ci = ci
                 self.assertEqual(self.run_stage(), 1)
                 self.assertEqual((self.gh.merged, self.gh.unlabelled), ([], set()))
-                self.assertEqual(
-                    self.stage.log[-1],
-                    f"stopped: infrastructure: no CI run on the train, {words}"
-                    if ci == ["none"]
-                    else f"stopped: infrastructure: the train CI {words}",
-                )
+                self.assertEqual(self.stage.log[-1], f"stopped: infrastructure: no CI run on the train, {words}"
+                                 if ci == ["none"] else f"stopped: infrastructure: the train CI {words}")
                 sent = [r for r in self.gh.writes if r.path.endswith("/dispatches")]
                 self.assertEqual(len(sent), dispatches)
 
@@ -926,9 +859,7 @@ class MergeStage(StageFixture):
         with mock.patch.object(merge_train, "HOLD_BUDGET", budget):
             self.assertEqual(self.run_stage(), 1)
         limit = (merge_train.CI_RESERVE + spare) / 60
-        self.assertIn(
-            f"train CI infrastructure on #1, #2 (the train CI took over {limit:g} min)", self.stage.log
-        )
+        self.assertIn(f"train CI infrastructure on #1, #2 (the train CI took over {limit:g} min)", self.stage.log)
         self.assertIn("hold budget", self.stage.log[-1])
         self.assertEqual(self.gh.merged, [])
 
@@ -960,34 +891,26 @@ class MergeStage(StageFixture):
         ]
         label = merge_ready.READY_LABEL
         collision = "id collision with 0001; renumber per decision 0121 (2)"
-        self.assertEqual(
-            writes,
-            [
-                ("DELETE", f"issues/4/labels/{label}", None),
-                ("POST", "issues/4/comments", {"body": f"merge train: {label} removed: CI red"}),
-                ("DELETE", f"issues/3/labels/{label}", None),
-                ("POST", "issues/3/labels", {"labels": [merge_ready.EJECTED_LABEL]}),
-                ("POST", "issues/3/comments", {"body": f"merge train: {label} removed: {collision}"}),
-            ],
-        )
+        self.assertEqual(writes, [
+            ("DELETE", f"issues/4/labels/{label}", None),
+            ("POST", "issues/4/comments", {"body": f"merge train: {label} removed: CI red"}),
+            ("DELETE", f"issues/3/labels/{label}", None),
+            ("POST", "issues/3/labels", {"labels": [merge_ready.EJECTED_LABEL]}),
+            ("POST", "issues/3/comments", {"body": f"merge train: {label} removed: {collision}"}),
+        ])
 
     def test_a_ready_pr_github_marks_dirty_is_ejected_with_the_label(self) -> None:
         # Decision 0224: step 2's conflict with main ejects like step 3's, so the janitor sees it.
         self.gh.dirty.add(2)
         self.assertEqual(self.run_stage(), 0, self.stage.log)
         self.assertEqual(self.gh.merged, [1])
-        writes = [
-            (r.method, r.path.removeprefix("repos/o/r/"), r.body) for r in self.gh.writes if "/2/" in r.path
-        ]
+        writes = [(r.method, r.path.removeprefix("repos/o/r/"), r.body) for r in self.gh.writes if "/2/" in r.path]
         label = merge_ready.READY_LABEL
-        self.assertEqual(
-            writes,
-            [
-                ("DELETE", f"issues/2/labels/{label}", None),
-                ("POST", "issues/2/labels", {"labels": [merge_ready.EJECTED_LABEL]}),
-                ("POST", "issues/2/comments", {"body": f"merge train: {label} removed: conflict with main"}),
-            ],
-        )
+        self.assertEqual(writes, [
+            ("DELETE", f"issues/2/labels/{label}", None),
+            ("POST", "issues/2/labels", {"labels": [merge_ready.EJECTED_LABEL]}),
+            ("POST", "issues/2/comments", {"body": f"merge train: {label} removed: conflict with main"}),
+        ])
 
     def test_a_push_that_loses_its_lease_merges_nothing(self) -> None:
         build = merge_train.build
@@ -1006,10 +929,8 @@ class MergeStage(StageFixture):
         self.gh.bad_tree = True
         self.assertEqual(self.run_stage(), 1)
         self.assertEqual(self.gh.merged, [])
-        self.assertIn(
-            "P0: main differs from the tested train at #1: GitHub's test merge has another tree",
-            self.stage.log,
-        )
+        self.assertIn("P0: main differs from the tested train at #1: GitHub's test merge has another tree",
+                      self.stage.log)
         # Before the squash nothing of ours landed: a P0 only, no revert PR.
         [opened] = self.gh.opened
         self.assertEqual(opened["title"], self.tasks_title())
