@@ -3,7 +3,7 @@ id: T-3670
 title: "Gate A slice 4c: reference tables for SINH, COSH, TANH, COTH, SECH and CSCH"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
