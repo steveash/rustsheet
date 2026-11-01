@@ -3,7 +3,7 @@ id: T-3609
 title: "IMSECH, IMCSCH and IMCOSH below |x| = 0.01: the 7 t3589 fresh-sweep texts one 15-digit digit off"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
