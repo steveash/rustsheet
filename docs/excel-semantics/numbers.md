@@ -2408,7 +2408,7 @@ seen so far is subtracted, any other is added. So `ARABIC("IIX")` = 8, `"IXI"` =
 every ROMAN form reads back (`ARABIC(ROMAN(n,k))` = n for n 1..3999 and k 0..4, TRUE, FALSE).
 A lone `-` (also `"- "`, `" - "`) is `#NUM!`. Everything else is `#VALUE!`: `+XIV`, `--X`, `- XIV`, `-0`, a tab after the
 minus, numeric text (`"12"`, `"0"`, `"1E3"`), mixed digits (`X1`, `1X`), `X-`, `(X)`, `N`, the Unicode Roman numerals
-U+2160..U+2188 alone or mixed with letters, full-width `Ｘ`, `ı` (U+0131), `İ` (U+0130) and a trailing CHAR(0).
+U+2160..U+2188 alone or mixed with letters (sampled: U+2160, U+2163, U+2169, U+2170, U+217E with "X", U+217F, U+2180, U+2183, U+2188; the rest of the block is inferred), full-width `Ｘ`, `ı` (U+0131), `İ` (U+0130) and a trailing CHAR(0).
 The text may be at most 255 characters counted *before* the trim: `REPT("M",255)` = 255000 and `"-"&REPT("M",254)` = -254000,
 but `REPT("M",256)`, `" "&REPT("M",255)`, `REPT("M",255)&" "`, `"-"&REPT("M",255)` and `REPT(" ",256)` are `#VALUE!`.
 Ours before T-3648: classic grammar with Excel's ROMAN subtractive pairs, at most three repeats, no sign and no length limit,
