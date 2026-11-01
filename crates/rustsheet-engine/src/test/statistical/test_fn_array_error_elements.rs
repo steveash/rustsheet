@@ -31,6 +31,9 @@ const CASES: &[(&str, &str)] = &[
     ("SMALL((SMALL({1,#N/A,3},2)/1.005),\"a*\")", "#N/A"),
     ("SMALL(SMALL({1,#N/A,3},2),\"x\")", "#N/A"),
     ("SMALL(LARGE({1,#N/A,3},2),\"x\")", "#N/A"),
+    ("SMALL(IF(TRUE,SMALL({1,#N/A,3},2)),\"x\")", "#N/A"),
+    ("SMALL(LET(v,SMALL({1,#N/A,3},2),v),\"x\")", "#N/A"),
+    // A plain error that was never an element's (a guard, unchanged by T-3080).
     ("SMALL(NA(),\"x\")", "#N/A"),
     // An element error inside the array argument itself still loses to a text k.
     ("SMALL({1,#N/A,3},\"x\")", "#VALUE!"),

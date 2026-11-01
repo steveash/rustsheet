@@ -2,7 +2,9 @@
 //!
 //! An error element is the result (docs/excel-semantics/statistics.md "An error element of an array
 //! argument is that error"), but another argument's error, or one that does not coerce, wins over it
-//! in the lifted functions: [`is_array_element_error`] lets them tell the two apart.
+//! in the lifted functions: [`is_array_element_error`] lets them tell the two apart. The tag lives
+//! only inside the call that read the element: `Model::evaluate_node_in_context` drops it from a
+//! call's value, so an outer call sees a plain error (T-3080; moving it to `CalcResult` is T-3695).
 
 use crate::calc_result::CalcResult;
 use crate::expressions::token::Error;

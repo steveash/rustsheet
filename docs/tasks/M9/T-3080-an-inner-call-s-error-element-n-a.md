@@ -57,4 +57,4 @@ k (`SMALL({1,#N/A,3},"x")` stays `#VALUE!`). `element_errors` is now `pub(crate)
   unchanged, no regressions. SMALL had this as its only visibly-off attributed cell, so it reaches the Phase 1 rate.
 - Unit cases in test_fn_array_error_elements.rs: the three nested forms the gap triage listed are `#N/A`; the two
   array-literal forms stay `#VALUE!`.
-
+- Follow-up T-3695: probe the extrapolated nested forms in Excel and move the tag to `CalcResult` (review).
