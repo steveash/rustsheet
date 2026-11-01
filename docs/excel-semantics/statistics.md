@@ -3222,6 +3222,26 @@ Rule: the entries above assembled in one TOMS 708 port (Excel's EXP, LN, GAMMALN
   LN or log1p by its own x, so the two orientations take different paths). With the exact increment in place of D it is still 1,726/3,072/3,072. With r2-bratio's density
   and D it falls to 89/2,154/2,356, so the visible gap there is the density's algdiv lnB, not bgrat. The engine's
   density with an accurate increment scores 282/2,824/3,042, against today's kernel at 26/113/344 (T-3382).
+- **L140 bup+bgrat with n >= 2 bup terms (2 <= b0 < 40, a0 > 15, x0 > 0.7) is the same RN(W + D), with bup's powers
+  of x through Excel's EXP (T-3568).** With n = int(b0) and c = b0 - n (c = 1 and n - 1 at an integer b0):
+  - W = fl(ret · S). Here ret = x87(P·fl(x0·y0)/c), P is Excel's BETA.DIST(y0, c, a0, FALSE) (the density at the
+    lowest shape, in bup's orientation), and S = 1 + Σ_{i<n} fl(R_i · EXP(fl(i·LN(y0)))) in doubles.
+  - R_i is the running double product of TOMS's stored ratios fl(apb + l)/fl(ap1 + l), with TOMS's k and the 1e-15 break.
+  - Excel's W error tracks P's own error (correlation 0.93-1.00, P up to 300 units of 2^-53 off at a0 >= 500), so these
+    cells are far from the true value (CR 33/195/389 of 1,650 hold-out cells).
+  - Frozen before scoring: hold-out 394/1,163/1,383 of 1,650 and a post-freeze sweep 186/574/696 of 825. TOMS's
+    recurrence on the same P scores 139/742/1,125 and 68/382/583, the r5 research kernel 102/575/892 and 56/286/450.
+  - TOMS's recurrence in any arithmetic (doubles, x87, exact) leaves an sd of 17.8 units. The exponent form leaves 1.6
+    at n <= 9 and 15 at n >= 10. The rest grows with the binade of (n - 1)·|ln y0| and is open.
+  - The callers take the same composition at their oriented call: BINOM.DIST(k, N, p, TRUE) as I_{1-p}(N - k, k + 1),
+    NEGBINOM.DIST(f, r, p, TRUE) as I_p(r, f + 1), F with c = 1/2 or 1.
+  - At c = 1 the increment is the accurate x0^a0. BETA.DIST(x0, a0, 1, TRUE) itself is no stand-in: at x0 > 0.9 it
+    is the a0 = 1 complement (0.5 - w) + 0.5 of "Incomplete beta at a shape of 1 outside the closed forms", which is
+    0 on 123 hold-out points with x0^a0 up to 5e-17.
+  - Rejected: a loop of one-term bups on Excel's density at each shape c + j (5/30/80 of 300; W is 270-290 units
+    from those densities), and one exponent per term, EXP(fl(i·LN y0) + LN R_i). The form does not carry to the
+    min <= 1 bup+bgrat branch (T at n <= 30: 411 against 412 for the recurrence and 598 for the exact sum, of 1,344)
+    (docs/research/t2464/r5-bup).
 - **Why TOMS bgrat lost at b ≠ 1/2 (T-2512).** TOMS passes bgrat's 15·eps = 15e-15 to grat1, whose continued fraction
   (z >= 1.1 on every such cell) stops tens of ulps short. On 2,908 direct bgrat cells (t2512-r3-bgrat-split):
   - TOMS in doubles with Excel's pieces scores 13/142/162, and 139/1,263/1,834 at eps 1e-15.
@@ -3240,10 +3260,10 @@ Rule: the entries above assembled in one TOMS 708 port (Excel's EXP, LN, GAMMALN
   digits, because Q < 0.01 on 5,196 of the 5,228 BETA.DIST cells that reach bgrat (probe t2512-r3-bgrat-qgamma).
   The same probe's GAMMA.DIST(z, b, 1, TRUE) column (fractional b < 1, P near 1) is one the engine misses on 1,268 of
   4,980 cells, mostly by 1-2 ulp and on 117 at the 15th digit (T-3383 records it for the incomplete-gamma work).
-- Open: D to the bit, n > 1 bup terms and F/BINOM/NEGBINOM callers of L140 bup+bgrat (T-3383); algdiv for b0 >= 8 (about 1 unit off TOMS, in bpser and the density; in the density it looks like rounding noise of a few ulps, not
+- Open: D to the bit (T-3383); the n >= 10 exponent-binade leftover of L140's n-term bup (T-3568, engine port T-3712); algdiv for b0 >= 8 (about 1 unit off TOMS, in bpser and the density; in the density it looks like rounding noise of a few ulps, not
   a smooth approximation error, T-3383 r4-algdiv); lnΓ(a0 < 1) in L
   and the 55-84% ceiling of b < 1 bpser shapes; bfrac's fraction (sd 3.8 units) and bup's arithmetic in bup+bgrat;
-  a0 < 1e-15 at 0.04 <= y < 0.25 (Excel 1e-14 to 3.8e-13 relative off the truth, in bgrat's incomplete-gamma ratio);
+  a0 < 1e-15 at 0.04 <= y < 0.25 (Excel 1e-14 to 3.8e-13 relative off the truth, in bgrat's incomplete-gamma ratio; T-3719);
   the densities after T-2513's round 3 (each in its entry): Loader's constant residual of 2-4 units and bd0's series,
   the T density's per-df constant, BINOM's interior pmf, NEGBINOM's final step, the F density, and the density's
   algdiv lnB for min < 1 < 8 < max (min(a,b) <= 1 is otherwise model M2).
@@ -3264,9 +3284,10 @@ Evidence: probes-numeric t2464-*; docs/research/t2464/README.md, r2-bratio (`sco
 `report_ladder.out`), r2-impact (`impact.out`, `ladder.out`, `branches.out`, `offcells_pre.tsv`), w2-forensics
 `tie_response.py`, w4-fractions `t1_pdfshare.py`, w6-literature (source survey), verify-r2-bratio/analyze.out,
 verify-r2-impact/v2_plan.out; T-2512: probes-numeric t2512-r3-bgrat-qgamma, -split, -bupdens and r3-bgrat (RESULTS.md,
-`bupdens.out`, `engdens.out`, `epsscan.out`, `bgld.out`, `ident.out`, `zstore.out`, `split.out`, `qsize.out`).
+`bupdens.out`, `engdens.out`, `epsscan.out`, `bgld.out`, `ident.out`, `zstore.out`, `split.out`, `qsize.out`); T-3568: probes-numeric t3568-r5-bup-tune, -hold, -fresh, -terms-tune, -terms-hold and r5-bup
+(RESULTS.md, `score_hold.out`, `resid2_*.out`, `powforms2_*.out`, `terms_*.out`, `fsplit.out`, `tbup.out`).
 Status: PARTIAL (excel-graph)
-Tasks: T-2464, T-2504 to T-2511, T-2512, T-2513, T-2585, T-2586, T-3382, T-3383
+Tasks: T-2464, T-2504 to T-2511, T-2512, T-2513, T-2585, T-2586, T-3382, T-3383, T-3568, T-3712
 
 ## Incomplete beta in the ironcalc-calc workbooks: F tails and densities (T-0970)
 Rule (VERIFIED on the cells named): Excel's F.DIST.RT is the upper tail of the incomplete beta,

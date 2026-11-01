@@ -1,0 +1,5 @@
+bab3429c5df4b967bfed72b254b4f246b78dfbf0513591d94e5fe955f1d7a8a5  ../../../../eval/suites/probes-numeric/cases/t3568-r5-bup-hold.oracle.json
+9f099dad0623941cdd791bfb103adfef92e3fdcd09f8eb9e1715ff60c31c6ff2  ../../../../eval/suites/probes-numeric/cases/t3568-r5-bup-tune.oracle.json
+e64cba8494954c251ec544062b0b01afbce40471726d0f97f5ab57415d22071d  ../../../../eval/suites/probes-numeric/cases/t3568-r5-bup-terms-hold.oracle.json
+386b102f3fbc950aae577ddcfccd387ee96c966f543bab78202d2a49a64ac0e6  ../../../../eval/suites/probes-numeric/cases/t3568-r5-bup-terms-tune.oracle.json
+10cc8616e75de67cd7562358d6e6faeedaf50291a864db226e32e6c28d004e50  ../../../../eval/suites/probes-numeric/cases/t3568-r5-bup-fresh.oracle.json
