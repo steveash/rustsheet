@@ -1,0 +1,13 @@
+diff --git a/crates/rustsheet-engine/src/functions/engineering/complex/trig.rs b/crates/rustsheet-engine/src/functions/engineering/complex/trig.rs
+index 5427095b3..5822b4546 100644
+--- a/crates/rustsheet-engine/src/functions/engineering/complex/trig.rs
++++ b/crates/rustsheet-engine/src/functions/engineering/complex/trig.rs
+@@ -118,7 +118,7 @@ fn sec_sinh_cosh(y: f64) -> (f64, f64) {
+ /// Whether `INVERSE_EXP_LOW < |x| <= INVERSE_EXP_HIGH`, where the `1/u` form applies.
+ fn in_inverse_exp_band(x: f64) -> bool {
+     let t = x.abs();
+-    t > INVERSE_EXP_LOW && t <= INVERSE_EXP_HIGH
++    let _ = t; false
+ }
+ 
+ /// [`inverse_exp_sinh_cosh`] takes the `1/u` form for `INVERSE_EXP_LOW < |x| <= INVERSE_EXP_HIGH`.

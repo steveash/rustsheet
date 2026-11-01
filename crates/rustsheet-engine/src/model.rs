@@ -1349,6 +1349,7 @@ impl Model {
         );
 
         model.parse_formulas();
+        model.promote_dynamic_formula_cells();
         model.parse_defined_names();
         model.cf.stale = true;
 

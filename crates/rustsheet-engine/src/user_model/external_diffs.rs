@@ -3,6 +3,7 @@
 
 use crate::{
     user_model::history::{DiffType, QueueDiffs},
+    workbook_check::SpillTally,
     Model, UserModel,
 };
 
@@ -39,6 +40,14 @@ impl UserModel {
         // copy if a diff is refused. The copy costs a pass over the workbook on every call; a list
         // that changes a cell already evaluates the whole workbook.
         let before = self.model.workbook.clone();
+        // The anchors already in the model count too, so that calls made while evaluation is
+        // paused cannot pile up anchors that claim cells no call stores (T-3426).
+        self.restored_spills = SpillTally::default();
+        for worksheet in &self.model.workbook.worksheets {
+            for (_, _, cell) in worksheet.sheet_data.cells() {
+                self.restored_spills.add(cell);
+            }
+        }
         let applied = queue_diffs_list.iter().try_for_each(|queue_diff| {
             if matches!(queue_diff.r#type, DiffType::Redo) {
                 self.apply_diff_list(&queue_diff.list)

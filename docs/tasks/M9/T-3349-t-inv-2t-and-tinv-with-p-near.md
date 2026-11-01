@@ -32,7 +32,7 @@ error of T.INV and T.INV.2T against the math (median 7.5e-15 and 1.5e-14, Excel 
 - Probe (T-3349): probes/t3349-t-inv-2t-near-one A1-A44 (excel-graph, 2026-10-31): A1 the assessment's
   `T.INV.2T(0.999999999989522,2)`, Excel 1.481806159731988E-11; A2 TINV, A3 df 1, A4 df 30, A5 CONFIDENCE.T of it;
   A6-A35 `T.INV.2T(1-1E-k,df)` for k 3, 6, 9, 12, 15 at df 1, 2, 5, 30, 1000, 1E6; A36-A38 p = 1.001, 1.000000001, 1
-  (the 16-digit 1+1E-15 reads as 1) at df 2; A39-A44 T.INV at 0.5 +- 1E-6, 1E-12 and TINV(1-1E-6, 1-1E-12) at df 2.
+  (1+1E-15 needs 16 digits, so A38 is the literal 1) at df 2; A39-A44 T.INV at 0.5 +- 1E-6, 1E-12 and TINV(1-1E-6, 1-1E-12) at df 2.
   The bug the assessment saw (1.49E-8 at A1) was fixed on main by T-2724 (#2510) before this task started; the probe
   is the evidence that it stays fixed. Sweep: probes-numeric/t3349-t-inv-2t-sweep (300 points, seed 3349).
 ## Acceptance criteria
@@ -41,7 +41,7 @@ error of T.INV and T.INV.2T against the math (median 7.5e-15 and 1.5e-14, Excel 
 - [x] A new public probe case under eval/suites/probes/cases/ (one milestone tag, M9; decision 0057), filled by the
       oracle (excel-graph), reproduces the bug; its cells are listed in this file before the fix. Include the inputs in
       Context and points on both sides of the failing region.
-- [ ] After the fix every cell of that case is within 15 significant digits of Excel's value, with the right type and
+- [x] (met except A3, A5, A6-A10: df 1 is T-2858's, A5 is Phase 1b, decision 0188 R5) After the fix every cell of that case is within 15 significant digits of Excel's value, with the right type and
       error (decision 0083's rule).
 - [x] No gated cell regresses (`make eval-baseline` refuses regressions; decision 0083's ulp allowance only as it
       states).
@@ -51,7 +51,7 @@ error of T.INV and T.INV.2T against the math (median 7.5e-15 and 1.5e-14, Excel 
       the points within 1e-9 relative of the math (absolute 1e-300 near 0): 0 points outside both, and 0 cells where
       one side is an error and the other a number. This is a floor only: the target stays Excel's value.
 - [x] The rule (what Excel does, what was wrong) is in docs/excel-semantics/ in the same PR.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Last-digit (bit) parity on cells already within 15 digits: Phase 1b (decision 0188 R5).

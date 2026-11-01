@@ -1831,6 +1831,30 @@ function under SUMPRODUCT (intersected), a nested aggregate under SUMPRODUCT, an
 Status: VERIFIED
 Tasks: T-0293, T-1526, T-1551, T-1555, T-1556
 
+## A legacy formula with a spill reference spills (T-3467)
+Rule: a formula stored without the dynamic-array flag (a plain `<f>`, no `cm`) that holds a spill reference takes no
+automatic `@` and spills like a dynamic formula, on the spill's rows and off them, while a plain range in the same
+position is intersected. With A1 `=SEQUENCE(3)`:
+- the legacy `=SIN(A1#)` in C2 and in C5 spills SIN(1), SIN(2), SIN(3) down C2:C4 and C5:C7, and its FORMULATEXT is
+  `=SIN(A1#)`;
+- the legacy `=SIN(A1:A3)` beside it, in D2 and D5, is SIN(2) and `#VALUE!`, with FORMULATEXT `=SIN(@A1:A3)`.
+It joins the legacy forms with no automatic `@` (SWITCH, the dynamic-array functions, LAMBDA calls; "Legacy formulas
+put `@` on array-valued calls and array constants"). Unprobed, and handled by the engine as it handles SWITCH, with
+the rule applied to the whole formula: a formula mixing a spill reference with a plain range (`=SIN(A1#)+B1:B3`), a
+bare `=A1#`, and a scalar host (`=SUM(A1#)+B1:B3`); probe pending, T-3490.
+Evidence: probes/legacy-formula-spill-ref (excel-graph, 2026-10-31, 19 cells).
+Engine: `removes_automatic_at` (parser/static_analysis/legacy.rs) holds for a spill reference.
+`Model::promote_dynamic_formula_cells` (formula_cells.rs) loads a plain formula cell that has no automatic `@` and a
+non-scalar static result as a dynamic anchor, as typing it does. This covers an xlsx `<f>` without `cm` and a decoded
+`CellFormula`, which before reached evaluation as a scalar cell with an array result (a `debug_assert!`, found by the
+`bitcode_workbook` fuzz target). Until this change, the earlier "ours matches" claims for SWITCH and the dynamic-array functions in a legacy formula
+held only on the harness path (`set_cell_with_legacy_formula`), not for a real xlsx `<f>`. On export, a promoted cell
+is written as a dynamic formula (`cm="1"`, `t="array"`), which Excel reads the same way. A plain-cell formula with a
+spill reference keeps every `@`, so a typed `=@A1#` is written `_xlfn.SINGLE(_xlfn.ANCHORARRAY(A1))`. Whether Excel
+itself re-saves such a cell as a plain `<f>` is unprobed.
+Status: VERIFIED
+Tasks: T-3467
+
 ## Legacy MATCH, VLOOKUP and HLOOKUP intersect an operation in their lookup table (T-1862)
 Rule: in a legacy (no `cm`) formula, arithmetic, a comparison or a concatenation over a range in
 MATCH's `lookup_array` or the table of VLOOKUP and HLOOKUP is a value, intersected like an
@@ -2543,8 +2567,14 @@ Right/Left):
   rows, T-3259). Rows 6-7 at once, the last two data rows, shrink the table to rows 4-5 (`ROWS(Sales)` 2,
   `SUM(Sales[Qty])` 3, `S!C4:C7` becomes `S!C4:C5`), a range wholly inside the deleted rows is `=SUM(S!#REF!)`,
   `=SUM(S!C7:C9)` straddling the bottom edge becomes `=SUM(S!C6:C7)`, and `=S!C10` reads `=S!C8`
-  (table-delete-rows-last-two; the engine matches). Still unprobed: a delete on a table without a header row
-  (the case format has none yet, T-3260).
+  (table-delete-rows-last-two; the engine matches). A table without a header row (spec `"header_row": false`,
+  columns `Column1`, `Column2` as the file names them; `Sales` on S!B3:C6, data rows 3-6, Qty 1,2,4,8;
+  excel-graph 2026-10-31, T-3260): `ROWS(Sales)` and `ROWS(Sales[#All])` are both 4, `Sales[Column2]` reads the
+  data, and `ROW(Sales[#Headers])` is `#REF!`, as `#Totals` is on a table without a totals row
+  (table-no-header-baseline). A delete of its first row (row 3, its first data row) shrinks it as a delete of a
+  first data row does: `ROWS(Sales)` 3, `SUM(Sales[Column2])` 14, `INDEX(Sales[Column1],1)` "W", `=SUM(S!C3:C6)`
+  becomes `=SUM(S!C3:C5)`, `=SUM(S!C3:C3)` is `=SUM(S!#REF!)`, `=S!C10` reads `=S!C9`, and a cell above the
+  table stays (table-no-header-delete-first-row). The engine matches both.
 - A plain range, with no table involved, shrinks when a row delete takes its first or last rows but not all
   of them: `=SUM(S!C4:C7)` and `=SUM(S!$C$4:$C$7)` become `S!C4:C6` (`$C$4:$C$6`) for a delete of row 4 and
   of row 7, `=SUM(S!C7:C9)` becomes `=SUM(S!C6:C8)` / `=SUM(S!C7:C8)`, and a range wholly deleted
@@ -2693,8 +2723,17 @@ stored cells come from spec2xlsx, which writes no `calculatedColumnFormula`):
    typed into C2 fills C2:C4, C3 is cleared (an empty entry), then `=[@Col]*3` typed into C4: only C4 changes (C2 stays 2,
    C3 stays blank with FORMULATEXT `#N/A`, C4 is 12), the same as a constant in C3 (t2957-constant-then-refill)
    (t3025-blank-beside-calculated). The engine matches (it blocks the fill for a blank beside formulas).
-(T-2969 probes a stored column formula.)
-Evidence: probes/t2957-* (excel-graph, 2026-10-27): fill-one-totals C2:C4, F2:F5, G5; refill-second C2:C4, F2:F4;
+(A stored column formula does not fill on load: xlsx-storage.md, T-2969.)
+9. **A stored `calculatedColumnFormula` makes the column a calculated column after load** (T-3033, excel-graph
+   2026-11-01). (a) As 8a, but the file's `<tableColumn>` for Calc holds `calculatedColumnFormula` `A2*2`: `=A5*3` typed
+   into the blank C5 re-fills C2:C5 (3, 6, 12, 24; F2:F5 `=A2*3` to `=A5*3`) (t3033-calculated-refill-after-load).
+   (b) The structured form, column formula `T[[#This Row],[Col]]*2` stored in C2:C4 and `=T[[#This Row],[Col]]*3`
+   typed into C5: C2:C5 all become `=[@Col]*3` (t3033-calculated-refill-after-load-structured). (c) With the column
+   formula stored in all of C2:C5, `=A4*3` typed over the occupied C4 re-fills every row too
+   (t3033-calculated-overwrite-after-load). So what makes a column calculated is the file's column formula, not its
+   cells: the same cells without it are not re-filled (rule 8a).
+Evidence: probes/t3033-calculated-refill-after-load, -refill-after-load-structured, -overwrite-after-load C2:C5,
+F2:F5 (rule 9). probes/t2957-* (excel-graph, 2026-10-27): fill-one-totals C2:C4, F2:F5, G5; refill-second C2:C4, F2:F4;
 constant-exception C2, C4, F2:F4; constant-then-refill C2, C4, F2:F4; existing-constant C3, F2:F4; a1-reference
 C2:C4, F2:F4; expand-right-data D2:D4, F1:F4, H1:H4; expand-right-header F1:F4, H1:H4.
 The constant 5 in C3 (constant-exception, constant-then-refill) and the blank C4 (existing-constant) are not
@@ -2705,13 +2744,12 @@ Ours (T-2958, T-3024): a formula typed into a table's data rows (`Model::set_typ
 one shared formula and the column is a calculated column (`Model::calculated_column`, calculated_columns.rs), by
 writing that shared formula, which is stored relative to its cell, so an A1 formula fills shifted. A column is a
 calculated column when its `TableColumn::calculated_column_formula` is set, which a typed formula that fills or
-re-fills it does (only whether it is set is read; its text, the first data row's formula in English, is an engine
-choice); a typed constant
+re-fills it does (only whether it is set is read; its text is the first data row's formula in file form, T-3033); a typed constant
 keeps it. So a column of identical stored formulas is not re-filled (rule 8a). It stays set until the column is
 removed: clearing or overwriting the column's cells does not clear it, an engine choice (what Excel does is unprobed). A blank cell beside formulas blocks the
-fill, as in Excel (rule 8e). The column formula is neither read from nor written to xlsx yet
-(T-2969 probes whether Excel honors it on load; T-3033 then imports and exports it), so a column Excel saved as
-calculated is, after import, no calculated column for a typed re-fill. A stored formula (`Input::StoredFormula`, xlsx import) never fills;
+fill, as in Excel (rule 8e). The column formula is read from and written to xlsx (T-3033; Excel does not fill on load,
+T-2969), so a column Excel saved as calculated is, after import, a calculated column for a typed re-fill, as in Excel
+(rule 9). A stored formula (`Input::StoredFormula`, xlsx import) never fills;
 the facade logs the filled cells and the table as it was, so they are one edit with the typed cell. The eval adapter
 types `entered` cells after the tables and every stored cell, as the oracle types them after load. The unqualified `[@Col]` the probes type resolves to the
 table holding the cell since T-2979 (below).

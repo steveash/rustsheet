@@ -210,3 +210,36 @@ fn the_refusal_names_the_sheet() {
     let e = refusal(|w| set_cell(w, 1, 2, Cell::NumberCell { v: 1.0, s: 9999 }));
     assert!(e.starts_with("Sheet 'Sheet1'"), "{e}");
 }
+
+/// Many anchors, each a few bytes, claiming a whole column of spill cells that is not stored:
+/// evaluation and the clears would walk all of them, so the workbook is refused (T-3426).
+#[test]
+fn anchors_claiming_more_cells_than_are_stored_are_refused() {
+    let e = refusal(|w| {
+        for column in 2..12 {
+            let anchor = Cell::ArrayFormula {
+                f: 0,
+                s: 0,
+                r: (1, LAST_ROW),
+                kind: ArrayKind::Cse,
+                v: FormulaValue::Unevaluated,
+            };
+            set_cell(w, 1, column, anchor);
+        }
+    });
+    assert!(e.contains("only"), "{e}");
+}
+
+/// What the engine writes, spills and a blocked spill included, stores every cell it claims.
+#[test]
+fn spills_the_engine_writes_still_load() {
+    let mut model = new_empty_model();
+    model._set("A1", "=SEQUENCE(2000)");
+    model._set("B1", "=SEQUENCE(3,4)");
+    model._set("C2", "x");
+    model._set("D1", "=SEQUENCE(5)");
+    model.evaluate();
+    let model = Model::from_bytes(&model.to_bytes(), "en").unwrap();
+    assert_eq!(model._get_text("A2000"), "2000");
+    assert_eq!(model._get_text("B1"), "#SPILL!");
+}

@@ -1,0 +1,28 @@
+{
+ "format": "rustsheet-math/v1",
+ "source": {
+  "generator": "rustsheet-accuracy",
+  "version": "1",
+  "dps": 80,
+  "input_sha256": "8850089fa8c225286932965b532e049d8ad5d322aad78c8a194b6982588ceb40"
+ },
+ "sheets": {
+  "Calc": {
+   "A2": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=F.DIST(0,2,1,FALSE)"
+   },
+   "A3": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=F.DIST(0,2,100,FALSE)"
+   },
+   "A6": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=F.DIST(0,3,1,FALSE)"
+   }
+  }
+ }
+}
