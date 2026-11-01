@@ -24,7 +24,8 @@ keeps TOMS-d.
   alnrel, t2 and sum. It ranks first with 78 of 78. 256 variants tie with it, because many store choices round to
   the same double, so the method can rank families but not separate stores that make no difference.
 - **Hold-out discipline.** The top tier was frozen on probe a (`score_a.json`: all 4,096 variants at the best
-  score). Only that tier was then scored on the hold-out, once (`score.py hold`).
+  score). Only that tier was then scored on the hold-out, once (`score.py hold --top 4096`, so the
+  whole tier and not the default top 25).
 
 ## In-sample (probe a, `score_a.out`)
 - 78 pinned shapes; TOMS-d 26.
