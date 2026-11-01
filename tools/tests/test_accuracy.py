@@ -331,6 +331,7 @@ def test_cli_lists_and_generates(tmp_path: Path, capsys: pytest.CaptureFixture[s
     assert capsys.readouterr().out.split() == [
         "F.DIST",
         "F.INV",
+        "IRR",
         "NPER",
         "RATE",
         "ROUND",
@@ -340,6 +341,7 @@ def test_cli_lists_and_generates(tmp_path: Path, capsys: pytest.CaptureFixture[s
         "T.INV",
         "T.INV.2T",
         "TINV",
+        "XIRR",
     ]
     assert accuracy_cli.main(["--tables", str(tmp_path), "generate", "t.dist", "--count", "5"]) == 0
     assert (tmp_path / "T.DIST" / "s1.case.json").exists()

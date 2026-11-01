@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import Any
 
 from rustsheet_tools.accuracy import defs, literal
-from rustsheet_tools.accuracy.model import REGISTRY, Definition, NoValueError
+from rustsheet_tools.accuracy.model import REGISTRY, Definition, NoValueError, Param
 from rustsheet_tools.accuracy.tables import MATH_FORMAT, DroppedError, compute, math_sidecar_bytes
 from rustsheet_tools.fitlab.sweep import UnparsedError, Workbook, arithmetic, parse_arg, split_args
 from rustsheet_tools.snapshot import suite_cases
@@ -104,26 +104,45 @@ def single_call(text: str) -> tuple[str, str] | None:
     return (m.group(1).upper(), inner) if depth == 0 and not quoted else None
 
 
+def array_elements(value: Any) -> tuple[float, ...] | str:
+    """A range or array argument's numbers in row-major order, or why it does not fit (a scalar, or
+    an element that is not a number: the definitions take dense numeric arrays only)."""
+    if not isinstance(value, list):
+        return "scalar for an array"
+    flat: list[Any] = []
+    for row in value:
+        flat.extend(row if isinstance(row, list) else [row])
+    if not flat or any(isinstance(e, (bool, str)) or e is None for e in flat):
+        return "non-numeric array element"
+    return tuple(float(e) for e in flat)
+
+
+def fit_arg(param: Param, value: Any) -> literal.Arg | str:
+    """One argument as the parameter's kind, or why it does not fit."""
+    if param.kind == "array":
+        return array_elements(value)
+    if isinstance(value, list) or value is None or isinstance(value, str):
+        return "non-numeric argument"
+    if param.kind == "bool":
+        # no evidence yet of how each function reads a number here
+        return value if isinstance(value, bool) else "number for a logical"
+    if isinstance(value, bool):
+        return "logical for a number"
+    if param.kind == "int":
+        return int(value) if float(value).is_integer() else "non-integer for an integer parameter"
+    return float(value)
+
+
 def fit_args(definition: Definition, values: list[Any]) -> list[literal.Arg] | str:
     """`values` as the definition's arguments, or why they do not fit."""
     if len(values) != len(definition.params):
         return "argument count"
     out: list[literal.Arg] = []
     for param, value in zip(definition.params, values, strict=True):
-        if isinstance(value, list) or value is None or isinstance(value, str):
-            return "non-numeric argument"
-        if param.kind == "bool":
-            if not isinstance(value, bool):  # no evidence yet of how each function reads a number here
-                return "number for a logical"
-            out.append(value)
-        elif isinstance(value, bool):
-            return "logical for a number"
-        elif param.kind == "int":
-            if not float(value).is_integer():
-                return "non-integer for an integer parameter"
-            out.append(int(value))
-        else:
-            out.append(float(value))
+        arg = fit_arg(param, value)
+        if isinstance(arg, str):
+            return arg
+        out.append(arg)
     return out
 
 
