@@ -98,10 +98,12 @@ Tasks: T-0960
 Rule: INDIRECT reads reference text more strictly than the formula parser, the same in A1 and R1C1 style:
 - Any leading whitespace is `#REF!`: `" A1"`, `"  A1 "`, `" A1:B2 "`, `" Sheet2!A1"`, `" C : A "`, `" R1C1"`,
   and a leading tab or NBSP (`CHAR(9)`, `CHAR(160)`).
-- Trailing spaces and a trailing line feed are ignored: `"A1 "`, `"A1   "`, `"$A$1 "`, `"A1:B2 "`, `"A1"&CHAR(10)`,
+- Trailing spaces and trailing line feeds (any number) are ignored: `"A1 "`, `"A1   "`, `"$A$1 "`, `"A1:B2 "`, `"A1"&CHAR(10)`,
   `"R1C1 "` all resolve. A trailing tab or NBSP is `#REF!`.
 - Spaces next to the range colon are allowed: `"A1 : B2"`, `"A1: B2"`, `"A1 :B2"`, `"B2 : A1"`,
-  `"Sheet2!A1 :B2"`, `"R1C1 : R2C2"`; a tab there (`"A1:"&CHAR(9)&"B2"`) is `#REF!`.
+  `"Sheet2!A1 :B2"`, `"R1C1 : R2C2"`; a line feed is allowed in the same places, alone or mixed with spaces (`"A1:"&CHAR(10)&"B2"`, `"A1"&CHAR(10)&":B2"`,
+  `"A1 "&CHAR(10)&": B2"`, `"A1:"&CHAR(10)&CHAR(10)&"B2"`, `"Sheet2!"&CHAR(10)&"A1"`, `"R1C1"&CHAR(10)&":R2C2"`;
+  probes/t3747-indirect-whitespace rows 60-70), a tab is `#REF!`.
 - A space after the `!` is allowed (`"Sheet2! A1"` = Sheet2!A1), one before it is not (`"Sheet2 !A1"`,
   `"'My Sheet' !A1"`, `"Sheet2 !R1C1"` are `#REF!`). Inside quotes the space is part of the sheet name
   (`"'My Sheet'!A1"` resolves; an unquoted `"My Sheet!A1"` is `#REF!`).
@@ -113,7 +115,13 @@ Status: VERIFIED (Excel for the web)
 Implemented in: `indirect_reference_text` (engine expressions/utils), applied before both parsers; the
 defined-name and structured-reference fallbacks still see the text as written (their spacing is
 unprobed; structured references are T-3394).
-Not probed: a carriage return, a line feed that is not trailing, spaces inside `$A$1` or `R[1]C`.
+Also `#REF!` (probes/t3747-indirect-whitespace, T-3747): a carriage return anywhere (leading, trailing,
+`"A1"&CHAR(13)&CHAR(10)`, `"R1C1"&CHAR(13)`), a leading line feed, a Unicode space (`UNICHAR(8195)`) leading or
+trailing, a line feed between two references (`"A1"&CHAR(10)&"B2"`, `"A1:B2"&CHAR(10)&"B1:C2"`), a line feed before the `!` (`"Sheet2"&CHAR(10)&"!A1"`), and spaces inside a reference (`"$A $1"`, `"A 1"`, `"$ A$1"`,
+`"A1 :B 2"`, `"R[ 1]C"`, `"R1 C1"`, `"R[1] C"`, `"R 1C1"`). Trailing space on a whole-column or row ref
+resolves (`"A:A "`, `"1:1 "`). A defined name's text may end in spaces or a line feed (`"MyName "`,
+`"MyName"&CHAR(10)`, `"MyName"&CHAR(10)&CHAR(10)`, `"MyName "&CHAR(10)`, `"MyName"&CHAR(10)&" "`) but not start with a space (probes/t3747-indirect-name-whitespace; the name fallback trims
+the same trailing characters). Not probed: names with a carriage return, structured references (T-3394).
 Note for probes: text naming a sheet that does not exist is resolved by Excel for the web as an
 external workbook reference (`"' My Sheet'!A1"` gave CELL address `[ My Sheet] My Sheet!$A$1` and SUM
 `#BLOCKED!`), so such cells were dropped from the case (see "INDIRECT to a sheet that does not exist").

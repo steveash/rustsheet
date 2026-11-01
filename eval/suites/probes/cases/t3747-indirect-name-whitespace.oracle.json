@@ -1,0 +1,73 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "My Sheet": {},
+  "Sheet1": {
+   "E50": {
+    "t": "s",
+    "v": "MyName"
+   },
+   "E51": {
+    "t": "s",
+    "v": "MyName "
+   },
+   "E52": {
+    "t": "s",
+    "v": "MyName\n"
+   },
+   "E53": {
+    "t": "s",
+    "v": " MyName"
+   },
+   "E54": {
+    "t": "s",
+    "v": "MyName\n\n"
+   },
+   "E55": {
+    "t": "s",
+    "v": "MyName \n"
+   },
+   "E56": {
+    "t": "s",
+    "v": "MyName\n "
+   },
+   "F50": {
+    "t": "n",
+    "v": 7.0
+   },
+   "F51": {
+    "t": "n",
+    "v": 7.0
+   },
+   "F52": {
+    "t": "n",
+    "v": 7.0
+   },
+   "F53": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "F54": {
+    "t": "n",
+    "v": 7.0
+   },
+   "F55": {
+    "t": "n",
+    "v": 7.0
+   },
+   "F56": {
+    "t": "n",
+    "v": 7.0
+   }
+  },
+  "Sheet2": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "da5d14be287b217fdac200d82601d5562ad6a18c55d8b8d63c980dadc9800328",
+  "kind": "excel-graph",
+  "produced_at": "2026-11-01T23:28:37+00:00",
+  "version": null,
+  "workbook_name": "6301b6fc0d0b09996566afcecafae6d43b35159490e538f1641d5de64f02d547.xlsx"
+ }
+}

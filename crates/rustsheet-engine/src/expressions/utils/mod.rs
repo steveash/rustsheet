@@ -481,8 +481,10 @@ pub(crate) fn indirect_reference_text(text: &str) -> Option<String> {
     while let Some(c) = chars.next() {
         if c == '\'' {
             quoted = !quoted;
-        } else if !quoted && c == ' ' {
-            while chars.peek() == Some(&' ') {
+        } else if !quoted && (c == ' ' || c == '\n') {
+            // A line feed counts as a space next to the colon (`"A1:"&CHAR(10)&"B2"` = A1:B2;
+            // probes/t3747-indirect-whitespace Sheet1!F24, rows 60-73).
+            while chars.peek().is_some_and(|&n| n == ' ' || n == '\n') {
                 chars.next();
             }
             if out.ends_with([':', '!']) || chars.peek() == Some(&':') {

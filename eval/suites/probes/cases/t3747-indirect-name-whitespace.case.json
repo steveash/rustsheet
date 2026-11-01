@@ -1,0 +1,57 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "INDIRECT of defined-name text with trailing/leading spaces, LF (T-3747)",
+  "tags": [
+    "M8",
+    "names",
+    "probe",
+    "indirect"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "K1": 7,
+        "E50": "=\"MyName\"",
+        "F50": "=SUM(INDIRECT(\"MyName\"))",
+        "E51": "=\"MyName \"",
+        "F51": "=SUM(INDIRECT(\"MyName \"))",
+        "E52": "=\"MyName\"&CHAR(10)",
+        "F52": "=SUM(INDIRECT(\"MyName\"&CHAR(10)))",
+        "E53": "=\" MyName\"",
+        "F53": "=SUM(INDIRECT(\" MyName\"))",
+        "E54": "=\"MyName\"&CHAR(10)&CHAR(10)",
+        "F54": "=SUM(INDIRECT(\"MyName\"&CHAR(10)&CHAR(10)))",
+        "E55": "=\"MyName \"&CHAR(10)",
+        "F55": "=SUM(INDIRECT(\"MyName \"&CHAR(10)))",
+        "E56": "=\"MyName\"&CHAR(10)&\" \"",
+        "F56": "=SUM(INDIRECT(\"MyName\"&CHAR(10)&\" \"))"
+      }
+    },
+    {
+      "name": "Sheet2",
+      "cells": {
+        "A1": 1000,
+        "B1": 2000,
+        "C1": 4000,
+        "A2": 8000,
+        "B2": 16000,
+        "C2": 32000,
+        "A3": 64000,
+        "B3": 128000,
+        "C3": 256000
+      }
+    },
+    {
+      "name": "My Sheet",
+      "cells": {
+        "A1": 0.5,
+        "B2": 0.25
+      }
+    }
+  ],
+  "expected": {},
+  "names": {
+    "MyName": "=Sheet1!$K$1"
+  }
+}
