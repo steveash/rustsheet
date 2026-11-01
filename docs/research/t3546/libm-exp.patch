@@ -1,0 +1,13 @@
+diff --git a/crates/rustsheet-engine/src/functions/engineering/complex/trig.rs b/crates/rustsheet-engine/src/functions/engineering/complex/trig.rs
+index cf50e6c9f..5567058cb 100644
+--- a/crates/rustsheet-engine/src/functions/engineering/complex/trig.rs
++++ b/crates/rustsheet-engine/src/functions/engineering/complex/trig.rs
+@@ -61,7 +61,7 @@ fn hyperbolic_log_form(
+     if sin_y <= 0.0 || cos_y <= 0.0 {
+         return Some(num_error(cell));
+     }
+-    let part = |t: f64| excel_exp(x.abs() + (t / 2.0).ln());
++    let part = |t: f64| (x.abs() + (t / 2.0).ln()).exp();
+     let (re, im) = (part(cos_y), part(sin_y));
+     let (re, im) = if sinh {
+         (x.signum() * re, im)
