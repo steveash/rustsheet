@@ -1,0 +1,575 @@
+{
+ "note": "fit-audit-t3271-cdf-cut filled one cell per workbook (rustsheet-oracle fill -b excel-graph on single-cell copies of the case, 2026-11-01); A5 and A8 failed at createSession on every attempt.",
+ "cells": {
+  "A1": {
+   "formula": "=GAMMA.DIST(2,1E+45,1E+10,TRUE)",
+   "value": {
+    "t": "n",
+    "v": 0.0
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "60997350aefdff894b6128885c077f15411b92d5e6f6ff0d528b178419c360d5",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T05:47:30+00:00",
+    "version": null,
+    "workbook_name": "684a4f5760bb58c809cd0de3248b1d686bb484e17148800a554b38b573585f41.xlsx"
+   }
+  },
+  "A2": {
+   "formula": "=GAMMA.DIST(2,1E+50,1E+10,TRUE)",
+   "value": {
+    "t": "n",
+    "v": 0.0
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "f94d27d38a30927e1b479f73c51aac8ccfaac8594f3202cdd9ff8fc7fdb446c2",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T05:48:18+00:00",
+    "version": null,
+    "workbook_name": "596cfa9bc8752143e8f17707b2fc8b13c7c76fb468b2cfd6072ad1bc313e90a3.xlsx"
+   }
+  },
+  "A3": {
+   "formula": "=GAMMA.DIST(2,1E+55,1E+10,TRUE)",
+   "value": {
+    "t": "n",
+    "v": 0.0
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "20591cc14ee5f4c9ec0d36c437925fabc3a918e563c320d9f2a72ebc36825865",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T05:48:29+00:00",
+    "version": null,
+    "workbook_name": "2434dd207394edad1b927f117d405505b57d245eb7e8a085a81afded071c25bd.xlsx"
+   }
+  },
+  "A4": {
+   "formula": "=GAMMA.DIST(2,1E+60,1E+10,TRUE)",
+   "value": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "31f30579a389ed3c64fc87c07f80bf9e96395a3036956c8d08c973db518efa89",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T05:48:39+00:00",
+    "version": null,
+    "workbook_name": "5288ad8f9f90e39312e80e5a39ebe847e0a0f7d958e40501b584676bbaa09ffe.xlsx"
+   }
+  },
+  "A6": {
+   "formula": "=GAMMA.DIST(2,1E+70,1E+10,TRUE)",
+   "value": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "822fdea3724054a0b4da9e7618827801964a8f7889b7418cbd90a834feb7e0c7",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T05:53:49+00:00",
+    "version": null,
+    "workbook_name": "95b54ca9b64f60a027887fa2781a895161f99eb0c03eceb90006402e5568c449.xlsx"
+   }
+  },
+  "A7": {
+   "formula": "=GAMMA.DIST(2,1E+72,1E+10,TRUE)",
+   "value": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "56ec3fcf95b108854e6d0a0d3f34730c0a0c00b215b27d269c7946fd43ea7a78",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T05:54:00+00:00",
+    "version": null,
+    "workbook_name": "a95654dbd1c1d9e8b7ff1fdfc32c4562fc093109c411739fbc92805defaef3f2.xlsx"
+   }
+  },
+  "A9": {
+   "formula": "=GAMMA.DIST(2,1E+75,1E+10,TRUE)",
+   "value": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "a968623ff806a775608ffc46869008e17c36aa3a8a3454a99c1c8cae0298e7dc",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T05:59:16+00:00",
+    "version": null,
+    "workbook_name": "259cf1e71b8848dd6c6eac83abfa661f494d9dbadd565f5f944578de4d1566a6.xlsx"
+   }
+  },
+  "A10": {
+   "formula": "=GAMMA.DIST(2,3E+75,1E+10,TRUE)",
+   "value": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "f1770a9c8138ee0350d4735cae0883db32597505b813984b89eaaf3dea87be70",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T05:59:28+00:00",
+    "version": null,
+    "workbook_name": "e1e1cfc485cf183f9ec30182d8791f38a109bbfcd163f11607967d1939c78772.xlsx"
+   }
+  },
+  "A11": {
+   "formula": "=GAMMA.DIST(2,6E+75,1E+10,TRUE)",
+   "value": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "7fc01d95e7abe28e4ff851e8f3fd270925e4bfb74558857f388707b39b80d52f",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T05:59:45+00:00",
+    "version": null,
+    "workbook_name": "f288c5ccc583ee13b5b548bba2245dfa066b1511fa1a17b2b8caaa82d39f1439.xlsx"
+   }
+  },
+  "A12": {
+   "formula": "=GAMMA.DIST(2,1E+76,1E+10,TRUE)",
+   "value": {
+    "t": "n",
+    "v": 0.0
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "6ea66c1aaf8ae91618d1872b1fb514b1270a64f10046d5313a78242969c4aa4f",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T05:47:40+00:00",
+    "version": null,
+    "workbook_name": "f7a49f52630738f233afc53861fcac22799dedd35a7db2356e40cb0fe61ceba8.xlsx"
+   }
+  },
+  "A13": {
+   "formula": "=GAMMA.DIST(2,1.2E+76,1E+10,TRUE)",
+   "value": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "ae70996652a5833b55f1a1270f6e21a0cc7725a38d6af22ea417b68be663bad9",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T05:59:57+00:00",
+    "version": null,
+    "workbook_name": "a2c54e3950345a1e2fb10a0f6e8a350c621dfc1d5320e034f55214e380a0cc9f.xlsx"
+   }
+  },
+  "A14": {
+   "formula": "=GAMMA.DIST(2,1.4E+76,1E+10,TRUE)",
+   "value": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "f15cc78720ab85837afca3993311285dc4fcf7758fba7d84ffa873fdffe29e32",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T06:00:07+00:00",
+    "version": null,
+    "workbook_name": "d985074258e6a5d38d8fab110eee8e9afa25dc3af887f932526f56032b3d0981.xlsx"
+   }
+  },
+  "A15": {
+   "formula": "=GAMMA.DIST(2,1.6E+76,1E+10,TRUE)",
+   "value": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "544e56b27bfe5fc291ba039a236cc4dcfe82e2239484e2a47a93843373e901d3",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T06:00:18+00:00",
+    "version": null,
+    "workbook_name": "d7ac8d93e53ece8b4027626c7d97bfd57217c6714819794b9a1f08f68d698271.xlsx"
+   }
+  },
+  "A16": {
+   "formula": "=GAMMA.DIST(2,1.7E+76,1E+10,TRUE)",
+   "value": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "de7482987649575e8e7feed6f6ea80890298af3efcb5a9cf79ac0a4049a52db1",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T06:00:28+00:00",
+    "version": null,
+    "workbook_name": "cbc12ddbb2c8523ebd687d2fb64fbc1cb63c35aefbe292799c0be00e18f107d0.xlsx"
+   }
+  },
+  "A17": {
+   "formula": "=GAMMA.DIST(2,1.8E+76,1E+10,TRUE)",
+   "value": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "1174cda2e55223a8c19f3129f235725d40c2108b488f99a8ab435ed737c618b0",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T06:00:38+00:00",
+    "version": null,
+    "workbook_name": "17849e881c921ac1f8062694e7c0478de3ad1a0d7225088e33a5d6bda230dd8e.xlsx"
+   }
+  },
+  "A18": {
+   "formula": "=GAMMA.DIST(2,1.84E+76,1E+10,TRUE)",
+   "value": {
+    "t": "n",
+    "v": 0.0
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "5aa94567333cb79fdb8021d75e7307fec8d2bf2f52a617abe2363c5d84c914d0",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T06:00:50+00:00",
+    "version": null,
+    "workbook_name": "790cb67487d1a0d8defb685c0ef7253a11999c7efe142822b7b51f49064cfedf.xlsx"
+   }
+  },
+  "A19": {
+   "formula": "=GAMMA.DIST(1,1E+60,1,TRUE)",
+   "value": {
+    "t": "n",
+    "v": 0.0
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "9ee53c2e751aaa48fefe0608f42c7ccb71121d18da04b942870a061079bfd05c",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T05:47:51+00:00",
+    "version": null,
+    "workbook_name": "2bfaee12ec4c332fd2ff30312516f5c28f7d81a6eddb9cf935ad56184947a203.xlsx"
+   }
+  },
+  "A20": {
+   "formula": "=GAMMA.DIST(1E+50,1E+60,1,TRUE)",
+   "value": {
+    "t": "n",
+    "v": 0.0
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "afb8be4dc2e2b811652463581b0b85e9b255544a5bcb1a6a651df3eafc5bf717",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T06:01:01+00:00",
+    "version": null,
+    "workbook_name": "399c583a4325e273f6d3749ff97f50060a424e9697de8f259f445533fe654166.xlsx"
+   }
+  },
+  "A21": {
+   "formula": "=GAMMA.DIST(1E-100,1E+60,1,TRUE)",
+   "value": {
+    "t": "n",
+    "v": 0.0
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "2611a66a87350a76b4642b9a4bcc9ad19224b7bff10754ef382bf839fd019c28",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T06:01:12+00:00",
+    "version": null,
+    "workbook_name": "d2db4a5e2c4fa15964e96731502761e650728b8ed8ffa53537cabffa4f338192.xlsx"
+   }
+  },
+  "A22": {
+   "formula": "=GAMMA.DIST(1,1E+75,1,TRUE)",
+   "value": {
+    "t": "n",
+    "v": 0.0
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "f73d9c168ddd2cdd4053968251c545aaec30aed857acfc80136745ad591e61c1",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T06:01:22+00:00",
+    "version": null,
+    "workbook_name": "474229ed713839ad72d2a30b580c913a3c62bdc96530257cf5c96b13a482a00a.xlsx"
+   }
+  },
+  "A23": {
+   "formula": "=GAMMA.DIST(1E+50,1E+75,1,TRUE)",
+   "value": {
+    "t": "n",
+    "v": 0.0
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "b2f04f70b06e59afa36c83fe87b5833bef61bbfe99729f740ef14b4d156fb420",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T06:01:32+00:00",
+    "version": null,
+    "workbook_name": "a216fbbf3abaf111a3c150ac48491c5b99f155617ff0e2bf10f5c776a2c25730.xlsx"
+   }
+  },
+  "A24": {
+   "formula": "=GAMMA.DIST(1E-100,1E+75,1,TRUE)",
+   "value": {
+    "t": "n",
+    "v": 0.0
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "46fd27766e1bd6638c71c32e9d3121b03aea81c2a376708538685da9d87d725f",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T06:01:41+00:00",
+    "version": null,
+    "workbook_name": "71b47a216bfaf854d6d56293873c4ebebd5f2ba8d3ce87b6853632ba34441e88.xlsx"
+   }
+  },
+  "A25": {
+   "formula": "=GAMMA.DIST(1,1.5E+76,1,TRUE)",
+   "value": {
+    "t": "n",
+    "v": 0.0
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "3df704b46f1e089c2612661c4eeeedbc6e64b745748b22e9c36b7c6149bf8f94",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T06:01:51+00:00",
+    "version": null,
+    "workbook_name": "3831e7c76f7f0f555fbf77bf3127f38549fff26de67ec1f3d1be6111cf3488e6.xlsx"
+   }
+  },
+  "A26": {
+   "formula": "=GAMMA.DIST(1E+50,1.5E+76,1,TRUE)",
+   "value": {
+    "t": "n",
+    "v": 0.0
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "bfd16cefc991d67f7e88435ffb2d2abd9233f053f7e6bc0bca39bd035d64c9f8",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T06:02:03+00:00",
+    "version": null,
+    "workbook_name": "1d1c487b20ce9bc60381d3f6624432eef606101736acd074a7e4353e87a6bf75.xlsx"
+   }
+  },
+  "A27": {
+   "formula": "=GAMMA.DIST(1E-100,1.5E+76,1,TRUE)",
+   "value": {
+    "t": "n",
+    "v": 0.0
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "a10a362f2ec485b5f5e8127fd7042c8ac9a01c7d30dc1416b5d352284f51ed9e",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T06:02:13+00:00",
+    "version": null,
+    "workbook_name": "ca32c78b22bfebb4d90de07fd1becad553b05c766a1f7ff07f55503a476a3805.xlsx"
+   }
+  },
+  "A28": {
+   "formula": "=GAMMA.DIST(1,1.85E+76,1,TRUE)",
+   "value": {
+    "t": "n",
+    "v": 0.0
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "0dbd96258880ce52ab20f98dd6ee3a83322175c5b1c9f7f37c73b3300b4e4f45",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T06:02:23+00:00",
+    "version": null,
+    "workbook_name": "1f50e3b207426aa26b5cdfaf62b870129f327ccefcee25a4ee0768ad510ec59a.xlsx"
+   }
+  },
+  "A29": {
+   "formula": "=GAMMA.DIST(1E+50,1.85E+76,1,TRUE)",
+   "value": {
+    "t": "n",
+    "v": 0.0
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "1d927b8f90227d6aa412bbf016080d7b3ddf0f6d69b97a000ef6a21c5aaeb92f",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T06:02:33+00:00",
+    "version": null,
+    "workbook_name": "339a63a7a757f99cd49c9963a95f05aeeb64a6bf62effc71428cec6f673ee120.xlsx"
+   }
+  },
+  "A30": {
+   "formula": "=GAMMA.DIST(1E-100,1.85E+76,1,TRUE)",
+   "value": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "10bc83f4a400624d0c439226a02da0f0691da2ee8cfa60676213508f6acd9496",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T06:02:43+00:00",
+    "version": null,
+    "workbook_name": "f88e927695c41b3a716cb2c744737a7bb857542a564b67c957c026415b34bb65.xlsx"
+   }
+  },
+  "A32": {
+   "formula": "=GAMMA.DIST(1E+50,1E+77,1,TRUE)",
+   "value": {
+    "t": "n",
+    "v": 0.0
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "a4f7f4f0c200dca12e64283b9987318f81a13bd683679cbf63ec6c2a140714f3",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T06:07:53+00:00",
+    "version": null,
+    "workbook_name": "8bb258b8f42a94742366a5d576598da766dce79491b52c98ec899029758e2b7f.xlsx"
+   }
+  },
+  "A34": {
+   "formula": "=GAMMA.DIST(1,1E+100,1,TRUE)",
+   "value": {
+    "t": "n",
+    "v": 0.0
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "2b5e958fe1291694dc45a7e191428ed37b8ccb5d0c38067638e3f0ade9bb2bf9",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T06:13:03+00:00",
+    "version": null,
+    "workbook_name": "e0990424cb0bcc7484512c85e01cb14f31ce9368da306f10d30be3f18ea986e1.xlsx"
+   }
+  },
+  "A35": {
+   "formula": "=GAMMA.DIST(1E+50,1E+100,1,TRUE)",
+   "value": {
+    "t": "n",
+    "v": 0.0
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "89fd3e99e7835b0eb68bc5d53e21cbdd4e6b526af01d88a2c2b06f97daf6d50b",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T06:13:14+00:00",
+    "version": null,
+    "workbook_name": "a4f66de05a9cba05b52ce4a6adf0a0ea8185bb269a805c743415e33db1a8618b.xlsx"
+   }
+  },
+  "A36": {
+   "formula": "=GAMMA.DIST(1E-100,1E+100,1,TRUE)",
+   "value": {
+    "t": "n",
+    "v": 0.0
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "aed37a32adb3a5ffcbf3935254aeaaf29c2e22312a879726a4143dc4c773d1e2",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T06:13:23+00:00",
+    "version": null,
+    "workbook_name": "135f96ce59cc06959b450e0374369bd1276622a78f709cbe7e3fc51a711cca12.xlsx"
+   }
+  },
+  "A37": {
+   "formula": "=GAMMA.DIST(1,1E+200,1,TRUE)",
+   "value": {
+    "t": "n",
+    "v": 0.0
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "1f1b143a9413fa9942c4d397bf01f65192993b76f53cfea8d8e63cdb2f2cfdd2",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T05:48:01+00:00",
+    "version": null,
+    "workbook_name": "c5fcd0bfa69a881ccd2849a171791fce8987738cc5322d4544f1e674fcb6144f.xlsx"
+   }
+  },
+  "A38": {
+   "formula": "=GAMMA.DIST(1E+50,1E+200,1,TRUE)",
+   "value": {
+    "t": "n",
+    "v": 0.0
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "c4f03ed4158a42729d528a0228a6e13a409eef4843fb80f8e7be1fd5eeda8b8f",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T06:13:34+00:00",
+    "version": null,
+    "workbook_name": "1fca99ae385c1ef5da87e8b031f30f7453b5904986592ca0a1b70d05c9e12819.xlsx"
+   }
+  },
+  "A39": {
+   "formula": "=GAMMA.DIST(1E-100,1E+200,1,TRUE)",
+   "value": {
+    "t": "n",
+    "v": 0.0
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "e525928b46d71d11b7a7e272d70093b3276cf3d72def3812ee5e35ac8adb3cec",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T06:13:45+00:00",
+    "version": null,
+    "workbook_name": "f883e97bbccfc5abb8e857b7f9e20bf56de826ada91ae9c3394e3c348cf3455e.xlsx"
+   }
+  },
+  "A40": {
+   "formula": "=GAMMADIST(2,1.7E+76,1E+10,TRUE)",
+   "value": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "42683f235c8b100c1a54dbca33f894a769a5d0a35787f73be019f6ebf00534bf",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T06:13:56+00:00",
+    "version": null,
+    "workbook_name": "4fc8ed1a4f37f5bf6ed0ec3f5bfd2337da768cb210841aeebf412aa0b76fed61.xlsx"
+   }
+  },
+  "A41": {
+   "formula": "=GAMMA.DIST(2,1.85E+76,1E+10,FALSE)",
+   "value": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "3e943f428b5d925f48a277f25213c78421d943f3db8f0841e6880fd37b7b9571",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T06:14:06+00:00",
+    "version": null,
+    "workbook_name": "8dd184445dc218dedc743a4566dfca2e8187505737ebc9dfac5d36af79f58123.xlsx"
+   }
+  },
+  "A42": {
+   "formula": "=GAMMA.DIST(2,1E+70,1E+10,FALSE)",
+   "value": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "source": {
+    "application": "Excel for the web (Graph)",
+    "input_sha256": "eebb00141616d0316094041f56361f59c66057d47594f10341d89b6430a5d4d2",
+    "kind": "excel-graph",
+    "produced_at": "2026-11-01T06:14:16+00:00",
+    "version": null,
+    "workbook_name": "ed1b0cf3543848ea7675e0f62dea1321180884c69198a82131c0a44663a9cb06.xlsx"
+   }
+  }
+ }
+}

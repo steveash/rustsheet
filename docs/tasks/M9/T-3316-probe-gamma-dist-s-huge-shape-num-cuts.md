@@ -33,7 +33,12 @@ GAMMA.DIST's two huge-shape `#NUM!` cuts sit where Excel's do, not merely at the
   `GAMMA.DIST(1E-200,1E+9,1E+100,FALSE)` is 0. Every probed cell (with t2435 A25, A26, A92) fits `#NUM!` where
   x / shape is below a cut in (2.17E-309, 1E-308], else 0 (UNVERIFIED as a form: probe smaller shapes, x/shape
   between those values). That bracket is the subnormal range, so the cut may be "x/shape is not a normal double".
-- The cdf cut's probe fit-audit-t3271-cdf-cut (42 cells) is on the same branch.
+- The cdf cut (`HUGE_SHAPE_CDF_CUT` 1.85E76) is refuted too: fit-audit-t3271-cdf-cut (38 of 42 cells, filled one cell
+  per workbook) has 21 wrong-type cells. Excel is `#NUM!` where the engine is 0 at A4, A6, A7, A9, A10, A11, A13, A14,
+  A15, A16, A17 and A40 (`GAMMA.DIST(2,1E+60,1E+10,TRUE)` up to 1.8E76; `GAMMADIST` too). Excel is 0 where the engine
+  is `#NUM!` at A28, A29, A32, A34, A35, A36, A37, A38 and A39 (beta = 1, shapes 1.85E76 to 1E200). Excel is not
+  monotone in the shape: A12 (1E76) and A18 (1.84E76) are 0 between `#NUM!`s, and the refill agreed. So look for an
+  intermediate of Excel's arithmetic that overflows, not for a cut.
 
 ## Acceptance criteria
 - [ ] Each cut is pinned (or narrowed by at least 10x, with the remaining bracket recorded) by excel-graph probe cells; statistics.md is updated; the constants move if the evidence says so; `make eval-check` shows no regressions and the visible-parity lock does not rise.

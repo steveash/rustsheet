@@ -1,11 +1,13 @@
-# Fit audit: thinly evidenced gamma-family FITTED constants (T-3530, WIP)
+# Fit audit: thinly evidenced gamma-family FITTED constants (T-3530)
 
 Decision 0188 R4 audit of the gamma-family `FITTED` constants with 6 or fewer evidence cells, on `main` 744815d06.
 Evidence: probes-numeric `fit-audit-*` (excel-graph, 2026-10-31), the engine at 744815d06, and 50-digit mpmath
 (regularised incomplete gamma; positive-term lower series in the far left tail at shapes of 1E6 and up).
 
-**Status: interim.** The session ended before the bit-level constants were scored on both sides of their brackets.
-Verdicts marked *provisional* or *not audited* are not final. No engine code changes on this branch yet.
+**Status:** the type-level rules (where Excel's result is a number, 0 or `#NUM!`) have verdicts, re-scored on `main`
+4e2f5f3df (after T-3350) in the section "Re-score on main" below; the wrong-type cells went to their owning tasks. The
+six bit-level constants marked *provisional* are T-3633's (two-sided scoring with a scratch build). No engine code
+changes on this branch.
 
 Branches: T-3311 (PR #2599) moves `CLOSED_FORM_QUANTILE_MAX` and `CLOSED_FORM_STEP_MIN` to `closed_form.rs`
 without changing them. T-3285 and T-3269 add new FITTED constants but change none of these.
@@ -16,7 +18,7 @@ beyond 15 digits, "err" means Excel's error differs from the engine's value (or 
 | Constant (file, old tag) | Old evidence | New evidence (case, cells) | Verdict | Change |
 |---|---|---|---|---|
 | `HUGE_SHAPE_DENSITY_CUT` 6.9187E11 (gamma.rs:36, T-3271, 3 cells) | t2435 A26 `#NUM!`, A92 and A31 0 | fit-audit-t3271-density-cut, 50: 46 agree, 4 err | **(b) refuted** | Restriction or replacement needs a follow-up probe and task (see below) |
-| `HUGE_SHAPE_CDF_CUT` 1.85E76 (gamma.rs:44, T-3271, 2 cells) | t2435 A100 0, A101 `#NUM!` | fit-audit-t3271-cdf-cut, 42: **pending** (oracle createSession failed) | not audited | none |
+| `HUGE_SHAPE_CDF_CUT` 1.85E76 (gamma.rs:44, T-3271, 2 cells) | t2435 A100 0, A101 `#NUM!` | fit-audit-t3271-cdf-cut, 38 of 42 filled one cell per workbook: 17 agree, **21 err** | **(b) refuted** | T-3316 |
 | `LOG_FORM_SHAPE_MAX` 3.0 (gamma.rs:67, T-2852, 6 cells) | t1049, gen-m9, m9-chisq-dist, m9-gamma-dist-a9 | fit-audit-t2852-shape-max, 52: 13 exact, 35 ≤15, 4 off (A25, A29 at 3 and 3.01; A34 3.2; A46 4.5) | provisional: not scored on both sides | none |
 | `LOG_FORM_SHAPE_MIN` 0.5 (gamma.rs:84, T-2852, 2 cells) | gen-m9 A367, A386 | fit-audit-t2852-shape-min, 48: 12 exact, 36 ≤15, 0 off | provisional (a) candidate: no cell off on either side; bit-level split not scored | none |
 | `HUGE_SHAPE_MIN` 1E9 (huge_shape.rs:17, T-3070, 1 cell) | t3070 A1 | fit-audit-t3070-shape-min, 39: 29 agree, 9 err, 1 off | **(b) refuted** | Follow-up task |
@@ -50,10 +52,41 @@ beyond 15 digits, "err" means Excel's error differs from the engine's value (or 
 - **Closed form**: confirmed on 59 fresh cells. Excel's value is the Wilson–Hilferty start exactly where the density
   there is not a normal double, at 2.66E-4 off the math (the MATH-OVER-EXCEL case 3 of decision 0188 R3).
 
-## Follow-up tasks to file
+## Follow-up tasks
 
-None filed yet. The session ended first. The steps to file them are in T-3530's Handoff.
-- Replace `HUGE_SHAPE_DENSITY_CUT` with Excel's real variable (x / shape), after a second probe.
-- Re-fit GAMMA.INV's huge-shape band: `HUGE_SHAPE_MIN` and both edges, against t3070, t2982 and the fit-audit
-  cells together.
-- The large-shape density at x/a 0.002 to 0.03 (46 cells beyond 15 digits in fit-audit-t2638-ratio-min).
+Filed with the cells:
+- `HUGE_SHAPE_DENSITY_CUT` and `HUGE_SHAPE_CDF_CUT` (the wrong-type cells, Excel's real variable): T-3316, raised to P1.
+- GAMMA.INV's huge-shape band (`HUGE_SHAPE_MIN`, the upper edge, the lower tail at 7E9 to 1.1E10): T-3409 and T-3396.
+- The large-shape density at x/a 0.002 to 0.03: T-3617, which owns the same region of the T-3509 blind probe.
+- The six bit-level constants and the closed-form cut's tag: T-3633.
+
+## Re-score on main 4e2f5f3df (after T-3350)
+
+T-3350 replaced `BAND_LOWER_EDGE` (`offset - z < 39`) with a cdf-ratio edge (`ln P(a, x0) - ln p < 205.3`) after
+the table above was scored, so every case was re-scored on main with a release build. Counts: `=` bit-exact, `4u`
+within 4 ulp, `15d` within 15 digits, `off` beyond, `err` a different type or error.
+
+| Case | n | = | 4u | 15d | off | err | Wrong-type cells → owner |
+|---|---|---|---|---|---|---|---|
+| fit-audit-t3271-density-cut | 50 | 47 | 0 | 0 | 0 | 3 | A9, A43, A48 → T-3316 |
+| fit-audit-t3271-cdf-cut | 38 | 17 | 0 | 0 | 0 | 21 | A4, A6, A7, A9–A11, A13–A17, A40 (Excel `#NUM!`, ours 0); A28, A29, A32, A34–A39 (Excel 0, ours `#NUM!`) → T-3316 |
+| fit-audit-t3070-shape-min | 39 | 16 | 14 | 0 | 1 | 8 | A19, A22, A23, A25, A26, A28–A30 → T-3409 |
+| fit-audit-t3070-band-upper | 52 | 25 | 11 | 0 | 0 | 16 | A1–A3, A5–A7, A12, A13, A26, A32, A33, A38, A39 → T-3409; A47–A49 → T-3396 |
+| fit-audit-t3070-band-lower | 42 | 33 | 9 | 0 | 0 | 0 | none: T-3350's edge separates every cell |
+| fit-audit-t3070-closed-form-cut | 59 | 31 | 22 | 6 | 0 | 0 | none (verdict d confirmed) |
+| fit-audit-t2638-ratio-min | 62 | 11 | 4 | 1 | 46 | 0 | the region → T-3617; the cut → T-3633 |
+| fit-audit-t2852-shape-max | 52 | 13 | 35 | 0 | 4 | 0 | T-3633 |
+| fit-audit-t2852-shape-min | 48 | 12 | 36 | 0 | 0 | 0 | T-3633 |
+| fit-audit-t3013-quantile-max | 54 | 20 | 7 | 9 | 18 | 0 | T-3633, T-3265 |
+| fit-audit-t3013-step-min | 20 | 11 | 1 | 0 | 8 | 0 | T-3633, T-3265 |
+| fit-audit-t3147-ratio-shape | 56 | 15 | 36 | 2 | 3 | 0 | T-3633 |
+
+- **`BAND_LOWER_EDGE`**: no longer refuted. The refutation above was of the old `offset - z < 39` rule.
+- **`HUGE_SHAPE_CDF_CUT`**: refuted both ways, and Excel's cut is not monotone in the shape. At x/beta = 2E-10 (x = 2,
+  beta = 1E10) Excel is `#NUM!` from shape 1E60 (A4) through 1.8E76, except 0 at 1E76 (A12) and 1.84E76 (A18). At
+  beta = 1 it is 0 at shapes from 1E60 to 1E200 for x = 1 and x = 1E50, and for x = 1E-100 it is 0 except at 1.85E76
+  (A30, `#NUM!`). A refill of A4, A12 and A18 gave the same values. No rule in the shape alone fits. The `#NUM!`
+  probably comes from an intermediate in Excel's arithmetic (UNVERIFIED). excel-graph refused the 42-cell workbook,
+  so each cell was filled in its own workbook. A5 and A8 failed at createSession every time and have no value. The
+  per-cell sources are in `cdf-cut-slices.json`, and the oracle sidecar's source names that file.
+

@@ -3,7 +3,7 @@ id: T-3530
 title: "Fit audit of the thinly evidenced gamma-family FITTED constants (decision 0188 R4)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -27,11 +27,12 @@ accurate math where that does at least as well, or reclassified as one of Excel'
 - Report: docs/research/fit-audit/README.md.
 
 ## Acceptance criteria
-- [ ] Each constant has a verdict (a)-(d) backed by the fit-audit probes and 50-digit math, in the report.
-- [ ] Verdicts (a) and (c) land with updated `FITTED` tags (quality/fitted.json via `check_fitted.py --update`);
-      big changes are their own tasks.
-- [ ] No gated regression and no cell newly visibly off (decisions 0083, 0111).
-- [ ] `make check` green; reviewers approve.
+- [x] Each constant has a verdict (a)-(d) backed by the fit-audit probes and 50-digit math, in the report. The six
+      bit-level constants' two-sided scoring moved to T-3633.
+- [x] Verdicts (a) and (c) land with updated `FITTED` tags (quality/fitted.json via `check_fitted.py --update`);
+      big changes are their own tasks. No (a) or (c) so far; the tag work moved to T-3633.
+- [x] No gated regression and no cell newly visibly off (decisions 0083, 0111).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Constants with more than 6 evidence cells.
@@ -53,3 +54,28 @@ Left:
 - Second-round probes for the refuted rules (the x/a hypothesis for the density cut; the shape-min and band edges),
   then file the replacement tasks with `make new-task`. No code is changed on this branch yet.
 - statistics.md entries for the new findings (drafted in the report, not yet moved).
+
+## Outcome
+Audited the 12 thinly evidenced gamma-family FITTED constants on 12 probes-numeric `fit-audit-*` cases (excel-graph;
+579 cells, 575 filled). The cdf-cut case was filled one cell per workbook, because excel-graph refused the whole
+case; A5 and A8 have no value. Re-scored on main 4e2f5f3df, after T-3350 changed the band's lower edge. The report
+with per-case counts is docs/research/fit-audit/README.md. The branch has no engine code.
+- Refuted (b), with wrong-type cells:
+  - `HUGE_SHAPE_DENSITY_CUT`: 3 cells; Excel's variable looks like x/shape.
+  - `HUGE_SHAPE_CDF_CUT`: 21 of 38, both ways; Excel is not monotone in the shape.
+  - `HUGE_SHAPE_MIN`: 8; Excel is `#NUM!` from shape 6E8.
+  - The band's upper edge, plus the lower tail at 7E9 to 1.1E10: 16.
+
+  Owners: T-3316 (raised to P1, `campaign: semantics`) for the two GAMMA.DIST cuts; T-3409 and T-3396 for
+  GAMMA.INV. Each owner's Context lists the cells.
+- No longer refuted: `BAND_LOWER_EDGE`. T-3350's cdf-ratio edge separates all 42 cells of fit-audit-t3070-band-lower;
+  the old `offset - z < 39` rule had 12 wrong.
+- Confirmed (d): the closed-form density cut of `huge_shape_quantile` is Excel's own boundary. 59 of 59 cells are
+  within 15 digits.
+- Provisional, moved to T-3633: `LOG_FORM_SHAPE_MAX`, `LOG_FORM_SHAPE_MIN`, `RATIO_FORM_MIN`,
+  `CLOSED_FORM_QUANTILE_MAX`, `CLOSED_FORM_STEP_MIN` and `SMALL_RATIO_SHAPE_MIN` (two-sided scoring with a scratch
+  build). The closed-form cut's tag update also moved there. T-3633 is filed.
+- RATIO_FORM_MIN's region (46 of 62 beyond 15 digits on both sides of the cut) is evidence for T-3617.
+- statistics.md: "GAMMA.DIST at a huge shape" (both cuts) and "GAMMA.INV and CHISQ.INV at a huge shape" (the band).
+- probes-numeric is ungated, so the new cases change no baseline.
+
