@@ -20,6 +20,9 @@ the next session and the steward can read it (not only in the routine's session 
   batch at 11:44 and merged it at 12:05-12:09. No record of why the first hold stopped survives:
   the `merge-lock` ref keeps one commit (no history), the train ref's record commit lists only the
   batch, and the merger's report lives only in its routine session.
+- Steward 2026-11-01: again for train #2748, #2676, #2745, #2746, #2750 on main 1f30a9b1. Its
+  CI run 41340785823 went green at 19:25 UTC, the hold (`train-1793559067`) still held the lock
+  at 19:49 with nothing merged, and the batch squashed only at 20:01-20:04 UTC.
 - Candidate causes to tell apart: a step-mode ack timeout (decision 0169), a pre-squash stop, the
   merger session ending (40-min window), or the hold budget.
 
