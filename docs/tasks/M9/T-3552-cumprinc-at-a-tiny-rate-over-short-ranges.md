@@ -3,7 +3,7 @@ id: T-3552
 title: "CUMPRINC at a tiny rate over short ranges (paired probe fin-cumipmt-tiny-rate-structure): 37 visibly-off CUMIPMT cells that amplify our CUMPRINC's 1 to 3 ulps"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
