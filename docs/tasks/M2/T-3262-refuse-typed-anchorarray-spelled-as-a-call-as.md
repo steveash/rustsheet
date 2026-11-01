@@ -33,4 +33,4 @@ Excel for the web refuses it typed, while the `#` operator and a stored `_xlfn.A
 - Desktop Excel's typed entry.
 
 ## Outcome
-Typed `ANCHORARRAY(` spelled as a call is refused via `Parser::typed_refusal` (new `spelled_anchorarray` flag); stored text and the `#` operator unchanged. Unit test in test_typed_parse_errors.rs. No eval delta.
+Typed `ANCHORARRAY(` spelled as a call is refused via `Parser::typed_refusal` (new `spelled_anchorarray` flag); stored text and the `#` operator unchanged. Unit test in test_typed_parse_errors.rs. New oracle-filled probe `t3262-anchor-typed-refused` (excel-graph): typed `ANCHORARRAY(C1)`, `SUM(ANCHORARRAY(C1))` and `_xlfn.ANCHORARRAY(C1)` are refused, `SUM(C1#)` is accepted (12 cells pass).
