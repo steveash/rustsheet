@@ -44,6 +44,7 @@ Owned cells (all BETA.DIST density):
 Decision 0083 / 0114 (`accuracy`): met when the 3 cells above are within half a unit of the 15th significant digit
 of Excel's value, and no BETA.DIST density cell in probes-numeric that is within 15 digits today moves off. Bit-level
 criteria still unmet then move to a follow-up with `defer: phase-1b`.
+- Split (T-3229 check): T-3592 (a deferred, phase-1b owners list) also lists these cells. This task does them at the accuracy stage now; when it lands, T-3592 drops them.
 
 ## Acceptance criteria
 - [ ] The 3 cells above are within half a unit of the 15th significant digit of Excel's value (`make eval-show` output

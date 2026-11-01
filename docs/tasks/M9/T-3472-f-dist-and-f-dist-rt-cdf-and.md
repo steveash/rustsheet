@@ -38,7 +38,7 @@ each takes (not a fit to Excel's bits). No cell of those cases that is within 15
   Confirm each with `bratio/mod.rs` `Branch` before changing anything. F goes through `fisher.rs` (closed forms at a
   df of 2, then `bratio::closed_or_ported_tails` / `kernel_tails`, T-2847), and a branch the port has not taken yet
   may still fall back to `incomplete_beta.rs`, so the first question is which code path each cell takes today.
-- Related open work: T-3382 (accurate bgrat increment, L140 one bup term), T-3592 (a0 < 1 bup+bgrat at x0 in
+- Related open work: T-3382 (accurate bgrat increment, L140 one bup term), T-3665 (a0 < 1 bup+bgrat at x0 in
   [0.29, 0.3)), T-3383 (bfrac and bup arithmetic). Share pieces with them rather than duplicating (directive 3).
 - Excel is near the math, so the target is the math to about 1 ulp. If a cell turns out to need Excel's own rounding,
   it moves to a `visible` follow-up with `defer: phase-1b` (decision 0188 R5) and the R4 guards of

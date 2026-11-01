@@ -1,5 +1,5 @@
 ---
-id: T-3471
+id: T-3665
 title: "BETA.DIST cdf at a < 1, b = 2.5 and x in [0.29, 0.3): 9 t2464-r2-bratio-x29 cells where Excel is within 1.7 ulp of the math and ours is 4 to 6 ulp off (accuracy)"
 milestone: M9
 lane: functions-stat
@@ -46,6 +46,7 @@ Owned cells (one line, all BETA.DIST cdf):
 Decision 0083 / 0114 (`accuracy`): met when the 9 cells above are within half a unit of the 15th significant digit
 of Excel's value (`make eval-show CASE=probes-numeric/t2464-r2-bratio-x29.case.json`), and no cell of the case that is
 within 15 digits today moves off. Bit-level criteria still unmet then move to a follow-up with `defer: phase-1b`.
+- Split (T-3229 check): T-3592 (a deferred, phase-1b owners list) also lists these cells. This task does them at the accuracy stage now; when it lands, T-3592 drops them.
 
 ## Acceptance criteria
 - [ ] The 9 cells above are within half a unit of the 15th significant digit of Excel's value, shown in the Outcome
