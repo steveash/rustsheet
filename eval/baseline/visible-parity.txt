@@ -254,6 +254,8 @@ probes/t3012-gamma-dist-at-quantile.case.json	3
 probes/t3012-gamma-inv-small-shape.case.json	4
 probes/t3028-b2-taiwan-cuts.case.json	2
 probes/t3070-gamma-inv-band.case.json	1
+probes/t3112-snap-groupby-eta-totals.case.json	2
+probes/t3112-snap-groupby-eta.case.json	21
 probes/t3181-collation-prefix-arrays.case.json	10
 probes/t3211-collation-sort-cycles.case.json	43
 probes/t3266-minus-abs-1023-typed.case.json	1
