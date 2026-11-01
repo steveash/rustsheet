@@ -3,7 +3,7 @@ id: T-2371
 title: "Probe FORECAST.ETS family optional settings as array or range, and boolean, text and error target_date"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
