@@ -3,7 +3,7 @@ id: T-3683
 title: "gen-m7 arg-pairs batch: oracle-filled cells for the unseen argument-class pairs of LET, MAKEARRAY, REDUCE and SCAN"
 milestone: M7
 lane: functions-logic
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -60,18 +60,36 @@ argument coverage of LET, MAKEARRAY, REDUCE and SCAN, and every Excel cell the e
   - Record any new Excel quirk in docs/excel-semantics/ (arrays.md), citing the cells.
 
 ## Acceptance criteria
-- [ ] New gen-m7 cases from `--policy arg-pairs --functions LET,MAKEARRAY,REDUCE,SCAN` are committed with their
+- [x] New gen-m7 cases from `--policy arg-pairs --functions LET,MAKEARRAY,REDUCE,SCAN` are committed with their
       excel-graph oracle sidecars and 0 fill failures.
-- [ ] After `make eval`, each of the 4 functions has a `pairwise` share of at least 0.9 in report.json
+- [x] After `make eval`, each of the 4 functions has a `pairwise` share of at least 0.9 in report.json
       `argument_coverage`. Otherwise the PR lists the pairs left unseen and why.
-- [ ] No scored cell of the batch is a `#SPILL!` caused by the case layout. Spill-extent failures in the M7 exit row
+- [x] No scored cell of the batch is a `#SPILL!` caused by the case layout. Spill-extent failures in the M7 exit row
       stay at 0.
-- [ ] Failing cells are known failures in eval/baseline/gen-m7.txt (`make eval-baseline`, 0 regressions). Each is owned
+- [x] Failing cells are known failures in eval/baseline/gen-m7.txt (`make eval-baseline`, 0 regressions). Each is owned
       by an open task, and `make exit-owners MILESTONE=M7` and `make unowned-off ALL=1` report no new unowned cell from
       the batch.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine fixes for the cells this batch finds. The owning tasks make them. The exception is a one-line coercion fix in
   the function's own module that the PR also tests.
 - GROUPBY/PIVOTBY pairs, the single-kind probes of T-2878 and T-2874, and other functions or milestones.
+
+## Outcome
+- **Batch**: 4 new gen-m7 cases from `rustsheet-gen --policy arg-pairs --milestone M7 --functions LET,MAKEARRAY,REDUCE,SCAN --spill`
+  (seed 0; 600 formulas, no pair skipped), with excel-graph sidecars filled with 0 failures:
+  a10a92ed0612414a (LET), e9beb45b7df62ccb (MAKEARRAY), 3fec8316080cb7b1 (REDUCE), 3f368d034700f19e (SCAN).
+  MAKEARRAY and SCAN are `dynamic_array`, so their calls sit 61 rows apart and every spilled cell is scored; no scored cell
+  is a layout `#SPILL!`.
+- **Coverage**: after `make eval`, LET, MAKEARRAY, REDUCE and SCAN each have a pairwise share of 1.0 with 0 unseen pairs
+  (before: 0.50, 0.21, 0.43, 0.38; 300 unseen pairs).
+- **Eval delta**: gen-m7 grows from 102 to 106 cases and from 53,576 to 54,449 scored cells (+873). 872 pass; 1 new-coverage
+  failure, 0 regressions (baseline updated by `make eval-baseline`). Visible-parity lock +1 case (that cell). gen-m7 stays at
+  100.00% visible-parity rate rounded, above the 99.9% M7 bar, with 0 spill-extent failures.
+- **Owner**: the one failing cell, gen-m7/3f368d034700f19e A2990 (`SCAN(Data!G5,Data!G9,LAMBDA(x,z,VSTACK(x,z)))`, Excel
+  `#CALC!`, ours `#DIV/0!`), is owned by new task T-3765 (sonnet, functions-lookup, campaign semantics): VSTACK keeps a
+  one-cell error reference, here reached through a LAMBDA parameter, as a 1x1 array. Recorded in docs/excel-semantics/arrays.md
+  under "A one-cell error reference is a 1x1 array in TOCOL, TOROW and FILTER". `make exit-owners MILESTONE=M7` reports 0
+  unowned; `make unowned-off ALL=1` is unchanged (no gen-m7 cell).
+- LET, MAKEARRAY and REDUCE pass every new cell; SCAN passes 163 of 164.

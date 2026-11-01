@@ -2161,6 +2161,14 @@ still returns the error first.
 Status: VERIFIED (excel-graph)
 Tasks: T-3506
 
+VSTACK, through a LAMBDA parameter (T-3683): with Data!G5 the text "12" and Data!G9 `#DIV/0!`,
+`SCAN(Data!G5,Data!G9,LAMBDA(x,z,VSTACK(x,z)))` is `#CALC!` (gen-m7/3f368d034700f19e Calc!A2990, excel-graph
+2026-11-01). z is a reference to Data!G9 (the walked range's cell, T-1442), and VSTACK stacks it into a 2x1 array, an
+array result of the LAMBDA, so `#CALC!`. A scalar error argument is still the whole VSTACK or HSTACK result (T-1695).
+The direct form `VSTACK("12",Data!G9)` is not probed yet. Ours: `#DIV/0!`, as `fn_vstack` returns any error argument.
+Status: VERIFIED (excel-graph) for the SCAN cell; the direct forms UNVERIFIED.
+Tasks: T-3765
+
 ## TOCOL, TOROW and SORT: which bad argument wins (T-3497)
 Rule:
 - TOCOL and TOROW, `ignore` against an error in `scan_by_column`:
