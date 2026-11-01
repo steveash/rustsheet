@@ -344,6 +344,22 @@ impl Model {
         let rows = usize::try_from(right.row - left.row + 1).unwrap_or(0);
         let width = usize::try_from(right.column - left.column + 1).unwrap_or(0);
         self.spend_cells(rows, width, cell)?;
+        // A range inside the used area whose cells are inert reads as the cached values: the walk
+        // below would read the same values and evaluate nothing (`range_values.rs`, T-3471). One
+        // past the used area is walked, which reads only its used cells.
+        if left.sheet == right.sheet && right.row <= last_row && right.column <= last_column {
+            let rect = (left.sheet, left.row, left.column, right.row, right.column);
+            if let Some(view) = self.range_values(rect) {
+                let element = |index: usize| {
+                    view.get(index).map_or(ArrayNode::Empty, |value| {
+                        calc_result_to_array_node(value.clone())
+                    })
+                };
+                return Ok((0..rows)
+                    .map(|i| (0..width).map(|j| element(i * width + j)).collect())
+                    .collect());
+            }
+        }
         let mut result = Vec::with_capacity(rows);
         for row in left.row..=right.row {
             let mut row_result = Vec::with_capacity(width);

@@ -328,7 +328,15 @@ def test_fill_writes_excels_values_and_leaves_the_rest_pending(
 
 def test_cli_lists_and_generates(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     assert accuracy_cli.main(["list"]) == 0
-    assert capsys.readouterr().out.split() == ["RATE", "T.DIST", "T.INV"]
+    assert capsys.readouterr().out.split() == [
+        "F.DIST",
+        "F.INV",
+        "RATE",
+        "T.DIST",
+        "T.INV",
+        "T.INV.2T",
+        "TINV",
+    ]
     assert accuracy_cli.main(["--tables", str(tmp_path), "generate", "t.dist", "--count", "5"]) == 0
     assert (tmp_path / "T.DIST" / "s1.case.json").exists()
     assert accuracy_cli.main(["--tables", str(tmp_path), "verify", "T.DIST"]) == 0

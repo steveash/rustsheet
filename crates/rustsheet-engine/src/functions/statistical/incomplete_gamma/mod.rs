@@ -702,36 +702,9 @@ fn pair_with(a: f64, x: f64, terms: &mut Terms, exponent: Exponent) -> (f64, f64
         }
         return (lower, 1.0 - lower);
     }
-    // Q = prefactor / (x + 1 - a - 1(1-a)/(x + 3 - a - 2(2-a)/(x + 5 - a - ...))).
-    let tiny = f64::MIN_POSITIVE / f64::EPSILON;
-    let mut b = x + 1.0 - a;
-    let mut c = 1.0 / tiny;
-    let mut d = 1.0 / b;
-    let mut h = d;
-    let mut i = 1.0;
-    let mut budget = Terms(continued_fraction_budget(a));
-    loop {
-        if !terms.take() || !budget.take() {
-            return (f64::NAN, f64::NAN);
-        }
-        let an = -i * (i - a);
-        b += 2.0;
-        d = an * d + b;
-        if d.abs() < tiny {
-            d = tiny;
-        }
-        c = b + an / c;
-        if c.abs() < tiny {
-            c = tiny;
-        }
-        d = 1.0 / d;
-        let delta = d * c;
-        h *= delta;
-        if (delta - 1.0).abs() <= f64::EPSILON * 0.25 {
-            break;
-        }
-        i += 1.0;
-    }
+    let Some((h, _)) = fraction::continued_fraction(a, x, terms) else {
+        return (f64::NAN, f64::NAN);
+    };
     let upper = prefactor * h;
     (1.0 - upper, upper)
 }
@@ -739,6 +712,11 @@ fn pair_with(a: f64, x: f64, terms: &mut Terms, exponent: Exponent) -> (f64, f64
 /// [`gamma_cdf`]'s and [`gamma_sf`]'s value at a positive, finite `scaled` = x * rate: the
 /// accurate pair's `upper` or lower tail.
 fn accurate_tail(a: f64, scaled: f64, upper: bool) -> f64 {
+    if upper {
+        if let Some(q) = half_integer::half_integer_upper(a, scaled, &mut Terms(MAX_TERMS)) {
+            return q;
+        }
+    }
     let (p, q) = incomplete_gamma_pair(a, scaled, &mut Terms(MAX_TERMS));
     if upper {
         q
@@ -939,6 +917,8 @@ fn quantile_tail(dist: &Gamma, x: f64, tail: Tail, terms: &mut Terms) -> f64 {
 }
 
 mod density;
+mod fraction;
+mod half_integer;
 mod huge_shape;
 
 pub(crate) use density::{accurate_gamma_density, gamma_density};
