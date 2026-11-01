@@ -1,5 +1,5 @@
 ---
-id: T-3544
+id: T-3573
 title: "Visible-parity lock per case so probe PRs merge cleanly"
 milestone: M2
 lane: harness

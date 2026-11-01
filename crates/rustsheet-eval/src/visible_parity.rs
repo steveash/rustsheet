@@ -4,7 +4,7 @@
 //! [`judge`]. `update-baseline` records the line of a case new to its suite's baseline, raises an
 //! existing case only with `--allow-regressions`, and lowers one only with
 //! `--lower-visible-lock` (the steward, daily). One line per case, like the known-failure lists,
-//! so parallel PRs that add or fix different cases merge cleanly (T-3544, decision 0217).
+//! so parallel PRs that add or fix different cases merge cleanly (T-3573, decision 0217).
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
