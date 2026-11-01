@@ -1134,8 +1134,30 @@ Evidence (excel-graph, 2026-10-31, T-3348):
 - Not reproduced: in the noise floor Excel's iterates differ from the model's.
   - Right type, not Excel's bits: seven flat-secant cells of t3348-rate-fv-nonzero (A112, A138, A153, A171, A175,
     A180, A185) are 1 ulp to 2e-11 relative from Excel's. Excel's own value is that far from the root too (A171:
-    Excel 0.002094170434484841, root 0.002094170434492252, model 0.0020941704345254896). T-3389 owns the 4 beyond
-    15 digits (A138, A171, A180, A185).
+    Excel 0.002094170434484841, root 0.002094170434492252, model 0.0020941704345254896). T-3389 tried to reproduce
+    the 4 beyond 15 digits (A138, A171, A180, A185) and did not (scratch harness on the fit lab kernels, the
+    amended model bit-exact on the other 1,189 of the 1,196 non-sweep RATE cells):
+    - Excel's value is not an iterate of the model's trace on any of the 7 cells. On the 4, no secant step between
+      any two of the trace's iterates gives it either. So no stop, hold or flat-secant fallback rule fixes them:
+      Excel's path leaves the model's earlier. The model's trace bounces in the noise for 10 to 30 steps on A138,
+      A180 and A185 (|f| about 1e-6 on terms of 1e7 to 1e9) and 2 steps on A171.
+    - A171 (nper 1, so the exact residual is linear and the secant lands next to the root at once): with the model's
+      residual near the root, Excel's value is reachable from first iterates 5.7e-14 or more from the model's
+      0.0020941704345913. Moving the guess residuals f(0.1) and f(0.101) by up to 600 ulps each gives it in 2 of
+      1.44 million pairs, both 400 to 600 ulps in opposite directions. The residual's rounding near the root is the
+      model's 1+r: the double 1+r puts a bias of up to pmt/r·2^-53 (1.4e-7 here) on f. An extended 1+r removes the
+      bias, and the run then lands on the root itself, not on Excel's value 7.4e-15 below it.
+    - Residual forms tried, none of which gives any of the 4: each operation of the residual (1+r, the power's
+      products, P-1, the quotient by r, the two products, the two sums) twice-rounded, kept at 64 bits, or P-1
+      exact (96 combinations; the best gets 3 of the 7, all among the last-digit ones); k·(P-1) before the
+      quotient by r;
+      P by C `pow`, by exp(n·ln(1+r)), by exp(n·log1p(r)), and by the x87 instruction sequence on the exact and on
+      the double 1+r; the factor as expm1(n·log1p(r))/r; and the PV form pv + pmt·k·(1-1/P)/r + fv/P. Excel's
+      `+` snap cannot fire: the residual's sums are not near zero against their left addends (A171: -1.7e-7 on
+      11634.76).
+    - Step forms tried, none of which gives any of the 7: plain doubles, rounded once, kept at 64 bits, r1 -
+      f1·((r1-r0)/(f1-f0)), and r1 - f1/((f1-f0)/(r1-r0)).
+    The 4 stay known failures. T-3579 probes Excel's residual bits directly (guess-seeded runs at nper 1).
   - Wrong type: at |pv| and |fv| 1e6 to 1e12 the noise decides the type. 13 holds the model returns are `#NUM!` in
     Excel (gate-a-sweep A296; gate-a-fresh A59, A70, A74, A77, A89, A90, A95, A157, A162, A173, A275, A292), at held
     |f| 2.4e-7 to 5.5e-5 and steps 11 to 119. The old model's `#NUM!` matched Excel on these 13; decision 0198
@@ -1155,7 +1177,7 @@ Evidence (excel-graph, 2026-10-31, T-3348):
 Ours: `compute_rate` (functions/financial/financial_util.rs), T-3348, decision 0198.
 Status: VERIFIED (excel-graph) / UNVERIFIED (Excel's residual in the noise floor; a non-integer nper below -1; a held
 point with |f1| < 1e-7)
-Tasks: T-3348, T-3389, T-3424
+Tasks: T-3348, T-3389, T-3424, T-3579
 
 ## YIELD with one coupon period left is closed form
 Rule: when at most one coupon period is left, Excel evaluates the documented formula

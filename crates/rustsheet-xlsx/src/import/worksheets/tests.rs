@@ -329,6 +329,10 @@ fn shifted_copies_take_the_keys_a_fresh_lexer_gives() {
         "A3&\"B3\"&'My Data'!A3",
         "SUM(B:B)+COUNTIF(3:5,A3)+SUM('My Data'!$J:$J,C:$D)",
         "COUNTIFS('My Data'!$J:$J,\">=\"&W$1,'My Data'!$D:$D,$E5)+SUM($2:4)",
+        // Corners that differ on `$` on an axis: their order flips in some copies (T-3574).
+        "SUM(C$5:C3)+COUNTIFS(KP$11:KP22,KP23)",
+        "SUM($I47:I47)+SUM(B3:$A$1)+SUM($E2:C$4)",
+        "IF(AND(I3=0,I3<J3,SUM($I3:I3)>0),J3-I3-IV3,0)",
     ];
     let cells = [
         (3, 3),
@@ -561,4 +565,50 @@ fn templates_at_extreme_rows_do_not_overflow() {
         let text = "A2147483647+B$2+$C3";
         assert_eq!(lexer.key(text, &cell), KeyLexer::default().key(text, &cell));
     }
+}
+
+/// Formulas come row by row, so a formula's copy is often the one above it with other formulas
+/// between: each column keeps its own template (T-3574). Three formulas filled down three columns
+/// and read row by row take their copies from their column's template, with the key a fresh lexer
+/// gives, but where a mixed-`$` range's corners change order.
+#[test]
+fn templates_are_kept_per_column() {
+    use rustsheet_engine::expressions::types::CellReferenceRC;
+
+    use crate::import::relocation_key::KeyLexer;
+
+    let at = |row, column| CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row,
+        column,
+    };
+    let mut lexer = KeyLexer::default();
+    for row in 11..=40 {
+        let formulas = [
+            format!(
+                "COUNTIFS(A$11:A$40,\">\"&A{row})+1+COUNTIFS(A$11:A{},A{row})",
+                row - 1
+            ),
+            format!("IF(AND(A{row}=0,A{row}<B{row},SUM($A{row}:A{row})>0),B{row}-A{row},0)"),
+            format!("SUM(A{row}:B{row})*2"),
+        ];
+        for (index, formula) in formulas.iter().enumerate() {
+            let cell = at(row, i32::try_from(index).unwrap() + 3);
+            let key = lexer.key(formula, &cell);
+            assert_eq!(key, KeyLexer::default().key(formula, &cell), "{formula}");
+            assert!(key.is_some(), "{formula}");
+        }
+    }
+    // Row 11's `A$11:A10` is reversed and row 12's `A$11:A11` is not, so the first copy of the
+    // first formula is lexed afresh (`Order`).
+    assert_eq!(lexer.copies, 29 * 3 - 1);
+    // A formula that fails to parse drops only the template its own key kept: after a copy (row
+    // 41, column 5) it drops none, so column 3's, the last template kept (row 12), still serves
+    // the next copy.
+    lexer.key("SUM(A41:B41)*2", &at(41, 5));
+    lexer.forget_template();
+    let copies = lexer.copies;
+    let formula = "COUNTIFS(A$11:A$40,\">\"&A42)+1+COUNTIFS(A$11:A41,A42)";
+    assert!(lexer.key(formula, &at(42, 3)).is_some());
+    assert_eq!(lexer.copies, copies + 1);
 }

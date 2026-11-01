@@ -23,7 +23,7 @@ For each shape, M2's exponent path is scored with L = TOMS algdiv in doubles (r2
 | hold | 1,696 of 4,000 | 3,952 | 78 of 80 |
 
 The 4 shapes that do not pin: (0.25, 176.694), where lnB is about 1e-14 (its ulp is tiny, 16 j tie); (0.4, 8.6),
-whose pin lies at the scan's edge (j = -16, 3 of 50; unexplained, T-3468 rescans it wider); and (0.5, 16) and
+whose pin lies at the scan's edge (j = -16, 3 of 50; unexplained, T-3569 rescans it wider); and (0.5, 16) and
 (0.4, 43.75) at 49 of 50. This confirms
 T-2513's finding on a fresh sweep at four new a: **for min < 1 < 8 < max the whole density gap is the double lnB; tx,
 ty, the split exponent and EXP are right.**
@@ -40,7 +40,7 @@ lag-1 autocorrelation -0.20, -0.12 (probe a) and +0.21, -0.24 (hold), on 15-16 p
 about 0.26). **No large smooth error is visible.** (An approximation error of the series or of the Stirling
 difference moves continuously with b.) The likely cause is rounding noise from a few stored intermediates, which
 changes from one b to the next. This answers T-3383's "next" for item 2 as an inference, not a proof: the offset
-looks like a storage pattern, not an approximation, until a storage model reproduces the pins (T-3468).
+looks like a storage pattern, not an approximation, until a storage model reproduces the pins (T-3569).
 
 ## 3. Fixed candidates, no per-shape freedom (`cands.py`, `cands_a.out`, `cands_hold.out`)
 Shapes whose pinned lnB the candidate equals (and rows):
