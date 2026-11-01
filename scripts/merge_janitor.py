@@ -82,7 +82,7 @@ BUDGET = timedelta(minutes=25)
 ESCALATE_AFTER = timedelta(hours=8)
 QUIET = timedelta(hours=6)
 # An owner's or reviewer's hold: the janitor never touches a PR with this label (no push, no mark).
-HOLD_LABEL = "merge-hold"
+HOLD_LABEL = merge_ready.HOLD_LABEL
 # Pushes older than this are not read; the newest push of a head is on the first page anyway.
 ACTIVITY_WINDOW = timedelta(days=1)
 
@@ -298,7 +298,7 @@ class Effects(Protocol):
     def catch_up(self, state: State, announce: Announce) -> str: ...
     def renumber(self, state: State, announce: Announce) -> str: ...
     def mark(self, state: State) -> None: ...
-    def file_p0(self, log: list[str], title: str, context: str) -> None: ...
+    def file_p0(self, log: list[str], title: str, context: str) -> bool: ...  # whether it was filed
 
 
 class Checkout:
@@ -314,8 +314,8 @@ class Checkout:
     def renumber(self, state: State, announce: Announce) -> str:
         return merge_renumber.renumber(self.root, state.branch, before_push=announce)
 
-    def file_p0(self, log: list[str], title: str, context: str) -> None:
-        merge_train_filing.file_tasks(self.root, self.client, log, [("P0", title, context)])
+    def file_p0(self, log: list[str], title: str, context: str) -> bool:
+        return merge_train_filing.file_tasks(self.root, self.client, log, [("P0", title, context)])
 
     def mark(self, state: State) -> None:
         """`make mark-ready CARRY=1` with the PR head checked out; the checkout is restored."""
@@ -440,7 +440,8 @@ class Janitor:
             "step 2). For the owner: find why the merger's passes fail; flip to `lock` only with the "
             "owner's approval."
         )
-        self.effects.file_p0(self.log, title, context)
+        if not self.effects.file_p0(self.log, title, context):
+            return  # no note: the next run tries again
         self.note(pr, head, ESCALATED, f"filed a P0 for the owner: {title} (decision 0224).")
 
 

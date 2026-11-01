@@ -63,7 +63,10 @@ BASELINE_DIR = "eval/baseline/"
 READY_LABEL = "ready-to-merge"
 EJECTED_LABEL = "merge-train-ejected"
 STOP_LABEL = "merge-train-stop"
-LABELS = (READY_LABEL, EJECTED_LABEL, STOP_LABEL)
+TRAIN_LABELS = (READY_LABEL, EJECTED_LABEL, STOP_LABEL)
+# An owner's hold against the merge janitor (decision 0224); `make merge-labels` creates it.
+HOLD_LABEL = "merge-hold"
+LABELS = (*TRAIN_LABELS, HOLD_LABEL)
 
 # Reviewer applicability. The one definition is the `review` skill (.claude/skills/review/SKILL.md,
 # step 3); scripts/test_merge_ready.py fails when this copy differs from it.
@@ -701,6 +704,7 @@ LABEL_STYLES = {
     READY_LABEL: ("0e8a16", "Marked ready for the merge train (make mark-ready, SPEC-0027)"),
     EJECTED_LABEL: ("d93f0b", "Ejected from a merge train; mark again after fixing (SPEC-0027)"),
     STOP_LABEL: ("b60207", "Stops the merge train while any open PR carries it (SPEC-0027)"),
+    HOLD_LABEL: ("fbca04", "The merge janitor leaves this PR alone: no push, no re-mark (decision 0224)"),
 }
 # The step-mode actions `mark` prints (SPEC-0027 section 4, "GitHub access"); scripts/merge_step.py
 # holds the whole schema, the merger's actions included, and validates these (decision 0169).
@@ -856,9 +860,9 @@ def plan_mark(client: Client, pr: int, repo: Repo, review: str | None, carry: bo
     )
 
 
-def missing_labels(client: Client) -> list[str]:
+def missing_labels(client: Client, names: Sequence[str] = LABELS) -> list[str]:
     """The merge-train labels the repository does not have."""
-    return [name for name in LABELS if client.label(name) is None]
+    return [name for name in names if client.label(name) is None]
 
 
 def create_labels(client: Client, names: Iterable[str]) -> None:
@@ -871,7 +875,7 @@ def create_labels(client: Client, names: Iterable[str]) -> None:
 def apply(client: Client, plan: Plan) -> None:
     """Performs the plan's writes through the client (CI, or a session allowed to write), in
     `Plan.actions`' order. A push in between is caught by the caller's `verify` (V2)."""
-    create_labels(client, missing_labels(client))
+    create_labels(client, missing_labels(client, TRAIN_LABELS))  # the labels marking may write
     if plan.body is not None:
         client.comment(plan.pr, plan.body)
     if plan.label:

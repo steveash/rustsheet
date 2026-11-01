@@ -191,7 +191,7 @@ verdict-record: ## Post one reviewer's verdict record for the local HEAD, which 
 	$(if $(REPORT),,$(error REPORT=<file> is required))
 	$(PY) scripts/merge_ready.py record --pr '$(PR)' --reviewer '$(REVIEWER)' --verdict '$(VERDICT)' --report '$(REPORT)' $(if $(STEP),--step)
 
-merge-labels: ## Create the merge-train labels that are missing (ready-to-merge, merge-train-ejected, merge-train-stop)
+merge-labels: ## Create the merge-train labels that are missing (ready-to-merge, merge-train-ejected, merge-train-stop, merge-hold)
 	$(PY) scripts/merge_ready.py labels --create
 
 .PHONY: merge-mode merge-train merge-train-ack merge-flip-check merge-train-stats catch-up renumber janitor

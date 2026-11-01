@@ -121,7 +121,8 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
 - **Stranded in `train` mode: escalate, do not flip** (decision 0224 amending 0157 and 0194). A
   PR is stranded when it has been marked ready on its current head (the newest marker names the
   PR head), is not ejected, and is unmerged 2 h after its marker. Ejected PRs, PRs waiting on
-  their worker and PRs whose marker names an older head (the janitor's) never count.
+  their worker, PRs whose marker names an older head (the janitor's) and PRs labelled
+  `merge-hold` never count.
   1. On a stranded PR, the steward (or any session that finds one) runs one `make merge-train
      TRAIN=1` pass and `make janitor STEP=1`, and files a P0 task with the cause it found. No flip.
   2. The janitor checks this every merger run: when the oldest stranded PR was marked 8 h ago

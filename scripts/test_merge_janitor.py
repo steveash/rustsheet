@@ -22,6 +22,7 @@ import merge_ready  # noqa: E402
 import merge_step  # noqa: E402
 from gh_client import FakeGh, Reply  # noqa: E402
 from merge_catchup import Refused  # noqa: E402
+from merge_lock import GitError  # noqa: E402
 from merge_janitor import CATCH_UP, MARK, ORPHANED, REFUSED, RENUMBER, UNLABEL, State  # noqa: E402
 
 NOW = datetime(2026, 11, 1, 12, 0, tzinfo=UTC)
@@ -179,8 +180,11 @@ class Effects:
     def mark(self, state: State) -> None:
         self.step(MARK, state)
 
-    def file_p0(self, log: list[str], title: str, context: str) -> None:
+    def file_p0(self, log: list[str], title: str, context: str) -> bool:
         self.filed.append(title)
+        return self.files
+
+    files = True  # set False: the task-only PR could not be opened
 
 
 def comment(ident: int, body: str, login: str = "owner") -> dict[str, object]:
@@ -381,6 +385,25 @@ class Pass(unittest.TestCase):
         self.assertEqual(noted.filed, [])
         merged, _ = self.escalation("2026-11-01T10:00:00Z")
         self.assertEqual(merged.filed, [])
+
+    def test_a_p0_that_could_not_be_filed_is_not_noted_and_is_retried(self) -> None:
+        with mock.patch.object(Effects, "files", False):
+            failed, client = self.escalation(None)
+        self.assertEqual(len(failed.filed), 1)
+        self.assertEqual([r for r in client.requests if r.method == "POST"], [])  # no ESCALATED note
+        retried, _ = self.escalation(None)  # the next run: nothing on the PR says it was filed
+        self.assertEqual(len(retried.filed), 1)
+
+    def test_file_tasks_reports_whether_the_pr_was_opened(self) -> None:
+        log: list[str] = []
+        with mock.patch.object(
+            merge_janitor.merge_train_filing, "fetch_main", side_effect=GitError("no network")
+        ):
+            self.assertFalse(
+                merge_janitor.merge_train_filing.file_tasks(Path("."), FakeGh(), log, [("P0", "t", "c")])
+            )
+        self.assertEqual(log, ["the tasks were not filed: no network", "unfiled P0: t"])
+        self.assertTrue(merge_janitor.merge_train_filing.file_tasks(Path("."), FakeGh(), [], []))
 
     # Step mode (decision 0169): the janitor's writes go through merge_step.StepClient.
     def perform(self, action: dict[str, object]) -> None:

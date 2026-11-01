@@ -143,12 +143,13 @@ def open_revert(root: Path, client: Client, log: list[str], landed: Landed) -> i
     return pr
 
 
-def file_tasks(root: Path, client: Client, log: list[str], tasks: list[tuple[str, str, str]]) -> None:
+def file_tasks(root: Path, client: Client, log: list[str], tasks: list[tuple[str, str, str]]) -> bool:
     """Files the hold's tasks (a P0 of a mismatch, a P1 of a red train that did not reproduce)
     as task files in one task-only PR from `merge-train/tasks-<first id>`, cut from the current
-    `main`. A failure is logged with the tasks it did not file: the hold itself is over."""
+    `main`. A failure is logged with the tasks it did not file: the hold itself is over. Returns
+    whether the PR was opened (the janitor records its P0 only then; the train ignores it)."""
     if not tasks:
-        return
+        return True
     try:
         with worktrees(root, fetch_main(root), ("tasks",)) as (tree,):
             ids = [write_task(tree, *task) for task in tasks]
@@ -167,6 +168,8 @@ def file_tasks(root: Path, client: Client, log: list[str], tasks: list[tuple[str
     except (GhError, GitError) as error:
         log.append(f"the tasks were not filed: {error}")
         log += [f"unfiled {priority}: {title}" for priority, title, _ in tasks]
+        return False
+    return True
 
 
 def write_task(tree: Path, priority: str, title: str, context: str) -> str:

@@ -77,7 +77,7 @@ BUCKETS = (("under 3/h", 0, 2), ("3-6/h", 3, 6), ("over 6/h", 7, math.inf))
 
 def stranded_since(client: Client, now: datetime) -> list[tuple[int, datetime]]:
     """(PR, when its marker was posted) of the open PRs marked ready more than 2 h ago, unmerged
-    and not ejected, whose newest marker names the current head: a stale marker waits on its
+    and not ejected or held (`merge-hold`), whose newest marker names the current head: a stale marker waits on its
     worker or the janitor (decision 0224). Only writers' markers count (merge_ready's V1 rule),
     so no one else can hide a stranded PR. The janitor's escalation check reads it too."""
     found = []
@@ -86,7 +86,8 @@ def stranded_since(client: Client, now: datetime) -> list[tuple[int, datetime]]:
     authors = merge_ready.Authors(client, owner == "User")
     for pull in pulls:
         labels = merge_ready.label_names(pull)
-        if merge_ready.READY_LABEL not in labels or merge_ready.EJECTED_LABEL in labels:
+        held = merge_ready.HOLD_LABEL in labels  # an owner's hold is not stranded (decision 0224)
+        if merge_ready.READY_LABEL not in labels or merge_ready.EJECTED_LABEL in labels or held:
             continue
         pr = int_of(pull, "number")
         marks = [

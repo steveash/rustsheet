@@ -1505,7 +1505,7 @@ These escalate instead:
 - more than 2 trains in a day needing more than 6 CI runs;
 - a stranded PR: marked ready on its current head (the newest marker names the PR head), not
   ejected, unmerged after 2 h. Ejected PRs, PRs waiting on their worker and PRs whose marker
-  names an older head never count.
+  names an older head never count, nor do PRs labelled `merge-hold`.
 
 Escalation: the steward runs one `make merge-train TRAIN=1` pass and `make janitor STEP=1` and files a
 P0 with the cause, with no flip. The janitor checks every merger run: when the oldest stranded PR

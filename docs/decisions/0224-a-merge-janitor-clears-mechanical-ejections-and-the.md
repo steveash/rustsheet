@@ -60,7 +60,7 @@
        orphan rule.
   4. **Escalation replaces the flip for a stranded PR** (amends 0157 and 0194). A PR marked ready
      on its current head, not ejected and unmerged 2 h later is stranded. Ejected PRs, PRs waiting
-     on their worker and stale-marker PRs never count. Then:
+     on their worker, stale-marker PRs and PRs labelled `merge-hold` never count. Then:
      1. the steward runs one `make merge-train TRAIN=1` pass and `make janitor STEP=1`, and files a P0
         with the cause; no flip;
      2. if nothing has merged in 6 h and the oldest stranded PR was marked 8 h ago, the janitor

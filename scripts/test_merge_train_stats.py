@@ -306,7 +306,7 @@ class Stranded(unittest.TestCase):
         ready, ejected = "ready-to-merge", "merge-train-ejected"
         pulls = [pull(5, ready), pull(6, ready, ejected), pull(7, ready), pull(8, ready), pull(9), pull(10, ready)]
         return {
-            "pulls": [*pulls, pull(11, ready)],
+            "pulls": [*pulls, pull(11, ready), pull(12, ready, merge_ready.HOLD_LABEL)],
             "collaborators/owner/permission": {"permission": "admin"},
             "collaborators/stranger/permission": {"permission": "read"},
             # 5: marked 5 h and 3 h ago (the newest counts); 6: ejected; 7: marked 1 h ago; 8: no marker;
@@ -318,6 +318,8 @@ class Stranded(unittest.TestCase):
             "issues/8/comments": [{"created_at": iso(5), "body": "a plain comment"}],
             "issues/10/comments": [marker(5, sha(10)), marker(3, sha(11))],
             "issues/11/comments": [marker(5, sha(11)), marker(3, sha(12), "stranger")],
+            # 12: held by its owner (merge-hold, decision 0224): not stranded.
+            "issues/12/comments": [marker(5, sha(12))],
         }
 
     def test_only_old_markers_on_ready_unejected_prs(self) -> None:
