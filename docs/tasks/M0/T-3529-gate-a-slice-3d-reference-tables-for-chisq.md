@@ -42,7 +42,7 @@ cited mpmath definition, the decision 0188 R3 points marked, and `make check` ru
 - The fixes for failing points (their owner tasks).
 
 ## Outcome
-In progress (2026-11-01): four of the five tables have landed on the branch, and the rest is split to T-3578.
+In progress (2026-11-01; resumed by an opus run at 03:55 UTC after 2 h idle): four of the five tables have landed on the branch, and the rest is split to T-3578.
 - **Definitions** (`tools/src/rustsheet_tools/accuracy/defs/`):
   - gamma.py: GAMMA.INV, CHISQ.INV and CHISQ.INV.RT. The quantile solves the smaller tail in log scale. The tails are
     the incomplete gamma's power series and continued fraction (A&S 6.5.29, 6.5.31), summed at the working precision,
