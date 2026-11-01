@@ -1,12 +1,12 @@
 use super::{
-    build_series, completion_setting, detect_season, interpolate, Aggregate, Point, SeriesOptions,
-    MAX_ACF_WORK,
+    build_series, completion_setting, detect_season, interpolate, DuplicateAggregate, Point,
+    SeriesOptions, MAX_ACF_WORK,
 };
 use crate::expressions::token::Error;
 
 const DEFAULT: SeriesOptions = SeriesOptions {
     interpolate: true,
-    aggregate: Aggregate::Average,
+    aggregate: DuplicateAggregate::Average,
 };
 
 fn numbers(values: &[f64]) -> Vec<Point> {
@@ -55,7 +55,7 @@ fn series_pairs_sorts_and_combines_duplicates() {
     let series = build_series(&values, &timeline, DEFAULT).map(|s| s.y);
     assert_eq!(series, Ok(vec![3.0, 6.0, 10.0]));
     let summed = SeriesOptions {
-        aggregate: Aggregate::Sum,
+        aggregate: DuplicateAggregate::Sum,
         ..DEFAULT
     };
     assert_eq!(
@@ -152,8 +152,14 @@ fn settings() {
     assert_eq!(completion_setting(1.9), Some(true));
     assert_eq!(completion_setting(0.0), Some(false));
     assert_eq!(completion_setting(2.0), None);
-    assert_eq!(Aggregate::from_setting(0.5), Some(Aggregate::Average));
-    assert_eq!(Aggregate::from_setting(7.0), Some(Aggregate::Sum));
-    assert_eq!(Aggregate::from_setting(8.0), None);
-    assert_eq!(Aggregate::from_setting(-1.0), None);
+    assert_eq!(
+        DuplicateAggregate::from_setting(0.5),
+        Some(DuplicateAggregate::Average)
+    );
+    assert_eq!(
+        DuplicateAggregate::from_setting(7.0),
+        Some(DuplicateAggregate::Sum)
+    );
+    assert_eq!(DuplicateAggregate::from_setting(8.0), None);
+    assert_eq!(DuplicateAggregate::from_setting(-1.0), None);
 }

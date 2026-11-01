@@ -1639,11 +1639,13 @@ Tasks: T-1293, T-1553, T-2028 (the text `target_date` and the lifting cells)
 Rule (UNVERIFIED, owner ruling, decision 0221): once the argument step passes (the T-2255 section), the family computes
 the AAA exponential-smoothing model as gridcraft implements it (Hyndman, Koehler, Ord & Snyder 2008). Steps and
 errors, in the order the code takes them (every ordering UNVERIFIED; T-2425's desktop probe should cover each):
-1. Reading `values` and `timeline`: more than 200,000 cells in either is `#NUM!` (the "work caps" section).
+1. Reading `values` and `timeline`: a range across two sheets is `#VALUE!`, and more than 200,000 cells in either is
+   `#NUM!` (the "work caps" section).
 2. The settings, in argument order: `data_completion` (default 1) truncates to 1 (a missing point is the straight line
    between its known neighbours, or the nearest known value at an end) or 0 (a missing point is zero); `aggregation`
    (default 1) truncates to 0 or 1 AVERAGE, 2 COUNT, 3 COUNTA, 4 MAX, 5 MEDIAN, 6 MIN or 7 SUM, which combines values
-   that share a time stamp. Anything else is `#NUM!`.
+   that share a time stamp. Under COUNT and COUNTA a time stamp whose values are all blank is a known point of 0, not
+   a missing point. Anything else is `#NUM!`.
 3. An error cell or element in `values`, then in `timeline`, is that error (the web is `#N/A` on such cells, as on
    every call, T-2255 section).
 4. Different cell counts in `values` and `timeline` are `#N/A`, as Microsoft's documentation states. They pair in

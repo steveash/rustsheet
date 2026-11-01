@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
 use super::ets::{
-    self, build_series, completion_setting, detect_season, Aggregate, Point, SeriesOptions,
+    self, build_series, completion_setting, detect_season, DuplicateAggregate, Point, SeriesOptions,
 };
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::date_and_time::error_kind;
 use crate::functions::lift::num_error;
 use crate::functions::Function;
 use crate::{
@@ -262,8 +263,8 @@ fn series_options(
         None => true,
     };
     let aggregate = match settings.get(aggregation).copied().flatten() {
-        Some(value) => Aggregate::from_setting(value).ok_or(Error::NUM)?,
-        None => Aggregate::Average,
+        Some(value) => DuplicateAggregate::from_setting(value).ok_or(Error::NUM)?,
+        None => DuplicateAggregate::Average,
     };
     Ok(SeriesOptions {
         interpolate,
@@ -294,12 +295,4 @@ fn array_point(node: &ArrayNode, cell: CellReferenceIndex) -> Result<Point, Calc
         }
         _ => Point::Other,
     })
-}
-
-/// The error kind of an error result (`#VALUE!` for anything else, which the readers never give).
-fn error_kind(result: &CalcResult) -> Error {
-    match result {
-        CalcResult::Error { error, .. } => error.clone(),
-        _ => Error::VALUE,
-    }
 }

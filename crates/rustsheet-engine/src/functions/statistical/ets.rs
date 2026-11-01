@@ -67,7 +67,7 @@ pub(super) enum Point {
 
 /// How points that share a time stamp are combined (`aggregation`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(super) enum Aggregate {
+pub(super) enum DuplicateAggregate {
     Average,
     Count,
     CountA,
@@ -77,40 +77,38 @@ pub(super) enum Aggregate {
     Sum,
 }
 
-impl Aggregate {
+impl DuplicateAggregate {
     /// `aggregation`, truncated: 0 or 1 AVERAGE (the default), 2 COUNT, 3 COUNTA, 4 MAX, 5 MEDIAN,
     /// 6 MIN, 7 SUM; anything else is `None` (`#NUM!`).
     pub(super) fn from_setting(value: f64) -> Option<Self> {
         let truncated = value.trunc();
-        Some(if truncated == 0.0 || truncated == 1.0 {
-            Aggregate::Average
-        } else if truncated == 2.0 {
-            Aggregate::Count
-        } else if truncated == 3.0 {
-            Aggregate::CountA
-        } else if truncated == 4.0 {
-            Aggregate::Max
-        } else if truncated == 5.0 {
-            Aggregate::Median
-        } else if truncated == 6.0 {
-            Aggregate::Min
-        } else if truncated == 7.0 {
-            Aggregate::Sum
-        } else {
+        if !(0.0..=7.0).contains(&truncated) {
             return None;
+        }
+        // A whole number in 0..=7 here, so the cast is exact.
+        Some(match truncated as u8 {
+            0 | 1 => DuplicateAggregate::Average,
+            2 => DuplicateAggregate::Count,
+            3 => DuplicateAggregate::CountA,
+            4 => DuplicateAggregate::Max,
+            5 => DuplicateAggregate::Median,
+            6 => DuplicateAggregate::Min,
+            _ => DuplicateAggregate::Sum,
         })
     }
 
+    /// The group's combined value: its count for COUNT and COUNTA (0 for an empty group), else
+    /// `None` for an empty group.
     fn combine(self, group: &mut [f64]) -> Option<f64> {
         let count = group.len() as f64;
         match self {
-            Aggregate::Count | Aggregate::CountA => Some(count),
+            DuplicateAggregate::Count | DuplicateAggregate::CountA => Some(count),
             _ if group.is_empty() => None,
-            Aggregate::Average => Some(group.iter().sum::<f64>() / count),
-            Aggregate::Sum => Some(group.iter().sum()),
-            Aggregate::Max => group.iter().copied().reduce(f64::max),
-            Aggregate::Min => group.iter().copied().reduce(f64::min),
-            Aggregate::Median => {
+            DuplicateAggregate::Average => Some(group.iter().sum::<f64>() / count),
+            DuplicateAggregate::Sum => Some(group.iter().sum()),
+            DuplicateAggregate::Max => group.iter().copied().reduce(f64::max),
+            DuplicateAggregate::Min => group.iter().copied().reduce(f64::min),
+            DuplicateAggregate::Median => {
                 group.sort_by(f64::total_cmp);
                 let middle = group.len() / 2;
                 let high = *group.get(middle)?;
@@ -142,7 +140,7 @@ pub(super) fn completion_setting(value: f64) -> Option<bool> {
 pub(super) struct SeriesOptions {
     /// `true`: a missing point is the straight line between its known neighbours; `false`: zero.
     pub(super) interpolate: bool,
-    pub(super) aggregate: Aggregate,
+    pub(super) aggregate: DuplicateAggregate,
 }
 
 /// How a time stamp maps to its position in the series (0 = the first point).

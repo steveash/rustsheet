@@ -38,7 +38,8 @@ The list keeps them as T-2255's triage record.
 
 The desktop probe should cover what decision 0221 ships unverified (statistics.md "FORECAST.ETS family: the model
 before Excel evidence"): a period-4 series, the error orderings of its steps 1 to 6, monthly and month-end timelines,
-duplicate time stamps under each aggregation, and the 30% missing rule.
+duplicate time stamps under each aggregation (and an all-blank time stamp under COUNT and COUNTA), a range across
+two sheets, and the 30% missing rule.
 
 Owned gen-m9 cells (T-2255 triage, excel-graph, 2026-10-22): 877 known-failure lines in eval/baseline/gen-m9.txt, 877 formulas.
 Examples:
