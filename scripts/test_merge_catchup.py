@@ -21,10 +21,10 @@ def run(*args: str, cwd: Path) -> str:
     return subprocess.run(args, cwd=cwd, check=True, capture_output=True, text=True).stdout.strip()
 
 
-class CatchUp(unittest.TestCase):
-    """An origin whose `main` and PR branch `agent/x` both edit files after a common commit."""
+class TempOrigin(unittest.TestCase):
+    """A bare origin with a clone on a fresh `main` (shared with test_merge_renumber.py)."""
 
-    def setUp(self) -> None:
+    def make_origin(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         base = Path(self.tmp.name)
@@ -34,15 +34,6 @@ class CatchUp(unittest.TestCase):
         for key, value in (("user.name", "t"), ("user.email", "t@invalid")):
             self.git("config", key, value)
         self.git("checkout", "-q", "-b", "main")
-        self.write(BASELINE, "F\tprobes/a\tA1\n")
-        self.write("eval/baseline/poi.txt", "F\tpoi/a\tA1\n")
-        self.write("eval/suites/probes/suite.toml", 'name = "probes"\ngate = true\n')
-        self.write("eval/suites/poi/suite.toml", 'name = "poi"\ngate = true\n[fetch]\nurl = "x"\n')
-        self.write("code.txt", "one\n")
-        self.base = self.commit("base")
-        self.git("push", "-q", "origin", "main")
-        self.recorded: list[Path] = []
-        self.listed: list[str] = []
 
     def git(self, *args: str) -> str:
         return run("git", *args, cwd=self.clone)
@@ -55,6 +46,22 @@ class CatchUp(unittest.TestCase):
         self.git("add", "-A")
         self.git("commit", "-q", "-m", message)
         return self.git("rev-parse", "HEAD")
+
+
+class CatchUp(TempOrigin):
+    """An origin whose `main` and PR branch `agent/x` both edit files after a common commit."""
+
+    def setUp(self) -> None:
+        self.make_origin()
+        self.write(BASELINE, "F\tprobes/a\tA1\n")
+        self.write("eval/baseline/poi.txt", "F\tpoi/a\tA1\n")
+        self.write("eval/suites/probes/suite.toml", 'name = "probes"\ngate = true\n')
+        self.write("eval/suites/poi/suite.toml", 'name = "poi"\ngate = true\n[fetch]\nurl = "x"\n')
+        self.write("code.txt", "one\n")
+        self.base = self.commit("base")
+        self.git("push", "-q", "origin", "main")
+        self.recorded: list[Path] = []
+        self.listed: list[str] = []
 
     def branch(self, files: dict[str, str]) -> str:
         self.git("checkout", "-q", "-B", "agent/x", self.base)

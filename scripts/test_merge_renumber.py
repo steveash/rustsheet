@@ -3,9 +3,7 @@
 
 from __future__ import annotations
 
-import subprocess
 import sys
-import tempfile
 import unittest
 from pathlib import Path
 
@@ -14,6 +12,7 @@ import id_renumber  # noqa: E402 (the sys.path line above must run first)
 import merge_ready  # noqa: E402
 import merge_renumber  # noqa: E402
 from merge_catchup import Refused  # noqa: E402
+from test_merge_catchup import TempOrigin, run  # noqa: E402
 
 BASELINE = "eval/baseline/probes.txt"
 PR_TASK = "docs/tasks/M2/T-0101-pr-task.md"
@@ -25,10 +24,6 @@ FRESH = {"T-0101": "T-0150", "0002": "0009"}
 
 def task(tid: str, title: str) -> str:
     return f"---\nid: {tid}\ntitle: {title}\nmilestone: M2\n---\n\n## Goal\n{title}; decision 0002.\n"
-
-
-def run(*args: str, cwd: Path) -> str:
-    return subprocess.run(args, cwd=cwd, check=True, capture_output=True, text=True).stdout.strip()
 
 
 class Substitute(unittest.TestCase):
@@ -52,20 +47,12 @@ class Substitute(unittest.TestCase):
         self.assertIsNone(id_renumber.id_path("scripts/T-0101-x.md"))
 
 
-class Renumber(unittest.TestCase):
+class Renumber(TempOrigin):
     """`main` and the PR branch `agent/x` both add task T-0101 and decision 0002 after a common
     commit, and both edit notes.md, in lines far apart."""
 
     def setUp(self) -> None:
-        self.tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.tmp.cleanup)
-        base = Path(self.tmp.name)
-        self.origin, self.clone = base / "origin.git", base / "clone"
-        run("git", "init", "-q", "--bare", "-b", "main", str(self.origin), cwd=base)
-        run("git", "clone", "-q", str(self.origin), str(self.clone), cwd=base)
-        for key, value in (("user.name", "t"), ("user.email", "t@invalid")):
-            self.git("config", key, value)
-        self.git("checkout", "-q", "-b", "main")
+        self.make_origin()
         self.write(BASELINE, "F\tprobes/a\tA1\n")
         self.write("eval/suites/probes/suite.toml", 'name = "probes"\ngate = true\n')
         self.write("docs/tasks/M2/T-0100-base.md", task("T-0100", "base"))
@@ -87,20 +74,8 @@ class Renumber(unittest.TestCase):
         self.git("push", "-q", "origin", "main")
         self.allocated: list[tuple[str, str]] = []
 
-    def git(self, *args: str) -> str:
-        return run("git", *args, cwd=self.clone)
-
-    def write(self, path: str, text: str) -> None:
-        (self.clone / path).parent.mkdir(parents=True, exist_ok=True)
-        (self.clone / path).write_text(text)
-
     def edit(self, path: str, old: str, new: str) -> None:
         self.write(path, (self.clone / path).read_text().replace(old, new, 1))
-
-    def commit(self, message: str) -> str:
-        self.git("add", "-A")
-        self.git("commit", "-q", "-m", message)
-        return self.git("rev-parse", "HEAD")
 
     def allocate(self, old: str, milestone: str, taken: set[str]) -> str:
         self.allocated.append((old, milestone))

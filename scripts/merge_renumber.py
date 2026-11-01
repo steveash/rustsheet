@@ -24,12 +24,10 @@ accepts exactly this shape (`merge_ready.Repo.carry_problem`, `id_renumber.renum
 
 from __future__ import annotations
 
-import argparse
 import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
-import gh_client
 import id_registry
 import id_renumber
 import merge_catchup
@@ -37,9 +35,8 @@ import merge_ready
 import new_decision
 import tasks
 from merge_catchup import Refused
-from merge_lock import GitError, git
+from merge_lock import git
 
-ROOT = Path(__file__).resolve().parent.parent
 # (old id, the task's milestone or "" for a decision, ids already taken) -> a reserved fresh id.
 Allocate = Callable[[str, str, set[str]], str]
 
@@ -120,26 +117,7 @@ def renumber(
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    parser.add_argument("--pr", required=True, help="the ejected PR's number")
-    args = parser.parse_args(argv)
-    client = gh_client.from_remote(ROOT)
-    if client is None:
-        print("merge_renumber: origin is not a github.com remote", file=sys.stderr)
-        return 2
-    try:
-        pr = gh_client.number(args.pr)
-        head = renumber(ROOT, merge_catchup.pr_branch(client, pr))
-    except Refused as refusal:
-        print(f"merge_renumber: not renumbering #{args.pr}: {refusal}", file=sys.stderr)
-        return 1
-    except (gh_client.GhError, GitError) as error:
-        print(f"merge_renumber: {error}", file=sys.stderr)
-        return 2
-    print(f"#{pr}: pushed {head}; when CI is green, run make mark-ready PR={pr} CARRY=1")
-    return 0
+    return merge_catchup.run_cli(argv, __doc__ or "", "merge_renumber", "renumbering", renumber)
 
 
 if __name__ == "__main__":

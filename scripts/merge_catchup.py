@@ -172,27 +172,31 @@ def pr_branch(client: gh_client.Client, pr: int) -> str:
     return merge_ready.text_of(pull, "head", "ref")
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
+def run_cli(argv: Sequence[str] | None, doc: str, name: str, verb: str, push: Callable[[Path, str], str]) -> int:
+    """The command line of `make catch-up` and `make renumber`: `push(ROOT, branch)` on the PR
+    `--pr` names (`pr_branch`); exit 0 pushed, 1 refused, 2 error."""
+    parser = argparse.ArgumentParser(description=doc, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--pr", required=True, help="the ejected PR's number")
     args = parser.parse_args(argv)
     client = gh_client.from_remote(ROOT)
     if client is None:
-        print("merge_catchup: origin is not a github.com remote", file=sys.stderr)
+        print(f"{name}: origin is not a github.com remote", file=sys.stderr)
         return 2
     try:
         pr = gh_client.number(args.pr)
-        head = catch_up(ROOT, pr_branch(client, pr))
+        head = push(ROOT, pr_branch(client, pr))
     except Refused as refusal:
-        print(f"merge_catchup: not catching up #{args.pr}: {refusal}", file=sys.stderr)
+        print(f"{name}: not {verb} #{args.pr}: {refusal}", file=sys.stderr)
         return 1
     except (gh_client.GhError, GitError) as error:
-        print(f"merge_catchup: {error}", file=sys.stderr)
+        print(f"{name}: {error}", file=sys.stderr)
         return 2
     print(f"#{pr}: pushed {head}; when CI is green, run make mark-ready PR={pr} CARRY=1")
     return 0
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    return run_cli(argv, __doc__ or "", "merge_catchup", "catching up", catch_up)
 
 
 if __name__ == "__main__":
