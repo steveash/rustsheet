@@ -1630,8 +1630,9 @@ golden only for the type-coercion step (decision 0039). Catalog `oracle: none` i
 refuse these workbooks, Excel for the web just does not calculate the family.
 Shapes (probes/forecast-ets-optional-settings-shape, excel-graph, T-2371): every optional setting lifts over an array or range.
 `ROWS(FORECAST.ETS(9,B1:B8,A1:A8,{1;4}))` is 2 and `COLUMNS` 1; a `G1:G2` setting is the same 2x1; a `G1:H1` setting is 1x2;
-a 2x2 array is 2x2, for seasonality, data_completion and aggregation, for CONFINT's `confidence_level` and for STAT's
-`statistic_type` (and `{9;10}` as target_date). A boolean, number-text (`"9"`), error, or cell-held TRUE / `"9"`
+a 2x2 array is 2x2 (COLUMNS is checked only for FORECAST.ETS's seasonality; the other cells check ROWS), for
+seasonality, data_completion and aggregation, for CONFINT's `confidence_level` and for STAT's seasonality; STAT's
+`statistic_type` is probed only as a column array (`{1;2}` is 2 rows), and `{9;10}` as target_date is 2 rows. A boolean, number-text (`"9"`), error, or cell-held TRUE / `"9"`
 `target_date` or `statistic_type` is `#N/A`, which the web gives for every valid call, so it separates nothing; non-numeric
 text (`"x"`, literal or in a cell) is `#VALUE!` for the target_date of FORECAST.ETS and CONFINT and the statistic_type of STAT.
 Our kinds (functions/lift/kinds/statistical.rs `ETS_*`) match all of these; the 12 `#N/IMPL!` cells are the family's known state.
