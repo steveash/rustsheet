@@ -338,6 +338,9 @@ def test_cli_lists_and_generates(tmp_path: Path, capsys: pytest.CaptureFixture[s
     assert accuracy_cli.main(["list"]) == 0
     assert capsys.readouterr().out.split() == [
         "BINOM.DIST",
+        "COSH",
+        "COTH",
+        "CSCH",
         "F.DIST",
         "F.INV",
         "IRR",
@@ -348,9 +351,12 @@ def test_cli_lists_and_generates(tmp_path: Path, capsys: pytest.CaptureFixture[s
         "ROUND",
         "ROUNDDOWN",
         "ROUNDUP",
+        "SECH",
+        "SINH",
         "T.DIST",
         "T.INV",
         "T.INV.2T",
+        "TANH",
         "TINV",
         "XIRR",
     ]
