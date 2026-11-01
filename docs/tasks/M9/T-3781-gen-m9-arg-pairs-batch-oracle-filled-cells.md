@@ -3,7 +3,7 @@ id: T-3781
 title: "gen-m9 arg-pairs batch: oracle-filled cells for the unseen argument-class pairs of the M9 order, rank and paired-regression statistics (SMALL, LARGE, RANK*, PERCENTILE*, QUARTILE*, PERCENTRANK*, TRIMMEAN, CORREL, PEARSON, COVAR*, SLOPE, INTERCEPT, RSQ, STEYX, FORECAST*, FREQUENCY, PROB, STANDARDIZE, PERMUT, PERMUTATIONA)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
