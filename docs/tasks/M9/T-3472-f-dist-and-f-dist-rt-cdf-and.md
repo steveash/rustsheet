@@ -20,7 +20,7 @@ each takes (not a fit to Excel's bits). No cell of those cases that is within 15
 - Gap triage 2026-10-31i (`make eval` on origin/main 0c2fbf706, excel-graph; `scripts/exit_owners.py --all-off` and
   `--milestone M9`, `rate:F.DIST`, `rate:F.DIST.RT`, `rate:BETA.DIST`): no open owner, deferred or not. They are the
   cells of that unowned group where Excel is close to correctly rounded; the rest (Excel itself 3 to 620 ulp off the
-  math) are T-3474's and T-3475's, Phase 1b.
+  math) are T-3474's and T-3592's, Phase 1b.
 - Signed ulps from mpmath at 60 digits (F as I_x(d1/2, d2/2) with x = d1·X/(d1·X + d2), the right tail as
   I_y(d2/2, d1/2)), Excel / ours:
   - t2220-f-dist-sweep-d2-1 A400 `F.DIST(0.24,7,1,TRUE)`: Excel 0.0805651348300428 (-0.2), ours 0.08056513483004273 (-5.3)
@@ -38,7 +38,7 @@ each takes (not a fit to Excel's bits). No cell of those cases that is within 15
   Confirm each with `bratio/mod.rs` `Branch` before changing anything. F goes through `fisher.rs` (closed forms at a
   df of 2, then `bratio::closed_or_ported_tails` / `kernel_tails`, T-2847), and a branch the port has not taken yet
   may still fall back to `incomplete_beta.rs`, so the first question is which code path each cell takes today.
-- Related open work: T-3382 (accurate bgrat increment, L140 one bup term), T-3471 (a0 < 1 bup+bgrat at x0 in
+- Related open work: T-3382 (accurate bgrat increment, L140 one bup term), T-3592 (a0 < 1 bup+bgrat at x0 in
   [0.29, 0.3)), T-3383 (bfrac and bup arithmetic). Share pieces with them rather than duplicating (directive 3).
 - Excel is near the math, so the target is the math to about 1 ulp. If a cell turns out to need Excel's own rounding,
   it moves to a `visible` follow-up with `defer: phase-1b` (decision 0188 R5) and the R4 guards of
@@ -54,6 +54,7 @@ Owned cells (all cdf or right tail):
 Decision 0083 / 0114 (`accuracy`): met when the 6 cells above are within half a unit of the 15th significant digit
 of Excel's value, and no cell of the three cases that is within 15 digits today moves off. Bit-level criteria still
 unmet then move to a follow-up with `defer: phase-1b`.
+- Split (T-3229 check): 5 of the cells below are also listed by T-3592, which owns them; this task keeps the rest.
 
 ## Acceptance criteria
 - [ ] The 6 cells above are within half a unit of the 15th significant digit of Excel's value (`make eval-show` output
@@ -66,5 +67,5 @@ unmet then move to a follow-up with `defer: phase-1b`.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- The F.DIST density (T-3173, T-3174, T-3474) and every cell where Excel is off the math (T-3474, T-3475; Phase 1b).
+- The F.DIST density (T-3173, T-3174, T-3474) and every cell where Excel is off the math (T-3474, T-3592; Phase 1b).
 - F.INV and F.INV.RT (T-3398), which invert whatever cdf this lands.

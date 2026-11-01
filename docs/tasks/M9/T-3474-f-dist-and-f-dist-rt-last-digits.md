@@ -60,6 +60,7 @@ to a follow-up without the campaign key and with `defer: phase-1b`.
 ## Deferred (decision 0114, decision 0188 R5)
 `defer: phase-1b`: these are dense-sweep last-digit cells inside Gate A. Remove the key only when the steward records
 the Phase 1 exit, or when Gate A's tables show one of them outside the envelope (then that cell gets its own task).
+- Split (T-3229 check): 32 of the cells below are also listed by T-3592, which owns them; this task keeps the other 79.
 
 ## Acceptance criteria
 - [ ] At least 90% of the 111 cells above are within half a unit of the 15th significant digit of Excel's value; the
