@@ -3,7 +3,7 @@ id: T-3590
 title: "AMORDEGRC below period 1 in gen-m9 d912671baa1364aa A76: find which cell leaves Excel's 1 (bisect the workbook with probes)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
