@@ -3,7 +3,7 @@ id: T-3673
 title: "Gate A slice 4f: reference tables for CEILING, CEILING.MATH, CEILING.PRECISE, FLOOR, FLOOR.MATH and FLOOR.PRECISE"
 milestone: M0
 lane: harness
-status: blocked
+status: in-progress
 priority: P2
 size: M
 tier: opus
@@ -40,7 +40,7 @@ CEILING, CEILING.MATH, CEILING.PRECISE, FLOOR, FLOOR.MATH and FLOOR.PRECISE each
 - Changing the engine's kernels: each failing point gets its own task (`known-failures.tsv`).
 
 ## Blocked because
-Blocked because: review-round limit
+Resumed after the review-round limit (step 5c).
 - PR #2792 (draft). security, architecture and quality APPROVE on 2692ee19 (round 1). excel-fidelity asked for
   changes in all three rounds; each round's findings are fixed on the branch, the last ones in the commit after
   e291348c:
