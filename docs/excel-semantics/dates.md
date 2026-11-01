@@ -1324,8 +1324,11 @@ Status: UNVERIFIED (probe pending; cells are oracle values, the general rule is 
 Tasks: T-3536, T-3537
 
 ## DAYS error order
-Rule: DAYS reports an error-valued argument first (leftmost), then goes through the arguments left to
+Rule: DAYS reports an error-valued argument first, then goes through the arguments left to
 right: unreadable text is `#VALUE!`, a number off the calendar `#NUM!`. `DAYS(-1,"abc")` and `DAYS(-1,"")` are
-`#NUM!`; `DAYS("abc",#NAME?)` is `#NAME?`; `DAYS("",#DIV/0!)` is `#DIV/0!`; `DAYS(A1:B2,"abc")` with a
+`#NUM!`; `DAYS("abc",#NAME?)` is `#NAME?`; `DAYS(#DIV/0!,"")` is `#DIV/0!` (A403); `DAYS(A1:B2,"abc")` with a
 negative top-left is `#NUM!`; `DAYS("abc",-1)` and `DAYS("",-1)` are `#VALUE!` (A211, A271).
 Evidence: gen-m6/a4a301d00b46acf3 Calc!A79, A82, A85, A88, A241, A244, A307, A310, A493, A499 (excel-graph; T-3536).
+Ours: implemented (T-3536). Two error arguments at once (which one wins) is not probed; the code returns the leftmost.
+Status: VERIFIED (excel-graph) for the cited cells; UNVERIFIED for two simultaneous errors
+Tasks: T-3536
