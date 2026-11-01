@@ -25,6 +25,7 @@ xlsx cases are skipped: tools never parse xlsx values.
 from __future__ import annotations
 
 import json
+import multiprocessing
 import re
 from collections.abc import Iterable
 from concurrent.futures import ProcessPoolExecutor
@@ -210,7 +211,10 @@ def write_suite(suite: str, workers: int | None = None) -> list[CaseMath]:
     files give the same bytes."""
     entries = [e for e in suite_cases(suite) if str(e["path"]).endswith(".case.json")]
     results: list[CaseMath] = []
-    with ProcessPoolExecutor(max_workers=workers) as pool:
+    # `spawn`, not the platform default: forking a multi-threaded parent (a pytest-xdist worker,
+    # decision 0233) can deadlock the child, and `spawn` exists on every platform (Windows too).
+    context = multiprocessing.get_context("spawn")
+    with ProcessPoolExecutor(max_workers=workers, mp_context=context) as pool:
         for entry, math in pool.map(_job, entries):
             path = math_path(Path(entry["sidecar"]))
             if math.written:

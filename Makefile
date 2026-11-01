@@ -81,8 +81,8 @@ eval-show: build ## Show one case: make eval-show CASE=ironcalc-calc/FINANCIAL/I
 py-sync:
 	cd tools && $(UV) sync -q
 
-py-check: py-sync ## Lint, type-check and test tools/
-	cd tools && $(UV) run ruff check src tests && $(UV) run ruff format --check src tests && $(UV) run mypy && $(UV) run pytest -q
+py-check: py-sync ## Lint, type-check and test tools/ (pytest on every core, decision 0233)
+	cd tools && $(UV) run ruff check src tests && $(UV) run ruff format --check src tests && $(UV) run mypy && $(UV) run pytest -q -n auto
 
 progress-report: py-sync ## Regenerate docs/progress.md and docs/progress/ from eval/runs/latest/ (after make eval; SPEC-0022, decision 0120)
 	mkdir -p eval/runs/latest
