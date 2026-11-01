@@ -16,3 +16,7 @@ accuracy/T.INV.2T/s1!Calc!A78	T-3386	Excel #NUM! at p = 2.2E-308 where the quant
 accuracy/T.INV.2T/s1!Calc!A91	T-3363	quantile at df near 1E8 to 1E10: the engine and Excel are both off the math, differently
 accuracy/TINV/s1!Calc!A68	T-3386	Excel #NUM! at p = 2.2E-308 where the quantile is finite
 accuracy/TINV/s1!Calc!A78	T-3386	Excel #NUM! at p = 2.2E-308 where the quantile is finite
+accuracy/BETA.DIST/s1!Calc!A184	T-3577	cdf at tiny shapes: the engine is 0; Excel matches the math
+accuracy/BETA.DIST/s1!Calc!A186	T-3577	cdf at a huge beta: Excel #NUM!, the engine and the math 0
+accuracy/BETA.DIST/s1!Calc!A187	T-3577	cdf at tiny shapes: the engine is 0; Excel matches the math
+accuracy/BETA.DIST/s1!Calc!A193	T-3577	cdf at tiny shapes: the engine is 0; Excel matches the math
