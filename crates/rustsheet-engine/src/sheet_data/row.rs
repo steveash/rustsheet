@@ -1,5 +1,4 @@
-//! A row of a sheet: its cells with their column, sorted by column, and the search for one
-//! (moved out of `sheet_data.rs` by T-3628).
+//! A row of a sheet: its cells with their column, sorted by column, and the search for one.
 
 use bitcode::{Decode, Encode};
 
@@ -33,15 +32,31 @@ impl Row {
             }
             Err(self.cells.len())
         } else {
-            // A dense row holds its cells at their offset from the first: tried before bisecting.
-            let offset =
-                |&(first, _): &(i32, Cell)| usize::try_from(column.checked_sub(first)?).ok();
-            let at = |&g: &usize| self.cells.get(g).is_some_and(|(c, _)| *c == column);
-            if let Some(g) = self.cells.first().and_then(offset).filter(at) {
-                return Ok(g);
-            }
-            self.cells.binary_search_by_key(&column, |(c, _)| *c)
+            let window = self.window(column);
+            self.cells[window.clone()]
+                .binary_search_by_key(&column, |(c, _)| *c)
+                .map(|i| window.start + i)
+                .map_err(|i| window.start + i)
         }
+    }
+
+    /// The indices a column can sit at, or be inserted at, in a row of more than one cell: its
+    /// columns are distinct and ascending, so the cell at index `i` is at least `i` columns past
+    /// the first (`i <= column - first`) and at least `len - 1 - i` columns before the last
+    /// (`i >= len - 1 - (last - column)`). A dense row, or one with a few gaps,
+    /// leaves a window of a few cells, bisected in a probe or two on neighbouring cache lines
+    /// instead of ten across the row (T-3687; a dense row's window is its one cell, T-3608).
+    fn window(&self, column: i32) -> std::ops::Range<usize> {
+        let (Some(&(first, _)), Some(&(last, _))) = (self.cells.first(), self.cells.last()) else {
+            return 0..0;
+        };
+        let len = self.cells.len();
+        let count = |d: i64| usize::try_from(d).unwrap_or(0).min(len);
+        let (column, first, last) = (i64::from(column), i64::from(first), i64::from(last));
+        // Below the first, the window is `0..0` (an insertion before it); past the last, `len..len`.
+        let low = count(i64::try_from(len).unwrap_or(i64::MAX) - 1 - (last - column));
+        let high = count(column - first + 1);
+        low.min(high)..high
     }
 
     pub(super) fn insert(&mut self, column: i32, cell: Cell) -> Option<Cell> {

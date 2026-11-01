@@ -332,3 +332,38 @@ fn equality_is_about_cells_not_about_chunks() {
     b.set_cell(1, 2, number(1.0));
     assert_ne!(a, b);
 }
+
+/// `Row::position` answers what a plain bisection answers, found or insertion point, for rows of
+/// every density (dense, a few gaps, sparse) and every column around and inside them, the `i32`
+/// extremes included (T-3687).
+#[test]
+fn position_equals_a_bisection() {
+    let mut seed = 0x2545_f491_4f6c_dd1d_u64;
+    let mut next = move || {
+        seed ^= seed << 13;
+        seed ^= seed >> 7;
+        seed ^= seed << 17;
+        seed
+    };
+    for _ in 0..400 {
+        let len = usize::try_from(next() % 60).unwrap() + 1;
+        let gap = next() % 4;
+        let mut column = i32::try_from(next() % 30).unwrap() + 1;
+        let mut cells = Vec::with_capacity(len);
+        for _ in 0..len {
+            cells.push((column, number(f64::from(column))));
+            let step = if gap == 0 {
+                1
+            } else {
+                1 + next() % (gap * gap + 1)
+            };
+            column += i32::try_from(step).unwrap();
+        }
+        let row = Row { cells };
+        let last = row.cells.last().unwrap().0;
+        for probe in (-3..=last + 3).chain([i32::MIN, i32::MIN + 1, i32::MAX - 1, i32::MAX]) {
+            let expected = row.cells.binary_search_by_key(&probe, |(c, _)| *c);
+            assert_eq!(row.position(probe), expected, "{probe} in {len} cells");
+        }
+    }
+}
