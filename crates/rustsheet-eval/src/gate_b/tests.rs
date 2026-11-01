@@ -267,3 +267,10 @@ fn probe_cells_count_toward_the_random_functions_only() {
     assert_eq!(row("PI"), Some((0, false)));
     assert!(!gate.suites.contains(&"probes".to_string()));
 }
+
+#[test]
+fn only_the_three_random_functions_are_read_on_probes() {
+    // Decision 0225 covers exactly these; another function needs its own decision record.
+    assert_eq!(PROBED, ["RAND", "RANDARRAY", "RANDBETWEEN"]);
+    assert_eq!(PROBE_SUITE, "probes");
+}

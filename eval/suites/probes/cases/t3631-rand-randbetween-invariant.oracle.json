@@ -218,6 +218,10 @@
     "t": "n",
     "v": 3.0
    },
+   "B31": {
+    "t": "n",
+    "v": 1000000000000000.0
+   },
    "B4": {
     "t": "n",
     "v": 6.0
@@ -246,10 +250,10 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "ab05252c44ed03ac2f1997501679dd096955fb67755234172294bcc1f689ad81",
+  "input_sha256": "fe7b1301a489a54aed67ea894c9134e608d65d94d1e525ae8b1a377799421315",
   "kind": "excel-graph",
-  "produced_at": "2026-11-01T06:10:04+00:00",
+  "produced_at": "2026-11-01T07:43:32+00:00",
   "version": null,
-  "workbook_name": "fb73014736b40f07b470da2114577d111b731125269b1cc379e124640ab5afa4.xlsx"
+  "workbook_name": "9a090fbc1a3382582fbb6c8ae5a9617c2f74231dc95872c72307b0ffa06eca7c.xlsx"
  }
 }

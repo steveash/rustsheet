@@ -16,11 +16,15 @@
   their invariant cells: an oracle-filled (excel-graph) semantic probe that pins what does not depend
   on the draw (range, spill shape, integer-ness, degenerate ranges, argument coercion and argument
   errors). Each function meets the rate when it has at least 20 such scored cells and all of them
-  match Excel. Values that depend on the draw are never compared with Excel.
+  match Excel. Values that depend on the draw are never compared with Excel. The 20-cell minimum is
+  the existing evidence floor (`EVIDENCE_FLOOR`): the three functions are exempt from decision
+  0094's cell bars, so they are covered at 20 Excel cells, and a function with fewer stays below
+  Gate B. Every scored cell of the `probes` suite that calls one of the three counts toward it (by
+  decision 0118's attribution), not only the T-3631 cases: the harness already skips every
+  draw-dependent cell (T-0005), so a scored probes cell of theirs is an invariant one.
 - **Consequences:**
-  - T-3631 adds the probe case and makes the report count invariant cells for these three functions
-    (Gate B and the M5/M7 rows read them like any other cell). Until it lands, the three functions
-    stay below Gate B.
+  - T-3631 added the probe cases and made the report count invariant cells for these three functions
+    (Gate B and the M5/M7 rows read them like any other cell).
   - No other function is affected. A future volatile function in scope (for example a new random
     function) needs its own decision record to use this rule.
   - Distribution properties of the draws (uniformity, independence) are out of scope for Phase 1;

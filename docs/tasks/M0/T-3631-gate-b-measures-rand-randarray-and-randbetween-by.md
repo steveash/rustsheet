@@ -46,17 +46,22 @@ invariant cells, per decision 0225, so Gate B can reach 506/506.
 
 ## Outcome
 - Probe, split by milestone (decision 0057): probes/t3631-rand-randbetween-invariant (M5; RAND R!A1:A30,
-  RANDBETWEEN R!B1:B30) and probes/t3631-randarray-invariant (M7; RANDARRAY A!A1:A30, B1:B5 shape
-  readers, D1:E2 spill): 30 + 30 + 36 listed invariant cells, 99 scored with the three spill members, filled by excel-graph twice with no
-  cell varying; the description says why each form does not depend on the draw. The engine matches
-  all 99; new quirks (RANDARRAY takes boolean bounds and counts, RANDBETWEEN padded number text,
-  more CEILING/FLOOR points) are in docs/excel-semantics/numbers.md.
+  RANDBETWEEN R!B1:B31) and probes/t3631-randarray-invariant (M7; RANDARRAY A!A1:A36, B1:B5 shape
+  readers, D1:E2 spill): 30 + 31 + 42 listed invariant cells, 106 scored with the three spill
+  members, filled by excel-graph twice with no cell varying; the descriptions say why each form does
+  not depend on the draw. Review round 1: `RANDBETWEEN(1E15,1E15)` became MAX and MIN over 1000
+  draws (R!B24, B31; both exactly 1E15, so Excel's draw never leaves the bounds where the double
+  spacing is 0.125), and A!A31:A36 check min = max RANDARRAY (0.5, -2, "1.5") over 1000 draws (all
+  exact, so A6, A21 and A30 stay). The engine matches all 106; new quirks (RANDARRAY takes boolean
+  bounds and counts, RANDBETWEEN padded number text, more CEILING/FLOOR points, no escape at 1E15)
+  are in docs/excel-semantics/numbers.md.
 - Attribution needed no change (sole call vs every call): every function's sole-call cells are
   above the evidence floor. The gap was the suite filter: Gate B never read the probes suite. Now
   `gate_b::summarize` reads probes cells toward RAND, RANDARRAY and RANDBETWEEN only (decision
   0225), via `report::attribute_cell_to` (`attribute_cell` delegates to it); test
-  `probe_cells_count_toward_the_random_functions_only`.
+  `probe_cells_count_toward_the_random_functions_only`, and `only_the_three_random_functions_are_read_on_probes`
+  pins the list (a wider one needs its own decision record).
 - Eval (local, calipers/poi/corpus-bench not fetched, so Gate B overall reads n/a): Gate B rows
-  RAND 38/38, RANDARRAY 53/53, RANDBETWEEN 53/53 cells within 15 digits, all meet the rate (were
-  0 cells); v15_checkpoint the same, attribution `sole`. Baseline: 2 new probe cases, 0 known
-  failures, 0 regressions.
+  RAND 38/38, RANDARRAY 53/53, RANDBETWEEN 52/52 cells within 15 digits, all meet the rate (were
+  0 cells); v15_checkpoint the same, attribution `sole`. Baseline: 2 new probe cases (61 and 45
+  cells), 0 known failures, 0 regressions.

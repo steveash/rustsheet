@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "T-3631 (decision 0225): invariant cells of RANDARRAY, whose value does not depend on the draw, for Gate B. Why each form is invariant: min = max (number, number text, boolean, whole or not) has one possible value, and SUM or INDEX over such an array too; rows, columns, min > max, whole_number and fractional bounds with whole_number TRUE are argument checks made before any draw; AND over every element compared with the bounds of [0,1) or of the whole-number range holds for every draw, as do x*0 sums and comparing one element with 1; IFERROR around a form that errors or not gives one value either way. Column B (ROWS, COLUMNS, TYPE, COUNT) reads only the spill shape, and D1 = RANDARRAY(2,2,1,1,TRUE) spills four 1s into D1:E2.",
+  "description": "T-3631 (decision 0225): invariant cells of RANDARRAY, whose value does not depend on the draw, for Gate B. Why each form is invariant: min = max (number, number text, boolean, whole or not) has one possible value, and SUM or INDEX over such an array too; rows, columns, min > max, whole_number and fractional bounds with whole_number TRUE are argument checks made before any draw; AND over every element compared with the bounds of [0,1) or of the whole-number range holds for every draw, as do x*0 sums and comparing one element with 1; IFERROR around a form that errors or not gives one value either way. A31:A36 take MIN and MAX over 1000 draws for the min = max forms of A6, A21 and A30 (0.5, -2, \"1.5\"): a draw computed as min + r*(max-min) is exact, but one that rounds another way would show in 1000 draws instead of one. Column B (ROWS, COLUMNS, TYPE, COUNT) reads only the spill shape, and D1 = RANDARRAY(2,2,1,1,TRUE) spills four 1s into D1:E2.",
   "tags": [
     "M7",
     "volatile",
@@ -45,7 +45,13 @@
         "B3": "=ROWS(RANDARRAY())",
         "B4": "=TYPE(RANDARRAY(2,2))",
         "B5": "=COUNT(RANDARRAY(4,5))",
-        "D1": "=RANDARRAY(2,2,1,1,TRUE)"
+        "D1": "=RANDARRAY(2,2,1,1,TRUE)",
+        "A31": "=MIN(RANDARRAY(1000,1,0.5,0.5))",
+        "A32": "=MAX(RANDARRAY(1000,1,0.5,0.5))",
+        "A33": "=MIN(RANDARRAY(1000,1,-2,-2))",
+        "A34": "=MAX(RANDARRAY(1000,1,-2,-2))",
+        "A35": "=MIN(RANDARRAY(1000,1,\"1.5\",\"1.5\"))",
+        "A36": "=MAX(RANDARRAY(1000,1,\"1.5\",\"1.5\"))"
       }
     }
   ],
@@ -85,6 +91,12 @@
     "A!B3",
     "A!B4",
     "A!B5",
-    "A!D1"
+    "A!D1",
+    "A!A31",
+    "A!A32",
+    "A!A33",
+    "A!A34",
+    "A!A35",
+    "A!A36"
   ]
 }

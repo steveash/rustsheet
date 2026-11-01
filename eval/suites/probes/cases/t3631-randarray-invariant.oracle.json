@@ -98,6 +98,30 @@
     "t": "n",
     "v": 1.5
    },
+   "A31": {
+    "t": "n",
+    "v": 0.5
+   },
+   "A32": {
+    "t": "n",
+    "v": 0.5
+   },
+   "A33": {
+    "t": "n",
+    "v": -2.0
+   },
+   "A34": {
+    "t": "n",
+    "v": -2.0
+   },
+   "A35": {
+    "t": "n",
+    "v": 1.5
+   },
+   "A36": {
+    "t": "n",
+    "v": 1.5
+   },
    "A4": {
     "t": "e",
     "v": "#VALUE!"
@@ -162,10 +186,10 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "17e888905ca7b297d4c28c8060222e9094c6706f2e36f23e7696d514d8e04a49",
+  "input_sha256": "4844216eefd8253634fc57a8994506c76fa0e4487eb95b28b1c01d262a717b34",
   "kind": "excel-graph",
-  "produced_at": "2026-11-01T06:10:22+00:00",
+  "produced_at": "2026-11-01T07:43:51+00:00",
   "version": null,
-  "workbook_name": "def5a4997d99715e3d663a62e903ec32df772922be8bf803ef0d55be7d53d7ec.xlsx"
+  "workbook_name": "a4d87abe386a3cb83e7fb402dc05cd08be8ba41e9b4e665025da57aae857796b.xlsx"
  }
 }
