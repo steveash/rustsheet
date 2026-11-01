@@ -367,9 +367,10 @@ impl Parser {
             && matches!(self.lexer.peek_token(), Token::Second | Token::SecondPadded)
     }
 
-    /// A lone `mm.0` is a minute (probes/t3575 A6, A12); `m.0` and `mm.0` beside others are unprobed.
-    fn lone_mm_fraction(&mut self, next_token: &Token, padded: bool, lone: bool) -> bool {
-        padded && lone && *next_token == Token::Period && self.lexer.peek_token() == Token::Zero
+    /// Whether `m`/`mm` before `next_token` is a minute because `.0` follows, wherever it stands
+    /// (`mm.0 yyyy` is "16.2 1933"; probes/t3575-fraction-after-elapsed-b; number-formats.md).
+    fn minute_before_fraction(&mut self, next_token: &Token) -> bool {
+        *next_token == Token::Period && self.lexer.peek_token() == Token::Zero
     }
 
     fn parse_part(&mut self) -> ParsePart {
@@ -482,9 +483,8 @@ impl Parser {
                     tokens.push(TextToken::Literal('%'));
                     percent += 1;
                 }
-                // `.0`, `.00`, `.000` after an h/m/s token are the fraction of the second
-                // (number-formats.md "Elapsed-time tokens"); more zeros are unprobed and stay
-                // an error.
+                // `.0`, `.00`, `.000` after an h/m/s token are the fraction of the second, and
+                // more zeros are an error (number-formats.md "Elapsed-time tokens").
                 Token::Period
                     if next_token == Token::Zero
                         && tokens.last().is_some_and(takes_second_fraction) =>
@@ -676,14 +676,14 @@ impl Parser {
                     tokens.push(TextToken::MonthName);
                 }
                 Token::Month | Token::MonthPadded => {
-                    let padded = matches!(token, Token::MonthPadded);
-                    let frac_minute = self.lone_mm_fraction(&next_token, padded, tokens.is_empty());
-                    let minute = (is_time && !minute_read)
-                        || self.minute_before_seconds(&next_token)
-                        || frac_minute;
-                    minute_read |= minute;
-                    is_date |= !minute || frac_minute;
-                    tokens.push(match (minute, padded) {
+                    // A `mm.0` minute leaves `minute_read` ("mm.0 h:mm" is "57.7 2:57"; t3575-b A30).
+                    let fraction = self.minute_before_fraction(&next_token);
+                    let clock =
+                        (is_time && !minute_read) || self.minute_before_seconds(&next_token);
+                    let minute = clock || fraction;
+                    minute_read |= clock;
+                    is_date |= !minute || fraction;
+                    tokens.push(match (minute, token == Token::MonthPadded) {
                         (true, false) => TextToken::Minute,
                         (true, true) => TextToken::MinutePadded,
                         (false, false) => TextToken::Month,

@@ -205,6 +205,11 @@ fn fractional_and_repeated_elapsed_seconds() {
         (12345.678, "mm.0", "16.2"),
         (5.0, "[h].0", "120.0"),
         (5.0, "mm.0", "00.0"),
+        // probes/t3575-fraction-after-elapsed-b (excel-graph 2026-11-01).
+        (0.123_456_7, "h:mm.000", "2:57.659"),
+        (0.123_456_7, "h mm.0", "2 57.7"),
+        (0.123_456_7, "m.0", "57.7"),
+        (0.123_456_7, "mm.0 h:mm", "57.7 2:57"),
         (-value, "[h]:m:s.000", "-75:23:53.376"),
         (two_03_04, "[hh]:mm:ss.0", "02:03:04.0"),
         (
@@ -237,11 +242,12 @@ fn fractional_and_repeated_elapsed_seconds() {
         );
     }
     // gen-m10 T!A16, T!A20: past 9999-12-31 a fraction of a second is #VALUE!; four zeros are
-    // unprobed and stay an error.
+    // an error (probes/t3575-fraction-after-elapsed-b A6, A27).
     for (value, format) in [
         (1_234_567_890.0, "[mm]:ss.0"),
         (1_234_567_890.0, "h:mm:ss.00"),
         (1.0, "s.0000"),
+        (1.0, "h.0000"),
     ] {
         assert_eq!(
             format_in(value, format, DateSystem::Excel1900),

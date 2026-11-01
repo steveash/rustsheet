@@ -3,7 +3,7 @@ id: T-3575
 title: "TEXT: fraction digits after an elapsed [h] print (TEXT(12345.678,\"[h].0 General\") is \"296296.2 2.500000331\")"
 milestone: M10
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -27,10 +27,10 @@ token.
   matches only `Second`, `SecondPadded`, `ElapsedSecond` and `ElapsedSecondPadded` before the period.
 
 ## Acceptance criteria
-- [ ] Probe cells for the questions above are committed with excel-graph sidecars, and the finding is in
+- [x] Probe cells for the questions above are committed with excel-graph sidecars, and the finding is in
       number-formats.md.
-- [ ] probes/t3419-elapsed-after-date-b Sheet1!A19 and the new cells pass; their lines leave eval/baseline/probes.txt.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/t3419-elapsed-after-date-b Sheet1!A19 and the new cells pass; their lines leave eval/baseline/probes.txt.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The register rule itself (T-3419, done).
@@ -39,11 +39,14 @@ token.
 Decisions 0083 and 0114: the cell is `#VALUE!` against text, so the stage is `semantics`.
 
 ## Outcome
-`.0`/`.00` after `h`, `hh`, `mm`, `[h]`, `[hh]`, `[m]` is the second fraction (probes/t3575-fraction-after-elapsed,
-15 cells, excel-graph). The parser accepts it after any hour/minute/second token; a lone padded `mm.0` reads as a
-minute. `m.0`, `mm.0` beside other tokens and `.000` after h/m are unprobed (follow-up: probe them).
-Eval delta: probes known failures 3203 -> 3201 (t3419-elapsed-after-date-b A19 and elapsed-no-seconds-boundary A32
-fixed; the new case is a fully passing C line); no regressions.
+`.0`, `.00`, `.000` right after any hour or minute token (`h`, `hh`, `m`, `mm`, `[h]`, `[hh]`, `[m]`, `[mm]`, also after
+`h:` and `h `) is the fraction of the second, as after `s`; `.0000` is `#VALUE!`. `m`/`mm` before `.0` is always a
+minute, even beside date tokens (`mm.0 yyyy` = "16.2 1933"), and such a minute does not set `minute_read`
+(`mm.0 h:mm` = "57.7 2:57"). Evidence: probes/t3575-fraction-after-elapsed (15 cells) and
+t3575-fraction-after-elapsed-b (30 cells, the round-2 review questions), excel-graph 2026-11-01; all pass.
+Code: `takes_second_fraction` (elapsed.rs) in the `Token::Period` arm and `Parser::minute_before_fraction`.
+Eval delta: probes known failures -2 (t3419-elapsed-after-date-b A19, elapsed-no-seconds-boundary A32); two new
+fully passing cases; no regressions.
 
 ## Handoff (resumed)
 Tried: parser accepts `.0` after any h/m/s token (`takes_second_fraction` in elapsed.rs, used by the `Token::Period`
