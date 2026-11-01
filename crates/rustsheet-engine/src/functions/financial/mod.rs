@@ -69,6 +69,7 @@ impl Model {
             result,
             cell,
             accept_number_node,
+            false,
             handle_empty_cell,
             handle_non_number_cell,
         )
@@ -80,6 +81,7 @@ impl Model {
         result: CalcResult,
         cell: &CellReferenceIndex,
         accept_number_node: bool,
+        range_text_as_number: bool,
         handle_empty_cell: impl Fn() -> Result<Option<f64>, CalcResult>,
         handle_non_number_cell: impl Fn() -> Result<Option<f64>, CalcResult>,
     ) -> Result<Vec<f64>, CalcResult> {
@@ -121,6 +123,11 @@ impl Model {
                                 if let Some(value) = handle_empty_cell()? {
                                     values.push(value);
                                 }
+                            }
+                            CalcResult::String(text)
+                                if range_text_as_number && self.cast_number(&text).is_some() =>
+                            {
+                                values.extend(self.cast_number(&text));
                             }
                             _ => {
                                 if let Some(value) = handle_non_number_cell()? {
@@ -226,6 +233,7 @@ impl Model {
             result,
             cell,
             true, // accept_number_node
+            false,
             refuse(Error::NUM),
             refuse(non_number),
         )
@@ -240,6 +248,7 @@ impl Model {
             arg,
             cell,
             false,            // Do not accept a single number node
+            true, // numeric text in a range cell reads as its number (probes/xirr-back-dated-stop A31)
             || Ok(Some(0.0)), // Treat empty cells as zero
             || {
                 Err(CalcResult::new_error(
@@ -486,6 +495,7 @@ impl Model {
                             array,
                             &cell,
                             true,
+                            false,
                             || Ok(None),
                             || Ok(None),
                         ) {
@@ -526,7 +536,7 @@ impl Model {
         } else if is_marked_number(values, &evaluated, cell.row) {
             Err(CalcResult::new_error(Error::VALUE, cell, String::new()))
         } else {
-            self.array_of_numbers_from(evaluated, &cell, true, || Ok(None), || Ok(None))
+            self.array_of_numbers_from(evaluated, &cell, true, false, || Ok(None), || Ok(None))
                 .map_err(|_| CalcResult::new_error(Error::VALUE, cell, String::new()))
         }
         .map_err(CalcResult::without_message);
@@ -768,9 +778,14 @@ impl Model {
             // is 6527 with D1 empty, also through `IF(..,B3,B9)` (gen-m9/30e20ba3302fea8b A250,
             // 6376e27be7a05871 A140; T-2428).
             CalcResult::EmptyCell => Ok(Vec::new()),
-            result => {
-                self.array_of_numbers_from(result, &cell, true, || Ok(None), || Err(not_a_number()))
-            }
+            result => self.array_of_numbers_from(
+                result,
+                &cell,
+                true,
+                false,
+                || Ok(None),
+                || Err(not_a_number()),
+            ),
         }
         .map_err(CalcResult::without_message);
         self.lift_call_costed(
