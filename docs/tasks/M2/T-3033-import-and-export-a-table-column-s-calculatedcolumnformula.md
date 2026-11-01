@@ -3,7 +3,7 @@ id: T-3033
 title: "Import and export a table column's calculatedColumnFormula"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -40,7 +40,17 @@ T-2969). A typed fill now records the column formula in file form (first data ro
 writes the stored text, so an exception typed into a data row does not change it (probes/t2957-constant-then-refill).
 Tests: `a_calculated_column_keeps_its_column_formula` (xlsx round trip, data row differs from the column formula) and
 `the_column_formula_is_file_form_and_survives_an_exception` (engine). xlsx-storage.md and references.md updated; that
-Excel opens our exported column formula without repair is unprobed. Eval delta: none.
+Excel opens our exported column formula without repair is unprobed.
+Resumed (opus): the open MAJOR is answered by Excel. New probes probes/t3033-calculated-refill-after-load,
+-refill-after-load-structured and -overwrite-after-load (excel-graph, 2026-11-01): with a stored
+`calculatedColumnFormula`, a formula typed after load re-fills every data row (A1 and structured form, into a blank
+row or over an occupied one), while the same cells without it do not (t2983-identical-stored-refill). So importing
+the column formula is right; references.md "Calculated columns" gains rule 9. The eval adapter now reads a spec
+table's `calculated` option through a new `Txn::set_table_column_formula` (engine
+`Model::set_table_column_formula`, undone with the table), so the probes run as Excel loads them; engine test
+`a_stored_column_formula_is_refilled` copies their cells (typed into the blank C5 and over C4). xlsx-storage.md
+records the MINORs (no rewrite on inserts, empty element, `array="1"` dropped).
+Eval delta: probes +3 cases, all cells passing (t2969 and t2983 unchanged).
 
 ## Handoff (resumed)
 Tried: import keeps `<calculatedColumnFormula>`, a typed fill records it in file form, export writes the stored text

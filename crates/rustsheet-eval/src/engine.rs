@@ -230,6 +230,14 @@ impl Engine for RustSheetEngine {
                                     table.filter,
                                     (table.header_row, table.totals_row),
                                 )?;
+                                for (letter, formula) in &table.calculated {
+                                    let column = calculated_column_index(&table.range, letter)?;
+                                    tx.set_table_column_formula(
+                                        &table.name,
+                                        column,
+                                        formula.trim_start_matches('='),
+                                    )?;
+                                }
                             }
                         }
                         if phase == Phase::Values {
@@ -455,6 +463,17 @@ pub(crate) fn range_ref(id: SheetId, a1: &str) -> Result<RangeRef, rustsheet::Ed
         last.row - 1,
         last.col - 1,
     )?)
+}
+
+/// The 0-based index within table range `a1` of the calculated column in column `letter`.
+fn calculated_column_index(a1: &str, letter: &str) -> Result<usize, rustsheet::EditError> {
+    let bad = || rustsheet::EditError::Table(format!("calculated column {letter} outside {a1}"));
+    let (first, last) = parse_range(a1).ok_or_else(bad)?;
+    let col = Addr::col_index(letter).ok_or_else(bad)?;
+    if !(first.col..=last.col).contains(&col) {
+        return Err(bad());
+    }
+    usize::try_from(col - first.col).map_err(|_| bad())
 }
 
 /// When a spec cell goes in ([`spec_input`]): its values, then the tables and stored formulas,

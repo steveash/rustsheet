@@ -448,6 +448,9 @@ A stored `calculatedColumnFormula` does not fill blank cells on load (next entry
 Ours (T-3033): import keeps its text on `TableColumn::calculated_column_formula`; a typed fill stores the first data
 row's formula in the same file form, and export writes the stored text, so an exception in a data row does not change
 it. Whether Excel opens our exported column formula without repair is unprobed.
+The stored text is not rewritten when rows or columns are inserted or deleted (an engine gap: Excel's file form
+follows the edit; unprobed here). An empty `<calculatedColumnFormula/>` reads as no column formula, and an
+`array="1"` attribute is dropped on import (export writes the plain element).
 Evidence: the saved `xl/tables/table1.xml` and `xl/worksheets/sheet1.xml` of probes/t2957-fill-one-totals,
 -refill-second, -constant-exception, -constant-then-refill, -existing-constant, -a1-reference and -expand-right-*
 (the eval/.cache/oracle/excel-graph/<input_sha256>.xlsx of each sidecar).

@@ -111,6 +111,33 @@ fn identical_stored_formulas_are_not_refilled() {
     assert_eq!(column_formula(&model), None);
 }
 
+/// probes/t3033-calculated-refill-after-load and -overwrite-after-load: the same cells with a
+/// stored column formula (as xlsx import keeps it) are a calculated column, so a formula typed
+/// into the blank row, or over an occupied one, re-fills every data row (references.md rule 9).
+#[test]
+fn a_stored_column_formula_is_refilled() {
+    for (typed_row, blank) in [(5, true), (4, false)] {
+        let mut model = Model::new_empty("book", "en", "UTC", "en").unwrap();
+        for (row, col) in [(1, "Col"), (2, "1"), (3, "2"), (4, "4"), (5, "8")] {
+            model.set_user_input(0, row, 1, col.to_string()).unwrap();
+        }
+        model.set_user_input(0, 1, 2, "Other".to_string()).unwrap();
+        model.set_user_input(0, 1, 3, "Calc".to_string()).unwrap();
+        let last = if blank { 4 } else { 5 };
+        for row in 2..=last {
+            model
+                .set_user_input(0, row, 3, format!("=A{row}*2"))
+                .unwrap();
+        }
+        model
+            .add_table_with_totals(0, "T", (1, 1, 5, 3), false, false)
+            .unwrap();
+        model.set_table_column_formula("T", 2, "A2*2").unwrap();
+        typed(&mut model, typed_row, &format!("=A{typed_row}*3"));
+        assert_eq!(calc(&model, 5), ["3", "6", "12", "24"]);
+    }
+}
+
 /// A typed fill makes the column a calculated column, saved as the first data row's text, and a
 /// re-fill updates it; a typed constant fills nothing and keeps it.
 #[test]

@@ -177,8 +177,9 @@ pub(crate) fn load_table<R: Read + std::io::Seek>(
             totals_row_function: None,
             totals_row_dxf_id,
             // Kept as file text; Excel does not fill the column on load (xlsx-storage.md,
-            // "Excel does not fill a calculated column on load"), so it only marks the column
-            // as calculated for a later typed formula.
+            // "Excel does not fill a calculated column on load"), but a formula typed after load
+            // re-fills it (references.md "Calculated columns" rule 9, probes/t3033-*), so it
+            // marks the column as calculated.
             calculated_column_formula: table_column
                 .child("calculatedColumnFormula")
                 .and_then(XmlNode::text)

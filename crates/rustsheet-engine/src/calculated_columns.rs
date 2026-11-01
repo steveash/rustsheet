@@ -282,6 +282,29 @@ impl Model {
         self.reset_tables();
     }
 
+    /// Makes column `column` (its 0-based index in the table) of table `table` a calculated column
+    /// with `formula`, file-form text without `=` as xlsx's `calculatedColumnFormula` holds it,
+    /// as a workbook Excel saved with one loads: no cell changes, and a formula typed into the
+    /// column later re-fills it (references.md "Calculated columns" rule 9). Returns the table as
+    /// it was, for the facade's rollback.
+    ///
+    /// # Errors
+    /// When there is no such table or column.
+    pub fn set_table_column_formula(
+        &mut self,
+        table: &str,
+        column: usize,
+        formula: &str,
+    ) -> Result<Table, String> {
+        let current =
+            (self.workbook.tables.get_mut(table)).ok_or_else(|| format!("no table {table}"))?;
+        let before = current.clone();
+        let table_column = (current.columns.get_mut(column))
+            .ok_or_else(|| format!("table {table} has no column {column}"))?;
+        table_column.calculated_column_formula = Some(formula.to_string());
+        Ok(before)
+    }
+
     /// The table, as it is now, whose column a formula typed into (`sheet`, `row`, `column`)
     /// fills or re-fills as a calculated column, and the cells it fills, every other data row of
     /// the column (row, column). The table is one in whose data rows the cell is, when the
