@@ -3,7 +3,7 @@ id: T-3507
 title: "TOCOL, TOROW and SORT argument-check order: which invalid argument beats an error in a later one (gen-m7 arg-pairs)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
