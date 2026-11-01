@@ -1,0 +1,73 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "NUMBERVALUE with a whitespace or percent decimal separator, a plus sign or currency around a leading percent sign, and leading or trailing NBSP and U+3000 (T-3647, fidelity review).",
+  "tags": [
+    "M5",
+    "text",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=NUMBERVALUE(\"1 5\",\" \",\",\")",
+        "A2": "=NUMBERVALUE(\"1\"&CHAR(9)&\"5\",CHAR(9),\",\")",
+        "A3": "=NUMBERVALUE(\"1\"&CHAR(10)&\"5\",CHAR(10),\",\")",
+        "A4": "=NUMBERVALUE(\"1\"&CHAR(13)&\"5\",CHAR(13),\",\")",
+        "A5": "=NUMBERVALUE(\"1 2 5\",\" \",\",\")",
+        "A6": "=NUMBERVALUE(\"1,2 5\",\" \",\",\")",
+        "A7": "=NUMBERVALUE(\"1 2,5\",\" \",\",\")",
+        "A8": "=NUMBERVALUE(\"1\"&CHAR(9)&\"2 5\",CHAR(9),\",\")",
+        "A9": "=NUMBERVALUE(\" 1 5 \",\" \",\",\")",
+        "A10": "=NUMBERVALUE(\"1 5\",\" \")",
+        "A11": "=NUMBERVALUE(\"15\",\" \",\",\")",
+        "A12": "=NUMBERVALUE(\"1 5\",CHAR(9),\",\")",
+        "A13": "=NUMBERVALUE(\"%5\",\"%\")",
+        "A14": "=NUMBERVALUE(\"1%5\",\"%\")",
+        "A15": "=NUMBERVALUE(\"%5%\",\"%\")",
+        "A16": "=NUMBERVALUE(\"5%\",\"%\")",
+        "A17": "=NUMBERVALUE(\"+%1.5\")",
+        "A18": "=NUMBERVALUE(\"%+1.5\")",
+        "A19": "=NUMBERVALUE(\"%1.5$\")",
+        "A20": "=NUMBERVALUE(\"%€1.5\")",
+        "A21": "=NUMBERVALUE(\"€%1.5\")",
+        "A22": "=NUMBERVALUE(\"%(1.5)\")",
+        "A23": "=NUMBERVALUE(\"-(%1.5)\")",
+        "A24": "=NUMBERVALUE(\"1.5$\")",
+        "A25": "=NUMBERVALUE(UNICHAR(160)&\"1.5\")",
+        "A26": "=NUMBERVALUE(\"1.5\"&UNICHAR(160))",
+        "A27": "=NUMBERVALUE(UNICHAR(12288)&\"1.5\")"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!A2",
+    "Sheet1!A3",
+    "Sheet1!A4",
+    "Sheet1!A5",
+    "Sheet1!A6",
+    "Sheet1!A7",
+    "Sheet1!A8",
+    "Sheet1!A9",
+    "Sheet1!A10",
+    "Sheet1!A11",
+    "Sheet1!A12",
+    "Sheet1!A13",
+    "Sheet1!A14",
+    "Sheet1!A15",
+    "Sheet1!A16",
+    "Sheet1!A17",
+    "Sheet1!A18",
+    "Sheet1!A19",
+    "Sheet1!A20",
+    "Sheet1!A21",
+    "Sheet1!A22",
+    "Sheet1!A23",
+    "Sheet1!A24",
+    "Sheet1!A25",
+    "Sheet1!A26",
+    "Sheet1!A27"
+  ]
+}

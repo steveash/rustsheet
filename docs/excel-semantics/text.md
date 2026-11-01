@@ -702,22 +702,31 @@ it, the character stays, so a digit reads as a digit and anything else leaves te
   `("18275","7","8")` = 12.5.
 - Before the decimal separator anything goes: leading, trailing, repeated and unevenly spaced group separators are
   removed (`",123"` = `"123,"` = 123, `",,1"` = 1, `"1,,234"` = 1234, `"1,2,3"` = 123, `"12,34.5"` = 1234.5).
-Whitespace: every space, tab, line feed and carriage return is removed wherever it is, before or after the decimal
-separator and whatever the separators are: `NUMBERVALUE("1"&CHAR(9)&"234.5")`, `"1"&CHAR(10)&…` and `"1"&CHAR(13)&…`
-are 1234.5 (ours `#VALUE!`), `NUMBERVALUE("1.5"&CHAR(9)&"2",".",CHAR(9))` = 1.52, and `CHAR(10)` alone is 0. Other
-characters are not removed: CHAR(1), CHAR(11), CHAR(12), NBSP (CHAR(160)), U+3000 and U+202F inside the digits are
-`#VALUE!`. VALUE does not remove a tab: `VALUE("1"&CHAR(9)&"234")` is `#VALUE!`.
+Whitespace: every space, tab, line feed and carriage return is removed first, wherever it is, even when it is a
+separator, so the decimal separator is looked for in the text without it: `NUMBERVALUE("1"&CHAR(9)&"234.5")`,
+`"1"&CHAR(10)&…` and `"1"&CHAR(13)&…` are 1234.5 (ours `#VALUE!`), `NUMBERVALUE("1.5"&CHAR(9)&"2",".",CHAR(9))` = 1.52,
+`CHAR(10)` alone is 0, and a whitespace decimal separator is never found: `NUMBERVALUE("1 5"," ",",")` = 15 (also with
+CHAR(9), CHAR(10) and CHAR(13)), and `NUMBERVALUE("1 2,5"," ",",")` = 125, its "," a group separator with no decimal
+separator after it. Other characters are not removed, nor trimmed at the ends: CHAR(1), CHAR(11), CHAR(12), NBSP
+(CHAR(160)), U+3000 and U+202F inside the digits are `#VALUE!`, and so are `NUMBERVALUE(UNICHAR(160)&"1.5")`,
+`("1.5"&UNICHAR(160))` and `(UNICHAR(12288)&"1.5")` (ours 1.5; VALUE's shared reader trims them). CHAR(11), CHAR(12)
+and U+202F at the ends are unprobed. VALUE does not remove a tab: `VALUE("1"&CHAR(9)&"234")` is `#VALUE!`.
 Percent: one leading `%` divides by 100 as a trailing one does, also after a sign or `(`: `NUMBERVALUE("%1.5")` =
-0.015, `("%1.5%")` = 0.00015, `("-%1.5")` = `("%-1.5")` = `("(%1.5)")` = -0.015, `("%1,234.5")` = 12.345, and
-`("%1d5","d","g")` = 0.015. Two leading `%`, or a leading `%` with currency, are `#VALUE!`: `"%%1.5"`, `"%$1.5"`,
-`"$%1.5"`. Text of `%` signs alone is 0: `NUMBERVALUE("%")` = `NUMBERVALUE("%%")` = 0 (ours `#VALUE!`). VALUE takes the
-leading `%` too: `VALUE("%1.5")` = 0.015 (ours `#VALUE!`; T-3742 owns it).
+0.015, `("%1.5%")` = 0.00015, `("-%1.5")` = `("%-1.5")` = `("(%1.5)")` = `("%(1.5)")` = -0.015, `("+%1.5")` =
+`("%+1.5")` = 0.015, `("%1,234.5")` = 12.345, and `("%1d5","d","g")` = 0.015. Two leading `%`, a leading `%` with
+currency anywhere, or `%` inside a sign and parentheses are `#VALUE!`: `"%%1.5"`, `"%$1.5"`, `"$%1.5"`, `"%1.5$"`,
+`"%€1.5"`, `"€%1.5"`, `"-(%1.5)"`. Text of `%` signs alone is 0: `NUMBERVALUE("%")` = `NUMBERVALUE("%%")` = 0 (ours
+`#VALUE!`). The decimal separator is read before any `%`: with the decimal separator "%", `NUMBERVALUE("%5","%")` =
+0.5, `("1%5","%")` = 1.5, `("5%","%")` = 5 and `("%5%","%")` is `#VALUE!` (two decimal separators). VALUE takes the
+leading `%` too: `VALUE("%1.5")` = 0.015 (ours `#VALUE!`; T-3742 owns it). A trailing currency sign is `#VALUE!`:
+`NUMBERVALUE("1.5$")` (ours 1.5; T-3742 owns it, with VALUE's reading of it unprobed).
 The same shapes hold for the pairs ","/".", "."/" ", ";"/"'", "d"/"g" and "7"/"8" (264 cells, all matching).
-Evidence: probes/t3647-numbervalue-separator-placement (44 text shapes × 6 separator pairs) and
-probes/t3647-numbervalue-percent-and-controls A1:A31, excel-graph, 2026-11-01.
+Evidence: probes/t3647-numbervalue-separator-placement (44 text shapes × 6 separator pairs),
+probes/t3647-numbervalue-percent-and-controls A1:A31 and probes/t3647-numbervalue-whitespace-decimal A1:A27,
+excel-graph, 2026-11-01.
 Status: VERIFIED (excel-graph)
 Implemented in: `numbervalue_text` and `strip_leading_percent` in functions/text/string_format.rs (T-3647); VALUE's
-leading `%` is not (T-3742).
+leading `%` and NUMBERVALUE's trailing currency are not (T-3742).
 Tasks: T-3647, T-3742
 
 ## REPT, CODE, UNICODE and T refuse a text argument over 255 UTF-16 units (T-2155; T of a cell reference gives "", T-2305)

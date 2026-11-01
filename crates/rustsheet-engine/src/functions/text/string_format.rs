@@ -259,28 +259,44 @@ impl Model {
             ));
         }
         let text = numbervalue_text(&text, decimal_sep, group_sep);
-        let trimmed = text.trim();
-        if trimmed.is_empty() {
+        if text.is_empty() {
             return Ok(0.0);
         }
+        // NBSP and U+3000 are not trimmed, where the shared reader below would trim them:
+        // `NUMBERVALUE(UNICHAR(160)&"1.5")`, `("1.5"&UNICHAR(160))` and `(UNICHAR(12288)&"1.5")`
+        // are #VALUE! (probes/t3647-numbervalue-whitespace-decimal A25-A27).
+        let untrimmed = |c: char| matches!(c, '\u{a0}' | '\u{3000}');
+        if text.starts_with(untrimmed) || text.ends_with(untrimmed) {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Cannot parse number".to_string(),
+            ));
+        }
+        // The decimal separator is read before any "%": with the decimal separator "%",
+        // `NUMBERVALUE("%5","%")` is 0.5, `("5%","%")` 5 and `("%5%","%")` #VALUE!
+        // (probes/t3647-numbervalue-whitespace-decimal A13-A16).
+        let cleaned = text.replace(decimal_sep, ".");
 
         // A trailing run of "%" divides by 100 each; text of "%" signs alone is 0: `"%"` and
         // `"%%"` (probes/t3647-numbervalue-percent-and-controls A10, A11).
         let mut pct_count = 0u32;
-        let mut trimmed = trimmed;
-        while let Some(rest) = trimmed.strip_suffix('%') {
-            trimmed = rest;
+        let mut rest = cleaned.as_str();
+        while let Some(shorter) = rest.strip_suffix('%') {
+            rest = shorter;
             pct_count += 1;
         }
-        if trimmed.is_empty() {
+        if rest.is_empty() {
             return Ok(0.0);
         }
-        // One leading "%" counts too, also after a sign or "(", but not with currency: `"%1.5"`,
-        // `"-%1.5"`, `"%-1.5"` and `"(%1.5)"` read, `"%%1.5"`, `"%$1.5"` and `"$%1.5"` are #VALUE!
-        // (probes/t3647-numbervalue-percent-and-controls A1-A8; VALUE agrees on `"%1.5"`, A13).
-        let leading = strip_leading_percent(trimmed);
-        if let Some(rest) = &leading {
-            if rest.contains(['$', '€']) {
+        // One leading "%" counts too, also after a sign or "(", but not with currency anywhere:
+        // `"%1.5"`, `"-%1.5"`, `"+%1.5"`, `"%-1.5"` and `"(%1.5)"` read; `"%%1.5"`, `"%$1.5"`,
+        // `"$%1.5"`, `"%1.5$"` and `"%€1.5"` are #VALUE! (probes/t3647-numbervalue-percent-and-controls
+        // A1-A8, probes/t3647-numbervalue-whitespace-decimal A17-A21). Excel's VALUE reads
+        // `"%1.5"` too, ours not yet (T-3742).
+        let leading = strip_leading_percent(rest);
+        if let Some(stripped) = &leading {
+            if stripped.contains(['$', '€']) {
                 return Err(CalcResult::new_error(
                     Error::VALUE,
                     cell,
@@ -289,9 +305,7 @@ impl Model {
             }
             pct_count += 1;
         }
-        let trimmed = leading.as_deref().unwrap_or(trimmed);
-
-        let cleaned = trimmed.replace(decimal_sep, ".");
+        let cleaned = leading.as_deref().unwrap_or(rest);
 
         // Reject if more than one '.' after replacement
         if cleaned.matches('.').count() > 1 {
@@ -306,8 +320,8 @@ impl Model {
         // 24 hours too (docs/excel-semantics/text.md "NUMBERVALUE reads text as VALUE does, with
         // its own separators"; gen-m5/033e65b92653f425 A161, ae9ed30812c4d62c A285,
         // 6b831f5e2a20bc34 A227).
-        let number = parse_excel_number(&cleaned)
-            .or_else(|| self.parse_number_text(&cleaned, &["$", "€"], &|| self.current_year()));
+        let number = parse_excel_number(cleaned)
+            .or_else(|| self.parse_number_text(cleaned, &["$", "€"], &|| self.current_year()));
         match number {
             Some(mut v) => {
                 for _ in 0..pct_count {
@@ -472,22 +486,27 @@ fn proper_case(s: &str) -> String {
     result
 }
 
-/// NUMBERVALUE's text once its group separators and whitespace are gone. The group character is
-/// removed only before the first decimal separator: after it, it stays, so a digit reads as a
-/// digit and anything else is #VALUE! (`NUMBERVALUE("1.5,2")` is #VALUE!, `("17582","7","8")`
-/// 1.582, `("1,2.3")` 12.3). Every space, tab, line feed and carriage return is removed wherever
-/// it is, but not other control characters or other spaces (NBSP, U+3000, U+202F): "1"&CHAR(9)&"234.5"
-/// is 1234.5 and "1"&CHAR(160)&"234.5" #VALUE! (docs/excel-semantics/text.md "NUMBERVALUE removes
-/// group separators only before the decimal separator"; probes/t3647-numbervalue-separator-placement
-/// rows 3, 22-27, 37, 39-41, probes/t3647-numbervalue-percent-and-controls A17-A29).
+/// NUMBERVALUE's text once its whitespace and group separators are gone. Every space, tab, line
+/// feed and carriage return goes first, wherever it is and even when it is a separator, so
+/// `NUMBERVALUE("1 5"," ",",")` is 15; other control characters and spaces (NBSP, U+3000, U+202F)
+/// stay: "1"&CHAR(9)&"234.5" is 1234.5 and "1"&CHAR(160)&"234.5" #VALUE!. Then the group
+/// character goes only before the first decimal separator: after it, it stays, so a digit reads
+/// as a digit and anything else is #VALUE! (`NUMBERVALUE("1.5,2")` is #VALUE!, `("17582","7","8")`
+/// 1.582, `("1,2.3")` 12.3). (docs/excel-semantics/text.md "NUMBERVALUE removes group separators
+/// only before the decimal separator"; probes/t3647-numbervalue-separator-placement rows 3, 22-27,
+/// 37, 39-41, probes/t3647-numbervalue-percent-and-controls A17-A29,
+/// probes/t3647-numbervalue-whitespace-decimal A1-A12.)
 fn numbervalue_text(text: &str, decimal_sep: char, group_sep: char) -> String {
+    let text: String = text
+        .chars()
+        .filter(|c| !matches!(c, ' ' | '\t' | '\n' | '\r'))
+        .collect();
     let (head, tail) = text
         .find(decimal_sep)
-        .map_or((text, ""), |i| text.split_at(i));
+        .map_or((text.as_str(), ""), |i| text.split_at(i));
     head.chars()
         .filter(|&c| c != group_sep)
         .chain(tail.chars())
-        .filter(|c| !matches!(c, ' ' | '\t' | '\n' | '\r'))
         .collect()
 }
 

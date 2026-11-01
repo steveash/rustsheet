@@ -37,14 +37,15 @@ agrees.
 - T-3512's argument-pair cells.
 
 ## Outcome
-Done (2026-11-01). Two probe cases (excel-graph, 295 cells) found three rules where the engine differed, all now
+Done (2026-11-01). Three probe cases (excel-graph, 322 cells) found these rules where the engine differed, all now
 matched:
 - **Group separators go only before the decimal separator.** After the first decimal separator the group character
   stays: a digit reads as that digit (`NUMBERVALUE("17582","7","8")` = 1.582), anything else is `#VALUE!`
   (`NUMBERVALUE("1.5,2")`, `("1,234.5",",",".")`, `("1.234,5")`). Ours removed every occurrence.
-- **Tab, LF and CR are removed like spaces**, anywhere; CHAR(1), CHAR(11), CHAR(12), NBSP, U+3000 and U+202F are not.
-- **One leading `%`** counts (also after a sign or `(`, not with currency or a second `%`), and text of `%` signs alone
-  is 0.
+- **Space, tab, LF and CR go first**, anywhere and even as a separator (`NUMBERVALUE("1 5"," ",",")` = 15);
+  CHAR(1), CHAR(11), CHAR(12), NBSP, U+3000 and U+202F are not removed, and NBSP and U+3000 are not trimmed at the ends.
+- **One leading `%`** counts (also after a sign or `(`, not with currency or a second `%`), text of `%` signs alone
+  is 0, and a `%` decimal separator is read before any percent sign (`NUMBERVALUE("%5","%")` = 0.5).
 - Code: `numbervalue_text` and `strip_leading_percent` in functions/text/string_format.rs; tests in
   test/text_functions/fn_numbervalue_placement.rs; rules in text.md "NUMBERVALUE removes group separators only before
   the decimal separator". VALUE is unchanged (the task's "fix the shared helper only where VALUE agrees").
@@ -52,8 +53,11 @@ matched:
   separators next to signs, currency, parentheses and exponents, letter and digit separators, and leading/trailing
   whitespace.
 - Probes: probes/t3647-numbervalue-separator-placement (44 shapes × default, ","/".", "."/" ", ";"/"'", "d"/"g",
-  "7"/"8"; 264/264 pass) and probes/t3647-numbervalue-percent-and-controls (30/31 pass).
-- Follow-up: **T-3742** (VALUE reads a leading `%`: `VALUE("%1.5")` = 0.015, the one baselined failure, A13).
-- Eval delta: 2 new probe cases, 295 cells, 294 passing; probes known failures +1 (A13, owned by T-3742); 0
+  "7"/"8"; 264/264 pass), probes/t3647-numbervalue-percent-and-controls (30/31 pass) and
+  probes/t3647-numbervalue-whitespace-decimal (26/27 pass; added for the excel-fidelity review's whitespace-decimal,
+  `%`-decimal, `+%` and currency questions).
+- Follow-up: **T-3742** (VALUE reads a leading `%`: `VALUE("%1.5")` = 0.015; NUMBERVALUE refuses `"1.5$"`: the two
+  baselined failures).
+- Eval delta: 3 new probe cases, 322 cells, 320 passing; probes known failures +2 (both owned by T-3742); 0
   regressions in every suite; the older NUMBERVALUE probes (numbervalue-default-group, numbervalue-separator-edges)
   still pass in full.

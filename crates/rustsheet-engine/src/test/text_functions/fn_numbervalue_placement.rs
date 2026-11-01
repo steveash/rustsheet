@@ -69,3 +69,25 @@ fn one_leading_percent_sign_counts() {
         ("A11", r#"=NUMBERVALUE("%%")"#, "0"),
     ]);
 }
+
+#[test]
+fn whitespace_goes_before_the_decimal_separator_is_found() {
+    eval(&[
+        ("A1", r#"=NUMBERVALUE("1 5"," ",",")"#, "15"),
+        ("A2", r#"=NUMBERVALUE("1"&CHAR(9)&"5",CHAR(9),",")"#, "15"),
+        ("A3", r#"=NUMBERVALUE("1 2,5"," ",",")"#, "125"),
+        ("A4", r#"=NUMBERVALUE(UNICHAR(160)&"1.5")"#, "#VALUE!"),
+        ("A5", r#"=NUMBERVALUE("1.5"&UNICHAR(160))"#, "#VALUE!"),
+    ]);
+}
+
+#[test]
+fn a_percent_decimal_separator_is_read_before_percent_signs() {
+    eval(&[
+        ("A1", r#"=NUMBERVALUE("%5","%")"#, "0.5"),
+        ("A2", r#"=NUMBERVALUE("5%","%")"#, "5"),
+        ("A3", r#"=NUMBERVALUE("%5%","%")"#, "#VALUE!"),
+        ("A4", r#"=NUMBERVALUE("+%1.5")"#, "0.015"),
+        ("A5", r#"=NUMBERVALUE("%1.5$")"#, "#VALUE!"),
+    ]);
+}
