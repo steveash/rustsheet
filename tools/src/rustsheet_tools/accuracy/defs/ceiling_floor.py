@@ -40,16 +40,9 @@ from fractions import Fraction
 
 import mpmath
 
+from rustsheet_tools.accuracy import model
 from rustsheet_tools.accuracy.literal import MAX_LITERAL, MIN_LITERAL, Arg, decimal15, exponent10
-from rustsheet_tools.accuracy.model import (
-    Definition,
-    DomainError,
-    Interval,
-    MathArg,
-    NoValueError,
-    Param,
-    register,
-)
+from rustsheet_tools.accuracy.model import Definition, Interval, MathArg, Param, register
 from rustsheet_tools.accuracy.sampler import decimal_literal, log_uniform, random_sign
 
 TIE_SOURCE = "numbers.md#floorprecise-a-16th-digit-tie-in-the-ratio-cut-goes-away-from-zero-t-2652"
@@ -99,7 +92,7 @@ def ratio_overflows(ratio: Fraction) -> bool:
         return True
     if abs(ratio) > LARGEST_NUMBER_RATIO:
         msg = "a ratio in the unpinned band of the overflow boundary (0.5563 to 48 x DBL_MAX)"
-        raise NoValueError(msg)
+        raise model.NoValueError(msg)
     return False
 
 
@@ -113,13 +106,13 @@ def snapped(function: str, number: float, significance: float, mode: int = 0) ->
             if function == "FLOOR":
                 if x == 0:
                     msg = "FLOOR(0,0): no Excel evidence (the engine gives 0)"
-                    raise NoValueError(msg)
+                    raise model.NoValueError(msg)
                 msg = "FLOOR of a nonzero number by a zero significance (#DIV/0!)"
-                raise DomainError(msg)
+                raise model.DomainError(msg)
             return Decimal(0)
         if s < 0 < x:
             msg = f"{function} of a positive number by a negative significance (#NUM!)"
-            raise DomainError(msg)
+            raise model.DomainError(msg)
     else:
         s = abs(s)
         if s == 0:
@@ -127,7 +120,7 @@ def snapped(function: str, number: float, significance: float, mode: int = 0) ->
     ratio = x / s
     if ratio_overflows(ratio):
         msg = "the ratio number/significance overflows the double range"
-        raise DomainError(msg)
+        raise model.DomainError(msg)
     if abs(ratio) < SMALLEST_NORMAL:
         return Decimal(0)
     cut = cut15(ratio)
@@ -138,7 +131,7 @@ def snapped(function: str, number: float, significance: float, mode: int = 0) ->
     result = Fraction(steps) * s
     if abs(result) > DOUBLE_MAX:
         msg = "the result overflows the double range: no Excel evidence (no literal draw reaches it)"
-        raise NoValueError(msg)
+        raise model.NoValueError(msg)
     return _CONTEXT.multiply(Decimal(steps), Decimal(s.numerator) / Decimal(s.denominator))
 
 
