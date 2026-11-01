@@ -362,7 +362,10 @@ fn test_binom_inv_and_range_at_a_large_n_take_binom_dist_cdf() {
         ("=BINOM.INV(1000000000,0.3,1e-06)", "299931118.0"),
         ("=CRITBINOM(1000000000,0.3,0.999999)", "300068885.0"),
         ("=BINOM.INV(1000000000,0.3,0.3)", "299992401.0"),
-        ("=BINOM.DIST.RANGE(1000000000,0.3,0,300000000)", "0.5000156001249112"),
+        (
+            "=BINOM.DIST.RANGE(1000000000,0.3,0,300000000)",
+            "0.5000156001249112",
+        ),
     ];
     let mut model = new_empty_model();
     for (row, (formula, _)) in cases.iter().enumerate() {

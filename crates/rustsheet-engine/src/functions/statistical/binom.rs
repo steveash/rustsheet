@@ -448,7 +448,6 @@ fn excel_binom_cdf(n: u64, p: f64, k: u64) -> Option<f64> {
     binomial_cdf(n, odds(p), k).map(flush_subnormal)
 }
 
-
 /// Excel's binomial pmf `dbinom_raw(k, n, p, fl(1 - p))` for 0 < k < n: EXP of Loader's saddle-point
 /// exponent ([`excel_dbinom_exponent`], the kernel BETA.DIST's density shares; statistics.md
 /// "BINOM.DIST pmf: closed forms at k = 0 and k = n, and one kernel with BETA.DIST"), a subnormal
