@@ -3,7 +3,7 @@ id: T-3731
 title: "CUMPRINC at a tiny rate over short ranges, attempt 2 (decision 0056): the 37 visibly-off CUMIPMT cells of fin-cumipmt-tiny-rate-structure, on T-3552's dyadic and rate-scan evidence"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
