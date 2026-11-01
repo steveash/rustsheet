@@ -46,7 +46,7 @@ impl Model {
         let holidays = match args.get(holidays_at) {
             Some(arg) => self
                 .holiday_serials(arg, cell)
-                .map(Holidays::new)
+                .map(|(serials, scalar)| Holidays::new(serials, scalar))
                 .map_err(|error| bare_error(&error.error, cell)),
             None => Ok(Holidays::none()),
         };
@@ -99,8 +99,21 @@ impl Model {
             (end, start, end_date, -1.0)
         };
         let first_weekday = from_date.weekday().num_days_from_monday() as usize;
+        // A scalar holiday of NETWORKDAYS.INTL is dropped on a Saturday or Sunday only, whatever
+        // the weekend (`NETWORKDAYS.INTL(45000,45100,13,45003)` is 87, the no-holiday count,
+        // while the Tuesday `45006` takes 1 off and a reference to the same cell does not;
+        // probes/networkdays-intl-holiday-forms, dates.md "NETWORKDAYS.INTL: a scalar holiday
+        // ignores the weekend argument").
+        let holiday_weekend = if holidays.scalar {
+            &DEFAULT_WEEKEND
+        } else {
+            &weekend
+        };
         let days = working_days(&days_per_weekday(from, to, first_weekday), &weekend)
-            - working_days(&holidays.per_weekday(from, to, first_weekday), &weekend);
+            - working_days(
+                &holidays.per_weekday(from, to, first_weekday),
+                holiday_weekend,
+            );
         Ok(days as f64 * sign)
     }
 }

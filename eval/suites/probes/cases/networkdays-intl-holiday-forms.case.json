@@ -1,0 +1,44 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3537: how the form of NETWORKDAYS.INTL's holidays (literal, cell, one-cell range, array, fractional) decides whether a Saturday/Sunday holiday is dropped under weekend 13 (Tuesday only).",
+ "tags": [
+  "M6",
+  "probe",
+  "date",
+  "networkdays.intl"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "C1": 45003,
+    "C2": 45006,
+    "C3": 45005,
+    "C4": 45003.5,
+    "A1": "=NETWORKDAYS.INTL(45000,45100,13)",
+    "A2": "=NETWORKDAYS.INTL(45000,45100,13,45003)",
+    "A3": "=NETWORKDAYS.INTL(45000,45100,13,45006)",
+    "A4": "=NETWORKDAYS.INTL(45000,45100,13,C1)",
+    "A5": "=NETWORKDAYS.INTL(45000,45100,13,C2)",
+    "A6": "=NETWORKDAYS.INTL(45000,45100,13,C1:C1)",
+    "A7": "=NETWORKDAYS.INTL(45000,45100,13,C2:C2)",
+    "A8": "=NETWORKDAYS.INTL(45000,45100,13,C1:C2)",
+    "A9": "=NETWORKDAYS.INTL(45000,45100,13,{45003})",
+    "A10": "=NETWORKDAYS.INTL(45000,45100,13,{45006})",
+    "A11": "=NETWORKDAYS.INTL(45000,45100,13,{45003,45006})",
+    "A12": "=NETWORKDAYS.INTL(45000,45100,13,{45003;45006})",
+    "A13": "=NETWORKDAYS.INTL(45000,45100,13,45003.5)",
+    "A14": "=NETWORKDAYS.INTL(45000,45100,13,C4)",
+    "A15": "=NETWORKDAYS.INTL(45000,45100,13,45003+0)",
+    "A16": "=NETWORKDAYS.INTL(45000,45100,13,SUM(C1))",
+    "A17": "=NETWORKDAYS.INTL(45000,45100,13,{45003,45003})",
+    "A18": "=NETWORKDAYS.INTL(45000,45100,13,C3:C3)",
+    "A19": "=NETWORKDAYS.INTL(45000,45100,1,C2)",
+    "A20": "=NETWORKDAYS.INTL(45000,45100,1,{45006})",
+    "A21": "=NETWORKDAYS(45000,45100,45003)",
+    "A22": "=NETWORKDAYS(45000,45100,{45003,45006})"
+   }
+  }
+ ],
+ "expected": {}
+}
