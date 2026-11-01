@@ -1808,6 +1808,7 @@ C	probes/t3419-elapsed-after-date-general.case.json	30
 C	probes/t3505-gamma-inv-budget-band.case.json	525
 C	probes/t3575-fraction-after-elapsed-b.case.json	30
 C	probes/t3575-fraction-after-elapsed.case.json	15
+C	probes/t3638-subnormal-upper-tail.case.json	84
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
 C	probes/table-edits/plain-range-delete-rows-across-edge.case.json	10
@@ -5355,6 +5356,15 @@ F	probes/t3505-gamma-inv-budget-band.case.json	S!A96
 F	probes/t3505-gamma-inv-budget-band.case.json	S!A97
 F	probes/t3505-gamma-inv-budget-band.case.json	S!A98
 F	probes/t3505-gamma-inv-budget-band.case.json	S!A99
+F	probes/t3638-subnormal-upper-tail.case.json	Sheet1!A17
+F	probes/t3638-subnormal-upper-tail.case.json	Sheet1!A18
+F	probes/t3638-subnormal-upper-tail.case.json	Sheet1!A23
+F	probes/t3638-subnormal-upper-tail.case.json	Sheet1!A24
+F	probes/t3638-subnormal-upper-tail.case.json	Sheet1!A29
+F	probes/t3638-subnormal-upper-tail.case.json	Sheet1!A30
+F	probes/t3638-subnormal-upper-tail.case.json	Sheet1!A36
+F	probes/t3638-subnormal-upper-tail.case.json	Sheet1!A39
+F	probes/t3638-subnormal-upper-tail.case.json	Sheet1!A42
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F10
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F2
 F	probes/table-edits/table-convert-names-this-row.case.json	T!A2

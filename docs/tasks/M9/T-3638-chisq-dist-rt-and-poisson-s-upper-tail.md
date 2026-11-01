@@ -58,3 +58,5 @@ except at df 2; POISSON(k,mean,TRUE) flushes except at k = 0 (the exp closed for
 (`flush_subnormal` in `chisq_dist_rt_of`, `poisson_dist_of`), with a unit test per path; t3269-fresh-sweep Calc!A92
 now scores (engine 0 = Graph 0). The "x inside 30 < x/2 <= 600" probe was impossible: no subnormal Q exists there
 (recorded in numbers.md). Documented in numbers.md and statistics.md.
+The probe's 9 normal-result neighbour cells (near 1E-300) differ from Excel in the last digits (the T-3640 / T-3461
+far-tail work); they are recorded as new-coverage known failures in eval/baseline/probes.txt, not fixed here.
