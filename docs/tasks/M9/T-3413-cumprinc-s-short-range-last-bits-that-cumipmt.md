@@ -8,7 +8,6 @@ priority: P2
 size: S
 tier: opus
 depends_on: [T-3118]
-campaign: visible
 ---
 
 ## Goal
@@ -29,12 +28,6 @@ The rest of tiny-rate-structure (37 visibly-off CUMIPMT cells and their CUMPRINC
 T-3552's (gap triage 2026-10-31k). Both tasks change the same short-range CUMPRINC form, so the one that lands second
 starts by re-measuring its cells on the first one's main.
 
-Added by gap triage 2026-10-31: the other visibly-off CUMIPMT cells of tiny-rate-structure have the same cause. Each
-column-A CUMIPMT sits beside our column-B CUMPRINC, which is 1-2 ulps from Excel's (A10 `CUMIPMT(2E-5,100,100000,12,12,1)`
-Excel -1.7801601439258548, ours -1.7801601439259684; B10 CUMPRINC Excel -999.2101533464493, ours -999.2101533464491).
-- probes/fin-cumipmt-tiny-rate-structure.case.json (37): Sheet1!A2, A4, A5, A8, A9, A10, A11, A12, D5, D6, D8, D11, F1, F3,
-  F5, F6, F8, F9, F10, F12, H2, H3, H8, K2, K4, K8, K9, K10, K11, O10, O11, Q10, Q11, S6, S7, S8, S10
-
 ## Acceptance criteria
 - [ ] The listed CUMIPMT cells are bit-exact through a CUMPRINC change, or financial.md records why
       the remaining ones are not.
@@ -42,8 +35,3 @@ Excel -1.7801601439258548, ours -1.7801601439259684; B10 CUMPRINC Excel -999.210
 
 ## Out of scope
 - CUMPRINC near period 1E15 (T-3141) and the bond/depreciation bits of T-1374.
-
-## Visible-parity stage
-Decisions 0083 and 0114 (`visible`; key added by gap triage 2026-10-31 when the 37 tiny-rate-structure cells joined):
-done when the owned CUMIPMT cells are within half a unit of the 15th significant digit of Excel's value. Bit parity on
-the rest is Phase 1b (decision 0188 R5). Time-boxed by decision 0056.
