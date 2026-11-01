@@ -3123,6 +3123,9 @@ within 4 ulp. Two stay far:
 - `BETA.DIST(33587,3,600,TRUE,2000,5489582)` (G5) is the correctly rounded 0.6734553797493481.
   Cephes' fraction loses about 160 ulp there (t = 0.0058, reflected to I_0.994(600,3)), and so do
   Numerical Recipes' fraction and Cephes' power series.
+  The TOMS 708 port leaves it there too (gap triage 2026-11-01): bratio sends (3, 600, 0.0058) to L140 with two bup terms
+  then bgrat, a branch the port does not cover yet, so the old kernel answers. Ours is 0.6734553797493648, 2.5E-14
+  off, against the 50-digit 0.67345537974934809577 (T-3561).
 - `BETA.DIST(0.234,0.0001,0.0001,TRUE,0.15,1.2)` (G26) is 0.4998779049300665, 34 ulp from the
   correctly rounded value. The best combination is 30 ulp off.
 
@@ -3198,6 +3201,14 @@ have no neighbour above. The crossing holds at 155 of the 188:
   flat-row values are not arbitrary points of a flat band; they look like a start that the steps cannot move. At the
   off-crossing rows Excel is the inaccurate side: `BETA.INV(0.05,2.5,100)` (A101, row 98) is 1.3E-14 above the root.
   Both stay far inside 1E-9 of the math (decision 0188 Gate A). Tasks: T-3387 (sweep), T-3388 (fit).
+- Two gated cells sit off the crossing in a way no probe covers yet (ironcalc-calc BETADIST_BETAINV.xlsx, gap triage
+  2026-11-01, mpmath at 50 digits). Both are scaled to a range [A, B].
+  - H26 `BETA.INV(G26,0.0001,0.0001,0.15,1.2)` with G26 = 0.4998779049300665 is 0.2339999999999406. The root at that p
+    is 0.23400000000293818, so Excel is 1.3E-11 relative below it: well past the 15th digit, but inside Gate A. At
+    shapes 1E-4 the cdf is almost flat around 1/2, and one ulp of p moves the root by about 8E-13.
+  - H5 `BETA.INV(G5,3,600,2000,5489582)` with G5 = 0.6734553797493481 (correctly rounded) is 33587.000000000226,
+    6.6E-15 above the root 33587.000000000000409.
+  Tasks: T-3562 (fit), T-3566 (sweep at shapes below 0.01 and over a range).
 Consequence: BETA.INV parity follows BETA.DIST parity (T-1744) plus a solver that usually
 converges to the crossing.
 Which CDF and which end (T-3398, 2026-10-31, scored over gen-m9, ironcalc-calc, probes and probes-numeric against
@@ -3407,6 +3418,26 @@ Tasks: T-1530, T-1538
 - Ours: the hang is gone (the quantile is a bisection on the `statrs` cdf from df 1E5), but the cdf and quantile are off in
   about the 6th digit at df 1E10 (`F.INV(0.5,1E10,1E10)` = 1.0000025, Excel 1) and `F.DIST(...,FALSE)` at df 1E10 is
   `#NUM!` (`statrs` pdf) where Excel gives a number. 16 of 58 cells of the case fail (A1-A14, A57, A58); T-1538 closes them.
+
+## F density's small-shape constant past its fit set
+Rule: the F density model's small-shape constants (`SMALL_SHAPE_OFFSET` 5.33 and the Stirling errors 0.22 at 1/2
+and 0.06 at 1, units of 2^-53 in K; r4-f-small-df `sdmodel`) were fitted on shapes with max(d) <= 10 and d1 = 1 with d2
+up to 30, but serve every shape with min(d) below 16 (`LARGE_DF_MIN`). On the shapes outside the fit set they still
+bring the density closer to Excel than the correctly rounded value, so they are kept there (decision 0188 R4.3).
+probes-numeric/t3478-f-density-r4-wide (300 points drawn after the freeze, T-3478: 11 <= min(d) <= 15 with max(d) up
+to 1E+10, and min(d) <= 10 with max(d) 11 to 1E+10, d1 and d2 in either order; x 0.2 to 5, or 1E-3 to 1E+3):
+| Strata | Points | Engine bit-exact | Engine within 4 ulp | Correctly rounded bit-exact | Correctly rounded within 4 ulp | Inside Gate A's envelope |
+|---|---|---|---|---|---|---|
+| 11 <= min(d) <= 15 | 100 | 14 | 70 | 5 | 45 | 100 |
+| min(d) <= 10, max(d) 11..100 | 100 | 29 | 83 | 4 | 56 | 100 |
+| min(d) <= 10, max(d) 100..1E+10 | 100 | 18 | 79 | 6 | 58 | 100 |
+Every point is within 1e-9 of the 50-digit density (most misses against Excel are the large-|P| shortfall of "F
+density is not the beta density" above, not the constant).
+Evidence: probes-numeric/t3478-f-density-r4-wide (excel-graph, 2026-10-31) with its `.math.tsv`; scorer
+docs/research/t3478/.
+Status: VERIFIED (excel-graph)
+Implemented in: `SMALL_SHAPE_OFFSET`, `STIRLING_ERROR_HALF`, `STIRLING_ERROR_ONE` (functions/statistical/f_density.rs)
+Tasks: T-3478
 
 ## F density at large degrees of freedom (T-1864)
 Rule: F.DIST(x,d1,d2,FALSE) is an ordinary number wherever Excel's range steps leave the density positive (round 5
@@ -3689,6 +3720,11 @@ Tasks: T-1543, T-1634, T-2561, T-3336, T-3337
     to 50), and t2561-chisq-dist-rt-past-edge (CHISQ.DIST.RT and the density up to 7% past each edge). All
     excel-graph, 1,480 cells. The earlier gen-m9 cells agree: 21 cells such as `CHISQ.INV.RT(1E-100,3)` and
     `CHIINV(1E-200,6)` are `#NUM!`, `CHIINV(1E-20,5)` = 103.42897723775795, and df 22 at 1E-100 = 542.4417060011164.
+    Values below the edge are close to correctly rounded (gap triage 2026-11-01). Of the 419 cells of the four edge
+    probes where ours is 1 to 4 ulp off, 80 drawn at random were checked against the 50-digit root of
+    Q(df/2, x/2) = p. Excel is the correctly rounded root at 52 and ours at 24. The largest errors are 2.7E-16 relative
+    for Excel and 1.9E-16 for ours. Example: `CHISQ.INV.RT(1E-20,4)` (t2561-chisq-inv-rt-num-boundary B1) is
+    99.96639597418148 in Excel and 99.9663959741815 in ours. Status: VERIFIED on those 80 cells. T-3565.
   - A quantile below the smallest normal double is 0 (`CHISQ.INV(1E-200,1)`, crossing about 1.6E-400).
 - Excel's gamma quantiles (T-0972, against an mpmath 50-digit reference of the 545 literal-argument CHISQ.INV,
   CHISQ.INV.RT, CHIINV, GAMMA.INV and GAMMAINV cells in eval/, df truncated, df 1 right tail as the lower quantile of
@@ -5152,9 +5188,12 @@ Rule (gen-m9, excel-graph, 2026-10-23):
   0620505280d2ea6e A280, 5395b8a427764a3f A385), and a number of about 1E+15 or more is `#NUM!` even with number_chosen 0
   (`PERMUTATIONA(1000000000000000,0)`, 775d053de498b8c7 A152; `PERMUTATIONA(FACT(18),2)`, b9a32ce9a1fd0d71 A378).
 Ours (T-2474): as Excel for every T-2474 cell. The cumulative t functions (T.DIST with cumulative TRUE, T.DIST.RT,
-T.DIST.2T, TDIST) are `#NUM!` where `x²` overflows (|x| past about 1.34E+154; the cut, and that a negative x of that size is `#NUM!` too, are UNVERIFIED), the negative mean
-follows "POISSON at x 0 with a negative mean", the tiny-p NEGBINOM is 0 (the binomial walk renormalizes before a ratio
-p/q past 2^53 overflows it), and PERMUTATIONA takes PERMUT's limit, a number of 2^31 - 1 or more is `#NUM!` (UNVERIFIED cut).
+T.DIST.2T, TDIST) are `#NUM!` where `x²` overflows (|x| past about 1.34E+154). T-3358's T.DIST table brackets the cut
+per sign: for a negative x the cumulative T.DIST is 0 at x = -4.0E+136 and -2.1E+119 (accuracy/T.DIST/s1 A90, A96) and
+`#NUM!` at x = -2.1E+217 and -4.1E+259 (A103, A91), so a negative x is `#NUM!` too, with its cut in (4.0E+136,
+2.1E+217); for a positive x the table has only `#NUM!`, at 5.4E+186 and 4.4E+221 (A86, A98). The exact cuts are
+UNVERIFIED. The negative mean follows "POISSON at x 0 with a negative mean", the tiny-p NEGBINOM is 0 (the binomial
+walk renormalizes before a ratio p/q past 2^53 overflows it), and PERMUTATIONA takes PERMUT's limit, a number of 2^31 - 1 or more is `#NUM!` (UNVERIFIED cut).
 Since T-2700 a NEGBINOM.DIST/NEGBINOMDIST number_f in (-1, 0) is `#NUM!` as in Excel (the sign is checked before truncation; bonus cell
 b9a32ce9a1fd0d71 A195, `NEGBINOMDIST(Data!$D$6,7,..)` with D6 = -0.5). The PERMUTATIONA truncation cells are T-2701's. Probe of the cuts: T-2752.
 Status: VERIFIED (excel-graph), the cuts UNVERIFIED
@@ -5464,16 +5503,34 @@ Tasks: T-1811
 Rule: at p < 1e-150, T.INV(p, df), F.INV(p, d1, d2) and BETA.INV(p, alpha, beta) in their left tail and
 CHISQ.INV.RT(p, df) in its right tail (a tiny p is the upper tail there) can be far from the true quantile in Excel;
 where Excel's relative error exceeds G = 1e-4 RustSheet returns the 50-digit math value (decision 0188 R3).
-Region: the parameter bounds (df; d1 and d2; alpha and beta) are not yet evidenced. The assessment's "df ≥ 1e6" does
-not hold for its own example (df 3937), so each function's exact region is fixed from T-3358's R3-marked points and
-amended here. Until then this entry covers only the cited point, `T.INV(1.87E-297,3937)`.
-Evidence: the owner's 2026-10-31 assessment (decision 0188), stratified points scored against Excel for the web and
-50-digit mpmath: `T.INV(1.87E-297,3937)` is -156.96 in Excel and -40.26 in truth. Committed evidence points are owed by
-T-3358 (Gate A, R3-marked).
+Region (T-3358, from its R3-marked points; still bounded by p < 1e-150):
+- T.INV: p from 2.4E-259 to 9.0E-222 at df 10068 to 274584, plus the assessment's `T.INV(1.87E-297,3937)`.
+- F.INV: p from 2.2E-308 to 9.0E-245 at (d1, d2) of (17, 50), (39, 3), (1024, 56), (107702, 58) and (215432724, 6).
+
+The assessment's "df ≥ 1e6" does not hold for these points. Tables for BETA.INV and CHISQ.INV.RT are T-3529's, and
+their regions are fixed there. Points of these functions outside the region are not covered, even where Excel is off by
+more than G, and they need an owner ruling:
+- T.INV and F.INV at p from 1.2E-69 to 8.2E-131 (accuracy/T.INV/s1 A91, A96; F.INV/s1 A164, A169), owned by T-3544;
+- T.INV.2T and TINV at any p (T.INV.2T/s1 A98, A99, A103, with A99 at p 4.4E-242; TINV/s1 A102), owned by T-3386.
+
+The engine is within ε of the math on all of them, so they pass Gate A through its math side. One point inside
+decision 0188's p < 1e-150 bound but outside the region the entry names needs a ruling of its own:
+`F.INV(4.36982683607437E-189,1,1698856)` (F.INV/s1 A167) is 3.85E-145 in Excel, while the true quantile, 3.0E-377, is
+below the double range. The engine returns 0, which passes only through Gate A's 1e-300 absolute floor; a mark would
+make 0 the target, so T-3544 leaves it to the owner.
+Evidence: R3-marked points of the Gate A tables (eval/accuracy/math-over-excel.tsv), excel-graph and 50-digit mpmath:
+- T.INV: accuracy/T.INV/s1 A89, A93 and A95. For example, `T.INV(1.68092983773194E-249,10068)` is -77.496 in Excel and
+  -34.691 in truth.
+- F.INV: accuracy/F.INV/s1 A112, A126, A146, A160 and A171. For example, `F.INV(5.17400512983499E-289,215432724,6)` is
+  2.93E-10 in Excel and 0.00444 in truth, and `F.INV(2.22507385850721E-308,39,3)` is 2.06E-36 in Excel and 1.18E-17
+  in truth.
+
+The owner's 2026-10-31 assessment (decision 0188) gives `T.INV(1.87E-297,3937)` as -156.96 in Excel and -40.26 in
+truth.
 Status: MATH-OVER-EXCEL (decision 0188)
-Ours: the assessment reports the engine already returns the true value at the cited point; that, too, is evidence
-T-3358 owes as committed points. Such cells stay F lines of eval/baseline and count as passing in Gate B and the R1(c)
-rows once T-3359 lands. The math path keeps directive 5's caps.
+Ours: the engine returns the math within ε at every marked point (Gate A's R3 check). Such cells stay F
+lines of eval/baseline and count as passing in Gate B and the R1(c) rows (T-3359, T-3427). The math path
+keeps directive 5's caps.
 Tasks: T-3358, T-3359, T-3363
 
 ## GAMMA.INV at a huge shape, closed-form branch: Excel is about 2.7e-4 off, RustSheet returns the math (MATH-OVER-EXCEL)
@@ -5513,3 +5570,27 @@ Ours: within 1.01e-13 of the math throughout the Rule's region in both cases (wo
 reaches 1.43e-10 (C168, `F.DIST.RT(1.09080885395379,8,5567623)`), still inside Gate A; cells beyond half a unit of
 Excel's 15th digit are Phase 1b residue (decision 0188 R5).
 Tasks: T-3354, T-3479
+
+## T.DIST's density is #NUM! at a huge x, and T.INV.2T and TINV at p = 2.2E-308 (T-3358)
+Rule:
+- `T.DIST(x,df,FALSE)` is `#NUM!` in Excel at a huge positive x, from 1.0E+236 to 1.4E+307 at df 2 to 824733515.
+  A smaller huge x gives 0, not `#NUM!`: `T.DIST(9.93424108915371E+137,24,FALSE)` (A97), although the density
+  underflows there too. The positive cut lies between 9.9E+137 and 1.0E+236, which fits the x² overflow cut (about
+  1.34E+154) of the cumulative t functions (T-2474 entry above). A negative x is 0 up to |x| 7.6E+87 (A92, A94, A106)
+  and is not probed beyond. The engine returns 0.
+- `T.INV.2T(2.22507385850721E-308,df)` and `TINV(2.22507385850721E-308,df)` are `#NUM!` at df 8, 9, 12 and 14, although
+  the quantile is a finite double (about 3.2E+22 to 6.9E+38). T.INV accepts p down to 1E-300 (T-1531).
+- `F.INV(0,d1,d2)` is 0, the lower end of the support.
+
+- The legacy `FINV(0,2,5)` is `#NUM!` (probes-numeric/m9-legacy-finv A65), so the 0 is F.INV's only.
+
+The exact x where T.DIST's density turns `#NUM!` and the p below which the two-tailed quantile does are not yet probed.
+Evidence: Gate A tables, excel-graph:
+- accuracy/T.DIST/s1 A85, A95, A105 and A110;
+- accuracy/T.INV.2T/s1 A68 and A78, and accuracy/TINV/s1 A68 and A78;
+- accuracy/T.DIST/s1 A94 and A97 (density 0 below the cut);
+- accuracy/F.INV/s1 A111 (`F.INV(0,38,10)`) and A125 (`F.INV(0,9,50)`), and probes-numeric/t1049-finv A16 (`F.INV(0,3,7)`).
+Status: VERIFIED (excel-graph) for the cited cells; the cut points are UNVERIFIED.
+Ours: T.DIST returns 0 and T.INV.2T and TINV return the quantile. These are Gate A known failures owned by T-3554 and
+T-3386.
+Tasks: T-3554, T-3386, T-3358

@@ -2,3 +2,17 @@
 # task lands, one per line, tab-separated:
 #   <point id accuracy/<FUNCTION>/<batch>!Calc!A<n>>	<owner task T-NNNN>	<note>
 # A listed point that passes, or that no table holds, is a stale line and fails the check.
+accuracy/F.INV/s1!Calc!A154	T-1871	deep-tail F quantile: the engine is far off; Excel matches the math
+accuracy/F.INV/s1!Calc!A168	T-1871	F quantile at d1 1 (p 1.04E-20): the engine gives 1.87E-14 against 1.71E-40; Excel matches the math
+accuracy/T.DIST/s1!Calc!A85	T-3533	Excel #NUM! for the density at a huge x; the engine returns 0
+accuracy/T.DIST/s1!Calc!A95	T-3533	Excel #NUM! for the density at a huge x; the engine returns 0
+accuracy/T.DIST/s1!Calc!A105	T-3533	Excel #NUM! for the density at a huge x; the engine returns 0
+accuracy/T.DIST/s1!Calc!A110	T-3533	Excel #NUM! for the density at a huge x; the engine returns 0
+accuracy/T.INV/s1!Calc!A75	T-3363	quantile at df near 1E8 to 1E10: the engine and Excel are both off the math, differently
+accuracy/T.INV/s1!Calc!A102	T-3363	quantile at df near 1E8 to 1E10: the engine and Excel are both off the math, differently
+accuracy/T.INV.2T/s1!Calc!A68	T-3386	Excel #NUM! at p = 2.2E-308 where the quantile is finite
+accuracy/T.INV.2T/s1!Calc!A75	T-3363	quantile at df near 1E8 to 1E10: the engine and Excel are both off the math, differently
+accuracy/T.INV.2T/s1!Calc!A78	T-3386	Excel #NUM! at p = 2.2E-308 where the quantile is finite
+accuracy/T.INV.2T/s1!Calc!A91	T-3363	quantile at df near 1E8 to 1E10: the engine and Excel are both off the math, differently
+accuracy/TINV/s1!Calc!A68	T-3386	Excel #NUM! at p = 2.2E-308 where the quantile is finite
+accuracy/TINV/s1!Calc!A78	T-3386	Excel #NUM! at p = 2.2E-308 where the quantile is finite
