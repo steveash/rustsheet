@@ -3,7 +3,7 @@ id: T-3506
 title: "TOCOL, TOROW and FILTER read a one-cell error reference in an array argument as a 1x1 array (gen-m7 arg-pairs)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
