@@ -3,7 +3,7 @@ id: T-3751
 title: "Probe typed mixed-separator date input and a leading space before a leading clock"
 milestone: M6
 lane: functions-date
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -46,3 +46,9 @@ oracle probe rather than inferred from the function readers.
 ## Out of scope
 - Other date-text shapes T-3646 already evidenced through the function readers.
 - Glued month-name shapes (T-3299).
+
+## Outcome
+Probe case probes/date-text-mixed-separator-typed (excel-graph, 2026-11-01; 10 typed entries and 3 formula cells, value and type scored (B, C); formats in docs/research/typed-mixed-separator-dates-2026-11-01.md) with the rule in dates.md. Result:
+the 3 formula cells and the typed value and type of 9 of the 10 entries match; the engine's typed formats differ for 5 entries and
+`10:00 7/1/2025` typed stays text (B10, C10 fail in the case, probes is ungated). Filed T-3796 with the cell list. No engine
+change. Eval delta: 21 of 23 scored cells pass in the new case (new coverage), no baseline change.
