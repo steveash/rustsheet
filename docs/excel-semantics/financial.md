@@ -1973,13 +1973,49 @@ T-3067 notes (float64 fit, 2026-10-28; nothing changed in the kernel):
   -999.0303135033106 against C1 `PPMT(2E-5,3,100,100000,0,1)` -999.0303135033108, B4 -999.0902565209652 against C4
   ...9655, I1 `CUMPRINC(1E-4,60,100000,3,3,0)` -1662.087365975419 against J1 -1662.0873659754193 (I2 and J2 agree).
   Our PPMT has Excel's bits on every C and J cell. Our CUMPRINC is 1 to 3 ulps off on 59 of the case's 104 principals,
-  so 38 of its CUMIPMT cells are visibly off (F2 is T-3413's; the other 37 and their principals are T-3552's).
+  so 38 of its CUMIPMT cells are visibly off (F2 is T-3413's; the other 37 and their principals were T-3552's, now T-3731's).
+- How one period of CUMPRINC differs from PPMT, measured (T-3552 attempt 1, excel-graph 2026-11-01:
+  probes/fin-cumprinc-dyadic-rates, 296 cells, and probes/fin-cumprinc-single-period-rate-scan, 720 cells):
+  - At rates that are powers of two (2^-16, 2^-14, 2^-10), where every `·r` and `/r` is exact, a one-period
+    CUMPRINC is PPMT of that period within ±1 ulp, and the mean gap is 0.0 to 0.3 ulp. At 3·2^-17, where `1+r` is
+    exact too but `·r` rounds, it is +1.2 ulp off PPMT on average (smaller in magnitude). So the extra step is
+    not the rounding of `1+r`.
+  - Over 60 log-spaced rates from 1E-6 to 1E-2 (type 0, nper 100, periods 3 to 6, 50 and 98), `CUMPRINC/PPMT - 1`
+    is `+δL`: CUMPRINC = PPMT·(1+δL). Here δL = (L − ln(1+r))/ln(1+r), the relative error of `growth_log`'s L against the exact log (PPMT's
+    `ln(1+r)`). Measured as `(CUMPRINC - PPMT)/|PPMT|`, which is `-δL` because both values are negative, the
+    regression slope is -1.04 (correlation -0.69). So where L is low (δL < 0), Excel's principal is smaller in
+    magnitude than PPMT. The gap does not depend on the period. Against the correctly rounded payment
+    `pmt·v^(n-k+1)` the bias is gone (mean +0.14 ulp), but the spread is ±3 ulps. In words: Excel's principal
+    does not carry the L error that PPMT's balance `pv/(1-v^n)` carries, and its own last bits are from another
+    chain.
+  - What it is not, scored bit-exact on the 504 one-period principals of the three cases (type 1 from period 2)
+    and, for the constant searches, on the 60 rates of the scan:
+    - `C·G_k` or `(C·G_k)·Y`, for any constant C within ±16 ulps of the value the first period implies, with:
+      - G_k one of 15 per-period discounts: Excel's or libm's EXP of `(k-1-n)L` or `(k-n)L`; the exponent split
+        or held in an x87 register; the reciprocal of the opposite power; a product or quotient of two powers.
+      - Y one of 1, r, `1-v`, `1+r` and `expm1(L)`.
+      - L one of `growth_log`, `log1p`, Excel's LN of `1+r` and the correctly rounded log.
+      No rate of the 60 has such a C for more than 3 of these forms. With PPMT's own discount and any balance
+      within ±64 ulps of PPMT's, 1 rate of 60 fits.
+    - `P' - IPMT_k`, for any constant P' within ±64 ulps of PMT, with Excel's IPMT bits or three orderings of
+      `A·(1-Q(x))·r`: no rate.
+    - The correctly rounded payment or balance times Excel's discount: 182 of the 504.
+    - Every left-to-right order of `pv, /(1-v^n), Q, ·r, ·(1-v), /r, ·(1+r)`, and of the sets without `·r/r`
+      (the balance drop), each with Excel's or libm's exp and expm1: the best has 267 of 425 (`pv/(1-v^n)·r/r·(1-v)·Q·(1+r)`) type 0 principals.
+    - Toward-zero rounding on any subset of five operations of PPMT's form: at most 101 of the 144 one-period
+      principals of the dyadic and tiny-rate cases, where PPMT's form itself has 83. With PPMT's discount and a
+      free balance (±64 ulps) per rate and type, 6 of 72 rate groups fit.
+    - Evaluation in x87 extended precision with one final rounding: unbiased, but only 19 of 82 bit-exact.
+  - The kernel's current form gets 81 of the 192 dyadic-rate principals, 84 of the 360 scan principals and 45 of
+    the 104 tiny-rate principals. The best geometric sum over all three cases (both types, ranges up to 12 periods) has
+    339 of 634 (the task file lists the families). Multi-period values are not the double sum of the probe's own one-period values
+    either: they agree up to m = 5 and then drift by 1 to 2 ulps.
 Status: PARTLY VERIFIED (excel-graph; visibly right but for A7 (= G2) and A10 near period 1E15, fin-cumipmt-period-bound
 A18, fin-cumprinc-near-1e15 E7, and the CUMIPMT cells that amplify our CUMPRINC's last bits (gate-edges A1-A4, A6, A7,
-E3-E10, H3, gen-m9 A352: T-3413; tiny-rate-structure's other 37: T-3552; T-3118 moved 7 off the bit, decision 0197: gen-m9 A329,
+E3-E10, H3, gen-m9 A352: T-3413; tiny-rate-structure's other 37: T-3731, after T-3552's attempt 1 found no form; T-3118 moved 7 off the bit, decision 0197: gen-m9 A329,
 `CUMPRINC_CUMIPMT.xlsx` G3, overflow-and-forms A8, A12, A14, gate-edges A1, tiny-rate-structure F2) and T-3141 (the
 underflowed principal's bits); the short sums' last digits in T-1374)
-Tasks: T-1845, T-1890, T-2192, T-2363, T-2514, T-2521, T-3067, T-3118, T-3141, T-3413, T-3552, T-1374
+Tasks: T-1845, T-1890, T-2192, T-2363, T-2514, T-2521, T-3067, T-3118, T-3141, T-3413, T-3552, T-3731, T-1374
 
 ## CUMIPMT and CUMPRINC work cap
 Rule: RustSheet charges each lifted CUMIPMT or CUMPRINC element for its kernel's bound, 2^8 units against SPEC-0011's

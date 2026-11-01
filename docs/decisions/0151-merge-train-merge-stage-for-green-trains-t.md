@@ -4,6 +4,7 @@
   for a green train, the write policy of `train` mode, the mode half of the stop checkpoints and
   the squash commit text. Nothing is in force: `scripts/merge_train.toml` says `mode = "lock"`,
   and `--train` stops at once in any other mode, before the lock and before any write.
+  *Amended by 0242: the gate reserves `CI_RESERVE` (10 min); a wait may take up to `CI_TIMEOUT` (15 min).*
 - **Context:** T-2987 (decision 0150) built and checked trains without writing. The task allows
   a split when the diff grows past size M; the merge stage alone is about that size, so the stop
   label (which needs T-2996's `merge-flip-check`) and the post-squash revert PR and P0 filing

@@ -3,7 +3,7 @@ id: T-3552
 title: "CUMPRINC at a tiny rate over short ranges (paired probe fin-cumipmt-tiny-rate-structure): 37 visibly-off CUMIPMT cells that amplify our CUMPRINC's 1 to 3 ulps"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -93,3 +93,51 @@ On probes/fin-cumipmt-tiny-rate-structure, our CUMPRINC returns Excel's doubles 
 Decision 0083 (`campaign: visible`, decision 0114): done when the 37 visibly-off CUMIPMT cells above are within half a
 unit of the 15th significant digit of Excel's value. CUMPRINC cells still 1 to 3 ulps off after that move to a
 follow-up filed with `defer: phase-1b` and named in the Outcome.
+
+## Attempts (decision 0056)
+- Attempt 1 (2026-11-01, opus): no form found; nothing changed in the kernel. Bit-exact counts below are for
+  principals of type 0, and of type 1 from period 2.
+  - New evidence:
+    - probes/fin-cumprinc-dyadic-rates: 296 cells, CUMPRINC 81 of 192 bit-exact today.
+    - probes/fin-cumprinc-single-period-rate-scan: 720 cells, CUMPRINC 84 of 360.
+    - PPMT and PMT are bit-exact on both cases.
+  - The finding: a one-period CUMPRINC is PPMT·(1+δL), with δL = (L − ln(1+r))/ln(1+r), the relative error of `growth_log`'s L against the exact log. The
+    regression slope of `(CUMPRINC - PPMT)/|PPMT|` on δL is -1.04 over 60 rates (both values are negative). At power-of-two rates the gap vanishes (within ±1 ulp). The correctly
+    rounded payment times `v^(n-k+1)` removes the bias but spreads ±3 ulps (financial.md "CUMIPMT and CUMPRINC
+    over many periods", T-3552 attempt 1).
+  - Candidates tried, with bit-exact counts:
+
+    | Family | Score |
+    |---|---|
+    | Current kernel | 45 of 104 tiny-rate principals |
+    | Geometric sums `pmt·(1-v^m)/(1-v)·v^…`, 16 sum forms × 4 orders × L (`growth_log`, `log1p`) × Excel or libm exp and expm1 × 3 type 1 factors | best 339 of 634 |
+    | Every left-to-right order of `pv, /(1-v^n), Q, ·r, ·(1-v), /r, ·(1+r)`, and of the balance-drop sets | best 267 of 425 (`pv/(1-v^n)·r/r·(1-v)·Q·(1+r)`) |
+    | Correctly rounded balance or payment × Excel's EXP discount, 5 orders | best 182 of 504 |
+    | Constant × per-period discount (15 discounts × 5 tail factors × 4 Ls) | no rate of 60 |
+    | PMT less IPMT with a free constant | no rate of 60 |
+    | Toward-zero rounding on subsets of PPMT's operations | best 101 of 144 one-period principals, where PPMT's form itself has 83; the extra hits are whole rate groups moved by one ulp, and no rate group of 72 admits any constant balance |
+    | x87 extended evaluation | 19 of 82 |
+    | Excel's PMT bits × the exact sum | 16 of 104 |
+    | LibreOffice's FV loop | 17 of 104 (drifts with the period) |
+
+  - Next hypothesis for attempt 2: since no constant times any per-period discount fits one rate, Excel's
+    one-period chain has at least two roundings that depend on the period. Two candidates:
+    - The interest built from a balance that carries no L error (r·B with B from `(1+r)^k` in double-double),
+      subtracted from the exact payment.
+    - The geometric sum evaluated on the period-1 and period-k discounts separately.
+    Fit them first on the 60-rate scan (constant-C test per rate), then on the dyadic case.
+  - Harness trap found on the way: serde_json without `float_roundtrip` misreads oracle doubles
+    (excel-kernel-playbook "Traps").
+
+## Outcome
+Attempt 1 (decision 0056): no form found, and the kernel is unchanged.
+- New evidence:
+  - probes/fin-cumprinc-dyadic-rates (296 cells).
+  - probes/fin-cumprinc-single-period-rate-scan (720 cells).
+  - Both are excel-graph. CUMPRINC is 81 of 192 and 84 of 360 bit-exact; PPMT and PMT are bit-exact.
+- The finding is recorded in financial.md (T-3552 attempt 1): one-period CUMPRINC is PPMT·(1+δL). The candidate
+  counts are in "Attempts" above.
+- The acceptance criteria are not met: the 37 visibly-off CUMIPMT cells stay off. The fit attempt was the scope.
+- Eval delta: fixed 0, regressions 0, 387 new known failures in the 2 new cases (none visibly off).
+- Follow-up: T-3731 (attempt 2, with the cells, acceptance criteria and next hypotheses).
+
