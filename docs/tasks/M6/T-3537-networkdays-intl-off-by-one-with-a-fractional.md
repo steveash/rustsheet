@@ -3,7 +3,7 @@ id: T-3537
 title: "NETWORKDAYS.INTL off by one with a fractional or serial-0 start or end (gen-m6 arg-pairs cells)"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
