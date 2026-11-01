@@ -3,7 +3,11 @@
 # visibly off from Excel. A case with no line allows none. Only `--lower-visible-lock` lowers a line.
 gen-m6/102b2df13f6891d2.case.json	1
 gen-m6/1b4963f7cb42e2fa.case.json	1
+gen-m6/21db5363d711888d.case.json	9
+gen-m6/315644f84093cf49.case.json	1
+gen-m6/75b38d80dd3152b2.case.json	3
 gen-m6/a4a301d00b46acf3.case.json	10
+gen-m6/ad47b47c4e97019d.case.json	9
 gen-m6/ade135f51e0b7a36.case.json	2
 gen-m6/b91dcfba0176956e.case.json	2
 gen-m7/1157e6d3a3c6ae12.case.json	4

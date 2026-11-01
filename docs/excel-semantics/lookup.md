@@ -1467,3 +1467,15 @@ vector of two or more cells a scalar return is `#VALUE!` (sizes differ), found o
 return of the wrong size with a miss still gives `if_not_found`
 (`XLOOKUP("z",A1,A1:A2,"miss")` is "miss"). An invalid `match_mode` 9 is `#VALUE!`.
 Evidence: probes/t3317-xlookup-scalar-return (C1-C20, oracle-filled).
+
+## gen-m6 arg-pairs batch (T-3496): error-cell arguments of CHOOSEROWS, CHOOSECOLS and XMATCH
+Rule: CHOOSEROWS/CHOOSECOLS: a literal error array argument wins outright (`CHOOSECOLS(#DIV/0!,-1)` is #DIV/0!, 21db5363d711888d A289, A277, A283, A307).
+A referenced error cell (Data!G9 = #DIV/0!) behaves as a 1x1 array whose index is checked first: an index out of range or not numeric for it
+(7, 0, -2.5, "12", "x", "", FALSE, H2, C3:D4) gives #VALUE!, a valid one (1.5 truncating to 1) gives #DIV/0!, and an index that is itself the #DIV/0! cell G9 gives #DIV/0! too
+(21db5363d711888d A298 and A328, ad47b47c4e97019d A322 and A352 pass today and must keep passing).
+XMATCH with search_mode = Data!G9 (#DIV/0!): when match_mode converts to a number but is out of range (7, -2.5, "12"), or is a multi-cell range that Excel lifts element by element (A292 is a 2x2 spill of #DIV/0! over match_mode C3:D4, cells A292:B293), Excel returns #DIV/0!
+(315644f84093cf49 A292:B293, 75b38d80dd3152b2 A388 A448 A544); non-numeric text in match_mode still wins with #VALUE! (315644f84093cf49 A64, 75b38d80dd3152b2 A598).
+Evidence: gen-m6 21db5363d711888d, ad47b47c4e97019d, 315644f84093cf49, 75b38d80dd3152b2 (excel-graph).
+Ours: CHOOSEROWS/CHOOSECOLS return #DIV/0! for the 18 out-of-range/non-numeric-index cells; XMATCH returns #VALUE! in the four cells above only (it already returns #DIV/0! in most G9-search_mode cells).
+Status: UNVERIFIED (probe pending; cells are oracle values, the general rule is not probed)
+Tasks: T-3541, T-3542
