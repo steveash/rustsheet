@@ -1,5 +1,5 @@
 ---
-id: T-3547
+id: T-3575
 title: "TEXT: fraction digits after an elapsed [h] print (TEXT(12345.678,\"[h].0 General\") is \"296296.2 2.500000331\")"
 milestone: M10
 lane: functions-text

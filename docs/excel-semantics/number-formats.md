@@ -88,7 +88,7 @@ below, T-1450), non-ASCII letters (only `ü` is probed; the engine treats every 
     "19 472", `TEXT(5,"ss [m] General")` = "00 720 0.5", `TEXT(5,"mm:ss [h] General")` = "00:00 12 0.5". A month `mm`
     is no clock token: `TEXT(5,"mm [h] General")` = "01 12 0.5".
   - Still unimplemented: fraction digits after `[h]` print (`TEXT(12345.678,"[h].0 General")` = "296296.2 2.500000331",
-    ours `#VALUE!`; T-3547).
+    ours `#VALUE!`; T-3575).
   - `TEXT(5,"d 0 General")` is `#VALUE!` (a digit placeholder beside a date token), and a literal comma in a date
     section stays a literal: `TEXT(45000,"mmm d, yyyy General")` = "Mar 15, 2023 0.499999803".
   Evidence: probes/t3378-general-in-date-section (64 cells) and t3378-general-in-date-section-1904 (7 cells),

@@ -49,7 +49,7 @@ formats like Excel. `TEXT(5,"d [h] General")` is "5 12 0.5" in Excel, and the en
 - [x] Probe cells for the questions above are committed with excel-graph sidecars. The finding goes into
       number-formats.md "`General` in a date section".
 - [x] probes/t3378-general-in-date-section Sheet1!A59 and the new cells pass, and their known-failure lines leave
-      eval/baseline/probes.txt (all but t3419-elapsed-after-date-b A19, out of this rule and filed as T-3547).
+      eval/baseline/probes.txt (all but t3419-elapsed-after-date-b A19, out of this rule and filed as T-3575).
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -71,4 +71,4 @@ explains the old known failure `TEXT(1.5,"AM/PM [h]")` = "PM 12" (probes/text-el
 - Code: `date_section_register` (was `general_in_date_section`), `elapsed_token` and `elapsed_after_larger_clock`
   in formatter/elapsed.rs; the `ParsePart::Date` arm of `format_number` counts elapsed tokens after a split from
   the register; `Parser::parse_part` rejects an elapsed token after a larger clock token.
-- Follow-up: T-3547 (`"[h].0 General"`, probes/t3419-elapsed-after-date-b A19, still `#VALUE!` here).
+- Follow-up: T-3575 (`"[h].0 General"`, probes/t3419-elapsed-after-date-b A19, still `#VALUE!` here).
