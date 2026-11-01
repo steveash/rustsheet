@@ -3,7 +3,7 @@ id: T-3599
 title: "FORECAST.ETS family core and FORECAST.ETS.SEASONALITY: adapt gridcraft's AAA series and season detection (owner ruling, unverified against Excel)"
 milestone: M14
 lane: functions-stat
-status: blocked
+status: in-progress
 priority: P2
 size: M
 tier: opus
@@ -41,7 +41,7 @@ the member's computation).
 - Matching desktop Excel (T-2425, after T-1553).
 
 ## Blocked because
-Blocked because: review-round limit
+Resumed after the review-round limit (step 5c).
 Round 3 (head 38269591): security, architecture and excel-fidelity APPROVE; quality REQUEST_CHANGES on one duplicate
 helper (`error_kind` in forecast.rs copied date_and_time.rs's). Fixed on the branch after round 3: forecast.rs reuses
 `date_and_time::error_kind`, the series enum is renamed `DuplicateAggregate` with a `match` in `from_setting`, and
