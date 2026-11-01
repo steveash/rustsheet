@@ -8,7 +8,7 @@
 
 use statrs::distribution::{Binomial, Discrete, DiscreteCDF, NegativeBinomial};
 
-use super::bratio::{basym_tails, closed_or_ported_tails, dispatch, ported_tails, Branch};
+use super::bratio::{closed_or_ported_tails, dispatch, ported_tails, Branch};
 use super::discrete::{binomial_cdf, binomial_pmf, binomial_range, odds, times_ratio};
 use super::incomplete_beta::closed_form_tails;
 use super::loader::excel_dbinom_exponent;
@@ -104,9 +104,7 @@ impl Model {
         if cumulative && k >= 1 && k < n {
             // Then the bratio port's branches (T-2847), basym among them (T-3352).
             let (x, y, a, b) = (p, 1.0 - p, number_s + 1.0, trials - number_s);
-            if let Some((_, upper)) =
-                closed_or_ported_tails(x, y, a, b).or_else(|| basym_tails(x, y, a, b))
-            {
+            if let Some((_, upper)) = closed_or_ported_tails(x, y, a, b) {
                 return Ok(flush_subnormal(upper));
             }
         }
@@ -322,9 +320,7 @@ impl Model {
             // bfrac misses by one ulp (its w is correctly rounded, but 1 - w is then an exact tie
             // that rounds the other way; T-2508).
             if !walk_first {
-                if let Some((lower, _)) =
-                    ported_tails(a, b, x, y).or_else(|| basym_tails(x, y, a, b))
-                {
+                if let Some((lower, _)) = ported_tails(a, b, x, y) {
                     return Ok(flush_subnormal(lower));
                 }
             }

@@ -3,7 +3,7 @@ id: T-3443
 title: "BETA.DIST, F.DIST and T.DIST take bratio's basym at two large shapes, with BETA.INV still inverting to Excel's root"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -42,3 +42,26 @@ BETA.INV or F.INV off Excel's root.
 
 ## Out of scope
 - Excel's arithmetic inside basym (last digits; Phase 1b).
+
+## Outcome
+BETA.DIST, F.DIST and F.DIST.RT (and BETA.INV's and F.INV's searches) take bratio's basym at its points:
+`Branch::Basym` is now one of `bratio::ported_tails`' branches, so `bratio::basym_tails` (the binomial family's
+separate fallback) is gone. T.DIST never reaches basym (its kernel call has b = 1/2). BETA.INV
+(`beta.rs` `beta_crossing`) returns the bracket end whose tail is nearer the target where the crossing dispatches to
+basym, and the even end elsewhere. That keeps H29 at 0.555: at the root basym's upper tail is one ulp above fl(1 - p).
+- Excel evidence: probes-numeric/t3443-basym-a (in-sample), t3443-basym-hold (hold-out, scored once on the frozen
+  rule) and t3443-basym-sweep (fresh sweep, filled after the freeze), 220 cells each, excel-graph; generator
+  docs/research/t3443/gen_probe.py. Counts (exact / within 15 digits / visibly off, main then T-3443) are in
+  statistics.md "BETA.DIST and F.DIST at basym points; BETA.INV takes the nearest end there (T-3443)". Hold-out:
+  BETA.DIST 1/12/37 to 7/23/20, F 0/5/35 to 2/15/23, BETA.INV 30/49/11 to 46/36/8, F.INV 5/21/14 to 3/24/13.
+- R4 (decision 0188): the crossing rule is a structural choice among two candidates (nearest end, even end), scoped
+  to basym points, so no `FITTED` tag; the split was fixed before scoring, the hold-out was scored once, and the fresh
+  sweep was filled after the freeze (BETA.INV 48/33/9). No per-shape or keep-matched branch. Gate A (`rustsheet-eval
+  accuracy`) passes. The nearest end misses 5 in-sample BETA.INV cells the even end hits, recorded in statistics.md.
+- Acceptance 2 is partly met: the round trips' remaining visibly-off cells (in-sample BETA.INV 4, F.INV 13) follow the
+  cdf's last digits, which are Excel's arithmetic inside basym (this task's out of scope). T-3597 owns them, with the
+  cdf cells still visibly off (BETA.DIST 33 and F 17 in-sample).
+- Eval delta (main to HEAD): ironcalc-calc BETADIST_BETAINV.xlsx G29 fixed and H29 still passes (known failures
+  335 to 334); probes-numeric t1543-inverse-cdf-tiny-p 2 cells within 15 digits to exact, t3354-f-dist-sweep 1 visibly
+  off to within 15 digits; no other cell of probes, probes-numeric, gen-m9 or ironcalc-calc moved; no gated
+  regression; in-scope visibly-off cells 2621 to 2600.
