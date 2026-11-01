@@ -3,7 +3,7 @@ id: T-3549
 title: "Gate A slice 3f: reference tables for SUM and AVERAGE, with the near-zero snap ruled on"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
