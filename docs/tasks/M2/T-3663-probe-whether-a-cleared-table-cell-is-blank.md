@@ -16,8 +16,8 @@ excel-graph backend's `{"entered": ""}` (a PATCH of `values: [[""]]`, tools/src/
 backends.py) stores in a cell, so references.md rule 8(e) rests on a blank, not on empty text.
 
 ## Context
-- From the T-3025 Excel-fidelity review (MINOR). It was first filed as T-3328 in draft PR #2495, which
-  never merged; that id now names another task.
+- From the T-3025 Excel-fidelity review (MINOR). It was first drafted as T-3328 in PR #2495,
+  which never merged.
 - probes/t3025-blank-beside-calculated reads only `FORMULATEXT(C3)` = `#N/A`. That proves C3 holds no
   formula, not that it is blank.
 - If Graph stores empty text, T-3025's result only repeats probes/t2957-constant-then-refill. Then

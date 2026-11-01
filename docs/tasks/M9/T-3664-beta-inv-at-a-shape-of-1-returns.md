@@ -87,7 +87,7 @@ cells 1 to 12 ulp from Excel) goes to a follow-up with `defer: phase-1b`.
 Blocked because: the baseline step needs `rustsheet-eval update-baseline --allow-regressions`, which this session's
 permission policy refused; the owner (or a session allowed to run it) has to run it.
 
-The code, unit test and semantics entry are on this branch. With it, `make eval-check` reports one gated regression:
+The code, unit test and semantics entry are on #2592's branch. With it, `make eval-check` reports one gated regression:
 gen-m9/589f42e67f4b4b8d Calc!A221 `BETAINV(0.001,1,42)` goes from bit-exact to 1 ulp off (Excel
 2.3821152785727803E-5, ours 2.3821152785727806E-5, within 15 digits). It also reports one fixed cell each in gen-m9,
 ironcalc-calc and probes. The trade meets all four conditions of decision 0083's standing ulp-regression allowance,
@@ -103,7 +103,7 @@ Next: run `scripts/eval_guard.sh target/release/rustsheet-eval update-baseline -
 eval/baseline/gen-m9.txt, then run `make check` and the review panel. The excel-fidelity reviewer quotes A221 and its
 1 ulp.
 
-## Outcome (draft, before the baseline step)
+## Results on #2592's branch (before the baseline step)
 - `beta.rs::beta_quantile_shape_one`: at a shape of exactly 1 and p >= 1E-15, BETA.INV and BETAINV return the closed
   form (p; -expm1(log1p(-p)/beta); exp(ln(p)/alpha)) instead of the crossing of BETA.DIST's cdf, which is flat there.
   Shapes above 1E5 still take `beta_quantile_crossing` first, and p below 1E-15 keeps the search (t1543 A73:A75).
