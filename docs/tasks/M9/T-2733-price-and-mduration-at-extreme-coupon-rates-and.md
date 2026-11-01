@@ -97,4 +97,7 @@ close to correctly rounded and the engine not.
   - gen-m9/5ded7594e597e31e Calc!A123 `DURATION(37952,44607,123456789.123,Data!$C3,1,2)`: 2.1997586986000424 vs
     2.199758698600043, 1 ulp.
   probes/yield-newton-domain P!B7, which regressed by an ulp before the merge, passes on top of T-3215's YIELD start.
-- Follow-ups: T-2972 (the 43 DURATION/MDURATION residue cells, `defer: phase-1b`), T-2973 (the five regressed cells).
+- Re-record after merging `main` at f8c8c86e4 (2026-11-01): one more cell regressed under the same allowance, owned by
+  T-2973: probes/yield-deep-discount-sweep S!F3 `YIELD(39681,45662,3,10,102,4)`: 13.005294552150495 vs
+  13.005294552150497, 1 ulp. The same merge fixes 17 gen-m9 and 427 probes known failures.
+- Follow-ups: T-2972 (the 43 DURATION/MDURATION residue cells, `defer: phase-1b`), T-2973 (the six regressed cells).
