@@ -1,0 +1,49 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3575 b: the formats the round-2 review left open - .000/.0000 after an hour or minute token, h:mm.0 forms, mm.0 beside date tokens, m.0. One question per cell in column A.",
+ "tags": [
+  "M10",
+  "number-formats",
+  "text",
+  "probe",
+  "T-3575"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=TEXT(12345.678,\"[h].000\")",
+    "A2": "=TEXT(0.1234567,\"[h].000\")",
+    "A3": "=TEXT(0.1234567,\"h.000\")",
+    "A4": "=TEXT(0.1234567,\"[m].000\")",
+    "A5": "=TEXT(0.1234567,\"mm.000\")",
+    "A6": "=TEXT(0.1234567,\"h.0000\")",
+    "A7": "=TEXT(0.1234567,\"h:mm.0\")",
+    "A8": "=TEXT(0.1234567,\"hh:mm.0\")",
+    "A9": "=TEXT(0.1234567,\"h mm.0\")",
+    "A10": "=TEXT(0.1234567,\"h:mm.00\")",
+    "A11": "=TEXT(0.1234567,\"h:mm.000\")",
+    "A12": "=TEXT(0.1234567,\"[h]:mm.00\")",
+    "A13": "=TEXT(12345.678,\"mm.0 yyyy\")",
+    "A14": "=TEXT(12345.678,\"mm.0 d\")",
+    "A15": "=TEXT(12345.678,\"yyyy mm.0\")",
+    "A16": "=TEXT(12345.678,\"d mm.0\")",
+    "A17": "=TEXT(12345.678,\"m.0\")",
+    "A18": "=TEXT(0.1234567,\"m.0\")",
+    "A19": "=TEXT(0.1234567,\"mm.00\")",
+    "A20": "=TEXT(0.1234567,\"h.00\")",
+    "A21": "=TEXT(12345.678,\"mm.0 General\")",
+    "A22": "=TEXT(0.1234567,\"hh.0\")",
+    "A23": "=TEXT(0.1234567,\"mm.0 ss\")",
+    "A24": "=TEXT(0.6,\"h.0 AM/PM\")",
+    "A25": "=TEXT(0.1234567,\"[mm].0\")",
+    "A26": "=TEXT(0.1234567,\"mm.0 h\")",
+    "A27": "=TEXT(0.1234567,\"s.0000\")",
+    "A28": "=TEXT(0.1234567,\"[h]:mm.000\")",
+    "A29": "=TEXT(0.1234567,\"h:mm.0 AM/PM\")",
+    "A30": "=TEXT(0.1234567,\"mm.0 h:mm\")"
+   },
+   "expected": {}
+  }
+ ]
+}

@@ -130,6 +130,13 @@ pub(crate) fn rejected_clock_text_format(
     current_year: CurrentYear,
     date_system: DateSystem,
 ) -> Option<String> {
+    // Typed `-$3 1/2%` stays text but takes `0.00%` like the numeric mixed fractions (A15).
+    if crate::mixed_fraction::is_negative_currency_percent_fraction(
+        original.trim_matches(' '),
+        currencies,
+    ) {
+        return Some(MIXED_FRACTION_PERCENT_FORMAT.to_string());
+    }
     let (rest, word) = without_single_letter_dot(original).rsplit_once(' ')?;
     if !["am", "pm", "a", "p"]
         .iter()

@@ -1,3 +1,4 @@
+use super::elapsed::takes_second_fraction;
 use super::lexer::{Compare, Lexer, Token};
 use super::locale_tag::{self, Calendar, DateNames, LocaleTag};
 use crate::locale::excel_date_names::EN_US;
@@ -366,6 +367,12 @@ impl Parser {
             && matches!(self.lexer.peek_token(), Token::Second | Token::SecondPadded)
     }
 
+    /// Whether `m`/`mm` before `next_token` is a minute because `.0` follows, wherever it stands
+    /// (`mm.0 yyyy` is "16.2 1933"; probes/t3575-fraction-after-elapsed-b; number-formats.md).
+    fn minute_before_fraction(&mut self, next_token: &Token) -> bool {
+        *next_token == Token::Period && self.lexer.peek_token() == Token::Zero
+    }
+
     fn parse_part(&mut self) -> ParsePart {
         // Set from the last part read; error parts never reach the empty-section check.
         self.ends_in_separator = false;
@@ -476,20 +483,11 @@ impl Parser {
                     tokens.push(TextToken::Literal('%'));
                     percent += 1;
                 }
-                // `.0`, `.00`, `.000` after a seconds token are the fraction of the second
-                // (number-formats.md "Elapsed-time tokens", "Fractional seconds in clock
-                // formats"); more zeros are unprobed and stay an error.
+                // `.0`, `.00`, `.000` after an h/m/s token are the fraction of the second, and
+                // more zeros are an error (number-formats.md "Elapsed-time tokens").
                 Token::Period
                     if next_token == Token::Zero
-                        && matches!(
-                            tokens.last(),
-                            Some(
-                                TextToken::Second
-                                    | TextToken::SecondPadded
-                                    | TextToken::ElapsedSecond
-                                    | TextToken::ElapsedSecondPadded
-                            )
-                        ) =>
+                        && tokens.last().is_some_and(takes_second_fraction) =>
                 {
                     let mut digits = 0;
                     while next_token == Token::Zero {
@@ -678,12 +676,14 @@ impl Parser {
                     tokens.push(TextToken::MonthName);
                 }
                 Token::Month | Token::MonthPadded => {
-                    let padded = matches!(token, Token::MonthPadded);
-                    let minute =
+                    // A `mm.0` minute leaves `minute_read` ("mm.0 h:mm" is "57.7 2:57"; t3575-b A30).
+                    let fraction = self.minute_before_fraction(&next_token);
+                    let clock =
                         (is_time && !minute_read) || self.minute_before_seconds(&next_token);
-                    minute_read |= minute;
-                    is_date |= !minute;
-                    tokens.push(match (minute, padded) {
+                    let minute = clock || fraction;
+                    minute_read |= clock;
+                    is_date |= !minute || fraction;
+                    tokens.push(match (minute, token == Token::MonthPadded) {
                         (true, false) => TextToken::Minute,
                         (true, true) => TextToken::MinutePadded,
                         (false, false) => TextToken::Month,
@@ -877,7 +877,7 @@ impl Parser {
         // Excel: a section with two bracketed elapsed tokens is #VALUE! for any value (`[h]:[mm]`,
         // `[mm]:[ss]`; probes/negative-date-sections-1900 and -1904 A9, A21, A22; dates.md "Negative
         // serials under an explicit negative section"). A bare `h` after `[h]` is not bracketed.
-        if bracketed_elapsed > 1 {
+        if bracketed_elapsed > 1 || super::elapsed::elapsed_after_larger_clock(&tokens) {
             return ParsePart::Error(ErrorPart::default());
         }
         if repeated_locale {

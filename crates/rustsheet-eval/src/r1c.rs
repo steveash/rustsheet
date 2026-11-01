@@ -135,6 +135,17 @@ impl R1cCells {
         self.cells.get(id).copied().unwrap_or(R1c::Counts)
     }
 
+    /// The cells R1(c) leaves out of the count, with their class: what the report writes as
+    /// `r1c_left_out` for `scripts/exit_owners.py` (T-3428). Counted cells are the rest.
+    #[must_use]
+    pub fn left_out(&self) -> BTreeMap<String, R1c> {
+        self.cells
+            .iter()
+            .filter(|(_, c)| **c != R1c::Counts)
+            .map(|(id, c)| (id.clone(), *c))
+            .collect()
+    }
+
     /// Whether R1(c) counts the visibly-off cell `id`.
     #[must_use]
     pub fn counts(&self, id: &str) -> bool {

@@ -183,6 +183,9 @@ class Collected:
 
     ready: list[merge_ready.Verdict] = field(default_factory=list)
     unlabel: list[tuple[int, str]] = field(default_factory=list)
+    # Ready PRs that GitHub says conflict with main: ejected like step 3's, so the janitor and the
+    # worker see one `merge-train-ejected` path (decision 0224).
+    eject: list[tuple[int, str]] = field(default_factory=list)
     keep: list[tuple[int, str]] = field(default_factory=list)
     # Verdict-record gaps under `verdict_records = "warn"` (decision 0178): reported only.
     warnings: list[tuple[int, str]] = field(default_factory=list)
@@ -208,7 +211,7 @@ def collect(client: Client, repo: merge_ready.Repo) -> Collected:
             found.keep.append((pr, reasons))
         elif verdict.ready:
             if merge_ready.text_of(client.pull(pr), "mergeable_state") == "dirty":
-                found.unlabel.append((pr, "conflict with main"))
+                found.eject.append((pr, "conflict with main"))
             else:
                 found.ready.append(verdict)
     found.ready.sort(key=lambda v: (v.updated_at, v.comment_id or 0))
@@ -234,6 +237,7 @@ def dry_run(client: Client, root: Path = ROOT) -> str:
     lines.append("batch: " + (", ".join(f"#{m.pr} ({m.head[:12]})" for m in train.members) or "none"))
     lines += [f"deferred #{pr}: {reason}" for pr, reason in train.deferred]
     lines += [f"would eject #{pr}: {reason}" for pr, reason in train.ejected]
+    lines += [f"would eject #{pr}: {reason}" for pr, reason in found.eject]
     lines += [f"would unlabel #{pr}: {reason}" for pr, reason in found.unlabel]
     lines += [f"skipped, label kept #{pr}: {reason}" for pr, reason in found.keep]
     decided = {m.pr for m in train.members} | {pr for pr, _ in (*train.deferred, *train.ejected)}
@@ -519,7 +523,7 @@ class Stage:
             if merge_ready.text_of(r, "path") == merge_ready.CI_WORKFLOW
             and merge_ready.text_of(r, "event") in TRAIN_EVENTS and merge_ready.int_of(r, "id") > 0
         )
-        state, jobs = merge_ready.ci_state(runs, self.client.check_runs(tip), docs_only, TRAIN_EVENTS)
+        state, jobs = merge_ready.ci_state(runs, self.client.check_runs(tip), docs_only, TRAIN_EVENTS, early=True)
         return state, jobs, ids
 
     def gate(self, n: int) -> None:
@@ -687,6 +691,8 @@ class Stage:
         self.log += found.warning_lines()
         for pr, reason in found.unlabel:
             self.unlabel(pr, reason)
+        for pr, reason in found.eject:
+            self.unlabel(pr, reason, eject=True)
         heads = candidates(found)
         if not heads:
             self.log.append("no ready PR")

@@ -32,6 +32,7 @@ import sys
 from collections.abc import Callable
 from fractions import Fraction
 from functools import cache
+from typing import TypeVar
 
 from rustsheet_tools.fitlab.exact import pi_cr
 from rustsheet_tools.fitlab.fit import Fit
@@ -96,6 +97,33 @@ def ln_gamma_decimal(z: decimal.Decimal) -> decimal.Decimal:
     return c.subtract(total, shift)
 
 
+Number = TypeVar("Number", decimal.Decimal, float)
+
+
+def betacf(a: Number, b: Number, x: Number, tol: Number, max_terms: int) -> tuple[Number, bool]:
+    """Numerical Recipes' continued fraction for I_x(a, b) (modified Lentz, DLMF 8.17.22) in the caller's number
+    type: a fixed-context Decimal here, an mpmath mpf at the working precision in Gate A (`accuracy.defs.student_t`).
+    Returns the fraction (I_x(a, b) = x^a (1-x)^b / (a B(a, b)) times it) and whether a step reached `tol` within
+    `max_terms`. It converges fast for x < (a + 1)/(a + b + 2)."""
+    qab, qap, qam = a + b, a + 1, a - 1
+    cc, d = a / a, 1 / (1 - qab * x / qap)  # a / a: 1 in the caller's number type
+    h = d
+    for m in range(1, max_terms):
+        m2 = 2 * m
+        aa = m * (b - m) * x / ((qam + m2) * (a + m2))
+        d = 1 / (1 + aa * d)
+        cc = 1 + aa / cc
+        h *= d * cc
+        aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2))
+        d = 1 / (1 + aa * d)
+        cc = 1 + aa / cc
+        delta = d * cc
+        h *= delta
+        if abs(delta - 1) < tol:
+            return h, True
+    return h, False
+
+
 def _ibeta_decimal(dx: decimal.Decimal, da: decimal.Decimal, db: decimal.Decimal) -> decimal.Decimal:
     """I_x(a, b) for 0 < x < 1 at 70 digits: NR's continued fraction."""
     c = _CTX
@@ -104,23 +132,7 @@ def _ibeta_decimal(dx: decimal.Decimal, da: decimal.Decimal, db: decimal.Decimal
         dx, da, db = 1 - dx, db, da
     lbt = ln_gamma_decimal(da + db) - ln_gamma_decimal(da) - ln_gamma_decimal(db)
     lbt = lbt + da * c.ln(dx) + db * c.ln(1 - dx)
-    qab, qap, qam = da + db, da + 1, da - 1
-    cc, d = decimal.Decimal(1), 1 / (1 - qab * dx / qap)
-    h = d
-    tol = decimal.Decimal(10) ** -62
-    for m in range(1, _MAX_CF_TERMS):
-        m2 = 2 * m
-        aa = m * (db - m) * dx / ((qam + m2) * (da + m2))
-        d = 1 / (1 + aa * d)
-        cc = 1 + aa / cc
-        h *= d * cc
-        aa = -(da + m) * (qab + m) * dx / ((da + m2) * (qap + m2))
-        d = 1 / (1 + aa * d)
-        cc = 1 + aa / cc
-        delta = d * cc
-        h *= delta
-        if abs(delta - 1) < tol:
-            break
+    h, _ = betacf(da, db, dx, decimal.Decimal(10) ** -62, _MAX_CF_TERMS)
     v = c.exp(lbt) * h / da
     return 1 - v if flip else v
 

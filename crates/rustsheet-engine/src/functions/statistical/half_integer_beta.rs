@@ -12,6 +12,13 @@ const SERIES_TERMS: u32 = 100_000;
 /// pi as a double-double (hi + lo).
 const PI_DD: (f64, f64) = (std::f64::consts::PI, 1.224_646_799_147_353_2e-16);
 
+/// 1/sqrt(pi) as a double-double (200-bit mpmath): the factor 1/Gamma(1/2) of the half-integer
+/// shapes' prefactors (bgrat's at b = 1/2, the incomplete gamma's `half_integer_upper`).
+pub(super) const FRAC_1_SQRT_PI: (f64, f64) = (
+    f64::from_bits(0x3FE2_0DD7_5042_9B6D),
+    f64::from_bits(0x3C61_AE3A_914F_ED80),
+);
+
 /// Whether `v` is a half-integer shape of at least 1/2 (1/2, 1, 3/2, ...): df/2 for a whole df.
 pub(super) fn is_half_integer_shape(v: f64) -> bool {
     v >= 0.5 && (2.0 * v).fract() == 0.0
