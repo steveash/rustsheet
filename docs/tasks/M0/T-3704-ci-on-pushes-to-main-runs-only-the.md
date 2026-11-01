@@ -3,7 +3,7 @@ id: T-3704
 title: "CI on pushes to main runs only the eval report"
 milestone: M0
 lane: harness
-status: done
+status: blocked
 priority: P3
 size: S
 tier: opus
@@ -32,15 +32,32 @@ mode (scripts/merge_train.toml) the train branch's CI tests the sha that lands.
 ## Out of scope
 - PR or merge-train CI.
 
-## Outcome
-Decision 0239: `cancel-in-progress` is now `${{ github.ref != 'refs/heads/main' }}`.
-- A PR's or a train's older run is still cancelled by a newer push.
-- A run on main that starts now finishes, with its full gates and decision 0054's eval report.
-  On 2026-11-01, 12 of 16 runs on main had been cancelled after 0.2-5.6 min.
+## Blocked because
+Blocked because: needs an owner ruling. The change contradicts a decision SPEC-0027 made on
+purpose.
 
-The optional trim of main's gates is not taken. In `lock` mode, and for anything outside the
-train, the run on main is the only run of the landed sha. Main runs keep every gate.
+What #2739 does: it sets `cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}`, with
+decision 0239 drafted on the branch `agent/harness/T-3704-main-ci-not-cancelled`. The quality
+reviewer requested changes on 50e43ffc6.
 
-The effect shows on main's runs after this merges: the share of runs on main that finish, instead
-of 4 of 16. The steward's health line reads it.
+What SPEC-0027 says:
+- Section 5, "Intermediate states", decides that `main`'s push runs are cancelled on purpose. The
+  train already tested `S_n`'s tree, and the intermediate squashes only confirm prefixes of it.
+  Back-to-back trains may also cancel `S_n`'s own run.
+- The daily steward run keeps one full report a day.
+- Rejected alternative 17 lists exempting `main` from `cancel-in-progress`.
+
+The 12 of 16 cancelled `main` runs measured on 2026-11-01 are that design working, not a defect.
+
+The spec's cost argument ("multiplies `main`'s CI cost by n") overstates the cost. GitHub keeps at
+most one pending run per concurrency group, so with no cancelling on `main` a train of n squashes
+runs `S_1`, the first prefix, and `S_n`, about one extra run per train. The gain is small: a
+finished run and report on `S_n` even when the next train lands at once, and a test of `S_1`.
+
+Options for the owner:
+- (a) drop the task, keeping SPEC-0027 as it is;
+- (b) take #2739 after amending SPEC-0027 section 5 and alternative 17 and citing 0147, as the
+  quality reviewer asked;
+- (c) keep cancelling on `main`, but let the steward's daily full eval report (already the
+  spec's backstop) record how many squashes went untested that day.
 
