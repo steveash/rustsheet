@@ -1,0 +1,47 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3033: calculatedColumnFormula A2*2 on Calc, stored in all of C2:C5, then C4 entered =A4*3 (an occupied row). Does the typed formula re-fill the other rows after load (FORMULATEXT C2:C5 in F2:F5)?",
+ "tags": [
+  "M2",
+  "tables",
+  "probe"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "S",
+   "tables": [
+    {
+     "name": "T",
+     "ref": "A1:C5",
+     "calculated": {
+      "C": "=A2*2"
+     }
+    }
+   ],
+   "cells": {
+    "A1": "Col",
+    "B1": "Other",
+    "C1": "Calc",
+    "A2": 1,
+    "B2": 10,
+    "A3": 2,
+    "B3": 20,
+    "A4": 4,
+    "B4": 40,
+    "A5": 8,
+    "B5": 80,
+    "F2": "=FORMULATEXT(C2)",
+    "F3": "=FORMULATEXT(C3)",
+    "F4": "=FORMULATEXT(C4)",
+    "F5": "=FORMULATEXT(C5)",
+    "C2": "=A2*2",
+    "C3": "=A3*2",
+    "C4": {
+     "entered": "=A4*3"
+    },
+    "C5": "=A5*2"
+   }
+  }
+ ]
+}

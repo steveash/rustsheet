@@ -1,4 +1,7 @@
-use super::elapsed::{elapsed_text, DisplayClock, ElapsedUnit};
+use super::elapsed::{
+    date_section_register, elapsed_text, elapsed_token, is_date_or_clock, DisplayClock,
+    FractionalSeconds,
+};
 use super::fraction::{comma_exponent, format_fraction};
 use super::general::{format_general, lead_abs};
 use crate::{
@@ -14,7 +17,7 @@ use std::collections::BTreeSet;
 pub use super::formatted::Formatted;
 use super::formatted::{unshowable_text, MAX_TEXT_FORMAT_CHARS};
 pub(crate) use super::parse_formatted::{
-    parse_formatted_number, parse_typed_number, rejected_clock_text_format,
+    parse_formatted_number, parse_typed_number, rejected_clock_text_format, script_digit_to_ascii,
 };
 use super::{
     calendar_dates::{calendar_ymd, hebrew_month_name, year_token_text, HEBREW_LAST_NAMED_YEAR},
@@ -451,6 +454,12 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             {
                 return invalid_date(value_original);
             }
+            // What `General` prints here and what an elapsed token after a date or clock token
+            // counts from: `TEXT(5,"d [h] General")` is "5 12 0.5" but `"[h] d General"` "120 5 0.5"
+            // (T-3378, T-3419; number-formats.md "`General` in a date section").
+            let general_value = date_section_register(value, tokens, fraction_digits);
+            let register = FractionalSeconds::new(general_value, fraction_digits.unwrap_or(0));
+            let mut split = false;
             let clock = DisplayClock::new(value, fraction_digits);
             let (hours, minutes, seconds) = clock.hms;
             let elapsed_fraction = clock.elapsed.as_ref();
@@ -475,6 +484,9 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             let mut seen_era = false;
             let mut names = NameTokens::new(p);
             for token in tokens {
+                // Excel: a date or clock token leaves the register holding the serial's last
+                // component, so an elapsed token after it counts from that (T-3419).
+                split |= is_date_or_clock(token);
                 match token {
                     TextToken::Literal(c) => {
                         text = format!("{text}{c}");
@@ -496,7 +508,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                     }
                     TextToken::Digit(_) => {}
                     TextToken::Period => {}
-                    TextToken::General => {}
+                    TextToken::General => text.push_str(&general_text(general_value, locale)),
                     TextToken::Day => {
                         if !date_valid {
                             return invalid_date(value);
@@ -627,33 +639,20 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         let minute = minutes as i32;
                         text = format!("{text}{minute:02}");
                     }
-                    TextToken::ElapsedHour => {
-                        let hour = elapsed_text(value, false, ElapsedUnit::Hour, elapsed_fraction);
-                        text = format!("{text}{hour}");
-                    }
-                    TextToken::ElapsedHourPadded => {
-                        let hour = elapsed_text(value, true, ElapsedUnit::Hour, elapsed_fraction);
-                        text = format!("{text}{hour}");
-                    }
-                    TextToken::ElapsedMinute => {
-                        let minute =
-                            elapsed_text(value, false, ElapsedUnit::Minute, elapsed_fraction);
-                        text = format!("{text}{minute}");
-                    }
-                    TextToken::ElapsedMinutePadded => {
-                        let minute =
-                            elapsed_text(value, true, ElapsedUnit::Minute, elapsed_fraction);
-                        text = format!("{text}{minute}");
-                    }
-                    TextToken::ElapsedSecond => {
-                        let second =
-                            elapsed_text(value, false, ElapsedUnit::Second, elapsed_fraction);
-                        text = format!("{text}{second}");
-                    }
-                    TextToken::ElapsedSecondPadded => {
-                        let second =
-                            elapsed_text(value, true, ElapsedUnit::Second, elapsed_fraction);
-                        text = format!("{text}{second}");
+                    TextToken::ElapsedHour
+                    | TextToken::ElapsedHourPadded
+                    | TextToken::ElapsedMinute
+                    | TextToken::ElapsedMinutePadded
+                    | TextToken::ElapsedSecond
+                    | TextToken::ElapsedSecondPadded => {
+                        if let Some((unit, padded)) = elapsed_token(token) {
+                            let count = if split {
+                                elapsed_text(general_value, padded, unit, register.as_ref())
+                            } else {
+                                elapsed_text(value, padded, unit, elapsed_fraction)
+                            };
+                            text.push_str(&count);
+                        }
                     }
                     TextToken::SecondFraction(digits) => {
                         text.push('.');

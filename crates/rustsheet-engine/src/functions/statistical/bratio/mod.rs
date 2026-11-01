@@ -2,19 +2,21 @@
 //! Fortran, ported one branch at a time (SPEC-0025; docs/excel-semantics/statistics.md "Incomplete beta
 //! is TOMS 708 `bratio`"). This file is the dispatch: which branch bratio takes for a point, after
 //! its swap, and the branches ported so far ([`ported_tails`]): bfrac ([`bfrac`]) for b0 >= 40, bpser ([`bpser`]) for
-//! w = bpser(a0, b0, x0), w1 = bpser(b0, a0, y0) and min(a, b) > 1, and L140's bup + bpser
-//! ([`bup`]). The line-by-line model is `docs/research/t2464/r2-bratio/bratio_excel.py`
-//! `kernel`; every branch not ported yet keeps today's kernel (`incomplete_beta.rs`, SPEC-0025's
-//! migration).
+//! w = bpser(a0, b0, x0), w1 = bpser(b0, a0, y0) and min(a, b) > 1, L140's bup + bpser
+//! ([`bup`]), and basym ([`basym`]) for two shapes above 100 near the mean. The line-by-line
+//! model is `docs/research/t2464/r2-bratio/bratio_excel.py` `kernel`; every branch not ported yet
+//! keeps today's kernel (`incomplete_beta.rs`, SPEC-0025's migration).
 
+mod basym;
 mod bfrac;
 mod bgrat;
 pub(super) mod bpser;
 mod bup;
 pub(super) mod ln_beta;
 
-use super::incomplete_beta::{beta_reg_tails, closed_form_tails};
+use super::incomplete_beta::{beta_reg_tails, closed_form_tails, search_tails};
 use crate::arithmetic::extended_sum;
+use basym::basym;
 use bfrac::bfrac;
 use bgrat::bgrat_half;
 use bpser::bpser;
@@ -30,6 +32,9 @@ const W1_BPSER_MIN_X: f64 = 0.3;
 
 /// bratio's tolerance for bfrac, 15·eps.
 const BFRAC_EPS_FACTOR: f64 = 15.0;
+
+/// bratio's tolerance for basym, 100·eps.
+const BASYM_EPS_FACTOR: f64 = 100.0;
 
 /// The bup terms bratio takes before bgrat for b0 <= 15 (its `n = 20`).
 const BUP_BGRAT_TERMS: f64 = 20.0;
@@ -192,9 +197,19 @@ fn small_shape_branch(a0: f64, b0: f64, x0: f64) -> Branch {
 /// table): [`kernel_tails`]'s w, plus bratio's bgrat branches at a0 = 1/2 (T-2509's `bgrat_half`).
 /// Those are a net visible gain for BETA.DIST (T-2510: 30 fewer visibly-off cells, none more), not
 /// for F (see [`t_kernel_tails`]), so F's callers (`fisher.rs`) keep [`kernel_tails`].
-/// BETA.INV's search (`inverse_beta.rs`) crosses this same kernel.
+/// BETA.INV's search (`beta.rs`) crosses it where it is closed or ported ([`beta_search_tails`]).
 pub(crate) fn beta_dist_lower_tail(x: f64, y: f64, a: f64, b: f64) -> f64 {
     kernel_tails_with(x, y, a, b, true).0
+}
+
+/// (w, w1) of BETA.DIST's kernel ([`beta_dist_lower_tail`]) where it is closed or ported, the tails
+/// BETA.INV's search crosses (T-3398). On the branches not ported yet BETA.DIST sums the accurate
+/// half-integer series (thousands of double-double terms near x = 1: 0.32 ms a cdf at
+/// a = 170, b = 1.5, x = 0.99), so the search takes the bounded Cephes kernel there instead
+/// (`incomplete_beta::search_tails`, at most two 300-step fractions), as it did before T-3398:
+/// 129 cdfs of the series would cost 8 ms an element, past BETA.INV's lift weight.
+pub(crate) fn beta_search_tails(x: f64, y: f64, a: f64, b: f64) -> (f64, f64) {
+    closed_or_ported_with(x, y, a, b, true).unwrap_or_else(|| search_tails(x, y, a, b))
 }
 
 /// (w, w1) of K(a, b, x, y), x and y formed by the caller per SPEC-0025's caller table:
@@ -206,16 +221,20 @@ pub(crate) fn kernel_tails(x: f64, y: f64, a: f64, b: f64) -> (f64, f64) {
 
 /// [`kernel_tails`], with bratio's bgrat branches at a0 = 1/2 when `half_bgrat`.
 fn kernel_tails_with(x: f64, y: f64, a: f64, b: f64, half_bgrat: bool) -> (f64, f64) {
-    closed_form_tails(x, y, a, b)
-        .or_else(|| ported_tails_with(a, b, x, y, half_bgrat))
-        .unwrap_or_else(|| beta_reg_tails(x, y, a, b))
+    closed_or_ported_with(x, y, a, b, half_bgrat).unwrap_or_else(|| beta_reg_tails(x, y, a, b))
+}
+
+/// Excel's closed forms, then the port's branches (with bgrat at a0 = 1/2 when `half_bgrat`);
+/// `None` where neither applies and the caller picks its fallback kernel.
+fn closed_or_ported_with(x: f64, y: f64, a: f64, b: f64, half_bgrat: bool) -> Option<(f64, f64)> {
+    closed_form_tails(x, y, a, b).or_else(|| ported_tails_with(a, b, x, y, half_bgrat))
 }
 
 /// (w, w1) of K(a, b, x, y), x and y formed by the caller per SPEC-0025's caller table: Excel's
 /// closed forms first (`incomplete_beta::closed_form_tails`, T-2502), then the branches of the
 /// port ([`ported_tails`]). `None` where neither applies, and the caller keeps today's kernel.
 pub(crate) fn closed_or_ported_tails(x: f64, y: f64, a: f64, b: f64) -> Option<(f64, f64)> {
-    closed_form_tails(x, y, a, b).or_else(|| ported_tails(a, b, x, y))
+    closed_or_ported_with(x, y, a, b, false)
 }
 
 /// (w, w1) of K(a, b, x, y) on the branches ported so far, `None` elsewhere. bratio computes one
@@ -238,7 +257,7 @@ pub(super) fn t_kernel_tails(a: f64, y: f64, z: f64) -> Option<(f64, f64)> {
 }
 
 /// [`ported_tails`], with bratio's bgrat branches at a0 = 1/2 when `half_bgrat`.
-// TODO(T-3383): drop `half_bgrat` once Excel's F at a df of 1 and bgrat for every b are found.
+// TODO(T-3580): drop `half_bgrat` once F takes its own arguments and bgrat at b = 1/2 (T-3567).
 fn ported_tails_with(a: f64, b: f64, x: f64, y: f64, half_bgrat: bool) -> Option<(f64, f64)> {
     if a == 1.0 || b == 1.0 {
         return None;
@@ -254,7 +273,7 @@ fn ported_tails_with(a: f64, b: f64, x: f64, y: f64, half_bgrat: bool) -> Option
             let w1 = bpser(d.b0, d.a0, d.y0)?;
             (other(w1), w1)
         }
-        // bgrat's b is a0: only b = 1/2 is ported (T-2509; T-2510 and T-3383 own the rest).
+        // bgrat's b is a0: only b = 1/2 is ported (T-2509; T-3582 owns the rest).
         Branch::Bgrat if half_bgrat && d.a0 == 0.5 => {
             let w1 = bgrat_half(d.b0, d.y0, d.x0, 0.0)?;
             (other(w1), w1)
@@ -272,9 +291,20 @@ fn ported_tails_with(a: f64, b: f64, x: f64, y: f64, half_bgrat: bool) -> Option
             let w = bfrac(d.a0, d.b0, d.x0, d.y0, d.lambda, BFRAC_EPS_FACTOR * EPS)?;
             (w, other(w))
         }
+        Branch::Basym => basym_oriented(&d)?,
         _ => return None,
     };
     Some(if d.swapped { (w1, w) } else { (w, w1) })
+}
+
+/// (w, w1) of basym on a dispatched point, before the swap back, the other tail bratio's
+/// (0.5 - w) + 0.5. Every caller of the kernel takes it (T-3443; the binomial family since T-3352):
+/// with it `BETA.DIST(0.555,1000,1000,TRUE,0.1,1)` is Excel's 0.6903551301985376 bit for bit
+/// (ironcalc-calc `BETADIST_BETAINV.xlsx` G29), and BETA.INV crosses it by its own rule at these
+/// points (`beta.rs` `beta_crossing`).
+fn basym_oriented(d: &Dispatch) -> Option<(f64, f64)> {
+    let w = basym(d.a0, d.b0, d.lambda, BASYM_EPS_FACTOR * EPS)?;
+    Some((w, half_complement(w)))
 }
 
 /// (0.5 - v) + 0.5, each step an x87 op stored to a double: bratio's complement and bpser's

@@ -141,9 +141,28 @@ impl Model {
         &mut self,
         sheet: u32,
         name: &str,
-        (top, left, bottom, right): (i32, i32, i32, i32),
+        range: (i32, i32, i32, i32),
         has_filters: bool,
         totals_row: bool,
+    ) -> Result<(), String> {
+        self.add_table_with_rows(sheet, name, range, has_filters, (true, totals_row))
+    }
+
+    /// [`Model::add_table_with_totals`] for a table with or without a header row
+    /// (`(header_row, totals_row)`). A table without one starts its data on the first row of the
+    /// range and names its columns `Column1`, `Column2`, ... as the spec builder writes them
+    /// (probes/table-edits table-no-header-baseline, T-3260); it needs one data row and takes no
+    /// filter.
+    ///
+    /// # Errors
+    /// As [`Model::add_table`], with the range one row shorter without a header row.
+    pub fn add_table_with_rows(
+        &mut self,
+        sheet: u32,
+        name: &str,
+        (top, left, bottom, right): (i32, i32, i32, i32),
+        has_filters: bool,
+        (header_row, totals_row): (bool, bool),
     ) -> Result<(), String> {
         if !is_valid_identifier(name) {
             return Err(format!("Invalid table name '{name}'"));
@@ -168,7 +187,10 @@ impl Model {
         };
         let totals_rows = i32::from(totals_row);
         if top < 1
-            || top.saturating_add(totals_rows) >= bottom
+            || top
+                .saturating_add(totals_rows)
+                .saturating_add(i32::from(header_row))
+                > bottom
             || left > right
             || bottom > crate::constants::LAST_ROW
         {
@@ -183,8 +205,15 @@ impl Model {
         if overlaps {
             return Err("A table cannot overlap another table".to_string());
         }
+        if !header_row && has_filters {
+            return Err("A table without a header row has no filter".to_string());
+        }
         let mut columns: Vec<String> = Vec::new();
         for column in left..=right {
+            if !header_row {
+                columns.push(format!("Column{}", column - left + 1));
+                continue;
+            }
             let header = self.get_formatted_cell_value(sheet, top, column)?;
             if header.is_empty()
                 || columns
@@ -201,7 +230,7 @@ impl Model {
                 name,
                 &sheet_name,
                 &format!("{first}{top}:{last}{bottom}"),
-                (1, u32::from(totals_row)),
+                (u32::from(header_row), u32::from(totals_row)),
                 columns,
             )
         };

@@ -16,6 +16,7 @@ uv run rustsheet-fitlab erfc-tail --top 10     # the T-1187 grid, about 5,800 ca
 uv run rustsheet-fitlab xirr                   # T-1525 solvers: also xirr-oos, irr, irr-fallback, rate, yield-one-period, yield
 uv run rustsheet-fitlab beta-dist              # T-1744: I_x(a,b); also f-dist, t-dist
 uv run rustsheet-fitlab norm-s-inv             # T-1746: NORM.S.INV, AS 241 tails vs the unfitted centre
+uv run rustsheet-fitlab im-hyperbolic --build no-band=/path/to/rustsheet-eval   # T-3525: IM* text, a 2nd build
 uv run rustsheet-fitlab erfc-tail --only 'bu_even' --worst 10 --no-engine
 uv run rustsheet-fitlab --case probes-numeric/t1040-erfc \
     --pattern '^=ERFC\((.*)\)$' --candidate math:erfc --candidate mymod:my_erfc   # ad hoc
@@ -26,12 +27,45 @@ The output has three parts:
 - A ranked table: bit-exact, `<=4 ulp` (exact included), `<=1e-9` relative, errors and the worst
   ulp distance per candidate. Ranking is by exact count, then the 4-ulp count, then the 1e-9 count,
   then the worst distance. The engine's row is always shown.
+- The hold-out table (below): train and test counts side by side and each candidate's accept
+  verdict.
 - A family table, when candidates are grouped. It gives each family's best member, the union of
   the cells its members get exactly, and the cumulative union.
 - The worst cells of the engine and of the best three candidates.
 
 The JSON (`eval/runs/fitlab/<fit>.json`, git-ignored, or `--json PATH`) holds every candidate's
-counts and worst cells, the per-family unions, and the cells the reader could not parse.
+counts and worst cells, its `train` and `test` counts and `verdict`, the split (`holdout`), the
+per-family unions, and the cells the reader could not parse.
+
+## Hold-out split and accept rule
+
+Every run splits the sweep before scoring (`fitlab/holdout.py`, decision 0188 R4.1, T-3360). It is
+mandatory: there is no option to turn it off.
+
+- **The split.** A cell is held out (the *test* side) when the first 8 bytes of
+  `sha256("rustsheet-fitlab-holdout/v1" NUL <case> NUL <Sheet!A1>)`, read big-endian, are below 300
+  modulo 1000: about 30% of the cells. The side depends only on the cell's case and address, so the
+  same cell is always on the same side, whatever else the sweep holds, the order it is read in, or
+  which candidates run. Changing the salt or the ratio moves cells between sides, so
+  `tests/test_fitlab_holdout.py` pins both, and the side of 20 named cells.
+- **The counts.** Each candidate is scored on train and on test separately: bit-exact, within 4 ulp,
+  and within 15 significant digits (`score.within_fifteen_digits`, the harness's
+  `closeness.rs` rule; a cell within 4 ulp always counts, decision 0088). The ranked table and the
+  family table are over the whole sweep: the two sides merged (`score.merged`). No cell is
+  evaluated twice.
+- **The accept rule.** A candidate is accepted only when both of these hold:
+  - its test bit-exact rate is at most `Fit.margin` below its train rate. The margin is stated with
+    the fit, before any scoring; the default is 5 percentage points (`DEFAULT_MARGIN`). Rates are
+    compared as exact fractions, so a drop of exactly the margin passes.
+  - it beats the candidate named `correctly rounded` on test: more test bit-exact cells, with the test
+    within-4-ulp count breaking a tie.
+
+  The correctly rounded candidate is the reference and gets no verdict. A fit with no such candidate,
+  or a sweep with no test cell, accepts nothing.
+- **Recording a fit.** A fit task's Outcome (decision 0056) records the hold-out rows of the chosen
+  candidate and of the correctly rounded one, with the margin, as reviewer-excel-fidelity's
+  hold-out item asks. An attempt counts as raising the bit-exact count only if it raises the test
+  count (decision 0188, T-3362).
 
 The verdicts are the harness's (`crates/rustsheet-eval/src/value.rs`). `score.ulp_distance` is a
 port of `ulp_distance`, so 0.0 and -0.0 are 0 apart. A candidate that raises, or returns something
@@ -41,9 +75,13 @@ other than a number, misses that cell and is counted under `err`. It does not st
 
 - **Sweep:** an oracle-filled `.case.json` plus its `.oracle.json` sidecar, found through
   `rustsheet-eval cases` (`snapshot.suite_cases`). No xlsx is parsed. Only cells whose Excel value
-  is a number are scored, plus error cells when the `Fit` sets `errors=True`: a candidate signals an
+  is a number are scored, plus error cells when the `Fit` sets `errors=True` (and IM* text when it sets `complex_text=True`, below): a candidate signals an
   error by raising `ExcelError` (code `#NUM!` by default), the same error is an exact match, and another
   error or a number is a miss (not counted under `err`, only as not comparable). Text and bool cells are counted as non-numeric.
+- **Never Gate A's tables:** a case of the `accuracy` suite (`accuracy/<FUNCTION>/<batch>`, SPEC-0029)
+  is refused as a sweep, or as a `calls` case, with `RefusedSweepError`: a table that tuned a constant
+  would stop measuring generalization (decision 0188 R4). `--holdout-only` (`run(..., holdout_only=True)`)
+  allows one only to measure a frozen fit.
 - **Iterate traces:** a candidate may expose `trace` (its iterates on a cell, in order). The report then
   lists, per candidate, on how many cells Excel's value is one of the iterates and at which index
   (`iterate_hits` in the JSON).
@@ -66,6 +104,16 @@ other than a number, misses that cell and is counted under `err`. It does not st
 - **The engine:** a pseudo-candidate read from `rustsheet-eval show --all <case>`
   (`snapshot.show_cells`). It needs the release harness binary, which `snapshot.eval_binary`
   builds on first use. `--no-engine` skips it.
+- **Other engine builds:** `--build NAME=PATH` (repeatable; `run(..., builds=...)`) scores another
+  `rustsheet-eval` binary the same way, as the candidate `engine build: NAME`. This is how a tuned
+  selector is compared with its accurate form (decision 0188 R4): build the engine once with the
+  selector removed, into its own `CARGO_TARGET_DIR`, and pass that binary (T-3525).
+- **Complex text:** a fit with `complex_text=True` also keeps cells whose Excel value is an IM*
+  function's text (`sweep.parse_complex_text`: `1.5-2i`, `-0.5j`, `i`), with the real part as
+  `expected` and the imaginary part as `expected_im`. A candidate returns the IM* text or a Python
+  complex, and the cell is scored part by part: exact when both parts are equal, its ulp distance
+  the larger of the two, within 15 digits or 1e-9 only when both parts are. The engine's text is
+  read the same way. Both parts are 15-digit values, so a part is exact when its 15 digits match.
 
 ## Add a candidate or a fit
 

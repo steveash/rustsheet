@@ -5,7 +5,12 @@ equal doubles (0.0 == -0.0) are exact, finite pairs within 4 ulp (`ulp_distance`
 pairs within 1e-9 relative are `close`, anything else (including a candidate that raises or
 returns a non-number) is a miss. A cell whose Excel value is an error is matched by the same error:
 a candidate signals one by raising `ExcelError` (or returning it); the right error is exact, another
-error or a number is a miss (T-1534).
+error or a number is a miss (T-1534). A complex-text cell (`Cell.expected_im`, T-3525) is scored
+part by part: the candidate returns the IM* text (or a Python complex), the cell is exact when both
+parts are, its ulp distance is the larger of the two, and it is within 15 digits or 1e-9 only when
+both parts are. `digits15` counts the cells within 4 ulp or within half a unit
+in the 15th significant digit (closeness.rs `within_fifteen_digits`, decisions 0083 and 0088), the
+third count of the hold-out report (decision 0188 R4.1).
 """
 
 from __future__ import annotations
@@ -13,10 +18,11 @@ from __future__ import annotations
 import math
 import struct
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
+from decimal import Decimal
 from typing import Any
 
-from rustsheet_tools.fitlab.sweep import Cell
+from rustsheet_tools.fitlab.sweep import Cell, parse_complex_text
 
 ULP_TOLERANCE = 4  # value.rs: `ulp_distance(e, a) <= 4` is NumericUlp
 CLOSE_RELATIVE = 1e-9  # value.rs: NumericClose
@@ -33,6 +39,25 @@ def ulp_distance(a: float, b: float) -> int:
     """Distance between two finite doubles in units in the last place, exactly as the harness
     computes it (value.rs `ulp_distance`): 0.0 and -0.0 are 0 apart, ±min-subnormal 2 apart."""
     return abs(_ordered(a) - _ordered(b))
+
+
+def within_fifteen_digits(expected: float, actual: float) -> bool:
+    """Whether `actual` is within half a unit in the 15th significant digit of `expected`, as
+    the harness decides it (closeness.rs `within_fifteen_digits`): the boundary counts as within,
+    an expected 0 only matches 0, and non-finite values never match. The half unit is the double
+    nearest `5e(E-15)` for the decimal exponent `E` of the shortest round-trip digits of `expected`.
+    """
+    if not (math.isfinite(expected) and math.isfinite(actual)):
+        return False
+    gap = abs(actual - expected)
+    if expected == 0.0:
+        return gap == 0.0
+    exponent = Decimal(repr(abs(expected))).adjusted()
+    return gap <= float(f"5e{exponent - 15}")
+
+
+# What a candidate computes for a cell: a number, or on a complex-text cell the IM* text or a complex.
+CandidateValue = float | str | complex
 
 
 class ExcelError(ArithmeticError):
@@ -52,7 +77,7 @@ class Candidate:
     one idea (e.g. one continued fraction at many depths) for the per-family summary."""
 
     name: str
-    evaluate: Callable[[Cell], float]
+    evaluate: Callable[[Cell], CandidateValue]
     family: str = ""
     # Optional: the iterates the candidate walks through on the cell, in order (it may stop early
     # by raising). The score reports which one equals Excel's value.
@@ -78,6 +103,7 @@ class CellResult:
     note: str = ""
     error: str | None = None  # the Excel error the candidate produced, if it did
     iterate: int | None = None  # index of the first trace iterate equal to Excel's value
+    actual_im: float | None = None  # the imaginary part, on a complex-text cell
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -85,7 +111,9 @@ class CellResult:
             "cell": self.cell.key,
             "formula": self.cell.formula,
             "expected": self.cell.error if self.cell.error is not None else self.cell.expected,
+            "expected_im": self.cell.expected_im,
             "actual": self.error if self.error is not None else self.actual,
+            "actual_im": self.actual_im,
             "ulps": self.ulps,
             "note": self.note,
             "iterate": self.iterate,
@@ -102,6 +130,7 @@ class Score:
     exact: int = 0
     ulp: int = 0  # within 4 ulp, exact included
     close: int = 0  # within 1e-9 relative, ulp included
+    digits15: int = 0  # within 15 significant digits, ulp included (decision 0088)
     errors: int = 0
     exact_keys: set[str] = field(default_factory=set)
     traced: int = 0  # cells where the candidate exposed iterates
@@ -133,6 +162,7 @@ class Score:
             "exact": self.exact,
             "within_4_ulp": self.ulp,
             "within_1e-9": self.close,
+            "within_15_digits": self.digits15,
             "errors": self.errors,
             "traced": self.traced,
             "iterate_hits": self.iterate_hits,
@@ -148,6 +178,8 @@ def _measure(cell: Cell, cand: Candidate) -> CellResult:
         return _error_result(cell, e.code)
     except (ArithmeticError, ValueError, TypeError, KeyError, IndexError, RecursionError) as e:
         return CellResult(cell, None, None, f"{type(e).__name__}: {e}")
+    if cell.expected_im is not None:
+        return _complex_result(cell, value)
     if isinstance(value, bool) or not isinstance(value, float | int):
         return CellResult(cell, None, None, f"returned {type(value).__name__}")
     return _number_result(cell, float(value))
@@ -162,6 +194,34 @@ def _number_result(cell: Cell, actual: float) -> CellResult:
     if not (math.isfinite(actual) and math.isfinite(expected)):
         return CellResult(cell, actual, None, "non-finite")
     return CellResult(cell, actual, ulp_distance(expected, actual))
+
+
+def _complex_result(cell: Cell, value: object) -> CellResult:
+    """A candidate's IM* text (or complex) against a complex-text cell, part by part."""
+    try:
+        if isinstance(value, str):
+            re_part, im_part = parse_complex_text(value)
+        elif isinstance(value, complex):
+            re_part, im_part = value.real, value.imag
+        else:
+            msg = f"returned {type(value).__name__}"
+            raise TypeError(msg)
+    except (TypeError, ValueError) as e:
+        return CellResult(cell, None, None, str(e))
+    im_expected = cell.expected_im if cell.expected_im is not None else math.nan
+    parts = (_number_result(cell, re_part), _number_result(replace(cell, expected=im_expected), im_part))
+    ulps = None if any(r.ulps is None for r in parts) else max(r.ulps or 0 for r in parts)
+    return CellResult(cell, re_part, ulps, "; ".join(r.note for r in parts if r.note), actual_im=im_part)
+
+
+def _pairs(r: CellResult) -> list[tuple[float, float]]:
+    """(expected, actual) per part of a cell with a numeric result: one pair, or two on a complex cell."""
+    if r.actual is None:
+        return []
+    pairs = [(r.cell.expected, r.actual)]
+    if r.cell.expected_im is not None and r.actual_im is not None:
+        pairs.append((r.cell.expected_im, r.actual_im))
+    return pairs
 
 
 def _error_result(cell: Cell, code: str) -> CellResult:
@@ -208,13 +268,39 @@ def score(cells: list[Cell], cand: Candidate, keep: int = 10) -> Score:
             s.exact_keys.add(f"{cell.case} {cell.key}")
         if r.ulps <= ULP_TOLERANCE:
             s.ulp += 1
+        pairs = _pairs(r)
+        if r.ulps <= ULP_TOLERANCE or (pairs and all(within_fifteen_digits(e, a) for e, a in pairs)):
+            s.digits15 += 1
         if r.error is not None or (
-            r.actual is not None
-            and abs(cell.expected - r.actual) <= CLOSE_RELATIVE * max(abs(cell.expected), abs(r.actual))
+            pairs and all(abs(e - a) <= CLOSE_RELATIVE * max(abs(e), abs(a)) for e, a in pairs)
         ):
             s.close += 1
     s.results = s.worst(keep)
     return s
+
+
+def merged(a: Score, b: Score, keep: int = 10) -> Score:
+    """One candidate's score over the cells of `a` and `b` together (two disjoint sides of a
+    sweep, scored separately), as `score` would give on their union: counts add, the worst cells
+    are the `keep` worst of both."""
+    out = Score(
+        a.name,
+        a.family,
+        a.total + b.total,
+        exact=a.exact + b.exact,
+        ulp=a.ulp + b.ulp,
+        close=a.close + b.close,
+        digits15=a.digits15 + b.digits15,
+        errors=a.errors + b.errors,
+        exact_keys=a.exact_keys | b.exact_keys,
+        traced=a.traced + b.traced,
+        iterate_hits={**a.iterate_hits, **b.iterate_hits},
+        incomparable=a.incomparable + b.incomparable,
+        largest=max(a.largest, b.largest),
+        results=a.results + b.results,
+    )
+    out.results = out.worst(keep)
+    return out
 
 
 def rank(scores: list[Score]) -> list[Score]:
@@ -222,7 +308,8 @@ def rank(scores: list[Score]) -> list[Score]:
     return sorted(scores, key=Score.sort_key)
 
 
-def _pct(part: int, whole: int) -> str:
+def pct(part: int, whole: int) -> str:
+    """`part` as a share of `whole`, right-aligned to six characters."""
     return f"{100 * part / whole:5.1f}%" if whole else "    -"
 
 
@@ -240,8 +327,8 @@ def table(scores: list[Score], top: int) -> str:
         if i > top and not s.name.startswith("engine"):
             continue
         lines.append(
-            f"{i:>4}  {s.name[:44]:<44} {s.exact:>6} {_pct(s.exact, s.total)} {s.ulp:>6} "
-            f"{_pct(s.ulp, s.total)} {s.close:>6} {_pct(s.close, s.total)} {s.errors:>5} "
+            f"{i:>4}  {s.name[:44]:<44} {s.exact:>6} {pct(s.exact, s.total)} {s.ulp:>6} "
+            f"{pct(s.ulp, s.total)} {s.close:>6} {pct(s.close, s.total)} {s.errors:>5} "
             f"{_ulps_text(s.max_ulps):>9}"
         )
     return "\n".join(lines)

@@ -187,16 +187,20 @@ Status: VERIFIED (web)
 
 ## A lookup over a whole-column key read as a head and a tail: the limits it meets
 Rule: Excel has no per-call cap, work budget or text budget, so the lookup's values are the same whichever limit
-applies. Inside an aggregate, SUMPRODUCT, SMALL, LARGE, UNIQUE or LOOKUP-vector argument, the engine reads
-VLOOKUP, HLOOKUP or MATCH over a whole-column (or past-the-used-area) key as its used head plus one tail element
-standing for every row below (SPEC-0020 Amendment 2, T-3221). For example `SUM(--(VLOOKUP(A:A,T,2,FALSE)=x))` and
-`COUNT(MATCH(A:A,T,0))` take this reading. The head's lift and the tail's are charged and checked as the one lift
-over 1,048,576 keys: the same kernel runs, the same visits against `MAX_LIFTED_CELL_VISITS` and the same work units.
+applies. Inside an aggregate, SUMPRODUCT, SMALL, LARGE, UNIQUE or LOOKUP-vector argument, or as INDEX's array
+with a scalar row and column 1 (`INDEX(VLOOKUP(Keys!A:A,..),1000)`, T-3222), the engine reads VLOOKUP, HLOOKUP,
+MATCH, XLOOKUP or XMATCH over a whole-column (or past-the-used-area) key as its used head plus one tail element
+standing for every row below (SPEC-0020 Amendment 2, T-3221, T-3223). For example
+`SUM(--(VLOOKUP(A:A,T,2,FALSE)=x))` and `COUNT(MATCH(A:A,T,0))` take this reading. The head's lift and the tail's
+are charged and checked as the one lift over 1,048,576 keys: the same kernel runs, the same visits against
+`MAX_LIFTED_CELL_VISITS` and the same work units. An XLOOKUP or XMATCH tail continues its head's regex state (its
+compiled patterns, its compile and search budgets), and each finish charges only the regex work units not yet
+charged, so the two charge and run out as the one call does.
 Three outcomes can still differ from that one lift, each only for a formula already at an engine limit:
-- When the head or the tail lift fails the per-call cap (`#ERROR!`), the argument is read again the ordinary way.
-  That gives today's `#ERROR!`, unless the reread's charges take the formula past its work budget
-  (`MAX_FORMULA_WORK`). Then it is `#VALUE!` ("Formula needs too much work"). This is the same class as the
-  stale-head reread of SPEC-0020.
+- When the head or the tail lift fails the per-call cap, or an XLOOKUP or XMATCH regex budget (`#ERROR!`), the
+  argument is read again the ordinary way. That gives today's `#ERROR!`, unless the reread's charges take the
+  formula past its work budget (`MAX_FORMULA_WORK`). Then it is `#VALUE!` ("Formula needs too much work"). This is
+  the same class as the stale-head reread of SPEC-0020.
 - The array the lookup builds is charged to the cell budget for the head and the one tail element, not for the
   1,048,576 rows. A formula that the whole column's array would take past that budget is not taken past it.
 - The 64 MiB broadcast text budget counts the texts of the head (and of the tail element when it is computed), not
@@ -206,8 +210,9 @@ Three outcomes can still differ from that one lift, each only for a formula alre
 Evidence: none needed: these are engine limits, not Excel values (CLAUDE.md directive 5). The values outside them are
 pinned by the equivalence tests of `test_tailed_array.rs` (each formula with the tailed reading and without) and by
 probes/t3096-lookup-value-blank-elements.
-Implemented in: `Model::tailed_leaves`, `Model::keyed_lift` (tailed_array.rs) and `Model::lift_values_keyed`
-(functions/lift/keyed.rs), through `Model::lift_grids_after` (functions/lift/driver.rs).
+Implemented in: `Model::tailed_leaves`, `Model::keyed_lift`, `Model::keyed_regexes` (tailed_array.rs) and
+`Model::lift_values_keyed` (functions/lift/keyed.rs), through `Model::lift_grids_after` (functions/lift/driver.rs) and
+`LookupRegexes::finish` (functions/text/regex_functions.rs).
 Status: DEVIATION (decision 0014)
 
 ## VLOOKUP / HLOOKUP with an array index or range_lookup
@@ -635,8 +640,40 @@ HLOOKUP(..,FALSE) and XMATCH(..,2) give the same first position for every key.
 XMATCH's exact mode (0) differs: it compares by the collation (coercion.md "Collation equality in lookups and
 criteria"), where `İ` equals i+U+0307 and `ẞ`/`ß` equal `ss`, but not `I` or `i`.
 Evidence: probes/t3133-lookup-criteria-case-fold Calc!A1:E35, I1:J35 (excel-graph, 2026-10-29, T-3133).
-UNVERIFIED: characters outside the list above are assumed to follow the same fold.
-Status: VERIFIED
+Beyond that list (probes/t3298-case-mapping-sweep Calc!C1:D48, excel-graph, 2026-10-31, T-3298): over the 1514
+one-to-one case pairs of every character Rust's tables case-map (Data!D upper, Data!E lower, 32 pairs per cell, each
+lower looked up among its block's uppers in C and the reverse in D), 982 pairs equal each other both ways, 374 equal
+nothing and 158 hit another position. By block:
+- fold as Rust's simple lowercase: Basic Latin, Latin-1, Latin Extended-A and -B, Cyrillic, Armenian, Latin Extended
+  Additional, the basic Greek letters, Greek Extended (most), Glagolitic, Coptic, Cyrillic Extended-B (most), the
+  Roman numerals U+2160-U+217F, the circled letters, fullwidth Latin and Georgian Asomtavruli with Nuskhuri
+  (U+10A0-U+10C5 with U+2D00-U+2D25). This fold is wider than UPPER and LOWER's table (text.md "UPPER and LOWER use an
+  old per-character case table"): MATCH folds Glagolitic, Coptic and Greek Extended, which UPPER and LOWER leave alone.
+- stay apart (each matches only itself): the supplementary-plane scripts (Deseret, Osage, Vithkuqi, Old Hungarian,
+  Garay, Warang Citi, Medefaidrin, U+16EA0-U+16ED3, Adlam; Calc!C38:D38 from position 24 and C39:D48 are all 0),
+  and as T-3133 found ı/I and ſ/S. Cherokee U+13AB-U+13EA and U+AB7B-U+ABBA do not equal each other (rows 18-19, C and D
+  0); the sweep never looks a character up against itself, so whether U+AB7B-U+ABBA are weightless (below) is open; the Greek symbol variants ϐ ϑ ϕ ϖ ϰ ϱ,
+  µ, U+0345, the Cyrillic Ext-C variants U+1C80-U+1C87 and ẛ do not equal their capital (C is 0; in D the capital finds
+  its ordinary small letter's row), while ϵ and U+1FBE equal Ε and Ι, and the titlecase digraphs ǅ ǈ ǋ ǲ equal their
+  capital and small forms (Calc!C5:D6).
+- equal one another: characters that look missing from Excel's comparison table (BMP letters Unicode added after about
+  5.0, e.g. U+0524-U+052F, U+10C7, U+10CD, U+10FD-U+10FF, U+13F5-U+13FD, U+1C88-U+1C8A, Georgian Mtavruli
+  U+1C90-U+1CBF, U+2D27, U+2D2D, much of Latin Extended-D from U+A792, U+AB53, U+AB70-U+AB7A, U+ABBB-U+ABBF) match the
+  first such character of the other column, whatever it is: Calc!C17 position 22 (U+AB70 finds U+10C7), C15 position 4
+  (U+0529 finds U+0524), C20 positions 1-5 (U+ABBB-U+ABBF find U+13F5), C37 and D37 (positions 1 and 5).
+  UNVERIFIED: that they are characters with no sort weight, which characters are weightless, and whether they also
+  equal empty text (T-3584).
+- observed, not yet explained (T-3584): in Greek Extended MATCH equals each small dasia+oxia letter with the capital
+  psili+varia letter: U+1F05 ἅ finds U+1F0A Ἂ (Calc!C25 position 29 reads 26), U+1F15 finds U+1F1A, U+1F25 U+1F2A,
+  U+1F35 U+1F3A, U+1F45 U+1F4A, U+1F65 U+1F6A, U+1F85 U+1F8A, U+1F95 U+1F9A, U+1FA5 U+1FAA (C26 positions 5, 11, 19,
+  27; C27 positions 5, 13, 21, 29). These are Unicode 1.1 letters, so the late-addition reading above does not
+  obviously cover them. Also the small U+A73B finds U+A738 (C35 position 12), U+A767 finds U+A764 (C36 position 2),
+  U+A699 and U+A69B find U+A660 (C34 positions 31-32), U+03F3 ϳ finds U+0376 Ͷ (C8 position 11) and U+1C88 finds
+  U+2CF2 (C33 position 32).
+The engine folds every pair through Rust's `to_lowercase`, so the cells of C and D listed in eval/baseline/probes.txt
+fail (T-3445).
+Status: VERIFIED (excel-graph) for the block table; the weightless-equality reading and the "observed, not yet
+explained" hits are UNVERIFIED (T-3584). Implemented for T-3133's list only; the T-3298 blocks are not (T-3445).
 Implemented in: `fold_case` (functions/util/collation.rs), through `folded_units` (`ExactKey`, the indexed exact
 search) and `WildcardPattern` (the linear one); `decompose` (collation.rs) for XMATCH's `İ`
 
@@ -1377,15 +1414,25 @@ Tasks: T-2669, T-2680
 
 ### Statistical aggregates over a lifted OFFSET (an array of references)
 Evidence: probes/t2065-lift-* (one formula per workbook, excel-graph 2026-10-26; data as probes/reference-lift-consumers-b2).
-- `STDEV.S(OFFSET(A1,{0;1},0))` is 70.0035713374682, `VAR.S` 4900.5, `SUMSQ` 10001: single-cell elements read as their values (multi-cell elements unprobed).
+- `STDEV.S(OFFSET(A1,{0;1},0))` is 70.0035713374682, `VAR.S` 4900.5, `SUMSQ` 10001: single-cell elements read as their values (multi-cell elements: top-left cell, T-2816 below).
 - COUNTIFS, AVERAGEIF and MAXIFS lift per element, spilling one value each (1, 1; 1, 50.5; 1, 100). CONCAT is `#VALUE!`.
   The engine implements these three since T-2823 (`Function::per_reference_element`, each element charged as
   COUNTIF/SUMIFS are, with the same bound DEVIATION); AVERAGEIFS and MINIFS are unprobed and read the value view.
   Which arguments lift is inferred from SUMIF/SUMIFS (COUNTIFS every criteria range, AVERAGEIF range and average_range,
   MAXIFS max_range and every criteria range); forms with only some ranges lifted are unprobed (T-2833).
+- T-2816 (probes/t2816-lift-*, E1, excel-graph 2026-10-31, same data; A4 "5", A5 blank, A6 TRUE, A7 7): multi-cell
+  elements contribute their TOP-LEFT cell only. `STDEV.S(OFFSET(A1,0,0,{1;2}))` is 0 and `VAR.S(..)` 0 (the values 1, 1;
+  the whole elements would give 57.1577 for {1,1,100}), `SUMSQ(..)` is 2 (not 10002). It is the top-left cell, not implicit intersection with the formula's row: in E1 `SUMSQ(OFFSET(A2,0,0,{1;2}))`, whose element A2:A3 does not cross row 1, is 20000 (100 twice; probes/t2816-lift-sumsq-row2). A text element counts as 0 and a
+  blank or TRUE element is skipped, unlike a reference argument (references.md T-1003/T-1211), where TRUE counts as 1: `AVERAGEA(OFFSET(A4,{0;3},0))` ("5", 7) is 3.5,
+  `MAXA(OFFSET(A4,{0;3},0))` 7, `AVERAGEA(OFFSET(A5,{0;1},0))` (blank, TRUE) `#DIV/0!` (TRUE not counted as 1) and
+  `MAXA(OFFSET(A5,{0;1},0))` 0. This also explains the 0 of the probe below (text 0, blank and TRUE skipped).
 - `AVERAGEA` and `MAXA(OFFSET(A4,{0;1;2},0))` over "5", blank, TRUE are 0: the text is not read as 5 and TRUE not as 1; which elements count is open (the data holds no number).
-Status: VERIFIED (excel-graph) for the values above. COUNTIFS, AVERAGEIF and MAXIFS implemented (T-2823); the rest
-not yet (T-2824).
+Status: VERIFIED (excel-graph) for the values above. COUNTIFS, AVERAGEIF and MAXIFS implemented (T-2823). STDEV.S,
+VAR.S and SUMSQ implemented (T-2824, `GridReading::TopLeft`: each element's top-left cell, as SUM), and AVERAGEA and
+MAXA (`GridReading::TopLeftElements`: that cell read as an array element, so a blank or TRUE is skipped and AVERAGEA's
+text is 0). Legacy STDEV follows STDEV.S (probes/t2577-indirect-ref-array Calc!A157 is 0). UNVERIFIED: legacy VAR
+(as VAR.S) and MAXA's text (skipped, or 0, the probes cannot tell). VAR.P, STDEV.P, MINA and the VARA family keep
+the value view, unprobed (T-3533).
 
 ### MEDIAN, LARGE and SMALL over a lifted OFFSET
 Rule: each is `#VALUE!` over a lifted OFFSET (an array of references), like CONCAT and unlike STDEV.S, VAR.S and SUMSQ

@@ -4,13 +4,13 @@ use crate::arithmetic::flush_subnormal;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error, value_error};
 use crate::functions::statistical::beta_density::beta_density_small_shape;
-use crate::functions::statistical::bratio::beta_dist_lower_tail;
-use crate::functions::statistical::incomplete_beta::{
-    beta_density, beta_reg_complement, beta_reg_upper,
+use crate::functions::statistical::bratio::{
+    beta_dist_lower_tail, beta_search_tails, dispatch, Branch,
 };
+use crate::functions::statistical::incomplete_beta::beta_density;
 use crate::functions::statistical::inverse_beta::{beta_inverse_cdf, beta_quantile_crossing};
 use crate::functions::statistical::loader::excel_beta_density;
-use crate::functions::statistical::special::refine_increasing;
+use crate::functions::statistical::special::{nearest_crossing_from, refine_increasing};
 use crate::functions::Function;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
@@ -25,11 +25,14 @@ use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 const BETA_QUANTILE_STATRS_SHAPE_MAX: f64 = 1e5;
 const BETA_QUANTILE_STATRS_P_MIN: f64 = 1e-15;
 
-/// The quantile of `p` in (0, 1): the crossing of BETA.DIST's cdf (`special::refine_increasing`
-/// on the T-0970 incomplete beta), from statrs' search as a start where it is reliable. Excel's
-/// BETA.INV solves its own cdf to the crossing (docs/excel-semantics/statistics.md "BETA.INV
-/// solves Excel's own CDF to the crossing (T-1745)"), so the inverse uses the same cdf as
-/// BETA.DIST (T-2119). Above p = 0.5 the target is the exact complement 1 - p on the upper tail,
+/// The quantile of `p` in (0, 1): the crossing of BETA.DIST's own cdf (`special::refine_increasing`
+/// on `bratio::beta_search_tails`, the kernel BETA.DIST returns where it is ported), from statrs'
+/// search as a start where it is reliable. Excel's BETA.INV solves its own cdf to the crossing
+/// (docs/excel-semantics/statistics.md "BETA.INV solves Excel's own CDF to the crossing
+/// (T-1745)"); until T-3398 the search crossed the older Cephes-based tails, which BETA.DIST no
+/// longer returns. Of the final bracket the even-significand end fits Excel better than the end
+/// whose cdf is nearer p (T-3398: 11 visibly-off cells fixed and none new, against 16 fixed and
+/// 1 new). Above p = 0.5 the target is the exact complement 1 - p on the upper tail,
 /// as for F.INV (T-0974). At most 512 Newton steps and 129 cdfs, or 65 cdfs without a start. A
 /// shape above 1E5 takes T-1538's crossing instead (above).
 fn beta_quantile(alpha: f64, beta: f64, p: f64) -> f64 {
@@ -44,22 +47,45 @@ fn beta_quantile(alpha: f64, beta: f64, p: f64) -> f64 {
     } else {
         f64::NAN
     };
-    if p > 0.5 {
-        refine_increasing(
-            |t| -beta_reg_upper(t, 1.0 - t, alpha, beta),
+    // A subnormal crossing is the underflow the caller reports as #NUM!, as the old search's 0 was
+    // (`BETAINV(0.5,1E-5,1)`, probes/t2435-dist-extremes S!A71).
+    let t = if p > 0.5 {
+        beta_crossing(
+            |t| -beta_search_tails(t, 1.0 - t, alpha, beta).1,
             -(1.0 - p),
             estimate,
-            0.0,
-            1.0,
+            (alpha, beta),
         )
     } else {
-        refine_increasing(
-            |t| beta_reg_complement(t, 1.0 - t, alpha, beta),
+        beta_crossing(
+            |t| beta_search_tails(t, 1.0 - t, alpha, beta).0,
             p,
             estimate,
-            0.0,
-            1.0,
+            (alpha, beta),
         )
+    };
+    flush_subnormal(t)
+}
+
+/// The crossing of the search's tail `f` with `target` (`refine_increasing`'s even-significand end
+/// of the final bracket), except where bratio takes basym at that point (both shapes above 100,
+/// near the mean): there the end of the bracket whose tail is nearer `target`
+/// (`special::nearest_crossing_from`). On the same kernel, that end is Excel's on 15 in-sample
+/// BETA.INV cells the even end misses and misses 5 it hits (probes-numeric/t3443-basym-a; +11
+/// exact on the hold-out, +5 on the fresh sweep), and it keeps
+/// `BETA.INV(G29,1000,1000,0.1,1)` at Excel's 0.555 (ironcalc-calc `BETADIST_BETAINV.xlsx` H29: the
+/// root's upper tail is one ulp above fl(1 - p), so the even end is the next double). Off basym the
+/// nearest end regresses gated cells at small shapes (`BETADIST_BETAINV.xlsx` H16, H60, H61), so
+/// it stays the even end there (docs/excel-semantics/statistics.md "BETA.DIST and F.DIST at basym
+/// points; BETA.INV takes the nearest end there (T-3443)").
+fn beta_crossing(f: impl Fn(f64) -> f64, target: f64, estimate: f64, shapes: (f64, f64)) -> f64 {
+    let t = refine_increasing(&f, target, estimate, 0.0, 1.0);
+    let at_basym =
+        dispatch(shapes.0, shapes.1, t, 1.0 - t).is_some_and(|d| d.branch == Branch::Basym);
+    if at_basym {
+        nearest_crossing_from(f, target, t, 0.0, 1.0)
+    } else {
+        t
     }
 }
 
@@ -274,5 +300,48 @@ impl Model {
                 number_or_error(model.beta_dist_of(x, alpha, beta, None, bounds, cell))
             },
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{beta_dist_lower_tail, beta_quantile};
+
+    #[test]
+    fn quantile_is_the_crossing_of_beta_dist_own_cdf() {
+        // ironcalc-calc STATISTICAL/BETADIST_BETAINV.xlsx (Excel-cached), each off Excel before
+        // T-3398 and exact on BETA.DIST's own kernel: `BETA.INV(G,alpha,beta,A,B)` = A + t (B - A).
+        // H15: BETA.INV(0.4999999999999999,2,2,0.2,1.2) = 0.7.
+        assert_eq!(
+            0.2 + beta_quantile(2.0, 2.0, 0.499_999_999_999_999_9) * 1.0,
+            0.7
+        );
+        // H32: BETA.INV(0.5136696247356396,5,5,0.1,1) = 0.555.
+        assert_eq!(
+            0.1 + beta_quantile(5.0, 5.0, 0.513_669_624_735_639_6) * 0.9,
+            0.555
+        );
+        // H43: BETA.INV(0.5882886668596937,2,2.5,0.15,1.2) = 0.6655623437846115.
+        assert_eq!(
+            0.15 + beta_quantile(2.0, 2.5, 0.588_288_666_859_693_7) * (1.2 - 0.15),
+            0.665_562_343_784_611_5
+        );
+    }
+
+    #[test]
+    fn quantile_at_basym_points_is_the_nearest_end() {
+        // G29: BETA.DIST(0.555,1000,1000,TRUE,0.1,1) = 0.6903551301985376 on basym.
+        let t = (0.555 - 0.1) / 0.9;
+        assert_eq!(
+            beta_dist_lower_tail(t, 1.0 - t, 1000.0, 1000.0),
+            0.690_355_130_198_537_6
+        );
+        // H29: BETA.INV(0.6903551301985376,1000,1000,0.1,1) = 0.555, where BETA.DIST's cdf is
+        // basym's and the root's upper tail is one ulp above fl(1 - p) (T-3443): the even end of
+        // the final bracket would map to 0.5550000000000002.
+        assert_eq!(
+            0.1 + beta_quantile(1000.0, 1000.0, 0.690_355_130_198_537_6) * 0.9,
+            0.555
+        );
     }
 }
