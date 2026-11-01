@@ -66,3 +66,6 @@ Cells (known-failure lines today):
   gen-m9/cb61169f4c033d4b A168 LN(VARPA)): T-2476 and the inner function's task keep them.
 - TRIMMEAN, SKEW, STDEV and the rest of T-2476.
 - PERCENTILE and QUARTILE interpolation. Check them for the same form only if a failing cell shows it.
+
+## Added by T-3494
+- gen-m5/f5fa1206c7466c62: A196 `AGGREGATE(Data!G5,Data!G8,Data!A3:C6)` and A214 `AGGREGATE(Data!G5,Data!C3:D4,Data!C7:E9)` with Data!G5 = "12" (MEDIAN) are 1 ulp off (A196 expected 0.6499999999999999, engine 0.65; A214 expected 0.6000000000000001, engine 0.6), the same even-count rule.
