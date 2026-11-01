@@ -3,6 +3,7 @@
 - **Status:** accepted (2026-10-25, owner decision in session
   https://claude.ai/code/session_014ASuNyVecGvKjcZUDfWLKA; SPEC-0022, T-0067).
   Amended by decision 0188 (2026-10-31): the exit counts this measure on user-representative suites only (Gate B).
+- **Amended by:** decision 0227 (item 3): the every-suite rate also leaves out decision 0188 R1(c)'s Phase 1b cells.
 - **Amends:**
   - decision 0114, items 1 (the Phase 1 exit) and 4 (its measure);
   - how decision 0088's per-function `visible` blame is used;

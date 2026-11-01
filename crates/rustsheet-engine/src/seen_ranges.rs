@@ -68,6 +68,10 @@ pub(crate) struct SeenRanges {
     /// Bit `column_level` of entry `row_level` is set when some band of those levels holds a
     /// rectangle.
     levels: [u32; 32],
+    /// Rectangles a spill commit has tested (`SeenRange::first_cell_written`) since the model was
+    /// built: tests bound the work of `written_by_spill` with it instead of a wall clock (T-2282).
+    #[cfg(test)]
+    pub(crate) rectangles_tested: std::cell::Cell<u64>,
 }
 
 /// A band of rows and columns of `sheet`: rows `row_index << row_level` to
@@ -174,6 +178,8 @@ impl SeenRanges {
         });
         let mut met: Vec<((i32, i32), usize)> = Vec::new();
         let mut meet = |position: usize| {
+            #[cfg(test)]
+            self.rectangles_tested.set(self.rectangles_tested.get() + 1);
             if let Some(cell) = self.ranges[position].first_cell_written(anchor, area) {
                 met.push((cell, position));
             }

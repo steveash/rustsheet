@@ -7,7 +7,7 @@
 //! T-0105) and "Union (comma) reference in a value context is #VALUE!" (gen-m1, T-0134).
 
 use crate::expressions::parser::depth::{
-    MAX_FORMULA_DEPTH, MAX_NESTING, MAX_PARENTHESES, OPERAND_NESTING, PRIMARY_DEPTH,
+    Prefix, MAX_FORMULA_DEPTH, MAX_NESTING, MAX_PARENTHESES, OPERAND_NESTING, PRIMARY_DEPTH,
 };
 use crate::expressions::parser::{ExpectedTokens, Node, Parser, Run};
 use crate::expressions::token::{Error, OpUnary, TokenType};
@@ -51,52 +51,113 @@ impl Parser {
         regroup(t, nested)
     }
 
-    /// A run of `(` written with nothing between them, after the first: `((x))`, `(((x)+1)*2)`.
-    /// The innermost group is parsed first, and each enclosing one in a loop, with the group
-    /// inside it handed to its content as the first operand ([`Parser::parse_primary`] returns
-    /// it), so a run takes the same parser stack whatever its length, where a recursive descent
-    /// would take one pass through the precedence chain per parenthesis (T-3191). A group whose
-    /// content is exactly the group inside merges with it (`((x))` is one [`Node::Group`] of two
-    /// levels, [`regroup`]) and adds no depth; any other costs an operand's.
-    /// Excel loads 256 directly nested parentheses and refuses 257 (probes/t3172-paren-256,
-    /// docs/excel-semantics/syntax.md "Formula nesting depth cap"), so a formula nesting more
-    /// than 256 groups, in one run or several (`( ((...)))`, `(1+((...)))`), is too deep.
+    /// A run of `(` written with nothing between them but unary signs, after the first: `((x))`,
+    /// `(((x)+1)*2)`, `(-(-(x)))`. The innermost group is parsed first, and each enclosing one in
+    /// a loop, with the group inside it, and the signs written before it, handed to its content
+    /// as the first operand ([`Parser::parse_primary`] returns it, [`Parser::parse_prefix`] its
+    /// signs), so a run takes the same parser stack whatever its length, where a recursive
+    /// descent would take one pass through the precedence chain per parenthesis (T-3191). A group
+    /// whose content is exactly the group inside merges with it (`((x))` is one [`Node::Group`]
+    /// of two levels, [`regroup`]) and adds no depth; so does one whose content is the group
+    /// inside under its signs (`(-(x))`, [`is_signed_nest`]), whose consumers walk it in a loop
+    /// (T-3338); any other costs an operand's.
+    /// Excel loads 256 directly nested parentheses and refuses 257 (probes/t3172-paren-256), and
+    /// as many levels of `-(` (probes/t3266-nested-paren-256, docs/excel-semantics/syntax.md
+    /// "Formula nesting depth cap"), so a formula nesting more than 256 groups, in one run or
+    /// several (`( ((...)))`, `(1+((...)))`), is too deep. The signs of a run stay open in every
+    /// group inside them and count toward [`super::MAX_SIGNS`] there.
     pub(super) fn parse_parenthesis_run(&mut self) -> Node {
-        // The run's parentheses are written with nothing between them, so the `n`th starts `n`
-        // chars after the first.
         let first = self.lexer.get_position_index().saturating_sub(1);
-        let mut opened = 1;
-        while !self.lexer.whitespace_follows() && *self.lexer.peek() == TokenType::LeftParenthesis {
-            opened += 1;
-            if self.open_groups + opened > MAX_PARENTHESES {
+        let mut levels = vec![RunLevel {
+            start: first,
+            prefix: Prefix::default(),
+        }];
+        let mut signs = 0;
+        loop {
+            let prefix = if !self.lexer.whitespace_follows()
+                && *self.lexer.peek() == TokenType::LeftParenthesis
+            {
+                Prefix::default()
+            } else if self.signed_group_follows() {
+                let before = self.run_ahead();
+                let prefix = self.parse_signs(before);
+                signs += prefix.count;
+                if let Err(error) = self.check_signs(signs, prefix.cost) {
+                    return error;
+                }
+                prefix
+            } else {
+                break;
+            };
+            if self.open_groups + levels.len() + 1 > MAX_PARENTHESES {
                 return self.too_deep();
             }
             self.lexer.advance_token();
+            levels.push(RunLevel {
+                start: self.lexer.get_position_index().saturating_sub(1),
+                prefix,
+            });
         }
-        if self.open_groups + opened > MAX_PARENTHESES {
+        if self.open_groups + levels.len() > MAX_PARENTHESES {
             return self.too_deep();
         }
-        self.open_groups += opened;
-        let node = self.parse_run_groups(first, opened);
-        self.open_groups -= opened;
+        let (outer_groups, outer_signs) = (self.open_groups, self.open_signs);
+        self.open_groups += levels.len();
+        self.open_signs += signs;
+        let node = self.parse_run_groups(levels);
+        self.open_groups = outer_groups;
+        self.open_signs = outer_signs;
         node
     }
 
-    /// The `opened` groups of a run whose first `(` is at char `first`, after its last `(`: see
-    /// [`Parser::parse_parenthesis_run`].
-    fn parse_run_groups(&mut self, first: usize, opened: usize) -> Node {
+    /// Whether what follows is a run of unary signs (and whitespace) and then a `(`: the next
+    /// level of a run of parentheses ([`Parser::parse_parenthesis_run`]). A sign there can only
+    /// be unary and a `(` after it only a group, so the characters tell it without lexing.
+    fn signed_group_follows(&self) -> bool {
+        let rest = self
+            .lexer
+            .chars()
+            .get(self.lexer.get_position_index()..)
+            .unwrap_or_default();
+        let mut signed = false;
+        for &c in rest {
+            match c {
+                '+' | '-' => signed = true,
+                c if c.is_whitespace() => {}
+                c => return signed && c == '(',
+            }
+        }
+        false
+    }
+
+    /// The groups of a run, `levels` of them in written order, after its last `(`: see
+    /// [`Parser::parse_parenthesis_run`]. The signs of each level are open while the groups inside
+    /// it are parsed; each level's are closed before its own content is, as
+    /// [`Parser::parse_power`] opens them again for the operand they precede.
+    fn parse_run_groups(&mut self, mut levels: Vec<RunLevel>) -> Node {
         let mut node = self.parse_parenthesized_call();
         let mut depth = self.inner_depth + PRIMARY_DEPTH;
-        for done in 1..opened {
+        // The level of the group just parsed (the last one left): its start and the signs
+        // written before it. The first level's group is the run's own.
+        while levels.len() > 1 {
+            let Some(level) = levels.pop() else {
+                break;
+            };
             if let Node::ParseErrorKind { .. } = node {
                 return node;
             }
+            let signed = level.prefix.count > 0;
+            self.open_signs -= level.prefix.count;
             self.pending_operand = Some((node, depth));
-            self.pending_start = first + opened - done;
+            self.pending_start = level.start;
+            self.pending_prefix = Some(level.prefix);
             self.inner_depth = 0;
             node = self.parse_parenthesized_call();
             self.pending_operand = None;
-            if !matches!(node, Node::Group { levels, .. } if levels > 1) {
+            self.pending_prefix = None;
+            let merged = matches!(node, Node::Group { levels, .. } if levels > 1);
+            let nests = merged || (signed && is_signed_nest(&node));
+            if !nests {
                 depth = self.inner_depth + PRIMARY_DEPTH;
                 if depth > MAX_FORMULA_DEPTH {
                     return self.too_deep();
@@ -679,5 +740,38 @@ pub(super) fn wrong_range_shape(node: &Node) -> super::static_analysis::StaticRe
             ..
         } => super::static_analysis::StaticResult::Range(row2 - row1, column2 - column1),
         _ => super::static_analysis::StaticResult::Scalar,
+    }
+}
+
+/// A `(` of a run of parentheses ([`Parser::parse_parenthesis_run`]): the char where it is written
+/// and the signs written between it and the `(` before it.
+struct RunLevel {
+    start: usize,
+    prefix: Prefix,
+}
+
+/// Whether `group` is a written group whose content is exactly a group under unary signs and the
+/// whitespace around them (`(-(x))`, `( - (x) )`): the loops that walk signs and groups
+/// (`Model::apply_unary_chain`, the printer's `wrapped_text`) walk it with the group inside in one
+/// frame, so it adds no depth (T-3338; 256 levels print and evaluate on a 2 MiB unoptimized stack,
+/// `signed_parentheses_at_the_parenthesis_cap_evaluate_on_a_small_stack`). The recursive walks
+/// (analysis, `Clone`, `Drop`) take a frame per node, bounded by [`MAX_PARENTHESES`] and
+/// [`super::MAX_SIGNS`] (T-3691). A `%` or any operator after the inner group stops it.
+fn is_signed_nest(group: &Node) -> bool {
+    let Node::Group { child, .. } = group else {
+        return false;
+    };
+    let mut node: &Node = child;
+    loop {
+        match node {
+            Node::UnaryKind {
+                kind: OpUnary::Minus,
+                right: child,
+            }
+            | Node::UnaryPlus { child }
+            | Node::Spaced { child, .. } => node = child,
+            Node::Group { .. } => return true,
+            _ => return false,
+        }
     }
 }
