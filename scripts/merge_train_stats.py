@@ -24,6 +24,7 @@ Definitions the spec leaves open, fixed here:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import math
 import re
 import subprocess
@@ -39,7 +40,7 @@ from typing import Protocol, TypeVar
 import gh_client
 import merge_lock
 import merge_ready
-from gh_client import SHA, Client, GhError
+from gh_client import SHA, Client, GhError, iso, when  # noqa: F401 (iso, when re-exported)
 from merge_ready import field_of, int_of, text_of
 from merge_train import TRAIN_BRANCH
 from merge_train_shadow import NO_RESULT, PREDICTION_HEADER, SHADOW_BRANCH
@@ -74,17 +75,32 @@ TRAINS_OVER_MAX = 2
 BUCKETS = (("under 3/h", 0, 2), ("3-6/h", 3, 6), ("over 6/h", 7, math.inf))
 
 
-def when(value: str) -> datetime | None:
-    """A GitHub timestamp (`2026-10-29T21:58:36Z`) as an aware datetime; None when malformed."""
-    try:
-        moment = datetime.fromisoformat(value)
-    except ValueError:
-        return None
-    return moment if moment.tzinfo is not None else None
-
-
-def iso(moment: datetime) -> str:
-    return moment.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+def stranded_since(client: Client, now: datetime) -> list[tuple[int, datetime]]:
+    """(PR, when its marker was posted) of the open PRs marked ready more than 2 h ago, unmerged
+    and not ejected or held (`merge-hold`), whose newest marker names the current head: a stale marker waits on its
+    worker or the janitor (decision 0224). Only writers' markers count (merge_ready's V1 rule),
+    so no one else can hide a stranded PR. The janitor's escalation check reads it too."""
+    found = []
+    pulls = client.pulls()
+    owner = text_of(pulls[0], "base", "repo", "owner", "type") if pulls else ""
+    authors = merge_ready.Authors(client, owner == "User")
+    for pull in pulls:
+        labels = merge_ready.label_names(pull)
+        held = merge_ready.HOLD_LABEL in labels  # an owner's hold is not stranded (decision 0224)
+        if merge_ready.READY_LABEL not in labels or merge_ready.EJECTED_LABEL in labels or held:
+            continue
+        pr = int_of(pull, "number")
+        marks = [
+            (at, text_of(c, "body"))
+            for c in merge_ready.marker_comments(client.comments(pr), authors)
+            if (at := when(text_of(c, "created_at")))
+        ]
+        newest, body = max(marks, default=(None, ""))
+        with contextlib.suppress(merge_ready.MarkerError):
+            current = merge_ready.parse_marker(body).head == text_of(pull, "head", "sha")
+            if newest is not None and current and now - newest > STRANDED_AFTER:
+                found.append((pr, newest))
+    return found
 
 
 def percentile(values: Sequence[float], q: float) -> float | None:
@@ -542,21 +558,8 @@ class Stats:
         )
 
     def stranded(self) -> list[int]:
-        """Open PRs marked ready more than 2 h ago, unmerged and not ejected."""
-        found = []
-        for pull in self.client.pulls():
-            labels = merge_ready.label_names(pull)
-            if merge_ready.READY_LABEL not in labels or merge_ready.EJECTED_LABEL in labels:
-                continue
-            pr = int_of(pull, "number")
-            marks = [
-                when(text_of(c, "created_at"))
-                for c in self.client.comments(pr)
-                if merge_ready.has_marker(text_of(c, "body"))
-            ]
-            newest = max((m for m in marks if m is not None), default=None)
-            if newest is not None and self.now - newest > STRANDED_AFTER:
-                found.append(pr)
+        """The stranded PRs (`stranded_since`), emitted as the report's line."""
+        found = [pr for pr, _ in stranded_since(self.client, self.now)]
         self.emit("stranded PRs: " + (", ".join(f"#{pr}" for pr in found) or "none"))
         return found
 
@@ -611,7 +614,8 @@ class Stats:
         stranded: Sequence[int],
         tree_failures: int,
     ) -> None:
-        """The steward's daily thresholds; any one triggers the flip to `lock` and a P0."""
+        """The steward's daily thresholds (decision 0224): a tree-check failure, a correctness
+        failure, triggers the flip to `lock` and a P0; any other escalates (the steward skill)."""
         triggers = []
         for day in sorted({at.date() for at, _ in latencies}):
             p90 = percentile([v for at, v in latencies if at.date() == day], 0.9)
@@ -624,8 +628,9 @@ class Stats:
             if n > TRAINS_OVER_MAX
         ]
         triggers += [f"stranded #{pr}" for pr in stranded]
-        triggers += [f"{tree_failures} tree-check failure(s)"] if tree_failures else []
-        self.emit("daily thresholds: " + ("; ".join(triggers) + " -> flip to lock" if triggers else "ok"))
+        parts = ["; ".join(triggers) + " -> escalate"] if triggers else []
+        parts += [f"{tree_failures} tree-check failure(s) -> flip to lock"] if tree_failures else []
+        self.emit("daily thresholds: " + (" | ".join(parts) or "ok"))
 
     def bar(self, predictions: Sequence[Prediction], shadow_start: datetime | None) -> None:
         """T-2991's evidence and load bar, over every prediction since shadow started."""

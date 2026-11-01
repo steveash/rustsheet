@@ -960,7 +960,7 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   pair 296). By digits over all six functions the model misses 7 of the 600 small-x cells, the previous engine
   15: IMSINH 0 (was 5), IMCOSH 1 (4), IMCSCH 3 (4), IMSECH 3 (2). The IMSECH misses are real arguments where Excel's
   `1/cosh x` is one ulp off the form's (`IMSECH("6.17632662504393E-06")` 0.999999999980927, ours ...926), so IMSECH and
-  IMCSCH below 0.01 (and one IMCOSH text) are not fully explained (T-3609). 11 more cells there differ only in notation (14 digits at exponent
+  IMCSCH below 0.01 (and one IMCOSH text) were not fully explained (T-3609 settles the real ones, next entry). 11 more cells there differ only in notation (14 digits at exponent
   -6 written plain, T-3560). Gate A: all 900 fresh cells are within 1e-9 of the 50-digit value. The cut at 0.01 did not
   move (FITTED, T-3525); the series and libm give the same digits at 0.01 itself. The reciprocal also explains an
   asymmetry at the top of the range: for y < 0, u = EXP(y) leaves the normal range below ln(DBL_MIN) =
@@ -970,8 +970,32 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   y from -708.396419 to -709.78; probes-numeric/t3589-imsin-imcos-negative-cut-probe, 22 cells, and
   t3589-imsin-imcos-subnormal-exp-probe, 52 cells, excel-graph). Ours: `trig_exp_overflows`. The same probe shows
   positive y turning `#NUM!` between 709.7 and 709.75, below exp's overflow (T-3616). Status: VERIFIED (excel-graph) for
-  IMSINH, IMCOSH, IMSIN and IMCOS; UNVERIFIED for IMSECH and IMCSCH below 0.01. Ours: `inverse_exp_sinh_cosh`,
+  IMSINH, IMCOSH, IMSIN and IMCOS; for IMSECH and IMCSCH below 0.01 see the next entry (real x VERIFIED, three complex
+  cells UNVERIFIED; T-3609). Ours: `inverse_exp_sinh_cosh`,
   `sinh_series` and `trig_sinh_cosh` in functions/engineering/complex/trig.rs.
+- **IMSECH and IMCSCH of a small real number: `1/cosh x` with libm's cosh, `1/sinh x` with the series sinh
+  (T-3609).** At 0 < |x| <= 0.01 and y = 0, IMSECH is 1 over libm's cosh, not over the reciprocal form IMCOSH uses:
+  `IMSECH("6.17632662504393E-06")` is 0.999999999980927, `IMSECH("-1.71603860095587E-05")` 0.999999999852761 and
+  `IMSECH("9.70217965965262E-05")` 0.999999995293386 (the form's ...926, ...276, ...385; t3589-im-hyperbolic-small-x-sweep
+  C42, C58, C68). IMCSCH is `1/sinh x` with the series sinh, not `sinh x/sinh²x`: `IMCSCH("-1.05118886127103E-06")`
+  is -951303.839721704 (the quotient's ...703, D102). Candidates over every real oracle text of the suites at
+  0 < |x| <= 0.01 (75 IMSECH, 75 IMCSCH): IMSECH 1/libm cosh 75, 1 over the form's cosh 72, `2/(1/u + u)` 72,
+  `1/(1 + x²/2 + x⁴/24 ...)` 71, `2u/(1 + u²)` 70; IMCSCH 1/series sinh 75, 1/libm sinh 74, the quotient with the series
+  sinh 74 (with libm's 73), `1/((1/u - u)/2)` and `2/(1/u - u)` 6, `2u/(1 - u²)` 4. Frozen at a44bbca9e and checked on
+  a sweep drawn after it (decision 0188 R4.2; probes-numeric/t3609-imsech-imcsch-small-real-sweep, 200 real x,
+  |x| log-uniform in [1E-8, 0.01], excel-graph): IMSECH 200/200 (the form 197), IMCSCH 200/200 (the quotient 195);
+  IMCOSH 200/200 and IMSINH 197/200 unchanged, the 3 IMSINH misses notation only (T-3560). Above 0.01 the real branch
+  is unchanged (1 over the form's cosh; the quotient), unprobed by this sweep. Below the sweep the real IMCSCH stays
+  the reciprocal down to the smallest normal x, past where sinh²x underflows: `IMCSCH("1E-200")` is 1E+200,
+  `IMCSCH("1E-307")` 1E+307, `IMCSCH("1E-20")` 100000000000000000000; a subnormal x is `#NUM!` (`IMCSCH("1E-308")`,
+  "2E-308", "2E-309", "1E-320"), and IMSECH of a tiny real is 1 except `IMSECH("1E-320")` `#NUM!`
+  (probes-numeric/t3609-imcsch-tiny-real-probe, excel-graph, 30 cells, all passing). Still unexplained at complex x:
+  `IMCOSH("-0.00908725305283191-0.897991007302082i")` imaginary part 0.00710702505540606 (ours ...607; B15) and
+  IMCSCH D15 (`-0.00925756264826299` real, ours -0.009257562648263) and D29 (`IMCSCH("-0.00994266897763484-0.217145289213716i")`
+  real part -0.208738033086954, ours ...955): every pairing of the series, libm and form sinh with the form, libm and
+  series cosh scores the same 105/111 complex IMCOSH and 71/75 complex IMCSCH texts and none fits these three (the
+  other misses there are notation, T-3560). Status: VERIFIED (excel-graph) for the real IMSECH and IMCSCH kernels at
+  |x| <= 0.01; UNVERIFIED for B15, D15 and D29. Ours: `imsech`, `imcsch` in functions/engineering/complex/trig.rs.
 - **An IM* part with 14 significant digits at exponent -6 is plain text (T-3545).** `IMSIN("0-1.03615953980931E-06i")`
   is `-0.0000010361595398356i` (21 characters without the sign, probes-numeric/t3545-imsin-imcos-small-imag-sweep
   A128), and so are A43, B49 and B81 there (`IMCOS("-0.856146645807608+1.42428827512383E-06i")` is
