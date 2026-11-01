@@ -128,10 +128,10 @@ def test_draws_keep_out_of_the_unpinned_bands() -> None:
             (s,) = _sqrt_draw(stratum, rng)
             assert not SQRTPI_BAND[0] < s < SQRTPI_BAND[1]
             number, base = _log_draw(stratum, rng)
-            assert isinstance(number, float)
-            assert isinstance(base, float)
             px, py = _power_draw(stratum, rng)
-            assert isinstance(px, float)
-            assert isinstance(py, float)
             if stratum != "edge":
+                assert number > 0
+                assert base > 0
+                assert base != 1
                 assert not _near_power_edge(px, py)
+                assert (px, py) != (2.0, 0.5)  # the redraw loop's fallback is not reached

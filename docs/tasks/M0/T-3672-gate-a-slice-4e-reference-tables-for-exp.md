@@ -3,7 +3,7 @@ id: T-3672
 title: "Gate A slice 4e: reference tables for EXP, LN, LOG, LOG10, POWER, SQRT and SQRTPI"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -34,7 +34,7 @@ EXP, LN, LOG, LOG10, POWER, SQRT and SQRTPI each get a committed, oracle-filled 
       with its owner task (`known-failures.tsv`, T-3379's rules) and any R3 candidate (decision 0188 R3 needs an owner
       ruling).
 - [x] The probes-numeric math sidecars are regenerated with the new definitions and committed.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing the engine's kernels: each failing point gets its own task (`known-failures.tsv`).
@@ -66,7 +66,8 @@ EXP, LN, LOG, LOG10, POWER, SQRT and SQRTPI each get a committed, oracle-filled 
   - New evidence in numbers.md: the odd-root cut for a negative exponent and for 1/9; EXP's sub-normal-range points.
 - **probes-numeric math sidecars:** 25 files gain cells of these functions (15350 numeric cells plus 233 errors; three
   t2586 F.DIST sidecars only gain EXP cells). Every one is within G of Excel or inside the floor (EXP and POWER results
-  below the smallest normal double, which Excel shows as 0).
+  below the smallest normal double, which Excel shows as 0). Three power-large-integer-exponents cells (A6, A14, A22,
+  bases 1 ± 1E-7 or 1E-9 to 2^31) are 1.2E-8 to 2.8E-8 off: Excel's square-and-multiply drift over 31 squarings.
   - Overlaps with open PRs: double-rounding-chained and double-rounding-ops (#2702, SUM and AVERAGE cells) and
     power-ulp-sources (#2764, TANH cells) are new files there too. Whichever PR merges later regenerates them with
     all definitions.

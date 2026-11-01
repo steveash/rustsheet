@@ -53,7 +53,7 @@ LN_MAX = math.log(sys.float_info.max)  # 709.782712893384
 LN_MIN = math.log(sys.float_info.min)  # -708.3964185322641, the smallest normal double
 EXP_BAND = (709.78, 709.79)  # EXP's overflow cut lies in here; the draws keep out
 SQRTPI_CUT = sys.float_info.max / math.pi  # 5.72E+307: x·π overflows above it
-SQRTPI_BAND = (5.72e307, 5.73e307)
+SQRTPI_BAND = (SQRTPI_CUT * (1 - 1e-3), SQRTPI_CUT * (1 + 1e-3))  # Excel's product rounding decides inside
 ROOT_LIMIT = 2**31 - 1  # 1/y must be an odd integer below this for a negative base's root
 NEGATIVE_BASE_LIMIT = 2**32 - 1  # a negative base with an integer exponent from here is #NUM!
 EDGE_MARGIN = 1e-6  # relative distance of ln|x|^|y| from the range edges that a drawn point keeps
@@ -71,7 +71,7 @@ def _log_domain(args: Sequence[MathArg]) -> str | None:
 
 def _sqrtpi_domain(args: Sequence[MathArg]) -> str | None:
     (x,) = scalars(args)
-    return "x·π overflows" if math.isinf(float(x) * math.pi) else None
+    return "x·π overflows" if x > SQRTPI_CUT else None
 
 
 def _odd_root(y: float) -> bool:
@@ -104,10 +104,10 @@ def _out_of_range(x: float, y: float) -> str | None:
     """POWER's overflow (`#NUM!`) and the underflow of a negative exponent's positive power (`#DIV/0!`)."""
     if x == 0 or y == 0 or abs(x) == 1:
         return None
-    lp = _positive_power_log(x, y)
-    if lp > LN_MAX and y > 0:
+    log_positive_power = _positive_power_log(x, y)
+    if log_positive_power > LN_MAX and y > 0:
         return "the power overflows"
-    if lp < LN_MIN and y < 0:
+    if log_positive_power < LN_MIN and y < 0:
         return "the positive power underflows, so 1 over it is #DIV/0!"
     return None
 
@@ -154,8 +154,8 @@ def _exp_draw(stratum: str, rng: random.Random) -> list[Arg]:
     return [_away_from(x, EXP_BAND)]
 
 
-def _positive_draw(stratum: str, rng: random.Random, *, near_one: bool) -> float:
-    """LN, LOG10, SQRT and SQRTPI's argument (and LOG's number)."""
+def _log_like_draw(stratum: str, rng: random.Random, *, near_one: bool) -> float:
+    """LN, LOG10, SQRT and SQRTPI's argument (and LOG's number): positive, except the edge stratum's 0 and -1."""
     if stratum == "tail":
         if near_one:
             return 1 + _signed(rng, 10 ** -rng.uniform(1, 14))
@@ -168,11 +168,12 @@ def _positive_draw(stratum: str, rng: random.Random, *, near_one: bool) -> float
 
 
 def _ln_draw(stratum: str, rng: random.Random) -> list[Arg]:
-    return [_positive_draw(stratum, rng, near_one=True)]
+    return [_log_like_draw(stratum, rng, near_one=True)]
 
 
 def _sqrt_draw(stratum: str, rng: random.Random) -> list[Arg]:
-    return [_away_from(_positive_draw(stratum, rng, near_one=False), SQRTPI_BAND)]
+    # SQRT and SQRTPI share it; SQRT has no cut near SQRTPI's band, so keeping out of it costs SQRT nothing
+    return [_away_from(_log_like_draw(stratum, rng, near_one=False), SQRTPI_BAND)]
 
 
 def _log_draw(stratum: str, rng: random.Random) -> list[Arg]:
@@ -180,7 +181,7 @@ def _log_draw(stratum: str, rng: random.Random) -> list[Arg]:
         return list(
             rng.choice(((100.0, 1.0), (1.0, 1.0), (8.0, 0.0), (8.0, -2.0), (1000.0, 10.0), (8.0, 2.0)))
         )
-    number = _positive_draw(stratum, rng, near_one=True)
+    number = _log_like_draw(stratum, rng, near_one=True)
     if stratum == "tail" and rng.random() < 0.5:  # a base near 1
         return [number, 1 + _signed(rng, 10 ** -rng.uniform(1, 14))]
     if stratum in ("extreme", "log-uniform"):
@@ -194,8 +195,8 @@ def _near_power_edge(x: float, y: float) -> bool:
     """A positive power within EDGE_MARGIN (relative) of the overflow or the smallest normal double."""
     if x == 0 or y == 0 or abs(x) == 1:
         return False
-    lp = abs(y) * math.log(abs(x))
-    return any(abs(lp - edge) <= EDGE_MARGIN * abs(edge) for edge in (LN_MAX, LN_MIN))
+    log_positive_power = abs(y) * math.log(abs(x))
+    return any(abs(log_positive_power - edge) <= EDGE_MARGIN * abs(edge) for edge in (LN_MAX, LN_MIN))
 
 
 _POWER_EDGES: tuple[tuple[float, float], ...] = (
@@ -226,7 +227,7 @@ def _power_draw(stratum: str, rng: random.Random) -> list[Arg]:
         x, y = _power_pair(stratum, rng)
         if not _near_power_edge(x, y):
             return [x, y]
-    return [2.0, 0.5]
+    return [2.0, 0.5]  # unreachable in practice: a stratum's pair lands near an edge with probability ~1e-6
 
 
 def _power_pair(stratum: str, rng: random.Random) -> tuple[float, float]:
