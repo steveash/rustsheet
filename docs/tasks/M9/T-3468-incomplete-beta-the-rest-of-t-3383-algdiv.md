@@ -3,7 +3,7 @@ id: T-3468
 title: "Incomplete beta, the rest of T-3383: algdiv's stored intermediates from the r4-algdiv pins, Excel's direct bgrat increment to the bit, lnGamma(a0 < 1) in bpser, the b < 1 bpser ceiling, bfrac and bup arithmetic"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -71,3 +71,18 @@ that T-3383 (r4-algdiv, item 2 for the density) left open, so the engine tasks h
 
 ## Out of scope
 - Engine changes (T-3382 ports the L140 one-term composition).
+
+## Outcome
+Split for size, with no research done in this task: its seven open items need separate probe rounds and hold-outs. Each item is now one
+task, and the item text is carried over verbatim:
+- T-3567: Excel's direct bgrat increment D at b != 1/2, and F at a df of 1 through `bgrat_half` (item 1, first and
+  fourth bullets).
+- T-3568: n > 1 bup terms in bup+bgrat and the F, BINOM and NEGBINOM callers, plus bup's arithmetic and the
+  a0 < 1e-15 band (item 1 second bullet, item 6).
+- T-3569: x87 storage variants of algdiv for b0 >= 8 against the r4-algdiv pins, then bpser's L (item 2).
+  r4-algdiv/RESULTS.md and statistics.md now point there.
+- T-3570: lnGamma(a0 < 1) in bpser's L and the b < 1 bpser ceiling (items 3 and 4).
+- T-3571: bfrac's fraction arithmetic (item 5).
+- T-3572 (sonnet, S): record or route the GAMMA.DIST column A misses of t2512-r3-bgrat-qgamma (item 1, third bullet).
+
+Eval delta: none (task files; the T-3468 references in statistics.md, r4-algdiv/RESULTS.md and six engine comments now name the split task that owns each piece).
