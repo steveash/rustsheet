@@ -9,6 +9,7 @@ import pytest
 from rustsheet_tools.oracle.backends import GraphBackend, OracleError, recorded_sheet_ops
 from rustsheet_tools.oracle.canary import SHEET as CANARY
 from rustsheet_tools.oracle.package import patch_parts
+from rustsheet_tools.sheetop import column_letters, column_number
 from rustsheet_tools.spec2xlsx import build_xlsx, sheet_ops
 
 
@@ -30,6 +31,8 @@ def test_each_op_is_recorded_in_order() -> None:
         {"op": "delete_row", "sheet": "Calc", "row": 3, "count": 1},
         {"op": "insert_column", "sheet": "Calc", "column": "b"},
         {"op": "delete_column", "sheet": "Calc", "column": "XFD"},
+        {"op": "insert_column", "sheet": "Calc", "column": "c", "count": 2},
+        {"op": "delete_column", "sheet": "Calc", "column": "Z", "count": 3},
         {"op": "convert_table", "sheet": "Calc", "table": "Sales"},
         {"op": "delete_table", "sheet": "Calc", "table": "Sales"},
         {"op": "delete_sheet", "sheet": "New"},
@@ -45,6 +48,8 @@ def test_each_op_is_recorded_in_order() -> None:
         ("delete_row", "Calc", 3),
         ("insert_column", "Calc", "b"),
         ("delete_column", "Calc", "XFD"),
+        ("insert_column", "Calc", "C:D"),
+        ("delete_column", "Calc", "Z:AB"),
         ("convert_table", "Calc", "Sales"),
         ("delete_table", "Calc", "Sales"),
         ("delete_sheet", "New", None),
@@ -80,6 +85,8 @@ def test_workbook_without_ops_lists_none() -> None:
         {"op": "delete_row", "sheet": "Data", "row": "2:3"},
         {"op": "insert_row", "sheet": "Data", "row": 2, "count": 2},
         {"op": "insert_column", "sheet": "Data"},
+        {"op": "insert_column", "sheet": "Data", "column": "XFD", "count": 2},
+        {"op": "delete_column", "sheet": "Data", "column": "B:C"},
         {"op": "insert_column", "sheet": "Data", "column": "XFE"},
         {"op": "insert_column", "sheet": "Data", "column": "A1"},
         {"op": "delete_column", "sheet": "Data", "column": 2},
@@ -193,3 +200,17 @@ def test_graph_replay_deletes_a_sheet_and_converts_or_deletes_a_table() -> None:
 def test_graph_replay_never_deletes_the_canary_sheet() -> None:
     with pytest.raises(OracleError, match="canary"):
         _FakeGraph(["S", CANARY])._replay_sheet_ops("item", {}, [("delete_sheet", CANARY, None)])
+
+
+def test_column_letters_invert_column_number() -> None:
+    assert [column_letters(n) for n in (1, 2, 26, 27, 52, 702, 703, 16384)] == [
+        "A",
+        "B",
+        "Z",
+        "AA",
+        "AZ",
+        "ZZ",
+        "AAA",
+        "XFD",
+    ]
+    assert all(column_number(column_letters(n)) == n for n in range(1, 800))

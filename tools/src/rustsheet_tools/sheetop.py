@@ -49,6 +49,15 @@ def column_number(letters: str) -> int:
     return number
 
 
+def column_letters(number: int) -> str:
+    """The column letters of a 1-based column number (2 is `B`); the inverse of `column_number`."""
+    letters = ""
+    while number:
+        number, rem = divmod(number - 1, 26)
+        letters = chr(ord("A") + rem) + letters
+    return letters
+
+
 def _is_column(value: object) -> bool:
     """Whether `value` is a column letter within Excel's XFD."""
     return (
@@ -68,6 +77,12 @@ def _is_name(value: object) -> bool:
     return isinstance(value, str) and bool(value)
 
 
+def _is_column_span(value: object) -> bool:
+    """Whether `value` is the `C:E` columns of a multi-column insert or delete, first before last (T-2899)."""
+    first, _, last = value.partition(":") if isinstance(value, str) else ("", "", "")
+    return _is_column(first) and _is_column(last) and column_number(first) < column_number(last)
+
+
 def _is_row_span(value: object) -> bool:
     """Whether `value` is the `first:last` rows of a multi-row delete_row, first before last (T-3019)."""
     match = _ROW_SPAN.fullmatch(value) if isinstance(value, str) else None
@@ -81,8 +96,8 @@ def _valid_op_argument(kind: str, to: object) -> bool:
         "move": _is_int_at_least(to, 0),
         "insert_row": _is_int_at_least(to, 1),
         "delete_row": _is_int_at_least(to, 1) or _is_row_span(to),
-        "insert_column": _is_column(to),
-        "delete_column": _is_column(to),
+        "insert_column": _is_column(to) or _is_column_span(to),
+        "delete_column": _is_column(to) or _is_column_span(to),
         "convert_table": _is_name(to),
         "delete_table": _is_name(to),
     }.get(kind, to is None)
@@ -105,20 +120,33 @@ def sheet_op(op: Any) -> tuple[str, str, str | int | None]:
     kind, sheet = op["op"], op["sheet"]
     key = _op_key(kind)
     to = op.get(key) if key else None
-    if set(op) - {"op", "sheet", key, *(["count"] if kind == "delete_row" else [])}:
+    counted = kind in ("delete_row", "insert_column", "delete_column")
+    if set(op) - {"op", "sheet", key, *(["count"] if counted else [])}:
         msg = f"sheet op {op!r} has unknown keys"
         raise ValueError(msg)
     if "count" in op:
         count = op["count"]
-        if not (_is_int_at_least(count, 1) and _is_int_at_least(to, 1)):
-            msg = f"sheet op {op!r}: `count` must be a row count >= 1 after a 1-based `row`"
+        by_column = kind != "delete_row"
+        if not (_is_int_at_least(count, 1) and (_is_column(to) if by_column else _is_int_at_least(to, 1))):
+            msg = f"sheet op {op!r}: `count` must be a row or column count >= 1 after a 1-based `row` or a `column`"
             raise ValueError(msg)
-        # One edit of several rows is recorded as their span, `4:7`, which is also Graph's address;
-        # a count of 1 keeps the plain row, so single-row workbooks stay byte-identical.
-        if count > 1:
+        # One edit of several rows or columns is recorded as its span, `4:7` or `C:E`, which is also
+        # Graph's address; a count of 1 keeps the plain row or letter, so single-edit workbooks stay
+        # byte-identical.
+        if count > 1 and by_column:
+            first = str(to).upper()
+            last = column_number(first) + count - 1
+            if last > _LAST_COLUMN:
+                msg = f"sheet op {op!r}: the columns run past XFD"
+                raise ValueError(msg)
+            to = f"{first}:{column_letters(last)}"
+        elif count > 1:
             to = f"{to}:{to + count - 1}"
     elif _is_row_span(to) and not recorded:
         msg = f"sheet op {op!r}: a spec deletes several rows with `row` and `count`, not a span"
+        raise ValueError(msg)
+    elif _is_column_span(to) and not recorded:
+        msg = f"sheet op {op!r}: a spec edits several columns with `column` and `count`, not a span"
         raise ValueError(msg)
     if _valid_op_argument(kind, to):
         return kind, sheet, to

@@ -1,0 +1,81 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2899: a delete of columns B:C where B is outside the table (it starts at C) and C is its first column. Table Sales on S!C3:E7 (headers Region/Qty/Val, data rows 4-7). Sheet F reads the result; FORMULATEXT and INDIRECT cells record text the oracle prints.",
+  "tags": [
+    "M8",
+    "tables",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "C3": "Region",
+        "D3": "Qty",
+        "E3": "Val",
+        "C4": "E",
+        "D4": 1,
+        "E4": 10,
+        "C5": "W",
+        "D5": 2,
+        "E5": 20,
+        "C6": "N",
+        "D6": 4,
+        "E6": 40,
+        "C7": "S",
+        "D7": 8,
+        "E7": 80,
+        "B4": "x",
+        "B3": "pad"
+      },
+      "tables": [
+        {
+          "name": "Sales",
+          "ref": "C3:E7"
+        }
+      ]
+    },
+    {
+      "name": "F",
+      "cells": {
+        "A1": "=SUM(Sales[Qty])",
+        "A2": "=FORMULATEXT(A1)",
+        "A3": "=COLUMNS(Sales)",
+        "A4": "=ROWS(Sales)",
+        "A5": "=SUM(Sales[Val])",
+        "A6": "=FORMULATEXT(A5)",
+        "A7": "=COUNTA(Sales[Region])",
+        "A8": "=FORMULATEXT(A7)",
+        "A9": "=INDEX(Sales[#Headers],1,1)",
+        "A10": "=SUM(S!D4:D7)",
+        "A11": "=FORMULATEXT(A10)",
+        "A12": "=COLUMN(Sales[Qty])",
+        "A13": "=COLUMN(Sales[Val])"
+      }
+    }
+  ],
+  "sheet_ops": [
+    {
+      "op": "delete_column",
+      "sheet": "S",
+      "column": "B",
+      "count": 2
+    }
+  ],
+  "expected": {},
+  "check": [
+    "F!A1",
+    "F!A2",
+    "F!A3",
+    "F!A4",
+    "F!A5",
+    "F!A6",
+    "F!A7",
+    "F!A8",
+    "F!A9",
+    "F!A10",
+    "F!A11",
+    "F!A12",
+    "F!A13"
+  ]
+}

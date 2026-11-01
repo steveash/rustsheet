@@ -1,0 +1,70 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2899: one delete of every column of the table (B:C, count 2). Table Sales on S!B3:C7 (headers Region/Qty, data rows 4-7). Sheet F reads the result; FORMULATEXT and INDIRECT cells record text the oracle prints.",
+  "tags": [
+    "M8",
+    "tables",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "B3": "Region",
+        "C3": "Qty",
+        "B4": "E",
+        "C4": 1,
+        "B5": "W",
+        "C5": 2,
+        "B6": "N",
+        "C6": 4,
+        "B7": "S",
+        "C7": 8,
+        "A4": "left",
+        "H4": "right"
+      },
+      "tables": [
+        {
+          "name": "Sales",
+          "ref": "B3:C7"
+        }
+      ]
+    },
+    {
+      "name": "F",
+      "cells": {
+        "A1": "=SUM(Sales[Qty])",
+        "A2": "=FORMULATEXT(A1)",
+        "A3": "=COLUMNS(Sales)",
+        "A4": "=ROWS(Sales)",
+        "A5": "=ROWS(Sales[#All])",
+        "A6": "=SUM(S!C4:C7)",
+        "A7": "=FORMULATEXT(A6)",
+        "A8": "=COUNTA(Sales[Region])",
+        "A9": "=COLUMN(Sales[Qty])",
+        "A10": "=ISREF(Sales)"
+      }
+    }
+  ],
+  "sheet_ops": [
+    {
+      "op": "delete_column",
+      "sheet": "S",
+      "column": "B",
+      "count": 2
+    }
+  ],
+  "expected": {},
+  "check": [
+    "F!A1",
+    "F!A2",
+    "F!A3",
+    "F!A4",
+    "F!A5",
+    "F!A6",
+    "F!A7",
+    "F!A8",
+    "F!A9",
+    "F!A10"
+  ]
+}

@@ -280,7 +280,13 @@ probes/t3406-irr-num-boundary.case.json	76
 probes/t3419-elapsed-after-date-b.case.json	1
 probes/t3505-gamma-inv-budget-band.case.json	5
 probes/t3532-numeral-digit-fields.case.json	14
+probes/table-edits/table-column-range-delete-both-ends-separate.case.json	5
+probes/table-edits/table-column-range-delete-end.case.json	5
+probes/table-edits/table-column-range-delete-start.case.json	3
 probes/table-edits/table-convert-names-this-row.case.json	3
+probes/table-edits/table-delete-all-columns.case.json	1
+probes/table-edits/table-delete-columns-straddle-left.case.json	6
+probes/table-edits/table-delete-columns-straddle-right.case.json	4
 probes/table-edits/table-delete-rows-all-data-once.case.json	8
 probes/table-edits/table-insert-row-calc-column-above-header.case.json	6
 probes/table-edits/table-insert-row-calc-column-inside-data.case.json	3

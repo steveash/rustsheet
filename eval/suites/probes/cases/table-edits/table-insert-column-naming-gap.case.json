@@ -1,0 +1,79 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2899: the name a column insert inside a table gives the new column when the table already has Column2 and no Column1 (a gap). Table Sales on S!B3:D7 (headers Region/Column2/Qty, data rows 4-7). Sheet F reads the result; FORMULATEXT and INDIRECT cells record text the oracle prints. The new header cells are checked too; their expected text is Excel's as read through INDIRECT (excel-graph 2026-11-01).",
+  "tags": [
+    "M8",
+    "tables",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "B3": "Region",
+        "C3": "Column2",
+        "D3": "Qty",
+        "B4": "E",
+        "C4": 1,
+        "D4": 10,
+        "B5": "W",
+        "C5": 2,
+        "D5": 20,
+        "B6": "N",
+        "C6": 4,
+        "D6": 40,
+        "B7": "S",
+        "C7": 8,
+        "D7": 80
+      },
+      "tables": [
+        {
+          "name": "Sales",
+          "ref": "B3:D7"
+        }
+      ]
+    },
+    {
+      "name": "F",
+      "cells": {
+        "A1": "=INDIRECT(\"S!C3\")",
+        "A2": "=INDIRECT(\"S!D3\")",
+        "A3": "=INDIRECT(\"S!E3\")",
+        "A4": "=COLUMNS(Sales)",
+        "A5": "=SUM(Sales[Qty])",
+        "A6": "=COLUMN(Sales[Qty])",
+        "A7": "=COUNTA(INDIRECT(\"Sales[Column1]\"))",
+        "A8": "=COUNTA(Sales[Column2])"
+      }
+    }
+  ],
+  "sheet_ops": [
+    {
+      "op": "insert_column",
+      "sheet": "S",
+      "column": "C"
+    }
+  ],
+  "expected": {
+    "S!C3": {
+      "t": "s",
+      "v": "Column1"
+    },
+    "S!D3": {
+      "t": "s",
+      "v": "Column2"
+    }
+  },
+  "check": [
+    "F!A1",
+    "F!A2",
+    "F!A3",
+    "F!A4",
+    "F!A5",
+    "F!A6",
+    "F!A7",
+    "F!A8",
+    "S!C3",
+    "S!D3"
+  ]
+}

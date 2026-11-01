@@ -1,0 +1,44 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "F": {
+   "A1": {
+    "t": "n",
+    "v": 0.0
+   },
+   "A2": {
+    "t": "s",
+    "v": "Region"
+   },
+   "A3": {
+    "t": "s",
+    "v": "Qty"
+   },
+   "A4": {
+    "t": "n",
+    "v": 2.0
+   },
+   "A5": {
+    "t": "n",
+    "v": 15.0
+   },
+   "A6": {
+    "t": "n",
+    "v": 5.0
+   },
+   "A7": {
+    "t": "n",
+    "v": 4.0
+   }
+  },
+  "S": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "19e03c1d302dc245741449d3a8039165e0d98ef6e4ebb0814ab05024c2b4bd77",
+  "kind": "excel-graph",
+  "produced_at": "2026-11-01T13:04:25+00:00",
+  "version": null,
+  "workbook_name": "4eb74f5b402aa966f129601bc810d3f7831cf4b6a2da6862e81bf3112e629765.xlsx"
+ }
+}
