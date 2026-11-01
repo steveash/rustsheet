@@ -44,3 +44,29 @@ stage (PR #2529, blocked on its hold-out) and unblocks T-3347.
 
 ## Out of scope
 - The last digits (T-3408) and `#DIV/0!` (T-3407).
+
+## Landing notes
+2026-11-01, opus run (session window closed at minute 80 of the run; no PR opened, no code changed).
+- Branch head: the claim commit plus these notes. Nothing is implemented; CI and reviewers have not run.
+- Scored on the type (number, `#NUM!`, `#DIV/0!` read as an error) of 288 cells: probes/t3406-irr-num-boundary (144)
+  and probes-numeric/t3347-irr-conventional-holdout (144). T-3347's probe and sweep cases are on T-3347's branch, not
+  main, so they were not scored. The scratch scorer was a plain-double replica of `irr_secant` plus candidate fallbacks,
+  not the engine's twice-rounded operators.
+  - Plain-double secant from 0.1 (retry 0.1), no fallback: 193/288.
+  - Plus Newton in r from the guess (analytic derivative, |dr| < 1e-7 stop): 212 / 224 / 225 at 20 / 50 / 100 steps.
+    It does not rescue the level annuities (t3406 A5-A10, root -0.10 to -0.20, n = 20): from r = 0.1 the NPV slope is
+    small, so the first step lands below r = -1. It also returns 7 cells Excel is `#NUM!` on (t3406 A99-A106, n = 60,
+    outlay about 7E+10). Refuted as the fallback.
+  - Plus the secant in r (start 0.1 and 0.101): no change (193). Refuted.
+  - The engine's own XIRR bracket walk (financial.md "XIRR is a bracketing bisection"), run as
+    `XIRR(flows, 45000 + 365k, guess)` so the exponents are exactly k: it returns a number on all 288 cells. That covers
+    every one of the 84 cells where Excel returns and engine IRR is `#NUM!`, but it also returns on 80 `#NUM!` and 31
+    `#DIV/0!` cells (e.g. t3406 A12-A15, roots -0.24 to -0.30, n = 20; A66-A69, `#DIV/0!` in Excel). An unbounded
+    bracket walk is refuted. Excel's pattern (returns down to a root of about -0.22 at n = 20, `#NUM!` below, `#DIV/0!`
+    for larger outlays at n = 40 and 60) points to a walk or search whose reach in r is bounded and which, for long
+    series, tries a rate whose discount leaves the double range (NPV's `#DIV/0!`, T-3407).
+- Next step: model the bound. Find the most negative root Excel returns per n (t3406 gives -0.22 / -0.18 / -0.14 /
+  -0.12 for n = 20 / 30 / 40 / 60) and test whether it is a fixed trial-rate set (for example rates stepped from the guess
+  by a factor, as XIRR's trial chain does) whose NPV signs bracket the root, scoring with the engine's extended operators
+  (`irr_npv`), not plain doubles.
+- Do not repeat: Newton in r and the secant in r as fallbacks; an unbounded XIRR-style bracket walk.
