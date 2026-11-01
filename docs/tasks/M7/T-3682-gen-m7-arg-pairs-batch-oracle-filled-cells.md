@@ -81,5 +81,7 @@ argument coverage of SEQUENCE, and every Excel cell the engine fails is owned by
   parity: 0 visibly-off cells in new cases. No new owner needed; `make exit-owners`/`unowned-off` see nothing new.
 - **Semantics**: the argument-class coercion of SEQUENCE's extents (numeric text, booleans, blank, empty text, the
   leftmost bad argument winning) is recorded in docs/excel-semantics/arrays.md under "SEQUENCE and TAKE: an argument
-  error before zero rows", citing the batch's cells.
-- Also lands T-3683 (the same batch for LET, MAKEARRAY, REDUCE and SCAN; todo, opus), filed by the 2026-11-01 gap triage.
+  error before zero rows", citing the batch's cells; the
+  batch also settles that entry's open question (an error start beats a negative extent).
+- Also files T-3683 (todo, opus; the same batch for LET, MAKEARRAY, REDUCE and SCAN, not implemented here), from the
+  2026-11-01 gap triage.

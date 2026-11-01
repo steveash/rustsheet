@@ -1922,10 +1922,11 @@ text "12" gives 12 rows, A2990), a fraction below 1 is a zero extent (`SEQUENCE(
 (`SEQUENCE("2.5",TRUE)` 2x1, A3417) and a `FALSE` cell or a blank cell is 0 (`#CALC!`, A3478, A3661). Empty or other
 text is `#VALUE!` in any of the four arguments, and it is read before a zero extent is checked: `SEQUENCE(0,0,"")` is
 `#VALUE!` (A11347). Of two bad arguments the leftmost wins: `SEQUENCE("",#NAME?)` is `#VALUE!` (A5979).
+An error start beats a negative extent, in rows or columns: `SEQUENCE(-1,1,#N/A)` is `#N/A` (gen-m7/b3f8ac7d2e3db3da
+A245; a -2.5 cell with a `#DIV/0!` cell start, A306) and `SEQUENCE(1,-1,#NAME?)` `#NAME?` (cc6a41457aaa5195 A11225, A11286).
 Ours: matches all 1136 formulas of the batch's six cases at their first run.
-Unprobed: whether an error start beats a negative extent (ours: it does, by the reading above).
 Status: VERIFIED (excel-graph)
-Tasks: T-2316
+Tasks: T-2316, T-3682
 
 ## TOROW, TOCOL, SORT and TEXTJOIN lifted arguments (gen-m7)
 Rule: TOROW's and TOCOL's scan_by_column lift over an array, an error initial argument filling every element
