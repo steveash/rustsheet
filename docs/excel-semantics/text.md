@@ -1063,7 +1063,7 @@ one with a `%` gets `0.00%` whatever the denominator (`3 1/2%`, `-3 1/2%`, `2 5/
 and `3 1/200` (three digits fit no `??/??`) is `3` plus six spaces. Typed `-$3 1/2%` stays text, like `$3 1/2%`, but the cell still gets `0.00%` (A15 ENTERED numberFormat)
 (probes/typed-mixed-fraction-number-format, excel-graph, 2026-10-30, T-3237; raw ENTERED lines and displayed text in
 docs/research/typed-mixed-fraction-number-format-2026-10-30.md).
-Ours: all implemented (`mixed_fraction`, mixed_fraction.rs, read through `value_number_text_with`, cast.rs; `parse_number`, parse_formatted.rs; `parse_separated`, date_text.rs).
+Ours: all implemented, T-3251 added the leading-`-` text path (`mixed_fraction`, mixed_fraction.rs, read through `value_number_text_with`, cast.rs; `parse_number`, parse_formatted.rs; `parse_separated`, date_text.rs).
 Status: VERIFIED (excel-graph); implemented (T-3151, T-2646).
 Tasks: T-2646, T-3151, T-3178
 

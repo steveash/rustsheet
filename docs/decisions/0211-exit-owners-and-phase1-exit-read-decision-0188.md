@@ -2,6 +2,7 @@
 
 - **Status:** accepted (2026-10-31, T-3428). Implements decision 0188 R1(b), R1(c), R3 and R7 in the
   scripts that list exit cells and print the Phase 1 exit.
+- **Amended by:** decision 0227 (the rate bullet): the every-suite rate also leaves out decision 0188 R1(c)'s Phase 1b cells.
 - **Context:** T-3359 made Gate B the Phase 1 rate (`v15_checkpoint.gate_b`), and T-3427 made the milestone
   probe and ironcalc-calc rows count only the cells R1(c) names. `scripts/exit_owners.py` still listed
   every visibly-off cell of those rows, and every visibly-off cell of the report for `--all-off`. So
