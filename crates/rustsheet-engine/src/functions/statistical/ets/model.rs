@@ -8,9 +8,10 @@
 //! s_t = s_{t-m} + γ·e_t
 //! ```
 //!
-//! **Not checked against Excel** (decision 0221). Adapted from gridcraft's `ets.rs` (`initial_states`,
-//! `filter`, `optimise`, `fit`, `Fit::forecast`); the MIT notice is in the parent module. Excel does
-//! not document its optimiser, so α, β and γ, and the last digits of a forecast on noisy data, may
+//! **Not checked against Excel** (decision 0221). Adapted from gridcraft's `ets.rs`
+//! (`initial_states`, `filter`, `optimise`, `fit`, `Fit::forecast`, `Fit::forecast_sd` and
+//! FORECAST.ETS.STAT's statistics); the MIT notice is in the parent module. Excel does not
+//! document its optimiser, so α, β and γ, and the last digits of a forecast on noisy data, may
 //! differ from Excel's; exact data (a straight line, an exactly repeating season) forecast exactly.
 
 use super::{detrend, least_squares};
@@ -417,9 +418,53 @@ impl Fit {
     }
 }
 
+/// The mean absolute one-step error (FORECAST.ETS.STAT's statistic 6).
+pub(in crate::functions::statistical) fn mean_absolute_error(errors: &[f64]) -> f64 {
+    errors.iter().map(|e| e.abs()).sum::<f64>() / errors.len().max(1) as f64
+}
+
+/// The root mean squared one-step error (statistic 7).
+pub(in crate::functions::statistical) fn root_mean_squared_error(errors: &[f64]) -> f64 {
+    (errors.iter().map(|e| e * e).sum::<f64>() / errors.len().max(1) as f64).sqrt()
+}
+
+/// The mean absolute scaled error (statistic 4): the MAE over that of the naive forecast, the
+/// mean absolute change between neighbouring points. `None` when that is 0 (`#DIV/0!`).
+pub(in crate::functions::statistical) fn mean_absolute_scaled_error(
+    y: &[f64],
+    errors: &[f64],
+) -> Option<f64> {
+    let changes: Vec<f64> = y
+        .windows(2)
+        .filter_map(|pair| Some((pair.get(1)? - pair.first()?).abs()))
+        .collect();
+    let naive = changes.iter().sum::<f64>() / changes.len().max(1) as f64;
+    (naive != 0.0).then(|| mean_absolute_error(errors) / naive)
+}
+
+/// The symmetric mean absolute percentage error (statistic 5): the mean of |e| / ((|y| + |ŷ|)
+/// / 2), with ŷ = y - e, over the points where the denominator is positive.
+pub(in crate::functions::statistical) fn symmetric_mean_absolute_percentage_error(
+    y: &[f64],
+    errors: &[f64],
+) -> f64 {
+    let terms: Vec<f64> = y
+        .iter()
+        .zip(errors)
+        .filter_map(|(value, error)| {
+            let denominator = (value.abs() + (value - error).abs()) / 2.0;
+            (denominator > 0.0).then(|| error.abs() / denominator)
+        })
+        .collect();
+    terms.iter().sum::<f64>() / terms.len().max(1) as f64
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{filter, fit, initial_states};
+    use super::{
+        filter, fit, initial_states, mean_absolute_error, mean_absolute_scaled_error,
+        root_mean_squared_error, symmetric_mean_absolute_percentage_error, Fit, State,
+    };
 
     fn line(n: usize) -> Vec<f64> {
         (1..=n).map(|t| 3.0 + 2.0 * t as f64).collect()
@@ -467,5 +512,62 @@ mod tests {
         assert!(near > 0.0 && fitted.forecast_sd(6.0) >= near);
         // A fractional horizon has the variance of the whole step at or past it.
         assert_eq!(fitted.forecast_sd(1.5), fitted.forecast_sd(2.0));
+    }
+
+    #[test]
+    fn error_statistics_on_a_known_error_vector() {
+        let y = [10.0, 12.0, 11.0, 15.0];
+        let errors = [1.0, -2.0, 0.5, 3.0];
+        assert_eq!(mean_absolute_error(&errors), 1.625);
+        assert_eq!(root_mean_squared_error(&errors), (14.25_f64 / 4.0).sqrt());
+        // The naive changes are 2, 1 and 4: mean 7/3.
+        let mase = mean_absolute_scaled_error(&y, &errors).unwrap_or(f64::NAN);
+        assert!((mase - 1.625 / (7.0 / 3.0)).abs() < 1e-15);
+        assert_eq!(
+            mean_absolute_scaled_error(&[5.0, 5.0, 5.0], &errors[..3]),
+            None
+        );
+        // ŷ = y - e: 9, 14, 10.5, 12; terms |e| / ((|y| + |ŷ|) / 2).
+        let expected = (1.0 / 9.5 + 2.0 / 13.0 + 0.5 / 10.75 + 3.0 / 13.5) / 4.0;
+        let smape = symmetric_mean_absolute_percentage_error(&y, &errors);
+        assert!((smape - expected).abs() < 1e-15);
+        // A point with y = ŷ = 0 is left out.
+        let with_zero = symmetric_mean_absolute_percentage_error(&[0.0, 10.0], &[0.0, 1.0]);
+        assert!((with_zero - 1.0 / 9.5).abs() < 1e-15);
+    }
+
+    #[test]
+    fn the_seasonal_forecast_variance_matches_its_sum() {
+        // The closed form against the sum it stands for, σ²·(1 + Σ_{j=1}^{k} c_j²) with
+        // c_j = α + αβ·j + γ·[j mod m = 0], at fixed parameters.
+        let (alpha, beta, gamma, m, n, sse) = (0.4, 0.3, 0.2, 4usize, 10usize, 5.0);
+        let fitted = Fit {
+            m,
+            n,
+            parameters: [alpha, beta, gamma],
+            state: State {
+                level: 0.0,
+                trend: 0.0,
+                season: vec![0.0; m],
+                sse,
+            },
+            errors: Vec::new(),
+        };
+        for horizon in [1.0, 2.0, 3.5, 4.0, 5.0, 9.0, 13.0] {
+            let k = (f64::ceil(horizon) as usize).max(1) - 1;
+            let sum: f64 = (1..=k)
+                .map(|j| {
+                    let seasonal = if j % m == 0 { gamma } else { 0.0 };
+                    let c = alpha + alpha * beta * j as f64 + seasonal;
+                    c * c
+                })
+                .sum();
+            let expected = (sse / n as f64 * (1.0 + sum)).sqrt();
+            let closed = fitted.forecast_sd(horizon);
+            assert!(
+                (closed - expected).abs() < 1e-12,
+                "h = {horizon}: {closed} vs {expected}"
+            );
+        }
     }
 }

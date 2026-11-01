@@ -505,7 +505,10 @@ pub(super) fn detect_season(y: &[f64]) -> Result<usize, Error> {
 }
 
 mod model;
-pub(super) use model::{fit, fit_work, Fit};
+pub(super) use model::{
+    fit, fit_work, mean_absolute_error, mean_absolute_scaled_error, root_mean_squared_error,
+    symmetric_mean_absolute_percentage_error, Fit,
+};
 
 #[cfg(test)]
 mod tests;

@@ -273,6 +273,11 @@ fn forecast_ets_confint_and_stat() {
     model._set("G3", "=FORECAST.ETS.CONFINT(13,C1:C12,A1:A12,0.99)");
     model._set("G4", "=FORECAST.ETS.STAT(C1:C12,A1:A12,6)");
     model._set("G5", "=FORECAST.ETS.STAT(C1:C12,A1:A12,7)");
+    model._set("G6", "=NORM.S.INV(0.975)");
+    model._set("G7", "=NORM.S.INV(0.995)");
+    // Compared in the sheet, at full precision.
+    model._set("G8", "=ROUND(G1/(G6*G5),12)");
+    model._set("G9", "=ROUND(G3/(G7*G5),12)");
     model.evaluate();
     for (row, (formula, expected)) in cells.iter().enumerate() {
         let text = model._get_text(&format!("F{}", row + 1));
@@ -285,9 +290,12 @@ fn forecast_ets_confint_and_stat() {
         }
     }
     let number = |cell: &str| -> f64 { model._get_text(cell).parse().unwrap_or(f64::NAN) };
+    // One step ahead the forecast error's standard deviation is σ = RMSE (statistic 7), so the
+    // interval is exactly NORM.S.INV((1 + level) / 2) times it; farther ahead it widens.
     assert!(number("G1") > 0.0);
+    assert_eq!(model._get_text("G8"), "1");
+    assert_eq!(model._get_text("G9"), "1");
     assert!(number("G2") >= number("G1"));
-    assert!(number("G3") > number("G1"));
     // RMSE is at least MAE.
     assert!(number("G5") >= number("G4") && number("G4") > 0.0);
 }

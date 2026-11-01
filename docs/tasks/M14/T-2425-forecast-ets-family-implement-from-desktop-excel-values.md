@@ -41,7 +41,7 @@ before Excel evidence"): a period-4 series, the error orderings of its steps 1 t
 duplicate time stamps under each aggregation (and an all-blank time stamp under COUNT and COUNTA), a range across
 two sheets, and the 30% missing rule. For FORECAST.ETS: exact data (a line, an exactly repeating season with a
 trend), `seasonality` 0, 1 and 2 to 8,760 with fractional values, and a target equal to the last time stamp and
-between steps. For CONFINT and STAT: each `statistic_type`, `confidence_level` near 0 and 1, and a fractional horizon.
+between steps. For CONFINT and STAT: each `statistic_type`, `confidence_level` near 0 and 1, a fractional horizon, and a CONFINT target equal to the last time stamp.
 
 Owned gen-m9 cells (T-2255 triage, excel-graph, 2026-10-22): 877 known-failure lines in eval/baseline/gen-m9.txt, 877 formulas.
 Examples:

@@ -1673,7 +1673,8 @@ errors, in the order the code takes them (every ordering UNVERIFIED; T-2425's de
   `seasonality` and steps 2 to 6 as for FORECAST.ETS, and the target check. The result is NORM.S.INV((1 + level) / 2)
   times the h-step forecast error's standard deviation (Hyndman et al. Table 6.1, class 1): σ²·(1 + Σ_{j=1}^{k}
   (α + αβ·j + γ·[j mod m = 0])²), with k = ⌈h⌉ - 1 and σ² = SSE / n. So a fractional horizon has the variance of the
-  whole step at or past it, and exact data gives 0.
+  whole step at or past it, and exact data gives 0. A target equal to the last time stamp (h = 0) is z·σ, the one-step
+  interval, not 0.
 - FORECAST.ETS.STAT (T-3601) truncates `statistic_type` first: 1 α, 2 β, 3 γ (0 without a season), 4 MASE (MAE over
   the mean absolute one-step change; `#DIV/0!` when that is 0), 5 SMAPE (the mean of |e| / ((|y| + |ŷ|) / 2) over the
   points where it is defined), 6 MAE, 7 RMSE (σ), 8 the timeline's step (the average step for calendar months).

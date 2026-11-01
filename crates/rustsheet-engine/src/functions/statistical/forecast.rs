@@ -2,8 +2,10 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use super::ets::{
-    self, build_series, completion_setting, detect_season, fit, fit_work, season_setting,
-    season_work, DuplicateAggregate, Fit, Point, Season, Series, SeriesOptions,
+    self, build_series, completion_setting, detect_season, fit, fit_work, mean_absolute_error,
+    mean_absolute_scaled_error, root_mean_squared_error, season_setting, season_work,
+    symmetric_mean_absolute_percentage_error, DuplicateAggregate, Fit, Point, Season, Series,
+    SeriesOptions,
 };
 use super::normal::normal_quantile;
 use crate::expressions::parser::ArrayNode;
@@ -345,6 +347,8 @@ fn forecast_element(data: &mut EtsData, settings: &[Option<f64>]) -> Result<f64,
     Ok(data.fit(options, m)?.forecast(horizon))
 }
 
+/// Adapted from gridcraft's `forecast_ets_confint` (the MIT notice is in `statistical/ets.rs`).
+///
 /// `FORECAST.ETS.CONFINT(target_date, values, timeline, [confidence_level], [seasonality],
 /// [data_completion], [aggregation])`: the half-width of the forecast's prediction interval,
 /// `NORM.S.INV((1 + confidence_level) / 2)` times the forecast error's standard deviation
@@ -365,6 +369,8 @@ fn confint_element(data: &mut EtsData, settings: &[Option<f64>]) -> Result<f64, 
     Ok(z * data.fit(options, m)?.forecast_sd(horizon))
 }
 
+/// Adapted from gridcraft's `forecast_ets_stat` (the MIT notice is in `statistical/ets.rs`).
+///
 /// `FORECAST.ETS.STAT(values, timeline, statistic_type, [seasonality], [data_completion],
 /// [aggregation])`: a statistic of the fitted model (unverified against Excel, decision 0221).
 /// `statistic_type` truncates to 1 α, 2 β, 3 γ, 4 MASE, 5 SMAPE, 6 MAE, 7 RMSE or 8 the
@@ -389,42 +395,15 @@ fn stat_element(data: &mut EtsData, settings: &[Option<f64>]) -> Result<f64, Err
     let fitted = data.fit(options, m)?;
     let [alpha, beta, gamma] = fitted.parameters();
     let errors = fitted.errors();
-    let count = errors.len().max(1) as f64;
-    let mae = errors.iter().map(|e| e.abs()).sum::<f64>() / count;
-    Ok(if kind == 1.0 {
-        alpha
-    } else if kind == 2.0 {
-        beta
-    } else if kind == 3.0 {
-        gamma
-    } else if kind == 4.0 {
-        // The mean absolute error over that of the naive one-step forecast.
-        let naive: Vec<f64> = series
-            .y
-            .windows(2)
-            .filter_map(|pair| Some((pair.get(1)? - pair.first()?).abs()))
-            .collect();
-        let naive_mae = naive.iter().sum::<f64>() / naive.len().max(1) as f64;
-        if naive_mae == 0.0 {
-            return Err(Error::DIV);
-        }
-        mae / naive_mae
-    } else if kind == 5.0 {
-        // The mean of |e| / ((|y| + |ŷ|) / 2) over the points where that is defined.
-        let terms: Vec<f64> = series
-            .y
-            .iter()
-            .zip(errors)
-            .filter_map(|(value, error)| {
-                let denominator = (value.abs() + (value - error).abs()) / 2.0;
-                (denominator > 0.0).then(|| error.abs() / denominator)
-            })
-            .collect();
-        terms.iter().sum::<f64>() / terms.len().max(1) as f64
-    } else if kind == 6.0 {
-        mae
-    } else {
-        (errors.iter().map(|e| e * e).sum::<f64>() / count).sqrt()
+    // `kind` is a whole number in 1..=7 here, so the cast is exact.
+    Ok(match kind as u8 {
+        1 => alpha,
+        2 => beta,
+        3 => gamma,
+        4 => mean_absolute_scaled_error(&series.y, errors).ok_or(Error::DIV)?,
+        5 => symmetric_mean_absolute_percentage_error(&series.y, errors),
+        6 => mean_absolute_error(errors),
+        _ => root_mean_squared_error(errors),
     })
 }
 
