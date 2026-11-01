@@ -25,8 +25,9 @@ The sign and argument rules, all cited from numbers.md and gen/probe cells:
 - A subnormal ratio is 0, so the result is 0 (numbers.md, "CEILING and FLOOR of a subnormal ratio
   are 0", probes/t2715-ceiling-floor-subnormal-ratio): Excel never holds the ratio as a subnormal,
   which a literal cannot be either. The math reads the exact ratio against 2^-1022.
-- A ratio beyond the double range is a math domain error: Excel's quotient overflows before the
-  step is taken (see `ratio_overflows` and decision 0244 for the evidence).
+- A ratio of 48 times the double range or more is a math domain error (Excel's `#NUM!`); one between
+  0.5563 and 48 times it has no math value, since the evidence does not pin where the boundary lies
+  (see `ratio_overflows` and decision 0244).
 """
 
 from __future__ import annotations
@@ -84,9 +85,22 @@ def cut15(ratio: Fraction) -> Fraction:
     return cut if ratio > 0 else -cut
 
 
+# The evidenced bracket of the overflow boundary (numbers.md, "CEILING and FLOOR are #NUM! when
+# number/significance overflows"): a ratio of 0.5563 x DBL_MAX is a number (CEILING/s1 A75, FLOOR/s1
+# A72), one of 48.98 x DBL_MAX is #NUM! (FLOOR.PRECISE/s1 A119). Between them nothing is evidenced.
+LARGEST_NUMBER_RATIO = DOUBLE_MAX * Fraction(5563, 10000)
+SMALLEST_OVERFLOW_RATIO = DOUBLE_MAX * 48
+
+
 def ratio_overflows(ratio: Fraction) -> bool:
-    """Whether the quotient is beyond the double range, where Excel's division overflows."""
-    return abs(ratio) > DOUBLE_MAX
+    """Whether the quotient is beyond the double range where Excel is evidenced `#NUM!`; NoValueError
+    inside the unpinned band between the two evidenced ratios."""
+    if abs(ratio) >= SMALLEST_OVERFLOW_RATIO:
+        return True
+    if abs(ratio) > LARGEST_NUMBER_RATIO:
+        msg = "a ratio in the unpinned band of the overflow boundary (0.5563 to 48 x DBL_MAX)"
+        raise NoValueError(msg)
+    return False
 
 
 def snapped(function: str, number: float, significance: float, mode: int = 0) -> Decimal:

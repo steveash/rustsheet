@@ -91,6 +91,14 @@ def test_floor_zero_by_zero_has_no_value() -> None:
         value(FLOOR, 0, 0)
 
 
+def test_the_unpinned_overflow_band_has_no_value() -> None:
+    # 0.5563 x DBL_MAX is a number (CEILING/s1 A75), 48.98 x is #NUM! (FLOOR.PRECISE/s1 A119).
+    with mpmath.workdps(40):
+        assert value(CEILING, -9.99999999999999e307, -1) == mpmath.mpf("-9.99999999999999e307")
+    with pytest.raises(NoValueError):
+        value(CEILING, 9.99999999999999e307, 0.1)
+
+
 def test_cut15_ties_away_and_carries() -> None:
     assert cut15(Fraction(1666666666666665)) == 1666666666666670
     assert cut15(Fraction(-1666666666666665)) == -1666666666666670
