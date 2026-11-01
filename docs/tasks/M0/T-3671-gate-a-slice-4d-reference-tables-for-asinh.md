@@ -3,7 +3,7 @@ id: T-3671
 title: "Gate A slice 4d: reference tables for ASINH, ACOSH, ATANH and ACOTH"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
