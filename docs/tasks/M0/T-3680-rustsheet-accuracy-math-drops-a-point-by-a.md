@@ -19,7 +19,8 @@ depends_on: []
 - On 2026-11-01, regenerating probes-numeric for T-3529's merge dropped
   probes-numeric/t3350-r4-chisq-inv-sweep Calc!A237 (`=CHISQ.INV.RT(0.999999999962187,9123239)`). A faster run had
   written it (9095462.568446318...). The commit restored the earlier output by hand from git, since the case is
-  unchanged.
+  unchanged. A second run under load the same day dropped t1531-t-tiny-p Calc!A106 (`=T.INV.2T(1E-300,100000)`)
+  the same way.
 - A machine-dependent drop silently unchecks a cell against the math, and it makes sidecars differ between runs.
   Gate A table batches use the same limit.
 
