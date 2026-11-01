@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import sys
 import time
 from collections.abc import Callable, Mapping
@@ -28,7 +27,7 @@ from typing import TextIO, TypeVar
 import gh_client
 import merge_ready
 from gh_client import Client, GhError, Request
-from merge_lock import GitError, git
+from merge_lock import GitError, git, non_negative
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -367,12 +366,20 @@ def read_pending(folder: Path) -> object:
         return None
 
 
-def seconds(text: str) -> float:
-    """An argparse type: a finite, non-negative number of seconds (a NaN wait would never end)."""
-    value = float(text)
-    if not math.isfinite(value) or value < 0:
-        raise argparse.ArgumentTypeError(f"not a finite, non-negative number of seconds: {text!r}")
-    return value
+# The waits' argparse type (a NaN wait would never end); merge_lock's `minutes` is the same rule.
+seconds = non_negative("seconds")
+
+
+def answered(folder: Path, seq: object) -> bool:
+    """Whether the ack file answers `seq`: the run deletes it with the pending file only on its next
+    poll (up to ACK_POLL later), so until then an answered action must not be printed as the next
+    one, or the session would perform it twice. A pending file a killed run left behind keeps its
+    ack only if the session acked it; `next` cannot tell an unacked leftover from a live action."""
+    try:
+        acked, _, _ = (folder / "ack").read_text().strip().partition(" ")
+    except OSError:
+        return False
+    return acked == str(seq)
 
 
 def wait_next(
@@ -390,7 +397,7 @@ def wait_next(
     folder = step_dir(root)
     while True:
         action = read_pending(folder)
-        if isinstance(action, dict):
+        if isinstance(action, dict) and not answered(folder, action.get("seq")):
             seq = action.get("seq")
             if after is None or (isinstance(seq, int) and seq > after):
                 return action

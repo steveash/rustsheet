@@ -353,6 +353,23 @@ class Ack(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             self.assertEqual(merge_step.main(["next", "--wait", "0"], self.root), merge_step.NEXT_NONE)
 
+    def test_an_answered_action_is_never_printed_as_the_next_one(self) -> None:
+        # Between an ack and the run's next poll both files are on disk: `next` must not print the
+        # acked action (the session would perform it twice); it waits for the run's next one.
+        clock = [0.0]
+        nxt = {"action": "unlabel", "seq": 3, "pr": 7, "label": "x", "labels": []}
+
+        def sleep(seconds: float) -> None:
+            clock[0] += seconds
+            if clock[0] >= 2:  # the run's poll: it clears both files and writes its next action
+                (merge_step.step_dir(self.root) / "ack").unlink(missing_ok=True)
+                self.pending(nxt)
+
+        self.pending({"action": "comment", "seq": 2, "pr": 7, "body": "x"})
+        (merge_step.step_dir(self.root) / "ack").write_text("2 done")
+        self.assertEqual(merge_step.wait_next(self.root, None, 60, lambda: clock[0], sleep), nxt)
+        self.assertEqual(clock[0], 2)
+
     def test_a_wait_that_is_not_a_finite_non_negative_number_is_refused(self) -> None:
         for bad in ("nan", "inf", "-1"):
             with self.subTest(bad=bad), self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):

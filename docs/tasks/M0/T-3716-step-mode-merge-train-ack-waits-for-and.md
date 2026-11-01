@@ -47,6 +47,7 @@ sleeping a fixed time between writes and sometimes missing an action.
 ## Outcome
 `merge_step.py` gains `wait_next`, `ack --next S` and `next --wait S`; the Makefile's
 `merge-train-ack` passes `--next 90`, and a new `merge-train-next` target waits for an action.
-The step tests pass, 18 of them, 3 new. The owner should update the live merger routine's prompt
+The step tests pass: 20, 5 of them new. `next` never prints an action whose ack is still on disk
+(review round 2), and the waits share `merge_lock.non_negative` with the lock's `--timeout`. The owner should update the live merger routine's prompt
 from docs/process/routines.md, and decide its schedule: it runs hourly, but the doc says every
 30 minutes.

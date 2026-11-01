@@ -12,7 +12,8 @@
   once a second, for the run's next pending action and prints it in the run's own format.
   `make merge-train-next` (`merge_step.py next --wait 300`) blocks until an action is pending and
   prints it; it exits 3 when none appears in time. Both waits refuse a value that is not a finite,
-  non-negative number of seconds. The run and the ack file protocol are
+  non-negative number of seconds, and neither prints an action whose ack is still on disk (the run
+  clears it on its next poll), so an acked action is never shown again as the next one. The run and the ack file protocol are
   unchanged: the run still waits at most `ACK_TIMEOUT` for each ack and still reads every write
   back. The merger prompt in docs/process/routines.md says to use both instead of sleeping.
 - **Consequences:** a write costs one GitHub call plus the run's read-back instead of a fixed
