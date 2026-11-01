@@ -2475,8 +2475,9 @@ Tasks: T-1282, T-1785
 SIN, COS, TAN, COT, SEC and CSC return `#NUM!` when |x| >= 2^27 (134217728); 2^27-1 still gives a
 number, and the cut is the same for negative arguments and for 1E+300. The error is a real error
 (`ISERROR(N(SIN(1E+15)))` is TRUE). Evidence: probes/trig-huge-argument (T-1201). T-1201 probed only the integers 2^27-1 and 2^27 (and their negatives) at the cut; T-2172 adds fractions: the
-cut for fractional arguments is also |x| >= 2^27: 134217727.25, .5, .75 and 2^27-2^-26 give numbers, 134217728.25 and -2^27 are `#NUM!`, negative fractions below 2^27 in magnitude give numbers (-134217728.25 itself unprobed) (probes-numeric/trig-odd-even-sumxmy2-sweep Calc!A131:D142, T-2172). COSH(1E+15) is also
-`#NUM!` (probe cell A85).
+cut for fractional arguments is also |x| >= 2^27: 134217727.25, .5, .75 and 2^27-2^-26 give numbers, 134217728.25 and -2^27 are `#NUM!`, negative fractions below 2^27 in magnitude give numbers (probes-numeric/trig-odd-even-sumxmy2-sweep Calc!A131:D142, T-2172), and -134217728.25 is `#NUM!` too (`SIN(-134217728.25)` and `CSC(-134217728.25)`, accuracy/SIN/s1 A78 and accuracy/CSC/s1 A70, excel-graph, T-3668). COSH(1E+15) is also
+`#NUM!` (probe cell A85). At 0, `COT(0)` and `CSC(0)` are `#DIV/0!` and `SEC(0)` is 1 (gen-m5 50d8a085335c05e6 A38 and A125,
+dde5ea295a38fb16 A289, cf893ec19f53a7fc A113; c7d88fa6defcfb8e A175, excel-graph): 0 is the only pole a double reaches.
 Excel reduces every trig argument by multiples of `π₆₄/2`, where `π₆₄` is π rounded to a 64-bit
 significand (the x87 `FLDPI` constant `0xC90FDAA22168C235·2^-62`, π₆₄ − π ≈ 5.0166e-20), and
 then rounds the true sine, cosine or tangent of that remainder once. So SIN(x) is the correctly
