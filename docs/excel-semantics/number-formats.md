@@ -336,7 +336,7 @@ Evidence: poi/TextFormatTests.xlsx A3:A10, A12:A29; poi/GeneralFormatTests.xlsx 
 A doubled quote inside a quoted literal: `;;;"h""I"` gives "hI" in Excel (A4, A14, A23), not `h"I`, so
 it is not an escape there: see "A doubled quote in a format literal is not an escape" below.
 Status: VERIFIED
-Implemented in: `format_text_value` (formatter/format.rs) used by `fn_text` (functions/text/common.rs), scalars and array elements; a text value with a format of one to three sections returns the text unchanged (probed, T-2975; one and two sections probes/text-value-kind-sweep F2:F69 and -b F2:F20, T-3649). An empty 4th section (`;;;`; a trailing `;` opens an empty section in `Parser::parse`, T-3649) gives empty text (gen-m10/0e3d8eba9432a18d T!A24). A five-section format, `TEXT(TRUE,";;;")`, `"0;0;0;"` and `"0;0;General;"` on a text value match Excel (probes/text-format-text-sections, T-2975).
+Implemented in: `format_text_value` (formatter/text_value.rs) used by `fn_text` (functions/text/common.rs), scalars and array elements; a text value with a format of one to three sections returns the text unchanged (probed, T-2975; one and two sections probes/text-value-kind-sweep F2:F69 and -b F2:F20, T-3649). An empty 4th section (`;;;`; a trailing `;` opens an empty section in `Parser::parse`, T-3649) gives empty text (gen-m10/0e3d8eba9432a18d T!A24). A five-section format, `TEXT(TRUE,";;;")`, `"0;0;0;"` and `"0;0;General;"` on a text value match Excel (probes/text-format-text-sections, T-2975).
 Tasks: T-0935, T-2945, T-2975
 
 ## TEXT of a text value is `#VALUE!` over 255 characters
@@ -349,7 +349,7 @@ apart from these cells (every input over 255 also gives a result over 255). Char
 units is unprobed. Compare the other 255-character rules in numbers.md and dates.md.
 Evidence: probes/text-format-text-limit A1-A25 (excel-graph, 2026-10-08, T-0935).
 Status: VERIFIED
-Implemented in: `format_text_value` (formatter/format.rs), `MAX_TEXT_FORMAT_CHARS`, checked as the
+Implemented in: `format_text_value` (formatter/text_value.rs), `MAX_TEXT_FORMAT_CHARS`, checked as the
 result grows so a format of many `@` cannot allocate a huge string (CLAUDE.md directive 5).
 Also probed (T-1130, probes/text-text-value-sections A1-A20, excel-graph, 2026-10-31): a text value or boolean
 with a 1-3 section format and no `@` comes back unchanged (`TEXT("x","0.0")`, `"0;-0"`, `"0;0;0"`, `"0;@"` is "x" via its `@`
@@ -443,7 +443,9 @@ Wow", A23; `[< 10]`, A25). The same holds when the condition sits in a date sect
 tokens (`TEXT(1,"d"&<119 quoted a>&"[>5]d")` is "1", probes/text-format-length-limit-q A16) and when
 literals pad it (`TEXT(1,"[>5]0"&REPT(" ",79))` is "1", -d S!A31, -f A41:A42, -j A43). The evidence
 does not decide whether the fallback is General or the section without its literals: every probed
-value prints the same either way. The engine uses General, the simpler rule. The condition compares
+value prints the same either way. The engine uses General, the simpler rule. A condition-only
+first section with no literals at all does print General (`TEXT(1234.5,"[>100];0")` is "1234.5";
+see "A section of only a color or a condition prints General"); with literals the cut stays open. The condition compares
 the signed value, and a matched one-section format keeps the minus: `[=-10]#" Wow"` on -11 is "-11",
 `[<>-10]#" Wow"` on -11 is "-11 Wow" and on -9 "-9 Wow" (poi/FormatConditionTests A32, A35, A37).
 Two or three sections with a condition on the first: the first section takes a value its condition
@@ -485,11 +487,11 @@ is "0"; `TEXT(1234.5,"[>100];0")` and `"[Red][>5];0"` are "1234.5" while `"[>100
 "-1235"; `TEXT(1234.5,"[$-409];0")` is "". A text value or a boolean in a 4th section of only a
 color is unchanged (`TEXT("abc","0;;;[Red]")` and `"[Red];[Blue];[Green];[Cyan]"` are "abc",
 TRUE gives "TRUE"). Evidence: probes/text-value-kind-sweep B69:H69, probes/text-value-kind-sweep-b
-rows 6-20 (excel-graph 2026-11-01). The condition-only first section settles the open question in
-"Conditional sections" for a section with no literals: it prints General.
+rows 6-20 (excel-graph 2026-11-01). For a condition section with no literals this settles the General-or-section question that
+"Conditional sections" leaves open; with literals it stays open.
 Status: VERIFIED
-Implemented in: `is_bracket_only_section` (formatter/parser.rs), used by `format_number` and
-`format_text_value` (formatter/format.rs). The cell keeps the section's color.
+Implemented in: `is_bracket_only_section` (formatter/sections.rs), used by `format_number` (formatter/format.rs) and
+`format_text_value` (formatter/text_value.rs). The cell keeps the section's color.
 Tasks: T-3649
 
 ## Which codes are `#VALUE!` for which value kind (T-3649)
@@ -707,7 +709,7 @@ Evidence (excel-graph, 2026-10-20, T-2114): gen-m5/25768de48ae7f2f9 Calc!A395, g
 gen-m5/651e713f5ae232ed Calc!A3, gen-m5/6b831f5e2a20bc34 Calc!A320, gen-m5/8a387c26d182e73c Calc!A281, gen-m5/8df4830f888f16ae Calc!A149,
 gen-m5/a6fec430ac350c1a Calc!A331, gen-m5/c688ca172fe533dc Calc!A139, gen-m5/d1b251fd6e9c4b4b Calc!A120, gen-m5/d9fb1e918971111b Calc!A243,
 gen-m5/f0f205865a3a4328 Calc!A262.
-Ours (T-2157): `format_text_value` (formatter/format.rs) is `#VALUE!` when a number section of the code does not parse, and
+Ours (T-2157): `format_text_value` (formatter/text_value.rs) is `#VALUE!` when a number section of the code does not parse, and
 the lexer rejects a `B1`/`B2` calendar prefix after any token that prints in its section (a locale bracket before it is
 fine, probes/text-locale-calendars; a color, condition or currency bracket before it, and `0;b1`, are accepted too,
 UNVERIFIED, T-2303), so the 11 gen-m5 cells above and the rejected probe codes pass. A bad section a number would
@@ -749,7 +751,7 @@ Tasks: T-1880
 Rule: a format whose section holds `@` is `#VALUE!` (for a text value, and for numbers too: see Sections below) when the same section also holds a date or number token, whichever side of the `@` it sits on: `y yy yyyy m mm mmm d dd ddd aaa h hh s ss b bb e ee g gg ggg`, `[h] [m] [s]`, `0 # ? . /`, `E+0`, `General`, `%` and a condition such as `[>5]`. The calendar prefixes are not among them: `TEXT(45000,"B2[$-409]@")` is "45000" (probes/t2729-hijri-locale-tag-names A289; `B1@` and a bare `B2@` too, probes/t2932-b2-calendar-twice A58, A59). These are literals, not errors: `a`, `,`, space, `\y`, `"y"`, `*-`, `_x`, `[Red]`, `[$-409]` (`TEXT("abc","x@\y")` is "xabcy"; `"x@_x"` prints a space for the spacer). `A/P` and `AM/PM` give a stray first letter or two: `TEXT("abc","x@A/P")` is "xabcA" and `"x@AM/PM"` "xabcAM" (`"A/P@"` "Aabc", `"AM/PM@"` "AMabc"). `@@` prints the text twice. A fill `*x` prints nothing in the text section (`"x@*-"` is "xabc") while `_x` leaves a space.
 Sections (probes/text-at-token-sections, 96 cells: text, 1, -1 and 0 on each format): `@` may stand only in the last section, and a format that breaks either rule is `#VALUE!` for every value, numbers included. `"@;0"`, `"x@;0"`, `"[Red]x@;0"` and `"x@\y;0;0;@"` are `#VALUE!`; `"x@y;0"`, `"0;x@y"`, `"0;0;x@y"`, `"x@y;0;0;@"`, `"0;0;x@y;@"` and `"0;x@0"` are `#VALUE!` because one section holds `@` beside a token. A last section with `@` is the text section whatever the count: `TEXT("abc","0;x@")` and `"0;0;x@"` are "xabc", and numbers use the sections before it (`TEXT(-1,"0;x@")` is "-1", `TEXT(-1,"0;0;x@")` "1", `TEXT(0,"0;0;x@")` "0"). `"0;0;0;y"` stays `#VALUE!` (4th-section rule) and `"0;0;0;x@\y"` gives "xabcy". This reconciles the poi 4th-section entry: literals in a text section print, but a number or date token beside `@` invalidates the format.
 Evidence: probes/text-at-with-tokens (89 cells), probes/text-at-token-sections (96 cells) (excel-graph, 2026-10-16, T-1656).
-Implemented in: `exceeds_complexity_limit` (formatter/complexity.rs, both placement rules, checked by TEXT before formatting); `format_text_value` and `format_number` (formatter/format.rs: a trailing `@` section, `*x`, `AM/PM` as "AM"). `A/P` and `[$-409]` pass since T-1702. The same formatter paths serve cell display, where the trailing `@` section and `*x` follow TEXT's probed behavior (inferred for display: unprobed, and a display fill would repeat to the column width).
+Implemented in: `exceeds_complexity_limit` (formatter/complexity.rs, both placement rules, checked by TEXT before formatting); `format_text_value` (formatter/text_value.rs) and `format_number` (formatter/format.rs: a trailing `@` section, `*x`, `AM/PM` as "AM"). `A/P` and `[$-409]` pass since T-1702. The same formatter paths serve cell display, where the trailing `@` section and `*x` follow TEXT's probed behavior (inferred for display: unprobed, and a display fill would repeat to the column width).
 Status: VERIFIED (excel-graph)
 Tasks: T-1656
 
@@ -963,7 +965,7 @@ TEXT() with the same codes. Points the earlier probes did not show:
   `_(@_)` (255 characters) show in full. A format that leaves the text unchanged shows it whole however long: no
   text section (`General`, `0.00`) or a section that is exactly `@` (`@`, `0;@`, `0;0;0;@`,
   `General;General;General;@`; 300 characters shown). `;;;` shows nothing. A literal and a formula text behave
-  the same. Implemented in formatter/format.rs `displayed_text`.
+  the same. Implemented in formatter/text_value.rs `displayed_text`.
   Unprobed (T-3314): a workbook whose cell carries a code TEXT() rejects as invalid (`42abc`, `@;0`, `x@0`) is refused whole by
   excel-graph (`FileCorruptTryRepair`, T-3282 probe attempt), so that displayed text cannot be probed; the engine
   keeps the plain text for it.
