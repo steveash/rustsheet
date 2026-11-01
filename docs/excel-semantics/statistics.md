@@ -3287,7 +3287,13 @@ Rule: the entries above assembled in one TOMS 708 port (Excel's EXP, LN, GAMMALN
   returns Q(b, z) there. CHISQ.DIST.RT truncates its df to an integer (2b < 1 is `#NUM!`). 1 - GAMMA.DIST loses the
   digits, because Q < 0.01 on 5,196 of the 5,228 BETA.DIST cells that reach bgrat (probe t2512-r3-bgrat-qgamma).
   The same probe's GAMMA.DIST(z, b, 1, TRUE) column (fractional b < 1, P near 1) is one the engine misses on 1,268 of
-  4,980 cells, mostly by 1-2 ulp and on 117 at the 15th digit (T-3383 records it for the incomplete-gamma work).
+  4,980 cells (4,979 numeric), always by exactly 1 ulp (T-3572: 1,268 cells at 1 ulp, none at 2 or more; the earlier
+  "1-2 ulp" was a loose count) and on 117 at the 15th digit. By shape b (misses of cells; 15th-digit cells): 0.0001, 1
+  of 7 (0); 0.03, 258 of 1,024 (27); 0.25, 156 of 700 (15); 0.7, 481 of 1,815 (26); 0.75, 177 of 700 (28); 0.9, 186 of
+  700 (21); 1 (as 0.9999999999999999 or 1), 9 of 34 (0). z runs 2.03 to 17.8. The 117 are a 1-ulp step that straddles
+  a 15-digit rounding boundary, not a larger error. Cell list with both values, ulp distance and the visibility flag:
+  docs/research/t2464/r5-gamma-p1/misses.tsv (ulps.py regenerates it from `rustsheet-eval show --all`). Owner: T-3224
+  (cumulative incomplete-gamma last digits on the probes-numeric sweeps; its owned-cells list names this probe).
 - Open: D to the bit (T-3383); the n >= 10 exponent-binade leftover of L140's n-term bup (T-3568, engine port T-3712); algdiv for b0 >= 8 (about 1 unit off TOMS, in bpser and the density; in the density it looks like rounding noise of a few ulps, not
   a smooth approximation error, T-3383 r4-algdiv); lnΓ(a0 < 1) in L
   and the 55-84% ceiling of b < 1 bpser shapes; bfrac's fraction (sd 3.8 units) and bup's arithmetic in bup+bgrat;
