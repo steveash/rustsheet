@@ -73,7 +73,7 @@ def quantile(p: mpmath.mpf, df: mpmath.mpf) -> mpmath.mpf:
 
 def _tail_x(q: mpmath.mpf, upper: bool, args: Sequence[MathArg]) -> mpmath.mpf:
     df = args[1]
-    if isinstance(df, bool) or df < 1:
+    if isinstance(df, (bool, tuple)) or df < 1:
         msg = "no tail map below df 1"
         raise ValueError(msg)
     x = lower_quantile(q, mpmath.floor(df))
@@ -88,7 +88,7 @@ def _t_dist(args: Sequence[MathArg]) -> mpmath.mpf:
 
 def _t_dist_domain(args: Sequence[MathArg]) -> str | None:
     df, cumulative = args[1], args[2]
-    if cumulative and not isinstance(df, bool) and df > DF_CUT:
+    if cumulative and not isinstance(df, (bool, tuple)) and df > DF_CUT:
         return "cumulative df above 1E+10"
     return None
 

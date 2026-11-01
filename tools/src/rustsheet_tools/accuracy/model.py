@@ -17,9 +17,10 @@ import mpmath
 
 from rustsheet_tools.accuracy.literal import MAX_LITERAL, Arg
 
-Kind = Literal["real", "int", "bool"]
-MathArg: TypeAlias = "mpmath.mpf | bool"
-"""An argument as the math sees it: the exact double (or integer) of the literal, or a logical."""
+Kind = Literal["real", "int", "bool", "array"]
+MathArg: TypeAlias = "mpmath.mpf | bool | tuple[mpmath.mpf, ...]"
+"""An argument as the math sees it: the exact double (or integer) of the literal, a logical, or an
+array literal's elements."""
 
 
 class DomainError(ValueError):
@@ -58,7 +59,11 @@ class Param:
     `typical` and `extreme` are inclusive draw ranges inside the domain; a range spanning more
     than two decades is drawn log-uniform. `extreme` is a magnitude range: for a parameter whose
     domain has negative values the sign is drawn uniformly. `edges` are extra values worth a point
-    beside the domain bounds (a documented limit such as df = 1E10 and its neighbour).
+    beside the domain bounds (a documented limit such as df = 1E10 and its neighbour). `draw_hi` caps
+    the magnitude of whole-domain draws where the math cannot evaluate the domain's far end (a
+    50-digit incomplete beta at a count of 1E+300) or the oracle cannot hold a point (a huge
+    negative POISSON.DIST mean); unlike a domain bound it claims nothing about Excel, so it gets no
+    edge points.
     """
 
     name: str
@@ -68,6 +73,7 @@ class Param:
     extreme: tuple[float, float] | None = None
     edges: tuple[float, ...] = ()
     source: str = ""
+    draw_hi: float | None = None
 
     def finite_bounds(self) -> list[tuple[float, bool, bool]]:
         """The finite domain bounds as (value, open, is_lower)."""
@@ -111,7 +117,9 @@ class Definition:
     def check_domain(self, args: Sequence[MathArg]) -> None:
         """Raises `DomainError` when `args` are outside the parameters' intervals or `domain`."""
         for p, a in zip(self.params, args, strict=True):
-            if p.kind != "bool" and not isinstance(a, bool) and not p.domain.contains(float(a)):
+            if p.kind in ("bool", "array") or isinstance(a, (bool, tuple)):
+                continue  # an array's rules are the definition's `domain`
+            if not p.domain.contains(float(a)):
                 msg = f"{p.name} outside {p.domain.describe()}"
                 raise DomainError(msg)
         if self.domain is not None and (why := self.domain(args)) is not None:

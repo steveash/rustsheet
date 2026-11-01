@@ -37,6 +37,13 @@ of probes-numeric/t3478-irr-r4-wide outside Gate A's envelope, or each remaining
 - financial.md "IRR is #NUM! or #DIV/0! on some conventional series it could solve" lists the 17 Excel-error cells.
 - Code: `irr_secant`, `compute_irr`, `irr_fallback` (crates/rustsheet-engine/src/functions/financial/financial_util.rs).
 
+- Gate A (T-3586) carries 17 accuracy/IRR/s1 points this task owns, all on conventional series:
+  - the engine `#NUM!` where Excel returns the root: A190 and A193 (roots near -0.2), and A231, A259, A260 and A264
+    (85 to 163 flows);
+  - Excel `#NUM!` where the engine returns the root: A216, A221, A233, A238, A240, A242, A258 and A270 (51 to 164 flows);
+  - Excel `#DIV/0!` where the engine is `#NUM!`: A237, A248 and A268 (about 180 flows).
+  They are `known-failures.tsv` lines; remove each once it passes.
+
 ## Acceptance criteria
 - [ ] Each of the 50 cells matches Excel's type and, for a number, its value within 15 digits, or is listed in
       financial.md with what is known; the rule found is evidenced by a probe (excel-graph).

@@ -12,6 +12,12 @@ by part on the IM* text (`Fit.complex_text`).
   (probes-numeric/t3525-im-hyperbolic-fresh-sweep, docs/research/t3525/gen_sweep.py).
 - `im-small-imag`: IMSIN and IMCOS with |y| <= 0.0105, drawn after T-3545 froze their small-y kernel
   (probes-numeric/t3545-imsin-imcos-small-imag-sweep, docs/research/t3545/gen_sweep.py).
+- `im-hyperbolic-t3589-fresh`: IMSINH and IMCOSH at |x| <= 0.01 and IMSIN and IMCOS at |y| in [20, 709.7], drawn
+  after T-3589 froze the series sinh and the reciprocal form past 20 (docs/research/t3589/gen_sweep.py; its
+  IMSECH and IMCSCH cells fall outside the pattern and are scored by the eval).
+- `im-hyperbolic-log`: the log form's cells (|x| near 708-710.5) T-3546 chose Excel's EXP on, and
+  `im-hyperbolic-log-fresh`, its sweep drawn after that choice (docs/research/t3546/libm-exp.patch
+  makes the libm build).
 """
 
 from __future__ import annotations
@@ -108,5 +114,29 @@ FITS = [
             "probes-numeric/t3545-imsin-imcos-small-imag-sweep",
             "probes-numeric/t3545-imsin-imcos-tiny-imag-sweep",
         ],
+    ),
+    _fit(
+        "im-hyperbolic-t3589-fresh",
+        "IMSINH/IMCOSH at |x| <= 0.01, IMSIN/IMCOS at |y| >= 20: T-3589's sweeps drawn after the freeze",
+        [
+            "probes-numeric/t3589-im-hyperbolic-small-x-sweep",
+            "probes-numeric/t3589-imsin-imcos-large-imag-sweep",
+        ],
+    ),
+    _fit(
+        "im-hyperbolic-log",
+        "IMSINH/IMCOSH in log space: the cells T-3546 chose Excel's EXP on (cut and band probes)",
+        [
+            "probes/eng-im-overflow-edges",
+            "probes/eng-im-overflow-edges-2",
+            "probes-numeric/t3525-im-hyperbolic-log-band-sweep",
+            "probes-numeric/t3546-imsinh-neg-cut-coarse",
+            "probes-numeric/t3546-imsinh-neg-cut-fine",
+        ],
+    ),
+    _fit(
+        "im-hyperbolic-log-fresh",
+        "IMSINH/IMCOSH in log space on T-3546's sweep drawn after choosing Excel's EXP (decision 0188 R4.2)",
+        ["probes-numeric/t3546-im-hyperbolic-log-exp-fresh-sweep"],
     ),
 ]
