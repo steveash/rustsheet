@@ -3,7 +3,7 @@ id: T-3259
 title: "One delete of every data row of a table keeps one cleared data row, as four one-row deletes do"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
