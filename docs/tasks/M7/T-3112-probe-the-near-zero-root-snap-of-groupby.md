@@ -3,7 +3,7 @@ id: T-3112
 title: "Probe the near-zero root snap of GROUPBY and PIVOTBY aggregation LAMBDAs and of eta-reduced helper calls"
 milestone: M7
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
