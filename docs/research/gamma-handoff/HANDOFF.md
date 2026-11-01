@@ -93,7 +93,13 @@ All three branches are pushed. Read each task file's "Handoff" section first.
    - About 20 gen-m9 cells blamed on gamma functions are really FORECAST.ETS #N/A (T-2425). They are not gamma's to fix, but they block Gate B attribution.
 3. **Blind regions** from the held-out sweep: T-3519, T-3520, T-3521, T-3522, and T-3412 (GAMMA.DIST lower tail at shape > 1 is Excel's leading-factor form).
 4. **T-3364**: GAMMA.INV's huge-shape closed-form branch must return the math (decision 0188 R3, MATH-OVER-EXCEL). Fitted pieces extrapolated past their measured range fall back to accurate math.
-5. **T-3469**: T-3269's remainder. It covers the shape-6 misses, the x/a = 10 misses, and Excel's switch above shape 11. It also carries the review-round-3 notes:
+5. **T-3469**: T-3269's remainder. Re-review minors on 71c1f7beb (excel-fidelity) to fold in:
+   - T-3269's Outcome says gen-m9 2882; the head measures 2881.
+   - The `FAR_TAIL_MIN_X` tag's range is narrower than the shapes where the cut is applied (1.5 to 11).
+   - Treat `FAR_TAIL_MAX_SHAPE` = 11 as provisional: the fresh sweep suggests Excel takes the form above 11.
+   - The a = 1 claim in `excel_tail.rs` needs an oracle cell.
+
+   Earlier notes: It covers the shape-6 misses, the x/a = 10 misses, and Excel's switch above shape 11. It also carries the review-round-3 notes:
    - holdout.py's mpmath reference uses the decimal x, not the double Excel receives;
    - the evidence for the shape-11 cut is thin;
    - the tag range should be widened.
