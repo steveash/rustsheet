@@ -1981,8 +1981,10 @@ T-3067 notes (float64 fit, 2026-10-28; nothing changed in the kernel):
     exact too but `·r` rounds, it is +1.2 ulp off PPMT on average (smaller in magnitude). So the extra step is
     not the rounding of `1+r`.
   - Over 60 log-spaced rates from 1E-6 to 1E-2 (type 0, nper 100, periods 3 to 6, 50 and 98), `CUMPRINC/PPMT - 1`
-    is `-δL` with slope -1.04 (correlation -0.69). Here δL is the relative rounding error of `growth_log`'s L,
-    PPMT's `ln(1+r)`. The gap does not depend on the period. Against the correctly rounded payment
+    is `+δL`: CUMPRINC = PPMT·(1+δL). Here δL = (L − ln(1+r))/ln(1+r), the relative error of `growth_log`'s L against the exact log (PPMT's
+    `ln(1+r)`). Measured as `(CUMPRINC - PPMT)/|PPMT|`, which is `-δL` because both values are negative, the
+    regression slope is -1.04 (correlation -0.69). So where L is low (δL < 0), Excel's principal is smaller in
+    magnitude than PPMT. The gap does not depend on the period. Against the correctly rounded payment
     `pmt·v^(n-k+1)` the bias is gone (mean +0.14 ulp), but the spread is ±3 ulps. In words: Excel's principal
     does not carry the L error that PPMT's balance `pv/(1-v^n)` carries, and its own last bits are from another
     chain.

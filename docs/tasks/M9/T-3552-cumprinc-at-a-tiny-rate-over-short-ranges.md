@@ -101,8 +101,8 @@ follow-up filed with `defer: phase-1b` and named in the Outcome.
     - probes/fin-cumprinc-dyadic-rates: 296 cells, CUMPRINC 81 of 192 bit-exact today.
     - probes/fin-cumprinc-single-period-rate-scan: 720 cells, CUMPRINC 84 of 360.
     - PPMT and PMT are bit-exact on both cases.
-  - The finding: a one-period CUMPRINC is PPMT·(1+δL), where δL is the relative error of `growth_log`'s L. The
-    regression slope is -1.04 over 60 rates. At power-of-two rates the gap vanishes (within ±1 ulp). The correctly
+  - The finding: a one-period CUMPRINC is PPMT·(1+δL), with δL = (L − ln(1+r))/ln(1+r), the relative error of `growth_log`'s L against the exact log. The
+    regression slope of `(CUMPRINC - PPMT)/|PPMT|` on δL is -1.04 over 60 rates (both values are negative). At power-of-two rates the gap vanishes (within ±1 ulp). The correctly
     rounded payment times `v^(n-k+1)` removes the bias but spreads ±3 ulps (financial.md "CUMIPMT and CUMPRINC
     over many periods", T-3552 attempt 1).
   - Candidates tried, with bit-exact counts:

@@ -20,9 +20,12 @@ Attempt 2 of T-3552's fit (decision 0056). On probes/fin-cumipmt-tiny-rate-struc
 - T-3552 attempt 1 (2026-11-01) found no form and changed nothing in the kernel. Its task file's "Attempts" section
   scores every candidate family. financial.md "CUMIPMT and CUMPRINC over many periods" (T-3552 attempt 1 bullet) has
   the measured facts:
-  - Over one period, Excel's CUMPRINC is PPMT·(1+δL), where δL is the relative error of `growth_log`'s L. The slope
-    is -1.04 over 60 rates (probes/fin-cumprinc-single-period-rate-scan, 720 cells).
-  - The gap vanishes at power-of-two rates and stays at 3·2^-17 (probes/fin-cumprinc-dyadic-rates, 296 cells).
+  - Over one period, Excel's CUMPRINC is PPMT·(1+δL), with δL = (L − ln(1+r))/ln(1+r), the relative error of `growth_log`'s L against the exact log. Equivalently,
+    `(CUMPRINC - PPMT)/|PPMT|` is -δL (both are negative), with slope -1.04 over 60 rates
+    (probes/fin-cumprinc-single-period-rate-scan, 720 cells).
+  - At power-of-two rates (2^-16, 2^-14, 2^-10), where every `·r` and `/r` is exact, the gap vanishes (within
+    ±1 ulp). At 3·2^-17, where `1+r` is exact but `·r` rounds, it is +1.2 ulp on average (smaller in magnitude).
+    So the rounding of `1+r` is not the extra step (probes/fin-cumprinc-dyadic-rates, 296 cells).
   - Against the correctly rounded payment `pmt·v^(n-k+1)` the bias is gone, but the spread is ±3 ulps.
   - No constant times any of 15 per-period discounts fits a single rate. Neither does a constant less Excel's IPMT.
     So Excel's one-period chain has at least two roundings that depend on the period.
@@ -36,7 +39,7 @@ Attempt 2 of T-3552's fit (decision 0056). On probes/fin-cumipmt-tiny-rate-struc
 - If this attempt does not raise the bit-exact count either, block the task "time-boxed (decision 0056)" with the
   candidates listed.
 - Read oracle JSON with a round-trip parser (excel-kernel-playbook "Traps": serde_json without `float_roundtrip`
-  misreads doubles). Use our PPMT, bit-exact on all 480 PPMT cells of the new cases, as the harness's positive
+  misreads doubles). Use our PPMT, bit-exact on all 456 PPMT (and 8 PMT) cells of the two new cases, as the harness's positive
   control.
 - Gap triage 2026-10-31k (`make eval` on origin/main, excel-graph evidence; `scripts/exit_owners.py --all-off` and a
   per-cell run of its `owned` rule over every failing cell, using the task files of origin/main and of the 54 task
