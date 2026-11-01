@@ -64,7 +64,7 @@ what the committed cases support.
 - **Decision 0243** (protected paths: Makefile, ci.yml). The tests in
   `tools/tests/test_accuracy_eval_math.py` show a missing cell, a stale entry, a dropped cell
   listed as skipped, and the pass after regenerating.
-- **Main was not current:** the first run listed 1,427 problems. Fresh sidecars for 10 cases had
+- **Main was not current:** the first run listed about 1,400 problems. Fresh sidecars for 10 cases had
   no sidecar at all (amordegrc-a76-bisect-a/b/d/h, the date-system daycount pair, t3352,
   t3443-basym-a/hold/sweep). Five probes sidecars held stale or missing cells
   (fin-argument-modes, solver-iteration-traces, stat-argument-modes, t2435-dist-extremes,
