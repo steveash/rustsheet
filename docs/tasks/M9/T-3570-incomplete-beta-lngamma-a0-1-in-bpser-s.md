@@ -3,7 +3,7 @@ id: T-3570
 title: "Incomplete beta: lnGamma(a0 < 1) in bpser's L and the b < 1 bpser ceiling"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
