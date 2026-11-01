@@ -143,9 +143,9 @@ fn forecast_ets_family_first_failing_argument_decides() {
         ("=FORECAST.ETS(9,A1:A8,B1:B8,\"x\",NA())", "#VALUE!"),
         ("=FORECAST.ETS.STAT(A1:A8,B1:B8,C1,NA())", "#VALUE!"),
         ("=FORECAST.ETS.SEASONALITY(A1:A8,B1:B8,\"x\")", "#VALUE!"),
-        // A call with no error or text stays unimplemented.
+        // A call with no error or text is computed (SEASONALITY, T-3599) or not implemented yet.
         ("=FORECAST.ETS(9,A1:A8,B1:B8,1,1,1)", "#N/IMPL!"),
-        ("=FORECAST.ETS.SEASONALITY(A1:A8,B1:B8,1,1)", "#N/IMPL!"),
+        ("=FORECAST.ETS.SEASONALITY(A1:A8,B1:B8,1,1)", "0"),
         // A two-row scalar argument lifts.
         ("=ROWS(FORECAST.ETS(9,A1:A8,B1:B8,{1;1}))", "2"),
         ("=ROWS(FORECAST.ETS.SEASONALITY(A1:A8,B1:B8,B1:B2))", "2"),

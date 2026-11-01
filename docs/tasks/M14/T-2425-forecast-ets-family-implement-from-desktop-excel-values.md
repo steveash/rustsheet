@@ -28,6 +28,13 @@ Excel, then spec the algorithm (docs/specs/, a task of its own if it is L) and i
 crates/rustsheet-engine/src/functions/statistical/forecast.rs. Until then the cells stay known failures, owned here so that
 none is unowned (decision 0083).
 
+Decision 0221 (owner ruling, 2026-11-01): until desktop values exist, the family computes gridcraft's AAA model,
+unverified (T-3599 SEASONALITY, T-3600 FORECAST.ETS, T-3601 CONFINT and STAT). This task still owns matching desktop
+Excel: replace whatever the desktop values contradict. The cells listed here stay known failures against the web's
+`#N/A` while the model computes numbers. T-3599 fixed 272 of the gen-m9 cells listed below. All are SEASONALITY calls
+whose `values` and `timeline` differ in size, which is `#N/A` both in the model and on the web, so they left
+eval/baseline/gen-m9.txt. The list keeps them as T-2255's triage record.
+
 Owned gen-m9 cells (T-2255 triage, excel-graph, 2026-10-22): 877 known-failure lines in eval/baseline/gen-m9.txt, 877 formulas.
 Examples:
 - gen-m9/05d44f6dd6cfc567 Calc!A275 `=LOGINV(ROUND(COUNT(Data!B7:B8,1e-15,"ABC"),3),IF((Data!$B12>Data!C6),FORECAST.ETS.CONFINT((-1),Data!B6:B11,Data!A5:D6),Data!D5),(HLOOKUP("x~*",Data!C10:C10,1)*(0.5*3.14159)))`: Excel #N/A, ours #N/IMPL!

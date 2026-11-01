@@ -1571,13 +1571,52 @@ before the `#N/A`. So the web oracle gives no evidence for the algorithm or for 
 golden only for the type-coercion step (decision 0039). Catalog `oracle: none` is not used: the canary does not
 refuse these workbooks, Excel for the web just does not calculate the family.
 Consequence: a validation-only engine (`#N/A` like excel-graph) would score on excel-graph values but would be wrong on
-desktop Excel, so the family stays `#N/IMPL!` until desktop values exist (M14, Phase 4, T-1553).
+desktop Excel. Until decision 0221 the family therefore stayed `#N/IMPL!` until desktop values exist (M14, Phase 4,
+T-1553). Since that owner ruling, it computes gridcraft's AAA model, unverified (the section "FORECAST.ETS family: the
+model before Excel evidence").
 Evidence: probes/forecast-ets-longer-series.case.json K1:K42 (excel-graph, 2026-10-14, T-1293).
-Ours: `#N/IMPL!` for every call that passes the argument step (next section, T-2424). Before that, `target_date` (FORECAST.ETS, CONFINT) or `statistic_type` (STAT) is lifted and read as a number: text there is `#VALUE!`, and an array or two-cell range gives that many `#N/IMPL!` elements (T-2028). UNVERIFIED (T-2028 follow-up probe): the optional settings (seasonality, data_completion, aggregation, confidence_level) also lift in ours, as the catalog's `value` mode says, with no Excel cell showing the shape of an array or range there (since T-2424 settled for SEASONALITY's data_completion
+Ours: for every call that passes the argument step (next section, T-2424), FORECAST.ETS.SEASONALITY computes the model ("FORECAST.ETS family: the model before Excel evidence", T-3599) and the other three are `#N/IMPL!` until T-3600 and T-3601. Before that, `target_date` (FORECAST.ETS, CONFINT) or `statistic_type` (STAT) is lifted and read as a number: text there is `#VALUE!`, and an array or two-cell range gives that many `#N/IMPL!` elements (T-2028). UNVERIFIED (T-2028 follow-up probe): the optional settings (seasonality, data_completion, aggregation, confidence_level) also lift in ours, as the catalog's `value` mode says, with no Excel cell showing the shape of an array or range there (since T-2424 settled for SEASONALITY's data_completion
 and aggregation by gen-m9 `#SPILL!` cells 67f5e0fe790e6bec A47, A307 and 22656c225ff4f22a A60; see the T-2255 section); and text `target_date` in CONFINT and text `statistic_type` in STAT (K38 covers FORECAST.ETS only), and a boolean, number-text or error `target_date`/`statistic_type` reads by the usual scalar coercion (an error is returned as itself;
 settled by gen-m9 22656c225ff4f22a A1, fa25422d6f18c157 A181 and 43a13a091907b402 A261, see the T-2255 section).
 Status: VERIFIED (web) that the family is `#N/A` there; desktop behavior UNKNOWN
 Tasks: T-1293, T-1553, T-2028 (the text `target_date` and the lifting cells)
+
+## FORECAST.ETS family: the model before Excel evidence
+Rule (UNVERIFIED, owner ruling, decision 0221): once the argument step passes (the T-2255 section), the family computes
+the AAA exponential-smoothing model as gridcraft implements it (Hyndman, Koehler, Ord & Snyder 2008). Steps and
+errors, in order:
+- `data_completion` (default 1) truncates to 1 (a missing point is the straight line between its known neighbours,
+  or the nearest known value at an end) or 0 (a missing point is zero). `aggregation` (default 1) truncates to
+  0 or 1 AVERAGE, 2 COUNT, 3 COUNTA, 4 MAX, 5 MEDIAN, 6 MIN or 7 SUM, which combines values that share a time stamp.
+  Anything else is `#NUM!`.
+- `values` and `timeline` pair in reading order. Different cell counts are `#N/A`, which Microsoft's documentation
+  states. An error cell in either is that error. A value or time stamp that is text or a boolean is `#VALUE!`. A
+  row with both blank is skipped, and a blank value with a time stamp is a missing point.
+- The distinct time stamps (at least two, or `#NUM!`) must lie on a constant step, which is the smallest gap, within
+  1E-6 steps. Otherwise they must be whole-day dates a constant number of calendar months apart, on one day of the
+  month or all on month ends. Otherwise the result is `#NUM!`. More than 30% of the steps missing is `#NUM!`.
+- FORECAST.ETS.SEASONALITY is the detected season length, or 0 when there is none. It takes the autocorrelation of
+  the series' residuals from its least-squares line, at lags 2 to n/2 (at most 8,760), and returns the lag of the
+  highest local peak above 2/√n. Fewer than four points is 0.
+Evidence: none from Excel for the model. Excel for the web is `#N/A` for every valid call (the section "FORECAST.ETS
+family: excel-graph never computes it"), and no desktop value exists yet (T-1553). gen-m9 SEASONALITY cells whose
+`values` and `timeline` differ in size match the web's `#N/A` (275 cells fixed by T-3599, e.g. gen-m9/0072265d385d8ab2
+Calc!A58, 1068c44afcd56d53 A207), but the web gives `#N/A` whatever the size, so that is not evidence for the rule.
+On probes/forecast-ets-longer-series, which has a period-4 signal, ours is 4 (K3, K8, K14, K19, K25, K30); the web is
+`#N/A`.
+Status: UNVERIFIED (desktop probe pending, T-1553, T-2425). Decision 0221 lets the family ship it.
+Implemented in: crates/rustsheet-engine/src/functions/statistical/ets.rs (`build_series`, `detect_season`) and
+statistical/forecast.rs (`forecast_ets_lifted`).
+Tasks: T-3599, T-3600 (FORECAST.ETS), T-3601 (CONFINT, STAT), T-2425 (match desktop values)
+
+## FORECAST.ETS family: work caps
+Rule: Excel's limits on the family's series are unknown. Microsoft's documentation allows seasonality up to 8,760.
+Ours: a `values` or `timeline` of more than 200,000 cells is `#NUM!` before any cell is read. So is season detection
+on a series of 16,385 points or more, where n × min(n/2, 8,760) multiply-adds exceed 2^27 (`MAX_ACF_WORK`). That
+applies to SEASONALITY and to any member that detects seasonality.
+Status: DEVIATION (decision 0014)
+Implemented in: crates/rustsheet-engine/src/functions/statistical/ets.rs (`MAX_POINTS`, `MAX_ACF_WORK`)
+Tasks: T-3599
 
 ## Database function argument modes
 Rule: in the database functions (DAVERAGE, DCOUNT, DCOUNTA, DGET, DMAX, DMIN, DPRODUCT, DSTDEV, DSTDEVP, DSUM,

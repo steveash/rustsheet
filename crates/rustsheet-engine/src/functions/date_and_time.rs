@@ -21,7 +21,7 @@ pub(crate) fn is_leap_year(year: i32) -> bool {
 /// 29th (serial 60): DAYS360 counts 1900-02-29 as February's last day (`DAYS360(60,1)` = -59) and
 /// DATEDIF "MD" borrows 29 days from it (`DATEDIF(59,61,"MD")` = 2; probes/dates-early-1900-displayed,
 /// dates.md "Serials below 61 in DATEDIF, EDATE, DAYS360, WEEKNUM and YEARFRAC").
-fn displayed_month_length(year: i32, month: u32) -> u32 {
+pub(crate) fn displayed_month_length(year: i32, month: u32) -> u32 {
     match month {
         2 if year == 1900 || is_leap_year(year) => 29,
         2 => 28,

@@ -11,6 +11,7 @@ mod devsq;
 mod discrete;
 pub(super) mod element_errors;
 pub(super) mod erf;
+mod ets;
 mod exponential;
 mod f_density;
 mod f_test_tail;
