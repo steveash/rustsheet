@@ -86,11 +86,14 @@ Done (2026-11-01).
     MDETERM, MINVERSE and MMULT (2-D matrices); SEQUENCE (an array result); and the volatile RAND, RANDARRAY and
     RANDBETWEEN.
   - **Needs a table, 63:** eleven tasks, T-3668 to T-3678.
-- **Volatile ruling:** `composite`, driven by decision 0225's invariant-cell probe (T-3631), the same evidence Gate B
-  uses. So there is no third class, no SPEC-0029 change and no reader change.
-- **`eval/accuracy/exempt.tsv`:** +29 lines. Each `exact` reason cites a semantics entry or gen-m6 cells; each
-  `composite` reason names its eval suites. `rustsheet-eval accuracy`: `missing tables` 305 to 276, 0 failing, no stale
+- **Volatile ruling:** `composite`, driven by an invariant-cell probe, the same evidence decision 0225 (T-3631) uses for
+  Gate B. So there is no third class, no SPEC-0029 change and no reader change. Decision 0225 is not on main yet, so
+  T-3685 adds the three lines once T-3631 lands.
+- **`eval/accuracy/exempt.tsv`:** +26 lines. Each `exact` reason cites a semantics entry or gen-m6 cells; each
+  `composite` reason names its eval suites. `rustsheet-eval accuracy`: `missing tables` 305 to 279, 0 failing, no stale
   exemption.
+- **Follow-ups:** T-3685 (the volatile lines, after T-3631) and T-3686 (2-D array literals, so MDETERM, MINVERSE and
+  MMULT get tables in place of their exemptions).
 - **Table tasks** (M0, harness, opus, size M):
   - T-3668: trig.
   - T-3669: inverse trig plus DEGREES and RADIANS.

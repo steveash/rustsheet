@@ -22,19 +22,25 @@
     - MUNIT (0s and 1s);
     - N (its argument, or 1, 0);
     - PI (a constant).
-  - **`composite`, 13 functions:**
-    - AGGREGATE and SUBTOTAL: they take references only (numbers.md "AGGREGATE", references.md "SUBTOTAL and AREAS
-      take references only");
-    - VALUE, NUMBERVALUE, TIMEVALUE and DECIMAL: they parse text, which numeric literals cannot drive;
+  - **`composite`, 13 functions** (10 exempted now, the 3 volatile ones by T-3685):
+    - AGGREGATE and SUBTOTAL: functions 1-13 and SUBTOTAL take references only (numbers.md "AGGREGATE", references.md
+      "SUBTOTAL and AREAS take references only"); AGGREGATE 14-19 take an array and k, and the gen suites drive them;
+    - VALUE, NUMBERVALUE, TIMEVALUE and DECIMAL: they parse text, which numeric literals cannot drive. TIMEVALUE's
+      numeric stage, the fraction of a day, is TIME's arithmetic, which T-3678's TIME table checks; what is left is the
+      text grammar the eval suites check;
     - MDETERM, MINVERSE and MMULT: their 2-D matrix arguments cannot be written as the generator's one-row array
-      literal, and two of them return arrays;
+      literal, and two of them return arrays. They have real floating-point kernels, so T-3686 adds 2-D literals and
+      replaces these exemptions with tables;
     - SEQUENCE: its result is an array;
     - RAND, RANDARRAY and RANDBETWEEN: the volatile ruling, below.
 
-    Each reason names the eval suites that drive the function. gen-m5 to gen-m9 and probes hold 5 to 206 cases each.
-  - **The volatile ruling:** RAND, RANDARRAY and RANDBETWEEN are `composite`, driven by decision 0225's invariant-cell
-    probe (T-3631). A draw has no reproducible value to tabulate, and Gate B already judges these functions on that
-    probe. So no third class, no SPEC-0029 change and no change to the `exempt.tsv` reader are needed.
+    Each reason names the eval suites that drive the function.
+  - **The volatile ruling:** RAND, RANDARRAY and RANDBETWEEN are `composite`, driven by an oracle-filled probe of the
+    cells that do not depend on the draw (range, spill shape, integer-ness, degenerate ranges, argument errors). A draw
+    has no reproducible value to tabulate, and that probe is the evidence decision 0225 (T-3631) uses for Gate B. So no
+    third class, no SPEC-0029 change and no change to the `exempt.tsv` reader are needed. Decision 0225 and its probe
+    are not on main yet, so the three lines wait for T-3685, which adds them once T-3631 lands: a protected file does
+    not cite a record main does not hold.
   - **Needs a table, 63 functions,** filed as eleven table tasks of four to seven functions each, by family:
     - T-3668: SIN, COS, TAN, COT, SEC, CSC;
     - T-3669: ASIN, ACOS, ATAN, ATAN2, ACOT, DEGREES, RADIANS;
@@ -56,9 +62,9 @@
     - FACT, COMBIN and QUOTIENT (their products and quotients round);
     - HOUR, MINUTE and SECOND (dates.md "HOUR, MINUTE and SECOND round to the nearest second").
 - **Consequences:**
-  - `exempt.tsv` gains 29 lines (16 `exact`, 13 `composite`). `missing tables` falls by 29: from 305 to 276 on this
-    branch. No exemption is stale.
-  - The eleven table tasks bring M5, M6 and M7 to zero missing tables once they land.
+  - `exempt.tsv` gains 26 lines now (16 `exact`, 10 `composite`). `missing tables` falls by 26: from 305 to 279 on this
+    branch. No exemption is stale. T-3685 adds the three volatile lines later (279 to 276).
+  - The eleven table tasks and T-3685 bring M5, M6 and M7 to zero missing tables once they land.
   - M9's other functions (outside decision 0188's 18) are still unclassified. As T-3551 says, they need their own
     classification task once the M9 table slices settle the solver and distribution patterns.
   - If an `exact` function later shows a rounding question, its line comes out and a table task replaces it. That

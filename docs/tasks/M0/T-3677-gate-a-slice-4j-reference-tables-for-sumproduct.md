@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: M
 tier: opus
-depends_on: [T-3551, T-3549]
+depends_on: [T-3551, T-3549, T-3586]
 ---
 
 ## Goal
