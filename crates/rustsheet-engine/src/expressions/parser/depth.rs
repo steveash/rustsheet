@@ -24,18 +24,49 @@ pub const MAX_FORMULA_DEPTH: usize = 256;
 
 /// Most written groups a formula may nest (`((...(x)...))`): Excel loads 256 directly nested
 /// parentheses and refuses 257, stored and typed (probes/t3172-paren-256, T-3172). Groups split
-/// into several runs (`(1+((...)))`) count together (unprobed). A run is parsed in a loop
-/// ([`Parser::parse_parenthesis_run`]), so this bound is Excel's, not the stack's.
+/// into several runs (`(1+((...)))`) count together (unprobed), and so do levels of `-(`, which
+/// Excel also nests to 256 and refuses at 257 (probes/t3266-nested-paren-*, T-3338). A run, signs
+/// between its `(`s included, is parsed in a loop ([`Parser::parse_parenthesis_run`]), so this
+/// bound is Excel's, not the stack's.
 pub const MAX_PARENTHESES: usize = 256;
 
-/// Most unary signs (`-`, `+`) a formula may hold open at once, a minus written directly before a
-/// number literal not counted: Excel loads 1,024 minus signs before `1`, 1,023 plus signs before
-/// `"a"` and 1,023 alternating `-+` signs before `C1`, and refuses one more of each, stored and
-/// typed (probes/t3172-minus-*, -plus-*, -alt-*; T-3172). Signs in several runs on one path
-/// (`=-(-(...))`) count together (unprobed). A sign adds no level of [`MAX_FORMULA_DEPTH`]: the
-/// evaluator walks a run in a loop (`Model::apply_unary_chain`), so this bound is Excel's; it
-/// also keeps the walks that recurse per sign (printing, analysis, dropping) on the stack.
-pub const MAX_SIGNS: usize = 1023;
+/// Most unary signs (`-`, `+`) open at an operand plus the operand's cost: every sign on its path
+/// not yet applied, across nested runs (`=-(-(...))`), counts. A number literal written directly
+/// after the signs costs 0; a reference, `TRUE`, a string or a number after a space costs 1; a
+/// parenthesis (a run of them once) or a function call costs 2 ([`SIGNED_GROUP_COST`]). So Excel
+/// loads 1,024 minus or plus signs before `1`, 1,023 before `C1`, `TRUE`, `"a"` or `- 1`, and
+/// 1,022 before `(1)`, `((1))` or `ABS(1)`, and refuses one more of each, stored and typed;
+/// 200 levels of `-(` around 824 minus signs and `1` load and 825 are refused
+/// (probes/t3172-minus-*, -plus-*, -alt-*, probes/t3266-*; T-3172, T-3266, T-3338). A sign adds
+/// no level of [`MAX_FORMULA_DEPTH`]: the evaluator walks a run in a loop
+/// (`Model::apply_unary_chain`), so this bound is Excel's; it also keeps the walks that recurse
+/// per sign (analysis, dropping) on the stack.
+pub const MAX_SIGNS: usize = 1024;
+
+/// Message of the parse error for a formula past [`MAX_SIGNS`]. Not a resource limit
+/// ([`is_limit_error`]) but Excel's syntax: typed, Excel refuses the formula as it refuses one
+/// that does not parse (Graph PATCH 400 `InvalidArgument`, the cell left blank;
+/// probes/t3266-minus-paren-1023-typed and the like), and so does the API
+/// (`TYPED_FORMULA_DOES_NOT_PARSE`, T-3338).
+pub const TOO_MANY_SIGNS_MESSAGE: &str = "Formula has too many unary signs";
+
+/// What a parenthesis or a function call after a run of signs costs toward [`MAX_SIGNS`].
+pub(super) const SIGNED_GROUP_COST: usize = 2;
+
+/// The run and the unary signs before an operand ([`Parser::parse_signs`]).
+#[derive(Clone, Default)]
+pub(super) struct Prefix {
+    /// The run written ahead of the first sign.
+    pub(super) before: Run,
+    /// The signs kept in the tree, in written order: whether each is a minus, and the run
+    /// after it.
+    pub(super) signs: Vec<(bool, Run)>,
+    /// Every sign written, a folded plus included: what counts toward [`MAX_SIGNS`].
+    pub(super) count: usize,
+    /// What the operand after the signs costs toward [`MAX_SIGNS`], as far as its first token
+    /// tells it.
+    pub(super) cost: usize,
+}
 
 /// Levels an operand adds over its subexpressions, at most: a call wrapped in
 /// `@` or `#` on import (`_xlfn.SINGLE`), or `LAMBDA(...)(...)`.
@@ -84,6 +115,8 @@ pub const TOO_MANY_NESTED_CALLS_MESSAGE: &str = "Formula nests more than 65 func
 /// Whether a parse error `message` is a resource limit ([`TOO_DEEP_MESSAGE`] or
 /// [`TOO_MANY_OPERATORS_MESSAGE`] or the lexer's string-literal limit, T-2762) rather than a syntax error: no edit of the
 /// formula's ending makes it parse.
+/// [`TOO_MANY_SIGNS_MESSAGE`] is deliberately not one: the sign cap is Excel's syntax, which Excel
+/// refuses typed as a formula that does not parse (T-3338).
 pub(crate) fn is_limit_error(message: &str) -> bool {
     message == TOO_DEEP_MESSAGE
         || message == TOO_MANY_OPERATORS_MESSAGE
@@ -157,40 +190,80 @@ impl Parser {
     }
 
     /// The run and the signs before an operand of [`Parser::parse_power`]. A pending operand has
-    /// none of its own (what follows it is read after it, [`Parser::parse_parenthesis_run`]).
-    /// Also returns how many of the signs count toward [`MAX_SIGNS`] ([`Parser::parse_signs`]).
-    pub(super) fn parse_prefix(&mut self) -> (Run, Vec<(bool, Run)>, usize) {
+    /// the signs read ahead with it, if any ([`Parser::parse_parenthesis_run`]).
+    pub(super) fn parse_prefix(&mut self) -> Prefix {
         if self.pending_operand.is_some() {
-            return (Run::default(), Vec::new(), 0);
+            return self.pending_prefix.take().unwrap_or_default();
         }
         let before = self.run_ahead();
-        let (signs, counted) = self.parse_signs();
-        (before, signs, counted)
+        self.parse_signs(before)
     }
 
-    /// The unary signs before an operand, in written order: whether each is a minus, and the
-    /// run after it. Every sign is kept in its written order (`--x` coerces `x` to a number,
-    /// `+-5` prints back as written), but a plus written directly before a number literal folds
-    /// into it: `=+5` is `=5`, `=-+5` is `=-5`, `=+ 5` stays (syntax.md, T-2723). The run before a
-    /// folded plus stays where it was: `=  +5` prints `=  5` (T-2776). Also returns how many of
-    /// them count toward [`MAX_SIGNS`]: all but a minus written directly before a number literal.
+    /// The unary signs before an operand, in written order, after the run `before` them: whether
+    /// each is a minus, and the run after it. Every sign is kept in its written order (`--x`
+    /// coerces `x` to a number, `+-5` prints back as written), but a plus written directly before
+    /// a number literal folds into it: `=+5` is `=5`, `=-+5` is `=-5`, `=+ 5` stays (syntax.md,
+    /// T-2723). The run before a folded plus stays where it was: `=  +5` prints `=  5` (T-2776).
+    /// Every sign, folded or not, counts toward [`MAX_SIGNS`], and so does the operand's cost as
+    /// far as the next token tells it: 0 for a number literal written directly after the last
+    /// sign, [`SIGNED_GROUP_COST`] for a parenthesis, 1 otherwise ([`Parser::parse_power`] checks
+    /// a call once it is read).
     #[inline(never)]
-    pub(super) fn parse_signs(&mut self) -> (Vec<(bool, Run)>, usize) {
+    pub(super) fn parse_signs(&mut self, before: Run) -> Prefix {
         let mut signs = Vec::new();
-        let mut counted = 0;
+        let mut count = 0;
+        let mut before_number = false;
         while let TokenType::Addition(op) = self.lexer.peek() {
             let is_minus = *op == token::OpSum::Minus;
             self.lexer.advance_token();
-            let before_number = !self.lexer.whitespace_follows()
+            count += 1;
+            before_number = !self.lexer.whitespace_follows()
                 && matches!(self.lexer.peek(), TokenType::Number(_));
-            if !before_number {
-                counted += 1;
-            }
             if is_minus || !before_number {
                 signs.push((is_minus, self.run_ahead()));
             }
         }
-        (signs, counted)
+        let cost = if before_number {
+            0
+        } else if *self.lexer.peek() == TokenType::LeftParenthesis {
+            SIGNED_GROUP_COST
+        } else {
+            1
+        };
+        Prefix {
+            before,
+            signs,
+            count,
+            cost,
+        }
+    }
+
+    /// The [`TOO_MANY_SIGNS_MESSAGE`] error if `count` more signs open on the current path,
+    /// before an operand costing `cost`, pass [`MAX_SIGNS`] (no error when there are none).
+    pub(super) fn check_signs(&self, count: usize, cost: usize) -> Result<(), Node> {
+        if count > 0 && self.open_signs + count + cost > MAX_SIGNS {
+            return Err(self.limit_error(TOO_MANY_SIGNS_MESSAGE));
+        }
+        Ok(())
+    }
+
+    /// The operand of [`Parser::parse_power`] after its `prefix` of signs, which stay open while
+    /// it is parsed. The signs and the operand's cost must fit [`MAX_SIGNS`]: a parenthesis is
+    /// known from its first token ([`Parser::parse_signs`]), a call once it is read
+    /// ([`is_call_operand`]).
+    pub(super) fn parse_signed_operand(&mut self, prefix: &Prefix) -> Node {
+        if let Err(error) = self.check_signs(prefix.count, prefix.cost) {
+            return error;
+        }
+        self.open_signs += prefix.count;
+        let t = self.parse_bare_union();
+        self.open_signs -= prefix.count;
+        if prefix.cost < SIGNED_GROUP_COST && is_call_operand(&t) {
+            if let Err(error) = self.check_signs(prefix.count, SIGNED_GROUP_COST) {
+                return error;
+            }
+        }
+        t
     }
 
     /// Parses an operand. Its subexpressions (parenthesised, function
@@ -238,5 +311,26 @@ impl Parser {
             return self.too_deep();
         }
         node
+    }
+}
+
+/// Whether the leftmost operand of `node`, a [`Parser::parse_bare_union`] result, is a function
+/// call, which costs [`SIGNED_GROUP_COST`] after a run of signs as a parenthesis does
+/// (probes/t3266-minus-abs-1022, -1023). Unprobed for a LAMBDA, a name or a group called:
+/// TODO(T-3690) probes them.
+fn is_call_operand(node: &Node) -> bool {
+    let mut node = node;
+    loop {
+        match node {
+            Node::OpRangeKind { left, .. }
+            | Node::OpIntersectKind { left, .. }
+            | Node::OpUnionKind { left, .. } => node = left,
+            Node::Spaced { child, .. } => node = child,
+            Node::FunctionKind { .. }
+            | Node::LambdaDefKind { .. }
+            | Node::LambdaCallKind { .. }
+            | Node::NamedFunctionKind { .. } => return true,
+            _ => return false,
+        }
     }
 }

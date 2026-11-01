@@ -41,6 +41,12 @@ Visibly-off cells (all are known-failure lines in eval/baseline/probes.txt or ir
   `GROWTH(D2:D9,A2:C9,A2:C9)`: Excel 2.943203437996074, ours 2.943203437996122.
 - gen-m9/589f42e67f4b4b8d Calc!A193 `LOGEST(Data!A10:B11)`: Excel 2.220601291150046, ours 2.2206012911500514 (gap triage
   2026-10-25: visibly off, owned until now only by the deferred T-2006; it counts with the 113 below).
+- gen-m9/285d87cea1aaa73c.case.json (1): Calc!A293 (gap triage 2026-11-01h). The bare hash in the leads below does not
+  own it, because that stem is also a probes/t2436 case. Without this line its only open owner was blocked T-0969,
+  which lists it too. The formula is `LOGEST(T.DIST.2T(Data!B3,6),Data!C9:C12,<FALSE>)`: one y point against four x
+  columns (0, -1, -2.5, 0.2) with b = 1. Excel's top-left (the coefficient of the last x column) is 1.0. Ours is
+  2.689577620365573e-40 = exp(ln y / 0.2): it keeps the last column, where Excel keeps another and drops this one.
+  It counts with the 113 below, its line being in eval/baseline/gen-m9.txt.
 - ironcalc-calc/STATISTICAL/LINEST_LOGEST.xlsx (Mac 16.x cache), 5 cells: E2, E3, E5, E6, G6. For example E3
   `LINEST(A2:A6)` intercept: Excel -0.031000000000000028, ours -0.03100000000000025.
 

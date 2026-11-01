@@ -3,7 +3,7 @@ id: T-3551
 title: "Gate A: classify the 92 M5, M6 and M7 functions with no table or exemption, rule on the volatile ones, and file their table tasks"
 milestone: M0
 lane: harness
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -61,17 +61,50 @@ The volatile functions, which neither exemption class fits, get a ruling.
   with `make new-task`, and depend on T-3555 for the rounding family so the decimal-math rule is reused.
 
 ## Acceptance criteria
-- [ ] A decision record classifies each of the 92 functions (or the recounted list) as `exact`, `composite`, the
+- [x] A decision record classifies each of the 92 functions (or the recounted list) as `exact`, `composite`, the
       volatile ruling, or "needs a table (T-XXXX)", with a cited reason for each exemption.
-- [ ] `eval/accuracy/exempt.tsv` gains the exempt lines. `rustsheet-eval accuracy` reports `missing tables` lower
+- [x] `eval/accuracy/exempt.tsv` gains the exempt lines. `rustsheet-eval accuracy` reports `missing tables` lower
       by their number, with no stale exemption.
-- [ ] Every function classified "needs a table" is named in the title or Goal of an open task filed by this PR, and
+- [x] Every function classified "needs a table" is named in the title or Goal of an open task filed by this PR, and
       `python3 scripts/tasks.py validate` passes.
-- [ ] If the volatile ruling changes SPEC-0029 or the reader, the spec note is in this PR, and the reader change is
+- [x] If the volatile ruling changes SPEC-0029 or the reader, the spec note is in this PR, and the reader change is
       either in this PR or filed as a task.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Building any table (the filed tasks do that).
 - M9's 203 functions outside decision 0188's 18 (a separate classification task, after the T-3358 slices land and
   settle the solver and distribution patterns).
+
+## Outcome
+Done (2026-11-01).
+- **Recount:** the 92 functions of M5 (74), M6 (16) and M7 (2) match the task's list exactly.
+- **Decision 0228** classifies each of them:
+  - **`exact`, 16:** the whole-day date functions (DATEDIF, DAYS, DAYS360, EDATE, EOMONTH, NETWORKDAYS(.INTL),
+    WORKDAY(.INTL)), plus DATEVALUE, ARABIC, GCD, LCM, MUNIT, N and PI.
+  - **`composite`, 12:** SUBTOTAL (references only); VALUE, NUMBERVALUE, TIMEVALUE and DECIMAL (text);
+    MDETERM, MINVERSE and MMULT (2-D matrices); SEQUENCE (an array result); and the volatile RAND, RANDARRAY and
+    RANDBETWEEN.
+  - **Needs a table, 64:** twelve tasks, T-3668 to T-3678 and T-3693 (AGGREGATE's array forms 14-19).
+- **Volatile ruling:** `composite`, driven by an invariant-cell probe, the same evidence decision 0225 (T-3631) uses for
+  Gate B. So there is no third class, no SPEC-0029 change and no reader change. Decision 0225 is not on main yet, so
+  T-3685 adds the three lines once T-3631 lands.
+- **`eval/accuracy/exempt.tsv`:** +25 lines. Each `exact` reason cites a semantics entry or gen-m6 cells; each
+  `composite` reason names its eval suites. `rustsheet-eval accuracy`: `missing tables` 305 to 280, 0 failing, no stale
+  exemption.
+- **Follow-ups:** T-3685 (the volatile lines, after T-3631) and T-3686 (2-D array literals, so MDETERM, MINVERSE and
+  MMULT get tables in place of their exemptions).
+- **Table tasks** (M0, harness, opus, size M):
+  - T-3668: trig.
+  - T-3669: inverse trig plus DEGREES and RADIANS.
+  - T-3670: hyperbolic.
+  - T-3671: inverse hyperbolic.
+  - T-3672: exp, log, power and square roots.
+  - T-3673 and T-3674: rounding, after T-3555.
+  - T-3675: combinatorics, QUOTIENT and MOD.
+  - T-3676: PRODUCT, SUMSQ, SERIESSUM and PERCENTOF, after T-3549.
+  - T-3677: the SUMPRODUCT family.
+  - T-3678: TIME, HOUR, MINUTE, SECOND and YEARFRAC.
+  - T-3693: AGGREGATE over functions 14-19.
+
+  Each task names the semantics entries its definitions must read.

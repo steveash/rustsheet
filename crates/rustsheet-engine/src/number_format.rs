@@ -434,6 +434,9 @@ enum TextRules {
 fn value_to_text(value: f64, rules: TextRules) -> String {
     /// Longest plain-notation string (sign excluded) before Excel switches to E notation.
     const MAX_PLAIN_LEN: usize = 20;
+    /// Longest plain string for an IM* part below 1 (sign excluded): 21 characters, one more than
+    /// coercion allows (probes/eng-im-part-plain-boundary, docs/excel-semantics/engineering.md).
+    const MAX_COMPLEX_FRACTION_PLAIN_LEN: usize = 21;
     /// Smallest decimal exponent an IM* part writes in plain notation whatever its length.
     const MIN_COMPLEX_PLAIN_EXPONENT: i32 = -5;
     /// Largest decimal exponent an IM* part writes in plain notation whatever its length.
@@ -466,7 +469,9 @@ fn value_to_text(value: f64, rules: TextRules) -> String {
     let plain = match rules {
         TextRules::Coercion => plain_len(digits.len(), exponent) <= MAX_PLAIN_LEN,
         TextRules::ComplexPart => {
-            plain_len(digits.len(), exponent) <= MAX_PLAIN_LEN
+            let len = plain_len(digits.len(), exponent);
+            len <= MAX_PLAIN_LEN
+                || (exponent < 0 && len <= MAX_COMPLEX_FRACTION_PLAIN_LEN)
                 || (MIN_COMPLEX_PLAIN_EXPONENT..=MAX_COMPLEX_PLAIN_EXPONENT).contains(&exponent)
         }
     };
