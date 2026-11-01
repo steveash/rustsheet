@@ -3,7 +3,7 @@ id: T-3033
 title: "Import and export a table column's calculatedColumnFormula"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
