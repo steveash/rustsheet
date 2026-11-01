@@ -600,12 +600,19 @@ def status(root: Path = ROOT) -> int:
     return 0
 
 
-def minutes(value: str) -> float:
-    """An argparse type: a finite, non-negative number of minutes (no NaN, inf or negatives)."""
-    number = float(value)
-    if not (math.isfinite(number) and number >= 0):
-        raise argparse.ArgumentTypeError(f"want a finite number of minutes >= 0, not {value!r}")
-    return number
+def non_negative(unit: str) -> Callable[[str], float]:
+    """An argparse type: a finite, non-negative number of `unit` (no NaN, inf or negatives)."""
+
+    def parse(value: str) -> float:
+        number = float(value)
+        if not (math.isfinite(number) and number >= 0):
+            raise argparse.ArgumentTypeError(f"want a finite number of {unit} >= 0, not {value!r}")
+        return number
+
+    return parse
+
+
+minutes = non_negative("minutes")
 
 
 def main(argv: list[str], root: Path = ROOT) -> int:

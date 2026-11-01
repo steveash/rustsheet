@@ -2,7 +2,7 @@ mod arabic_roman;
 mod ceiling_floor;
 mod combinatorics;
 mod decimal_text;
-mod gcd_lcm;
+pub(crate) mod gcd_lcm;
 mod hyperbolic;
 mod mathematical;
 mod matrix;

@@ -1,0 +1,6 @@
+| X_i form | all | n<=9 | n>=10 |
+|---|---|---|---|
+| exact | sd 17.8, median -0.4 | sd 4.8, median -0.0 | sd 20.1, median -0.7 |
+| explnd | sd 13.9, median 0.2 | sd 1.8, median -0.1 | sd 15.7, median 0.5 |
+| wholed | sd 111.1, median 1.2 | sd 16.6, median 0.6 | sd 125.7, median 2.1 |
+| cumd | sd 70.2, median 0.8 | sd 11.0, median 1.0 | sd 79.4, median -0.2 |
