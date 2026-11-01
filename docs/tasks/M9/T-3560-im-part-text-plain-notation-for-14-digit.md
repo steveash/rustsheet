@@ -33,4 +33,4 @@ IM* functions write a 14-significant-digit part at decimal exponent -6 in plain 
 -
 
 ## Outcome
-Probe probes/eng-im-part-plain-boundary (40 cells, excel-graph) shows the limit is 21 characters for any negative exponent. `value_to_text` now allows 21 for IM* parts below 1. The 4 t3545 cells pass; no other cell changed. Positive exponents unprobed and unchanged.
+Probe probes/eng-im-part-plain-boundary (40 cells, excel-graph) shows the limit is 21 characters at exponents -6 to -8 (22 is E notation through -10); the code applies it to every negative exponent, extrapolated below -8 (follow-up probe filed). `value_to_text` now allows 21 for IM* parts below 1. The 4 t3545 cells pass; no other cell changed. Positive exponents unprobed and unchanged.
