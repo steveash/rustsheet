@@ -55,7 +55,7 @@ docs/excel-semantics/syntax.md "Formula nesting depth cap", in the T-3266 paragr
 - [x] A 256-level `-(` formula parses, evaluates, stringifies and round-trips xlsx without stack
       overflow (a test on a small thread stack, as the existing depth tests do).
 - [x] syntax.md "Ours differs" sentence removed; `make check` green; reviewers approve. (Sentence
-      removed and `make check` green; reviewers not yet run.)
+      removed and `make check` green; reviewers approved: security, architecture, quality, excel-fidelity.)
 
 ## Out of scope
 - Other wrappers around sign runs, such as `ABS(-ABS(-...))`, which the 65-call cap already bounds.
