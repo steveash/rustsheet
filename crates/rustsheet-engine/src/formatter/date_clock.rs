@@ -55,21 +55,49 @@ pub(crate) fn parse_date_clock_serial(
 }
 
 /// The 1900-system date serial (not shifted for a 1904 workbook) and the clock fraction of "date clock" text.
+///
+/// The clock may also come first: `"10:00 7/1/2025"`, `"10 AM 7/1/2025"`, `"10:00 July 1, 2025"`
+/// are the same date-times (probes/date-text-shape-survey row 113, date-text-shape-survey-2
+/// rows 1-13), but not a clock on both sides (`"10:00 7/1/2025 10:00"`, row 8). The date and the
+/// clock are split at a space character only: a tab or a no-break space between them is #VALUE!
+/// (probes/date-text-shape-survey row 90, date-text-shape-survey-2 rows 31-32).
 fn parse_date_clock_parts(
     text: &str,
     locale: &Locale,
     current_year: CurrentYear,
 ) -> Option<(i32, f64)> {
+    // `date` comes with the spaces between it and the clock already cut.
+    let split = |date: &str, clock: &str| {
+        let clock = trim_spaces(clock);
+        let clock = parse_clock_text(clock).or_else(|| parse_hour_only_am_pm(clock))?;
+        let (days, _) = parse_date(date, locale, current_year).ok()?;
+        Some((days, clock))
+    };
+    // The clock is the last word or the last two (`"6 PM"`), else the first word or two.
     let mut date_end = text.len();
     for _ in 0..2 {
-        date_end = text[..date_end].trim_end().rfind(char::is_whitespace)?;
-        let clock_part = text[date_end..].trim();
-        let clock = parse_clock_text(clock_part).or_else(|| parse_hour_only_am_pm(clock_part));
-        if let (Some(clock), Ok((days, _))) = (
-            clock,
-            parse_date(text[..date_end].trim_end(), locale, current_year),
-        ) {
-            return Some((days, clock));
+        let Some(end) = text[..date_end].trim_end_matches(' ').rfind(' ') else {
+            break;
+        };
+        date_end = end;
+        let date = text[..date_end].trim_end_matches(' ');
+        if let Some(parts) = split(date, &text[date_end..]) {
+            return Some(parts);
+        }
+    }
+    // Number coercion does not trim, so a space before a leading clock stays an error.
+    if text.starts_with(' ') {
+        return None;
+    }
+    let mut clock_end = 0;
+    for _ in 0..2 {
+        // Skip the spaces after the first clock word.
+        let start =
+            clock_end + (text[clock_end..].len() - text[clock_end..].trim_start_matches(' ').len());
+        clock_end = start + text[start..].find(' ')?;
+        let date = text[clock_end..].trim_start_matches(' ');
+        if let Some(parts) = split(date, &text[..clock_end]) {
+            return Some(parts);
         }
     }
     None
