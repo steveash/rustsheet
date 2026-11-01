@@ -13,7 +13,7 @@ help:
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-18s %s\n", $$1, $$2}'
 
 # ---------------------------------------------------------------- Rust
-.PHONY: fmt fmt-check clippy test test-shard-1 test-shard-2 build
+.PHONY: fmt fmt-check clippy test test-shard-1 test-shard-2 test-shard-3 build
 fmt: ## Format Rust and Python code
 	$(CARGO) fmt --all
 	cd tools && $(UV) run ruff format src tests && $(UV) run ruff check --fix src tests
@@ -27,17 +27,25 @@ clippy: ## Lint Rust with -D warnings (workspace lint policy in Cargo.toml)
 test: ## Run Rust tests
 	$(CARGO) test --workspace --exclude rustsheet_python
 
-# CI runs `make test` as two shards (decision 0122): shard 1 runs the tests whose names contain one
-# of these substrings, shard 2 every other test (`--skip` matches the same way), so together they
-# run exactly the tests of `make test`, each once. Keep test_fn_groupby here and test_tailed_array
-# in shard 2 (memory-bound; they slow each other down); 0122 says when to rebalance.
-TEST_SHARD_1 := test::test_fn_groupby text_functions::fn_regex test::test_multi_area_arguments dynamic_evaluation::test_range_reads functions::text::
+# CI runs `make test` as three shards (decisions 0122 and 0232): shard 1 runs the tests whose names
+# contain one of the TEST_SHARD_1 substrings, shard 2 the tests matching TEST_SHARD_2 but not
+# TEST_SHARD_1, shard 3 every other test (`--skip` matches the same way), so together they run
+# exactly the tests of `make test`, each once; a new test lands in shard 3 unless it matches.
+# Memory-bound whole-grid tests slow each other down on one runner: keep test_fn_groupby in
+# shard 1, apart from test_fn_pivotby and every test_tailed_array test, and split
+# test_tailed_array between shards 2 and 3. Decision 0122 says when to rebalance.
+TEST_SHARD_1 := test::test_fn_groupby text_functions::fn_regex test::test_multi_area_arguments dynamic_evaluation::test_range_reads functions::text:: test::lookup_and_reference test::test_collation test::test_formula_work test::statistical
+TEST_SHARD_2 := test::test_fn_pivotby test_tailed_array::keyed test_tailed_array::index test_tailed_array::lookup test_tailed_array::small_and_large test::test_nested_groupby_cells
+SHARD_TEST := $(CARGO) test --workspace --exclude rustsheet_python --
 
-test-shard-1: ## CI: the tests matching TEST_SHARD_1 (half of make test)
-	$(CARGO) test --workspace --exclude rustsheet_python -- $(TEST_SHARD_1)
+test-shard-1: ## CI: the tests matching TEST_SHARD_1 (a third of make test)
+	$(SHARD_TEST) $(TEST_SHARD_1)
 
-test-shard-2: ## CI: every test test-shard-1 does not run (the other half of make test)
-	$(CARGO) test --workspace --exclude rustsheet_python -- $(addprefix --skip ,$(TEST_SHARD_1))
+test-shard-2: ## CI: the tests matching TEST_SHARD_2 and not TEST_SHARD_1 (a third of make test)
+	$(SHARD_TEST) $(TEST_SHARD_2) $(addprefix --skip ,$(TEST_SHARD_1))
+
+test-shard-3: ## CI: every test shards 1 and 2 do not run (the last third of make test)
+	$(SHARD_TEST) $(addprefix --skip ,$(TEST_SHARD_1) $(TEST_SHARD_2))
 
 build: ## Release build of the eval harness
 	$(CARGO) build --release -p rustsheet_eval
