@@ -225,8 +225,20 @@ pub(crate) fn get_table_xml(
             }
             None => (String::new(), String::new()),
         };
+        // The column's own formula, kept in file form by the fill that set it (an exception in a
+        // data row does not change it, xlsx-storage.md), not read back from a data cell.
+        let calculated_formula = column
+            .calculated_column_formula
+            .as_ref()
+            .map(|f| {
+                format!(
+                    "<calculatedColumnFormula>{}</calculatedColumnFormula>",
+                    escape_xml(f)
+                )
+            })
+            .unwrap_or_default();
         columns.push_str(&format!(
-            "<tableColumn id=\"{}\" name=\"{}\"{totals_attributes}{}{}{}>{totals_formula}</tableColumn>",
+            "<tableColumn id=\"{}\" name=\"{}\"{totals_attributes}{}{}{}>{calculated_formula}{totals_formula}</tableColumn>",
             column.id,
             escape_xml(&column.name),
             dxf_attribute("headerRowDxfId", column.header_row_dxf_id, dxf_count),

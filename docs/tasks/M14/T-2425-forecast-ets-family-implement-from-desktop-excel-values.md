@@ -31,14 +31,15 @@ none is unowned (decision 0083).
 Decision 0221 (owner ruling, 2026-11-01): until desktop values exist, the family computes gridcraft's AAA model,
 unverified (T-3599 SEASONALITY, T-3600 FORECAST.ETS, T-3601 CONFINT and STAT). This task still owns matching desktop
 Excel: replace whatever the desktop values contradict. The cells listed here stay known failures against the web's
-`#N/A` while the model computes numbers. T-3599 fixed 274 gen-m9 cells, 271 of them listed below (the other 3,
-43a13a091907b402 A18, A302 and 67f5e0fe790e6bec A227, are not on this list). All are SEASONALITY calls whose `values`
+`#N/A` while the model computes numbers. T-3599 fixed 274 gen-m9 cells, all listed below (43a13a091907b402 A18,
+A302 and 67f5e0fe790e6bec A227 under "Cells added by the Phase 1 triage"). All are SEASONALITY calls whose `values`
 and `timeline` differ in size, which is `#N/A` both in the model and on the web, so they left eval/baseline/gen-m9.txt.
 The list keeps them as T-2255's triage record.
 
 The desktop probe should cover what decision 0221 ships unverified (statistics.md "FORECAST.ETS family: the model
 before Excel evidence"): a period-4 series, the error orderings of its steps 1 to 6, monthly and month-end timelines,
-duplicate time stamps under each aggregation, and the 30% missing rule.
+duplicate time stamps under each aggregation (and an all-blank time stamp under COUNT and COUNTA), a range across
+two sheets, and the 30% missing rule.
 
 Owned gen-m9 cells (T-2255 triage, excel-graph, 2026-10-22): 877 known-failure lines in eval/baseline/gen-m9.txt, 877 formulas.
 Examples:

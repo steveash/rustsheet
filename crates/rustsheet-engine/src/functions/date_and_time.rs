@@ -191,7 +191,7 @@ use crate::{
 
 /// The error kind of a failed argument evaluation. A non-error result is #VALUE! on purpose: the
 /// callers only pass the `Err` of a coercion, which is always an error.
-fn error_kind(result: &CalcResult) -> Error {
+pub(crate) fn error_kind(result: &CalcResult) -> Error {
     match result {
         CalcResult::Error { error, .. } => error.clone(),
         _ => Error::VALUE,

@@ -250,6 +250,11 @@ def parse_formula(definition: Definition, text: str) -> list[literal.Arg]:
         token = part.strip()
         if param.kind == "bool":
             args.append(token.upper() == "TRUE")
+        elif param.kind == "array":
+            if not (token.startswith("{") and token.endswith("}")):
+                msg = f"{text!r}: {param.name} is not an array literal"
+                raise ValueError(msg)
+            args.append(tuple(number_literal(t) for t in split_args(token[1:-1])))
         elif param.kind == "int":
             args.append(int(number_literal(token)))
         else:

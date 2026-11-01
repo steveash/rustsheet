@@ -3,7 +3,7 @@ id: T-3599
 title: "FORECAST.ETS family core and FORECAST.ETS.SEASONALITY: adapt gridcraft's AAA series and season detection (owner ruling, unverified against Excel)"
 milestone: M14
 lane: functions-stat
-status: done
+status: blocked
 priority: P2
 size: M
 tier: opus
@@ -34,11 +34,20 @@ the member's computation).
 - [x] statistics.md has the UNVERIFIED model section and a DEVIATION section for the work caps (directive 5).
 - [x] `make eval-baseline` shows no regression; unit tests cover the series errors, completion, aggregation,
       monthly timelines and season detection.
-- [x] `make check` green; reviewers approve.
+- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - FORECAST.ETS's fit and forecast (T-3600); CONFINT and STAT (T-3601).
 - Matching desktop Excel (T-2425, after T-1553).
+
+## Blocked because
+Blocked because: review-round limit
+Round 3 (head 38269591): security, architecture and excel-fidelity APPROVE; quality REQUEST_CHANGES on one duplicate
+helper (`error_kind` in forecast.rs copied date_and_time.rs's). Fixed on the branch after round 3: forecast.rs reuses
+`date_and_time::error_kind`, the series enum is renamed `DuplicateAggregate` with a `match` in `from_setting`, and
+statistics.md lists the cross-sheet `#VALUE!` and the COUNT/COUNTA all-blank rule (fidelity's minors). The step 5c
+re-review runs the full panel on that head. Fidelity's conditional finding (is decision 0221's owner ruling real?) is
+answered on PR #2680: the owner chose "Owner ruling: implement now" in the cited session.
 
 ## Outcome
 FORECAST.ETS.SEASONALITY computes gridcraft's season detection on a shared series core (statistical/ets.rs, adapted
