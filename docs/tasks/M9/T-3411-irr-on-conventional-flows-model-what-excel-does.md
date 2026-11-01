@@ -46,6 +46,8 @@ stage (PR #2529, blocked on its hold-out) and unblocks T-3347.
 - The last digits (T-3408) and `#DIV/0!` (T-3407).
 
 ## Landing notes
+2026-11-01 23:40, opus run: resumed from these notes (step 0.2; branch idle 2 h).
+
 2026-11-01, opus run (stopped at the session's landing window; no PR opened, no code changed).
 - Branch head: the claim commit plus these notes. Nothing is implemented; CI and reviewers have not run.
 - Scored on the type (number, `#NUM!`, `#DIV/0!` read as an error) of 288 cells: probes/t3406-irr-num-boundary (144)
