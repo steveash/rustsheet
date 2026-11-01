@@ -49,7 +49,9 @@ Done 2026-11-01 (research; negatives with counts, nothing solved for the engine)
 - lnΓ(a0) in bpser's L is still a negative:
   - GL is right at 0.15 and 0.3 (in the best set on 143 of 144 a0) and leads from 0.7 up.
   - Just above 0.5, fl(gamln1 - LN) is right more often: 19 a0 against 7.
-  - Five other forms lose, and so do the raw-t kernel and K3 kept past 1.5.
+  - Five other distinct forms lose (CR lnΓ(a0), fl(CR lnΓ(1 + a0) - LN a0) and three LN(GAMMA) forms; fl(GAMMALN(1 +
+    a0) - LN a0) equals GL below 0.7 and the fl64 gamln1 form equals g1ln53), and so do the raw-t kernel and K3 kept
+    past 1.5.
   - Overall GL wins 52 to 36 (tune) and 51 to 19 (hold), so the engine's GL53 stays.
 - The ceiling also holds for a0 < 1 < b0 < 8: 3,355 of 4,032 cells, at 66-89%. It sits in alx, s or EXP, not in L.
   None of the series or composition variants tried lifts it.

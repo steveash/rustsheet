@@ -2923,9 +2923,10 @@ z = fl64(fl(a·LN(x)) - L)  (extended);   I = fl(EXP(z)·s)  (Excel's EXP of the
   - It is not the b < 1 first factor (1 - b)·x.
   - It is not a register-held series (s, c or t unstored, or SSE doubles).
   - It is not LN(s) folded into EXP's argument, a 1/a split of the product, or x^a times a constant. Each of these is
-    at or below 304 of 432, against the model's 299.
-  - Follow-up: T-3771. The port needs Excel's GAMMALN exact at the shape
-  arguments; the engine model is exact on 274 of 771 in [1, 2) and 1,738 of 2,585 below 1 (t2464-r2-bpser-small-gl).
+    at or below 264 of 432, against the model's 299.
+  - Follow-up: T-3771.
+- The port needs Excel's GAMMALN exact at the shape arguments; the engine model is exact on 274 of 771 in [1, 2) and
+  1,738 of 2,585 below 1 (t2464-r2-bpser-small-gl).
 - An isolated miss at 1 < b0 < 8 (gap triage 2026-10-30, T-3331): `BETA.DIST(0.1,2.5,5,TRUE)` (probes-numeric/
   m9-beta-dist-a2p5 Calc!A31, a bpser point: b0·x0 = 0.5) is 0.05533381860850995 in Excel and 0.055333818608509895 in
   the engine, visibly off. Against a 60-digit mpmath value, 0.055333818608509839059, Excel is 16.1 ulp high and the

@@ -20,7 +20,9 @@ or to EXP's argument, or both are recorded as negatives with counts.
 - T-3570 found that no single lnΓ(a0) form is bpser's g at every a0:
   - Worksheet GAMMALN(a0) is right near 0.15 and 0.3, and from 0.7 up.
   - Just above 0.5, TOMS's fl(gamln1(a0) - LN(a0)) is right more often: 19 a0 against 7.
-  - Seven other forms lost, among them correctly rounded, LN(GAMMA), the raw-t kernel and K3 kept past 1.5.
+  - Seven other forms lost: five distinct value forms (correctly rounded and three LN(GAMMA) among them), the raw-t
+    kernel and K3 kept past 1.5.
+  - T-3570's md5 hold-out (`pin.hold`) is unbalanced within some centers; split per center if anything is fitted.
 - In the same 1 < b0 < 8 sub-branch, the best g per a0 still makes only 83% of cells exact (66% at a0 = 0.15).
   - The misses are ±1-2 ulp and move with x at a fixed a0, so the cause sits in alx, s or EXP, not in L.
   - None of the series and composition variants T-3570 tried raised this ceiling.

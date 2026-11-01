@@ -11,16 +11,17 @@ in docs/research/excel-kernel-playbook.md.
 - GL(b0) and GL(a0 + b0) are Excel's own GAMMALN values, read from the probe's own columns, so g is the only free
   piece in L.
 - Scores count bit-exact cells, or a0 points whose best g set contains a candidate.
-- The hold-out is the md5-odd half of a0 (`pin.hold`). No numeric fit was made: every candidate is a structural form
+- The hold-out is the md5-odd half of a0 (`pin.hold`). It is unbalanced within some centers (0.3: 15 tune, 57
+  hold; 0.85: 48 tune, 24 hold); a later round that fits anything should split per center. No numeric fit was made: every candidate is a structural form
   with no tuned constant. Both halves are reported, and they agree.
-- Run every script with `/home/user/rustsheet/bindings/python/.venv/bin/python` from this directory (`make py-bindings`
+- Run every script with `bindings/python/.venv/bin/python` (repo-relative) from this directory (`make py-bindings`
   builds it; add `mpmath` and `numpy`). They import r2-bpser-small's `lib` (and through it r2-bratio's `bratio_excel`).
   Nothing is copied from those modules.
 
 ## 1. Headline
 
 1. **No single lnΓ(a0) form is bpser's g at every a0. This is a negative, with counts.**
-   - Candidates: Excel's worksheet GAMMALN(a0) ("gl"), TOMS's fl(gamln1(a0) - LN(a0)) ("g1ln53"), and five others.
+   - Candidates: Excel's worksheet GAMMALN(a0) ("gl"), TOMS's fl(gamln1(a0) - LN(a0)) ("g1ln53"), and five other distinct value forms (section 2, item 5).
    - gl is right at a0 near 0.15 and 0.3: it is in the best g set on 143 of 144 a0, and g1ln53 never beats it there.
    - gl also leads from 0.7 up, 24 to 4 at 0.7 and 6 to 3 at 0.85.
    - Just above 0.5, gl is wrong and g1ln53 is right more often: 19 a0 against 7 (`side.out`).
@@ -70,7 +71,8 @@ in docs/research/excel-kernel-playbook.md.
    - That is 504 a0 points and 5,043 cells.
 2. **Positive control** (`pin.py --control`, `pin_control.out`). Data planted from the model, with g alternating
    between gl and g1ln53 by row, is recovered on 504 of 504 a0: the planted g is always in the pinned set. On the real
-   data only 170 of 504 a0 admit any g that makes all 8 cells exact (`pin.out`), so the analysis uses each a0's
+   data only 170 of 504 a0 admit a g within ±6 ulps that makes all 8 cells exact (`pin.out`; `ceil.py` scans ±12
+   ulps and finds 171), so the analysis uses each a0's
    ceiling (`ceil.py`, `lgbest.py`) instead of requiring all 8.
 3. **Per-a0 winner** (`lgwin.out`; on the a0 where gl and g1ln53 give different L, the form with more exact cells
    wins):
