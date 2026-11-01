@@ -1,5 +1,5 @@
 ---
-id: T-3470
+id: T-3598
 title: "Second number run after a decimal point and literal prints no grouping"
 milestone: M10
 lane: functions-text

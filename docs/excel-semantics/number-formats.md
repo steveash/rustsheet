@@ -828,12 +828,12 @@ Evidence: probes/t1925-numeral-digits (cell row = N + 1; D: `#,##0.00` of 102030
 - 27-31 are CJK numerals. Date: 27 `二〇二三-〇三-十五` (positional year, day with 十), 28 `弐〇弐参-〇参-壱拾伍`, 29 fullwidth `２０２３-０３-１５`, 30 `二○二三-○三-十五` (N=27 uses 〇 U+3007, N=30 uses ○ U+25CB), 31 `贰零贰叁-零叁-壹拾伍`. Plain numbers are positional (D, N=27 `一,〇二〇,三〇四.〇五`, N=28 `壱,〇弐〇,参〇四.〇伍`, N=31 `壹,零贰零,叁零肆.零伍`; C, 27 `一二三四五六七.八九`, 28 `壱弐参四伍六七.八九`, 31 `壹贰叁肆伍陆柒.捌玖`).
 - Not implemented. Ours: a nonzero numeral byte drops the LCID entirely, so we also lose the ja-JP era and month names (B2 expects "2023-03-15|5|3月", we print "2023-03-15|2023|March"). `resolve_lcid` returns `Silent` for any N (TODO(T-3532) there). The probe cells are known failures in the baseline; the implementation is filed as T-3532.
 
-**Unrelated quirk the probe found (column C). Rule:** `TEXT(1234567.89,"[$-409]0.00|#,##0")` is "1234567.89|0": with a `#,##0` run after the decimal point and a literal, the integer part gets no thousands grouping and the trailing run prints just `0`. We print "1,234,567.89|0". This is why C1 fails with no numeral byte (probes/t1925-numeral-digits C1, C2, C21-C27); filed as T-3470.
+**Unrelated quirk the probe found (column C). Rule:** `TEXT(1234567.89,"[$-409]0.00|#,##0")` is "1234567.89|0": with a `#,##0` run after the decimal point and a literal, the integer part gets no thousands grouping and the trailing run prints just `0`. We print "1,234,567.89|0". This is why C1 fails with no numeral byte (probes/t1925-numeral-digits C1, C2, C21-C27); filed as T-3598.
 
 Status: VERIFIED (excel-graph)
 Implemented in: not implemented (T-3532)
 
-Tasks: T-1859, T-1613, T-1922, T-1923, T-1924, T-1925, T-2759, T-3532, T-3470
+Tasks: T-1859, T-1613, T-1922, T-1923, T-1924, T-1925, T-2759, T-3532, T-3598
 
 ## Displayed text (`Range.text`) of a formatted cell (T-1610)
 Rule: excel-graph's `Range.text` is the cell's value under its number format, and it does not
