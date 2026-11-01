@@ -231,18 +231,9 @@ impl Engine for RustSheetEngine {
                                     (table.header_row, table.totals_row),
                                 )?;
                                 for (letter, formula) in &table.calculated {
-                                    let column = calculated_column_index(&table.range, letter)?;
-                                    // The text is exported as is, so it must already be file form.
-                                    if formula.contains("[@") {
-                                        return Err(rustsheet::EditError::Table(format!(
-                                            "calculated column {letter}: write {formula} in file form"
-                                        )));
-                                    }
-                                    tx.set_table_column_formula(
-                                        &table.name,
-                                        column,
-                                        formula.trim_start_matches('='),
-                                    )?;
+                                    let (column, text) =
+                                        calculated_column(&table.range, letter, formula)?;
+                                    tx.set_table_column_formula(&table.name, column, text)?;
                                 }
                             }
                         }
@@ -471,15 +462,27 @@ pub(crate) fn range_ref(id: SheetId, a1: &str) -> Result<RangeRef, rustsheet::Ed
     )?)
 }
 
-/// The 0-based index within table range `a1` of the calculated column in column `letter`.
-fn calculated_column_index(a1: &str, letter: &str) -> Result<usize, rustsheet::EditError> {
+/// A spec table's calculated column in column `letter` of table range `a1`: its 0-based index in
+/// the table and its formula without `=`. The text is exported as is, so a `[@Col]` shorthand
+/// (not file form) is refused.
+fn calculated_column<'f>(
+    a1: &str,
+    letter: &str,
+    formula: &'f str,
+) -> Result<(usize, &'f str), rustsheet::EditError> {
     let bad = || rustsheet::EditError::Table(format!("calculated column {letter} outside {a1}"));
     let (first, last) = parse_range(a1).ok_or_else(bad)?;
     let col = Addr::col_index(letter).ok_or_else(bad)?;
     if !(first.col..=last.col).contains(&col) {
         return Err(bad());
     }
-    usize::try_from(col - first.col).map_err(|_| bad())
+    if formula.contains("[@") {
+        return Err(rustsheet::EditError::Table(format!(
+            "calculated column {letter}: write {formula} in file form"
+        )));
+    }
+    let index = usize::try_from(col - first.col).map_err(|_| bad())?;
+    Ok((index, formula.trim_start_matches('=')))
 }
 
 /// When a spec cell goes in ([`spec_input`]): its values, then the tables and stored formulas,
