@@ -62,7 +62,7 @@ Second PR (#2608), the check-100 stop:
   agrees with ours on the other 12. `compute_yield` now refuses a check-100 stop (`NewtonStop::converged_on`);
   ODDFYIELD, the same Newton, keeps its behavior pending evidence (follow-up T-3485).
 - Rule in financial.md "YIELD's #NUM! cells and its 100-step cap". Eval: the two new probe cases add 199 cells; with
-  the fix every cell matches in type; probes known failures 2201 -> 2270, 0 regressions, 130 new passing cells
+  the fix every cell matches in type; probes known failures 3203 -> 3272 (re-recorded on main after #2604), 0 regressions, 130 new passing cells
   including all three check-100 cells. The 69 new-coverage failures: 60 NumericUlp cells and Y!B1 (a root about 5
   ulp off), the last ulps at the root (T-2788); and 8 NumericClose cells, up to 2.5e-12 relative, all 100th iterates
   of the climb back from a negative yield (follow-up T-3486).
