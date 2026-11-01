@@ -1518,10 +1518,9 @@ text included: `RANK(4,A1:A8,"1")` is `#VALUE!`. `order` is read before the data
 `number`, then `order`, then the data's error, then ranks (`#N/A` when absent). Before T-1999 a direct boolean was `#VALUE!`,
 `"1"` was an ascending order and the data's error came before `order`'s. Not probed: an `order` from a cell holding text, and `number`'s error against `order`'s (T-2019).
 Probed in T-2000 (probes/stat-error-orders-t2000, excel-graph; D1:D3 = 1, `#N/A`, 3): T.TEST's `type` is read before the
-samples' error: `T.TEST(D1:D3,A1:A3,1,4)` is `#NUM!` and `T.TEST(D1:D3,A1:A3,1,"a")` is `#VALUE!`. FORECAST's `x` text
-loses to the data's own validation only in that every case is `#VALUE!`: `FORECAST("a",A1:A2,B1:B3)` (unequal sizes),
-`FORECAST("a",A1:A1,B1:B1)` (one point) and `FORECAST("a",{1;1},{2;2})` (all x equal) are `#VALUE!`, so the order is
-not observable. An error value as the data argument is that error: `PERCENTRANK(NA(),1)`, `QUARTILE(NA(),1)`,
+samples' error: `T.TEST(D1:D3,A1:A3,1,4)` is `#NUM!` and `T.TEST(D1:D3,A1:A3,1,"a")` is `#VALUE!`. FORECAST's `x` is read before the data's
+own validation: `FORECAST("a",A1:A2,B1:B3)` (unequal sizes, `#N/A` for a numeric `x`), `FORECAST("a",A1:A1,B1:B1)` (one
+point) and `FORECAST("a",{1;1},{2;2})` (all x equal, `#DIV/0!` for a numeric `x`) are all `#VALUE!`. An error value as the data argument is that error: `PERCENTRANK(NA(),1)`, `QUARTILE(NA(),1)`,
 `PERCENTILE.INC(NA(),0.5)`, `PROB(NA(),F1:F4,1)` and `FREQUENCY(NA(),{1;2})` are all `#N/A`. All ten already matched
 the engine; no code change.
 Status: VERIFIED (excel-graph)
