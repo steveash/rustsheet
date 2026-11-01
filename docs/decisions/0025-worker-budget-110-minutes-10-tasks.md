@@ -1,6 +1,8 @@
 # 0025 — Worker session budget: 110 minutes, 10 tasks
 
 - **Status:** accepted (2026-10-05, owner request; T-0037)
+- **Amended by:** decision 0229 (new tasks only until minute 80, then a landing window until
+  minute 110).
 - **Context:** decision 0022 made both workers loop until 100 minutes into the session or 6
   started tasks. The owner wants each 2-hour slot used as fully as possible, by the opus worker
   as well as the sonnet one. The work-loop skill also still said the opus worker "completes
