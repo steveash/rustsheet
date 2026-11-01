@@ -871,6 +871,11 @@ C	probes/near-zero-snap-name-bodies.case.json	7
 C	probes/near-zero-sum-forms.case.json	17
 C	probes/negative-date-sections-1900.case.json	23
 C	probes/negative-date-sections-1904.case.json	23
+C	probes/networkdays-intl-early-holidays.case.json	88
+C	probes/networkdays-intl-holiday-forms.case.json	22
+C	probes/networkdays-intl-holiday-weekend-dedupe.case.json	112
+C	probes/networkdays-intl-holiday-weekend-masks.case.json	45
+C	probes/networkdays-intl-serial-zero-holiday.case.json	120
 C	probes/not-array-cast.case.json	38
 C	probes/npv-fvschedule-edges.case.json	6
 C	probes/npv-fvschedule-typed.case.json	16

@@ -244,7 +244,7 @@ mod tests {
     /// The closed-form count equals walking the days one by one.
     #[test]
     fn counts_match_a_day_walk() {
-        let holidays = Holidays::new(vec![3, 3, 10, 11, -4, 40]);
+        let holidays = Holidays::new(vec![3, 3, 10, 11, -4, 40], false);
         let mask = [false, false, false, false, false, true, true];
         for from in -10_i64..20 {
             for to in from..from + 30 {
