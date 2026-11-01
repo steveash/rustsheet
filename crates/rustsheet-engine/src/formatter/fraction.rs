@@ -20,9 +20,32 @@
 //! - a `,` right after the denominator scales the value up ([`fraction_scale`]), and a fixed
 //!   denominator past 32768 is replaced by a picked one ([`LARGE_FIXED_MAX_DENOMINATOR`]).
 
-use super::parser::{Denominator, Fraction, NumberPart, TextToken};
+use super::parser::{NumberPart, TextToken};
 use crate::decimal_round::{round_decimal, RoundMode};
 use crate::number_format::{group_thousands, to_precision};
+
+/// Where a fraction sits among a number section's `tokens`: the digit placeholders before
+/// `numerator_start` are the integer part, those from it up to `numerator_end` the numerator.
+/// Literals may sit on either side of the `/` (`#\:#=/=#`).
+pub struct Fraction {
+    /// Index of the first numerator placeholder in `tokens`.
+    pub numerator_start: usize,
+    /// Index just past the last numerator placeholder in `tokens`.
+    pub numerator_end: usize,
+    /// Index in `tokens` where the denominator prints, after the literals that follow the `/`;
+    /// the denominator is not a token.
+    pub denominator_at: usize,
+    /// Fixed digits or placeholder kinds; see [`Denominator`].
+    pub denominator: Denominator,
+}
+
+/// The denominator of a fraction section.
+pub enum Denominator {
+    /// Digits as written (`16` in `# ??/16`).
+    Fixed(String),
+    /// The kinds of its digit placeholders (`??` in `# ??/??`): Excel picks the fraction.
+    Placeholders(Vec<char>),
+}
 
 /// The text of `value` under the number section `part`, which holds `fraction`, or `None` when
 /// Excel cannot show it: with no integer part, a fixed denominator's numerator past 32767 and a

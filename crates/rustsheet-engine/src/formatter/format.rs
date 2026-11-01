@@ -593,7 +593,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         };
                         text.push_str(&p.numerals.field(&year));
                     }
-                    TextToken::Hour => {
+                    TextToken::Hour | TextToken::HourPadded => {
                         let mut hour = hours as i32;
                         if p.use_ampm {
                             if hour == 0 {
@@ -602,18 +602,12 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                                 hour -= 12;
                             }
                         }
-                        text.push_str(&p.numerals.field(&hour.to_string()));
-                    }
-                    TextToken::HourPadded => {
-                        let mut hour = hours as i32;
-                        if p.use_ampm {
-                            if hour == 0 {
-                                hour = 12;
-                            } else if hour > 12 {
-                                hour -= 12;
-                            }
-                        }
-                        text.push_str(&p.numerals.field(&format!("{hour:02}")));
+                        let hour = if matches!(token, TextToken::Hour) {
+                            hour.to_string()
+                        } else {
+                            format!("{hour:02}")
+                        };
+                        text.push_str(&p.numerals.field(&hour));
                     }
                     TextToken::Second => {
                         let second = seconds as i32;

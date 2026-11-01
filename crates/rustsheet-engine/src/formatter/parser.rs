@@ -1,4 +1,5 @@
 use super::elapsed::takes_second_fraction;
+pub use super::fraction::{Denominator, Fraction};
 use super::lexer::{Compare, Lexer, Token};
 use super::locale_tag::{self, Calendar, DateNames, LocaleTag};
 use super::numerals::Numerals;
@@ -87,31 +88,8 @@ pub struct NumberPart {
     pub numerals: Numerals,
 }
 
-/// Where a fraction sits among a number section's `tokens`: the digit placeholders before
-/// `numerator_start` are the integer part, those from it up to `numerator_end` the numerator.
-/// Literals may sit on either side of the `/` (`#\:#=/=#`).
-pub struct Fraction {
-    /// Index of the first numerator placeholder in `tokens`.
-    pub numerator_start: usize,
-    /// Index just past the last numerator placeholder in `tokens`.
-    pub numerator_end: usize,
-    /// Index in `tokens` where the denominator prints, after the literals that follow the `/`;
-    /// the denominator is not a token.
-    pub denominator_at: usize,
-    /// Fixed digits or placeholder kinds; see [`Denominator`].
-    pub denominator: Denominator,
-}
-
 /// The most digits a fixed fraction denominator may have; more is `#VALUE!`.
 const MAX_FIXED_DENOMINATOR_DIGITS: usize = 5;
-
-/// The denominator of a fraction section.
-pub enum Denominator {
-    /// Digits as written (`16` in `# ??/16`).
-    Fixed(String),
-    /// The kinds of its digit placeholders (`??` in `# ??/??`): Excel picks the fraction.
-    Placeholders(Vec<char>),
-}
 
 pub struct DatePart {
     pub color: Option<i32>,
