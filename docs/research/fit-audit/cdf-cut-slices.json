@@ -1,5 +1,5 @@
 {
- "note": "fit-audit-t3271-cdf-cut filled one cell per workbook (rustsheet-oracle fill -b excel-graph on single-cell copies of the case, 2026-11-01); A5 and A8 failed at createSession on every attempt. A4, A12 and A18 were filled again in fresh workbooks to check that the non-monotone pattern reproduces (key \"refill\").",
+ "note": "fit-audit-t3271-cdf-cut filled one cell per workbook (rustsheet-oracle fill -b excel-graph on single-cell copies of the case, 2026-11-01); A5, A8, A31 and A33 failed at createSession on every attempt and have no value. A4, A12 and A18 were filled again in fresh workbooks to check that the non-monotone pattern reproduces (key \"refill\").",
  "cells": {
   "A1": {
    "formula": "=GAMMA.DIST(2,1E+45,1E+10,TRUE)",

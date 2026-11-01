@@ -24,7 +24,7 @@ accurate math where that does at least as well, or reclassified as one of Excel'
   incomplete_gamma/mod.rs `RATIO_FORM_MIN` (T-2638), `CLOSED_FORM_QUANTILE_MAX`, `CLOSED_FORM_STEP_MIN` (T-3013;
   moved unchanged to closed_form.rs by T-3311); incomplete_gamma/density.rs `SMALL_RATIO_SHAPE_MIN` (T-3147).
 - Probes: probes-numeric `fit-audit-*` (12 cases, 579 cells, 575 filled from excel-graph; `fit-audit-t3271-cdf-cut`
-  one cell per workbook, A5 and A8 unfilled).
+  one cell per workbook, A5, A8, A31 and A33 unfilled).
 - Report: docs/research/fit-audit/README.md.
 
 ## Acceptance criteria
@@ -48,10 +48,10 @@ Superseded by the Outcome. The earlier mid-audit notes (2026-10-31) are in git h
 ## Outcome
 Audited the 12 thinly evidenced gamma-family FITTED constants on 12 probes-numeric `fit-audit-*` cases (excel-graph;
 579 cells, 575 filled). The cdf-cut case was filled one cell per workbook, because excel-graph refused the whole
-case; A5 and A8 have no value. Re-scored on main 4e2f5f3df, after T-3350 changed the band's lower edge. The report
+case; A5, A8, A31 and A33 have no value. Re-scored on main 4e2f5f3df, after T-3350 changed the band's lower edge. The report
 with per-case counts is docs/research/fit-audit/README.md. The branch has no engine code.
 - Refuted (b), with wrong-type cells:
-  - `HUGE_SHAPE_DENSITY_CUT`: 3 cells; Excel's variable looks like x/shape.
+  - `HUGE_SHAPE_DENSITY_CUT`: 3 cells; at shapes 1E8 to 1E15 Excel's variable looks like x/shape (not at 1E70 and up).
   - `HUGE_SHAPE_CDF_CUT`: 21 of 38, both ways; Excel is not monotone in the shape.
   - `HUGE_SHAPE_MIN`: 8; Excel is `#NUM!` from shape 6E8.
   - The band's upper edge, plus the lower tail at 7E9 to 1.1E10: 16.
@@ -65,7 +65,8 @@ with per-case counts is docs/research/fit-audit/README.md. The branch has no eng
 - Provisional, moved to T-3633: `LOG_FORM_SHAPE_MAX`, `LOG_FORM_SHAPE_MIN`, `RATIO_FORM_MIN`,
   `CLOSED_FORM_QUANTILE_MAX`, `CLOSED_FORM_STEP_MIN` and `SMALL_RATIO_SHAPE_MIN` (two-sided scoring with a scratch
   build). The closed-form cut's tag update also moved there. T-3633 is filed.
-- RATIO_FORM_MIN's region (46 of 62 beyond 15 digits on both sides of the cut) is evidence for T-3617.
+- RATIO_FORM_MIN's region (46 of 62 beyond 15 digits on both sides of the cut) is evidence for T-3617 (filed with the
+  T-3509 blind probe, branch claude/hopeful-meitner-5oxf0g-blind-probe; not on main yet).
 - statistics.md: "GAMMA.DIST at a huge shape" (both cuts) and "GAMMA.INV and CHISQ.INV at a huge shape" (the band).
 - probes-numeric is ungated, so the new cases change no baseline.
 

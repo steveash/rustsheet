@@ -41,7 +41,8 @@ up), not because of more fitted cuts. In particular `CHISQ.INV.RT(1E-300,df)` fo
   mpmath reference).
 - **Wrong-type cells from T-3530's fit audit (probes-numeric/fit-audit-*, excel-graph; scored on main 4e2f5f3df after T-3350;
   docs/research/fit-audit/README.md).** These are semantic (an error against a number), so the model must place them:
-  - `HUGE_SHAPE_MIN` (1E9) is not Excel's edge. Excel is already `#NUM!` at shapes 6E8 to 9E8 at a tiny p, where the
+  - `HUGE_SHAPE_MIN` (1E9) is not Excel's edge. Excel is already `#NUM!` from shape 6E8 at p = 1E-300, 7E8 at 1E-250
+    and 9E8 at 1E-200 (A20, A21, A24 and A27 are numbers), where the
     engine (below the huge-shape path) gives the true quantile: fit-audit-t3070-shape-min A19, A22, A23, A25, A26,
     A28, A29, A30 (`GAMMA.INV(1E-300,6E+8,1)` to `GAMMA.INV(1E-200,9E+8,1)`).
   - The band's upper edge (`BAND_UPPER_SLOPE`, `BAND_UPPER_EDGE`): Excel is `#NUM!` where the engine is inside the band

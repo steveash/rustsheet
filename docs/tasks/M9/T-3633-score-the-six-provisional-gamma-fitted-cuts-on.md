@@ -26,8 +26,11 @@ boundary.
     are evidence for T-3265, which owns the step model.
   - density.rs `SMALL_RATIO_SHAPE_MIN` 3.0 (T-3147): fit-audit-t3147-ratio-shape (3 of 56 off on main 4e2f5f3df:
     A12, A15, A28).
-- Method (T-3530 Handoff): a scratch build whose cut-points are read from the environment. Never commit it. Run each
-  case at the current value and at the bracket's other end, and count bit-exact cells per side.
+- Method: a scratch build in which each of the six constants is read from an environment variable, falling back to
+  its current value. Never commit it. Build it in a private worktree and copy the binary out. Run each fit-audit case
+  with the constant at its current value and at the other end of its bracket (the brackets are in the report's
+  first table), and count bit-exact cells on each side of the cut (`rustsheet-eval show --all`). Then verdict (a)
+  (confirmed, narrow the bracket), (b) (refuted), (c) (math does as well) or (d) (Excel's own boundary).
 - The closed-form density cut of `huge_shape_quantile` (huge_shape.rs, T-3070) was confirmed as Excel's own
   boundary (verdict d) on 59 fresh cells (fit-audit-t3070-closed-form-cut). Its FITTED tag is to be narrowed and its
   count raised to 61 through `check_fitted.py --update`.

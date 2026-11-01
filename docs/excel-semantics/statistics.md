@@ -4998,8 +4998,9 @@ for df 1E7 to 1E8 and the smaller tail being the lower one.
 Status: VERIFIED (excel-graph) for the cells; the band's edges and the closed form's terms are fits (UNVERIFIED as forms)
 Excel's band is not the engine's (T-3530 fit audit, probes-numeric/fit-audit-t3070-*, excel-graph 2026-10-31, scored on
 main after T-3350):
-- Below the huge shape, Excel is already `#NUM!` at shapes 6E8 to 9E8 at a tiny p (`GAMMA.INV(1E-300,6E+8,1)`, ...,
-  `GAMMA.INV(1E-200,9E+8,1)`, fit-audit-t3070-shape-min A19 to A30, 8 cells), where the engine gives the true
+- Below the huge shape, Excel is already `#NUM!` at a tiny p, from shape 6E8 at p = 1E-300, 7E8 at 1E-250 and 9E8 at
+  1E-200 (fit-audit-t3070-shape-min A19, A22, A23, A25, A26, A28, A29, A30; A20, A21, A24 and A27 are numbers), where
+  the engine gives the true
   quantile. At 1.2E8 and p = 1E-300 Excel is a number, 2.5E-14 off the math.
 - In the upper tail at shapes 3E9 to 5E9 Excel is `#NUM!` inside the engine's band (fit-audit-t3070-band-upper A1 to A13,
   8 cells). In the lower tail at 7E9 to 9E9 Excel is a number where the engine is `#NUM!` (A26, A32, A33, A38, A39), and
@@ -5031,10 +5032,14 @@ UNVERIFIED: excel-graph refused workbooks holding those cells (FileCorruptTryRep
 The density cut's variable is not (alpha - 1)·(-LN(x/beta)) (T-3530 fit audit, probes-numeric/fit-audit-t3271-density-cut,
 50 cells): `GAMMA.DIST(0.5,1E+15,1,FALSE)` (A43, product 3.5E14) is 0, while `GAMMA.DIST(2.17173678289098E-300,1E+9,1,FALSE)`
 (A9, product 6.9E11) and `GAMMA.DIST(1E-300,1E+9,1E-6,FALSE)` (A48, 6.77E11) are `#NUM!`, and the scale does not count
-(`GAMMA.DIST(1E-200,1E+9,1E+100,FALSE)`, A45, x/beta 1E-300, is 0). Every probed cell, t2435's included, fits `#NUM!`
-where x/shape is below a cut between 2.17E-309 and 1E-308, else 0: about where x/shape stops being a normal double
-(UNVERIFIED as a form, T-3316). The engine is wrong-type at A9, A43 and A48.
-The cdf cut is not a shape cut either (fit-audit-t3271-cdf-cut, filled one cell per workbook, 38 of 42 cells): at
+(`GAMMA.DIST(1E-200,1E+9,1E+100,FALSE)`, A45, x/beta 1E-300, is 0). At the probed shapes 1E8 to 1E15 every cell,
+t2435's included, fits `#NUM!` where x/shape is below a cut between 2.17E-309 and 1E-308, else 0: about where x/shape
+stops being a normal double (UNVERIFIED as a form, T-3316). The rule does not explain fit-audit-t3271-cdf-cut A41
+`GAMMA.DIST(2,1.85E+76,1E+10,FALSE)` and A42 `GAMMA.DIST(2,1E+70,1E+10,FALSE)`, `#NUM!` densities at x/shape about
+1E-76 and 2E-70 (the engine agrees there), so from a shape of 1E70 something else makes the density `#NUM!`. The
+engine is wrong-type at A9, A43 and A48.
+The cdf cut is not a shape cut either (fit-audit-t3271-cdf-cut, filled one cell per workbook, 38 of 42 cells; A5, A8,
+A31 and A33 have no value): at
 x = 2, beta = 1E10, Excel is `#NUM!` from shape 1E60 to 1.8E76 but 0 at 1E76 and 1.84E76; at beta = 1 it is 0 for
 shapes 1E60 to 1E200 (x = 1 and 1E50), and for x = 1E-100 it is 0 except at shape 1.85E76 (`#NUM!`). A refill in
 fresh workbooks reproduced A4, A12 and A18. The engine has the wrong type at 21 of the 38 (UNVERIFIED rule, T-3316).
