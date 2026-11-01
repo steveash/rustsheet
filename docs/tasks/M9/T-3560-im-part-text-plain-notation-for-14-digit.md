@@ -3,7 +3,7 @@ id: T-3560
 title: "IM* part text: plain notation for 14-digit parts at exponent -6 (21 characters)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
