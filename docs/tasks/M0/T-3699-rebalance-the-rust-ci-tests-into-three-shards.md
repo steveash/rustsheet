@@ -3,7 +3,7 @@ id: T-3699
 title: "Rebalance the Rust CI tests into three shards"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
