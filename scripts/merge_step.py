@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """The merge train's step mode (SPEC-0027 section 4, "GitHub access"; T-3077, decision 0169).
 
-  scripts/merge_step.py ack --seq N [--refused]   # the session performed (or saw refused) action N
+  scripts/merge_step.py ack --seq N [--refused] [--next S]  # action N performed (or refused); --next: wait
+                                                            # up to S s for the next action and print it
+  scripts/merge_step.py next [--wait S]                     # wait up to S s for a pending action, print it
 
 A routine session cannot write through `gh api` (T-3001's probe), so a `--step` run of the merger
 writes through `StepClient`: it reads through the real client, and each write becomes one JSON
@@ -20,7 +22,7 @@ import sys
 import time
 from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import TypeVar
+from typing import TextIO, TypeVar
 
 import gh_client
 import merge_ready
@@ -47,6 +49,8 @@ BODY_MAX = 65536  # GitHub's limit on comment and PR bodies, as gh_client enforc
 TITLE_MAX = 256
 ACK_TIMEOUT = 10 * 60
 ACK_POLL = 2
+NEXT_POLL = 1  # `ack --next` and `next` poll the pending file this often (T-3716)
+NEXT_NONE = 3  # `next`'s exit code when no action became pending within its wait
 READBACK_TRIES = 5  # GitHub's lists can lag a write by a few seconds
 READBACK_POLL = 3
 DONE, REFUSED = "done", "refused"
@@ -322,13 +326,7 @@ class AckFile:
         self.dir.mkdir(exist_ok=True)
         (self.dir / "ack").unlink(missing_ok=True)
         (self.dir / "pending").write_text(json.dumps(action, sort_keys=True))
-        print(json.dumps(action, sort_keys=True), flush=True)
-        print(
-            f"merge_train: perform this action, then run make merge-train-ack SEQ={action['seq']}"
-            " (REFUSED=1 if GitHub refused it)",
-            file=sys.stderr,
-            flush=True,
-        )
+        announce(action, sys.stderr)
         deadline = self.clock() + self.timeout
         try:
             while self.clock() < deadline:
@@ -349,8 +347,55 @@ class AckFile:
                 (self.dir / name).unlink(missing_ok=True)
 
 
-def ack(root: Path, seq: int, refused: bool) -> int:
-    """Answers the pending action `seq`: 1 when no action or another one is pending."""
+def announce(action: Mapping[str, object], notes: TextIO) -> None:
+    """Prints `action` as its JSON line on stdout and the instruction for it on `notes`."""
+    print(json.dumps(action, sort_keys=True), flush=True)
+    print(
+        f"merge_train: perform this action, then run make merge-train-ack SEQ={action['seq']}"
+        " (REFUSED=1 if GitHub refused it; it waits for and prints the next action)",
+        file=notes,
+        flush=True,
+    )
+
+
+def wait_next(
+    root: Path,
+    after: int | None,
+    timeout: float,
+    clock: Callable[[], float] = time.monotonic,
+    sleep: Callable[[float], None] = time.sleep,
+) -> dict[str, object] | None:
+    """The pending action whose seq is above `after` (any pending action when `after` is None),
+    once one is pending within `timeout` seconds; None when none is. The session then performs it
+    at once instead of sleeping a fixed time and reading the run's log, where it can miss one
+    (T-3716). An unreadable pending file reads as none yet: the run writes it in one call."""
+    deadline = clock() + timeout
+    folder = step_dir(root)
+    while True:
+        try:
+            action = json.loads((folder / "pending").read_text())
+        except (OSError, ValueError):
+            action = None
+        if isinstance(action, dict):
+            seq = action.get("seq")
+            if after is None or (isinstance(seq, int) and seq > after):
+                return action
+        if clock() >= deadline:
+            return None
+        sleep(NEXT_POLL)
+
+
+def no_next(timeout: float) -> None:
+    print(
+        f"merge_step: no step action pending within {timeout:.0f} s: the run is waiting (on CI or the merge"
+        " lock) or has ended; check its output, then run make merge-train-next to wait for the next action",
+        file=sys.stderr,
+    )
+
+
+def ack(root: Path, seq: int, refused: bool, next_wait: float = 0) -> int:
+    """Answers the pending action `seq`: 1 when no action or another one is pending. With
+    `next_wait`, then waits up to that many seconds for the run's next action and prints it."""
     folder = step_dir(root)
     try:
         pending = json.loads((folder / "pending").read_text())
@@ -364,6 +409,22 @@ def ack(root: Path, seq: int, refused: bool) -> int:
         )
         return 1
     (folder / "ack").write_text(f"{seq} {REFUSED if refused else DONE}")
+    if next_wait > 0:
+        action = wait_next(root, seq, next_wait)
+        if action is None:
+            no_next(next_wait)
+        else:
+            announce(action, sys.stdout)
+    return 0
+
+
+def wait(root: Path, timeout: float) -> int:
+    """`next`: prints the pending action once there is one, within `timeout` seconds."""
+    action = wait_next(root, None, timeout)
+    if action is None:
+        no_next(timeout)
+        return NEXT_NONE
+    announce(action, sys.stdout)
     return 0
 
 
@@ -373,9 +434,14 @@ def main(argv: list[str], root: Path = ROOT) -> int:
     acked = sub.add_parser("ack", help="the session performed (or saw refused) the pending action")
     acked.add_argument("--seq", type=int, required=True)
     acked.add_argument("--refused", action="store_true")
+    acked.add_argument("--next", type=float, default=0, metavar="S", help="then wait up to S s for the next action")
+    nxt = sub.add_parser("next", help="wait for a pending action and print it")
+    nxt.add_argument("--wait", type=float, default=300, metavar="S")
     args = parser.parse_args(argv)
     try:
-        return ack(root, args.seq, args.refused)
+        if args.command == "next":
+            return wait(root, args.wait)
+        return ack(root, args.seq, args.refused, args.next)
     except GitError as error:
         print(f"merge_step: {error}", file=sys.stderr)
         return 2

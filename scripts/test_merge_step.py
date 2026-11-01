@@ -10,6 +10,8 @@ import re
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 import unittest
 from collections.abc import Callable
 from pathlib import Path
@@ -297,6 +299,59 @@ class Ack(unittest.TestCase):
         self.assertEqual(self.ack("--seq", "2"), 1)  # nothing pending
         with self.assertRaises(StepError):
             self.wait(lambda: self.assertEqual(self.ack("--seq", "3"), 1))  # never acked: times out
+
+    def pending(self, action: dict[str, object]) -> None:
+        folder = merge_step.step_dir(self.root)
+        folder.mkdir(exist_ok=True)
+        (folder / "pending").write_text(json.dumps(action, sort_keys=True))
+
+    def test_wait_next_returns_the_next_action_once_it_is_pending(self) -> None:
+        clock = [0.0]
+        after = {"action": "unlabel", "seq": 5, "pr": 7, "label": "x", "labels": []}
+
+        def sleep(seconds: float) -> None:
+            clock[0] += seconds
+            if clock[0] >= 3:
+                self.pending(after)  # the run writes its next action after the ack
+
+        self.pending({"action": "comment", "seq": 4, "pr": 7, "body": "x"})  # the acked one, still on disk
+        found = merge_step.wait_next(self.root, 4, 60, lambda: clock[0], sleep)
+        self.assertEqual(found, after)
+        self.assertEqual(clock[0], 3)  # polled every NEXT_POLL second, no fixed sleep
+        self.assertEqual(merge_step.wait_next(self.root, None, 0, lambda: 0.0, sleep), after)
+
+    def test_wait_next_gives_up_when_nothing_new_is_pending(self) -> None:
+        clock = [0.0]
+
+        def sleep(seconds: float) -> None:
+            clock[0] += seconds
+
+        self.assertIsNone(merge_step.wait_next(self.root, None, 5, lambda: clock[0], sleep))  # no file
+        self.pending({"action": "comment", "seq": 4, "pr": 7, "body": "x"})
+        self.assertIsNone(merge_step.wait_next(self.root, 4, 5, lambda: clock[0], sleep))  # only the acked one
+        (merge_step.step_dir(self.root) / "pending").write_text("{not json")
+        self.assertIsNone(merge_step.wait_next(self.root, None, 0, lambda: clock[0], sleep))  # half-written
+
+    def test_ack_next_prints_the_next_action_and_next_reports_none(self) -> None:
+        nxt = {"action": "unlabel", "seq": 3, "pr": 7, "label": "x", "labels": []}
+
+        def run_writes_next() -> None:
+            time.sleep(0.3)
+            self.pending(nxt)
+
+        self.pending({"action": "comment", "seq": 2, "pr": 7, "body": "x"})
+        writer = threading.Thread(target=run_writes_next)
+        writer.start()
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            code = merge_step.main(["ack", "--seq", "2", "--next", "10"], self.root)
+        writer.join()
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(out.getvalue().splitlines()[0]), nxt)
+        self.assertEqual((merge_step.step_dir(self.root) / "ack").read_text(), "2 done")
+        (merge_step.step_dir(self.root) / "pending").unlink()
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(merge_step.main(["next", "--wait", "0"], self.root), merge_step.NEXT_NONE)
 
     def test_a_forged_ack_file_aborts(self) -> None:
         folder = merge_step.step_dir(self.root)
