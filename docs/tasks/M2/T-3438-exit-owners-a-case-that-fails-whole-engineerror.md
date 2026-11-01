@@ -25,8 +25,8 @@ failure, wherever in the bullet the case name falls. The rule is written down as
   - `names_beside_case` reads each **block** (decision 0159). It never applies here, because a whole-case failure has
     no A1 name (`ExitCell.a1` is None for `WHOLE_CASE`).
   - So the same bullet owns one case and not the next. And a cell list, the form decision 0159 asks planners to write,
-    can never own a case that fails whole. The planner works around it for T-3338 in the same PR as this task: it puts
-    the two cases on a line of their own with no cell names.
+    can never own a case that fails whole. T-3338 on main works around it with a separate bullet
+    naming the two cases as wholes (gap triage 2026-10-31).
 - Decision 0159 says a line naming the case with no A1 token owns the whole case (from 0096). It does not cover a
   whole-case failure next to a cell list. The choice of rule is a governance question, so this task is `opus`, and the
   change needs a decision record (`make new-decision`). Proposed rule, to confirm or replace with reasons:
