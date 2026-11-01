@@ -1595,6 +1595,9 @@ errors, in order:
 - The distinct time stamps (at least two, or `#NUM!`) must lie on a constant step, which is the smallest gap, within
   1E-6 steps. Otherwise they must be whole-day dates a constant number of calendar months apart, on one day of the
   month or all on month ends. Otherwise the result is `#NUM!`. More than 30% of the steps missing is `#NUM!`.
+- Two orderings no Excel value decides: an error cell or element inside `values` or `timeline` is that error (the web
+  is `#N/A` on such cells, as on every call, T-2255 section), and an out-of-range setting (`#NUM!`) comes before
+  different sizes (`#N/A`). T-2425's desktop probe should cover both.
 - FORECAST.ETS.SEASONALITY is the detected season length, or 0 when there is none. It takes the autocorrelation of
   the series' residuals from its least-squares line, at lags 2 to n/2 (at most 8,760), and returns the lag of the
   highest local peak above 2/√n. Fewer than four points is 0.
@@ -4592,9 +4595,11 @@ Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), e.g. 22656c225ff4f22a Calc!A
 1782efcecd5d4b1b A27, 3462856259a37891 A28 (the earlier section's two `#VALUE!` cells are this rule).
 Ours: since T-2424, the argument step (`statistical/forecast.rs` `forecast_ets_lifted`). Every scalar argument lifts and
 reads as a number in turn, and `values` and `timeline` are evaluated once for a direct error. A reference to an
-error cell, even a one-cell one, is not a direct error here: the call stays `#N/IMPL!`, and no oracle cell covers it yet
-(the gen-m9 Data sheets hold "#N/A" only as text; T-2425 probe). The first failure in
-argument order decides, and only a call with none stays `#N/IMPL!` (T-2425 the values, after T-1553). FORECAST.ETS.SEASONALITY
+error cell, even a one-cell one, is not a direct error here: the argument step passes it, and no oracle cell covers it
+yet (the gen-m9 Data sheets hold "#N/A" only as text; T-2425 probe). The first failure in argument order decides. A
+call with none goes on to the model: since T-3599, FORECAST.ETS.SEASONALITY computes it, and an error cell in `values`
+or `timeline` is then that error (UNVERIFIED, decision 0221, the section "FORECAST.ETS family: the model before Excel
+evidence"); the other members stay `#N/IMPL!` until T-3600 and T-3601 (T-2425 the desktop values, after T-1553). FORECAST.ETS.SEASONALITY
 lifts its data_completion and aggregation too. Counts: the task names 1,215 known-failure lines (1,196 from T-2255
 and 19 from T-2256); with the 19 visibly-off lines of T-2257 and T-2258 it owns 1,234 cells. 656 of them leave the
 baseline with T-2424, 481 had already passed on main before it, and 97 still differ. The 97 are:
