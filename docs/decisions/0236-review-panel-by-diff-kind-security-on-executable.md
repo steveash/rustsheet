@@ -28,6 +28,8 @@
     - Security's other targets keep it: crates, bindings, scripts, tools, CI, `.claude/`,
       `CLAUDE.md`, eval baselines and accuracy lists, and `quality/` (gate weakening).
   - **Excel fidelity is unchanged.**
+  - **Task-only diffs first.** A diff of only `docs/tasks/*.md` files needs no reviewer (decision
+    0231); `applicable_reviewers` checks that before the rules above.
   - **Tooling.** The one definition of the panel is the `review` skill.
     - `scripts/merge_ready.py` mirrors it: `REVIEWERS = (security, design, excel-fidelity)`,
       `SECURITY_SKIP_PATHS` and `SECURITY_KEEP_PATHS`. `scripts/test_merge_ready.py` fails when

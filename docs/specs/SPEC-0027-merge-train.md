@@ -160,7 +160,7 @@ Changing the mode (decision record of T-2996):
     about 1 min of seeing the stop label. Worst-case emergency delay: about 5 min of CI, which
     overlaps the train, plus about 1 min for the train to stop, plus the merge. That is under
     10 min.
-- **To `shadow` or `train`:** a normal, fully gated PR (reviewers, a decision record, architecture
+- **To `shadow` or `train`:** a normal, fully gated PR (reviewers, a decision record, design
   and security approval). The steps are T-2989 and T-2991.
 
 ### 1. A fair merge lock (first slice, T-2985)
@@ -378,7 +378,7 @@ review`.
   ```
   <!-- merge-train-verdict v1
   head: <40-hex sha>       # the HEAD the reviewer read: the local HEAD, which must equal the PR head
-  reviewer: security | architecture | quality | excel-fidelity
+  reviewer: security | design | excel-fidelity (architecture, quality: before decision 0236)
   verdict: APPROVE | REQUEST_CHANGES
   -->
   ```
@@ -812,6 +812,8 @@ merge-train-ack SEQ=<n>` (`REFUSED=1` when GitHub or the tool refused it), and t
 state back. Done must read exactly as expected, refused must read unchanged (and then fails like a
 refused direct write); anything else, no ack within 10 min, or an ack for another `seq` aborts the
 run (exit 2, lock released). Comment and PR bodies read back with or without the session's footer.
+Since decision 0238 (T-3716) the ack then waits up to 90 s for the run's next action and prints it, and
+`make merge-train-next` blocks until one is pending, so the session needs no fixed sleep between actions.
 
 ### 5. Why `main` ends with the tested tree, and how a difference is caught
 Notation:
@@ -1008,7 +1010,10 @@ The merger keeps no state between runs: every step is derived from `origin` and 
   The carry rule accepts exactly that shape (section 2, "Carry-over"), so no reviewer runs again.
 - **Docs-only and task-only PRs.** Eligible like any other PR. Task-only PRs are exactly the ones
   that collide on ids (0075). Their marker says `task: none`, and V5's task-file check is skipped.
-  A train is classified as a whole (section 9), so a train of docs-only PRs runs only `changes`,
+  A diff whose every path is a `.md` file under `docs/tasks/` needs no reviewer (decision 0231):
+  V4 and `mark` require no verdict for it, and the train's id checks (`tasks.py validate` on the
+  built train) are its content gate. `changed_paths` lists both sides of a rename
+  (`--no-renames`), so a move out of `docs/tasks/` still needs the panel. A train is classified as a whole (section 9), so a train of docs-only PRs runs only `changes`,
   `hygiene` and the rust summary job.
 - **The steward's PR** (`agent/steward/<date>`) is marked ready by the steward and merged by the
   train. The steward then runs its final merger pass (section 3).

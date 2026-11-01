@@ -180,6 +180,19 @@ class Applicability(unittest.TestCase):
         # Order follows REVIEWERS whatever the paths' order.
         self.assertEqual(need(["crates/rustsheet-engine/x.rs"]), merge_ready.REVIEWERS)
 
+    def test_a_task_only_diff_needs_no_reviewer(self) -> None:
+        tasks = ["docs/tasks/M9/T-0001-a.md", "docs/tasks/M10/T-0002-b.md"]
+        self.assertEqual(merge_ready.applicable_reviewers(tasks), ())
+        # One path outside docs/tasks/*.md brings the panel of decision 0236 back, as does an empty diff.
+        design = (merge_ready.DESIGN,)
+        self.assertEqual(merge_ready.applicable_reviewers([*tasks, "docs/decisions/0001-x.md"]), design)
+        self.assertEqual(merge_ready.applicable_reviewers(["docs/tasks.md"]), design)
+        self.assertEqual(merge_ready.applicable_reviewers(["docs/tasks/M9/run.sh"]), design)
+        self.assertEqual(
+            merge_ready.applicable_reviewers(["docs/tasks/README.md", "scripts/x.py"]), (merge_ready.SECURITY, *design)
+        )
+        self.assertEqual(merge_ready.applicable_reviewers([]), merge_ready.REVIEWERS)
+
     def test_the_list_matches_the_review_skill(self) -> None:
         skill = (ROOT / ".claude/skills/review/SKILL.md").read_text()
         always = tuple(re.findall(r"`reviewer-([a-z-]+)` \(always\)", skill))
@@ -299,9 +312,13 @@ class PrFixture(unittest.TestCase):
         self.git("commit", "-q", "-m", message)
         return self.git("rev-parse", "HEAD")
 
-    def push_head(self, task: str, path: str = "docs/tasks/M2/T-0001-x.md") -> str:
+    def push_head(self, task: str, path: str = "docs/tasks/M2/T-0001-x.md", work: str | None = "docs/notes.md") -> str:
+        """Pushes PR #7's head: the task file at `path`, plus the file `work` unless it is None
+        (a task-only PR, which needs no reviewer, decision 0231)."""
         self.git("checkout", "-q", "-B", "pr", self.base_sha)
         self.write(path, task)
+        if work is not None:
+            self.write(work, "the task's change")
         sha = self.commit("pr head")
         self.git("push", "-q", "-f", "origin", "HEAD:refs/pull/7/head")
         return sha
@@ -451,6 +468,12 @@ class Verify(PrFixture):
         self.assertEqual(self.failures(), [])
         self.assertEqual(self.git("rev-parse", "--is-shallow-repository"), "false")
         # A full clone is left as it is (a second `--unshallow` would fail).
+        self.assertEqual(self.failures(), [])
+
+    def test_a_task_only_marker_needs_no_verdict(self) -> None:
+        self.head = self.push_head(TASK.format(status="done", outcome="## Outcome\n"), work=None)
+        self.pull["head"]["sha"] = self.head
+        self.comments = [self.comment(1, marker(self.head, reviewers={}).render())]
         self.assertEqual(self.failures(), [])
 
     def test_verdicts_must_cover_the_applicable_reviewers(self) -> None:
@@ -625,6 +648,14 @@ class Mark(PrFixture):
             ],
         )
         self.assertEqual([label["name"] for label in self.pull["labels"]], ["bug", merge_ready.READY_LABEL])
+
+    def test_a_task_only_pr_is_marked_without_verdicts(self) -> None:
+        self.head = self.push_head(TASK.format(status="done", outcome="## Outcome\n"), work=None)
+        self.pull["head"]["sha"] = self.head
+        plan = self.plan(review=None)
+        self.assertEqual(plan.marker.head, self.head)
+        self.assertEqual(dict(plan.marker.reviewers), {})
+        self.assertTrue(plan.label)
 
     def test_each_refusal(self) -> None:
         self.refused("--by", by="")

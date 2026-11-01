@@ -1915,9 +1915,18 @@ A zero rows beats an invalid columns: `SEQUENCE(0,<negative>)` is `#CALC!` (c36f
 arguments, an error value in any of them winning, and only then checks rows (negative or past the grid `#VALUE!`, 0 `#CALC!`), then
 columns.
 Ours: `sequence_kernel` in that order; TAKE reads both counts before a zero one is `#CALC!` (`edge_spans`; T-2316).
-Unprobed: whether an error start beats a negative extent (ours: it does, by the reading above).
+
+Argument classes (gen-m7 arg-pairs batch, T-3682; excel-graph, 2026-11-01): SEQUENCE's extents coerce as numbers and are
+then floored, so numeric text counts (`SEQUENCE("2.5",2)` is 2x2, gen-m7/0a1faf26e7528d04 Calc!A2563; a cell holding the
+text "12" gives 12 rows, A2990), a fraction below 1 is a zero extent (`SEQUENCE("2.5",0.5)` `#CALC!`, A2929), `TRUE` is 1
+(`SEQUENCE("2.5",TRUE)` 2x1, A3417) and a `FALSE` cell or a blank cell is 0 (`#CALC!`, A3478, A3661). Empty or other
+text is `#VALUE!` in any of the four arguments, and it is read before a zero extent is checked: `SEQUENCE(0,0,"")` is
+`#VALUE!` (A11347). Of two bad arguments the leftmost wins: `SEQUENCE("",#NAME?)` is `#VALUE!` (A5979).
+An error start beats a negative extent, in rows or columns: `SEQUENCE(-1,1,#N/A)` is `#N/A` (gen-m7/b3f8ac7d2e3db3da
+A245; a -2.5 cell with a `#DIV/0!` cell start, A306) and `SEQUENCE(1,-1,#NAME?)` `#NAME?` (cc6a41457aaa5195 A11225, A11286).
+Ours: matches all 1136 formulas of the batch's six cases at their first run.
 Status: VERIFIED (excel-graph)
-Tasks: T-2316
+Tasks: T-2316, T-3682
 
 ## TOROW, TOCOL, SORT and TEXTJOIN lifted arguments (gen-m7)
 Rule: TOROW's and TOCOL's scan_by_column lift over an array, an error initial argument filling every element
@@ -2135,9 +2144,21 @@ of the result. With Data!G9 holding `#DIV/0!`:
 - `FILTER(Data!G9,Data!G2)` (include 0) is `#CALC!` (gen-m7/68e7f10771a7118a A10798).
 - `FILTER(Data!G9,(Data!A1:A12>0),Data!G4)` is `#VALUE!`: a 1x1 array against a 12-row include (gen-m7/ee81c689b5fde629 A1160).
 - `FILTER(Data!A1:D12,Data!G9,Data!G3)` is `#VALUE!` (gen-m7/d7a127bd9334c2b4 A2380).
+- A range ignore or scan_by lifts over the 1x1 array, with Data!C3:D4 {"abc",7;1,2.5}: `TOCOL(Data!G9,Data!C3:D4)` spills
+  `#VALUE!`, `#VALUE!`; `#DIV/0!`, `#CALC!` (invalid ignores, then ignore 1 keeping the error and 2.5, ignore 2, dropping
+  it; gen-m7/b24463215bcb1ab9 A10066:B10067), and `TOCOL(Data!G9,2,Data!C3:D4)` spills `#VALUE!` for the text scan_by
+  and `#CALC!` for each number (gen-m7/7cd94f345acd55bb A9578:B9579).
+- A literal error is not a reference and is still the error: `TOROW(#N/A,-1)` is `#N/A` (gen-m7/20df23f84a528470
+  A8907) and `FILTER(#DIV/0!,(Data!C1:C12<>0.3),-1)` is `#DIV/0!` (gen-m7/ee81c689b5fde629 A977).
 Evidence: gen-m7 arg-pairs batch (excel-graph, 2026-10-31, T-3497); the full cell list is in T-3506.
-Ours: the referenced error is returned before the other arguments are read (`#DIV/0!` in every cell above).
-Status: VERIFIED (excel-graph); not implemented
+Ours: implemented (T-3506): `one_cell_error_ref_as_array` in functions/spill_functions.rs wraps any error read through a
+reference argument (a `ReferenceKind`, one cell by construction) as a 1x1 array, which is how a one-cell error reference
+shows up, for TOCOL's and TOROW's array and FILTER's array and include; FILTER checks the shape of an include it wrapped
+before its elements. Only stored cell errors are evidenced; other errors read through a reference (a `#REF!` for a sheet
+index, a circular read) are wrapped unprobed. Unprobed, so kept as before: a one-cell error include that fits the
+array's shape (a one-row or one-column array) is its error, and a wrongly shaped multi-cell include holding an error
+still returns the error first.
+Status: VERIFIED (excel-graph)
 Tasks: T-3506
 
 ## TOCOL, TOROW and SORT: which bad argument wins (T-3497)
