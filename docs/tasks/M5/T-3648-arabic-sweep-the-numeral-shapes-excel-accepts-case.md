@@ -3,7 +3,7 @@ id: T-3648
 title: "ARABIC: sweep the numeral shapes Excel accepts (case, non-canonical forms, sign, length, non-Roman characters)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
