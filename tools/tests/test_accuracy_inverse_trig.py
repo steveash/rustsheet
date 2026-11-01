@@ -71,10 +71,10 @@ def test_atan2_follows_excels_quotient() -> None:
     assert value(ATAN2, 0, -2.5) == -mpmath.pi / 2
     assert value(ATAN2, -1, 0) == mpmath.pi
     assert value(ATAN2, -1, -1) == -3 * mpmath.pi / 4
-    # an underflowing quotient is 0, or ±π for x < 0 by y's sign (numbers.md "Subnormal results become 0")
-    assert value(ATAN2, 1e300, -1e-10) == 0
-    assert value(ATAN2, -1e300, 1e-10) == mpmath.pi
-    assert value(ATAN2, -1e300, -1e-10) == -mpmath.pi
+    # an underflowing quotient (Excel's 0, or ±π for x < 0) stays within Gate A's absolute floor of the math
+    assert abs(value(ATAN2, 1e300, -1e-10)) < mp("1e-300")
+    assert mpmath.almosteq(value(ATAN2, -1e300, 1e-10), mpmath.pi, mp("1e-38"))
+    assert mpmath.almosteq(value(ATAN2, -1e300, -1e-10), -mpmath.pi, mp("1e-38"))
     # a normal quotient keeps the true atan2
     assert mpmath.almosteq(value(ATAN2, 1e300, 1e-10), mp(1e-10) / mp(1e300), mp("1e-38"))
 

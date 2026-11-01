@@ -10,12 +10,11 @@ Sources:
   1, inside G.
 - gen-m5 (excel-graph): `ACOT(-0.1)` is 1.6704649792860584 (Calc!A278), π/2 - atan(-0.1): ACOT's range is (0, π), not
   mpmath's (-π/2, π/2]; numbers.md "Negative zero" has `ACOT(0)` = π/2.
-- numbers.md, "ATAN2 is ATAN(y/x) plus or minus π": `ATAN2(x_num, y_num)` forms Excel's quotient y/x. Three rules on
-  the doubles follow, all in the definition:
-  - `ATAN2(0,0)` is `#DIV/0!`, and a quotient beyond the double range is `#NUM!` (both domain errors);
-  - a quotient that underflows below the smallest normal double is 0 (numbers.md "Subnormal results become 0"), so
-    the result is 0, or ±π for x < 0 by the sign of y;
-  - otherwise the result is the true atan2(y, x) (x = 0 gives ±π/2).
+- numbers.md, "ATAN2 is ATAN(y/x) plus or minus π": `ATAN2(x_num, y_num)` forms Excel's quotient y/x, so
+  `ATAN2(0,0)` is `#DIV/0!` and a quotient beyond the double range is `#NUM!`: both are domain errors. Otherwise the
+  math is the true atan2(y, x) (x = 0 gives ±π/2). A quotient that underflows is 0 in Excel (numbers.md "Subnormal
+  results become 0"), which moves the result by less than the smallest normal double, inside Gate A's absolute floor
+  1e-300, as decision 0223 relies on for ROUND; so the definition needs no rule for it.
 - numbers.md, "RADIANS, SQRTPI and MUNIT": RADIANS is x·π/180; DEGREES is x·180/π (a result beyond the double range
   is redrawn by the generator, as for any overflowing math).
 """
@@ -37,10 +36,8 @@ DOMAIN_SOURCE = "numbers.md#out-of-domain-acosasinacoshatanh-are-num-at-once-eve
 ACOS_SOURCE = "numbers.md#acos-is-pi2---asinx"
 ACOT_SOURCE = "gen-m5 ACOT(-0.1) Calc!A278 (excel-graph)"
 ATAN2_SOURCE = "numbers.md#atan2-is-atanyx-plus-or-minus-π"
-SUBNORMAL_SOURCE = "numbers.md#subnormal-results-become-0"
 RADIANS_SOURCE = "numbers.md#radians-sqrtpi-and-munit"
 DOUBLE_MAX = mpmath.mpf(sys.float_info.max)
-DOUBLE_MIN_NORMAL = mpmath.mpf(sys.float_info.min)
 
 
 def _one(args: Sequence[MathArg]) -> mpmath.mpf:
@@ -57,10 +54,6 @@ def _atan2_domain(args: Sequence[MathArg]) -> str | None:
 
 def _atan2(args: Sequence[MathArg]) -> mpmath.mpf:
     x, y = scalars(args)
-    if x != 0 and abs(y / x) < DOUBLE_MIN_NORMAL:  # the quotient flushes to 0
-        if x > 0:
-            return mpmath.mpf(0)
-        return mpmath.pi if y >= 0 else -mpmath.pi
     return mpmath.atan2(y, x)
 
 
@@ -148,6 +141,6 @@ ATAN2 = register(
         value=_atan2,
         domain=_atan2_domain,
         draw=_atan2_draw,
-        sources=(ATAN2_SOURCE, SUBNORMAL_SOURCE),
+        sources=(ATAN2_SOURCE,),
     )
 )
