@@ -4,8 +4,9 @@ use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::criteria::build_criteria;
 use crate::functions::lift::{LiftCost, LiftOptions, LiftedArg};
-use crate::functions::statistical::ifs_cache::{count_bits, range_cell, set_bits, RangeView};
+use crate::functions::statistical::ifs_cache::{count_bits, range_cell, set_bits};
 use crate::functions::util::StoredWalk;
+use crate::range_values::RangeView;
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::parser::Node,

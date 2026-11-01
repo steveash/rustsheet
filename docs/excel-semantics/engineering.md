@@ -688,6 +688,12 @@ Evidence: probes/eng-base-conv-blank (excel-graph, 2026-10-18, T-1413); gen-m9/d
 Status: VERIFIED (excel-graph)
 Tasks: T-1413
 
+## DEC2BIN, DEC2HEX and DEC2OCT reject empty text
+Rule: unlike BIN2*/OCT2*/HEX2* (above), DEC2BIN, DEC2HEX and DEC2OCT give `#VALUE!` for an empty-text `number`, typed (`DEC2BIN("")`) or a ref to `=""`, with or without `places`. A blank cell is still 0 ("0", or "0000" with `places` 4). An invalid `places` still wins over it, since places is read first (`DEC2BIN("",0)` and `DEC2BIN("",-1)` are `#NUM!`; "The second argument's error wins" below).
+Evidence: probes/eng-dec2base-empty-text A1:A18 (excel-graph, 2026-10-31); gen-m9/da91e1e314ee3255 A289, A292, A310, A313, gen-m9/778da09d73211d90 A301, A304, A322, A325 and gen-m9/ca16553eec1d491c A307, A310, A328, A331 (excel-graph, arg-pairs batch).
+Status: VERIFIED (excel-graph); implemented (`dec_digits` in number_basis.rs).
+Tasks: T-3498
+
 ## The second argument's error wins in the two-argument base conversions, DELTA and GESTEP
 Rule: DEC2BIN, DEC2HEX, DEC2OCT, BIN2OCT, BIN2HEX, HEX2BIN, HEX2OCT, OCT2BIN, OCT2HEX, DELTA and GESTEP read the second argument (`places`, `number2`, `step`) before the first, scalar or inside one array element. `DEC2BIN("x",NA())` is `#N/A` and `DEC2BIN(NA(),"x")` is `#VALUE!`; the same for all eleven. BESSELJ, BITLSHIFT, CONVERT, COMPLEX, IMPOWER and ERF instead report the first argument's error. In the nine base conversions an invalid places value wins too, not only its error: `DEC2BIN(NA(),0)` is `#NUM!` (gen-m9 sweep, "Base conversions" below; T-2545). Whether DELTA's and GESTEP's second argument also wins by value is unprobed.
 Evidence: probes/eng-first-vs-second-error A1:D11 (excel-graph, 2026-10-19); probes/eng-later-argument-lift M2, M8.
@@ -901,6 +907,39 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   -i·sinh(i·z)), which fixes C2 and keeps every one of the 1,023 IMSIN/IMCOS cells of the suites (excel-graph and desktop
   caches); a mixed argument inside the band is fitted only by those cells, not by a sweep. Ours: `inverse_exp_sinh_cosh` in functions/engineering/complex/trig.rs
   over 0.01 < |x| <= 20, libm outside. Status: VERIFIED (excel-graph) inside the band; the cuts are UNVERIFIED.
+  Re-validated on a fresh sweep (probes-numeric/t3525-im-hyperbolic-fresh-sweep, 1,000 cells, |x| log-uniform in
+  [1e-4, 709], excel-graph, T-3525, decision 0188 R4): with the band the engine matches 663 of the 700 cells with
+  |x| <= 100, libm and the EXP pair alone 634; no cell below 0.01 (220) or in 18.2..100 (110, older cells included)
+  changes with a cut's place, so neither cut is pinned by any cell yet. Below the band, IMSINH and IMCOSH miss 3
+  libm cells (`IMSINH("-0.00878860151333914")` is -0.00878871465166476, libm ...477; `IMCOSH("0.001258575663522")`
+  1.00000079200646, libm ...645; `IMSINH("0.00313307442770563-0.855889226338187i")`), and IMSIN and IMCOS miss
+  34 cells with 1e-4 < |y| < 0.0085, where the EXP pair cancels: `IMSIN("0+0.0080407127044978i")` is
+  0.00804079934755902i (EXP pair ...908i; the correctly rounded value misses most of these too; next entry, T-3545).
+- **IMSIN and IMCOS of a small imaginary part take the reciprocal form, (u - 1/u)/2 with u = EXP(y) (T-3525, T-3545).**
+  For 1e-4 < |y| < 0.0085 Excel's sinh y and cosh y inside IMSIN and IMCOS differ from both `(EXP(y) ∓ EXP(-y))/2` and
+  the correctly rounded value in the last digits: `IMCOS("-0.437695624558513-0.000131316980692306i")` is
+  0.905730792422698-0.0000556591552727565i (EXP pair ...7094i), `IMSIN("0+0.0080407127044978i")` 0.00804079934755902i
+  (EXP pair ...908i, exact ...911i); 34 of the 400 IMSIN and IMCOS cells of probes-numeric/t3525-im-hyperbolic-fresh-sweep
+  (excel-graph). The form IMSIN and IMCOS already take inside IMSINH's band, `(u - 1/u)/2` and `(u + 1/u)/2` with
+  u = EXP(y), fits all 21 pure-imaginary cells there (libm-EXP and correctly rounded EXP variants of it too; the EXP
+  pair 13, libm sinh and Kahan expm1 0), so IMSIN and IMCOS have no lower cut: the form holds for every |y| <= 20.
+  Frozen, then checked on a sweep drawn afterwards (probes-numeric/t3545-imsin-imcos-small-imag-sweep, 300 cells,
+  |y| log-uniform in [1e-7, 0.0105], excel-graph): the form's values match all 300 (hold-out train 200/200, test
+  100/100), the EXP pair 227 (150/77), the correctly rounded value 79; and on a second one below it
+  (probes-numeric/t3545-imsin-imcos-tiny-imag-sweep, 300 cells, |y| log-uniform in [1e-300, 1e-7]) all 300 by text,
+  the EXP pair 297. Only 3 of its cells separate the two forms (|y| above about 5e-17, where they can differ: A79, B79,
+  A118), so 5e-17 < |y| < 1e-7 rests on those 3. They show the reciprocal form's cancellation exactly:
+  `IMSIN("0+5.67641786435809E-15i")` (A118) is 5.77315972805081E-15i, where the math is 5.6764178643581E-15 (relative
+  error 1.7e-2; A79 4.6e-4). That is above decision 0188 R3's threshold, but R3 lists no case for it and there is
+  no owner ruling, so Excel's value is matched (directive 1). `IMSIN("1E-200+1E-200i")` is still "1E-200"
+  (u = 1) and `IMCOS("150-0.002i")` keeps its digits. Still open: `IMSIN("0.981793650815856-183.167307387565i")`
+  (|y| above the band, EXP pair) differs in the 15th digit. Status: VERIFIED (excel-graph). Ours: `trig_sinh_cosh`.
+- **An IM* part with 14 significant digits at exponent -6 is plain text (T-3545).** `IMSIN("0-1.03615953980931E-06i")`
+  is `-0.0000010361595398356i` (21 characters without the sign, probes-numeric/t3545-imsin-imcos-small-imag-sweep
+  A128), and so are A43, B49 and B81 there (`IMCOS("-0.856146645807608+1.42428827512383E-06i")` is
+  `0.655352852954647+0.0000010757975078242i`; all 14 digits at exponent -6), where the
+  15-digit `1.23456789012345E-06` is E notation (probes/eng-im-small-part, T-2056 above). Ours writes E notation
+  past 20 characters (number_format.rs `value_to_text`). Status: VERIFIED (excel-graph), not implemented (T-3560).
 - **IMSQRT of a negative real is polar through COS and ATAN2.** `IMSQRT("-1")` (`IMSQRT(TEXT(-1,"0"))`) is
   "6.1257422745431E-17+i" = COS(ATAN2(-1,0)/2) with Excel's COS (libm cos(π/2) 6.12323399573677E-17), `IMSQRT(-2.5)`
   9.68564897336834E-17+1.58113883008419i, `IMSQRT(-0.0001)` 6.1257422745431E-19+0.01i, `IMSQRT(-3.85841)`
@@ -1064,7 +1103,17 @@ Rule: for |x| > 709 and a nonzero imaginary part, IMCOSH and IMSINH compute `exp
   `6.77493159657316E+307`; the candidates `exp(x - ln 2 + ln t)`, `exp(x + ln t)/2` and `exp(x/2)·exp(x/2)·t/2` all miss.
 - A zero imaginary part keeps the real path (`cosh x`, `sinh x`; `#NUM!` once `exp |x|` overflows): `IMCOSH("709.5")`,
   `"709.5+0i"`, `IMCOSH(709.5)` are `6.77493159657316E+307`, `IMSINH("-709.5")` its negative.
-- The cut lies in (709, 709.0000000001]; implemented as `|x| > 709`. UNVERIFIED: a large y with |x| > 709 (ours takes
+- The cut lies in (709, 709.0000000001] for x > 0; implemented as `|x| > 709`. For x < 0 it lies lower, below
+  |x| = 708.94 (probes-numeric/t3525-im-hyperbolic-log-band-sweep, excel-graph, T-3525):
+  `IMSINH("-708.993723853194-0.284042075249253i")` and `IMCOSH` of it are `#NUM!` (sin y < 0), so is
+  `"-708.952568260886+1.74023049176272i"` (cos y < 0), and `IMSINH("-708.931415280617+0.631619003955773i")` is
+  `-3.09659439784082E+307+2.26546023028534E+307i`, the log form's digits (product form ...096E+307+...528E+307i), while
+  `"708.959727…+1.343…i"` keeps the product form. The negative-side rule may depend on y rather than on one |x| (the
+  three cells above sit within 0.07 of each other). Not yet implemented, and the negative-side cut is not bracketed
+  (T-3546); `IMSINH("-709.183834084079+1.0222540398548i")` also differs from ours in the 15th digit of the imaginary part.
+- On that fresh sweep the log form gives 178 of the 180 cells with 709 < |x| < 710.5 (both misses are x < 0, above),
+  the product form alone 2 (T-3525, decision 0188 R4).
+- UNVERIFIED: a large y with |x| > 709 (ours takes
   libm sin and cos; SIN's own reduction could matter), and whether IMSIN/IMCOS and IMSECH/IMCSCH share the
   negative-factor `#NUM!` (T-2631).
 - IMSIN and IMCOS with 709.78 < |y| < 710.4 are `#NUM!` as for larger |y| (`IMSIN("1.5+709.9i")`, `"0+709.9i"`,

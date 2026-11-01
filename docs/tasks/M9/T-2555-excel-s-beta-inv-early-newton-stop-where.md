@@ -31,7 +31,9 @@ Owned gen-m9 cells (moved from T-1538, still visibly off after it): gen-m9/146b4
 7c20351562a2d71d A254 and A37, 85f48d5cdfb24555 A315, 589f42e67f4b4b8d A319, 8dd2312c96effb1b A169,
 f34f66fb7f81e673 A209. A37, A319 (`F.INV(1E-200,...)` at a huge df) and A169 (`BETAINV(1E-100,123456789.123,0.1,...)`)
 are where Excel's search fails and its value is not the root (statistics.md, UNVERIFIED); A209 has b = 1 and a root
-almost halfway between two doubles, Excel taking the far one (a tie its own exp/ln rounding decides?). Also watch:
+almost halfway between two doubles, Excel taking the far one (a tie its own exp/ln rounding decides?). Cell list for the owner check (the stem alone is shared with a probes/t2436 rerun):
+- gen-m9/f34f66fb7f81e673.case.json (1): Calc!A209
+Also watch:
 probes-numeric t1538-f-inv-huge-df A86 (0.53 units, just past 15 digits after T-1538) and
 t1538-f-quantile-switchover (all 24 cells within 2E-13 relative, none bit-exact, either side of df 1E5).
 
