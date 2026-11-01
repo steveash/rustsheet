@@ -477,7 +477,7 @@ The routine also needs the fallback below, because it can be late, disabled or d
 
 **Expected behaviour.** The source is the performance review's discrete-event simulation
 (`sim2.py`, `sim3.py`, `sim5.py`, `sim6.py`), plus `sim7.py`, which reruns `sim6.py` with this
-spec's final rule. None of these scripts is committed. The final rule is: `CI_TIMEOUT` = 10 min;
+spec's final rule. None of these scripts is committed. The final rule is: `CI_TIMEOUT` = 10 min (decision 0242 later split it into a 10-min `CI_RESERVE` and a 15-min `CI_TIMEOUT`; section 4);
 the per-wait n of section 4, step 6; the known-green prefix merged on a budget cut-off; and resume
 always on.
 
@@ -547,7 +547,10 @@ Constants:
   min wall, so 10 min is about twice a normal run. At 15 min, the budget gate below cut the
   section 6 example (culprit at `P_5` of 5) off at its fourth run. Without a resume that
   livelocked: the performance review's `sim6.py` measured 25–237 runs per merge. A run that
-  really takes longer than 10 min is an infrastructure failure (section 6);
+  really takes longer than 10 min is an infrastructure failure (section 6).
+  *Amended by decision 0242:* train CI now takes 10–11 min, so the gate reserves `CI_RESERVE`
+  = 10 min (the arithmetic below is unchanged), while a wait may run to `CI_TIMEOUT` = 15 min
+  when the hold has budget left beyond its `n × MERGE_BUDGET`;
 - `MERGE_BUDGET = 2.5 min` per PR that a CI run can merge: the pre-squash wait of up to 2 min,
   the merge call, and the checks. Its consequence: a full batch of 5 reserves 12.5 min after its
   CI wait, so a 5-PR train needs `10 + 12.5 = 22.5` min of hold budget left before its CI wait
@@ -627,7 +630,7 @@ flip therefore takes effect within about 1 min of its stop label, or of its merg
    shadow mode the predicted outcome. Every train is therefore a durable record that the commits
    API can read by sha. In `train` mode, renew the lock with `prs` = the batch; renewal exit 4
    means stop.
-6. **CI.** Start a wait only if at least `CI_TIMEOUT + n × MERGE_BUDGET` remains of
+6. **CI.** Start a wait only if at least `CI_RESERVE + n × MERGE_BUDGET` remains of
    `HOLD_BUDGET`. Here **n is the number of PRs that this run can merge**:
    - for the full train, the batch size;
    - for a bisection step testing the prefix `P_1..P_mid`, `mid`;
@@ -645,7 +648,7 @@ flip therefore takes effect within about 1 min of its stop label, or of its merg
 
    Poll every 60 s (a stop checkpoint), and renew the lock every 5 min. If no run appears within
    3 min, dispatch the workflow on the branch once; it is classified like the push (section 9). If
-   none appears after that, or the run exceeds `CI_TIMEOUT`, stop with an infrastructure failure.
+   none appears after that, or the run exceeds its limit (`CI_TIMEOUT` at most; section 4, decision 0242), stop with an infrastructure failure.
 
    **Green**, counting only check runs created by the GitHub Actions app (app id 15368):
    - `changes (docs-only?)`, `hygiene (...)` and `rust (fmt, clippy, test)` (the summary job)
@@ -811,6 +814,8 @@ merge-train-ack SEQ=<n>` (`REFUSED=1` when GitHub or the tool refused it), and t
 state back. Done must read exactly as expected, refused must read unchanged (and then fails like a
 refused direct write); anything else, no ack within 10 min, or an ack for another `seq` aborts the
 run (exit 2, lock released). Comment and PR bodies read back with or without the session's footer.
+Since decision 0238 (T-3716) the ack then waits up to 90 s for the run's next action and prints it, and
+`make merge-train-next` blocks until one is pending, so the session needs no fixed sleep between actions.
 
 ### 5. Why `main` ends with the tested tree, and how a difference is caught
 Notation:
@@ -935,7 +940,7 @@ a cut-off resumes rather than restarting (below).
 the sha) are not a PR's fault; the early red read of step 6 never counts one as red. Retry the same train once. If it fails again, release and stop the
 run without ejecting anyone.
 
-**Budget cut-off.** No CI wait starts unless `CI_TIMEOUT + n × MERGE_BUDGET` remains of
+**Budget cut-off.** No CI wait starts unless `CI_RESERVE + n × MERGE_BUDGET` remains of
 `HOLD_BUDGET`, where n is the number of PRs that run can merge (step 6). So a hold never exceeds
 40 min. When the gate fails during a bisection **or before the confirmation run**, the merger:
 1. merges the known-green prefix `P_1..P_lo` (when `lo > 0`; the reservation made for the earlier
@@ -1007,7 +1012,10 @@ The merger keeps no state between runs: every step is derived from `origin` and 
   The carry rule accepts exactly that shape (section 2, "Carry-over"), so no reviewer runs again.
 - **Docs-only and task-only PRs.** Eligible like any other PR. Task-only PRs are exactly the ones
   that collide on ids (0075). Their marker says `task: none`, and V5's task-file check is skipped.
-  A train is classified as a whole (section 9), so a train of docs-only PRs runs only `changes`,
+  A diff whose every path is a `.md` file under `docs/tasks/` needs no reviewer (decision 0231):
+  V4 and `mark` require no verdict for it, and the train's id checks (`tasks.py validate` on the
+  built train) are its content gate. `changed_paths` lists both sides of a rename
+  (`--no-renames`), so a move out of `docs/tasks/` still needs the panel. A train is classified as a whole (section 9), so a train of docs-only PRs runs only `changes`,
   `hygiene` and the rust summary job.
 - **The steward's PR** (`agent/steward/<date>`) is marked ready by the steward and merged by the
   train. The steward then runs its final merger pass (section 3).
@@ -1361,7 +1369,7 @@ and each record cites the section of this spec it implements rather than copying
     squash, the post-squash check fails, a revert PR is opened (not merged) and a P0 filed;
   - the pre-squash merge ref is not recomputed within 2 min: stop;
   - lock renewal exits 4 before step 7 or before a squash: nothing more merges;
-  - the hold budget: no CI wait starts with under `CI_TIMEOUT + n × MERGE_BUDGET` left; the lock
+  - the hold budget: no CI wait starts with under `CI_RESERVE + n × MERGE_BUDGET` left; the lock
     wait is capped at the window's remaining time;
   - the exit handler releases the lock on an error;
   - a partly merged batch, `main` moved before the first squash, a head pushed during CI;

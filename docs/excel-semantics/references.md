@@ -2496,15 +2496,19 @@ row (`h < r <= t`, so at its first data row and its totals row too: T-2321) and
 shrinks it when the deleted rows are inside them, data edges included, with a data row left (T-2338), drops
 its totals row on a delete of exactly that row (T-2338), and then every structured reference to it keeps its
 text, in cell formulas on any sheet, conditional formats and defined names (T-2297, `table_edits.rs`). A delete
-of its only data row keeps the row and clears the table's cells of it (`Model::last_data_row`, T-2338), and a
-plain range shrinks on a delete of its edge rows (`Displacement::range_corners`, T-2338). Every other edit
-that crosses a table (a delete touching the header row, of every data row at once, a column edit inside
-it, row and column moves, cell shifts) leaves the table as it is, and an edit that changes the area a
+of exactly every data row, one row or several, keeps the first data row, clears the table's cells of it and
+deletes the others (`Model::kept_data_row`, T-2338, T-3259), and a plain range shrinks on a delete of its edge
+rows (`Displacement::range_corners`, T-2338). Every other edit that crosses a table (a delete touching the
+header row, a column edit inside it, row and column moves, cell shifts) leaves the table as it is, and an
+edit that changes the area a
 structured reference resolves to rewrites it to the displaced plain range (the fallback of SPEC-0016); one
-that leaves the area unchanged keeps the text. A `#This Row` reference keeps the fallback rule even when
-its table follows the edit: on another sheet, a row off the data rows keeps its text and so reads the
-moved or grown table's row there, but a row on them is rewritten to the plain area it read, and a moved cell
-beside or inside the table is rewritten too. Excel keeps the text in all of them (the T-2845 bullet above; T-3037).
+that leaves the area unchanged keeps the text. Through a row insert its table follows, a `#This Row` reference keeps its
+text too, on every row (T-3037): a cell on another sheet that stays put, a cell beside the table that moves with its
+row, and a formula inside the table (`Model::row_edit`, `Model::moved_text`), and each reads its cell's row in the
+edited table, as the T-2845 bullet above shows. A formula the insert moves with the table is parsed in that table
+(`Model::kept_table_holding`), so an unqualified `[@Qty]*2` or `SUM([Qty])` keeps its text where the move takes it below
+the table's old range (before T-3037 that cell did not parse, `#ERROR!`). Under every other edit a `#This Row` reference
+keeps the fallback rule (a row delete or a column edit the table follows is unprobed for it, T-3739).
 FORMULATEXT prints the long `Sales[[#This Row],[Qty]]` where Excel prints `Sales[@Qty]` (T-1683). An insert at
 the first row of a table without a header row is a fallback too (unprobed, T-3039). An insert that would
 carry a table past the last row or column is refused with an error and changes nothing, as Excel does
@@ -2520,9 +2524,10 @@ error that keeps its text and is exported as `#REF!`; a loaded formula naming an
 canonical form (`=SUM(Sales[Qty])`), whose spelling is unprobed (T-1683). Since T-1671 the eval adapter
 registers a spec table with its totals row; an insert above the totals row grows the table and keeps
 `Sales[[#Totals],[Qty]]` (T-2321), and since T-2338 the totals row's deletes (delete it or the last data row) keep it too (decision 0128).
-A `#This Row` reference keeps its text through an edit only where its cell keeps its row: a structural edit or a cut and paste
-that moves the formula to another row rewrites it to the area it read on its old row (`$A$3`, or `#VALUE!` off the data rows),
-its value before step 2. Excel keeps `Sales[@Qty]` and reads the new row through a row insert (T-2845, above; T-3037); cut and paste is desktop-only and unprobed (T-2325).
+Under an edit its table does not follow (a fallback, a row move) or a cut and paste, a `#This Row` reference keeps its text
+only where its cell keeps its row: one that moves the formula to another row rewrites it to the area it read on its old row
+(`$A$3`, or `#VALUE!` off the data rows), its value before step 2. Through a row insert the table follows, Excel keeps
+`Sales[@Qty]` and reads the new row, and so do we (T-2845, above; T-3037); a row delete is unprobed (T-3739); cut and paste is desktop-only and unprobed (T-2325).
 A copy and paste (not a cut) keeps the text, so the copy reads the row it lands on (hand expectation, unprobed; before step 2 it
 kept reading the old row). A duplicated sheet, which gets no table, lowers each `#This Row` cell on its own row, so it reads
 what it read (`#VALUE!` off the data rows). A formula on another sheet that refers to a deleted sheet's table is `#REF!` on
@@ -2563,8 +2568,9 @@ Right/Left):
   T-3019) behaves as the one-row deletes do. Rows 4-7 at once, every data row, keep the table's first data row,
   cleared: `ROWS(Sales)` 1, `#All` 2, `ROW(Sales[#Headers])` 3, `SUM(Sales[Qty])` and `COUNTA(Sales[Region])` 0,
   `=SUM(S!C4:C7)` becomes `=SUM(S!C4:C4)` (0), and the cells below move three rows, not four (`=S!C10` reads
-  `=S!C7`, `=SUM(S!C9:C10)` reads `=SUM(S!C6:C7)`) (table-delete-rows-all-data-once; the engine deletes all four
-  rows, T-3259). Rows 6-7 at once, the last two data rows, shrink the table to rows 4-5 (`ROWS(Sales)` 2,
+  `=S!C7`, `=SUM(S!C9:C10)` reads `=SUM(S!C6:C7)`) (table-delete-rows-all-data-once;
+  implemented since T-3259 by `Model::kept_data_row`, which clears the first data row and deletes the
+  rest). Rows 6-7 at once, the last two data rows, shrink the table to rows 4-5 (`ROWS(Sales)` 2,
   `SUM(Sales[Qty])` 3, `S!C4:C7` becomes `S!C4:C5`), a range wholly inside the deleted rows is `=SUM(S!#REF!)`,
   `=SUM(S!C7:C9)` straddling the bottom edge becomes `=SUM(S!C6:C7)`, and `=S!C10` reads `=S!C8`
   (table-delete-rows-last-two; the engine matches). A table without a header row (spec `"header_row": false`,

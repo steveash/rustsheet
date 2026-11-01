@@ -839,7 +839,7 @@ class MergeStage(StageFixture):
         self.assertEqual(self.stage.log[-1], "ejected #2: ci-red")
         # An infrastructure failure is retried once on a fresh commit, then stops ejecting nobody.
         for ci, dispatches, words in ((["none"], 2, "even after a dispatch, twice"),
-                                      (["pending"], 0, "took over 10 min, twice")):
+                                      (["pending"], 0, f"took over {merge_train.CI_TIMEOUT // 60} min, twice")):
             with self.subTest(ci=ci):
                 self.setUp()
                 self.gh.ci = ci
@@ -850,8 +850,21 @@ class MergeStage(StageFixture):
                 sent = [r for r in self.gh.writes if r.path.endswith("/dispatches")]
                 self.assertEqual(len(sent), dispatches)
 
+    def test_a_ci_wait_runs_past_the_reserve_only_into_budget_the_merges_do_not_need(self) -> None:
+        # Decision 0242: a fresh hold waits up to CI_TIMEOUT; a tight one stops at what is left
+        # after the two PRs' MERGE_BUDGETs, never below the gate's CI_RESERVE.
+        spare = 3 * 60
+        budget = merge_train.CI_RESERVE + 2 * merge_train.MERGE_BUDGET + spare
+        self.gh.ci = ["pending"]
+        with mock.patch.object(merge_train, "HOLD_BUDGET", budget):
+            self.assertEqual(self.run_stage(), 1)
+        limit = (merge_train.CI_RESERVE + spare) / 60
+        self.assertIn(f"train CI infrastructure on #1, #2 (the train CI took over {limit:g} min)", self.stage.log)
+        self.assertIn("hold budget", self.stage.log[-1])
+        self.assertEqual(self.gh.merged, [])
+
     def test_the_hold_budget_gates_the_ci_wait_and_caps_the_lock_wait(self) -> None:
-        with mock.patch.object(merge_train, "HOLD_BUDGET", merge_train.CI_TIMEOUT + merge_train.MERGE_BUDGET):
+        with mock.patch.object(merge_train, "HOLD_BUDGET", merge_train.CI_RESERVE + merge_train.MERGE_BUDGET):
             self.assertEqual(self.run_stage(), 1)  # two PRs need two merge budgets
         self.assertIn("hold budget", self.stage.log[-1])
         self.assertEqual(self.gh.merged, [])
