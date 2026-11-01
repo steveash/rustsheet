@@ -34,9 +34,9 @@ on the visible-parity lock: the lock holds each case to its own count instead of
       case and the total.
 - [x] `update-baseline` writes new cases' lines, raises an existing case only with
       `--allow-regressions`, and lowers or drops lines only with `--lower-visible-lock`.
-- [x] `merge_ready` checks the file as an eval-gated list and refuses a carry whose line is above
-      both parents or that no parent has. `make catch-up` resolves a conflict on the file to each
-      case's higher count. Python tests cover both.
+- [x] `merge_ready` checks the file as an eval-gated list and refuses a carry with a line above
+      `main`'s for a case `main` has. `make catch-up` resolves a conflict on the file three-way per
+      case and refuses a result above `main`'s line. Python tests cover both.
 - [x] `update-baseline --new-cases <file>` treats only the listed cases (ids or case file paths)
       as new. `make catch-up` passes the case files the PR adds. A carry may add or raise a
       line only for a case whose case file `main` lacks. Tests cover both.
@@ -62,4 +62,11 @@ NEW_CASES=`) makes the listed cases the only new ones. `make catch-up` lists the
 lines after merging `main`. The carry check (`visible_lock.visible_rises` with `case_on`) accepts
 a new or higher line only for a case whose case file `main` lacks. The merge tooling's lock
 helpers live in `scripts/visible_lock.py`, which keeps `merge_ready.py` under the file-size limit.
+After the #2660 review, catch-up merges the lock three-way per case (`three_way`), so it no longer
+undoes the steward's lowerings. The carry, and catch-up before it pushes, hold each of `main`'s
+cases to `main`'s line. A listed case that already has a line is not new. A catch-up deletes the
+retired json that pre-lock PRs modified, and the carry accepts that deletion. One corpus of lock
+lines (`crates/rustsheet-eval/tests/data/visible-lock-lines.txt`) keeps the Rust and Python
+parsers in step, and both take ASCII digits only. The suite manifest scan is shared in
+`scripts/suite_meta.py`.
 Decision 0217 amends 0088, 0093 and 0207, and supersedes 0214.

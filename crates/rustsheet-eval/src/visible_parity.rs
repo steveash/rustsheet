@@ -57,8 +57,11 @@ impl Lock {
             if line.starts_with('#') || line.trim().is_empty() {
                 continue;
             }
+            // ASCII digits only: `usize::from_str` would also take a leading `+`, which the
+            // merge tooling's parser (scripts/visible_lock.py) refuses.
             let parsed = line
                 .split_once('\t')
+                .filter(|(_, count)| !count.is_empty() && count.bytes().all(|b| b.is_ascii_digit()))
                 .and_then(|(case, count)| Some((case, count.parse::<usize>().ok()?)));
             match parsed {
                 Some((case, count)) if !case.is_empty() && !lock.cases.contains_key(case) => {
@@ -229,6 +232,17 @@ pub fn judge(lock: &Lock, count: &VisibleCount, update: Option<Update>) -> Judge
     let record = (update.is_some() && over.is_empty() && next != *lock).then_some(next);
     Judgement { over, record }
 }
+
+/// Splits the `--new-cases` ids into those without a line in `lock`, which may be new, and those
+/// with one. A case with a line already existed when the line was recorded, so it is never new:
+/// listing it cannot raise its line (decision 0217). It is not refused outright, because `make
+/// catch-up` lists every case file a PR adds, and a PR made after decision 0217 already recorded
+/// its cases' lines.
+#[must_use]
+pub fn split_listed(lock: &Lock, ids: BTreeSet<String>) -> (BTreeSet<String>, BTreeSet<String>) {
+    ids.into_iter().partition(|id| !lock.cases.contains_key(id))
+}
+
 /// Whether `update-baseline` treats case `id` as new, so it records the case's line whatever its
 /// count. Without `--new-cases` (`listed` is `None`), a case is new when its suite's committed
 /// baseline does not list it (`in_baseline` false). With `--new-cases`, only the listed cases
@@ -564,6 +578,65 @@ mod tests {
         let now = run(&[("p/a", 3)]);
         assert!(judge(&l, &now, None).holds());
         assert_eq!(judge(&l, &now, Some(PR)).record, Some(lock(&[("p/a", 3)])));
+    }
+
+    /// The lock-line corpus `scripts/test_visible_lock.py` also reads, so the merge tooling's parser
+    /// and this one agree on every line (`+3` included).
+    #[test]
+    fn the_shared_corpus_parses_as_the_merge_tooling_does() {
+        let corpus =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/data/visible-lock-lines.txt");
+        let text = std::fs::read_to_string(corpus).unwrap();
+        let entries: Vec<(&str, &str)> = text
+            .lines()
+            .filter(|l| !l.starts_with('#'))
+            .map(|l| l.split_once('\t').unwrap())
+            .collect();
+        assert!(
+            entries.iter().any(|(v, _)| *v == "ok") && entries.iter().any(|(v, _)| *v == "bad")
+        );
+        for (verdict, line) in entries {
+            assert!(verdict == "ok" || verdict == "bad", "{verdict}");
+            assert_eq!(Lock::parse(line).is_ok(), verdict == "ok", "{line:?}");
+        }
+    }
+
+    /// A malformed or repeated line is reported with its line number.
+    #[test]
+    fn read_reports_the_malformed_line() {
+        let root = std::env::temp_dir().join(format!("visible-lock-{}", std::process::id()));
+        std::fs::create_dir_all(root.join("eval/baseline")).unwrap();
+        std::fs::write(root.join(LOCK_PATH), "# h\np/a\t1\np/b\t+3\n").unwrap();
+        let err = Lock::read(&root).unwrap_err().to_string();
+        assert!(err.contains("visible-parity.txt:3:"), "{err}");
+        std::fs::write(root.join(LOCK_PATH), "p/a\t1\n\np/a\t2\n").unwrap();
+        let err = Lock::read(&root).unwrap_err().to_string();
+        assert!(err.contains("visible-parity.txt:3:"), "{err}");
+        std::fs::remove_dir_all(&root).unwrap();
+        assert_eq!(Lock::read(&root).unwrap(), Lock::default());
+    }
+
+    /// A listed case that already has a line is not new, so `--new-cases` cannot raise it.
+    #[test]
+    fn a_listed_case_with_a_line_is_not_new() {
+        let l = lock(&[("p/a", 3)]);
+        let listed: BTreeSet<String> = ["p/a", "p/pr-new"].map(str::to_string).into();
+        let (new, with_lines) = split_listed(&l, listed);
+        assert_eq!(new, ["p/pr-new".to_string()].into());
+        assert_eq!(with_lines, ["p/a".to_string()].into());
+        let off = |c: &str, n| {
+            (
+                c.to_string(),
+                CaseCount {
+                    off: n,
+                    new_case: is_new_case(Some(&new), true, c),
+                },
+            )
+        };
+        let count = VisibleCount {
+            cases: [off("p/a", 4), off("p/pr-new", 2)].into(),
+        };
+        assert_eq!(judge(&l, &count, Some(PR)).over, vec![over("p/a", 4, 3)]);
     }
 
     /// One sorted line per case with cells off and no total, so PRs that touch different cases

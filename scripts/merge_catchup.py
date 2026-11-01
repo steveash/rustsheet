@@ -9,9 +9,10 @@ In this checkout, which must have no local changes, it does the following:
 - refuses any conflict outside the lists CI's eval gate checks (`Repo.checked_baselines`: the
   gated suites the eval job runs without a fetch, and the visible-parity lock);
 - takes `main`'s side of each conflicted known-failure list, resolves a conflicted visible-parity
-  lock to each case's higher count (`visible_lock.merge_visible`, decision 0217), and runs `make
-  eval-baseline NEW_CASES=<the case files the PR adds>`, which re-records the lists, refuses
-  regressions (decision 0093) and records visible-parity lines only for those cases (0217);
+  lock three-way per case from the merge base (`visible_lock.merge_visible`, decision 0217), and
+  runs `make eval-baseline NEW_CASES=<the case files the PR adds>`, which re-records the lists,
+  refuses regressions (decision 0093) and records visible-parity lines only for those cases
+  (0217);
 - refuses if the re-record changed any other file, such as quality/evidence-floor.json;
 - commits everything as one merge commit and pushes it to the PR branch (never forced);
 - returns to the checkout's original branch or commit.
@@ -83,15 +84,22 @@ def catch_up(root: Path, branch: str, record: Callable[[Path, Path], int] = rere
         if git("rev-parse", "-q", "--verify", "MERGE_HEAD", root=root, check=False).returncode:
             raise Refused(f"git could not start merging {merge_ready.BASE_BRANCH} into {branch}")
         conflicted = git("diff", "--name-only", "--diff-filter=U", root=root).stdout.split()
+        # A PR from before decision 0217 modified the retired json lock, which main deleted.
+        if not visible_lock.in_commit(root, main, visible_lock.RETIRED_LOCK):
+            lists = lists | {visible_lock.RETIRED_LOCK}
         if conflicted and not checked_only(conflicted, lists):
             outside = [p for p in conflicted if p not in lists]
             raise Refused(f"conflicts outside the eval-gated baseline lists: {', '.join(outside)}")
         for path in conflicted:
+            if path == visible_lock.RETIRED_LOCK:
+                git("rm", "-q", "--", path, root=root)
+                continue
             if path == visible_lock.VISIBLE_PARITY:
-                # main's side alone would drop the PR's lines: keep each case's higher count, which
-                # the carry accepts as a parent's value (decision 0217).
-                sides = [git("show", f":{stage}:{path}", root=root).stdout for stage in (2, 3)]
-                (root / path).write_text(visible_lock.merge_visible(*sides), encoding="utf-8")
+                # main's side alone would drop the PR's lines, and either side's higher count would
+                # undo main's lowerings: merge each case three-way (decision 0217). Stage 1 is the
+                # merge base (absent when both sides added the file), 2 the PR, 3 main.
+                base, pr, main_side = (git("show", f":{n}:{path}", root=root, check=False).stdout for n in (1, 2, 3))
+                (root / path).write_text(visible_lock.merge_visible(base, pr, main_side), encoding="utf-8")
             else:
                 git("checkout", "--theirs", "--", path, root=root)
             git("add", "--", path, root=root)
@@ -104,6 +112,14 @@ def catch_up(root: Path, branch: str, record: Callable[[Path, Path], int] = rere
             code = record(root, listed)
         if code != 0:
             raise Refused("make eval-baseline refused (a regression, or the eval did not run)")
+        # The carry rule's visible-parity check, before anything is pushed: a line above main's
+        # for one of main's cases (a PR's sanctioned raise) needs a merge by hand (decision 0217).
+        lock_path = root / visible_lock.VISIBLE_PARITY
+        lock = lock_path.read_text(encoding="utf-8") if lock_path.exists() else ""
+        main_lock = git("show", f"{main}:{visible_lock.VISIBLE_PARITY}", root=root, check=False).stdout
+        raised = visible_lock.visible_rises(lock, main_lock, visible_lock.case_on(root, main))
+        if raised:
+            raise Refused(f"{visible_lock.VISIBLE_PARITY} has a line above main's ({raised[0]}): merge by hand")
         recorded = git("diff", "--name-only", root=root).stdout.split()
         others = sorted(p for p in recorded if p not in lists)
         if others:

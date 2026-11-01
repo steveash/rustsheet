@@ -56,7 +56,7 @@ eval-gates: build ## eval-check and evidence-floor from one run of the suites, t
 	$(EVAL_GUARDED) accuracy
 
 eval-baseline: build ## Ratchet eval/baseline and quality/evidence-floor.json after fixes (refuses regressions); NEW_CASES=<file> lists the only cases new to the visible-parity lock (make catch-up, decision 0217)
-	$(EVAL_GUARDED) update-baseline $(if $(NEW_CASES),--new-cases $(NEW_CASES))
+	$(EVAL_GUARDED) update-baseline $(if $(NEW_CASES),--new-cases '$(NEW_CASES)')
 	$(EVAL) evidence-floor --update
 
 eval-lower-visible-lock: build ## Steward only, daily: also lower the cases of eval/baseline/visible-parity.txt (decisions 0093, 0217)

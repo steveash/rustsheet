@@ -715,53 +715,93 @@ class Mark(PrFixture):
         self.baseline_conflict("F\tprobes/a\tA1\n", "F\tprobes/b\tB1\n")
         self.assertIn(visible_lock.VISIBLE_PARITY, merge_ready.Repo(self.clone).checked_baselines())
 
-    def test_carry_accepts_a_visible_parity_merge_within_both_parents(self) -> None:
-        lock = visible_lock.VISIBLE_PARITY
-        old = self.baseline_conflict(
-            "# h\nprobes/a\t3\nprobes/p\t2\n", "# h\nprobes/a\t1\nprobes/m\t5\n", path=lock
-        )
-        # Each case at the higher parent's count, and a lowered one: what merge_catchup writes.
-        self.write(lock, "# h\nprobes/a\t3\nprobes/m\t4\nprobes/p\t2\n")
-        self.finish_merge()
-        plan = self.plan(review=None, carry=True)
-        self.assertEqual((plan.marker.prev, plan.marker.head), (old, self.head))
-
-    def main_has_cases(self, *cases: str) -> None:
-        """Commits case files `eval/suites/probes/cases/<case>` to `main` (the suite's root)."""
+    def main_has_cases(self, *cases: str, lock: str = "") -> None:
+        """Commits case files `eval/suites/probes/cases/<case>` (the suite's root) and, when given,
+        the visible-parity lock `lock` to `main`."""
         self.git("checkout", "-q", "main")
         self.write("eval/suites/probes/suite.toml", 'name = "probes"\ngate = true\n')
         for case in cases:
             self.write(f"eval/suites/probes/cases/{case}", "{}\n")
+        if lock:
+            self.write(visible_lock.VISIBLE_PARITY, lock)
         self.commit("main has cases")
         self.git("push", "-q", "origin", "main")
         self.git("checkout", "-q", "pr")
 
-    def test_carry_refuses_a_visible_parity_rise_or_a_new_line_for_a_case_on_main(self) -> None:
-        # Decision 0217: for a case main has, a re-record may only keep a parent's line or lower it.
-        self.main_has_cases("a", "m", "old")
-        lock = visible_lock.VISIBLE_PARITY
-        for name, resolved, refused in (
-            ("a rise above both parents", "# h\nprobes/a\t4\nprobes/m\t5\n", "probes/a\t4"),
-            ("a line neither parent has", "# h\nprobes/a\t3\nprobes/old\t1\n", "probes/old\t1"),
-        ):
-            with self.subTest(name):
-                self.baseline_conflict(
-                    f"# h\nprobes/a\t3\n# {name}\n", f"# h\nprobes/a\t1\nprobes/m\t5\n# {name}\n", path=lock
-                )
-                self.write(lock, resolved)
-                self.finish_merge()
-                self.refused(f"records failures neither parent had \\({refused}\\)", review=None, carry=True)
+    # Decision 0217's carry fixture: from a base with `a 3`, the PR adds a line for its own case
+    # `new` and leaves `a` alone; main lowers `a` to 1 (the steward) and adds `m`. The two edits
+    # touch the same hunk, so the merge conflicts on the lock.
+    VISIBLE_BASE = "# h\nprobes/a\t3\n"
+    VISIBLE_PR = "# h\nprobes/a\t3\nprobes/new\t4\n"
+    VISIBLE_MAIN = "# h\nprobes/a\t1\nprobes/m\t5\n"
 
-    def test_carry_accepts_a_line_for_a_case_the_pr_adds(self) -> None:
-        # A PR from before the per-case lock has no lines for its cases; the catch-up's re-record
-        # writes them (`--new-cases`), and main has no case file, so no line, to hide behind.
-        self.main_has_cases("a")
-        lock = visible_lock.VISIBLE_PARITY
-        old = self.baseline_conflict("# h\nprobes/a\t3\n", "# h\nprobes/a\t1\n", path=lock)
-        self.write(lock, "# h\nprobes/a\t3\nprobes/pr-added.case.json\t9\n")
+    def visible_conflict(self) -> str:
+        self.main_has_cases("a", "m", "old", lock=self.VISIBLE_BASE)
+        return self.baseline_conflict(self.VISIBLE_PR, self.VISIBLE_MAIN, path=visible_lock.VISIBLE_PARITY)
+
+    def test_carry_accepts_the_three_way_visible_parity_merge(self) -> None:
+        old = self.visible_conflict()
+        # main's lowering kept, main's and the PR's lines kept: what merge_catchup writes. The PR's
+        # own case (no case file on main) may then have any count, as its re-record writes it.
+        self.write(visible_lock.VISIBLE_PARITY, "# h\nprobes/a\t1\nprobes/m\t5\nprobes/new\t9\n")
         self.finish_merge()
         plan = self.plan(review=None, carry=True)
         self.assertEqual((plan.marker.prev, plan.marker.head), (old, self.head))
+
+    def refuses_visible(self, resolved: str, refused: str) -> None:
+        self.visible_conflict()
+        self.write(visible_lock.VISIBLE_PARITY, resolved)
+        self.finish_merge()
+        self.refused(f"records failures neither parent had \\({refused}\\)", review=None, carry=True)
+
+    def test_carry_refuses_undoing_a_lowering_on_main(self) -> None:
+        # The higher parent's line (3), which undid main's lowering before the review (#2660 B1).
+        self.refuses_visible("# h\nprobes/a\t3\nprobes/m\t5\n", "probes/a\t3")
+
+    def test_carry_refuses_a_line_above_mains_for_a_case_on_main(self) -> None:
+        self.refuses_visible("# h\nprobes/a\t1\nprobes/m\t6\n", "probes/m\t6")
+
+    def test_carry_refuses_a_new_line_for_a_case_on_main(self) -> None:
+        self.refuses_visible("# h\nprobes/a\t1\nprobes/old\t1\n", "probes/old\t1")
+
+    def test_carry_accepts_deleting_the_retired_json_lock(self) -> None:
+        # A PR from before decision 0217 modified the json lock that main deleted: the catch-up
+        # deletes it, and the carry accepts that only while main has no json.
+        self.git("checkout", "-q", "main")
+        self.write(visible_lock.RETIRED_LOCK, '{"visibly_off_cells": 1}\n')
+        self.commit("json lock")
+        self.git("push", "-q", "origin", "main")
+        self.git("checkout", "-q", "pr")
+        self.git("merge", "-q", "--no-edit", "main")
+        self.write(visible_lock.RETIRED_LOCK, '{"visibly_off_cells": 2}\n')
+        old = self.commit("pr raises the json lock")
+        self.git("push", "-q", "-f", "origin", "HEAD:refs/pull/7/head")
+        self.comments.append(self.comment(1, marker(old, reviewers={**APPROVED, "excel-fidelity": APPROVE}).render()))
+        self.git("checkout", "-q", "main")
+        self.git("rm", "-q", visible_lock.RETIRED_LOCK)
+        self.commit("main retires the json lock")
+        self.git("push", "-q", "origin", "main")
+        self.git("checkout", "-q", "pr")
+        merge = subprocess.run(["git", "merge", "-q", "--no-edit", "main"], cwd=self.clone, capture_output=True)
+        self.assertNotEqual(merge.returncode, 0)  # modify/delete
+        self.git("rm", "-q", visible_lock.RETIRED_LOCK)
+        self.finish_merge()
+        plan = self.plan(review=None, carry=True)
+        self.assertEqual((plan.marker.prev, plan.marker.head), (old, self.head))
+
+    def test_carry_refuses_deleting_the_json_lock_while_main_has_it(self) -> None:
+        self.git("checkout", "-q", "main")
+        self.write(visible_lock.RETIRED_LOCK, '{"visibly_off_cells": 1}\n')
+        self.commit("json lock")
+        self.git("push", "-q", "origin", "main")
+        old = self.merge_main()
+        self.git("rm", "-q", visible_lock.RETIRED_LOCK)
+        self.git("commit", "-q", "--amend", "--no-edit")
+        self.head = self.git("rev-parse", "HEAD")
+        self.git("push", "-q", "-f", "origin", "HEAD:refs/pull/7/head")
+        self.pull["head"]["sha"] = self.head
+        self.assertNotEqual(old, self.head)
+        self.refused("only the content of an eval-gated baseline list may", review=None, carry=True)
 
     def test_carry_refuses_a_conflict_outside_the_checked_lists(self) -> None:
         self.baseline_conflict("pr side\n", "main side\n", path="scripts/x.py")

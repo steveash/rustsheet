@@ -134,21 +134,54 @@ class CatchUp(unittest.TestCase):
             merge_catchup.catch_up(self.clone, "agent/x", self.record(0, "F\tpoi/x\tX1\n", "eval/baseline/poi.txt"))
         self.assertEqual(self.remote("agent/x"), before)
 
-    def test_a_visible_parity_conflict_keeps_both_sides_lines(self) -> None:
-        # Decision 0217: two PRs add neighbouring cases' lines. main's side alone would drop the
-        # PR's line, which the re-record no longer records (its case is in the merged list).
+    def test_a_visible_parity_conflict_is_merged_three_way(self) -> None:
+        # Decision 0217: the PR adds its case's line next to lines main lowered (a) and dropped (z).
+        # main's side alone would drop the PR's line; the higher side would undo main's lowering
+        # (#2660 B1). Three-way keeps the PR's line, main's lowering and main's drop.
         lock = visible_lock.VISIBLE_PARITY
         self.write(lock, "# h\nprobes/a\t3\nprobes/z\t1\n")
         self.base = self.commit("lock")
         self.git("push", "-q", "origin", "main")
         before = self.branch({lock: "# h\nprobes/a\t3\nprobes/m-pr\t2\nprobes/z\t1\n"})
-        self.move_main({lock: "# h\nprobes/a\t4\nprobes/m-main\t5\nprobes/z\t1\n"})
+        self.move_main({lock: "# h\nprobes/a\t1\nprobes/m-main\t5\n"})
         head = merge_catchup.catch_up(self.clone, "agent/x", self.record(0, "F\tprobes/a\tA1\n"))
         self.assertEqual(
             run("git", "show", f"{head}:{lock}", cwd=self.origin),
-            "# h\nprobes/a\t4\nprobes/m-main\t5\nprobes/m-pr\t2\nprobes/z\t1",
+            "# h\nprobes/a\t1\nprobes/m-main\t5\nprobes/m-pr\t2",
         )
         self.assertIsNone(merge_ready.Repo(self.clone).carry_problem(before, head))
+
+    def test_a_retired_json_lock_conflict_is_resolved_by_deleting_it(self) -> None:
+        # Decision 0217: a PR from before the per-case lock modified the json lock main deleted.
+        json = visible_lock.RETIRED_LOCK
+        self.write(json, '{"visibly_off_cells": 1}\n')
+        self.base = self.commit("json lock")
+        self.git("push", "-q", "origin", "main")
+        before = self.branch({json: '{"visibly_off_cells": 2}\n', "eval/suites/probes/cases/pr.case.json": "{}\n"})
+        self.git("checkout", "-q", "main")
+        self.git("rm", "-q", json)
+        self.write(visible_lock.VISIBLE_PARITY, "# h\nprobes/a\t1\n")
+        self.commit("main retires the json lock")
+        self.git("push", "-q", "origin", "main")
+        lock = "# h\nprobes/a\t1\nprobes/pr.case.json\t7\n"  # the re-record gives the PR's case its line
+        head = merge_catchup.catch_up(self.clone, "agent/x", self.record(0, lock, visible_lock.VISIBLE_PARITY))
+        self.assertEqual(self.listed, ["eval/suites/probes/cases/pr.case.json\n"])
+        files = run("git", "ls-tree", "-r", "--name-only", head, "eval/baseline", cwd=self.origin).split()
+        self.assertNotIn(json, files)
+        self.assertIsNone(merge_ready.Repo(self.clone).carry_problem(before, head))
+
+    def test_a_line_above_mains_for_a_case_on_main_is_refused(self) -> None:
+        # Decision 0217: a PR's sanctioned raise of one of main's cases is merged by hand.
+        lock = visible_lock.VISIBLE_PARITY
+        self.write("eval/suites/probes/cases/a", "{}\n")
+        self.write(lock, "# h\nprobes/a\t3\n")
+        self.base = self.commit("lock")
+        self.git("push", "-q", "origin", "main")
+        before = self.branch({lock: "# h\nprobes/a\t5\n"})
+        self.move_main({"other.txt": "main moved\n"})
+        with self.assertRaisesRegex(Refused, "a line above main's \\(probes/a\t5\\)"):
+            merge_catchup.catch_up(self.clone, "agent/x", self.record(0, "F\tprobes/a\tA1\n"))
+        self.assertEqual(self.remote("agent/x"), before)
 
     def test_the_re_record_lists_only_the_case_files_the_pr_adds(self) -> None:
         # Decision 0217: after the merge the PR's cases are in the tree's baseline, so only this

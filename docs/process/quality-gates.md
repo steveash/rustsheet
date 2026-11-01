@@ -73,9 +73,10 @@ On docs-only PRs (decision 0049) CI skips the rust, eval and python jobs; hygien
   commits their lines. It never lowers a line, so fix PRs leave the file alone, and the steward
   lowers the lines daily with `make eval-lower-visible-lock` (decision 0093). Raising an existing
   case needs `--allow-regressions` and a decision record. PRs that touch different cases change
-  different lines, so they merge cleanly. `make catch-up` resolves a conflict on the file to each
-  case's higher count, and re-records with `NEW_CASES=<file>` (`update-baseline --new-cases`). That
-  file lists the case files the PR adds, and only those cases may then get a new or higher line.
+  different lines, so they merge cleanly. `make catch-up` resolves a conflict on the file three-way
+  per case, then re-records with `NEW_CASES=<file>` (`update-baseline --new-cases`). That file lists
+  the case files the PR adds, and only those cases may then get a new or higher line. No merge may
+  leave one of `main`'s cases above `main`'s line (decision 0217).
 - **Lint debt / duplication / oversized files / fitted constants:** the scripts fail on increases. When you reduce
   them, run the script with `--update` and commit the JSON in the same PR.
 

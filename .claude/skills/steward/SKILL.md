@@ -224,8 +224,11 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   `eval/baseline/visible-parity.txt`; a PR that adds cases records their lines with `make
   eval-baseline`. In the daily steward PR, after `make eval`, run `make eval-lower-visible-lock` and
   commit the lowered lines with the snapshot; "Progress dashboard" below comes next. When an open PR
-  conflicts on the lock, `make catch-up PR=<n>` resolves it (each case at its higher count, then a
-  re-record); by hand, keep both sides' lines at the higher count and re-run `make eval-baseline`.
+  conflicts on the lock, `make catch-up PR=<n>` resolves it: each case three-way from the merge base,
+  where a side that changed it wins and, if both did, the lower count. It then re-records. By hand,
+  merge the same way and run `make eval-baseline NEW_CASES=<file>`, where the file lists the case
+  files the PR adds (`git diff --diff-filter=A --name-only origin/main...HEAD`). Never record a line
+  above `main`'s for a case `main` has.
 - **Progress dashboard** (SPEC-0022, decision 0124): the daily run's order is `make eval`, then
   `make eval-lower-visible-lock`, then `make progress-report`, then the `progress-report` skill
   (routine step 2). Run `make progress-report` even when `make eval` failed or a suite was not

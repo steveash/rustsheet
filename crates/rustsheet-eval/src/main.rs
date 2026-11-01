@@ -452,11 +452,18 @@ fn listed_new_cases(root: &Path, suites: &[Suite], file: &Path) -> Result<BTreeS
         cases.iter().map(|c| (c.id.as_str(), c.path.as_path())),
         &listed,
     );
+    let (ids, with_lines) = visible_parity::split_listed(&visible_parity::Lock::read(root)?, ids);
     println!(
-        "visible parity: {} of the {} --new-cases entries name a case of the gated suites; only those are new",
+        "visible parity: {} of the {} --new-cases entries name a case of the gated suites without a lock line; only those are new",
         ids.len(),
         listed.len()
     );
+    for id in &with_lines {
+        println!(
+            "  {id} is listed but already has a line in {}: not new, so its line may not rise",
+            visible_parity::LOCK_PATH
+        );
+    }
     Ok(ids)
 }
 
