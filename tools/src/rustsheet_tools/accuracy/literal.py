@@ -20,6 +20,17 @@ Arg = float | int | bool
 """One drawn argument: a real (float), an integer parameter (int) or a logical (bool)."""
 
 
+def decimal15(x: float) -> Decimal:
+    """The exact value of the double `x` cut half-even to 15 significant digits, as a decimal
+    (a carry gives the next power of ten: 9.9999999999999999 → 10.0000000000000). For a
+    15-digit literal this is the written decimal again: the double is within half an ulp of it,
+    far less than half a unit of the 15th digit."""
+    if x == 0:
+        return Decimal(0)
+    d = Decimal(x)
+    return d.quantize(Decimal(1).scaleb(d.adjusted() - 14), rounding=ROUND_HALF_EVEN)
+
+
 def round15(x: float) -> float:
     """`x` rounded half-even to 15 significant digits and clamped into the writable range."""
     if x == 0:
@@ -29,9 +40,7 @@ def round15(x: float) -> float:
         return MAX_LITERAL if x > 0 else -MAX_LITERAL
     if magnitude < MIN_LITERAL:
         return MIN_LITERAL if x > 0 else -MIN_LITERAL
-    d = Decimal(x)
-    d = d.quantize(Decimal(1).scaleb(d.adjusted() - 14), rounding=ROUND_HALF_EVEN)
-    value = float(d)
+    value = float(decimal15(x))
     if abs(value) >= MAX_LITERAL:  # 9.999999999999999E+307 rounds up to 1E+308
         return MAX_LITERAL if x > 0 else -MAX_LITERAL
     return value

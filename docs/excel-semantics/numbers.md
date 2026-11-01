@@ -307,6 +307,18 @@ Status: VERIFIED
 Implemented in: `effective_digits` in crates/rustsheet-engine/src/decimal_round.rs (T-0218).
 Tasks: T-0218, T-0268
 
+## ROUNDUP of a huge value at a huge negative num_digits
+Observation (T-3555): `ROUNDUP(6.4421516092447E+265,-43376)` is 6.4421516092447E+265, the value unchanged. The rule
+above says ROUNDUP keeps the sign of `num_digits` and takes its magnitude modulo 65,536, which leaves -43,376. The unit
+10^43376 then overflows, so the rule predicts `#NUM!`, which is what the engine returns. In the same draw,
+`ROUNDUP(-3.41521682833705E-207,-11541)`, `ROUNDUP(-2.33253918200575E+106,-678)` and `ROUNDUP(7712487.6865209,-400)`
+were `#NUM!`, and `ROUNDUP(4.72880001004526E+149,22178)` was the value. Every earlier huge-`num_digits` probe used a
+small value.
+Evidence: excel-graph, 2026-11-01, T-3555's first ROUNDUP Gate A draw. That batch was replaced before commit (its
+point was a math domain error against an Excel number), so T-3627 re-probes the cell.
+Status: UNVERIFIED (one cell; T-3627 probes for the rule)
+Tasks: T-3627
+
 ## MOD is #NUM! for a huge quotient
 Rule: `MOD(n,d)` is `#NUM!` when `|n/d| >= 1.1259E+12` (exactly that decimal, not a power of two):
 `MOD(1125899999999,1)` = 0, `MOD(1125900000000,1)` = `#NUM!`. It depends only on the quotient, not on
