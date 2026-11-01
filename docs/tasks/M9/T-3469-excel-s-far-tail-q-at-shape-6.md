@@ -44,7 +44,8 @@ x / a = 10 exactly, so the nine cells decision 0203 names as moved farther (six 
   kernel there (hold-out, x > 30 outside the form's range: 55 bit-exact of 164 train cells against 27; fresh sweep
   probes-numeric/t3269-fresh-sweep-2: 9 of 67 against 2, 54 within 4 ulp against 10). Find where Excel switches to it
   above shape 11 (and past x = 600, where `FAR_TAIL_MAX_X` is UNVERIFIED), with a probe like t3269-gamma-tail-switch
-  at shapes 12 to 19.5; any widening passes R4 again.
+  at shapes 12 to 19.5; any widening passes R4 again. Gap triage 2026-11-01 moved this placement (above shape 11 and
+  past x = 600) and its 37 t3269-fresh-sweep cells to T-3640 (sweep T-3639); this task keeps shape 6 and x/a = 10.
 - Probe cells the form gives up against T-3285's accurate kernel (ungated, ulps of Excel's value, T-3285's head to
   T-3269's), recorded here as T-3269's reviewers asked: t3269-gamma-tail-switch Calc!A80 `POISSON(2,36.5,TRUE)` 0 to 1,
   A100 `CHISQ.DIST.RT(64,7)` 0 to 2, A136 `POISSON(3,35.5,TRUE)` 4 to 29; t3269-shape6-misses Calc!A46
@@ -55,6 +56,8 @@ x / a = 10 exactly, so the nine cells decision 0203 names as moved farther (six 
 Cells this task owns:
 - probes-numeric/t2561-chisq-dist-rt-past-edge.case.json (2): R!A73, A75
 - gen-m9/5919660b7bb4d195.case.json (1): Calc!A80
+- probes-numeric/t1049-chisqdistrt.case.json (1): Calc!A28 `CHISQ.DIST.RT(200,20)`, the twin of A80 (Q(10, 100), x / a = 10;
+  gap triage 2026-11-01: visibly off and named by no open task)
 - gen-m9/43c6227e0ff368c7.case.json (1): Calc!A108
 - probes-numeric/t3284-gamma-deep-upper-tail.case.json (4): Calc!A165, A166, A183, A184
 - gen-m9/caa1eed48b1883fe.case.json (1): Calc!A59 (split with T-2695, deferred, which also lists it: whichever task
