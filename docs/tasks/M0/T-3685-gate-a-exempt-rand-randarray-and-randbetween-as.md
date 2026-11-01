@@ -24,10 +24,16 @@ invariant-cell probe that drives them, so Gate A no longer counts them as missin
   only once main holds decision 0225 and T-3631's probe case.
 
 ## Acceptance criteria
-- [ ] Once T-3631 has merged, `exempt.tsv` gains the three `composite` lines, each naming the probe case T-3631 adds and
+- [x] Once T-3631 has merged, `exempt.tsv` gains the three `composite` lines, each naming the probe case T-3631 adds and
       decision 0225 (the change is covered by decision 0228; no new record is needed unless the ruling changes).
-- [ ] `rustsheet-eval accuracy` reports `missing tables` lower by 3, with no stale exemption.
+- [x] `rustsheet-eval accuracy` reports `missing tables` lower by 3, with no stale exemption.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Any engine change.
+
+## Outcome
+- `eval/accuracy/exempt.tsv` gains `composite` lines for RAND, RANDARRAY and RANDBETWEEN, each naming decision 0225 and
+  the T-3631 probe that drives its invariant cells (`probes/t3631-rand-randbetween-invariant`,
+  `probes/t3631-randarray-invariant`). Decision 0228 covers the change; its Consequences line records it as done.
+- `rustsheet-eval accuracy`: `missing tables` 277 to 274, no stale exemption, 0 failing.

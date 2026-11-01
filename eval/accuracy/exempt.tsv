@@ -55,6 +55,9 @@ NETWORKDAYS	exact	a count of whole working days (dates.md "WORKDAY and NETWORKDA
 NETWORKDAYS.INTL	exact	a count of whole working days (dates.md "WORKDAY.INTL and NETWORKDAYS.INTL: weekend number coercion")
 NUMBERVALUE	composite	parses text with given separators; numeric literals cannot drive it; gen-m5, gen-m9 and probes drive it
 PI	exact	a constant with no arguments: the double nearest pi
+RAND	composite	a volatile draw with no reproducible value to tabulate (decision 0225); probes t3631-rand-randbetween-invariant drives its invariant cells
+RANDARRAY	composite	a volatile array draw with no reproducible value to tabulate (decision 0225); probes t3631-randarray-invariant drives its invariant cells
+RANDBETWEEN	composite	a volatile draw with no reproducible value to tabulate (decision 0225); probes t3631-rand-randbetween-invariant drives its invariant cells
 ROW	exact	a row number
 ROWS	exact	a row count
 SEARCH	exact	a character position
