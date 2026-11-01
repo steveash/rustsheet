@@ -2514,6 +2514,24 @@ Ours: `discrete.rs`, a double-double walk.
 Status: VERIFIED (excel-graph) for the shifted kernel; the final step UNVERIFIED
 Tasks: T-2146, T-2586
 
+## NEGBINOM.DIST's cdf is #NUM! at a huge number_s (T-3553)
+Rule: `NEGBINOM.DIST(f,s,p,TRUE)` is `#NUM!` at a huge number_s with enough failures, where the true cdf underflows
+to 0.
+- `#NUM!`: 28 failures with number_s 1E+13, 1E+14, 999999999999999, 1E+16 and 1E+20, at p 0.1, 0.323212154487823
+  and 0.5 (`NEGBINOM.DIST(28,1E+13,0.323212154487823,TRUE)`).
+- 0: number_s 1E+12, 1E+10 and 2^31 with 28 failures; 0 and 14 failures with number_s 999999999999999.
+- 0 everywhere: the pmf (`NEGBINOM.DIST(28,999999999999999,0.323212154487823,FALSE)`) and the legacy NEGBINOMDIST
+  (always the pmf).
+
+The number_s cut is between 1E+12 and 1E+13 and the failures cut between 14 and 28. Whether they combine (a product
+or a sum) is not probed.
+Evidence: probes-numeric/t3553-negbinom-huge-s A1-A17 (excel-graph, 2026-11-01). It surfaced in T-3553's first Gate
+A fill, where `NEGBINOM.DIST(28,999999999999999,0.323212154487823,TRUE)` was `#NUM!` beside 0 at
+`(14,999999999999999,0.0712044717475044,TRUE)` and `(6,1E+15,0.847418271232675,TRUE)`.
+Ours: 0 at every cell (the cdf sums pmf terms; `binom.rs`).
+Status: VERIFIED (excel-graph) for the probed cells; the cuts UNVERIFIED
+Tasks: T-3576
+
 ## Beta density for min(a,b) <= 1: lnB and a double-double exponent split (T-2464, T-2513)
 Rule: BETA.DIST(x,a,b,FALSE) with min(a,b) <= 1 is model M2 (r3-m1-residual, verifier-confirmed), for every b, b = 1
 included. Every op is an x87 op stored to a double, double-rounded (on the worker's hold-out that gains 3 cells over
@@ -5392,7 +5410,10 @@ Rule: POISSON and POISSON.DIST at x 0 with a negative mean are EXP(-mean), cumul
 Evidence: probes/poisson-negative-mean A1-A7 (excel-graph, 2026-10-24, T-2484); it surfaced through gen-m9
 23d82b62e9a85bdd A208 (a RECEIVED maturity of `0/POISSON(0,-1,2)` is 0, not an error).
 A fractional x in (0, 1) truncates to 0 the same way: `POISSON(0.3,-0.5,TRUE)` is 1.6487212707001282 (gen-m9
-b9a32ce9a1fd0d71 A221, T-2256). Unprobed: a huge negative mean (EXP overflow; ours `#NUM!`).
+b9a32ce9a1fd0d71 A221, T-2256). Unprobed: a huge negative mean (EXP overflow; ours `#NUM!`). The excel-graph oracle
+cannot answer one: a workbook holding `POISSON.DIST(2,-2.09435621420062E+249,TRUE)` fails to open a session
+(createSession timed out on every retry), while `POISSON.DIST(696654613309,-1.12872603095239E+32,TRUE)` and
+`POISSON.DIST(14454660391,-7.78089151724219E+298,FALSE)` are answered (T-3553, bisected over its POISSON.DIST table).
 Ours: as Excel (T-2474, which also closed T-2628).
 Status: VERIFIED (excel-graph)
 Tasks: T-2628

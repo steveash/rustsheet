@@ -3,7 +3,7 @@ id: T-3553
 title: "Gate A slice 3b: reference tables for the discrete distributions (BINOM.DIST, NEGBINOM.DIST, POISSON.DIST)"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P0
 size: M
 tier: opus
@@ -31,10 +31,38 @@ mass forms), each with a cited mpmath definition, and `make check` running them.
   points are carried with those owners.
 
 ## Acceptance criteria
-- [ ] Definitions for the three functions, unit-tested against published values; tables generated, filled and
+- [x] Definitions for the three functions, unit-tested against published values; tables generated, filled and
       committed; each failing point is named with its owner task in the Outcome.
-- [ ] The probes-numeric math sidecars are regenerated with the new definitions and committed.
-- [ ] `make check` green; reviewers approve.
+- [x] The probes-numeric math sidecars are regenerated with the new definitions and committed.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The fixes for failing points (their owner tasks).
+
+## Outcome
+Done (2026-11-01). Renumbered from T-3543, an id collision with main (decision 0215).
+- **Definitions** (`tools/src/rustsheet_tools/accuracy/defs/discrete.py`):
+  - BINOM.DIST, NEGBINOM.DIST and POISSON.DIST, both forms, from the regularized incomplete beta and gamma.
+  - Each upper tail is taken directly, so a 1E-300 tail keeps its digits.
+  - Excel's domain rules: trials below 2^31 - 1; the pmf at k = 0 with p = 1 is `#NUM!`; POISSON at x = 0 with a
+    negative mean is EXP(-mean).
+  - The tail stratum sets the count from its integer quantile (doubling then bisection).
+  - Tests against Microsoft's published examples are in `tools/tests/test_accuracy_discrete.py`.
+- **Generator:** a count has no Excel upper limit, so its domain is unbounded.
+  - A first draft bounded the counts at 1E+15, so its edge points expected `#NUM!` where Excel computes.
+  - `Param.draw_hi` now caps whole-domain draws (1E+12) without adding edge points. mpmath hangs, fails to converge or
+    returns a wrong 0 at a count of 1E+300.
+- **Tables:** `s1` batches, filled from excel-graph:
+  - BINOM.DIST, 197 points (39 domain errors);
+  - NEGBINOM.DIST, 197 points (10);
+  - POISSON.DIST, 120 points (15).
+- **Check:** all 514 points are inside the envelope, with 0 failing and 0 table defects. No known failures are added,
+  and `rustsheet-accuracy verify` shows 0 differences. The T-3352 and T-3366 weaknesses did not show on these points.
+- **probes-numeric math sidecars:** 22 cases, 40,464 cells, regenerated with the new definitions.
+- **Excel findings** (statistics.md):
+  - "NEGBINOM.DIST's cdf is #NUM! at a huge number_s": `#NUM!` from number_s 1E+13 at 28 failures. Probed in
+    probes-numeric/t3553-negbinom-huge-s (7 cells in eval/baseline), owned by the new T-3576.
+  - "POISSON at x 0 with a negative mean" gains the oracle limit: `POISSON.DIST(2,-2.09435621420062E+249,TRUE)` keeps
+    excel-graph from opening its workbook (bisected), so the table caps the mean at 1E+12.
+- **Carried fix:** `known-failures.tsv`'s four T.DIST density lines now name T-3554, following T-3358's renumber; that
+  fix missed #2648's merge.
