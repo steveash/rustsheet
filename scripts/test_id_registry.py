@@ -20,7 +20,8 @@ REAL_GIT = merge_lock.git
 
 
 def run(*args: str, cwd: Path) -> str:
-    return subprocess.run(args, cwd=cwd, check=True, capture_output=True, text=True).stdout
+    # No stdin: `git mktree` (seed) reads it, so an inherited open pipe would hang the test (T-3694).
+    return subprocess.run(args, cwd=cwd, check=True, capture_output=True, text=True, stdin=subprocess.DEVNULL).stdout
 
 
 def next_after(base: int) -> object:
