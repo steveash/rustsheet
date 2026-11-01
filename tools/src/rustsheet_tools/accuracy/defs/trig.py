@@ -11,7 +11,8 @@ Sources:
     1.22514845490862E-16 against the true 1.2246467991473532E-16).
   That shift is the inaccuracy of Excel's constant, not a semantic rule, so the definition stays the true function:
   such points pass on Excel's side of the envelope, where the engine reproduces the π₆₄ model bit for bit
-  (T-1563). The tail stratum draws near multiples of π/2 on purpose.
+  (T-1563). A point where the shift puts Excel more than G off the math is R3-eligible under decision 0188 but left
+  unmarked (no owner ruling; the engine keeps Excel's value). The tail stratum draws near multiples of π/2 on purpose.
 - gen-m5 (excel-graph): `COT(0)` and `CSC(0)` are `#DIV/0!` (Calc!A38, A289; A113, A125) and `SEC(0)` is 1 (A175):
   0 is a domain error of COT and CSC only. No other double is a pole: π/2 and π are irrational.
 """

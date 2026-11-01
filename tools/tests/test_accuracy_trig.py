@@ -27,6 +27,7 @@ def test_the_math_is_the_true_function_of_the_double() -> None:
     assert float(SIN.evaluate([mp(math.pi)])) == 1.2246467991473532e-16
     assert float(COS.evaluate([mp(math.pi / 2)])) == 6.123233995736766e-17
     assert SIN.evaluate([mp(0)]) == 0
+    assert TAN.evaluate([mp(0)]) == 0
     assert COS.evaluate([mp(0)]) == 1
     assert SEC.evaluate([mp(0)]) == 1  # gen-m5 A175: SEC(0) is 1
     x = mp(0.7)
