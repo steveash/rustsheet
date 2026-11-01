@@ -57,12 +57,12 @@ does, which is below |x| = 708.94, not at |x| > 709 as for x > 0; and the log fo
 | correctly rounded | 51 (7.8%) / 51 / 51 | 24 (10.0%) / 24 / 24 | reference |
 
 - Fresh sweep after the freeze (R4.2): probes-numeric/t3546-im-hyperbolic-log-exp-fresh-sweep (150 rows x 2, 76
-  `#NUM!`; random.Random(35461), generator in the case description: x < 0 with |x| uniform in [708, 710.5], x > 0 in
+  `#NUM!`; docs/research/t3546/gen_sweep.py, random.Random(35461): x < 0 with |x| uniform in [708, 710.5], x > 0 in
   [709, 710.5]; uniform rather than log-uniform, which over this 0.4%-wide |x| window is the same distribution to
   within 0.2%). Fit lab `im-hyperbolic-log-fresh`: engine train 214/214, test 86/86 (accept); libm 209/85 (max 50 ulp);
   correctly rounded 2/0.
 - Gate A envelope (R2) on the fresh sweep: 300 of 300 inside, 0 outside (every cell equals Excel's result by text,
-  the `#NUM!` cells included; within 1e-9 of the math 300/300 for the engine).
+  the 76 `#NUM!` cells included, so R2's equal-to-Excel branch; 224 of the 224 numbers are also within 1e-9 of the math).
 - Not changed: the log form keeps libm `sin`/`cos` of y (UNVERIFIED in engineering.md for a large y; within
   |y| < 3.1 every probe cell matches, so no follow-up is filed until a large-y probe shows a difference).
 - Eval (probes-numeric, ungated, no baseline): t3525-im-hyperbolic-log-band-sweep 190 -> 200/200 (the 8 cut cells and the 2 digit cells); new cases
