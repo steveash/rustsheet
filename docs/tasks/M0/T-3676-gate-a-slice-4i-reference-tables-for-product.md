@@ -17,13 +17,13 @@ PRODUCT, SUMSQ, SERIESSUM and PERCENTOF each get a committed, oracle-filled `s1`
 ## Context
 - Filed by T-3551 (decision 0228): these in-scope numeric functions have a floating-point kernel, so neither `exact`
   nor `composite` fits and Gate A (decision 0188 R1(a), SPEC-0029) needs their tables.
-- PRODUCT and SUMSQ are variadic: use `Definition.variadic` (T-3549). numbers.md "Aggregate overflow": PRODUCT and
-  SUMSQ overflow at an intermediate point like SUM (`PRODUCT(1E+200,1E+200)` stays `#NUM!` with a later factor of 0), so
+- PRODUCT and SUMSQ are variadic: use `Definition.variadic` (T-3549). numbers.md "Overflow in `+ - * /` is #NUM! where it happens" (its aggregate-overflow
+  paragraph, T-0192): PRODUCT and SUMSQ overflow at an intermediate point like SUM (`PRODUCT(1E+200,1E+200)` stays `#NUM!` with a later factor of 0), so
   the domain follows the running product or sum, as T-3549's SUM does (decision 0224).
 - SERIESSUM(x, n, m, coefficients) takes an array literal of coefficients (T-3586's array kind); numbers.md "QUOTIENT,
   FACTDOUBLE and SERIESSUM argument modes".
-- PERCENTOF(subset, all) is SUM(subset)/SUM(all) over two arrays: check whether each sum snaps like SUM (numbers.md,
-  near-zero snap) with a probe before writing the definition.
+- PERCENTOF(subset, all) is SUM(subset)/SUM(all) over two arrays; probes/percentof-snap-overflow-union (T-0416) holds
+  Excel's evidence on whether its sums snap and overflow: read it before writing the definition.
 - Tools: as in T-3549 and T-3586 (`rustsheet-accuracy generate`, `rustsheet-oracle fill -b excel-graph --suite
   accuracy`, `rustsheet-eval accuracy`, then `rustsheet-accuracy math --suite probes-numeric`).
 

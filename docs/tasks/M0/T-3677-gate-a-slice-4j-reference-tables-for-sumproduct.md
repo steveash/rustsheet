@@ -19,8 +19,9 @@ SUMPRODUCT, SUMX2MY2, SUMX2PY2 and SUMXMY2 each get a committed, oracle-filled `
   nor `composite` fits and Gate A (decision 0188 R1(a), SPEC-0029) needs their tables.
 - Each takes two (SUMPRODUCT: two or more) equal-length array literals (T-3586's array kind). The math is the exact sum
   of the products (or of x²-y², x²+y², (x-y)²) of the doubles.
-- Check with a probe whether these sums snap near zero like SUM (numbers.md, near-zero snap; decision 0224) and whether
-  they overflow at a running total, and write the domain from it.
+- SUMPRODUCT never snaps near zero (numbers.md, near-zero snap, "Summing functions": T-3048,
+  probes/t3048-snap-conditional-sums), so its math is the plain exact sum. Whether the SUMX family snaps, and whether
+  each overflows at a running total, is to be probed before writing the domain.
 - Unequal lengths are `#N/A` (SUMX2MY2 family) or `#VALUE!` (SUMPRODUCT): domain errors, an edge point each.
 - numbers.md mentions trig-odd-even-sumxmy2 probes (probes-numeric/trig-odd-even-sumxmy2-sweep): reuse their evidence.
 - Tools: as in T-3549 and T-3586 (`rustsheet-accuracy generate`, `rustsheet-oracle fill -b excel-graph --suite

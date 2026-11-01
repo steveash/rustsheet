@@ -21,8 +21,9 @@ SIN, COS, TAN, COT, SEC and CSC each get a committed, oracle-filled `s1` Gate A 
 - numbers.md, "Trig of a huge angle": each is `#NUM!` from |x| = 2^27 on (fractions included), a domain error for the
   definition. COT and CSC at 0, and SEC and TAN at no double, are poles: check which errors Excel gives (`#DIV/0!` for
   COT(0) and CSC(0)) before writing the domain.
-- Excel's argument reduction near multiples of π/2 may leave Excel far from the math (relative error above G = 1e-4
-  where the result is near 0). Such points are R3 candidates that need an owner ruling, not marks.
+- Excel's argument reduction is documented: numbers.md "Trig of a huge angle" (reduction by the x87 64-bit π/2) and
+  "SIN/COS/TAN/SEC/CSC/COT near multiples of PI(): oracle sweep (T-1008)" (probes-numeric/m9-trig-reduction, 666
+  cells). The definition reads that rule; only a point the documented rule does not explain is an R3 candidate.
 - Tools: as in T-3549 and T-3586 (`rustsheet-accuracy generate`, `rustsheet-oracle fill -b excel-graph --suite
   accuracy`, `rustsheet-eval accuracy`, then `rustsheet-accuracy math --suite probes-numeric`).
 

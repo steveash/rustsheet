@@ -18,8 +18,9 @@ SINH, COSH, TANH, COTH, SECH and CSCH each get a committed, oracle-filled `s1` G
 - Filed by T-3551 (decision 0228): these in-scope numeric functions have a floating-point kernel, so neither `exact`
   nor `composite` fits and Gate A (decision 0188 R1(a), SPEC-0029) needs their tables.
 - The math is mpmath's function at the double of the written literal.
-- numbers.md, "Trig of a huge angle": COSH(1E+15) is `#NUM!` (overflow); the overflow cut of each function is part of
-  the domain (a math value beyond the double range is redrawn by the generator, so state the cut explicitly).
+- numbers.md, "SINH / COSH / TANH are exp-based, not libm" and its "COTH, CSCH and SECH" sections (T-0917, T-2169):
+  Excel's kernels and their overflow behaviour (COSH(1E+15) is `#NUM!`; SECH past the overflow is 0, not an error).
+  The overflow cut of each function is part of the domain.
 - COTH(0) and CSCH(0) are poles: check Excel's error before writing the domain.
 - Tools: as in T-3549 and T-3586 (`rustsheet-accuracy generate`, `rustsheet-oracle fill -b excel-graph --suite
   accuracy`, `rustsheet-eval accuracy`, then `rustsheet-accuracy math --suite probes-numeric`).

@@ -21,8 +21,8 @@ ECMA.CEILING, ISO.CEILING, MROUND, EVEN, ODD, INT and TRUNC each get a committed
 - numbers.md: "INT cuts to 15 significant digits first", "ODD above 2^53 adds one in binary", "MROUND rounds the
   quotient up within 5E-15 of a half, and multiplies in binary" and "TRUNC is ROUNDDOWN". Each is a rule the definition
   must read (or an R3 candidate if the entry shows Excel's arithmetic, not a rule).
-- ECMA.CEILING may not be in Excel 365's function list as a worksheet function: confirm with the catalog and a probe
-  before building its table (an unsupported function would be a catalog change instead).
+- ECMA.CEILING is not in Microsoft's list, but Excel evaluates it as two-argument CEILING and refuses one argument
+  (probes/ecma-ceiling, T-1301; eval/catalog/excel-functions.tsv).
 - Tools: as in T-3549 and T-3586 (`rustsheet-accuracy generate`, `rustsheet-oracle fill -b excel-graph --suite
   accuracy`, `rustsheet-eval accuracy`, then `rustsheet-accuracy math --suite probes-numeric`).
 

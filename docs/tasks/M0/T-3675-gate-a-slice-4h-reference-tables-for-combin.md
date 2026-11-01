@@ -21,7 +21,9 @@ COMBIN, COMBINA, FACT, FACTDOUBLE, MULTINOMIAL, QUOTIENT and MOD each get a comm
   "QUOTIENT, FACTDOUBLE and SERIESSUM argument modes", "MOD is an exact remainder" and "MOD is #NUM! for a huge
   quotient". The math is the exact combinatorial value (or remainder); Excel's product order makes large results
   inexact, which Gate A's envelope judges.
-- Arguments truncate to integers (FACT(5.9) is 120): the definition reads the truncated value.
+- The arguments are documented to truncate to integers (Microsoft's FACT, COMBIN and MULTINOMIAL pages); no oracle cell
+  pins a fractional argument yet, so the table's edge stratum should include one and the definition reads the truncated
+  value only once a filled point confirms it.
 - MULTINOMIAL is variadic: use `Definition.variadic` (T-3549).
 - Tools: as in T-3549 and T-3586 (`rustsheet-accuracy generate`, `rustsheet-oracle fill -b excel-graph --suite
   accuracy`, `rustsheet-eval accuracy`, then `rustsheet-accuracy math --suite probes-numeric`).

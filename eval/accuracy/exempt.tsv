@@ -6,7 +6,6 @@
 # do). A protected path (T-3379): every change needs a decision record. A line naming a function
 # that has a table, or that is not an in-scope numeric catalog function, fails the check.
 ABS	exact	the argument or its negation, with no rounding
-AGGREGATE	composite	functions 1-13 take references only (numbers.md "AGGREGATE") and 14-19 an array with k; gen-m5, gen-m6, gen-m7, gen-m9 and probes drive it
 ARABIC	exact	a whole number from a Roman numeral (numbers.md "ARABIC of a blank cell, and padded numerals")
 AREAS	exact	counts the areas of a reference
 BITAND	exact	integer bit operation on values below 2^48
@@ -40,7 +39,7 @@ FINDB	exact	a byte position
 GCD	exact	integer GCD of arguments up to 2^53 (numbers.md "GCD / LCM argument bound")
 GESTEP	exact	returns 0 or 1
 ISOWEEKNUM	exact	an integer week number
-LCM	exact	integer LCM bounded at 2^53 (numbers.md "GCD / LCM argument bound")
+LCM	exact	integer LCM, its result taken as the double at 2^53 (numbers.md "GCD / LCM argument bound")
 LEN	exact	a character count
 LENB	exact	a byte count
 MATCH	exact	a position

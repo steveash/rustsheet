@@ -22,9 +22,8 @@
     - MUNIT (0s and 1s);
     - N (its argument, or 1, 0);
     - PI (a constant).
-  - **`composite`, 13 functions** (10 exempted now, the 3 volatile ones by T-3685):
-    - AGGREGATE and SUBTOTAL: functions 1-13 and SUBTOTAL take references only (numbers.md "AGGREGATE", references.md
-      "SUBTOTAL and AREAS take references only"); AGGREGATE 14-19 take an array and k, and the gen suites drive them;
+  - **`composite`, 12 functions** (9 exempted now, the 3 volatile ones by T-3685):
+    - SUBTOTAL: it takes references only (references.md "SUBTOTAL and AREAS take references only");
     - VALUE, NUMBERVALUE, TIMEVALUE and DECIMAL: they parse text, which numeric literals cannot drive. TIMEVALUE's
       numeric stage, the fraction of a day, is TIME's arithmetic, which T-3678's TIME table checks; what is left is the
       text grammar the eval suites check;
@@ -41,7 +40,7 @@
     third class, no SPEC-0029 change and no change to the `exempt.tsv` reader are needed. Decision 0225 and its probe
     are not on main yet, so the three lines wait for T-3685, which adds them once T-3631 lands: a protected file does
     not cite a record main does not hold.
-  - **Needs a table, 63 functions,** filed as eleven table tasks of four to seven functions each, by family:
+  - **Needs a table, 64 functions,** filed as twelve table tasks of one to seven functions each, by family:
     - T-3668: SIN, COS, TAN, COT, SEC, CSC;
     - T-3669: ASIN, ACOS, ATAN, ATAN2, ACOT, DEGREES, RADIANS;
     - T-3670: SINH, COSH, TANH, COTH, SECH, CSCH;
@@ -53,7 +52,10 @@
     - T-3675: COMBIN, COMBINA, FACT, FACTDOUBLE, MULTINOMIAL, QUOTIENT, MOD;
     - T-3676: PRODUCT, SUMSQ, SERIESSUM, PERCENTOF (after T-3549's variadic definitions);
     - T-3677: SUMPRODUCT, SUMX2MY2, SUMX2PY2, SUMXMY2 (array literals, T-3586);
-    - T-3678: TIME, HOUR, MINUTE, SECOND, YEARFRAC.
+    - T-3678: TIME, HOUR, MINUTE, SECOND, YEARFRAC;
+    - T-3693: AGGREGATE, over its array forms 14-19. Functions 1-13 take references only (numbers.md "AGGREGATE")
+      and the eval suites drive them, but 14-19 take an array and k that the one-row array literal writes, with
+      floating-point kernels (`AGGREGATE(18,0,{3,1,4,1,5,9},0.3)` is 1.2000000000000002, probes/aggregate-grid H45).
 
     Some functions here have integer results but a floating-point input stage that Excel rounds in its own way, so
     each needs a table that reads Excel's rule:
@@ -62,9 +64,9 @@
     - FACT, COMBIN and QUOTIENT (their products and quotients round);
     - HOUR, MINUTE and SECOND (dates.md "HOUR, MINUTE and SECOND round to the nearest second").
 - **Consequences:**
-  - `exempt.tsv` gains 26 lines now (16 `exact`, 10 `composite`). `missing tables` falls by 26: from 305 to 279 on this
-    branch. No exemption is stale. T-3685 adds the three volatile lines later (279 to 276).
-  - The eleven table tasks and T-3685 bring M5, M6 and M7 to zero missing tables once they land.
+  - `exempt.tsv` gains 25 lines now (16 `exact`, 9 `composite`). `missing tables` falls by 25: from 305 to 280 on this
+    branch. No exemption is stale. T-3685 adds the three volatile lines later (280 to 277).
+  - The twelve table tasks and T-3685 bring M5, M6 and M7 to zero missing tables once they land.
   - M9's other functions (outside decision 0188's 18) are still unclassified. As T-3551 says, they need their own
     classification task once the M9 table slices settle the solver and distribution patterns.
   - If an `exact` function later shows a rounding question, its line comes out and a table task replaces it. That

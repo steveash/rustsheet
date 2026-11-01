@@ -82,15 +82,15 @@ Done (2026-11-01).
 - **Decision 0228** classifies each of them:
   - **`exact`, 16:** the whole-day date functions (DATEDIF, DAYS, DAYS360, EDATE, EOMONTH, NETWORKDAYS(.INTL),
     WORKDAY(.INTL)), plus DATEVALUE, ARABIC, GCD, LCM, MUNIT, N and PI.
-  - **`composite`, 13:** AGGREGATE and SUBTOTAL (references only); VALUE, NUMBERVALUE, TIMEVALUE and DECIMAL (text);
+  - **`composite`, 12:** SUBTOTAL (references only); VALUE, NUMBERVALUE, TIMEVALUE and DECIMAL (text);
     MDETERM, MINVERSE and MMULT (2-D matrices); SEQUENCE (an array result); and the volatile RAND, RANDARRAY and
     RANDBETWEEN.
-  - **Needs a table, 63:** eleven tasks, T-3668 to T-3678.
+  - **Needs a table, 64:** twelve tasks, T-3668 to T-3678 and T-3693 (AGGREGATE's array forms 14-19).
 - **Volatile ruling:** `composite`, driven by an invariant-cell probe, the same evidence decision 0225 (T-3631) uses for
   Gate B. So there is no third class, no SPEC-0029 change and no reader change. Decision 0225 is not on main yet, so
   T-3685 adds the three lines once T-3631 lands.
-- **`eval/accuracy/exempt.tsv`:** +26 lines. Each `exact` reason cites a semantics entry or gen-m6 cells; each
-  `composite` reason names its eval suites. `rustsheet-eval accuracy`: `missing tables` 305 to 279, 0 failing, no stale
+- **`eval/accuracy/exempt.tsv`:** +25 lines. Each `exact` reason cites a semantics entry or gen-m6 cells; each
+  `composite` reason names its eval suites. `rustsheet-eval accuracy`: `missing tables` 305 to 280, 0 failing, no stale
   exemption.
 - **Follow-ups:** T-3685 (the volatile lines, after T-3631) and T-3686 (2-D array literals, so MDETERM, MINVERSE and
   MMULT get tables in place of their exemptions).
@@ -105,5 +105,6 @@ Done (2026-11-01).
   - T-3676: PRODUCT, SUMSQ, SERIESSUM and PERCENTOF, after T-3549.
   - T-3677: the SUMPRODUCT family.
   - T-3678: TIME, HOUR, MINUTE, SECOND and YEARFRAC.
+  - T-3693: AGGREGATE over functions 14-19.
 
   Each task names the semantics entries its definitions must read.

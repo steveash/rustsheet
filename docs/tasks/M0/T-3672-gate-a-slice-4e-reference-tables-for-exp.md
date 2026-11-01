@@ -20,7 +20,8 @@ EXP, LN, LOG, LOG10, POWER, SQRT and SQRTPI each get a committed, oracle-filled 
 - numbers.md, "POWER and `^`: odd roots of negatives, zero and overflow": POWER's domain rules (a negative base with a
   non-integer exponent, 0^0, 0 to a negative power, overflow).
 - numbers.md, "RADIANS, SQRTPI and MUNIT": SQRTPI is `sqrt(x * PI)` to the bit.
-- LOG is variadic in its base (LOG(x) is base 10); LOG(x, 1) is `#DIV/0!`.
+- LOG's base defaults to 10; base 1 is `#DIV/0!` even for `LOG(1,1)`, and base 0 or a negative base is `#NUM!`
+  (numbers.md, the LOG entry around "`#DIV/0!` even for `LOG(1,1)`").
 - EXP's overflow cut (about 709.78) is a domain edge worth an edge point.
 - Tools: as in T-3549 and T-3586 (`rustsheet-accuracy generate`, `rustsheet-oracle fill -b excel-graph --suite
   accuracy`, `rustsheet-eval accuracy`, then `rustsheet-accuracy math --suite probes-numeric`).
