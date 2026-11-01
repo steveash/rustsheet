@@ -128,7 +128,11 @@ def quantile(p: mpmath.mpf, a: mpmath.mpf, upper: bool) -> mpmath.mpf:
 
 def _gamma_inv(args: Sequence[MathArg]) -> mpmath.mpf:
     p, alpha, beta = args
-    assert not isinstance(p, bool) and not isinstance(alpha, bool) and not isinstance(beta, bool)
+    assert (
+        not isinstance(p, (bool, tuple))
+        and not isinstance(alpha, (bool, tuple))
+        and not isinstance(beta, (bool, tuple))
+    )
     # The quantile of probability 0 is the support's lower end.
     return mpmath.mpf(0) if p == 0 else beta * quantile(p, alpha, upper=False)
 
@@ -136,7 +140,7 @@ def _gamma_inv(args: Sequence[MathArg]) -> mpmath.mpf:
 def _chisq(upper: bool) -> Callable[[Sequence[MathArg]], mpmath.mpf]:
     def value(args: Sequence[MathArg]) -> mpmath.mpf:
         p, df = args
-        assert not isinstance(p, bool) and not isinstance(df, bool)
+        assert not isinstance(p, (bool, tuple)) and not isinstance(df, (bool, tuple))
         if p == (1 if upper else 0):
             return mpmath.mpf(0)
         return CHI_SCALE * quantile(p, mpmath.floor(df) / 2, upper=upper)

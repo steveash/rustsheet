@@ -81,13 +81,20 @@ def quantile(p: mpmath.mpf, a: mpmath.mpf, b: mpmath.mpf) -> mpmath.mpf:
 
 def _beta_dist(args: Sequence[MathArg]) -> mpmath.mpf:
     x, a, b, cumulative = args
-    assert not isinstance(x, bool) and not isinstance(a, bool) and not isinstance(b, bool)
+    assert not isinstance(x, (bool, tuple))
+    assert not isinstance(a, (bool, tuple))
+    assert not isinstance(b, (bool, tuple))
     return lower_tail(x, a, b) if cumulative else density(x, a, b)
 
 
 def _beta_dist_domain(args: Sequence[MathArg]) -> str | None:
     x, a, b, cumulative = args
-    if cumulative or isinstance(x, bool) or isinstance(a, bool) or isinstance(b, bool):
+    if (
+        cumulative
+        or isinstance(x, (bool, tuple))
+        or isinstance(a, (bool, tuple))
+        or isinstance(b, (bool, tuple))
+    ):
         return None
     if x == 0 and a <= 1:
         return "density at x = 0 with alpha <= 1"
@@ -98,7 +105,7 @@ def _beta_dist_domain(args: Sequence[MathArg]) -> str | None:
 
 def _tail_x(q: mpmath.mpf, upper: bool, args: Sequence[MathArg]) -> mpmath.mpf:
     a, b = args[1], args[2]
-    if isinstance(a, bool) or isinstance(b, bool):
+    if isinstance(a, (bool, tuple)) or isinstance(b, (bool, tuple)):
         msg = "no tail map for a logical shape"
         raise ValueError(msg)
     return quantile(1 - q if upper else q, a, b)
@@ -106,7 +113,11 @@ def _tail_x(q: mpmath.mpf, upper: bool, args: Sequence[MathArg]) -> mpmath.mpf:
 
 def _beta_inv(args: Sequence[MathArg]) -> mpmath.mpf:
     p, a, b = args
-    assert not isinstance(p, bool) and not isinstance(a, bool) and not isinstance(b, bool)
+    assert (
+        not isinstance(p, (bool, tuple))
+        and not isinstance(a, (bool, tuple))
+        and not isinstance(b, (bool, tuple))
+    )
     return quantile(p, a, b)
 
 
