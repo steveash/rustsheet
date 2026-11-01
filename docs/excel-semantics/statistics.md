@@ -2906,16 +2906,24 @@ z = fl64(fl(a·LN(x)) - L)  (extended);   I = fl(EXP(z)·s)  (Excel's EXP of the
   ibeta_series (1,538 against 4,442 of 5,183); a stored z out of sample (364/2,774/3 against 405/3,196/1,625 bit-exact
   on r2-bratio's three held-out sets).
 - Open: L at b0 >= 8 (Excel's algdiv is about 1 unit from TOMS's: implied L -1.88, +1.65, +6.05 units on three runs);
-  lnΓ(a0 < 1) inside L is shape-dependent (GL below 0.3, fl(gamln1(v) - LN v) at w2's (0.5, 6.25)), so on the old
-  1 < b0 < 8 cells this L loses to r2-bratio's (3,365 against 4,038 of 7,455, verifier); b < 1 shapes top out at 55-84%
-  bit-exact for any constant L (one stored intermediate, unidentified). The port needs Excel's GAMMALN exact at the shape
+  on the old 1 < b0 < 8 cells GL53's L loses to r2-bratio's (3,365 against 4,038 of 7,455, verifier); b < 1 shapes top
+  out at 55-84% bit-exact for any constant L (one stored intermediate, unidentified; T-3769).
+- At 1 < b0 < 8 and a0 near 0.3, 0.5 and 0.7 (direct w_bpser), lnΓ(a0 < 1) inside L is Excel's GAMMALN, GL(a0), not
+  fl(gamln1(a0) - LN a0) (T-3570, r5-bpser-lngamma). Small a0, b0 <= 1 and b0 >= 8 are not probed this way. With b0
+  and x fixed and a0 stepped by single ulps around 0.3, 0.5 and 0.7, so only a0 moves, GL53 beats the gamln1 form in all
+  12 runs: 672 against 573 of 960 bit-exact at b0 2.5 (tune) and 831 against 691 at b0 6.25 (hold-out). On the 457
+  cells where the two forms differ, GL53 matches 331 and gamln1 92. This replaces r2-bpser-small's "shape-dependent"
+  reading, which came from shape sets where everything varied at once. The rest of GL53's misses (417 of 1,920, all
+  within 2 ulp) follow x at a0 near 0.3 (model 1 ulp high), and partly follow a0 at 0.5 and 0.7, where no constant
+  L shift fits (T-3769). The port needs Excel's GAMMALN exact at the shape
   arguments; the engine model is exact on 274 of 771 in [1, 2) and 1,738 of 2,585 below 1 (t2464-r2-bpser-small-gl).
 - An isolated miss at 1 < b0 < 8 (gap triage 2026-10-30, T-3331): `BETA.DIST(0.1,2.5,5,TRUE)` (probes-numeric/
   m9-beta-dist-a2p5 Calc!A31, a bpser point: b0·x0 = 0.5) is 0.05533381860850995 in Excel and 0.055333818608509895 in
   the engine, visibly off. Against a 60-digit mpmath value, 0.055333818608509839059, Excel is 16.1 ulp high and the
   engine 8.1 ulp high, so here Excel is the inaccurate one, and by more than the shapes probe's sub-branch suggests
   (all 4,602 of its 1 < b0 < 8 cells within 15 digits).
-Evidence: probes-numeric t2464-r2-bpser-small-shapes, -runs, -tiny, -tiny2, -gl, t2464-w2f-*; docs/research/t2464/
+Evidence: probes-numeric t2464-r2-bpser-small-shapes, -runs, -tiny, -tiny2, -gl, t2464-w2f-*, t3570-r5-bpser-lngamma-beta,
+-gl (excel-graph 2026-11-01); docs/research/t2464/r5-bpser-lngamma (`score_forms.py`, `residual.py`, `lshift.py`); docs/research/t2464/
 w3-series (`model.py`, `accum2.py`, `control2.py`), r2-bpser-small (`lib.py`, `zforms.py`, `bscore.py`,
 `tiny_noapser.py`), verify-r2-bpser-small/verify.out, old_sets.out.
 Implemented in: `functions/statistical/bratio/bpser.rs` `bpser` (T-2505) through `ported_tails`, for BETA.DIST's cdf
