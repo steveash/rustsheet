@@ -3,7 +3,7 @@ id: T-3638
 title: "CHISQ.DIST.RT and POISSON's upper tail at a subnormal result: kept or flushed (t3269-fresh-sweep A92)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
