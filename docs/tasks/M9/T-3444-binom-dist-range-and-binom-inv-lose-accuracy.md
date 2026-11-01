@@ -3,7 +3,7 @@ id: T-3444
 title: "BINOM.DIST.RANGE and BINOM.INV lose accuracy at a large n (statrs past the walk budget)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
