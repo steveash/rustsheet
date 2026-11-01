@@ -17,7 +17,12 @@ Our CUMPRINC has Excel's bits on the short ranges whose CUMIPMT is still off, so
 Since T-3118 CUMIPMT is `PMT·m - CUMPRINC` (financial.md "CUMIPMT and CUMPRINC over many periods"),
 and our PMT has Excel's bits (T-3014). Every CUMIPMT cell still off is our CUMPRINC 1 to 4 ulps from
 the x that solves `PMT·m - x = Excel's CUMIPMT`, amplified by the cancellation (an ulp of a principal
-of 1,000 is hundreds of ulps of an interest of 1 to 100). Cells: probes/fin-cumipmt-gate-edges A1-A4,
+of 1,000 is hundreds of ulps of an interest of 1 to 100). The fin-cumipmt-gate-edges cells as a cell-list line
+(gap triage 2026-11-01h: `exit_owners.py` reads hyphen spans by their ends only, decision 0136, so it listed the
+inner ones as owned by deferred T-3216 alone):
+- probes/fin-cumipmt-gate-edges.case.json (13): Sheet1!A1:A4, A6, A7, E3:E10, H3
+
+Cells: probes/fin-cumipmt-gate-edges A1-A4,
 A6, A7 (type 0, rates 6E-5 to 1.5E-4, periods 3-10; x is -3 to +1 ulps from ours), E3-E10 (type 1,
 8E-6 to 1E-4; -4 to +2 ulps), H3; fin-cumipmt-overflow-and-forms A8, A12 (x one ulp below our
 -1570.8656559792591), A14 (+2 ulps); fin-cumipmt-tiny-rate-structure F2 (x is Excel's own probed
