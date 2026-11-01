@@ -189,6 +189,15 @@ impl AggregateWalk {
         }
     }
 
+    /// A walk with nothing held yet, for a visitor that folds the numbers `rules` give
+    /// ([`Model::aggregate_number`]), so array elements that give none are not walked.
+    pub(crate) fn for_numbers(policy: AggregatePolicy, rules: NumberRules) -> Self {
+        AggregateWalk {
+            numbers: Some(rules.array),
+            ..AggregateWalk::new(policy)
+        }
+    }
+
     /// Whether visiting the array element `node` changes nothing: the walk's visitor folds
     /// numbers and `node` gives none under its rules ([`Model::aggregate_number`] for an
     /// [`ItemSource::ArrayElement`]), and no error is held.
@@ -559,10 +568,7 @@ impl Model {
     where
         F: FnMut(f64),
     {
-        let walk = AggregateWalk {
-            numbers: Some(rules.array),
-            ..AggregateWalk::new(policy)
-        };
+        let walk = AggregateWalk::for_numbers(policy, rules);
         self.walk_aggregate_args_with(args, cell, walk, |model, source, value| {
             // The hot path: a number in a referenced cell counts under every rule.
             if let (ItemSource::ReferencedCell, CalcResult::Number(number)) = (source, &value) {

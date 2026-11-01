@@ -1,0 +1,49 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "PERCENTOF over 3-D references: plain sums, an error inside a 3-D span against a direct error, and text and a zero total in a span (T-3653).",
+  "tags": [
+    "M8",
+    "math",
+    "percentof",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=PERCENTOF(S1!A1,S1:S2!A1)",
+        "A2": "=PERCENTOF(S1:S2!A1,S1:S2!A1:A2)",
+        "A3": "=PERCENTOF(1,S1:S2!B1)",
+        "A4": "=PERCENTOF(S1:S2!B1,NA())",
+        "A5": "=PERCENTOF(S1:S2!B1,1)",
+        "A6": "=PERCENTOF(S1:S2!C1,S1:S2!A1)",
+        "A7": "=PERCENTOF(S1:S2!A1,S1:S2!D1)",
+        "A8": "=PERCENTOF(NA(),S1:S2!A1)",
+        "A9": "=PERCENTOF(S1!B1:B2,S1:S2!A1)",
+        "A10": "=PERCENTOF(S2!B1,S1:S2!A1)",
+        "A11": "=PERCENTOF(\"x\",S1:S2!A1)"
+      }
+    },
+    {
+      "name": "S1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "B1": 3,
+        "C1": "x",
+        "D1": 0
+      }
+    },
+    {
+      "name": "S2",
+      "cells": {
+        "A1": 3,
+        "A2": 4,
+        "B1": "=NA()",
+        "C1": "5",
+        "D1": 0
+      }
+    }
+  ],
+  "expected": {}
+}
