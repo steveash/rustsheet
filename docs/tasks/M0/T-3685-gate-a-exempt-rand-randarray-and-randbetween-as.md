@@ -3,7 +3,7 @@ id: T-3685
 title: "Gate A: exempt RAND, RANDARRAY and RANDBETWEEN as composite once T-3631's invariant-cell probe lands (decision 0228)"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
