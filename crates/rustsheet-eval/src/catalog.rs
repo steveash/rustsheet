@@ -68,6 +68,10 @@ pub struct CatalogFunction {
     /// Why `v15` exempts it; required with `v15`.
     #[serde(default)]
     pub v15_reason: Option<String>,
+    /// What the function returns (`number`, `text`, `bool`, `any`, ...), when the catalog says;
+    /// Gate A's missing-table count reads `number` (SPEC-0029, "Gate A holds").
+    #[serde(default)]
+    pub returns: Option<String>,
     /// The parameters in order, for the argument-coverage census (T-0077).
     #[serde(default)]
     pub params: Vec<CatalogParam>,
@@ -186,6 +190,13 @@ impl Catalog {
             .get(name)
             .filter(|f| f.v15 == Some(V15::Exempt))
             .and_then(|f| f.v15_reason.as_deref())
+    }
+
+    /// The in-scope functions that return a number, by name: the functions Gate A needs a
+    /// reference table (or an exemption) for (SPEC-0029, "Gate A holds").
+    pub fn in_scope_numeric(&self) -> impl Iterator<Item = &CatalogFunction> {
+        self.in_scope_functions()
+            .filter(|f| f.returns.as_deref() == Some("number"))
     }
 
     /// Whether `name` is an in-scope function the oracle cannot evaluate.

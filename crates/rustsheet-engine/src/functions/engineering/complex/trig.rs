@@ -29,8 +29,11 @@ fn hyperbolic_exp_overflows(x: f64, y: f64) -> bool {
 /// `IMCOSH("710.4+1.5i")` is 1.17873946358278E+307+1.6621900184285E+308i, `IMSINH("709.5+1E-200i")`
 /// has real part 6.77493159657354E+307 where `IMSINH("709.5")` is 6.77493159657316E+307
 /// (probes/eng-im-overflow-edges A6, A14; eng-im-overflow-edges-2, T-2231). The exact cut between
-/// 709 and 709.0000000001 is not pinned.
-/// FITTED(T-2231, 84 cells, |x| 100..800 with a nonzero imaginary part; cut bracketed 709..709.0000000001)
+/// 709 and 709.0000000001 is not pinned. Re-validated on fresh sweeps (T-3525, decision 0188 R4):
+/// on probes-numeric/t3525-im-hyperbolic-log-band-sweep the log form gives 178 of the 180 cells with
+/// 709 < |x| < 710.5, the product form alone 2. For x < 0 Excel switches earlier, below |x| = 708.94
+/// (`IMSINH("-708.993723853194-0.284042075249253i")` is `#NUM!`), which this cut misses (T-3546).
+/// FITTED(T-3525, 617 cells, |x| 100..800 with a nonzero imaginary part; cut bracketed 709..709.0000000001 for x > 0)
 const HYPERBOLIC_LOG_CUT: f64 = 709.0;
 
 /// IMCOSH's (`sinh` false) or IMSINH's value past [`HYPERBOLIC_LOG_CUT`], `None` below the cut or
@@ -125,11 +128,15 @@ fn in_inverse_exp_band(x: f64) -> bool {
 /// Neither end is pinned (T-2797): Excel's lower switch lies between 0.01 (libm's digits,
 /// probes/t2535-imsinh-imcosh-kernel-sweep) and 0.0105 (the form's, probes/t2778-imsinh-sign-sweep),
 /// its upper one between 18.2 (t2778) and 100 (t2535); 20 is where the worksheet TANH turns to ±1
-/// (numbers.md).
-/// FITTED(T-2629, 306 cells, |x| 0.00012..100; cuts bracketed 0.01..0.0105 and 18.2..100)
+/// (numbers.md). Re-validated on a fresh sweep (T-3525, decision 0188 R4): with the band, the
+/// engine gives all 1,242 older cells with |x| <= 100 and 663 of the 700 fresh ones
+/// (probes-numeric/t3525-im-hyperbolic-fresh-sweep), against 998 and 634 with libm and the EXP
+/// pair alone; no cell on either side of a cut changes with the cut's place (0..0.01: 220 cells,
+/// 18.2..100: 110 cells), so neither cut is pinned further (docs/excel-semantics/engineering.md).
+/// FITTED(T-3525, 1942 cells, |x| 0.0001..100; cuts bracketed 0.01..0.0105 and 18.2..100)
 const INVERSE_EXP_LOW: f64 = 0.01;
 /// See [`INVERSE_EXP_LOW`].
-/// FITTED(T-2629, 306 cells, |x| 0.00012..100; cuts bracketed 0.01..0.0105 and 18.2..100)
+/// FITTED(T-3525, 1942 cells, |x| 0.0001..100; cuts bracketed 0.01..0.0105 and 18.2..100)
 const INVERSE_EXP_HIGH: f64 = 20.0;
 
 /// IMSIN, IMCOS, IMTAN, IMSEC, IMCSC and IMCOT of a real number `x` (imaginary part 0): `value` of

@@ -1,0 +1,41 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "DEC2BIN, DEC2HEX and DEC2OCT of empty text, a ref to =\"\" and a blank cell, with and without places (T-3498).",
+  "tags": [
+    "M9",
+    "engineering",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=DEC2BIN(\"\")",
+        "A2": "=DEC2BIN(\"\",4)",
+        "A3": "=DEC2BIN(Data!A2)",
+        "A4": "=DEC2BIN(Data!A2,4)",
+        "A5": "=DEC2BIN(Data!A1)",
+        "A6": "=DEC2BIN(Data!A1,4)",
+        "A7": "=DEC2HEX(\"\")",
+        "A8": "=DEC2HEX(\"\",4)",
+        "A9": "=DEC2HEX(Data!A2)",
+        "A10": "=DEC2HEX(Data!A2,4)",
+        "A11": "=DEC2HEX(Data!A1)",
+        "A12": "=DEC2HEX(Data!A1,4)",
+        "A13": "=DEC2OCT(\"\")",
+        "A14": "=DEC2OCT(\"\",4)",
+        "A15": "=DEC2OCT(Data!A2)",
+        "A16": "=DEC2OCT(Data!A2,4)",
+        "A17": "=DEC2OCT(Data!A1)",
+        "A18": "=DEC2OCT(Data!A1,4)"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A2": "=\"\""
+      }
+    }
+  ],
+  "expected": {}
+}
