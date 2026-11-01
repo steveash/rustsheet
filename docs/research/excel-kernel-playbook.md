@@ -127,6 +127,11 @@ The oracle is the bottleneck, so every cell should answer a question.
   ranges. Every method that worked was validated this way first, and the false peaks were caught this way.
 - **Published sources and memory are no evidence.** Ten-plus libraries were swept and none matched any kernel.
   Use them for structure hints (break points, degrees), never for coefficients.
+- **Read oracle values with a round-trip parser.** `serde_json` without its `float_roundtrip` feature (the
+  engine's dev-dependency has none) misreads some doubles by an ulp: `-999.9487113072481` came back as
+  `...248`. A fit harness that read the oracle JSON that way scored every form against corrupted values, and a
+  positive control (our PPMT, bit-exact in the eval) failed on 194 of 480 cells until the values were passed as
+  strings and parsed with `str::parse::<f64>` (T-3552). Python's `json` is exact.
 - **Error-curve shape is a rounding fingerprint, not approximation error.** The "±3-ulp drift" in the ERFC tail
   was a staircase from binade crossings of Horner intermediates. Only exact simulation explains it.
 

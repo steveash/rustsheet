@@ -3,7 +3,7 @@ id: T-3646
 title: "Survey the en-US date text shapes DATEVALUE accepts and match them through the shared date-text reader"
 milestone: M6
 lane: functions-date
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -32,12 +32,29 @@ functions/date_and_time.rs `fn_datevalue` and the shared parser it calls; `rg` f
 any rule). Fix the shared reader, never DATEVALUE alone.
 
 ## Acceptance criteria
-- [ ] A probe case (excel-graph) covers every shape family above through DATEVALUE, VALUE and YEAR.
-- [ ] The engine matches every probed cell; dates.md's grammar section states each accepted and refused family.
-- [ ] Shapes T-3299 owns are left to it.
-- [ ] Every quirk found is written up in docs/excel-semantics/dates.md in the same PR, with its probe cells cited.
-- [ ] `make check` green; eval known failures only shrink (baseline updated); reviewers approve.
+- [x] A probe case (excel-graph) covers every shape family above through DATEVALUE, VALUE and YEAR.
+- [x] The engine matches every probed cell; dates.md's grammar section states each accepted and refused family.
+- [x] Shapes T-3299 owns are left to it.
+- [x] Every quirk found is written up in docs/excel-semantics/dates.md in the same PR, with its probe cells cited.
+- [x] `make check` green; eval known failures only shrink (baseline updated); reviewers approve.
 
 ## Out of scope
 - Typed-entry cell formats for date text (typed input work).
 - 1904 workbooks.
+
+## Outcome
+Probed 152 date-text shapes through DATEVALUE, VALUE and YEAR (plus TIMEVALUE in the second case):
+probes/date-text-shape-survey (120 rows) and probes/date-text-shape-survey-2 (32 rows), excel-graph
+2026-11-01; full dates use 2025 so no clock-year reading can pass as a match. Before the fix the
+engine missed 42 cells of the first case (and the follow-up rows of the same families) in four families, all in the shared reader (no DATEVALUE-only change):
+- `/` and `-` mixed in one date are accepted (`parse_separated`);
+- a one-digit year after a month name is 200x (`parse_year`, which now also serves the numeric form);
+- a clock may come before the date (`"10:00 7/1/2025"`, `"10 AM 7/1/2025"`; `parse_date_clock_parts`);
+- only the space character is whitespace: DATEVALUE no longer trims tabs, line breaks, no-break or
+  ideographic spaces, and none of them separates words or the date from its clock (`parse_date`,
+  `parse_datevalue_text`, `parse_time_string`).
+Everything else in the survey (ISO, leading zeros, year bounds, overflow, weekday, ordinal and
+period forms, inner spaces, clock forms) already matched. dates.md's grammar section gained a
+"Shape survey" bullet listing every accepted and refused family. Glued month-name shapes were left
+to T-3299.
+Eval delta: 2 new probe cases, 488 cells, all pass; no regressions; known failures unchanged elsewhere.
