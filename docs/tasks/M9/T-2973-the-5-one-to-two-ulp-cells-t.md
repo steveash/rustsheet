@@ -22,6 +22,11 @@ T-2733 (decision 0083's ulp-regression allowance) moved these cells by 1 or 2 ul
 - gen-m9/5ded7594e597e31e Calc!A123 `DURATION(37952,44607,123456789.123,Data!$C3,1,2)`: 2.1997586986000424 vs ...043 (1 ulp).
 - probes/yield-deep-discount-sweep S!F3 `YIELD(39681,45662,3,10,102,4)`: 13.005294552150495 vs ...497 (1 ulp; moved
   when T-2733 merged `main` at f8c8c86e4).
+- probes/yield-below-par-sweep (added on `main` by T-2747; moved when T-2733 merged `main` on 2026-11-01), all YIELD
+  at 39681-45662, redemption 102, frequency 4, equal to 15 digits: Y!D9 `YIELD(39681,45662,21,5,102,4)`
+  18.62915713072287 vs ...874 (1 ulp); Y!F3 `YIELD(39681,45662,3,10,102,4)` 13.005294552150495 vs ...497 (1 ulp);
+  Y!F12 `YIELD(39681,45662,21.75,10,102,4)` 18.094850950317586 vs ...58 (2 ulp); Y!G14
+  `YIELD(39681,45662,22.25,15,102,4)` 17.602580740497878 vs ...88 (1 ulp).
 probes/yield-newton-domain P!B7 (YIELD) also moved by an ulp before T-2733 merged `main`; it passes on top of
 T-3215's YIELD start, so this task does not own it.
 DURATION's redemption exponent written `N-1+DSC/E` instead of `DSC/E+N-1` moves 3 more cells (coupdays-feb-month-end

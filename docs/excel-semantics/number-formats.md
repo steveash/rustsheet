@@ -87,13 +87,26 @@ below, T-1450), non-ASCII letters (only `ü` is probed; the engine treats every 
     `"ss [s]"`, `"s.0 [s]"`, with or without General. A smaller unit first is valid: `TEXT(12345.678,"s [h]")` =
     "19 472", `TEXT(5,"ss [m] General")` = "00 720 0.5", `TEXT(5,"mm:ss [h] General")` = "00:00 12 0.5". A month `mm`
     is no clock token: `TEXT(5,"mm [h] General")` = "01 12 0.5".
-  - Still unimplemented: fraction digits after `[h]` print (`TEXT(12345.678,"[h].0 General")` = "296296.2 2.500000331",
-    ours `#VALUE!`; T-3575).
+  - **Fraction digits after an hour or minute token** (T-3575). `.0`, `.00`, `.000` right after any hour or minute
+    token (`h`, `hh`, `m`, `mm`, `[h]`, `[hh]`, `[m]`, `[mm]`), with or without a colon or space before it, is the
+    fraction of the second, as after `s`; four zeros are `#VALUE!` (`"h.0000"`, as `"s.0000"`). The digit is the
+    serial's own fraction of a second: on 12345.678 (16:16:19.2) `"[h].0"` = "296296.2", `"[h].00"` "296296.20",
+    `"[h].000"` "296296.200", `"[m].0"` "17777776.2", `"[hh].0"` "296296.2", `"h.0"` "16.2", `"mm.0"` "16.2"; on
+    0.1234567 (2:57:46.659) `"h.000"` "2.659", `"hh.0"` "02.7", `"mm.00"` "57.66", `"[mm].0"` "177.7", `"h:mm.0"`
+    "2:57.7", `"hh:mm.0"` "02:57.7", `"h mm.0"` "2 57.7", `"h:mm.000"` "2:57.659", `"[h]:mm.00"` "2:57.66",
+    `"h:mm.0 AM/PM"` "2:57.7 AM"; `TEXT(5,"[h].0")` = "120.0", `"mm.0"` "00.0", `TEXT(0.6,"h.0 AM/PM")` = "2.0 PM";
+    `TEXT(12345.678,"[h].0 General")` = "296296.2 2.500000331", `TEXT(5.25,"[h].0 General")` = "126.0 0.5".
+  - **`m`/`mm` before `.0` is always a minute**, wherever it stands, even beside date tokens with no hour or colon:
+    on 12345.678 (1933-10-18) `"mm.0 yyyy"` = "16.2 1933", `"mm.0 d"` "16.2 18", `"yyyy mm.0"` "1933 16.2",
+    `"d mm.0"` "18 16.2", `"m.0"` "16.2", `"mm.0 General"` "16.2 2.500000331". Such a minute does not count for "`mm`
+    after a minute is a month" below: `TEXT(0.1234567,"mm.0 h:mm")` = "57.7 2:57" (the second `mm` is still a minute),
+    and `"mm.0 h"` = "57.7 2", `"mm.0 ss"` = "57.7 46".
   - `TEXT(5,"d 0 General")` is `#VALUE!` (a digit placeholder beside a date token), and a literal comma in a date
     section stays a literal: `TEXT(45000,"mmm d, yyyy General")` = "Mar 15, 2023 0.499999803".
   Evidence: probes/t3378-general-in-date-section (64 cells) and t3378-general-in-date-section-1904 (7 cells),
   probes/t3419-elapsed-after-date-general (30 cells), t3419-elapsed-after-date-b (25 cells) and
-  t3419-elapsed-after-clock-c (14 cells), excel-graph 2026-10-31.
+  t3419-elapsed-after-clock-c (14 cells), t3575-fraction-after-elapsed (15 cells) and t3575-fraction-after-elapsed-b
+  (30 cells), excel-graph 2026-10-31 and 2026-11-01.
 - A one-section format holding `@` and other text applies General to a number: `TEXT(5,"x@")` = "5".
 Evidence: probes/text-format-bare-literals A1-A31, A57-A76 (excel-graph, 2026-10-15, T-1262); gen-m6/2c1a6e93a1974f48
 Calc!A15, gen-m6/63012866a9d8b7db Calc!A3 (excel-graph, 2026-10-09, T-1239).
@@ -371,7 +384,7 @@ Rule (observed, ElapsedFormatTests, a 1904-date-system workbook):
 - Past 9999-12-31 a fraction of a second is #VALUE! with or without an elapsed token:
   `TEXT(1234567890,"[mm]:ss.0")` and `TEXT(1234567890,"h:mm:ss.00")` (gen-m10 810fee377a42575b
   T!A16, b4f66526f822ff2c T!A20; fbdab487cb11409e T!A25 on 123456789012345). Four or more zeros
-  (`s.0000`) are unprobed; the engine keeps them #VALUE!. Also unprobed: where that cutoff sits
+  (`s.0000`, `h.0000`) are #VALUE! (probes/t3575-fraction-after-elapsed-b A6, A27). Unprobed: where that cutoff sits
   (the engine uses serial 2958466, also in a 1904 workbook) and whether a date token rolls over
   with a fraction that rounds past midnight (the engine's does not); T-2135 probes them.
 - A negative value prints one leading "-" before any literal text:
@@ -556,6 +569,8 @@ token came before it. `h:mm|yyyy-mm-dd` on 0.25 is "6:00|1900-01-00" and on 4500
 is "06 00|00 01"; `mm:ss|yyyy-mm` is "00:00|1900-01". With an hour but no minute yet, `mm` is a minute even after a
 date token: `h|yyyy-mm` is "6|1900-00".
 Evidence: probes/mm-after-time-and-date-token (22 cells, excel-graph 2026-10-30), probes/t2779-hebrew-saka-more E7.
+A minute read only because `.0` follows (`mm.0`) does not set it: `mm.0 h:mm` on 0.1234567 is "57.7 2:57"
+(probes/t3575-fraction-after-elapsed-b A30, T-3575).
 Status: VERIFIED (excel-graph). Implemented in: `minute_read` (formatter/parser.rs). Unprobed: `h:mm:ss mm`.
 Tasks: T-2961
 

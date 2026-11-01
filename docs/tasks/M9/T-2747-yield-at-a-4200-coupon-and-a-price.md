@@ -32,12 +32,14 @@ over rate and price.
 - [x] A probe case locates where Excel's YIELD turns to `#NUM!` over rate and price at this bond, and the rule is in
       docs/excel-semantics/financial.md.
 - [x] P!A214 and gen-m9/44a8841352dc48e9 A318 leave the baselines (`make eval-baseline`), with no new known failures.
+      (Met in T-2391. The new probe cases add new-coverage known failures only; see the Outcome.)
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - YIELD above par (T-2391), the Newton start's last digits (T-1592, T-2741).
 
 ## Outcome
+First PR (#2604): the cut far below par.
 probes/yield-deep-discount-sweep (160 cells) sweeps `YIELD(39681,45662,R,P,102,4)` over 20 coupon rates R = 1 to 100
 and 8 prices P = 1 to 20; probes/yield-deep-discount-cut (36 cells) bisects R = 20.5 to 24.5 in steps of 0.5 at P = 1,
 3.14159, 10 and 20 (both excel-graph, 2026-10-31). Excel computes at every sampled R up to 21 and is `#NUM!` from 23.5;
@@ -47,3 +49,20 @@ iterate after 100 steps) reproduces all 196 cells in type with no code change; 1
 and two 100th iterates 5e-14 and 6e-15 relative off, all listed in T-2788 (the open owner of YIELD's last digits). The
 rule is in financial.md "YIELD's #NUM! cells and its 100-step cap". Eval delta: probes +196 checked, +146 passing, 50 new
 known failures, all in the two new cases (no existing case's cells change).
+
+Second PR (#2608), the check-100 stop:
+- probes/yield-below-par-sweep (184 cells: `YIELD(39681,45662,R,P,102,4)`, rates 1 to 100, prices 1 to 20; excel-graph,
+  2026-10-31): T-2391's Newton already matched 183 in type (values within 2.5e-12 relative). Excel is `#NUM!` from
+  rate 24 up at every price and from about 21.5 (price 1) to 23 (price 20); between, the first step jumps to a
+  negative yield and the climb back can outlast 100 steps, so the value is the 100th iterate, a negative non-root
+  (A10 -1.853, F13 -0.852, H17 -2.282).
+- The 184th, H16 (`YIELD(39681,45662,22.75,20,102,4)`), is `#NUM!` in Excel where our Newton meets its step test on
+  the 100th and last check. probes/yield-newton-step-cap (15 cells, three prices, rates where our uncapped Newton
+  converges on checks 98 to 102) confirms it: Excel is `#NUM!` on exactly the check-100 cell of each column and
+  agrees with ours on the other 12. `compute_yield` now refuses a check-100 stop (`NewtonStop::converged_on`);
+  ODDFYIELD, the same Newton, keeps its behavior pending evidence (follow-up T-3625).
+- Rule in financial.md "YIELD's #NUM! cells and its 100-step cap". Eval: the two new probe cases add 199 cells; with
+  the fix every cell matches in type; probes known failures 3203 -> 3272 (re-recorded on main after #2604), 0 regressions, 130 new passing cells
+  including all three check-100 cells. The 69 new-coverage failures: 60 NumericUlp cells and Y!B1 (a root about 5
+  ulp off), the last ulps at the root (T-2788); and 8 NumericClose cells, up to 2.5e-12 relative, all 100th iterates
+  of the climb back from a negative yield (follow-up T-3486).

@@ -166,6 +166,8 @@ They are the exponent order's (k + DSC/E from k = 0), which gains 73 + 44 DURATI
 two sweeps; T-2972 owns the DURATION/MDURATION residue. probes-numeric is ungated, so neither case adds baseline
 lines.
 
-*Eval (gated)* after merging `main` (fa1382038) and the round-2 change: probes known failures 3284 -> 2862 (427 fixed),
-gen-m9 2859 -> 2843 (17 fixed); the six cells listed above recorded under decision 0083's allowance (T-2973);
-0 other regressions; the round-2 change moves no gated cell.
+*Eval (gated)*, final, after merging `main` again on 2026-11-01 (the round-2 change moves no gated cell): probes
+known failures 3351 -> 2889 (471 fixed), gen-m9 2850 -> 2834 (17 fixed). Recorded under decision 0083's allowance
+(numeric, <= 4 ulp, none visibly off, owned by T-2973): the six cells above plus four YIELD cells of
+probes/yield-below-par-sweep, a case `main` added since (Y!D9, Y!F3, Y!F12, Y!G14; 1, 1, 2, 1 ulp, equal to 15
+digits). 0 other regressions. (The counts in the bullets above are earlier pre-merge snapshots.)
