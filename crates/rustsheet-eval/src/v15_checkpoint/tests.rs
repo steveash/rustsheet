@@ -452,3 +452,57 @@ fn desktop_owned_cells_leave_the_phase1_rate_apart_from_listed_ones() {
         "{md}"
     );
 }
+
+#[test]
+fn phase1b_cells_leave_the_every_suite_rate_but_gate_b_counts_them() {
+    // Decision 0227: ABS's two off cells are R1(c) Phase 1b evidence, so the every-suite rate
+    // (which M9's exit row reads) leaves them out and is met; Gate B still counts them, so ABS is
+    // below Gate B's rate. They stay visibly off in `visible`.
+    let catalog = Catalog::from_functions([func("ABS", Some("test"))]);
+    let mut cells = excel("ABS(1)", 998);
+    cells.push(at(off("ABS(1)"), "B1"));
+    cells.push(at(off("ABS(1)"), "B2"));
+    let mut g = case("gen-m5/a", 1);
+    g.cells = cells;
+    let results = [g];
+    let mut report = RunReport::build("e", &results, &[], &catalog);
+    report.r1c = R1cCells::from_classes([
+        ("gen-m5/a!S!B1", R1c::Phase1b),
+        ("gen-m5/a!S!B2", R1c::Phase1b),
+    ]);
+    let v = summarize(
+        &catalog,
+        &results,
+        &report,
+        &["gen-m5"],
+        &Phase1Exceptions::default(),
+    );
+    let abs = v
+        .functions
+        .iter()
+        .find(|f| f.name == "ABS")
+        .cloned()
+        .unwrap_or_default();
+    assert_eq!(
+        (
+            abs.rate_cells,
+            abs.rate_visible,
+            abs.rate_phase1b,
+            abs.visible
+        ),
+        (998, 0, 2, 2)
+    );
+    assert!(abs.meets_rate);
+    assert_eq!(v.phase1b_left_out, 2);
+    let gate = v.gate_b.functions.iter().find(|f| f.name == "ABS");
+    assert_eq!(
+        gate.map(|f| (f.rate_cells, f.rate_visible, f.meets_rate)),
+        Some((1000, 2, false))
+    );
+    let mut md = String::new();
+    write_markdown(&v, &mut md);
+    assert!(
+        md.contains("(decision 0227): 2 visibly-off cells (ABS 2); Gate B still counts them"),
+        "{md}"
+    );
+}

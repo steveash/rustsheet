@@ -78,6 +78,12 @@ TEXT_SUFFIX = " text"
 WHOLE_CASE = "*"
 # The class of an R3 cell where the engine returns the math (`r1c_left_out`, decision 0188 R3).
 R3_PASS = "r3_pass"
+# The class of a cell where the engine and Excel are both within 1e-9 of the math (decision 0188
+# R1(c)); M9's every-suite function rate leaves it out too (decision 0227).
+PHASE1B = "phase1b"
+# The classes the function rate leaves out (decisions 0188 R3 and 0227); Gate B leaves out only
+# the R3 passes.
+RATE_LEFT_OUT = (R3_PASS, PHASE1B)
 PASSING = ("pass", "deviation")
 # Spec cases are `<name>.case.json` files; tasks name them without the suffix.
 SPEC_SUFFIX = ".case.json"
@@ -162,6 +168,13 @@ def counted(name: str, left_out: dict[str, str], gate_b: bool) -> bool:
     return cls is None or (gate_b and cls != R3_PASS)
 
 
+def counted_in_rate(name: str, left_out: dict[str, str]) -> bool:
+    """Whether M9's every-suite function rate counts the visibly-off cell `name`: it leaves out
+    the R3 passes (decision 0188 R3) and the Phase 1b evidence (decision 0227), not the M14-owned
+    probe-row cells, which decision 0143 already takes out of the rate's own count."""
+    return left_out.get(name) not in RATE_LEFT_OUT
+
+
 def counted_cell(case: str, key: str, left_out: dict[str, str], gate_b: set[str]) -> bool:
     """`counted` for cell `key` of `case`, with Gate B's reading when the case's suite is one of
     Gate B's suites (`gate_b`): the one rule of `--all-off` and `--unattributed`."""
@@ -177,7 +190,7 @@ def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
     visibly-off lists are the report's (decision 0135): the exit row's `gen_visibly_off_cells`,
     the function-scope row's `visibly_off` less the cells decision 0188 R1(c) leaves out
     (`r1c_left_out`), the probe row's `r1c_off_cells`, and the attributed cells of the functions
-    below the rate less the R3 passes (T-3428)."""
+    below the rate less the R3 passes (T-3428) and the Phase 1b evidence (decision 0227)."""
     exit_row = next((r for r in report.get("milestone_exit") or [] if r.get("milestone") == milestone), None)
     if exit_row is None:
         raise ValueError(f"report.json has no milestone_exit row for {milestone}")
@@ -225,11 +238,12 @@ def exit_cells(report: dict[str, Any], milestone: str) -> list[ExitCell]:
             case, key = split_cell_name(str(name))
             out.append(ExitCell(CALC_SUITE, case, key, ""))
 
-    # The functions below the Phase 1 rate (M9, decision 0146 item 3): their attributed cells.
+    # The functions below the Phase 1 rate (M9, decision 0146 item 3): their attributed cells,
+    # less what the rate itself leaves out (decision 0227).
     below = set(exit_row.get("below_rate_functions") or [])
     for o in attributed_off_cells(report):
         c = o.cell
-        if c.criterion in below and counted(f"{c.case}!{c.key}", left_out, True):
+        if c.criterion in below and counted_in_rate(f"{c.case}!{c.key}", left_out):
             out.append(ExitCell(f"{RATE_PREFIX}{c.criterion}", c.case, c.key, c.formula))
 
     probe_row = exit_row.get("probe_row") or milestone
