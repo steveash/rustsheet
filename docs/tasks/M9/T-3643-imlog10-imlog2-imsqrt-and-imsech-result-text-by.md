@@ -3,7 +3,7 @@ id: T-3643
 title: "IMLOG10, IMLOG2, IMSQRT and IMSECH result text by region: sweep both parts across the domain and match Excel's text"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
