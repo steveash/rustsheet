@@ -122,7 +122,10 @@ for workers and merger alike. The modes:
 | `train` | `mark-ready`, then move on | merges (section 4) |
 
 Changing the mode (decision record of T-2996):
-- **To `lock`** (the emergency off-switch): any agent, in any mode. A **flip PR** is a PR whose
+- **To `lock`** (the emergency off-switch): any agent, in any mode. *As built (decision 0224):*
+  at once only on a correctness failure (`main` got a tree no train tested, or a train merged
+  something CI rejected); a liveness problem (a stranded PR, latency) escalates first and flips
+  only with the owner's approval ("Daily thresholds" under Metrics). A **flip PR** is a PR whose
   only change sets `mode = "lock"`. It may be squash-merged at once, by any agent, with no
   reviewers, under the fair lock. Waiving the protected-path review is deliberate and works in
   one direction only: turning the train off can never make a merge less safe than today's flow.
@@ -317,7 +320,15 @@ option records `prev:` and checks mechanically that the PR's own diff did not ch
   a correct list (decision 0207). The visible-parity lock `eval/baseline/visible-parity.txt` is
   such a list too. A merge may not leave a case that `main` has above `main`'s line for it, and
   catch-up merges a conflict on it three-way per case. A PR from before the lock may delete the
-  retired `visible-parity.json` once `main` has none (decision 0219).
+  retired `visible-parity.json` once `main` has none (decision 0219). *As built (decision 0224):*
+  or, with the same allowances, the head's tree is the merge of `main` with `prev` renumbered as
+  `make renumber` renumbers it: the PR's own task or decision files whose ids `main` has moved to
+  fresh ids that neither `main` nor `prev` has and the id registry has claimed, and the old id
+  replaced by the new one only under `docs/`, in the files the
+  PR added and in the lines it added (a line the PR added elsewhere that names the old id
+  refuses). The rule rebuilds that tree with the tool's own function
+  and compares whole trees, so a substitution in a line `main` owns, or any other edit, breaks
+  the carry.
 
 Any other push needs the reviewers that the change concerns to run again, as today.
 
@@ -508,6 +519,20 @@ harmless: the lock's FIFO queue serialises them, and the later pass finds nothin
 The fallback replaces today's "wait for the lock and merge it yourself" as the safety net.
 
 **The steward** ends its daily run with one pass, after marking orphaned PRs ready.
+
+**The janitor** (*as built, decision 0224*). After its last `make merge-train` run, each merger
+routine run runs `make janitor STEP=1` once (`scripts/merge_janitor.py`, `train` mode only; its
+writes are step-mode actions, its pushes direct; within a 25-min budget, after which no catch-up or
+renumber starts; PRs labelled `merge-hold` are skipped). On PRs whose
+branch is idle (time since the current head was pushed, from the activity API) it:
+- runs `make catch-up` on a PR ejected for `conflict with main` whose conflicts are only in the
+  eval-gated lists, and `make renumber` on one ejected for an id collision, after 1 h idle. It
+  comments a `merge-janitor v1` note naming the pushed head and does not wait for CI: a later run
+  marks the PR with `CARRY` once CI on that head is green;
+- comments once per head that an ejected PR it cannot clear (`ci-red`, a real conflict, a refused
+  step, red CI on its own push) is orphaned, after 4 h idle;
+- re-marks a PR whose marker names an older head, after 2 h idle, when the head is a carry-over
+  merge and CI is green, and otherwise removes `ready-to-merge`, as V2 does.
 
 **Lock ownership.** The merger holds the ordinary merge lock with `pr: train`. `prs` lists the
 batch, or is empty between batches. The merger waits for the lock with `merge_lock.py wait`, like
@@ -973,12 +998,13 @@ The merger keeps no state between runs: every step is derived from `origin` and 
   other PR was ejected) or conflicts with `main`, and is then ejected. Decision 0121 is
   unchanged. In `train` mode no worker merges `main` in just to be current.
 - **Id collisions (0016, 0028, 0121).** Found before CI (step 4). The later PR is **ejected** and
-  renumbers its own file per 0121 (2). The merger does not renumber:
-  - a renumber is a push to another session's branch after review;
-  - it can race a live session;
-  - it is not mechanical (`depends_on` lists, links and decision citations change too).
-
-  Open question 3 asks the owner about this.
+  renumbers its own file per 0121 (2). The merger itself does not renumber. *As built (decision
+  0224, the owner's answer to open question 3):* `make renumber` does it mechanically, and the
+  janitor (section 3) runs it once the PR's branch has been idle 1 h, so no live session is
+  raced. It reserves fresh ids in the id registry, and rewrites the old id only under `docs/`, in what the PR
+  added, so `depends_on` lists, links and citations the PR wrote follow and `main`'s lines do not;
+  an id in a line the PR added outside `docs/` (it may be code) refuses the renumber.
+  The carry rule accepts exactly that shape (section 2, "Carry-over"), so no reviewer runs again.
 - **Docs-only and task-only PRs.** Eligible like any other PR. Task-only PRs are exactly the ones
   that collide on ids (0075). Their marker says `task: none`, and V5's task-file check is skipped.
   A diff whose every path is a `.md` file under `docs/tasks/` needs no reviewer (decision 0231):
@@ -992,7 +1018,9 @@ The merger keeps no state between runs: every step is derived from `origin` and 
   - In `train` mode, the steward's conditions for merging an orphaned PR become its conditions for
     marking one ready: the age and idle clocks, not a draft, not blocked, CI green, its own review
     panel, and the task done with an Outcome. The 0028 up-to-date condition drops out, because
-    the train provides it. A PR its worker already marked ready is not orphaned.
+    the train provides it. A PR its worker already marked ready is not orphaned. *As built
+    (decision 0224):* in `train` mode the age clock is 6 h idle instead of 24 h open, and
+    `claude/*` branches count as well as `agent/*`.
   - In `lock` mode (including after an emergency flip), the steward may at once merge a PR
     labelled `ready-to-merge` per the per-PR flow, or remove the label, without waiting for the
     24 h orphan clock. The marker already records what that clock stood in for: finished,
@@ -1110,7 +1138,10 @@ A push trigger is three lines and tests exactly the sha the merger built.
   - set labels and post comments.
 
   It never pushes to `main` or to a PR branch it did not create, and it never merges a revert
-  PR that review has not marked ready.
+  PR that review has not marked ready. *As built (decision 0224):* the merger routine's janitor
+  step pushes a merge of `main` to an idle ejected PR's branch (`make catch-up`, `make
+  renumber`, never forced) and reserves fresh ids in the id registry for a renumber. The carry
+  rule then checks that push mechanically before any verdict is carried over.
 - **Who may push train branches.** All agent sessions push as the owner's account, so no ruleset
   can tell the merger apart today. The merger's own checks are the safeguard: green counts only
   for the sha it built in this run. The owner can still add a ruleset that restricts creating
@@ -1466,12 +1497,23 @@ figure states the breakage rate p it assumes.
 | share of time the lock is held | 60% | reported (simulated 34–45% at 3.8/h and 56–71% at 7/h, p = 0.09) |
 
 **Daily thresholds (steward, T-2989).** Each daily run computes p90 latency, stranded PRs, the
-red-train rate and the bisection runs with `make merge-train-stats`. Any of the following
-triggers the emergency switch to `lock` (section "The switch") and a P0:
+red-train rate and the bisection runs with `make merge-train-stats`. *As built (decision 0224):*
+only a correctness failure triggers the emergency switch to `lock` (section "The switch") and a
+P0 at once:
+- any tree-check failure (`main` got a tree no train tested: a revert PR or a P0 mismatch), or a
+  train that merged something CI rejected.
+
+These escalate instead:
 - p90 latency over 60 min on any day;
 - more than 2 trains in a day needing more than 6 CI runs;
-- a stranded PR;
-- any tree-check failure.
+- a stranded PR: marked ready on its current head (the newest marker names the PR head), not
+  ejected, unmerged after 2 h. Ejected PRs, PRs waiting on their worker and PRs whose marker
+  names an older head never count, nor do PRs labelled `merge-hold`.
+
+Escalation: the steward runs one `make merge-train TRAIN=1` pass and `make janitor STEP=1` and files a
+P0 with the cause, with no flip. The janitor checks every merger run: when the oldest stranded PR
+was marked 8 h ago and nothing has merged in the last 6 h, it files a P0 for the owner (once per
+head of that PR). The flip to `lock` then needs the owner's approval. `make merge-train-stats` marks each trigger `-> escalate` or `-> flip to lock`.
 
 ### Rollback
 - **Fast:** any agent opens the one-line flip PR that sets `mode = "lock"`, labels it
@@ -1496,7 +1538,9 @@ triggers the emergency switch to `lock` (section "The switch") and a P0:
    train cannot merge PRs 2..n of a batch with it on.
 3. **Renumbering by the merger.** Should the merger renumber a colliding task or decision file
    itself when the PR's branch has been idle 2 h or more (no live session), instead of ejecting
-   it? That saves a resume, at the cost of an unreviewed push to that branch.
+   it? That saves a resume, at the cost of an unreviewed push to that branch. *Answered by the
+   owner (decision 0224):* the merger still ejects, and the janitor renumbers after 1 h idle with
+   `make renumber`, a push the carry rule checks mechanically.
 4. **Batch size.** The cadence sets the batch size, not the cap. With 2–3-min polling, a batch
    holds the PRs that became ready since the last one: about 1.2 at 3.8/h and 1.5 at 7/h. The
    cap of 5 matters only when a backlog builds up (an outage, or a long bisection). A larger cap

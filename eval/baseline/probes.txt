@@ -4156,7 +4156,6 @@ F	probes/t3348-rate-fv-nonzero.case.json	Sheet1!A175
 F	probes/t3348-rate-fv-nonzero.case.json	Sheet1!A180
 F	probes/t3348-rate-fv-nonzero.case.json	Sheet1!A185
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A1
-F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A10
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A12
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A13
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A14
@@ -4175,7 +4174,6 @@ F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A26
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A27
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A28
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A29
-F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A3
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A30
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A31
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A32
@@ -4191,10 +4189,6 @@ F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A42
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A43
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A44
 F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A5
-F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A6
-F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A7
-F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A8
-F	probes/t3349-t-inv-2t-near-one.case.json	Calc!A9
 F	probes/t3350-chisq-inv-huge-df.case.json	S!A10
 F	probes/t3350-chisq-inv-huge-df.case.json	S!A100
 F	probes/t3350-chisq-inv-huge-df.case.json	S!A102
@@ -5424,7 +5418,6 @@ F	probes/table-edits/table-insert-row-this-row-inside-data.case.json	F!G5
 F	probes/table-edits/table-insert-row-this-row-inside-data.case.json	F!G6
 F	probes/text-locale-calendars.case.json	S!A140
 F	probes/text-locale-calendars.case.json	S!A26
-F	probes/typed-mixed-fraction-number-format.case.json	Sheet1!B15
 F	probes/xirr-back-dated-stop.case.json	Sheet1!A31
 F	probes/xnpv-empty-values-cell.case.json	Sheet1!C8
 F	probes/yield-below-par-sweep.case.json	Y!A10
@@ -5485,4 +5478,3 @@ TC	probes/t2932-b2-calendar-twice.case.json	5
 TC	probes/t3029-b2-calendar-weekday.case.json	3
 TC	probes/t3101-b2-calendar-names.case.json	3
 TC	probes/typed-mixed-fraction-number-format.case.json	31
-TF	probes/typed-mixed-fraction-number-format.case.json	Sheet1!A15
