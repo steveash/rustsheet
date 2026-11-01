@@ -183,6 +183,17 @@ pub struct TableSpec {
     /// `Txn::add_table_with_totals`, T-1671).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub totals_row: bool,
+    /// `false`: the table has no header row; its data starts on the first row of `range` and its
+    /// columns are `Column1`, `Column2`, ... (T-3260; the engine adapter adds it with
+    /// `Txn::add_table_with_rows`).
+    #[serde(default = "crate::suite::default_true")]
+    pub header_row: bool,
+    /// Calculated columns as spec2xlsx writes them (`calculatedColumnFormula`, T-2969): column
+    /// letter to its formula, with or without `=`, in file form (`T[[#This Row],[Col]]`): the
+    /// adapter does not translate a `[@Col]` shorthand and refuses one. The engine adapter marks
+    /// each with `Txn::set_table_column_formula` (T-3033).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub calculated: BTreeMap<String, String>,
 }
 
 /// A what-if data table in a spec sheet: `ref` holds its result cells; `row_input` alone is a

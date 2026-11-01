@@ -41,6 +41,7 @@ outside it; or the forms tried are recorded in docs/excel-semantics/statistics.m
 - Cells:
 - probes-numeric/t3349-t-inv-2t-sweep.case.json (21): Calc!A122, A143, A146, A149, A152, A160, A173, A174, A178, A187, A191, A193, A204, A205, A212, A213, A218, A233, A234, A248, A250
 - probes/t3349-t-inv-2t-near-one.case.json (1): Calc!A5
+- Split (T-3229 check): probes/t3349-t-inv-2t-near-one A5 is also listed by T-3592, which owns it.
 
 ## Acceptance criteria
 - [ ] The probes/t3349-t-inv-2t-near-one Calc!A5 known-failure line disappears from eval/baseline/probes.txt with no

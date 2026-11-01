@@ -1,0 +1,3 @@
+# T-3356 fixture
+accuracy/EXP/s1!Calc!A1	T-3356	fixture: a known failure
+accuracy/EXP/s1!Calc!A2	T-3356	fixture: a stale line (the point passes)

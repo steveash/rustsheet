@@ -32,6 +32,13 @@ MAX_FORMULAS = 200
 ROW_STRIDE = 3
 DATA_ROWS = 12
 DATA_COLS = 5
+# Rows between formulas of a `dynamic_array` function (T-3497): its result can be as tall as every Data cell in
+# one column (TOCOL or WRAPROWS(..., 1) over the whole DATA_ROWS x DATA_COLS block), so each formula gets that
+# many empty rows below it and never collides with the next one (`#SPILL!` from the layout would be scored).
+# Such a case has no `check` list, so every cell the oracle records is scored: the anchors and each spill member
+# Excel fills (the oracle records them all), while the spill-extent check (T-1660) scores any extra cell the
+# engine fills.
+SPILL_ROW_STRIDE = DATA_ROWS * DATA_COLS + 1
 # Column G holds one Data cell per class (the second call's value); column H stays empty for `blank`.
 CLASS_COLUMN = "G"
 BLANK_COLUMN = "H"
@@ -201,6 +208,7 @@ def generate_arg_pairs(
         # GETPIVOTDATA's arguments are names from a pivot, and a LAMBDA must be invoked: neither is a plain call.
         if not f.get("pivot") and not f.get("invoke")
     ]
+    dynamic = catalog.dynamic_array_names()
     specs: list[dict[str, Any]] = []
     skipped_by_fn: dict[str, list[str]] = {}
     for fn in sorted(targets, key=lambda f: str(f["name"])):
@@ -221,9 +229,11 @@ def generate_arg_pairs(
         if skipped:
             skipped_by_fn[name] = skipped
         chunks = [texts[i : i + MAX_FORMULAS] for i in range(0, len(texts), MAX_FORMULAS)]
+        spills = fn["name"] in dynamic
+        stride = SPILL_ROW_STRIDE if spills else ROW_STRIDE
         for part, chunk in enumerate(chunks, 1):
             note = f"; skipped: {', '.join(skipped)}" if skipped else "; skipped: none"
-            calc = {f"A{1 + i * ROW_STRIDE}": text for i, text in enumerate(chunk)}
+            calc = {f"A{1 + i * stride}": text for i, text in enumerate(chunk)}
             specs.append(
                 {
                     "format": "rustsheet-case/v1",
@@ -234,7 +244,7 @@ def generate_arg_pairs(
                     "tags": ["generated", "arg-pairs", milestone, name],
                     "sheets": [{"name": "Data", "cells": data}, {"name": "Calc", "cells": calc}],
                     "expected": {},
-                    "check": [f"Calc!{a1}" for a1 in calc],
+                    "check": [] if spills else [f"Calc!{a1}" for a1 in calc],
                 }
             )
     return specs, skipped_by_fn

@@ -96,9 +96,12 @@ const BINOM_INV_WEIGHT: u32 = 1 << 12;
 ///
 /// What one BETA.INV or F.INV element is charged. Its quantile is the capped port of statrs'
 /// inversion (`statistical/inverse_beta.rs`: at most 512 Newton steps of one cdf and 4,096 step
-/// adjustments, its own per-call cap: 1.6 ms at full cost), refined to the crossing of the T-0970
-/// incomplete beta (`special::refine_increasing`: at most 129 of its cdfs, each at most two
-/// continued fractions of 300 steps, about twice statrs' cost: 0.9 ms more; T-0974, T-2119), or, at
+/// adjustments, its own per-call cap: 1.6 ms at full cost), refined to the crossing of its cdf
+/// (`special::refine_increasing`: at most 129 cdfs; F.INV crosses `incomplete_beta::search_tails`,
+/// at most two continued fractions of 300 steps, 0.9 ms more, T-0974; BETA.INV crosses
+/// `bratio::beta_search_tails`, the port's branches (bpser at most 2,000 terms, bfrac 1,000, bgrat 30)
+/// and those same fractions elsewhere, 0.41 ms the slowest timed, T-3398; every bpser branch has a
+/// term ratio of at most 0.7 and settles in about 110 terms, not its 2,000-term cap), or, at
 /// a huge shape or df, a crossing of at most 67 of those cdfs (`inverse_beta::beta_quantile_crossing`,
 /// T-1538: 0.5 ms), so the full Newton search plus refinement (2.5 ms) is the bound.
 /// The weight caps a lifted call at 2^27 / 2^18 = 512 elements: 1.7 s at the bound (a DEVIATION,
@@ -115,14 +118,16 @@ const BETA_INV: ArgKinds = ArgKinds::fixed(
 );
 /// `F.INV(probability, deg_freedom1, deg_freedom2)`, F.INV.RT and FINV.
 const F_INV: ArgKinds = ArgKinds::fixed(3, &[Lift, Lift, Lift], Weighted(QUANTILE_WEIGHT));
-/// What one T.INV or CONFIDENCE.T element is charged. Its quantile is the capped port with at most
-/// 64 Newton steps and 512 step adjustments (`inverse_beta::T_MAX_NEWTON_STEPS`,
-/// `T_MAX_STEP_ADJUSTMENTS`; 27 and 78 were the most seen: 0.21 ms at full cost), a closed form, or
-/// a bisection of at most 264 cdfs (`t_dist::t_quantile`'s 64 doublings and 200 halvings: 0.82 ms,
-/// the bound). The weight caps a lifted call at 2^27 / 2^16 = 2,048 elements: 1.7 s at the bound
-/// (a DEVIATION, statistics.md). Measured cases cost much less (over 65,536 elements in release:
-/// 17.5 us for `T.INV.2T(1E-9,99999)`, the bisection; 1.2 us for `T.INV(0.4,5)`).
-const T_QUANTILE_WEIGHT: u32 = 1 << 16;
+/// What one T.INV or CONFIDENCE.T element is charged. From df 2 its quantile is a crossing of the
+/// tail at y (`t_dist::t_rounded_y_quantile`, T-2511): about 25 to 30 tails seeded by statrs' search,
+/// at most 66 without a seed (q below 1E-8) and about 81 with a poor one, each tail up to about 30 us where it sums the
+/// integer-df series (df up to 1000). Measured in release (T-2511): 1.53 ms for `T.INV(1E-12,999)`,
+/// the worst seen, about 1.0 ms at df 999 and 1000 otherwise, 0.47 ms at df 500, under 0.2 ms at
+/// df 99 and from df 1001. At df 1 it is the capped statrs port (0.21 ms) or a bisection of at most
+/// 264 cdfs (0.82 ms). The weight caps a lifted call at 2^27 / 2^17 = 1,024 elements: about 1.6 s
+/// at the worst case seen (a DEVIATION, statistics.md). It assumes a good seed: a poor one at df
+/// near 1000 would cost about 2.5 ms a call; hoisting the per-df work out of the tail is T-3399's.
+const T_QUANTILE_WEIGHT: u32 = 1 << 17;
 /// `T.INV(probability, deg_freedom)`, T.INV.2T and TINV.
 const T_INV: ArgKinds = ArgKinds::fixed(2, &[Lift, Lift], Weighted(T_QUANTILE_WEIGHT));
 /// `CONFIDENCE.T(alpha, standard_dev, size)`.

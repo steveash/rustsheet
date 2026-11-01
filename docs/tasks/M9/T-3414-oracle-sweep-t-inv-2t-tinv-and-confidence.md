@@ -28,6 +28,7 @@ quantile and the engine is on it.
   the rule and its sweep note.
 - Phase 1b (decision 0188 R5): the engine is on the math at every one of these points, so they are inside Gate A and
   the only consumer, T-3415, is deferred. This sweep waits with it.
+- Split (T-3229 check): probes/t3349-t-inv-2t-near-one A5 is also listed by T-3592, which owns it.
 
 ## Acceptance criteria
 - [ ] A probes-numeric case (the `excel-probe` skill; excel-graph), seeded and committed with its oracle sidecar, with

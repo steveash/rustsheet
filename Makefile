@@ -51,14 +51,15 @@ eval: build ## Run all suites; writes eval/runs/latest/report.{md,json}
 eval-check: build ## Gate: fail on any regression vs eval/baseline
 	$(EVAL_GUARDED) check
 
-eval-gates: build ## eval-check and evidence-floor from one run of the suites (CI, make check; T-2761)
+eval-gates: build ## eval-check and evidence-floor from one run of the suites, then Gate A's accuracy check (CI, make check; T-2761, decision 0193)
 	$(EVAL_GUARDED) check --evidence-floor
+	$(EVAL_GUARDED) accuracy
 
-eval-baseline: build ## Ratchet eval/baseline and quality/evidence-floor.json after fixes (refuses regressions)
-	$(EVAL_GUARDED) update-baseline
+eval-baseline: build ## Ratchet eval/baseline and quality/evidence-floor.json after fixes (refuses regressions); NEW_CASES=<file> lists the only cases new to the visible-parity lock (make catch-up, decision 0217)
+	$(EVAL_GUARDED) update-baseline $(if $(NEW_CASES),--new-cases '$(NEW_CASES)')
 	$(EVAL) evidence-floor --update
 
-eval-lower-visible-lock: build ## Steward only, daily: also record a drop in eval/baseline/visible-parity.json (decision 0093)
+eval-lower-visible-lock: build ## Steward only, daily: also lower the cases of eval/baseline/visible-parity.txt (decisions 0093, 0217)
 	$(EVAL_GUARDED) update-baseline --lower-visible-lock
 
 evidence-floor: build ## Gate: no more in-scope functions below the evidence floor (T-0056; CI runs it in eval-gates)
@@ -148,11 +149,11 @@ board: ## Write docs/tasks/BOARD.md locally (git-ignored; decision 0017)
 
 # ---------------------------------------------------------------- Merge lock (decisions 0075, 0145)
 .PHONY: merge-lock-acquire merge-lock-wait merge-lock-release merge-lock-status
-merge-lock-acquire: ## Take (or renew) the merge lock before merging a PR: make merge-lock-acquire PR=123 [RENEW=1] (exit 1: busy, you are queued; 3: PR already done; 4: lost)
+merge-lock-acquire: ## Take (or renew) the merge lock before merging a PR: make merge-lock-acquire PR=123 [RENEW=1] (exit 1: busy, you are queued; 3: PR already done; 4: lost; 5: refused, train mode)
 	$(if $(PR),,$(error PR=<number> is required))
 	$(PY) scripts/merge_lock.py acquire --pr '$(PR)' $(if $(RENEW),--renew)
 
-merge-lock-wait: ## Wait in the queue until the merge lock is yours (run it in the background): make merge-lock-wait PR=123 [TIMEOUT=45] (exit 0: held; 1: timed out; 2: error; 3: PR already done)
+merge-lock-wait: ## Wait in the queue until the merge lock is yours (run it in the background): make merge-lock-wait PR=123 [TIMEOUT=45] (exit 0: held; 1: timed out; 2: error; 3: PR already done; 5: refused, train mode)
 	$(if $(PR),,$(error PR=<number> is required))
 	$(PY) scripts/merge_lock.py wait --pr '$(PR)' --timeout '$(or $(TIMEOUT),45)'
 
@@ -168,7 +169,11 @@ merge-ready-verify: ## Check a PR's readiness marker, V1-V6 of SPEC-0027 (reads 
 	$(PY) scripts/merge_ready.py verify --pr '$(PR)'
 
 .PHONY: mark-ready merge-labels verdict-record
-mark-ready: ## Mark a green, approved PR ready for the merge train (SPEC-0027 section 2): make mark-ready PR=123, its verdicts from the verdict records on the head [REVIEW="security=APPROVE architecture=APPROVE quality=APPROVE [excel-fidelity=APPROVE]" for a reviewer with no record, while verdict_records = warn] (or CARRY=1 after a clean merge of main) [STEP=1: print the writes as step-mode actions] (exit 0: marked; 1: refused; 2: error)
+catch-up: ## Clear a merge-train ejection for a conflict with main that lies only in eval/baseline/ (decision 0207): make catch-up PR=123 merges main into the PR, re-records the lists and pushes; then make mark-ready PR=123 CARRY=1 once CI is green (exit 0: pushed; 1: refused; 2: error)
+	$(if $(PR),,$(error PR=<number> is required))
+	$(PY) scripts/merge_catchup.py --pr '$(PR)'
+
+mark-ready: ## Mark a green, approved PR ready for the merge train (SPEC-0027 section 2): make mark-ready PR=123, its verdicts from the verdict records on the head [REVIEW="security=APPROVE architecture=APPROVE quality=APPROVE [excel-fidelity=APPROVE]" for a reviewer with no record, while verdict_records = warn] (or CARRY=1 after a merge of main that is clean or only re-records eval-gated baseline lists, decision 0207) [STEP=1: print the writes as step-mode actions] (exit 0: marked; 1: refused; 2: error)
 	$(if $(PR),,$(error PR=<number> is required))
 	$(PY) scripts/merge_ready.py mark --pr '$(PR)' $(if $(CARRY),--carry) $(if $(REVIEW),--review '$(REVIEW)') $(if $(STEP),--step)
 
@@ -182,7 +187,7 @@ verdict-record: ## Post one reviewer's verdict record for the local HEAD, which 
 merge-labels: ## Create the merge-train labels that are missing (ready-to-merge, merge-train-ejected, merge-train-stop)
 	$(PY) scripts/merge_ready.py labels --create
 
-.PHONY: merge-mode merge-train merge-train-ack merge-flip-check merge-train-stats
+.PHONY: merge-mode merge-train merge-train-ack merge-flip-check merge-train-stats catch-up
 merge-train: ## The merge train (SPEC-0027): DRY_RUN=1 prints the batch and writes nothing; SHADOW=1 tests and predicts on merge-train/shadow, in shadow mode only; TRAIN=1 merges a green train, in train mode only; STEP=1 (with SHADOW or TRAIN) prints each write as a JSON action for the session to perform and ack
 	$(if $(DRY_RUN)$(TRAIN)$(SHADOW),,$(error DRY_RUN=1 or SHADOW=1 or TRAIN=1 is required))
 	$(PY) scripts/merge_train.py $(if $(DRY_RUN),--dry-run,$(if $(SHADOW),--shadow,--train) $(if $(STEP),--step))

@@ -3,7 +3,7 @@ id: T-3371
 title: "Move the complex-number text parser and formatter into engineering::complex::parse (complex/mod.rs is at 981 of its 1,000 lines)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -41,3 +41,6 @@ trig.rs do not change. The visibility is `pub(super)`, not wider.
 ## Out of scope
 - Any change to how inumbers are read or printed (T-3059 probes leading spaces before NBSP and LF).
 - The IMTAN/IMSQRT kernels (T-2774, T-2536).
+
+## Outcome
+Moved `Suffix`, `Complex` and `parse_complex_number` unchanged into `complex/parse.rs` (visibility `pub(super)`); `complex/mod.rs` 998 -> 799 lines. No eval cell changed (pure move); `make check` green.

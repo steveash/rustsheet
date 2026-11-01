@@ -2,7 +2,7 @@
 # Every in-scope function
 
 All 506 in-scope catalog functions, from the eval run of **2026-10-31** at
-`6c7c6438`. Back to the [progress page](../progress.md#parity).
+`8406c606`. Back to the [progress page](../progress.md#parity).
 
 - **Tier**: the function's worst counted cell (see the progress page).
 - **Placed by**: "sole call" counts the Excel cells whose formula calls it as the only function
@@ -14,7 +14,7 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-31** at
 
 | Function | Category | Milestone | Tier | Placed by | Attributed cells | Excel cells | Within 15 digits | Phase 1 rate met |
 | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: |
-| ABS | math | M2 | Exact | sole call | 41,898 | 50,679 | 100.00% | yes |
+| ABS | math | M2 | Exact | sole call | 41,900 | 50,681 | 100.00% | yes |
 | ACCRINT | financial | M9 | Exact | sole call | 1,259 | 1,543 | 100.00% | yes |
 | ACCRINTM | financial | M9 | Exact | sole call | 285 | 624 | 100.00% | yes |
 | ACOS | math | M5 | Exact | sole call | 481 | 1,002 | 100.00% | yes |
@@ -23,8 +23,8 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-31** at
 | ACOTH | math | M5 | Exact | sole call | 511 | 869 | 100.00% | yes |
 | ADDRESS | lookup | M6 | Exact | sole call | 633 | 1,167 | 100.00% | yes |
 | AGGREGATE | math | M5 | Exact | sole call | 677 | 1,824 | 100.00% | yes |
-| AMORDEGRC | financial | M9 | Exact | sole call | 788 | 1,258 | 100.00% | yes |
-| AMORLINC | financial | M9 | Exact | sole call | 440 | 898 | 100.00% | yes |
+| AMORDEGRC | financial | M9 | ≥ 99% | sole call | 800 | 1,272 | 99.75% | no |
+| AMORLINC | financial | M9 | Exact | sole call | 445 | 903 | 100.00% | yes |
 | AND | logical | M2 | ≥ 99% | sole call | 696 | 1,342,085 | 100.00% | yes |
 | ARABIC | math | M5 | Exact | sole call | 20,162 | 20,564 | 100.00% | yes |
 | AREAS | lookup | M6 | Exact | sole call | 614 | 777 | 100.00% | yes |
@@ -46,7 +46,7 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-31** at
 | BESSELJ | engineering | M9 | 15 digits | sole call | 704 | 937 | 100.00% | yes |
 | BESSELK | engineering | M9 | Exact | sole call | 601 | 768 | 100.00% | yes |
 | BESSELY | engineering | M9 | 15 digits | sole call | 896 | 1,059 | 100.00% | yes |
-| BETA.DIST | statistical | M9 | &lt; 99% | sole call | 224,786 | 224,913 | 87.25% | no |
+| BETA.DIST | statistical | M9 | &lt; 99% | sole call | 233,510 | 233,637 | 86.80% | no |
 | BETA.INV | statistical | M9 | &lt; 99% | sole call | 520 | 630 | 87.31% | no |
 | BETADIST | statistical | M9 | 15 digits | sole call | 101 | 626 | 100.00% | yes |
 | BETAINV | statistical | M9 | &lt; 99% | sole call | 120 | 656 | 90.00% | no |
@@ -72,7 +72,7 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-31** at
 | CHIDIST | statistical | M9 | &lt; 99% | sole call | 284 | 613 | 97.54% | no |
 | CHIINV | statistical | M9 | &lt; 99% | sole call | 302 | 625 | 98.68% | no |
 | CHISQ.DIST | statistical | M9 | &lt; 99% | sole call | 498 | 842 | 94.78% | no |
-| CHISQ.DIST.RT | statistical | M9 | &lt; 99% | sole call | 1,869 | 1,964 | 92.35% | no |
+| CHISQ.DIST.RT | statistical | M9 | &lt; 99% | sole call | 7,049 | 7,144 | 96.44% | no |
 | CHISQ.INV | statistical | M9 | &lt; 99% | sole call | 395 | 715 | 97.22% | no |
 | CHISQ.INV.RT | statistical | M9 | &lt; 99% | sole call | 1,809 | 2,063 | 97.57% | no |
 | CHISQ.TEST | statistical | M9 | ≤ 4 ulp | sole call | 293 | 606 | 100.00% | yes |
@@ -83,15 +83,15 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-31** at
 | CLEAN | text | M5 | Exact | sole call | 241 | 781 | 100.00% | yes |
 | CODE | text | M5 | Exact | sole call | 244 | 976 | 100.00% | yes |
 | COLUMN | lookup | M6 | Exact | sole call | 642 | 53,615 | 100.00% | yes |
-| COLUMNS | lookup | M6 | Exact | sole call | 917 | 6,643 | 100.00% | yes |
+| COLUMNS | lookup | M6 | Exact | sole call | 919 | 6,645 | 100.00% | yes |
 | COMBIN | math | M5 | Exact | sole call | 1,099 | 1,568 | 100.00% | yes |
 | COMBINA | math | M5 | Exact | sole call | 362 | 720 | 100.00% | yes |
-| COMPLEX | engineering | M9 | Exact | sole call | 303 | 655 | 100.00% | yes |
+| COMPLEX | engineering | M9 | Exact | sole call | 303 | 656 | 100.00% | yes |
 | CONCAT | text | M2 | Exact | sole call | 400 | 1,869 | 100.00% | yes |
 | CONCATENATE | text | M2 | Exact | sole call | 21,800 | 24,293 | 100.00% | yes |
 | CONFIDENCE | statistical | M9 | ≤ 4 ulp | sole call | 169 | 576 | 100.00% | yes |
 | CONFIDENCE.NORM | statistical | M9 | ≤ 4 ulp | sole call | 205 | 629 | 100.00% | yes |
-| CONFIDENCE.T | statistical | M9 | &lt; 99% | sole call | 234 | 584 | 63.68% | no |
+| CONFIDENCE.T | statistical | M9 | &lt; 99% | sole call | 235 | 585 | 88.94% | no |
 | CONVERT | engineering | M9 | ≤ 4 ulp | sole call | 1,038 | 1,308 | 100.00% | yes |
 | CORREL | statistical | M9 | Exact | sole call | 354 | 674 | 100.00% | yes |
 | COS | math | M5 | ≥ 99% | sole call | 345 | 1,821 | 100.00% | yes |
@@ -99,10 +99,10 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-31** at
 | COT | math | M5 | ≥ 99% | sole call | 432 | 1,000 | 100.00% | yes |
 | COTH | math | M5 | Exact | sole call | 307 | 759 | 100.00% | yes |
 | COUNT | statistical | M2 | Exact | sole call | 855 | 3,559 | 100.00% | yes |
-| COUNTA | statistical | M2 | ≥ 99% | sole call | 863 | 2,790 | 99.88% | no |
+| COUNTA | statistical | M2 | ≥ 99% | sole call | 865 | 2,792 | 99.88% | no |
 | COUNTBLANK | statistical | M9 | Exact | sole call | 472 | 758 | 100.00% | yes |
-| COUNTIF | statistical | M2 | ≥ 99% | sole call | 7,122 | 9,667 | 99.82% | no |
-| COUNTIFS | statistical | M2 | Exact | sole call | 701,685 | 708,898 | 100.00% | yes |
+| COUNTIF | statistical | M2 | ≥ 99% | sole call | 7,215 | 9,760 | 99.76% | no |
+| COUNTIFS | statistical | M2 | ≥ 99.9% | sole call | 701,778 | 708,991 | 99.99% | yes |
 | COUPDAYBS | financial | M9 | Exact | sole call | 351 | 520 | 100.00% | yes |
 | COUPDAYS | financial | M9 | Exact | sole call | 7,741 | 7,932 | 100.00% | yes |
 | COUPDAYSNC | financial | M9 | Exact | sole call | 380 | 608 | 100.00% | yes |
@@ -115,9 +115,9 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-31** at
 | CRITBINOM | statistical | M9 | Exact | sole call | 191 | 579 | 100.00% | yes |
 | CSC | math | M5 | &lt; 99% | sole call | 159 | 624 | 100.00% | yes |
 | CSCH | math | M5 | Exact | sole call | 326 | 776 | 100.00% | yes |
-| CUMIPMT | financial | M9 | &lt; 99% | sole call | 331 | 600 | 69.49% | no |
+| CUMIPMT | financial | M9 | &lt; 99% | sole call | 331 | 600 | 80.36% | no |
 | CUMPRINC | financial | M9 | ≤ 4 ulp | sole call | 571 | 875 | 100.00% | yes |
-| DATE | date | M6 | Exact | sole call | 1,495 | 43,928 | 100.00% | yes |
+| DATE | date | M6 | Exact | sole call | 1,495 | 43,929 | 100.00% | yes |
 | DATEDIF | date | M6 | Exact | sole call | 655 | 1,743 | 100.00% | yes |
 | DATEVALUE | date | M6 | Exact | sole call | 767 | 1,484 | 100.00% | yes |
 | DAVERAGE | database | M9 | Exact | sole call | 544 | 691 | 100.00% | yes |
@@ -147,7 +147,7 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-31** at
 | DROP | lookup | M7 | Exact | sole call | 237 | 1,035 | 100.00% | yes |
 | DSTDEV | database | M9 | Exact | sole call | 452 | 590 | 100.00% | yes |
 | DSTDEVP | database | M9 | Exact | sole call | 473 | 593 | 100.00% | yes |
-| DSUM | database | M9 | Exact | sole call | 737 | 895 | 100.00% | yes |
+| DSUM | database | M9 | ≥ 99% | sole call | 830 | 988 | 99.52% | no |
 | DURATION | financial | M9 | &lt; 99% | sole call | 353 | 679 | 97.73% | no |
 | DVAR | database | M9 | Exact | sole call | 456 | 593 | 100.00% | yes |
 | DVARP | database | M9 | Exact | sole call | 462 | 601 | 100.00% | yes |
@@ -167,8 +167,8 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-31** at
 | EXPAND | lookup | M7 | Exact | sole call | 169 | 894 | 100.00% | yes |
 | EXPON.DIST | statistical | M9 | Exact | sole call | 261 | 739 | 100.00% | yes |
 | EXPONDIST | statistical | M9 | Exact | sole call | 153 | 600 | 100.00% | yes |
-| F.DIST | statistical | M9 | &lt; 99% | sole call | 90,372 | 90,657 | 63.94% | no |
-| F.DIST.RT | statistical | M9 | &lt; 99% | sole call | 1,838 | 2,083 | 96.68% | no |
+| F.DIST | statistical | M9 | &lt; 99% | sole call | 91,252 | 91,537 | 63.85% | no |
+| F.DIST.RT | statistical | M9 | &lt; 99% | sole call | 2,278 | 2,523 | 97.19% | no |
 | F.INV | statistical | M9 | &lt; 99% | sole call | 390 | 714 | 79.23% | no |
 | F.INV.RT | statistical | M9 | &lt; 99% | sole call | 435 | 786 | 80.92% | no |
 | F.TEST | statistical | M9 | &lt; 99% | sole call | 450 | 764 | 92.89% | no |
@@ -193,13 +193,13 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-31** at
 | FORECAST.ETS.SEASONALITY | statistical | M9 | &lt; 99% | sole call | 195 | 604 | 100.00% | yes |
 | FORECAST.ETS.STAT | statistical | M9 | &lt; 99% | sole call | 168 | 598 | 100.00% | yes |
 | FORECAST.LINEAR | statistical | M9 | Exact | sole call | 145 | 677 | 100.00% | yes |
-| FORMULATEXT | lookup | M6 | &lt; 99% | sole call | 2,441 | 2,574 | 98.61% | no |
+| FORMULATEXT | lookup | M6 | &lt; 99% | sole call | 2,447 | 2,580 | 98.61% | no |
 | FREQUENCY | statistical | M9 | Exact | sole call | 286 | 829 | 100.00% | yes |
 | FTEST | statistical | M9 | 15 digits | sole call | 381 | 683 | 100.00% | yes |
 | FV | financial | M9 | Exact | sole call | 477 | 716 | 100.00% | yes |
 | FVSCHEDULE | financial | M9 | ≥ 99% | sole call | 288 | 476 | 99.65% | no |
 | GAMMA | statistical | M9 | ≤ 4 ulp | sole call | 2,167 | 2,267 | 100.00% | yes |
-| GAMMA.DIST | statistical | M9 | &lt; 99% | sole call | 829 | 1,138 | 97.83% | no |
+| GAMMA.DIST | statistical | M9 | ≥ 99% | sole call | 5,809 | 6,118 | 99.69% | no |
 | GAMMA.INV | statistical | M9 | &lt; 99% | sole call | 721 | 1,074 | 93.90% | no |
 | GAMMADIST | statistical | M9 | ≥ 99% | sole call | 104 | 615 | 99.04% | no |
 | GAMMAINV | statistical | M9 | &lt; 99% | sole call | 135 | 588 | 98.52% | no |
@@ -227,10 +227,10 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-31** at
 | IFNA | logical | M5 | Exact | sole call | 87 | 1,776 | 100.00% | yes |
 | IFS | logical | M5 | Exact | sole call | 198 | 1,595 | 100.00% | yes |
 | IMABS | engineering | M9 | ≤ 4 ulp | sole call | 486 | 620 | 100.00% | yes |
-| IMAGINARY | engineering | M9 | Exact | sole call | 516 | 1,002 | 100.00% | yes |
+| IMAGINARY | engineering | M9 | Exact | sole call | 516 | 1,005 | 100.00% | yes |
 | IMARGUMENT | engineering | M9 | ≤ 4 ulp | sole call | 381 | 530 | 100.00% | yes |
 | IMCONJUGATE | engineering | M9 | Exact | sole call | 439 | 511 | 100.00% | yes |
-| IMCOS | engineering | M9 | Exact | sole call | 452 | 562 | 100.00% | yes |
+| IMCOS | engineering | M9 | Exact | sole call | 453 | 567 | 100.00% | yes |
 | IMCOSH | engineering | M9 | Exact | sole call | 938 | 1,076 | 100.00% | yes |
 | IMCOT | engineering | M9 | Exact | sole call | 538 | 680 | 100.00% | yes |
 | IMCSC | engineering | M9 | Exact | sole call | 515 | 650 | 100.00% | yes |
@@ -242,28 +242,28 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-31** at
 | IMLOG2 | engineering | M9 | Exact | sole call | 531 | 652 | 100.00% | yes |
 | IMPOWER | engineering | M9 | Exact | sole call | 494 | 613 | 100.00% | yes |
 | IMPRODUCT | engineering | M9 | Exact | sole call | 486 | 550 | 100.00% | yes |
-| IMREAL | engineering | M9 | Exact | sole call | 521 | 998 | 100.00% | yes |
+| IMREAL | engineering | M9 | Exact | sole call | 521 | 999 | 100.00% | yes |
 | IMSEC | engineering | M9 | Exact | sole call | 558 | 668 | 100.00% | yes |
 | IMSECH | engineering | M9 | Exact | sole call | 499 | 628 | 100.00% | yes |
 | IMSIN | engineering | M9 | Exact | sole call | 439 | 564 | 100.00% | yes |
 | IMSINH | engineering | M9 | Exact | sole call | 1,216 | 1,340 | 100.00% | yes |
-| IMSQRT | engineering | M9 | ≥ 99% | sole call | 484 | 613 | 99.38% | no |
+| IMSQRT | engineering | M9 | Exact | sole call | 484 | 613 | 100.00% | yes |
 | IMSUB | engineering | M9 | Exact | sole call | 431 | 559 | 100.00% | yes |
 | IMSUM | engineering | M9 | Exact | sole call | 537 | 637 | 100.00% | yes |
-| IMTAN | engineering | M9 | &lt; 99% | sole call | 434 | 560 | 88.48% | no |
-| INDEX | lookup | M2 | Exact | sole call | 1,505 | 85,061 | 100.00% | yes |
+| IMTAN | engineering | M9 | Exact | sole call | 434 | 560 | 100.00% | yes |
+| INDEX | lookup | M2 | Exact | sole call | 1,507 | 85,063 | 100.00% | yes |
 | INDIRECT | lookup | M6 | Exact | sole call | 6,076 | 8,969 | 100.00% | yes |
 | INFO | information | M5 | &lt; 99% | sole call | 44 | 234 | 97.73% | no |
 | INT | math | M5 | Exact | sole call | 1,128 | 2,321 | 100.00% | yes |
 | INTERCEPT | statistical | M9 | Exact | sole call | 288 | 656 | 100.00% | yes |
 | INTRATE | financial | M9 | Exact | sole call | 355 | 679 | 100.00% | yes |
 | IPMT | financial | M9 | ≤ 4 ulp | sole call | 2,241 | 2,580 | 100.00% | yes |
-| IRR | financial | M9 | &lt; 99% | sole call | 1,123 | 1,539 | 90.29% | no |
+| IRR | financial | M9 | &lt; 99% | sole call | 1,131 | 1,547 | 90.44% | no |
 | ISBLANK | information | M5 | Exact | sole call | 3,705 | 13,457 | 100.00% | yes |
 | ISERR | information | M5 | Exact | sole call | 279 | 626 | 100.00% | yes |
 | ISERROR | information | M5 | Exact | sole call | 12,923 | 14,919 | 100.00% | yes |
 | ISEVEN | information | M5 | Exact | sole call | 242 | 691 | 100.00% | yes |
-| ISFORMULA | information | M5 | Exact | sole call | 593 | 683 | 100.00% | yes |
+| ISFORMULA | information | M5 | ≥ 99% | sole call | 635 | 725 | 99.37% | no |
 | ISLOGICAL | information | M5 | Exact | sole call | 288 | 589 | 100.00% | yes |
 | ISNA | information | M5 | Exact | sole call | 288 | 2,537 | 100.00% | yes |
 | ISNONTEXT | information | M5 | Exact | sole call | 268 | 544 | 100.00% | yes |
@@ -277,7 +277,7 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-31** at
 | ISTEXT | information | M5 | Exact | sole call | 325 | 694 | 100.00% | yes |
 | JIS | text | M5 | Exact | sole call | 192 | 536 | 100.00% | yes |
 | KURT | statistical | M9 | ≥ 99% | sole call | 316 | 636 | 99.05% | no |
-| LAMBDA | logical | M7 | ≥ 99% | sole call | 202 | 7,493 | 99.01% | no |
+| LAMBDA | logical | M7 | Exact | sole call | 202 | 7,493 | 100.00% | yes |
 | LARGE | statistical | M9 | Exact | sole call | 449 | 877 | 100.00% | yes |
 | LCM | math | M5 | Exact | sole call | 406 | 781 | 100.00% | yes |
 | LEFT | text | M2 | Exact | sole call | 22,979 | 24,770 | 100.00% | yes |
@@ -368,7 +368,7 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-31** at
 | PI | math | M5 | Exact | sole call | 599 | 2,589 | 100.00% | yes |
 | PIVOTBY | lookup | M7 | Exact | sole call | 217 | 2,845 | 100.00% | yes |
 | PMT | financial | M9 | ≤ 4 ulp | sole call | 2,976 | 3,603 | 100.00% | yes |
-| POISSON | statistical | M9 | &lt; 99% | sole call | 198 | 665 | 96.97% | no |
+| POISSON | statistical | M9 | &lt; 99% | sole call | 341 | 808 | 75.66% | no |
 | POISSON.DIST | statistical | M9 | &lt; 99% | sole call | 916 | 1,360 | 80.68% | no |
 | POWER | math | M5 | Exact | sole call | 16,110 | 16,782 | 100.00% | yes |
 | PPMT | financial | M9 | ≤ 4 ulp | sole call | 3,461 | 3,786 | 100.00% | yes |
@@ -405,8 +405,8 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-31** at
 | ROUND | math | M2 | Exact | sole call | 8,762 | 37,257 | 100.00% | yes |
 | ROUNDDOWN | math | M2 | Exact | sole call | 1,755 | 3,145 | 100.00% | yes |
 | ROUNDUP | math | M2 | Exact | sole call | 3,998 | 8,850 | 100.00% | yes |
-| ROW | lookup | M6 | Exact | sole call | 807 | 9,160 | 100.00% | yes |
-| ROWS | lookup | M6 | ≥ 99% | sole call | 1,278 | 8,467 | 99.84% | no |
+| ROW | lookup | M6 | Exact | sole call | 811 | 9,164 | 100.00% | yes |
+| ROWS | lookup | M6 | ≥ 99% | sole call | 1,282 | 8,471 | 99.84% | no |
 | RRI | financial | M9 | Exact | sole call | 454 | 653 | 100.00% | yes |
 | RSQ | statistical | M9 | Exact | sole call | 303 | 667 | 100.00% | yes |
 | SCAN | logical | M7 | Exact | sole call | 31 | 830 | 100.00% | yes |
@@ -415,7 +415,7 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-31** at
 | SEC | math | M5 | ≥ 99% | sole call | 303 | 845 | 100.00% | yes |
 | SECH | math | M5 | Exact | sole call | 298 | 739 | 100.00% | yes |
 | SECOND | date | M6 | Exact | sole call | 601 | 1,184 | 100.00% | yes |
-| SEQUENCE | math | M7 | Exact | sole call | 318 | 3,530 | 100.00% | yes |
+| SEQUENCE | math | M7 | Exact | sole call | 319 | 3,533 | 100.00% | yes |
 | SERIESSUM | math | M5 | Exact | sole call | 221 | 808 | 100.00% | yes |
 | SHEET | information | M5 | Exact | sole call | 384 | 631 | 100.00% | yes |
 | SHEETS | information | M5 | Exact | sole call | 525 | 636 | 100.00% | yes |
@@ -441,9 +441,9 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-31** at
 | STEYX | statistical | M9 | Exact | sole call | 330 | 725 | 100.00% | yes |
 | SUBSTITUTE | text | M5 | Exact | sole call | 213 | 4,283 | 100.00% | yes |
 | SUBTOTAL | math | M5 | Exact | sole call | 831 | 2,625 | 100.00% | yes |
-| SUM | math | M2 | ≥ 99.9% | sole call | 141,755 | 380,877 | 99.99% | yes |
-| SUMIF | math | M2 | Exact | sole call | 97,847 | 99,726 | 100.00% | yes |
-| SUMIFS | math | M2 | Exact | sole call | 464,897 | 473,946 | 100.00% | yes |
+| SUM | math | M2 | ≥ 99.9% | sole call | 141,761 | 380,887 | 99.99% | yes |
+| SUMIF | math | M2 | ≥ 99.9% | sole call | 98,033 | 99,912 | 99.99% | yes |
+| SUMIFS | math | M2 | ≥ 99.9% | sole call | 465,083 | 474,132 | 99.99% | yes |
 | SUMPRODUCT | math | M5 | &lt; 99% | sole call | 7,578 | 9,909 | 98.65% | no |
 | SUMSQ | math | M5 | Exact | sole call | 308 | 711 | 100.00% | yes |
 | SUMX2MY2 | math | M5 | Exact | sole call | 330 | 786 | 100.00% | yes |
@@ -455,8 +455,8 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-31** at
 | T.DIST | statistical | M9 | &lt; 99% | sole call | 25,827 | 25,913 | 97.79% | no |
 | T.DIST.2T | statistical | M9 | &lt; 99% | sole call | 396 | 647 | 98.74% | no |
 | T.DIST.RT | statistical | M9 | ≥ 99.9% | sole call | 16,896 | 16,994 | 99.95% | yes |
-| T.INV | statistical | M9 | &lt; 99% | sole call | 404 | 617 | 69.80% | no |
-| T.INV.2T | statistical | M9 | &lt; 99% | sole call | 415 | 609 | 66.02% | no |
+| T.INV | statistical | M9 | &lt; 99% | sole call | 408 | 621 | 92.16% | no |
+| T.INV.2T | statistical | M9 | &lt; 99% | sole call | 751 | 945 | 82.69% | no |
 | T.TEST | statistical | M9 | &lt; 99% | sole call | 280 | 599 | 98.93% | no |
 | TAKE | lookup | M7 | Exact | sole call | 245 | 1,328 | 100.00% | yes |
 | TAN | math | M5 | ≥ 99% | sole call | 463 | 1,078 | 100.00% | yes |
@@ -472,7 +472,7 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-31** at
 | TEXTSPLIT | text | M7 | Exact | sole call | 131 | 1,006 | 100.00% | yes |
 | TIME | date | M6 | Exact | sole call | 820 | 38,397 | 100.00% | yes |
 | TIMEVALUE | date | M6 | Exact | sole call | 929 | 1,344 | 100.00% | yes |
-| TINV | statistical | M9 | &lt; 99% | sole call | 326 | 648 | 76.38% | no |
+| TINV | statistical | M9 | &lt; 99% | sole call | 329 | 651 | 88.45% | no |
 | TOCOL | lookup | M7 | Exact | sole call | 237 | 771 | 100.00% | yes |
 | TODAY | date | M2 | Exact | every call | 8 | 38 | 100.00% | yes |
 | TOROW | lookup | M7 | Exact | sole call | 188 | 718 | 100.00% | yes |
@@ -489,7 +489,7 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-31** at
 | UNICODE | text | M5 | Exact | sole call | 240 | 779 | 100.00% | yes |
 | UNIQUE | lookup | M7 | Exact | sole call | 517 | 2,027 | 100.00% | yes |
 | UPPER | text | M2 | Exact | sole call | 216 | 1,113 | 100.00% | yes |
-| VALUE | text | M5 | ≥ 99% | sole call | 805 | 5,506 | 99.25% | no |
+| VALUE | text | M5 | &lt; 99% | sole call | 839 | 5,541 | 98.69% | no |
 | VALUETOTEXT | text | M5 | Exact | sole call | 239 | 654 | 100.00% | yes |
 | VAR | statistical | M9 | Exact | sole call | 345 | 675 | 100.00% | yes |
 | VAR.P | statistical | M9 | Exact | sole call | 814 | 1,067 | 100.00% | yes |
@@ -513,7 +513,7 @@ All 506 in-scope catalog functions, from the eval run of **2026-10-31** at
 | XMATCH | lookup | M6 | Exact | sole call | 2,302 | 3,092 | 100.00% | yes |
 | XNPV | financial | M9 | ≥ 99% | sole call | 737 | 1,113 | 99.73% | no |
 | XOR | logical | M5 | Exact | sole call | 587 | 891 | 100.00% | yes |
-| YEAR | date | M2 | Exact | sole call | 36,334 | 64,413 | 100.00% | yes |
+| YEAR | date | M2 | Exact | sole call | 36,334 | 64,414 | 100.00% | yes |
 | YEARFRAC | date | M6 | Exact | sole call | 963 | 1,592 | 100.00% | yes |
 | YIELD | financial | M9 | ≥ 99% | sole call | 1,551 | 1,907 | 99.61% | no |
 | YIELDDISC | financial | M9 | Exact | sole call | 335 | 645 | 100.00% | yes |

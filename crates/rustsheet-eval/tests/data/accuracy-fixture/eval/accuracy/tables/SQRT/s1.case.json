@@ -1,0 +1,19 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3356 fixture: not a real table",
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=SQRT(2)",
+    "A2": "=SQRT(-1)",
+    "A3": "=SQRT(4)"
+   }
+  }
+ ],
+ "check": [
+  "Calc!A1",
+  "Calc!A2",
+  "Calc!A3"
+ ]
+}

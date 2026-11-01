@@ -105,3 +105,11 @@ Each cell below has HYPGEOM.DIST or HYPGEOMDIST as its only non-glue call:
 ## Out of scope
 - The pmf formulation itself and the visibly-off HYPGEOM cells (T-2481).
 - HYPGEOM's per-call cap and the #NUM! population bound (statistics.md T-1873, T-2255).
+
+## Cells added by gap triage (2026-10-31m)
+`make eval` on origin/main 900fbc1bf (excel-graph). An ownership check over every failing Excel cell
+(`scripts/exit_owners.py`'s `owned` rule over the open task files of origin/main and of every `origin/agent/*` branch
+pushed since 2026-10-29) found these cells named by no open task. All are within 15 significant digits of Excel (Phase
+1b), so they join this deferred owner of their kernel. `HYPGEOMDIST(2,3,5,10)` on the stat argument-modes probe, Excel
+0.4166666666666666, ours ...667 (5/12).
+- probes/stat-argument-modes.case.json (1): Sheet1!H337

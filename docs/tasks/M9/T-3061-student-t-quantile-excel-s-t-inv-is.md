@@ -97,6 +97,10 @@ Excel 2.8E-15, ours 4.7E-16) and 8 tail points at a huge df where ours is on the
 off; A226 at df 1.3E9: 3.8E-10). This is the rounded-y form's signature (T-3349's Outcome counted these 10-odd points).
 Where both are off (A1, A17, A50, A62 and others), T-2859's accurate kernel alone does not reach Excel's value.
 - probes-numeric/t3349-t-inv-2t-sweep.case.json (26): Calc!A1, A5, A17, A19, A22, A43, A47, A50, A56, A58, A62, A64, A93, A99, A104, A111, A114, A115, A220, A226, A231, A245, A275, A276, A278, A297
+- T-2511 (2026-10-31) implemented this rule (`t_dist::t_rounded_y_quantile`): 65 of the 75 cells are within 15
+  digits. Left: probes-numeric m9-t-inv-2t A112, A126; m9-confidence-t A35, A40, A45; m9-t-nonint-df A60, A66;
+  m9-t-edges A38; t1518-t-df-cut A17; probes stat-argument-modes H518. At q = 0.05 Excel's y is about 2 ulps from the
+  nearest crossing (statistics.md); the bit-level remainder is T-3399.
 
 ## Acceptance criteria
 - [ ] At least the 60 cells that fit with the correctly rounded y are within half a unit of the 15th significant
