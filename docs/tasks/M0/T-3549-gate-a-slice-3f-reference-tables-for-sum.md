@@ -18,8 +18,8 @@ against a nonzero exact sum are handled by a recorded rule, not left as unexplai
 points.
 
 ## Context
-- `rustsheet-eval accuracy` on main (8ee20308) prints `missing tables 323`. Ten of them are M2 functions (the
-  current milestone), and no open task owns SUM or AVERAGE. T-3548 has ROUND, ROUNDUP and ROUNDDOWN. T-3550 exempts
+- `rustsheet-eval accuracy` on main as of 8ee20308 prints `missing tables 323`. Ten of them are M2 functions (the
+  current milestone), and no open task owns SUM or AVERAGE. T-3548 has ROUND, ROUNDUP and ROUNDDOWN. T-3550 (open PR #2656) exempts
   ABS, MIN, MAX, SUMIF and SUMIFS.
 - The math is the exact (mpmath) sum of the doubles of the written literals. AVERAGE divides that sum by the count.
 - Design question 1, the near-zero snap. docs/excel-semantics/numbers.md, "Near-zero snapping in addition and
@@ -30,7 +30,7 @@ points.
   decision 0188 R3 mark (follow the math) would be wrong. Settle one of these with a decision record:
   - (a) The definition includes the snap. It is a deterministic function of the doubles, so the math is 0 there.
   - (b) The definition is the plain exact sum, and the snap points are listed as Excel-over-G points that stay
-    Excel-targeted (as T-3544 does for its points).
+    Excel-targeted (as T-3544, the owner-ruling task on T-3358's branch in #2648, does for its points).
   - (c) The sampler does not draw cancelling sums, and the probes keep the snap's evidence.
   A uniform sampler draws a cancelling sum only rarely, so the tail stratum should draw near-cancellations on purpose
   (k·2^-52 offsets around the 8-ULP bound, as probes-numeric `snap-addsub/*` does) unless (c) is chosen.
@@ -67,5 +67,5 @@ points.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- SUMIF, SUMIFS, SUMPRODUCT, SUBTOTAL and AGGREGATE (T-3550, T-3551).
+- SUMIF, SUMIFS, SUMPRODUCT, SUBTOTAL and AGGREGATE (T-3550, and T-3551 filed with it in #2656).
 - Changing the engine's snap or summation (file any failing point as its own task).
