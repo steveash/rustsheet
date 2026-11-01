@@ -1,4 +1,4 @@
-# 0224 — Gate A's SUM and AVERAGE include the near-zero snap and the running-total overflow
+# 0237 — Gate A's SUM and AVERAGE include the near-zero snap and the running-total overflow
 
 - **Status:** accepted (2026-11-01, T-3549). Settles T-3549's design question 1 (option (a)) for decision 0188's Gate A.
 - **Context:**

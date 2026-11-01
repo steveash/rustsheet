@@ -1,7 +1,7 @@
-"""SUM and AVERAGE (Gate A slice 3f, T-3549, decision 0224).
+"""SUM and AVERAGE (Gate A slice 3f, T-3549, decision 0237).
 
 The math: the exact sum of the doubles of the written literals; AVERAGE divides it by the count. Two Excel rules
-that depend only on those doubles are part of the definition (decision 0224):
+that depend only on those doubles are part of the definition (decision 0237):
 - The near-zero snap (numbers.md, "Near-zero snapping in addition and subtraction"): every SUM call, and AVERAGE's
   sum before it divides, is exactly 0 when the final addition's two addends (the running total before the last
   argument, and the last argument) have opposite signs and the result is below 8 ULP of the running total,
@@ -161,7 +161,7 @@ def _definition(function: str, value: Callable[[Sequence[MathArg]], mpmath.mpf])
             domain=overflow,
             draw=_draw,
             variadic=True,
-            sources=(SNAP_SOURCE, OVERFLOW_SOURCE, "decision 0224"),
+            sources=(SNAP_SOURCE, OVERFLOW_SOURCE, "decision 0237"),
         )
     )
 

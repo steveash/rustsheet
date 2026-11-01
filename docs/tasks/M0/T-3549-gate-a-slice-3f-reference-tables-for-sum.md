@@ -26,7 +26,7 @@ points.
   subtraction" (VERIFIED; T-0110, T-1131, T-3048, T-3066, T-3100, T-3145), says every SUM call returns exactly 0 when
   its final addition has opposite-sign addends and |result| < 8 ULP of the running total before the last addend.
   AVERAGE snaps its sum before dividing. So `SUM(0.1,0.2,-0.3)` is 0, while the exact sum of the doubles is
-  2.7755575615628914e-17 (5.551115123125783e-17 is Excel's unsnapped double total; decision 0224): Excel's relative
+  2.7755575615628914e-17 (5.551115123125783e-17 is Excel's unsnapped double total; decision 0237): Excel's relative
   error is 1, far above G = 1e-4. This is a deliberate semantic rule, not an inaccurate kernel, so a
   decision 0188 R3 mark (follow the math) would be wrong. Settle one of these with a decision record:
   - (a) The definition includes the snap. It is a deterministic function of the doubles, so the math is 0 there.
@@ -73,7 +73,7 @@ points.
 
 ## Outcome
 Done (2026-11-01).
-- **Decision 0224 (option (a)):** SUM's and AVERAGE's definitions include the near-zero snap and the running-total
+- **Decision 0237 (option (a)):** SUM's and AVERAGE's definitions include the near-zero snap and the running-total
   overflow. Both rules depend only on the doubles. Both read Excel's running total: each addition rounded to 64 bits,
   then to a double (`fitlab.exact.double_round`, the engine's `extended_sum`).
   - The math is 0 where the final addition snaps; elsewhere it is the exact sum, or the exact sum over the count.

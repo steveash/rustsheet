@@ -1,4 +1,4 @@
-"""Gate A definitions of SUM and AVERAGE (T-3549, decision 0224) against numbers.md's snap and overflow rules."""
+"""Gate A definitions of SUM and AVERAGE (T-3549, decision 0237) against numbers.md's snap and overflow rules."""
 
 from __future__ import annotations
 
