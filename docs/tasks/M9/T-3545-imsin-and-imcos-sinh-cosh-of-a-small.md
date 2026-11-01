@@ -43,7 +43,7 @@ EXP pair below IMSINH's lower cut (0.01). No constant is tuned: the change drops
 choice among candidates, so it carries no `FITTED` tag (decision 0188 R4) but has a hold-out and a sweep after the freeze.
 
 - **Candidates** on the 21 pure-imaginary small-|y| IMSIN cells of probes-numeric/t3525-im-hyperbolic-fresh-sweep (x = 0,
-  so the part is sinh y; script in the T-3545 notes below): `(EXP(y) - 1/EXP(y))/2` 21 (with idealized x87, libm or
+  so the part is sinh y; `docs/research/t3545/candidates.py`): `(EXP(y) - 1/EXP(y))/2` 21 (with idealized x87, libm or
   correctly rounded EXP alike), double EXP pair 13, `(1/EXP(-y) - EXP(-y))/2` 9, extended-precision EXP pair, libm sinh
   and Kahan-expm1 sinh 0. The winner is the form IMSIN/IMCOS already use inside the band (T-2796), so the model was:
   drop their lower cut.
@@ -69,6 +69,3 @@ choice among candidates, so it carries no `FITTED` tag (decision 0188 R4) but ha
   (|y| above the band) differ from the EXP pair in the 15th digit; 3 IMSINH/IMCOSH cells below |x| = 0.01.
 - Follow-up: T-3560 (IM* part notation).
 
-Candidate script (run from tools/, `uv run python`), for the record:
-`(X87.exp(y) - 1/X87.exp(y))/2` etc. from `rustsheet_tools.fitlab.exact`, each rounded to 15 digits and compared with
-the oracle's imaginary part; reproduced here because it was a one-off.
