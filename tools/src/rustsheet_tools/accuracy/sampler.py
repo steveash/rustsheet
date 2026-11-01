@@ -132,8 +132,9 @@ class Sampler:
         if param.kind == "bool":
             return self.rng.random() < 0.5
         floor = 1.0 if param.kind == "int" else MIN_LITERAL
-        lo = max(param.domain.lo, -MAX_LITERAL)
-        hi = min(param.domain.hi, MAX_LITERAL)
+        cap = MAX_LITERAL if param.draw_hi is None else param.draw_hi
+        lo = max(param.domain.lo, -cap)
+        hi = min(param.domain.hi, cap)
         negative = hi <= 0 or (lo < 0 and self.rng.random() < 0.5)
         top = -lo if negative else hi
         bottom = max(floor, -hi if negative else lo, floor)

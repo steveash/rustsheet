@@ -4,10 +4,10 @@
 # A listed point that passes, or that no table holds, is a stale line and fails the check.
 accuracy/F.INV/s1!Calc!A154	T-1871	deep-tail F quantile: the engine is far off; Excel matches the math
 accuracy/F.INV/s1!Calc!A168	T-1871	F quantile at d1 1 (p 1.04E-20): the engine gives 1.87E-14 against 1.71E-40; Excel matches the math
-accuracy/T.DIST/s1!Calc!A85	T-3533	Excel #NUM! for the density at a huge x; the engine returns 0
-accuracy/T.DIST/s1!Calc!A95	T-3533	Excel #NUM! for the density at a huge x; the engine returns 0
-accuracy/T.DIST/s1!Calc!A105	T-3533	Excel #NUM! for the density at a huge x; the engine returns 0
-accuracy/T.DIST/s1!Calc!A110	T-3533	Excel #NUM! for the density at a huge x; the engine returns 0
+accuracy/T.DIST/s1!Calc!A85	T-3554	Excel #NUM! for the density at a huge x; the engine returns 0
+accuracy/T.DIST/s1!Calc!A95	T-3554	Excel #NUM! for the density at a huge x; the engine returns 0
+accuracy/T.DIST/s1!Calc!A105	T-3554	Excel #NUM! for the density at a huge x; the engine returns 0
+accuracy/T.DIST/s1!Calc!A110	T-3554	Excel #NUM! for the density at a huge x; the engine returns 0
 accuracy/T.INV/s1!Calc!A75	T-3363	quantile at df near 1E8 to 1E10: the engine and Excel are both off the math, differently
 accuracy/T.INV/s1!Calc!A102	T-3363	quantile at df near 1E8 to 1E10: the engine and Excel are both off the math, differently
 accuracy/T.INV.2T/s1!Calc!A68	T-3386	Excel #NUM! at p = 2.2E-308 where the quantile is finite
@@ -58,3 +58,7 @@ accuracy/IRR/s1!Calc!A270	T-3548	long conventional series: Excel #NUM! where the
 accuracy/IRR/s1!Calc!A237	T-3548	long conventional series: Excel #DIV/0!, the engine #NUM!, the math a root
 accuracy/IRR/s1!Calc!A248	T-3548	long conventional series: Excel #DIV/0!, the engine #NUM!, the math a root
 accuracy/IRR/s1!Calc!A268	T-3548	long conventional series: Excel #DIV/0!, the engine #NUM!, the math a root
+accuracy/T.DIST/e-T-3425!Calc!A90	T-3554	Excel #NUM! for the density at a huge x; the engine returns 0
+accuracy/T.DIST/e-T-3425!Calc!A103	T-3554	Excel #NUM! for the density at a huge x; the engine returns 0
+accuracy/T.DIST/e-T-3425!Calc!A116	T-3554	Excel #NUM! for the density at a huge x; the engine returns 0
+accuracy/T.INV/e-T-3425!Calc!A74	T-3363	quantile at df 1E10: the engine is 2.5E-6 off the math; Excel matches it
