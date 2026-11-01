@@ -54,4 +54,4 @@ launching the planner for lanes that have work queued.
 - T-3488's merge-train fix itself.
 - Changing the claim window or how handoffs and review-limited branches free a lane (decisions 0018, 0095).
 - The duplicate id T-3543, used on both `agent/harness/T-3543-gate-a-discrete` and `claude/id-registry`. The
-  id-allocation tasks own it (T-3416 in the open #2563, and the `claude/id-registry` branch).
+  id-allocation tasks own it (T-3543, the atomic id registry, done).

@@ -256,3 +256,58 @@ fn sums_keep_subnormals_and_number_text_flushes_them() {
     assert_eq!(model._get_text("A4"), *"TRUE");
     assert_eq!(model._get_text("A5"), *"TRUE");
 }
+
+/// `-x` of a tiny subnormal (below 2^-1026) is +x (numbers.md "Unary minus of a tiny
+/// subnormal", T-2771). Exact values, read through `*2^100` so the result is normal, for every sign
+/// and group shape around a cell holding x = ±12345·2^-1074 (built by subtraction, as the probe
+/// builds it; a subnormal literal reads as 0). Since T-3338 `apply_unary_chain` walks through
+/// written groups, applying the rule once per group under an odd count of minus signs; these are
+/// the values main gave before that, when each group was evaluated on its own.
+#[test]
+fn unary_minus_of_a_tiny_subnormal_through_groups() {
+    let tiny = "(2^-1022*(1+12345*2^-52)-2^-1022)";
+    for (x, negative) in [(format!("={tiny}"), false), (format!("=0-{tiny}"), true)] {
+        let mut model = new_empty_model();
+        model._set("A1", &x);
+        model._set("B1", &format!("={tiny}*2^100"));
+        model._set("B2", &format!("=(0-{tiny})*2^100"));
+        // Evidenced: `-x` of a positive tiny inline expression is +x
+        // (probes/t2771-roundup-subnormal-sign-controls B1).
+        model._set("C1", &format!("=-{tiny}*2^100"));
+        // Ours, unprobed (TODO(T-2942)): a cell reference, a tiny negative operand, `--x` and
+        // groups between the signs. Each `-x` of a tiny x is +|x| and a later one keeps it.
+        let shapes = [
+            "=-A1",
+            "=--A1",
+            "=-(A1)",
+            "=-(-A1)",
+            "=-(-(A1))",
+            "=--(-A1)",
+            "=-(--A1)",
+        ];
+        for (row, shape) in (1..).zip(shapes) {
+            model._set(&format!("D{row}"), &format!("={}*2^100", &shape[1..]));
+        }
+        model.evaluate();
+        let positive = model._get_text("B1");
+        let negated = model._get_text("B2");
+        assert!(
+            positive.contains("E-") && negated == format!("-{positive}"),
+            "{positive} {negated}"
+        );
+        assert_eq!(model._get_text("C1"), positive);
+        for (row, shape) in (1..).zip(shapes) {
+            // Only `--x` of a tiny negative x stays negative: an even run applies no `-x`.
+            let expected = if negative && shape == "=--A1" {
+                &negated
+            } else {
+                &positive
+            };
+            assert_eq!(
+                &model._get_text(&format!("D{row}")),
+                expected,
+                "{x} {shape}"
+            );
+        }
+    }
+}
