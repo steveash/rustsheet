@@ -24,9 +24,13 @@ Points the draws meet, all inside the envelope of a correct engine:
   slice's first draw found `ROUNDUP(6.4421516092447E+265,-43376)` = 6.4421516092447E+265 where the
   wrap rule says `#NUM!` (numbers.md, "ROUNDUP of a huge value at a huge negative num_digits",
   T-3627).
-- A result below the smallest normal double is flushed to 0 by Excel (numbers.md, "ROUNDUP and
-  ROUNDDOWN of a number whose 15-digit cut is subnormal"); every such result is below Gate A's
-  absolute floor 1e-300.
+- Excel flushes any decimal it converts to a double to 0 when that double would be subnormal: the
+  result, and ROUNDUP's rounded-down part and unit (numbers.md, "ROUNDUP and ROUNDDOWN of a number
+  whose 15-digit cut is subnormal"). So `ROUND(-2.22507385850721E-308,320)` is 0. And
+  `ROUNDUP(8.90029543402884E-308,309)` is 8.9E-308, a normal value smaller than its argument,
+  because the unit 1E-309 is flushed. The math keeps the decimal there, so Excel is more than G
+  off it. Every such point is within Gate A's absolute floor 1e-300 of the math, and the engine
+  matches Excel (decision 0223 lists the points).
 """
 
 from __future__ import annotations

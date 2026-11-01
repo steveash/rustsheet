@@ -22,8 +22,19 @@
       T-3627's open observation at -43,376).
   - Definition: `tools/src/rustsheet_tools/accuracy/defs/rounding.py`.
 - **Consequences:**
-  - On T-3555's tables (360 points, excel-graph 2026-11-01), Excel is more than G off this math at 0 points. Every
-    point is in the envelope.
+  - On T-3555's tables (360 points, excel-graph 2026-11-01), every point is in the envelope.
+  - Excel is more than G = 1e-4 off this math (relative, with no floor) at 5 points, all at the bottom of the double
+    range:
+    - ROUND/s1 A73 `ROUND(-2.22507385850721E-308,320)`: Excel 0;
+    - ROUNDDOWN/s1 A81 and A84 (`±2.22507385850721E-308` at 320): Excel 0;
+    - ROUNDUP/s1 A74 `ROUNDUP(-2.22507385850721E-308,308)`: Excel 0, math -3E-308;
+    - ROUNDUP/s1 A76 `ROUNDUP(8.90029543402884E-308,309)`: Excel 8.9E-308, math 9E-308 (the subnormal unit 1E-309 is
+      flushed, so the result is below its argument).
+  - The two-stage decimal rule does not cause these. Excel flushes a subnormal conversion to 0 (numbers.md, "ROUNDUP
+    and ROUNDDOWN of a number whose 15-digit cut is subnormal", T-2756). They are no evidence against this decision.
+    The engine matches Excel to the bit at all five, and each is within the 1e-300 absolute floor of the math.
+  - They are not R3 candidates: Excel is matched. Moving them to the math would need its own decision and an owner
+    ruling (decision 0188 R3).
   - ROUNDUP's binary add of the unit (numbers.md) leaves Excel and the engine 1 ulp from the decimal math at some
     points. That is far inside ε, so it needs no rule here.
   - Other decimal rounding functions (MROUND, TRUNC, CEILING, FLOOR, FIXED, DOLLAR) need their own reading when they

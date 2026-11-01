@@ -76,8 +76,14 @@ function is defined so that Excel's documented decimal behavior is not counted a
   from excel-graph on 2026-11-01. `rustsheet-eval accuracy` on the head merged with main: 2362 points in 13 tables, 0 failing,
   0 table defects. Missing tables went down by 3: 310 to 307 before the merge with main, 305 after it (main had 310, not
   323, when this task started). No known-failures lines: every new point is
-  in the envelope. Excel is more than G = 1e-4 off the math at 0 points. ROUNDUP's 5 domain-error points are all
-  `#NUM!` in Excel.
+  in the envelope. ROUNDUP's 5 domain-error points are all `#NUM!` in Excel.
+- Excel is more than G = 1e-4 off the math (relative, with no floor) at 5 points. Decision 0223 lists them: ROUND
+  A73, ROUNDDOWN A81 and A84, and ROUNDUP A74 and A76. All five are the subnormal flush of T-2756, not the decimal
+  rule. The engine matches Excel to the bit there, and the 1e-300 floor keeps each in the envelope. A first count
+  in this Outcome said 0 because it applied that floor; the Excel-fidelity review caught it.
+- ROUND/s1 A61, `ROUND(4.91499999999999E-06,8)`: Excel gives 4.9100000000000004E-06, 1 ulp above the double
+  nearest 4.91E-06, which the engine returns. It is in the envelope and below the reproducibility floor. I recorded
+  it in numbers.md as an observation against "return the nearest double".
 - The draws keep `num_digits` within ±400. The first ROUNDUP draw went to ±65,535 and hit a table defect:
   `ROUNDUP(6.4421516092447E+265,-43376)` is the value in Excel, not `#NUM!`. That contradicts the wrap rule, so I
   recorded it in numbers.md ("ROUNDUP of a huge value at a huge negative num_digits", UNVERIFIED) and filed T-3627 to
