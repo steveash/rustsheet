@@ -3,7 +3,7 @@ id: T-3572
 title: "GAMMA.DIST at a fractional shape below 1 near P = 1: record or route the t2512-r3-bgrat-qgamma column A misses"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
