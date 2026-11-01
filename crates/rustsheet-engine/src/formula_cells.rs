@@ -4,7 +4,9 @@
 
 use std::sync::Arc;
 
-use crate::expressions::parser::static_analysis::{run_static_analysis_on_node, StaticResult};
+use crate::expressions::parser::static_analysis::{
+    legacy_formula_is_dynamic, run_static_analysis_on_node, StaticResult,
+};
 use crate::expressions::parser::stringify::{
     to_localized_string, to_localized_string_this_row_lowered,
 };
@@ -13,6 +15,7 @@ use crate::expressions::types::{CellReferenceIndex, CellReferenceRC};
 use crate::language::Language;
 use crate::locale::Locale;
 use crate::model::Model;
+use crate::types::{ArrayKind, Cell};
 
 /// A printer of a parsed formula in the active locale and language, at a cell.
 type FormulaPrinter = fn(&Node, &CellReferenceRC, &Locale, &Language) -> String;
@@ -152,6 +155,57 @@ impl Model {
         Ok(formula_index)
     }
 
+    /// Makes each plain formula cell whose formula Excel spills even when it is stored without the
+    /// dynamic-array flag ([`legacy_formula_is_dynamic`]) a dynamic anchor, as typing the formula
+    /// would ([`Self::set_cell_with_formula_index`]): an xlsx `<f>` with no `cm`, or a decoded
+    /// `CellFormula`, holding `SIN(A1#)` or `SEQUENCE(3)` (probes/legacy-formula-spill-ref, T-3467).
+    /// Without it such a cell reached evaluation as a scalar cell with an array result.
+    pub(crate) fn promote_dynamic_formula_cells(&mut self) {
+        for (sheet, worksheet) in self.workbook.worksheets.iter_mut().enumerate() {
+            let Some(formulas) = self.parsed_formulas.get(sheet) else {
+                continue;
+            };
+            // Decided once per shared formula, not per cell: many cells share one formula, and
+            // the walks are as long as its tree (T-3467 review).
+            let dynamic: Vec<bool> = formulas
+                .iter()
+                .map(|parsed| {
+                    is_dynamic_anchor(parsed) && legacy_formula_is_dynamic(&parsed.evaluated)
+                })
+                .collect();
+            let promoted: Vec<(i32, i32)> = worksheet
+                .sheet_data
+                .cells()
+                .filter_map(|(row, column, cell)| match cell {
+                    Cell::CellFormula { f, .. }
+                        if usize::try_from(*f)
+                            .ok()
+                            .and_then(|f| dynamic.get(f))
+                            .is_some_and(|dynamic| *dynamic) =>
+                    {
+                        Some((row, column))
+                    }
+                    _ => None,
+                })
+                .collect();
+            for (row, column) in promoted {
+                if let Some(cell) = worksheet.sheet_data.cell_mut(row, column) {
+                    let placeholder = Cell::EmptyCell { s: 0 };
+                    *cell = match std::mem::replace(cell, placeholder) {
+                        Cell::CellFormula { f, s, v } => Cell::ArrayFormula {
+                            f,
+                            s,
+                            r: (1, 1),
+                            kind: ArrayKind::Dynamic,
+                            v,
+                        },
+                        other => other,
+                    };
+                }
+            }
+        }
+    }
+
     /// Stores the sheet's shared formula `formula_index` in the cell, as a dynamic anchor unless
     /// its static result is a scalar.
     fn set_cell_with_formula_index(
@@ -162,10 +216,8 @@ impl Model {
         formula_index: i32,
         style: i32,
     ) -> Result<(), String> {
-        let is_dynamic = !matches!(
-            self.parsed_formulas[sheet as usize][formula_index as usize].static_result,
-            StaticResult::Scalar
-        );
+        let is_dynamic =
+            is_dynamic_anchor(&self.parsed_formulas[sheet as usize][formula_index as usize]);
         let worksheet = self.workbook.worksheet_mut(sheet)?;
         if is_dynamic {
             worksheet.set_cell_with_dynamic_formula(row, column, formula_index, style, 1, 1)
@@ -211,4 +263,11 @@ impl Model {
         }
         Ok(())
     }
+}
+
+/// Whether a formula cell holding `parsed` is stored as a dynamic anchor: unless its static result
+/// is a scalar. A typed formula follows this alone; a formula loaded without the dynamic-array flag
+/// must also have no automatic `@` ([`Model::promote_dynamic_formula_cells`]).
+fn is_dynamic_anchor(parsed: &ParsedFormula) -> bool {
+    !matches!(parsed.static_result, StaticResult::Scalar)
 }

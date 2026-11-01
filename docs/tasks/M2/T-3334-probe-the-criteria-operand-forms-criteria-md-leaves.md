@@ -3,7 +3,7 @@ id: T-3334
 title: "Probe the criteria operand forms criteria.md leaves UNVERIFIED after T-3136: <, > and <= over formatted number text, month names with a time, $1e2, a percent at the 15-digit tie, CHAR(160)-padded operands"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -48,16 +48,31 @@ over formatted number operands, VALUE forms beyond T-3136's set, a percent opera
     neighbours one ulp either side of the cell value.
 
 ## Acceptance criteria
-- [ ] A new probe case `probes/t3334-criteria-operand-forms` (excel-probe skill, tag `M2`), filled
+- [x] A new probe case `probes/t3334-criteria-operand-forms` (excel-probe skill, tag `M2`), filled
       with excel-graph and committed with its sidecar. It covers every bullet above.
-- [ ] criteria.md's UNVERIFIED sentence is replaced by a rule with the probe's cells as evidence,
+- [x] criteria.md's UNVERIFIED sentence is replaced by a rule with the probe's cells as evidence,
       or narrowed to what is still unprobed and why. Any quirk found is written there in this PR.
-- [ ] Every cell of the new case that the engine fails is owned by a follow-up functions-criteria
+- [x] Every cell of the new case that the engine fails is owned by a follow-up functions-criteria
       task filed in this PR, listing the cells, before `make eval-baseline` records them as new
       coverage. `make exit-owners MILESTONE=M2` reports 0.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The engine fix (the follow-up task).
 - Bare `"<="`/`">="` against empty text, `$(1)`-style number text and USDOLLAR (T-3119).
 - Locales other than en-US.
+
+## Outcome
+- Probe case `probes/t3334-criteria-operand-forms` (93 operand rows under SUMIF, SUMIFS, COUNTIF, COUNTIFS and DSUM,
+  with VALUE of each group's operand in column H), filled with excel-graph. Review round 2 added rows 77-93: the
+  percent operands `33.33333333333336%` and `33.33333333333338%`, whose doubles round up at 15 digits, and the
+  plain, `=` and number criteria `$1`, `50%`, `1,000` against the CHAR(160)-padded text cells.
+- criteria.md: the UNVERIFIED sentence is replaced by verified rules. `<`, `>` and `<=` behave as `>=`. Operands that
+  VALUE rejects (`Jan 1 2020 12:00`, `1e2$`) compare as text. Month-name dates with a time, `$1e2` and `-$1e2` are
+  numbers. CHAR(160) padding makes an operand text, and a padded text cell never matches a number criterion. At the
+  percent tie, the operand is truncated to 15 significant digits, not rounded (H77, H81). Whether the cut comes
+  before or after the division by 100 stays open.
+- Eval delta: probes gains 983 checked cells with 33 new-coverage known failures, all owned by follow-up T-3404
+  (`1e2$` rows 39-42 and H39; VALUE of NBSP-padded text H47, H51, H55, H59). Regressions: 0. Visible parity lock
+  is 2462 (+33, all in this case). `make exit-owners MILESTONE=M2` lists none of this case's cells; the 3 cells it
+  does report (t3266-nested-200-824-stored/typed, typed-mixed-fraction-number-format B15) predate this branch.

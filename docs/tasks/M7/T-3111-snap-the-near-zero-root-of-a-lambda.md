@@ -3,7 +3,7 @@ id: T-3111
 title: "Snap the near-zero root of a LAMBDA body at every call made by MAP, MAKEARRAY, BYROW, BYCOL, REDUCE and SCAN, and of an in-place call passed as a LAMBDA argument"
 milestone: M7
 lane: engine
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -35,10 +35,20 @@ same goes for an in-place LAMBDA call passed as an argument to another LAMBDA ca
   second snap. T-3105 changes the same flag for defined-name calls, so land after it.
 
 ## Acceptance criteria
-- [ ] Every cell of probes/t3095-snap-lambda-helpers passes (`make eval-baseline` drops its 65 known failures), no
+- [x] Every cell of probes/t3095-snap-lambda-helpers passes (`make eval-baseline` drops its 65 known failures), no
       regressions.
-- [ ] numbers.md's paragraph says the engine matches the helper cells.
-- [ ] `make check` green; reviewers approve.
+- [x] numbers.md's paragraph says the engine matches the helper cells.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - GROUPBY/PIVOTBY aggregation LAMBDAs and eta-reduced helpers (`MAP(r,SUM)`): probe first (see the T-3095 Outcome).
+
+## Outcome
+- `LambdaCaller::snapping_root` (functions/logical/lambda.rs) is the one switch for the body-root snap; `call_lambda`,
+  MAP, MAKEARRAY, BYROW, BYCOL, REDUCE and SCAN all use it, so every call snaps through the existing
+  `Model::evaluate_formula_root` (no second snap).
+- An in-place call bound in reference context (a LAMBDA argument, `call_callee_as_reference`) snaps a root `+`/`-`
+  body, which can never be a reference; this also snaps the unprobed `=SUM(LAMBDA(..)(..))` form, consistent with
+  Excel's `=SUM(f(..))` (T-3094). T-3093's context now says so; it still owns the probe of that form.
+- Eval delta: probes known failures 2302 -> 2237 (all 65 t3095-snap-lambda-helpers cells fixed), 0 regressions in
+  every suite.

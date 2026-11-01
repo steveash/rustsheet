@@ -5,7 +5,7 @@
 //! nothing that reads a cell can be left out. It is a superset of what a formula depends on.
 
 use std::collections::HashSet;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Mutex;
 
 use crate::constants::{LAST_COLUMN, LAST_ROW};
@@ -58,6 +58,32 @@ impl SheetReads {
 pub(crate) struct ReadLog {
     on: AtomicBool,
     reads: Mutex<SheetReads>,
+}
+
+/// The index in its row of the cell `SheetData::cell` found last. Reads down a column find their
+/// cell at the same index row after row, so it is tried before the search: calipers `pv26_002`'s
+/// rows hold 755 cells of 88 bytes, and a bisection over one cost a cache miss a probe. A guess only, checked
+/// against the column found there. Atomic for the reason [`ReadLog`] is.
+#[derive(Debug, Default)]
+pub(crate) struct PositionHint(AtomicUsize);
+
+impl PositionHint {
+    #[inline]
+    pub(crate) fn get(&self) -> usize {
+        self.0.load(Ordering::Relaxed)
+    }
+
+    #[inline]
+    pub(crate) fn set(&self, index: usize) {
+        self.0.store(index, Ordering::Relaxed);
+    }
+}
+
+/// A copy starts with no hint.
+impl Clone for PositionHint {
+    fn clone(&self) -> Self {
+        Self::default()
+    }
 }
 
 /// A copy of a sheet records nothing until it is asked to.

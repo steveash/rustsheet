@@ -1,0 +1,9 @@
+659 cells (d1=1, d2>=3)
+y=fl(n/fl(n+x)), exact I_y(n/2,1/2)           exact  162 w4  352  median err +0.0 ulp
+xx=fl(x/fl(n+x)), 1-I_xx(1/2,n/2) exact       exact  265 w4  529  median err +0.0 ulp
+xx, RN(1-RN(I_xx))                            exact  239 w4  444  median err +0.0 ulp
+y=fl(1-xx)                                    exact  168 w4  329  median err +0.0 ulp
+r=fl(n/x), y=fl(r/fl(1+r))                    exact  171 w4  370  median err +0.0 ulp
+y=fl(1/fl(1+fl(x/n)))                         exact  153 w4  338  median err +0.0 ulp
+T: t=fl(sqrt x), y=fl(n/fl(n+fl(t*t)))        exact  162 w4  350  median err +0.0 ulp
+exact x                                       exact  266 w4  561  median err +0.0 ulp
