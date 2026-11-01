@@ -59,10 +59,12 @@ file the engine task if the engine differs.
     k = ±400, ±1000, ±32767, ±32768, ±65535, for ROUNDUP and ROUNDDOWN.
   - t3627-roundup-rounddown-huge-digits-place: 322 formula cells. x = 1.23456789012345E∓90 to E∓112, k = ±32768,
     ±40000, ±65535 and 98304.
-  - A model of the rule, the Gate A ROUNDUP/ROUNDDOWN math with the 100-place step added, matches all 942 cells. It
+  - t3627-roundup-rounddown-negative-x: 70 formula cells, negative x at k = ±32768, ±65535 and 32767 (excel-fidelity
+    review MINOR: no negative x). The magnitude is rounded and the sign kept, as for smaller k.
+  - A model of the rule, the Gate A ROUNDUP/ROUNDDOWN math with the 100-place step added, matches all 1,012 cells. It
     also matches every literal-argument ROUNDUP/ROUNDDOWN cell of probes/round-huge-digits*, which still pass.
   - ROUND was not re-probed: every ROUND cell already follows the 32-bit rule. TRUNC was not probed past 32,767.
-- Engine: it differs (it rounds at k itself), so 309 of the 942 cells fail. They are baselined as F lines in
+- Engine: it differs (it rounds at k itself), so 327 of the 1,012 cells fail. They are baselined as F lines in
   eval/baseline/probes.txt and owned by **T-3635** (functions-math, sonnet, S), filed here.
 - Gate A is unchanged: T-3555's definitions draw `num_digits` within ±400 and give no math value past it.
-- Eval delta: 2 new probe cases with 942 cells, 633 passing; known failures +309, all owned by T-3635. No regressions.
+- Eval delta: 3 new probe cases with 1,012 cells, 685 passing; known failures +327, all owned by T-3635. No regressions.
