@@ -665,7 +665,9 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                             Some(fraction) => {
                                 text.push_str(&p.numerals.digits(&fraction.digits_text()));
                             }
-                            None => text.extend(std::iter::repeat_n(p.numerals.digit('0'), *digits)),
+                            None => {
+                                text.extend(std::iter::repeat_n(p.numerals.digit('0'), *digits));
+                            }
                         }
                     }
                 }

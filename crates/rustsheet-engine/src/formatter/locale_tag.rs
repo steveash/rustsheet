@@ -154,7 +154,7 @@ pub fn resolve_after_hijri_prefix(tag: &str) -> LocaleTag {
                     | Calendar::Taiwan
                     | Calendar::Thai
             ),
-            names_after_mmm: match hex_value(tag).map(|value| value >> 16 & 0xFF) {
+            names_after_mmm: match hex_value(tag).map(calendar_digit) {
                 Some(1) => Some(ARABIC),
                 Some(3 | 5) => Some(EN_US),
                 _ => None,
@@ -237,10 +237,19 @@ fn extended_hex(tag: &str) -> Option<u32> {
     }))
 }
 
+/// The calendar digits of a tag value (bits 16-23), without its numeral byte.
+fn calendar_digit(value: u32) -> u32 {
+    (value >> 16) & 0xFF
+}
+
 /// `value` with calendar digit 0 read as 6 (Hijri) after a `B2` prefix; the system tags keep
 /// theirs.
 fn hijri_default(value: u32, hijri_prefix: bool) -> u32 {
-    if hijri_prefix && value >> 16 & 0xFF == 0 && value != SYSTEM_DATE_LCID && value != SYSTEM_TIME_LCID {
+    if hijri_prefix
+        && calendar_digit(value) == 0
+        && value != SYSTEM_DATE_LCID
+        && value != SYSTEM_TIME_LCID
+    {
         value | 0x6_0000
     } else {
         value

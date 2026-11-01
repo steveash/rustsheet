@@ -182,13 +182,21 @@ pub(super) fn format_fraction(
             _ if in_separator && separator == Separator::Dropped => {}
             _ if in_separator && separator == Separator::Spaces => push_spaces(&mut text, token),
             TextToken::Digit(_) if index < fraction.numerator_start => {
-                text.push_str(&part.numerals.digits(&integer_fill.next().unwrap_or_default()));
+                text.push_str(
+                    &part
+                        .numerals
+                        .digits(&integer_fill.next().unwrap_or_default()),
+                );
             }
             _ if in_fraction && blank && !blank_spaces => {}
             // Every placeholder and literal of a blank fraction takes its width in spaces.
             _ if in_fraction && blank => push_spaces(&mut text, token),
             TextToken::Digit(_) if in_fraction => {
-                text.push_str(&part.numerals.digits(&numerator_fill.next().unwrap_or_default()));
+                text.push_str(
+                    &part
+                        .numerals
+                        .digits(&numerator_fill.next().unwrap_or_default()),
+                );
             }
             TextToken::Literal(c) => text.push(*c),
             TextToken::Text(t) => text.push_str(t),
