@@ -81,5 +81,6 @@ Probes (probes/, M9, excel-graph, 2026-11-01). Each checks Calc!A76 only, except
   be told apart.
 - Not done: re-filling gen-m9 d912671baa1364aa's oracle to today's 0. Picking the run that matches us would be
   choosing evidence by outcome. The sidecar stays as Excel produced it.
+- Follow-up: T-3610 (how the eval scores a cell whose value varies between fills; excel-fidelity review MINOR).
 - Eval delta: 8 new probe cases, all passing (ours 0 and 485). No baseline line added or removed: gen-m9 A76 stays F.
 

@@ -2197,17 +2197,17 @@ Every earlier cell fits this reading: probes/amordegrc-fractional-period A1-A11 
 A28); fin-amor-period-bound B17 (period 0.5) is 485, B18's value; amor-argument-check-order A846-A851 are 776 from A852
 (period 1.5), and A862-A864 are 0: A866's period-0 AMORDEGRC, the first cell Excel runs, and the error in A865
 leave the state empty. gen-m9 d912671baa1364aa A76
-(period 0.5625) was 1 in its oracle run (excel-graph, 2026-10-28), which the table does not explain: the last AMORDEGRC
-or AMORLINC after it, A96 (`AMORLINC(92598,36663,39379,343,6,1E-300,3)`), leaves 0 (fraction-state-r), and its other
-AMORDEGRCs and AMORLINCs are errors. That 1 does not reproduce (T-3590). The same workbook, byte for byte (input sha256
-685de544…, probes/amordegrc-a76-bisect-a), is 0 in Excel on 2026-11-01, and the other 412 cells match the 10-28 run.
-It is also 0 with the pivot table dropped (-b), with Calc cut to A1:A76 (-c), A76:A400 (-d), A76 alone (-e) or A76:A96
-(-f), and as the whole workbook plus one unrelated constant (-h). Nothing is left to bisect, so the task's hypotheses
-(an erroring call that still leaves a state, an argument pattern that gives 1, an order that reaches Pivot or Db
-first) cannot be told apart, and each subset agrees with the rule above. The state did not carry from one workbook to the next one the service
-calculated: -h, filled 9 s after -g left 485, is 0. The 10-28 value is therefore not a function of the workbook alone,
-like WEEKNUM's state after edits (decision 0038). What else made it 1 (a different service build, or a recalc after
-the load in an order the calc chain set) is not known.
+(period 0.5625) was 1 in its oracle run (excel-graph, 2026-10-28), which the table does not explain: the last
+AMORDEGRC or AMORLINC after it, A96 (`AMORLINC(92598,36663,39379,343,6,1E-300,3)`), leaves 0 (fraction-state-r), and
+its other AMORDEGRCs and AMORLINCs are errors. That 1 does not reproduce (T-3590). The same workbook, byte for byte
+(input sha256 685de544…, probes/amordegrc-a76-bisect-a), is 0 in Excel on 2026-11-01, and the other 412 cells match
+the 10-28 run. It is also 0 with the pivot table dropped (-b), with Calc cut to A1:A76 (-c), A76:A400 (-d), A76 alone
+(-e) or A76:A96 (-f), and as the whole workbook plus one unrelated constant (-h). Nothing is left to bisect, so the
+task's hypotheses (an erroring call that still leaves a state, an argument pattern that gives 1, an order that reaches
+Pivot or Db first) cannot be told apart, and each subset agrees with the rule above. The state did not carry from one
+workbook to the next one the service calculated: -h, filled 9 s after -g left 485, is 0. The 10-28 value is therefore
+not a function of the workbook alone, like WEEKNUM's state after edits (decision 0038). What else made it 1 (a
+different service build, or a recalc after the load in an order the calc chain set) is not known.
 Evidence: probes/amordegrc-fraction-alone-a to -g (excel-graph, 2026-10-26, T-1895) and
 probes/amordegrc-fraction-state-h to -ab (excel-graph, 2026-10-27, T-2825),
 probes/amordegrc-fraction-state-ac to -ai (excel-graph, 2026-10-30, T-2844), probes/amordegrc-a76-bisect-a to -h
