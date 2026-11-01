@@ -353,6 +353,11 @@ class Ack(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             self.assertEqual(merge_step.main(["next", "--wait", "0"], self.root), merge_step.NEXT_NONE)
 
+    def test_a_wait_that_is_not_a_finite_non_negative_number_is_refused(self) -> None:
+        for bad in ("nan", "inf", "-1"):
+            with self.subTest(bad=bad), self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+                merge_step.main(["next", "--wait", bad], self.root)
+
     def test_a_forged_ack_file_aborts(self) -> None:
         folder = merge_step.step_dir(self.root)
         with self.assertRaises(StepError):

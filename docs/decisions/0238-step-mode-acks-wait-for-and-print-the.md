@@ -1,6 +1,6 @@
 # 0238 — Step-mode acks wait for and print the next action
 
-- **Status:** accepted (2026-11-01, T-3716)
+- **Status:** accepted (2026-11-01, T-3716); amends decision 0169 and SPEC-0027 section 4 (step mode)
 - **Context:** in step mode (decision 0169) every GitHub write of a merger run is one action that
   the merger session performs and acks. `make merge-train-ack` only wrote the ack file and
   returned, so the session slept a fixed time and grepped the run's log for the next action. The
@@ -11,7 +11,8 @@
 - **Decision:** `make merge-train-ack` (`merge_step.py ack --next 90`) waits up to 90 s, polling
   once a second, for the run's next pending action and prints it in the run's own format.
   `make merge-train-next` (`merge_step.py next --wait 300`) blocks until an action is pending and
-  prints it; it exits 3 when none appears in time. The run and the ack file protocol are
+  prints it; it exits 3 when none appears in time. Both waits refuse a value that is not a finite,
+  non-negative number of seconds. The run and the ack file protocol are
   unchanged: the run still waits at most `ACK_TIMEOUT` for each ack and still reads every write
   back. The merger prompt in docs/process/routines.md says to use both instead of sleeping.
 - **Consequences:** a write costs one GitHub call plus the run's read-back instead of a fixed

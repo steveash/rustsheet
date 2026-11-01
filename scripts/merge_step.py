@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 import time
 from collections.abc import Callable, Mapping
@@ -358,6 +359,22 @@ def announce(action: Mapping[str, object], notes: TextIO) -> None:
     )
 
 
+def read_pending(folder: Path) -> object:
+    """The pending action file's JSON, or None while it is absent or not JSON yet."""
+    try:
+        return json.loads((folder / "pending").read_text())
+    except (OSError, ValueError):
+        return None
+
+
+def seconds(text: str) -> float:
+    """An argparse type: a finite, non-negative number of seconds (a NaN wait would never end)."""
+    value = float(text)
+    if not math.isfinite(value) or value < 0:
+        raise argparse.ArgumentTypeError(f"not a finite, non-negative number of seconds: {text!r}")
+    return value
+
+
 def wait_next(
     root: Path,
     after: int | None,
@@ -372,10 +389,7 @@ def wait_next(
     deadline = clock() + timeout
     folder = step_dir(root)
     while True:
-        try:
-            action = json.loads((folder / "pending").read_text())
-        except (OSError, ValueError):
-            action = None
+        action = read_pending(folder)
         if isinstance(action, dict):
             seq = action.get("seq")
             if after is None or (isinstance(seq, int) and seq > after):
@@ -397,9 +411,8 @@ def ack(root: Path, seq: int, refused: bool, next_wait: float = 0) -> int:
     """Answers the pending action `seq`: 1 when no action or another one is pending. With
     `next_wait`, then waits up to that many seconds for the run's next action and prints it."""
     folder = step_dir(root)
-    try:
-        pending = json.loads((folder / "pending").read_text())
-    except (OSError, ValueError):
+    pending = read_pending(folder)
+    if pending is None:
         print("merge_step: no step action is pending", file=sys.stderr)
         return 1
     if not isinstance(pending, dict) or pending.get("seq") != seq:
@@ -434,9 +447,9 @@ def main(argv: list[str], root: Path = ROOT) -> int:
     acked = sub.add_parser("ack", help="the session performed (or saw refused) the pending action")
     acked.add_argument("--seq", type=int, required=True)
     acked.add_argument("--refused", action="store_true")
-    acked.add_argument("--next", type=float, default=0, metavar="S", help="then wait up to S s for the next action")
+    acked.add_argument("--next", type=seconds, default=0, metavar="S", help="then wait up to S s for the next action")
     nxt = sub.add_parser("next", help="wait for a pending action and print it")
-    nxt.add_argument("--wait", type=float, default=300, metavar="S")
+    nxt.add_argument("--wait", type=seconds, default=300, metavar="S")
     args = parser.parse_args(argv)
     try:
         if args.command == "next":

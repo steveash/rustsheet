@@ -91,7 +91,8 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
     Any other conflict stays with the PR's worker.
   - **The janitor** (`make janitor`, decision 0224; `DRY_RUN=1` lists its actions; `STEP=1`
     prints each GitHub write as a step-mode action to perform and ack with `make merge-train-ack
-    SEQ=<n>`, as the merger does, when the session cannot write through `gh api`) runs after
+    SEQ=<n>`, as the merger does, when the session cannot write through `gh api`; the ack prints the
+    next action, and `make merge-train-next` waits for one, decision 0238) runs after
     once per merger routine run, after its train passes, in `train` mode only, within a 25-min
     budget (no catch-up or renumber starts after it; the rest waits for the next run). It skips
     PRs labelled `merge-hold`: label a PR so to hold it against the janitor's pushes and
