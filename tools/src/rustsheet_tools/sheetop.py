@@ -125,7 +125,8 @@ def sheet_op(op: Any) -> tuple[str, str, str | int | None]:
         # Graph's address; a count of 1 keeps the plain row or letter, so single-edit workbooks stay
         # byte-identical.
         if count > 1 and by_column:
-            last = column_number(to) + count - 1
+            first = str(to).upper()
+            last = column_number(first) + count - 1
             if last > _LAST_COLUMN:
                 msg = f"sheet op {op!r}: the columns run past XFD"
                 raise ValueError(msg)
@@ -133,7 +134,7 @@ def sheet_op(op: Any) -> tuple[str, str, str | int | None]:
             while last:
                 last, rem = divmod(last - 1, 26)
                 letters = chr(ord("A") + rem) + letters
-            to = f"{to.upper()}:{letters}"
+            to = f"{first}:{letters}"
         elif count > 1:
             to = f"{to}:{to + count - 1}"
     elif _is_row_span(to) and not recorded:
