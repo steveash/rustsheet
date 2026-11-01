@@ -13,9 +13,13 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same ref cancels a PR's or a train's older run. On main every merge's run
+# finishes (decision 0239): it is the only run of the landed sha and the only source of the per-merge
+# eval report (decision 0054). GitHub still keeps at most one pending run per group, so a burst
+# of merges skips the middle ones, never the one already running.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   CARGO_TERM_COLOR: always
