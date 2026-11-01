@@ -37,6 +37,7 @@ pub mod overrides;
 pub mod phase1_exceptions;
 pub mod poi_m8_subset;
 pub mod probe_milestones;
+pub mod r1c;
 pub mod report;
 pub mod run_meta;
 pub mod runner;

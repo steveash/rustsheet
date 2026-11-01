@@ -44,3 +44,8 @@ need INDIRECT as a producer (T-1957) and then pass through this walker.
 Oracle values (probes/t2065-lift-*, excel-graph): `STDEV.S(OFFSET(A1,{0;1},0))` 70.0035713374682, `VAR.S(..)` 4900.5,
 `SUMSQ(..)` 10001 (single-cell elements; top-left versus whole element is open, T-2816); `AVERAGEA`/`MAXA(OFFSET(A4,{0;1;2},0))` over "5", blank, TRUE are 0.
 MEDIAN, LARGE and SMALL never open on Excel for the web (M14). See SPEC-0014 and docs/excel-semantics/lookup.md.
+
+## T-2816 findings
+Multi-cell elements contribute their top-left cell only (probes/t2816-lift-*, excel-graph 2026-10-31):
+`STDEV.S`/`VAR.S(OFFSET(A1,0,0,{1;2}))` 0, `SUMSQ` 2 (top-left, not implicit intersection: `SUMSQ(OFFSET(A2,0,0,{1;2}))` in E1 is 20000); `AVERAGEA(OFFSET(A4,{0;3},0))` ("5", 7) 3.5, `MAXA` 7;
+`AVERAGEA(OFFSET(A5,{0;1},0))` (blank, TRUE) `#DIV/0!`, `MAXA` 0. Text counts as 0, blank and TRUE are skipped (unlike a reference argument, where TRUE is 1).

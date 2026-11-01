@@ -417,6 +417,14 @@ fn excel_form_lower(a: f64, x: f64, exponent: f64) -> Option<f64> {
 /// operations at any shape (T-1891).
 const TEMME_SHAPE_MIN: f64 = 1e8;
 
+/// The shape from which [`gamma_quantile`]'s cdfs are [`temme_pair`] (one term each). One
+/// inversion's cdfs share [`MAX_TERMS`], and a series cdf near the median takes about 7.3 * sqrt(a)
+/// terms, so its cdfs could pass it from about 2.6E5; they did from about 5E6 (`CHISQ.INV(0.5,2E7)`
+/// was `#NUM!`, Excel the true quantile, probes/t3350-chisq-inv-huge-df; T-3350). From here the
+/// expansion's variable is at most 0.13 where a tail is above e^-800 and its dropped terms below
+/// 1E-20 of the first.
+const QUANTILE_TEMME_SHAPE_MIN: f64 = 1e5;
+
 /// Above this a·phi (`temme_pair`'s exponent) the smaller tail is below e^-800, so 0 in doubles,
 /// and the expansion's polynomials are not evaluated (their variable may overflow there).
 const TEMME_EXPONENT_MAX: f64 = 800.0;
@@ -536,17 +544,22 @@ fn incomplete_gamma_pair(a: f64, x: f64, terms: &mut Terms) -> (f64, f64) {
     pair_with(a, x, terms, Exponent::Excel)
 }
 
+/// [`temme_pair`], a fixed amount of work charged to `terms` as one term; NaN once they are spent.
+fn charged_temme_pair(a: f64, x: f64, terms: &mut Terms) -> (f64, f64) {
+    if terms.take() {
+        temme_pair(a, x)
+    } else {
+        (f64::NAN, f64::NAN)
+    }
+}
+
 /// [`incomplete_gamma_pair`] with the prefactor's large-shape `exponent`.
 fn pair_with(a: f64, x: f64, terms: &mut Terms, exponent: Exponent) -> (f64, f64) {
     if a == 1.0 {
         return (-(-x).exp_m1(), (-x).exp());
     }
     if a >= TEMME_SHAPE_MIN {
-        // A fixed amount of work, charged as one term.
-        if !terms.take() {
-            return (f64::NAN, f64::NAN);
-        }
-        return temme_pair(a, x);
+        return charged_temme_pair(a, x, terms);
     }
     let prefactor = gamma_prefactor(a, x, exponent);
     if prefactor == 0.0 {
@@ -578,36 +591,9 @@ fn pair_with(a: f64, x: f64, terms: &mut Terms, exponent: Exponent) -> (f64, f64
         }
         return (lower, 1.0 - lower);
     }
-    // Q = prefactor / (x + 1 - a - 1(1-a)/(x + 3 - a - 2(2-a)/(x + 5 - a - ...))).
-    let tiny = f64::MIN_POSITIVE / f64::EPSILON;
-    let mut b = x + 1.0 - a;
-    let mut c = 1.0 / tiny;
-    let mut d = 1.0 / b;
-    let mut h = d;
-    let mut i = 1.0;
-    let mut budget = Terms(continued_fraction_budget(a));
-    loop {
-        if !terms.take() || !budget.take() {
-            return (f64::NAN, f64::NAN);
-        }
-        let an = -i * (i - a);
-        b += 2.0;
-        d = an * d + b;
-        if d.abs() < tiny {
-            d = tiny;
-        }
-        c = b + an / c;
-        if c.abs() < tiny {
-            c = tiny;
-        }
-        d = 1.0 / d;
-        let delta = d * c;
-        h *= delta;
-        if (delta - 1.0).abs() <= f64::EPSILON * 0.25 {
-            break;
-        }
-        i += 1.0;
-    }
+    let Some((h, _)) = fraction::continued_fraction(a, x, terms) else {
+        return (f64::NAN, f64::NAN);
+    };
     let upper = prefactor * h;
     (1.0 - upper, upper)
 }
@@ -615,6 +601,11 @@ fn pair_with(a: f64, x: f64, terms: &mut Terms, exponent: Exponent) -> (f64, f64
 /// [`gamma_cdf`]'s and [`gamma_sf`]'s value at a positive, finite `scaled` = x * rate: the
 /// accurate pair's `upper` or lower tail.
 fn accurate_tail(a: f64, scaled: f64, upper: bool) -> f64 {
+    if upper {
+        if let Some(q) = half_integer::half_integer_upper(a, scaled, &mut Terms(MAX_TERMS)) {
+            return q;
+        }
+    }
     let (p, q) = incomplete_gamma_pair(a, scaled, &mut Terms(MAX_TERMS));
     if upper {
         q
@@ -662,7 +653,8 @@ pub(crate) enum Tail {
 ///
 /// Other shapes take the crossing of the smaller tail of the cdf of rate 1 / scale
 /// (`special::refine_increasing` from [`wilson_hilferty_start`], or halving the bit patterns of
-/// the whole range where that start is NaN: at most 129 cdfs). Excel is close to the true quantile (against mpmath, 509 of 545
+/// the whole range where that start is NaN: at most 129 cdfs; from [`QUANTILE_TEMME_SHAPE_MIN`]
+/// each cdf is one Temme term). Excel is close to the true quantile (against mpmath, 509 of 545
 /// literal-argument quantile cells are within half a unit of the 15th digit); statrs' search,
 /// the start until T-3131, could be 7E-15 off it (`GAMMA.INV(0.5,9,1)`). The smaller tail is `p` or
 /// its exact complement `1 - p`, so a tiny right-tail `p` keeps the digits `1 - p` loses, as in
@@ -670,6 +662,11 @@ pub(crate) enum Tail {
 /// tiny x, so `CHISQ.INV(1E-100,1)` is Excel's 1.5707963267948966E-200 (T-1543, T-1634). All cdfs
 /// share one budget of [`MAX_TERMS`] terms; NaN once it is spent.
 pub(crate) fn gamma_quantile(shape: f64, scale: f64, p: f64, tail: Tail) -> f64 {
+    gamma_quantile_within(shape, scale, p, tail, MAX_TERMS)
+}
+
+/// [`gamma_quantile`] with its cdfs sharing a budget of `budget` terms (NaN once it is spent).
+fn gamma_quantile_within(shape: f64, scale: f64, p: f64, tail: Tail, budget: u32) -> f64 {
     let rate = 1.0 / scale;
     if !((0.0..=1.0).contains(&p) && rate > 0.0 && rate.is_finite()) {
         return f64::NAN;
@@ -714,11 +711,13 @@ pub(crate) fn gamma_quantile(shape: f64, scale: f64, p: f64, tail: Tail) -> f64 
         };
         // One budget for every cdf below. Each `borrow_mut` lasts one cdf call and none nests
         // (`probability` calls no cdf of its own), so no borrow can overlap.
-        let terms = RefCell::new(Terms(MAX_TERMS));
+        let terms = RefCell::new(Terms(budget));
         let probability = |x: f64| quantile_tail(&dist, x, small, &mut terms.borrow_mut());
         // The crossing does not depend on the start, which only saves cdfs: near x = a each
-        // costs about 6.8 sqrt(a) terms of the one budget, so from no start (64 halvings of the
-        // whole range) the inversions from a shape of about 2E6 to Temme's would run out of it.
+        // series cdf costs about 6.8 sqrt(a) terms of the one budget, so from no start (64
+        // halvings of the whole range) the inversions from a shape of about 2E6 would run out
+        // of it, and even from this start they did from about 5E6 before the cdfs became
+        // Temme's ([`QUANTILE_TEMME_SHAPE_MIN`]).
         let estimate = wilson_hilferty_start(shape, lower) * scale;
         let crossing = match small {
             Tail::Lower => refine_increasing(probability, target, estimate, 0.0, f64::MAX),
@@ -804,7 +803,11 @@ fn quantile_tail(dist: &Gamma, x: f64, tail: Tail, terms: &mut Terms) -> f64 {
             return power * rest * lower_series(a, scaled, terms);
         }
     }
-    let (lower, upper) = pair_with(a, scaled, terms, Exponent::Accurate);
+    let (lower, upper) = if a >= QUANTILE_TEMME_SHAPE_MIN {
+        charged_temme_pair(a, scaled, terms)
+    } else {
+        pair_with(a, scaled, terms, Exponent::Accurate)
+    };
     match tail {
         Tail::Lower => lower,
         Tail::Upper => upper,
@@ -813,6 +816,8 @@ fn quantile_tail(dist: &Gamma, x: f64, tail: Tail, terms: &mut Terms) -> f64 {
 
 mod closed_form;
 mod density;
+mod fraction;
+mod half_integer;
 mod huge_shape;
 
 pub(crate) use closed_form::excel_small_shape_quantile;

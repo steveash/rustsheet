@@ -105,14 +105,32 @@ def payment(r: float, nper: int, pv: float, fv: float, due: bool) -> float:
         return float(max(min(value, MAX_LITERAL), -MAX_LITERAL))
 
 
-def _draw(stratum: str, rng: random.Random) -> list[Arg]:
-    """One annuity per stratum's shape: [nper, pmt, pv, fv, type]."""
+def _annuity(stratum: str, rng: random.Random) -> tuple[float, int, float, float, float, bool]:
+    """The base annuity of a whole-point draw, (sign, n, rate, pv, fv, due), at the extreme and log-uniform
+    strata's scales; RATE's and NPER's draws then shape their tail and edge strata. The draw order is fixed, so a
+    batch's seed reproduces its points."""
     sign = 1.0 if rng.random() < 0.5 else -1.0
-    nper = rng.randint(1, 360)
+    n = rng.randint(1, 360)
     r = log_uniform(rng, 1e-3, 0.2)
     pv = sign * log_uniform(rng, 1e2, 1e6)
     fv = 0.0 if rng.random() < 0.5 else -sign * abs(pv) * rng.random()
     due = rng.random() < 0.25
+    if stratum == "extreme":
+        n = round(log_uniform(rng, 360, 1e4))
+        pv = sign * log_uniform(rng, 1e6, 1e15)
+        fv = 0.0 if rng.random() < 0.5 else -sign * abs(pv) * rng.random()
+    elif stratum == "log-uniform":
+        n = round(log_uniform(rng, 1, 1e4))
+        r = rng.choice((-1.0, 1.0)) * log_uniform(rng, 1e-10, 0.9)
+        pv = sign * log_uniform(rng, 1, 1e12)
+        fv = 0.0 if rng.random() < 0.5 else -sign * log_uniform(rng, 1, 1e12)
+        due = rng.random() < 0.5
+    return sign, n, r, pv, fv, due
+
+
+def _draw(stratum: str, rng: random.Random) -> list[Arg]:
+    """One annuity per stratum's shape: [nper, pmt, pv, fv, type]."""
+    sign, nper, r, pv, fv, due = _annuity(stratum, rng)
     same_sign = False
     if stratum == "tail":  # rates near 0, or large
         r = (
@@ -130,16 +148,6 @@ def _draw(stratum: str, rng: random.Random) -> list[Arg]:
             r = -rng.uniform(1e-3, 0.05)
         else:
             same_sign = True
-    elif stratum == "extreme":
-        nper = round(log_uniform(rng, 360, 1e4))
-        pv = sign * log_uniform(rng, 1e6, 1e15)
-        fv = 0.0 if rng.random() < 0.5 else -sign * abs(pv) * rng.random()
-    elif stratum == "log-uniform":
-        nper = round(log_uniform(rng, 1, 1e4))
-        r = rng.choice((-1.0, 1.0)) * log_uniform(rng, 1e-10, 0.9)
-        pv = sign * log_uniform(rng, 1, 1e12)
-        fv = 0.0 if rng.random() < 0.5 else -sign * log_uniform(rng, 1, 1e12)
-        due = rng.random() < 0.5
     pmt = payment(r, nper, pv, fv, due)
     if same_sign:  # every flow the sign of pv: no rate (the point checks Excel's error)
         pmt, fv = sign * abs(pmt), sign * abs(fv)
@@ -162,5 +170,92 @@ RATE = register(
         draw=_draw,
         solver=True,
         sources=(RATE_SOURCE, "decision 0188 item 2"),
+    )
+)
+
+
+# -- NPER ------------------------------------------------------------------------------------------
+
+NPER_SOURCE = "financial.md#annuity-argument-domains-at-their-limits"
+NPER_R3_SOURCE = (
+    "financial.md#nper-at-a-tiny-positive-rate-excel-is-far-off-rustsheet-returns-the-math-math-over-excel"
+)
+NPER_R3_RATE = 1e-14  # below it Excel is far off the math (the R3 region; up to 35%, decision 0220)
+
+
+def nper(r: mpmath.mpf, pmt: mpmath.mpf, pv: mpmath.mpf, fv: mpmath.mpf, due: bool) -> mpmath.mpf:
+    """The period count n with pv·(1+r)^n + pmt·k·((1+r)^n - 1)/r + fv = 0, k = 1 + r·type:
+    n = ln((pmt·k - fv·r)/(pmt·k + pv·r)) / ln(1+r), and -(pv + fv)/pmt at r = 0. DomainError where
+    Excel errs (financial.md, "Annuity and DB argument domains at their limits"): a non-positive
+    ratio and r = -1 are `#NUM!`, and a rate so small that 1 + rate is 1 in a double is `#DIV/0!`.
+    Inferred, not probed: r < -1 (LN of a negative) and pmt = 0 at r = 0 (a division by 0) are errors.
+    A ratio whose double denominator cancels to 0 is `#NUM!` in Excel (A263) while the math is finite;
+    the math keeps its value there and the point passes on Excel's side, as the engine matches."""
+    if r == 0:
+        if pmt == 0:
+            msg = "pmt 0 at rate 0"
+            raise DomainError(msg)
+        return -(pv + fv) / pmt
+    if r <= -1:
+        msg = "rate at or below -1"
+        raise DomainError(msg)
+    k = 1 + r * (1 if due else 0)
+    num, den = pmt * k - fv * r, pmt * k + pv * r
+    if den == 0 or num / den <= 0:
+        msg = "non-positive ratio"
+        raise DomainError(msg)
+    if 1.0 + float(r) == 1.0:  # Excel's ln(1+rate) is 0: #DIV/0!
+        msg = "1 + rate is 1"
+        raise DomainError(msg)
+    return mpmath.log(num / den) / mpmath.log1p(r)
+
+
+def _nper(args: Sequence[MathArg]) -> mpmath.mpf:
+    r, pmt, pv, fv, kind = args
+    assert not any(isinstance(a, bool) for a in args)
+    return nper(mpmath.mpf(r), mpmath.mpf(pmt), mpmath.mpf(pv), mpmath.mpf(fv), kind != 0)
+
+
+def _nper_draw(stratum: str, rng: random.Random) -> list[Arg]:
+    """One annuity per stratum's shape: [rate, pmt, pv, fv, type], pmt set so the drawn period count
+    is the answer. The tail stratum covers R3's tiny positive rates (below 1E-14, where 1 + rate is
+    still not 1) and rates near 0 of either sign; the edge stratum rate 0, a rate where 1 + rate is 1
+    and a non-positive ratio."""
+    sign, n, r, pv, fv, due = _annuity(stratum, rng)
+    if stratum == "tail":
+        shape = rng.randrange(3)
+        if shape == 0:
+            r = log_uniform(rng, 2.3e-16, NPER_R3_RATE)
+        elif shape == 1:
+            r = rng.choice((-1.0, 1.0)) * log_uniform(rng, 1e-12, 1e-4)
+        else:
+            r = rng.uniform(0.5, 5)
+    elif stratum == "edge":
+        shape = rng.randrange(3)
+        if shape == 0:
+            r = 0.0
+        elif shape == 1:
+            r = rng.choice((1e-300, 1e-17, -1e-17))
+        else:
+            fv = sign * log_uniform(rng, 1e7, 1e9)  # fv the sign of pv and larger: no period count
+    # at a rate where 1 + rate is 1 (rate 0 included) the annuity is flat: pmt = -(pv + fv)/n
+    pmt = payment(r, n, pv, fv, due) if 1.0 + r != 1.0 else -(pv + fv) / n
+    return [r, pmt, pv, fv, 1 if due else 0]
+
+
+NPER = register(
+    Definition(
+        function="NPER",
+        params=(
+            Param("rate", "real", _AMOUNT, source=NPER_SOURCE),
+            Param("pmt", "real", _AMOUNT, source=NPER_SOURCE),
+            Param("pv", "real", _AMOUNT, source=NPER_SOURCE),
+            Param("fv", "real", _AMOUNT, source=NPER_SOURCE),
+            Param("type", "int", Interval(0, 1, lo_open=False, hi_open=False), source=NPER_SOURCE),
+        ),
+        value=_nper,
+        draw=_nper_draw,
+        solver=True,
+        sources=(NPER_SOURCE, NPER_R3_SOURCE, "financial.md, Annuity evaluation order (the NPER formula)"),
     )
 )

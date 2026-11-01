@@ -314,7 +314,10 @@ option records `prev:` and checks mechanically that the PR's own diff did not ch
   resolved and the lists re-recorded (`make catch-up`), because the eval gate, which marking
   requires green, checks exactly those lists against the engine. A re-recorded list may not
   add a failure line that neither parent's list has: the gate cannot tell that regression from
-  a correct list (decision 0207).
+  a correct list (decision 0207). The visible-parity lock `eval/baseline/visible-parity.txt` is
+  such a list too. A merge may not leave a case that `main` has above `main`'s line for it, and
+  catch-up merges a conflict on it three-way per case. A PR from before the lock may delete the
+  retired `visible-parity.json` once `main` has none (decision 0219).
 
 Any other push needs the reviewers that the change concerns to run again, as today.
 
@@ -628,6 +631,11 @@ flip therefore takes effect within about 1 min of its stop label, or of its merg
 
    A `cancelled`, `timed_out` or superseded run is **never** green. The same rule judges V3 on PR
    heads (event `pull_request`).
+
+   **Red early** (train runs only, decision 0212): a run still in progress is red as soon as the
+   newest check run of one of its jobs (Actions app, the run's check suite) concluded `failure`,
+   except the summary job `rust (fmt, clippy, test)`, which also fails for cancelled shards. A
+   `cancelled` or `timed_out` job is read only once the run completes, as an infrastructure failure.
 7. **Green: merge in order** (`train` mode only). Renew the lock first; exit 4 means stop with
    nothing merged. Check that `origin/main` is still `M0`. If not, someone merged without the
    lock: release, report, file a P0 and stop. No merge lands on an untested tree. Then, for k = 1
@@ -899,7 +907,7 @@ a cut-off resumes rather than restarting (below).
   That is still 5 runs, now over **two holds**, with no third rebuild.
 
 **Infrastructure failures** (a cancelled or timed-out job, a runner that never started, no run for
-the sha) are not a PR's fault. Retry the same train once. If it fails again, release and stop the
+the sha) are not a PR's fault; the early red read of step 6 never counts one as red. Retry the same train once. If it fails again, release and stop the
 run without ejecting anyone.
 
 **Budget cut-off.** No CI wait starts unless `CI_TIMEOUT + n × MERGE_BUDGET` remains of

@@ -188,16 +188,19 @@ Status: VERIFIED (web)
 ## A lookup over a whole-column key read as a head and a tail: the limits it meets
 Rule: Excel has no per-call cap, work budget or text budget, so the lookup's values are the same whichever limit
 applies. Inside an aggregate, SUMPRODUCT, SMALL, LARGE, UNIQUE or LOOKUP-vector argument, or as INDEX's array
-with a scalar row and column 1 (`INDEX(VLOOKUP(Keys!A:A,..),1000)`, T-3222), the engine reads
-VLOOKUP, HLOOKUP or MATCH over a whole-column (or past-the-used-area) key as its used head plus one tail element
-standing for every row below (SPEC-0020 Amendment 2, T-3221). For example `SUM(--(VLOOKUP(A:A,T,2,FALSE)=x))` and
-`COUNT(MATCH(A:A,T,0))` take this reading. The head's lift and the tail's are charged and checked as the one lift
-over 1,048,576 keys: the same kernel runs, the same visits against `MAX_LIFTED_CELL_VISITS` and the same work units.
+with a scalar row and column 1 (`INDEX(VLOOKUP(Keys!A:A,..),1000)`, T-3222), the engine reads VLOOKUP, HLOOKUP,
+MATCH, XLOOKUP or XMATCH over a whole-column (or past-the-used-area) key as its used head plus one tail element
+standing for every row below (SPEC-0020 Amendment 2, T-3221, T-3223). For example
+`SUM(--(VLOOKUP(A:A,T,2,FALSE)=x))` and `COUNT(MATCH(A:A,T,0))` take this reading. The head's lift and the tail's
+are charged and checked as the one lift over 1,048,576 keys: the same kernel runs, the same visits against
+`MAX_LIFTED_CELL_VISITS` and the same work units. An XLOOKUP or XMATCH tail continues its head's regex state (its
+compiled patterns, its compile and search budgets), and each finish charges only the regex work units not yet
+charged, so the two charge and run out as the one call does.
 Three outcomes can still differ from that one lift, each only for a formula already at an engine limit:
-- When the head or the tail lift fails the per-call cap (`#ERROR!`), the argument is read again the ordinary way.
-  That gives today's `#ERROR!`, unless the reread's charges take the formula past its work budget
-  (`MAX_FORMULA_WORK`). Then it is `#VALUE!` ("Formula needs too much work"). This is the same class as the
-  stale-head reread of SPEC-0020.
+- When the head or the tail lift fails the per-call cap, or an XLOOKUP or XMATCH regex budget (`#ERROR!`), the
+  argument is read again the ordinary way. That gives today's `#ERROR!`, unless the reread's charges take the
+  formula past its work budget (`MAX_FORMULA_WORK`). Then it is `#VALUE!` ("Formula needs too much work"). This is
+  the same class as the stale-head reread of SPEC-0020.
 - The array the lookup builds is charged to the cell budget for the head and the one tail element, not for the
   1,048,576 rows. A formula that the whole column's array would take past that budget is not taken past it.
 - The 64 MiB broadcast text budget counts the texts of the head (and of the tail element when it is computed), not
@@ -207,8 +210,9 @@ Three outcomes can still differ from that one lift, each only for a formula alre
 Evidence: none needed: these are engine limits, not Excel values (CLAUDE.md directive 5). The values outside them are
 pinned by the equivalence tests of `test_tailed_array.rs` (each formula with the tailed reading and without) and by
 probes/t3096-lookup-value-blank-elements.
-Implemented in: `Model::tailed_leaves`, `Model::keyed_lift` (tailed_array.rs) and `Model::lift_values_keyed`
-(functions/lift/keyed.rs), through `Model::lift_grids_after` (functions/lift/driver.rs).
+Implemented in: `Model::tailed_leaves`, `Model::keyed_lift`, `Model::keyed_regexes` (tailed_array.rs) and
+`Model::lift_values_keyed` (functions/lift/keyed.rs), through `Model::lift_grids_after` (functions/lift/driver.rs) and
+`LookupRegexes::finish` (functions/text/regex_functions.rs).
 Status: DEVIATION (decision 0014)
 
 ## VLOOKUP / HLOOKUP with an array index or range_lookup
@@ -1378,15 +1382,25 @@ Tasks: T-2669, T-2680
 
 ### Statistical aggregates over a lifted OFFSET (an array of references)
 Evidence: probes/t2065-lift-* (one formula per workbook, excel-graph 2026-10-26; data as probes/reference-lift-consumers-b2).
-- `STDEV.S(OFFSET(A1,{0;1},0))` is 70.0035713374682, `VAR.S` 4900.5, `SUMSQ` 10001: single-cell elements read as their values (multi-cell elements unprobed).
+- `STDEV.S(OFFSET(A1,{0;1},0))` is 70.0035713374682, `VAR.S` 4900.5, `SUMSQ` 10001: single-cell elements read as their values (multi-cell elements: top-left cell, T-2816 below).
 - COUNTIFS, AVERAGEIF and MAXIFS lift per element, spilling one value each (1, 1; 1, 50.5; 1, 100). CONCAT is `#VALUE!`.
   The engine implements these three since T-2823 (`Function::per_reference_element`, each element charged as
   COUNTIF/SUMIFS are, with the same bound DEVIATION); AVERAGEIFS and MINIFS are unprobed and read the value view.
   Which arguments lift is inferred from SUMIF/SUMIFS (COUNTIFS every criteria range, AVERAGEIF range and average_range,
   MAXIFS max_range and every criteria range); forms with only some ranges lifted are unprobed (T-2833).
+- T-2816 (probes/t2816-lift-*, E1, excel-graph 2026-10-31, same data; A4 "5", A5 blank, A6 TRUE, A7 7): multi-cell
+  elements contribute their TOP-LEFT cell only. `STDEV.S(OFFSET(A1,0,0,{1;2}))` is 0 and `VAR.S(..)` 0 (the values 1, 1;
+  the whole elements would give 57.1577 for {1,1,100}), `SUMSQ(..)` is 2 (not 10002). It is the top-left cell, not implicit intersection with the formula's row: in E1 `SUMSQ(OFFSET(A2,0,0,{1;2}))`, whose element A2:A3 does not cross row 1, is 20000 (100 twice; probes/t2816-lift-sumsq-row2). A text element counts as 0 and a
+  blank or TRUE element is skipped, unlike a reference argument (references.md T-1003/T-1211), where TRUE counts as 1: `AVERAGEA(OFFSET(A4,{0;3},0))` ("5", 7) is 3.5,
+  `MAXA(OFFSET(A4,{0;3},0))` 7, `AVERAGEA(OFFSET(A5,{0;1},0))` (blank, TRUE) `#DIV/0!` (TRUE not counted as 1) and
+  `MAXA(OFFSET(A5,{0;1},0))` 0. This also explains the 0 of the probe below (text 0, blank and TRUE skipped).
 - `AVERAGEA` and `MAXA(OFFSET(A4,{0;1;2},0))` over "5", blank, TRUE are 0: the text is not read as 5 and TRUE not as 1; which elements count is open (the data holds no number).
-Status: VERIFIED (excel-graph) for the values above. COUNTIFS, AVERAGEIF and MAXIFS implemented (T-2823); the rest
-not yet (T-2824).
+Status: VERIFIED (excel-graph) for the values above. COUNTIFS, AVERAGEIF and MAXIFS implemented (T-2823). STDEV.S,
+VAR.S and SUMSQ implemented (T-2824, `GridReading::TopLeft`: each element's top-left cell, as SUM), and AVERAGEA and
+MAXA (`GridReading::TopLeftElements`: that cell read as an array element, so a blank or TRUE is skipped and AVERAGEA's
+text is 0). Legacy STDEV follows STDEV.S (probes/t2577-indirect-ref-array Calc!A157 is 0). UNVERIFIED: legacy VAR
+(as VAR.S) and MAXA's text (skipped, or 0, the probes cannot tell). VAR.P, STDEV.P, MINA and the VARA family keep
+the value view, unprobed (T-3533).
 
 ### MEDIAN, LARGE and SMALL over a lifted OFFSET
 Rule: each is `#VALUE!` over a lifted OFFSET (an array of references), like CONCAT and unlike STDEV.S, VAR.S and SUMSQ

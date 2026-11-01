@@ -75,11 +75,12 @@ def parse_show(text: str) -> dict[str, dict[str, str]]:
     return cells
 
 
-def show_cells(case_id: str) -> dict[str, dict[str, str]]:
+def show_cells(case_id: str, binary: Path | None = None) -> dict[str, dict[str, str]]:
     """The engine's current result for every scored cell of `case_id` (e.g.
-    `probes-numeric/t1040-erfc.case.json`), from `rustsheet-eval show --all` (see `parse_show`)."""
+    `probes-numeric/t1040-erfc.case.json`), from `rustsheet-eval show --all` (see `parse_show`);
+    `binary` runs another build of the harness instead of `eval_binary()`."""
     out = subprocess.run(
-        [str(eval_binary()), "--root", str(repo_root()), "show", case_id, "--all"],
+        [str(binary or eval_binary()), "--root", str(repo_root()), "show", case_id, "--all"],
         check=True,
         capture_output=True,
         text=True,
