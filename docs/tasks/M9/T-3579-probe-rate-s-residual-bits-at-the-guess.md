@@ -3,7 +3,7 @@ id: T-3579
 title: "Probe RATE's residual bits at the guess and near the root (n = 1)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -38,11 +38,25 @@ than guessed at.
   fit lab `rate` (tools/src/rustsheet_tools/fitlab/kernels/solvers.py).
 
 ## Acceptance criteria
-- [ ] A probe case under eval/suites/probes with oracle values (excel-graph) whose cells determine, or bound,
+- [x] A probe case under eval/suites/probes with oracle values (excel-graph) whose cells determine, or bound,
       Excel's RATE residual at the guess points and near the root for nper 1.
-- [ ] financial.md records which residual values differ from the model's and by how much, or that the probe rules
+- [x] financial.md records which residual values differ from the model's and by how much, or that the probe rules
       out a difference in the residual (so the step differs).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing `compute_rate`; that is T-3389's follow-up once the evidence exists.
+
+## Outcome
+- **Probe**: probes/t3579-rate-residual-nper1 (53 cells, excel-graph, 0 fill failures; math sidecar from
+  `rustsheet-accuracy math`) on t3348-rate-fv-nonzero A171's arguments. It covers 16 guesses near the root, 17 away
+  from it, pv/pmt/fv scaled by 2^-40 to 2^20, and FV at the residual's points.
+- **Finding** (financial.md "RATE holds on a flat secant and runs on below -1", new bullet): the probe rules out a
+  difference in the residual at nper 1. The model is bit-exact on every guess other than 0.1 (the guesses read the
+  residual at the guess, at the guess ± 0.001 and near the root) and at scales 2^-1 and below.
+  - The 4 misses (A1, A2, A41, A42: scales 1, 2 and 4) are the flat-secant outcome. Excel does not hold at the model's
+    held iterate. Its value is the model's run restarted from the flat step's older iterate (A6 is A1 bit for bit).
+  - A blanket restart, checked in a scratch build and not committed, loses 32 held cells of t3348-rate-fv-nonzero and
+    31 Gate A sweep cells. So whether Excel restarts or holds depends on something still unknown.
+- **Eval delta**: probes +1 case (53 cells: 49 pass, 4 new-coverage known failures, 0 regressions; `make eval-baseline`).
+- **Follow-up**: T-3698 (opus) fits the restart-or-hold rule and owns the 4 cells.

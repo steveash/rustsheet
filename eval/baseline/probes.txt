@@ -1812,6 +1812,7 @@ C	probes/t3532-numeral-digit-general.case.json	145
 C	probes/t3532-numeral-digit-sections.case.json	9
 C	probes/t3575-fraction-after-elapsed-b.case.json	30
 C	probes/t3575-fraction-after-elapsed.case.json	15
+C	probes/t3579-rate-residual-nper1.case.json	53
 C	probes/t3631-rand-randbetween-invariant.case.json	61
 C	probes/t3631-randarray-invariant.case.json	45
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
@@ -5294,6 +5295,10 @@ F	probes/t3532-numeral-digit-fields.case.json	S!F10
 F	probes/t3532-numeral-digit-fields.case.json	S!F14
 F	probes/t3532-numeral-digit-fields.case.json	S!G10
 F	probes/t3532-numeral-digit-fields.case.json	S!G14
+F	probes/t3579-rate-residual-nper1.case.json	Sheet1!A1
+F	probes/t3579-rate-residual-nper1.case.json	Sheet1!A2
+F	probes/t3579-rate-residual-nper1.case.json	Sheet1!A41
+F	probes/t3579-rate-residual-nper1.case.json	Sheet1!A42
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F10
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F2
 F	probes/table-edits/table-convert-names-this-row.case.json	T!A2
