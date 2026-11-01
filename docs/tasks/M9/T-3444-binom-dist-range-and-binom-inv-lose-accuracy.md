@@ -29,9 +29,9 @@ is since T-3352, instead of grossly wrong.
 ## Acceptance criteria
 - [x] A probe of BINOM.DIST.RANGE and BINOM.INV at n 1E4 to 2E9 (oracle-filled) is within 15 digits of Excel, with the
       right type and error. BINOM.INV and CRITBINOM: 252 of 252 cells. BINOM.DIST.RANGE: every row now takes Excel's
-      form (one point the pmf, from 0 the cdf, else the cdf difference, past the mean the upper-tail difference); the
-      cells still off miss by BINOM.DIST's own last digits (49, now T-3447's) or the upper-tail form's (21, T-3740).
-- [x] Gate A floor on a fresh sweep (decision 0188 R2): split out to T-3741 (Definitions for BINOM.DIST.RANGE and
+      form where it is identified (one point the pmf, from 0 the cdf, else the cdf difference); the cells still off
+      miss by BINOM.DIST's own last digits (49, now T-3447's) or by the unidentified upper-tail form (21, T-3740).
+- [ ] Gate A floor on a fresh sweep (decision 0188 R2): deferred, split out to T-3741 (Definitions for BINOM.DIST.RANGE and
       BINOM.INV, as T-3553 was split out of T-3358).
 - [x] No gated cell regresses; the rule is in docs/excel-semantics/statistics.md.
 - [x] `make check` green; reviewers approve.
@@ -61,10 +61,10 @@ Opus session ran out of its time budget mid-task (2026-11-01). State of `agent/f
 ## Outcome
 - Excel's BINOM.INV/CRITBINOM is the smallest k whose own BINOM.DIST cdf reaches alpha, and BINOM.DIST.RANGE is built
   on BINOM.DIST's own pmf and cdf (statistics.md "BINOM.DIST.RANGE and BINOM.INV at a large n sit on BINOM.DIST's own
-  cdf (T-3444)"). `binom.rs` `excel_binom_pmf`, `excel_binom_cdf` and `excel_binom_sf` are BINOM.DIST's paths, shared;
-  BINOM.INV bisects on the cdf; RANGE takes the pmf for one point, the cdf from 0, the walk, then past the mean the
-  difference of upper tails (18 of the 21 rows where Excel is not its own cdf difference go from up to 6.5E-14 to
-  within 1E-15), else the cdf difference. `BINOM.INV(1000000000,0.3,0.5)` is 300000000 (statrs' 299998246 before).
+  cdf (T-3444)"). `binom.rs` `excel_binom_pmf` and `excel_binom_cdf` are BINOM.DIST's paths, shared; BINOM.INV bisects
+  on the cdf; RANGE takes the pmf for one point, the cdf from 0, the walk, else the cdf difference. An upper-tail
+  difference for the 21 rows where Excel is not its own cdf difference was tried and dropped in review (fitted on
+  those rows without the decision 0188 R4 guards, no cell to Pass): it is T-3740's candidate. `BINOM.INV(1000000000,0.3,0.5)` is 300000000 (statrs' 299998246 before).
 - New probe probes/t3444-binom-range-inv-large-n (756 cells, excel-graph): 490 pass, all 252 BINOM.INV/CRITBINOM.
   Eval delta (`make eval-baseline`): gen-m9 -3, ironcalc-calc -6, probes -3 known failures, 0 regressions; the new
   case's 266 failing cells are owned by T-3447 (BINOM.DIST's last digits) and T-3740 (the upper-tail form).

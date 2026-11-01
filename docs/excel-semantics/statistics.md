@@ -2618,18 +2618,18 @@ below it, so the search is exact against BINOM.DIST, not an approximation. BINOM
 BINOM.DIST(s2, n, p, TRUE) - BINOM.DIST(s1 - 1, n, p, TRUE) to the bit on 105 of the 126 Range rows (column A against
 column B), including every range starting at 0 (the cdf alone) and every range around the mean. A single-point range is
 Excel's BINOM.DIST pmf to the bit. The 21 that differ are all ranges from mean + 3 sd to mean + 5 sd, 2E-16 to 6E-14
-relative off that difference: there Excel's range is nearer a difference of upper tails, P(X > s1 - 1) - P(X > s2)
-with each tail bratio's w of I_p(k+1, n-k), which lands within 1E-15 relative of Excel on 18 of the 21 rows (no row
-bit-exact; A6 and A12 at n = 1E4 stay 1.6E-14 and 2.4E-14 off, A54 9E-15). The exact form is UNVERIFIED.
+relative off that difference: there Excel takes another form, UNVERIFIED. A difference of upper tails,
+P(X > s1 - 1) - P(X > s2) with each tail bratio's w of I_p(k+1, n-k), lands within 1E-15 relative on 18 of the 21 rows
+(none bit-exact; A6 and A12 at n = 1E4 stay 1.6E-14 and 2.4E-14 off), but it was scored only on those rows and the
+probe has no range starting between the mean and mean + 3 sd, so it is a candidate (T-3740), not implemented.
 Status: VERIFIED (excel-graph, 2026-11-01) for BINOM.INV and the cdf-difference rows; the upper-tail form is
-UNVERIFIED (nearest model found: the upper-tail difference).
+UNVERIFIED.
 - Ours before T-3444: past the double-double walk both fell back to statrs, grossly wrong near the mean at a large n
   (`BINOM.INV(1000000000,0.3,0.5)` 299998246 against a median of 300000000).
 - Ours now (T-3444): `binom.rs` `excel_binom_cdf` and `excel_binom_pmf` are BINOM.DIST's own paths. BINOM.INV's
   bisection uses the cdf, and all 126 BINOM.INV and 126 CRITBINOM probe cells pass. BINOM.DIST.RANGE takes the pmf
-  for one point and the cdf from 0, then the double-double walk, then (lower end past the mean) the upper-tail
-  difference, else the cdf difference. Its probe misses are those of BINOM.DIST's own last digits (T-3447) plus the
-  21 upper-tail rows' last digits (T-3740).
+  for one point and the cdf from 0, then the double-double walk, then the cdf difference. Its probe misses are those
+  of BINOM.DIST's own last digits (T-3447) plus the 21 upper-tail rows (T-3740).
 Tasks: T-3444, T-3352, T-3447, T-3740, T-3741
 
 ## NEGBINOM.DIST's cdf is #NUM! at a huge number_s (T-3553)

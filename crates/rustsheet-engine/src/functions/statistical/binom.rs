@@ -170,21 +170,9 @@ impl Model {
         if let Some(prob) = binomial_range(n, odds(p), lower, upper) {
             return Ok(prob);
         }
-        // A range whose lower end is past the mean is a difference of upper tails: on the 21
-        // probes/t3444-binom-range-inv-large-n Range rows from mean + 3 sd to mean + 5 sd, where
-        // Excel's range is not its own cdf difference, this takes the relative miss from 8E-15 to
-        // 6E-14 down to 1E-15 or less on 18 of them (statistics.md, T-3444). It is applied only past
-        // the walk, which stays nearer Excel on the rows it covers (A18, A36).
-        // `checked_sub`: a range from 0 reaches here when the cdf kernel had no branch for it.
-        if let Some(below) = lower.checked_sub(1).filter(|&k| k as f64 > n as f64 * p) {
-            if let (Some(above_lower), Some(above_upper)) =
-                (excel_binom_sf(n, p, below), excel_binom_sf(n, p, upper))
-            {
-                return Ok(above_lower - above_upper);
-            }
-        }
         // Past the walk's budget Excel's range is its own BINOM.DIST cdf difference, to the bit
-        // on 105 of the 126 probes/t3444-binom-range-inv-large-n Range rows (column A = column B).
+        // on 105 of the 126 probes/t3444-binom-range-inv-large-n Range rows (column A = column B);
+        // the other 21, ranges from mean + 3 sd to mean + 5 sd, take a form not identified (T-3740).
         let dist = Binomial::new(p, n).map_err(|_| num_error(cell))?;
         let cdf = |k: u64| binom_cdf_or_statrs(&dist, p, k);
         let prob = if lower == 0 {
@@ -471,16 +459,6 @@ fn excel_binom_at_zero(n: u64, p: f64) -> f64 {
 /// BINOM.DIST.RANGE and BINOM.INV.
 fn binom_cdf_or_statrs(dist: &Binomial, p: f64, k: u64) -> f64 {
     excel_binom_cdf(dist.n(), p, k).unwrap_or_else(|| DiscreteCDF::cdf(dist, k))
-}
-
-/// The binomial upper tail `P(X > k)` for `0 < p < 1`: bratio's w of `I_p(k+1, n-k)`, the tail
-/// [`excel_binom_cdf`] takes the complement of, or `None` off the ported branches.
-fn excel_binom_sf(n: u64, p: f64, k: u64) -> Option<f64> {
-    if k >= n {
-        return Some(0.0);
-    }
-    let (x, y, a, b) = (p, 1.0 - p, k as f64 + 1.0, (n - k) as f64);
-    closed_or_ported_tails(x, y, a, b).map(|(lower, _)| flush_subnormal(lower))
 }
 
 /// Excel's binomial pmf `dbinom_raw(k, n, p, fl(1 - p))` for 0 < k < n: EXP of Loader's saddle-point

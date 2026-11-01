@@ -19,13 +19,14 @@ BINOM.DIST.RANGE ranges whose lower end is past the mean are bit-exact with Exce
   ranges from mean + 3 sd to mean + 5 sd, n 1E4 to 2^31 - 2) differ from Excel's own
   `BINOM.DIST(s2,...)-BINOM.DIST(s1-1,...)` in column B by 2E-16 to 6E-14. statistics.md "BINOM.DIST.RANGE and
   BINOM.INV at a large n sit on BINOM.DIST's own cdf (T-3444)".
-- T-3444 takes the upper-tail difference P(X > s1 - 1) - P(X > s2) (`binom.rs` `excel_binom_sf`, bratio's w) past the
-  double-double walk: 18 of the 21 rows land within 1E-15 relative, none bit-exact; A6 and A12 (n = 1E4) stay 1.6E-14
-  and 2.4E-14 off, A54 9E-15; A18 and A36 are walked and stay 1E-16 and 4.6E-15 off.
+- T-3444 tried the upper-tail difference P(X > s1 - 1) - P(X > s2) (each tail bratio's w of I_p(k+1, n-k), from
+  `closed_or_ported_tails`) past the double-double walk, guarded by s1 - 1 > n·p: 18 of the 21 rows landed within 1E-15
+  relative, none bit-exact (A6 and A12 at n = 1E4 stayed 1.6E-14 and 2.4E-14 off, A54 9E-15; A18 and A36 are walked,
+  1E-16 and 4.6E-15 off). The fidelity review dropped it: scored only on these rows, with no R4 hold-out or fresh sweep,
+  and moving no cell to Pass; several rows are 2E-16 off, inside the 4-ulp web-vs-desktop floor (decision 0188 R4.4).
 - Cells (probes/t3444-binom-range-inv-large-n, Range!): A6, A12, A18, A24, A30, A36, A42, A48, A54, A60, A66, A72, A78, A84, A90, A96, A102, A108, A114, A120, A126
-- T-3444's guard (lower - 1 past the mean) is wider than its evidence: the probe has no range starting between the mean
-  and mean + 3 sd, so probe that region first (architecture review of PR #2752) and narrow the guard if Excel is its
-  own cdf difference there.
+- The probe has no range starting between the mean and mean + 3 sd: probe that band before choosing a guard (PR #2752
+  reviews).
 - Candidates to score: the tails' other bratio branch (w1 complement), a pmf sum over the range from the mode side, a
   threshold other than the mean (the mode, cdf(s1 - 1) > 0.5), and the walk's behavior at n = 1E4 to 1E5. Score them
   against the 21 rows plus the 105 cdf-difference rows (none may move off). A choice among ranked forms owes the

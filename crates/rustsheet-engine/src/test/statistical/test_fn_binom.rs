@@ -382,44 +382,9 @@ fn test_binom_inv_and_range_at_a_large_n_take_binom_dist_cdf() {
 }
 
 #[test]
-fn test_binom_dist_range_above_the_mean_is_a_difference_of_upper_tails() {
-    // probes/t3444-binom-range-inv-large-n Range A60, A126 and A48 (excel-graph): ranges from mean + 3
-    // sd to mean + 5 sd, where Excel's range is not its own cdf difference. The upper-tail difference
-    // lands within 1E-15 relative of Excel (the cdf difference was 6.5E-14, 1.6E-14 and 3.4E-14 off).
-    let cases = [
-        (
-            "=BINOM.DIST.RANGE(10000000,0.3,3004347,3007246)",
-            0.001_354_038_278_612_824_6,
-        ),
-        (
-            "=BINOM.DIST.RANGE(2147483646,0.001,2151878,2154807)",
-            0.001_354_350_995_348_841_8,
-        ),
-        (
-            "=BINOM.DIST.RANGE(1000000,0.5,501500,502500)",
-            0.001_354_042_499_268_579_6,
-        ),
-    ];
-    let mut model = new_empty_model();
-    for (row, (formula, _)) in cases.iter().enumerate() {
-        model._set(&format!("A{}", row + 1), formula);
-    }
-    model.evaluate();
-    for (row, (formula, excel)) in cases.iter().enumerate() {
-        let ours: f64 = round_trip_value(&model, &format!("A{}", row + 1))
-            .parse()
-            .unwrap_or(f64::NAN);
-        assert!(
-            (ours / excel - 1.0).abs() < 1e-15,
-            "{formula}: {ours} against {excel}"
-        );
-    }
-}
-
-#[test]
 fn test_binom_dist_range_from_0_at_a_large_n_is_a_probability() {
-    // T-3444 security review: a range from 0 can pass the cdf kernel (no branch for it) and reach
-    // the upper-tail branch, whose `lower - 1` must not underflow. Every result is in [0, 1].
+    // A range from 0 at a large n is BINOM.DIST's cdf, or statrs' where the kernel has no branch
+    // (T-3444): every result is in [0, 1], and no `lower - 1` is taken at lower = 0.
     let mut formulas = Vec::new();
     for n in ["10000", "1000000", "1000000000", "2147483646"] {
         for p in ["1E-9", "0.001", "0.3", "0.999", "0.999999"] {
