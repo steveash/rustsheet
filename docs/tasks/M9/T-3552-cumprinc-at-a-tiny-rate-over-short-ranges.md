@@ -3,7 +3,7 @@ id: T-3552
 title: "CUMPRINC at a tiny rate over short ranges (paired probe fin-cumipmt-tiny-rate-structure): 37 visibly-off CUMIPMT cells that amplify our CUMPRINC's 1 to 3 ulps"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -128,3 +128,16 @@ follow-up filed with `defer: phase-1b` and named in the Outcome.
     Fit them first on the 60-rate scan (constant-C test per rate), then on the dyadic case.
   - Harness trap found on the way: serde_json without `float_roundtrip` misreads oracle doubles
     (excel-kernel-playbook "Traps").
+
+## Outcome
+Attempt 1 (decision 0056): no form found, and the kernel is unchanged.
+- New evidence:
+  - probes/fin-cumprinc-dyadic-rates (296 cells).
+  - probes/fin-cumprinc-single-period-rate-scan (720 cells).
+  - Both are excel-graph. CUMPRINC is 81 of 192 and 84 of 360 bit-exact; PPMT and PMT are bit-exact.
+- The finding is recorded in financial.md (T-3552 attempt 1): one-period CUMPRINC is PPMT·(1+δL). The candidate
+  counts are in "Attempts" above.
+- The acceptance criteria are not met: the 37 visibly-off CUMIPMT cells stay off. The fit attempt was the scope.
+- Eval delta: fixed 0, regressions 0, 387 new known failures in the 2 new cases (none visibly off).
+- Follow-up: T-3731 (attempt 2, with the cells, acceptance criteria and next hypotheses).
+

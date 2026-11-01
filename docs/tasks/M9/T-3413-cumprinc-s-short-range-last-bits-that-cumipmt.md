@@ -25,7 +25,7 @@ CUMPRINC G2); CUMPRINC_CUMIPMT.xlsx G2, G3; gen-m9 6e18550e9fc9c1b9 A329, 79d87f
 T-3118's regressed cells are listed in decision 0197. The probes that pair the two functions
 (tiny-rate-structure) carry CUMPRINC's own expected values for the fit.
 The rest of tiny-rate-structure (37 visibly-off CUMIPMT cells and their CUMPRINC partners, all but F2 and G2) is
-T-3552's (gap triage 2026-10-31k). Both tasks change the same short-range CUMPRINC form, so the one that lands second
+T-3731's (gap triage 2026-10-31k, T-3552 until its attempt 1 closed). Both tasks change the same short-range CUMPRINC form, so the one that lands second
 starts by re-measuring its cells on the first one's main.
 
 ## Acceptance criteria
