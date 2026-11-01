@@ -48,8 +48,8 @@ IMTAN, IMSEC, IMCSC and IMCOT are `#NUM!` from |x| = 2^27 and the hyperbolic fou
 |x| > 134217727 (the inner-sine constant IMPOWER and BESSELJ share), except where Excel takes no sine (IMTAN and IMCOT
 at `±i`, the reciprocals once 2e^-|other part| is subnormal). complex/trig.rs implements it (`past_trig_limit`,
 `inner_trig_overflows`, `reciprocal_flushes`); engineering.md "IM* trig and hyperbolic functions past SIN's argument
-limit (T-3642)" states the rules. Before: 475 grid cells off (323 `#NUM!` in Excel, text ours). After: the only type
-mismatches left are the 32 IMSIN/IMCOS cells at y = 709.78, listed in T-3616; 152 grid and 37 cut cells differ in
+limit (T-3642)" states the rules. Before: 475 grid cells off (360 `#NUM!` in Excel, text ours). After: the only type
+mismatches left are the 32 IMSIN/IMCOS cells at y = 709.78, listed in T-3616; 115 grid and 37 cut cells differ in
 last digits (libm sine in the complex IMSIN/IMCOS/IMTAN/IMCSCH paths), filed as T-3758.
 Eval delta: probes +2 cases, 4213/4360 and 153/190 cells pass, the misses recorded as new-case known failures; every
 other suite unchanged, 0 regressions.

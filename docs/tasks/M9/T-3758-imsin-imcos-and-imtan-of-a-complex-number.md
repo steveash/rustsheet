@@ -14,7 +14,7 @@ depends_on: []
 The complex IMSIN, IMCOS and IMTAN (and any other IM* trig path that still takes libm's sine) print the same last digits as Excel for a large real part, as the real-number paths already do.
 
 ## Context
-T-3642's grid (probes/im-trig-magnitude-grid, excel-graph) has 152 cells that are text in both but differ in the
+T-3642's grid (probes/im-trig-magnitude-grid, excel-graph) has 115 cells that are text in both but differ in the
 last digits, mostly IMSIN, IMCOS and IMTAN at |x| = 700 to 720 and IMCSCH: `IMSIN(COMPLEX(710,1E-300))` is
 0.0000602887066915739 in Excel, the same as the real `IMSIN("710")` (x87 reduction, `excel_sin_cos`), while ours,
 via libm `x.sin()` in `imsin`, prints ...853; `IMTAN(COMPLEX(710,1))` real part ...901 (ours ...949). Code:
