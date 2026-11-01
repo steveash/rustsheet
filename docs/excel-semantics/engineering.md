@@ -784,7 +784,7 @@ Edges probed by T-2077 (probes/eng-im-overflow-edges, excel-graph):
 - A blank cell argument met earlier in IMPRODUCT (a blank inside a range is UNVERIFIED, T-2231) makes the running product 0, so a later overflow cannot
   happen: `IMPRODUCT(<blank>,"1E200","1E200")` is `0`; the blank last is `#VALUE!` (the overflow
   came first). Implemented.
-- IMSIN and IMCOS are `#NUM!` when `exp(|imaginary part|)` overflows (|y| above about 709.78 by analogy with SINH/COSH in numbers.md; probed only at 710.4 and 711, T-2231; for y < 0 already below ln(DBL_MIN) = -708.396, and for y > 0 from (709.7, 709.75], T-3589 and T-3616),
+- IMSIN and IMCOS are `#NUM!` for large |imaginary part| (probed at 710.4 and 711, T-2231): for y < 0 already below ln(DBL_MIN) = -708.396 (T-3589), and for y > 0 above the constant 709.7, below exp's overflow at 709.78 (T-3616, "IMSIN and IMCOS positive overflow cut" below),
   whatever the real part (`IMSIN("1.5+710.4i")`, `IMCOS("710.4i")`), although `cosh y` is still
   finite there. IMCOSH and IMSINH are `#NUM!` for a zero imaginary part when `exp(|x|)` overflows
   (`IMCOSH("710.4+0i")`) but answer text with a nonzero one (`IMCOSH("710.4+1.5i")` is
@@ -969,7 +969,7 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   1.07732499684388E+307-1.97203017901663E+307i and `IMSIN("0.5-708.396419i")` `#NUM!` (both functions, every probed
   y from -708.396419 to -709.78; probes-numeric/t3589-imsin-imcos-negative-cut-probe, 22 cells, and
   t3589-imsin-imcos-subnormal-exp-probe, 52 cells, excel-graph). Ours: `trig_exp_overflows`. The same probe shows
-  positive y turning `#NUM!` between 709.7 and 709.75, below exp's overflow (T-3616). Status: VERIFIED (excel-graph) for
+  positive y turning `#NUM!` above 709.7, below exp's overflow ("IMSIN and IMCOS positive overflow cut", T-3616). Status: VERIFIED (excel-graph) for
   IMSINH, IMCOSH, IMSIN and IMCOS; for IMSECH and IMCSCH below 0.01 see the next entry (real x VERIFIED, three complex
   cells UNVERIFIED; T-3609). Ours: `inverse_exp_sinh_cosh`,
   `sinh_series` and `trig_sinh_cosh` in functions/engineering/complex/trig.rs.
@@ -1000,17 +1000,13 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   is `-0.0000010361595398356i` (21 characters without the sign, probes-numeric/t3545-imsin-imcos-small-imag-sweep
   A128), and so are A43, B49 and B81 there (`IMCOS("-0.856146645807608+1.42428827512383E-06i")` is
   `0.655352852954647+0.0000010757975078242i`; all 14 digits at exponent -6), where the
-  15-digit `1.23456789012345E-06` is E notation (probes/eng-im-small-part, T-2056 above). Ours writes E notation
-  past 20 characters (number_format.rs `value_to_text`). Status: VERIFIED (excel-graph), not implemented (T-3560).
-  More 14-digit parts at exponent -6 are plain in the T-3589/T-3609 sweeps (IMSINH, IMCOSH and IMCSCH, real and
-  imaginary parts): probes-numeric/t3589-im-hyperbolic-small-x-sweep S!A4 `IMSINH("6.09023237964955E-06")` is
-  `0.0000060902323796872`, S!B113 `IMCOSH("9.44469908419292E-06+0.99562846593553i")` is
-  `0.543975650586412+0.0000079250564654669i`, S!D131 `IMCSCH("-4.59953559663512E-06+0.744637496146937i")` is
-  `-0.0000073640486974103-1.47556763866665i`; probes-numeric/t3609-imsech-imcsch-small-real-sweep S!D31
-  `IMSINH("2.17632914357958E-06")` is `0.0000021763291435813`. A part with 13 digits at exponent -7 is plain too,
-  also 21 characters without the sign: t3589 S!C127 `IMSECH("3.92937257901956E-06+0.107316538548074i")` is
-  `1.00578618257237-0.0000004257623550779i` (gap triage 2026-11-01, excel-graph). This fits a 21-character plain
-  limit rather than an exponent -6 rule; the 12-to-15-digit grid at exponents -6 to -10 (T-3560's probe) settles it.
+  15-digit `1.23456789012345E-06` is E notation (probes/eng-im-small-part, T-2056 above). Probed over 12-15 digits at exponents -6 to -10 (probes/eng-im-part-plain-boundary, T-3560): a part below 1 is plain
+  when its text, with the leading `0.`, is at most 21 characters (12 digits to -8, 13 to -7, 14 to -6; one more
+  digit or exponent step is E notation; a 21-character part is evidenced at exponents -6 to -8 only, the rule below -8
+  is extrapolated), a character more than number-to-text coercion allows. Status: VERIFIED (excel-graph), implemented (T-3560).
+  The T-3589/T-3609 sweeps agree and pass since T-3560 (gap triage 2026-11-01, excel-graph): probes-numeric/t3589-im-hyperbolic-small-x-sweep
+  S!A4 `IMSINH("6.09023237964955E-06")` is `0.0000060902323796872` (14 digits at -6) and S!C127
+  `IMSECH("3.92937257901956E-06+0.107316538548074i")` is `1.00578618257237-0.0000004257623550779i` (13 at -7).
 - **IMSQRT of a negative real is polar through COS and ATAN2.** `IMSQRT("-1")` (`IMSQRT(TEXT(-1,"0"))`) is
   "6.1257422745431E-17+i" = COS(ATAN2(-1,0)/2) with Excel's COS (libm cos(π/2) 6.12323399573677E-17), `IMSQRT(-2.5)`
   9.68564897336834E-17+1.58113883008419i, `IMSQRT(-0.0001)` 6.1257422745431E-19+0.01i, `IMSQRT(-3.85841)`
@@ -1140,8 +1136,22 @@ Evidence: probes/besseli-overflow-cut-sweep (x = 709.50 to 709.78 step 0.01, ord
 Rule: BESSELI(x,n) is finite up to x = 709.7 (`BESSELI(709.7,0)` is 2.4788083687166675E+306, `(709.7,1)` 2.4770621409647947E+306, `(709.7,5)` 1.9147648105012915E+306) and `#NUM!` at every probed x above it, to 709.78 and on, at orders 0, 1 and 5. The cut is in (709.7, 709.70001], far below the true overflow of I0 near 713.98 and of `exp` at 709.78, so it is a constant in Excel's code, taken as 709.7.
 Rule (T-3005, probes/besseli-overflow-cut-negative, excel-graph, 2026-10-29): negative x has the same cut on |x|. `BESSELI(-709.7,n)` is finite for n = 0 to 5 with the sign of (-1)^n (`(-709.7,0)` 2.4788083687166675E+306, `(-709.7,1)` -2.4770621409647947E+306, `(-709.7,5)` -1.9147648105012915E+306), and `BESSELI(-709.70001,n)` for n = 0 to 5 and `(-709.75,1)` are `#NUM!`. Orders are not monotone at the cut: `(-709.7,3)` is -1.1560227990465618E+306, under half the magnitude of its neighbours (n = 2 is 2.4767E+306, n = 4 is 2.4609E+306; the mathematical I_3 is about 2.46E+306), an artifact of Excel's recurrence that positive x shares by symmetry. Ours takes |x| and matches all 13 cells.
 Status: VERIFIED (excel-graph)
-Implemented in: functions/engineering/transcendental/bessel_i.rs (`BESSELI_OVERFLOW_X`)
+Implemented in: functions/engineering/transcendental/bessel_i.rs (`BESSELI_OVERFLOW_X`, from `ENGINEERING_EXP_CUT` in functions/engineering/mod.rs, which IMSIN and IMCOS share)
 Tasks: T-2613, T-3005
+
+## IMSIN and IMCOS positive overflow cut (T-3616)
+Evidence: probes-numeric/t3616-imsin-imcos-positive-cut-probe (330 cells, excel-graph, 2026-11-01): IMSIN and IMCOS of
+x + yi for x = 0, 0.5, 1.2, -2.3, 3 and 1.5707963267949 at y = 709.7, 709.7 + 1E-12 .. 1E-6 (each power of ten),
+709.70001, 709.7001, 709.701, 709.705 to 709.75 step 0.005, and 709.699999999999, with EXP, COSH and SINH of each y.
+Rule: IMSIN and IMCOS are `#NUM!` once the imaginary part exceeds 709.7, whatever the real part: `IMSIN("709.7i")` is
+8.27492013840132E+307i and `IMCOS("0.5+709.7i")` answers, while every probed y from 709.700000000001 (the finest a
+15-digit text can write) up is `#NUM!` in all 12 columns. This is the same constant as BESSELI's cut ("BESSELI overflow
+point" above), not an overflow: EXP, COSH and SINH stay finite at every probed y (`EXP(709.75)` is
+1.7398368732641605E+308, `COSH(709.75)` 8.699184366320803E+307), and so are the product parts. Negative y keeps its own,
+earlier cut at ln(DBL_MIN) (T-3589).
+Status: VERIFIED (excel-graph)
+Implemented in: functions/engineering/mod.rs (`ENGINEERING_EXP_CUT`, shared with BESSELI), complex/trig.rs
+(`trig_exp_overflows`)
 
 ## BESSELJ and BIN2* cells of the T-2436 sub-expression probe
 Rule (excel-graph, 2026-10-24, probes/t2436): `BESSELJ(1E+15,100)` is `#NUM!` (caa1eed48b1883fe A399; matched since T-2547, the phase cut), and `BIN2DEC("Hello World")` and `BIN2HEX("#N/A",1)` (text cells) are `#NUM!` (matched since T-2544); an `IMSUM` of

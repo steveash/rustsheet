@@ -98,6 +98,7 @@ mod restart_log;
 mod seen_ranges;
 mod sheet_reads;
 mod spill_shape;
+mod structural_checks;
 mod styles;
 mod table_edits;
 mod table_types;

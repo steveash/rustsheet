@@ -1,0 +1,7 @@
+| sum form | all | n<=9 | n>=10 |
+|---|---|---|---|
+| stored apb (TOMS), exact sum | median -0.4, sd 17.8 (768) | median 0.0, sd 4.7 (171) | median -0.6, sd 20.1 (597) |
+| exact apb | median -0.6, sd 19.7 (768) | median -0.1, sd 5.2 (171) | median -1.2, sd 22.2 (597) |
+| sum d (doubles) | median -0.5, sd 17.8 (768) | median -0.2, sd 4.6 (171) | median -1.1, sd 20.0 (597) |
+| sum ld (x87) | median -0.1, sd 17.7 (768) | median 0.2, sd 4.7 (171) | median -0.6, sd 19.9 (597) |
+| sum w4 | median -0.1, sd 17.7 (768) | median -0.0, sd 4.6 (171) | median -0.1, sd 20.0 (597) |
