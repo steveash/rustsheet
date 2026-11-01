@@ -42,7 +42,7 @@ Decision 0083: every cell listed under Context is visibly off (a wrong error typ
 ## Acceptance criteria
 - [x] Every cell listed under Context matches Excel (`make eval-show` on each case), with unit tests for the TOCOL/TOROW ignore paths and the FILTER shape check over a one-cell error reference.
 - [x] Their lines leave eval/baseline/gen-m7.txt (`make eval-baseline`, 0 regressions); the steward lowers the visible-parity lock by the same count in its daily `make eval-lower-visible-lock` run.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The argument-check order of TOCOL/TOROW/SORT (T-3507) and SORT's lifted by_col (T-3508).
