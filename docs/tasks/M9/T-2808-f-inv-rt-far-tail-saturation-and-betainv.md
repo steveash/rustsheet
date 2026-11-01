@@ -20,12 +20,16 @@ F-cdf rules of the same gen-m9 sweep and left these two search-internal ones. Bo
 probe evidence are in docs/excel-semantics/statistics.md, "F.INV.RT saturates at
 3.696066238512854E+150/df1 in the far tail (T-2435)" and "BETAINV is #NUM! where its quantile
 underflows, but 0.5 at a tiny alpha and a high p (T-2435)"; the cells are
-probes/t2435-dist-extremes A68:A81, A108:A112, A115:A118 (known failures) plus the owned gen-m9
-cells below. The F.INV.RT constant 3.696066238512854E+150 is df1-only (half it at df1 = 2), so it
+probes/t2435-dist-extremes A68:A81, A108:A112, A115:A118 (known failures), their `(...)=0` companions in column B
+(cell list below), plus the owned gen-m9 cells below. The F.INV.RT constant 3.696066238512854E+150 is df1-only (half it at df1 = 2), so it
 looks like the search's own upper bracket: find what it is before implementing a cap, and read
 docs/research/excel-kernel-playbook.md first. BETAINV's 0.5 is Excel's search stopping at its
 start, which the crossing refinement in functions/statistical/inverse_beta.rs does not model.
 Code: functions/statistical/fisher.rs (`f_quantile`), beta.rs (`beta_quantile`), inverse_beta.rs.
+
+Column-B companions (gap triage 2026-10-31: visibly off, Excel `#NUM!` or FALSE against ours FALSE or `#NUM!`, and no
+open task named them; they pass with their column-A cells):
+- probes/t2435-dist-extremes.case.json (9): S!B68, B69, B77, B79, B110, B115, B116, B117, B118
 
 Owned gen-m9 cells (T-2435 split, 2026-10-26): 4 known-failure lines in eval/baseline/gen-m9.txt.
 - gen-m9/3e98b26cf6713e77 Calc!A151 `=BETAINV(1E-20,1E-300,30)`: Excel #NUM!, ours 3.333333333333333e-302
@@ -36,7 +40,7 @@ Owned gen-m9 cells (T-2435 split, 2026-10-26): 4 known-failure lines in eval/bas
 ## Acceptance criteria
 - [ ] These 4 gen-m9 known-failure lines disappear from eval/baseline/gen-m9.txt, with no new
       known-failure lines in any baseline.
-- [ ] probes/t2435-dist-extremes A68:A81, A108:A112 and A115:A118 pass (or the ones that cannot are
+- [ ] probes/t2435-dist-extremes A68:A81, A108:A112 and A115:A118 and their column-B companions pass (or the ones that cannot are
       named with evidence in the statistics.md entries above).
 - [ ] `make check` green; reviewers approve.
 
