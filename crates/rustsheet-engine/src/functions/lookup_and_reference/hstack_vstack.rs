@@ -1,7 +1,7 @@
 use super::ref_lift::{lifts_into_references, put_back};
 use crate::calc_result::range_dims;
 use crate::functions::lift::grid_dims;
-use crate::functions::spill_functions::reject_empty_value;
+use crate::functions::spill_functions::{one_cell_error_ref_as_array, reject_empty_value};
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -55,6 +55,16 @@ impl Model {
             // The empty value is `#VALUE!` (`HSTACK(CELL("contents",<blank>),1)`,
             // probes/t2466-cell-contents-stack A41; `reject_empty_value`, T-3053).
             let result = self.evaluate_node_in_context(arg, cell);
+            // Excel: arrays.md "A one-cell error reference is a 1x1 array in TOCOL, TOROW, FILTER,
+            // TAKE, DROP, CHOOSEROWS, CHOOSECOLS, VSTACK and HSTACK": the error is an element.
+            if let CalcResult::Error { error, .. } = &result {
+                if matches!(*arg.ungrouped_at(cell.row), Node::ReferenceKind { .. }) {
+                    results.push(CalcResult::Array(vec![vec![ArrayNode::Error(
+                        error.clone(),
+                    )]]));
+                    continue;
+                }
+            }
             match reject_empty_value(arg, result, cell) {
                 Err(err) | Ok(err @ CalcResult::Error { .. }) => return err,
                 Ok(CalcResult::Range { left, right }) => {
@@ -181,9 +191,11 @@ impl Model {
                 Some(result) => self.result_to_array(result, cell).map(Stacked::Copied),
                 // A blank one-cell reference stacks as a blank element, not 0 (`ISBLANK(INDEX(
                 // VSTACK(Z1,1),1,1))` is TRUE; probes/t2413-blank-in-stacked-arrays A13:A23).
-                None => self
-                    .eval_to_array_keep_blank(arg, cell)
-                    .map(Stacked::Copied),
+                // An error in it is a 1x1 array holding the error (arrays.md, as for HSTACK).
+                None => {
+                    one_cell_error_ref_as_array(arg, self.eval_to_array_keep_blank(arg, cell), cell)
+                        .map(Stacked::Copied)
+                }
             };
             match item {
                 Ok(item) => stacked.push(item),
