@@ -2474,8 +2474,11 @@ Tasks: T-2207, T-2732, T-2733
 ## PRICE, DURATION and MDURATION sum order at a huge coupon rate and yield
 Rule: PRICE takes the accrued interest as `rate/f · A/E · 100` (left to right, `A/E` one quotient) and discounts
 coupon k (k = 0..N-1) at the exponent `k + DSC/E`; the redemption keeps `DSC/E + N - 1`, and each discount is
-Excel's `^` ("PRICE and ODDFPRICE discount with Excel's `^`"). The same accrued order applies to the single-coupon
-(N = 1) branch, which discounts linearly; the eval shows no regression from it. DURATION and MDURATION discount
+Excel's `^` ("PRICE and ODDFPRICE discount with Excel's `^`"). The single-coupon (N = 1) branch, which discounts
+linearly, keeps the accrued `coupon · (A/E)`: on the post-freeze fresh sweep probes-numeric/t2733-price-r4-fresh
+(excel-graph, 2026-11-01) all 78 PRICE rows with COUPNUM = 1 are bit-exact with it and 62 with `rate/f · A/E · 100`
+(A56 `PRICE(38927,38971,0.828072,1.77301,1.21553,1,2)` is Excel -3.3520514477410757, 32 ulp from the latter); the
+re-check sweep probes-numeric/t2733-price-n1-fresh confirms it (T-2733 Outcome). DURATION and MDURATION discount
 coupon k at the same `k + DSC/E`. Written this way every cell of probes/bond-extreme-coupon-yield is within half a
 unit of Excel's 15th significant digit, among them the probe rows that mirror gen-m9 0a957119475760c5 A279,
 a91bad4e84f49739 A142 and 30e20ba3302fea8b A90 with literal arguments: `PRICE(38136,44737,1E+300,7,100,2)`

@@ -124,18 +124,20 @@ impl CouponSchedule {
         let dsc_over_e = (e - a) / e;
 
         let coupon = 100.0 * rate / frequency as f64;
-        // The accrued interest is `rate/f · A/E · 100`, not `coupon · A/E`, and each coupon is
-        // discounted at `k + DSC/E` counted from k = 0 (not `DSC/E + k - 1` from k = 1): with it
-        // all 240 PRICE cells of probes/bond-extreme-coupon-yield are bit-exact in the eval, and
-        // the single-coupon branch below uses the same accrued order without regressions
-        // (financial.md "PRICE, DURATION and MDURATION sum order at a huge coupon rate and yield",
-        // T-2733).
-        let accrued = rate / frequency as f64 * (a / e) * 100.0;
-
-        // A single remaining coupon is discounted with simple (linear) interest
+        // A single remaining coupon is discounted with simple (linear) interest, and its accrued
+        // interest is `coupon · A/E`: all 78 single-coupon PRICE rows of the fresh sweep
+        // probes-numeric/t2733-price-r4-fresh are bit-exact with it, 62 with the order below
+        // (financial.md "PRICE, DURATION and MDURATION sum order at a huge coupon rate and yield").
         if n == 1.0 {
-            return (redemption + coupon) / (1.0 + dsc_over_e * yld / frequency as f64) - accrued;
+            return (redemption + coupon) / (1.0 + dsc_over_e * yld / frequency as f64)
+                - coupon * (a / e);
         }
+
+        // With more than one coupon left the accrued interest is `rate/f · A/E · 100`, not
+        // `coupon · A/E`, and each coupon is discounted at `k + DSC/E` counted from k = 0 (not
+        // `DSC/E + k - 1` from k = 1): with it all 240 PRICE cells of
+        // probes/bond-extreme-coupon-yield are bit-exact in the eval (T-2733).
+        let accrued = rate / frequency as f64 * (a / e) * 100.0;
 
         let v = 1.0 + yld / frequency as f64;
         let first_term = redemption / growth(v, dsc_over_e + n - 1.0);
