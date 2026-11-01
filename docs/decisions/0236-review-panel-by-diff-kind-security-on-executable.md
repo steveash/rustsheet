@@ -25,15 +25,18 @@
     lists get every reviewer.
     - Such a diff holds only task files, decisions, specs, research and semantics notes, and
       suite cases, with nothing to execute.
+    - Docs that code reads keep it: `ci_changes.CODE_READ_PATHS` (docs/excel-semantics,
+      docs/progress, docs/milestones.md), which CI also treats as code.
     - Security's other targets keep it: crates, bindings, scripts, tools, CI, `.claude/`,
       `CLAUDE.md`, eval baselines and accuracy lists, and `quality/` (gate weakening).
   - **Excel fidelity is unchanged.**
   - **Task-only diffs first.** A diff of only `docs/tasks/*.md` files needs no reviewer (decision
     0231); `applicable_reviewers` checks that before the rules above.
   - **Tooling.** The one definition of the panel is the `review` skill.
-    - `scripts/merge_ready.py` mirrors it: `REVIEWERS = (security, design, excel-fidelity)`,
-      `SECURITY_SKIP_PATHS` and `SECURITY_KEEP_PATHS`. `scripts/test_merge_ready.py` fails when
-      the two differ.
+    - `scripts/review_panel.py` mirrors it: `REVIEWERS = (security, design, excel-fidelity)`,
+      `SECURITY_SKIP_PATHS`, `SECURITY_KEEP_PATHS`, `applicable_reviewers`, and the legacy fold
+      `with_legacy_design` over `LEGACY_DESIGN` (see Transition). `scripts/merge_ready.py`
+      re-exports it, and `scripts/test_merge_ready.py` fails when the mirror and the skill differ.
     - `make verdict-record` takes `REVIEWER=security|design|excel-fidelity`.
 - **Transition:**
   - Markers and verdict records that name `architecture` or `quality` still parse. A head on which
@@ -43,6 +46,13 @@
   - So PRs marked or reviewed before the switch stay ready, and a session still running the old
     skill text keeps working until it reads the new one.
 - **Consequences:**
+  - Accepted residual risk: a script or source file under `docs/` (docs/research holds some
+    `.sh`, `.py` and `.c`) skips security when it is the only change. Nothing in the Makefile,
+    the workflows or the hooks runs files under `docs/` or `eval/suites/`. A change that starts
+    running one is outside the skip paths itself, so it gets security.
+  - The legacy fold lets `architecture=APPROVE quality=APPROVE` stand for `design`. It fails
+    closed (anything else folds to REQUEST_CHANGES), and records still have to name the head and
+    come from a writer, who could post any verdict anyway; so it grants nothing new.
   - A code PR runs two Sonnet reviewers instead of three, plus excel-fidelity where it applies. A
     task-only or docs-only PR runs one.
   - The steward's weekly spot-audit (0015) now also checks for misses by the narrower panel. A

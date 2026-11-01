@@ -6,7 +6,7 @@ description: Run RustSheet's multi-agent code review on the current branch versu
 
 A **task-only PR** (every changed path a `.md` file under `docs/tasks/`) gets no review: `make mark-ready`
 needs no verdict for it once CI is green, and the merge train's `tasks.py validate` on the
-combined tree is its gate (decision 0231). Any other path in the diff brings the full panel back.
+combined tree is its gate (decision 0231). Any other path in the diff brings the panel of step 3 back.
 
 1. Make sure the branch is committed and `make check` passed (reviewers are not linters).
 2. Collect context: `git diff --stat origin/main...HEAD`, the task id (branch name) and its file.
@@ -16,8 +16,9 @@ combined tree is its gate (decision 0231). Any other path in the diff brings the
    - `reviewer-design` (always): architecture and code quality, one reviewer (decision 0236)
    - `reviewer-security` (unless every path is under docs or eval/suites; docs/process keeps it):
      a diff of only task files, decisions, specs, semantics notes and suite cases has nothing
-     executable to review (decision 0236). Any path outside those, or a list you are unsure of,
-     gets it.
+     executable to review (decision 0236). Docs that code reads (`ci_changes.CODE_READ_PATHS`:
+     docs/excel-semantics, docs/progress, docs/milestones.md) keep it too. Any path outside those,
+     or a list you are unsure of, gets it.
    - `reviewer-excel-fidelity` (if the diff touches crates/rustsheet-engine, crates/rustsheet-xlsx,
      eval/suites, or eval/baseline)
    - Not `reviewer-performance`: it is off while correctness comes first (decision 0081). A bench
