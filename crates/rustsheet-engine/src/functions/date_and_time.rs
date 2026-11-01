@@ -701,7 +701,8 @@ impl Model {
         // A79, A241, A493; dates.md "DAYS error order", T-3536).
         self.lift_call(Function::Days, args, cell, &mut |model, values| {
             let read = [0, 1].map(|i| model.kernel_number_or(values.get(i), 0.0, cell));
-            let given_error = (0..2).find(|&i| matches!(values.get(i), Some(CalcResult::Error { .. })));
+            let given_error =
+                (0..2).find(|&i| matches!(values.get(i), Some(CalcResult::Error { .. })));
             if let Some(i) = given_error {
                 if let Err(error) = &read[i] {
                     return error.clone();
@@ -711,18 +712,20 @@ impl Model {
             // reports #NUM! otherwise. DAYS works directly on serials, so the dates
             // themselves are never materialised.
             let range = 0..=MAXIMUM_DATE_SERIAL_NUMBER as i64;
-            if read
-                .iter()
-                .any(|r| matches!(r, Ok(n) if !range.contains(&(n.floor() as i64))))
-            {
-                return CalcResult::new_error(Error::NUM, cell, String::new());
-            }
-            match read {
-                [Ok(end), Ok(start)] => {
-                    number_result(Ok((end.floor() as i64 - start.floor() as i64) as f64), cell)
+            let [end, start] = read;
+            // Then the arguments left to right: unreadable text is #VALUE!, a number off the
+            // calendar #NUM! (`DAYS(-1,"abc")` #NUM!, `DAYS("abc",-1)` #VALUE!).
+            let mut serials = [0_i64; 2];
+            for (slot, arg) in serials.iter_mut().zip([end, start]) {
+                match arg {
+                    Err(error) => return error,
+                    Ok(n) if !range.contains(&(n.floor() as i64)) => {
+                        return CalcResult::new_error(Error::NUM, cell, String::new());
+                    }
+                    Ok(n) => *slot = n.floor() as i64,
                 }
-                [Err(error), _] | [_, Err(error)] => error,
             }
+            number_result(Ok((serials[0] - serials[1]) as f64), cell)
         })
     }
 
