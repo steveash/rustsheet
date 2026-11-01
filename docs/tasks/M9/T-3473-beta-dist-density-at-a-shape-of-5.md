@@ -19,7 +19,7 @@ that is within 15 digits today moving off.
 ## Context
 - Gap triage 2026-10-31i (`make eval` on origin/main 0c2fbf706, excel-graph; `scripts/exit_owners.py --all-off` and
   `--milestone M9`, `rate:BETA.DIST`): no open owner, deferred or not. They are the density cells of the unowned
-  m9-beta-dist group where Excel is close to correctly rounded; the rest are T-3475's (Phase 1b).
+  m9-beta-dist group where Excel is close to correctly rounded; the rest are T-3592's (Phase 1b).
 - Signed ulps from mpmath at 60 digits (x^(a-1)(1-x)^(b-1)/B(a, b) with x the double Excel reads), Excel / ours:
   - m9-beta-dist-a10 A32 `BETA.DIST(0.1,10,5,FALSE)`: Excel 6.567561000000001E-6 (-2.5), ours 6.567560999999993E-6 (-11.9)
   - m9-beta-dist-a100 A34 `BETA.DIST(0.5,100,5,FALSE)`: Excel 4.534102298350339E-23 (+2.3), ours 4.53410229835036E-23 (+38.0)
@@ -56,4 +56,4 @@ criteria still unmet then move to a follow-up with `defer: phase-1b`.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- Density cells where Excel is off the math (T-3475, T-3173, T-3174; Phase 1b). The cdf (T-3472, T-3401).
+- Density cells where Excel is off the math (T-3592, T-3173, T-3174; Phase 1b). The cdf (T-3472; the bulk cdf cells are T-3561's).
