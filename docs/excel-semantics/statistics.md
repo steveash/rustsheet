@@ -2494,7 +2494,7 @@ docs/research/t2464/cells.tsv; docs/research/t2464/r3-binom-pmf (`a1_survey.out`
 `b19_cfit_mul.out`, `c1_hold.out`), verify-r3-binom-pmf (`vscore_v.out`, `vstruct_v.out`).
 Implemented in: `binom_dist_of` in `crates/rustsheet-engine/src/functions/statistical/binom.rs` (T-2645): k = 0, pmf and
 cdf, is `excel_exp(n * excel_ln_one_minus(p))`; the pmf at k = n is `excel_exp(n * excel_ln(p))`. Ours: the interior pmf
-is `discrete.rs` `binomial_pmf`, a double-double walk.
+is `discrete.rs` `binomial_pmf`, a double-double walk, and past its budget this kernel (`binom.rs` `loader_pmf`, T-3352).
 Status: VERIFIED (excel-graph) for k = 0, k = n and the shared kernel; the interior pmf UNVERIFIED
 Tasks: T-2645, T-2146, T-2586
 
@@ -2510,9 +2510,45 @@ dnbinom (r/(f+r))·dbinom_raw(r, f+r, p, q).
   beats R's two forms (hold-out 328/2,316/2,541 against 233-275/1,775-1,779/2,203-2,211 of 3,072).
 Evidence: probes-numeric t2513-r3-binom-pmf-n, -hold, t2513-verify-r3-binom-pmf-h; docs/research/t2464/r3-binom-pmf
 (`b21_neg.out`, `b3_reg_neg_shift.out`, `b3_reg_neg.out`), verify-r3-binom-pmf (`vneg1.out`, `vneg2.out`).
-Ours: `discrete.rs`, a double-double walk.
+Ours: `discrete.rs`, a double-double walk, and past its budget p times this shifted kernel (T-3352).
 Status: VERIFIED (excel-graph) for the shifted kernel; the final step UNVERIFIED
 Tasks: T-2146, T-2586
+
+## BINOM.DIST and NEGBINOM.DIST at a large n: basym and Loader, within 1E-11 of the math (T-3352)
+Rule: at a large trial count (or number of failures) Excel's BINOM.DIST and NEGBINOM.DIST stay close to the exact value:
+on probes/t3352-binom-negbinom-large-n (208 cells: n 1E4 to 1E9 with p 0.3, 0.5 and 0.001; failures 1E3 to 1E9 with
+r = f at p 0.5, r = f/4 at p 0.2 and r = 10; k at the mean, mean + 2 sd and mean - 3 sd; pmf and cdf) every Excel value is
+within 5.2E-12 of 50-digit mpmath, and on the fresh sweep probes-numeric/t3352-binom-negbinom-sweep (300 points, seed
+3352) none is more than 1E-9 off. That is what bratio gives: near the mean, two shapes above 100 with λ within 3% of the
+smaller one, Excel's cdf is TOMS 708's `basym` (its asymptotic expansion in the scaled erfc), and its interior pmf is
+Loader's saddle point ("BINOM.DIST pmf: closed forms at k = 0 and k = n, and one kernel with BETA.DIST", "NEGBINOM.DIST
+pmf sits on the shifted binomial kernel"). Excel's off-mean pmf at n = 1E9 is a few 1E-12 off the math
+(`BINOM.DIST(300028982,1000000000,0.3,FALSE)` 4.1E-12). UNVERIFIED hypothesis: n·p is rounded before bd0. Our port of
+that kernel is off by the same order but not by the same amount (up to 4.4E-12 from Excel, T-3447).
+- What was wrong (ours before T-3352): past the double-double walk's 2^10 terms both functions fell back to statrs. Its
+  pmf, a log-gamma difference, was 1E-11 off at n = 1E4 and 3E-6 at 1E9; its cdf near the mean was grossly wrong from
+  n = 6E5 (`BINOM.DIST(300000000,1000000000,0.3,TRUE)` -2.82 against Excel's 0.5000156001249112;
+  `NEGBINOM.DIST(1000000000,1000000000,0.5,TRUE)` -5.65), because bratio's basym branch was not ported and today's
+  incomplete beta does not reach those shapes. 42 of the probe's 208 cells were within 15 digits of Excel, 124 within
+  1E-9 of the math.
+- Ours now: the cdf takes the basym port (`bratio/basym.rs`, in doubles: TOMS's coefficient recurrences, `erfc1`,
+  `bcorr` and `rlog1`), and the pmf past the walk's budget takes `loader::excel_dbinom_exponent` into Excel's EXP (for
+  NEGBINOM.DIST, p times the kernel shifted by one, q^f at r = 1). Probe: 133 of 208 within 15 digits of Excel, all 208
+  within 1E-9 of the math (worst 5.2E-12, Excel's own worst 5.2E-12). The 75 others are the Loader kernel's unidentified
+  arithmetic and basym, bfrac or walk tails, at most 4.4E-12 from Excel (T-3447). A48 `BINOM.DIST(600,600000,0.001,TRUE)`
+  was within 15 digits on statrs and is 1 digit short on basym.
+- Only the binomial family takes basym so far. With it under BETA.DIST too, `BETA.DIST(0.555,1000,1000,TRUE,0.1,1)`
+  becomes Excel's 0.6903551301985376 bit for bit, but BETA.INV of that value is then 0.5550000000000002, not Excel's
+  0.555 (ironcalc-calc BETADIST_BETAINV.xlsx G29, H29), whether its search crosses Cephes' fraction or basym (T-3443).
+- BINOM.DIST.RANGE and BINOM.INV still take statrs past the walk: `BINOM.DIST.RANGE(1000000000,0.3,300000000,300000100)`
+  is 1.47 and `BINOM.INV(1000000000,0.3,0.5)` 299998246 (T-3444).
+Evidence: probes/t3352-binom-negbinom-large-n (excel-graph), probes-numeric/t3352-binom-negbinom-sweep (excel-graph,
+scored against 50-digit mpmath; T-3352's Outcome).
+Implemented in: `crates/rustsheet-engine/src/functions/statistical/bratio/basym.rs`, `bratio::basym_tails`, and
+`binom_dist_of` and `negbinom_dist_of` (`loader_pmf`) in `binom.rs`.
+Status: VERIFIED (excel-graph) to 1E-11 of the math; last digits UNVERIFIED (Excel's arithmetic in basym and in Loader's
+kernel at a large n not identified)
+Tasks: T-3352, T-3447, T-3443, T-3444, T-2586, T-2146
 
 ## Beta density for min(a,b) <= 1: lnB and a double-double exponent split (T-2464, T-2513)
 Rule: BETA.DIST(x,a,b,FALSE) with min(a,b) <= 1 is model M2 (r3-m1-residual, verifier-confirmed), for every b, b = 1
@@ -2554,9 +2590,9 @@ The products' rounding errors are not carried. EXP(hi)·EXP(lo) and EXP(hi)·(1 
   lnB (one shape +6, 68 of 156 at 0). The implied algdiv is within -1.7 to +2.2 ulp(algdiv) of the accurate one. Along
   the fine steps the offset's lag-1 autocorrelation is -0.24 to +0.21 (15-16 points per a, standard error about 0.26):
   no large smooth error, so the offset is most likely rounding of stored intermediates. That is an inference until a
-  model reproduces it (T-3468). The pins are Excel for the web values, inside the web/desktop floor of up to 4 ulp. Fixed candidates reach at most 34 and 37 of 80 shapes
+  model reproduces it (T-3569). The pins are Excel for the web values, inside the web/desktop floor of up to 4 ulp. Fixed candidates reach at most 34 and 37 of 80 shapes
   (CR lnB, the best); TOMS-d 26 and 30. Excel's GAMMALN difference carried past 8, in either association, gets 0 and
-  1. Still open (T-3468: x87 storage variants of algdiv scored against the 156 per-shape pins).
+  1. Still open (T-3569: x87 storage variants of algdiv scored against the 156 per-shape pins).
 - Rejected (T-2464): a cdf prefactor over x or x·y; x87 base-2 pow forms; GAMMA-ratio B; R lbeta, NSWC/Apache logBeta;
   TOMS gamln/gamln1 or LN(GAMMA) for lnΓ(v < 1) (GL beats them in every combination, `lgam_*.out`). For algdiv
   (`lnbcands.out`, `algsearch.out`): accurate algdiv, TOMS fully extended, correctly rounded or series alnrel, and
@@ -3123,6 +3159,9 @@ within 4 ulp. Two stay far:
 - `BETA.DIST(33587,3,600,TRUE,2000,5489582)` (G5) is the correctly rounded 0.6734553797493481.
   Cephes' fraction loses about 160 ulp there (t = 0.0058, reflected to I_0.994(600,3)), and so do
   Numerical Recipes' fraction and Cephes' power series.
+  The TOMS 708 port leaves it there too (gap triage 2026-11-01): bratio sends (3, 600, 0.0058) to L140 with two bup terms
+  then bgrat, a branch the port does not cover yet, so the old kernel answers. Ours is 0.6734553797493648, 2.5E-14
+  off, against the 50-digit 0.67345537974934809577 (T-3561).
 - `BETA.DIST(0.234,0.0001,0.0001,TRUE,0.15,1.2)` (G26) is 0.4998779049300665, 34 ulp from the
   correctly rounded value. The best combination is 30 ulp off.
 
@@ -3198,6 +3237,14 @@ have no neighbour above. The crossing holds at 155 of the 188:
   flat-row values are not arbitrary points of a flat band; they look like a start that the steps cannot move. At the
   off-crossing rows Excel is the inaccurate side: `BETA.INV(0.05,2.5,100)` (A101, row 98) is 1.3E-14 above the root.
   Both stay far inside 1E-9 of the math (decision 0188 Gate A). Tasks: T-3387 (sweep), T-3388 (fit).
+- Two gated cells sit off the crossing in a way no probe covers yet (ironcalc-calc BETADIST_BETAINV.xlsx, gap triage
+  2026-11-01, mpmath at 50 digits). Both are scaled to a range [A, B].
+  - H26 `BETA.INV(G26,0.0001,0.0001,0.15,1.2)` with G26 = 0.4998779049300665 is 0.2339999999999406. The root at that p
+    is 0.23400000000293818, so Excel is 1.3E-11 relative below it: well past the 15th digit, but inside Gate A. At
+    shapes 1E-4 the cdf is almost flat around 1/2, and one ulp of p moves the root by about 8E-13.
+  - H5 `BETA.INV(G5,3,600,2000,5489582)` with G5 = 0.6734553797493481 (correctly rounded) is 33587.000000000226,
+    6.6E-15 above the root 33587.000000000000409.
+  Tasks: T-3562 (fit), T-3566 (sweep at shapes below 0.01 and over a range).
 Consequence: BETA.INV parity follows BETA.DIST parity (T-1744) plus a solver that usually
 converges to the crossing.
 Which CDF and which end (T-3398, 2026-10-31, scored over gen-m9, ironcalc-calc, probes and probes-numeric against
@@ -3407,6 +3454,26 @@ Tasks: T-1530, T-1538
 - Ours: the hang is gone (the quantile is a bisection on the `statrs` cdf from df 1E5), but the cdf and quantile are off in
   about the 6th digit at df 1E10 (`F.INV(0.5,1E10,1E10)` = 1.0000025, Excel 1) and `F.DIST(...,FALSE)` at df 1E10 is
   `#NUM!` (`statrs` pdf) where Excel gives a number. 16 of 58 cells of the case fail (A1-A14, A57, A58); T-1538 closes them.
+
+## F density's small-shape constant past its fit set
+Rule: the F density model's small-shape constants (`SMALL_SHAPE_OFFSET` 5.33 and the Stirling errors 0.22 at 1/2
+and 0.06 at 1, units of 2^-53 in K; r4-f-small-df `sdmodel`) were fitted on shapes with max(d) <= 10 and d1 = 1 with d2
+up to 30, but serve every shape with min(d) below 16 (`LARGE_DF_MIN`). On the shapes outside the fit set they still
+bring the density closer to Excel than the correctly rounded value, so they are kept there (decision 0188 R4.3).
+probes-numeric/t3478-f-density-r4-wide (300 points drawn after the freeze, T-3478: 11 <= min(d) <= 15 with max(d) up
+to 1E+10, and min(d) <= 10 with max(d) 11 to 1E+10, d1 and d2 in either order; x 0.2 to 5, or 1E-3 to 1E+3):
+| Strata | Points | Engine bit-exact | Engine within 4 ulp | Correctly rounded bit-exact | Correctly rounded within 4 ulp | Inside Gate A's envelope |
+|---|---|---|---|---|---|---|
+| 11 <= min(d) <= 15 | 100 | 14 | 70 | 5 | 45 | 100 |
+| min(d) <= 10, max(d) 11..100 | 100 | 29 | 83 | 4 | 56 | 100 |
+| min(d) <= 10, max(d) 100..1E+10 | 100 | 18 | 79 | 6 | 58 | 100 |
+Every point is within 1e-9 of the 50-digit density (most misses against Excel are the large-|P| shortfall of "F
+density is not the beta density" above, not the constant).
+Evidence: probes-numeric/t3478-f-density-r4-wide (excel-graph, 2026-10-31) with its `.math.tsv`; scorer
+docs/research/t3478/.
+Status: VERIFIED (excel-graph)
+Implemented in: `SMALL_SHAPE_OFFSET`, `STIRLING_ERROR_HALF`, `STIRLING_ERROR_ONE` (functions/statistical/f_density.rs)
+Tasks: T-3478
 
 ## F density at large degrees of freedom (T-1864)
 Rule: F.DIST(x,d1,d2,FALSE) is an ordinary number wherever Excel's range steps leave the density positive (round 5
@@ -3689,6 +3756,11 @@ Tasks: T-1543, T-1634, T-2561, T-3336, T-3337
     to 50), and t2561-chisq-dist-rt-past-edge (CHISQ.DIST.RT and the density up to 7% past each edge). All
     excel-graph, 1,480 cells. The earlier gen-m9 cells agree: 21 cells such as `CHISQ.INV.RT(1E-100,3)` and
     `CHIINV(1E-200,6)` are `#NUM!`, `CHIINV(1E-20,5)` = 103.42897723775795, and df 22 at 1E-100 = 542.4417060011164.
+    Values below the edge are close to correctly rounded (gap triage 2026-11-01). Of the 419 cells of the four edge
+    probes where ours is 1 to 4 ulp off, 80 drawn at random were checked against the 50-digit root of
+    Q(df/2, x/2) = p. Excel is the correctly rounded root at 52 and ours at 24. The largest errors are 2.7E-16 relative
+    for Excel and 1.9E-16 for ours. Example: `CHISQ.INV.RT(1E-20,4)` (t2561-chisq-inv-rt-num-boundary B1) is
+    99.96639597418148 in Excel and 99.9663959741815 in ours. Status: VERIFIED on those 80 cells. T-3565.
   - A quantile below the smallest normal double is 0 (`CHISQ.INV(1E-200,1)`, crossing about 1.6E-400).
 - Excel's gamma quantiles (T-0972, against an mpmath 50-digit reference of the 545 literal-argument CHISQ.INV,
   CHISQ.INV.RT, CHIINV, GAMMA.INV and GAMMAINV cells in eval/, df truncated, df 1 right tail as the lower quantile of
