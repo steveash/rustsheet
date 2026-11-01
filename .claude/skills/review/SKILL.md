@@ -1,6 +1,6 @@
 ---
 name: review
-description: Run RustSheet's multi-agent code review on the current branch versus main - security, architecture, quality/duplication, Excel fidelity reviewers (performance is off, decision 0081) in parallel - and consolidate verdicts. Use before opening or merging any PR.
+description: Run RustSheet's multi-agent code review on the current branch versus main - design (architecture and quality), security on executable changes, Excel fidelity reviewers (performance is off, decision 0081; panel by diff kind, decision 0236) in parallel - and consolidate verdicts. Use before opening or merging any PR.
 ---
 # Multi-agent review
 
@@ -9,15 +9,17 @@ description: Run RustSheet's multi-agent code review on the current branch versu
 3. Launch these subagents **in parallel** (one message, multiple Agent calls), each with a
    prompt containing: the task id, task file path, spec path(s), and "review `git diff
    origin/main...HEAD`":
-   - `reviewer-security` (always)
-   - `reviewer-architecture` (always)
-   - `reviewer-quality` (always)
+   - `reviewer-design` (always): architecture and code quality, one reviewer (decision 0236)
+   - `reviewer-security` (unless every path is under docs or eval/suites; docs/process keeps it):
+     a diff of only task files, decisions, specs, semantics notes and suite cases has nothing
+     executable to review (decision 0236). Any path outside those, or a list you are unsure of,
+     gets it.
    - `reviewer-excel-fidelity` (if the diff touches crates/rustsheet-engine, crates/rustsheet-xlsx,
      eval/suites, or eval/baseline)
    - Not `reviewer-performance`: it is off while correctness comes first (decision 0081). A bench
      criterion in the task is met at no more than 50% slower than main.
-   Each reviewer runs on the model set in its agent frontmatter (decision 0015: security,
-   architecture and quality on Sonnet; Excel fidelity on Opus). Do not override it
+   Each reviewer runs on the model set in its agent frontmatter (decision 0015: security and
+   design on Sonnet; Excel fidelity on Opus). Do not override it
    per call, with one exception: the steward's weekly spot-audit launches every reviewer with
    `model: opus`, so a cheaper reviewer's miss is re-checked by the stronger model.
    As each reviewer returns, post its **verdict record** (SPEC-0027 "Verdict records (v2)",
@@ -25,7 +27,7 @@ description: Run RustSheet's multi-agent code review on the current branch versu
    - Save the report verbatim to a file in your scratchpad: the report and nothing else (no tool
      output, environment or credentials).
    - With the commit its `HEAD:` line names still checked out, run `make verdict-record PR=<n>
-     REVIEWER=<security|architecture|quality|excel-fidelity> VERDICT=<APPROVE|REQUEST_CHANGES>
+     REVIEWER=<security|design|excel-fidelity> VERDICT=<APPROVE|REQUEST_CHANGES>
      REPORT=<file>` (record a `BLOCK` as `REQUEST_CHANGES`). When `gh api` writes are refused,
      add `STEP=1` and post the printed comment body exactly as printed with the GitHub MCP tools.
    - The PR must exist: open it as a draft before the first round if it does not.

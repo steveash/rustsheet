@@ -47,7 +47,7 @@ class RecordFormat(unittest.TestCase):
             merge_ready.parse_record(forged + "\n\n" + Record(HEAD, "security", APPROVE).render())
 
     def test_an_oversized_report_is_cut_never_the_block(self) -> None:
-        record = Record(HEAD, "quality", APPROVE)
+        record = Record(HEAD, "design", APPROVE)
         body = merge_ready.record_body(record, "x" * 70000)
         self.assertLessEqual(len(body + merge_ready.FOOTER), 65536)
         self.assertIn(merge_ready.TRUNCATED, body)
@@ -90,7 +90,16 @@ class RecordFormat(unittest.TestCase):
 
 
 class RecordFixture(PrFixture):
-    """PR #7 with verdict records: comment ids from 10, created one minute apart after the marker."""
+    """PR #7 with verdict records: comment ids from 10, created one minute apart after the marker.
+    Its head also changes a script, so the panel is security and design (decision 0236)."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.write("scripts/x.py", "x\n")
+        self.head = self.commit("code")
+        self.git("push", "-q", "-f", "origin", "HEAD:refs/pull/7/head")
+        self.pull["head"]["sha"] = self.head
+        self.comments = [self.comment(1, marker(self.head).render())]
 
     def record(
         self,
@@ -132,47 +141,58 @@ class Verify(RecordFixture):
         self.approve_all()
         self.assertEqual((self.failures(), self.warnings()), ([], ()))
         # A newer REQUEST_CHANGES for the head is a warning.
-        self.record("quality", CHANGES)
+        self.record("design", CHANGES)
         self.assertEqual(self.failures(), [])
-        self.assertEqual(self.warnings(), (f"quality's newest verdict record on {self.head} is {CHANGES}",))
+        self.assertEqual(self.warnings(), (f"design's newest verdict record on {self.head} is {CHANGES}",))
         verdict, _ = self.verify()
-        self.assertIn("warning (verdict_records = warn): quality's newest", merge_ready.report(verdict))
+        self.assertIn("warning (verdict_records = warn): design's newest", merge_ready.report(verdict))
 
     def test_require_mode_fails_v4(self) -> None:
         self.switch('mode = "shadow"\nverdict_records = "require"\n')
         self.assertEqual(self.failures(), [("V4", UNLABEL)])
         self.approve_all()
         self.assertEqual((self.failures(), self.warnings()), ([], ()))
-        self.record("quality", CHANGES)
+        self.record("design", CHANGES)
         self.assertEqual(self.failures(), [("V4", UNLABEL)])
         # A corrected verdict is a new record, and the newest one counts.
-        self.record("quality")
+        self.record("design")
         self.assertEqual(self.failures(), [])
 
     def test_which_records_count(self) -> None:
         self.switch('verdict_records = "require"\n')
         self.record("security")
-        self.record("architecture")
-        self.record("quality", head="b" * 40)  # a stale panel: another head
+        self.record("design", head="b" * 40)  # a stale panel: another head
         self.assertEqual(self.failures(), [("V4", UNLABEL)])
         # An outsider's record does not count.
-        self.record("quality", login="outsider", association="CONTRIBUTOR")
+        self.record("design", login="outsider", association="CONTRIBUTOR")
         self.assertEqual(self.failures(), [("V4", UNLABEL)])
         # An edited record does not count, nor one without a created_at.
-        self.record("quality", updated_at="2026-10-28T23:00:00Z")
-        self.record("quality", created_at="")
+        self.record("design", updated_at="2026-10-28T23:00:00Z")
+        self.record("design", created_at="")
         self.assertEqual(self.failures(), [("V4", UNLABEL)])
         # A record posted after the marker counts (the panel run again on the same head).
-        self.record("quality")
+        self.record("design")
         self.assertEqual(self.failures(), [])
         # Editing it makes it stop counting (fails closed), even with an older APPROVE gone.
         self.comments[-1]["updated_at"] = "2026-10-28T23:59:00Z"
         self.assertEqual(self.failures(), [("V4", UNLABEL)])
 
+    def test_legacy_architecture_and_quality_records_count_as_design(self) -> None:
+        # Records posted before decision 0236 keep a PR ready once both approve.
+        self.switch('verdict_records = "require"\n')
+        self.record("security")
+        self.record("architecture")
+        self.assertEqual(self.failures(), [("V4", UNLABEL)])
+        self.record("quality")
+        self.assertEqual(self.failures(), [])
+        # A design record of its own wins.
+        self.record("design", CHANGES)
+        self.assertEqual(self.failures(), [("V4", UNLABEL)])
+
     def test_newest_by_created_at_not_by_position(self) -> None:
         self.switch('verdict_records = "require"\n')
         self.approve_all()
-        self.record("quality", CHANGES)
+        self.record("design", CHANGES)
         # The REQUEST_CHANGES comes first in the list but was created later.
         self.comments.insert(1, self.comments.pop())
         self.comments[1]["created_at"] = self.comments[1]["updated_at"] = "2026-10-28T12:00:00Z"
@@ -199,7 +219,7 @@ class Verify(RecordFixture):
         self.assertIn("carry-over", verdict.failures[0].reason)
 
     def test_the_merger_reports_the_warnings(self) -> None:
-        verdict = merge_ready.Verdict(7, marker(self.head), 1, "t", warnings=("no verdict record from quality",))
+        verdict = merge_ready.Verdict(7, marker(self.head), 1, "t", warnings=("no verdict record from design",))
         pulls = [{"number": 7, "labels": [{"name": merge_ready.READY_LABEL}]}]
         fake = FakeGh("o", "r", {
                 ("GET", "repos/o/r/pulls?state=open&per_page=100&page=1"): Reply(pulls),
@@ -207,13 +227,13 @@ class Verify(RecordFixture):
             })
         with mock.patch.object(merge_ready, "verify", return_value=verdict):
             found = merge_train.collect(fake, merge_ready.Repo(self.clone))
-        self.assertEqual(found.warning_lines(), ["verdict records #7 (warn): no verdict record from quality"])
+        self.assertEqual(found.warning_lines(), ["verdict records #7 (warn): no verdict record from design"])
 
 
 class Mark(RecordFixture):
     """`mark` on PR #7, unmarked and unlabelled, its head checked out locally."""
 
-    REVIEW = "security=APPROVE architecture=APPROVE quality=APPROVE"
+    REVIEW = "security=APPROVE design=APPROVE"
 
     def setUp(self) -> None:
         super().setUp()
@@ -228,14 +248,14 @@ class Mark(RecordFixture):
             self.plan(review)
 
     def test_the_verdicts_come_from_the_records(self) -> None:
-        self.refused("no verdict record on .* from security, architecture, quality")
+        self.refused("no verdict record on .* from security, design")
         self.approve_all()
         plan = self.plan()
         self.assertEqual(plan.marker.reviewers, APPROVED)
         self.assertEqual(plan.warnings, ())
         # A record's REQUEST_CHANGES beats a typed APPROVE.
-        self.record("quality", CHANGES)
-        self.refused("no APPROVE from quality", self.REVIEW)
+        self.record("design", CHANGES)
+        self.refused("no APPROVE from design", self.REVIEW)
 
     def test_warn_mode_falls_back_to_review_with_a_warning(self) -> None:
         self.record("security")
@@ -245,19 +265,18 @@ class Mark(RecordFixture):
             plan.warnings,
             tuple(
                 f"no verdict record from {n} on {self.head}: its verdict comes from REVIEW"
-                for n in ("architecture", "quality")
+                for n in ("design",)
             ),
         )
         code, _, err = self.mark_main("--review", self.REVIEW, "--step")
         self.assertEqual(code, 0)
-        self.assertIn("merge_ready: warning: no verdict record from architecture", err)
+        self.assertIn("merge_ready: warning: no verdict record from design", err)
 
     def test_require_mode_refuses_without_records(self) -> None:
         self.switch('verdict_records = "require"\n')
         self.record("security")
-        self.refused("no verdict record on .* from architecture, quality", self.REVIEW)
-        self.record("architecture")
-        self.record("quality")
+        self.refused("no verdict record on .* from design", self.REVIEW)
+        self.record("design")
         self.assertEqual(self.plan().marker.reviewers, APPROVED)
 
     def mark_main(self, *args: str) -> tuple[int, str, str]:

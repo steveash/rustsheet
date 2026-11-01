@@ -62,7 +62,7 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   | `train` | `make mark-ready`, then move on | batches ready PRs, tests them on `merge-train/current`, squash-merges the green ones in order |
   - **Marking.** `make mark-ready PR=<n>` with the PR head checked out. It takes the verdicts
     from the verdict records the `review` skill posted on that head (decision 0178); while
-    `verdict_records = "warn"`, `REVIEW="security=APPROVE architecture=APPROVE quality=APPROVE
+    `verdict_records = "warn"`, `REVIEW="security=APPROVE design=APPROVE
     [excel-fidelity=APPROVE]"` stands in for a missing record, with a warning. It posts a marker
     comment (head sha, verdicts) and the `ready-to-merge` label, and refuses a draft, a red or
     pending head, a task not `done` with an Outcome, or a missing verdict. When a session cannot
@@ -284,7 +284,7 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   the cell, or only the case, in that task.
 - **Governance failures**: protected paths (CI, .claude/, CLAUDE.md, lint policy, scripts/,
   quality/, docs/process/, eval/milestones/) changed — add a decision record in docs/decisions/
-  explaining why, and make sure `reviewer-architecture` and `reviewer-security` approved that part explicitly.
+  explaining why, and make sure `reviewer-design` and `reviewer-security` approved that part explicitly.
 - **Fifteen-digit parity checkpoint** (decision 0094, T-0062): the dashboard's `goals` block shows
   the "Fifteen-digit parity: ..." line (report.json: `v15_checkpoint`); do not copy it, or the
   "Phase 1 (decision 0114): ..." line, into docs/status.md (decision 0118). The checkpoint is

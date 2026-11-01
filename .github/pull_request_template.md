@@ -15,8 +15,7 @@
 | reviewer | verdict | notes |
 |---|---|---|
 | security | | |
-| architecture | | |
-| quality | | |
+| design | | |
 | excel-fidelity | | |
 
 ## Follow-ups filed

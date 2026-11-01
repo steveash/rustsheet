@@ -9,7 +9,7 @@ is the normative description of that loop. The executable version is the `work-l
 | Role | Implemented as | Responsibility |
 |---|---|---|
 | **Worker** | a Claude Code session running the `work-loop` skill for one lane | pick task → implement → gates → review → PR → merge |
-| **Reviewers** | subagents in `.claude/agents/reviewer-*.md` | independent verdicts on the diff (security, architecture, quality/duplication, Excel fidelity; performance is off, decision 0081) |
+| **Reviewers** | subagents in `.claude/agents/reviewer-*.md` | independent verdicts on the diff (design: architecture and quality/duplication; security on executable changes; Excel fidelity; performance is off, decision 0081; panel by diff kind, decision 0236) |
 | **Planner** | `.claude/agents/planner.md` | milestone → specs → small tasks with dependencies |
 | **Gap triager** | `.claude/agents/gap-triager.md` | eval report → root-cause-grouped function tasks |
 | **Steward** | the daily steward routine (`routines.md`), following the `steward` skill and, for the dashboard, the `progress-report` skill | eval and health report in `docs/status.md`; the daily progress dashboard `docs/progress.md` (`make progress-report`, its judgment blocks; SPEC-0022, decision 0123); queues, orphaned PRs, oracle fills |

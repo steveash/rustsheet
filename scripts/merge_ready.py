@@ -49,6 +49,21 @@ import merge_lock
 import tasks
 from gh_client import Client, GhError, field_of, int_of, label_names, text_of  # noqa: F401 (re-exported)
 from merge_lock import GitError, git
+from review_panel import (  # noqa: F401 (re-exported: the panel's one copy, decision 0236)
+    ALWAYS_REVIEWERS,
+    APPROVE,
+    DESIGN,
+    EXCEL_FIDELITY,
+    EXCEL_FIDELITY_PATHS,
+    LEGACY_DESIGN,
+    REVIEWERS,
+    SECURITY,
+    SECURITY_KEEP_PATHS,
+    SECURITY_SKIP_PATHS,
+    applicable_reviewers,
+    needs_security,
+    with_legacy_design,
+)
 from suite_meta import suites_on
 from visible_lock import RETIRED_LOCK, VISIBLE_PARITY, case_on, in_commit, visible_rises
 
@@ -64,13 +79,6 @@ EJECTED_LABEL = "merge-train-ejected"
 STOP_LABEL = "merge-train-stop"
 LABELS = (READY_LABEL, EJECTED_LABEL, STOP_LABEL)
 
-# Reviewer applicability. The one definition is the `review` skill (.claude/skills/review/SKILL.md,
-# step 3); scripts/test_merge_ready.py fails when this copy differs from it.
-ALWAYS_REVIEWERS = ("security", "architecture", "quality")
-EXCEL_FIDELITY = "excel-fidelity"
-EXCEL_FIDELITY_PATHS = ("crates/rustsheet-engine", "crates/rustsheet-xlsx", "eval/suites", "eval/baseline")
-REVIEWERS = (*ALWAYS_REVIEWERS, EXCEL_FIDELITY)
-APPROVE = "APPROVE"
 NOT_APPLICABLE = "n/a"
 VERDICTS = (APPROVE, "REQUEST_CHANGES", NOT_APPLICABLE)
 
@@ -149,16 +157,17 @@ def sha_field(value: str, what: str) -> str:
 
 
 def parse_reviewers(value: str) -> dict[str, str]:
-    """`name=VERDICT` pairs, each name a known reviewer at most once, each verdict a known one."""
+    """`name=VERDICT` pairs, each name a known (or pre-0236) reviewer at most once, each verdict
+    a known one; legacy names are folded into `design` (`with_legacy_design`)."""
     verdicts: dict[str, str] = {}
     for pair in value.split():
         name, _, verdict = pair.partition("=")
-        if name not in REVIEWERS or name in verdicts:
+        if name not in (*REVIEWERS, *LEGACY_DESIGN) or name in verdicts:
             raise MarkerError(f"unknown or repeated reviewer {name[:40]!r}")
         if verdict not in VERDICTS:
             raise MarkerError(f"unknown verdict for {name}")
         verdicts[name] = verdict
-    return verdicts
+    return with_legacy_design(verdicts)
 
 
 def has_marker(body: str) -> bool:
@@ -260,7 +269,7 @@ def parse_record(body: str) -> Record:
         if name != key or not sep:
             raise MarkerError(f"expected `{key}:`")
         fields[key] = value.strip()
-    if fields["reviewer"] not in REVIEWERS or fields["verdict"] not in RECORD_VERDICTS:
+    if fields["reviewer"] not in (*REVIEWERS, *LEGACY_DESIGN) or fields["verdict"] not in RECORD_VERDICTS:
         raise MarkerError("unknown reviewer or verdict")
     return Record(sha_field(fields["head"], "head"), fields["reviewer"], fields["verdict"])
 
@@ -278,7 +287,8 @@ def recorded_verdicts(comments: Sequence[object], authors: Authors, head: str) -
             record = parse_record(body)
             if record.head == head and authors.writer(comment):
                 found.append((created, int_of(comment, "id"), record))
-    return {record.reviewer: record.verdict for _, _, record in sorted(found, key=lambda f: f[:2])}
+    newest = {record.reviewer: record.verdict for _, _, record in sorted(found, key=lambda f: f[:2])}
+    return with_legacy_design(newest)
 
 
 def record_gaps(recorded: Mapping[str, str], needed: Sequence[str], head: str) -> list[str]:
@@ -302,14 +312,6 @@ def records_mode(text: str | None) -> str:
     except tomllib.TOMLDecodeError:
         return REQUIRE
     return value if value in (WARN, REQUIRE) else REQUIRE
-
-
-def applicable_reviewers(paths: Iterable[str] | None) -> tuple[str, ...]:
-    """The reviewers a diff of `paths` needs; every reviewer when the paths are unknown (None)."""
-    if paths is None:
-        return REVIEWERS
-    touches = any(p == root or p.startswith(root + "/") for p in paths for root in EXCEL_FIDELITY_PATHS)
-    return REVIEWERS if touches else ALWAYS_REVIEWERS
 
 
 def missing_approvals(verdicts: Mapping[str, str], needed: Sequence[str]) -> list[str]:
@@ -890,7 +892,7 @@ def main(argv: list[str], root: Path = ROOT) -> int:
     check.add_argument("--pr", required=True)
     mark = sub.add_parser("mark", help="mark a green, approved PR ready (the marker and the label)")
     mark.add_argument("--pr", required=True)
-    mark.add_argument("--review", help='"security=APPROVE architecture=APPROVE quality=APPROVE ..."')
+    mark.add_argument("--review", help='"security=APPROVE design=APPROVE ..."')
     mark.add_argument("--carry", action="store_true", help="carry the verdicts over a merge of main (clean, or re-recording eval-gated baseline lists)")
     mark.add_argument("--by", default=os.environ.get("CLAUDE_CODE_SESSION_ID", ""), help="the marker id")
     mark.add_argument("--step", action="store_true", help="print the writes as step-mode actions")

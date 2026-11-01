@@ -1,0 +1,62 @@
+"""The review panel: which reviewer agents a diff needs (decision 0236).
+
+The one definition is the `review` skill (.claude/skills/review/SKILL.md, step 3);
+scripts/test_merge_ready.py fails when this copy differs from it. `merge_ready` (markers, verdict
+records, `make mark-ready`) reads the panel from here. Standard library only.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Iterable, Mapping
+
+APPROVE = "APPROVE"
+
+# Decision 0236: one `design` reviewer replaced `architecture` and `quality`, and `security`
+# reviews every diff but one whose every path is under SECURITY_SKIP_PATHS (and none under
+# SECURITY_KEEP_PATHS).
+SECURITY = "security"
+DESIGN = "design"
+ALWAYS_REVIEWERS = (DESIGN,)
+SECURITY_SKIP_PATHS = ("docs", "eval/suites")
+SECURITY_KEEP_PATHS = ("docs/process",)
+EXCEL_FIDELITY = "excel-fidelity"
+EXCEL_FIDELITY_PATHS = ("crates/rustsheet-engine", "crates/rustsheet-xlsx", "eval/suites", "eval/baseline")
+REVIEWERS = (SECURITY, DESIGN, EXCEL_FIDELITY)
+# The panel before decision 0236. Markers and verdict records that name them still parse, and a
+# head both approved counts as approved by `design`, so PRs marked before the switch stay ready.
+LEGACY_DESIGN = ("architecture", "quality")
+
+
+def with_legacy_design(verdicts: Mapping[str, str]) -> dict[str, str]:
+    """`verdicts` with `design` filled in from the pre-0236 `architecture` and `quality` verdicts:
+    APPROVE only when both are APPROVE, and only when `design` has no verdict of its own. The
+    legacy names are dropped either way."""
+    out = {name: verdict for name, verdict in verdicts.items() if name not in LEGACY_DESIGN}
+    legacy = [verdicts.get(name) for name in LEGACY_DESIGN]
+    if DESIGN not in out and any(v is not None for v in legacy):
+        out[DESIGN] = APPROVE if all(v == APPROVE for v in legacy) else "REQUEST_CHANGES"
+    return out
+
+
+def under(path: str, roots: Iterable[str]) -> bool:
+    """Whether `path` is one of `roots` or under one of them."""
+    return any(path == root or path.startswith(root + "/") for root in roots)
+
+
+def needs_security(path: str) -> bool:
+    """Whether a change to `path` needs the security reviewer (decision 0236)."""
+    return under(path, SECURITY_KEEP_PATHS) or not under(path, SECURITY_SKIP_PATHS)
+
+
+def applicable_reviewers(paths: Iterable[str] | None) -> tuple[str, ...]:
+    """The reviewers a diff of `paths` needs, in REVIEWERS order; every reviewer when the paths
+    are unknown (None) or empty."""
+    listed = None if paths is None else list(paths)
+    if not listed:
+        return REVIEWERS
+    needed = {DESIGN}
+    if any(needs_security(p) for p in listed):
+        needed.add(SECURITY)
+    if any(under(p, EXCEL_FIDELITY_PATHS) for p in listed):
+        needed.add(EXCEL_FIDELITY)
+    return tuple(name for name in REVIEWERS if name in needed)

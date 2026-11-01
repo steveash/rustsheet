@@ -265,8 +265,9 @@ job.
 
 The merger never marks a PR and never reviews one.
 
-**The marker.** `make mark-ready PR=<n> REVIEW="security=APPROVE architecture=APPROVE
-quality=APPROVE [excel-fidelity=APPROVE]"` sets two things:
+**The marker.** `make mark-ready PR=<n> REVIEW="security=APPROVE design=APPROVE
+[excel-fidelity=APPROVE]"` sets two things (the panel of decision 0236; markers and records that
+name the earlier `architecture` and `quality` still parse, and both approving counts as `design`):
 - the label `ready-to-merge` (only accounts with write access can set labels);
 - a PR comment that ends with a machine-readable block:
   ```
@@ -274,7 +275,7 @@ quality=APPROVE [excel-fidelity=APPROVE]"` sets two things:
   head: <40-hex sha>
   prev: <40-hex sha> | none     # the previously marked head, when verdicts carry over
   task: T-XXXX | none           # none for task-only and steward PRs
-  reviewers: security=APPROVE architecture=APPROVE quality=APPROVE excel-fidelity=n/a
+  reviewers: security=APPROVE design=APPROVE excel-fidelity=n/a
   marked-by: <id>
   -->
   ```
@@ -1148,7 +1149,8 @@ A push trigger is three lines and tests exactly the sha the merger built.
 Every implementation slice changes a protected path (`scripts/`, `.github/workflows/`,
 `.claude/skills/`, `docs/process/`, `Makefile`). Each slice's PR therefore carries its own
 decision record, made with `make new-decision`, and needs explicit approval from
-`reviewer-architecture` and `reviewer-security` (steward skill "Governance failures").
+`reviewer-design` (before decision 0236, `reviewer-architecture`) and `reviewer-security` (steward
+skill "Governance failures").
 
 This spec PR changes no protected path, so it adds no record. Each record is written by the slice
 that puts its rule in force. That keeps records from describing mechanisms that do not exist yet,
