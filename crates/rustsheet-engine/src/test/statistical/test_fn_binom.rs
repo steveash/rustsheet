@@ -349,3 +349,31 @@ fn test_negative_fractional_count_is_num_before_truncation() {
     assert_eq!(model._get_text("A3"), model._get_text("A4"));
     assert_eq!(model._get_text("A5"), model._get_text("A6"));
 }
+
+#[test]
+fn test_binom_inv_and_range_at_a_large_n_take_binom_dist_cdf() {
+    // probes/t3444-binom-range-inv-large-n Inv A91:A96 and Range A94 (excel-graph): BINOM.INV is the
+    // smallest k whose BINOM.DIST cdf reaches alpha, and a range from 0 is that cdf. statrs' cdf
+    // gave BINOM.INV(1000000000,0.3,0.5) 299998246 before T-3444.
+    let cases = [
+        ("=BINOM.INV(1000000000,0.3,0.5)", "300000000.0"),
+        ("=BINOM.INV(1000000000,0.3,0.025)", "299971598.0"),
+        ("=BINOM.INV(1000000000,0.3,0.975)", "300028403.0"),
+        ("=BINOM.INV(1000000000,0.3,1e-06)", "299931118.0"),
+        ("=CRITBINOM(1000000000,0.3,0.999999)", "300068885.0"),
+        ("=BINOM.INV(1000000000,0.3,0.3)", "299992401.0"),
+        ("=BINOM.DIST.RANGE(1000000000,0.3,0,300000000)", "0.5000156001249112"),
+    ];
+    let mut model = new_empty_model();
+    for (row, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, expected)) in cases.iter().enumerate() {
+        assert_eq!(
+            round_trip_value(&model, &format!("A{}", row + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
+}

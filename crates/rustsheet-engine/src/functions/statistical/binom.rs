@@ -87,39 +87,13 @@ impl Model {
             };
             return Ok(if hit { 1.0 } else { 0.0 });
         }
-        // Loader's (2000) end branches, Excel's own closed forms (statistics.md "BINOM.DIST pmf:
-        // closed forms at k = 0 and k = n"; T-2464 r2-log1p, T-2513 r3-binom-pmf): at k = 0 the
-        // pmf, and so the cdf, is EXP(fl(n·l)) with l Excel's ln(1 - p), bit-exact on all 345
-        // BINOM.DIST(0,n,p) cells of the T-2464 research set; at k = n the pmf is
-        // EXP(fl(n·LN(p))), 172 of 172.
-        if k == 0 {
-            return Ok(excel_exp(trials * excel_ln_one_minus(p)));
-        }
-        if k == n && !cumulative {
-            return Ok(excel_exp(trials * excel_ln(p)));
-        }
-        if cumulative {
-            if let Some(prob) = excel_binom_cdf(n, p, k) {
-                return Ok(prob);
-            }
-        }
-        let walked = if cumulative {
-            None
+        let kernel = if cumulative {
+            excel_binom_cdf(n, p, k)
         } else {
-            // Off the k = 0 and k = n closed forms a subnormal pmf is 0, as in Excel (`(x)=0` TRUE:
-            // probes-numeric/t2513-r3-binom-pmf-n E1729:E1792), while the k = 0 one is kept
-            // (t2513-verify-r3-binom-pmf-h I229, I238; docs/excel-semantics/numbers.md "Distribution densities").
-            binomial_pmf(n, odds(p), k).map(|pmf| flush_subnormal(pmf.to_f64()))
+            excel_binom_pmf(n, p, k)
         };
-        if let Some(prob) = walked {
+        if let Some(prob) = kernel {
             return Ok(prob);
-        }
-        // Past the walk's budget the pmf is Excel's own interior kernel, Loader's dbinom_raw
-        // (T-3352: statrs' log-gamma difference was 1E-11 off at n = 1E4 and 1E-6 at 1E9).
-        if !cumulative {
-            if let Some(pmf) = loader_pmf(number_s, trials, p) {
-                return Ok(pmf);
-            }
         }
         let dist = Binomial::new(p, n).map_err(|_| num_error(cell))?;
         let prob = flush_subnormal(if cumulative { dist.cdf(k) } else { dist.pmf(k) });
@@ -179,6 +153,19 @@ impl Model {
             } else {
                 0.0
             });
+        }
+        // A one-point range is Excel's BINOM.DIST pmf and a range from 0 its cdf, to the bit on
+        // every such row of probes/t3444-binom-range-inv-large-n (statistics.md "BINOM.DIST.RANGE
+        // and BINOM.INV at a large n sit on BINOM.DIST's own cdf").
+        let own = if lower == upper {
+            excel_binom_pmf(n, p, lower)
+        } else if lower == 0 {
+            excel_binom_cdf(n, p, upper)
+        } else {
+            None
+        };
+        if let Some(prob) = own {
+            return Ok(prob);
         }
         if let Some(prob) = binomial_range(n, odds(p), lower, upper) {
             return Ok(prob);
@@ -416,6 +403,27 @@ impl Model {
             },
         )
     }
+}
+
+/// Excel's binomial pmf for `0 < p < 1`, as BINOM.DIST computes it, or `None` where only statrs
+/// is left. Loader's (2000) end branches are Excel's own closed forms (statistics.md "BINOM.DIST
+/// pmf: closed forms at k = 0 and k = n"; T-2464 r2-log1p, T-2513 r3-binom-pmf): at k = 0 the
+/// pmf, and so the cdf, is EXP(fl(n·l)) with l Excel's ln(1 - p), bit-exact on all 345
+/// BINOM.DIST(0,n,p) cells of the T-2464 research set; at k = n it is EXP(fl(n·LN(p))), 172 of
+/// 172. Off those a subnormal pmf is 0, as in Excel (`(x)=0` TRUE: probes-numeric/
+/// t2513-r3-binom-pmf-n E1729:E1792; numbers.md "Distribution densities"). Past the walk's budget
+/// it is Excel's own interior kernel, Loader's dbinom_raw (T-3352: statrs' log-gamma difference
+/// was 1E-11 off at n = 1E4 and 1E-6 at 1E9).
+fn excel_binom_pmf(n: u64, p: f64, k: u64) -> Option<f64> {
+    if k == 0 {
+        return Some(excel_exp(n as f64 * excel_ln_one_minus(p)));
+    }
+    if k == n {
+        return Some(excel_exp(n as f64 * excel_ln(p)));
+    }
+    binomial_pmf(n, odds(p), k)
+        .map(|pmf| flush_subnormal(pmf.to_f64()))
+        .or_else(|| loader_pmf(k as f64, n as f64, p))
 }
 
 /// Excel's binomial cdf `P(X <= k)` for `0 < p < 1`, as BINOM.DIST computes it, or

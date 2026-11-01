@@ -2609,6 +2609,24 @@ Status: VERIFIED (excel-graph) to 1E-11 of the math; last digits UNVERIFIED (Exc
 kernel at a large n not identified)
 Tasks: T-3352, T-3447, T-3443, T-3444, T-2586, T-2146
 
+## BINOM.DIST.RANGE and BINOM.INV at a large n sit on BINOM.DIST's own cdf (T-3444)
+Rule: Excel's BINOM.INV (and CRITBINOM, equal on every probe row) is the smallest k whose BINOM.DIST(k, n, p, TRUE) is
+at least alpha: on all 126 rows of probes/t3444-binom-range-inv-large-n Inv (n 1E4 to 2^31 - 2, p 0.3, 0.5 and 0.001,
+alpha 1E-6, 0.025, 0.3, 0.5, 0.975 and 0.999999) Excel's own cdf at the result is >= alpha and at the result minus one is
+below it, so the search is exact against BINOM.DIST, not an approximation. BINOM.DIST.RANGE(n, p, s1, s2) is Excel's
+BINOM.DIST(s2, n, p, TRUE) - BINOM.DIST(s1 - 1, n, p, TRUE) to the bit on 105 of the 126 Range rows (column A against
+column B), including every range starting at 0 (the cdf alone) and every range around the mean. A single-point range is
+Excel's BINOM.DIST pmf to the bit. The 21 that differ are all ranges from mean + 3 sd to mean + 5 sd, 2E-16 to 6E-14
+relative off that difference: there Excel uses another form, UNVERIFIED (likely a difference of upper tails).
+Status: VERIFIED (excel-graph, 2026-11-01) for BINOM.INV and the cdf-difference rows; the upper-tail form is open.
+- Ours before T-3444: past the double-double walk both fell back to statrs, grossly wrong near the mean at a large n
+  (`BINOM.INV(1000000000,0.3,0.5)` 299998246 against a median of 300000000).
+- Ours now (T-3444): `binom.rs` `excel_binom_cdf` and `excel_binom_pmf` are BINOM.DIST's own paths. BINOM.INV's
+  bisection uses the cdf, and all 126 BINOM.INV and 126 CRITBINOM probe cells pass. BINOM.DIST.RANGE takes the pmf
+  for one point and the cdf from 0, then the double-double walk, then the cdf difference. Its probe misses are those of
+  BINOM.DIST's own last digits (T-3447) plus the 20 upper-tail rows, whose form is unidentified.
+Tasks: T-3444, T-3352, T-3447
+
 ## NEGBINOM.DIST's cdf is #NUM! at a huge number_s (T-3553)
 Rule: `NEGBINOM.DIST(f,s,p,TRUE)` is `#NUM!` at a huge number_s with enough failures, where the true cdf underflows
 to 0.
