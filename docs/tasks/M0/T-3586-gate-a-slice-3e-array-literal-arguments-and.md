@@ -3,7 +3,7 @@ id: T-3586
 title: "Gate A slice 3f: array-literal arguments and reference tables for IRR and XIRR"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P0
 size: M
 tier: opus
