@@ -19,8 +19,8 @@ routines; when this file changes, the owner updates the routines to match.
 Workers loop (decision 0022): each run starts new tasks until 80 minutes into the session (at
 most 10 tasks; decision 0025), then spends the rest, until minute 110, landing the PRs it opened
 (decision 0229), so one cold start buys up to ~2 h of work and leaves little for other sessions to
-pick up. The two default workers are staggered by an hour. The optional second sonnet worker uses the
-**same prompt** as the first; add it only when the weekly usage meter has room (and, per
+pick up. The two default workers are staggered by an hour. The optional second sonnet worker uses
+the **same prompt** as the first; add it only when the weekly usage meter has room (and, per
 agent-workflow.md, after a week with a revert rate under 5%). Parallel workers never collide:
 `make next-task` skips claimed tasks and busy lanes (a lane whose branch's task is already done on
 main counts as free), and the functions work is split into nine `functions-*` lanes.

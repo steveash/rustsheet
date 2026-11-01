@@ -185,10 +185,10 @@ From minute 80 of the session (or once 10 tasks have started) until minute 110, 
 Land what this session opened instead. Go through each PR this session opened that has not merged,
 oldest first, and take it as far as it goes:
 - **Not yet marked ready:** finish its CI and reviewer rounds (step 5) and mark it ready (step 6).
-- **Ejected** (`merge-train-ejected`): clear it per step 6.3. A `conflict with main` in the
-  baseline lists only is `make catch-up PR=<n>`, then `make mark-ready PR=<n> CARRY=1` once CI is
-  green (decision 0207). Any other ejection is fixed like a red CI or a conflict, with the
-  reviewers the change concerns.
+- **Ejected** (`merge-train-ejected`): clear it per step 6, item 3, "After an ejection or
+  invalidation". A `conflict with main` in the baseline lists only is `make catch-up PR=<n>`,
+  then `make mark-ready PR=<n> CARRY=1` once CI is green (decision 0207). Any other ejection is
+  fixed like a red CI or a conflict, with the reviewers the change concerns.
 - **Ready-to-merge on its current head:** nothing to do. The merger owns it.
 
 A PR that is not marked ready (or is ejected) at minute 110 gets landing notes, so that whoever
