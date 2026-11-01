@@ -3,7 +3,7 @@ id: T-3579
 title: "Probe RATE's residual bits at the guess and near the root (n = 1)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
