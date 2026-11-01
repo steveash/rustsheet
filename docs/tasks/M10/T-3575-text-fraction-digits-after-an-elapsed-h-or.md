@@ -3,7 +3,7 @@ id: T-3575
 title: "TEXT: fraction digits after an elapsed [h] print (TEXT(12345.678,\"[h].0 General\") is \"296296.2 2.500000331\")"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
@@ -45,7 +45,7 @@ minute. `m.0`, `mm.0` beside other tokens and `.000` after h/m are unprobed (fol
 Eval delta: probes known failures 3203 -> 3201 (t3419-elapsed-after-date-b A19 and elapsed-no-seconds-boundary A32
 fixed; the new case is a fully passing C line); no regressions.
 
-## Handoff
+## Handoff (resumed)
 Tried: parser accepts `.0` after any h/m/s token (`takes_second_fraction` in elapsed.rs, used by the `Token::Period`
 arm) and a lone padded `mm.0` reads as a minute (`lone_mm_fraction`). Probe t3575-fraction-after-elapsed (15 cells,
 filled) passes; `make check` green at 561b85d4d (parser.rs is exactly 1000 lines, the ratchet limit).
