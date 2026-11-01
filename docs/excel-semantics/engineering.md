@@ -1002,6 +1002,15 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   `0.655352852954647+0.0000010757975078242i`; all 14 digits at exponent -6), where the
   15-digit `1.23456789012345E-06` is E notation (probes/eng-im-small-part, T-2056 above). Ours writes E notation
   past 20 characters (number_format.rs `value_to_text`). Status: VERIFIED (excel-graph), not implemented (T-3560).
+  More 14-digit parts at exponent -6 are plain in the T-3589/T-3609 sweeps (IMSINH, IMCOSH and IMCSCH, real and
+  imaginary parts): probes-numeric/t3589-im-hyperbolic-small-x-sweep S!A4 `IMSINH("6.09023237964955E-06")` is
+  `0.0000060902323796872`, S!B113 `IMCOSH("9.44469908419292E-06+0.99562846593553i")` is
+  `0.543975650586412+0.0000079250564654669i`, S!D131 `IMCSCH("-4.59953559663512E-06+0.744637496146937i")` is
+  `-0.0000073640486974103-1.47556763866665i`; probes-numeric/t3609-imsech-imcsch-small-real-sweep S!D31
+  `IMSINH("2.17632914357958E-06")` is `0.0000021763291435813`. A part with 13 digits at exponent -7 is plain too,
+  also 21 characters without the sign: t3589 S!C127 `IMSECH("3.92937257901956E-06+0.107316538548074i")` is
+  `1.00578618257237-0.0000004257623550779i` (gap triage 2026-11-01, excel-graph). This fits a 21-character plain
+  limit rather than an exponent -6 rule; the 12-to-15-digit grid at exponents -6 to -10 (T-3560's probe) settles it.
 - **IMSQRT of a negative real is polar through COS and ATAN2.** `IMSQRT("-1")` (`IMSQRT(TEXT(-1,"0"))`) is
   "6.1257422745431E-17+i" = COS(ATAN2(-1,0)/2) with Excel's COS (libm cos(π/2) 6.12323399573677E-17), `IMSQRT(-2.5)`
   9.68564897336834E-17+1.58113883008419i, `IMSQRT(-0.0001)` 6.1257422745431E-19+0.01i, `IMSQRT(-3.85841)`
