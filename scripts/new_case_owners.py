@@ -21,15 +21,15 @@ import json
 import subprocess
 import sys
 import tempfile
-import tomllib
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import exit_owners  # noqa: E402 (the sys.path line above must run first)
+import merge_lock  # noqa: E402
+import suite_meta  # noqa: E402
 import tasks  # noqa: E402
 
 ROOT = exit_owners.ROOT
-SUITES = "eval/suites"
 # The case files a suite may hold (`rustsheet-eval`'s `SuiteKind`) and their oracle sidecar.
 CASE_SUFFIXES = (".case.json", ".xlsx", ".xlsm")
 SIDECAR = ".oracle.json"
@@ -41,8 +41,8 @@ class GateError(Exception):
 
 def git(root: Path, *args: str) -> str:
     try:
-        return subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, text=True).stdout
-    except (OSError, subprocess.CalledProcessError) as e:
+        return merge_lock.git(*args, root=root).stdout
+    except (OSError, merge_lock.GitError) as e:
         raise GateError(f"git {' '.join(args)} failed: {e}") from e
 
 
@@ -51,26 +51,22 @@ def changed_paths(root: Path, base: str) -> list[str]:
     the working tree and untracked files included (`make check` runs before the commit)."""
     merge_base = git(root, "merge-base", base, "HEAD").strip()
     diff = git(
-        root, "diff", "--no-renames", "--diff-filter=AM", "--name-only", "-z", merge_base, "--", SUITES
+        root, "diff", "--no-renames", "--diff-filter=AM", "--name-only", "-z", merge_base, "--", suite_meta.SUITES_DIR
     )
-    untracked = git(root, "ls-files", "--others", "--exclude-standard", "-z", "--", SUITES)
+    untracked = git(root, "ls-files", "--others", "--exclude-standard", "-z", "--", suite_meta.SUITES_DIR)
     return sorted({p for p in (diff + untracked).split("\0") if p})
 
 
-def suite_root(root: Path, suite: str) -> str | None:
-    """The suite's case root below its directory (`suite.toml`'s `root`), or None for a vendored
-    suite (`fetch`: its cases are not in the repository) or a directory that is no suite."""
-    manifest = root / SUITES / suite / "suite.toml"
-    if not manifest.is_file():
-        return None
-    meta = tomllib.loads(manifest.read_text())
-    if "fetch" in meta:
-        return None
-    return str(meta.get("root", "."))
+def local_suites(root: Path) -> list[suite_meta.SuiteMeta]:
+    """The suites whose cases are in the repository (`suite_meta.suites_on` at HEAD, less the
+    vendored `fetch` suites and malformed roots)."""
+    return [s for s in suite_meta.suites_on(root, "HEAD") if not s.fetched and s.root is not None]
 
 
 def case_file(path: Path) -> Path | None:
-    """The case a changed file belongs to: itself, or the case beside an oracle sidecar."""
+    """The case a changed file belongs to: itself, or the case beside an oracle sidecar. Any file
+    with a case suffix under a suite's root counts (`include` is not read: every suite's
+    `include` covers its root's case files)."""
     name = path.name
     if name.endswith(CASE_SUFFIXES):
         return path
@@ -84,25 +80,18 @@ def case_file(path: Path) -> Path | None:
 
 
 def new_cases(root: Path, paths: list[str]) -> dict[str, set[str]]:
-    """Suite → the ids (`suite/relative/path`) of the cases `paths` add or refill."""
+    """Suite name → the ids (`suite/relative/path`) of the cases `paths` add or refill. A sidecar
+    whose case file is gone, and a deleted case, name no case."""
     out: dict[str, set[str]] = {}
+    suites = local_suites(root)
     for p in paths:
-        parts = Path(p).parts
-        if len(parts) < 4 or parts[:2] != ("eval", "suites"):
-            continue
-        suite = parts[2]
-        case_root = suite_root(root, suite)
-        if case_root is None:
-            continue
-        base = (root / SUITES / suite / case_root).resolve()
-        case = case_file(root / p)
-        if case is None or not case.is_file():
-            continue
-        try:
-            rel = case.resolve().relative_to(base)
-        except ValueError:
-            continue
-        out.setdefault(suite, set()).add(f"{suite}/{rel.as_posix()}")
+        for s in suites:
+            if s.root is None or not p.startswith(s.root + "/"):
+                continue
+            case = case_file(root / p)
+            if case is not None and case.is_file():
+                rel = case.relative_to(root / s.root).as_posix()
+                out.setdefault(s.name, set()).add(f"{s.name}/{rel}")
     return out
 
 
@@ -110,20 +99,19 @@ def all_case_ids(root: Path) -> list[str]:
     """Every case id of the repository's own suites, so a one-case run names its case the way the
     full report does (`exit_owners.case_names` depends on the other cases)."""
     ids = []
-    for manifest in sorted((root / SUITES).glob("*/suite.toml")):
-        suite = manifest.parent.name
-        case_root = suite_root(root, suite)
-        if case_root is None:
+    for s in local_suites(root):
+        if s.root is None:
             continue
-        base = manifest.parent / case_root
-        for f in base.rglob("*"):
+        base = root / s.root
+        for f in sorted(base.rglob("*")):
             if f.name.endswith(CASE_SUFFIXES) and f.is_file():
-                ids.append(f"{suite}/{f.relative_to(base).as_posix()}")
+                ids.append(f"{s.name}/{f.relative_to(base).as_posix()}")
     return ids
 
 
 def run_case(eval_bin: Path, root: Path, case_id: str, out: Path) -> dict[str, object]:
-    """The report of a run of `case_id` alone."""
+    """The report of a run of `case_id` alone. `--filter` matches a substring of case ids, so a
+    run may hold other cases too; `unowned_new` keeps only the new case's cells."""
     suite, _, rel = case_id.partition("/")
     cmd = [str(eval_bin), "run", "--suite", suite, "--filter", rel, "--out", str(out)]
     try:

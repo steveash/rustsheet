@@ -3,7 +3,7 @@ id: T-3793
 title: "New eval cases come with owners: a PR whose added cases hold visibly-off cells that no open task owns fails make check"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -49,20 +49,31 @@ the place where thousands of cells first get an owner.
   should tell a probe PR to file owners. Those are also protected and are covered by the same decision record.
 
 ## Acceptance criteria
-- [ ] A decision record in docs/decisions/ states the rule (which cases count as new, which cells, which owners
+- [x] A decision record in docs/decisions/ states the rule (which cases count as new, which cells, which owners
       count, where it runs), and docs/process/quality-gates.md lists the gate.
-- [ ] `make check` (and CI through it) fails when a case the branch adds or refills has a visibly-off Excel cell
+- [x] `make check` (and CI through it) fails when a case the branch adds or refills has a visibly-off Excel cell
       that no open task owns by `exit_owners.py`'s rule. The failure lists each such cell as
       `case!Sheet!A1<TAB>formula<TAB>expected<TAB>actual`. A cell owned only by a `defer:` task passes.
-- [ ] Tests: a fixture branch state with a new failing case and no owner fails. The same state with a task naming
+- [x] Tests: a fixture branch state with a new failing case and no owner fails. The same state with a task naming
       the case passes, and so does one with a task listing the cell in a colon span. A hyphen span naming only the
       ends fails for a middle cell. A case that already had a baseline `C` line before the branch is not checked.
-- [ ] On origin/main at the time of the PR, the check passes: no case is new against the merge base.
-- [ ] The excel-probe skill's step 4 tells a probe PR to file or amend owner tasks for every visibly-off cell its
+- [x] On origin/main at the time of the PR, the check passes: no case is new against the merge base.
+- [x] The excel-probe skill's step 4 tells a probe PR to file or amend owner tasks for every visibly-off cell its
       cases add, and to check with `make unowned-off ALL=1`.
-- [ ] No eval/baseline or quality/*.json change. `make check` green; reviewers approve.
+- [x] No eval/baseline or quality/*.json change. `make check` green; reviewers approve.
 
 ## Out of scope
 - Owning today's unowned cells (gap triage does that; after 2026-11-01's triage no non-deferred cell is unowned
   except the M14 desktop-owned FORECAST.ETS cells).
 - Changing the ownership rule itself (decision 0136's hyphen spans, T-3623's colon spans per list block).
+
+## Outcome
+- `scripts/new_case_owners.py`, the last step of `make eval-gates` (CI's eval job, now `fetch-depth: 0`, and
+  `make check`): cases the branch adds or refills (case file or `.oracle.json` sidecar added or changed against the
+  merge base with `origin/main`) run alone, and every visibly-off cell (`exit_owners.all_off_cells`) needs an open
+  owner by `exit_owners`' rule; a `defer:` owner passes. Suites come from `suite_meta.suites_on`. Decision 0245;
+  quality-gates row; excel-probe step 4.
+- Evidence: with `--base` T-3568's parent commit it lists 7,036 unowned cells across 53 cases in 75 s: 3,602 in
+  `t3568-r5-bup-terms-tune`, 3,424 in `-terms-hold` and 10 in `t3532-numeral-digit-fields`, the cells the
+  2026-11-01 gap triage found. On origin/main: "no eval case added or refilled".
+- Eval delta: none.

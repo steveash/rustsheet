@@ -82,6 +82,10 @@ class NewCases(unittest.TestCase):
         suites = self.root / "eval" / "suites"
         (suites / "probes" / "cases").mkdir(parents=True)
         (suites / "probes" / "suite.toml").write_text('name = "probes"\nroot = "cases"\n')
+        # No `root`: the case root defaults to `cases`, and the id takes the manifest's `name`.
+        (suites / "gen" / "cases").mkdir(parents=True)
+        (suites / "gen" / "suite.toml").write_text('name = "gen-x"\n')
+        self.write("gen/cases/h1.case.json")
         (suites / "poi").mkdir()
         (suites / "poi" / "suite.toml").write_text('name = "poi"\nfetch = "x"\n')
         self.write("probes/cases/old.case.json")
@@ -114,6 +118,21 @@ class NewCases(unittest.TestCase):
     def test_a_vendored_suite_and_a_deleted_case_are_not(self) -> None:
         self.write("poi/x.xlsx")
         (self.root / "eval" / "suites" / "probes" / "cases" / "kept.case.json").unlink()
+        self.assertEqual(self.found(), {})
+
+    def test_a_default_root_case_is_named_by_the_suite_name(self) -> None:
+        self.write("gen/cases/h2.case.json")
+        self.assertEqual(self.found(), {"gen-x": {"gen-x/h2.case.json"}})
+
+    def test_all_case_ids_lists_the_local_suites_only(self) -> None:
+        self.write("poi/x.xlsx")
+        self.assertEqual(
+            new_case_owners.all_case_ids(self.root),
+            ["gen-x/h1.case.json", "probes/kept.case.json", "probes/old.case.json"],
+        )
+
+    def test_a_sidecar_without_its_case_names_none(self) -> None:
+        self.write("probes/cases/orphan.oracle.json")
         self.assertEqual(self.found(), {})
 
     def test_a_missing_base_is_an_error(self) -> None:
