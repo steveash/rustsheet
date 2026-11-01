@@ -58,9 +58,11 @@ basym, and the even end elsewhere. That keeps H29 at 0.555: at the root basym's 
   by bratio's own basym criterion, so no `FITTED` tag and no per-shape or keep-matched branch. Isolated on the same
   basym kernel (BETA.INV + BETAINV, 90 cells, exact / within 4 ulp / within 15 digits / visibly off, even then
   nearest): in-sample 39/46/1/4 to 49/35/2/4 (+10 exact), hold-out (scored once) 35/45/3/7 to 46/34/3/7 (+11), fresh
-  sweep (filled after the freeze) 43/36/1/10 to 48/30/3/9 (+5). Gate A has no table for these functions, so the
-  envelope was checked on the sweep: all 220 cells within 3.2E-13 relative of Excel, the 75 cdf cells within 6.4E-14
-  of 50-digit math; none outside 1E-9. The cells the nearest end loses are listed in statistics.md.
+  sweep (filled after the freeze) 43/36/1/10 to 48/30/3/9 (+5). R4.1 margin: hold-out exact rate at most 5 points
+  below in-sample; 54.4% in-sample, 51.1% hold-out, 53.3% sweep (the margin was named after scoring; the sweep came
+  after the freeze). Gate A has no table for these functions, so the envelope was checked on the sweep: all 220 cells
+  within 3.2E-13 relative of Excel, the cdf cells within 1.4E-13 of 50-digit math, the inverse cells that resolve in
+  mpmath (148) within 1.9E-13; none outside 1E-9. The cells the nearest end loses are listed in statistics.md.
 - Acceptance 2 is partly met: the round trips' remaining visibly-off cells (in-sample BETA.INV 4, F.INV 13) follow the
   cdf's last digits, which are Excel's arithmetic inside basym (this task's out of scope). T-3597 owns them, with the
   cdf cells still visibly off (BETA.DIST 33 and F 17 in-sample).

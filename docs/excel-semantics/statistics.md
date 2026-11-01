@@ -2586,6 +2586,11 @@ even end is the next double, 0.5550000000000002 after the map back.
   | t3443-basym-hold (hold-out) | 35 / 45 / 3 / 7 | 46 / 34 / 3 / 7 | +11 (16 gained, 5 lost) |
   | t3443-basym-sweep (fresh) | 43 / 36 / 1 / 10 | 48 / 30 / 3 / 9 | +5 (14 gained, 9 lost) |
 
+  The reference candidate is the even end because it is the rule BETA.INV takes everywhere else and what this branch
+  took before; the two candidates differ only in which end of the same final bracket is returned, so a correctly
+  rounded math quantile is not a candidate of this choice. R4.1 margin: the hold-out exact rate may fall at most 5
+  points below the in-sample rate. In-sample 49/90 = 54.4%, hold-out 46/90 = 51.1% (3.3 points below), fresh sweep
+  48/90 = 53.3%. The margin was not named before scoring; the sweep, filled after the freeze, confirms it.
   So the nearest end is not Excel's at every basym point (in-sample it loses A136, A151, A155, A170, A173). Applied
   off basym it regresses gated cells at small shapes (BETADIST_BETAINV H16 visibly, H60, H61; T-3352 found H2, H63 and
   others), so it is limited to basym points, bratio's own branch criterion, not a set of matched cells. UNVERIFIED
@@ -2594,8 +2599,11 @@ even end is the next double, 0.5550000000000002 after the map back.
   it (in-sample 4 exact either way).
 - Gate A (decision 0188 R2): eval/accuracy has no BETA.DIST, BETA.INV or F table, so the envelope is checked on the
   fresh sweep directly: all 220 t3443-basym-sweep cells are within 3.2E-13 relative of Excel (worst A24
-  `BETA.DIST(0.00197427734733206,137,69670.555,TRUE)`, 3.1E-13), and its 75 BETA.DIST and F.DIST cdf cells within
-  6.4E-14 of 50-digit math (A42; Excel's own worst is 3.2E-13, A24). None is outside 1E-9.
+  `BETA.DIST(0.00197427734733206,137,69670.555,TRUE)`, 3.1E-13), and its BETA.DIST and F.DIST cdf cells within
+  1.4E-13 of 50-digit math (A30, a 5-argument BETADIST; Excel 1.3E-13 there, its own worst 3.2E-13 at A24). Of the
+  inverse cells, 148 resolved against 50-digit math (the round trip's literal x, or a bisected quantile): the worst is
+  A160 `BETA.INV(0.999998459208763,783.408,15042.295)`, 1.9E-13 for ours and for Excel; the other 14 (literal
+  BETA.INV, no mpmath convergence) are within 3.2E-13 of Excel. None is outside 1E-9.
 - Excel's cdf at these points is basym's to about 1E-13, not to the last digit: against 50-digit math (a continued
   fraction at 60 digits) Excel's BETA.DIST and F.DIST are closer than ours on 26 of the in-sample cdf cells and further
   on 44, Excel up to 3.3E-13 relative off (A26 `BETA.DIST(0.995975869785456,40036,161,TRUE)`) where ours is 1.3E-13,
