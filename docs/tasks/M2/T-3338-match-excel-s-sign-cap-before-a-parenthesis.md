@@ -3,7 +3,7 @@ id: T-3338
 title: "Match Excel's sign cap before a parenthesis or call (1,022) and let -( nest to the 256-parenthesis cap (t3266 probes)"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -49,12 +49,48 @@ docs/excel-semantics/syntax.md "Formula nesting depth cap", in the T-3266 paragr
     probes/t3266-minus-abs-1023-typed.case.json: S!B1
 
 ## Acceptance criteria
-- [ ] Every probes/t3266-* case passes; `make eval-baseline` records them with 0 regressions.
-- [ ] Parser unit tests pin these limits: 1,022 accepted and 1,023 refused before `(1)`, `((1))` and
+- [x] Every probes/t3266-* case passes; `make eval-baseline` records them with 0 regressions.
+- [x] Parser unit tests pin these limits: 1,022 accepted and 1,023 refused before `(1)`, `((1))` and
       `ABS(1)`; 257 levels of `-(` refused.
-- [ ] A 256-level `-(` formula parses, evaluates, stringifies and round-trips xlsx without stack
+- [x] A 256-level `-(` formula parses, evaluates, stringifies and round-trips xlsx without stack
       overflow (a test on a small thread stack, as the existing depth tests do).
-- [ ] syntax.md "Ours differs" sentence removed; `make check` green; reviewers approve.
+- [ ] syntax.md "Ours differs" sentence removed; `make check` green; reviewers approve. (Sentence
+      removed and `make check` green; reviewers not yet run.)
 
 ## Out of scope
 - Other wrappers around sign runs, such as `ABS(-ABS(-...))`, which the 65-call cap already bounds.
+
+## Outcome
+Root cause: two parser rules. (1) The sign cap counted every sign but a minus directly before a
+number against 1,023, which is Excel's rule only for operands costing 0 or 1; a parenthesis or a call
+costs 2. (2) Each level of `-(` was a recursive operand costing two levels of `MAX_FORMULA_DEPTH`, so
+128 levels were "nested too deeply" (`EngineError`), though Excel nests them to the 256-parenthesis cap.
+
+Fix:
+- `MAX_SIGNS` is now Excel's rule as written: open signs plus the operand's cost at most 1,024 (number
+  literal right after the signs 0, parenthesis or call 2, else 1; `Parser::parse_signs`,
+  `Parser::parse_signed_operand`). Past it the error is `TOO_MANY_SIGNS_MESSAGE`, not a resource limit,
+  so a typed formula is refused as not parsing and the cell stays blank, as Excel's PATCH 400 leaves it.
+  That is what lets the four 1,023-sign typed probes score.
+- `Parser::parse_parenthesis_run` reads signs between the `(`s of a run in its loop. Each level's signs
+  are handed to the enclosing content with the pending group (`pending_prefix`). A group whose content is
+  exactly a signed group adds no depth, so `-(` nests to `MAX_PARENTHESES` with constant parser stack.
+- `Model::apply_unary_chain` walks through groups too, so evaluating `-(` takes one frame at any
+  depth. It counts the minus parity per group, so the tiny-subnormal `-x` rule applies as it did when
+  each group was evaluated alone. The printer (`wrapped_text`) was already a loop.
+- Directive 5: these tests pass. Bare `-(` and `+(` at 256 levels on a 2 MiB debug stack.
+  Spaced `- ( `, 200 levels plus 824 signs, and `-(...-B1%)` on 1 MiB release / 16 MiB debug, the
+  sign-cap tests' sizing (checked with `cargo test --release`). Each case parses, evaluates, prints,
+  survives a row insert and a sheet rename, and round-trips xlsx
+  (crates/rustsheet-xlsx/tests/signed_parentheses_round_trip.rs). The spaced form overflows 2 MiB
+  unoptimized in the derived `Clone` of a stored tree, as the existing 1,023-sign spaced tests would;
+  that is why those use the small-stack sizing. No DEVIATION is needed: every depth Excel allows here
+  now loads.
+
+Eval delta (probes, verified worktree binary): known failures 3,282 -> 3,266 (16 fixed; 0 regressions).
+The 12 cases that did not run (nested-paren-128/-200/-255/-256 and nested-200-823/-824, stored and
+typed) now run and pass 2/2 cells each, and the four typed 1,023-sign cases pass S!B1.
+M2 probe row (M0-M2): before (eval of main b6c931bd, 2026-11-01) 198 known failures, 186 visibly off,
+12 blocked cases, not met. After (this branch, full run) 182 known failures, 182 visibly off, 0 blocked
+cases, still not met. The cells left are the collation and criteria probes (T-3324, T-3325, T-3329,
+T-3404), none of them T-3266's.
