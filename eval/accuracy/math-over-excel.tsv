@@ -3,3 +3,11 @@
 #   <point or eval cell id>	docs/excel-semantics/<file>.md#<anchor>
 # The entry must have a `Status: MATH-OVER-EXCEL` line, and a filled marked point must show Excel off
 # the math by more than G = 1e-4 relative. A new R3 case needs an owner ruling (decision 0188 R3).
+accuracy/F.INV/s1!Calc!A112	docs/excel-semantics/statistics.md#tiny-p-quantiles-excel-is-grossly-wrong-rustsheet-returns-the-math-math-over-excel
+accuracy/F.INV/s1!Calc!A126	docs/excel-semantics/statistics.md#tiny-p-quantiles-excel-is-grossly-wrong-rustsheet-returns-the-math-math-over-excel
+accuracy/F.INV/s1!Calc!A146	docs/excel-semantics/statistics.md#tiny-p-quantiles-excel-is-grossly-wrong-rustsheet-returns-the-math-math-over-excel
+accuracy/F.INV/s1!Calc!A160	docs/excel-semantics/statistics.md#tiny-p-quantiles-excel-is-grossly-wrong-rustsheet-returns-the-math-math-over-excel
+accuracy/F.INV/s1!Calc!A171	docs/excel-semantics/statistics.md#tiny-p-quantiles-excel-is-grossly-wrong-rustsheet-returns-the-math-math-over-excel
+accuracy/T.INV/s1!Calc!A89	docs/excel-semantics/statistics.md#tiny-p-quantiles-excel-is-grossly-wrong-rustsheet-returns-the-math-math-over-excel
+accuracy/T.INV/s1!Calc!A93	docs/excel-semantics/statistics.md#tiny-p-quantiles-excel-is-grossly-wrong-rustsheet-returns-the-math-math-over-excel
+accuracy/T.INV/s1!Calc!A95	docs/excel-semantics/statistics.md#tiny-p-quantiles-excel-is-grossly-wrong-rustsheet-returns-the-math-math-over-excel
