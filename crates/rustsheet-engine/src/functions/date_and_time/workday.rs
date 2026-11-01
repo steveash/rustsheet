@@ -119,8 +119,8 @@ impl Model {
         let Some(arg) = arg else {
             return Ok(Holidays::none());
         };
-        let days = self
-            .holiday_serials(arg, cell)?
+        let (serials, scalar) = self.holiday_serials(arg, cell)?;
+        let days = serials
             .into_iter()
             .map(|serial| self.excel_date(serial, cell).map(day_number))
             .collect::<Result<Vec<i64>, CalcResult>>()
@@ -128,7 +128,7 @@ impl Model {
                 error,
                 before_weekend: false,
             })?;
-        Ok(Holidays::new(days))
+        Ok(Holidays::new(days, scalar))
     }
 
     /// One element of WORKDAY(.INTL), its errors in Excel's order (dates.md "WORKDAY and

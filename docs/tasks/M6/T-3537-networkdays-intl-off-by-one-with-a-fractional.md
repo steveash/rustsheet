@@ -3,7 +3,7 @@ id: T-3537
 title: "NETWORKDAYS.INTL off by one with a fractional or serial-0 start or end (gen-m6 arg-pairs cells)"
 milestone: M6
 lane: functions-date
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -32,3 +32,6 @@ Cells:
 - ade135f51e0b7a36 A385
 - b91dcfba0176956e A493
 - b91dcfba0176956e A499
+
+## Outcome
+The cause was not the day-0 start or end: a **scalar** holiday of NETWORKDAYS.INTL is dropped only on Saturday/Sunday whatever the weekend argument, while a reference or array holiday follows the weekend mask. Probed with five new probe cases (387 cells, excel-graph) and implemented via `Holidays::scalar` / `is_scalar_node`. The six gen-m6 cells pass; recorded in dates.md.

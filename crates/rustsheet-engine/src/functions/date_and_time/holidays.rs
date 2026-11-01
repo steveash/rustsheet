@@ -30,12 +30,14 @@ impl Model {
     ///
     /// The holidays are read in order and the first bad one is the error: `{"a",-1}` is
     /// `#VALUE!` and `{-1,"a"}` `#NUM!` (probes/workday-holidays-error-order F1, G1, Q60:Q63).
-    /// [`HolidaysError::before_weekend`] says when WORKDAY.INTL reports it.
+    /// [`HolidaysError::before_weekend`] says when WORKDAY.INTL reports it. The flag returned
+    /// with the serials is whether the argument was a scalar value, neither a reference nor an
+    /// array ([`Holidays::scalar`]).
     pub(super) fn holiday_serials(
         &mut self,
         arg: &Node,
         cell: CellReferenceIndex,
-    ) -> Result<Vec<i64>, HolidaysError> {
+    ) -> Result<(Vec<i64>, bool), HolidaysError> {
         let early = |error| HolidaysError {
             error,
             before_weekend: true,
@@ -70,6 +72,8 @@ impl Model {
             return Err(early(value.empty_array_as_value_error(cell)));
         }
         let one_value = is_one_value(&value);
+        let scalar = !matches!(value, CalcResult::Array(_) | CalcResult::Range { .. })
+            && is_scalar_node(arg.ungrouped());
         let date_system = self.workbook.settings.date_system;
         let (mut serials, mut out_of_range) = (Vec::new(), false);
         self.collect_serial_numbers(value, cell, |serial| {
@@ -85,7 +89,7 @@ impl Model {
             error,
             before_weekend: one_value && !out_of_range,
         })?;
-        Ok(serials)
+        Ok((serials, scalar))
     }
 }
 
@@ -109,6 +113,30 @@ fn is_one_value(value: &CalcResult) -> bool {
         CalcResult::Array(_) => false,
         CalcResult::Range { left, right } => left == right,
         _ => true,
+    }
+}
+
+/// Whether a holidays argument is written as a scalar value: a number, an arithmetic expression or
+/// a function call, and not a reference, a name or an array (a one-cell reference evaluates to
+/// its number too, so the value alone cannot tell). Function calls that hand a reference on
+/// (INDEX, OFFSET, INDIRECT, CHOOSE, IF) count as references, which is UNVERIFIED (dates.md
+/// "NETWORKDAYS.INTL: a scalar holiday ignores the weekend argument"; only SUM is probed).
+fn is_scalar_node(node: &Node) -> bool {
+    match node {
+        Node::NumberKind(_)
+        | Node::OpSumKind { .. }
+        | Node::OpProductKind { .. }
+        | Node::OpPowerKind { .. }
+        | Node::UnaryKind { .. } => true,
+        Node::FunctionKind { kind, .. } => !matches!(
+            kind,
+            Function::Index
+                | Function::Offset
+                | Function::Indirect
+                | Function::Choose
+                | Function::If
+        ),
+        _ => false,
     }
 }
 
@@ -136,15 +164,20 @@ pub(super) struct Holidays {
     by_residue: [Vec<i64>; 7],
     /// The days read, repeats included: what preparing them cost (`LiftCost::Prepared`).
     pub(super) read: u64,
+    /// The argument was a scalar value (a literal or a computed number), not a reference or an
+    /// array. NETWORKDAYS.INTL then drops a holiday only on a Saturday or Sunday, whatever its
+    /// weekend argument; a reference or an array is dropped on the weekend's own days (dates.md
+    /// "NETWORKDAYS.INTL: a scalar holiday ignores the weekend argument").
+    pub(super) scalar: bool,
 }
 
 impl Holidays {
     /// No holidays: the call has no holidays argument.
     pub(super) fn none() -> Self {
-        Self::new(Vec::new())
+        Self::new(Vec::new(), false)
     }
 
-    pub(super) fn new(mut days: Vec<i64>) -> Self {
+    pub(super) fn new(mut days: Vec<i64>, scalar: bool) -> Self {
         let read = u64::try_from(days.len()).unwrap_or(u64::MAX);
         days.sort_unstable();
         days.dedup();
@@ -152,7 +185,11 @@ impl Holidays {
         for day in days {
             by_residue[residue(day)].push(day);
         }
-        Self { by_residue, read }
+        Self {
+            by_residue,
+            read,
+            scalar,
+        }
     }
 
     /// The distinct holidays of `from..=to` per weekday, Monday first, where day `from` is
