@@ -1628,6 +1628,13 @@ a valid call from an invalid one. The only distinguishable result is a text `tar
 before the `#N/A`. So the web oracle gives no evidence for the algorithm or for most argument validation; it is a
 golden only for the type-coercion step (decision 0039). Catalog `oracle: none` is not used: the canary does not
 refuse these workbooks, Excel for the web just does not calculate the family.
+Shapes (probes/forecast-ets-optional-settings-shape, excel-graph, T-2371): every optional setting lifts over an array or range.
+`ROWS(FORECAST.ETS(9,B1:B8,A1:A8,{1;4}))` is 2 and `COLUMNS` 1; a `G1:G2` setting is the same 2x1; a `G1:H1` setting is 1x2;
+a 2x2 array is 2x2, for seasonality, data_completion and aggregation, for CONFINT's `confidence_level` and for STAT's
+`statistic_type` (and `{9;10}` as target_date). A boolean, number-text (`"9"`), error, or cell-held TRUE / `"9"`
+`target_date` or `statistic_type` is `#N/A`, which the web gives for every valid call, so it separates nothing; non-numeric
+text (`"x"`, literal or in a cell) is `#VALUE!` for the target_date of FORECAST.ETS and CONFINT and the statistic_type of STAT.
+Our kinds (functions/lift/kinds/statistical.rs `ETS_*`) match all of these; the 12 `#N/IMPL!` cells are the family's known state.
 Consequence: a validation-only engine (`#N/A` like excel-graph) would score on excel-graph values but would be wrong on
 desktop Excel, so the family stays `#N/IMPL!` until desktop values exist (M14, Phase 4, T-1553).
 Evidence: probes/forecast-ets-longer-series.case.json K1:K42 (excel-graph, 2026-10-14, T-1293).
