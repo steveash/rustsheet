@@ -261,6 +261,7 @@ probes/t3266-minus-paren-1023-typed.case.json	1
 probes/t3266-minus-paren2-1023-typed.case.json	1
 probes/t3266-plus-paren-1023-typed.case.json	1
 probes/t3276-collation-other-scripts.case.json	101
+probes/t3298-case-mapping-sweep.case.json	130
 probes/t3304-collation-multi-letter-accents.case.json	47
 probes/t3334-criteria-operand-forms.case.json	33
 probes/t3348-rate-fv-nonzero.case.json	4
