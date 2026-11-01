@@ -877,7 +877,7 @@ impl Parser {
         // Excel: a section with two bracketed elapsed tokens is #VALUE! for any value (`[h]:[mm]`,
         // `[mm]:[ss]`; probes/negative-date-sections-1900 and -1904 A9, A21, A22; dates.md "Negative
         // serials under an explicit negative section"). A bare `h` after `[h]` is not bracketed.
-        if bracketed_elapsed > 1 {
+        if bracketed_elapsed > 1 || super::elapsed::elapsed_after_larger_clock(&tokens) {
             return ParsePart::Error(ErrorPart::default());
         }
         if repeated_locale {
@@ -909,7 +909,7 @@ impl Parser {
             let only_literals = tokens
                 .iter()
                 .all(|t| t.is_literal() || matches!(t, TextToken::General));
-            if general_count > 1 || !only_literals || is_date || comma > 0 {
+            if general_count > 1 || !(only_literals || is_date) || comma > 0 {
                 return ParsePart::Error(ErrorPart::default());
             }
             // Excel: `%` beside `General` prints, no scaling (probes/text-format-general-company A3).

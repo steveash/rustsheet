@@ -36,6 +36,24 @@ F.INV.RT 83 of 434, FINV 32 of 277), with no cell newly visibly off.
   The order of the mapping's arithmetic (four algebraically equal forms) does not decide them either.
 - Split: T-3225 and T-3233 list probes-numeric/m9-f-inv A31; T-1871 lists gen-m9/4ab2ba98d26c8a5e A110. They keep those
   cells.
+- Visibly-off F quantile cells no other open task lists (gap triage 2026-10-31k, `make eval` on origin/main after
+  T-3398, `make exit-owners MILESTONE=M9` rows `rate:F.INV`, `rate:F.INV.RT`, `rate:FINV`, plus the four unattributed
+  gen-m9 cells whose only non-glue call is an F quantile). This task owns them. Examples, Excel vs ours:
+  `F.INV(0.5,3,9)` 0.8516839503845974 vs ...963; `FINV(1e-09,1,1)` 4.052847345693515e17 vs 4.0528473456935e17;
+  `F.INV.RT(0.5,10,10)` 0.9999999999999999 vs 0.9999999999999991.
+  - gen-m9/320d51765af9b6b7.case.json (2): Calc!A15, A379
+  - gen-m9/40425341c5034eed.case.json (1): Calc!A108
+  - gen-m9/4ab2ba98d26c8a5e.case.json (1): Calc!A390
+  - gen-m9/60b0b6e69ad35a45.case.json (2): Calc!A150, A197
+  - gen-m9/7674c89c824aca43.case.json (1): Calc!A212
+  - gen-m9/a63d1c7d6f96c56d.case.json (1): Calc!A320
+  - gen-m9/c18dbf21f11093f3.case.json (1): Calc!A92
+  - gen-m9/c6cfda6bd10cae93.case.json (1): Calc!A183
+  - gen-m9/e6cf3b20a014e6a3.case.json (1): Calc!A135
+  - probes-numeric/m9-f-inv-rt.case.json (4): Calc!A1, A7, A15, A25
+  - probes-numeric/m9-legacy-finv.case.json (12): Calc!A1, A2, A3, A4, A9, A10, A37, A38, A39, A40, A47, A48
+  - probes-numeric/t1049-finv.case.json (1): Calc!A7
+  - probes-numeric/t1049-finvrt.case.json (1): Calc!A14
 
 ## Acceptance criteria
 - [ ] F.INV, F.INV.RT and FINV meet the Phase 1 rate, or the Outcome names every cell still off with an owner.

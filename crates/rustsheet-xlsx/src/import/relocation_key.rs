@@ -27,23 +27,30 @@
 //! A shifted copy skips the lexing (T-3384). After keying a formula, [`KeyLexer`] keeps it as a
 //! template: its text, cell and key, and where each relative coordinate of its references is
 //! written. A later formula whose text is the template's with each of those coordinates moved by
-//! the cell's offset, every other character equal, has the template's key: outside the
-//! references its text is the template's, every relative coordinate keeps its offset from the
-//! cell, every absolute one its value, and the corner comparisons of a range whose corners agree
-//! on `$` per axis cannot change. Its tokens are the template's: only the letters and digits of
-//! a coordinate change, and the lexer reads those by what surrounds them as well as by what they
-//! are (after a digit or `.`, `E1` is part of a number; before `!`, `R:B` is a span of sheets),
-//! so every reference must stand between characters that end a token whatever its letters and
-//! digits (`BEFORE_REFERENCE`, `AFTER_REFERENCE`). A template is kept only when that reading is
-//! certain: ASCII text, every reference so bounded and written `[prefix]$?LETTERS$?DIGITS` (or
-//! two such corners joined by `:`, or two column or row corners `$?LETTERS:$?LETTERS`,
-//! `$?DIGITS:$?DIGITS`) with the values and `$`s of its token, no range whose corners differ in
-//! `$` on an axis, and a formula that parsed (the import drops the template of one that did not,
-//! `KeyLexer::forget_template`). A moved coordinate must stay on the grid (offsets are taken in
-//! `i64`: a cell's row comes from the file unchecked), and is compared as written canonically
-//! (upper case, no leading zero); anything else is lexed as before. Any change to the A1 lexer's
-//! reading of references must be checked against this reader:
-//! `template_keys_match_a_fresh_lex_on_random_text` compares the two on random text.
+//! the cell's offset, every other character equal, has the template's key: outside the references
+//! its text is the template's, every relative coordinate keeps its offset from the cell, every
+//! absolute one its value, and the corner comparisons of a range whose corners agree on `$` per
+//! axis cannot change. Where a range's corners differ on `$` on an axis (`KP$11:KP22`), the copy's
+//! key orders them by their moved values, so the template keeps their comparison and a copy takes
+//! its key only where the moved corners compare alike ([`Order`], T-3574). Its tokens are the
+//! template's: only the letters and digits of a coordinate change, and the lexer reads those by
+//! what surrounds them as well as by what they are (after a digit or `.`, `E1` is part of a number;
+//! before `!`, `R:B` is a span of sheets), so every reference must stand between characters that
+//! end a token whatever its letters and digits (`BEFORE_REFERENCE`, `AFTER_REFERENCE`). A template
+//! is kept only when that reading is certain: ASCII text, every reference so bounded and written
+//! `[prefix]$?LETTERS$?DIGITS` (or two such corners joined by `:`, or two column or row corners
+//! `$?LETTERS:$?LETTERS`, `$?DIGITS:$?DIGITS`) with the values and `$`s of its token, and a formula
+//! that parsed (the import drops the template of one that did not, `KeyLexer::forget_template`). A
+//! moved coordinate must stay on the grid (offsets are taken in `i64`: a cell's row comes from the
+//! file unchecked), and is compared as written canonically (upper case, no leading zero); anything
+//! else is lexed as before. Any change to the A1 lexer's reading of references must be checked
+//! against this reader: `template_keys_match_a_fresh_lex_on_random_text` compares the two on random
+//! text.
+//!
+//! A sheet's formulas come row by row, so a formula's copy is often the one above it, with the
+//! row's other formulas between: the lexer keeps the last template of each column, at most
+//! `KeyLexer::TEMPLATES` of them, and tries the cell's column first, then the last template kept
+//! (a fill along the row; T-3574).
 
 use rustsheet_engine::expressions::lexer::{Lexer, LexerMode};
 use rustsheet_engine::expressions::parser::Node;
@@ -52,12 +59,20 @@ use rustsheet_engine::expressions::types::{CellReferenceRC, ParsedReference};
 use rustsheet_engine::expressions::utils::{column_letters, is_valid_row};
 use rustsheet_engine::language::get_default_language;
 use rustsheet_engine::locale::get_default_locale;
+use std::collections::HashMap;
 
 /// A lexer for stored A1 formulas, reused across the formulas of a sheet.
 pub(crate) struct KeyLexer {
     lexer: Lexer,
-    /// The last formula keyed whose shifted copies can take its key (module docs).
-    template: Option<Template>,
+    /// The last formula keyed in each column whose shifted copies can take its key (module docs):
+    /// a sheet's formulas come row by row, so a formula's copy is often the one above, with other
+    /// formulas between (T-3574). At most [`KeyLexer::TEMPLATES`].
+    templates: HashMap<i32, Template>,
+    /// The column of the last template kept: a fill along a row copies it.
+    last: Option<i32>,
+    /// The column of the template the last `key` call kept, if it kept one: the one
+    /// [`KeyLexer::forget_template`] drops.
+    kept_now: Option<i32>,
     /// Keys taken from a template, for the tests of T-3384.
     #[cfg(test)]
     pub(crate) copies: usize,
@@ -76,7 +91,9 @@ impl Default for KeyLexer {
                 get_default_language(),
             ),
             functions: Vec::new(),
-            template: None,
+            templates: HashMap::new(),
+            last: None,
+            kept_now: None,
             #[cfg(test)]
             copies: 0,
         }
@@ -92,6 +109,39 @@ struct Coordinate {
     row: bool,
 }
 
+/// One axis of a range whose corners differ on `$` there (`KP$11:KP22`): a copy's key orders the
+/// corners by their values, so it is the template's only while they compare as they do here
+/// (T-3574). A corner's value is moved by the copy's offset when it is relative.
+struct Order {
+    /// The rows, else the columns.
+    row: bool,
+    /// Each corner's value here, and whether it is relative.
+    left: (i32, bool),
+    right: (i32, bool),
+    /// Whether the left corner's value is at most the right's.
+    less_or_equal: bool,
+}
+
+impl Order {
+    /// The order of one axis whose corners (value, relative) differ on `$`.
+    fn new(row: bool, left: (i32, bool), right: (i32, bool)) -> Order {
+        Order {
+            row,
+            left,
+            right,
+            less_or_equal: left.0 <= right.0,
+        }
+    }
+
+    /// Whether the corners compare as here when moved by `rows` and `columns`.
+    fn holds(&self, rows: i64, columns: i64) -> bool {
+        let offset = if self.row { rows } else { columns };
+        let value =
+            |(value, relative): (i32, bool)| i64::from(value) + if relative { offset } else { 0 };
+        (value(self.left) <= value(self.right)) == self.less_or_equal
+    }
+}
+
 /// A formula keyed, whose copies shifted by an offset have its key (module docs).
 struct Template {
     /// The formula text, ASCII.
@@ -101,6 +151,8 @@ struct Template {
     key: String,
     /// Its relative coordinates, in text order.
     relative: Vec<Coordinate>,
+    /// The axes of its ranges whose corners differ on `$` (`Order`).
+    orders: Vec<Order>,
 }
 
 impl Template {
@@ -133,7 +185,10 @@ impl Template {
 
     /// The key of `formula` at `at` when it is this template as written at `at`.
     fn key_of_copy(&self, formula: &str, at: &CellReferenceRC) -> Option<String> {
-        (self.shifted(at)? == formula).then(|| self.key.clone())
+        let rows = i64::from(at.row) - i64::from(self.row);
+        let columns = i64::from(at.column) - i64::from(self.column);
+        let ordered = self.orders.iter().all(|order| order.holds(rows, columns));
+        (ordered && self.shifted(at)? == formula).then(|| self.key.clone())
     }
 }
 
@@ -277,16 +332,28 @@ fn corner_coordinates(
 }
 
 /// The relative coordinates of a range `left:right` whose text ends at `end`, when both corners
-/// are cells written exactly and agree on `$` per axis; else `None`.
+/// are cells written exactly, and the [`Order`] of each axis on which they differ on `$`; else
+/// `None`.
 fn range_coordinates(
     chars: &[char],
     end: usize,
     left: &ParsedReference,
     right: &ParsedReference,
     relative: &mut Vec<Coordinate>,
+    orders: &mut Vec<Order>,
 ) -> Option<()> {
-    if left.absolute_row != right.absolute_row || left.absolute_column != right.absolute_column {
-        return None;
+    let rows = (
+        (left.row, !left.absolute_row),
+        (right.row, !right.absolute_row),
+    );
+    let columns = (
+        (left.column, !left.absolute_column),
+        (right.column, !right.absolute_column),
+    );
+    for (row, (l, r)) in [(true, rows), (false, columns)] {
+        if l.1 != r.1 {
+            orders.push(Order::new(row, l, r));
+        }
     }
     let second = corner_before(chars, end)?;
     let colon = second.start.checked_sub(1)?;
@@ -347,14 +414,22 @@ impl KeyLexer {
     /// The formula the template would take as its copy at `at`, for the tests of T-3384.
     #[cfg(test)]
     pub(crate) fn template_copy(&self, at: &CellReferenceRC) -> Option<String> {
-        self.template.as_ref()?.shifted(at)
+        self.templates.get(&self.last?)?.shifted(at)
     }
 
     /// Forgets the template, for a formula that did not parse: its reading is not the one the
     /// module docs reason about, so its copies are keyed by lexing them (T-3384).
     pub(crate) fn forget_template(&mut self) {
-        self.template = None;
+        if let Some(column) = self.kept_now.take() {
+            self.templates.remove(&column);
+            if self.last == Some(column) {
+                self.last = None;
+            }
+        }
     }
+
+    /// How many templates [`KeyLexer::key`] keeps (directive 5: each holds its formula's text).
+    const TEMPLATES: usize = 1024;
 
     /// How many identifiers [`KeyLexer::is_stored_function`] remembers.
     const FUNCTIONS: usize = 8;
@@ -381,13 +456,18 @@ impl KeyLexer {
     pub(crate) fn key(&mut self, formula: &str, at: &CellReferenceRC) -> Option<String> {
         // The key marks references with U+0001 and writes sheet names raw: a formula holding the
         // marker (which XML 1.0 cannot carry anyway) could alias another's key, so it is not keyed.
+        self.kept_now = None;
         if formula.contains('\u{1}') {
             return None;
         }
-        if let Some(key) = self
-            .template
-            .as_ref()
+        let above = self.templates.get(&at.column);
+        let along = self
+            .last
+            .filter(|&column| column != at.column)
+            .and_then(|column| self.templates.get(&column));
+        if let Some(key) = above
             .and_then(|template| template.key_of_copy(formula, at))
+            .or_else(|| along.and_then(|template| template.key_of_copy(formula, at)))
         {
             #[cfg(test)]
             {
@@ -398,6 +478,7 @@ impl KeyLexer {
         self.lexer.set_formula(formula);
         // The relative coordinates written, while the formula can still be a template.
         let mut relative = formula.is_ascii().then(Vec::new);
+        let mut orders = Vec::new();
         let mut key = String::with_capacity(formula.len() + 16);
         let mut start = 0;
         let mut previous_is_reference = false;
@@ -415,13 +496,29 @@ impl KeyLexer {
             match token {
                 TokenType::EOF => {
                     key.extend(text);
-                    self.template = relative.map(|relative| Template {
-                        text: formula.to_string(),
-                        row: at.row,
-                        column: at.column,
-                        key: key.clone(),
-                        relative,
-                    });
+                    match relative {
+                        Some(relative) => {
+                            if self.templates.len() >= Self::TEMPLATES {
+                                self.templates.clear();
+                            }
+                            let template = Template {
+                                text: formula.to_string(),
+                                row: at.row,
+                                column: at.column,
+                                key: key.clone(),
+                                relative,
+                                orders,
+                            };
+                            self.templates.insert(at.column, template);
+                            self.last = Some(at.column);
+                            self.kept_now = Some(at.column);
+                        }
+                        // No template: a formula in this column is not this one's copy.
+                        None => {
+                            self.templates.remove(&at.column);
+                            self.last = None;
+                        }
+                    }
                     return Some(key);
                 }
                 TokenType::Illegal(_) | TokenType::StructuredReference { .. } => return None,
@@ -454,7 +551,8 @@ impl KeyLexer {
                 TokenType::Range { sheet, left, right } => {
                     key.extend(&text[..leading]);
                     if let Some(coordinates) = relative.as_mut() {
-                        let written = range_coordinates(chars, end, &left, &right, coordinates);
+                        let written =
+                            range_coordinates(chars, end, &left, &right, coordinates, &mut orders);
                         if written.is_none() {
                             relative = None;
                         }

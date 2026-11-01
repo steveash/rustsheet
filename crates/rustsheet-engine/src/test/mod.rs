@@ -1,5 +1,6 @@
 mod conditional_formatting;
 pub(crate) mod kernel_rows;
+pub(crate) mod pass_cache_runs;
 mod test_actions;
 mod test_aggregate_sparse_walk;
 mod test_amordegrc_left_over;
@@ -111,6 +112,7 @@ mod test_networkdays_networkdaysintl;
 mod test_newer_error_kinds;
 mod test_operator_broadcast_bound;
 mod test_quote_prefix;
+mod test_range_operand_cache;
 mod test_recalc_budget;
 mod test_row_column_styles;
 mod test_set_user_input;

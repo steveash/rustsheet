@@ -72,3 +72,11 @@ Owned cells (known-failure lines in eval/baseline/probes.txt):
 
 ## Deferred (decision 0114)
 `defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).
+
+## Cells added by gap triage (2026-10-31m)
+`make eval` on origin/main 900fbc1bf (excel-graph). An ownership check over every failing Excel cell
+(`scripts/exit_owners.py`'s `owned` rule over the open task files of origin/main and of every `origin/agent/*` branch
+pushed since 2026-10-29) found these cells named by no open task. All are within 15 significant digits of Excel (Phase
+1b), so they join this deferred owner of their kernel. `GEOMEAN(C1:C6,5)` on the stat argument-modes probe, 1 ulp (Excel
+2.7144176165949068, ours ...063).
+- probes/stat-argument-modes.case.json (1): Sheet1!H8

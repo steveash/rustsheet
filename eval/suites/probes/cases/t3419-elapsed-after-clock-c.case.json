@@ -1,0 +1,33 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-3419: which clock token before an elapsed count makes the section #VALUE!. One question per cell in column A.",
+  "tags": [
+    "M10",
+    "number-formats",
+    "text",
+    "probe",
+    "T-3419"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=TEXT(5,\"s [h]\")",
+        "A2": "=TEXT(12345.678,\"s [h]\")",
+        "A3": "=TEXT(5,\"mm:ss [m]\")",
+        "A4": "=TEXT(5,\"mm:ss [s]\")",
+        "A5": "=TEXT(5,\"h [s]\")",
+        "A6": "=TEXT(5,\"ss [s]\")",
+        "A7": "=TEXT(5,\"hh [h]\")",
+        "A8": "=TEXT(5,\"s.0 [s]\")",
+        "A9": "=TEXT(5,\"[h] mm:ss [m]\")",
+        "A10": "=TEXT(5,\"AM/PM h [h]\")",
+        "A11": "=TEXT(5,\"d [h] mm [m]\")",
+        "A12": "=TEXT(5,\"h d [h]\")",
+        "A13": "=TEXT(5,\"s d [s]\")",
+        "A14": "=TEXT(5,\"[h] s [s]\")"
+      },
+      "expected": {}
+    }
+  ]
+}
