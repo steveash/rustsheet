@@ -3,7 +3,7 @@ id: T-3702
 title: "Review panel by diff kind: security only on executable changes, one design-and-quality reviewer"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
