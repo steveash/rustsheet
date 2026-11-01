@@ -2424,6 +2424,34 @@ Status: VERIFIED (excel-graph) for the complement down to w1 of about 1E-16; w's
 contrary cells open, T-3192); below 2^-53 UNVERIFIED
 Tasks: T-3007, T-2511, T-3150, T-3170
 
+## Incomplete beta at a first shape a few ulps below 1 jumps between neighbouring shapes (T-3603)
+Rule: at x = 0.1 with a = 1 - k·2^-53 (k = 1 to 16, the doubles just below 1) and b = 2.5 or 5, Excel's
+BETA.DIST(x,a,b,TRUE) is not a smooth function of a. The exact value moves by about 1.5 ulp per step of a, but Excel's
+moves by up to 36 ulp between neighbouring shapes and sits from 25.5 ulp below to 11.4 ulp above the 40-digit value
+(mpmath `betainc`). These points are a0 < 1 < b0 at x0 = 0.1, where statistics.md's bratio dispatch takes bup + bgrat
+(x0 >= 0.1, b0 <= 15). Excel is right, even where it is 25 ulp off; its form there is not known.
+- b = 2.5, signed ulps of Excel from the exact value at k = 16, 14, 13, 12, 11, 10, 9, 8, 7, 5, 4, 3, 2, 1:
+  -10.8, +8.3, +1.8, +11.4, +8.9, -25.5, -20.0, -14.5, -8.9, -9.8, -8.3, +5.2, -17.2, -11.7
+  (probes-numeric/t2464-w2f-unit-shape A199, A203, A205, A207, A209, A211, A213, A215, A217, A221, A223, A225, A227,
+  A229). Example: A209 `BETA.DIST(0.1,(134217727*2^-27+67108853*2^-53),2.5,TRUE)` is 0.23156652857908455 and A211, one
+  ulp of a higher, is 0.23156652857908355; the exact values are 0.231566528579084304 and 0.231566528579084262.
+- b = 5, same k from 16 down: -6.4 (A397), -5.4 (A399), +0.4 (A403), +1.3 (A405), -13.7 (A407), -12.8 (A409), -7.9
+  (A411), -7.0 (A413), -6.1 (A415), -11.3 (A421), -6.4 (A423), -3.4 (A425). Excel returns 0.4095100000000007 at
+  k = 13 and 12 and 0.4095099999999998 at k = 11 and 10.
+- The engine is within 7.1 ulp of the exact value on every one of these cells, and all 26 are more than 4 ulp from
+  Excel (T-3603 owns 20, T-3592 the other 6). Of the case's other failing cells, A40
+  `BETA.DIST(0.1,0.5,(67108864*2^-26+3*2^-52),TRUE)` is 6 ulp off with Excel the accurate one (-1.2 ulp against our
+  -7.2), and 106 are 1 to 4 ulp off, below the oracle's reproducibility floor (decision 0188 R4.4).
+Evidence: probes-numeric/t2464-w2f-unit-shape (excel-graph, T-2464 w2-forensics: a or b = 1 ± k ulp, k = -16 to 16,
+other shape 0.5, 2.5 or 5, x 0.1, 0.5 or 0.9); exact values from mpmath at 40 digits on the double arguments (gap
+triage 2026-11-01).
+Ours: at a0 != 1/2 this branch is not ported; it falls back to `beta_reg_tails` (incomplete_beta.rs) through
+`ported_tails_with` in bratio/mod.rs. The jumps look like the white noise T-3582 measures in Excel's bgrat increment
+(sd 5.7 to 8.5 units of 2^-53 along runs of consecutive doubles, docs/research/t2464/r5-bgrat-fdf1/RESULTS.md).
+Status: VERIFIED (excel-graph) for the values; the form behind the jumps is UNVERIFIED (T-3568, T-3582; the port is
+T-3603)
+Tasks: T-2464, T-3582, T-3603
+
 ## Excel's log1p is a 14-term atanh series in alnrel's variable (T-2464)
 Rule: for ln(1 + a) with -0.375 <= a < 0, i.e. ln(1 - x) at x <= 0.375 (the beta density, BINOM.DIST(0,n,p), bgrat's
 ln x near 1), Excel computes, every op an x87 op stored to a double (fl53(fl64(.))):
