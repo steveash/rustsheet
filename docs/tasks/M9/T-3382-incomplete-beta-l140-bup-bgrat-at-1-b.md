@@ -61,14 +61,16 @@ candidates on Excel cells, so R4's structural-model guards apply (decision 0188 
 - Hold-out (T-2512's md5-odd split, fixed before scoring; `docs/research/t2464/r3-bgrat/bupdens.out`): register form,
   bup orientation 1,306/1,613/1,613 (tune 1,209/1,459) against two stored ops 1,046 and the caller's orientation 672.
   The margin was not named before scoring.
-- Fresh sweep after the freeze: probes-numeric t3382-l140-sweep (seed 33820, 300 points log-uniform over the whole branch,
-  a0 in (15, 1E4], 1 < b0 < 2, x0 > 0.7, z in [0.5, 700], half swapped; generator `docs/research/t3382/gen_sweep.py`),
-  excel-graph. Exact / within 4 ulp / within 15 digits: main 75/108/121, HEAD 163/271/295. One cell leaves 15 digits
+- Fresh sweep after the freeze: probes-numeric t3382-l140-sweep (seed 33820, 300 points log-uniform over the branch with
+  a0 <= 1E4, a0 in (15, 1E4], 1 < b0 < 2, x0 > 0.7, z in [0.5, 700], half swapped; generator `docs/research/t3382/gen_sweep.py`),
+  excel-graph. Exact / within 4 ulp / within 15 digits (half a unit in the 15th digit): main 75/108/121, HEAD 163/271/293
+  (A96 and A117 are within 4 ulp but not within the half unit). One cell leaves 15 digits
   (A36, listed in statistics.md); the 5 still visibly off are A6 (z > 650, today's kernel, unchanged) and A36, A76,
   A208, A251, each nearer Excel than before except A36.
 - Gate A envelope (no BETA.DIST table, so on the sweep against 50-digit mpmath `betainc`, as T-3443 did): all 300 cells
-  inside (within 15 digits of Excel or within 1E-9 of the math); the largest relative error against the math is 4.1E-13
-  for Excel and for ours. Follow-ups: n > 1 terms stay T-3383's; T-3766 folds `large_shape_beta.rs`'s double fraction and series onto
+  inside (within 15 digits of Excel or within 1E-9 of the math), the math taken at the parsed doubles; the largest relative
+  error against it is 7.2E-14 for Excel (A6), 5.5E-14 for ours (A70) and 1.3E-12 before (A54). Follow-ups: n > 1 terms stay T-3383's; T-3770 scores bup's prefactor rounding on bup's own callers
+(Excel-fidelity review); T-3766 folds `large_shape_beta.rs`'s double fraction and series onto
 this core (quality review). Also carries T-3753 (filed from #2769's review on this branch by the earlier run; a task file only,
 kept here so it is not lost).
 

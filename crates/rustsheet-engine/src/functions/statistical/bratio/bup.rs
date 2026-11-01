@@ -38,8 +38,8 @@ pub(super) fn l140_bup_bpser(a0: f64, b0: f64, x0: f64, y0: f64) -> Option<f64> 
 /// W is [`bup`]'s n = 1 value, but rounded once in a register where [`bup`] stores twice
 /// (fl(fl(P·fl(x·y))/a)): each form is the one its own branch's evidence picked. Here the register
 /// form wins on the hold-out half of T-2512's cells, 1,306 of 1,613 bit-exact against 1,046 for the
-/// stored one (RESULTS.md finding 1, `bupdens.out`); [`bup`]'s callers (a <= 1, `bup_arith = "w4"`)
-/// were scored on their own cells.
+/// stored one (RESULTS.md finding 1, `bupdens.out`). On [`bup`]'s own callers the prefactor's rounding
+/// is not yet scored (`bup_arith = "w4"` covers only its W loop): T-3770.
 ///
 /// `None` for any other b0 (n > 1 terms: T-3383) and where either piece is not finite, so the caller
 /// keeps today's kernel.
