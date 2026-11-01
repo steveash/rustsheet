@@ -1233,8 +1233,10 @@ gen-m5/ecd1b828aebad1e8 Calc!A185; the full list of 37 cells is in T-2169. A156 
 (text.md, T-2250).
 Past the smallest normal double the reciprocals read 0 too: `SECH(709.78)`, `SECH(-709.78)`, `CSCH(709.78)` and
 `CSCH(-709.78)` are 0 (accuracy/SECH/s1 Calc!A83, A84; accuracy/CSCH/s1 Calc!A84, A72, A79; excel-graph, 2026-11-01, T-3670),
-where the true values ±1.1156E-308 are subnormal, and so are SECH and CSCH at 713 to 993. Graph reports a kept subnormal as
-0 as well and those tables hold no `(x)=0` companion, so whether Excel flushes these is not told.
+where the true values ±1.1156E-308 are subnormal (as are CSCH(-713.44) and CSCH(-717.64), 2.9E-310 and 4.3E-312). Graph
+reports a kept subnormal as 0 as well and those tables hold no `(x)=0` companion, so whether Excel flushes these is not
+told. From about |x| = 745 on (the tables' 803 to 993) the true value is below the smallest subnormal, so 0 is its
+correctly rounded double and no flush question arises.
 COSH(702.659631014027) and COSH(±709.78) are numbers within 1.2E-16 of the true value (accuracy/COSH/s1, T-3670); the cut in
 (709.78, 710) stays unprobed for COSH and SECH as for SINH. libm's cosh was finite up to 710.47 and ours now overflows just above 709.78, as SINH does.
 Status: VERIFIED (excel-graph) for SINH, COSH and EXP. Implemented (T-2169): `hyperbolic::{sinh,cosh}` overflow to infinity and

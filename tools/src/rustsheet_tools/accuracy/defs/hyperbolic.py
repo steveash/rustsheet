@@ -38,7 +38,10 @@ RECIPROCAL_SOURCE = "numbers.md#coth-csch-and-sech-are-1-over-excels-own-tanh-si
 POLE_SOURCE = "gen-m5 CSCH(0) #DIV/0! 4a971c8636db937d Calc!A289 (excel-graph)"
 KERNEL_SOURCE = "numbers.md#sinh--cosh--tanh-are-exp-based-not-libm"
 EXP_CUT = math.log(sys.float_info.max)  # 709.782712893384: e^|x| overflows a double above it
-UNPROBED = (709.78, 710.0)  # the exact cut lies in here; the draws keep out
+UNPROBED = (
+    709.78,
+    710.0,
+)  # Excel's cut lies in here; the domain's answer inside is a guess, so the draws keep out
 RECIPROCAL_LIMIT = 1000.0  # SECH and CSCH draws stop here: the math is about 1e-434 there
 OVERFLOW_LIMIT = UNPROBED[0]  # SINH and COSH magnitudes; the edge stratum still draws the #NUM! side
 

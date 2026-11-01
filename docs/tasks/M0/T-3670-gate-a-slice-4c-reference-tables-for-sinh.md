@@ -3,7 +3,7 @@ id: T-3670
 title: "Gate A slice 4c: reference tables for SINH, COSH, TANH, COTH, SECH and CSCH"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -33,7 +33,7 @@ SINH, COSH, TANH, COTH, SECH and CSCH each get a committed, oracle-filled `s1` G
       with its owner task (`known-failures.tsv`, T-3379's rules) and any R3 candidate (decision 0188 R3 needs an owner
       ruling).
 - [x] The probes-numeric math sidecars are regenerated with the new definitions and committed.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing the engine's kernels: each failing point gets its own task (`known-failures.tsv`).
@@ -58,5 +58,6 @@ SINH, COSH, TANH, COTH, SECH and CSCH each get a committed, oracle-filled `s1` G
     and CSCH points, all true values below the smallest normal double (|x| >= 709.78) that Excel shows as 0, inside
     the absolute floor. No R3 candidate.
 - **probes-numeric math sidecars:** new for m9-hyperbolic, t0917-hyperbolic-switchover, t2178-hyperbolic-unit-sweep,
-  t3395-hyperbolic-form-switch (and -2) and power-ulp-sources (3 TANH cells): 3603 cells. Excel is within 1e-9 of the
-  math at every one except `CSCH(710)`, which is 0 for a subnormal true value.
+  t3395-hyperbolic-form-switch (and -2) and power-ulp-sources (3 TANH cells): 3603 numeric cells plus 3 `#NUM!` cells
+  (SINH(710), SINH(711), SINH(-710)), which match Excel. Excel is within 1e-9 of the math at every numeric one except `CSCH(710)`, which is 0 for a subnormal true value.
+- **Follow-up:** T-3748 (one shared home for `scalars` and the zero-pole helper, which trig.py and hyperbolic.py both define).

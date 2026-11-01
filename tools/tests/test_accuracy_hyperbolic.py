@@ -69,15 +69,19 @@ def test_sinh_and_cosh_overflow_where_e_to_the_x_does() -> None:
             with pytest.raises(DomainError):
                 definition.evaluate([mp(x)])
         assert value(definition, 709.78) > mp("8.9e307")
-        assert value(definition, -709.78) != 0
+    # odd and even: the -709.78 side is a number too
+    assert value(SINH, -709.78) == -value(SINH, 709.78)
+    assert value(COSH, -709.78) == value(COSH, 709.78)
 
 
 def test_the_reciprocals_have_no_overflow_cut() -> None:
     # numbers.md: CSCH(710) and SECH(710) are 0 in Excel, an underflow of a true value inside the absolute floor
-    for definition in (SECH, CSCH, TANH, COTH):
-        result = value(definition, 710.0)
-        assert result != 0
-    assert 0 < value(SECH, 710.0) < mp("1e-300")
+    # sech(710) = csch(710) = 2e^-710 (to 1e-600 relative) = 8.95257245135...E-309, kept, not cut to a domain error
+    for definition in (SECH, CSCH):
+        expected = 2 * mpmath.exp(-710)
+        assert mpmath.almosteq(value(definition, 710.0), expected, mp("1e-38"), abs_eps=0)
+        assert mpmath.almosteq(value(definition, 1000.0), 2 * mpmath.exp(-1000), mp("1e-38"), abs_eps=0)
+    assert mpmath.nstr(value(SECH, 710.0), 12) == "8.95257245135e-309"
     assert value(TANH, 1e300) <= 1
     assert value(COTH, 1e300) >= 1
 
@@ -105,5 +109,7 @@ def test_draws_avoid_the_unprobed_cut_and_huge_reciprocal_arguments() -> None:
                     assert abs(x) <= RECIPROCAL_LIMIT
                 if definition in (SINH, COSH) and stratum != "edge":
                     assert abs(x) <= UNPROBED[0]
-    edges = {abs(SINH.draw("edge", rng)[0]) for _ in range(300)} if SINH.draw else set()
+    sinh_draw = SINH.draw
+    assert sinh_draw is not None
+    edges = {abs(sinh_draw("edge", rng)[0]) for _ in range(300)}
     assert {0.0, 709.78, 710.0, 1e300} <= edges
