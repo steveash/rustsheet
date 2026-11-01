@@ -117,10 +117,15 @@ enum Cmd {
         /// Permit removing previously passing items (requires PR justification).
         #[arg(long)]
         allow_regressions: bool,
-        /// Also record a drop in the visible-parity lock. The steward's daily run only: a PR
-        /// leaves drops to it so fix PRs do not conflict on the lock (decision 0093).
+        /// Also lower the visible-parity lock's cases to their counts and drop their lines at 0.
+        /// The steward's daily run only: a PR leaves drops to it (decisions 0093 and 0219).
         #[arg(long)]
         lower_visible_lock: bool,
+        /// A file listing the cases to treat as new for the visible-parity lock, one case id or
+        /// repository-relative case file path per line (the case files a PR adds); only these
+        /// then get a line recorded whatever their count (decision 0219).
+        #[arg(long, value_name = "FILE")]
+        new_cases: Option<PathBuf>,
     },
     /// Fail if more in-scope functions are below the evidence floor than
     /// quality/evidence-floor.json allows, or if the lock is stale (T-0056, decision 0062).
@@ -435,32 +440,84 @@ fn baseline_path(root: &Path, suite: &str) -> PathBuf {
     root.join("eval/baseline").join(format!("{suite}.txt"))
 }
 
+/// The ids of the cases of `suites` that the `--new-cases` file names (decision 0219).
+fn listed_new_cases(root: &Path, suites: &[Suite], file: &Path) -> Result<BTreeSet<String>> {
+    let listed = visible_parity::read_listed(file)?;
+    let mut cases = Vec::new();
+    for suite in suites.iter().filter(|s| s.manifest.fetch.is_none()) {
+        cases.extend(suite.cases()?);
+    }
+    let ids = visible_parity::listed_ids(
+        root,
+        cases.iter().map(|c| (c.id.as_str(), c.path.as_path())),
+        &listed,
+    );
+    let (ids, with_lines) = visible_parity::split_listed(&visible_parity::Lock::read(root)?, ids);
+    println!(
+        "visible parity: {} of the {} --new-cases entries name a case of the gated suites without a lock line; only those are new",
+        ids.len(),
+        listed.len()
+    );
+    for id in &with_lines {
+        println!(
+            "  {id} is listed but already has a line in {}: not new, so its line may not rise",
+            visible_parity::LOCK_PATH
+        );
+    }
+    Ok(ids)
+}
+
 /// Holds `count` to the visible-parity lock, recording it on `update` when
-/// [`visible_parity::judge`] allows (T-0061, decisions 0088 and 0093); returns whether the gate
-/// passes.
+/// [`visible_parity::judge`] allows (T-0061, decisions 0088, 0093 and 0219); returns whether the
+/// gate passes.
 fn visible_parity_gate(
     root: &Path,
-    count: VisibleCount,
+    count: &VisibleCount,
     update: Option<visible_parity::Update>,
 ) -> Result<bool> {
-    use visible_parity::{Judgement, Lock, LOCK_PATH};
+    use visible_parity::{Lock, LOCK_PATH};
     let lock = Lock::read(root)?;
     println!(
-        "visible parity: {} in-scope cells visibly off ({} in new cases), lock {}",
-        count.cells, count.new_coverage, lock.visibly_off_cells
+        "visible parity: {} in-scope cells visibly off ({} in new cases), {LOCK_PATH} allows {} in {} cases",
+        count.cells(),
+        count.new_coverage(),
+        lock.total(),
+        lock.cases.len()
     );
-    Ok(match visible_parity::judge(lock, count, update) {
-        Judgement::Holds => true,
-        Judgement::Record(visibly_off_cells) => {
-            Lock { visibly_off_cells }.write(root)?;
-            println!("  updated {LOCK_PATH}: commit it");
-            true
-        }
-        Judgement::Regressed => {
-            println!("  REGRESSION: more cells are visibly off than {LOCK_PATH} allows; the report's \"Visibly off\" section names the functions");
-            false
-        }
-    })
+    let updating = update.is_some();
+    let judgement = visible_parity::judge(&lock, count, update);
+    for o in &judgement.over {
+        println!(
+            "  REGRESSION visible parity {}: {} cells visibly off, the lock allows {}",
+            o.case, o.off, o.allowed
+        );
+    }
+    if !judgement.holds() {
+        let over: usize = judgement.over.iter().map(|o| o.off - o.allowed).sum();
+        println!(
+            "  {} cases have {over} more visibly-off cells than {LOCK_PATH} allows. A new case needs its line: run `make eval-baseline` and commit eval/baseline/. The report's \"Visibly off\" section names the functions",
+            judgement.over.len()
+        );
+    }
+    if let Some(next) = &judgement.record {
+        next.write(root)?;
+        println!(
+            "  updated {LOCK_PATH} ({} cells in {} cases): commit it",
+            next.total(),
+            next.cases.len()
+        );
+    } else if updating
+        && std::fs::read_to_string(root.join(LOCK_PATH))
+            .ok()
+            .as_deref()
+            != Some(lock.render().as_str())
+    {
+        // The lines hold, but the file is not what the tool writes (a changed header, say): an
+        // update rewrites it in canonical form, so the file is only ever written by the tool.
+        lock.write(root)?;
+        println!("  rewrote {LOCK_PATH} in canonical form: commit it");
+    }
+    Ok(judgement.holds())
 }
 
 /// The baseline gate (`update` `None`) or the baseline ratchet; with `floor`, also the evidence
@@ -470,6 +527,7 @@ fn cmd_check(
     root: &Path,
     sel: &Selection,
     update: Option<visible_parity::Update>,
+    new_cases: Option<&Path>,
     floor: bool,
 ) -> Result<ExitCode> {
     if sel.filter.is_some() {
@@ -508,6 +566,10 @@ fn cmd_check(
     print_summary(&report);
     let mut failed = false;
     let mut visible = VisibleCount::default();
+    let listed = match new_cases {
+        Some(file) => Some(listed_new_cases(root, suites, file)?),
+        None => None,
+    };
     for suite in suites {
         if suite.manifest.baseline == BaselineMode::None {
             continue;
@@ -519,7 +581,12 @@ fn cmd_check(
         let old = Baseline::read(&path)?;
         if suite.manifest.fetch.is_none() {
             for r in &mine {
-                visible.add(&catalog, r, !old.checked.contains_key(&r.id));
+                let new_case = visible_parity::is_new_case(
+                    listed.as_ref(),
+                    old.checked.contains_key(&r.id),
+                    &r.id,
+                );
+                visible.add(&catalog, r, new_case);
             }
         }
         let delta = baseline::diff(&old, &current);
@@ -558,7 +625,7 @@ fn cmd_check(
         }
     }
     // A partial run (`--suite`) would undercount, so only a full gated run is held to the lock.
-    if sel.suites.is_empty() && !visible_parity_gate(root, visible, update)? {
+    if sel.suites.is_empty() && !visible_parity_gate(root, &visible, update)? {
         failed = true;
     }
     if let Some(floor_results) = floor_results {
@@ -819,11 +886,12 @@ fn run() -> Result<ExitCode> {
         Cmd::Check {
             sel,
             evidence_floor,
-        } => cmd_check(&root, &sel, None, evidence_floor),
+        } => cmd_check(&root, &sel, None, None, evidence_floor),
         Cmd::UpdateBaseline {
             sel,
             allow_regressions,
             lower_visible_lock,
+            new_cases,
         } => cmd_check(
             &root,
             &sel,
@@ -831,6 +899,7 @@ fn run() -> Result<ExitCode> {
                 allow_regressions,
                 lower: lower_visible_lock,
             }),
+            new_cases.as_deref(),
             false,
         ),
         Cmd::EvidenceFloor {
