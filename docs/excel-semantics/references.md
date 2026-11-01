@@ -2496,10 +2496,11 @@ row (`h < r <= t`, so at its first data row and its totals row too: T-2321) and
 shrinks it when the deleted rows are inside them, data edges included, with a data row left (T-2338), drops
 its totals row on a delete of exactly that row (T-2338), and then every structured reference to it keeps its
 text, in cell formulas on any sheet, conditional formats and defined names (T-2297, `table_edits.rs`). A delete
-of its only data row keeps the row and clears the table's cells of it (`Model::last_data_row`, T-2338), and a
-plain range shrinks on a delete of its edge rows (`Displacement::range_corners`, T-2338). Every other edit
-that crosses a table (a delete touching the header row, of every data row at once, a column edit inside
-it, row and column moves, cell shifts) leaves the table as it is, and an edit that changes the area a
+of exactly every data row, one row or several, keeps the first data row, clears the table's cells of it and
+deletes the others (`Model::kept_data_row`, T-2338, T-3259), and a plain range shrinks on a delete of its edge
+rows (`Displacement::range_corners`, T-2338). Every other edit that crosses a table (a delete touching the
+header row, a column edit inside it, row and column moves, cell shifts) leaves the table as it is, and an
+edit that changes the area a
 structured reference resolves to rewrites it to the displaced plain range (the fallback of SPEC-0016); one
 that leaves the area unchanged keeps the text. A `#This Row` reference keeps the fallback rule even when
 its table follows the edit: on another sheet, a row off the data rows keeps its text and so reads the
@@ -2563,8 +2564,9 @@ Right/Left):
   T-3019) behaves as the one-row deletes do. Rows 4-7 at once, every data row, keep the table's first data row,
   cleared: `ROWS(Sales)` 1, `#All` 2, `ROW(Sales[#Headers])` 3, `SUM(Sales[Qty])` and `COUNTA(Sales[Region])` 0,
   `=SUM(S!C4:C7)` becomes `=SUM(S!C4:C4)` (0), and the cells below move three rows, not four (`=S!C10` reads
-  `=S!C7`, `=SUM(S!C9:C10)` reads `=SUM(S!C6:C7)`) (table-delete-rows-all-data-once; the engine deletes all four
-  rows, T-3259). Rows 6-7 at once, the last two data rows, shrink the table to rows 4-5 (`ROWS(Sales)` 2,
+  `=S!C7`, `=SUM(S!C9:C10)` reads `=SUM(S!C6:C7)`) (table-delete-rows-all-data-once;
+  implemented since T-3259 by `Model::kept_data_row`, which clears the first data row and deletes the
+  rest). Rows 6-7 at once, the last two data rows, shrink the table to rows 4-5 (`ROWS(Sales)` 2,
   `SUM(Sales[Qty])` 3, `S!C4:C7` becomes `S!C4:C5`), a range wholly inside the deleted rows is `=SUM(S!#REF!)`,
   `=SUM(S!C7:C9)` straddling the bottom edge becomes `=SUM(S!C6:C7)`, and `=S!C10` reads `=S!C8`
   (table-delete-rows-last-two; the engine matches). A table without a header row (spec `"header_row": false`,

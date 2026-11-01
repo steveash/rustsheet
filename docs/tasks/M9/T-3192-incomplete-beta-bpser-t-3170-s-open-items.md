@@ -30,6 +30,11 @@ Open:
   t2220-f-dist-sweep-cdf A191, A195, t2220-f-dist-sweep-d2-1 A16 (1 ulp), t2220-f-dist-sweep-rt A195 (4 ulp) and
   t1745-beta-inv-roundtrip G145 (16 ulp, visibly off; 1 ulp of w near 0.95): a near-tie in Excel's log1p (its 27 known 1-ulp misses are of that kind) or another
   stored step.
+- Added by gap triage 2026-10-31 (`scripts/exit_owners.py --all-off` on origin/main 4ff408243 listed it with no open
+  owner): probes-numeric/t1745-beta-inv-roundtrip G1 `BETA.DIST(2.4674011002723394E-20,0.5,0.5,TRUE)`, which is
+  bpser at a = b = 0.5. Excel 9.999999999999999E-11 is the correctly rounded value (mpmath at 50 digits,
+  9.99999999999999957E-11), and ours, 9.999999999999984E-11, is 12 ulp below, visibly off. The case's other unowned
+  BETA.DIST cells, where Excel is off the math, went to T-3435.
 Tools: `docs/research/t3007/cell_diff.py` for full-eval A/B diffs.
 
 ## Acceptance criteria
