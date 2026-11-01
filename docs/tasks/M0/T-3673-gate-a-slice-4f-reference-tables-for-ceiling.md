@@ -3,7 +3,7 @@ id: T-3673
 title: "Gate A slice 4f: reference tables for CEILING, CEILING.MATH, CEILING.PRECISE, FLOOR, FLOOR.MATH and FLOOR.PRECISE"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -39,21 +39,6 @@ CEILING, CEILING.MATH, CEILING.PRECISE, FLOOR, FLOOR.MATH and FLOOR.PRECISE each
 ## Out of scope
 - Changing the engine's kernels: each failing point gets its own task (`known-failures.tsv`).
 
-## Blocked because
-Resumed after the review-round limit (step 5c).
-- PR #2792 (draft). security, architecture and quality APPROVE on 2692ee19 (round 1). excel-fidelity asked for
-  changes in all three rounds; each round's findings are fixed on the branch, the last ones in the commit after
-  e291348c:
-  - round 1: the overflow bracket claim in numbers.md was wrong (now 0.556x to 49x DBL_MAX); FLOOR(0,0) had no
-    evidence (now NoValueError).
-  - round 2: plain FLOOR's overflow `#NUM!` had no FLOOR cell (added FLOOR/e-T-3673, 5 overflow cells, all `#NUM!`);
-    the result-overflow DomainError was unevidenced (now NoValueError); decision wording for A170/A173.
-  - round 3: the binary-quotient cut needed its own numbers.md entry (added "CEILING and FLOOR cut the binary
-    quotient, so CEILING can fall below its argument"); the plain-ceiling figure for CEILING.MATH/s1 A81 is
-    701.0101010101009; ratios in the unpinned band 0.5563x to 48x DBL_MAX now have no math value.
-- Next: per work-loop step 5c, run `make check` and the full panel on the current head; no reviewer found a defect
-  in the definitions or the tables, all findings were in the docs and in unevidenced corners.
-
 ## Outcome
 - Definitions: `tools/src/rustsheet_tools/accuracy/defs/ceiling_floor.py`, one per function. The math reads the written
   decimals and takes Excel's 15-digit ratio cut (ties away from zero) before the step, as decision 0223 does for the
@@ -79,3 +64,9 @@ Resumed after the review-round limit (step 5c).
   CEILING.MATH A103/A110, CEILING.PRECISE A49/A51); harmless, left as is since a batch is never rewritten.
 - `rustsheet-accuracy math --suite probes-numeric` changed no committed sidecar (no probes-numeric cell is a one-call
   CEILING/FLOOR with literal arguments); the unrelated new sidecars it wrote were left out, as in T-3555.
+- Review history: blocked at the review-round limit after three excel-fidelity rounds (each round's findings were in
+  the docs and in unevidenced corners, all fixed); resumed per work-loop step 5c, merged `origin/main` (the trig
+  definitions landed alongside), and the full panel approved on cfbfeff6. The TIE_SOURCE anchor now carries its
+  `-t-2652` suffix (excel-fidelity nit). `SMALLEST_OVERFLOW_RATIO` stays at 48 x DBL_MAX, a round-down of the
+  48.98 x evidenced at FLOOR.PRECISE/s1 A119: no sampled ratio falls between them, and Excel's double quotient
+  already overflows from 1 x DBL_MAX.

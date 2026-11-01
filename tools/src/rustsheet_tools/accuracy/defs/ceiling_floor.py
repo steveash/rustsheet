@@ -52,7 +52,7 @@ from rustsheet_tools.accuracy.model import (
 )
 from rustsheet_tools.accuracy.sampler import decimal_literal, log_uniform, random_sign
 
-TIE_SOURCE = "numbers.md#floorprecise-a-16th-digit-tie-in-the-ratio-cut-goes-away-from-zero"
+TIE_SOURCE = "numbers.md#floorprecise-a-16th-digit-tie-in-the-ratio-cut-goes-away-from-zero-t-2652"
 SUBNORMAL_SOURCE = "numbers.md#ceiling-and-floor-of-a-subnormal-ratio-are-0-t-2715"
 DECISION = "decision 0244"
 SMALLEST_NORMAL = Fraction(2) ** -1022
