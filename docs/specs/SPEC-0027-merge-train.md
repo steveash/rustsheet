@@ -981,10 +981,10 @@ The merger keeps no state between runs: every step is derived from `origin` and 
   Open question 3 asks the owner about this.
 - **Docs-only and task-only PRs.** Eligible like any other PR. Task-only PRs are exactly the ones
   that collide on ids (0075). Their marker says `task: none`, and V5's task-file check is skipped.
-  A diff whose every path is a `.md` file under `docs/tasks/` needs no reviewer (decision 0231): V4 and `mark`
-  require no verdict for it, and the train's id checks (`tasks.py validate` on the built train)
-  are its content gate.
-  A train is classified as a whole (section 9), so a train of docs-only PRs runs only `changes`,
+  A diff whose every path is a `.md` file under `docs/tasks/` needs no reviewer (decision 0231):
+  V4 and `mark` require no verdict for it, and the train's id checks (`tasks.py validate` on the
+  built train) are its content gate. `changed_paths` lists both sides of a rename
+  (`--no-renames`), so a move out of `docs/tasks/` still needs the panel. A train is classified as a whole (section 9), so a train of docs-only PRs runs only `changes`,
   `hygiene` and the rust summary job.
 - **The steward's PR** (`agent/steward/<date>`) is marked ready by the steward and merged by the
   train. The steward then runs its final merger pass (section 3).

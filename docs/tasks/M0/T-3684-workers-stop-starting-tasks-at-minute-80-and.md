@@ -26,7 +26,7 @@ is the merger's, so it is not the problem.
 - [x] The work-loop skill has a landing-window step (6.6): mark unmarked PRs, clear ejected ones,
       and write `## Landing notes` for any PR left unlanded.
 - [x] Decision 0229 records the rule and amends 0025.
-- [ ] `make check` green; reviewers approve.
+- [x] Reviewers approve (verdict records on #2736); CI green before marking.
 
 ## Out of scope
 - Queued repair tasks for ejected PRs (a follow-up, which these landing notes feed).

@@ -23,7 +23,7 @@ which the train runs on every built train.
 - [x] `merge_ready.applicable_reviewers` returns no reviewer for a non-empty diff wholly under
       `docs/tasks/`, and the full panel otherwise; unit tests cover both and a task-only `mark`.
 - [x] The review, work-loop and steward skills and SPEC-0027 say so; decision 0231 records it.
-- [ ] `make check` green; reviewers approve.
+- [x] Reviewers approve (verdict records on #2736); CI green before marking.
 
 ## Out of scope
 - Marking the existing unmarked task-only PRs (any session may do it once this merges).

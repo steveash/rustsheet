@@ -15,9 +15,8 @@
     triage PRs listed the same cells.
 - **Decision:**
   - A diff whose every changed path is a `.md` file under `docs/tasks/` (at least one path) needs
-    no reviewer.
-    `mark` and V4 require no verdict for it. CI green, not a draft, and the train's id checks
-    still apply. One path anywhere else brings the full panel back.
+    no reviewer. `mark` and V4 require no verdict for it. CI green, not a draft, and the train's
+    id checks still apply. One path anywhere else brings the full panel back.
   - Any session may mark such a PR ready, including one it did not open.
 - **Consequences:**
   - Task-only PRs reach the train minutes after CI, with no reviewer runs.

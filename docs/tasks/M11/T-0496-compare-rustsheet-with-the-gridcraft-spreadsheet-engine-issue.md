@@ -49,3 +49,9 @@ evidence on five behaviours and disagree on ADDRESS quoting `TRUE`/`FALSE`, wher
 RustSheet. Follow-ups: T-3119 probes three leads that have no RustSheet evidence, and T-0401's Context
 now points at gridcraft's interval index for range dependents. A measured head-to-head would need
 gridcraft built and run, so it is left to the owner. Eval delta: none (docs only).
+
+The owner asked for that measured run on 2026-10-31:
+docs/research/gridcraft-head-to-head-2026-10-31.md (results also posted on issue #2277). On the
+3,773 cases both engines evaluated, RustSheet is 97.46% within 15 digits and gridcraft 83.39%, and
+421 against 17 in-scope functions are at least 99.9% within 15 digits. The one lead is gridcraft's
+FORECAST.ETS family. The temporary adapter was not merged.
