@@ -2160,17 +2160,20 @@ Rule:
     (75534bc7e1ce6474 A245); `SORT({#DIV/0!;2;#VALUE!},"abc",#NULL!)` is `#NULL!` (91b6b88061b805b1 A367);
     `SORT(0.5,Data!G8,Data!G9)` (FALSE index) is `#DIV/0!` (91b6b88061b805b1 A2990, passing);
     `SORT(Data!C8,Data!A6:B8,Data!G8,Data!G9)` is `#DIV/0!` (75534bc7e1ce6474 A11652, passing).
+  - So SORT reads its arguments left to right and stops at an error or a blank sort_index or sort_order (both `#VALUE!` for
+    a blank); a value that is not a number (text, FALSE's 0, a 2-D list) fails only in validation, after by_col is read.
 Evidence: gen-m7 arg-pairs batch (excel-graph, 2026-10-31, T-3497); the failing cells are listed in T-3507.
-Ours: TOCOL and TOROW return the scan_by error for a text ignore as well. SORT returns `#VALUE!` for a text sort_index and the
-later error for a blank one.
-Status: VERIFIED (excel-graph) for the cells named; the order among more than two bad arguments is UNVERIFIED (T-3507)
+Ours: as above since T-3507 (`lift_flatten` in tocol_torow.rs; `sort_number_list` and `fn_sort` in spill_functions.rs).
+Status: VERIFIED (excel-graph) for the cells named; implemented (T-3507). The order among more than two bad arguments is
+UNVERIFIED beyond these cells.
 Tasks: T-3507
 
 ## SORT's lifted by_col spreads an argument error (T-3497)
 Rule: SORT lifts over a multi-cell `by_col` (T-2319). When it fails on another argument, the error fills `by_col`'s shape.
 `SORT(Data!B3,#NUM!,Data!B1:D1,Data!A1:B2)` spills a 2x2 of `#NUM!` (gen-m7/75534bc7e1ce6474 Calc!A3051:B3052), and
-`SORT(#REF!,Data!A7:D9,1,Data!A1:B2)` spills `#REF!` (gen-m7/d2945e939d6fe742 A5979:B5980).
+`SORT(#REF!,Data!A7:D9,1,Data!A1:B2)` spills `#REF!` (gen-m7/d2945e939d6fe742 A5979:B5980). An error array, sort_index or
+sort_order is each lifted call's result, as a by_col error already was.
 Evidence: gen-m7 arg-pairs batch (excel-graph, 2026-10-31, T-3497); the full cell list is in T-3508.
-Ours: a single error in the anchor; the other three cells stay empty.
-Status: VERIFIED (excel-graph); not implemented
+Ours: as above since T-3507, whose reordering of SORT's argument checks covers it (`fn_sort`).
+Status: VERIFIED (excel-graph); implemented (T-3507)
 Tasks: T-3508

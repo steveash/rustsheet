@@ -104,7 +104,8 @@ const SINH_SERIES_TERMS: u32 = 16;
 
 /// sinh x as the Taylor series `x + x³/3! + x⁵/5! + ...`, summed in that order in doubles, each
 /// term the one before times `x²/((2k)(2k+1))`, until a term leaves the sum unchanged: the sinh x
-/// of IMSINH, IMCOSH, IMSECH and IMCSCH at |x| <= `INVERSE_EXP_LOW`. With the `1/u` cosh it fits
+/// of IMSINH, IMCOSH, IMSECH and IMCSCH at |x| <= `INVERSE_EXP_LOW` (a real IMSECH there takes
+/// libm's cosh instead and needs no sinh, T-3609). With the `1/u` cosh it fits
 /// all 114 IMSINH and IMCOSH oracle texts with 0 < |x| <= 0.01, where libm's sinh misses
 /// `IMSINH("-0.00878860151333914")` (-0.00878871465166476, libm ...477) and the real part of
 /// `IMSINH("0.00313307442770563-0.855889226338187i")` (0.00205388173561626, libm ...625), and
@@ -344,6 +345,16 @@ pub(super) fn imcsc((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
 /// included, where libm's parts fit 33 of 44 (T-2841).
 pub(super) fn imcsch((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
     let (x_sinh, x_cosh) = inverse_exp_sinh_cosh(x);
+    // A small real IMCSCH is `1/sinh x`, not `sinh x/sinh²x`: all 75 real IMCSCH texts at
+    // 0 < |x| <= `INVERSE_EXP_LOW`, `IMCSCH("-1.05118886127103E-06")` -951303.839721704 included
+    // (the quotient's ...703; t3589-im-hyperbolic-small-x-sweep D102), against 74 (T-3609). It holds
+    // down to the smallest normal x, past where sinh²x underflows: `IMCSCH("1E-200")` is 1E+200 and
+    // `IMCSCH("1E-307")` 1E+307, while a subnormal x (`IMCSCH("1E-308")`, "2E-309") is `#NUM!`, which
+    // the quotient below gives (probes-numeric/t3609-imcsch-tiny-real-probe). So the reciprocal never
+    // exceeds 1/DBL_MIN, about 4.5E+307.
+    if y == 0.0 && x.abs() <= INVERSE_EXP_LOW && x.abs() >= f64::MIN_POSITIVE {
+        return complex_result(1.0 / x_sinh, 0.0, suffix);
+    }
 
     let y_cos = y.cos();
     let y_sin = y.sin();
@@ -395,7 +406,16 @@ pub(super) fn imsec((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
 pub(super) fn imsech((x, y, suffix): ComplexParts, _: CellReferenceIndex) -> CalcResult {
     let (x_sinh, x_cosh) = inverse_exp_sinh_cosh(x);
     if y == 0.0 {
-        return complex_result(1.0 / x_cosh, 0.0, suffix);
+        // At |x| <= `INVERSE_EXP_LOW` a real IMSECH is 1 over libm's cosh, not over the `1/u`
+        // form's: all 75 real IMSECH texts there, `IMSECH("6.17632662504393E-06")` 0.999999999980927
+        // included (the form's ...926; probes-numeric/t3589-im-hyperbolic-small-x-sweep C42, C58,
+        // C68), against 72 (engineering.md "IMSECH and IMCSCH of a small real number", T-3609).
+        let cosh = if x.abs() <= INVERSE_EXP_LOW {
+            x.cosh()
+        } else {
+            x_cosh
+        };
+        return complex_result(1.0 / cosh, 0.0, suffix);
     }
     let (y_sin, y_cos) = trig_sin_cos(y);
 
