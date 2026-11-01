@@ -1322,3 +1322,11 @@ Evidence: gen-m6 a4a301d00b46acf3 (A79 A82 A85 A88 A241 A244 A307 A310 A493 A499
 Ours: DAYS returns #VALUE! in all ten; NETWORKDAYS.INTL is one day off in the other direction.
 Status: UNVERIFIED (probe pending; cells are oracle values, the general rule is not probed)
 Tasks: T-3536, T-3537
+
+## DAYS error order
+Rule: DAYS reports an error-valued argument first (leftmost), then `#NUM!` for a readable argument
+off the calendar, and `#VALUE!` for unreadable text only last. `DAYS(-1,"abc")` and `DAYS(-1,"")` are
+`#NUM!`; `DAYS("abc",#NAME?)` is `#NAME?`; `DAYS("",#DIV/0!)` is `#DIV/0!`; `DAYS(A1:B2,"abc")` with a
+negative top-left is `#NUM!`. The order with the out-of-range number on the right (`DAYS("abc",-1)`) is
+not probed; the implementation treats it the same way.
+Evidence: gen-m6/a4a301d00b46acf3 Calc!A79, A82, A85, A88, A241, A244, A307, A310, A493, A499 (excel-graph; T-3536).

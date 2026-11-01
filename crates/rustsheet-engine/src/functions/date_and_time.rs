@@ -696,16 +696,33 @@ impl Model {
 
     pub(crate) fn fn_days(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         // Lifts over a range or array in both arguments (probes/date-argument-modes F11:F14).
-        self.numbers_fn(Function::Days, args, [0.0; 2], cell, |[end, start]| {
-            let (end_serial, start_serial) = (end.floor() as i64, start.floor() as i64);
+        // Error order: an error-valued argument first (leftmost), then #NUM! for a readable
+        // argument off the calendar, then #VALUE! for unreadable text (gen-m6/a4a301d00b46acf3
+        // A79, A241, A493; dates.md "DAYS error order", T-3536).
+        self.lift_call(Function::Days, args, cell, &mut |model, values| {
+            let read = [0, 1].map(|i| model.kernel_number_or(values.get(i), 0.0, cell));
+            let given_error = (0..2).find(|&i| matches!(values.get(i), Some(CalcResult::Error { .. })));
+            if let Some(i) = given_error {
+                if let Err(error) = &read[i] {
+                    return error.clone();
+                }
+            }
             // Excel accepts any serial in 0..=MAXIMUM (a 0 serial is 1900-01-00) and
             // reports #NUM! otherwise. DAYS works directly on serials, so the dates
             // themselves are never materialised.
             let range = 0..=MAXIMUM_DATE_SERIAL_NUMBER as i64;
-            if !range.contains(&start_serial) || !range.contains(&end_serial) {
-                return Err(Error::NUM);
+            if read
+                .iter()
+                .any(|r| matches!(r, Ok(n) if !range.contains(&(n.floor() as i64))))
+            {
+                return CalcResult::new_error(Error::NUM, cell, String::new());
             }
-            Ok((end_serial - start_serial) as f64)
+            match read {
+                [Ok(end), Ok(start)] => {
+                    number_result(Ok((end.floor() as i64 - start.floor() as i64) as f64), cell)
+                }
+                [Err(error), _] | [_, Err(error)] => error,
+            }
         })
     }
 
