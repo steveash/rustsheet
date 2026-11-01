@@ -3,7 +3,7 @@ id: T-2000
 title: "Probe T.TEST type, FORECAST x and an error data argument of PERCENTRANK, PROB and FREQUENCY against data errors"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
