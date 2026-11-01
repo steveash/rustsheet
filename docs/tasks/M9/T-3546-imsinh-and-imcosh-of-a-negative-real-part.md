@@ -3,7 +3,7 @@ id: T-3546
 title: "IMSINH and IMCOSH of a negative real part: pin where the log form starts (below |x| = 708.94)"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -30,10 +30,24 @@ does, which is below |x| = 708.94, not at |x| > 709 as for x > 0; and the log fo
 - docs/excel-semantics/engineering.md "IMCOSH and IMSINH past |x| = 709 work in log space (T-2231)" has the notes.
 
 ## Acceptance criteria
-- [ ] A probe brackets the negative-side cut to 1e-10 (excel-graph), and the cut is implemented from that bracket
+- [x] A probe brackets the negative-side cut to 1e-10 (excel-graph), and the cut is implemented from that bracket
       (an evidenced constant, not a fit), with engineering.md updated.
-- [ ] The 8 cut cells of the t3525 log-band sweep pass; no older IMSINH/IMCOSH cell regresses.
-- [ ] `make check` green; reviewers approve.
+- [x] The 8 cut cells of the t3525 log-band sweep pass; no older IMSINH/IMCOSH cell regresses.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The 1/u band (T-3525 keeps it).
+
+## Outcome
+- Cut: probes-numeric/t3546-imsinh-neg-cut-coarse (x = -709.2..-708 step 0.01, four columns: IMSINH(x-0.5i),
+  IMCOSH(x+2i), IMSINH(x-1E-200i), IMSINH(x+1i)) and t3546-imsinh-neg-cut-fine (x = -708 - d, d = 1E-12..9E-3)
+  put the negative-side cut between -708.000000000001 and -708 (bracket 1e-12), the same for every y tried, so it is
+  one constant, not a y rule: `HYPERBOLIC_LOG_CUT_NEGATIVE = -708` (evidenced bracket, not a fit). The ln DBL_MIN
+  hypothesis (-708.3964) is refuted.
+- Digits: the log form now takes Excel's EXP (`excel_exp`) instead of libm `exp`. Structural model choice from two
+  candidates (decision 0188 R4): libm misses 4 of 188 log-form cells of the T-2231/T-3525/T-3546 probes (all x < 0,
+  15th digit, incl. T-3525's `-709.183834084079+1.0222540398548i` pair), Excel's EXP none. Fresh sweep drawn after the
+  freeze, probes-numeric/t3546-im-hyperbolic-log-exp-fresh-sweep (random.Random(35461), 150 rows x 2, 76 `#NUM!`):
+  Excel's EXP 300/300, libm 218/224 numbers. No FITTED tag (no fitted value).
+- Eval (probes-numeric, ungated, no baseline): t3525-im-hyperbolic-log-band-sweep 190 -> 200/200 (the 8 cut cells and the 2 digit cells); new cases
+  t3546-* 868/868; eng-im-overflow-edges(-2) unchanged at 116/116, 114/114. engineering.md updated.
