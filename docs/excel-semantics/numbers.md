@@ -2561,3 +2561,27 @@ Rule: `TEXT(2^1023*(2-2^-52),"0.00E+00")` is `1.80E+308`: the mantissa rounds up
 Evidence: probes/dbl-max-text-b A1 (oracle: excel-graph) `1.80E+308`; the 2-digit analogues gen-m10/4398098060a7fa9d A13 ("01.2E+14") and gen-m5/c0651f0e0fb544d0 A74 ("1.0E+15").
 Status: VERIFIED for DBL_MAX; the 3-digit single-placeholder case (`1E+100` under `0.0E+0` as `1.0E+100`) is UNVERIFIED (probe pending), assumed from the 2-digit cells.
 Implemented in: formatter/format.rs, decimal_round.rs::round_scientific (T-2106).
+
+## PERCENTOF: an error inside a reference or array is #NUM! (T-3653)
+Rule: PERCENTOF(data_subset, data_all) reads its two arguments as SUM does, in one walk with SUM's error ranking
+(syntax.md "Aggregate error precedence"): a direct error in either argument returns as itself, the first in argument order,
+ahead of anything inside a reference or an array; and an error inside a reference or an array (a cell, a range, a union, a
+reference through IF, INDEX, OFFSET or LET, an array constant or a computed array) is not handed on but turned into `#NUM!`,
+ahead of a zero total. A direct error is an error value or a scalar computed from one (`NA()`, `1/0`, `Data!B1+0`,
+`SUM(Data!B1)`) and non-numeric typed text (`"x"`, `""`, both `#VALUE!`).
+So `PERCENTOF(NA(),1/0)` is `#N/A`, `PERCENTOF(1/0,NA())` `#DIV/0!`, `PERCENTOF(Data!B1,NA())` (B1 `#N/A`) `#N/A`,
+`PERCENTOF(Data!B1,"x")` `#VALUE!`, but `PERCENTOF(Data!B1,Data!B2)`, `PERCENTOF(1,Data!B1)`, `PERCENTOF(Data!B1,Data!D1:D2)`
+(a zero total), `PERCENTOF({1,#N/A},4)`, `PERCENTOF({1,2}+NA(),1)`, `PERCENTOF(IF(TRUE,Data!B1),1)` and
+`PERCENTOF(Data!A1,(Data!A1:A2,Data!B1))` are all `#NUM!`; `PERCENTOF(Data!G2,1)` with G2 `#NULL!` too.
+Coercion is SUM's: typed numeric text counts (`"3"`, `" 3 "`, `"1E1"`, `"$5"`, `"50%"`), typed TRUE and FALSE count as 1 and 0;
+text, numeric text and booleans in cells or inside arrays are skipped (`PERCENTOF(Data!C2,6)` with C2 the text "3" is 0,
+`PERCENTOF({"3",1},8)` 0.125, `PERCENTOF({1,TRUE},4)` 0.25, `PERCENTOF(IF(TRUE,Data!C2),6)` 0); a blank cell or an omitted
+argument is 0 (`PERCENTOF(,2)` 0, `PERCENTOF(2,)` `#DIV/0!`). A total of 0 is `#DIV/0!`; the subset need not lie inside
+data_all, and the arguments may have any shapes (`PERCENTOF({1,2;3,4},{1})` = 10, `PERCENTOF(SEQUENCE(3),SEQUENCE(2,2))` = 0.6).
+Ours before T-3653: each argument summed on its own, so the first argument's error came first and an error inside a
+reference or array was handed on (`#N/A`, `#DIV/0!`); ours since: as Excel (`Model::percentof_sums`).
+A 3-D reference is refused as a direct `#VALUE!` in its place, whatever the span holds: `PERCENTOF(S1!A1,S1:S2!A1)`,
+`PERCENTOF(1,S1:S2!B1)`, `PERCENTOF(S1:S2!B1,NA())` and `PERCENTOF(S2!B1,S1:S2!A1)` (S2!B1 `#N/A`) are `#VALUE!`, while
+`PERCENTOF(NA(),S1:S2!A1)` is `#N/A`.
+Evidence (excel-graph, 2026-11-01): probes/t3653-percentof-argument-kinds Calc!A1:A98; probes/t3653-percentof-3d Calc!A1:A11.
+Status: VERIFIED (excel-graph); implemented in `fn_percentof` (T-3653).

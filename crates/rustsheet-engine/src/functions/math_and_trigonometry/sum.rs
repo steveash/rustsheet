@@ -1,9 +1,10 @@
 use crate::calc_result::Range;
+use crate::expressions::parser::is_multi_sheet_span;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::statistical::element_errors::array_element_error;
 use crate::functions::statistical::paired::{marked_number_error, PairedArg};
 use crate::functions::util::aggregate_args::{
-    AggregatePolicy, ArgReading, ErrorRule, GridReading, NestedReading, NumberRules,
+    AggregatePolicy, AggregateWalk, ArgReading, ErrorRule, GridReading, NestedReading, NumberRules,
 };
 
 use crate::{
@@ -259,6 +260,57 @@ impl Model {
             Ok(sum) => CalcResult::finite_number_or_num(sum.snapped(), cell),
             Err(error) => error,
         }
+    }
+
+    /// PERCENTOF's two sums, `(SUM(part), SUM(total))`, read in one walk under SUM's error ranking
+    /// so a direct error in either argument (an error value, non-numeric typed text) wins in
+    /// argument order over any error inside a reference or an array, and such an error is `#NUM!`
+    /// whichever it is: `PERCENTOF(Data!B1,NA())` is `#N/A`, `PERCENTOF(Data!B1,Data!B2)` and
+    /// `PERCENTOF({1,#N/A},4)` are `#NUM!` (numbers.md "PERCENTOF: an error inside a reference or
+    /// array is #NUM!"; probes/t3653-percentof-argument-kinds, excel-graph, T-3653). Each sum
+    /// snaps near zero and overflows to `#NUM!` like SUM. A 3-D reference (`S1:S2!A1`) is refused
+    /// as a direct `#VALUE!` in its place: `PERCENTOF(NA(),S1:S2!A1)` is `#N/A`,
+    /// `PERCENTOF(S2!B1,S1:S2!A1)` with S2!B1 `#N/A` is `#VALUE!` (probes/t3653-percentof-3d).
+    pub(crate) fn percentof_sums(
+        &mut self,
+        part: &Node,
+        total: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<(f64, f64), CalcResult> {
+        let mut walk = AggregateWalk::for_numbers(SUM_ARGS, NumberRules::SUM_LIKE);
+        let mut sums = [SumParts::default(); 2];
+        for (arg, sum) in [part, total].into_iter().zip(sums.iter_mut()) {
+            if is_multi_sheet_span(arg) {
+                return Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "PERCENTOF takes no 3-D reference".to_string(),
+                ));
+            }
+            self.walk_aggregate_arg(arg, cell, &mut walk, &mut |model, source, value| {
+                if let Some(number) =
+                    model.aggregate_number(NumberRules::SUM_LIKE, source, value, cell)?
+                {
+                    sum.add(number);
+                }
+                Ok(())
+            })?;
+        }
+        if walk.finish().is_err() {
+            return Err(CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "Error in a referenced cell or array".to_string(),
+            ));
+        }
+        let [part, total] =
+            sums.map(
+                |sum| match CalcResult::finite_number_or_num(sum.snapped(), cell) {
+                    CalcResult::Number(n) => Ok(n),
+                    error => Err(error),
+                },
+            );
+        Ok((part?, total?))
     }
 
     /// The sum of SUM's arguments, with the two addends of its final addition.
