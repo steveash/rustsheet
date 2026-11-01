@@ -3,7 +3,7 @@ id: T-3654
 title: "FILTER: probe and match the result type for each kind of include, array element and if_empty"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
