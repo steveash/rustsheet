@@ -3,7 +3,7 @@ id: T-3447
 title: "BINOM.DIST and NEGBINOM.DIST at a large n: the 75 probe cells within 5E-12 of Excel but not 15 digits (Loader pmf and basym residue)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -41,3 +41,51 @@ Every cell of probes/t3352-binom-negbinom-large-n is within 15 significant digit
 
 ## Out of scope
 - Bit parity on cells already within 15 digits (Phase 1b, decision 0188 R5).
+
+## Fit attempts (decision 0056)
+### Attempt 1 (2026-11-01): no form; the engine's model stays
+Scored on the 104 pmf cells of probes/t3352-binom-negbinom-large-n against Excel. Each candidate changes only bd0, with
+the other pieces exact (60-digit mpmath):
+
+| candidate | bit-exact | within 4 ulp | within 15 digits |
+|---|---|---|---|
+| engine on `main` (M4 series and the `ph` term) | 13 | 41 | 47 |
+| exact bd0 (the math) | 7 | 34 | 41 |
+| series, `fl(2k fl(v)) - d` (v and ej stored) | 7 | 35 | 42 |
+| series, v and ej at 64 bits, `ej - d` | 6 | 33 | 41 |
+| series, `d v - r(ej)` (v stored) | 7 | 35 | 43 |
+| series, `d v + r(ej)` (v stored) | 6 | 36 | 42 |
+| log form, R in doubles (`k LN(fl(k/M)) + (M - k)`) | 6 | 32 | 33 |
+| log form, ratio and LN at 64 bits, t stored | 6 | 34 | 37 |
+| log form, exact ratio, LN stored | 7 | 35 | 42 |
+
+None beats the engine, so nothing changed in code. The log forms are ruled out: they are up to 9E-8 off at k = 1E9.
+
+Diagnosis (statistics.md "BINOM.DIST and NEGBINOM.DIST at a large n", `docs/research/t3447/pmf_regress.py`):
+- Excel's off-mean error is about |d| 2^-53 (d = k - n p): ±2.4 |d| 2^-53 at most on the probe.
+- A least-squares fit on 704 large-n cells of probes-numeric/t2513-r3-binom-pmf-n (runs of consecutive p) recovers
+  fl(n p) and fl(n q) (coefficients 0.95 and 0.99) and -r(fl(2kv)) (-1.04, -0.88). Those are the engine's terms.
+- It leaves an unexplained rms of 0.77 |d| 2^-53, partly smooth along each run (lag-1 autocorrelation 0.56).
+- Ruled out as that rest: the roundings of v, k + M, s v and M v, and fl(2kv) on a v held at 64 bits (coefficients
+  near 0), and the rounding of d v (a negligible regressor: unstable coefficients and no fall in the residual).
+- The fit on the engine's own values returns its model exactly (residual 0.04), which validates the method.
+
+Next attempt: add candidate regressors to `pmf_regress.py` and keep any whose coefficient is near ±1 and whose
+residual falls well below 0.77. Untested candidates:
+- the series loop's partial sums stored to double, step by step;
+- a different association for the first series term;
+- the stirlerr or lf pieces at a large n held at another precision. They are not d-sized, but the smooth part of the
+  rest suggests a formula difference, not one rounding.
+
+The cdf cells (basym, bfrac, walk tails) were not attempted.
+
+## Outcome
+- Fit attempt 1 found no form, so no engine change and no eval delta. The candidates and counts are under "Fit attempts"
+  above.
+- Recorded in statistics.md ("BINOM.DIST and NEGBINOM.DIST at a large n"):
+  - Excel rounds n p to a double before bd0 (VERIFIED by regression, not a hypothesis any more).
+  - Excel's off-mean pmf error is the engine's fl(n p), fl(n q) and -r(fl(2kv)) terms plus an unidentified rest of
+    rms 0.77 |d| 2^-53.
+  - Script: `docs/research/t3447/pmf_regress.py`.
+- The acceptance criteria are not met. The cells and the second attempt move to T-3774 (the pattern of T-3552 and
+  T-3731).

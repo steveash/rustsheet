@@ -2629,8 +2629,22 @@ within 5.2E-12 of 50-digit mpmath, and on the fresh sweep probes-numeric/t3352-b
 smaller one, Excel's cdf is TOMS 708's `basym` (its asymptotic expansion in the scaled erfc), and its interior pmf is
 Loader's saddle point ("BINOM.DIST pmf: closed forms at k = 0 and k = n, and one kernel with BETA.DIST", "NEGBINOM.DIST
 pmf sits on the shifted binomial kernel"). Excel's off-mean pmf at n = 1E9 is a few 1E-12 off the math
-(`BINOM.DIST(300028982,1000000000,0.3,FALSE)` 4.1E-12). UNVERIFIED hypothesis: n·p is rounded before bd0. Our port of
-that kernel is off by the same order but not by the same amount (up to 4.4E-12 from Excel, T-3447).
+(`BINOM.DIST(300028982,1000000000,0.3,FALSE)` 4.1E-12). Our port of that kernel is off by the same order but not by the
+same amount (up to 4.4E-12 from Excel, T-3447).
+- The off-mean error is roundings of size |d| 2^-53, d = k - n p (T-3447 attempt 1). A least-squares fit of Excel's
+  relative error, in units of |d| 2^-53, on 704 large-n cells of probes-numeric/t2513-r3-binom-pmf-n (runs of
+  consecutive p, n 1E4 to 1E7) gives:
+  - fl(n p) and fl(n fl(1 - p)) with coefficients 0.95 and 0.99: n·p is rounded to a double before bd0 (VERIFIED);
+  - minus the rounding error of fl(2 k v) on each side (-1.04, -0.88) with v = fl(d / fl(k + M)) stored: the term the
+    engine's bd0 series already carries (`loader::excel_bd0_series`);
+  - a further error of rms 0.77 |d| 2^-53 (the error was 1.19 before the fit), partly smooth along each run (lag-1
+    autocorrelation 0.56). It is not the rounding of v, k + M, s v or M v, nor fl(2 k v) on a 64-bit v (coefficients
+    near 0), nor of d v (a negligible regressor: unstable coefficients and no fall in the residual). It is UNVERIFIED
+    and it is what keeps these cells off.
+  - The evidence for these terms is statistical: a fit over the 704 excel-graph cells, not single cells. The fl(n p)
+    coefficient's standard error is about 0.07.
+  - The same fit on the engine's values returns exactly its own model (1, 1, -1, -1, residual 0.04), which checks the
+    method. Script: `docs/research/t3447/pmf_regress.py`.
 - What was wrong (ours before T-3352): past the double-double walk's 2^10 terms both functions fell back to statrs. Its
   pmf, a log-gamma difference, was 1E-11 off at n = 1E4 and 3E-6 at 1E9; its cdf near the mean was grossly wrong from
   n = 6E5 (`BINOM.DIST(300000000,1000000000,0.3,TRUE)` -2.82 against Excel's 0.5000156001249112;
