@@ -87,13 +87,17 @@ below, T-1450), non-ASCII letters (only `ü` is probed; the engine treats every 
     `"ss [s]"`, `"s.0 [s]"`, with or without General. A smaller unit first is valid: `TEXT(12345.678,"s [h]")` =
     "19 472", `TEXT(5,"ss [m] General")` = "00 720 0.5", `TEXT(5,"mm:ss [h] General")` = "00:00 12 0.5". A month `mm`
     is no clock token: `TEXT(5,"mm [h] General")` = "01 12 0.5".
-  - Still unimplemented: fraction digits after `[h]` print (`TEXT(12345.678,"[h].0 General")` = "296296.2 2.500000331",
-    ours `#VALUE!`; T-3575).
+  - **Fraction digits after an hour or minute token** (T-3575). `.0`, `.00` right after `h`, `hh`, `mm` (a minute),
+    `[h]`, `[hh]` or `[m]` is the fraction of the second, as after `s`: `TEXT(12345.678,"[h].0")` = "296296.2",
+    `"[h].00"` "296296.20", `"[m].0"` "17777776.2", `"[hh].0"` "296296.2", `"h.0"` "16.2", `"mm.0"` "16.2",
+    `TEXT(5,"[h].0")` = "120.0", `"[m].0"` "7200.0", `"h.0"` "0.0", `"mm.0"` "00.0",
+    `TEXT(12345.678,"[h].0 General")` = "296296.2 2.500000331", `TEXT(5.25,"[h].0 General")` = "126.0 0.5". The
+    digit is the serial's own tenth of a second, as with `[s].0`.
   - `TEXT(5,"d 0 General")` is `#VALUE!` (a digit placeholder beside a date token), and a literal comma in a date
     section stays a literal: `TEXT(45000,"mmm d, yyyy General")` = "Mar 15, 2023 0.499999803".
   Evidence: probes/t3378-general-in-date-section (64 cells) and t3378-general-in-date-section-1904 (7 cells),
   probes/t3419-elapsed-after-date-general (30 cells), t3419-elapsed-after-date-b (25 cells) and
-  t3419-elapsed-after-clock-c (14 cells), excel-graph 2026-10-31.
+  t3419-elapsed-after-clock-c (14 cells) and t3575-fraction-after-elapsed (15 cells), excel-graph 2026-10-31 and 2026-11-01.
 - A one-section format holding `@` and other text applies General to a number: `TEXT(5,"x@")` = "5".
 Evidence: probes/text-format-bare-literals A1-A31, A57-A76 (excel-graph, 2026-10-15, T-1262); gen-m6/2c1a6e93a1974f48
 Calc!A15, gen-m6/63012866a9d8b7db Calc!A3 (excel-graph, 2026-10-09, T-1239).
