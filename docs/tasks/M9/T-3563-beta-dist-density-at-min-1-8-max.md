@@ -7,13 +7,13 @@ status: todo
 priority: P2
 size: M
 tier: opus
-depends_on: [T-3468]
+depends_on: [T-3569]
 campaign: visible
 ---
 
 ## Goal
 `BETA.DIST(x,a,b,FALSE)` with min(a, b) < 1 < 8 < max(a, b) is within half a unit of the 15th significant digit of
-Excel on the 132 visibly-off cells below. The fix takes the density's lnB from T-3468's model of Excel's algdiv. The
+Excel on the 132 visibly-off cells below. The fix takes the density's lnB from T-3569's model of Excel's algdiv. The
 cells are a few units past the 15th digit (6E-16 to 1.9E-15 relative). They are visibly off only because of the
 cut, but they count in the M9 probes-numeric row and against BETA.DIST's Phase 1 rate.
 
@@ -36,10 +36,10 @@ cut, but they count in the M9 probes-numeric row and against BETA.DIST's Phase 1
   value -4 to +3 ulps off, with no structure in b. TOMS algdiv in doubles, the engine's today, is 2,008 and 1,696
   of 4,000 rows bit-exact. At these shapes |lnB| is about 3 to 9, so each ulp of lnB is about 1E-15 relative in the
   density.
-- Needs the model first. T-3468 (research, item 2) scores x87 storage variants of TOMS algdiv per shape against the
-  156 pinned lnB values, in-sample a first and the hold-out once at the end, and spot-checks the winner on desktop
-  Excel. Without it there is nothing to port: tuning lnB per shape against these cells is the keep-matched branch
-  decision 0056 forbids.
+- Needs the model first. T-3569 (research; T-3468's item 2, split out) scores x87 storage variants of TOMS algdiv
+  per shape against the 156 pinned lnB values, in-sample a first and the hold-out once at the end, and spot-checks
+  the winner on desktop Excel. Without it there is nothing to port: tuning lnB per shape against these cells is the
+  keep-matched branch decision 0056 forbids.
 - Code: `beta_density.rs` (the M2 exponent path and its lnB), bratio/ln_beta.rs (algdiv), in
   crates/rustsheet-engine/src/functions/statistical/.
 - Sibling tasks: T-3528 (the mirror region b < 1 < 8 < a, on its own probe, deferred) and T-3564 (the
@@ -62,11 +62,11 @@ Cells (the visibly-off cells of the two cases; T-3564 owns the rest of each case
 - probes-numeric/t3383-r4-algdiv-a.case.json (1): Calc!D843
 
 ## Acceptance criteria
-- [ ] The engine's lnB for min < 1 < 8 < max is T-3468's model, ported, with the model's counts quoted. On the 132
+- [ ] The engine's lnB for min < 1 < 8 < max is T-3569's model, ported, with the model's counts quoted. On the 132
       cells above, each is within half a unit of Excel's 15th digit (`make eval` per-case deltas in the Outcome), or
       is listed in statistics.md with the model's value and why it misses.
 - [ ] Decision 0188 R4 guards (reviewer-excel-fidelity check 7), in the Outcome: hold-out counts (bit-exact, within
-      4 ulp, within 15 digits) for the chosen lnB model and for the correctly rounded lnB, by T-3468's split
+      4 ulp, within 15 digits) for the chosen lnB model and for the correctly rounded lnB, by T-3569's split
       (the in-sample and hold-out cases above, fixed before scoring); a fresh probes-numeric sweep
       over min < 1 < 8 < max filled after the model is frozen, with its result; the Gate A envelope result on that
       sweep, with any point outside it listed; each fitted piece tagged `FITTED(T-3563, n_cells, range)` and applied
