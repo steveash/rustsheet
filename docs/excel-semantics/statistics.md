@@ -3123,6 +3123,9 @@ within 4 ulp. Two stay far:
 - `BETA.DIST(33587,3,600,TRUE,2000,5489582)` (G5) is the correctly rounded 0.6734553797493481.
   Cephes' fraction loses about 160 ulp there (t = 0.0058, reflected to I_0.994(600,3)), and so do
   Numerical Recipes' fraction and Cephes' power series.
+  The TOMS 708 port leaves it there too (gap triage 2026-11-01): bratio sends (3, 600, 0.0058) to L140 with two bup terms
+  then bgrat, a branch the port does not cover yet, so the old kernel answers. Ours is 0.6734553797493648, 2.5E-14
+  off, against the 50-digit 0.67345537974934809577 (T-3561).
 - `BETA.DIST(0.234,0.0001,0.0001,TRUE,0.15,1.2)` (G26) is 0.4998779049300665, 34 ulp from the
   correctly rounded value. The best combination is 30 ulp off.
 
@@ -3198,6 +3201,14 @@ have no neighbour above. The crossing holds at 155 of the 188:
   flat-row values are not arbitrary points of a flat band; they look like a start that the steps cannot move. At the
   off-crossing rows Excel is the inaccurate side: `BETA.INV(0.05,2.5,100)` (A101, row 98) is 1.3E-14 above the root.
   Both stay far inside 1E-9 of the math (decision 0188 Gate A). Tasks: T-3387 (sweep), T-3388 (fit).
+- Two gated cells sit off the crossing in a way no probe covers yet (ironcalc-calc BETADIST_BETAINV.xlsx, gap triage
+  2026-11-01, mpmath at 50 digits). Both are scaled to a range [A, B].
+  - H26 `BETA.INV(G26,0.0001,0.0001,0.15,1.2)` with G26 = 0.4998779049300665 is 0.2339999999999406. The root at that p
+    is 0.23400000000293818, so Excel is 1.3E-11 relative below it: well past the 15th digit, but inside Gate A. At
+    shapes 1E-4 the cdf is almost flat around 1/2, and one ulp of p moves the root by about 8E-13.
+  - H5 `BETA.INV(G5,3,600,2000,5489582)` with G5 = 0.6734553797493481 (correctly rounded) is 33587.000000000226,
+    6.6E-15 above the root 33587.000000000000409.
+  Tasks: T-3562 (fit), T-3566 (sweep at shapes below 0.01 and over a range).
 Consequence: BETA.INV parity follows BETA.DIST parity (T-1744) plus a solver that usually
 converges to the crossing.
 Which CDF and which end (T-3398, 2026-10-31, scored over gen-m9, ironcalc-calc, probes and probes-numeric against
@@ -3709,6 +3720,11 @@ Tasks: T-1543, T-1634, T-2561, T-3336, T-3337
     to 50), and t2561-chisq-dist-rt-past-edge (CHISQ.DIST.RT and the density up to 7% past each edge). All
     excel-graph, 1,480 cells. The earlier gen-m9 cells agree: 21 cells such as `CHISQ.INV.RT(1E-100,3)` and
     `CHIINV(1E-200,6)` are `#NUM!`, `CHIINV(1E-20,5)` = 103.42897723775795, and df 22 at 1E-100 = 542.4417060011164.
+    Values below the edge are close to correctly rounded (gap triage 2026-11-01). Of the 419 cells of the four edge
+    probes where ours is 1 to 4 ulp off, 80 drawn at random were checked against the 50-digit root of
+    Q(df/2, x/2) = p. Excel is the correctly rounded root at 52 and ours at 24. The largest errors are 2.7E-16 relative
+    for Excel and 1.9E-16 for ours. Example: `CHISQ.INV.RT(1E-20,4)` (t2561-chisq-inv-rt-num-boundary B1) is
+    99.96639597418148 in Excel and 99.9663959741815 in ours. Status: VERIFIED on those 80 cells. T-3565.
   - A quantile below the smallest normal double is 0 (`CHISQ.INV(1E-200,1)`, crossing about 1.6E-400).
 - Excel's gamma quantiles (T-0972, against an mpmath 50-digit reference of the 545 literal-argument CHISQ.INV,
   CHISQ.INV.RT, CHIINV, GAMMA.INV and GAMMAINV cells in eval/, df truncated, df 1 right tail as the lower quantile of
