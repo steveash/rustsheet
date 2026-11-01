@@ -256,6 +256,7 @@ C	probes/convert-temperature-ov22.case.json	1
 C	probes/convert-temperature-prefix-a.case.json	88
 C	probes/convert-temperature-prefix-b.case.json	88
 C	probes/convert-temperature-sweep.case.json	140
+C	probes/correl-inexact-constant-overflow.case.json	68
 C	probes/count-direct-text.case.json	13
 C	probes/counta-empty-value.case.json	26
 C	probes/countblank-array-values.case.json	35

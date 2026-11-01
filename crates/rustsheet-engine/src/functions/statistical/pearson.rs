@@ -1,7 +1,5 @@
 use crate::expressions::types::CellReferenceIndex;
-use crate::{
-    calc_result::CalcResult, expressions::parser::Node, model::Model,
-};
+use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
 impl Model {
     // PEARSON(array1, array2)
