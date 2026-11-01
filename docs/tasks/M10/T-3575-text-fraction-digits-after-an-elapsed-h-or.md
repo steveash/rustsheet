@@ -3,10 +3,10 @@ id: T-3575
 title: "TEXT: fraction digits after an elapsed [h] print (TEXT(12345.678,\"[h].0 General\") is \"296296.2 2.500000331\")"
 milestone: M10
 lane: functions-text
-status: done
+status: todo
 priority: P3
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 campaign: semantics
 ---
@@ -44,3 +44,16 @@ Decisions 0083 and 0114: the cell is `#VALUE!` against text, so the stage is `se
 minute. `m.0`, `mm.0` beside other tokens and `.000` after h/m are unprobed (follow-up: probe them).
 Eval delta: probes known failures 3203 -> 3201 (t3419-elapsed-after-date-b A19 and elapsed-no-seconds-boundary A32
 fixed; the new case is a fully passing C line); no regressions.
+
+## Handoff
+Tried: parser accepts `.0` after any h/m/s token (`takes_second_fraction` in elapsed.rs, used by the `Token::Period`
+arm) and a lone padded `mm.0` reads as a minute (`lone_mm_fraction`). Probe t3575-fraction-after-elapsed (15 cells,
+filled) passes; `make check` green at 561b85d4d (parser.rs is exactly 1000 lines, the ratchet limit).
+Excel-fidelity reviewer requested changes twice. Open findings (round 2):
+- `lone_mm_fraction` only checks nothing precedes `mm`, so `mm.0 yyyy` / `mm.0 d` now print a value (was `#VALUE!`);
+  unprobed. Narrow to nothing after the fraction, or probe those formats.
+- `.000` after h/m/[h] is accepted (limit is still `MAX_SECOND_FRACTION_DIGITS`); only `.0`/`.00` are probed. Cap at 2
+  digits unless the previous token is a seconds token, or probe `.000`.
+- `h:mm.0`, `hh:mm.0`, `h mm.0`, `h:mm.00` now print (unprobed; only `[h]:mm.0` is evidenced). Add them to the probe.
+Next: add probe cells for the above, fill with `rustsheet-oracle fill -b excel-graph --suite probes`, implement what
+Excel does, update number-formats.md, re-run the reviewers. Keep parser.rs <= 1000 lines (move code out if needed).
