@@ -4,6 +4,7 @@
   rustsheet-accuracy generate T.INV [--batch s1]           write a batch's case and math sidecar
   rustsheet-accuracy generate RATE --batch e-T-1234 --count 40 --stratum tail
   rustsheet-accuracy verify T.INV                          recompute committed math at dps 80
+  rustsheet-accuracy math --suite probes-numeric           math sidecars for an eval suite's cells
 
 Then `uv run rustsheet-oracle fill -b excel-graph --suite accuracy` fills Excel's values, and
 `rustsheet-eval accuracy` (run by `make check`) checks the engine against both.
@@ -17,6 +18,7 @@ from pathlib import Path
 
 from rustsheet_tools import repo_root
 from rustsheet_tools.accuracy import defs
+from rustsheet_tools.accuracy.eval_math import write_suite
 from rustsheet_tools.accuracy.model import REGISTRY, Definition
 from rustsheet_tools.accuracy.sampler import STRATA
 from rustsheet_tools.accuracy.tables import draw_points, verify_batch, write_batch
@@ -44,12 +46,26 @@ def main(argv: list[str] | None = None) -> int:
     gen.add_argument("--stratum", choices=STRATA, help="draw every point from one stratum")
     ver = sub.add_parser("verify", help="recompute a function's committed math values")
     ver.add_argument("function")
+    mth = sub.add_parser("math", help="write math sidecars for an eval suite's one-call cells (T-3380)")
+    mth.add_argument("--suite", required=True)
+    mth.add_argument("--workers", type=int, help="processes (default: one per CPU)")
     args = parser.parse_args(argv)
     tables: Path = args.tables or repo_root() / "eval" / "accuracy" / "tables"
 
     if args.command == "list":
         for name in sorted(REGISTRY):
             print(name)
+        return 0
+    if args.command == "math":
+        results = write_suite(args.suite, args.workers)
+        skipped: dict[str, int] = {}
+        for math in results:
+            for reason, n in math.skipped.items():
+                skipped[reason] = skipped.get(reason, 0) + n
+        cases = sum(1 for m in results if m.written)
+        print(f"{args.suite}: {sum(m.written for m in results)} math cells in {cases} cases")
+        for reason, n in sorted(skipped.items()):
+            print(f"  skipped {n}: {reason}")
         return 0
     definition = _definition(args.function)
     if args.command == "generate":

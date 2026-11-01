@@ -1,0 +1,102 @@
+{
+ "check": [
+  "Calc!A1",
+  "Calc!A4"
+ ],
+ "description": "generated arg-pairs seed=0 milestone=M9 DEC2HEX part 2/2: 2 calls over 101 unseen pairs; skipped: none",
+ "expected": {},
+ "format": "rustsheet-case/v1",
+ "sheets": [
+  {
+   "cells": {
+    "A1": 42,
+    "A10": -1,
+    "A11": 123456789.123,
+    "A12": 0,
+    "A2": "TRUE",
+    "A4": 7,
+    "A5": 7,
+    "A6": "TRUE",
+    "A7": "TRUE",
+    "A8": false,
+    "A9": 2,
+    "B1": 1000000000000000.0,
+    "B10": 7,
+    "B11": 1e-15,
+    "B12": 123456789.123,
+    "B3": "a*",
+    "B4": 1.005,
+    "B5": "1",
+    "B6": 1e-15,
+    "B7": 2.5,
+    "B8": "ABC",
+    "B9": 7,
+    "C1": "abc",
+    "C10": 42,
+    "C11": 0.2,
+    "C12": -2.5,
+    "C2": 0,
+    "C3": 0.2,
+    "C4": 2.5,
+    "C5": "1",
+    "C6": false,
+    "C7": -2.5,
+    "C8": 0.5,
+    "C9": -1,
+    "D1": "Hello World",
+    "D10": 1000000000000000.0,
+    "D11": "TRUE",
+    "D2": 3.14159,
+    "D3": 0,
+    "D4": 0.2,
+    "D6": 0.1,
+    "D7": "abc",
+    "D8": -1,
+    "D9": 1000000000000000.0,
+    "E1": 0.1,
+    "E10": 1e-15,
+    "E11": "Hello World",
+    "E12": false,
+    "E2": true,
+    "E3": false,
+    "E4": -2.5,
+    "E5": 1000000000000000.0,
+    "E6": 1.005,
+    "E7": "ABC",
+    "E9": -2.5,
+    "G1": 7,
+    "G2": 0,
+    "G3": -2.5,
+    "G4": 1.5,
+    "G5": {
+     "t": "s",
+     "v": "12"
+    },
+    "G6": {
+     "t": "s",
+     "v": "x"
+    },
+    "G7": "",
+    "G8": false,
+    "G9": {
+     "t": "e",
+     "v": "#DIV/0!"
+    }
+   },
+   "name": "Data"
+  },
+  {
+   "cells": {
+    "A1": "=DEC2HEX(Data!A1:B2,Data!A1:B2)",
+    "A4": "=DEC2HEX(Data!C3:D4,Data!C3:D4)"
+   },
+   "name": "Calc"
+  }
+ ],
+ "tags": [
+  "generated",
+  "arg-pairs",
+  "M9",
+  "DEC2HEX"
+ ]
+}

@@ -227,6 +227,7 @@ mod tests {
             oracle,
             v15: None,
             v15_reason: None,
+            returns: None,
             params: Vec::new(),
         }
     }
@@ -244,6 +245,7 @@ mod tests {
             listed_deviation: false,
             graph_subnormal: false,
             kind: crate::runner::CellKind::Scored,
+            math: None,
         };
         CaseResult {
             cells: vec![cell],

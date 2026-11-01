@@ -66,3 +66,15 @@ leave eval/baseline/gen-m9.txt with the cells above, or the Outcome lists each s
 - gen-m9/a4090567758520df.case.json (1): Calc!A246
 - gen-m9/d5fd9e05e9e6f466.case.json (1): Calc!A30
 - gen-m9/f82473275380882e.case.json (1): Calc!A151
+
+## Cells added by gap triage (2026-10-31m)
+`make eval` on origin/main 900fbc1bf (excel-graph). An ownership check over every failing Excel cell
+(`scripts/exit_owners.py`'s `owned` rule over the open task files of origin/main and of every `origin/agent/*` branch
+pushed since 2026-10-29) found these cells named by no open task. All are within 15 significant digits of Excel (Phase
+1b), so they join this deferred owner of their kernel. POISSON.DIST/POISSON pmfs, 1 to 2 ulp: the t2055 switch probe at
+mean 1.1 (k 8, 10, 20, twice each), t1048's (50, 40, FALSE) pair, POISSON.xlsx D61 and two gen-m9 cells at mean 0.01.
+- probes-numeric/t2055-poisson-pmf-switch.case.json (6): Calc!A43, A64, A85, A113, A120, A127
+- probes-numeric/t1048-poisson.case.json (2): Calc!A14, B14
+- ironcalc-calc/STATISTICAL/POISSON.xlsx (1): POISSON.DIST!D61
+- gen-m9/ede0323c389fc703.case.json (1): Calc!A67
+- gen-m9/1db18890916ee643.case.json (1): Calc!A12

@@ -191,6 +191,17 @@ class Build(unittest.TestCase):
         self.assertEqual((train.deferred, train.ejected), ([], []))
         self.assertEqual(self.git("rev-parse", f"{train.tip}^1"), train.members[-2].merge)
 
+    def test_ejected_candidates_make_room_for_later_ones(self) -> None:
+        # Two candidates conflict with main; the batch still fills to BATCH_MAX from the rest.
+        clashing = [self.pr(self.m0, {"shared.txt": f"one\n{k}\nthree\n"}) for k in range(2)]
+        clean = [self.pr(self.m0, {f"c{k}.txt": "x"}) for k in range(merge_train.BATCH_MAX + 1)]
+        self.git("checkout", "-q", "-f", "--detach", self.m0)
+        self.write("shared.txt", "one\nzwei\nthree\n")
+        main = self.commit("main moves")
+        train = self.build(*clashing, *clean, base=main)
+        self.assertEqual([pr for pr, _ in train.ejected], [1, 2])
+        self.assertEqual([m.pr for m in train.members], list(range(3, 3 + merge_train.BATCH_MAX)))
+
     def test_stacked_and_intra_batch_conflicts_defer_and_main_conflicts_eject(self) -> None:
         first = self.pr(self.m0, {"a.txt": "a", "shared.txt": "one\nTWO\nthree\n"})
         stacked = self.pr(first, {"b.txt": "b"})
@@ -269,6 +280,20 @@ class Build(unittest.TestCase):
 def verdict(pr: int, head: str, at: str, *failures: merge_ready.Failure) -> merge_ready.Verdict:
     mark = merge_ready.Marker(head, None, None, {}, "session-1")
     return merge_ready.Verdict(pr, mark, pr, at, failures)
+
+
+class Candidates(unittest.TestCase):
+    def test_a_run_builds_from_more_ready_prs_than_one_batch(self) -> None:
+        # Ejected or deferred candidates make room for later ones (decision 0206), so a run hands
+        # the build up to CANDIDATES_MAX ready PRs, oldest first, not just the first BATCH_MAX.
+        count = merge_train.CANDIDATES_MAX + 3
+        found = merge_train.Collected(
+            ready=[verdict(pr, f"{pr:040x}", f"2026-10-31T{pr:02d}:00:00Z") for pr in range(1, count + 1)]
+        )
+        heads = merge_train.candidates(found)
+        self.assertGreater(merge_train.CANDIDATES_MAX, merge_train.BATCH_MAX)
+        self.assertEqual([pr for pr, _ in heads], list(range(1, merge_train.CANDIDATES_MAX + 1)))
+        self.assertEqual(heads[0], (1, f"{1:040x}"))
 
 
 class DryRun(unittest.TestCase):
@@ -421,6 +446,9 @@ class GitHub(Client):
         self.bad_tree = False
         self.lose_reply = False
         self.mergeable: object = True
+        # Like GitHub, a PR's test merge stays on the `main` it was computed on until the PR
+        # changes, not when `main` moves (decision 0200).
+        self.test_bases: dict[int, str] = {}
         self.refuse: set[int] = set()
         self.unlabelled: set[int] = set()
         self.closed: list[int] = []  # closed PRs still labelled ready-to-merge
@@ -444,7 +472,7 @@ class GitHub(Client):
         return self.git("rev-parse", "refs/heads/main")
 
     def test_merge(self, pr: int) -> str:
-        main, head = self.main(), self.heads[pr]
+        main, head = self.test_bases.get(pr) or self.main(), self.heads[pr]
         if self.bad_tree:  # a test merge on the right parent whose tree is not the train's
             tree = self.git("rev-parse", f"{main}^{{tree}}")
         else:
@@ -748,11 +776,43 @@ class MergeStage(StageFixture):
         self.assertEqual(self.gh.merged, [])
         self.assertIn("P0: main moved without the lock before the first squash", self.stage.log)
 
-    def test_a_merge_ref_that_is_never_recomputed_stops(self) -> None:
+    def test_a_stale_test_merge_is_replaced_by_the_local_merge(self) -> None:
+        # GitHub leaves #2's test merge on the main before #1's squash (decision 0200).
+        self.gh.test_bases[2] = self.gh.main()
+        self.assertEqual(self.run_stage(), 0, self.stage.log)
+        self.assertEqual(self.gh.merged, [1, 2])
+        self.assertTrue(any(line.startswith("#2: GitHub's test merge is stale") for line in self.stage.log))
+        self.assertFalse(any(line.startswith("#1: GitHub's test merge is stale") for line in self.stage.log))
+
+    def test_a_test_merge_still_computing_is_replaced_by_the_local_merge(self) -> None:
         self.gh.mergeable = None
-        self.assertEqual(self.run_stage(), 1)
-        self.assertEqual(self.gh.merged, [])
-        self.assertIn("was not recomputed", self.stage.log[-1])
+        self.assertEqual(self.run_stage(), 0, self.stage.log)
+        self.assertEqual(self.gh.merged, [1, 2])
+
+    def test_a_stale_test_merge_whose_local_merge_has_another_tree_stops_with_a_p0(self) -> None:
+        # #1's test merge is stale. The train's merge for it is deliberately wrong (#2's head), so
+        # the local merge of #1 onto main has another tree.
+        self.git("fetch", "-q", "origin", "refs/pull/1/head", "refs/pull/2/head")
+        self.gh.test_bases[1] = self.heads[2]
+        member = merge_train.Member(1, self.heads[1], merge=self.heads[2])
+        with self.assertRaises(merge_train.Stop) as stop:
+            self.stage.pre_squash(member, self.m0)
+        self.assertTrue(stop.exception.p0)
+        self.assertIn("its merge onto", str(stop.exception))
+
+    def test_a_stale_test_merge_whose_local_merge_conflicts_stops(self) -> None:
+        self.git("fetch", "-q", "origin", "refs/pull/1/head")
+        self.git("checkout", "-q", "-f", "--detach", self.m0)
+        self.write("f1.txt", "other")
+        clash = self.commit("clash")
+        self.git("checkout", "-q", "-f", "main")
+        self.gh.test_bases[1] = self.heads[2]
+        member = merge_train.Member(1, self.heads[1], merge=self.heads[1])
+        with mock.patch.object(merge_train, "remote_sha", return_value=clash):
+            with self.assertRaises(merge_train.Stop) as stop:
+                self.stage.pre_squash(member, clash)
+        self.assertFalse(stop.exception.p0)
+        self.assertIn("does not merge cleanly", str(stop.exception))
 
     def test_a_lost_lock_merges_nothing_more(self) -> None:
         # Renewals: after the push, before step 7, before squash 1, before squash 2.

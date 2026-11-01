@@ -25,6 +25,9 @@ A6, A7 (type 0, rates 6E-5 to 1.5E-4, periods 3-10; x is -3 to +1 ulps from ours
 CUMPRINC G2); CUMPRINC_CUMIPMT.xlsx G2, G3; gen-m9 6e18550e9fc9c1b9 A329, 79d87fc527927626 A352.
 T-3118's regressed cells are listed in decision 0197. The probes that pair the two functions
 (tiny-rate-structure) carry CUMPRINC's own expected values for the fit.
+The rest of tiny-rate-structure (37 visibly-off CUMIPMT cells and their CUMPRINC partners, all but F2 and G2) is
+T-3552's (gap triage 2026-10-31k). Both tasks change the same short-range CUMPRINC form, so the one that lands second
+starts by re-measuring its cells on the first one's main.
 
 Added by gap triage 2026-10-31: the other visibly-off CUMIPMT cells of tiny-rate-structure have the same cause. Each
 column-A CUMIPMT sits beside our column-B CUMPRINC, which is 1-2 ulps from Excel's (A10 `CUMIPMT(2E-5,100,100000,12,12,1)`

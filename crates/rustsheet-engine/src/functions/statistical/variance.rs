@@ -80,11 +80,13 @@ pub(crate) fn excel_variance(values: &[f64], kind: VarianceKind) -> f64 {
 }
 
 impl Model {
-    /// VAR.P / VAR.S / STDEV.P / STDEV.S (and AGGREGATE 7, 8, 10, 11) of the numbers
-    /// `for_each_value` yields.
+    /// VAR.P / VAR.S / STDEV.P / STDEV.S (and AGGREGATE 7, 8, 10, 11, whose arguments arrive as
+    /// numbers) of the numbers [`Model::for_each_value_with`] yields, an array of references read
+    /// as `grids` says.
     pub(crate) fn variance_of_values(
         &mut self,
         args: &[Node],
+        grids: GridReading,
         cell: CellReferenceIndex,
         kind: VarianceKind,
         std_dev: bool,
@@ -94,7 +96,8 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let mut values = Vec::new();
-        if let Err(error) = self.for_each_value(args, cell, |value| values.push(value)) {
+        if let Err(error) = self.for_each_value_with(args, grids, cell, |value| values.push(value))
+        {
             return error;
         }
         variance_result(&values, kind, std_dev, name, cell)
@@ -126,11 +129,28 @@ impl Model {
     }
 
     pub(crate) fn fn_var_p(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.variance_of_values(args, cell, VarianceKind::Population, false, "VAR.P")
+        // Unprobed over an array of references: the value view.
+        self.variance_of_values(
+            args,
+            GridReading::Values,
+            cell,
+            VarianceKind::Population,
+            false,
+            "VAR.P",
+        )
     }
 
     pub(crate) fn fn_var_s(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.variance_of_values(args, cell, VarianceKind::Sample, false, "VAR.S")
+        // probes/t2065-lift-vars, probes/t2816-lift-vars (T-2824); legacy VAR shares this reading,
+        // UNVERIFIED (T-3533).
+        self.variance_of_values(
+            args,
+            GridReading::TopLeft,
+            cell,
+            VarianceKind::Sample,
+            false,
+            "VAR.S",
+        )
     }
 
     pub(crate) fn fn_vara(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

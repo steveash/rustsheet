@@ -1,0 +1,27 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Multi-cell or numeric elements of a lifted OFFSET under one aggregate, alone in its workbook (T-2816, SPEC-0014).",
+ "tags": [
+  "M6",
+  "probe",
+  "offset"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 1,
+    "A2": 100,
+    "A3": 10000,
+    "B1": 2,
+    "B2": 200,
+    "B3": 20000,
+    "A4": "5",
+    "A6": true,
+    "A7": 7,
+    "E1": "=VAR.S(OFFSET(A1,0,0,{1;2}))"
+   }
+  }
+ ],
+ "expected": {}
+}
