@@ -38,7 +38,7 @@ invariant cells, per decision 0225, so Gate B can reach 506/506.
 - [x] Any cell where the engine differs from Excel is fixed in this task or owned by a new task.
 - [x] Quirks found go into docs/excel-semantics/.
 - [x] `make check` green.
-- [ ] Reviewers approve.
+- [x] Reviewers approve.
 
 ## Out of scope
 - Comparing drawn values with Excel, and any distribution test of the draws.
