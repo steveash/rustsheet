@@ -3,7 +3,7 @@ id: T-3701
 title: "CI skips the Rust test shards for PRs that change no Rust input"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
