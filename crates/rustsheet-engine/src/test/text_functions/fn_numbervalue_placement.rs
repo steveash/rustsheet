@@ -43,7 +43,11 @@ fn tab_line_feed_and_carriage_return_are_removed_other_controls_are_not() {
         ("A3", r#"=NUMBERVALUE("1"&CHAR(13)&"234.5")"#, "1234.5"),
         ("A4", r#"=NUMBERVALUE("1"&CHAR(11)&"234")"#, "#VALUE!"),
         ("A5", r#"=NUMBERVALUE("1"&CHAR(160)&"234.5")"#, "#VALUE!"),
-        ("A6", r#"=NUMBERVALUE("1"&UNICHAR(12288)&"234.5")"#, "#VALUE!"),
+        (
+            "A6",
+            r#"=NUMBERVALUE("1"&UNICHAR(12288)&"234.5")"#,
+            "#VALUE!",
+        ),
         ("A7", r#"=NUMBERVALUE("12:30"&CHAR(10)&"PM")"#, "#VALUE!"),
         ("A8", r#"=NUMBERVALUE(CHAR(9)&CHAR(13))"#, "0"),
     ]);

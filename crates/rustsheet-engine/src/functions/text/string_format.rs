@@ -481,7 +481,9 @@ fn proper_case(s: &str) -> String {
 /// group separators only before the decimal separator"; probes/t3647-numbervalue-separator-placement
 /// rows 3, 22-27, 37, 39-41, probes/t3647-numbervalue-percent-and-controls A17-A29).
 fn numbervalue_text(text: &str, decimal_sep: char, group_sep: char) -> String {
-    let (head, tail) = text.find(decimal_sep).map_or((text, ""), |i| text.split_at(i));
+    let (head, tail) = text
+        .find(decimal_sep)
+        .map_or((text, ""), |i| text.split_at(i));
     head.chars()
         .filter(|&c| c != group_sep)
         .chain(tail.chars())
@@ -549,4 +551,3 @@ mod tests {
         assert!(text.starts_with("17976931348623200000"));
     }
 }
-
