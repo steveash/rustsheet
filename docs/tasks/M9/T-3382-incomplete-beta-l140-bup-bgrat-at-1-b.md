@@ -55,8 +55,22 @@ Legendre's continued fraction (no grat1) and ln Gamma(b) from `ln_gamma_1p_small
 Eval, the 3,070 L140 cdf cells of t2464-w2f-absweep, -xruns-1 and -xruns-2 that change: bit-exact 26 -> 278, within
 15 digits 342 -> 3,037 (absweep 38 -> 1,008 of 1,023, xruns-1 63 -> 1,006 of 1,024, xruns-2 241 -> 1,023 of 1,023).
 Two cells leave 15 digits by under 2 ulp, ours nearer the exact value than Excel's (listed in statistics.md
-"L140 bup+bgrat at 1 < b < 2"). No gated cell moved (`make eval-check`: 0 regressions, 0 fixed in every gated suite). Not a fit: a fixed
-composition from T-2512's research, no constants chosen by score. Follow-up: n > 1 terms stay T-3383's.
+"L140 bup+bgrat at 1 < b < 2"). No gated cell moved (`make eval-check`: 0 regressions, 0 fixed in every gated suite). No constant is chosen by score,
+but W's rounding (one register rounding against two stored ops) and the density's orientation were picked by ranking
+candidates on Excel cells, so R4's structural-model guards apply (decision 0188 R4, no `FITTED` tag):
+- Hold-out (T-2512's md5-odd split, fixed before scoring; `docs/research/t2464/r3-bgrat/bupdens.out`): register form,
+  bup orientation 1,306/1,613/1,613 (tune 1,209/1,459) against two stored ops 1,046 and the caller's orientation 672.
+  The margin was not named before scoring.
+- Fresh sweep after the freeze: probes-numeric t3382-l140-sweep (seed 33820, 300 points log-uniform over the whole branch,
+  a0 in (15, 1E4], 1 < b0 < 2, x0 > 0.7, z in [0.5, 700], half swapped; generator `docs/research/t3382/gen_sweep.py`),
+  excel-graph. Exact / within 4 ulp / within 15 digits: main 75/108/121, HEAD 163/271/295. One cell leaves 15 digits
+  (A36, listed in statistics.md); the 5 still visibly off are A6 (z > 650, today's kernel, unchanged) and A36, A76,
+  A208, A251, each nearer Excel than before except A36.
+- Gate A envelope (no BETA.DIST table, so on the sweep against 50-digit mpmath `betainc`, as T-3443 did): all 300 cells
+  inside (within 15 digits of Excel or within 1E-9 of the math); the largest relative error against the math is 4.1E-13
+  for Excel and for ours. Follow-ups: n > 1 terms stay T-3383's; T-3766 folds `large_shape_beta.rs`'s double fraction and series onto
+this core (quality review). Also carries T-3753 (filed from #2769's review on this branch by the earlier run; a task file only,
+kept here so it is not lost).
 
 Every other case checked against the branch's base (`rustsheet-eval show --all` on both binaries, the 375 cases of
 every suite whose formulas name BETA or a Student t function): besides the three w2f cases only probes

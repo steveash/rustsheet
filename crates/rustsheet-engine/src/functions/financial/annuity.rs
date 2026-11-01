@@ -10,7 +10,7 @@
 use super::financial_util::compute_rate;
 use super::{formula_error, number_or_error};
 use crate::functions::lift::{div_error, num_error};
-use crate::x87_exp::{dd_add, dd_div, dd_mul, excel_exp, excel_expm1, two_sum};
+use crate::x87_exp::{dd_add, dd_div, dd_mul, dd_neg, excel_exp, excel_expm1, two_sum};
 use crate::x87_log10::excel_ln;
 use crate::x87_register::Register;
 use crate::{
@@ -115,10 +115,6 @@ fn accurate_type_factor(rate: f64, period_start: bool) -> Pair {
     }
 }
 
-fn negated((hi, lo): Pair) -> Pair {
-    (-hi, -lo)
-}
-
 /// PMT `-(fv + pv*P)*rate / (k*(P-1))` in double-double arithmetic, or `None` where
 /// [`accurate_growth`] declines or the payment is not finite (the double forms then decide).
 fn accurate_payment(rate: f64, nper: f64, pv: f64, fv: f64, period_start: bool) -> Option<Pair> {
@@ -131,7 +127,7 @@ fn accurate_payment(rate: f64, nper: f64, pv: f64, fv: f64, period_start: bool) 
     if denominator.0 == 0.0 {
         return None;
     }
-    let payment = negated(dd_div(numerator, denominator));
+    let payment = dd_neg(dd_div(numerator, denominator));
     payment.0.is_finite().then_some(payment)
 }
 
@@ -161,7 +157,7 @@ fn accurate_period_split(
     let balance = dd_div(
         dd_add(
             dd_mul(dd_mul((pv, 0.0), p_e), one_less(p_rest)),
-            negated(dd_mul((fv, 0.0), one_less(p_e))),
+            dd_neg(dd_mul((fv, 0.0), one_less(p_e))),
         ),
         periods,
     );
@@ -170,8 +166,8 @@ fn accurate_period_split(
     } else {
         balance
     };
-    let interest = negated(dd_mul(owed, (rate, 0.0)));
-    let principal = negated(dd_div(
+    let interest = dd_neg(dd_mul(owed, (rate, 0.0)));
+    let principal = dd_neg(dd_div(
         dd_mul(dd_mul(two_sum(pv, fv), (rate, 0.0)), p_e),
         periods,
     ));
@@ -274,7 +270,7 @@ fn discounted_principal(
             dd_mul((hi * scale, lo * scale), (rate, 0.0)),
             (discount, 0.0),
         );
-        let mut principal = negated(dd_div(owed, (periods, 0.0)));
+        let mut principal = dd_neg(dd_div(owed, (periods, 0.0)));
         if period_start {
             principal = dd_div(principal, two_sum(1.0, rate));
         }
@@ -351,7 +347,7 @@ fn balance_interest(
     (pv, fv): (f64, f64),
     period_start: bool,
 ) -> Option<(f64, bool)> {
-    let one_minus = |x: Pair| dd_add((1.0, 0.0), negated(x));
+    let one_minus = |x: Pair| dd_add((1.0, 0.0), dd_neg(x));
     let remaining = one_minus(accurate_discount(rate, period - 1.0 - nper)?);
     let periods = one_minus(accurate_discount(rate, -nper)?);
     if periods.0 == 0.0 {
@@ -377,9 +373,9 @@ fn balance_interest(
         // non-finite fallback and CUMIPMT's exact sum, TODO(T-3179).
         -balance.0 * (rate / (1.0 + rate))
     } else if period_start {
-        dd_div(negated(dd_mul(balance, (rate, 0.0))), two_sum(1.0, rate)).0
+        dd_div(dd_neg(dd_mul(balance, (rate, 0.0))), two_sum(1.0, rate)).0
     } else {
-        negated(dd_mul(balance, (rate, 0.0))).0
+        dd_neg(dd_mul(balance, (rate, 0.0))).0
     };
     interest.is_finite().then_some((interest, cancels))
 }

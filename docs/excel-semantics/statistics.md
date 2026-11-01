@@ -3180,7 +3180,15 @@ Rule: the entries above assembled in one TOMS 708 port (Excel's EXP, LN, GAMMALN
   the 3,070 cells it moves are 278 bit-exact and 3,037 within 15 digits (before: 26 and 342). Two cells
   leave 15 digits by under 2 ulp, each nearer the true value than Excel's (xruns-1 Calc!A9161: Excel
   0.00691741571126998, ours 0.006917415711269989, exact 0.0069174157112699826; A8909: 0.006917415711266625,
-  0.00691741571126663, exact 0.0069174157112666308). n > 1 bup terms stay on today's kernel (T-3383).
+  0.00691741571126663, exact 0.0069174157112666308). Fresh sweep after the freeze (probes-numeric
+  t3382-l140-sweep, 300 points log-uniform over the branch: a0 in (15, 1E4], 1 < b0 < 2, x0 > 0.7, z in [0.5, 700]):
+  exact / within 4 ulp / within 15 digits 75/108/121 to 163/271/295. One cell leaves 15 digits, A36
+  `BETA.DIST(0.885631573415804,910.722,1.7794281028534,TRUE)`: Excel 3.7274833320668723E-47, before
+  3.727483332066869E-47, ours 3.7274833320668655E-47, exact 3.7274833320668205E-47 (Excel and ours each about
+  1.4E-14 off the math). These cells stay Excel-targeted: the residual is the density's algdiv lnB and D's last bits
+  (T-3383), not a licence. W rounds once in a register here where `bup`'s other callers store twice
+  (fl(fl(P·fl(xy))/b0)): on this branch the register form wins the hold-out, 1,306 of 1,613 bit-exact against 1,046
+  (`bupdens.out`). n > 1 bup terms stay on today's kernel (T-3383).
 - **Why TOMS bgrat lost at b ≠ 1/2 (T-2512).** TOMS passes bgrat's 15·eps = 15e-15 to grat1, whose continued fraction
   (z >= 1.1 on every such cell) stops tens of ulps short. On 2,908 direct bgrat cells (t2512-r3-bgrat-split):
   - TOMS in doubles with Excel's pieces scores 13/142/162, and 139/1,263/1,834 at eps 1e-15.

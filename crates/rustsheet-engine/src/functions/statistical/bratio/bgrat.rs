@@ -16,7 +16,7 @@ use super::super::beta_density::ALGDIV_C;
 use super::super::erf::{erf, erfc};
 use super::super::half_integer_beta::FRAC_1_SQRT_PI;
 use super::super::incomplete_gamma::ln_gamma_1p_small;
-use crate::x87_exp::{dd_add, dd_div, dd_div_small, dd_exp, dd_mul, dd_sqrt, two_sum};
+use crate::x87_exp::{dd_add, dd_div, dd_div_small, dd_exp, dd_mul, dd_neg, dd_sqrt, two_sum};
 use crate::x87_log10::{excel_ln, ln_double_double};
 use crate::x87_log1p::excel_log1p;
 use crate::x87_register::Register;
@@ -85,13 +85,13 @@ pub(super) fn bgrat_increment(a: f64, b: f64, x: f64, y: f64) -> Option<Dd> {
         }
         // r = b z^b e^-z / Gamma(b + 1) = exp(b ln z - z - ln Gamma(b)).
         let ln_gamma = if b < 0.5 {
-            dd_add((ln_gamma_1p_small(b), 0.0), negate(ln_double_double(b)))
+            dd_add((ln_gamma_1p_small(b), 0.0), dd_neg(ln_double_double(b)))
         } else {
             (ln_gamma_1p_small(b - 1.0), 0.0)
         };
         let exponent = dd_add(
             dd_add(dd_mul((b, 0.0), ln_double_double(z)), (-z, 0.0)),
-            negate(ln_gamma),
+            dd_neg(ln_gamma),
         );
         Some((dd_exp(exponent), upper_gamma_fraction(b, z)?))
     })
@@ -100,6 +100,12 @@ pub(super) fn bgrat_increment(a: f64, b: f64, x: f64, y: f64) -> Option<Dd> {
 /// Q(b, z)·Gamma(b)·e^z·z^-b for z >= [`MIN_CF_Z`], by Legendre's continued fraction
 /// 1/(z + 1 - b - 1(1 - b)/(z + 3 - b - 2(2 - b)/(z + 5 - b - ...))) in double-double (modified
 /// Lentz); `None` if it has not converged in [`MAX_CF_TERMS`] terms.
+///
+/// `large_shape_beta.rs` `legendre_fraction` is the same fraction in doubles (and its
+/// `correction_series` the same sum as [`asymptotic_sum`]); its error of about an ulp is too wide
+/// here, where the increment must land within an ulp or two of the accurate value to round as
+/// Excel's does (RESULTS.md finding 3), so this one runs in double-double. Folding the double
+/// stand-in onto this core is T-3766.
 fn upper_gamma_fraction(b: f64, z: f64) -> Option<Dd> {
     let tiny = (1e-300, 0.0);
     let mut f = dd_add((z + 1.0, 0.0), (-b, 0.0));
@@ -125,11 +131,6 @@ fn upper_gamma_fraction(b: f64, z: f64) -> Option<Dd> {
         }
     }
     None
-}
-
-/// -v for a double-double v.
-fn negate(v: Dd) -> Dd {
-    (-v.0, -v.1)
 }
 
 /// bgrat in double-double: `w + u·(J_0 + sum d_n J_n)`, with lnx and z stored as Excel stores them
@@ -161,7 +162,7 @@ fn bgrat_dd(
     // u = r e^-(algdiv(b, a) + b ln nu).
     let ln_nu = dd_add(ln_double_double(nu.0), (nu.1 / nu.0, 0.0));
     let exponent = dd_add(algdiv_small(b, a), dd_mul((b, 0.0), ln_nu));
-    let u = dd_mul(r, dd_exp(negate(exponent)));
+    let u = dd_mul(r, dd_exp(dd_neg(exponent)));
     if u.0 == 0.0 || !u.0.is_finite() {
         return None;
     }
@@ -241,7 +242,7 @@ fn algdiv_small(b: f64, a: f64) -> Dd {
     let ln_a = ln_double_double(a);
     let v = dd_add(dd_mul((b, 0.0), ln_a), (-b, 0.0));
     let uv = dd_add(u, v);
-    dd_add(w, (-uv.0, -uv.1))
+    dd_add(w, dd_neg(uv))
 }
 
 /// ln(1 + h) in double-double for a small positive double-double h: ln of the double 1 + h plus
