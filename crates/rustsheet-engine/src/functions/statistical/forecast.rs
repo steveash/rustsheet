@@ -67,56 +67,44 @@ impl Model {
     }
 
     /// The cells of `values` or `timeline` in reading order (an error cell is the error), or `#NUM!`
-    /// for more than [`ets::MAX_POINTS`] cells, read before any is evaluated.
-    fn ets_points(&mut self, value: &CalcResult) -> Result<Vec<Point>, Error> {
-        Ok(match value {
+    /// for more than [`ets::MAX_POINTS`] cells, checked before any is read. A range is read by
+    /// [`Model::evaluate_range`], which charges its cells to the formula's budget.
+    fn ets_points(
+        &mut self,
+        value: &CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Point>, CalcResult> {
+        let too_many = || CalcResult::new_error(Error::NUM, cell, String::new());
+        match value {
             CalcResult::Range { left, right } => {
                 if left.sheet != right.sheet {
-                    return Err(Error::VALUE);
+                    return Err(CalcResult::new_error(Error::VALUE, cell, String::new()));
                 }
-                let rows = usize::try_from(right.row - left.row + 1).unwrap_or(0);
-                let columns = usize::try_from(right.column - left.column + 1).unwrap_or(0);
+                let (rows, columns) = value.shape();
                 if rows.saturating_mul(columns) > ets::MAX_POINTS {
-                    return Err(Error::NUM);
+                    return Err(too_many());
                 }
-                let mut points = Vec::with_capacity(rows * columns);
-                for row in left.row..=right.row {
-                    for column in left.column..=right.column {
-                        let position = CellReferenceIndex {
-                            sheet: left.sheet,
-                            row,
-                            column,
-                        };
-                        points.push(match self.evaluate_cell(position) {
-                            CalcResult::Number(number) => Point::Number(number),
-                            CalcResult::EmptyCell | CalcResult::EmptyArg => Point::Blank,
-                            CalcResult::Error { error, .. } => return Err(error),
-                            _ => Point::Other,
-                        });
-                    }
-                }
-                points
+                let nodes = self.evaluate_range(*left, *right, cell)?;
+                nodes
+                    .iter()
+                    .flatten()
+                    .map(|node| array_point(node, cell))
+                    .collect()
             }
             CalcResult::Array(rows) => {
-                let mut points = Vec::new();
-                for node in rows.iter().flatten() {
-                    points.push(match node {
-                        ArrayNode::Number(number) => Point::Number(*number),
-                        ArrayNode::Empty => Point::Blank,
-                        ArrayNode::Error(error) => return Err(error.clone()),
-                        _ => Point::Other,
-                    });
-                    if points.len() > ets::MAX_POINTS {
-                        return Err(Error::NUM);
-                    }
+                if rows.iter().map(Vec::len).sum::<usize>() > ets::MAX_POINTS {
+                    return Err(too_many());
                 }
-                points
+                rows.iter()
+                    .flatten()
+                    .map(|node| array_point(node, cell))
+                    .collect()
             }
-            CalcResult::Number(number) => vec![Point::Number(*number)],
-            CalcResult::EmptyCell | CalcResult::EmptyArg => vec![Point::Blank],
-            CalcResult::Error { error, .. } => return Err(error.clone()),
-            _ => vec![Point::Other],
-        })
+            CalcResult::Number(number) => Ok(vec![Point::Number(*number)]),
+            CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(vec![Point::Blank]),
+            CalcResult::Error { .. } => Err(value.clone()),
+            _ => Ok(vec![Point::Other]),
+        }
     }
 
     /// The FORECAST.ETS family's call: the argument step Excel takes before it forecasts, then
@@ -137,18 +125,18 @@ impl Model {
         element: fn(&mut EtsData, &[Option<f64>]) -> Result<f64, Error>,
     ) -> CalcResult {
         let mut direct_errors: [Option<CalcResult>; 2] = [None, None];
-        let mut points: [Result<Vec<Point>, Error>; 2] = [Ok(Vec::new()), Ok(Vec::new())];
+        let mut points: [Result<Vec<Point>, CalcResult>; 2] = [Ok(Vec::new()), Ok(Vec::new())];
         for ((slot, read), &index) in direct_errors.iter_mut().zip(&mut points).zip(&whole) {
             if let Some(node) = args.get(index) {
                 let value = self.evaluate_node_with_reference(node, cell);
                 if value.is_error() {
                     *slot = Some(value);
                 } else {
-                    *read = self.ets_points(&value);
+                    *read = self.ets_points(&value, cell);
                 }
             }
         }
-        let [values, timeline] = points;
+        let [values, timeline] = points.map(|read| read.map_err(|error| error_kind(&error)));
         let mut data = EtsData::new(values, timeline);
         self.lift_call(kind, args, cell, &mut |model, values| {
             let mut settings = vec![None; values.len()];
@@ -293,4 +281,25 @@ fn seasonality_element(data: &mut EtsData, settings: &[Option<f64>]) -> Result<f
 /// The members not implemented yet (T-3600, T-3601).
 fn not_implemented(_: &mut EtsData, _: &[Option<f64>]) -> Result<f64, Error> {
     Err(Error::NIMPL)
+}
+
+/// One element of a `values` or `timeline` array or range as the series reads it; an error element
+/// is that error.
+fn array_point(node: &ArrayNode, cell: CellReferenceIndex) -> Result<Point, CalcResult> {
+    Ok(match node {
+        ArrayNode::Number(number) => Point::Number(*number),
+        ArrayNode::Empty => Point::Blank,
+        ArrayNode::Error(error) => {
+            return Err(CalcResult::new_error(error.clone(), cell, String::new()))
+        }
+        _ => Point::Other,
+    })
+}
+
+/// The error kind of an error result (`#VALUE!` for anything else, which the readers never give).
+fn error_kind(result: &CalcResult) -> Error {
+    match result {
+        CalcResult::Error { error, .. } => error.clone(),
+        _ => Error::VALUE,
+    }
 }
