@@ -294,7 +294,10 @@ mod tests {
             "sheets":{"Calc":{"A1":{"t":"n","v":"1.5","f":"X()"}}},
             "skipped":{"Calc":{"A2":{"f":"=Y(1)","why":"no single value"}}}}"#;
         let t = MathTable::parse(text).expect("a skipped map parses");
-        assert!(matches!(t.attach("Calc", at("A1"), Some("X()")), Attached::Value(_)));
+        assert!(matches!(
+            t.attach("Calc", at("A1"), Some("X()")),
+            Attached::Value(_)
+        ));
         assert_eq!(t.attach("Calc", at("A2"), Some("=Y(1)")), Attached::Missing);
     }
 
