@@ -162,3 +162,28 @@ fn forecast_ets_family_first_failing_argument_decides() {
         );
     }
 }
+
+// The model's error order (T-3599, UNVERIFIED, decision 0221; statistics.md "FORECAST.ETS
+// family: the model before Excel evidence" steps 2 to 5): an out-of-range setting, then an
+// error element, then different sizes, then text.
+#[test]
+fn forecast_ets_seasonality_error_order() {
+    let mut model = new_empty_model();
+    let cells = [
+        ("=FORECAST.ETS.SEASONALITY({1,#DIV/0!},{1,2,3},2)", "#NUM!"),
+        ("=FORECAST.ETS.SEASONALITY({1,#DIV/0!},{1,2,3})", "#DIV/0!"),
+        ("=FORECAST.ETS.SEASONALITY({1,\"a\"},{1,2,3})", "#N/A"),
+        ("=FORECAST.ETS.SEASONALITY({1,\"a\",3},{1,2,3})", "#VALUE!"),
+    ];
+    for (row, (formula, _)) in cells.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, expected)) in cells.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("A{}", row + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
+}

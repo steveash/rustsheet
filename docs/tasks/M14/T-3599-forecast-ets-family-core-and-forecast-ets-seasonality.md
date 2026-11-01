@@ -3,7 +3,7 @@ id: T-3599
 title: "FORECAST.ETS family core and FORECAST.ETS.SEASONALITY: adapt gridcraft's AAA series and season detection (owner ruling, unverified against Excel)"
 milestone: M14
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -39,3 +39,12 @@ the member's computation).
 ## Out of scope
 - FORECAST.ETS's fit and forecast (T-3600); CONFINT and STAT (T-3601).
 - Matching desktop Excel (T-2425, after T-1553).
+
+## Outcome
+FORECAST.ETS.SEASONALITY computes gridcraft's season detection on a shared series core (statistical/ets.rs, adapted
+with its MIT notice, NOTICE updated) under decision 0221's owner ruling; FORECAST.ETS, CONFINT and STAT stay
+`#N/IMPL!` (T-3600, T-3601). Eval: 275 cells fixed (gen-m9 274, probes 1), 0 regressions; every one is a
+SEASONALITY call whose `values` and `timeline` differ in size, `#N/A` like the web, so none is evidence for the model.
+On probes/forecast-ets-longer-series the period-4 series gives 4 (web `#N/A`, still known failures). statistics.md
+records the model and its error order (UNVERIFIED) and the work caps (DEVIATION). Review: duplicated range reading and
+gcd replaced by `evaluate_range` and `gcd_i64`; the error order documented as the code takes it, pinned by a test.

@@ -1584,20 +1584,22 @@ Tasks: T-1293, T-1553, T-2028 (the text `target_date` and the lifting cells)
 ## FORECAST.ETS family: the model before Excel evidence
 Rule (UNVERIFIED, owner ruling, decision 0221): once the argument step passes (the T-2255 section), the family computes
 the AAA exponential-smoothing model as gridcraft implements it (Hyndman, Koehler, Ord & Snyder 2008). Steps and
-errors, in order:
-- `data_completion` (default 1) truncates to 1 (a missing point is the straight line between its known neighbours,
-  or the nearest known value at an end) or 0 (a missing point is zero). `aggregation` (default 1) truncates to
-  0 or 1 AVERAGE, 2 COUNT, 3 COUNTA, 4 MAX, 5 MEDIAN, 6 MIN or 7 SUM, which combines values that share a time stamp.
-  Anything else is `#NUM!`.
-- `values` and `timeline` pair in reading order. Different cell counts are `#N/A`, which Microsoft's documentation
-  states. An error cell in either is that error. A value or time stamp that is text or a boolean is `#VALUE!`. A
-  row with both blank is skipped, and a blank value with a time stamp is a missing point.
-- The distinct time stamps (at least two, or `#NUM!`) must lie on a constant step, which is the smallest gap, within
-  1E-6 steps. Otherwise they must be whole-day dates a constant number of calendar months apart, on one day of the
-  month or all on month ends. Otherwise the result is `#NUM!`. More than 30% of the steps missing is `#NUM!`.
-- Two orderings no Excel value decides: an error cell or element inside `values` or `timeline` is that error (the web
-  is `#N/A` on such cells, as on every call, T-2255 section), and an out-of-range setting (`#NUM!`) comes before
-  different sizes (`#N/A`). T-2425's desktop probe should cover both.
+errors, in the order the code takes them (every ordering UNVERIFIED; T-2425's desktop probe should cover each):
+1. Reading `values` and `timeline`: more than 200,000 cells in either is `#NUM!` (the "work caps" section).
+2. The settings, in argument order: `data_completion` (default 1) truncates to 1 (a missing point is the straight line
+   between its known neighbours, or the nearest known value at an end) or 0 (a missing point is zero); `aggregation`
+   (default 1) truncates to 0 or 1 AVERAGE, 2 COUNT, 3 COUNTA, 4 MAX, 5 MEDIAN, 6 MIN or 7 SUM, which combines values
+   that share a time stamp. Anything else is `#NUM!`.
+3. An error cell or element in `values`, then in `timeline`, is that error (the web is `#N/A` on such cells, as on
+   every call, T-2255 section).
+4. Different cell counts in `values` and `timeline` are `#N/A`, as Microsoft's documentation states. They pair in
+   reading order.
+5. A value or time stamp that is text or a boolean is `#VALUE!`. A row with both blank is skipped, and a blank value
+   with a time stamp is a missing point.
+6. The distinct time stamps (at least two, or `#NUM!`) must lie on a constant step, which is the smallest gap, within
+   1E-6 steps. Otherwise they must be whole-day dates a constant number of calendar months apart, on one day of the
+   month or all on month ends. Otherwise the result is `#NUM!`. A completed series of 200,000 steps or more is
+   `#NUM!` (the "work caps" section). More than 30% of the steps missing is `#NUM!`.
 - FORECAST.ETS.SEASONALITY is the detected season length, or 0 when there is none. It takes the autocorrelation of
   the series' residuals from its least-squares line, at lags 2 to n/2 (at most 8,760), and returns the lag of the
   highest local peak above 2/√n. Fewer than four points is 0.
@@ -1614,7 +1616,8 @@ Tasks: T-3599, T-3600 (FORECAST.ETS), T-3601 (CONFINT, STAT), T-2425 (match desk
 
 ## FORECAST.ETS family: work caps
 Rule: Excel's limits on the family's series are unknown. Microsoft's documentation allows seasonality up to 8,760.
-Ours: a `values` or `timeline` of more than 200,000 cells is `#NUM!` before any cell is read. So is season detection
+Ours: a `values` or `timeline` of more than 200,000 cells is `#NUM!` before any cell is read, and so is a completed
+series of 200,000 steps or more (time stamps spread so far apart, with missing points between them). So is season detection
 on a series of 16,385 points or more, where n × min(n/2, 8,760) multiply-adds exceed 2^27 (`MAX_ACF_WORK`). That
 applies to SEASONALITY and to any member that detects seasonality.
 Status: DEVIATION (decision 0014)
