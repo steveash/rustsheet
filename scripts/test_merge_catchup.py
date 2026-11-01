@@ -135,7 +135,7 @@ class CatchUp(unittest.TestCase):
         self.assertEqual(self.remote("agent/x"), before)
 
     def test_a_visible_parity_conflict_is_merged_three_way(self) -> None:
-        # Decision 0217: the PR adds its case's line next to lines main lowered (a) and dropped (z).
+        # Decision 0219: the PR adds its case's line next to lines main lowered (a) and dropped (z).
         # main's side alone would drop the PR's line; the higher side would undo main's lowering
         # (#2660 B1). Three-way keeps the PR's line, main's lowering and main's drop.
         lock = visible_lock.VISIBLE_PARITY
@@ -152,7 +152,7 @@ class CatchUp(unittest.TestCase):
         self.assertIsNone(merge_ready.Repo(self.clone).carry_problem(before, head))
 
     def test_a_retired_json_lock_conflict_is_resolved_by_deleting_it(self) -> None:
-        # Decision 0217: a PR from before the per-case lock modified the json lock main deleted.
+        # Decision 0219: a PR from before the per-case lock modified the json lock main deleted.
         json = visible_lock.RETIRED_LOCK
         self.write(json, '{"visibly_off_cells": 1}\n')
         self.base = self.commit("json lock")
@@ -171,7 +171,7 @@ class CatchUp(unittest.TestCase):
         self.assertIsNone(merge_ready.Repo(self.clone).carry_problem(before, head))
 
     def test_a_line_above_mains_for_a_case_on_main_is_refused(self) -> None:
-        # Decision 0217: a PR's sanctioned raise of one of main's cases is merged by hand.
+        # Decision 0219: a PR's sanctioned raise of one of main's cases is merged by hand.
         lock = visible_lock.VISIBLE_PARITY
         self.write("eval/suites/probes/cases/a", "{}\n")
         self.write(lock, "# h\nprobes/a\t3\n")
@@ -184,7 +184,7 @@ class CatchUp(unittest.TestCase):
         self.assertEqual(self.remote("agent/x"), before)
 
     def test_the_re_record_lists_only_the_case_files_the_pr_adds(self) -> None:
-        # Decision 0217: after the merge the PR's cases are in the tree's baseline, so only this
+        # Decision 0219: after the merge the PR's cases are in the tree's baseline, so only this
         # list lets the re-record write their visible-parity lines, and never main's.
         self.branch({BASELINE: "F\tprobes/pr\tP1\n", "eval/suites/probes/cases/pr.case.json": "{}\n"})
         self.move_main({BASELINE: "F\tprobes/main\tM1\n", "eval/suites/probes/cases/main.case.json": "{}\n"})

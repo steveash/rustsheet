@@ -1,6 +1,6 @@
 # 0214 — A new-coverage rise of the visible-parity lock keeps main's slack
 
-- **Status:** superseded by decision 0217 (the lock is per case, so there is no shared slack).
+- **Status:** superseded by decision 0219 (the lock is per case, so there is no shared slack).
   Was: accepted (2026-10-31, T-3539), amending decision 0093.
 - **Context:**
   - Decision 0093 lets the visibly-off count sit below `eval/baseline/visible-parity.json`. The

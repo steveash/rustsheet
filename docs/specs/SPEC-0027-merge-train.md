@@ -317,7 +317,7 @@ option records `prev:` and checks mechanically that the PR's own diff did not ch
   a correct list (decision 0207). The visible-parity lock `eval/baseline/visible-parity.txt` is
   such a list too. A merge may not leave a case that `main` has above `main`'s line for it, and
   catch-up merges a conflict on it three-way per case. A PR from before the lock may delete the
-  retired `visible-parity.json` once `main` has none (decision 0217).
+  retired `visible-parity.json` once `main` has none (decision 0219).
 
 Any other push needs the reviewers that the change concerns to run again, as today.
 

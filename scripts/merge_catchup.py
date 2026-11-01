@@ -9,10 +9,10 @@ In this checkout, which must have no local changes, it does the following:
 - refuses any conflict outside the lists CI's eval gate checks (`Repo.checked_baselines`: the
   gated suites the eval job runs without a fetch, and the visible-parity lock);
 - takes `main`'s side of each conflicted known-failure list, resolves a conflicted visible-parity
-  lock three-way per case from the merge base (`visible_lock.merge_visible`, decision 0217), and
+  lock three-way per case from the merge base (`visible_lock.merge_visible`, decision 0219), and
   runs `make eval-baseline NEW_CASES=<the case files the PR adds>`, which re-records the lists,
   refuses regressions (decision 0093) and records visible-parity lines only for those cases
-  (0217);
+  (0219);
 - refuses if the re-record changed any other file, such as quality/evidence-floor.json;
 - commits everything as one merge commit and pushes it to the PR branch (never forced);
 - returns to the checkout's original branch or commit.
@@ -57,7 +57,7 @@ def checked_only(paths: Sequence[str], lists: set[str]) -> bool:
 def rerecord(root: Path, new_cases: Path) -> int:
     """`make eval-baseline` in `root`: re-records eval/baseline/ and refuses regressions. Only the
     cases `new_cases` lists (the PR's added case files) may get a new visible-parity line or a
-    higher one (`update-baseline --new-cases`, decision 0217)."""
+    higher one (`update-baseline --new-cases`, decision 0219)."""
     command = (*RERECORD, f"NEW_CASES={new_cases}")
     return subprocess.run(command, cwd=root, stdin=subprocess.DEVNULL, check=False).returncode
 
@@ -84,7 +84,7 @@ def catch_up(root: Path, branch: str, record: Callable[[Path, Path], int] = rere
         if git("rev-parse", "-q", "--verify", "MERGE_HEAD", root=root, check=False).returncode:
             raise Refused(f"git could not start merging {merge_ready.BASE_BRANCH} into {branch}")
         conflicted = git("diff", "--name-only", "--diff-filter=U", root=root).stdout.split()
-        # A PR from before decision 0217 modified the retired json lock, which main deleted.
+        # A PR from before decision 0219 modified the retired json lock, which main deleted.
         if not visible_lock.in_commit(root, main, visible_lock.RETIRED_LOCK):
             lists = lists | {visible_lock.RETIRED_LOCK}
         if conflicted and not checked_only(conflicted, lists):
@@ -96,7 +96,7 @@ def catch_up(root: Path, branch: str, record: Callable[[Path, Path], int] = rere
                 continue
             if path == visible_lock.VISIBLE_PARITY:
                 # main's side alone would drop the PR's lines, and either side's higher count would
-                # undo main's lowerings: merge each case three-way (decision 0217). Stage 1 is the
+                # undo main's lowerings: merge each case three-way (decision 0219). Stage 1 is the
                 # merge base (absent when both sides added the file), 2 the PR, 3 main.
                 base, pr, main_side = (git("show", f":{n}:{path}", root=root, check=False).stdout for n in (1, 2, 3))
                 (root / path).write_text(visible_lock.merge_visible(base, pr, main_side), encoding="utf-8")
@@ -104,7 +104,7 @@ def catch_up(root: Path, branch: str, record: Callable[[Path, Path], int] = rere
                 git("checkout", "--theirs", "--", path, root=root)
             git("add", "--", path, root=root)
         # The PR's own case files, from before the merge: after it, the tree's baseline lists the
-        # PR's cases too, so only this list tells them from main's (decision 0217).
+        # PR's cases too, so only this list tells them from main's (decision 0219).
         added = visible_lock.added_case_files(root, main, HEAD_REF)
         with tempfile.TemporaryDirectory() as tmp:
             listed = Path(tmp) / "new-cases.txt"
@@ -113,7 +113,7 @@ def catch_up(root: Path, branch: str, record: Callable[[Path, Path], int] = rere
         if code != 0:
             raise Refused("make eval-baseline refused (a regression, or the eval did not run)")
         # The carry rule's visible-parity check, before anything is pushed: a line above main's
-        # for one of main's cases (a PR's sanctioned raise) needs a merge by hand (decision 0217).
+        # for one of main's cases (a PR's sanctioned raise) needs a merge by hand (decision 0219).
         lock_path = root / visible_lock.VISIBLE_PARITY
         lock = lock_path.read_text(encoding="utf-8") if lock_path.exists() else ""
         main_lock = git("show", f"{main}:{visible_lock.VISIBLE_PARITY}", root=root, check=False).stdout

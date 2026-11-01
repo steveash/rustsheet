@@ -1,4 +1,4 @@
-"""The visible-parity lock as the merge tooling reads it (decision 0217).
+"""The visible-parity lock as the merge tooling reads it (decision 0219).
 
 `eval/baseline/visible-parity.txt` holds one `case<TAB>count` line per case; `rustsheet-eval`
 writes it and CI's eval gate checks it. `make catch-up` (`merge_catchup.py`) resolves a
@@ -20,7 +20,7 @@ from merge_lock import git
 from suite_meta import suites_on
 
 VISIBLE_PARITY = "eval/baseline/visible-parity.txt"
-# The single-number lock it replaced (decisions 0088, 0217).
+# The single-number lock it replaced (decisions 0088, 0219).
 RETIRED_LOCK = "eval/baseline/visible-parity.json"
 # ASCII digits only, as `rustsheet-eval` reads them: `str.isdigit` would take "²", and no sign.
 COUNT = re.compile(r"[0-9]+")
@@ -67,7 +67,7 @@ def merged_counts(base: str, pr: str, main: str) -> dict[str, int]:
 
 
 def merge_visible(base: str, pr: str, main: str) -> str:
-    """Resolves a conflict in the lock (decision 0217): `main`'s header, then each case at its
+    """Resolves a conflict in the lock (decision 0219): `main`'s header, then each case at its
     `three_way` count, sorted as `rustsheet-eval` writes it. The re-record and the eval gate then
     hold every case to it, and `visible_rises` accepts it."""
     header = [line for line in main.splitlines() if line.startswith("#")]
@@ -77,7 +77,7 @@ def merge_visible(base: str, pr: str, main: str) -> str:
 
 def visible_rises(head: str, main: str, on_main: Callable[[str], bool]) -> list[str]:
     """The lines of lock `head`, a merge of a PR and `main` (whose lock is `main`), that the merge
-    tooling may not record without the reviewers (decision 0217): malformed or repeated lines, and,
+    tooling may not record without the reviewers (decision 0219): malformed or repeated lines, and,
     for a case whose case file `main` has (`on_main`), a line above `main`'s line for it (0 for
     none). So a merge never undoes a lowering on `main`, and a PR's sanctioned raise of one of
     `main`'s cases (`--allow-regressions`) is merged by hand and reviewed again. A case the PR adds
@@ -116,6 +116,6 @@ def case_on(root: Path, commit: str) -> Callable[[str], bool]:
 def added_case_files(root: Path, base: str, head: str) -> list[str]:
     """The files `head` adds since its merge base with `base` (`git diff --diff-filter=A
     --name-only base...head`), for `update-baseline --new-cases`: it keeps the case files of the
-    gated suites among them and ignores the rest (decision 0217)."""
+    gated suites among them and ignores the rest (decision 0219)."""
     out = git("diff", "-z", "--no-renames", "--diff-filter=A", "--name-only", f"{base}...{head}", root=root)
     return [p for p in out.stdout.split("\0") if p]

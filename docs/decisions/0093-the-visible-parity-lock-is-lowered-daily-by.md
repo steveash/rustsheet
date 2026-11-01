@@ -1,6 +1,6 @@
 # 0093 — The visible-parity lock is lowered daily by the steward, not by each fix PR
 
-- **Status:** accepted (2026-10-21, T-2245; *amended by decision 0217: the lowering is per
+- **Status:** accepted (2026-10-21, T-2245; *amended by decision 0219: the lowering is per
   case*; the owner chose this option in session
   https://claude.ai/code/session_018kHzCtGoS4gXMYKAZWDHEd). Amends decision 0088.
 - **Context:**

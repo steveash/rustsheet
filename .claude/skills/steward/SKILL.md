@@ -81,7 +81,7 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
     that conflicts only with another PR of its batch is deferred, not ejected: it stays ready.
     Any session may clear a `conflict with main` ejection whose conflicts are all in the
     eval-gated, non-fetched suites' `eval/baseline/<suite>.txt` lists and
-    `eval/baseline/visible-parity.txt` (decision 0217): run `make catch-up
+    `eval/baseline/visible-parity.txt` (decision 0219): run `make catch-up
     PR=<n>`, which merges `main` in, re-records the lists and pushes, then `make mark-ready
     PR=<n> CARRY=1` once CI is green (decision 0207). Any other conflict stays with the PR's
     worker.
@@ -220,7 +220,7 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
 - **Sonnet queue buffer** (decision 0021): in the steward's queue step, also run
   `make ready-tasks TIER=sonnet`; below 10 ready, run the gap-triager and/or planner to cut
   sonnet-sized tasks by the tier rubric (never relabel a task to reach the number).
-- **Visible-parity lock** (decisions 0093, 0217): task PRs never lower the per-case lines of
+- **Visible-parity lock** (decisions 0093, 0219): task PRs never lower the per-case lines of
   `eval/baseline/visible-parity.txt`; a PR that adds cases records their lines with `make
   eval-baseline`. In the daily steward PR, after `make eval`, run `make eval-lower-visible-lock` and
   commit the lowered lines with the snapshot; "Progress dashboard" below comes next. When an open PR

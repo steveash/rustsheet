@@ -474,7 +474,7 @@ class Repo:
     def checked_baselines(self) -> set[str]:
         """The lists CI's eval gate checks against the engine: `eval/baseline/<suite>.txt` of every
         suite on the fetched `main` with `gate = true` and no `[fetch]` (the eval job fetches
-        nothing), and the visible-parity lock (decision 0217). Fetched suites (poi, corpus-bench)
+        nothing), and the visible-parity lock (decision 0219). Fetched suites (poi, corpus-bench)
         and ungated ones are out."""
         suites = suites_on(self.root, f"refs/merge-ready/{BASE_BRANCH}")
         # CI names each list after the suite's `name`.
@@ -486,9 +486,9 @@ class Repo:
         second parent is on `main`, and whose tree is the plain merge of its parents
         (`git merge-tree --write-tree`), except that the content of a list in `checked_baselines`
         may differ, without a failure line neither parent had or a visible-parity line that
-        `visible_rises` refuses (decision 0217): a conflict there resolved and the
+        `visible_rises` refuses (decision 0219): a conflict there resolved and the
         lists re-recorded (decision 0093). The retired `RETIRED_LOCK` may be deleted when `main`
-        has none (a PR from before decision 0217 modified it). The eval
+        has none (a PR from before decision 0219 modified it). The eval
         gate on the head, which marking requires green, checks exactly those lists (decision 0207).
         Anything else (another file, an addition, deletion, rename or mode change) breaks the carry."""
         parents = self.git("rev-list", "--parents", "-n", "1", head).split()[1:]
@@ -530,7 +530,7 @@ class Repo:
         """The known-failure lines (`F` and `TF`) of list `path` in `head` that no parent's list has;
         for the visible-parity lock, its `visible_rises` against `main` (the second parent). The eval
         gate only checks that a list matches the engine (and holds each case to the lock), so a
-        regression recorded in a merge would pass it; the carry refuses one (decisions 0207, 0217)."""
+        regression recorded in a merge would pass it; the carry refuses one (decisions 0207, 0219)."""
 
         def text(commit: str) -> str:
             shown = git("show", f"{commit}:{path}", root=self.root, check=False)

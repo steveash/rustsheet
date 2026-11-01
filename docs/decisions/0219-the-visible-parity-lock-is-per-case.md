@@ -1,4 +1,4 @@
-# 0217 — The visible-parity lock is per case
+# 0219 — The visible-parity lock is per case
 
 - **Status:** accepted (2026-10-31, T-3573; the repository owner asked for this change in session
   https://claude.ai/code/session_018kHzCtGoS4gXMYKAZWDHEd). Amends decisions 0088, 0093 and 0207; supersedes 0214.

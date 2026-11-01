@@ -118,12 +118,12 @@ enum Cmd {
         #[arg(long)]
         allow_regressions: bool,
         /// Also lower the visible-parity lock's cases to their counts and drop their lines at 0.
-        /// The steward's daily run only: a PR leaves drops to it (decisions 0093 and 0217).
+        /// The steward's daily run only: a PR leaves drops to it (decisions 0093 and 0219).
         #[arg(long)]
         lower_visible_lock: bool,
         /// A file listing the cases to treat as new for the visible-parity lock, one case id or
         /// repository-relative case file path per line (the case files a PR adds); only these
-        /// then get a line recorded whatever their count (decision 0217).
+        /// then get a line recorded whatever their count (decision 0219).
         #[arg(long, value_name = "FILE")]
         new_cases: Option<PathBuf>,
     },
@@ -440,7 +440,7 @@ fn baseline_path(root: &Path, suite: &str) -> PathBuf {
     root.join("eval/baseline").join(format!("{suite}.txt"))
 }
 
-/// The ids of the cases of `suites` that the `--new-cases` file names (decision 0217).
+/// The ids of the cases of `suites` that the `--new-cases` file names (decision 0219).
 fn listed_new_cases(root: &Path, suites: &[Suite], file: &Path) -> Result<BTreeSet<String>> {
     let listed = visible_parity::read_listed(file)?;
     let mut cases = Vec::new();
@@ -468,7 +468,7 @@ fn listed_new_cases(root: &Path, suites: &[Suite], file: &Path) -> Result<BTreeS
 }
 
 /// Holds `count` to the visible-parity lock, recording it on `update` when
-/// [`visible_parity::judge`] allows (T-0061, decisions 0088, 0093 and 0217); returns whether the
+/// [`visible_parity::judge`] allows (T-0061, decisions 0088, 0093 and 0219); returns whether the
 /// gate passes.
 fn visible_parity_gate(
     root: &Path,
@@ -484,6 +484,7 @@ fn visible_parity_gate(
         lock.total(),
         lock.cases.len()
     );
+    let updating = update.is_some();
     let judgement = visible_parity::judge(&lock, count, update);
     for o in &judgement.over {
         println!(
@@ -505,6 +506,16 @@ fn visible_parity_gate(
             next.total(),
             next.cases.len()
         );
+    } else if updating
+        && std::fs::read_to_string(root.join(LOCK_PATH))
+            .ok()
+            .as_deref()
+            != Some(lock.render().as_str())
+    {
+        // The lines hold, but the file is not what the tool writes (a changed header, say): an
+        // update rewrites it in canonical form, so the file is only ever written by the tool.
+        lock.write(root)?;
+        println!("  rewrote {LOCK_PATH} in canonical form: commit it");
     }
     Ok(judgement.holds())
 }

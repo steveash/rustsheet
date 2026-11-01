@@ -1,4 +1,4 @@
-"""Tests for visible_lock.py, the visible-parity lock as the merge tooling reads it (decision 0217)."""
+"""Tests for visible_lock.py, the visible-parity lock as the merge tooling reads it (decision 0219)."""
 
 from __future__ import annotations
 

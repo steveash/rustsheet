@@ -1,6 +1,6 @@
 """The eval suites' manifests (`eval/suites/*/suite.toml`) as one commit has them, for the merge
 tooling: which known-failure lists CI's eval gate checks (`merge_ready.Repo.checked_baselines`,
-decision 0207) and where each suite's case files live (`visible_lock.case_on`, decision 0217)."""
+decision 0207) and where each suite's case files live (`visible_lock.case_on`, decision 0219)."""
 
 from __future__ import annotations
 

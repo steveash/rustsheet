@@ -14,7 +14,7 @@ On docs-only PRs (decision 0049) CI skips the rust, eval and python jobs; hygien
 | Lint debt | `scripts/check_lint_debt.py` | per-crate `LINT-DEBT` allow-lists (inherited from the fork) may only shrink; locked in `quality/lint-debt.json` |
 | Rust tests | `make test` (CI: `test-shard-1` and `test-shard-2`, decision 0122) | all pass |
 | **Excel compatibility** | `make eval-check` (CI and `make check`: `make eval-gates`, decision 0125) | no regressions against `eval/baseline/*.txt` (known failures); baseline must be up to date |
-| Visible parity | `make eval-check` (CI and `make check`: `make eval-gates`) | no case of the vendored gated suites may have more in-scope cells visibly off from Excel than its line allows; `eval/baseline/visible-parity.txt` (decisions 0088, 0093, 0217) |
+| Visible parity | `make eval-check` (CI and `make check`: `make eval-gates`) | no case of the vendored gated suites may have more in-scope cells visibly off from Excel than its line allows; `eval/baseline/visible-parity.txt` (decisions 0088, 0093, 0219) |
 | Evidence floor | `make evidence-floor` | in-scope, oracle-evaluable functions with fewer than 20 Excel-evidence cells may not increase; `quality/evidence-floor.json` (decision 0062). CI and `make check` run it with `make eval-check` as `make eval-gates`, one run of the suites (decision 0125) |
 | Python tools | `make py-check` | ruff, mypy `--strict`, pytest |
 | Python bindings | `make py-bindings` | maturin build + pytest |
@@ -64,7 +64,7 @@ On docs-only PRs (decision 0049) CI skips the rust, eval and python jobs; hygien
   fails when the count rises and when it falls without the lock being updated; `make
   eval-baseline` records a drop. Recording a rise needs `--update --allow-increase` and a
   decision record (for example, when the catalog brings functions into scope).
-- **Visible parity** (`eval/baseline/visible-parity.txt`, decisions 0088 and 0217): a full
+- **Visible parity** (`eval/baseline/visible-parity.txt`, decisions 0088 and 0219): a full
   `rustsheet-eval check` also counts, per case, the in-scope cells of the vendored gated suites
   that are visibly off from Excel (further than half a unit in the 15th significant digit, or a
   wrong type, error or text; decision 0083). The lock has one `case<TAB>count` line per case with
@@ -76,7 +76,7 @@ On docs-only PRs (decision 0049) CI skips the rust, eval and python jobs; hygien
   different lines, so they merge cleanly. `make catch-up` resolves a conflict on the file three-way
   per case, then re-records with `NEW_CASES=<file>` (`update-baseline --new-cases`). That file lists
   the case files the PR adds, and only those cases may then get a new or higher line. No merge may
-  leave one of `main`'s cases above `main`'s line (decision 0217).
+  leave one of `main`'s cases above `main`'s line (decision 0219).
 - **Lint debt / duplication / oversized files / fitted constants:** the scripts fail on increases. When you reduce
   them, run the script with `--update` and commit the JSON in the same PR.
 

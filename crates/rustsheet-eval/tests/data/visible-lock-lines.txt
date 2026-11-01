@@ -1,7 +1,7 @@
 # Lock lines of eval/baseline/visible-parity.txt, one per line after `ok<TAB>` (both parsers
 # take it) or `bad<TAB>` (both refuse it). rustsheet-eval (visible_parity::Lock::parse) and the
 # merge tooling (scripts/visible_lock.py parse_line) read this corpus so they stay in step
-# (decision 0217).
+# (decision 0219).
 ok	probes/a.case.json	3
 ok	gen-m9/0072265d385d8ab2.case.json	12
 ok	ironcalc-calc/DATABASE/DAVERAGE.xlsx	1

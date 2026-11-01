@@ -728,7 +728,7 @@ class Mark(PrFixture):
         self.git("push", "-q", "origin", "main")
         self.git("checkout", "-q", "pr")
 
-    # Decision 0217's carry fixture: from a base with `a 3`, the PR adds a line for its own case
+    # Decision 0219's carry fixture: from a base with `a 3`, the PR adds a line for its own case
     # `new` and leaves `a` alone; main lowers `a` to 1 (the steward) and adds `m`. The two edits
     # touch the same hunk, so the merge conflicts on the lock.
     VISIBLE_BASE = "# h\nprobes/a\t3\n"
@@ -765,7 +765,7 @@ class Mark(PrFixture):
         self.refuses_visible("# h\nprobes/a\t1\nprobes/old\t1\n", "probes/old\t1")
 
     def test_carry_accepts_deleting_the_retired_json_lock(self) -> None:
-        # A PR from before decision 0217 modified the json lock that main deleted: the catch-up
+        # A PR from before decision 0219 modified the json lock that main deleted: the catch-up
         # deletes it, and the carry accepts that only while main has no json.
         self.git("checkout", "-q", "main")
         self.write(visible_lock.RETIRED_LOCK, '{"visibly_off_cells": 1}\n')

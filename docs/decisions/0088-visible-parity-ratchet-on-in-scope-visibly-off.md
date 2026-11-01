@@ -1,6 +1,6 @@
 # 0088 — Visible-parity ratchet on in-scope visibly-off cells
 
-- **Status:** accepted (2026-10-20, T-0061). *Amended by decision 0217: the lock is per case, in
+- **Status:** accepted (2026-10-20, T-0061). *Amended by decision 0219: the lock is per case, in
   `eval/baseline/visible-parity.txt`.*
 - **Context:**
   - Decision 0083 makes visible parity the first target: the 15 significant digits Excel
