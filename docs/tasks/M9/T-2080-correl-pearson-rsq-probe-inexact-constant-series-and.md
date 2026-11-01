@@ -3,7 +3,7 @@ id: T-2080
 title: "CORREL, PEARSON, RSQ: probe inexact constant series and overflow-scale data"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
