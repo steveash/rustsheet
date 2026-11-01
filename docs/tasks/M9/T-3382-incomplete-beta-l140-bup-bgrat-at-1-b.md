@@ -40,7 +40,7 @@ today's kernel is visibly off on almost all of them.
 - [x] No probes-numeric or gated cell goes from within 15 digits to visibly off. Any that does is listed with
       Excel / new / exact values, or the branch is narrowed.
 - [x] Unit tests pin a few Excel cells from the cases above, with the case and cell named.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - n > 1 bup terms (2 <= b < 40) and F, BINOM, NEGBINOM callers: no probe covers them yet (T-3383).
