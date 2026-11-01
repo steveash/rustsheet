@@ -81,9 +81,23 @@ tail T-3269 owns. Examples, Excel vs ours:
 - gen-m9/ede0323c389fc703.case.json (1): Calc!A371
 - gen-m9/f82473275380882e.case.json (1): Calc!A213
 
+Gap triage 2026-10-31e (`make eval` on origin/main 4ff408243, excel-graph and cached probes): 29 more
+CHISQ.DIST.RT, CHIDIST and CHISQ.DIST cdf cells on the ungated probes-numeric cases, 1 to 3 ulp off and within 15
+significant digits, that no open task listed. Many sit at the small half-integer shapes of T-3285 (accuracy). If its
+kernel fix reaches them, they pass there; the rest stay here. Examples, Excel vs ours:
+`CHISQ.DIST.RT(1.5,3)` (m9-chisq-dist-rt A12) 0.6822703303362125 vs 0.6822703303362126;
+`CHISQ.DIST.RT(0.1,5)` (t1049-chisqdistrt A3, m9-legacy-chidist A22) 0.9998376833880773 vs 0.9998376833880774;
+`CHISQ.DIST(50,100,TRUE)` (m9-chisq-dist A63) 6.953305247616096E-06 vs 6.953305247616095E-06.
+- probes-numeric/m9-legacy-chidist.case.json (12): Calc!A21, A22, A29, A30, A37, A38, A53, A54, A55, A56, A63, A64
+- probes-numeric/m9-chisq-dist-rt.case.json (11): Calc!A12, A13, A15, A20, A24, A25, A27, A29, A30, A33, A34
+- probes-numeric/t1049-chisqdistrt.case.json (5): Calc!A3, A11, A15, A23, A24
+- probes-numeric/m9-chisq-dist.case.json (1): Calc!A63
+
 ## Acceptance criteria
 - [ ] GAMMA.xlsx F38, POISSON.xlsx D16 and the 13 gen-m9 cells above pass; no new baseline lines.
 - [ ] The 20 POISSON cdf cells added by gap triage 2026-10-31c leave eval/baseline/gen-m9.txt, or the Outcome lists each still failing with its ulp distance.
+- [ ] The 29 probes-numeric cdf cells added by gap triage 2026-10-31e pass bit-exact in `make eval`'s report.json
+      (probes-numeric is ungated), or the Outcome lists each still failing with its ulp distance.
 - [ ] T-1872's inversion sweep re-run on the new kernel; the smallest shape past the cap is recorded in the cap
       section (and `MAX_TERMS`'s doc), or a faster large-shape method (Temme's expansion) keeps 3.5E8.
 - [ ] `make check` green; reviewers approve.
