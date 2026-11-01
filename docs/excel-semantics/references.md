@@ -2499,7 +2499,8 @@ text, in cell formulas on any sheet, conditional formats and defined names (T-22
 of exactly every data row, one row or several, keeps the first data row, clears the table's cells of it and
 deletes the others (`Model::kept_data_row`, T-2338, T-3259), and a plain range shrinks on a delete of its edge
 rows (`Displacement::range_corners`, T-2338). Every other edit that crosses a table (a delete touching the
-header row, a column edit inside it, row and column moves, cell shifts) leaves the table as it is, and an edit that changes the area a
+header row, a column edit inside it, row and column moves, cell shifts) leaves the table as it is, and an
+edit that changes the area a
 structured reference resolves to rewrites it to the displaced plain range (the fallback of SPEC-0016); one
 that leaves the area unchanged keeps the text. A `#This Row` reference keeps the fallback rule even when
 its table follows the edit: on another sheet, a row off the data rows keeps its text and so reads the

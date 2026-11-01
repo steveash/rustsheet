@@ -925,13 +925,12 @@ impl Model {
         Ok(true)
     }
 
-    // Returns true if deleting rows [row, row + row_count - 1] would not break any
-    // array formula. An array formula must be either fully inside the deleted range
-    // or fully outside it; any partial overlap is rejected.
     /// Why the delete of `row_count` rows at `row` on `sheet` is refused, if it is: a count below 1,
-    /// a row or a span outside the sheet, or an array formula the delete would cut. Checked before
-    /// any change, by [`Model::delete_rows`] and by `UserModel::delete_rows`, whose table branch
-    /// clears a row before it deletes (T-3259).
+    /// a row or a span outside the sheet, or an array formula the delete would cut. Where the delete
+    /// takes a table's every data row ([`Model::kept_data_row`]) it clears the first row and deletes
+    /// only the rest, so that shorter delete must not cut an array formula either (one starting in
+    /// the kept row). Checked before any change, by [`Model::delete_rows`] and by
+    /// `UserModel::delete_rows`, both of which clear that row before they delete (T-3259).
     pub(crate) fn check_delete_rows(
         &self,
         sheet: u32,
@@ -947,12 +946,19 @@ impl Model {
         if row_count > LAST_ROW - row + 1 {
             return Err("Cannot delete rows beyond the last row of the sheet".to_string());
         }
-        if !self.can_delete_rows(sheet, row, row_count)? {
+        let cuts = !self.can_delete_rows(sheet, row, row_count)?
+            || (row_count > 1
+                && self.kept_data_row(sheet, row, row_count).is_some()
+                && !self.can_delete_rows(sheet, row + 1, row_count - 1)?);
+        if cuts {
             return Err("Cannot delete rows because that would break an array formula".to_string());
         }
         Ok(())
     }
 
+    // Returns true if deleting rows [row, row + row_count - 1] would not break any
+    // array formula. An array formula must be either fully inside the deleted range
+    // or fully outside it; any partial overlap is rejected.
     fn can_delete_rows(&self, sheet: u32, row: i32, row_count: i32) -> Result<bool, String> {
         let row_end = row + row_count; // exclusive upper bound
         let cell_coords: Vec<(i32, i32)> = {

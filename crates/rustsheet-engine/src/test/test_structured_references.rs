@@ -669,6 +669,23 @@ fn a_refused_delete_of_every_data_row_changes_nothing() {
     assert_eq!(model.workbook.tables["Sales"].reference, "B3:C7");
     assert_eq!(value(model, 0, 4, 3), "1");
     assert_eq!(value(model, 0, 4, 2), "E");
+    // One starting in the kept row, outside the table's columns: inside the whole delete, but cut
+    // by the shorter delete below the kept row.
+    let mut model = edge_model(false);
+    model
+        .set_user_array_formula(0, 4, 5, 1, 2, "={1;2}")
+        .unwrap();
+    let mut user = crate::UserModel::from_model(model);
+    assert!(user.delete_rows(0, 4, 4).is_err());
+    let model = user.get_model();
+    assert_eq!(model.workbook.tables["Sales"].reference, "B3:C7");
+    assert_eq!(value(model, 0, 4, 3), "1");
+    let mut model = edge_model(false);
+    model
+        .set_user_array_formula(0, 4, 5, 1, 2, "={1;2}")
+        .unwrap();
+    assert!(model.delete_rows(0, 4, 4).is_err());
+    assert_eq!(value(&model, 0, 4, 3), "1");
 }
 
 #[test]
