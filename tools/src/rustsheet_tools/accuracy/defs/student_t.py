@@ -18,19 +18,52 @@ from collections.abc import Sequence
 import mpmath
 
 from rustsheet_tools.accuracy.model import Definition, Interval, MathArg, Param, register, solve_log_bracket
+from rustsheet_tools.fitlab.kernels.beta import betacf
 
 DF_SOURCE = "statistics.md#student-t-sweep-df-truncation-df-limits-tinv2t-above-1-t-1043"
 TINY_P_SOURCE = "statistics.md#student-t-quantile-at-a-tiny-probability-t-1531"
 DF_CUT = 1e10  # the cumulative functions' last valid (truncated) df
+# The continued fraction converges for y < (a + 1)/(a + b + 2), which holds for x² ≥ 3 at every df; from |x| = 2 it
+# takes at most about 600 terms (df 1E10), fewer as |x| grows.
+CF_MIN_X = 2
+CF_MAX_TERMS = 100_000  # directive 5: a bound far above the ~600 terms the fraction needs
+CF_GUARD_DPS = 20
 
 
 def lower_tail(x: mpmath.mpf, df: mpmath.mpf) -> mpmath.mpf:
-    """P(T ≤ x) for x ≤ 0: I_y(df/2, 1/2)/2, y = df/(df + x²); exact in the far tail since no
-    complement is taken."""
+    """P(T ≤ x) for x ≤ 0: I_y(df/2, 1/2)/2, y = df/(df + x²) (T-3425 for both branches):
+    - |x| < `CF_MIN_X`: 1/2 - I_z(1/2, df/2)/2 with z = 1 - y = x²/(df + x²), which keeps x² that y = df/(df + x²)
+      rounds away (at df 1E10 and x = -e^-60, y is 1 at 60 digits); the series has about x²/2 terms and the
+      subtraction from 1 loses at most two digits (the tail is at least 0.0227);
+    - from |x| = `CF_MIN_X` on: the continued fraction for I_y itself, exact in the far tail since no complement is
+      taken. mpmath's hypergeometric series stalls there for a df above about 5E6 (from |x| ≈ 90 up to about √df,
+      tails below e^-4000 that T.INV's root search still evaluates)."""
     if x == 0:
         return mpmath.mpf(1) / 2
-    y = df / (df + x * x)
-    return mpmath.betainc(df / 2, mpmath.mpf(1) / 2, 0, y, regularized=True) / 2
+    a, b = df / 2, mpmath.mpf(1) / 2
+    with mpmath.extradps(CF_GUARD_DPS):  # ln B(a, b) cancels about log10(df) digits of loggamma(a)
+        x2 = x * x
+        if -x < CF_MIN_X:
+            tail = (1 - mpmath.betainc(b, a, 0, x2 / (df + x2), regularized=True)) / 2
+        else:
+            tail = _far_tail(a, b, x2, df)
+    return +tail  # rounded to the caller's precision
+
+
+def _far_tail(a: mpmath.mpf, b: mpmath.mpf, x2: mpmath.mpf, df: mpmath.mpf) -> mpmath.mpf:
+    """I_y(a, b)/2 for y = df/(df + x²) by the continued fraction, at the current precision."""
+    log_prefactor = (
+        -a * mpmath.log1p(x2 / df)  # a·ln y
+        + b * mpmath.log(x2 / (df + x2))  # b·ln(1 - y)
+        - mpmath.log(a)
+        - (mpmath.loggamma(a) + mpmath.loggamma(b) - mpmath.loggamma(a + b))
+    )
+    tol = mpmath.mpf(10) ** -(mpmath.mp.dps + 2)
+    fraction, converged = betacf(a, b, df / (df + x2), tol, CF_MAX_TERMS)
+    if not converged:
+        msg = f"the t continued fraction did not converge in {CF_MAX_TERMS} terms"
+        raise mpmath.libmp.NoConvergence(msg)
+    return mpmath.exp(log_prefactor) * fraction / 2
 
 
 def cdf(x: mpmath.mpf, df: mpmath.mpf) -> mpmath.mpf:
@@ -39,14 +72,18 @@ def cdf(x: mpmath.mpf, df: mpmath.mpf) -> mpmath.mpf:
 
 
 def density(x: mpmath.mpf, df: mpmath.mpf) -> mpmath.mpf:
-    """The t density, through log-gamma so a huge df neither overflows nor cancels."""
-    log_value = (
-        mpmath.loggamma((df + 1) / 2)
-        - mpmath.loggamma(df / 2)
-        - mpmath.log(df * mpmath.pi) / 2
-        - (df + 1) / 2 * mpmath.log1p(x * x / df)
-    )
-    return mpmath.exp(log_value)
+    """The t density, through log-gamma so a huge df neither overflows nor cancels. loggamma((df+1)/2) and
+    loggamma(df/2) are about df·ln(df)/2 and cancel to about ln(df)/2, so the guard digits grow with log10(df)
+    (T-3425: at df 8.3E+129 the 60- and 80-digit values disagreed)."""
+    with mpmath.extradps(int(mpmath.log10(df)) + CF_GUARD_DPS):
+        log_value = (
+            mpmath.loggamma((df + 1) / 2)
+            - mpmath.loggamma(df / 2)
+            - mpmath.log(df * mpmath.pi) / 2
+            - (df + 1) / 2 * mpmath.log1p(x * x / df)
+        )
+        value = mpmath.exp(log_value)
+    return +value
 
 
 def lower_quantile(p: mpmath.mpf, df: mpmath.mpf) -> mpmath.mpf:

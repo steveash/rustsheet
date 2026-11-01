@@ -33,6 +33,12 @@ recorded as UNVERIFIED with the hypotheses ruled out).
   which names H29's mechanism (the complement one ulp above fl(1 - p)).
 - Method: docs/research/excel-kernel-playbook.md; a fit owes decision 0188 R4's guards.
 
+- Gap triage 2026-11-01: T-3443's fresh sweep has the same visibly-off cells and no other owner, so this task owns them
+  too (78 cells: the BETA.DIST, BETADIST, F.DIST and F.DIST.RT cdfs and the BETA.INV / F.INV / FINV round trips, all
+  within 3.2E-13 relative of Excel per statistics.md "BETA.DIST and F.DIST at basym points"):
+  probes-numeric/t3443-basym-sweep (all its visibly-off cells).
+  A model fitted here cannot use that case as its fresh sweep under decision 0188 R4.
+
 ## Acceptance criteria
 - [ ] A model of Excel's basym arithmetic scored on t3443-basym-a (in-sample) and then once on t3443-basym-hold, with
       exact / within-15-digit counts, or the negatives tried with their counts in statistics.md.

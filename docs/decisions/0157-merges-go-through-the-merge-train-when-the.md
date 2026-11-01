@@ -3,7 +3,9 @@
 - **Status:** accepted (2026-10-29, T-2996). It is the policy record of SPEC-0027 ("Decision
   records and governance"). It amends 0028, 0050 and 0075, and leaves 0121 unchanged in substance
   and 0053 dormant. Nothing changes while `scripts/merge_train.toml` says `mode = "lock"`: the
-  flips to `shadow` and `train` are T-2989 and T-2991.
+  flips to `shadow` and `train` are T-2989 and T-2991. *Amended by 0224: a stranded PR, and the
+  daily latency and CI-run thresholds, escalate instead of flipping to `lock`; the immediate flip
+  is kept for correctness failures, and orphaned PRs in `train` mode are those idle 6 h.*
 - **Context:** The per-PR flow holds the merge lock for one PR's CI run, so at about 4 merges an
   hour the lock is held most of the time and ready PRs wait 30 min or more (SPEC-0027 "Problem").
   The merge train (T-2985 through T-2995) tests a batch of ready PRs on one train branch and

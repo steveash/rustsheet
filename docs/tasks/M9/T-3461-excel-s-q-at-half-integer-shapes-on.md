@@ -31,6 +31,11 @@ CHISQ.TEST at an odd df), so the cells T-3285 moved off Excel's bits match again
   holds below 30 at half-integer shapes is the first lead.
 - Phase 1b under decision 0188 R5: every cell here is within 15 digits of Excel and within Gate A's envelope.
 
+Gap triage 2026-11-01 adds the half-integer cells at a + 1 <= x <= 30 of T-3269's first fresh sweep, visibly off (5 to
+10 ulp of Excel) but within Gate A (ours within 1 ulp of the 50-digit Q, Excel 5 to 10 ulp off it):
+- probes-numeric/t3269-fresh-sweep.case.json (7): Calc!A22 `CHISQ.DIST.RT(50.0434,37)`, A56 `(39.452,21)`, A72
+  `(40.7104,3)`, A88 `(47.8356,13)`, A124 `(46.3586,5)`, A204 `(17.5321,11)`, A210 `(55.6536,33)`
+
 Cells this task owns: the gated and ungated cells listed above. Split with T-2695 (deferred, the gen-m9 CHIDIST last
 digits): it already lists gen-m9/320d51765af9b6b7 A249 and b8ee55934c5b824c A262 and A400; whichever task lands Excel's
 form first takes the shared cells, and records it in both.

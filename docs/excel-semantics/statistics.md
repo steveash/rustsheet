@@ -1517,8 +1517,12 @@ text included: `RANK(4,A1:A8,"1")` is `#VALUE!`. `order` is read before the data
 `RANK(4,D1:D3,"x")` and `RANK(1,D1:D3,"x")` are `#VALUE!` and `RANK(4,D1:D3,1/0)` is `#DIV/0!`. So an element reads
 `number`, then `order`, then the data's error, then ranks (`#N/A` when absent). Before T-1999 a direct boolean was `#VALUE!`,
 `"1"` was an ascending order and the data's error came before `order`'s. Not probed: an `order` from a cell holding text, and `number`'s error against `order`'s (T-2019).
-Not yet probed (T-2000): T.TEST's `type` against the samples' error, FORECAST's `x` against the data's
-own validation, and an error data argument of PERCENTRANK, QUARTILE, PROB and FREQUENCY.
+Probed in T-2000 (probes/stat-error-orders-t2000, excel-graph; D1:D3 = 1, `#N/A`, 3): T.TEST's `type` is read before the
+samples' error: `T.TEST(D1:D3,A1:A3,1,4)` is `#NUM!` and `T.TEST(D1:D3,A1:A3,1,"a")` is `#VALUE!`. FORECAST's `x` is read before the data's
+own validation: `FORECAST("a",A1:A2,B1:B3)` (unequal sizes, `#N/A` for a numeric `x`), `FORECAST("a",A1:A1,B1:B1)` (one
+point) and `FORECAST("a",{1;1},{2;2})` (all x equal, `#DIV/0!` for a numeric `x`) are all `#VALUE!`. An error value as the data argument is that error: `PERCENTRANK(NA(),1)`, `QUARTILE(NA(),1)`,
+`PERCENTILE.INC(NA(),0.5)`, `PROB(NA(),F1:F4,1)` and `FREQUENCY(NA(),{1;2})` are all `#N/A`. All ten already matched
+the engine; no code change.
 Status: VERIFIED (excel-graph)
 Tasks: T-1813, T-1982, T-1999, T-2000
 
@@ -3788,10 +3792,15 @@ and D15/D37 (p = 0.5000000000000001) = 0.9999999999999996; probes-numeric/t1531-
 m9-t-inv-2t A1-A13, m9-t-inv A1-A13; gen-m9 334f3dc9ca937f10 A23 `TINV(1E-300,1)`, 5389dd4d5b5739d2 A299
 `TINV(1-1E-10,1)`, a4090567758520df A307 `TINV(1+2^-52,1)`. The full cell list is in T-2858. At df = 1 this closed form takes precedence over the general
 SQRT(df*(1/y-1)) form below (T-3061), which gives the same cells only to 0 or 1 ulp.
-Ours: `statrs`' inverse or the tail asymptotic (`t_quantile`, `t_tail_quantile` in t_dist.rs), from 1 ulp to the 14th
+Ours before T-2858: `statrs`' inverse or the tail asymptotic (`t_quantile`, `t_tail_quantile` in t_dist.rs), from 1 ulp to the 14th
 digit off (`TINV(0.5,1)` 1.0000000000000016), and to 100% off near p = 1 (`TINV(1-1E-10,1)` 1.05E-8).
+Implemented in: T-2858 (`cauchy_two_tail_quantile` in t_dist.rs, used by `t_inv_of` and `confidence_t_of`). Two-tailed p = 1 is
+exactly 0 (`TINV(1,1)`, `TINV(1-1E-17,1)`: gen-m9 0620505280d2ea6e A90, 7f7ca726c3f68554 A166), not `1/TAN(π/2)` = 6.1E-17.
+Unprobed (T-3540): `T.INV(0.5,1)` (ours 0, kept from before T-2858), two-tailed p strictly between
+0.999999999999999 and 1 (ours the 1/TAN form, 0 only at p = 1 exactly), and the error for a CONFIDENCE.T margin past
+the double range (ours `#NUM!`).
 Status: VERIFIED (excel-graph and Excel-cached; the formula is a fit that every evidence cell matches)
-Tasks: T-2858
+Tasks: T-2858, T-3540
 
 ## Chi-squared quantile at df 2 and gamma quantile at alpha 1 are closed forms (T-2860)
 Rule: with a deg_freedom that truncates to 2, `CHISQ.INV(p,2)` is `-2*LN(1+(-p))` computed as `-2·log1p(-p)`, and
@@ -3876,9 +3885,15 @@ counts are in T-3349's Outcome). In that sweep Excel is more than 1E-4 off the e
 p from 1.38E-300 to 1.73E-110 and df from 2490 up (42 points, A211-A300; `T.INV.2T(6.68863396408457E-199,2490)` is
 100.83724584548176 in Excel, exact 33.047211122914894): the tiny-p pattern of "MATH-OVER-EXCEL" case 1, which lists
 T.INV only and from p 1E-150; whether it extends to T.INV.2T needs an owner ruling (T-3386).
+The same sweep shows the centre is not always within 15 digits (gap triage 2026-10-31, mpmath 1.4.1 at 60+ digits, at
+the double p): at 21 of its points with p from 0.99943 to 1.0000000006 and df from 2 to 5.7E9, Excel is 0.8E-15 to
+3.7E-15 relative off the true quantile while the engine is within 4E-16 of it, for example
+`T.INV.2T(0.999999999999996,402)` = 5.0123657350064685E-15 in Excel, true 5.01236573500648...E-15 (A187), and
+`T.INV.2T(0.999999999999998,2)` = 2.8261664256307887E-15, 2.2E-15 off (A122). The probe cells above happen to sit
+within 15 digits; Excel's centre form is still unidentified (T-3414 sweeps it, T-3415 fits it, both Phase 1b).
 Ours: the centre crossing of `student_t_centre` (T-2724), within about 5E-16 of the exact value.
 Status: VERIFIED (excel-graph)
-Tasks: T-3349, T-2724, T-2858
+Tasks: T-3349, T-2724, T-2858, T-3414, T-3415
 
 ## Inverse CDF functions at a tiny or near-1 probability (T-1543)
 Rule: NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and BETA.INV return a value (or `#NUM!`) for p from 1E-300 to 1-1E-16; none panics or hangs in Excel.
@@ -5165,9 +5180,14 @@ from shape 1E9, its true quantile the crossing of the accurate cdf (Temme's expa
 T-3350). Before that, from about shape 5E6 the series cdfs used up the inversion's shared budget of 2^19 terms near
 the median, and the quantile was `#NUM!`: `CHISQ.INV(0.5,2E7)`, `CHISQ.INV.RT(0.999,1E7)` and `CHIINV(0.5,1E8)`
 (Excel 19999999.333333336, 9986185.76048885, 99999999.33333333) and 43 other cells of probes/t3350-chisq-inv-huge-df,
-for df 1E7 to 1E8 and the smaller tail being the lower one.
+for df 1E7 to 1E8 and the smaller tail being the lower one. GAMMA.INV and GAMMAINV at scale 1 and shapes that are not a
+whole df/2 failed the same way, with the same edges (T-3505, probes/t3505-gamma-inv-budget-band, 525 cells at shapes
+2.9E5 to 1E8 by p from 1E-300 to 1-1E-10; 120 were `#NUM!`, among them the held-out sweep's
+`GAMMA.INV(0.5,7990464.81598859,1)`, Excel 7990464.482655259). Since T-3350 every one of the 525 has Excel's type, and
+all but 5 are within 15 digits of Excel. The 5 are GAMMA.INV at p = 1E-300 (A1, A13, A85, A97, A145, shapes 2.9E5
+to 3.5E7), where Excel is not the true quantile (up to 2.6E-14 off the 50-digit math at A97, the deep lower-tail root of T-3294).
 Status: VERIFIED (excel-graph) for the cells; the band's edges and the closed form's terms are fits (UNVERIFIED as forms)
-Tasks: T-2982, T-3070, T-3350, T-3396, T-3409
+Tasks: T-2982, T-3070, T-3350, T-3396, T-3409, T-3505
 
 ## GAMMA.DIST at a huge shape: #NUM! for a density at a tiny x, for the cdf above about 1E+76 (T-2435)
 Rule: GAMMA.DIST's density is `#NUM!`, not 0, where the shape is large and x/beta tiny:
@@ -5812,11 +5832,16 @@ Tasks: T-3354, T-3479
 
 ## T.DIST's density is #NUM! at a huge x, and T.INV.2T and TINV at p = 2.2E-308 (T-3358)
 Rule:
-- `T.DIST(x,df,FALSE)` is `#NUM!` in Excel at a huge positive x, from 1.0E+236 to 1.4E+307 at df 2 to 824733515.
-  A smaller huge x gives 0, not `#NUM!`: `T.DIST(9.93424108915371E+137,24,FALSE)` (A97), although the density
-  underflows there too. The positive cut lies between 9.9E+137 and 1.0E+236, which fits the x² overflow cut (about
-  1.34E+154) of the cumulative t functions (T-2474 entry above). A negative x is 0 up to |x| 7.6E+87 (A92, A94, A106)
-  and is not probed beyond. The engine returns 0.
+- `T.DIST(x,df,FALSE)` is `#NUM!` in Excel at a huge |x|:
+  - positive x from 4.2E+220 to 1.4E+307 at df 2 to 2.4E+249: `T.DIST(4.20674629135061E+220,2.42593594707487E+249,FALSE)`
+    (T-3425's e-T-3425 A116) joins the s1 cells;
+  - negative x too: `T.DIST(-4.62236657470614E+224,11,FALSE)` and `T.DIST(-1.3895161258545E+237,16,FALSE)` (e-T-3425
+    A103 and A90). A negative x is 0 up to |x| 7.6E+87 (s1 A92, A94, A106), so the negative cut lies between 7.6E+87
+    and 4.6E+224.
+
+  A smaller huge x gives 0, not `#NUM!`: `T.DIST(9.93424108915371E+137,24,FALSE)` (s1 A97), although the density
+  underflows there too. The positive cut lies between 9.9E+137 and 4.2E+220, which fits the x² overflow cut (about
+  1.34E+154) of the cumulative t functions (T-2474 entry above). The engine returns 0.
 - `T.INV.2T(2.22507385850721E-308,df)` and `TINV(2.22507385850721E-308,df)` are `#NUM!` at df 8, 9, 12 and 14, although
   the quantile is a finite double (about 3.2E+22 to 6.9E+38). T.INV accepts p down to 1E-300 (T-1531).
 - `F.INV(0,d1,d2)` is 0, the lower end of the support.
@@ -5825,7 +5850,7 @@ Rule:
 
 The exact x where T.DIST's density turns `#NUM!` and the p below which the two-tailed quantile does are not yet probed.
 Evidence: Gate A tables, excel-graph:
-- accuracy/T.DIST/s1 A85, A95, A105 and A110;
+- accuracy/T.DIST/s1 A85, A95, A105 and A110, and accuracy/T.DIST/e-T-3425 A90, A103 and A116 (T-3425);
 - accuracy/T.INV.2T/s1 A68 and A78, and accuracy/TINV/s1 A68 and A78;
 - accuracy/T.DIST/s1 A94 and A97 (density 0 below the cut);
 - accuracy/F.INV/s1 A111 (`F.INV(0,38,10)`) and A125 (`F.INV(0,9,50)`), and probes-numeric/t1049-finv A16 (`F.INV(0,3,7)`).
