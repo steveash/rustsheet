@@ -3,7 +3,7 @@ id: T-3751
 title: "Probe typed mixed-separator date input and a leading space before a leading clock"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
