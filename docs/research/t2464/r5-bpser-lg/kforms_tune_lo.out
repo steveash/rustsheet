@@ -1,0 +1,4 @@
+split=tune W=40 cells     pow:XK.s     pow:Xs.K     pow:X.Ks  explna:XK.s  explna:Xs.K  explna:X.Ks    expx:XK.s    expx:Xs.K    expx:X.Ks
+0.15           312          185          177          165          193          181          174          190          175          171
+0.30           120           66           67           65           71           70           71           66           64           64
+all            432          251          244          230          264          251          245          256          239          235

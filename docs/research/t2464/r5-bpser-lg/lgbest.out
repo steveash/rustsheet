@@ -1,0 +1,24 @@
+center split      n    top     gl g1ln53    acc   glp1   hacc g1ln64    lng   lng1 lngdiv  | vs gl: +in&gl-out / -out&gl-in
+0.15   hold      33    179     33     33     30     33     30     33     30     27     28  | g1ln53:0/0 acc:0/3 glp1:0/0 hacc:0/3 g1ln64:0/0 lng:0/3 lng1:0/6 lngdiv:0/5
+0.15   tune      39    203     38     35     30     38     32     35     24     29     29  | g1ln53:0/3 acc:0/8 glp1:0/0 hacc:0/6 g1ln64:0/3 lng:0/14 lng1:0/9 lngdiv:0/9
+0.30   hold      57    379     57     42     45     57     54     42     33     42     27  | g1ln53:0/15 acc:0/12 glp1:0/0 hacc:0/3 g1ln64:0/15 lng:0/24 lng1:0/15 lngdiv:0/30
+0.30   tune      15     96     15     12      9     15     12     12      9      9      9  | g1ln53:0/3 acc:0/6 glp1:0/0 hacc:0/3 g1ln64:0/3 lng:0/6 lng1:0/6 lngdiv:0/6
+0.40   hold      36    248     28     24     27     28     24     24     10     15      7  | g1ln53:4/8 acc:0/1 glp1:0/0 hacc:0/4 g1ln64:4/8 lng:1/19 lng1:1/14 lngdiv:1/22
+0.40   tune      36    253     16     17      4     16     10     17     15     17     11  | g1ln53:8/7 acc:0/12 glp1:0/0 hacc:0/6 g1ln64:8/7 lng:7/8 lng1:8/7 lngdiv:4/9
+0.50   hold      33    216     18     23     15     18     15     23     11     18     17  | g1ln53:10/5 acc:0/3 glp1:0/0 hacc:0/3 g1ln64:10/5 lng:2/9 lng1:3/3 lngdiv:4/5
+0.50   tune      39    258     17     24     14     17     14     24     12     18     17  | g1ln53:12/5 acc:0/3 glp1:0/0 hacc:0/3 g1ln64:12/5 lng:6/11 lng1:3/2 lngdiv:9/9
+0.60   hold      27    197     15     12     13     15     15     12      8      7      9  | g1ln53:2/5 acc:3/5 glp1:0/0 hacc:6/6 g1ln64:2/5 lng:3/10 lng1:3/11 lngdiv:3/9
+0.60   tune      45    306     21     16     22     21     21     16     14     15     16  | g1ln53:8/13 acc:7/6 glp1:0/0 hacc:4/4 g1ln64:8/13 lng:9/16 lng1:10/16 lngdiv:9/14
+0.70   hold      36    243     21     16     16     18     16     16      6      5      5  | g1ln53:1/6 acc:4/9 glp1:1/4 hacc:1/6 g1ln64:1/6 lng:3/18 lng1:0/16 lngdiv:4/20
+0.70   tune      36    265     27     20     26     21     23     20      8     11     12  | g1ln53:3/10 acc:4/5 glp1:2/8 hacc:4/8 g1ln64:3/10 lng:3/22 lng1:2/18 lngdiv:3/18
+0.85   hold      24    165     18     15     15     10     15     15      2      3      1  | g1ln53:0/3 acc:0/3 glp1:1/9 hacc:0/3 g1ln64:0/3 lng:0/16 lng1:0/15 lngdiv:0/17
+0.85   tune      48    328     35     37     34     26     35     37      4      3      4  | g1ln53:3/1 acc:2/3 glp1:2/11 hacc:3/3 g1ln64:3/1 lng:0/31 lng1:1/33 lngdiv:0/31
+all    tune     258   1709    169    161    139    154    147    161     86    102     98  | g1ln53:34/42 acc:13/43 glp1:4/19 hacc:11/33 g1ln64:34/42 lng:25/108 lng1:24/91 lngdiv:25/96
+all    hold     246   1627    190    165    161    179    169    165    100    117     94  | g1ln53:17/42 acc:7/36 glp1:2/13 hacc:7/28 g1ln64:17/42 lng:9/99 lng1:7/80 lngdiv:12/108
+identity GAMMALN(a0) == fl(GAMMALN(fl(1 + a0)) - LN(a0)) at a0~0.15: 72/72
+identity GAMMALN(a0) == fl(GAMMALN(fl(1 + a0)) - LN(a0)) at a0~0.30: 72/72
+identity GAMMALN(a0) == fl(GAMMALN(fl(1 + a0)) - LN(a0)) at a0~0.40: 72/72
+identity GAMMALN(a0) == fl(GAMMALN(fl(1 + a0)) - LN(a0)) at a0~0.50: 72/72
+identity GAMMALN(a0) == fl(GAMMALN(fl(1 + a0)) - LN(a0)) at a0~0.60: 72/72
+identity GAMMALN(a0) == fl(GAMMALN(fl(1 + a0)) - LN(a0)) at a0~0.70: 45/72
+identity GAMMALN(a0) == fl(GAMMALN(fl(1 + a0)) - LN(a0)) at a0~0.85: 12/72
