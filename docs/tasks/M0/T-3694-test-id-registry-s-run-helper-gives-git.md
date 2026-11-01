@@ -25,6 +25,7 @@ depends_on: []
 - [x] Reproduced: `sleep 60 | timeout 40 python3 -m unittest scripts.test_id_registry -q` hit the timeout (exit
       124) before the fix.
 - [x] With the fix, the same command runs 9 tests in about 2 s and passes.
+- [x] Decision 0230 records the rule (scripts/ is a protected path).
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
