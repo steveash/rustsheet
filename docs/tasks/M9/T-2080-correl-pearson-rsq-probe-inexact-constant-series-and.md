@@ -28,4 +28,4 @@ and 1E154/1E200-scale pairs, for CORREL, PEARSON and RSQ.
 -
 
 ## Outcome
-Probe `probes/correl-inexact-constant-overflow` (68 cells, excel-graph). Inexact constant series already matched. Overflowing sums of squares are `#NUM!` in Excel (checked before the zero-variance `#DIV/0!`, after the pair count) for CORREL, PEARSON, RSQ and, on x's sum, SLOPE, INTERCEPT, STEYX, FORECAST; `PairedMoments` now returns the error kind and all 68 cells pass. Not a numeric fit (a structural overflow rule, no tuned constants). Open: y-only overflow for STEYX.
+Probe `probes/correl-inexact-constant-overflow` (79 cells, excel-graph). Inexact constant series already matched. Overflowing sums of squares are `#NUM!` in Excel (checked before the zero-variance `#DIV/0!`, after the pair count) for CORREL, PEARSON, RSQ and, on x's sum, SLOPE, INTERCEPT, STEYX, FORECAST; `PairedMoments` now returns the error kind and all 79 cells pass. Not a numeric fit (a structural overflow rule, no tuned constants). Open: y-only overflow for STEYX.

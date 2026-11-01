@@ -56,7 +56,7 @@ impl PairedMoments {
     /// `#NUM!` when a sum of squares of the deviations overflows to infinity, with at least two
     /// pairs: Excel checks it before the zero-variance `#DIV/0!`, so `CORREL` of x = 1E200,
     /// 2E200, 3E200 against a constant y is `#NUM!`, not `#DIV/0!`, while a single pair stays
-    /// `#DIV/0!` (probes/correl-inexact-constant-overflow Z31-Z60; statistics.md "Regression
+    /// `#DIV/0!` (probes/correl-inexact-constant-overflow Z31-Z79; statistics.md "Regression
     /// pairs: sums about the means"). `needs_y` is false where only x's sum matters: SLOPE with
     /// y of 1E200 scale is finite.
     fn overflow(&self, needs_y: bool) -> Result<(), Error> {
@@ -187,14 +187,14 @@ impl Model {
             Err(error) => return error,
         };
         let div = || CalcResult::new_error(Error::DIV, cell, "Divide by 0".to_string());
-        if let Err(error) = moments.slope() {
-            // x's overflow is `#NUM!` even with two points (probes/correl-inexact-constant-overflow Z65).
-            if error == Error::NUM {
-                return moment_error(error, cell);
-            }
+        // x's overflow is `#NUM!` even with two points, before the n < 3 `#DIV/0!`
+        // (probes/correl-inexact-constant-overflow Z65, Z69); n - 2 degrees of freedom make two
+        // points otherwise `#DIV/0!` (probes/regression-pairs-b M4).
+        let slope = moments.slope();
+        if let Err(Error::NUM) = slope {
+            return moment_error(Error::NUM, cell);
         }
-        // n - 2 degrees of freedom: two points are #DIV/0! (probes/regression-pairs-b M4).
-        if moments.n < 3.0 || moments.slope().is_err() {
+        if moments.n < 3.0 || slope.is_err() {
             return div();
         }
         // Excel: Σ(y - ȳ)² less the explained part, sxy * sxy / sxx in that order
