@@ -380,3 +380,38 @@ fn test_binom_inv_and_range_at_a_large_n_take_binom_dist_cdf() {
         );
     }
 }
+
+#[test]
+fn test_binom_dist_range_above_the_mean_is_a_difference_of_upper_tails() {
+    // probes/t3444-binom-range-inv-large-n Range A60, A126 and A48 (excel-graph): ranges from mean + 3
+    // sd to mean + 5 sd, where Excel's range is not its own cdf difference. The upper-tail difference
+    // lands within 1E-15 relative of Excel (the cdf difference was 6.5E-14, 1.6E-14 and 3.4E-14 off).
+    let cases = [
+        (
+            "=BINOM.DIST.RANGE(10000000,0.3,3004347,3007246)",
+            0.001_354_038_278_612_824_6,
+        ),
+        (
+            "=BINOM.DIST.RANGE(2147483646,0.001,2151878,2154807)",
+            0.001_354_350_995_348_841_8,
+        ),
+        (
+            "=BINOM.DIST.RANGE(1000000,0.5,501500,502500)",
+            0.001_354_042_499_268_579_6,
+        ),
+    ];
+    let mut model = new_empty_model();
+    for (row, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, excel)) in cases.iter().enumerate() {
+        let ours: f64 = round_trip_value(&model, &format!("A{}", row + 1))
+            .parse()
+            .unwrap_or(f64::NAN);
+        assert!(
+            (ours / excel - 1.0).abs() < 1e-15,
+            "{formula}: {ours} against {excel}"
+        );
+    }
+}

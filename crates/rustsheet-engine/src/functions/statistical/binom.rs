@@ -170,6 +170,18 @@ impl Model {
         if let Some(prob) = binomial_range(n, odds(p), lower, upper) {
             return Ok(prob);
         }
+        // A range whose lower end is past the mean is a difference of upper tails: on the 21
+        // probes/t3444-binom-range-inv-large-n Range rows from mean + 3 sd to mean + 5 sd, where
+        // Excel's range is not its own cdf difference, this takes the relative miss from 8E-15 to
+        // 6E-14 down to 1E-15 or less on 18 of them (statistics.md, T-3444). It is applied only past
+        // the walk, which stays nearer Excel on the rows it covers (A18, A36).
+        if (lower - 1) as f64 > n as f64 * p {
+            if let (Some(above_lower), Some(above_upper)) =
+                (excel_binom_sf(n, p, lower - 1), excel_binom_sf(n, p, upper))
+            {
+                return Ok(above_lower - above_upper);
+            }
+        }
         // Past the walk's budget Excel's range is its own BINOM.DIST cdf difference, to the bit
         // on 105 of the 126 probes/t3444-binom-range-inv-large-n Range rows (column A = column B).
         let dist = Binomial::new(p, n).map_err(|_| num_error(cell))?;
@@ -188,8 +200,8 @@ impl Model {
     /// `BINOM.INV(trials, probability_s, alpha)`, and CRITBINOM. The search halves
     /// `[0, trials]` with `trials` under [`TRIALS_LIMIT`], so it stops after at most 31 steps of
     /// one cdf each,
-    /// its own per-call cap: up to about 65 us an element in release, which the lifting table
-    /// charges as `Weighted(4096)` (SPEC-0011 security rule; lift/kinds/statistical.rs
+    /// its own per-call cap: up to about 200 us an element in release (T-3444), which the lifting
+    /// table charges as `Weighted(16384)` (SPEC-0011 security rule; lift/kinds/statistical.rs
     /// `BINOM_INV`).
     pub(crate) fn fn_binom_inv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::BinomInv, args, cell, &mut |model, values| {
@@ -426,9 +438,9 @@ fn excel_binom_pmf(n: u64, p: f64, k: u64) -> Option<f64> {
         .or_else(|| loader_pmf(k as f64, n as f64, p))
 }
 
-/// Excel's binomial cdf `P(X <= k)` for `0 < p < 1`, as BINOM.DIST computes it, or
-/// `None` where only statrs is left. At k = 0 it is BINOM.DIST's closed form (below). Excel's cdf is the upper tail of the incomplete beta
-/// `I_p(k+1, n-k)` at x = p, y = fl(1 - p), which at k = n - 1 takes Excel's closed form (T-2464
+/// Excel's binomial cdf `P(X <= k)` for `0 < p < 1`, as BINOM.DIST computes it, or `None` where
+/// only statrs is left. At k = 0 it is BINOM.DIST's closed form (below). Excel's cdf is the upper
+/// tail of the incomplete beta `I_p(k+1, n-k)` at x = p, y = fl(1 - p), which at k = n - 1 takes Excel's closed form (T-2464
 /// w5-triangulation, T-2502), then the bratio port's branches (T-2847), basym among them
 /// (T-3352). k = 0 is BINOM.DIST's own shortcut, not the kernel's (T-2645). Off k = 0 a
 /// subnormal cdf is 0, as in Excel (`(x)=0` TRUE: probes/t2706-subnormal-density-paths B5:B7).
@@ -446,6 +458,16 @@ fn excel_binom_cdf(n: u64, p: f64, k: u64) -> Option<f64> {
         }
     }
     binomial_cdf(n, odds(p), k).map(flush_subnormal)
+}
+
+/// The binomial upper tail `P(X > k)` for `0 < p < 1`: bratio's w of `I_p(k+1, n-k)`, the tail
+/// [`excel_binom_cdf`] takes the complement of, or `None` off the ported branches.
+fn excel_binom_sf(n: u64, p: f64, k: u64) -> Option<f64> {
+    if k >= n {
+        return Some(0.0);
+    }
+    let (x, y, a, b) = (p, 1.0 - p, k as f64 + 1.0, (n - k) as f64);
+    closed_or_ported_tails(x, y, a, b).map(|(lower, _)| flush_subnormal(lower))
 }
 
 /// Excel's binomial pmf `dbinom_raw(k, n, p, fl(1 - p))` for 0 < k < n: EXP of Loader's saddle-point
