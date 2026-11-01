@@ -33,9 +33,9 @@ they are known failures that no open task owns.
 - H3 and H10 are ATAN2's case. 1.1071487177940906 is the Mac digit that decision 0086 records for ATAN2_POWER.xlsx D26
   `ATAN2(TRUE,2)`, against the web's correctly rounded ...904. Decision 0086's consequences say a desktop ATAN sweep
   "would also cover IMARGUMENT if it shares the kernel" (T-1075 item 14).
-- T-3410 (branch agent/research/T-3410-desktop-only-irr-complexs, decision 0196) names COMPLEXs K25 and IRR.xlsx C4 as
-  M14 desktop-only cells. It leaves these three out of scope as "within 4 ulp, not visibly off". This task is that
-  remainder: read 0196 once it has merged and extend it, or cite it from a new record.
+- T-3410 (done; decision 0196, accepted) names COMPLEXs K25 and IRR.xlsx C4 as M14 desktop-only cells. It leaves
+  these three out of scope as "within 4 ulp, not visibly off". This task is that remainder: extend decision 0196, or
+  cite it from a new record.
 - Precedents: decisions 0074 (IF_ARRAY SIN(4)), 0086 (ATAN2 D14, D26), 0188 R6 (IMTAN N6, IMSQRT AL12, AL26) and 0196.
   Decision 0039 item 4: web-vs-desktop conflicts match the web for now. eval/milestones/ is protected (decision 0044).
 
