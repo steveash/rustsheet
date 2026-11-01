@@ -50,6 +50,7 @@ the reason Excel's digits cannot be derived.
   - probes-numeric/t2220-f-dist-sweep-rt.case.json (33): Calc!A84, A97, A98, A399, A467, A504, A567, A579, A589, A594, A596, A669, A680, A697, A795, A800, A804, A868, A878, A879, A885, A890, A897, A900, A954, A960, A978, A984, A990, A994, A997, A999, A1000
   - probes-numeric/t3478-f-density-r4-wide.case.json (45): Calc!A53, A54, A59, A60, A62, A63, A64, A75, A78, A81, A82, A85, A90, A94, A95, A96, A98, A99, A154, A156, A161, A162, A166, A174, A178, A184, A187, A188, A189, A197, A249, A252, A257, A261, A262, A264, A267, A268, A272, A273, A274, A275, A278, A282, A300
   - probes/t3349-t-inv-2t-near-one.case.json (1): Calc!A5
+- Split (T-3229 check): T-3414 and T-3415 also list probes/t3349-t-inv-2t-near-one A5; this task owns it.
 
 ## Acceptance criteria
 - [ ] Each listed cell is within half a unit of Excel's 15th significant digit, or moved to a named narrower task

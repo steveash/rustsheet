@@ -6,7 +6,8 @@
   queue on, enqueue instead of the up-to-date check. Amended by 0121: the steward merges `main`
   in under the merge lock, and before it only to fix a conflict or a known id collision. Amended by 0157: in `train` mode the
   steward marks orphaned PRs ready instead of merging them; in `lock` mode it may merge or
-  unlabel `ready-to-merge` PRs without the 24 h clock.
+  unlabel `ready-to-merge` PRs without the 24 h clock. Amended by 0224: in `train` mode a PR is
+  orphaned once its branch is idle 6 h (no 24 h age), and `claude/*` branches count too.
 - **Context:**
   - Worker sessions stop on a time budget (decision 0025). Some stop with a PR open that is
     finished or nearly finished.

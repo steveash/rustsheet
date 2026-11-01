@@ -132,3 +132,28 @@ fn typed_double_star_in_a_number_is_its_exponent() {
     model.evaluate();
     assert_eq!(model._get_text("A10"), "#ERROR!");
 }
+
+/// T-3338: a typed formula past Excel's sign cap is refused as one that does not parse, the cell
+/// left blank, as Excel's Graph PATCH 400 leaves it (probes/t3266-minus-paren-1023-typed,
+/// -minus-paren2-, -plus-paren-, -minus-abs-1023-typed: A1 blank, `ISFORMULA(A1)` FALSE); one
+/// sign fewer is accepted.
+#[test]
+fn typed_formulas_past_the_sign_cap_are_refused_as_not_parsing() {
+    for (sign, operand) in [("-", "(1)"), ("-", "((1))"), ("+", "(1)"), ("-", "ABS(1)")] {
+        let mut model = new_empty_model();
+        let typed = |count: usize| format!("={}{operand}", sign.repeat(count));
+        let result = model.set_typed_user_input(0, 1, 1, typed(1023));
+        let message = result.err().unwrap_or_default();
+        assert!(
+            message.starts_with(TYPED_FORMULA_DOES_NOT_PARSE),
+            "{sign}{operand}: {message}"
+        );
+        assert_eq!(model.set_typed_user_input(0, 2, 1, typed(1022)), Ok(()));
+        model._set("B1", "=ISFORMULA(A1)");
+        model.evaluate();
+        assert_eq!(model._get_text("A1"), "");
+        assert_eq!(model._get_text("B1"), "FALSE");
+        // An even count of minus signs: 1 either way.
+        assert_eq!(model._get_text("A2"), "1", "{sign}{operand}");
+    }
+}
