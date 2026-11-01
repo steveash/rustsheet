@@ -603,10 +603,9 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                                 hour -= 12;
                             }
                         }
-                        let hour = if matches!(token, TextToken::Hour) {
-                            hour.to_string()
-                        } else {
-                            format!("{hour:02}")
+                        let hour = match token {
+                            TextToken::HourPadded => format!("{hour:02}"),
+                            _ => hour.to_string(),
                         };
                         text.push_str(&p.numerals.field(&hour));
                     }
