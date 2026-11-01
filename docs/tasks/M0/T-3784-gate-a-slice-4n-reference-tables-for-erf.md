@@ -70,8 +70,14 @@ ERF's cancellation region gets an explicit treatment.
   now get math values.
 - The ERF(a, b) cancellation region is left out of the table. A two-argument point is redrawn while
   |erf b - erf a| < 1e-9 * max(|erf a|, |erf b|), which keeps Excel's subtraction error near 2.2E-7 relative, far
-  from R3's 1e-4. The docstring says why. The region's Excel cells stay in probes-numeric (`kmyst-erf-twoarg`).
-  So there are **no R3 candidates** for an owner ruling.
+  from R3's 1e-4. The docstring says why. The region's Excel cells stay in probes-numeric `t1916-erf-wrappers`.
+- **R3 candidates, for an owner ruling (not marked; T-3794):** this PR commits the math sidecar of
+  `t1916-erf-wrappers`. In it, 602 of the 915 two-argument cells are more than 1e-4 relative off the math, from
+  3.9E-4 to 3.28. For example:
+  - D1530 `ERF(0.5000000000000002,0.5000000000000003)`: Excel -2.220446049250313E-16, math 9.756446527736046E-17;
+  - D1531: Excel 0, math 9.756E-17;
+  - D1532: Excel 3.3306690738754696E-16.
+  The engine matches Excel at all of them. The Gate A table does not depend on the ruling.
 - The subnormal tail is drawn, not left out: Gate A's absolute floor 1e-300 covers Excel's flush to 0 from
   x = 26.625. The tail and edge strata reach it.
 - Tables: `eval/accuracy/tables/{ERF,ERF.PRECISE,ERFC,ERFC.PRECISE}/s1`, 120 points each, filled from excel-graph
@@ -81,6 +87,9 @@ ERF's cancellation region gets an explicit treatment.
   (t1040-erfc, t1040-erfc-precise, t1916-erf-small, t1916-erf-wrappers, t1916-erfc-exp-ties, t1916-erfc-mid,
   t1916-erfc-tail). The regeneration also produced sidecars for t3352, t3443 and t3568 cases that had none on main.
   Those cases are not part of this task, so they are not committed here.
-- Semantics: statistics.md, T-1040 entry. No argument size is an error for the four functions, up to
-  |x| = 4.5E+298, the two-argument form included.
+- Semantics:
+  - statistics.md, T-1778 two-argument bullet: the cancellation cells past 1e-4.
+  - statistics.md, T-1040 entry: no argument size is an error for the four functions, up to |x| = 4.5E+298, the
+    two-argument form included. Off the 0.125 grid, ERFC.PRECISE near DBL_MIN is up to 4E-14 off the math.
+- Follow-up: T-3794 (owner ruling on R3 for the cancellation region, blocked on the owner).
 - Eval delta: none in the gated suites (tools, tables and sidecars only).

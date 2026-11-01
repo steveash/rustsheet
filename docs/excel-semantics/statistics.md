@@ -343,6 +343,9 @@ Status: VERIFIED (values); the formulation that reproduces the tail error is ope
 No argument size is an error: ERF, ERF.PRECISE, ERFC and ERFC.PRECISE answer a number at every one of the 480
 Gate A points, |x| up to 4.5E+298 (ERFC is 0 for a huge positive x and 2 for a huge negative one; ERF is ±1),
 two-argument ERF included (eval/accuracy/tables/ERF*/s1, excel-graph, 2026-11-01, T-3784).
+Off the grid, the 1e-15 bound does not hold near DBL_MIN: `ERFC.PRECISE(26.5432)` is 2.231994182662762E-308
+against the math's 2.2319941826628525E-308 (4.05E-14 relative; ERFC.PRECISE/s1 A76). That fits the rounding of x*x
+in the ERFC kernel's EXP(-fl(x*x)) (T-1778 entry); on the 0.125 grid x*x is exact.
 
 ## ERFC core factor: candidates that do not reproduce Excel (T-1187)
 Rule: none known. For x >= 1 on probes-numeric/t1040-erfc (209 points, 205 of them non-zero), Excel's `ERFC(x)` divided by
@@ -554,6 +557,10 @@ What the probes show about the kernel itself (none of it yet reproduces Excel bi
     difference for the other 22 (relative size 1.11E-15 and up). The two ranges overlap, so the cut is not a
     plain relative threshold on the result. It is Excel's near-cancellation snap on `-`; its rule is not
     derived here.
+    Because both values are rounded first, Excel's `ERF(a,b)` is more than 1e-4 relative off erf(b) - erf(a)
+    wherever the two nearly cancel: 602 of the 915 two-argument cells of probes-numeric `t1916-erf-wrappers` are,
+    up to 3.28 relative. For example, `ERF(0.5000000000000002,0.5000000000000003)` is -2.220446049250313E-16
+    against the math's +9.756E-17. The engine matches Excel there until the owner rules on R3 (T-3794).
 - Generic shape a: at z = m*2^-60, `GAMMA.DIST(z,a,1,TRUE)` for a = 2, 3, 10 is off by up to 640E-16
   relative, and that error follows the rounding of fl(a*fl(ln z)) to within about 2E-16 (the docs/research
   script prints both). For a = 10 a constant -25E-16 remains, the error of Excel's own

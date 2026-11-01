@@ -5,8 +5,10 @@ the two-argument `ERF(a, b)` is erf(b) - erf(a). Every real is in the domain: no
 evidenced for a number argument (the engine has none either).
 
 Sources:
-- statistics.md, "Normal CDF and ERFC sweep (T-1040)": ERFC and ERFC.PRECISE are bit-identical and within 1e-15 of
-  the correctly rounded erfc wherever the result is a normal double; from x = 26.625 on they are 0, where the true
+- statistics.md, "Normal CDF and ERFC sweep (T-1040)": on its grid (x step 0.125) ERFC and ERFC.PRECISE are
+  bit-identical and within 1e-15 of the correctly rounded erfc wherever the result is a normal double (off the grid
+  the rounding of x*x in Excel's EXP(-fl(x*x)) shows: `ERFC.PRECISE(26.5432)` is 4.05E-14 off); from x = 26.625 on
+  they are 0, where the true
   value is subnormal (the last nonzero is `ERFC(26.5)` = 2.2109076642637346E-307). The tail stratum draws that
   region on purpose: Gate A's absolute floor 1e-300 (decision 0188 R2; numbers.md "Subnormal results become 0")
   puts a flushed 0 and a kept subnormal inside the envelope alike, so those points are drawn, not left out.
@@ -14,17 +16,20 @@ Sources:
   - ERF is odd, ERF(d) = fl(1 - ERFC(d)) and ERFC(-d) = fl(2 - ERFC(d)) for d >= 0.5; the small-x kernel runs up to
     x = 0.5 itself and the ERFC kernel starts at 0.5 + 2^-53, so the edge stratum draws 0.5 and its neighbours.
   - Tiny x keeps the leading term: `ERF.PRECISE(2^-k)*2^k` = 1.1283791670955128 for k from 27 to 79.
-  - Two-argument `ERF(a,b)` is the exact difference of the two rounded single values (`kmyst-erf-twoarg`).
+  - Two-argument `ERF(a,b)` is the exact difference of the two rounded single values (research probe
+    `kmyst-erf-twoarg`; eval cells in probes-numeric `t1916-erf-wrappers`).
 - engineering.md: `ERF(5.9)` is 0.9999999999999999 and `ERF(6)` is 1; numeric text such as `ERF("0.5")` is
   accepted. A table writes number literals only, so the text forms stay in the eval suites.
 
 The two-argument cancellation region (decision 0188 R3). Because Excel subtracts two rounded values, its error
 relative to erf(b) - erf(a) is up to about 2^-52 * max(|erf a|, |erf b|) / |erf(b) - erf(a)|: where the two values
-nearly cancel (b a few ulps above a, or both deep in the same tail, as `ERF(5,6)`), Excel can be more than 1e-4 off
-the math, which would make the point an R3 candidate needing an owner ruling. The table leaves that region out
-instead: a two-argument point is redrawn while |erf(b) - erf(a)| < `CANCEL` * max(|erf a|, |erf b|), which bounds
-Excel's subtraction error near 2.2E-7 relative, far inside R3's 1e-4. The region keeps its Excel cells in the eval suites (probes-numeric `kmyst-erf-twoarg`), so no
-behaviour goes unchecked; it is just not a Gate A reference point.
+nearly cancel (b a few ulps above a, or both deep in the same tail, as `ERF(5,6)`), Excel is more than 1e-4 off the
+math: 602 of the 915 two-argument cells of probes-numeric `t1916-erf-wrappers` are (up to a relative 3.28, with the
+opposite sign). Those are R3 candidates, and their ruling is the owner's (T-3794). The table leaves the region out,
+so the gate does not depend on that ruling: a two-argument point is redrawn while |erf(b) - erf(a)| < `CANCEL` *
+max(|erf a|, |erf b|), which bounds Excel's subtraction error near 2.2E-7 relative, far inside R3's 1e-4. The
+region's Excel cells stay in `t1916-erf-wrappers`, so no behaviour goes unchecked; they are just not Gate A
+reference points.
 """
 
 from __future__ import annotations
@@ -51,6 +56,7 @@ CANCEL = 1e-9  # a two-argument point whose difference is below this share of it
 TWO_ARG_SHARE = 0.5  # the share of ERF's points that pass upper_limit
 CANCEL_REDRAWS = 50
 ASYMPTOTIC = mpmath.mpf(10) ** 4  # erfc takes the asymptotic series from here on
+SERIES_TERMS = 200  # a cap only: from 1E+4 at dps 80 the series needs under 20 terms
 
 
 def _signed(rng: random.Random, x: float) -> float:
@@ -129,7 +135,7 @@ def erfc(x: mpmath.mpf) -> mpmath.mpf:
         return mpmath.erfc(x)
     step = 1 / (2 * x * x)
     term, total, k = mpmath.mpf(1), mpmath.mpf(1), 1
-    while abs(term) > mpmath.eps:
+    while abs(term) > mpmath.eps and k <= SERIES_TERMS:
         term *= -(2 * k - 1) * step
         total += term
         k += 1
