@@ -672,7 +672,8 @@ nothing and 158 hit another position. By block:
   U+2CF2 (C33 position 32).
 The engine folds every pair through Rust's `to_lowercase`, so the cells of C and D listed in eval/baseline/probes.txt
 fail (T-3445).
-Status: VERIFIED (excel-graph). Implemented for T-3133's list only; the T-3298 blocks are not (T-3445).
+Status: VERIFIED (excel-graph) for the block table; the weightless-equality reading and the "observed, not yet
+explained" hits are UNVERIFIED (T-3584). Implemented for T-3133's list only; the T-3298 blocks are not (T-3445).
 Implemented in: `fold_case` (functions/util/collation.rs), through `folded_units` (`ExactKey`, the indexed exact
 search) and `WildcardPattern` (the linear one); `decompose` (collation.rs) for XMATCH's `İ`
 

@@ -40,7 +40,7 @@ compare equal to one another.
 - lookup.md "MATCH, VLOOKUP and HLOOKUP exact-match keys fold case one character to one" holds the current text.
 
 ## Acceptance criteria
-- [ ] A probes case `probes/t3444-*` with excel-graph sidecars answers the questions above.
+- [ ] A probes case `probes/t3584-*` with excel-graph sidecars answers the questions above.
 - [ ] lookup.md (and coercion.md if `=` is affected) states the weightless-character rule and the per-block fold
       table precisely enough for T-3445 to implement it, citing cells.
 - [ ] Failing cells are known failures owned by T-3445 (or a new task); `make exit-owners MILESTONE=M2` reports 0.
