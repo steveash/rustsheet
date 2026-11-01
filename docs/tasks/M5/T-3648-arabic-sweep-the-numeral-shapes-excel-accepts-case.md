@@ -3,7 +3,7 @@ id: T-3648
 title: "ARABIC: sweep the numeral shapes Excel accepts (case, non-canonical forms, sign, length, non-Roman characters)"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -34,10 +34,10 @@ functions/math_and_trigonometry/arabic_roman.rs.
 - ROMAN.
 
 ## Outcome
-Probed 217 cells (probes/t3648-arabic-numeral-shapes, excel-graph, 2026-11-01). Excel's ARABIC has no numeral
+Probed 232 cells (probes/t3648-arabic-numeral-shapes, excel-graph, 2026-11-01). Excel's ARABIC has no numeral
 grammar: an optional leading `-`, then ASCII IVXLCDM letters in either case, summed right to left (a letter below the
 largest seen so far is subtracted). A lone `-` is `#NUM!`; any other character, a `+`, numeric text and the Unicode Roman
 numerals are `#VALUE!`; the text may be 255 characters before trimming. Every ROMAN form reads back. `from_roman` is
 rewritten to that rule (the old classic-grammar parser rejected most non-canonical and every signed numeral), with unit
 tests; numbers.md "ARABIC reads any Roman-letter string, right to left" records the grammar.
-Eval delta: the new probe case passes 217/217 cells; no regressions.
+Eval delta: the new probe case passes 232/232 cells (`make eval-check`: probes fixed 0, new cases 1, REGRESSIONS 0); no regressions.
