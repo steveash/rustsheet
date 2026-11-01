@@ -3,7 +3,7 @@ id: T-3784
 title: "Gate A slice 4n: reference tables for ERF, ERF.PRECISE, ERFC and ERFC.PRECISE"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -46,16 +46,41 @@ ERF's cancellation region gets an explicit treatment.
   ruling against the evidence.
 
 ## Acceptance criteria
-- [ ] `tools/src/rustsheet_tools/accuracy/defs/erf.py` has one definition per function, each citing its sources and
+- [x] `tools/src/rustsheet_tools/accuracy/defs/erf.py` has one definition per function, each citing its sources and
       stating the ERF(a, b) cancellation choice, with unit tests against the semantics entries' values above.
-- [ ] `eval/accuracy/tables/<FUNCTION>/s1.{case,math,oracle}.json` for ERF, ERF.PRECISE, ERFC and ERFC.PRECISE,
+- [x] `eval/accuracy/tables/<FUNCTION>/s1.{case,math,oracle}.json` for ERF, ERF.PRECISE, ERFC and ERFC.PRECISE,
       generated, filled (excel-graph) and committed. ERF's table has both one- and two-argument points.
       `rustsheet-eval accuracy` reports `missing tables` lower by 4, with 0 failing points and 0 table defects.
-- [ ] Every point outside the envelope is a `known-failures.tsv` line with an open owner task. Any R3 candidate is
+- [x] Every point outside the envelope is a `known-failures.tsv` line with an open owner task. Any R3 candidate is
       listed in the Outcome for an owner ruling and not marked in this PR.
-- [ ] The probes-numeric math sidecars are regenerated with the new definitions and committed.
-- [ ] `make check` green; reviewers approve.
+- [x] The probes-numeric math sidecars are regenerated with the new definitions and committed.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - NORM.S.DIST and GAUSS (T-3783), CHISQ.DIST and GAMMA.DIST (T-3786 classifies them).
 - Changing the engine's erf kernel.
+
+## Outcome
+- `tools/src/rustsheet_tools/accuracy/defs/erf.py`: one definition each for ERF, ERF.PRECISE, ERFC and ERFC.PRECISE,
+  with their sources. From |x| = 1E+4 erfc is the asymptotic series (A&S 7.1.23), because mpmath's own `erfc`
+  overflows a float there.
+- Model: a `Param` can now be `optional`, as a trailing parameter only. `Definition.params_for(n)` is the one place
+  that maps a call's argument count to its parameters. The sampler, `compute`, `parse_formula` and the eval-cell
+  math use it, so ERF's single table holds one- and two-argument points, and probes-numeric one-argument ERF cells
+  now get math values.
+- The ERF(a, b) cancellation region is left out of the table. A two-argument point is redrawn while
+  |erf b - erf a| < 1e-9 * max(|erf a|, |erf b|), which keeps Excel's subtraction error near 2.2E-7 relative, far
+  from R3's 1e-4. The docstring says why. The region's Excel cells stay in probes-numeric (`kmyst-erf-twoarg`).
+  So there are **no R3 candidates** for an owner ruling.
+- The subnormal tail is drawn, not left out: Gate A's absolute floor 1e-300 covers Excel's flush to 0 from
+  x = 26.625. The tail and edge strata reach it.
+- Tables: `eval/accuracy/tables/{ERF,ERF.PRECISE,ERFC,ERFC.PRECISE}/s1`, 120 points each, filled from excel-graph
+  (0 failures). `rustsheet-eval accuracy`: 4,316 points in 26 tables, 0 failing, 0 table defects, no new
+  known failures. Missing tables went from 271 to 267.
+- Sidecars: probes-numeric math sidecars were regenerated, and the seven ERF/ERFC cases gained a sidecar
+  (t1040-erfc, t1040-erfc-precise, t1916-erf-small, t1916-erf-wrappers, t1916-erfc-exp-ties, t1916-erfc-mid,
+  t1916-erfc-tail). The regeneration also produced sidecars for t3352, t3443 and t3568 cases that had none on main.
+  Those cases are not part of this task, so they are not committed here.
+- Semantics: statistics.md, T-1040 entry. No argument size is an error for the four functions, up to
+  |x| = 4.5E+298, the two-argument form included.
+- Eval delta: none in the gated suites (tools, tables and sidecars only).

@@ -63,7 +63,8 @@ class Param:
     the magnitude of whole-domain draws where the math cannot evaluate the domain's far end (a
     50-digit incomplete beta at a count of 1E+300) or the oracle cannot hold a point (a huge
     negative POISSON.DIST mean); unlike a domain bound it claims nothing about Excel, so it gets no
-    edge points.
+    edge points. An `optional` parameter (trailing ones only) may be left out of a call, as ERF's
+    `upper_limit`: a point then has fewer arguments, and only a definition's own `draw` omits one.
     """
 
     name: str
@@ -74,6 +75,7 @@ class Param:
     edges: tuple[float, ...] = ()
     source: str = ""
     draw_hi: float | None = None
+    optional: bool = False
 
     def finite_bounds(self) -> list[tuple[float, bool, bool]]:
         """The finite domain bounds as (value, open, is_lower)."""
@@ -110,13 +112,28 @@ class Definition:
     draw: Draw | None = None
     solver: bool = False
 
+    def __post_init__(self) -> None:
+        flags = [p.optional for p in self.params]
+        if flags != sorted(flags):
+            msg = f"{self.function}: an optional parameter is followed by a required one"
+            raise ValueError(msg)
+
+    def params_for(self, count: int) -> tuple[Param, ...]:
+        """The parameters a call with `count` arguments passes: every required one and the first
+        optional ones. ValueError when `count` is fewer than the required or more than all."""
+        required = sum(1 for p in self.params if not p.optional)
+        if not required <= count <= len(self.params):
+            msg = f"{self.function} takes {required} to {len(self.params)} arguments, not {count}"
+            raise ValueError(msg)
+        return self.params[:count]
+
     def numeric_arity(self) -> int:
         """The number of real or integer parameters."""
         return sum(1 for p in self.params if p.kind != "bool")
 
     def check_domain(self, args: Sequence[MathArg]) -> None:
         """Raises `DomainError` when `args` are outside the parameters' intervals or `domain`."""
-        for p, a in zip(self.params, args, strict=True):
+        for p, a in zip(self.params_for(len(args)), args, strict=True):
             if p.kind in ("bool", "array") or isinstance(a, (bool, tuple)):
                 continue  # an array's rules are the definition's `domain`
             if not p.domain.contains(float(a)):

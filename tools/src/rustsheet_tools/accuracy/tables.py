@@ -84,7 +84,7 @@ def compute(definition: Definition, args: Sequence[literal.Arg]) -> MathValue:
     by more than 1e-45 relative, when one is a domain error and the other not, or past the time
     limit). NoValueError (redraw) when the value overflows the double range or has no single
     value."""
-    math_args = [math_arg(p, a) for p, a in zip(definition.params, args, strict=True)]
+    math_args = [math_arg(p, a) for p, a in zip(definition.params_for(len(args)), args, strict=True)]
     results: list[mpmath.mpf | DomainError] = []
     try:
         with time_limit(TIME_LIMIT):
@@ -242,11 +242,13 @@ def parse_formula(definition: Definition, text: str) -> list[literal.Arg]:
         msg = f"{text!r} is not one call of {definition.function}"
         raise ValueError(msg)
     parts = split_args(text[len(prefix) : -1])
-    if len(parts) != len(definition.params):
-        msg = f"{text!r}: {len(parts)} arguments, the definition has {len(definition.params)}"
-        raise ValueError(msg)
+    try:
+        params = definition.params_for(len(parts))
+    except ValueError as err:
+        msg = f"{text!r}: {err}"
+        raise ValueError(msg) from err
     args: list[literal.Arg] = []
-    for param, part in zip(definition.params, parts, strict=True):
+    for param, part in zip(params, parts, strict=True):
         token = part.strip()
         if param.kind == "bool":
             args.append(token.upper() == "TRUE")

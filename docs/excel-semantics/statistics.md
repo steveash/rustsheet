@@ -340,6 +340,9 @@ Evidence: probes-numeric cases `t1040-norm-s-dist-cdf-a`, `t1040-norm-s-dist-cdf
 `t1040-erfc-precise`, `t1040-gauss`, `t1040-norm-dist-cdf`, `t1040-lognorm-dist-cdf` (oracle
 excel-graph, 2026-10-08; errors measured against 60-digit mpmath).
 Status: VERIFIED (values); the formulation that reproduces the tail error is open in T-0968.
+No argument size is an error: ERF, ERF.PRECISE, ERFC and ERFC.PRECISE answer a number at every one of the 480
+Gate A points, |x| up to 4.5E+298 (ERFC is 0 for a huge positive x and 2 for a huge negative one; ERF is ±1),
+two-argument ERF included (eval/accuracy/tables/ERF*/s1, excel-graph, 2026-11-01, T-3784).
 
 ## ERFC core factor: candidates that do not reproduce Excel (T-1187)
 Rule: none known. For x >= 1 on probes-numeric/t1040-erfc (209 points, 205 of them non-zero), Excel's `ERFC(x)` divided by
