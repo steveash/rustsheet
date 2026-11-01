@@ -3,7 +3,7 @@ id: T-3508
 title: "SORT with a multi-cell by_col lifts an argument error to by_col's shape (gen-m7 arg-pairs)"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -33,9 +33,21 @@ When SORT's `by_col` is a multi-cell range and SORT fails on another argument, t
 Decision 0083: every cell listed under Context is visibly off (a wrong error type, or an error where Excel spills), so this task is in the campaign. Its target is that every cell it owns has Excel's type, error and text; the acceptance criteria state it.
 
 ## Acceptance criteria
-- [ ] Every cell listed under Context matches Excel, with a unit test for an erroring SORT over a 2x2 by_col.
-- [ ] Their lines leave eval/baseline/gen-m7.txt (`make eval-baseline`, 0 regressions).
+- [x] Every cell listed under Context matches Excel, with a unit test for an erroring SORT over a 2x2 by_col.
+- [x] Their lines leave eval/baseline/gen-m7.txt (`make eval-baseline`, 0 regressions).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Which error wins (T-3507) and the one-cell error array (T-3506).
+
+## Outcome
+SORT's early argument errors (array, sort_index, sort_order) now go through the lift driver
+(`Model::sort_argument_error`, functions/spill_functions.rs) with a kernel that returns the error, so a multi-cell
+by_col spills it over its shape; a one-cell or missing by_col is still the one error, and the error still beats an
+error or an invalid value in by_col (it is read first). Unit test `sort_argument_error_spreads_over_a_lifted_by_col`
+(sort_index, sort_order and array errors over a 2x2 by_col, plus the one-cell and missing by_col). arrays.md "SORT's
+lifted by_col spreads an argument error" is marked implemented.
+Eval delta: all 27 owned cells pass; eval/baseline/gen-m7.txt -27 lines, 0 regressions. gen-m7 visibly off 109 -> 82 of
+50,476 scored cells (allowance 50) with this change alone; the other 82 are T-3506's 57 and T-3507's 25. With T-3506
+(branch agent/functions-lookup/T-3506-m7-arg-pairs, disjoint cells and code paths) the estimate is 25, under the
+allowance, all T-3507's. The visible-parity lock is lowered by the steward's daily run, not here.

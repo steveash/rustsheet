@@ -2171,6 +2171,9 @@ Rule: SORT lifts over a multi-cell `by_col` (T-2319). When it fails on another a
 `SORT(Data!B3,#NUM!,Data!B1:D1,Data!A1:B2)` spills a 2x2 of `#NUM!` (gen-m7/75534bc7e1ce6474 Calc!A3051:B3052), and
 `SORT(#REF!,Data!A7:D9,1,Data!A1:B2)` spills `#REF!` (gen-m7/d2945e939d6fe742 A5979:B5980).
 Evidence: gen-m7 arg-pairs batch (excel-graph, 2026-10-31, T-3497); the full cell list is in T-3508.
-Ours: a single error in the anchor; the other three cells stay empty.
-Status: VERIFIED (excel-graph); not implemented
+Ours: implemented (T-3508): `Model::sort_argument_error` in functions/spill_functions.rs runs SORT's early argument
+errors (array, sort_index, sort_order) through the lift driver, so each by_col element is the error; a one-cell or
+missing by_col is the one error, as before. The error is read before by_col, so it beats an error or an invalid value
+there (the left-to-right order of "SORT argument errors come before validation").
+Status: VERIFIED (excel-graph)
 Tasks: T-3508

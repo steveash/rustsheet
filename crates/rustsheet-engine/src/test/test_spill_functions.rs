@@ -658,6 +658,45 @@ fn nested_anchorarray_of_at_if_and_at_index_is_linear() {
     assert_eq!(model._get_text("J3"), "3");
 }
 
+// T-3508: an argument error of a SORT lifted over a multi-cell by_col fills by_col's shape, one
+// error per element (gen-m7 arg-pairs, excel-graph; docs/excel-semantics/arrays.md "SORT's lifted
+// by_col spreads an argument error").
+#[test]
+fn sort_argument_error_spreads_over_a_lifted_by_col() {
+    let mut model = new_empty_model();
+    model._set("A1", "3");
+    model._set("A2", "1");
+    model._set("B1", "x");
+    model._set("B2", "y");
+    model._set("D1", "TRUE");
+    model._set("E1", "FALSE");
+    model._set("D2", "FALSE");
+    model._set("E2", "TRUE");
+    model._set("G9", "=1/0");
+    // sort_index (gen-m7/75534bc7e1ce6474 A3051:B3052), sort_order (8217549f0b417328 A916:B917)
+    // and array (d2945e939d6fe742 A5979:B5980).
+    model._set("H1", "=SORT(A1:B2,#NUM!,1,D1:E2)");
+    model._set("H4", "=SORT(A1:B2,1,G9,D1:E2)");
+    model._set("H7", "=SORT(#REF!,1,1,D1:E2)");
+    // A one-cell or missing by_col is the one error.
+    model._set("K1", "=SORT(#REF!,1,1,D1)");
+    model._set("K4", "=SORT(A1:B2,#NUM!)");
+    model.evaluate();
+    for (row, error) in [(1, "#NUM!"), (4, "#DIV/0!"), (7, "#REF!")] {
+        for at in [format!("H{row}"), format!("I{row}")] {
+            assert_eq!(model._get_text(&at), error, "{at}");
+        }
+        for at in [format!("H{}", row + 1), format!("I{}", row + 1)] {
+            assert_eq!(model._get_text(&at), error, "{at}");
+        }
+    }
+    assert_eq!(model._get_text("K1"), "#REF!");
+    assert_eq!(model._get_text("L1"), "");
+    assert_eq!(model._get_text("K2"), "");
+    assert_eq!(model._get_text("K4"), "#NUM!");
+    assert_eq!(model._get_text("K5"), "");
+}
+
 #[test]
 fn sort_error_argument_wins_over_invalid_sort_index_and_order() {
     // gen-m7/c5d278a8662ef4b2 Calc!A39 (Excel): by_col `#N/A` beats sort_index 0.

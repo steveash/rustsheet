@@ -406,7 +406,7 @@ impl Model {
 
         let data = match self.eval_to_array(&args[0], cell) {
             Ok(d) => d,
-            Err(e) => return e,
+            Err(e) => return self.sort_argument_error(args, e, cell),
         };
 
         if data.is_empty() || data[0].is_empty() {
@@ -430,7 +430,7 @@ impl Model {
         };
         let raw_index = match raw_index {
             Ok(list) => list,
-            Err(e) => return e,
+            Err(e) => return self.sort_argument_error(args, e, cell),
         };
         let raw_order = if args.len() >= 3 && !matches!(args[2], Node::EmptyArgKind) {
             self.sort_number_list(&args[2], cell)
@@ -445,7 +445,7 @@ impl Model {
                     ..
                 }
             ) {
-                return e.clone();
+                return self.sort_argument_error(args, e.clone(), cell);
             }
         }
         // The array, sort_index and sort_order are read once here; by_col lifts over an array, one
@@ -493,6 +493,28 @@ impl Model {
         // sort_index truncates, so 2.7 is key 2 too (probes/t2929-sort-lifted-by-col-errors K18).
         let only_key_two = matches!(raw_index.as_slice(), [index] if (2.0..3.0).contains(index));
         sort_lifted_elements(result, &sorted, only_key_two)
+    }
+
+    /// SORT failing on its array, `sort_index` or `sort_order` with `error`, before any call sorts:
+    /// every element of a `by_col` it lifts over is that error, so a multi-cell `by_col` spills it
+    /// over its shape and a one-cell or missing one is the one error. `SORT(Data!B3,#NUM!,
+    /// Data!B1:D1,Data!A1:B2)` is a 2x2 of `#NUM!` and `SORT(#REF!,Data!A7:D9,1,Data!A1:B2)` of
+    /// `#REF!` (gen-m7/75534bc7e1ce6474 A3051:B3052, d2945e939d6fe742 A5979:B5980, excel-graph,
+    /// T-3508). The error is read before `by_col`, so it wins over an error or an invalid value there.
+    // Excel: docs/excel-semantics/arrays.md "SORT's lifted by_col spreads an argument error".
+    fn sort_argument_error(
+        &mut self,
+        args: &[Node],
+        error: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        self.lift_call_costed(
+            Function::Sort,
+            args,
+            LiftCost::Cells(1),
+            cell,
+            &mut |_, _| error.clone(),
+        )
     }
 
     /// One SORT call over the read `data`: the `sort_index` and `sort_order` lists validated against
