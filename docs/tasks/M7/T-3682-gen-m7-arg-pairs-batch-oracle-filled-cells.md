@@ -3,7 +3,7 @@ id: T-3682
 title: "gen-m7 arg-pairs batch: oracle-filled cells for the unseen argument-class pairs of SEQUENCE"
 milestone: M7
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
