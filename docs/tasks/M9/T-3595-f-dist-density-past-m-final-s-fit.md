@@ -43,6 +43,8 @@ per cell, why the shapes past M-final's fit set need more than those models.
   - probes-numeric/t3478-f-density-r4-wide.case.json (48): Calc!A41, A50, A53, A54, A59, A60, A62, A63, A64, A75,
     A78, A81, A82, A85, A90, A94, A95, A96, A98, A99, A154, A156, A157, A161, A162, A166, A174, A178, A184, A187,
     A188, A189, A197, A249, A252, A257, A261, A262, A264, A267, A268, A272, A273, A274, A275, A278, A282, A300
+- Split (T-3229 check): T-3592 lists 45 of these cells among the unowned F density sweep cells it finds owners
+  for; this task is that owner, so T-3592 leaves them here.
 
 ## Acceptance criteria
 - [ ] Re-measured on main once T-3173 and T-3174 are done: the count of owned cells still visibly off, split by the

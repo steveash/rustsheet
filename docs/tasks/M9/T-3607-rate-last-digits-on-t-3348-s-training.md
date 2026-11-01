@@ -19,7 +19,7 @@ that T-3579's evidence pins down for RATE's noise floor, not from a rule for the
 ## Context
 - Gap triage 2026-11-01c (`make eval` on origin/main 4f55f1fbf, excel-graph). The sweep has 300 cells, 293 passing.
   Of its 7 failures, T-3424 owns A272 and A296 (type misses). No open task, on main or in an open task PR, named
-  the other 5. T-3591 (main) and T-3596 (#2676) own the four noise-floor digit cells of the *fresh* sweep
+  the other 5. T-3591 owns the four noise-floor digit cells of the *fresh* sweep
   (probes-numeric/t3348-rate-gate-a-fresh). They do not own this one.
 - This sweep is T-3348's training evidence. A171 and A231 helped build the amended model (T-3348 task, financial.md
   "RATE holds on a flat secant and runs on below -1"). So these 5 cells cannot be the hold-out for a fit; the fresh
@@ -70,5 +70,5 @@ that T-3579's evidence pins down for RATE's noise floor, not from a rule for the
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- The sweep's type misses A272 and A296 (T-3424). The fresh sweep's digit cells (T-3591, T-3596). The 7
+- The sweep's type misses A272 and A296 (T-3424). The fresh sweep's digit cells (T-3591). The 7
   t3348-rate-fv-nonzero noise-floor cells (T-3389's Outcome; T-3579).
