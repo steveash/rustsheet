@@ -3,7 +3,7 @@ id: T-3492
 title: "gen-m5 arg-pairs batch: oracle-filled cells for the unseen argument-class pairs of SWITCH, IFS and IFNA"
 milestone: M5
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
