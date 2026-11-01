@@ -3,7 +3,7 @@ id: T-3655
 title: "MAKEARRAY: probe and match LAMBDA arity errors and the small and boundary sizes"
 milestone: M7
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
