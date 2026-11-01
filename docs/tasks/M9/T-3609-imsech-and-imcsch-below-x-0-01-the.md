@@ -45,14 +45,26 @@ them as UNVERIFIED with the forms tried and their scores.
   small real number") with the candidates and scores.
 - Kernel (complex/trig.rs), real arguments only at 0 < |x| <= 0.01: `imsech` is `1/x.cosh()` (libm) instead of 1 over
   the reciprocal form's cosh (C42, C58, C68 fixed); `imcsch` is `1/sinh x` with the series sinh instead of
-  `sinh x/sinh²x` (D102 fixed). Complex arguments and |x| > 0.01 take the same path as before.
+  `sinh x/sinh²x` (D102 fixed), for normal x only: review round 1 asked about x below the evidence, and
+  probes-numeric/t3609-imcsch-tiny-real-probe (excel-graph, 30 cells) shows Excel's real IMCSCH is the reciprocal down
+  to the smallest normal x (`IMCSCH("1E-200")` 1E+200, `IMCSCH("1E-307")` 1E+307, where the old quotient's sinh²x
+  underflowed to `#NUM!`) and `#NUM!` for a subnormal x (1E-308, 2E-308, 2E-309, 1E-320), which the quotient path
+  gives; all 30 cells pass. Complex arguments and |x| > 0.01 take the same path as before. Unit test
+  `small_real_imsech_imcsch_take_the_reciprocal` pins the four fixed texts and the tiny-x cells.
 - Candidate scores over every real oracle text of the suites at 0 < |x| <= 0.01 (75 IMSECH, 75 IMCSCH; a throwaway
   in-crate scorer calling the engine's own `excel_exp`, `sinh_series` and text formatting): IMSECH 1/libm cosh 75,
   current 72, `2/(1/u + u)` 72, `1/cosh-series` 71, `2u/(1 + u²)` 70; IMCSCH 1/series sinh 75, current 74, 1/libm
   sinh 74. B15 (IMCOSH), D15 and D29 (IMCSCH) are complex x: every sinh/cosh pairing (series, libm, form) scores the
   same 105/111 IMCOSH and 71/75 IMCSCH complex texts and none fits them.
-- **Reviewer check 7, kind (c) (two forms chosen from ranked candidates).** No hold-out split: the candidates were
-  scored on all 150 real texts at once, so the operative guard is the fresh sweep. Fresh sweep (R4.2):
+- **Reviewer check 7, kind (c) (two forms chosen from ranked candidates).** Hold-out (R4.1,
+  docs/research/t3609/holdout.py): a text is hold-out when sha256("T-3609:" + cell id)'s first byte is below 77;
+  margin: the chosen form's hold-out match rate within 5 points of its train rate; both fixed before scoring. By
+  15-digit text, train / hold-out: IMSECH chosen 53/53 / 22/22, correctly rounded `1/cosh` 50/53 / 20/22; IMCSCH
+  chosen 47/47 / 28/28, correctly rounded `1/sinh` 45/47 / 28/28 (a tie on the IMCSCH hold-out; the texts carry 15
+  digits, so no ulp tie-break is available; over all 75 the chosen form leads 75 to 73, and on the fresh sweep 200
+  to 196). The forms were chosen on all 150 texts, so this split is a consistency check; the fresh sweep is the
+  guard that counts. The same script on the fresh sweep: IMSECH chosen 139/139 / 61/61 against correctly rounded
+  132/139 / 57/61; IMCSCH 131/131 / 69/69 against 129/131 / 67/69. Fresh sweep (R4.2):
   probes-numeric/t3609-imsech-imcsch-small-real-sweep, drawn after a44bbca9e froze the change (docs/research/t3609/
   gen_sweep.py, seed 3609; 200 real x, |x| log-uniform in [1E-8, 0.01], random sign; excel-graph 2026-11-01).
   By text: IMSECH 200/200 (previous form 197), IMCSCH 200/200 (previous quotient 195), IMCOSH 200/200 and IMSINH

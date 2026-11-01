@@ -970,7 +970,8 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   y from -708.396419 to -709.78; probes-numeric/t3589-imsin-imcos-negative-cut-probe, 22 cells, and
   t3589-imsin-imcos-subnormal-exp-probe, 52 cells, excel-graph). Ours: `trig_exp_overflows`. The same probe shows
   positive y turning `#NUM!` between 709.7 and 709.75, below exp's overflow (T-3616). Status: VERIFIED (excel-graph) for
-  IMSINH, IMCOSH, IMSIN and IMCOS; UNVERIFIED for IMSECH and IMCSCH below 0.01. Ours: `inverse_exp_sinh_cosh`,
+  IMSINH, IMCOSH, IMSIN and IMCOS; for IMSECH and IMCSCH below 0.01 see the next entry (real x VERIFIED, three complex
+  cells UNVERIFIED; T-3609). Ours: `inverse_exp_sinh_cosh`,
   `sinh_series` and `trig_sinh_cosh` in functions/engineering/complex/trig.rs.
 - **IMSECH and IMCSCH of a small real number: `1/cosh x` with libm's cosh, `1/sinh x` with the series sinh
   (T-3609).** At 0 < |x| <= 0.01 and y = 0, IMSECH is 1 over libm's cosh, not over the reciprocal form IMCOSH uses:
@@ -984,7 +985,11 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   a sweep drawn after it (decision 0188 R4.2; probes-numeric/t3609-imsech-imcsch-small-real-sweep, 200 real x,
   |x| log-uniform in [1E-8, 0.01], excel-graph): IMSECH 200/200 (the form 197), IMCSCH 200/200 (the quotient 195);
   IMCOSH 200/200 and IMSINH 197/200 unchanged, the 3 IMSINH misses notation only (T-3560). Above 0.01 the real branch
-  is unchanged (1 over the form's cosh; the quotient), unprobed by this sweep. Still unexplained at complex x:
+  is unchanged (1 over the form's cosh; the quotient), unprobed by this sweep. Below the sweep the real IMCSCH stays
+  the reciprocal down to the smallest normal x, past where sinh²x underflows: `IMCSCH("1E-200")` is 1E+200,
+  `IMCSCH("1E-307")` 1E+307, `IMCSCH("1E-20")` 100000000000000000000; a subnormal x is `#NUM!` (`IMCSCH("1E-308")`,
+  "2E-308", "2E-309", "1E-320"), and IMSECH of a tiny real is 1 except `IMSECH("1E-320")` `#NUM!`
+  (probes-numeric/t3609-imcsch-tiny-real-probe, excel-graph, 30 cells, all passing). Still unexplained at complex x:
   `IMCOSH("-0.00908725305283191-0.897991007302082i")` imaginary part 0.00710702505540606 (ours ...607; B15) and
   IMCSCH D15 (`-0.00925756264826299` real, ours -0.009257562648263) and D29 (`IMCSCH("-0.00994266897763484-0.217145289213716i")`
   real part -0.208738033086954, ours ...955): every pairing of the series, libm and form sinh with the form, libm and
