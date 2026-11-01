@@ -22,6 +22,10 @@ full double that the 15-digit IM text hides.
   106 IMSINH/IMCOSH cells with |x| < 0.01 (3 miss) and 94 IMSIN/IMCOS cells with |y| > 20 (2 miss). The IM functions
   return text with 15 significant digits, so a cell only tells kernels apart near a 15-digit rounding tie. A fit needs
   more points than that, plus a hold-out (decision 0188 R4.1), so the cached workbooks are not enough.
+- Split with open T-2797 (research): T-2797 owns where the cuts are, i.e. the neighbourhoods |x| 0.0095 to 0.011 and
+  |y| 18 to 101 at single-ulp resolution, plus its IMSEC cells, and moves `INVERSE_EXP_LOW`/`INVERSE_EXP_HIGH` if
+  they are wrong. This task owns the forms away from the cuts: below 0.0095 and at |y| 101 to 709. Its random cells
+  that land inside T-2797's neighbourhoods are extra evidence for T-2797, not a substitute for its grids.
 - Rule and current model: docs/excel-semantics/engineering.md, the IMSINH/IMCOSH kernel entry (T-2778, T-2629, T-3525:
   "Below the band, IMSINH and IMCOSH miss 3 libm cells ... neither cut is pinned by any cell yet") and "IMSIN and IMCOS
   of a small imaginary part take the reciprocal form" (T-3545: "Still open:
@@ -56,5 +60,5 @@ full double that the 15-digit IM text hides.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- Choosing or implementing a kernel (T-3594). The band's interior 0.0105 to 20 (T-2778, T-3545). |x| above 708
+- Where the cuts lie (T-2797). Choosing or implementing a kernel (T-3594). The band's interior 0.0105 to 20 (T-2778, T-3545). |x| above 708
   (T-3546).

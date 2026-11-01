@@ -76,5 +76,6 @@ as UNVERIFIED in engineering.md with the ranked candidates. Excel is the target,
 the 15-digit text cannot show moves to a follow-up with `defer: phase-1b`.
 
 ## Out of scope
-- |x| above 708 for IMSINH/IMCOSH (T-3546, in flight). The band 0.01 to 20 (settled by T-2778 and T-3545).
+- |x| above 708 for IMSINH/IMCOSH (T-3546, in flight). The band's interior 0.0105 to 18 (T-2778, T-3545) and where its cuts lie (open T-2797: 0.0095 to
+  0.011 and 18 to 101; use its result for the cut, do not re-fit it here).
 - IM* number-to-text notation (T-3560).
