@@ -476,7 +476,7 @@ impl Parser {
                     tokens.push(TextToken::Literal('%'));
                     percent += 1;
                 }
-                // `.0`, `.00`, `.000` after a seconds token are the fraction of the second
+                // `.0`, `.00`, `.000` after any clock token (s, m, h, elapsed or not) are the fraction of the second
                 // (number-formats.md "Elapsed-time tokens", "Fractional seconds in clock
                 // formats"); more zeros are unprobed and stay an error.
                 Token::Period
@@ -488,6 +488,14 @@ impl Parser {
                                     | TextToken::SecondPadded
                                     | TextToken::ElapsedSecond
                                     | TextToken::ElapsedSecondPadded
+                                    | TextToken::Hour
+                                    | TextToken::HourPadded
+                                    | TextToken::Minute
+                                    | TextToken::MinutePadded
+                                    | TextToken::ElapsedHour
+                                    | TextToken::ElapsedHourPadded
+                                    | TextToken::ElapsedMinute
+                                    | TextToken::ElapsedMinutePadded
                             )
                         ) =>
                 {
@@ -679,8 +687,13 @@ impl Parser {
                 }
                 Token::Month | Token::MonthPadded => {
                     let padded = matches!(token, Token::MonthPadded);
-                    let minute =
-                        (is_time && !minute_read) || self.minute_before_seconds(&next_token);
+                    // Excel: `mm.0` is minutes with a second fraction (TEXT(5,"mm.0") is "00.0",
+                    // probes/t3575-elapsed-fraction A13); bare `m.0` is unprobed.
+                    let minute = (is_time && !minute_read)
+                        || self.minute_before_seconds(&next_token)
+                        || (padded
+                            && next_token == Token::Period
+                            && self.lexer.peek_token() == Token::Zero);
                     minute_read |= minute;
                     is_date |= !minute;
                     tokens.push(match (minute, padded) {
