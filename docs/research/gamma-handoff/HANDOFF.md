@@ -33,7 +33,7 @@ The code lives in `crates/rustsheet-engine/src/functions/statistical/`: `gamma.r
 
 | PR | Task | What it does |
 |---|---|---|
-| [#2599](https://github.com/steveash/rustsheet/pull/2599) | T-3311 | Deep lower-tail gamma quantiles: Newton steps from Excel's leading-factor root on Excel's staircase cdf. Includes T-3313's move to `closed_form.rs`. Decision 0210. |
+| [#2599](https://github.com/steveash/rustsheet/pull/2599) | T-3311 | Re-merged with main after #2612 landed (3e6f197dd), re-reviewed by all four, re-marked ready 2026-11-01. Deep lower-tail gamma quantiles: Newton steps from Excel's leading-factor root on Excel's staircase cdf. Includes T-3313's move to `closed_form.rs`. Decision 0210. |
 | [#2612](https://github.com/steveash/rustsheet/pull/2612) | T-3285 | **MERGED** 2026-10-31. Half-integer shapes: accurate double-double Q for x ≥ a+1 (`half_integer.rs`, `fraction.rs`). Decision 0202. |
 | [#2629](https://github.com/steveash/rustsheet/pull/2629) | T-3269 | Was ejected (conflict) when #2612 merged. Main merged in at 71c1f7beb (`make check` green; the ruled `CHIDIST(100,9)` caa1eed A59 baseline line re-recorded with `update-baseline --allow-regressions`, owner-approved). A merge with code conflicts cannot `--carry`, so the four reviewers were re-run on 71c1f7beb; if the PR is not back on the train, check their verdict records and run `make mark-ready PR=2629`. Far-tail form (Stirling-ratio prefactor × fraction) at half-integer shapes 3/2..11, x > 30 (`excel_tail.rs`). Decision 0203. |
 
@@ -93,6 +93,11 @@ All three branches are pushed. Read each task file's "Handoff" section first.
    - About 20 gen-m9 cells blamed on gamma functions are really FORECAST.ETS #N/A (T-2425). They are not gamma's to fix, but they block Gate B attribution.
 3. **Blind regions** from the held-out sweep: T-3519, T-3520, T-3521, T-3522, and T-3412 (GAMMA.DIST lower tail at shape > 1 is Excel's leading-factor form).
 4. **T-3364**: GAMMA.INV's huge-shape closed-form branch must return the math (decision 0188 R3, MATH-OVER-EXCEL). Fitted pieces extrapolated past their measured range fall back to accurate math.
+4b. **T-3311 follow-ups** (minor notes from the re-review of #2599 at 3e6f197dd; do not push them to #2599):
+   - Decision 0210's title says "fitted lock 80 to 81"; after the merges the lock is 87 (the +1 is right). Fix the title in a later T-3311/T-3403 PR.
+   - probes-numeric/t3311-fresh-sweep-2 A346 `CHISQ.INV.RT(1-1.30E-14,4)` is 1 to 3 ulp farther than main (ungated, within 4 ulp and 15 digits, disclosed in 0210). Add it to T-3403's cell list.
+   - #2599's tree measures 2895 duplicated lines against a 2917 lock. The next `check_duplication.py --update` after it merges banks the drop.
+
 5. **T-3469**: T-3269's remainder. Re-review minors on 71c1f7beb (excel-fidelity) to fold in:
    - T-3269's Outcome says gen-m9 2882; the head measures 2881.
    - The `FAR_TAIL_MIN_X` tag's range is narrower than the shapes where the cut is applied (1.5 to 11).
