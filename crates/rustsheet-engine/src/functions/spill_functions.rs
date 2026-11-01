@@ -474,7 +474,8 @@ impl Model {
             return result;
         }
         // sort_index truncates, so 2.7 is key 2 too (probes/t2929-sort-lifted-by-col-errors K18).
-        let only_key_two = matches!(raw_index.as_deref(), Ok([index]) if (2.0..3.0).contains(index));
+        let only_key_two =
+            matches!(raw_index.as_deref(), Ok([index]) if (2.0..3.0).contains(index));
         sort_lifted_elements(result, &sorted, only_key_two)
     }
 

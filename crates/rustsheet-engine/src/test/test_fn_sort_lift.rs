@@ -136,8 +136,23 @@ fn a_blank_key_beats_a_later_error_and_text_loses() {
 fn an_argument_error_fills_the_lifted_shape() {
     check(&[
         ("C1", "=ROWS(SORT(A1:A3,1,#VALUE!,{TRUE;FALSE}))", "2"),
-        ("C2", "=INDEX(SORT(A1:A3,1,#VALUE!,{TRUE;FALSE}),2,1)", "#VALUE!"),
+        (
+            "C2",
+            "=INDEX(SORT(A1:A3,1,#VALUE!,{TRUE;FALSE}),2,1)",
+            "#VALUE!",
+        ),
         ("C3", "=INDEX(SORT(#REF!,1,1,{TRUE,FALSE}),1,2)", "#REF!"),
-        ("C4", "=INDEX(SORT(A1:A3,\"abc\",1,{TRUE,FALSE}),1,2)", "#VALUE!"),
+        (
+            "C4",
+            "=INDEX(SORT(A1:A3,\"abc\",1,{TRUE,FALSE}),1,2)",
+            "#VALUE!",
+        ),
+        // A 2x2 by_col is a 2x2 of the error (75534bc7e1ce6474 A3051:B3052).
+        ("C5", "=ROWS(SORT(A1,#NUM!,1,{TRUE,FALSE;FALSE,TRUE}))", "2"),
+        (
+            "C6",
+            "=INDEX(SORT(A1,#NUM!,1,{TRUE,FALSE;FALSE,TRUE}),2,2)",
+            "#NUM!",
+        ),
     ]);
 }

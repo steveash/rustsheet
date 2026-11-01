@@ -43,5 +43,5 @@ Decision 0083: every cell listed under Context is visibly off (a wrong error typ
 ## Outcome
 - Done in T-3507's PR: reordering SORT's argument checks made the array, sort_index and sort_order errors each lifted call's
   result, which is this rule (`fn_sort` in spill_functions.rs). Every cell above passes; their lines left
-  eval/baseline/gen-m7.txt. Unit test: test_fn_sort_lift.rs `an_argument_error_fills_the_lifted_shape` (2x1 and 1x2
-  by_col; the 2x2 case is the eval cells 75534bc7e1ce6474 A3051:B3052).
+  eval/baseline/gen-m7.txt. Unit test: test_fn_sort_lift.rs `an_argument_error_fills_the_lifted_shape` (2x1, 1x2 and
+  2x2 by_col).
