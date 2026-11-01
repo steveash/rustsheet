@@ -916,6 +916,53 @@ fn convert_to_range_lowers_this_row_at_each_row() {
     assert_eq!(value(&model, 1, 5, 4), "#VALUE!");
 }
 
+/// Convert to range: a `#This Row` reference off the data rows keeps its text, in its `@` form
+/// with the table name, evaluates `#VALUE!` through a reparse and a row insert, and is exported
+/// as `#VALUE!` (probes/table-edits/table-convert-names-this-row S!F2, S!F10, T!A2, T-2763).
+#[test]
+fn convert_to_range_keeps_the_text_of_an_off_row_this_row() {
+    let mut model = model();
+    model
+        .set_user_input(0, 5, 4, "=Sales[[#This Row],[Qty]]*2".to_string())
+        .unwrap();
+    model
+        .set_user_input(1, 1, 4, "=Sales[[#This Row],[Qty]]".to_string())
+        .unwrap();
+    model.convert_table_to_range("Sales").unwrap();
+    model.evaluate();
+    let check = |model: &Model, row: i32, column: i32| {
+        assert_eq!(value(model, 0, row, column), "#VALUE!");
+        assert_eq!(formula(model, 0, row, column), "=Sales[@Qty]*2");
+        assert_eq!(value(model, 1, 1, 4), "#VALUE!");
+        assert_eq!(formula(model, 1, 1, 4), "=Sales[@Qty]");
+    };
+    check(&model, 5, 4);
+    // A new table of the same name does not take the reference back (unprobed).
+    model.add_table(0, "Sales", (1, 1, 3, 2), false).unwrap();
+    // A row insert moves the cell down, a column insert along its row.
+    model.insert_rows(0, 1, 1).unwrap();
+    model.insert_columns(0, 3, 1).unwrap();
+    model.evaluate();
+    check(&model, 6, 5);
+    let Some(index) = model.workbook.worksheets[0]
+        .cell(6, 5)
+        .and_then(|cell| cell.get_formula())
+    else {
+        panic!("no formula at E6");
+    };
+    let context = CellReferenceRC {
+        sheet: "Data".to_string(),
+        row: 6,
+        column: 5,
+    };
+    let node = &model.parsed_formulas[0][usize::try_from(index).unwrap()].evaluated;
+    assert_eq!(to_excel_string(node, &context), "#VALUE!*2");
+    // Typed, the engine's `[!]` prefix is not a formula.
+    assert!(model
+        .set_typed_user_input(0, 9, 4, "=[!]Sales[[#This Row],[Qty]]".to_string())
+        .is_err());
+}
+
 /// INDIRECT of structured-reference text is the table area; a column the table lacks, a table
 /// the workbook lacks are `#REF!` (docs/excel-semantics/lookup.md, T-2911).
 #[test]

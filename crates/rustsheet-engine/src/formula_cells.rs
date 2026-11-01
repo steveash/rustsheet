@@ -8,7 +8,7 @@ use crate::expressions::parser::static_analysis::{
     legacy_formula_is_dynamic, run_static_analysis_on_node, StaticResult,
 };
 use crate::expressions::parser::stringify::{
-    to_localized_string, to_localized_string_this_row_lowered,
+    to_localized_string_reentered, to_localized_string_this_row_lowered,
 };
 use crate::expressions::parser::Node;
 use crate::expressions::types::{CellReferenceIndex, CellReferenceRC};
@@ -103,7 +103,7 @@ impl Model {
         row_delta: i32,
     ) -> Result<Option<String>, String> {
         let printer: FormulaPrinter = if row_delta == 0 {
-            to_localized_string
+            to_localized_string_reentered
         } else {
             to_localized_string_this_row_lowered
         };

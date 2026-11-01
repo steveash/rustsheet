@@ -718,6 +718,7 @@ impl Parser {
             spacing,
             bare,
             unqualified: false,
+            detached: false,
             extent: None,
         };
         let lowered = self.lower_structured_reference(table_name, specifier, table_reference);

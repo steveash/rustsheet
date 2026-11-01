@@ -77,6 +77,20 @@ impl Lexer {
         Some(name)
     }
 
+    /// The `[!]` prefix of a detached structured reference in the engine's own stored text, after
+    /// its `[`: whether `!]` follows, consumed if so (`StructuredReference::stored_text`, T-2763).
+    /// Text typed or read from a file never has it: there it is refused, as before.
+    pub(crate) fn stored_detached_marker(&mut self) -> bool {
+        let marked = self.engine_text
+            && self.chars.get(self.position) == Some(&'!')
+            && self.chars.get(self.position + 1) == Some(&']');
+        if marked {
+            self.position += 2;
+            self.peeked = None;
+        }
+        marked
+    }
+
     fn consume_table_specifier(&mut self) -> Result<Option<TableSpecifier>> {
         if self.peek_char() == Some('#') {
             // It's a specifier
@@ -283,7 +297,7 @@ impl Lexer {
         };
         // A padded `#` start (`T[ #Data ]`) is unprobed and keeps its old reading.
         if !spacing.open.is_empty() && !matches!(self.peek_char(), Some('[' | '#' | '@')) {
-            if self.padded_bare_columns {
+            if self.engine_text {
                 if let Some(token) = self.padded_bare_column(table_name, &spacing.open)? {
                     return Ok(token);
                 }

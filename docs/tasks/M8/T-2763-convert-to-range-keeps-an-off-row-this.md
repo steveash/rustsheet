@@ -3,7 +3,7 @@ id: T-2763
 title: "Convert-to-range keeps an off-row #This Row reference as structured text (FORMULATEXT =Sales[@Qty], value #VALUE!)"
 milestone: M8
 lane: engine
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -29,8 +29,25 @@ FORMULATEXT): T-2643 keeps such cells on the shared, row-relative lowering witho
 Small design note first (docs/specs/ or a decision record) if it touches the parser's node set.
 
 ## Acceptance criteria
-- [ ] The three cells pass and their known-failure lines leave eval/baseline/probes.txt; no new known failures.
-- [ ] `make check` green; reviewers approve.
+- [x] The three cells pass and their known-failure lines leave eval/baseline/probes.txt; no new known failures.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+A `#This Row` reference off its table's data rows is no longer lowered to `#VALUE!` by a convert to range: it
+becomes a *detached* structured reference (`StructuredReference::detached`), the existing
+`StructuredReferenceKind` node with `lowered` = `#VALUE!` (no new node). It prints `=Sales[@Qty]` (FORMULATEXT,
+cell content), evaluates `#VALUE!`, resolves against no table (a later table of the same name does not take it
+back; unprobed), and is stored with an engine-only `[!]` prefix (`[!]Sales[[#This Row],[Qty]]`) that only the
+engine's own text reads (`Lexer::stored_detached_marker`; typed and loaded text refuse it), so it survives
+reparses, row and column inserts (a cell moved along its row is re-entered through the new
+`Rewrite::Reenter` printer, which keeps the prefix) and the other re-entry printers. xlsx export writes it as
+`#VALUE!` (a file never holds a structured reference without its table part). The lexer's `padded_bare_columns`
+flag is renamed `engine_text`, its real meaning.
+The cross-sheet probe the task asked for (probes/table-edits/table-convert-cross-sheet-this-row, excel-graph
+2026-11-01): a `#This Row` on a data row from another sheet is lowered to `=S!$C5` (row relative), which the
+engine already did; recorded in references.md.
+Eval: probes/table-edits/table-convert-names-this-row S!F2, S!F10, T!A2 now pass (3 known failures removed);
+the new 6-cell probe passes; no new failures.

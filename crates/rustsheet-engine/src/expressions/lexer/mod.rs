@@ -117,10 +117,12 @@ pub struct Lexer {
     mode: LexerMode,
     locale: &'static Locale,
     language: &'static Language,
-    /// Whether a padded bare column (`T[ Col ]`) reads as a column: our own printed text for
-    /// `T[ [Col] ]`, which the engine re-parses after edits. Text typed or loaded from a file
-    /// reads it as no column, as Excel does (see [`Lexer::set_engine_text`]).
-    padded_bare_columns: bool,
+    /// Whether the text is the engine's own printed text, which it re-parses after edits: a
+    /// padded bare column (`T[ Col ]`, our text for `T[ [Col] ]`) then reads as a column, and a
+    /// detached structured reference's `[!]` prefix is read. Text typed or loaded from a file
+    /// reads the column as no column, as Excel does, and refuses the prefix (see
+    /// [`Lexer::set_engine_text`]).
+    engine_text: bool,
     /// Whether `**` is a number's exponent marker, as `E` is: text a user types, which Excel
     /// reads so (`=2**3` stores `=2000`; see [`Lexer::set_typed`]).
     double_star_exponent: bool,
@@ -153,7 +155,7 @@ impl Lexer {
             mode,
             locale,
             language,
-            padded_bare_columns: true,
+            engine_text: true,
             double_star_exponent: false,
             peeked: None,
             number_text: String::new(),
@@ -171,11 +173,11 @@ impl Lexer {
     }
 
     /// Whether the next formulas are text the engine printed itself (`true`, the default), which
-    /// reads a padded bare column (`T[ Col ]`) as a column; never text typed or read from a file,
-    /// where Excel refuses it or loads it as `#REF!` (syntax.md, probes/t2800-stored-ws-0..2,
-    /// T-3069).
+    /// reads a padded bare column (`T[ Col ]`) as a column and a detached structured reference's
+    /// `[!]` prefix (T-2763); never text typed or read from a file, where Excel refuses the column
+    /// or loads it as `#REF!` (syntax.md, probes/t2800-stored-ws-0..2, T-3069).
     pub(crate) fn set_engine_text(&mut self, engine_text: bool) {
-        self.padded_bare_columns = engine_text;
+        self.engine_text = engine_text;
         self.peeked = None;
     }
 

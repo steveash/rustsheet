@@ -185,6 +185,10 @@ enum Rewrite<'a> {
     /// Prints `#REF!` for every structured reference to one of these tables (lowercase names):
     /// the tables a table or sheet delete removes, as Excel rewrites them (T-2340).
     RefError(&'a [String]),
+    /// Prints the formula unchanged as text the engine enters into the cell again (a cell a
+    /// structural edit moves along its row): as with no rewrite, but a detached structured
+    /// reference keeps its `[!]` prefix, which the display drops (T-2763).
+    Reenter,
 }
 
 /// Whether an R1C1 range is a whole row (`1:1`, absolute rows 1 to the last) and a whole column
@@ -227,6 +231,24 @@ pub fn to_localized_string(
     language: &Language,
 ) -> String {
     stringify(node, Some(context), &NO_REWRITE, false, locale, language)
+}
+
+/// [`to_localized_string`] for text the engine enters into the cell again
+/// ([`Rewrite::Reenter`]): a cell a structural edit moves along its row (`Model::moved_text`).
+pub(crate) fn to_localized_string_reentered(
+    node: &Node,
+    context: &CellReferenceRC,
+    locale: &Locale,
+    language: &Language,
+) -> String {
+    stringify(
+        node,
+        Some(context),
+        &Rewrite::Reenter,
+        false,
+        locale,
+        language,
+    )
 }
 
 /// This is the mode used to export the formula to Excel
@@ -593,7 +615,9 @@ fn stringify(
             }
             &DisplaceData::None
         }
-        Rewrite::Lower(..) | Rewrite::LowerThisRow | Rewrite::RefError(_) => &DisplaceData::None,
+        Rewrite::Lower(..) | Rewrite::LowerThisRow | Rewrite::RefError(_) | Rewrite::Reenter => {
+            &DisplaceData::None
+        }
     };
     let sub = |n: &Node| stringify(n, context, rewrite, export_to_excel, locale, language);
     match node {
