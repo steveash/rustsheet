@@ -519,7 +519,8 @@ The fallback replaces today's "wait for the lock and merge it yourself" as the s
 **The steward** ends its daily run with one pass, after marking orphaned PRs ready.
 
 **The janitor** (*as built, decision 0224*). After its last `make merge-train` run, each merger
-routine run runs `make janitor` once (`scripts/merge_janitor.py`, `train` mode only). On PRs whose
+routine run runs `make janitor STEP=1` once (`scripts/merge_janitor.py`, `train` mode only; its
+writes are step-mode actions, its pushes direct). On PRs whose
 branch is idle (time since the current head was pushed, from the activity API) it:
 - runs `make catch-up` on a PR ejected for `conflict with main` whose conflicts are only in the
   eval-gated lists, and `make renumber` on one ejected for an id collision, after 1 h idle. It

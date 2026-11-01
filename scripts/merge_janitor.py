@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The merge janitor: clears what the merge train leaves behind (decision 0224).
 
-  scripts/merge_janitor.py [--dry-run]   # exit 0: done (with --dry-run: the actions listed); 2: error
+  scripts/merge_janitor.py [--dry-run] [--step]   # exit 0: done (with --dry-run: the actions listed); 2: error
 
 The merger routine runs it after every pass; any session may. It acts only in `train` mode, on the
 open, non-draft PRs of this repository based on `main`. A branch is *idle* for the time since its
@@ -27,7 +27,11 @@ cannot be read is skipped. Per PR, at most one action:
   refused, `ready-to-merge` is removed, as V2 does. Pending CI waits.
 
 Its own notes end with a `merge-janitor v1` block (head and action); only notes by writers count.
-Reads go through scripts/gh_client.py and merge_ready; writes through the same client (`gh api`).
+Reads go through scripts/gh_client.py and merge_ready; writes through the same client (`gh api`),
+or with `--step` through `merge_step.StepClient` (decision 0169): each write, a mark's comment and
+labels included, is printed as one JSON action of the merge train's schema, which the session
+performs with the GitHub MCP tools and acks with `make merge-train-ack SEQ=<n>`. Git pushes stay
+direct.
 Pushes and marks need a checkout with no local changes; `--dry-run` reads only and lists actions.
 """
 
@@ -49,6 +53,7 @@ import merge_catchup
 import merge_lock
 import merge_ready
 import merge_renumber
+import merge_step
 import merge_train
 import visible_lock
 from gh_client import Client, GhError, int_of, label_names, text_of
@@ -319,7 +324,8 @@ class Janitor:
         if action.kind == UNLABEL:
             self.client.remove_label(s.pr, merge_ready.READY_LABEL)
             self.client.comment(
-                s.pr, f"merge janitor: {merge_ready.READY_LABEL} removed: {action.why}; mark again after CI and review"
+                s.pr,
+                f"merge janitor: {merge_ready.READY_LABEL} removed: {action.why}; mark again after CI and review",
             )
             return
         step: Callable[[State], object] = {
@@ -372,22 +378,34 @@ def main(argv: Sequence[str] | None = None, root: Path = ROOT) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--dry-run", action="store_true", help="list the actions; push and write nothing")
     parser.add_argument("--by", default=os.environ.get("CLAUDE_CODE_SESSION_ID", ""), help="the marker id")
+    parser.add_argument(
+        "--step",
+        action="store_true",
+        help="print each GitHub write as a step-mode action and wait for its ack",
+    )
     args = parser.parse_args(argv)
     if not args.dry_run and not merge_lock.valid_id(args.by):
         print("merge_janitor: no valid marker id: pass --by or set CLAUDE_CODE_SESSION_ID", file=sys.stderr)
         return 2
-    client = gh_client.from_remote(root)
-    if client is None:
+    real = gh_client.from_remote(root)
+    if real is None:
         print("merge_janitor: origin is not a github.com remote", file=sys.stderr)
         return 2
     mode = merge_train.read_mode(root)
     if mode != merge_train.TRAIN:
         print(f"merge_janitor: the mode is {mode}; the janitor acts only in train mode")
         return 0
+    # Step mode (decision 0169): every write, the marks' included, is an action the session
+    # performs and acks with `make merge-train-ack`; reads and git pushes stay direct.
+    client: Client = merge_step.StepClient(real, merge_step.AckFile(root)) if args.step else real
     repo = merge_ready.Repo(root)
     janitor = Janitor(client, GitFacts(client, repo), Checkout(client, root, args.by), args.dry_run)
     try:
         errors = janitor.run(datetime.now(UTC))
+    except merge_step.StepError as error:
+        print("\n".join(janitor.log))
+        print(f"merge_janitor: step mode aborted: {error}", file=sys.stderr)
+        return 2
     except GhError as error:
         print(f"merge_janitor: {error}", file=sys.stderr)
         return 2

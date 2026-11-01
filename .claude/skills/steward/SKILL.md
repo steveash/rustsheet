@@ -89,7 +89,9 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
     id registry, renames the PR's own colliding files, rewrites the old id only in what the PR
     added, merges `main` in and pushes; then `make mark-ready PR=<n> CARRY=1` once CI is green.
     Any other conflict stays with the PR's worker.
-  - **The janitor** (`make janitor`, decision 0224; `DRY_RUN=1` lists its actions) runs after
+  - **The janitor** (`make janitor`, decision 0224; `DRY_RUN=1` lists its actions; `STEP=1`
+    prints each GitHub write as a step-mode action to perform and ack with `make merge-train-ack
+    SEQ=<n>`, as the merger does, when the session cannot write through `gh api`) runs after
     every merger pass, in `train` mode only, and does the two steps above for ejected PRs idle
     1 h or more (time since the head was pushed). It comments a `merge-janitor v1` note naming the
     head it pushed and re-marks the PR with `CARRY` on a later run, once CI on that head is green.

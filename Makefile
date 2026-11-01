@@ -177,8 +177,8 @@ renumber: ## Clear a merge-train ejection for an id collision (decision 0224): m
 	$(if $(PR),,$(error PR=<number> is required))
 	$(PY) scripts/merge_renumber.py --pr '$(PR)'
 
-janitor: ## After a merger pass, in train mode (decision 0224): catch up or renumber idle ejected PRs, re-mark them with CARRY once CI is green, re-mark or unlabel stale markers, and comment orphans once; DRY_RUN=1 lists the actions only (exit 0: done; 2: an error)
-	$(PY) scripts/merge_janitor.py $(if $(DRY_RUN),--dry-run)
+janitor: ## After a merger pass, in train mode (decision 0224): catch up or renumber idle ejected PRs, re-mark them with CARRY once CI is green, re-mark or unlabel stale markers, and comment orphans once; DRY_RUN=1 lists the actions only; STEP=1 prints each GitHub write as a step-mode action to perform and ack with make merge-train-ack (exit 0: done; 2: an error)
+	$(PY) scripts/merge_janitor.py $(if $(DRY_RUN),--dry-run) $(if $(STEP),--step)
 
 mark-ready: ## Mark a green, approved PR ready for the merge train (SPEC-0027 section 2): make mark-ready PR=123, its verdicts from the verdict records on the head [REVIEW="security=APPROVE architecture=APPROVE quality=APPROVE [excel-fidelity=APPROVE]" for a reviewer with no record, while verdict_records = warn] (or CARRY=1 after a merge of main that is clean, only re-records eval-gated baseline lists (decision 0207) or comes from make renumber (decision 0224)) [STEP=1: print the writes as step-mode actions] (exit 0: marked; 1: refused; 2: error)
 	$(if $(PR),,$(error PR=<number> is required))

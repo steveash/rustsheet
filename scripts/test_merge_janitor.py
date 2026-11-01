@@ -3,15 +3,22 @@ gh_client's fake with fake git facts and effects."""
 
 from __future__ import annotations
 
+import contextlib
+import io
+import json
+import subprocess
 import sys
+import tempfile
 import unittest
 import urllib.parse
+from unittest import mock
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import merge_janitor  # noqa: E402 (the sys.path line above must run first)
 import merge_ready  # noqa: E402
+import merge_step  # noqa: E402
 from gh_client import FakeGh, Reply  # noqa: E402
 from merge_catchup import Refused  # noqa: E402
 from merge_janitor import CATCH_UP, MARK, ORPHANED, REFUSED, RENUMBER, UNLABEL, State  # noqa: E402
@@ -202,10 +209,12 @@ class Pass(unittest.TestCase):
             ("GET", f"repos/o/r/pulls?state=open&{PAGE}"): Reply(self.pulls),
             ("GET", "repos/o/r/collaborators/owner/permission"): Reply({"permission": "admin"}),
             ("GET", "repos/o/r/collaborators/stranger/permission"): Reply({"permission": "read"}),
+            **{("GET", f"repos/o/r/labels/{name}"): Reply({"name": name}) for name in merge_ready.LABELS},
         }
         for p in self.pulls:
             n, head, branch = p["number"], p["head"]["sha"], p["head"]["ref"]  # type: ignore[index]
-            replies[("GET", f"repos/o/r/issues/{n}/comments?{PAGE}")] = Reply(self.comments.get(n, []))
+            replies[("GET", f"repos/o/r/pulls/{n}")] = Reply(p)
+            replies[("GET", f"repos/o/r/issues/{n}/comments?{PAGE}")] = Reply(self.comments.setdefault(n, []))
             replies[("POST", f"repos/o/r/issues/{n}/comments")] = Reply({"id": 99})
             replies[("DELETE", f"repos/o/r/issues/{n}/labels/{READY}")] = Reply({})
             ref = urllib.parse.quote(f"refs/heads/{branch}", safe="")
@@ -295,6 +304,122 @@ class Pass(unittest.TestCase):
         effects = Effects()
         _, writes = self.run_once(effects)
         self.assertEqual((effects.calls, writes), ([], []))
+
+    # Step mode (decision 0169): the janitor's writes go through merge_step.StepClient.
+    def perform(self, action: dict[str, object]) -> None:
+        """What the session does on GitHub for one step action, on the fake's state."""
+        pr = action["pr"]
+        if action["action"] == merge_step.COMMENT:
+            self.comments[pr].append(comment(50 + len(self.comments[pr]), str(action["body"])))  # type: ignore[index]
+        else:
+            pull_ = next(p for p in self.pulls if p["number"] == pr)
+            pull_["labels"] = [{"name": n} for n in action["labels"]]  # type: ignore[union-attr]
+
+    def stepped(self, dry_run: bool = False, effects: Effects | None = None, facts: Facts | None = None):  # type: ignore[no-untyped-def]
+        seen: list[dict[str, object]] = []
+
+        def session(action: dict[str, object]) -> str:
+            seen.append(action)
+            self.perform(action)
+            return merge_step.DONE
+
+        inner = self.fake()
+        client = merge_step.StepClient(inner, session, sleep=lambda _: None)
+        janitor = merge_janitor.Janitor(client, facts or Facts(), effects or Effects(), dry_run)
+        self.assertEqual(janitor.run(NOW), 0, janitor.log)
+        self.assertEqual([r for r in inner.requests if r.method != "GET"], [])  # no direct write
+        return seen
+
+    def test_step_mode_prints_a_note_as_a_comment_action(self) -> None:
+        seen = self.stepped()
+        self.assertEqual([(a["action"], a["seq"], a["pr"]) for a in seen], [("comment", 1, 7)])
+        self.assertEqual(merge_janitor.parse_note(str(seen[0]["body"])), (PUSHED, RENUMBER))
+
+    def test_step_mode_prints_an_unlabel_and_its_comment(self) -> None:
+        self.pulls = [pull(8, HEAD, (READY, "bug"))]
+        self.comments = {8: [comment(1, merge_ready.marker_body(marker(OLD)))]}
+        self.pushed = {8: "2026-11-01T09:00:00Z"}
+        seen = self.stepped(facts=Facts(carries=False))
+        self.assertEqual(seen[0], {"action": "unlabel", "seq": 1, "pr": 8, "label": READY, "labels": ["bug"]})
+        self.assertEqual((seen[1]["action"], seen[1]["seq"]), ("comment", 2))
+        self.assertIn("readiness invalidated by a push", str(seen[1]["body"]))
+
+    def test_step_mode_prints_the_mark_ready_writes(self) -> None:
+        # The janitor's mark is merge_ready.apply on its client: in step mode, three actions.
+        seen: list[dict[str, object]] = []
+
+        def session(action: dict[str, object]) -> str:
+            seen.append(action)
+            self.perform(action)
+            return merge_step.DONE
+
+        client = merge_step.StepClient(self.fake(), session, sleep=lambda _: None)
+        mark = merge_ready.Marker(PUSHED, OLD, "T-0001", {"security": "APPROVE"}, "session-1")
+        plan = merge_ready.Plan(7, mark, merge_ready.marker_body(mark), True, True, (READY,))
+        merge_ready.apply(client, plan)
+        self.assertEqual([a["action"] for a in seen], ["comment", "label", "unlabel"])
+        self.assertEqual(seen[1]["labels"], [EJECTED, READY])
+        self.assertEqual(seen[2]["labels"], [READY])
+        self.assertEqual(merge_ready.parse_marker(str(seen[0]["body"])).prev, OLD)
+
+    def test_step_mode_dry_run_prints_nothing_to_perform(self) -> None:
+        self.assertEqual(self.stepped(dry_run=True), [])
+        with tempfile.TemporaryDirectory() as tmp:
+            subprocess.run(["git", "init", "-q", tmp], check=True)
+            client = merge_step.StepClient(self.fake(), merge_step.AckFile(Path(tmp)), sleep=lambda _: None)
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                merge_janitor.Janitor(client, Facts(), Effects(), dry_run=True).run(NOW)
+        self.assertEqual(out.getvalue(), "")
+
+    def test_step_mode_acks_advance_through_the_actions(self) -> None:
+        # The real ack flow: each action is printed and pending until `merge_step.py ack` answers it.
+        self.pulls = [pull(8, HEAD, (READY,))]
+        self.comments = {8: [comment(1, merge_ready.marker_body(marker(OLD)))]}
+        self.pushed = {8: "2026-11-01T09:00:00Z"}
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q", tmp], check=True)
+            acked: list[int] = []
+
+            def sleep(_: float) -> None:  # the session, while the janitor waits
+                pending = json.loads((merge_step.step_dir(root) / "pending").read_text())
+                self.perform(pending)
+                self.assertEqual(merge_step.main(["ack", "--seq", str(pending["seq"])], root), 0)
+                acked.append(pending["seq"])
+
+            session = merge_step.AckFile(root, sleep=sleep)
+            client = merge_step.StepClient(self.fake(), session, sleep=lambda _: None)
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+                errors = merge_janitor.Janitor(client, Facts(carries=False), Effects()).run(NOW)
+        self.assertEqual(errors, 0)
+        self.assertEqual(acked, [1, 2])
+        printed = [json.loads(line) for line in out.getvalue().splitlines()]
+        self.assertEqual([(a["action"], a["seq"]) for a in printed], [("unlabel", 1), ("comment", 2)])
+        self.assertEqual(self.pulls[0]["labels"], [])
+
+
+class StepFlag(unittest.TestCase):
+    def test_step_wraps_the_client_and_a_step_error_exits_2(self) -> None:
+        clients: list[object] = []
+
+        def run(self: merge_janitor.Janitor, now: datetime) -> int:
+            clients.append(self.client)
+            raise merge_step.StepError("step 1 (comment) was not acked within 10 min")
+
+        with (
+            mock.patch.object(merge_janitor.gh_client, "from_remote", return_value=FakeGh()),
+            mock.patch.object(
+                merge_janitor.merge_train, "read_mode", return_value=merge_janitor.merge_train.TRAIN
+            ),
+            mock.patch.object(merge_janitor.Janitor, "run", run),
+            contextlib.redirect_stdout(io.StringIO()),
+            contextlib.redirect_stderr(io.StringIO()) as err,
+        ):
+            self.assertEqual(merge_janitor.main(["--step", "--by", "session-1"]), 2)
+        self.assertIsInstance(clients[0], merge_step.StepClient)
+        self.assertIn("step mode aborted", err.getvalue())
 
 
 if __name__ == "__main__":

@@ -37,7 +37,8 @@
      nor the PR head. The tool and the rule build the renumbered tree with the same function, and
      the rule compares whole trees, so any other edit is refused. That includes a substituted line
      `main` owns, an edit in a renamed file, a rename of `main`'s file and a rename onto an id `main` has.
-  3. **`make janitor`** (scripts/merge_janitor.py; `DRY_RUN=1` lists actions only), run by the
+  3. **`make janitor`** (scripts/merge_janitor.py; `DRY_RUN=1` lists actions only; `STEP=1` makes each GitHub
+     write a step-mode action of decision 0169, which the merger routine uses), run by the
      merger routine after every pass, in `train` mode only. Idle means time since the PR's current
      head was pushed (the activity API). For open, non-draft, same-repository PRs:
      - ejected for `conflict with main` with conflicts only in the eval-gated lists, idle 1 h:

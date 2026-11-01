@@ -37,6 +37,9 @@ train to `lock` (decision 0224, the owner's ruling).
   idle 1 h, notes the pushed head and re-marks with `CARRY` on a later run once CI is green,
   comments orphans idle 4 h once per head, and re-marks or unlabels stale markers idle 2 h
   (scripts/test_merge_janitor.py, with gh_client's fake).
+- [x] `make janitor STEP=1` makes every GitHub write, the marks' included, a step-mode action of
+  `merge_step.StepClient` (decision 0169), acked with `make merge-train-ack SEQ=<n>`; git pushes
+  stay direct. The merger routine prompt runs `make janitor STEP=1`.
 - [x] `merge-train-stats`: a stranded PR's marker names the current head; only tree-check
   failures print `-> flip to lock`, the rest `-> escalate`.
 - [x] SPEC-0027, the steward and work-loop skills, routines.md (merger and steward prompts) and
@@ -45,7 +48,6 @@ train to `lock` (decision 0224, the owner's ruling).
 
 ## Out of scope
 - Running the janitor, renumber or catch-up against the real repository (tests only).
-- A step mode for the janitor's GitHub writes (it writes through `gh api`, as `merge_ready` does).
 
 ## Outcome
 Added `make renumber` and `make janitor`, and extended the carry rule to accept a renumber.
@@ -57,6 +59,8 @@ commits with `commit-tree`, so the merge's parents stay the PR head and `main`. 
 derives the renames from the head, checks that the ids are fresh, rebuilds the renumbered merge
 with the same function and compares trees under the existing list allowances. The janitor
 records its pushes, refusals and orphan comments as `merge-janitor v1` notes on the PR, so a
-later run re-marks once CI is green without blocking. merge_train_stats now escalates a stranded
+later run re-marks once CI is green without blocking. With `STEP=1` it wraps its client in
+`merge_step.StepClient`, so its notes, label removals and marks are the merge train's step-mode
+actions, acked with `make merge-train-ack`. merge_train_stats now escalates a stranded
 PR and the latency thresholds, and flips only on a tree-check failure. No Rust or eval change, so
 the eval delta is 0.
