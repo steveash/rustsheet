@@ -1,0 +1,16 @@
+terms probe tune: 300 points; P_0 equals probe column C on 300
+
+| model | all | n<=9 | n>=10 |
+|---|---|---|---|
+| REC (x87 ret * exact S) | 27/152/221 (300) | 14/56/64 (68) | 13/96/157 (232) |
+| LOOPx up, double sum | 5/30/80 (300) | 1/11/25 (68) | 4/19/55 (232) |
+| LOOPd up, double sum | 4/29/79 (300) | 1/11/25 (68) | 3/18/54 (232) |
+| LOOPx up, x87 sum | 6/29/80 (300) | 1/11/25 (68) | 5/18/55 (232) |
+| LOOPx down, double sum | 5/30/78 (300) | 1/11/25 (68) | 4/19/53 (232) |
+| exact sum of x87 terms | 6/29/80 (300) | 1/11/25 (68) | 5/18/55 (232) |
+| exact sum of exact P_j xy/(c+j) | 6/30/80 (300) | 1/12/25 (68) | 5/18/55 (232) |
+
+| n | sd eW-eP_0 | sd eW-eP_top | sd eW - term-weighted eP_j |
+|---|---|---|---|
+| n<=9 | 4.7 | 272.3 | 270.1 |
+| n>=10 | 16.9 | 291.3 | 283.5 |
