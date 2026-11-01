@@ -3,7 +3,7 @@ id: T-3583
 title: "UPPER and LOWER map only the characters in Excel's old case table (probes/t3298-case-mapping-sweep)"
 milestone: M2
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: sonnet
@@ -37,3 +37,6 @@ characters Excel's case table lacks unchanged and use Excel's own targets where 
 
 ## Out of scope
 - MATCH's exact fold (T-3584, T-3445) and the collation (`fold` in collation.rs).
+
+## Outcome
+UPPER/LOWER leave Excel's unmapped ranges unchanged (sorted range tables, binary search), drop the Greek tonos in UPPER, map Asomtavruli to Mkhedruli in LOWER, and never map supplementary letters. Unit tests in string_format.rs. Eval: probes/t3298-case-mapping-sweep cells leave the baseline, 0 regressions.

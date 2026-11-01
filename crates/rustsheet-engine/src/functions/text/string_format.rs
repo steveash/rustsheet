@@ -386,6 +386,140 @@ fn replace_element(
     Ok(ArrayNode::String(result))
 }
 
+/// Characters Excel's UPPER leaves unchanged although Rust maps them (text.md "UPPER and LOWER use an old
+/// per-character case table", probes/t3298-case-mapping-sweep). Sorted, inclusive code point ranges.
+const UPPER_UNMAPPED: &[(u32, u32)] = &[
+    (0x00B5, 0x00B5),
+    (0x017F, 0x017F),
+    (0x019B, 0x019B),
+    (0x023F, 0x0240),
+    (0x0250, 0x0252),
+    (0x025C, 0x025C),
+    (0x0261, 0x0261),
+    (0x0264, 0x0266),
+    (0x026A, 0x026A),
+    (0x026C, 0x026C),
+    (0x0271, 0x0271),
+    (0x0282, 0x0282),
+    (0x0287, 0x0287),
+    (0x029D, 0x029E),
+    (0x0345, 0x0345),
+    (0x0371, 0x0373),
+    (0x0377, 0x0377),
+    (0x037B, 0x037D),
+    (0x03D7, 0x03D9),
+    (0x03F2, 0x03F5),
+    (0x03F8, 0x03F8),
+    (0x03FB, 0x03FB),
+    (0x0515, 0x052F),
+    (0x10D0, 0x10FA),
+    (0x10FD, 0x10FF),
+    (0x13F8, 0x13FD),
+    (0x1C80, 0x1C8A),
+    (0x1D79, 0x1D79),
+    (0x1D8E, 0x1D8E),
+    (0x1E9B, 0x1E9B),
+    (0x1EFB, 0x1F07),
+    (0x1F10, 0x1F15),
+    (0x1F20, 0x1F27),
+    (0x1F30, 0x1F37),
+    (0x1F40, 0x1F45),
+    (0x1F51, 0x1F51),
+    (0x1F53, 0x1F53),
+    (0x1F55, 0x1F55),
+    (0x1F57, 0x1F57),
+    (0x1F60, 0x1F67),
+    (0x1F70, 0x1F7D),
+    (0x1FB0, 0x1FB1),
+    (0x1FBE, 0x1FBE),
+    (0x1FD0, 0x1FD1),
+    (0x1FE0, 0x1FE1),
+    (0x1FE5, 0x1FE5),
+    (0x2170, 0x217F),
+    (0x2C30, 0x2C5F),
+    (0x2C73, 0x2C73),
+    (0x2C81, 0x2CE3),
+    (0x2CEC, 0x2CEE),
+    (0x2CF3, 0x2CF3),
+    (0x2D00, 0x2D27),
+    (0x2D2D, 0x2D2D),
+    (0xA641, 0xA66D),
+    (0xA681, 0xA69B),
+    (0xA723, 0xA72F),
+    (0xA733, 0xA76F),
+    (0xA77A, 0xA77C),
+    (0xA77F, 0xA787),
+    (0xA78C, 0xA78C),
+    (0xA791, 0xA794),
+    (0xA797, 0xA7A9),
+    (0xA7B5, 0xA7C3),
+    (0xA7C8, 0xA7CA),
+    (0xA7CD, 0xA7DB),
+    (0xA7F6, 0xA7F6),
+    (0xAB53, 0xAB53),
+    (0xAB70, 0xABBF),
+];
+
+/// Characters Excel's LOWER leaves unchanged although Rust maps them (same evidence). Sorted, inclusive ranges.
+const LOWER_UNMAPPED: &[(u32, u32)] = &[
+    (0x0370, 0x0372),
+    (0x0376, 0x0376),
+    (0x037F, 0x037F),
+    (0x03CF, 0x03CF),
+    (0x03D8, 0x03D8),
+    (0x03F4, 0x03F4),
+    (0x03F7, 0x03FA),
+    (0x03FD, 0x03FF),
+    (0x0514, 0x052E),
+    (0x10C7, 0x10C7),
+    (0x10CD, 0x10CD),
+    (0x13A0, 0x13F5),
+    (0x1C89, 0x1C89),
+    (0x1C90, 0x1CBA),
+    (0x1CBD, 0x1CBF),
+    (0x1E9E, 0x1E9E),
+    (0x1EFA, 0x1EFE),
+    (0x1F08, 0x1F0F),
+    (0x1F18, 0x1F1D),
+    (0x1F28, 0x1F2F),
+    (0x1F38, 0x1F3F),
+    (0x1F48, 0x1F4D),
+    (0x1F59, 0x1F5F),
+    (0x1F68, 0x1F6F),
+    (0x1F88, 0x1F8F),
+    (0x1F98, 0x1F9F),
+    (0x1FA8, 0x1FAF),
+    (0x1FB8, 0x1FBC),
+    (0x1FC8, 0x1FCC),
+    (0x1FD8, 0x1FDB),
+    (0x1FE8, 0x1FEC),
+    (0x1FF8, 0x1FFC),
+    (0x2126, 0x2126),
+    (0x212A, 0x212B),
+    (0x2160, 0x216F),
+    (0x2C00, 0x2C2F),
+    (0x2C6D, 0x2C72),
+    (0x2C7E, 0x2CE2),
+    (0x2CEB, 0x2CED),
+    (0x2CF2, 0x2CF2),
+    (0xA640, 0xA66C),
+    (0xA680, 0xA69A),
+    (0xA722, 0xA72E),
+    (0xA732, 0xA76E),
+    (0xA779, 0xA786),
+    (0xA78B, 0xA78D),
+    (0xA790, 0xA792),
+    (0xA796, 0xA7DC),
+    (0xA7F5, 0xA7F5),
+];
+
+/// Whether `c` lies in one of the sorted inclusive `ranges`.
+fn in_ranges(ranges: &[(u32, u32)], c: char) -> bool {
+    let cp = c as u32;
+    let i = ranges.partition_point(|&(_, hi)| hi < cp);
+    ranges.get(i).is_some_and(|&(lo, _)| lo <= cp)
+}
+
 /// Excel's per-character case mapping for PROPER, UPPER and LOWER: the simple (one-to-one) mapping only, so ß, ŉ,
 /// ǰ and the ﬁ ligatures keep their form where Rust would expand them ("SS", "ʼN"); İ folds to
 /// ASCII I (upper) and i (lower), and ΐ, ΰ upper-case to Ϊ, Ϋ (probes/clean-proper-chars
@@ -397,6 +531,29 @@ fn simple_case(c: char, upper: bool) -> char {
         ('İ', false) => 'i',
         ('ΐ', true) => 'Ϊ',
         ('ΰ', true) => 'Ϋ',
+        // Excel drops the tonos in UPPER (Rust keeps it: ά to Ά).
+        ('ά', true) => 'Α',
+        ('έ', true) => 'Ε',
+        ('ή', true) => 'Η',
+        ('ί', true) => 'Ι',
+        ('ό', true) => 'Ο',
+        ('ύ', true) => 'Υ',
+        ('ώ', true) => 'Ω',
+        // Asomtavruli lowers to Mkhedruli (Rust: Nuskhuri).
+        ('\u{10A0}'..='\u{10C5}', false) => char::from_u32(c as u32 + 0x30).unwrap_or(c),
+        // No supplementary letter changes case in Excel; surrogate pairs are never mapped.
+        _ if c as u32 > 0xFFFF => c,
+        _ if in_ranges(
+            if upper {
+                UPPER_UNMAPPED
+            } else {
+                LOWER_UNMAPPED
+            },
+            c,
+        ) =>
+        {
+            c
+        }
         _ => {
             let mut mapped: Vec<char> = if upper {
                 c.to_uppercase().collect()
@@ -516,5 +673,39 @@ mod tests {
         let text = format_abs(f64::MAX, 127, false);
         assert_eq!(text.len(), 309 + 1 + 127);
         assert!(text.starts_with("17976931348623200000"));
+    }
+}
+
+#[cfg(test)]
+mod case_table_tests {
+    use super::{lower_case, upper_case};
+
+    // text.md "UPPER and LOWER use an old per-character case table" (probes/t3298-case-mapping-sweep).
+    #[test]
+    fn upper_leaves_old_table_gaps() {
+        for s in ["µ", "ſ", "ა", "ⰰ", "ⲁ", "ꭰ", "ⅰ", "ἀ", "𐐨", "ԯ"] {
+            assert_eq!(upper_case(s), s);
+        }
+        assert_eq!(upper_case("abc"), "ABC");
+    }
+
+    #[test]
+    fn upper_drops_greek_tonos() {
+        assert_eq!(upper_case("άέήίόύώ"), "ΑΕΗΙΟΥΩ");
+        assert_eq!(upper_case("ΐΰ"), "ΪΫ");
+    }
+
+    #[test]
+    fn lower_leaves_old_table_gaps() {
+        for s in [
+            "\u{1E9E}", "\u{2126}", "\u{212A}", "\u{212B}", "Ⅰ", "Ⰰ", "Ꭰ", "𐐀", "Ͱ",
+        ] {
+            assert_eq!(lower_case(s), s);
+        }
+    }
+
+    #[test]
+    fn lower_georgian_to_mkhedruli() {
+        assert_eq!(lower_case("\u{10A0}\u{10C5}"), "\u{10D0}\u{10F5}");
     }
 }

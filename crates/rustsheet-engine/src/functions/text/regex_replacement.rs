@@ -533,11 +533,11 @@ mod tests {
 
     #[test]
     fn case_mapping_can_lengthen_text_by_half() {
-        // ȿ (2 bytes) upper-cases to Ɀ (3 bytes).
+        // ɽ U+027D (2 bytes) upper-cases to Ɽ U+2C64 (3 bytes); ȿ U+023F no longer maps (text.md T-3298).
         let mut state = CaseState::default();
         let mut out = String::new();
         state.apply(CaseOp::Upper, &mut out);
-        state.push(&mut out, "ȿ");
+        state.push(&mut out, "ɽ");
         assert_eq!(out.len(), 3);
     }
 }
