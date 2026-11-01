@@ -102,16 +102,15 @@ close to correctly rounded and the engine not.
   13.005294552150497, 1 ulp. The same merge fixes 17 gen-m9 and 427 probes known failures.
 - Follow-ups: T-2972 (the 43 DURATION/MDURATION residue cells, `defer: phase-1b`), T-2973 (the six regressed cells).
 
-### Reviewer check 7: structural model, kind (c) (decision 0188 R4; review of ffa299fb3)
+### Reviewer check 7: structural model, kind (c) (decision 0188 R4)
 The coupon-sum order was chosen by ranking candidate orders on the PRICE cells of probes/bond-extreme-coupon-yield,
-so it owes the hold-out and fresh-sweep guards (no `FITTED` tag). Script: docs/research/t2733/r4.py.
+so it owes the hold-out and fresh-sweep guards (no `FITTED` tag). Scripts: docs/research/t2733/ (`gen_fresh.py`
+writes both sweeps byte for byte; `r4.py` scores them).
 
-*Hold-out (R4.1).* The split was fixed before any scoring in this round: the 522 PRICE, DURATION and MDURATION cells
-of probes/bond-extreme-coupon-yield; a cell is hold-out when sha256("T-2733:probes/bond-extreme-coupon-yield!" +
-cell)'s first byte is below 77 (145 hold-out, 377 train). Margin: the new order's hold-out bit-exact rate within 5
-percentage points of its train rate. The original fit saw every PRICE cell of this case, so the table shows
-consistency with the evidence, not generalization; the fresh sweep below is the operative test. Against Excel
-(excel-graph):
+*Hold-out (R4.1), a consistency check only.* Split fixed before scoring: the 522 PRICE, DURATION and MDURATION cells
+of probes/bond-extreme-coupon-yield; hold-out when sha256("T-2733:probes/bond-extreme-coupon-yield!" + cell)'s first
+byte is below 77 (145 hold-out, 377 train); margin 5 percentage points. The original fit saw every PRICE cell of this
+case, so this is not a generalization test; the fresh sweeps below are the guards that count. Against Excel:
 
 | Candidate | Train bit-exact | Train within 4 ulp | Train within 15 digits | Hold-out bit-exact | Hold-out within 4 ulp | Hold-out within 15 digits |
 |---|---|---|---|---|---|---|
@@ -119,33 +118,54 @@ consistency with the evidence, not generalization; the fresh sweep below is the 
 | New order (T-2733) | 346/377 | 376 | 374 | 128/145 | 145 | 145 |
 | Correctly rounded (50-digit sums) | 92/377 | 339 | 308 | 36/145 | 129 | 118 |
 
-The new order beats the correctly rounded candidate on hold-out (128 against 36 bit-exact); its hold-out rate (88.3%)
-is within the margin of its train rate (91.8%). The correctly rounded values evaluate Excel's PRICE/DURATION sums at
-50 digits from the engine's (integer) COUPDAYBS, COUPDAYS, COUPDAYSNC and COUPNUM, with DSC = E - A on bases 2 and 3
-(financial.md, the DSR entry).
+(The case has one single-coupon row, so the round-2 change below leaves this table unchanged.) Correctly rounded =
+Excel's PRICE/DURATION sums at 50 digits from the engine's integer COUPDAYBS, COUPDAYS, COUPDAYSNC and COUPNUM, with
+DSC = E - A on bases 2 and 3 (financial.md, the DSR entry).
 
-*Fresh sweep (R4.2) and Gate A envelope (R2).* probes-numeric/t2733-price-r4-fresh was generated after the order was
-frozen (this branch's code is unchanged since ffa299fb3) and nothing was tuned on it: 300 bonds (PRICE, DURATION,
-MDURATION, so 900 points, plus Excel's coupon parts in D:G), settlement uniform 2000-2029, term log-uniform 0.1 to 30
-years, coupon rate, yield and redemption log-uniform, stratified 6 x 50 by rate band (1E-4 to 1, 1 to 1E4) and yield
-band (1E-4 to 1E-1, 1E-1 to 10, 10 to 1E4), frequency and basis uniform; seed T-2733/PRICE/r4-fresh-after-freeze
-(docs/research/t2733/gen_fresh.py), oracle excel-graph (2026-11-01). Math labels: 50-digit sums from Excel's own
-coupon parts.
+*Fresh sweep 1 (R4.2), probes-numeric/t2733-price-r4-fresh.* Generated after the order was frozen at ffa299fb3 and
+never tuned on: 300 bonds (PRICE, DURATION, MDURATION: 900 points, plus Excel's coupon parts in D:G), settlement
+uniform 2000-2029, term log-uniform 0.1 to 30 years, coupon rate, yield and redemption log-uniform, stratified 6 x 50
+by rate band (1E-4 to 1, 1 to 1E4) and yield band (1E-4 to 1E-1, 1E-1 to 10, 10 to 1E4); seed
+T-2733/PRICE/r4-fresh-after-freeze; excel-graph, 2026-11-01. It refuted one piece: the frozen code also used the new
+accrued `rate/f · A/E · 100` in the single-coupon branch, and the 78 PRICE rows with COUPNUM = 1 are 62/78 bit-exact
+with it against 78/78 with main's `coupon · (A/E)` (A56 32 ulp, A187 8 ulp; review round 1). Review round 2 (d0625d6ac)
+restores `coupon · (A/E)` for N = 1 only, the branch Excel already discounts linearly; N > 1 is unchanged.
 
-| Stratum (50 bonds, 150 points) | Within 15 digits of Excel | Within 1e-9 of math | Inside envelope | Outside |
+*Fresh sweep 2 (R4.2 for the round-2 change), probes-numeric/t2733-price-n1-fresh.* Generated after d0625d6ac: 200
+bonds with one coupon left (maturity 1 to 360/f days after settlement; all 200 have COUPNUM 1 in Excel), stratified
+4 x 50 by rate band (1E-4 to 1, 1 to 1E4) and yield band (1E-4 to 1, 1 to 1E4); seed
+T-2733/PRICE/n1-fresh-after-review; excel-graph, 2026-11-01.
+
+*Gate A envelope (R2)*, final engine, math labels = 50-digit sums from Excel's own coupon parts:
+
+| Sweep, stratum (50 bonds, 150 points) | Within 15 digits of Excel | Within 1e-9 of math | Inside envelope | Outside |
 |---|---|---|---|---|
-| rate 1E-4..1, yield 1E-4..1E-1 | 150 | 150 | 150 | 0 |
-| rate 1E-4..1, yield 1E-1..10 | 149 | 150 | 150 | 0 |
-| rate 1E-4..1, yield 10..1E4 | 148 | 150 | 150 | 0 |
-| rate 1..1E4, yield 1E-4..1E-1 | 149 | 150 | 150 | 0 |
-| rate 1..1E4, yield 1E-1..10 | 148 | 150 | 150 | 0 |
-| rate 1..1E4, yield 10..1E4 | 150 | 150 | 150 | 0 |
+| r4-fresh, rate 1E-4..1, yield 1E-4..1E-1 | 150 | 150 | 150 | 0 |
+| r4-fresh, rate 1E-4..1, yield 1E-1..10 | 150 | 150 | 150 | 0 |
+| r4-fresh, rate 1E-4..1, yield 10..1E4 | 149 | 150 | 150 | 0 |
+| r4-fresh, rate 1..1E4, yield 1E-4..1E-1 | 150 | 150 | 150 | 0 |
+| r4-fresh, rate 1..1E4, yield 1E-1..10 | 148 | 150 | 150 | 0 |
+| r4-fresh, rate 1..1E4, yield 10..1E4 | 150 | 150 | 150 | 0 |
+| n1-fresh, rate 1E-4..1, yield 1E-4..1 | 150 | 150 | 150 | 0 |
+| n1-fresh, rate 1E-4..1, yield 1..1E4 | 150 | 150 | 150 | 0 |
+| n1-fresh, rate 1..1E4, yield 1E-4..1 | 150 | 150 | 150 | 0 |
+| n1-fresh, rate 1..1E4, yield 1..1E4 | 150 | 150 | 150 | 0 |
 
-All 900 points are inside the envelope; none is outside. Bit-exact on the fresh sweep (`rustsheet-eval show`, all
-2100 cells including the 1200 coupon-part cells): new order 2006/2100, old order (main) 1827/2100, so the new order
-also wins out of sample (806 against 627 of the 900 PRICE/DURATION/MDURATION points). probes-numeric is ungated, so
-the case adds no baseline lines.
+All 1500 points are inside the envelope. Bit-exact (`rustsheet-eval show`, failing cells by column A PRICE / B
+DURATION / C MDURATION):
 
-*Eval after merging `main` at 2026-11-01 (fa1382038):* probes known failures 3284 -> 2862 (427 fixed), gen-m9 2859 ->
-2843 (17 fixed); the same six cells as above re-recorded under decision 0083's allowance (T-2973); 0 other
-regressions.
+| Sweep | main | frozen order (665ef41) | final (round 2) |
+|---|---|---|---|
+| r4-fresh (2100 cells) | 1827 (61 / 112 / 100) | 2006 (20 / 39 / 35) | 2022 (4 / 39 / 35) |
+| n1-fresh (1400 cells) | 1270 (0 / 65 / 65) | 1324 (34 / 21 / 21) | 1358 (0 / 21 / 21) |
+
+Cells main matches and the final engine does not (decision 0082's precedent), all within 15 digits, none visibly
+off: r4-fresh B109, C109 (`DURATION(39657,39985,0.36828,86.0535,4,2)` 1 and 2 ulp), B260, C260 (1, 1 ulp), B277, C277
+(1, 2 ulp); n1-fresh B106, C106 (2, 2 ulp), B107, C107, B114, C114, B118, C118, B120, C120, B126, C126 (1 ulp each).
+They are the exponent order's (k + DSC/E from k = 0), which gains 73 + 44 DURATION and 65 + 44 MDURATION cells on the
+two sweeps; T-2972 owns the DURATION/MDURATION residue. probes-numeric is ungated, so neither case adds baseline
+lines.
+
+*Eval (gated)* after merging `main` (fa1382038) and the round-2 change: probes known failures 3284 -> 2862 (427 fixed),
+gen-m9 2859 -> 2843 (17 fixed); the six cells listed above recorded under decision 0083's allowance (T-2973);
+0 other regressions; the round-2 change moves no gated cell.

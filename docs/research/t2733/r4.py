@@ -174,6 +174,9 @@ def fresh(case, orc, new):
             outside.append((c, o[c] if True else None, eng.get(c), m, json.load(open(case))["sheets"][0]["cells"][c]))
     names = ["rate 1E-4..1, yld 1E-4..1E-1", "rate 1E-4..1, yld 1E-1..10", "rate 1E-4..1, yld 10..1E4",
              "rate 1..1E4, yld 1E-4..1E-1", "rate 1..1E4, yld 1E-1..10", "rate 1..1E4, yld 10..1E4"]
+    if len(strata) == 4:
+        names = ["rate 1E-4..1, yld 1E-4..1", "rate 1E-4..1, yld 1..1E4", "rate 1..1E4, yld 1E-4..1",
+                 "rate 1..1E4, yld 1..1E4"]
     for s, st in sorted(strata.items()):
         print(f"| {names[s]} | {st[0]} | {st[1]} | {st[2]} | {st[3]} | {st[4]} | {st[0]-st[4]} |")
     print("outside:")
