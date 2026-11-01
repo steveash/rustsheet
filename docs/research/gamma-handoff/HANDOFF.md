@@ -3,6 +3,18 @@
 Handoff from one coordinating session to the next. The previous session's link is
 https://claude.ai/code/session_01WTJ7rq9tsQyspbybqNLk1a.
 
+> **Update, 2026-11-01 (next session).** This file is a snapshot from 2026-10-31. Since then:
+> - #2599 (T-3311) merged. #2629 (T-3269) is still in the train.
+> - T-3505 is resolved by T-3350's merged fix: PR #2690 adds the probe, a unit test and docs, and is in the train.
+>   Its 5 visibly-off p = 1E-300 cells went to T-3294 (owner approved).
+> - T-3530 (the fit audit) is PR #2700. It was re-scored after T-3350, and `BAND_LOWER_EDGE` is no longer refuted.
+>   The cdf cut was filled one cell per workbook and refuted too. The wrong-type cells went to T-3316 (now P1), T-3409
+>   and T-3396; the bit-level constants went to T-3633.
+> - T-3509's blind-probe unowned regions are filed as T-3617 and T-3618. Its PR waits on #2668 (T-3529), which also
+>   defines GAMMA.INV and CHISQ.INV.RT in `accuracy/defs/gamma.py`; the blind probe's defs must build on it.
+>
+> Check the task files and PRs for the current state.
+
 **Scope:** the gamma family in RustSheet's statistical functions:
 - GAMMA, GAMMALN(.PRECISE);
 - GAMMA.DIST/GAMMADIST, CHISQ.DIST, CHISQ.DIST.RT/CHIDIST;
