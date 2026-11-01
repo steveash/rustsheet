@@ -7,7 +7,7 @@ status: blocked
 priority: P0
 size: M
 tier: opus
-depends_on: [T-3579]
+depends_on: []
 campaign: accuracy
 ---
 
