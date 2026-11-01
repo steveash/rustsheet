@@ -3,7 +3,7 @@ id: T-3534
 title: "Move read_is_inert and the pass-cache read rule out of ifs_cache.rs to a neutral home shared by the criteria and SUM prefix caches"
 milestone: M11
 lane: perf
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
