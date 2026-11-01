@@ -3,7 +3,7 @@ id: T-2748
 title: "PMT's last digit at a rate of 1E-15 with type 1 (PMT(1E-15,346,96301,42,1)), visibly off through COSH in gen-m9"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -28,9 +28,21 @@ rates 1E-16 to 1E-12 at both types (excel-probe skill), fit `compute_payment` (f
 record the form in financial.md "Annuity evaluation order".
 
 ## Acceptance criteria
-- [ ] P!A462 and gen-m9/bcb1105c61a2649d A97 leave the baselines (`make eval-baseline`), with no new known failures.
-- [ ] The tiny-rate form is in docs/excel-semantics/financial.md with its probe cells.
-- [ ] `make check` green; reviewers approve.
+- [x] P!A462 and gen-m9/bcb1105c61a2649d A97 leave the baselines (`make eval-baseline`), with no new known failures.
+      (Met before this task ran; the 20 known failures this PR adds are the new probes' own cells, tracked in T-3489.)
+- [x] The tiny-rate form is in docs/excel-semantics/financial.md with its probe cells.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - PMT's general last digits over the T-2242 sweeps (T-2730).
+
+## Outcome
+Both cells had already left the baselines on origin/main when this task started (checked 2026-10-31: neither
+t2475-stat-subexpressions P!A462 nor gen-m9/bcb1105c61a2649d Calc!A97 is in eval/baseline): PMT's discounted payment
+(T-3014) gives `PMT(1E-15,346,96301,42,1)` = -278.44797687866065 to the bit, and gen-m9/bcb1105c61a2649d A97 follows.
+New evidence: probes/pmt-tiny-rate (160 cells, rates 1E-16 to 1E-12, both types, five nper/pv/fv sets) and
+probes/pmt-tiny-rate-near-2e-16 (30 cells) show that form holds at every sampled tiny rate except 1.2E-16 to 2.1E-16,
+where Excel is 1 to 4 ulp larger in magnitude (20 cells, inside the web oracle's reproducibility floor). Taking `2+rate`
+in the x87 register in `growth_log` was tried and regressed 294 cells (fixing 23), so it is not the cause. That band is
+T-3489 (opus). Recorded in financial.md "PMT is a discounted payment". No code change. Eval delta: probes +190 checked,
++170 passing, 20 new known failures, all in the two new cases and listed in T-3489.

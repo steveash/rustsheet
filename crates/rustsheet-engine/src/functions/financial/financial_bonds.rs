@@ -14,7 +14,9 @@ use coupon_schedule::{
     find_pcd_ncd, is_last_day_of_month, last_day_of_month, next_coupon_date, prev_coupon_date,
 };
 use odd_last::odd_l_func;
-use yield_solver::{excel_yield_newton, odd_first_yield, yield_start, yield_start_term};
+use yield_solver::{
+    excel_yield_newton, odd_first_yield, yield_start, yield_start_term, NEWTON_CHECKS,
+};
 
 use super::number_or_error;
 use crate::{
@@ -124,20 +126,27 @@ impl CouponSchedule {
         let dsc_over_e = (e - a) / e;
 
         let coupon = 100.0 * rate / frequency as f64;
-        let accrued = coupon * (a / e);
-
-        // A single remaining coupon is discounted with simple (linear) interest
+        // A single remaining coupon is discounted with simple (linear) interest, and its accrued
+        // interest is `coupon · A/E`: all 78 single-coupon PRICE rows of the fresh sweep
+        // probes-numeric/t2733-price-r4-fresh are bit-exact with it, 62 with the order below
+        // (financial.md "PRICE, DURATION and MDURATION sum order at a huge coupon rate and yield").
         if n == 1.0 {
-            return (redemption + coupon) / (1.0 + dsc_over_e * yld / frequency as f64) - accrued;
+            return (redemption + coupon) / (1.0 + dsc_over_e * yld / frequency as f64)
+                - coupon * (a / e);
         }
+
+        // With more than one coupon left the accrued interest is `rate/f · A/E · 100`, not
+        // `coupon · A/E`, and each coupon is discounted at `k + DSC/E` counted from k = 0 (not
+        // `DSC/E + k - 1` from k = 1): with it all 240 PRICE cells of
+        // probes/bond-extreme-coupon-yield are bit-exact in the eval (T-2733).
+        let accrued = rate / frequency as f64 * (a / e) * 100.0;
 
         let v = 1.0 + yld / frequency as f64;
         let first_term = redemption / growth(v, dsc_over_e + n - 1.0);
 
         let mut second_term = 0.0;
-        for k in 1..=(n as u32) {
-            let t = dsc_over_e + k as f64 - 1.0;
-            second_term += coupon / growth(v, t);
+        for k in 0..(n as u32) {
+            second_term += coupon / growth(v, k as f64 + dsc_over_e);
         }
 
         first_term + second_term - accrued
@@ -188,6 +197,12 @@ fn compute_price(
 /// computes it, from its closed-form start over the term in years ([`yield_start_term`]). Where
 /// that Newton leaves PRICE's domain YIELD is #NUM!, with no fallback, even where PRICE has a root
 /// (`YIELD(36665,44491,42,106,100,4,0)`, `YIELD(39448,43831,0.05,1E+5,100,2)`; T-2391).
+///
+/// A Newton whose step meets its test on the 100th and last check is #NUM! too, though one that
+/// meets it on the 99th, or on no check at all (the 100th iterate), is a value: Excel's
+/// "out of steps" test looks one check early (`YIELD(39681,45662,22.75,20,102,4)` is #NUM!, at
+/// rates 22.74375 and 22.75625 it is a value; probes/yield-newton-step-cap, T-2747; financial.md
+/// "YIELD's #NUM! cells and its 100-step cap").
 fn compute_yield(bond: &BondArgs, schedule: &CouponSchedule) -> Result<f64, String> {
     let term = yield_start_term(bond.settlement, bond.maturity, bond.basis)
         .ok_or_else(|| "#NUM!".to_string())?;
@@ -198,6 +213,8 @@ fn compute_yield(bond: &BondArgs, schedule: &CouponSchedule) -> Result<f64, Stri
         |y| schedule.price(rate, y, redemption, frequency, discount_growth),
         |y| schedule.dprice(rate, y, redemption, frequency),
     )
+    .filter(|stop| stop.converged_on != Some(NEWTON_CHECKS))
+    .map(|stop| stop.value)
     .ok_or_else(|| "#NUM!".to_string())
 }
 
@@ -618,8 +635,9 @@ impl Model {
             num += t * cash_flow / growth;
             den += cash_flow / growth;
         };
-        for k in 1..=(n as u32) {
-            add_cash_flow(dsc_over_e + k as f64 - 1.0, coupon);
+        // Coupon terms `k + DSC/E` from k = 0, as PRICE's ([`CouponSchedule::price`], T-2733).
+        for k in 0..(n as u32) {
+            add_cash_flow(k as f64 + dsc_over_e, coupon);
         }
         add_cash_flow(dsc_over_e + n - 1.0, redemption);
 

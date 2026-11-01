@@ -22,8 +22,9 @@ use crate::formula_calls::{functions_in, outer_call};
 use crate::gate_b::{self, GateB};
 use crate::milestone_exit::{meets_rate, RATE_DEN, RATE_NUM};
 use crate::phase1_exceptions::{Phase1Exceptions, DESKTOP_OWNED_PATH, PHASE1_EXCEPTIONS_PATH};
+use crate::r1c::{R1c, R1cCells};
 use crate::report::{FunctionStat, RunReport};
-use crate::runner::CaseResult;
+use crate::runner::{cell_id, CaseResult};
 use crate::value::Verdict;
 
 /// Excel cells a function needs (decision 0094, item 1).
@@ -73,8 +74,13 @@ pub struct V15Function {
     /// them; they are in neither `rate_cells` nor `rate_visible`.
     #[serde(default)]
     pub desktop_owned: usize,
-    /// Covered and at least 99.9% of `rate_cells` not visibly off: the Phase 1 exit (decisions
-    /// 0114 and 0118).
+    /// Visibly-off cells of the attribution's count that the rate leaves out as decision 0188
+    /// R1(c) Phase 1b evidence (decision 0227) and neither field above holds; they are in neither
+    /// `rate_cells` nor `rate_visible`. Gate B counts them.
+    #[serde(default)]
+    pub rate_phase1b: usize,
+    /// Covered and at least 99.9% of `rate_cells` not visibly off: the every-suite rate, which
+    /// M9's exit row reads (decisions 0114, 0118, 0146 item 3 and 0227).
     #[serde(default)]
     pub meets_rate: bool,
     /// Information only: the stricter count of decision 0118 item 5.
@@ -169,6 +175,10 @@ pub struct V15Checkpoint {
     /// visibly-off, non-deviation Excel cells of the run that [`Self::excepted`] does not count.
     #[serde(default)]
     pub desktop_owned: usize,
+    /// Cells the every-suite rate left out as decision 0188 R1(c) Phase 1b evidence (decision
+    /// 0227): visibly-off, non-deviation Excel cells that neither field above counts.
+    #[serde(default)]
+    pub phase1b_left_out: usize,
     /// Gate B (decision 0188 R1(b)): the Phase 1 rate on user-representative suites only.
     #[serde(default)]
     pub gate_b: GateB,
@@ -215,9 +225,20 @@ pub(crate) struct LeftOut {
     called: BTreeSet<String>,
     /// Its sole non-glue call ([`sole_call`]).
     sole: Option<String>,
-    /// Left out as owned only by open M14 tasks (decision 0143), not as a listed cell (decision
-    /// 0134).
-    desktop: bool,
+    /// Why the rate leaves it out.
+    kind: LeftOutKind,
+}
+
+/// Why the Phase 1 rate leaves a visibly-off cell out.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum LeftOutKind {
+    /// Listed in `eval/milestones/phase1-exceptions.tsv` (decision 0134).
+    Listed,
+    /// Owned only by open M14 tasks (decision 0143).
+    Desktop,
+    /// Decision 0188 R1(c) Phase 1b evidence: the engine and Excel both within 1e-9 of the
+    /// 50-digit math (decision 0227). The every-suite rate only; Gate B never leaves these out.
+    Phase1b,
 }
 
 impl LeftOut {
@@ -230,19 +251,25 @@ impl LeftOut {
     }
 }
 
-/// How many of `left_out` count toward `name` measured by `attribution`: listed (decision 0134),
-/// then desktop-owned (decision 0143).
+/// How many of `left_out` count toward `name` measured by `attribution`, by kind: listed
+/// (decision 0134), desktop-owned (decision 0143) and Phase 1b evidence (decision 0227).
 pub(crate) fn left_out_counts(
     left_out: &[LeftOut],
     name: &str,
     attribution: Attribution,
-) -> (usize, usize) {
-    let counted: Vec<&LeftOut> = left_out
+) -> (usize, usize, usize) {
+    let mut counts = (0, 0, 0);
+    for cell in left_out
         .iter()
         .filter(|cell| cell.counts_toward(name, attribution))
-        .collect();
-    let desktop = counted.iter().filter(|cell| cell.desktop).count();
-    (counted.len() - desktop, desktop)
+    {
+        match cell.kind {
+            LeftOutKind::Listed => counts.0 += 1,
+            LeftOutKind::Desktop => counts.1 += 1,
+            LeftOutKind::Phase1b => counts.2 += 1,
+        }
+    }
+    counts
 }
 
 /// One function's Phase 1 rate count (decision 0118): which cells it is measured by, those cells
@@ -255,6 +282,8 @@ pub(crate) struct RateCount {
     pub listed: usize,
     /// Left out as owned only by open M14 tasks (decision 0143).
     pub desktop: usize,
+    /// Left out as R1(c) Phase 1b evidence (decision 0227; the every-suite rate only).
+    pub phase1b: usize,
     pub meets_rate: bool,
 }
 
@@ -269,15 +298,17 @@ pub(crate) fn rate_count(
         let (a, c) = s.counted();
         (a, *c)
     });
-    let (listed, desktop) = left_out_counts(left_out, name, attribution);
-    let rate_cells = counted.scored().saturating_sub(listed + desktop);
-    let rate_visible = counted.visible().saturating_sub(listed + desktop);
+    let (listed, desktop, phase1b) = left_out_counts(left_out, name, attribution);
+    let left = listed + desktop + phase1b;
+    let rate_cells = counted.scored().saturating_sub(left);
+    let rate_visible = counted.visible().saturating_sub(left);
     RateCount {
         attribution,
         rate_cells,
         rate_visible,
         listed,
         desktop,
+        phase1b,
         meets_rate: covered
             && meets_rate(
                 rate_cells.saturating_sub(rate_visible),
@@ -293,36 +324,37 @@ pub(crate) fn rate_count(
 /// generated list holds every known failure M14 owns, within 15 digits or not. A listed cell
 /// whose suite (the first segment of its case id) has no case in `results` is returned as
 /// unchecked instead: the run cannot tell whether it is stale. Only the suites `keep` accepts are
-/// read (Gate B's, or every suite).
+/// read (Gate B's, or every suite). With `phase1b`, the cells it classes as decision 0188 R1(c)
+/// Phase 1b evidence are left out too (decision 0227): the every-suite rate passes the run's
+/// classes; Gate B passes `None`, since its rate is the 15-digit share whatever the math says.
 pub(crate) fn excepted_cells(
     results: &[CaseResult],
     exceptions: &Phase1Exceptions,
     keep: impl Fn(&str) -> bool,
+    phase1b: Option<&R1cCells>,
 ) -> (Vec<LeftOut>, Vec<String>, Vec<String>) {
     let scored: BTreeSet<&str> = results.iter().map(|r| r.suite.as_str()).collect();
     let mut left_out = Vec::new();
     let mut found = BTreeSet::new();
     for r in results.iter().filter(|r| keep(&r.suite)) {
         for c in &r.cells {
-            let key = c.key();
-            let listed = exceptions.contains(&r.id, &key);
-            if !(listed || exceptions.desktop_owns(&r.id, &key))
-                || !c.from_excel
-                || c.verdict == Verdict::Deviation
-                || !Visible::is_off(c)
-            {
+            if !c.from_excel || c.verdict == Verdict::Deviation || !Visible::is_off(c) {
                 continue;
             }
+            let key = c.key();
+            let kind = if exceptions.contains(&r.id, &key) {
+                found.insert((r.id.clone(), key));
+                LeftOutKind::Listed
+            } else if exceptions.desktop_owns(&r.id, &key) {
+                LeftOutKind::Desktop
+            } else if phase1b.is_some_and(|r1c| r1c.class(&cell_id(&r.id, &key)) == R1c::Phase1b) {
+                LeftOutKind::Phase1b
+            } else {
+                continue;
+            };
             let called = c.formula.as_deref().map(functions_in).unwrap_or_default();
             let sole = sole_call(&called).cloned();
-            left_out.push(LeftOut {
-                called,
-                sole,
-                desktop: !listed,
-            });
-            if listed {
-                found.insert((r.id.clone(), key));
-            }
+            left_out.push(LeftOut { called, sole, kind });
         }
     }
     let (mut stale, mut unchecked) = (Vec::new(), Vec::new());
@@ -342,6 +374,11 @@ pub(crate) fn excepted_cells(
     (left_out, stale, unchecked)
 }
 
+/// How many of `left_out` are of `kind`.
+fn count_kind(left_out: &[LeftOut], kind: LeftOutKind) -> usize {
+    left_out.iter().filter(|c| c.kind == kind).count()
+}
+
 /// Scores `report` (already built from `results`); `generated` names the generated suites, and
 /// `exceptions` the cells the Phase 1 rate leaves out (decision 0134).
 #[must_use]
@@ -353,7 +390,7 @@ pub fn summarize(
     exceptions: &Phase1Exceptions,
 ) -> V15Checkpoint {
     let (left_out, stale_exceptions, unchecked_exceptions) =
-        excepted_cells(results, exceptions, |_| true);
+        excepted_cells(results, exceptions, |_| true, Some(&report.r1c));
     let mut outer: BTreeMap<String, usize> = BTreeMap::new();
     for r in results
         .iter()
@@ -408,6 +445,7 @@ pub fn summarize(
                 rate_visible: rate.rate_visible,
                 rate_excepted: rate.listed,
                 desktop_owned: rate.desktop,
+                rate_phase1b: rate.phase1b,
                 meets_rate: rate.meets_rate,
                 strict: StrictRate {
                     meets_rate: covered && meets_rate(n.saturating_sub(visible), n, RATE_NUM),
@@ -426,7 +464,7 @@ pub fn summarize(
     let at_rate = functions.iter().filter(|f| f.meets_rate).count();
     let at_strict_rate = functions.iter().filter(|f| f.strict.meets_rate).count();
     let visibly_off = report.visibly_off_cells();
-    let gate_b = gate_b::summarize(results, exceptions, &functions);
+    let gate_b = gate_b::summarize(results, exceptions, &functions, &report.r1c);
     let mut checkpoint = V15Checkpoint {
         in_scope: functions.len(),
         met: !functions.is_empty() && covered == functions.len() && visibly_off == 0,
@@ -441,10 +479,11 @@ pub fn summarize(
         rate_den: RATE_DEN,
         verdict_line: String::new(),
         phase1_line: String::new(),
-        excepted: left_out.iter().filter(|c| !c.desktop).count(),
+        excepted: count_kind(&left_out, LeftOutKind::Listed),
         stale_exceptions,
         unchecked_exceptions,
-        desktop_owned: left_out.iter().filter(|c| c.desktop).count(),
+        desktop_owned: count_kind(&left_out, LeftOutKind::Desktop),
+        phase1b_left_out: count_kind(&left_out, LeftOutKind::Phase1b),
         gate_b,
     };
     checkpoint.verdict_line = checkpoint.verdict_line();
@@ -455,6 +494,14 @@ pub fn summarize(
 /// The cells left out of the Phase 1 rate (decisions 0134 and 0143), per function, and any stale
 /// line.
 fn write_exceptions(checkpoint: &V15Checkpoint, md: &mut String) {
+    if checkpoint.phase1b_left_out > 0 {
+        let _ = writeln!(
+            md,
+            "Left out of the every-suite rate (M9's exit row) as decision 0188 R1(c) Phase 1b evidence, the engine and Excel both within 1e-9 of the 50-digit math (decision 0227): {} visibly-off cells ({}); Gate B still counts them, and they stay known failures.\n",
+            checkpoint.phase1b_left_out,
+            per_function(checkpoint, |f| f.rate_phase1b)
+        );
+    }
     if checkpoint.desktop_owned > 0 {
         let _ = writeln!(
             md,

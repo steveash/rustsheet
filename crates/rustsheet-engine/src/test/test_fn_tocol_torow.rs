@@ -113,3 +113,36 @@ fn torow_lone_blank_cell_is_ignored() {
     assert_eq!(model._get_text("B2"), "x");
     assert_eq!(model._get_text("B3"), "5");
 }
+
+// ── Which bad argument wins (T-3507) ──────────────────────────────────────────
+
+/// An ignore that is not a number is `#VALUE!` before a `scan_by_column` error; an out-of-range
+/// number loses to it; a range ignore lifts, each element on its own (gen-m7/52ccea5df17b29a8
+/// A4454, A5613, A10676:B10676; 7cd94f345acd55bb A11530; docs/excel-semantics/arrays.md "TOCOL,
+/// TOROW and SORT: which bad argument wins").
+#[test]
+fn text_ignore_beats_a_scan_by_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("D1", "x");
+    model._set("D2", "7");
+    model._set("E1", "=1/0");
+    model._set("B1", "=TOCOL(A1,\"abc\",#NULL!)");
+    model._set("B2", "=TOROW(A1,\"\",#NAME?)");
+    model._set("B3", "=TOCOL(A1,D1,E1)");
+    model._set("B4", "=TOCOL(A1,7,E1)");
+    model._set("B5", "=TOROW(A1,-2.5,#NULL!)");
+    model._set("B6", "=TOCOL(A1,#N/A,#NULL!)");
+    model._set("B7", "=TOCOL(A1,\"abc\")");
+    model._set("C10", "=TOROW(A1,D1:D2,E1)");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "#VALUE!");
+    assert_eq!(model._get_text("B2"), "#VALUE!");
+    assert_eq!(model._get_text("B3"), "#VALUE!");
+    assert_eq!(model._get_text("B4"), "#DIV/0!");
+    assert_eq!(model._get_text("B5"), "#NULL!");
+    assert_eq!(model._get_text("B6"), "#N/A");
+    assert_eq!(model._get_text("B7"), "#VALUE!");
+    assert_eq!(model._get_text("C10"), "#VALUE!");
+    assert_eq!(model._get_text("C11"), "#DIV/0!");
+}
