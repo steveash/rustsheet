@@ -1075,3 +1075,29 @@ fn fn_xirr_one_empty_or_numeric_text_cell_is_the_count_error() {
     assert_eq!(model._get_text("A3"), *"#NUM!");
     assert_eq!(model._get_text("A4"), *"#VALUE!");
 }
+
+/// Numeric text in a range cell reads as its number (probes/xirr-back-dated-stop A31, T-3267);
+/// non-numeric text stays `#VALUE!`; a boolean guess beside different counts is `#VALUE!`
+/// (gen-m9/b6a02893a8d6b151 A226).
+#[test]
+fn fn_xirr_reads_numeric_text_in_range_cells() {
+    let mut model = new_empty_model();
+    model._set("B1", "'-1000");
+    model._set("B2", "'1100");
+    model._set("C1", "'43831");
+    model._set("C2", "'44197");
+    model._set("D1", "-1000");
+    model._set("D2", "1100");
+    model._set("E1", "43831");
+    model._set("E2", "44197");
+    model._set("F1", "'x");
+    model._set("F2", "1100");
+    model._set("A1", "=XIRR(B1:B2,C1:C2)=XIRR(D1:D2,E1:E2)");
+    model._set("A2", "=XIRR(F1:F2,E1:E2)");
+    model._set("A3", "=XIRR(D1:D2,{43831,44197,44562},TRUE)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"TRUE");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    assert_eq!(model._get_text("A3"), *"#VALUE!");
+}

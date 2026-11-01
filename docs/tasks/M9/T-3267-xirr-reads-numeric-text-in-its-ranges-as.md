@@ -3,7 +3,7 @@ id: T-3267
 title: "XIRR reads numeric text in its ranges as numbers (xirr-back-dated-stop A31)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -33,3 +33,9 @@ Excel's 0.03189964592456816 (the bits of the same flows as numbers, A2) instead 
 ## Out of scope
 - Numeric text in literal arrays or typed arguments (not probed).
 - XNPV's own reading of ranges (probe it first).
+
+## Outcome
+XIRR's range reader now reads numeric text in a range cell as its number (literal arrays and typed
+arguments untouched). That moved gen-m9/b6a02893a8d6b151 A226 (6 values, 3 dates, TRUE guess,
+Excel `#VALUE!`), so a boolean guess beside a count mismatch is `#VALUE!` (financial.md updated).
+Eval: probes xirr-back-dated-stop A31 and gen-m9/31474c20fc1dafd6 A351 fixed; no regressions.
