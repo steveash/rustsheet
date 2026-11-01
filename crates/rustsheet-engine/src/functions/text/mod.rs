@@ -11,6 +11,7 @@ mod filterxml;
 mod lifted;
 mod pcre;
 mod position;
+mod proper_letters;
 mod regex_engine;
 mod regex_functions;
 mod regex_reach;
