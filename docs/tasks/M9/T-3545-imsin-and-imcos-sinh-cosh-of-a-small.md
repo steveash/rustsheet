@@ -3,7 +3,7 @@ id: T-3545
 title: "IMSIN and IMCOS sinh/cosh of a small imaginary part (|y| < 0.01): fit Excel's kernel"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -27,11 +27,48 @@ engine's `(EXP(t) ∓ EXP(-t))/2` pair (complex/trig.rs `exp_sinh_cosh` via `tri
   (T-3525)" have the counts.
 
 ## Acceptance criteria
-- [ ] A candidate kernel for |y| <= 0.01 is fitted through the fit lab (`rustsheet-fitlab im-hyperbolic-fresh` scores
+- [x] A candidate kernel for |y| <= 0.01 is fitted through the fit lab (`rustsheet-fitlab im-hyperbolic-fresh` scores
       IM* text; decision 0188 R4: hold-out split, a fresh sweep after the freeze, `FITTED` tag if a constant is tuned).
-- [ ] The t3525 sweep's small-|y| IMSIN/IMCOS cells pass, `IMSIN("1E-200+1E-200i")` and the 1,023 older IMSIN/IMCOS
+- [x] The t3525 sweep's small-|y| IMSIN/IMCOS cells pass, `IMSIN("1E-200+1E-200i")` and the 1,023 older IMSIN/IMCOS
       cells keep passing (or a loss is listed within decision 0083's allowance).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - IMSINH/IMCOSH below |x| = 0.01 (3 fresh-sweep misses; T-3525 keeps the band as is).
+
+## Outcome
+IMSIN and IMCOS now take sinh y and cosh y in the reciprocal form `(u - 1/u)/2`, `(u + 1/u)/2` with u = EXP(y)
+for every |y| <= 20 (complex/trig.rs `trig_sinh_cosh`; the form split out as `inverse_exp_form`). Before, they used the
+EXP pair below IMSINH's lower cut (0.01). No constant is tuned: the change drops a cut for IMSIN/IMCOS, a structural
+choice among candidates, so it carries no `FITTED` tag (decision 0188 R4) but has a hold-out and a sweep after the freeze.
+
+- **Candidates** on the 21 pure-imaginary small-|y| IMSIN cells of probes-numeric/t3525-im-hyperbolic-fresh-sweep (x = 0,
+  so the part is sinh y; script in the T-3545 notes below): `(EXP(y) - 1/EXP(y))/2` 21 (with idealized x87, libm or
+  correctly rounded EXP alike), double EXP pair 13, `(1/EXP(-y) - EXP(-y))/2` 9, extended-precision EXP pair, libm sinh
+  and Kahan-expm1 sinh 0. The winner is the form IMSIN/IMCOS already use inside the band (T-2796), so the model was:
+  drop their lower cut.
+- **Fresh sweep after the freeze** (R4.2): probes-numeric/t3545-imsin-imcos-small-imag-sweep (300 cells, |y|
+  log-uniform in [1e-7, 0.0105], x = 0 or in (-1.5, 1.5); generator docs/research/t3545/gen_sweep.py, seed 3545;
+  excel-graph). Fit lab `im-small-imag` (hold-out T-3360, margin 5 points):
+
+| candidate | train exact / <=4 ulp / <=15 digits | test exact / <=4 ulp / <=15 digits | verdict |
+|---|---|---|---|
+| engine (reciprocal form) | 200 (100%) / 200 / 200 | 100 (100%) / 100 / 100 | accept |
+| main (EXP pair below 0.01) | 150 (75.0%) / 150 / 150 | 77 (77.0%) / 77 / 77 | accept, below |
+| correctly rounded | 55 (27.5%) / 55 / 55 | 24 (24.0%) / 24 / 24 | reference |
+
+  By text the harness counts 296/300 (main 224): the other 4 have equal digits and differ only in notation (14-digit
+  parts at exponent -6 are plain in Excel), a separate number-to-text quirk, recorded in engineering.md and filed as
+  T-3560.
+- **Old cells**: fit lab `im-hyperbolic` (1,359 IMSINH/IMCOSH/IMSIN/IMCOS cells of the T-2231/T-2535/T-2629/T-2778
+  probes) 1,359/1,359 before and after; `im-hyperbolic-fresh` 1,151 -> 1,185 of 1,200 (train 815 -> 839, test 336 ->
+  346). `IMSIN("1E-200+1E-200i")` stays "1E-200" and `IMCOS("150-0.002i")` keeps its digits.
+- **Eval delta**: gated suites unchanged (`make eval-baseline` records nothing: no fix, no regression). probes-numeric
+  (not gated): t3525 fresh sweep 961 -> 995 of 1,000; the new t3545 sweep 296 of 300.
+- IMSEC and IMCOT are unchanged (`sec_sinh_cosh` keeps libm below the band). Still open: `IMSIN`/`IMCOS("0.98…-183.17…i")`
+  (|y| above the band) differ from the EXP pair in the 15th digit; 3 IMSINH/IMCOSH cells below |x| = 0.01.
+- Follow-up: T-3560 (IM* part notation).
+
+Candidate script (run from tools/, `uv run python`), for the record:
+`(X87.exp(y) - 1/X87.exp(y))/2` etc. from `rustsheet_tools.fitlab.exact`, each rounded to 15 digits and compared with
+the oracle's imaginary part; reproduced here because it was a one-off.

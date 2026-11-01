@@ -10,6 +10,8 @@ by part on the IM* text (`Fit.complex_text`).
 - `im-hyperbolic`: the old cells the selectors were fitted on (T-2231, T-2535, T-2629, T-2778).
 - `im-hyperbolic-fresh`: the fresh log-uniform sweep no fit saw
   (probes-numeric/t3525-im-hyperbolic-fresh-sweep, docs/research/t3525/gen_sweep.py).
+- `im-small-imag`: IMSIN and IMCOS with |y| <= 0.0105, drawn after T-3545 froze their small-y kernel
+  (probes-numeric/t3545-imsin-imcos-small-imag-sweep, docs/research/t3545/gen_sweep.py).
 """
 
 from __future__ import annotations
@@ -88,6 +90,16 @@ FITS = [
             "probes-numeric/t3525-im-hyperbolic-fresh-sweep",
             "probes-numeric/t3525-im-hyperbolic-log-band-sweep",
         ],
+        pattern=PATTERN,
+        candidates=candidates,
+        errors=True,
+        complex_text=True,
+        notes=_NOTES,
+    ),
+    Fit(
+        name="im-small-imag",
+        description="IMSIN/IMCOS with a small imaginary part, T-3545's sweep drawn after the freeze",
+        cases=["probes-numeric/t3545-imsin-imcos-small-imag-sweep"],
         pattern=PATTERN,
         candidates=candidates,
         errors=True,
