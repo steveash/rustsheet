@@ -1,0 +1,27 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-3378: TEXT with General beside a date token in a 1904 workbook. One question per cell in column A.",
+  "tags": [
+    "M10",
+    "number-formats",
+    "text",
+    "probe",
+    "T-3378"
+  ],
+  "date_system": 1904,
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=TEXT(0,\"d General\")",
+        "A2": "=TEXT(5,\"d General\")",
+        "A3": "=TEXT(45000,\"d General\")",
+        "A4": "=TEXT(2957003,\"d General\")",
+        "A5": "=TEXT(1E-10,\"d General\")",
+        "A6": "=TEXT(5,\"[h] General\")",
+        "A7": "=TEXT(45000,\"h General\")"
+      }
+    }
+  ],
+  "expected": {}
+}

@@ -519,7 +519,7 @@ class Stage:
             if merge_ready.text_of(r, "path") == merge_ready.CI_WORKFLOW
             and merge_ready.text_of(r, "event") in TRAIN_EVENTS and merge_ready.int_of(r, "id") > 0
         )
-        state, jobs = merge_ready.ci_state(runs, self.client.check_runs(tip), docs_only, TRAIN_EVENTS)
+        state, jobs = merge_ready.ci_state(runs, self.client.check_runs(tip), docs_only, TRAIN_EVENTS, early=True)
         return state, jobs, ids
 
     def gate(self, n: int) -> None:

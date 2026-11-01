@@ -1,0 +1,13 @@
+diff --git a/crates/rustsheet-engine/src/functions/engineering/complex/trig.rs b/crates/rustsheet-engine/src/functions/engineering/complex/trig.rs
+index 5427095b3..68c3a5c1e 100644
+--- a/crates/rustsheet-engine/src/functions/engineering/complex/trig.rs
++++ b/crates/rustsheet-engine/src/functions/engineering/complex/trig.rs
+@@ -40,7 +40,7 @@ fn hyperbolic_log_form(
+     sinh: bool,
+     cell: CellReferenceIndex,
+ ) -> Option<CalcResult> {
+-    if y == 0.0 || x.abs() <= HYPERBOLIC_LOG_CUT {
++    if y == 0.0 || x.abs() <= f64::INFINITY {
+         return None;
+     }
+     let (sin_y, cos_y) = (y.sin(), y.cos());

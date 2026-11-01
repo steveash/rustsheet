@@ -21,6 +21,10 @@ Excel's result, which is up to 4% off there (decision 0188 R3, `MATH-OVER-EXCEL`
   records it. Today the engine matches Excel bit for bit.
 - Code: `fn_nper` in crates/rustsheet-engine/src/functions/financial/annuity.rs.
 
+- Gate A (T-3535, decision 0220) R3-marks 12 points of accuracy/NPER/s1 inside the region: A121, A130, A133, A135,
+  A142, A143, A151, A152, A153, A156, A158 and A162, at rates 3.0E-16 to 7.6E-15, with Excel up to 35% off. They are
+  `known-failures.tsv` lines owned by this task; remove them once the engine returns the math there.
+
 ## Acceptance criteria
 - [ ] A probe case (one milestone tag, M9), filled by the oracle, holds NPER points at rates from 1e-17 to 1e-12 with their
       50-digit math values; the financial.md entry cites it and states the region where Excel's error exceeds 1e-4.

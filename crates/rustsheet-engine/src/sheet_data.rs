@@ -31,7 +31,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use bitcode::{Decode, Encode};
 
 use crate::constants::{LAST_COLUMN, LAST_ROW};
-use crate::sheet_reads::ReadLog;
+use crate::sheet_reads::{PositionHint, ReadLog};
 use crate::types::Cell;
 
 const CHUNK_BITS: u32 = 10;
@@ -86,6 +86,9 @@ pub struct SheetData {
     /// serialised.
     #[bitcode(skip)]
     pub(crate) reads: ReadLog,
+    /// Where in its row [`SheetData::cell`] found its last cell (`PositionHint`).
+    #[bitcode(skip)]
+    hint: PositionHint,
 }
 
 #[derive(Encode, Decode, Debug, Clone)]
@@ -222,7 +225,11 @@ impl SheetData {
     pub fn cell(&self, row: i32, column: i32) -> Option<&Cell> {
         self.reads.cell(row, column);
         let row = self.row(row)?;
+        if let Some((_, cell)) = row.cells.get(self.hint.get()).filter(|(c, _)| *c == column) {
+            return Some(cell);
+        }
         let index = row.position(column).ok()?;
+        self.hint.set(index);
         Some(&row.cells[index].1)
     }
 

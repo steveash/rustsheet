@@ -31,6 +31,13 @@ accuracy stage.
 - The IRR fallback is one of the fitted pieces of decision 0188's code audit: if the fix changes it, tag it per R4.3
   (T-3361) and keep it inside its measured range.
 
+- Gate A (T-3586) carries six accuracy/IRR/s1 points this task owns: A271, A280, A286, A288, A290 and A298.
+  These are conventional series with roots from -2.9E-4 to 2.6E-4, where the engine is `#NUM!` and Excel returns the
+  root. They are `known-failures.tsv` lines; remove them once they pass.
+- Excel itself is `#NUM!` on four other near-zero points of that table, and the engine already matches: A273, A276,
+  A279 and A293 (roots -5.0E-7 to 2.4E-5). A276's root, 2.4E-5, is inside this task's band, so a fix must keep
+  `#NUM!` there.
+
 ## Acceptance criteria
 - [ ] Conventional series with an IRR between 1e-5 and 3e-4, and near -10%, match Excel's result (number or error, within 15 significant digits for a number) on the oracle-filled cells.
 - [ ] A new public probe case under eval/suites/probes/cases/ (one milestone tag, M9; decision 0057), filled by the
