@@ -105,7 +105,8 @@ hygiene: ## Lint-debt, file-size, duplication, fitted-constant, tasks and govern
 	$(PY) scripts/check_decisions.py
 	$(PY) scripts/check_docs_readers.py
 	$(PY) scripts/check_ci_workflow.py
-	$(PY) -m unittest discover -s scripts -p 'test_*.py' -q
+	@# The scripts' test modules run in parallel, one process per module, largest file first (decision 0241); xargs fails if any module fails.
+	ls -S scripts/test_*.py | xargs -n1 basename | xargs -P "$$(getconf _NPROCESSORS_ONLN)" -I{} $(PY) -m unittest discover -s scripts -p {} -q
 
 deny: ## License/advisory/source policy (needs cargo-deny)
 	$(CARGO) deny check
