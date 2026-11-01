@@ -23,18 +23,24 @@
      conflicts outside the eval-gated lists; reserve a fresh id for each in the id registry (0215:
      a task id in the task's own milestone, a decision number; never by hand; refuse when the
      registry cannot reserve); move each file to its new id and replace the old id with the new
-     one **only** in files the PR added (so the task's `id:` and the record's `# NNNN —` title
-     follow) and in the lines the PR added to files it modified (`git diff -U0`, pinned to
-     myers); merge `main` in without committing (baseline-list conflicts resolved and re-recorded
+     one **only under `docs/`** and only in files the PR added (so the task's `id:` and the
+     record's `# NNNN —` title follow) and in the lines the PR added to files it modified (`git
+     diff -U0`, pinned to myers). When a line the PR added outside `docs/` names the old id, it
+     refuses before reserving anything: there the id may be code (a constant, a string), which
+     only the worker and the reviewers may change. Then merge `main` in without committing (baseline-list conflicts resolved and re-recorded
      as catch-up does); commit one merge commit whose parents are the PR head and `main`; push,
      never forced; restore the checkout. A line `main` owns keeps the old id: it names `main`'s file.
   2. **The carry rule, extended** (`merge_ready.Repo.carry_problem`). `make mark-ready CARRY=1`
      also accepts a merge of `main` into the marked head whose tree equals, with 0207's and 0219's
      allowances for the eval-gated lists, the merge of `main` with the marked head renumbered
      exactly as `make renumber` renumbers it (`id_renumber.renumbered_merge`). The renames the
-     head shows against the plain merge give the old and new ids. Each old id must be the id of
-     exactly one file the PR added, and each new id must be of the same kind and on neither `main`
-     nor the PR head. The tool and the rule build the renumbered tree with the same function, and
+     head shows against the plain merge give the old and new ids, so the pusher chooses them, and
+     the rule checks every choice (security review of #2699): each old id must be the id of
+     exactly one file the PR added and of a file on `main` (the merge's second parent: a real
+     collision); each new id must be of the same kind, on neither `main` nor the PR head, and
+     claimed in the id registry, read fresh as `id_registry.read` does, refusing when it cannot
+     be read; and no line the PR added outside `docs/` may name an old id. A claim the registry
+     has pruned (it keeps the newest 400) refuses too: the reviewers then run again. The tool and the rule build the renumbered tree with the same function, and
      the rule compares whole trees, so any other edit is refused. That includes a substituted line
      `main` owns, an edit in a renamed file, a rename of `main`'s file and a rename onto an id `main` has.
   3. **`make janitor`** (scripts/merge_janitor.py; `DRY_RUN=1` lists actions only; `STEP=1` makes each GitHub

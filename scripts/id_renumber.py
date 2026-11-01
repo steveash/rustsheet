@@ -7,14 +7,18 @@ renumbered PR head with `renumbered_commit`, so the rule cannot drift from what 
 
 - the PR's own file `docs/tasks/<M>/T-OLD-<slug>.md` (or `docs/decisions/OLD-<slug>.md`) moves to
   the new id, nothing else in its path changing;
-- the old id becomes the new one in every file the PR adds (the renamed files included, so the
-  task's `id:` and the record's `# NNNN —` title follow) and in the lines the PR adds to files it
-  modifies (`added_lines`, from `git diff -U0` of the merge base and the PR head);
+- under `docs/` only, the old id becomes the new one in every file the PR adds (the renamed
+  files included, so the task's `id:` and the record's `# NNNN —` title follow) and in the lines
+  the PR adds to files it modifies (`added_lines`, from `git diff -U0` of the merge base and the
+  PR head). A line the PR added outside `docs/` that names the old id refuses the renumber
+  (`uses_outside_docs`): there an id may be code, which only the worker and reviewers may change;
 - no other byte changes: a line `main` owns keeps the old id, which names `main`'s own file.
 
 The renumbered head (a throwaway commit whose parent is the PR head) is then merged with `main`.
 The carry rule recomputes that merge from the head's parents and the renames the head shows, and
-compares trees (`renumbered_merge`), so a hand edit anywhere is refused.
+compares trees (`renumbered_merge`), so a hand edit anywhere is refused. Because the pusher's
+renames choose the mapping, the rule also requires each old id to collide with a file on `main`
+and each new id to be claimed in the id registry (decision 0215), read fresh and failing closed.
 
 Task ids are matched as `T-NNNN` not inside a longer word; decision numbers as four digits not
 inside a longer number or word (so `0.0221` and `T-0221` never match).
@@ -29,11 +33,14 @@ import tempfile
 from collections.abc import Mapping
 from pathlib import Path
 
+import id_registry
 from merge_lock import GitError, git
 
 TASK_PATH = re.compile(r"^(docs/tasks/(?:[^/]+/)*)(T-\d{4})(-[^/]*\.md)$")
 DECISION_PATH = re.compile(r"^(docs/decisions/)(\d{4})(-[a-z0-9-]+\.md)$")
 ID_DIRS = ("docs/tasks", "docs/decisions")
+# A renumber rewrites ids only under here; elsewhere an id may be code, not a reference.
+DOCS = "docs/"
 TASK_ID = re.compile(r"T-\d{4}")
 DECISION_ID = re.compile(r"\d{4}")
 # A pinned diff, so the merger and the renumbering session number the PR's added lines alike.
@@ -153,17 +160,48 @@ def renamed(path: str, mapping: Mapping[str, str]) -> str:
 
 
 def check_mapping(root: Path, base: str, head: str, main: str, mapping: Mapping[str, str]) -> None:
-    """RenumberError unless each old id is the id of exactly one file `head` adds and each new id
-    is a fresh id of the same kind: on neither `main` nor `head`, and given once."""
+    """RenumberError unless each old id is the id of exactly one file `head` adds and of a file
+    `main` has (a real collision), each new id is a fresh id of the same kind (on neither `main`
+    nor `head`, and given once), and no line the PR added outside `docs/` names an old id."""
     added = [parts[1] for p in added_files(root, base, head) if (parts := id_path(p))]
-    taken = ids_in(root, main) | ids_in(root, head)
+    on_main = ids_in(root, main)
+    taken = on_main | ids_in(root, head)
     if len(set(mapping.values())) != len(mapping):
         raise RenumberError("two ids renumbered to one")
     for old, new in mapping.items():
         if added.count(old) != 1:
             raise RenumberError(f"{old} is not the id of exactly one file the PR adds")
+        if old not in on_main:
+            raise RenumberError(f"{old} does not collide with a file on main")
         if not same_kind(old, new) or new in taken:
             raise RenumberError(f"{old} renumbered to {new}, which is not a fresh id of its kind")
+    outside = uses_outside_docs(root, base, head, mapping)
+    if outside:
+        raise RenumberError(
+            f"lines the PR added outside {DOCS} name an old id ({', '.join(outside[:3])}): "
+            "only the PR's worker may change them"
+        )
+
+
+def uses_outside_docs(root: Path, base: str, head: str, mapping: Mapping[str, str]) -> list[str]:
+    """The files outside `docs/` in whose lines added since `base` an old id of `mapping` stands.
+    A renumber never edits them: an id there may be code (a constant, a string), not a reference."""
+    pattern = re.compile("|".join(id_pattern(old) for old in mapping))
+    found = []
+    for path, status in changed(root, base, head).items():
+        if path.startswith(DOCS) or status not in ("A", "M"):
+            continue
+        text = decoded(raw(root, "cat-file", "blob", f"{head}:{path}"))
+        if text is None or not pattern.search(text):
+            continue
+        numbers = added_lines(root, base, head, path) if status == "M" else None
+        if any(
+            pattern.search(line)
+            for n, line in enumerate(text.split("\n"), 1)
+            if numbers is None or n in numbers
+        ):
+            found.append(path)
+    return found
 
 
 def renumbered_files(
@@ -181,7 +219,7 @@ def renumbered_files(
             continue
         data = raw(root, "cat-file", "blob", f"{head}:{path}")
         target = renamed(path, mapping) if status == "A" else path
-        text = decoded(data)
+        text = decoded(data) if path.startswith(DOCS) else None  # ids are rewritten only in docs/
         new = data
         if text is not None and pattern.search(text):
             if status == "A":
@@ -254,8 +292,9 @@ def implied_mapping(root: Path, base: str, prev: str, tree: str, head: str) -> d
         twins = [
             p for p in new if (q := id_path(p)) and q[0] == parts[0] and q[2] == parts[2] and q[1] != parts[1]
         ]
-        if len(twins) == 1:
-            mapping[parts[1]] = id_path(twins[0])[1]  # type: ignore[index]
+        twin = id_path(twins[0]) if len(twins) == 1 else None
+        if twin is not None:
+            mapping[parts[1]] = twin[1]
     return mapping
 
 
@@ -270,4 +309,13 @@ def renumbered_merge(root: Path, parents: list[str], tree: str, head: str) -> tu
     if not mapping:
         return None
     check_mapping(root, base, prev, main, mapping)
+    # Fresh is not enough: the new ids must have come from the allocator (decision 0215), or any
+    # free id would do. Read like `id_registry.read`, failing closed.
+    try:
+        _, claims = id_registry.read(root)
+    except (id_registry.RegistryError, GitError) as error:
+        raise RenumberError(f"the id registry cannot be read ({error})") from error
+    unclaimed = sorted(new for new in mapping.values() if new not in claims)
+    if unclaimed:
+        raise RenumberError(f"{', '.join(unclaimed)} is not claimed in the id registry")
     return merge_tree(root, renumbered_commit(root, base, prev, mapping), main)

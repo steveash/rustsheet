@@ -88,9 +88,16 @@ def renumbering(allocate: Allocate) -> merge_catchup.Rewrite:
             if not found:
                 raise Refused(f"the PR adds no task or decision file whose id {merge_ready.BASE_BRANCH} has")
             merged = id_renumber.merge_tree(root, head, main)
-            lists = merge_ready.Repo(root).checked_baselines()
+            lists = merge_catchup.resolvable_lists(merge_ready.Repo(root))
             if merged is None or any(p not in lists for p in merged[1]):
                 raise Refused("the merge with main conflicts outside the eval-gated baseline lists")
+            # Before any id is reserved: an old id in a line the PR added outside docs/ is the worker's.
+            outside = id_renumber.uses_outside_docs(root, base, head, {old: old for old in found})
+            if outside:
+                raise Refused(
+                    f"lines the PR added outside {id_renumber.DOCS} name a colliding id "
+                    f"({', '.join(outside[:3])}): only the PR's worker may change them"
+                )
             taken = id_renumber.ids_in(root, main) | id_renumber.ids_in(root, head)
             mapping: dict[str, str] = {}
             for old, path in sorted(found.items()):

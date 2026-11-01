@@ -544,17 +544,21 @@ class Stats:
 
     def stranded(self) -> list[int]:
         """Open PRs marked ready more than 2 h ago, unmerged and not ejected, whose newest marker
-        names the current head: a stale marker waits on its worker or the janitor (decision 0224)."""
+        names the current head: a stale marker waits on its worker or the janitor (decision 0224).
+        Only writers' markers count (merge_ready's V1 rule), so no one else can hide a stranded PR."""
         found = []
-        for pull in self.client.pulls():
+        pulls = self.client.pulls()
+        owner = text_of(pulls[0], "base", "repo", "owner", "type") if pulls else ""
+        authors = merge_ready.Authors(self.client, owner == "User")
+        for pull in pulls:
             labels = merge_ready.label_names(pull)
             if merge_ready.READY_LABEL not in labels or merge_ready.EJECTED_LABEL in labels:
                 continue
             pr = int_of(pull, "number")
             marks = [
                 (at, text_of(c, "body"))
-                for c in self.client.comments(pr)
-                if merge_ready.has_marker(text_of(c, "body")) and (at := when(text_of(c, "created_at")))
+                for c in merge_ready.marker_comments(self.client.comments(pr), authors)
+                if (at := when(text_of(c, "created_at")))
             ]
             newest, body = max(marks, default=(None, ""))
             with contextlib.suppress(merge_ready.MarkerError):

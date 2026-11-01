@@ -54,6 +54,16 @@ def checked_only(paths: Sequence[str], lists: set[str]) -> bool:
     return bool(paths) and all(p in lists for p in paths)
 
 
+def resolvable_lists(repo: merge_ready.Repo) -> set[str]:
+    """The paths whose conflicts the catch-up resolves, on the `main` that `repo.fetch_base`
+    fetched: the eval-gated lists (`Repo.checked_baselines`) and, when `main` has deleted it, the
+    retired json lock a PR from before decision 0219 modified. `make renumber` and the janitor's
+    check use the same set."""
+    main = f"refs/merge-ready/{merge_ready.BASE_BRANCH}"
+    retired = not visible_lock.in_commit(repo.root, main, visible_lock.RETIRED_LOCK)
+    return repo.checked_baselines() | ({visible_lock.RETIRED_LOCK} if retired else set())
+
+
 def rerecord(root: Path, new_cases: Path) -> int:
     """`make eval-baseline` in `root`: re-records eval/baseline/ and refuses regressions. Only the
     cases `new_cases` lists (the PR's added case files) may get a new visible-parity line or a
@@ -94,7 +104,7 @@ def catch_up(
     repo.fetch_base()
     main = f"refs/merge-ready/{merge_ready.BASE_BRANCH}"
     git("fetch", "-q", "--no-tags", REMOTE, f"+refs/heads/{branch}:{HEAD_REF}", root=root)
-    lists = repo.checked_baselines()
+    lists = resolvable_lists(repo)
     head, main_sha = (git("rev-parse", ref, root=root).stdout.strip() for ref in (HEAD_REF, main))
     try:
         if git("merge-base", "--is-ancestor", main, HEAD_REF, root=root, check=False).returncode == 0:
@@ -105,9 +115,6 @@ def catch_up(
         if git("rev-parse", "-q", "--verify", "MERGE_HEAD", root=root, check=False).returncode:
             raise Refused(f"git could not start merging {merge_ready.BASE_BRANCH} into {branch}")
         conflicted = git("diff", "--name-only", "--diff-filter=U", root=root).stdout.split()
-        # A PR from before decision 0219 modified the retired json lock, which main deleted.
-        if not visible_lock.in_commit(root, main, visible_lock.RETIRED_LOCK):
-            lists = lists | {visible_lock.RETIRED_LOCK}
         if conflicted and not checked_only(conflicted, lists):
             outside = [p for p in conflicted if p not in lists]
             raise Refused(f"conflicts outside the eval-gated baseline lists: {', '.join(outside)}")

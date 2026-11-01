@@ -8,7 +8,8 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import id_renumber  # noqa: E402 (the sys.path line above must run first)
+import id_registry  # noqa: E402 (the sys.path line above must run first)
+import id_renumber  # noqa: E402
 import merge_ready  # noqa: E402
 import merge_renumber  # noqa: E402
 from merge_catchup import Refused  # noqa: E402
@@ -57,22 +58,28 @@ class Renumber(TempOrigin):
         self.write("eval/suites/probes/suite.toml", 'name = "probes"\ngate = true\n')
         self.write("docs/tasks/M2/T-0100-base.md", task("T-0100", "base"))
         self.write("docs/decisions/0001-base.md", "# 0001 — base\n")
-        self.write("notes.md", "top\n" + "".join(f"filler {n}\n" for n in range(8)) + "bottom\n")
+        self.write("docs/notes.md", "top\n" + "".join(f"filler {n}\n" for n in range(8)) + "bottom\n")
         self.base = self.commit("base")
         self.git("push", "-q", "origin", "main")
         self.git("checkout", "-q", "-b", "agent/x")
         self.write(PR_TASK, task("T-0101", "pr task"))
         self.write(PR_RECORD, "# 0002 — pr rule\n\nSee T-0101.\n")
-        self.edit("notes.md", "bottom\n", "bottom\nPR: T-0101 and decision 0002.\n")
+        self.edit("docs/notes.md", "bottom\n", "bottom\nPR: T-0101 and decision 0002.\n")
         self.before = self.commit("pr")
         self.git("push", "-q", "origin", "agent/x")
         self.git("checkout", "-q", "main")
         self.write("docs/tasks/M2/T-0101-main-task.md", task("T-0101", "main task"))
         self.write("docs/decisions/0002-main-rule.md", "# 0002 — main rule\n")
-        self.edit("notes.md", "top\n", "top\nmain: T-0101 and decision 0002 are main's.\n")
+        self.edit("docs/notes.md", "top\n", "top\nmain: T-0101 and decision 0002 are main's.\n")
         self.main = self.commit("main moves")
         self.git("push", "-q", "origin", "main")
         self.allocated: list[tuple[str, str]] = []
+        self.claim(*FRESH.values())  # what the fake allocator hands out, as the registry claimed it
+
+    def claim(self, *ids: str) -> None:
+        """Pushes the id registry with `ids` claimed (decision 0215), as `id_registry.claim` does."""
+        registry = id_registry.commit(list(ids), self.clone)
+        self.git("push", "-q", "-f", "origin", f"{registry}:{id_registry.REF}")
 
     def edit(self, path: str, old: str, new: str) -> None:
         self.write(path, (self.clone / path).read_text().replace(old, new, 1))
@@ -113,7 +120,7 @@ class Renumber(TempOrigin):
         self.assertEqual(
             self.show(head, "docs/tasks/M2/T-0101-main-task.md"), task("T-0101", "main task").strip()
         )
-        notes = self.show(head, "notes.md")
+        notes = self.show(head, "docs/notes.md")
         self.assertIn("main: T-0101 and decision 0002 are main's.", notes)
         self.assertIn("PR: T-0150 and decision 0009.", notes)
         self.assertIsNone(merge_ready.Repo(self.clone).carry_problem(self.before, head))
@@ -129,21 +136,21 @@ class Renumber(TempOrigin):
             else:
                 self.write(path, text)
         head = self.commit("hand merge")
-        self.git("push", "-q", "origin", f"{head}:refs/heads/agent/x")
+        self.git("push", "-q", "-f", "origin", f"{head}:refs/heads/agent/x")
         self.git("checkout", "-q", "main")
         return head
 
     def by_hand(self, **overrides: str) -> dict[str, str | None]:
         """What `make renumber` writes, with `overrides` (keyed by an alias) on top."""
-        notes = self.git("show", "main:notes.md") + "\n"
+        notes = self.git("show", "main:docs/notes.md") + "\n"
         out: dict[str, str | None] = {
             PR_TASK: None,
             PR_RECORD: None,
             NEW_TASK: task("T-0150", "pr task").replace("0002", "0009"),
             NEW_RECORD: "# 0009 — pr rule\n\nSee T-0150.\n",
-            "notes.md": notes.replace("bottom\n", "bottom\nPR: T-0150 and decision 0009.\n"),
+            "docs/notes.md": notes.replace("bottom\n", "bottom\nPR: T-0150 and decision 0009.\n"),
         }
-        aliases = {"task": NEW_TASK, "record": NEW_RECORD, "notes": "notes.md"}
+        aliases = {"task": NEW_TASK, "record": NEW_RECORD, "notes": "docs/notes.md"}
         out.update({aliases[k]: v for k, v in overrides.items()})
         return out
 
@@ -159,7 +166,7 @@ class Renumber(TempOrigin):
 
     def test_a_substitution_in_a_line_main_owns_is_refused(self) -> None:
         change = self.by_hand()
-        notes = str(change["notes.md"]).replace(
+        notes = str(change["docs/notes.md"]).replace(
             "main: T-0101 and decision 0002", "main: T-0150 and decision 0009"
         )
         problem = self.carry(self.manual(self.by_hand(notes=notes)))
@@ -174,9 +181,57 @@ class Renumber(TempOrigin):
         change = self.by_hand()
         del change[NEW_TASK]
         change["docs/tasks/M2/T-0100-pr-task.md"] = task("T-0100", "pr task").replace("0002", "0009")
-        change["notes.md"] = str(change["notes.md"]).replace("PR: T-0150", "PR: T-0100")
+        change["docs/notes.md"] = str(change["docs/notes.md"]).replace("PR: T-0150", "PR: T-0100")
         problem = self.carry(self.manual(change))
         self.assertIn("not a fresh id", str(problem))
+
+    def test_a_new_id_not_claimed_in_the_registry_is_refused(self) -> None:
+        self.claim("T-0150")  # 0009 is free but nobody allocated it
+        problem = self.carry(self.manual(self.by_hand()))
+        self.assertIn("0009 is not claimed in the id registry", str(problem))
+
+    def test_an_unreadable_registry_refuses(self) -> None:
+        head = self.manual(self.by_hand())
+        repo = merge_ready.Repo(self.clone)
+        repo.fetch_base()
+        self.git("remote", "set-url", "origin", str(self.origin) + "-gone")
+        self.assertIn("the id registry cannot be read", str(repo.carry_problem(self.before, head)))
+        self.git("remote", "set-url", "origin", str(self.origin))
+        self.git("push", "-q", "origin", f":{id_registry.REF}")  # an absent registry claims nothing
+        self.assertIn("not claimed in the id registry", str(self.carry(head)))
+
+    def test_a_rename_without_a_real_collision_is_refused(self) -> None:
+        # The PR adds decision 0003, which main does not have; a merge moves it to a claimed id.
+        self.git("checkout", "-q", "agent/x")
+        self.write("docs/decisions/0003-new.md", "# 0003 — new\n")
+        self.before = self.commit("pr adds 0003")
+        self.git("push", "-q", "origin", "agent/x")
+        self.git("checkout", "-q", "main")
+        self.claim(*FRESH.values(), "0010")
+        change = self.by_hand()
+        change["docs/decisions/0003-new.md"] = None
+        change["docs/decisions/0010-new.md"] = "# 0010 — new\n"
+        problem = self.carry(self.manual(change))
+        self.assertIn("0003 does not collide with a file on main", str(problem))
+
+    def test_an_id_in_code_the_pr_added_refuses_the_renumber_and_the_carry(self) -> None:
+        # Security review of #2699: `MAX_DEPTH = 0002` is code, not a reference; nobody renumbers it.
+        self.git("checkout", "-q", "agent/x")
+        self.write("src/lim.rs", 'const MAX_DEPTH: usize = 0002;\nconst NAME: &str = "0002";\n')
+        self.before = self.commit("pr adds code")
+        self.git("push", "-q", "origin", "agent/x")
+        self.git("checkout", "-q", "main")
+        with self.assertRaisesRegex(Refused, "outside docs/ name a colliding id \\(src/lim.rs\\)"):
+            self.renumbered()
+        self.assertEqual(self.allocated, [])  # refused before any id was reserved
+        self.assertEqual(run("git", "rev-parse", "agent/x", cwd=self.origin), self.before)
+        for code in ('const MAX_DEPTH: usize = 0009;\nconst NAME: &str = "0009";\n', None):
+            change = self.by_hand()
+            if code is not None:
+                change["src/lim.rs"] = code
+            with self.subTest(code=code):
+                problem = self.carry(self.manual(change))
+                self.assertIn("outside docs/ name an old id (src/lim.rs)", str(problem))
 
     def test_a_rename_of_a_file_main_owns_is_refused(self) -> None:
         change: dict[str, str | None] = {
@@ -197,7 +252,7 @@ class Renumber(TempOrigin):
 
     def test_a_conflict_outside_the_lists_is_refused_before_any_id_is_reserved(self) -> None:
         self.git("checkout", "-q", "main")
-        self.edit("notes.md", "bottom\n", "bottom\nmain's own last line\n")
+        self.edit("docs/notes.md", "bottom\n", "bottom\nmain's own last line\n")
         self.commit("main conflicts")
         self.git("push", "-q", "origin", "main")
         with self.assertRaisesRegex(Refused, "conflicts outside the eval-gated baseline lists"):

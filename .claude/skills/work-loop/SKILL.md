@@ -155,7 +155,8 @@ file and its acceptance criteria.
      the conflicts are only in the eval-gated baseline lists, `make catch-up PR=<n>` (decision
      0207); otherwise merge `origin/main` in and resolve (decision 0121 (1)). `id collision`:
      `make renumber PR=<n>` (decision 0224), which takes fresh ids from the id registry and
-     rewrites the old id only in what your PR added, rather than renumbering by hand. `invalidated`: a push
+     rewrites the old id only in what your PR added under `docs/`, rather than renumbering by hand
+     (it refuses when a line you added elsewhere names the old id: change that yourself). `invalidated`: a push
      moved the head after marking. After a catch-up or renumber, wait for green CI and run `make
      mark-ready PR=<n> CARRY=1`. Otherwise run `make check`, re-run the reviewers the change
      concerns (each posts a verdict record on the new head; once `verdict_records = "require"`,

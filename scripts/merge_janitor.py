@@ -55,7 +55,6 @@ import merge_ready
 import merge_renumber
 import merge_step
 import merge_train
-import visible_lock
 from gh_client import Client, GhError, int_of, label_names, text_of
 from merge_lock import GitError, git
 from merge_train_stats import iso, when
@@ -94,13 +93,23 @@ def parse_note(body: str) -> tuple[str, str] | None:
     return (found[1], found[2]) if found else None
 
 
+# The reason lines the merger writes, matched exactly (merge_train.build, id_collision, eject_red).
+ID = r"(?:T-\d{4}|\d{4})"
+REASONS = (
+    (CONFLICT, re.compile(r"conflict with main")),
+    (
+        COLLISION,
+        re.compile(
+            rf"id collision with (?:{ID}(?:, {ID})*|a task id or decision number); renumber per decision 0121 \(2\)"
+        ),
+    ),
+    (CI_RED, re.compile(r"train CI red, confirmed on this PR alone on main")),
+)
+
+
 def reason_kind(reason: str) -> str:
-    """CONFLICT, COLLISION, CI_RED or OTHER for an ejection comment's reason."""
-    if reason.startswith(CONFLICT):
-        return CONFLICT
-    if reason.startswith(COLLISION):
-        return COLLISION
-    return CI_RED if reason.startswith("train CI red") or "reason: ci-red" in reason else OTHER
+    """CONFLICT, COLLISION, CI_RED or OTHER for the first line of an ejection comment's reason."""
+    return next((kind for kind, line in REASONS if line.fullmatch(reason)), OTHER)
 
 
 @dataclass
@@ -160,6 +169,8 @@ def decide_ejected(s: State, facts: Facts) -> Action | None:
     pushed = s.done & {CATCH_UP, RENUMBER}
     kind = reason_kind(s.reason)
     if pushed and REFUSED not in s.done:
+        # The note only says the janitor pushed this head; MARK's `plan_mark(carry=True)` re-checks
+        # the carry rule on it, so a head that is not a catch-up or renumber is refused there.
         state = facts.ci(s)
         if state == merge_ready.GREEN:
             return Action(s.pr, MARK, f"CI is green on the janitor's {'/'.join(sorted(pushed))} push")
@@ -248,7 +259,7 @@ class GitFacts:
         self.fetch(state)
         main = f"refs/merge-ready/{merge_ready.BASE_BRANCH}"
         merged = id_renumber.merge_tree(self.repo.root, state.head, main)
-        lists = self.repo.checked_baselines() | {visible_lock.RETIRED_LOCK}
+        lists = merge_catchup.resolvable_lists(self.repo)  # what `make catch-up` would resolve
         return merged is not None and all(p in lists for p in merged[1])
 
     def carries(self, state: State, prev: str) -> bool:

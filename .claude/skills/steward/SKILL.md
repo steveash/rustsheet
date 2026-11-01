@@ -86,7 +86,7 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
     PR=<n>`, which merges `main` in, re-records the lists and pushes, then `make mark-ready
     PR=<n> CARRY=1` once CI is green (decision 0207). Likewise any session may clear an `id
     collision` ejection with `make renumber PR=<n>` (decision 0224): it reserves fresh ids in the
-    id registry, renames the PR's own colliding files, rewrites the old id only in what the PR
+    id registry, renames the PR's own colliding files, rewrites the old id only under `docs/`, in what the PR
     added, merges `main` in and pushes; then `make mark-ready PR=<n> CARRY=1` once CI is green.
     Any other conflict stays with the PR's worker.
   - **The janitor** (`make janitor`, decision 0224; `DRY_RUN=1` lists its actions; `STEP=1`

@@ -33,6 +33,10 @@ train to `lock` (decision 0224, the owner's ruling).
 - [x] The carry rule accepts a renumber merge by rebuilding the expected tree with the tool's own
   function, and refuses a substitution in a line `main` owns, another edit in a renamed file, a
   rename onto an id `main` has and a rename of `main`'s file (scripts/test_merge_renumber.py).
+- [x] Security review of #2699: ids are rewritten only under `docs/`, and an old id in a line the
+  PR added elsewhere refuses both the renumber and the carry; the carry requires each old id to
+  collide with a file on `main` and each new id to be claimed in the id registry (read fresh,
+  failing closed). `stranded()` counts only writers' markers.
 - [x] `make janitor [DRY_RUN=1]` (scripts/merge_janitor.py) catches up or renumbers ejected PRs
   idle 1 h, notes the pushed head and re-marks with `CARRY` on a later run once CI is green,
   comments orphans idle 4 h once per head, and re-marks or unlabels stale markers idle 2 h

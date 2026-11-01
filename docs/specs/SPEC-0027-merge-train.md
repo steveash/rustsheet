@@ -322,9 +322,11 @@ option records `prev:` and checks mechanically that the PR's own diff did not ch
   catch-up merges a conflict on it three-way per case. A PR from before the lock may delete the
   retired `visible-parity.json` once `main` has none (decision 0219). *As built (decision 0224):*
   or, with the same allowances, the head's tree is the merge of `main` with `prev` renumbered as
-  `make renumber` renumbers it: the PR's own colliding task or decision files moved to fresh ids
-  that neither `main` nor `prev` has, and the old id replaced by the new one only in the files the
-  PR added and in the lines it added. The rule rebuilds that tree with the tool's own function
+  `make renumber` renumbers it: the PR's own task or decision files whose ids `main` has moved to
+  fresh ids that neither `main` nor `prev` has and the id registry has claimed, and the old id
+  replaced by the new one only under `docs/`, in the files the
+  PR added and in the lines it added (a line the PR added elsewhere that names the old id
+  refuses). The rule rebuilds that tree with the tool's own function
   and compares whole trees, so a substitution in a line `main` owns, or any other edit, breaks
   the carry.
 
@@ -998,8 +1000,9 @@ The merger keeps no state between runs: every step is derived from `origin` and 
   renumbers its own file per 0121 (2). The merger itself does not renumber. *As built (decision
   0224, the owner's answer to open question 3):* `make renumber` does it mechanically, and the
   janitor (section 3) runs it once the PR's branch has been idle 1 h, so no live session is
-  raced. It reserves fresh ids in the id registry, and rewrites the old id only in what the PR
-  added, so `depends_on` lists, links and citations the PR wrote follow and `main`'s lines do not.
+  raced. It reserves fresh ids in the id registry, and rewrites the old id only under `docs/`, in what the PR
+  added, so `depends_on` lists, links and citations the PR wrote follow and `main`'s lines do not;
+  an id in a line the PR added outside `docs/` (it may be code) refuses the renumber.
   The carry rule accepts exactly that shape (section 2, "Carry-over"), so no reviewer runs again.
 - **Docs-only and task-only PRs.** Eligible like any other PR. Task-only PRs are exactly the ones
   that collide on ids (0075). Their marker says `task: none`, and V5's task-file check is skipped.

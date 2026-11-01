@@ -134,12 +134,22 @@ class Notes(unittest.TestCase):
         self.assertIsNone(merge_janitor.parse_note(body + "\nmore"))
 
     def test_reason_kind(self) -> None:
-        self.assertEqual(merge_janitor.reason_kind("conflict with main"), merge_janitor.CONFLICT)
-        self.assertEqual(
-            merge_janitor.reason_kind("id collision with T-0001; renumber"), merge_janitor.COLLISION
-        )
-        self.assertEqual(merge_janitor.reason_kind("train CI red, confirmed"), merge_janitor.CI_RED)
-        self.assertEqual(merge_janitor.reason_kind("readiness invalidated by a push"), merge_janitor.OTHER)
+        # The merger's own reason lines, built by its own functions, match exactly; anything else is OTHER.
+        kinds = {
+            "conflict with main": merge_janitor.CONFLICT,
+            merge_janitor.merge_train.id_collision(
+                ["duplicate id T-0001 (also x)", "decision number 0002 used twice"]
+            ): merge_janitor.COLLISION,
+            merge_janitor.merge_train.id_collision([]): merge_janitor.COLLISION,
+            "train CI red, confirmed on this PR alone on main": merge_janitor.CI_RED,
+            "readiness invalidated by a push": merge_janitor.OTHER,
+            "conflict with main, and reason: ci-red": merge_janitor.OTHER,
+            "id collision with T-0001; renumber": merge_janitor.OTHER,
+            "train CI red, confirmed": merge_janitor.OTHER,
+        }
+        for reason, kind in kinds.items():
+            with self.subTest(reason=reason):
+                self.assertEqual(merge_janitor.reason_kind(reason), kind)
 
 
 class Effects:

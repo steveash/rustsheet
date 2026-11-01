@@ -173,7 +173,7 @@ catch-up: ## Clear a merge-train ejection for a conflict with main that lies onl
 	$(if $(PR),,$(error PR=<number> is required))
 	$(PY) scripts/merge_catchup.py --pr '$(PR)'
 
-renumber: ## Clear a merge-train ejection for an id collision (decision 0224): make renumber PR=123 gives the PR's colliding task and decision files fresh ids from the id registry, rewrites the old id only in what the PR added, merges main in and pushes; then make mark-ready PR=123 CARRY=1 once CI is green (exit 0: pushed; 1: refused; 2: error)
+renumber: ## Clear a merge-train ejection for an id collision (decision 0224): make renumber PR=123 gives the PR's colliding task and decision files fresh ids from the id registry, rewrites the old id only under docs/ in what the PR added (refusing when a line it added elsewhere names it), merges main in and pushes; then make mark-ready PR=123 CARRY=1 once CI is green (exit 0: pushed; 1: refused; 2: error)
 	$(if $(PR),,$(error PR=<number> is required))
 	$(PY) scripts/merge_renumber.py --pr '$(PR)'
 
