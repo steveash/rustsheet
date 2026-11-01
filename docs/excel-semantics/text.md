@@ -1003,8 +1003,8 @@ Characters whose full mapping expands (ß, ŉ, ǰ, the ligatures U+FB00-U+FB17, 
 unchanged, as T-1747 found.
 Evidence: probes/t3298-case-mapping-sweep Calc!A1:A50 (UPPER of 1580 characters, 32 per cell, Data!A) and
 Calc!B1:B47 (LOWER of 1488, Data!B) (excel-graph, 2026-10-31).
-Status: VERIFIED (excel-graph). Not implemented: the engine maps every character through Rust's tables
-(`simple_case`), so the cells listed in eval/baseline/probes.txt fail. Tasks: T-3298 (probe), T-3583 (engine).
+Status: VERIFIED (excel-graph). Implemented in: `simple_case` with the `UPPER_UNMAPPED` and `LOWER_UNMAPPED` range tables
+(functions/text/string_format.rs). PROPER's word-start/other letters (`simple_case`) and REGEXREPLACE's `\U \L \u \l` (`upper_case`/`lower_case`) go through the same table in the engine, but that is UNVERIFIED: the sweep covered UPPER and LOWER only (`PROPER("άλφα")` is Αλφα in the engine, probe pending, T-3777). Tasks: T-3298 (probe), T-3583 (engine), T-3777 (PROPER/REGEXREPLACE probe).
 
 ## ARRAYTOTEXT: a single empty cell is #VALUE!, an empty cell in a larger range is empty text
 Rule: `ARRAYTOTEXT` of a reference to one empty cell is `#VALUE!` in both formats, and so are a 1x1 range of an empty
