@@ -7,7 +7,7 @@ status: todo
 priority: P1
 size: M
 tier: opus
-depends_on: []
+depends_on: [T-3358]
 spec: docs/specs/SPEC-0029-gate-a-accuracy-gate.md
 ---
 
