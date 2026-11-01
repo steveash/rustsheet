@@ -6,7 +6,7 @@
 use crate::test::util::new_empty_model;
 use crate::Model;
 
-/// Rows of one data block: below `ifs_cache::MIN_CACHED_CELLS`, so a call over one block walks.
+/// Rows of one data block: below `range_values::MIN_CACHED_CELLS`, so a call over one block walks.
 const BLOCK: usize = 60;
 /// Blocks stacked in A1:C240, a range the cache takes.
 const COPIES: usize = 4;
@@ -555,7 +555,10 @@ fn formula_ranges_are_cached_at_the_cells_their_chain_matches() {
         model._set(&format!("E{}", index + 1), formula);
     }
     model.evaluate();
-    let counts = model.evaluation.ifs_cache.counts();
+    let counts = model
+        .evaluation
+        .ifs_cache
+        .counts(&model.evaluation.range_values);
     // A as a whole; C (once per key), F (once per key) and G (once per key and year). C, D, F and
     // G never as a whole.
     assert_eq!(counts.ready, 1, "{counts:?}");

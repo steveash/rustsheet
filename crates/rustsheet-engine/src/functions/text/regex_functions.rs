@@ -200,6 +200,11 @@ impl PatternCache {
         result: CalcResult,
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        self.finish_after(model, result, cell, 0)
+    }
+
+    /// The work units the call has spent so far: what [`Self::finish`] charges.
+    fn spent_units(&self) -> u64 {
         let (compiled, searched) = if self.exhausted {
             (to_u64(COMPILE_BUDGET), SEARCH_BUDGET)
         } else {
@@ -208,8 +213,22 @@ impl PatternCache {
                 SEARCH_BUDGET.saturating_sub(self.work),
             )
         };
-        let units = (compiled / COMPILE_BYTES_PER_WORK_UNIT)
-            .saturating_add(searched / SEARCH_UNITS_PER_WORK_UNIT);
+        (compiled / COMPILE_BYTES_PER_WORK_UNIT)
+            .saturating_add(searched / SEARCH_UNITS_PER_WORK_UNIT)
+    }
+
+    /// [`Self::finish`] of a call whose earlier finish already charged `charged` units: only the
+    /// rest is charged, so the finishes of one call's parts charge what one finish would.
+    fn finish_after(
+        &self,
+        model: &mut Model,
+        result: CalcResult,
+        cell: CellReferenceIndex,
+        charged: u64,
+    ) -> CalcResult {
+        let units = self.spent_units().saturating_sub(charged);
+        #[cfg(test)]
+        REGEX_UNITS.with(|total| total.set(total.get().saturating_add(units)));
         if let Err(error) = model.spend_work(units, cell) {
             return error;
         }
@@ -228,12 +247,23 @@ impl PatternCache {
 /// XLOOKUP regex mode".
 pub(crate) struct LookupRegexes {
     cache: PatternCache,
+    /// The work units an earlier [`Self::finish`] charged: a keyed lookup's tail continues its
+    /// head's call (SPEC-0020 Amendment 2, section 3; `Model::keyed_regexes`).
+    charged: u64,
+}
+
+#[cfg(test)]
+thread_local! {
+    /// Tests sum the work units regex finishes charge, to compare a keyed lookup's head and tail
+    /// with its one call (SPEC-0020 Amendment 2, section 3).
+    pub(crate) static REGEX_UNITS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
 }
 
 impl LookupRegexes {
     pub(crate) fn new() -> Self {
         LookupRegexes {
             cache: PatternCache::new(),
+            charged: 0,
         }
     }
 
@@ -254,14 +284,19 @@ impl LookupRegexes {
         })
     }
 
-    /// The call's result: `#ERROR!` when its work ran out in any element.
+    /// The call's result: `#ERROR!` when its work ran out in any element. Charges the work
+    /// units spent since an earlier finish of the same call, so a keyed lookup's head and tail,
+    /// finishing one cache in turn, charge and fail as its one call does (SPEC-0020 Amendment 2,
+    /// section 3): the units are a function of the cache's counters, which the tail continues.
     pub(crate) fn finish(
-        &self,
+        &mut self,
         model: &mut Model,
         result: CalcResult,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        self.cache.finish(model, result, cell)
+        let result = self.cache.finish_after(model, result, cell, self.charged);
+        self.charged = self.cache.spent_units();
+        result
     }
 
     #[cfg(test)]

@@ -4,6 +4,7 @@ use std::error::Error;
 use std::io::{Cursor, Read, Write};
 
 use rustsheet_xlsx::base::expressions::utils::number_to_column;
+use rustsheet_xlsx::base::types::MergedCell;
 use rustsheet_xlsx::base::Model;
 use rustsheet_xlsx::error::{ImportLimit, XlsxError};
 use rustsheet_xlsx::import::{
@@ -726,6 +727,62 @@ fn with_first_sheet_merges(rows: &str, refs: &[String]) -> Result<Vec<u8>, Box<d
             content
         }
     })
+}
+
+/// A hundred thousand merged ranges, ten thousand more that each intersect one of them and a few
+/// disjoint ones last: the import keeps the first of any that intersect, as checking each range
+/// against every kept one did, without its 5 x 10^9 checks (T-3454). The load takes about 2 s in a
+/// debug build and 0.3 s in release; the old checks took 46 s in a debug build, so the bound of
+/// 20 s leaves room for a slow runner and still fails them.
+#[test]
+fn many_merged_ranges_import_quickly_and_keep_the_first_of_intersecting_ones() -> TestResult {
+    let pair = |row: i32, column: i32| -> String {
+        let first = number_to_column(column).unwrap_or_default();
+        let second = number_to_column(column + 1).unwrap_or_default();
+        format!("{first}{row}:{second}{row}")
+    };
+    let mut refs = Vec::new();
+    let mut expected = Vec::new();
+    for row in 1..=100 {
+        for column in (1..=2_000).step_by(2) {
+            refs.push(pair(row, column));
+            expected.push(MergedCell {
+                row,
+                column,
+                width: 2,
+                height: 1,
+            });
+        }
+    }
+    for i in 0..10_000 {
+        // Straddles two kept pairs, or covers several rows of them.
+        if i % 2 == 0 {
+            refs.push(pair(1 + i % 100, 2 + 2 * (i % 999)));
+        } else {
+            let column = number_to_column(1 + 2 * (i % 1_000)).unwrap_or_default();
+            refs.push(format!("{column}{}:{column}{}", 1 + i % 90, 11 + i % 90));
+        }
+    }
+    for row in [101, 500, 1_048_576] {
+        refs.push(format!("A{row}:XFD{row}"));
+        expected.push(MergedCell {
+            row,
+            column: 1,
+            width: 16_384,
+            height: 1,
+        });
+    }
+    let rows = r#"<row r="1"><c r="A1"><v>1</v></c></row>"#;
+    let bytes = with_first_sheet_merges(rows, &refs)?;
+    let started = std::time::Instant::now();
+    let workbook = load_from_xlsx_bytes(&bytes, "case", "en", "UTC")?;
+    assert!(
+        started.elapsed().as_secs() < 20,
+        "took {:?}",
+        started.elapsed()
+    );
+    assert_eq!(workbook.worksheets[0].merged_cells, expected);
+    Ok(())
 }
 
 /// Whole-column merged ranges, a thousand of them: clearing their covered cells walks the cells

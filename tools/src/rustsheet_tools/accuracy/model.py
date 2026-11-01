@@ -174,3 +174,14 @@ def solve_bracket(
             side = 1
     msg = "root bracket did not converge"
     raise NoValueError(msg)
+
+
+def solve_log_bracket(f: Callable[[mpmath.mpf], mpmath.mpf], lo: float, hi: float) -> mpmath.mpf:
+    """The s in [lo, hi] where `f` changes sign, for a quantile solved in log scale (x = ±e^s), so
+    a 1E-300 tail is as well conditioned as the centre. NoValueError when the root is not in the
+    bracket: the quantile is outside the double range (the sampler redraws)."""
+    try:
+        return solve_bracket(f, mpmath.mpf(lo), mpmath.mpf(hi))
+    except NoValueError as err:
+        msg = f"quantile outside the double range ({err})"
+        raise NoValueError(msg) from err
