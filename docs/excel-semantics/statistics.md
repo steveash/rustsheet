@@ -4996,7 +4996,8 @@ argument's wins (`SLOPE({1,#N/A,3},{1,#DIV/0!,3})` is `#N/A`). A scalar bins err
 `ROWS(FREQUENCY(0,ABS({13,15,17,""}-13)))` is 4 (A1, A2, A4), as desktop Excel's cached value for corpus-bench/53062 shows.
 A typed or computed boolean as data or bins, and numeric text `"2"` as a bin, are skipped (A8-A11). `FREQUENCY({1;2},{#N/A})` is
 `#SPILL!` on the web (A3): bins made only of errors are no numeric bin, so the two-row `{0;n}` result spills into the occupied
-A4 (as gen-m9/06b4e8f5de409d5e A239). Still unprobed: an error cell in a bins range (ours: that error), a data-array error element
+A4 (as gen-m9/06b4e8f5de409d5e A239). Still unprobed: an error cell in a bins range (ours: that error; a one-cell reference to an error cell is skipped, see
+"FREQUENCY with no numeric bin: a bin at 0; an error cell as the bins is skipped (T-3781)"), a data-array error element
 against an error cell in a bins range, and an empty argument in the other position of the paired functions (T-2636 follow-up).
 Ours: T-2430 implements it for LARGE, SMALL, PERCENTILE*, QUARTILE*, PERCENTRANK*, TRIMMEAN, MODE*, Z.TEST and the paired functions
 (COVAR, COVARIANCE.*, CORREL, PEARSON, T.TEST); PROB since T-2636; FREQUENCY's data array since T-2427 and its bins array
@@ -5030,7 +5031,8 @@ with C7 = " x " (3e98b26cf6713e77 A249). The row count for a text or boolean bin
 both data and bins are errors is settled by probes/frequency-bins below.
 Evidence: gen-m9 (excel-graph, 2026-10-22, T-2255), 142 cells listed in T-2427.
 Resolved by probes/frequency-bins (excel-graph, 2026-10-24): with no numeric bin (a text, boolean or blank cell or a
-typed text or boolean) the result is two rows, 0 then every numeric data value; text in data, and text or booleans in bins, are
+typed text or boolean) the result is two rows, 0 then every numeric data value (for positive data; values <= 0 count in the
+first row, see "FREQUENCY with no numeric bin: a bin at 0 ... (T-3781)"); text in data, and text or booleans in bins, are
 skipped (`{1;2}` against `"a"`, TRUE, a blank cell, `{"a";"b"}`; `FREQUENCY("a",{1;2})` is three rows of 0 counts). Error
 precedence: a scalar error argument (data, then bins) beats an error element of either array, and within arrays data
 comes first: `FREQUENCY({1;#DIV/0!},NA())` and `FREQUENCY(NA(),{1;#DIV/0!})` are `#N/A`, `FREQUENCY(1/0,NA())` is
@@ -5544,7 +5546,7 @@ number) before significance (`PERCENTRANK(Data!E1:E5,1963,-2.5)` is `#N/A`, 1396
 `PERCENTRANK.EXC({1,..,10},-0.0001,0)` `#N/A`, 09b47629f54b9817 A58).
 Evidence: gen-m9 (excel-graph, 2026-10-23, T-2256); 62 cells in T-2472.
 Ours: matches (T-2472).
-UNVERIFIED: whether a significance that is itself an error or text (`PERCENTRANK(C1:C5,1963,"a")`) beats the out-of-range x `#N/A`; ours reports the significance's error first.
+Settled by "PERCENTRANK: a non-numeric-text or error significance before the #N/A (T-3781)": an error significance, or one of text that does not read as a number, beats the out-of-range x `#N/A` (numeric text and booleans coerce and do not). Ours already matches that for an x outside numeric data; the gap is data with no number (T-3789).
 Status: VERIFIED (excel-graph)
 
 ## PERCENTRANK: a huge significance is #DIV/0!; truncation does not lose a digit at a cut (T-2256)
@@ -5996,3 +5998,75 @@ Status: VERIFIED (excel-graph) for the cited cells; the cut points are UNVERIFIE
 Ours: T.DIST returns 0 and T.INV.2T and TINV return the quantile. These are Gate A known failures owned by T-3554 and
 T-3386.
 Tasks: T-3554, T-3386, T-3358
+
+## A text scalar argument is #VALUE! before an error cell as the data (T-3781)
+Rule: when the data of SMALL, LARGE, PERCENTILE*, QUARTILE*, TRIMMEAN or PERCENTRANK* is a one-cell reference to an error
+cell, a k, quart, percent, x or significance that is a cell holding text that does not read as a number (including empty
+text) makes the result `#VALUE!`, not the data's error. With Data!G9 = `#DIV/0!`, G6 = "x" and G7 = empty text, `SMALL(Data!G9,Data!G6)`, `LARGE(Data!G9,Data!G7)`,
+`PERCENTILE.EXC(Data!G9,Data!G6)`, `QUARTILE(Data!G9,Data!G7)`, `TRIMMEAN(Data!G9,Data!G6)`, `PERCENTRANK(Data!G9,Data!G6)` and
+`PERCENTRANK(Data!G9,2,Data!G6)` are `#VALUE!`. A number, a cell holding numeric text (G5 = "12") or a boolean (G8 = FALSE)
+as the scalar lets the data's error through: `SMALL(Data!G9,Data!G5)` and `SMALL(Data!G9,Data!G8)` are `#DIV/0!`
+(5830c688df805e71 A460, A478; also 4740a028a32c91de A412, A430; 4fc6bdaec0e5583d A472, A490; 157db6a46ed6535b A448, A466;
+de40f308bf65d545 A436, A454), as is `LARGE(<#REF!>,0.1)` `#REF!` ("Array arguments given a scalar, a single cell or an error"
+above).
+Evidence: gen-m9 (T-3781 arg-pairs batch, excel-graph, 2026-11-01): 157db6a46ed6535b A454, A460; 3df602816eacaa3f A424, A430;
+45d8028602e891ad A442, A448; 4740a028a32c91de A418, A424; 475eae18f2963cdc A466, A472; 4fc6bdaec0e5583d A478, A484;
+5830c688df805e71 A466, A472; 5e5063d014818a2d A460, A466; 61445b60bf8539f0 A430, A436; 8cbdca3221390122 A382, A388;
+9240e43366ea4792 A466, A472; a447db3e2a26d5ed A430, A436; d7ee86e14cbfbcf3 A460, A466; de40f308bf65d545 A442, A448;
+f00b7d6982c4d2fd A430, A436.
+Unprobed: an error-valued scalar against an error data cell with a different error (the batch has only the same error on
+both sides, `SMALL(Data!G9,Data!G9)` `#DIV/0!`), and an error element of a multi-cell data range.
+Ours: the data's error (`#DIV/0!`) in all 30 cells; known failures owned by T-3788.
+Status: VERIFIED (excel-graph) for the cited cells
+Tasks: T-3788
+
+## PERCENTRANK: a non-numeric-text or error significance before the #N/A (T-3781)
+Rule: PERCENTRANK, PERCENTRANK.INC and PERCENTRANK.EXC return a significance that is an error (typed or in a referenced
+cell) as that error, and a significance of text that does not read as a number (including empty text) as `#VALUE!`, before
+the `#N/A` of an x outside the data or of data with no number. Numeric text and booleans coerce and keep the `#N/A` first:
+`PERCENTRANK.INC(Data!H1,2,"2.5")`, `PERCENTRANK.INC(Data!H2,3,Data!G5)` (G5 = "12"), `PERCENTRANK.INC(Data!H1,2,TRUE)` and
+`PERCENTRANK.INC(Data!H2,3,Data!G8)` (G8 = FALSE) are `#N/A` (8cbdca3221390122 A433, A436, A451, A454), as is
+`PERCENTRANK(Data!G5,2,Data!G8)` (de40f308bf65d545 A208). `PERCENTRANK.INC(Data!H1,2,"abc")` (blank data) and `PERCENTRANK.EXC(Data!A$5,-1,"")` are `#VALUE!`,
+`PERCENTRANK(Data!G5,3,Data!G9)` (text data, G9 = `#DIV/0!`) `#DIV/0!`, `PERCENTRANK(Data!C8,"2.5",#NAME?)` `#NAME?` and
+`PERCENTRANK.EXC(Data!H1,1,#NULL!)` `#NULL!`. A numeric significance out of its domain still comes after the `#N/A`
+("Order statistics: the scalar argument's error before the no-number result; PERCENTRANK's #N/A before significance
+(T-2256)" above), so only whether the significance is a number at all is decided before x is placed. This settles that entry's UNVERIFIED line.
+Evidence: gen-m9 (T-3781 arg-pairs batch, excel-graph, 2026-11-01). An x outside numeric data: `PERCENTRANK(Data!G1,2,Data!G6)`
+(G1 = 7, G6 = "x") and `PERCENTRANK(Data!G1,3,Data!G7)` are `#VALUE!` (157db6a46ed6535b A556, A562), as are
+`PERCENTRANK(Data!B2:D2,0,"abc")` and `PERCENTRANK(Data!$B10,-1,"")` (58ae70ab5eb596c2 A7, A55),
+`PERCENTRANK.EXC(Data!B9:D10,-1,"abc")` (50594c61def0ea70 A103), 5e5063d014818a2d A580, A586 and 61445b60bf8539f0 A526.
+Data with no number (text, blank or boolean cells), 63 cells in T-3789: 50594c61def0ea70 A46, A109, A361; 58ae70ab5eb596c2
+A100, A157; c149b14aa61b770d A10, A82; 8cbdca3221390122, 9240e43366ea4792 and de40f308bf65d545 (18-20 cells each).
+Ours: matches for an x outside numeric data; `#N/A` in the 63 no-number cells, known failures owned by T-3789.
+Status: VERIFIED (excel-graph) for the cited cells
+Tasks: T-3789
+
+## TRIMMEAN of a typed scalar (T-3781)
+Rule: a typed numeric text or boolean literal as TRIMMEAN's data is one number: `TRIMMEAN("2.5",0)` is 2.5 and
+`TRIMMEAN(TRUE,0)` 1 (as are the forms with a blank cell as the percent), a percent out of [0, 1) is then
+`#NUM!` (`TRIMMEAN("2.5",2)`, `(..,-1)`, `(..,"2.5")`, `(..,TRUE)`), and an error percent is that error
+(`TRIMMEAN("2.5",#NULL!)` `#NULL!`, `TRIMMEAN(TRUE,#REF!)` `#REF!`). Non-numeric text stays `#VALUE!` before the percent's own
+error (`TRIMMEAN("abc",0)`, `TRIMMEAN("",#VALUE!)`, `TRIMMEAN("abc",#NAME?)`). A cell holding text or a boolean is no number
+instead ("A lone text, boolean or empty cell as the data of QUARTILE, PERCENTILE, PERCENTRANK and TRIMMEAN (T-2256)").
+A range as the percent lifts TRIMMEAN over it, one result per cell: `TRIMMEAN("2.5",Data!A1:B2)` with Data!A1:B2 =
+{FALSE,"TRUE";"1",TRUE} spills 2x2, {2.5,#VALUE!;#NUM!,#NUM!} (A253:B254), and `TRIMMEAN(TRUE,Data!A1:B2)` likewise (A439:B440):
+a FALSE cell percent is 0, the non-numeric text "TRUE" `#VALUE!`, while the numeric text "1" and TRUE read as 1, out of range.
+Evidence: gen-m9/4fc6bdaec0e5583d (T-3781 arg-pairs batch, excel-graph, 2026-11-01) A199-A253 and A391-A439 (the 15 cells in
+T-3790), A259-A385 for the non-numeric text.
+Ours: `#VALUE!` for the numeric text and boolean literals; known failures owned by T-3790.
+Status: VERIFIED (excel-graph) for the cited cells
+Tasks: T-3790
+
+## FREQUENCY with no numeric bin: a bin at 0; an error cell as the bins is skipped (T-3781)
+Rule: with no numeric bin (text, empty text, a boolean, a blank cell, or typed numeric text such as `"2.5"`, which reads as no
+number), FREQUENCY's two rows are the count of data values <= 0, then the rest: `FREQUENCY(0,"2.5")`, `FREQUENCY(-1,"")` and
+`FREQUENCY(Data!C3:D4,Data!G7)` are {1;0}, `FREQUENCY(2,"abc")` and `FREQUENCY(0.5,"")` {0;1}. This refines "FREQUENCY: one row
+per bin plus one ... (T-2255)", whose "0 then every numeric data value" came from positive data. A one-cell reference to an
+error cell as the bins is such a bin, not that error: `FREQUENCY(Data!G2,Data!G9)` with G2 = 0 and G9 = `#DIV/0!` is {1;0},
+`FREQUENCY(Data!G4,Data!G9)` with G4 = 1.5 {0;1}, `FREQUENCY(Data!G5,Data!G9)` with text data {0;0}. A typed error bin is still
+the result (`FREQUENCY("2.5",#NUM!)` `#NUM!`), and an error cell as the data is its error (`FREQUENCY(Data!G9,Data!G1)` `#DIV/0!`).
+Evidence: gen-m9/d56012c9341cd0ff (T-3781 arg-pairs batch, excel-graph, 2026-11-01), 46 cells in T-3791 (A794-A9945).
+Ours: every value in the second row, and the error cell's `#DIV/0!`; known failures owned by T-3791. Part of T-3046's
+question (an error cell in the bins) is answered for a one-cell reference.
+Status: VERIFIED (excel-graph) for the cited cells
+Tasks: T-3791
