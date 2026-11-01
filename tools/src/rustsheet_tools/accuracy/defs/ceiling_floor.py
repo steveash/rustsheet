@@ -123,8 +123,8 @@ def snapped(function: str, number: float, significance: float, mode: int = 0) ->
     steps = -((-cut.numerator) // cut.denominator) if up else cut.numerator // cut.denominator
     result = Fraction(steps) * s
     if abs(result) > DOUBLE_MAX:
-        msg = "the result overflows the double range"
-        raise DomainError(msg)
+        msg = "the result overflows the double range: no Excel evidence (no literal draw reaches it)"
+        raise NoValueError(msg)
     return _CONTEXT.multiply(Decimal(steps), Decimal(s.numerator) / Decimal(s.denominator))
 
 

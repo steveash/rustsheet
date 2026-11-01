@@ -1055,8 +1055,8 @@ significance next to the number) is an ordinary double: `CEILING(6.7856615955736
 `FLOOR.PRECISE(-3.85290564465378E+92,-4.37553180951326E-218)` (ratio 49 x DBL_MAX) is `#NUM!`. Where exactly it lies (the
 binary quotient overflowing, or its 15-digit cut) is not pinned.
 Evidence: eval/accuracy/tables CEILING/s1 A110, A120; CEILING.MATH/s1 A185, A198, A199; CEILING.PRECISE/s1 A111, A112;
-FLOOR.MATH/s1 A183, A184, A186, A191; FLOOR.PRECISE/s1 A114, A117, A119, A120 (15 cells), and the numbers CEILING/s1 A75
-and FLOOR/s1 A72 (excel-graph, 2026-11-01, T-3673).
+FLOOR.MATH/s1 A183, A184, A186, A191; FLOOR.PRECISE/s1 A114, A117, A119, A120; FLOOR/e-T-3673 A9, A29, A32, A41, A52
+(20 cells), and the numbers CEILING/s1 A75 and FLOOR/s1 A72 (excel-graph, 2026-11-01, T-3673).
 Status: VERIFIED (excel-graph)
 Ours: matches (the infinite ratio gives a non-finite result, which `numbers_fn` turns into `#NUM!`).
 Implemented in: `snap_ratio` in crates/rustsheet-engine/src/functions/math_and_trigonometry/ceiling_floor.rs
