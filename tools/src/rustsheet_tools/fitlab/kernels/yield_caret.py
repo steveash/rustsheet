@@ -10,18 +10,21 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from fractions import Fraction
+from typing import TypeVar
 
 from rustsheet_tools.fitlab.exact import DOUBLE, round_to_bits
 from rustsheet_tools.fitlab.fit import Fit
 from rustsheet_tools.fitlab.kernels import solvers
-from rustsheet_tools.fitlab.score import Candidate, candidate
+from rustsheet_tools.fitlab.score import Candidate, CandidateValue, candidate
 from rustsheet_tools.fitlab.sweep import Arg, Cell
 
+_T = TypeVar("_T")
 
-def caret_priced(fn: Callable[..., float]) -> Callable[..., float]:
+
+def caret_priced(fn: Callable[..., _T]) -> Callable[..., _T]:
     """`fn` with every PRICE (and PRICE') it takes discounted by Excel's `^` instead of libm."""
 
-    def call(*args: Arg) -> float:
+    def call(*args: Arg) -> _T:
         token = solvers.PRICE_POWER.set(solvers.caret_pow)
         try:
             return fn(*args)
@@ -31,7 +34,7 @@ def caret_priced(fn: Callable[..., float]) -> Callable[..., float]:
     return call
 
 
-def _caret_evaluate(c: Candidate) -> Callable[[Cell], float]:
+def _caret_evaluate(c: Candidate) -> Callable[[Cell], CandidateValue]:
     return lambda cell: caret_priced(lambda: c.evaluate(cell))()
 
 

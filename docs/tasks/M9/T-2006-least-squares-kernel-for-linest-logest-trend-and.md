@@ -86,3 +86,12 @@ K123, K219 (Excel 9.215274223288255, ours 9.21527422328826); gen-m9 8fec7b207f4d
 
 ## Deferred (decision 0114)
 `defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).
+
+## Cells added by gap triage (2026-10-31m)
+`make eval` on origin/main 900fbc1bf (excel-graph). An ownership check over every failing Excel cell
+(`scripts/exit_owners.py`'s `owned` rule over the open task files of origin/main and of every `origin/agent/*` branch
+pushed since 2026-10-29) found these cells named by no open task. All are within 15 significant digits of Excel (Phase
+1b), so they join this deferred owner of their kernel. LINEST, LOGEST, TREND and GROWTH with known_y only (range and
+array forms) on the stat argument-modes probe, 1 to 6 ulp: `INDEX(TREND(A1:A8),1,1)` Excel 1.4999999999999996, ours
+1.5000000000000009.
+- probes/stat-argument-modes.case.json (8): Sheet1!H318, H319, H321, H322, H324, H325, H327, H328

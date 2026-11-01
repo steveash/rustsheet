@@ -1,0 +1,47 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "S": {
+   "C2": {
+    "t": "n",
+    "v": 3.0
+   },
+   "C3": {
+    "t": "n",
+    "v": 6.0
+   },
+   "C4": {
+    "t": "n",
+    "v": 12.0
+   },
+   "C5": {
+    "t": "n",
+    "v": 24.0
+   },
+   "F2": {
+    "t": "s",
+    "v": "=[@Col]*3"
+   },
+   "F3": {
+    "t": "s",
+    "v": "=[@Col]*3"
+   },
+   "F4": {
+    "t": "s",
+    "v": "=[@Col]*3"
+   },
+   "F5": {
+    "t": "s",
+    "v": "=[@Col]*3"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "d4c97804365e3e84e7f4604841ea49b1fcb6209c8d5976ab577cdec59a2d393b",
+  "kind": "excel-graph",
+  "produced_at": "2026-11-01T02:31:44+00:00",
+  "version": null,
+  "workbook_name": "16b59145226f80bfc10323d02e0125f630317882086bf617cea10e44ba2ba6da.xlsx"
+ }
+}

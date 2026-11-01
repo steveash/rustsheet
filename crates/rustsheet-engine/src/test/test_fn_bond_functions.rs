@@ -324,6 +324,34 @@ fn fn_yield_newton_domain_and_step_cap() {
     assert_eq!(bits("A4"), 78.135_510_928_029_92_f64.to_bits());
 }
 
+// A Newton whose step meets its test on the 100th and last check is #NUM!, one that meets it on
+// the 99th or on none is a value (T-2747; financial.md "YIELD's #NUM! cells and its 100-step cap").
+// A1 is probes/yield-newton-step-cap N!A3 (check 100), A2 its N!A2 (check 99), A3 its N!A4
+// (check 101) and A4 probes/yield-below-par-sweep Y!H17 (no check passes: the 100th iterate).
+#[test]
+fn fn_yield_converged_on_the_last_check_is_num() {
+    let mut model = new_empty_model();
+    model._set("A1", "=YIELD(39681,45662,22.75,20,102,4)");
+    model._set("A2", "=YIELD(39681,45662,22.74375,20,102,4)");
+    model._set("A3", "=YIELD(39681,45662,22.75625,20,102,4)");
+    model._set("A4", "=YIELD(39681,45662,23,20,102,4)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#NUM!");
+    let value = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
+        Ok(CellValue::Number(n)) => n,
+        other => panic!("expected number, got {other:?}"),
+    };
+    // Within a few ulps of Excel's values ("YIELD stops short of PRICE's root" owns the last bits).
+    for (c, excel) in [
+        ("A2", 17.152_523_260_680_788),
+        ("A3", 17.153_559_381_582_642),
+        ("A4", -2.282_389_546_058_274_4),
+    ] {
+        let ours = value(c);
+        assert!(ulps(excel, ours) <= 4, "{c}: {ours} vs Excel's {excel}");
+    }
+}
+
 #[test]
 fn fn_yield_wrong_arg_count() {
     let mut model = new_empty_model();

@@ -3,7 +3,7 @@ id: T-3365
 title: "Re-validate the tuned form selectors on a fresh hold-out sweep and simplify the ones that do not generalize"
 milestone: M9
 lane: quality
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -35,3 +35,13 @@ does not generalize is simplified to the accurate form, and one that does keeps 
 
 ## Out of scope
 - The extrapolated fits (T-3364) and the t, F and chi-squared inverses (T-3363).
+
+## Outcome
+Split into smaller tasks (2026-10-31); no code changed. The five sites are independent (four function lanes, one
+module each) and each needs its own fresh oracle sweep, two engine builds and a Gate A check, which is more than one
+size-M task. One task per selector, each with this task's acceptance criteria:
+- T-3523 (opus, M): annuity.rs `DISCOUNTED_INTEREST_FROM` (IPMT).
+- T-3524 (opus, M): cumulative.rs `GEOMETRIC_MIN_LEAD` and `LONG_GEOMETRIC_MIN_LEAD` (CUMIPMT, CUMPRINC).
+- T-3525 (opus, M): complex/trig.rs `HYPERBOLIC_LOG_CUT`, `INVERSE_EXP_LOW`, `INVERSE_EXP_HIGH`.
+- T-3502 (opus, S): geomean.rs, the 15-digit snap of the root.
+- T-3503 (opus, M): gammaln.rs `K2_CAND9_BELOW` and gamma_kernels.rs `K2_CAND9_*`.

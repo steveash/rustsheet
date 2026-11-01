@@ -106,6 +106,10 @@ impl Worksheet {
     }
 
     pub fn set_row_style(&mut self, row: i32, style_index: i32) -> Result<(), String> {
+        // A record off the grid would overflow when rows are inserted (T-2896).
+        if !is_valid_row(row) {
+            return Err(format!("Row number '{row}' is not valid."));
+        }
         // FIXME: This is a HACK
         let custom_format = style_index != 0;
         for r in self.rows.iter_mut() {
@@ -418,6 +422,10 @@ impl Worksheet {
         if !is_valid_row(row) {
             return Err(format!("Row number '{row}' is not valid."));
         }
+        // An external diff can carry any `f64`, NaN and infinity included (T-2896).
+        if !height.is_finite() {
+            return Err(format!("Can not set a non-finite height: {height}"));
+        }
         if height < 0.0 {
             return Err(format!("Can not set a negative height: {height}"));
         }
@@ -469,6 +477,10 @@ impl Worksheet {
     ) -> Result<(), String> {
         if !is_valid_column_number(column) {
             return Err(format!("Column number '{column}' is not valid."));
+        }
+        // An external diff can carry any `f64`, NaN and infinity included (T-2896).
+        if !width.is_finite() {
+            return Err(format!("Can not set a non-finite width: {width}"));
         }
         if width < 0.0 {
             return Err(format!("Can not set a negative width: {width}"));

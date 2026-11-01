@@ -71,12 +71,9 @@ off are 68, for example gen-m9/5389dd4d5b5739d2 A299 `TINV(1-1E-10,1)`: Excel 1.
 - probes-numeric/t1048-tinv.case.json (2): A5, B5
 - probes-numeric/t1531-t-tiny-p.case.json (37): A1, A2, A3, A4, A6, A7, A10-A21, A25-A28, A30, A31, A34, A35, A37,
   A38, A40, A41, A43, A44, A121, A123, A125, A127, A129
-- probes/t3349-t-inv-2t-near-one.case.json (6): Calc!A3, A6, A7, A8, A9, A10
-
-The t3349-t-inv-2t-near-one cells (excel-graph, 2026-10-31) were added by the 2026-10-31c gap triage: T-3349's
-Outcome gives them to this task (the df 1 cells of its probe; `T.INV.2T(0.999999999999999,1)` is Excel
-1.6155696572206502E-15, ours 1.569540824103884E-15), but no open task listed them. They are visibly off and gated
-(eval/baseline/probes.txt). The df 2 and up cells of the same probe are T-3421's.
+- probes/t3349-t-inv-2t-near-one.case.json (6): Calc!A3, A6, A7, A8, A9, A10 (df 1 near p = 1, `T.INV.2T(0.999999999999999,1)`
+  and the like; T-3349's Outcome names this task as their owner; added by the gap triage of 2026-10-31, which
+  found `make exit-owners MILESTONE=M9` listing them without an owner)
 
 These cells are part of T-0967's scope, which waits on T-0969 (blocked, time-boxed); this split needs no new CDF.
 

@@ -190,12 +190,13 @@ whole-row walk with ignore_empty FALSE stops at the limit (`textjoin_push_padded
 spans every column (A1, XFD1, A2, XFD2 set: B5 `=TEXTJOIN(",",FALSE,1:10)` and B8 `=TEXTJOIN(",",FALSE,A1:XFD10)`
 are `#CALC!`, D3 with ignore_empty TRUE is circular (0); probes/textjoin-whole-rows-self-reference-full-width,
 excel-graph, 2026-10-29, T-3123).
-Evidence: probes/whole-column-empty-walkers E2, E3, E6, F1, F2, F5, F8 (excel-graph, 2026-10-07, T-1114); probes/textjoin-whole-rows-error-cell A1-A7 and probes/textjoin-whole-rows-self-reference B5, D3 (excel-graph, 2026-10-29, T-3098); probes/textjoin-whole-rows-self-reference-full-width B5, B8, D3 (T-3123).
+The limit can also be passed partway along the formula's own row: with A1 holding 32,160 units of text, `=TEXTJOIN(",",FALSE,1:1)` in ZZ1 (and `1:10` in ZZ9) is `#CALC!`, because Excel stops reading once the join passes the limit and never reaches its own cell. It stops at the cell that crosses it, padding or value, with ignore_empty TRUE too: with A holding 32,562 units and B 250 more, the formula in C (next cell), in D (after a blank), TRUE or FALSE, and in E after two more cells (TRUE) is `#CALC!` (C11, C12, D13, D14, E15). Where the limit is passed only after the formula cell (B3, FALSE) or never (ZZ7, TRUE, 32,160 units) it is circular (0). `textjoin_push_range` stops its walk at the crossing (probes/t3293-textjoin-own-row-limit, excel-graph, 2026-10-31, T-3293). 3-D references are unprobed.
+Evidence: probes/whole-column-empty-walkers E2, E3, E6, F1, F2, F5, F8 (excel-graph, 2026-10-07, T-1114); probes/textjoin-whole-rows-error-cell A1-A7 and probes/textjoin-whole-rows-self-reference B5, D3 (excel-graph, 2026-10-29, T-3098); probes/textjoin-whole-rows-self-reference-full-width B5, B8, D3 (T-3123); probes/t3293-textjoin-own-row-limit (T-3293).
 Status: VERIFIED
 Implemented in: `fn_textjoin` (functions/text/concatenate.rs) walks the used area through the shared
 sparse whole-range walker (T-2713) and adds the skipped empty cells per row (one walk per row)
 and after the last row through `JoinSize::push_empties`, which stops at the limit.
-Tasks: T-1114
+Tasks: T-1114, T-3293
 
 ## JIS is `#NAME?` in en-US Excel for the web
 Rule: `JIS`, although Microsoft's en-US function list includes it, is not a known function in
@@ -479,12 +480,20 @@ TEXTSPLIT splits at the same disjoint matches: `TEXTSPLIT("aaa","aa")` is "","a"
 `TEXTSPLIT("-2.5",{"2.5","-2.5"})` "","", `TEXTSPLIT("ababa","aba")` splits only at unit 0, `TEXTSPLIT("xabcx",{"b","abc"})` "x","x".
 Evidence: probes/t3335-textbefore-overlapping-instances A1-A58, C1-E29 (excel-graph, 2026-10-31, T-3335);
 gen-m9/cde551ea787f713a Calc!A37 (`TEXTBEFORE("-2.5",{2.5,-2.5},2)` inside BETADIST, `#N/A`); gen-m7/a470dc9e165bdb20
-Calc!A1441 (excel-graph). The backward step is inferred from these cells: whether it is the match's length or the
-shortest delimiter's (they agree on every cell) is unprobed, as is a forward scan's step past a match whose delimiter
-list holds a shorter entry starting inside it.
+Calc!A1441 (excel-graph). The backward step is the counted match's own length in UTF-16 units, not the shortest or
+longest delimiter's nor a count of characters: `TEXTAFTER("abcab",{"ab","c"},-2)` is "cab" in either list order (a
+shortest-delimiter step would reach the "c" and give "ab"), `TEXTAFTER("abcab",{"ab","c","zzzz"},-2)` still "cab",
+`TEXTBEFORE("abcc",{"c","bc"},-2)` "ab", `TEXTAFTER("abcab",{"ab","c"},-3)` `#N/A` (the "c" is stepped over, never
+counted) and with match_end 1 the whole text; `TEXTBEFORE("abzab😀c",{"b😀c","abz","bz"},-2)` is "" (four units back
+from "b😀c" reach "abz"; three characters back would reach "bz" and give "a"). match_mode 1 steps the same
+(`TEXTAFTER("ABCAB",{"ab","c"},-2,1)` "CAB"). Forward, the scan resumes after the counted match even when a shorter
+list entry starts inside it: `TEXTBEFORE("abcb",{"abc","b"},2)` is "abc" in either list order (not "a"),
+`TEXTBEFORE("😀bcb",{"😀bc","b"},2)` "😀bc", `TEXTBEFORE("abcbc",{"abc","c"},2)` "abcb"; TEXTSPLIT agrees
+(`TEXTSPLIT("abcb",{"abc","b"})` is "","",""). Evidence: probes/t3375-textbefore-scan-steps A1-A14, B1-B10
+(excel-graph, 2026-10-31, T-3375).
 Ours: matches (`Instances::Disjoint` in functions/text/util.rs; TEXTSPLIT's `split_grid` already scanned disjointly).
 Status: VERIFIED (excel-graph)
-Tasks: T-3335
+Tasks: T-3335, T-3375
 
 ## TEXTSPLIT of empty text is #VALUE!
 Rule: TEXTSPLIT of empty text is `#VALUE!` whatever its valid other arguments: a literal `""`, a blank cell and an empty-string cell,

@@ -49,6 +49,7 @@ Today the engine returns the exact quantile there and Excel does not.
 
 Cells (excel-graph, 2026-10-31):
 - probes/t3349-t-inv-2t-near-one.case.json (34): Calc!A1, A2, A4, A5, A12, A13, A14, A15, A16, A17, A18, A19, A20, A22, A23, A24, A25, A26, A27, A28, A29, A30, A31, A32, A33, A34, A35, A37, A39, A40, A41, A42, A43, A44
+- Split (T-3229 check): probes/t3349-t-inv-2t-near-one A5 is also listed by T-3592, which owns it. T-3415 (a parallel refill) is the same centre fit for 22 other cells of that probe: do them together, and whichever lands first closes both.
 
 ## Acceptance criteria
 - [ ] probes/t3349-t-inv-2t-near-one Calc!A5 is within half a unit of the 15th significant digit of Excel's value.
