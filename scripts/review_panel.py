@@ -30,7 +30,8 @@ LEGACY_DESIGN = ("architecture", "quality")
 def with_legacy_design(verdicts: Mapping[str, str]) -> dict[str, str]:
     """`verdicts` with `design` filled in from the pre-0236 `architecture` and `quality` verdicts:
     APPROVE only when both are APPROVE, and only when `design` has no verdict of its own. The
-    legacy names are dropped either way."""
+    legacy names are dropped either way. An `n/a` pair also folds to REQUEST_CHANGES (0236,
+    Transition): no diff that needs `design` could have had both legacy reviewers not apply."""
     out = {name: verdict for name, verdict in verdicts.items() if name not in LEGACY_DESIGN}
     legacy = [verdicts.get(name) for name in LEGACY_DESIGN]
     if DESIGN not in out and any(v is not None for v in legacy):
@@ -61,7 +62,7 @@ def applicable_reviewers(paths: Iterable[str] | None) -> tuple[str, ...]:
         return REVIEWERS
     if task_only(listed):
         return ()
-    needed = {DESIGN}
+    needed = set(ALWAYS_REVIEWERS)
     if any(needs_security(p) for p in listed):
         needed.add(SECURITY)
     if any(under(p, EXCEL_FIDELITY_PATHS) for p in listed):

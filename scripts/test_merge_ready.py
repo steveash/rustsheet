@@ -19,6 +19,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gh_client
 import merge_ready
+import review_panel
 import visible_lock
 from gh_client import FakeGh, Reply
 from merge_ready import APPROVE, IGNORE, KEEP, UNLABEL, Marker, MarkerError
@@ -194,19 +195,19 @@ class Applicability(unittest.TestCase):
         self.assertEqual(merge_ready.applicable_reviewers([]), merge_ready.REVIEWERS)
 
     def test_the_list_matches_the_review_skill(self) -> None:
+        def paths_in(clause: str) -> tuple[str, ...]:
+            return tuple(p.strip() for p in re.split(r",|\bor\b", " ".join(clause.split())) if p.strip())
+
         skill = (ROOT / ".claude/skills/review/SKILL.md").read_text()
         always = tuple(re.findall(r"`reviewer-([a-z-]+)` \(always\)", skill))
-        self.assertEqual(always, merge_ready.ALWAYS_REVIEWERS)
+        self.assertEqual(always, review_panel.ALWAYS_REVIEWERS)
         clause = re.search(r"`reviewer-excel-fidelity` \(if the diff touches ([^)]*)\)", skill)
         assert clause is not None, "the review skill no longer names excel-fidelity's paths"
-        paths = tuple(p.strip() for p in re.split(r",|\bor\b", " ".join(clause[1].split())) if p.strip())
-        self.assertEqual(paths, merge_ready.EXCEL_FIDELITY_PATHS)
+        self.assertEqual(paths_in(clause[1]), review_panel.EXCEL_FIDELITY_PATHS)
         clause = re.search(r"`reviewer-security` \(unless every path is under ([^;)]*); ([^)]*) keeps? it\)", skill)
         assert clause is not None, "the review skill no longer names security's skip paths"
-        skip = tuple(p.strip() for p in re.split(r",|\bor\b", " ".join(clause[1].split())) if p.strip())
-        keep = tuple(p.strip() for p in re.split(r",|\bor\b", " ".join(clause[2].split())) if p.strip())
-        self.assertEqual(skip, merge_ready.SECURITY_SKIP_PATHS)
-        self.assertEqual(keep, merge_ready.SECURITY_KEEP_PATHS)
+        self.assertEqual(paths_in(clause[1]), review_panel.SECURITY_SKIP_PATHS)
+        self.assertEqual(paths_in(clause[2]), review_panel.SECURITY_KEEP_PATHS)
 
     def test_legacy_architecture_and_quality_fold_into_design(self) -> None:
         fold = merge_ready.with_legacy_design
