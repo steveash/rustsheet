@@ -3,7 +3,7 @@ id: T-3112
 title: "Probe the near-zero root snap of GROUPBY and PIVOTBY aggregation LAMBDAs and of eta-reduced helper calls"
 milestone: M7
 lane: research
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -40,3 +40,6 @@ whether an eta-reduced helper call (`MAP(r,SUM)`, `BYROW(r,SUM)`) snaps anything
 
 ## Out of scope
 - Engine changes (the follow-up owns them; T-3111 owns the six helpers).
+
+## Outcome
+Probe `probes/t3112-snap-groupby-eta` (47 cells, excel-graph 2026-11-01). Excel snaps the aggregation LAMBDA root at every GROUPBY/PIVOTBY call (group, total, cross-tab cells); eta-reduced `SUM` is `#VALUE!`/`#NAME?` in graph, so no eta snap is observable; `LAMBDA(r,SUM(r))` is unsnapped. Recorded in numbers.md. Engine matches 24/47; the 23 others are known failures in eval/baseline/probes.txt, owned by T-3617.
