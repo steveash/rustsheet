@@ -469,3 +469,47 @@ fn general_in_date_section() {
     // A digit placeholder beside General in a date section stays an error (T-1614).
     assert_eq!(format_number(5.0, "d 0 General", &ctx).text, "#VALUE!");
 }
+
+#[test]
+fn elapsed_after_date_token_counts_from_register() {
+    // Excel (probes/t3419-elapsed-after-date-general, -b, t3419-elapsed-after-clock-c,
+    // excel-graph 2026-10-31): an elapsed token after a date or clock token counts from the value
+    // General prints, with fraction digits that is the fraction residue, and an elapsed token after
+    // a clock token of its own or a larger unit is #VALUE!.
+    let ctx = FormatContext::new(get_default_locale());
+    let cases = [
+        (5.0, "d [h] General", "5 12 0.5"),
+        (5.0, "[h] d General", "120 5 0.5"),
+        (5.0, "d [s] General", "5 43200 0.5"),
+        (5.0, "d [h]", "5 12"),
+        (45000.0, "d [h] General", "15 12 0.499999803"),
+        (12345.678, "d [m] General", "18 28368 19.69999995"),
+        (12345.678, "d [h]:mm:ss", "18 472:16:19"),
+        (12345.678, "s.0 [h] General", "19.2 60 2.500000331"),
+        (12345.678, "d [s].0 General", "18 216000.2 2.500000331"),
+        (12345.678, "s.0 General", "19.2 2.500000331"),
+        (0.99999, "s.00 General", "59.14 14.1"),
+        (5.0, "[s].0 General", "432000.0 0.5"),
+        (1.5, "AM/PM [h]", "PM 12"),
+        (12345.678, "s [h]", "19 472"),
+        (5.0, "mm [h] General", "01 12 0.5"),
+    ];
+    for (value, format, expected) in cases {
+        assert_eq!(
+            format_number(value, format, &ctx).text,
+            expected,
+            "{format} on {value}"
+        );
+    }
+    for format in [
+        "h [h]",
+        "h [m]",
+        "h:mm [h]",
+        "mm:ss [m]",
+        "s [s]",
+        "s.0 [s]",
+        "h d [h]",
+    ] {
+        assert_eq!(format_number(5.0, format, &ctx).text, "#VALUE!", "{format}");
+    }
+}
