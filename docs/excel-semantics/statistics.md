@@ -3234,8 +3234,8 @@ Rule: the entries above assembled in one TOMS 708 port (Excel's EXP, LN, GAMMALN
   before 3.727483332066869E-47, ours 3.7274833320668655E-47, exact 3.7274833320668590E-47 at the parsed doubles (Excel
   3.6E-15 off the math, ours 1.8E-15). These cells stay Excel-targeted: ours being nearer the math is not a licence.
   W rounds once in a register here where `bup`'s other callers store twice (fl(fl(P·fl(xy))/b0)): on this branch the
-  register form wins the hold-out, 1,306 of 1,613 bit-exact against 1,046 (`bupdens.out`); on `bup`'s own callers the
-  prefactor's rounding is unscored (T-3770). n > 1 bup terms stay on today's kernel (T-3383).
+  register form wins the hold-out, 1,306 of 1,613 bit-exact against 1,046 (`bupdens.out`); T-3568's n >= 2 bup+bgrat research
+  takes the same register form (below); on L140 bup+bpser, `bup`'s other caller, it is unscored (T-3770). n > 1 bup terms stay on today's kernel (T-3383).
 - **L140 bup+bgrat with n >= 2 bup terms (2 <= b0 < 40, a0 > 15, x0 > 0.7) is the same RN(W + D), with bup's powers
   of x through Excel's EXP (T-3568).** With n = int(b0) and c = b0 - n (c = 1 and n - 1 at an integer b0):
   - W = fl(ret · S). Here ret = x87(P·fl(x0·y0)/c), P is Excel's BETA.DIST(y0, c, a0, FALSE) (the density at the
