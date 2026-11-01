@@ -683,7 +683,11 @@ mod case_table_tests {
     // text.md "UPPER and LOWER use an old per-character case table" (probes/t3298-case-mapping-sweep).
     #[test]
     fn upper_leaves_old_table_gaps() {
-        for s in ["µ", "ſ", "ა", "ⰰ", "ⲁ", "ꭰ", "ⅰ", "ἀ", "𐐨", "ԯ"] {
+        for s in [
+            "µ", "ſ", "ა", "ⰰ", "ⲁ", "ꭰ", "ⅰ", "ἀ", "𐐨", "ԯ", "\u{250}", "\u{29D}", "\u{371}",
+            "\u{3F2}", "\u{3FB}", "\u{A641}", "\u{1C80}", "\u{13F8}", "\u{A723}", "\u{A7B5}",
+            "\u{A796}",
+        ] {
             assert_eq!(upper_case(s), s);
         }
         assert_eq!(upper_case("abc"), "ABC");

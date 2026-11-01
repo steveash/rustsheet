@@ -40,3 +40,4 @@ characters Excel's case table lacks unchanged and use Excel's own targets where 
 
 ## Outcome
 UPPER/LOWER leave Excel's unmapped ranges unchanged (sorted range tables, binary search), drop the Greek tonos in UPPER, map Asomtavruli to Mkhedruli in LOWER, and never map supplementary letters. Unit tests in string_format.rs. Eval: probes/t3298-case-mapping-sweep cells leave the baseline, 0 regressions.
+Side effect: PROPER and REGEXREPLACE case forcing share the table; unevidenced, marked UNVERIFIED in text.md, probe filed as T-3777.
