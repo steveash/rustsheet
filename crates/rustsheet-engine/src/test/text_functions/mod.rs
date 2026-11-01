@@ -8,6 +8,7 @@ mod fn_clean;
 mod fn_fixed_huge_decimals;
 mod fn_fixed_negative_zero;
 mod fn_left_right_mid_arrays;
+mod fn_numbervalue_placement;
 mod fn_regex;
 mod fn_regex_backtrack;
 mod fn_t_volatile_pick;

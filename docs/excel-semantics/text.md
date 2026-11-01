@@ -686,10 +686,48 @@ separator matches case (`NUMBERVALUE("1a5","A","b")` is `#VALUE!`). A letter dec
 the rest differs: `NUMBERVALUE("1A5","A","AB")` is `#VALUE!` (A20).
 Evidence: probes/numbervalue-separator-edges A1:A20 (excel-graph, 2026-10-22, T-2379). Whether the 255 counts characters or
 UTF-16 units is unprobed (the engine counts as for the text, `number_text_too_long`).
-Unprobed: date text with spaces (`"29 Feb 2024"`, `"Feb 29, 2024"`; ours reads it without its spaces), a group separator after the decimal separator, `%` with custom separators, whitespace-only text and `"%"` (ours: spaces-only is 0, `"%"` is `#VALUE!`), a separator outside the BMP (ours: first code point, Excel counts UTF-16 units).
+Unprobed: date text with spaces (`"29 Feb 2024"`, `"Feb 29, 2024"`; ours reads it without its spaces), a separator outside the BMP (ours: first code point, Excel counts UTF-16 units). A group separator after the decimal separator, `%` with custom separators, whitespace-only text and `"%"` are probed: next section (T-3647).
 Status: VERIFIED (excel-graph); implemented: first-character separators and empty text (T-2152), VALUE-like parsing
 after the separators with every space removed (T-2151, `numbervalue_of` in text/string_format.rs), the trailing
 colon after a bare hour (T-2352, in the shared clock parser).
+
+## NUMBERVALUE removes group separators only before the decimal separator (T-3647)
+Rule: the group separator's first character is removed only from the text before the first decimal separator. After
+it, the character stays, so a digit reads as a digit and anything else leaves text VALUE cannot read (`#VALUE!`):
+- `NUMBERVALUE("1.5,2")`, `("1.5,")`, `(".,5")` and `("1,2.3,4")` are `#VALUE!` (ours 1.52, 1.5, 0.5, 12.34), while
+  `("1,2.3")` = 12.3, `("1,234.")` = 1234 and `("1,0E3")` = 10000.
+- With the default separators against a custom pair, `NUMBERVALUE("1,234.5",",",".")` and `NUMBERVALUE("1.234,5")` are
+  `#VALUE!` (ours 1.2345 for both).
+- A digit separator: `NUMBERVALUE("17582","7","8")` = 1.582, `("1758","7","8")` = 1.58, `("785","7","8")` = 0.85 and
+  `("18275","7","8")` = 12.5.
+- Before the decimal separator anything goes: leading, trailing, repeated and unevenly spaced group separators are
+  removed (`",123"` = `"123,"` = 123, `",,1"` = 1, `"1,,234"` = 1234, `"1,2,3"` = 123, `"12,34.5"` = 1234.5).
+Whitespace: every space, tab, line feed and carriage return is removed first, wherever it is, even when it is a
+separator, so the decimal separator is looked for in the text without it: `NUMBERVALUE("1"&CHAR(9)&"234.5")`,
+`"1"&CHAR(10)&…` and `"1"&CHAR(13)&…` are 1234.5 (ours `#VALUE!`), `NUMBERVALUE("1.5"&CHAR(9)&"2",".",CHAR(9))` = 1.52,
+`CHAR(10)` alone is 0, and a whitespace decimal separator is never found: `NUMBERVALUE("1 5"," ",",")` = 15 (also with
+CHAR(9), CHAR(10) and CHAR(13)), and `NUMBERVALUE("1 2,5"," ",",")` = 125, its "," a group separator with no decimal
+separator after it. Other characters are not removed, nor trimmed at the ends: CHAR(1), CHAR(11), CHAR(12), NBSP
+(CHAR(160)), U+3000 and U+202F inside the digits are `#VALUE!`, and so are `NUMBERVALUE(UNICHAR(160)&"1.5")`,
+`("1.5"&UNICHAR(160))` and `(UNICHAR(12288)&"1.5")` (ours 1.5; VALUE's shared reader trims them). CHAR(11), CHAR(12)
+and U+202F at the ends are unprobed. VALUE does not remove a tab: `VALUE("1"&CHAR(9)&"234")` is `#VALUE!`.
+Percent: one leading `%` divides by 100 as a trailing one does, also after a sign or `(`: `NUMBERVALUE("%1.5")` =
+0.015, `("%1.5%")` = 0.00015, `("-%1.5")` = `("%-1.5")` = `("(%1.5)")` = `("%(1.5)")` = -0.015, `("+%1.5")` =
+`("%+1.5")` = 0.015, `("%1,234.5")` = 12.345, and `("%1d5","d","g")` = 0.015. Two leading `%`, a leading `%` with
+currency anywhere, or `%` inside a sign and parentheses are `#VALUE!`: `"%%1.5"`, `"%$1.5"`, `"$%1.5"`, `"%1.5$"`,
+`"%€1.5"`, `"€%1.5"`, `"-(%1.5)"`. Text of `%` signs alone is 0: `NUMBERVALUE("%")` = `NUMBERVALUE("%%")` = 0 (ours
+`#VALUE!`). The decimal separator is read before any `%`: with the decimal separator "%", `NUMBERVALUE("%5","%")` =
+0.5, `("1%5","%")` = 1.5, `("5%","%")` = 5 and `("%5%","%")` is `#VALUE!` (two decimal separators). VALUE takes the
+leading `%` too: `VALUE("%1.5")` = 0.015 (ours `#VALUE!`; T-3742 owns it). A trailing currency sign is `#VALUE!`:
+`NUMBERVALUE("1.5$")` (ours 1.5; T-3742 owns it, with VALUE's reading of it unprobed).
+The same shapes hold for the pairs ","/".", "."/" ", ";"/"'", "d"/"g" and "7"/"8" (264 cells, all matching).
+Evidence: probes/t3647-numbervalue-separator-placement (44 text shapes × 6 separator pairs),
+probes/t3647-numbervalue-percent-and-controls A1:A31 and probes/t3647-numbervalue-whitespace-decimal A1:A27,
+excel-graph, 2026-11-01.
+Status: VERIFIED (excel-graph)
+Implemented in: `numbervalue_text` and `strip_leading_percent` in functions/text/string_format.rs (T-3647); VALUE's
+leading `%` and NUMBERVALUE's trailing currency are not (T-3742).
+Tasks: T-3647, T-3742
 
 ## REPT, CODE, UNICODE and T refuse a text argument over 255 UTF-16 units (T-2155; T of a cell reference gives "", T-2305)
 Rule: REPT's text, CODE's and UNICODE's argument are `#VALUE!` when the text is longer than 255 characters, whatever the
