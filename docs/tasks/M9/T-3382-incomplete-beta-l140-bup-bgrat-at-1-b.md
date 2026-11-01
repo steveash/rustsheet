@@ -3,7 +3,7 @@ id: T-3382
 title: "Incomplete beta L140 bup+bgrat at 1 < b < 2: Excel's density in bup's orientation times x y over b0, plus an accurate bgrat increment (T-2512)"
 milestone: M9
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
