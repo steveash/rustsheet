@@ -2,15 +2,18 @@
 """Decides whether a PR's changed files need the rust, eval and python CI jobs (decision 0049).
 
 Reads the changed paths NUL-separated on stdin (`git diff -z --no-renames --name-only`) and prints
-`code=true` or `code=false`. `code=false` means every path is documentation that nothing reads at
-build or test time, so the heavy jobs may be skipped. Anything else, including empty or
-undecodable input, is `code=true`: a wrong skip looks exactly like a pass, so doubt runs CI.
+two lines, `code=true|false` and then `rust=true|false`. `code=false` means every path is
+documentation that nothing reads at build or test time, so the heavy jobs may be skipped.
+`rust=false` (decision 0235) means no path is a Rust input, so the Rust fmt, clippy and test
+shards may be skipped while the eval and python jobs still run. Anything else, including empty
+or undecodable input, is `code=true` and `rust=true`: a wrong skip looks exactly like a pass, so
+doubt runs CI.
 
 With `--merge-base A B` it lists the paths itself: the diff from the single merge base of A and B
 to B (decision 0147). A pull request passes its `base.sha` and `head.sha`, so only the PR's own
 changes count even when its branch is behind `main`; a merge-train push passes `origin/main` and
 `HEAD`. Several merge bases, none, a failed git command, a shallow clone or a malformed revision
-give `code=true`. Any other arguments also give `code=true`.
+give `code=true` and `rust=true`. Any other arguments do too.
 
 Standard library only: CI runs the copy from the PR's base commit, or from a train's merge base
 (decision 0066), so a PR can never change how its own files are classified.
@@ -51,6 +54,44 @@ def is_code_read(path: str) -> bool:
     return path in CODE_READ_PATHS or path.startswith(CODE_READ_DIRS)
 
 
+# Directories whose files no Rust build, clippy run or Rust test reads, except RUST_READ_PATHS:
+# the eval job (the release rustsheet-eval binary run over eval/ and docs/excel-semantics/) and
+# the python job (tools/) still check them. Evidence (decision 0235): on 2026-11-01 every test
+# binary of `make test` but the engine's unit tests ran under strace and opened nothing outside
+# crates/, bindings/ and target/ but eval/suites/fixtures/; the engine's sources and every build
+# script name only the paths below.
+RUST_INERT_DIRS = ("eval/", "docs/", ".claude/", "tools/")
+
+# Paths under RUST_INERT_DIRS that a Rust build script or test does read, so they are Rust inputs.
+# A new reader must add its path here in the same PR; `scripts/check_docs_readers.py` (run by
+# `make hygiene`) fails on a crate or bindings literal that climbs out of its crate (`../`) into
+# a Rust-inert path not listed here. An entry ending in `/` is a directory, as in CODE_READ_PATHS.
+# eval/suites/fixtures/: xlsx and rustsheet tests load workbooks from it; eval/suites/probes/cases/:
+# crates/rustsheet-engine/src/expressions/parser/tests/test_move_formula.rs reads its cases;
+# eval/suites/ironcalc-calc/cached-overrides.tsv: crates/rustsheet-xlsx/build.rs generates tests
+# from it; eval/catalog/excel-functions.tsv: an engine unit test in
+# crates/rustsheet-engine/src/functions/kinds/arg_counts.rs checks the argument counts against it.
+RUST_READ_PATHS = (
+    "eval/catalog/excel-functions.tsv",
+    "eval/suites/fixtures/",
+    "eval/suites/probes/cases/",
+    "eval/suites/ironcalc-calc/cached-overrides.tsv",
+)
+RUST_READ_DIRS = tuple(p for p in RUST_READ_PATHS if p.endswith("/"))
+
+
+def is_rust_read(path: str) -> bool:
+    """Whether `path` is one of RUST_READ_PATHS or under one of its directories."""
+    return path in RUST_READ_PATHS or path.startswith(RUST_READ_DIRS)
+
+
+def is_rust(path: str) -> bool:
+    """Whether changing `path` needs the Rust fmt, clippy and test shards."""
+    if not is_code(path):
+        return False
+    return is_rust_read(path) or not path.startswith(RUST_INERT_DIRS)
+
+
 def is_code(path: str) -> bool:
     """Whether changing `path` needs the heavy CI jobs."""
     if is_code_read(path):
@@ -61,13 +102,21 @@ def is_code(path: str) -> bool:
     return "/" in path or not path.endswith(".md")
 
 
-def classify(raw: bytes) -> bool:
-    """`code` for NUL-separated paths: true unless there is at least one path and none is code."""
+# What the classifier decides: (code, rust). Doubt is ALL: every job runs.
+Verdict = tuple[bool, bool]
+ALL: Verdict = (True, True)
+
+
+def classify(raw: bytes) -> Verdict:
+    """`(code, rust)` for NUL-separated paths. Each is true unless there is at least one path and
+    no path needs it; a Rust input is always code."""
     try:
         paths = [p for p in raw.decode("utf-8").split("\0") if p]
     except UnicodeDecodeError:
-        return True
-    return not paths or any(is_code(p) for p in paths)
+        return ALL
+    if not paths:
+        return ALL
+    return any(is_code(p) for p in paths), any(is_rust(p) for p in paths)
 
 
 # A revision CI passes: a sha, `HEAD` or a ref name. Nothing that git could read as an option, and
@@ -84,27 +133,27 @@ def _git(cwd: Path | None, *args: str) -> bytes | None:
     return run.stdout if run.returncode == 0 else None
 
 
-def classify_range(base: str, head: str, cwd: Path | None = None) -> bool:
-    """`code` for the diff from the single merge base of `base` and `head` to `head`.
+def classify_range(base: str, head: str, cwd: Path | None = None) -> Verdict:
+    """`(code, rust)` for the diff from the single merge base of `base` and `head` to `head`.
 
     Diffing from the merge base, not from `base`, leaves out whatever `base`'s branch gained
     since `head` branched off it: on PR #2119 (run 40622986699) `base.sha` lagged GitHub's test
     merge, so `main`'s newer code files made a docs-only PR `code=true` (decision 0147).
     """
     if not all(REVISION.fullmatch(rev) for rev in (base, head)):
-        return True
+        return ALL
     # A shallow clone can hide the true merge base or report a wrong one; so can a failed check.
     if _git(cwd, "rev-parse", "--is-shallow-repository") != b"false\n":
-        return True
+        return ALL
     bases = _git(cwd, "merge-base", "--all", base, head)
     if bases is None or len(bases.split()) != 1:
-        return True
+        return ALL
     merge_base = bases.decode("ascii", "replace").strip()
     # --no-renames lists both sides of a rename, so moving code into docs/ still counts as code;
     # -z keeps unusual file names intact.
     changed = _git(cwd, "diff", "-z", "--no-renames", "--name-only", merge_base, head, "--")
     if changed is None:
-        return True
+        return ALL
     # File names are attacker-controlled: log only their count (workflow-command injection).
     print("changed files:", changed.count(b"\0"), file=sys.stderr)
     return classify(changed)
@@ -113,12 +162,13 @@ def classify_range(base: str, head: str, cwd: Path | None = None) -> bool:
 def main() -> int:
     args = sys.argv[1:]
     if not args:
-        code = classify(sys.stdin.buffer.read())
+        code, rust = classify(sys.stdin.buffer.read())
     elif len(args) == 3 and args[0] == "--merge-base":
-        code = classify_range(args[1], args[2])
+        code, rust = classify_range(args[1], args[2])
     else:
-        code = True
+        code, rust = ALL
     print(f"code={'true' if code else 'false'}")
+    print(f"rust={'true' if rust else 'false'}")
     return 0
 
 

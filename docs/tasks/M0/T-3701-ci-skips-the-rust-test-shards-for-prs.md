@@ -3,7 +3,7 @@ id: T-3701
 title: "CI skips the Rust test shards for PRs that change no Rust input"
 milestone: M0
 lane: harness
-status: in-progress
+status: blocked
 priority: P2
 size: M
 tier: opus
@@ -38,3 +38,41 @@ exact, tested list of such inputs, like `CODE_READ_PATHS` and `scripts/check_doc
 
 ## Out of scope
 - Changing which tests run inside a job.
+
+## Blocked because
+Blocked because: needs an owner ruling. The measured gain is smaller than this task assumed, and
+its main safeguard cannot be made reliable.
+
+Evidence (2026-11-01). Every test binary of `make test` except the engine's unit tests ran under
+`strace -f`, and the sources were grepped. Rust reads these paths outside crates/ and bindings/:
+- `eval/suites/fixtures/`
+- `eval/suites/probes/cases/` (test_move_formula.rs, test_legacy_n_t_marker.rs)
+- `eval/suites/ironcalc-calc/cached-overrides.tsv` (crates/rustsheet-xlsx/build.rs)
+- `eval/catalog/excel-functions.tsv` (functions/kinds/arg_counts.rs)
+- the rustsheet-eval unit tests, through `Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")`:
+  `eval/baseline/visible-parity.txt`, `eval/catalog/scope.json`, `eval/catalog/lift-kinds.json`,
+  and `eval/milestones/{exit-exceptions,phase1-exceptions,probe-milestones}.tsv`.
+
+Why this blocks the task:
+- **The gain is small.** `visible-parity.txt` alone was touched by 6 of the 38 heavy commits
+  sampled from main. With every reader above counted as a Rust input, only a few PRs a day would
+  skip the shards, and their wall time would drop only from about 6.5 to about 4.5 min, because
+  the eval and python jobs still run.
+- **The guard is not reliable.** The acceptance criterion "a hygiene check fails when a new
+  reader is added" cannot be met statically. A literal scan sees `"../../eval/x"` and
+  `concat!(env!("CARGO_MANIFEST_DIR"), "/../../eval/x")`, but not a later `root.join(PATH)`, and
+  the eval crate uses that form throughout.
+- **A wrong skip can reach main.** It looks exactly like a pass (decision 0049), and in `train`
+  mode the classifier also decides the train's own run (decision 0147).
+
+What would unblock it, for the owner to choose:
+- (a) drop the task;
+- (b) skip the shards anyway, guarded only by the literal scan and a periodic strace audit,
+  accepting the residual risk;
+- (c) first make every Rust test reach repository files through one helper, which a hygiene
+  check can then audit.
+
+The branch `agent/harness/T-3701-rust-inputs-ci` holds the unmerged work in progress: the
+`rust=` output and its tests in `scripts/ci_changes.py`, and the extended
+`scripts/check_docs_readers.py`. Its `RUST_READ_PATHS` still lacks the rustsheet-eval readers
+above.

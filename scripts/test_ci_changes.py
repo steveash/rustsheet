@@ -13,8 +13,18 @@ import check_docs_readers as readers  # noqa: E402 (import after sys.path setup)
 import ci_changes  # noqa: E402
 
 
-def classify(*paths: str) -> bool:
+def verdict(*paths: str) -> tuple[bool, bool]:
     return ci_changes.classify(b"\0".join(p.encode() for p in paths) + (b"\0" if paths else b""))
+
+
+def classify(*paths: str) -> bool:
+    """`code` for `paths`."""
+    return verdict(*paths)[0]
+
+
+def rust(*paths: str) -> bool:
+    """`rust` for `paths` (decision 0235)."""
+    return verdict(*paths)[1]
 
 
 class Classifier(unittest.TestCase):
@@ -65,9 +75,9 @@ class Classifier(unittest.TestCase):
         self.assertTrue(classify("crates/rustsheet-engine/README.md"))
 
     def test_empty_or_undecodable_input_is_code(self) -> None:
-        self.assertTrue(ci_changes.classify(b""))
-        self.assertTrue(ci_changes.classify(b"\0\0"))
-        self.assertTrue(ci_changes.classify(b"docs/\xff.md\0"))
+        self.assertEqual(ci_changes.classify(b""), ci_changes.ALL)
+        self.assertEqual(ci_changes.classify(b"\0\0"), ci_changes.ALL)
+        self.assertEqual(ci_changes.classify(b"docs/\xff.md\0"), ci_changes.ALL)
 
     def test_file_names_with_newlines_stay_intact(self) -> None:
         # One docs file whose name holds a newline, not a docs file and a crate file.
@@ -80,7 +90,58 @@ class Classifier(unittest.TestCase):
             capture_output=True,
             check=True,
         )
-        self.assertEqual(run.stdout, b"code=false\n")
+        self.assertEqual(run.stdout, b"code=false\nrust=false\n")
+
+
+class RustInputs(unittest.TestCase):
+    """`rust=false` skips only the Rust shards; the eval and python jobs still run (decision 0235)."""
+
+    def test_eval_data_semantics_and_tools_are_not_rust(self) -> None:
+        for path in [
+            "eval/baseline/probes.txt",
+            "eval/suites/probes-numeric/cases/t1.case.json",
+            "eval/accuracy/tables/T.INV/s1.case.json",
+            "docs/excel-semantics/statistics.md",
+            "docs/progress.md",
+            "tools/src/rustsheet_tools/gen/cli.py",
+            ".claude/skills/review/SKILL.md",
+        ]:
+            self.assertTrue(classify(path), path)
+            self.assertFalse(rust(path), path)
+
+    def test_listed_rust_reads_are_rust(self) -> None:
+        for path in [
+            "eval/suites/fixtures/cases/external-link-cached-ranges.xlsx",
+            "eval/suites/probes/cases/t1.case.json",
+            "eval/suites/ironcalc-calc/cached-overrides.tsv",
+        ]:
+            self.assertTrue(rust(path), path)
+        # Siblings of a listed file or directory are not.
+        self.assertFalse(rust("eval/suites/ironcalc-calc/suite.toml"))
+        self.assertFalse(rust("eval/suites/probes/suite.toml"))
+        self.assertFalse(rust("eval/suites/fixtures-extra/a.xlsx"))
+
+    def test_crates_bindings_build_files_and_anything_else_are_rust(self) -> None:
+        for path in [
+            "crates/rustsheet-engine/src/lib.rs",
+            "bindings/python/src/lib.rs",
+            "Cargo.toml",
+            "Cargo.lock",
+            "Makefile",
+            ".github/workflows/ci.yml",
+            "scripts/ci_changes.py",
+            "fuzz/fuzz_targets/a.rs",
+            "rust-toolchain.toml",
+            "quality/fitted.json",
+        ]:
+            self.assertTrue(rust(path), path)
+
+    def test_one_rust_input_makes_the_whole_change_rust(self) -> None:
+        self.assertTrue(rust("eval/baseline/probes.txt", "crates/rustsheet-engine/src/lib.rs"))
+        self.assertFalse(rust("eval/baseline/probes.txt", "docs/excel-semantics/a.md", "docs/status.md"))
+
+    def test_docs_only_is_neither(self) -> None:
+        self.assertEqual(verdict("docs/status.md", "README.md"), (False, False))
 
 
 def git(repo: Path, *args: str) -> str:
@@ -121,7 +182,7 @@ class MergeBase(unittest.TestCase):
         self.m0 = commit(self.repo, "crates/a.rs", "docs/a.md")
 
     def code(self, a: str, b: str, repo: Path | None = None) -> bool:
-        return ci_changes.classify_range(a, b, cwd=repo or self.repo)
+        return ci_changes.classify_range(a, b, cwd=repo or self.repo)[0]
 
     def branch(self, name: str, start: str) -> None:
         git(self.repo, "checkout", "-q", "-b", name, start)
@@ -134,7 +195,7 @@ class MergeBase(unittest.TestCase):
         git(self.repo, "merge", "-q", "--no-ff", "--no-edit", pr1)
         commit(self.repo, "docs/status.md")
         self.assertFalse(self.code("main", "HEAD"))
-        self.assertEqual(self.cli("main", "HEAD"), b"code=false\n")
+        self.assertEqual(self.cli("main", "HEAD"), b"code=false\nrust=false\n")
 
     def test_train_with_a_code_pr_is_code(self) -> None:
         self.branch("merge-train/current", self.m0)
@@ -187,7 +248,7 @@ class MergeBase(unittest.TestCase):
         y2 = commit(self.repo, "docs/y2.md")
         self.assertEqual(len(git(self.repo, "merge-base", "--all", x2, y2).split()), 2)
         self.assertTrue(self.code(x2, y2))
-        self.assertEqual(self.cli(x2, y2), b"code=true\n")
+        self.assertEqual(self.cli(x2, y2), b"code=true\nrust=true\n")
 
     def test_failed_merge_base_is_code(self) -> None:
         # Unrelated histories have no merge base; a missing or malformed revision fails.
@@ -218,11 +279,11 @@ class MergeBase(unittest.TestCase):
 
     def test_cli_without_arguments_still_reads_stdin(self) -> None:
         # An older workflow (or 0066's stdin contract) keeps working.
-        self.assertEqual(self.cli_raw([], b"docs/a.md\0"), b"code=false\n")
+        self.assertEqual(self.cli_raw([], b"docs/a.md\0"), b"code=false\nrust=false\n")
 
     def test_cli_with_bad_arguments_is_code(self) -> None:
-        self.assertEqual(self.cli_raw(["--merge-base", "HEAD"], b""), b"code=true\n")
-        self.assertEqual(self.cli_raw(["--nonsense"], b"docs/a.md\0"), b"code=true\n")
+        self.assertEqual(self.cli_raw(["--merge-base", "HEAD"], b""), b"code=true\nrust=true\n")
+        self.assertEqual(self.cli_raw(["--nonsense"], b"docs/a.md\0"), b"code=true\nrust=true\n")
 
     def cli(self, a: str, b: str) -> bytes:
         return self.cli_raw(["--merge-base", a, b], b"")

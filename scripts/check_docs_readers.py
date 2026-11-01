@@ -10,6 +10,12 @@ fails unless the path is under `CODE_READ_PATHS`, which the classifier treats as
 Mentions in comments and prose do not count: a literal is flagged only when its text starts with
 the path. A flagged literal that does not name the repository's docs/ (a crate's own docs/
 directory) goes in NOT_REPO_DOCS with the reason. scripts/ is exempt: `make hygiene` always runs.
+
+It also guards the Rust shards' skip (decision 0235): a literal in crates/, bindings/ or fuzz/
+that climbs out of its crate (`"../../eval/x"`, or `"/../../eval/x"` after `CARGO_MANIFEST_DIR`)
+into `RUST_INERT_DIRS` must name a path under `RUST_READ_PATHS`. A path built by joining
+separate components (`root.join("eval")`) is not seen; decision 0235 records the strace audit
+behind the list.
 """
 
 from __future__ import annotations
@@ -19,10 +25,12 @@ import subprocess
 import sys
 from pathlib import Path
 
-from ci_changes import DOC_DIRS, is_code_read
+from ci_changes import DOC_DIRS, RUST_INERT_DIRS, is_code_read, is_rust_read
 
 ROOT = Path(__file__).resolve().parent.parent
 CODE_DIRS = ("crates/", "tools/", "bindings/", "fuzz/")
+# Code built and tested by the Rust shards (decision 0235).
+RUST_DIRS = ("crates/", "bindings/", "fuzz/")
 SUFFIXES = (".rs", ".py", ".sh", ".toml")
 
 # (file, literal text) pairs that look like repository docs/ paths but are not, with the reason.
@@ -45,6 +53,20 @@ def repo_doc_path(text: str) -> str | None:
     return None
 
 
+def rust_inert_path(text: str) -> str | None:
+    """The Rust-inert repository path a literal climbs to (`../` or `/../` first), or None."""
+    if text.startswith("/../"):
+        text = text[1:]
+    if not text.startswith("../"):
+        return None
+    while text.startswith(("../", "./")):
+        text = text[text.index("/") + 1 :]
+    roots = tuple(d.rstrip("/") for d in RUST_INERT_DIRS)
+    if text in roots or text.startswith(RUST_INERT_DIRS):
+        return text
+    return None
+
+
 def violations(path: str, source: str) -> list[str]:
     """`file:line: literal` for each docs path in `source` that the classifier would skip."""
     found = []
@@ -53,10 +75,15 @@ def violations(path: str, source: str) -> list[str]:
             continue
         for match in LITERAL.finditer(line):
             text = match.group(1) if match.group(1) is not None else match.group(2)
+            inert = rust_inert_path(text) if path.startswith(RUST_DIRS) else None
+            # A directory literal may come without its trailing slash; a format placeholder
+            # (`cases/{name}.xlsx`) stays inside the directory it starts in.
+            if inert is not None and not (is_rust_read(inert) or is_rust_read(inert + "/")):
+                found.append(f"{path}:{lineno}: {text!r} (Rust reads it: RUST_READ_PATHS)")
+                continue
             doc = repo_doc_path(text)
             if doc is None or (path, text) in NOT_REPO_DOCS:
                 continue
-            # A directory literal may come without its trailing slash.
             if not (is_code_read(doc) or is_code_read(doc + "/")):
                 found.append(f"{path}:{lineno}: {text!r}")
     return found
@@ -81,12 +108,12 @@ def main() -> int:
             continue
         found.extend(violations(path, source))
     if found:
-        print("FAIL docs readers: code reads docs-only paths that CI would skip (decision 0049):")
+        print("FAIL docs readers: code reads paths whose changes CI would skip (decisions 0049, 0235):")
         for line in found:
             print(f"  {line}")
-        print("Add the path to CODE_READ_PATHS in scripts/ci_changes.py (a protected path, so with")
-        print("a decision record), or to NOT_REPO_DOCS in scripts/check_docs_readers.py if it is")
-        print("not the repository's docs/.")
+        print("Add the path to CODE_READ_PATHS (or, for a Rust reader, RUST_READ_PATHS) in")
+        print("scripts/ci_changes.py (a protected path, so with a decision record), or to")
+        print("NOT_REPO_DOCS in scripts/check_docs_readers.py if it is not the repository's docs/.")
         return 1
     print("docs readers ok")
     return 0
