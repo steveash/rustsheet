@@ -3,8 +3,8 @@ id: T-3338
 title: "Match Excel's sign cap before a parenthesis or call (1,022) and let -( nest to the 256-parenthesis cap (t3266 probes)"
 milestone: M2
 lane: engine
-status: todo
-priority: P3
+status: in-progress
+priority: P1
 size: M
 tier: opus
 depends_on: []
@@ -15,6 +15,7 @@ RustSheet accepts and refuses the same sign runs and `-(` nestings as Excel. The
 docs/excel-semantics/syntax.md "Formula nesting depth cap", in the T-3266 paragraph.
 
 ## Context
+- Raised to P1 (2026-11-01): the 12 t3266 probe cases that do not run (engine_error) make M2's Phase 1 exit probe row "not met" by themselves (decision 0174).
 - Excel's rule (T-3266, excel-graph 2026-10-31): the signs open at an operand, counted across nested
   runs, plus that operand's cost may be at most 1,024. A number literal right after the signs costs 0;
   a reference, `TRUE`, a string or a number after a space costs 1; a parenthesis run or a function call
