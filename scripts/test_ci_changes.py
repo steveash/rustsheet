@@ -21,6 +21,13 @@ class Classifier(unittest.TestCase):
     def test_docs_and_claude_files_alone_are_docs_only(self) -> None:
         self.assertFalse(classify("docs/tasks/M2/T-1.md", "docs/status.md", ".claude/skills/x/SKILL.md"))
 
+    def test_gate_a_tables_and_generator_are_code(self) -> None:
+        # Gate A (SPEC-0029, T-3379): `make eval-gates` checks eval/accuracy/**, and the generator
+        # under tools/ writes it, so both run the eval job.
+        self.assertTrue(classify("eval/accuracy/tables/T.INV/s1.case.json"))
+        self.assertTrue(classify("eval/accuracy/exempt.tsv", "docs/status.md"))
+        self.assertTrue(classify("tools/src/rustsheet_tools/accuracy/defs/t.py"))
+
     def test_excel_semantics_is_code(self) -> None:
         # The eval harness validates DEVIATION anchors in it (decision 0049).
         self.assertTrue(classify("docs/excel-semantics/text.md"))

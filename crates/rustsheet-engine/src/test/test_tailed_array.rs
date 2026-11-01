@@ -3,12 +3,16 @@
 //! Whole-column aggregate arguments read as a used head and one repeated tail row (SPEC-0020,
 //! T-0469) give what the 1,048,576-row arrays give.
 
+use crate::functions::lift::LIFT_TALLY;
+use crate::functions::text::REGEX_UNITS;
 use crate::tailed_array::{TAILED_OFF, TAILED_WALKS};
 use crate::test::util::new_empty_model;
 use crate::Model;
 
 /// A1:C40 of Sheet1: numbers, text, booleans, blanks, empty text and errors; H1:H3 the scalars
-/// the formulas read. Sheet2!A1:A60 holds numbers, so its used area is longer than Sheet1's.
+/// the formulas read; the lookup tables of probes/t3096-lookup-value-blank-elements in J1:K6
+/// (0, empty text, FALSE and a blank among the keys; also the name `Tbl`), L1:L5 (descending)
+/// and N1:S2 (by row). Sheet2!A1:A60 holds numbers, so its used area is longer than Sheet1's.
 fn fill(model: &mut Model) {
     const A: &[&str] = &["1", "2", "", "x", "TRUE", "=1/0", "3", "=\"\"", "1", "0"];
     const B: &[&str] = &["5", "", "7", "y", "FALSE", "2.5", "=NA()", "-1", "0.1", "9"];
@@ -25,6 +29,21 @@ fn fill(model: &mut Model) {
     model._set("H3", "TRUE");
     // #N/IMPL: the engine does not implement FORECAST.ETS.
     model._set("H4", "=FORECAST.ETS(5,{1,2,3},{1,2,3})");
+    let keys = ["0", "=\"\"", "FALSE", "", "1", "x"];
+    for (index, key) in keys.iter().enumerate() {
+        let row = index + 1;
+        model._set(&format!("J{row}"), key);
+        model._set(&format!("K{row}"), &format!("{}", row * 10));
+        let column = ["N", "O", "P", "Q", "R", "S"][index];
+        model._set(&format!("{column}1"), key);
+        model._set(&format!("{column}2"), &format!("{}", row * 100));
+    }
+    for (index, value) in ["3", "2", "1", "0", "-1"].iter().enumerate() {
+        model._set(&format!("L{}", index + 1), value);
+    }
+    model
+        .new_defined_name("Tbl", None, "Sheet1!$J$1:$K$6")
+        .unwrap();
     model.new_sheet();
     for row in 1..=60 {
         model._set(&format!("Sheet2!A{row}"), &(row % 7).to_string());
@@ -602,4 +621,412 @@ fn lookup_forms_that_are_not_tailed() {
     let (results, walks) = both_ways(&["=LOOKUP(2,1/(A:A<>\"\"))".to_string()]);
     assert_eq!(results[0].1, results[0].2);
     assert_eq!(walks, 0);
+}
+
+/// VLOOKUP, HLOOKUP and MATCH over a tailed key are interior nodes (SPEC-0020 Amendment 2,
+/// T-3221): exact, approximate and descending searches of the t3096 tables, whose blank tail key
+/// they pin, read by every kind of consumer.
+#[test]
+fn keyed_lookups_over_a_whole_column_key() {
+    check(
+        AGGREGATES,
+        &[
+            "--(VLOOKUP(A:A,$J$1:$K$6,2,FALSE)=10)",
+            "VLOOKUP(A:A,$J$1:$K$6,2,FALSE)",
+            "VLOOKUP(A:A,$J$1:$K$6,2)",
+            "VLOOKUP(B:B,$J$1:$K$6,$H$1,FALSE)*0+1",
+            "HLOOKUP(A:A,$N$1:$S$2,2,FALSE)",
+            "MATCH(A:A,$J$1:$J$6,0)",
+            "MATCH(C:C,$J$1:$J$6)",
+            "MATCH(A:A,$L$1:$L$5,-1)",
+            "MATCH(A:A,$L$1:$L$5,$H$1)",
+            "MATCH(A:A,{0,1,\"x\"},0)",
+            "MATCH(A:A,B:B,0)",
+            "MATCH(A:A,Sheet2!$A$1:$A$9,1)",
+        ],
+    );
+}
+
+/// A bounded span, a key expression, a lookup under an operator and under IF (as a branch and
+/// as the condition), nested lookups, and the failed-argument lift (`argument_error_each`).
+#[test]
+fn keyed_lookups_in_expressions() {
+    check(
+        &["SUM", "COUNT", "COUNTA", "MAXA"],
+        &[
+            "MATCH(A2:A70000,$J$1:$J$6,0)",
+            "MATCH(A:A&\"\",$J$1:$J$6,0)",
+            "MATCH(A:A,$J$1:$J$6,0)*2",
+            "IF(A:A=1,MATCH(B:B,$J$1:$J$6,0),0)",
+            "IF(MATCH(A:A,$J$1:$J$6,0)>1,1,0)",
+            "MATCH(VLOOKUP(A:A,$J$1:$K$6,2,FALSE),$K$1:$K$6,0)",
+            "VLOOKUP(A:A,$J$1:$K$6,\"x\")",
+            "VLOOKUP(A:A,$H$2,2)",
+            "VLOOKUP(A:A,$J$1:$K$6,$H$2)",
+            "VLOOKUP(A:A,$J$1:$K$6,3)",
+            "MATCH(A:A,$J$1:$J$6,\"x\")",
+            "VLOOKUP(Sheet2!A:A,$J$1:$K$6,2)",
+        ],
+    );
+    let consumers = [
+        "=SUMPRODUCT(--(VLOOKUP(A:A,$J$1:$K$6,2)=10))",
+        "=SMALL(MATCH(A:A,$J$1:$J$6,0),2)",
+        "=ROWS(UNIQUE(MATCH(A:A&\"\",$J$1:$J$6,0)))",
+        "=LOOKUP(2,1/(MATCH(A:A,$J$1:$J$6,0)>1),B:B)",
+    ];
+    let formulas: Vec<String> = consumers.iter().map(ToString::to_string).collect();
+    let (results, walks) = both_ways(&formulas);
+    for (formula, tailed, full) in results {
+        assert_eq!(tailed, full, "{formula}");
+    }
+    assert_eq!(
+        walks,
+        formulas.len(),
+        "every consumer reads its lookup tailed"
+    );
+}
+
+/// A `ROW()` leaf in a key: the sentinel tail picked by the result leaves the argument to the
+/// ordinary reading; an IF that does not pick it in the tail keeps it tailed.
+#[test]
+fn row_leaves_in_a_key() {
+    let picked = ["=COUNT(MATCH(ROW(A:A),$L$1:$L$5,-1))".to_string()];
+    let (results, walks) = both_ways(&picked);
+    assert_eq!(results[0].1, results[0].2);
+    assert_eq!(walks, 0);
+    let not_picked = ["=SUM(IF(A:A=\"\",0,MATCH(ROW(A:A),$L$1:$L$5,-1)))".to_string()];
+    let (results, walks) = both_ways(&not_picked);
+    assert_eq!(results[0].1, results[0].2);
+    assert_eq!(walks, 1);
+}
+
+/// Shapes a keyed lookup refuses (SPEC-0020 Amendment 2, section 1): an array `match_type` or
+/// `range_lookup`, a function-call or named table, an operator in a fixed argument, a key that
+/// reaches no leaf, and a multi-column key.
+#[test]
+fn keyed_lookup_shapes_that_are_not_tailed() {
+    let formulas: Vec<String> = [
+        "=COUNT(MATCH(A:A,$J$1:$J$6,{0;1}))",
+        "=COUNTA(VLOOKUP(A:A,$J$1:$K$6,2,{TRUE;FALSE}))",
+        "=COUNTA(VLOOKUP(A:A,$J$1:$K$6,{1,2}))",
+        "=COUNT(MATCH(A:A,INDIRECT(\"J1:J6\"),0))",
+        "=COUNTA(VLOOKUP(A:A,Tbl,2,FALSE))",
+        "=COUNT(MATCH(A:A,$J$1:$J$6,0+0))",
+        "=SUM(--(VLOOKUP(1,$J$1:$K$6,2,FALSE)=A:A))",
+        "=COUNT(MATCH(A:B,$J$1:$J$6,0))",
+    ]
+    .iter()
+    .map(ToString::to_string)
+    .collect();
+    let (results, walks) = both_ways(&formulas);
+    for (formula, tailed, full) in results {
+        assert_eq!(tailed, full, "{formula}");
+    }
+    assert_eq!(walks, 0);
+}
+
+/// `formula` in E1 of a model `setup` fills, evaluated with the tailed reading on and off: its
+/// text, the arguments walked tailed, the lift tally (kernel runs, visits charged) and the regex
+/// work units charged.
+fn tallied(setup: &dyn Fn(&mut Model), formula: &str) -> [(String, usize, (u64, u64), u64); 2] {
+    [false, true].map(|off| {
+        TAILED_OFF.with(|flag| flag.set(off));
+        let mut model = new_empty_model();
+        setup(&mut model);
+        model._set("E1", formula);
+        TAILED_WALKS.with(|count| count.set(0));
+        LIFT_TALLY.with(|tally| tally.set((0, 0)));
+        REGEX_UNITS.with(|units| units.set(0));
+        model.evaluate();
+        TAILED_OFF.with(|flag| flag.set(false));
+        (
+            model._get_text("E1"),
+            TAILED_WALKS.with(std::cell::Cell::get),
+            LIFT_TALLY.with(std::cell::Cell::get),
+            REGEX_UNITS.with(std::cell::Cell::get),
+        )
+    })
+}
+
+/// Keys 1, 2, 2, 3, 3 in A1:A5; `last` in A6, the head's last row (Z6 keeps it used); the table
+/// in J1:K4.
+fn small_keys(model: &mut Model, last: &str) {
+    for (row, key) in ["1", "2", "2", "3", "3", last].iter().enumerate() {
+        model._set(&format!("A{}", row + 1), key);
+    }
+    model._set("Z6", "1");
+    for row in 1..=4 {
+        model._set(&format!("J{row}"), &row.to_string());
+        model._set(&format!("K{row}"), &(row * 10).to_string());
+    }
+}
+
+/// The continued lift (SPEC-0020 Amendment 2, section 2): a tail key equal to the head's last
+/// key (a blank: the merged run) runs and charges nothing more, one that differs one walk; both
+/// equal the one lift's kernel runs and visits, for each kernel (the search and the
+/// failed-argument lift).
+#[test]
+fn the_continued_lift_charges_the_one_lift() {
+    let formulas = [
+        "=COUNTA(VLOOKUP(A:A,$J$1:$K$4,2,FALSE))",
+        "=SUM(--(VLOOKUP(A:A,$J$1:$K$4,2)=10))",
+        "=COUNT(MATCH(A:A,$J$1:$J$4,0))",
+        "=COUNTA(HLOOKUP(A:A,$J$1:$K$4,2,FALSE))",
+        "=COUNTA(VLOOKUP(A:A,$J$1:$K$4,\"x\"))",
+    ];
+    for (last, kind) in [("", "merged"), ("9", "unmerged")] {
+        for formula in formulas {
+            let [tailed, full] = tallied(&|model| small_keys(model, last), formula);
+            assert_eq!(tailed.0, full.0, "{kind} {formula}");
+            assert_eq!(tailed.1, 1, "{kind} {formula} is tailed");
+            assert_eq!(tailed.2, full.2, "{kind} {formula}: runs and visits");
+        }
+    }
+    // The merged run computes one element fewer than the unmerged: the tail reused the head's.
+    let merged = tallied(&|model| small_keys(model, ""), formulas[0])[0].2;
+    let unmerged = tallied(&|model| small_keys(model, "9"), formulas[0])[0].2;
+    assert_eq!(merged.0, 4);
+    assert_eq!(unmerged.0, 5);
+}
+
+/// Sorted keys 1..=32768 in Sheet2!A (a scan of 2^15 cells per walk, so 4,096 walks reach the
+/// per-call cap of 2^27 visits) and on Sheet1 `distinct` distinct keys from A1, then a repeat of
+/// the last one when `repeat` or else a blank, which Z keeps in the head.
+fn keys_at_the_cap(model: &mut Model, distinct: i32, repeat: bool) {
+    model.new_sheet();
+    for row in 1..=32_768 {
+        model._set(&format!("Sheet2!A{row}"), &row.to_string());
+    }
+    for row in 1..=distinct {
+        model._set(&format!("A{row}"), &row.to_string());
+    }
+    let last = distinct + 1;
+    if repeat {
+        model._set(&format!("A{last}"), &distinct.to_string());
+    }
+    model._set(&format!("Z{last}"), "1");
+}
+
+/// The per-call cap at its boundary (SPEC-0020 Amendment 2, section 2): the head's walks and the
+/// tail's one together, merged and not, fail exactly where the one lift fails.
+#[test]
+fn the_per_call_cap_at_its_boundary() {
+    let formula = "=SUM(MATCH(A:A,Sheet2!$A$1:$A$32768,1)*0)";
+    // (distinct keys, repeat, the one lift's walks, within the cap)
+    let cases = [
+        // 4,095 walks in the head, a tail key that differs: 4,096 walks.
+        (4095, true, true),
+        // 4,096 walks in the head, a tail key that differs: 4,097.
+        (4096, true, false),
+        // 4,096 walks in the head ending in a blank, the tail's merged: 4,096.
+        (4095, false, true),
+        // 4,097 walks in the head: the head fails, the ordinary reading too.
+        (4096, false, false),
+    ];
+    for (distinct, repeat, within) in cases {
+        let [tailed, full] = tallied(&|model| keys_at_the_cap(model, distinct, repeat), formula);
+        let case = format!("{distinct} {repeat}");
+        assert_eq!(tailed.0, full.0, "{case}");
+        assert_eq!(full.0 != "#ERROR!", within, "{case}: {}", full.0);
+        if within {
+            assert_eq!(tailed.1, 1, "{case} is tailed");
+            assert_eq!(tailed.2, full.2, "{case}: runs and visits");
+        }
+    }
+}
+
+/// A fixed one-cell reference that closes a cycle, or that is in a spill evaluated during the
+/// head, reads as the ordinary reading reads it.
+#[test]
+fn fixed_references_in_a_cycle_or_a_spill() {
+    for formula in [
+        "=COUNT(MATCH(A:A,$J$1:$J$6,F1))",
+        "=COUNTA(VLOOKUP(A:A,$J$1:$K$6,$G$2,FALSE))",
+        "=COUNTA(VLOOKUP(A:A,$G$2,1,FALSE))",
+    ] {
+        let setup = |model: &mut Model| {
+            fill(model);
+            model._set("F1", "=E1");
+            model._set("G1", "=SEQUENCE(3)");
+        };
+        let [tailed, full] = tallied(&setup, formula);
+        assert_eq!(tailed.0, full.0, "{formula}");
+    }
+}
+
+/// XLOOKUP and XMATCH over a tailed key are keyed lookups (SPEC-0020 Amendment 2, section 3;
+/// T-3223): exact, next-smaller and next-larger, wildcard and regex match modes, both search
+/// directions and the binary searches, over the t3096 tables, an `if_not_found` of each fixed
+/// kind and a multi-column `return_array` (each element keeps its match's first cell).
+#[test]
+fn keyed_xlookup_and_xmatch_over_a_whole_column_key() {
+    check(
+        AGGREGATES,
+        &[
+            "XMATCH(A:A,$J$1:$J$6)",
+            "XMATCH(A:A,$J$1:$J$6,0,-1)",
+            "XMATCH(A:A,$L$1:$L$5,1)",
+            "XMATCH(A:A,$L$1:$L$5,-1,-2)",
+            "XMATCH(A:A&\"*\",$J$1:$J$6,2)",
+            "XMATCH(A:A,$J$1:$J$6,3,-1)",
+            "XLOOKUP(A:A,$J$1:$J$6,$K$1:$K$6)",
+            "XLOOKUP(A:A,$J$1:$J$6,$K$1:$K$6,-1)",
+            "XLOOKUP(A:A,$J$1:$J$6,$K$1:$K$6,\"nf\",0,-1)",
+            "XLOOKUP(A:A,$J$1:$J$6,$J$1:$K$6,$H$1)",
+            "XLOOKUP(A:A&\"*\",$J$1:$J$6,$K$1:$K$6,0,2)",
+            "XLOOKUP(A:A,$J$1:$J$6,$K$1:$K$6,0,3,-1)",
+            "XLOOKUP(A:A,$L$1:$L$5,$L$1:$L$5,0,1,2)",
+            "XLOOKUP(A:A,$N$1:$S$1,$N$2:$S$2)",
+            "XLOOKUP(A:A,{0,1,\"x\"},{1,2,3})",
+            "XMATCH(A:A,$J$1:$J$6,$H$1)",
+            "XLOOKUP(Sheet2!A:A,$J$1:$J$6,$K$1:$K$6,\"nf\")",
+        ],
+    );
+}
+
+/// XLOOKUP and XMATCH shapes a keyed lookup refuses: an array `match_mode` or `search_mode`, a
+/// function-call `lookup_array` or `return_array`, a named table, an operator or an omitted
+/// argument before a given one, and a key that reaches no leaf.
+#[test]
+fn keyed_xlookup_shapes_that_are_not_tailed() {
+    let formulas: Vec<String> = [
+        "=COUNT(XMATCH(A:A,$J$1:$J$6,{0;2}))",
+        "=COUNT(XMATCH(A:A,$J$1:$J$6,0,{1;-1}))",
+        "=COUNTA(XLOOKUP(A:A,INDIRECT(\"J1:J6\"),$K$1:$K$6))",
+        "=COUNTA(XLOOKUP(A:A,$J$1:$J$6,OFFSET($K$1,0,0,6,1)))",
+        "=COUNTA(XLOOKUP(A:A,Tbl,$K$1:$K$6))",
+        "=COUNTA(XLOOKUP(A:A,$J$1:$J$6,$K$1:$K$6,1+1))",
+        "=COUNTA(XLOOKUP(A:A,$J$1:$J$6,$K$1:$K$6,,2))",
+        "=SUM(--(XLOOKUP(1,$J$1:$J$6,$K$1:$K$6)=A:A))",
+    ]
+    .iter()
+    .map(ToString::to_string)
+    .collect();
+    let (results, walks) = both_ways(&formulas);
+    for (formula, tailed, full) in results {
+        assert_eq!(tailed, full, "{formula}");
+    }
+    assert_eq!(walks, 0);
+}
+
+/// Keys 1, empty, 2, 2 in A1:A4; `last` in A5, the head's last row (Z5 keeps it used); the
+/// table in J1:K4 (1..=4 and their tens).
+fn regex_keys(model: &mut Model, last: &str) {
+    for (row, key) in ["1", "", "2", "2", last].iter().enumerate() {
+        model._set(&format!("A{}", row + 1), key);
+    }
+    model._set("Z5", "1");
+    for row in 1..=4 {
+        model._set(&format!("J{row}"), &row.to_string());
+        model._set(&format!("K{row}"), &(row * 10).to_string());
+    }
+}
+
+/// The continued lift and the continued regex state (SPEC-0020 Amendment 2, sections 2 and 3):
+/// for exact, wildcard and regex modes, merged and not, the head and the tail run the kernel,
+/// charge visits and charge regex work units as the one call does. The key `A:A&"a"` makes the
+/// tail's pattern "a" one the head already compiled (its empty row): the tail continues the
+/// head's patterns and budgets, so it compiles and charges nothing for it again.
+#[test]
+fn keyed_xlookup_and_xmatch_charge_the_one_call() {
+    let formulas = [
+        "=COUNT(XMATCH(A:A,$J$1:$J$4))",
+        "=COUNTA(XLOOKUP(A:A,$J$1:$J$4,$K$1:$K$4,0,0,-1))",
+        "=COUNT(XMATCH(A:A&\"*\",$J$1:$J$4,2))",
+        "=COUNT(XMATCH(A:A&\"a\",$J$1:$J$4,3))",
+        "=COUNTA(XLOOKUP(A:A&\"a\",$J$1:$J$4,$K$1:$K$4,\"nf\",3))",
+        "=COUNTA(XLOOKUP(A:A,$J$1:$J$4,$K$1:$K$4,\"x\",$J$1))",
+    ];
+    for (last, kind) in [("", "merged"), ("9", "unmerged")] {
+        for formula in formulas {
+            let [tailed, full] = tallied(&|model| regex_keys(model, last), formula);
+            assert_eq!(tailed.0, full.0, "{kind} {formula}");
+            assert_eq!(tailed.1, 1, "{kind} {formula} is tailed");
+            assert_eq!(tailed.2, full.2, "{kind} {formula}: runs and visits");
+            assert_eq!(tailed.3, full.3, "{kind} {formula}: regex work units");
+        }
+    }
+    // The regex calls charge work at all, so the comparison above can tell a tail that compiles
+    // its pattern again from one that continues the head's.
+    let [_, full] = tallied(&|model| regex_keys(model, "9"), formulas[3]);
+    assert!(full.3 > 0);
+}
+
+/// INDEX with scalar indices picks from a tailed argument (SPEC-0020 Amendment 2, section 3;
+/// T-3222): rows in the head, in the tail and at the logical last row, in the three-argument
+/// form (a value) and the two-argument form (a 1x1 array), over each kind of tailed argument.
+#[test]
+fn index_picks_from_a_tailed_argument() {
+    let picks = ["3", "40", "41", "5000", "1048576"];
+    let arguments = [
+        "VLOOKUP(A:A,$J$1:$K$6,2,FALSE)",
+        "MATCH(A:A,$J$1:$J$6,1)",
+        "HLOOKUP(B:B,$N$1:$S$2,2)",
+        "IF(A:A=\"\",\"blank\",A:A&\"!\")",
+        "MATCH(A2:A70000,$L$1:$L$5,-1)",
+        "ROW(A:A)*0+A:A",
+    ];
+    let mut formulas = Vec::new();
+    for argument in arguments {
+        for row in picks {
+            formulas.push(format!("=INDEX({argument},{row})"));
+            formulas.push(format!("=INDEX({argument},{row},1)"));
+            formulas.push(format!("=ROWS(INDEX({argument},{row}))"));
+            formulas.push(format!("=TYPE(INDEX({argument},{row},1,1))"));
+        }
+    }
+    let (results, walks) = both_ways(&formulas);
+    for (formula, tailed, full) in results {
+        assert_eq!(tailed, full, "{formula}");
+    }
+    // The `ROW()` argument's sentinel tail sends all its picks to the ordinary reading. The picks
+    // past `MATCH(A2:A70000,..)`'s 69,999 rows read it tailed, then fall back too.
+    let fallbacks = picks.len() * 4;
+    assert_eq!(walks, formulas.len() - fallbacks);
+}
+
+/// INDEX keeps the ordinary reading for every other index (SPEC-0020 Amendment 2, section 3):
+/// past the logical rows (`#REF!`), row 0, column 0 and 2, `area_num` 2, lifted indices, and an
+/// error index before an error array; an error key element in the picked row is that error.
+#[test]
+fn index_forms_that_fall_back() {
+    let formulas: Vec<String> = [
+        "=INDEX(MATCH(A:A,$J$1:$J$6,0),1048577)",
+        "=INDEX(MATCH(A:A,$J$1:$J$6,0),0)",
+        "=ROWS(INDEX(MATCH(A:A,$J$1:$J$6,0),0,1))",
+        "=INDEX(MATCH(A:A,$J$1:$J$6,0),5,0)",
+        "=INDEX(MATCH(A:A,$J$1:$J$6,0),5,2)",
+        "=INDEX(MATCH(A:A,$J$1:$J$6,0),5,1,2)",
+        "=SUM(INDEX(MATCH(A:A,$J$1:$J$6,0),{1;2;5000}))",
+        "=INDEX(MATCH(A:A,{\"\"},0)/0,#REF!)",
+        "=INDEX(VLOOKUP(A:A,$H$2,2),5)",
+        "=INDEX(IF(TRUE,MATCH(A:A,$J$1:$J$6,0)),5)",
+        "=INDEX(XMATCH(A:A,$J$1:$J$6),5)",
+    ]
+    .iter()
+    .map(ToString::to_string)
+    .collect();
+    let (results, walks) = both_ways(&formulas);
+    for (formula, tailed, full) in results {
+        assert_eq!(tailed, full, "{formula}");
+    }
+    // Only row 1048577 reads the tailed argument before falling back (past its rows), the
+    // table error lifted over the key (`$H$2`) is picked tailed, and so is the XMATCH form (a
+    // keyed lookup since T-3223); the other indices never read it tailed, and the IF and lifted
+    // forms are not tailed.
+    assert_eq!(walks, 3);
+    let errors: Vec<String> = [
+        // A6 is `=1/0`: the key element of the picked row is its own error.
+        "=INDEX(VLOOKUP(A:A,$J$1:$K$6,2,FALSE),6)",
+        "=INDEX(MATCH(A:A,$J$1:$J$6,0),6,1)",
+    ]
+    .iter()
+    .map(ToString::to_string)
+    .collect();
+    let (results, walks) = both_ways(&errors);
+    for (formula, tailed, full) in results {
+        assert_eq!(tailed, full, "{formula}");
+        assert_eq!(tailed, "#DIV/0!", "{formula}");
+    }
+    assert_eq!(walks, errors.len());
 }

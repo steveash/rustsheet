@@ -21,6 +21,10 @@ IMARGUMENT's kernel; gen-m9/74779cff2810ccf4 A379). Where that kernel errs, ours
 next to IMARGUMENT of the same bases. Also the kernel's other changes over libm `atan2`: a subnormal `atan(y/x)` is
 flushed to 0 (`IMPOWER("1E20+1E-300i",1)`, ours "1E+20" since T-2610) and x < 0 with y = -0 is +π (`IMPOWER("-1-0i",1)`,
 `IMPOWER("-1-0i",3)`).
+IMSQRT takes the same kernel since T-2536 (decision 0188 R6), with the same libm `atan2` fallback and the +π for x < 0
+and y = -0; probe its forms next to IMPOWER's: `IMSQRT("-4-0i")`, `IMSQRT("1E-310+1i")`, `IMSQRT("-1E-310-1i")`,
+`IMSQRT("1E-300+1E+300i")`. Also `IMTAN("5-0i")`: since T-2774 a -0 imaginary part counts as real and takes TAN's
+kernel, unprobed.
 
 ## Acceptance criteria
 - [ ] A probe case under eval/suites/probes with oracle values covers those bases.

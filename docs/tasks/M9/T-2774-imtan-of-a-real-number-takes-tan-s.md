@@ -1,13 +1,13 @@
 ---
 id: T-2774
-title: "IMTAN of a real number takes TAN's kernel (blocked: COMPLEXs.xlsx N6 desktop cache, T-1075 item 17)"
+title: "IMTAN of a real number takes TAN's kernel"
 milestone: M9
 lane: functions-engineering
-status: blocked
+status: done
 priority: P2
 size: S
 tier: opus
-depends_on: [T-1075]
+depends_on: []
 campaign: visible
 ---
 
@@ -46,24 +46,34 @@ Owned cells (54):
   - gen-m9/5b6cc12a94f7bf14.case.json: Calc!A220
 
 ## Acceptance criteria
-- [ ] The owned cells leave the baselines, and N6 is either still passing or recorded per a decision record that reviewers
+- [x] The owned cells leave the baselines, and N6 is either still passing or recorded per a decision record that reviewers
       approve (with the T-1075 item 17 answer, or a decision to follow the web now).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Complex arguments of IMTAN (the double-angle form stays).
 
-## Blocked because
-Web-vs-desktop conflict on IMTAN(5): see Context. Unblocks when T-1075 item 17 is answered, or a decision record
-authorizes following the web for N6.
-
 ## Cells added by the T-0087 sweep (2026-10-28)
 Visibly-off Excel cells no open task owned on the eval of 2026-10-28 at `main` c2b6143a (`python3 scripts/exit_owners.py --all-off`; calipers, poi and corpus-bench not fetched): IMTAN 1. This task now owns them:
 - gen-m9/e85daedce5c2675e: Calc!A109
-The added cell is `IMTAN("5")`, the real-number case this task is blocked on, so the same desktop answer (T-1075 item 17) settles it; it is owned, but not picked, until then.
+The added cell is `IMTAN("5")`, the real-number case this task fixes (TAN's kernel under decision 0188 R6).
 
 ## Decision 0188 note (2026-10-31)
+Unblocked by decision 0188 R6 (2026-10-31): the blocker was only the N6 web-vs-desktop conflict, which R6 settles; the
+T-1075 dependency stood only for it and is dropped (item 17 stays open on T-1075).
+
 Decision 0188 R6 settles the blocker: IMTAN of a real follows the Excel-for-the-web value under decision 0039 item 4,
 and this task's PR may regress ironcalc-calc/ENGINEERING/COMPLEXs.xlsx Sheet1!N6 (lines added to
 eval/milestones/exit-exceptions.tsv and phase1-exceptions.tsv, owner T-1075 item 17). Status left as is by the owner's
 instruction for this PR; the next steward or worker unblocks it (docs/process/agent-workflow.md, "Unblocking").
+
+## Outcome
+IMTAN of a real number (imaginary part 0) now takes TAN's own kernel through `real_trig` (`imtan` in
+crates/rustsheet-engine/src/functions/engineering/complex/trig.rs), as Excel for the web does; the double-angle form
+stays for a nonzero imaginary part. Unit test `im_trig_of_a_real_number_follows_sin_cos_tan` pins `IMTAN("5")`
+-3.38051500624659 and five more web values. Eval: gen-m9 known failures 3015 -> 2975 (40 fixed), probes 2260 -> 2246
+(14 fixed): all 54 owned cells. The one regression is ironcalc-calc/ENGINEERING/COMPLEXs.xlsx Sheet1!N6 (Mac 16.0300
+cache -3.38051500624658), which decision 0188 R6 allows; it is a line of eval/milestones/exit-exceptions.tsv and
+phase1-exceptions.tsv (owner T-1075 item 17), and those lines no longer read as stale. engineering.md "IM* trigonometry
+of a real number is SIN, COS and TAN" moves from CONFLICTING to VERIFIED (excel-graph), web value followed under
+decision 0039 item 4.

@@ -3,7 +3,11 @@
 use crate::{
     calc_result::CalcResult,
     cast::calc_result_to_array_node,
-    expressions::{parser::ArrayNode, token::Error, types::CellReferenceIndex},
+    expressions::{
+        parser::{ArrayNode, Node},
+        token::Error,
+        types::CellReferenceIndex,
+    },
     functions::{
         lift::{LiftCost, LiftOptions, LiftedArg},
         util::array_node_to_calc_result,
@@ -17,6 +21,9 @@ use super::{index_arg::LookupIndexArg, lookup_index, lookup_table::SearchVector}
 /// What one VLOOKUP/HLOOKUP search needs besides the lookup value: the first column (or row),
 /// the index argument with the table size it is checked against, and the match mode.
 pub(super) struct LookupSearch<'a> {
+    /// The call's arguments: a keyed lookup's identity while its tailed argument is read
+    /// (`Model::lift_values_keyed`).
+    pub(super) call: &'a [Node],
     pub(super) search_vector: &'a SearchVector,
     pub(super) index: LookupIndexArg,
     pub(super) size: i32,
@@ -58,7 +65,8 @@ impl Model {
         // charged once per lifted criterion, as T-1784's driver charged it.
         let scan = search.search_vector.scan_cells();
         let criteria_count = u64::try_from(criteria.len()).unwrap_or(u64::MAX);
-        self.lift_values(
+        self.lift_values_keyed(
+            search.call,
             criteria,
             LiftCost::Cells(scan.saturating_mul(criteria_count)),
             &LiftOptions::REUSE_EQUAL_RUNS,

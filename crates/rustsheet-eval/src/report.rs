@@ -282,6 +282,17 @@ pub struct RunReport {
     /// How the `probes` cases assigned to each milestone scored (decision 0051); filled by caller.
     #[serde(default)]
     pub probe_milestones: Vec<MilestoneRow>,
+    /// Every visibly-off cell's decision 0188 R1(c) class, which the probe rows, the ironcalc-calc
+    /// exit rows and Gate B read (T-3427); not written to the JSON.
+    #[serde(skip)]
+    pub r1c: crate::r1c::R1cCells,
+    /// R1(c)'s classes per probes, probes-numeric and ironcalc-calc: the Phase 1b evidence counts.
+    #[serde(default)]
+    pub phase1b_evidence: crate::r1c::Phase1bEvidence,
+    /// The visibly-off cells R1(c) leaves out of the count, by `case!Sheet!A1`, with their class
+    /// (`phase1b`, `r3_pass`, `m14_owned`): what `scripts/exit_owners.py` drops (T-3428).
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub r1c_left_out: std::collections::BTreeMap<String, crate::r1c::R1c>,
     /// How the M0–M2-only `ironcalc-calc` cells scored (M2 exit); `None` if the suite did not run.
     #[serde(default)]
     pub function_scope: Option<FunctionScope>,
@@ -329,6 +340,25 @@ fn failing_only(r: &CaseResult) -> CaseResult {
     r.text.retain(|t| !t.pass);
     r.arguments.clear();
     r
+}
+
+/// Adds `cell` to decision 0118's counts (`excel`, `attributed`) of each function in `called`, its
+/// formula's calls: the one place a cell is attributed, for the report and for Gate B.
+pub(crate) fn attribute_cell(
+    functions: &mut BTreeMap<String, FunctionStat>,
+    called: &BTreeSet<String>,
+    cell: &CellResult,
+) {
+    let sole = closeness::sole_call(called);
+    for f in called {
+        functions
+            .entry(f.clone())
+            .or_insert_with(|| FunctionStat {
+                name: f.clone(),
+                ..FunctionStat::default()
+            })
+            .add_attributed(cell, sole == Some(f));
+    }
 }
 
 impl RunReport {
@@ -390,9 +420,8 @@ impl RunReport {
                         st.visible.merge(visible);
                     }
                 }
-                let sole = closeness::sole_call(&called).cloned();
+                attribute_cell(&mut functions, &called, c);
                 for f in called {
-                    let is_sole = sole.as_ref() == Some(&f);
                     if c.from_excel {
                         let ev = evidence
                             .entry(f.clone())
@@ -413,7 +442,6 @@ impl RunReport {
                     }
                     *st.verdicts.entry(c.verdict).or_default() += 1;
                     st.closeness.add(c);
-                    st.add_attributed(c, is_sole);
                 }
             }
             s.workbooks.add(&book);
@@ -607,6 +635,9 @@ impl RunReport {
         run_meta::write_markdown(&self.run, &mut md);
         self.write_suites_table(&mut md);
         crate::milestone_exit::write_markdown(&self.milestone_exit, &mut md);
+        if let Some(line) = self.phase1b_evidence.line() {
+            let _ = writeln!(md, "\n{line}");
+        }
         visible_parity::write_markdown(self, &mut md);
         v15_checkpoint::write_markdown(&self.v15_checkpoint, &mut md);
         attribution::write_markdown(self, &mut md);

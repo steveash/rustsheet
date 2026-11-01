@@ -116,6 +116,21 @@ fn parse_value(text: &str) -> Option<Value> {
         .map(Value::Number)
 }
 
+/// Splits a semantics reference `docs/excel-semantics/<file>.md#<anchor>` into its file and
+/// anchor; `None` unless the file is a relative `.md` path inside the semantics directory and the
+/// anchor is not empty. Gate A's `math-over-excel.tsv` cites entries the same way (SPEC-0029).
+#[must_use]
+pub fn parse_semantics_ref(semantics: &str) -> Option<(&str, &str)> {
+    semantics.split_once('#').filter(|(file, anchor)| {
+        file.starts_with(SEMANTICS_DIR)
+            && Path::new(file)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("md"))
+            && is_inner_relative(file)
+            && !anchor.is_empty()
+    })
+}
+
 /// Parses a `deviations` file.
 ///
 /// # Errors
@@ -147,16 +162,7 @@ pub fn parse(text: &str) -> Result<Vec<Deviation>, DeviationError> {
             .strip_prefix("decision ")
             .filter(|d| d.len() == 4 && d.bytes().all(|b| b.is_ascii_digit()))
             .ok_or_else(|| bad("decision must read `decision NNNN`"))?;
-        let (file, anchor) = semantics
-            .split_once('#')
-            .filter(|(file, anchor)| {
-                file.starts_with(SEMANTICS_DIR)
-                    && Path::new(file)
-                        .extension()
-                        .is_some_and(|ext| ext.eq_ignore_ascii_case("md"))
-                    && is_inner_relative(file)
-                    && !anchor.is_empty()
-            })
+        let (file, anchor) = parse_semantics_ref(semantics)
             .ok_or_else(|| bad("semantics must read `docs/excel-semantics/<file>.md#<anchor>`"))?;
         out.push(Deviation {
             case: (*case).to_string(),
@@ -183,32 +189,80 @@ fn anchor_of(heading: &str) -> String {
         .collect()
 }
 
+/// The `Status:` an entry of docs/excel-semantics/ must carry to be cited.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EntryStatus {
+    /// `Status: DEVIATION`, an accepted deviation (decision 0014), cited by `deviations` lines.
+    Deviation,
+    /// `Status: MATH-OVER-EXCEL`, an R3 region of decision 0188, cited by Gate A's
+    /// `math-over-excel.tsv` (SPEC-0029).
+    MathOverExcel,
+}
+
+impl EntryStatus {
+    /// The start of the entry's status line.
+    fn line(self) -> &'static str {
+        match self {
+            Self::Deviation => "Status: DEVIATION",
+            Self::MathOverExcel => "Status: MATH-OVER-EXCEL",
+        }
+    }
+
+    /// Why an entry without that line is refused.
+    fn missing(self) -> &'static str {
+        match self {
+            Self::Deviation => "the entry has no `Status: DEVIATION` line",
+            Self::MathOverExcel => "the entry has no `Status: MATH-OVER-EXCEL` line",
+        }
+    }
+}
+
 /// Checks that the cited entry exists and is an accepted deviation: its section (from its
 /// heading to the next heading of any level) has a `Status: DEVIATION` line.
 ///
 /// # Errors
 /// When the file is unreadable, the anchor names no heading, or the entry is not a DEVIATION.
 pub fn check_entry(d: &Deviation, repo_root: &Path) -> Result<(), DeviationError> {
-    let text = read(&repo_root.join(&d.semantics_file))?;
+    check_entry_status(
+        &d.semantics_file,
+        &d.anchor,
+        EntryStatus::Deviation,
+        repo_root,
+    )
+}
+
+/// Checks that the entry `file#anchor` exists and that its section (from its heading to the next
+/// heading of any level) has the `status` line: the one anchor check of every list that cites a
+/// semantics entry.
+///
+/// # Errors
+/// When the file is unreadable, the anchor names no heading, or the entry lacks the status line.
+pub fn check_entry_status(
+    file: &str,
+    anchor: &str,
+    status: EntryStatus,
+    repo_root: &Path,
+) -> Result<(), DeviationError> {
+    let text = read(&repo_root.join(file))?;
     let entry = |why| DeviationError::Entry {
-        file: d.semantics_file.clone(),
-        anchor: d.anchor.clone(),
+        file: file.to_string(),
+        anchor: anchor.to_string(),
         why,
     };
     let mut lines = text.lines();
     let found = lines
         .by_ref()
-        .any(|line| line.starts_with('#') && anchor_of(line.trim_start_matches('#')) == d.anchor);
+        .any(|line| line.starts_with('#') && anchor_of(line.trim_start_matches('#')) == anchor);
     if !found {
         return Err(entry("no such heading"));
     }
     if lines
         .take_while(|line| !line.starts_with('#'))
-        .any(|line| line.starts_with("Status: DEVIATION"))
+        .any(|line| line.starts_with(status.line()))
     {
         Ok(())
     } else {
-        Err(entry("the entry has no `Status: DEVIATION` line"))
+        Err(entry(status.missing()))
     }
 }
 

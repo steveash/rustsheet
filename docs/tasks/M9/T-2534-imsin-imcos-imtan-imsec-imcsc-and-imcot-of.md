@@ -87,6 +87,7 @@ Decision 0083 (gap triage 2026-10-23, T-2258): every cell this task owns has the
   COMPLEXs.xlsx N6 (Mac cache `IMTAN(5)` -3.38051500624658), and recording that needs a decision record plus
   `--allow-regressions`, which this run could not take. Split to T-2774 (blocked, T-1075 item 17 added). engineering.md
   records the conflict as CONFLICTING.
+- Superseded for IMTAN of a real: since T-2774 (decision 0188 R6) it is TAN's kernel below the limit too; see T-2774.
 - Eval delta: gen-m9 known failures 4168 → 4147 (fixed 21); probes 2781 → 2783 (fixed 2 in eng-imtan-imcot-overflow,
   new coverage 4: the new probe's IMTAN-of-a-real cells D1, D8-D10, owned by T-2774). Regressions 0.
 

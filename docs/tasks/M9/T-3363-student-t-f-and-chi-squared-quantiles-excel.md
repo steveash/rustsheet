@@ -17,15 +17,19 @@ inverse algorithm, identified from evidence, instead of the statrs inverse-beta 
 the result generalizes to fresh points.
 
 ## Context
+- Gate A known failures this task owns (T-3358, eval/accuracy/known-failures.tsv): accuracy/T.INV/s1 A75 and A102, and accuracy/T.INV.2T/s1 A75 and A91 (quantiles at df from 7E7 to 1E10: the engine and Excel both off the math, differently). Removing the lines
+  once they pass is part of this task (a passing listed point fails the check as stale).
 - Owner's 2026-10-31 assessment (decision 0188): on fresh stratified points these functions generalize badly (share
   within 15 digits, fresh against public): T.INV 30% vs 69%, T.INV.2T 14% vs 51%, F.INV 63% vs 78%. The cause is the
-  statrs inverse-beta port (statistical/inverse_beta.rs) with probe-tuned thresholds (t_dist.rs `T_QUANTILE_SERIES_DF`,
+  statrs inverse-beta port (statistical/inverse_beta.rs) with probe-tuned thresholds (t_dist.rs
   `T_TAIL_P`, `T_TAIL_X`, `T_STATRS_MIN_P`) and tuned form selectors. Functions that port Excel's algorithm (ERF,
   NORM.*, GAMMALN, Bessel) generalize.
 - Evidence to start from: docs/excel-semantics/statistics.md "Student-t quantile is SQRT(df*(1/y-1)) of the rounded beta
   quantile" (T-3061), "F.INV is a crossing of F.DIST's tails" (T-0974), "BETA.INV solves Excel's own CDF to the
   crossing" (T-1745), "Student-t quantile at one degree of freedom is 1/TAN(π·p/2)" (T-2858), "Chi-squared quantile at
   df 2 ... closed forms" (T-2860); docs/research/excel-kernel-playbook.md.
+- Since T-2511 (2026-10-31) T.INV, T.INV.2T, TINV and CONFIDENCE.T take the rounded-y form from df 2
+  (`t_dist::t_rounded_y_quantile`); the statrs port and the A&S series no longer serve df >= 2.
 - Overlap: T-2511 (crossing of the ported incomplete beta), T-0967 (T.INV parity), T-3061, T-2859, T-2724 and T-1542
   own existing cells of these functions. This task identifies and ships the algorithm; its Outcome re-triages those
   tasks (closing what it settles). The deep-tail quantiles are `MATH-OVER-EXCEL` (decision 0188 R3): keep the math there.

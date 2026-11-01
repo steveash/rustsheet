@@ -115,6 +115,31 @@ fn fn_imsin() {
     assert_eq!(model._get_text("A1"), "-7.61923172032141-6.548120040911i");
 }
 
+/// IMSIN and IMCOS take sinh y and cosh y as (u ∓ 1/u)/2 with u = EXP(y) below IMSINH's band too
+/// (probes-numeric/t3525-im-hyperbolic-fresh-sweep C10, D89; t2778-imsinh-sign-sweep C2; T-3545).
+#[test]
+fn imsin_imcos_small_imaginary_part_takes_the_reciprocal_form() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=IMSIN("0+0.0080407127044978i")"#);
+    model._set(
+        "A2",
+        r#"=IMCOS("-0.437695624558513-0.000131316980692306i")"#,
+    );
+    model._set("A3", r#"=IMSIN("-4i")"#);
+    model._set("A4", r#"=IMSIN("1E-200+1E-200i")"#);
+
+    model.evaluate();
+
+    // The EXP pair gives ...908i and ...7094i here.
+    assert_eq!(model._get_text("A1"), "0.00804079934755902i");
+    assert_eq!(
+        model._get_text("A2"),
+        "0.905730792422698-0.0000556591552727565i"
+    );
+    assert_eq!(model._get_text("A3"), "-27.2899171971278i");
+    assert_eq!(model._get_text("A4"), "1E-200");
+}
+
 #[test]
 fn fn_imaginary_misc() {
     let mut model = new_empty_model();
@@ -282,6 +307,35 @@ fn im_overflow_edges() {
     assert_eq!(model._get_text("B4"), *"#NUM!");
     assert_eq!(model._get_text("B5"), *"0");
     assert_eq!(model._get_text("B6"), *"0");
+}
+
+// IMSINH and IMCOSH take the log form below x = -708 (not -709) and past x = 709, with Excel's EXP:
+// probes-numeric/t3546-imsinh-neg-cut-fine A1, A2, B1, B2, C2, D2 and
+// t3525-im-hyperbolic-log-band-sweep A48 (excel-graph, T-3546).
+#[test]
+fn im_hyperbolic_log_form_cuts_and_exp() {
+    let cases = [
+        (
+            r#"=IMSINH("-708-0.5i")"#,
+            "-1.32663416266498E+307-7.24743546175708E+306i",
+        ),
+        (r#"=IMSINH("-708.000000000001-0.5i")"#, "#NUM!"),
+        (
+            r#"=IMCOSH("-708+2i")"#,
+            "-6.29085665580216E+306-1.37457725669918E+307i",
+        ),
+        (r#"=IMCOSH("-708.000000000001+2i")"#, "#NUM!"),
+        (r#"=IMSINH("-708.000000000001-1E-200i")"#, "#NUM!"),
+        (
+            r#"=IMSINH("-708.000000000001+1i")"#,
+            "-8.16770442188487E+306+1.27204459593408E+307i",
+        ),
+        (
+            r#"=IMSINH("-709.183834084079+1.0222540398548i")"#,
+            "-2.5751552985321E+307+4.21395787753335E+307i",
+        ),
+    ];
+    assert_texts(&cases);
 }
 
 // Excel: probes-numeric/im-last-digit-sweep E55:I55, K42:L42 and gen-m9/b5aef3645cec1b95 A154,
@@ -470,8 +524,9 @@ fn impower_angle_is_excels_atan2_kernel() {
     assert_eq!(model._get_text("A1"), "1000+1i");
 }
 
-// IMSIN, IMCOS, IMSEC, IMCSC and IMCOT of a real number take SIN, COS and TAN's kernels and are
-// `#NUM!` from 2^27, IMCOT "0"; IMTAN takes the limit only (probes/t2534-im-trig-real-limit, T-2534).
+// IMSIN, IMCOS, IMTAN, IMSEC, IMCSC and IMCOT of a real number take SIN, COS and TAN's kernels and
+// are `#NUM!` from 2^27, IMCOT "0" (probes/t2534-im-trig-real-limit, T-2534;
+// probes/t3054-imtan-real-tan-kernel, T-2774).
 #[test]
 fn im_trig_of_a_real_number_follows_sin_cos_tan() {
     let cases = [
@@ -490,8 +545,14 @@ fn im_trig_of_a_real_number_follows_sin_cos_tan() {
         (r#"=IMCSC("1E+200")"#, "#NUM!"),
         (r#"=IMCOT("1E+200")"#, "0"),
         (r#"=IMCOT("-134217728")"#, "0"),
-        // The desktop cache of COMPLEXs.xlsx N6; the web gives TAN's -3.38051500624659 (T-2774).
-        (r#"=IMTAN("5")"#, "-3.38051500624658"),
+        // Excel for the web (decision 0188 R6): TAN's kernel. COMPLEXs.xlsx N6, a Mac 16.0300
+        // cache, has the double-angle -3.38051500624658 (T-1075 item 17).
+        (r#"=IMTAN("5")"#, "-3.38051500624659"),
+        ("=IMTAN(123456789.123)", "56.4157574800738"),
+        ("=IMTAN(3.14159)", "-2.65358979336212E-06"),
+        (r#"=IMTAN("-17.2737")"#, "-197.642601323436"),
+        (r#"=IMTAN("-17.3011")"#, "44.7544983375159"),
+        (r#"=IMTAN("1.5707963267949")"#, "-286413440886091"),
     ];
     assert_texts(&cases);
 }
@@ -510,6 +571,27 @@ fn im_sin_cos_take_sinh_and_cosh_from_exp() {
         ),
         (r#"=IMSIN("1E-200+1E-200i")"#, "1E-200"),
         (r#"=IMSIN("-4i")"#, "-27.2899171971278i"),
+    ];
+    assert_texts(&cases);
+}
+
+// IMSQRT of a negative real is the polar root through Excel's ATAN2, COS and SIN of the half
+// angle: COS(ATAN2(-1,0)/2) is 6.1257422745431E-17, libm's cos(π/2) 6.12323399573677E-17 (gen-m9
+// 59a16b5ab566ee5c A6, 516488da78a6b08c A52, 7dc52cfcbc8b4448 A254, f280df8ba95f96b9 A26;
+// excel-graph, decision 0188 R6, T-2536). The libm `atan2` fallback (a subnormal x, an
+// overflowing y/x) and a -0 imaginary part with x < 0 are unprobed and not pinned here (T-2736).
+#[test]
+fn imsqrt_of_a_negative_real_takes_excel_atan2_cos_and_sin() {
+    let cases = [
+        (r#"=IMSQRT("-1")"#, "6.1257422745431E-17+i"),
+        (r#"=IMSQRT(TEXT(-1,"0"))"#, "6.1257422745431E-17+i"),
+        ("=IMSQRT(-2.5)", "9.68564897336834E-17+1.58113883008419i"),
+        ("=IMSQRT(-0.0001)", "6.1257422745431E-19+0.01i"),
+        (
+            "=IMSQRT(-3.85841)",
+            "1.20326949922385E-16+1.96428358441443i",
+        ),
+        ("=IMSQRT(4)", "2"),
     ];
     assert_texts(&cases);
 }

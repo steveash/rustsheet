@@ -59,7 +59,7 @@ impl Model {
             start_col = 1;
         }
 
-        let mut caller = self.lambda_caller(&lambda_result, 2);
+        let mut caller = self.lambda_caller(&lambda_result, 2).snapping_root();
         for (i, result_row) in result.iter_mut().enumerate() {
             let col_start = if i == 0 { start_col } else { 0 };
             for (j, slot) in result_row.iter_mut().enumerate().skip(col_start) {

@@ -103,26 +103,43 @@ pub(super) fn yield_start(rate: f64, pr: f64, term: &StartTerm) -> f64 {
 /// value, root or not: with a redemption of 1E+300 Excel returns a yield far below PRICE's root,
 /// what the 100th step reaches (`YIELD(37341,45513,1E-9,105,1E+300,1)` = 78.13551092802992,
 /// bit-exact; probes/yield-newton-domain C, T-2391).
-/// FITTED(T-1592, 370 cells, range unknown)
+/// Range (T-3385): the 370 are the fit lab's `yield` set (basis 0, more than one coupon left).
+/// FITTED(T-1592, 370 cells, basis 0, term 1.3..40.3 years, rate 0..0.5, price 40..160, redemption 50..200, yield -0.081..0.51)
 pub(super) fn excel_yield_newton(
     target: f64,
     start: f64,
     price: impl Fn(f64) -> f64,
     dprice: impl Fn(f64) -> f64,
-) -> Option<f64> {
+) -> Option<NewtonStop> {
     let mut y = start;
-    for _ in 0..100 {
+    for check in 1..=NEWTON_CHECKS {
         let step = (price(y) - target) / dprice(y);
         if !step.is_finite() {
             return None;
         }
         if step.abs() < 1e-10 {
-            return Some(y);
+            return Some(NewtonStop {
+                value: y,
+                converged_on: Some(check),
+            });
         }
         y -= step;
     }
     // The 100th step can still overflow the iterate; inside the loop the next step catches that.
-    y.is_finite().then_some(y)
+    y.is_finite().then_some(NewtonStop {
+        value: y,
+        converged_on: None,
+    })
+}
+
+/// The most steps [`excel_yield_newton`] takes: it tests a step at most this many times.
+pub(super) const NEWTON_CHECKS: u32 = 100;
+
+/// Where [`excel_yield_newton`] stopped: its value, and the check (1 to [`NEWTON_CHECKS`]) whose
+/// step met the 1e-10 test, `None` when no check did and the value is the 100th iterate.
+pub(super) struct NewtonStop {
+    pub(super) value: f64,
+    pub(super) converged_on: Option<u32>,
 }
 
 /// ODDFYIELD: [`excel_yield_newton`] on ODDFPRICE from YIELD's start over the settlement-to-maturity
@@ -137,6 +154,7 @@ pub(super) fn odd_first_yield(odd: &OddArgs<4>, schedule: &OddFirstSchedule) -> 
         |y| schedule.price(y, discount_growth),
         |y| schedule.dprice(y),
     )
+    .map(|stop| stop.value)
 }
 
 impl OddFirstSchedule {

@@ -78,12 +78,13 @@ Items (add one in the PR that implements a rule on web-only evidence, or that fi
 16. **IMSQRT of a negative real** (T-2536; engineering.md "IMSQRT of a negative real is polar through COS and ATAN2").
    ironcalc-calc/ENGINEERING/COMPLEXs.xlsx Sheet1!AL26 `IMREAL(IMSQRT(COMPLEX(-1,0)))` and AL12 (of -12) cache Mac 16.0300's
    libm-like 6.12323399573677E-17 and 2.12115047744981E-16. The web gives 6.1257422745431E-17 for `IMSQRT("-1")` (Excel's
-   COS(ATAN2(-1,0)/2); gen-m9/59a16b5ab566ee5c A6 and 4 more cells). Does Windows desktop give the Mac values? The engine
-   follows the desktop cache (decision 0030 rule 4), and the 5 gen-m9 cells stay known failures.
+   COS(ATAN2(-1,0)/2); gen-m9/59a16b5ab566ee5c A6 and 4 more cells). Does Windows desktop give the Mac values? Still open.
+   The engine follows the web under decision 0188 R6 (T-2536), and COMPLEXs.xlsx AL12 and AL26 are now the known failures.
 17. **IMTAN of a real number** (T-2534, T-2774; engineering.md "IM* trigonometry of a real number is SIN, COS and TAN").
    ironcalc-calc/ENGINEERING/COMPLEXs.xlsx Sheet1!N6 `IMREAL(IMTAN(D6))` (D6 = 5) caches Mac 16.0300's -3.38051500624658,
    the libm double-angle value; the web gives TAN's kernel, -3.38051500624659 (35 gen-m9 cells, probes/t2534-im-trig-real-limit).
-   Does Windows desktop give the web value? The engine keeps the desktop cache, and the web cells stay known failures (T-2774).
+   Does Windows desktop give the web value? Still open. The engine follows the web under decision 0188 R6 (T-2774), and
+   COMPLEXs.xlsx N6 is now the known failure.
    probes/t3054-imtan-real-tan-kernel N1 is N6's own formula on N6's inputs: the web gives -3.38051500624659 there, and TAN's
    kernel in all nine of its discriminating rows (T-3054). Probing those rows on desktop answers the item.
 18. **MEDIAN, LARGE and SMALL over a lifted OFFSET** (T-2065; lookup.md "MEDIAN, LARGE and SMALL over a lifted OFFSET").
@@ -105,6 +106,14 @@ Items (add one in the PR that implements a rule on web-only evidence, or that fi
    workbook (`Book1`) with workbook `loc` and no `Feb!loc`, type `=Feb!loc`: does FORMULATEXT show `=Feb!loc`,
    `=Book1!loc` or something else, and what after the first save? Ours keeps the typed `Feb!loc` until a
    re-parse shows `[0]!loc`.
+23. **IRR at an exact zero root** (T-3410, decision 0196; financial.md "IRR at an exact zero root").
+   ironcalc-calc/FINANCIAL/IRR.xlsx Two Values!C4 `IRR(A4:B4)` on {-4, 4} caches 2.220446049250313E-16 (2^-52; app.xml
+   names Excel Online 16.0300), but Excel for the web gives 0 today, and so does the engine (probes/t3410-irr-zero-root-imcos
+   C1, C2, C4, C5, C8). Type `=IRR({-4,4})`, `=IRR({4,-4})` and `=IRR({-2,1,1})` in Windows desktop Excel: 0, -2^-52 and
+   -2.886801908630332E-12 as on the web (probe C3, C6), or 2^-52 for the first?
+24. **IMCOS of 4+3i** (T-3410, decision 0196; engineering.md, the COMPLEXs.xlsx residue). ironcalc-calc/ENGINEERING/COMPLEXs.xlsx
+   Sheet1!K25 `IMAGINARY(IMCOS(D25))`, D25 = "4+3i", caches Mac 16.0300's 7.58155274274655; the web and the engine give
+   7.58155274274654 (probe C9, C11, C12). Does Windows desktop give the Mac digit?
 
 ## Acceptance criteria
 - [ ] Each item above has its desktop value(s) in docs/excel-semantics/ with the probe or workbook
