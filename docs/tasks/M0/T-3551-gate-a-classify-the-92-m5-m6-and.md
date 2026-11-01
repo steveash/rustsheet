@@ -3,7 +3,7 @@ id: T-3551
 title: "Gate A: classify the 92 M5, M6 and M7 functions with no table or exemption, rule on the volatile ones, and file their table tasks"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
