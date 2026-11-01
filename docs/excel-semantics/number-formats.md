@@ -576,7 +576,7 @@ Rule: `.0`, `.00` after any clock token, not only after seconds, is the second f
 `h.0` → "16.2", `mm.0` → "16.2"; at 5 `[h].0` → "120.0", `[m].0` → "7200.0", `h.0` → "0.0", `mm.0` → "00.0"
 (`mm` is minutes here, not months). `[h].0 General` → "296296.2 2.500000331" (General prints the fraction register).
 Evidence: probes/t3575-elapsed-fraction A1-A14 (excel-graph); t3419-elapsed-after-date-b A19.
-Status: VERIFIED (bare `m.0` unprobed; implemented for `mm.0` only)
+Status: VERIFIED (bare `m.0` and `mm.0` beside date tokens such as `dd mm.0` are unprobed; implemented for `mm.0` anywhere)
 Implemented in: `Parser::parse_part` (formatter/parser.rs).
 Tasks: T-3575
 
