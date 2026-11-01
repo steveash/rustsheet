@@ -61,3 +61,9 @@ probes, so its line leaves eval/baseline/probes.txt when fixed.
 ## Out of scope
 - The visibly-off cdf cells of the same grids (T-3482, T-3475) and every density cell (T-2821, T-3392).
 - The incomplete-beta models themselves: T-3383 builds them; this task ports and scores them on these cells.
+
+## Cells added by gap triage (2026-11-01g)
+`make eval` on origin/main c0e330c2f (excel-graph): one more cdf cell of the a = 5 grid is named by no open task (main
+and every `origin/agent/*` branch), within 15 digits: A43 `BETA.DIST(0.1,5,50,TRUE)`, Excel 0.6385528602726223, ours
+0.6385528602726221 (1 ulp). It joins the 21 cells above under the same criteria.
+- probes-numeric/m9-beta-dist-a5.case.json (1): Calc!A43
