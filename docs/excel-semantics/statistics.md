@@ -1650,8 +1650,8 @@ errors, in the order the code takes them (every ordering UNVERIFIED; T-2425's de
    every call, T-2255 section).
 4. Different cell counts in `values` and `timeline` are `#N/A`, as Microsoft's documentation states. They pair in
    reading order.
-5. A value or time stamp that is text or a boolean is `#VALUE!`. A row with both blank is skipped, and a blank value
-   with a time stamp is a missing point.
+5. A value or time stamp that is text or a boolean is `#VALUE!`. A row with both blank is skipped, a blank value
+   with a time stamp is a missing point, and a blank time stamp beside a value is `#VALUE!`.
 6. The distinct time stamps (at least two, or `#NUM!`) must lie on a constant step, which is the smallest gap, within
    1E-6 steps. Otherwise they must be whole-day dates a constant number of calendar months apart, on one day of the
    month or all on month ends. Otherwise the result is `#NUM!`. A completed series of 200,000 steps or more is
