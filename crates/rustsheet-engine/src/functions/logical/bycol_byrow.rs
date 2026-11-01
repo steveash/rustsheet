@@ -183,20 +183,10 @@ impl Model {
         CalcResult::new_error(Error::CALC, cell, "a LAMBDA returned an array".to_string())
     }
 
-    /// The LAMBDA argument of BYROW or BYCOL. Anything else, an error or an unknown name too, is
-    /// `#VALUE!`: `BYCOL(A1:B3,NA())`, `BYCOL(A1:B3,1)` and a bare `BYCOL(A1:B3,COUNTA)` read from
-    /// a file (probes/eta-reduced-names E5:E21, E81, excel-graph 2026-10-14, T-1466).
-    fn by_slices_lambda(
-        &mut self,
-        arg: &Node,
-        cell: CellReferenceIndex,
-    ) -> Result<CalcResult, CalcResult> {
-        as_lambda(self.evaluate_node_in_context(arg, cell))
-            .map_err(|_| CalcResult::new_error(Error::VALUE, cell, "Expected a LAMBDA".to_string()))
-    }
-
     /// The array and the one-argument LAMBDA caller of a BYROW or BYCOL call, in that order of
-    /// errors (the argument count first).
+    /// errors (the argument count first). Anything but a function taking one argument, an error or
+    /// an unknown name too, is `#VALUE!`: `BYCOL(A1:B3,NA())`, `BYCOL(A1:B3,1)` and a bare
+    /// `BYCOL(A1:B3,COUNTA)` read from a file (probes/eta-reduced-names E5:E21, E81, T-1466).
     fn by_slices_args(
         &mut self,
         args: &[Node],
@@ -206,11 +196,8 @@ impl Model {
             return Err(CalcResult::new_args_number_error(cell));
         }
         let source = self.by_slices_source(&args[0], cell, false, false)?;
-        let lambda_result = self.by_slices_lambda(&args[1], cell)?;
-        Ok((
-            source,
-            self.lambda_caller(&lambda_result, 1).snapping_root(),
-        ))
+        let function = self.evaluate_node_in_context(&args[1], cell);
+        Ok((source, self.helper_caller(&function, 1, cell)?))
     }
 
     /// One BYROW or BYCOL call of `lambda` on the row or column `slice`, bound as a reference.
@@ -464,11 +451,12 @@ impl Model {
             return CalcResult::new_error(error, cell, message);
         }
 
-        if lambda_result.is_error() {
-            return lambda_result.clone();
-        }
-
-        let mut caller = self.lambda_caller(lambda_result, 2).snapping_root();
+        // The function is checked after the sizes: `MAKEARRAY(NA(),1,5)` is `#N/A`
+        // (probes/t3655-lambda-helper-function-argument row 12).
+        let mut caller = match self.helper_caller(lambda_result, 2, cell) {
+            Ok(caller) => caller,
+            Err(error) => return error,
+        };
         let mut result = Vec::with_capacity(rows);
         for r in 1..=rows {
             let mut row = Vec::with_capacity(cols);

@@ -3,7 +3,7 @@ id: T-3655
 title: "MAKEARRAY: probe and match LAMBDA arity errors and the small and boundary sizes"
 milestone: M7
 lane: functions-logic
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -27,11 +27,23 @@ text. Compare how BYROW, BYCOL, MAP, SCAN and REDUCE treat a wrong-arity LAMBDA 
 Code: `fn_makearray` in functions/logical/bycol_byrow.rs.
 
 ## Acceptance criteria
-- [ ] A probe case (excel-graph) covers the arities and sizes above.
-- [ ] The engine matches every probed cell, sharing one arity check with the other LAMBDA helpers; arrays.md states it.
-- [ ] Cells in T-2345, T-2608 or T-2874's scope are left to them.
-- [ ] Every quirk found is written up in docs/excel-semantics/arrays.md in the same PR, with its probe cells cited.
-- [ ] `make check` green; eval known failures only shrink (baseline updated); reviewers approve.
+- [x] A probe case (excel-graph) covers the arities and sizes above.
+- [x] The engine matches every probed cell, sharing one arity check with the other LAMBDA helpers; arrays.md states it.
+- [x] Cells in T-2345, T-2608 or T-2874's scope are left to them.
+- [x] Every quirk found is written up in docs/excel-semantics/arrays.md in the same PR, with its probe cells cited.
+- [x] `make check` green; eval known failures only shrink (baseline updated); reviewers approve.
 
 ## Out of scope
 - Sizes past the grid (T-2608).
+
+## Outcome
+Probes (excel-graph, 2026-11-01): probes/t3655-makearray-arity-sizes (62 formulas: arities, non-LAMBDA third
+arguments, sizes, size against bad function, the other helpers) and probes/t3655-lambda-helper-function-argument (27:
+error and non-LAMBDA functions in MAP/SCAN/REDUCE/BYROW/BYCOL, size-vs-function order, functions passed by name of the
+wrong count, optional parameters). Finding: every LAMBDA helper is one whole-call `#VALUE!` for a function it cannot
+call with its argument count, an error argument included (`MAKEARRAY(2,2,NA())` is `#VALUE!`); optional parameters
+fill the count; MAKEARRAY checks sizes first. The engine gave an array of per-element `#VALUE!` for a wrong count and
+passed an error argument on. Now one check, `Model::helper_caller` (lambda.rs), feeds MAKEARRAY, MAP, BYROW, BYCOL,
+SCAN and REDUCE (BYROW's own `by_slices_lambda` is gone). Sizes (0, negative, fractions below 1, TRUE, FALSE, numeric
+text, references) already matched. arrays.md: "LAMBDA helpers refuse a function they cannot call", "MAKEARRAY sizes:
+zero, negative, booleans, text and references". Eval: the two new probe cases pass (421 cells), no other change.

@@ -22,10 +22,11 @@ impl Model {
             (0, 1, false)
         };
 
-        let lambda_result = self.evaluate_node_in_context(&args[lambda_idx], cell);
-        if lambda_result.is_error() {
-            return lambda_result;
-        }
+        let function = self.evaluate_node_in_context(&args[lambda_idx], cell);
+        let mut caller = match self.helper_caller(&function, 2, cell) {
+            Ok(caller) => caller,
+            Err(error) => return error,
+        };
 
         let data = match self.lambda_cells(&args[array_idx], cell, false, false) {
             Ok(d) => d,
@@ -59,7 +60,6 @@ impl Model {
             start_col = 1;
         }
 
-        let mut caller = self.lambda_caller(&lambda_result, 2).snapping_root();
         for (i, result_row) in result.iter_mut().enumerate() {
             let col_start = if i == 0 { start_col } else { 0 };
             for (j, slot) in result_row.iter_mut().enumerate().skip(col_start) {

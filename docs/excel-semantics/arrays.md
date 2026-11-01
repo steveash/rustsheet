@@ -1543,7 +1543,8 @@ arguments), `MAKEARRAY(2,2,_xleta.POWER)` 1, 1; 2, 4, `MAKEARRAY(2,2,_xleta.IF)`
 below them in the sidecar; T-1660 spill-extent check; ours is one `#CALC!` since T-1664: `CalcResult::is_multi_value`, bycol_byrow.rs; mixed calls, BYCOL, array-constant sources and 1x1 array results are in "BYROW and BYCOL: a LAMBDA result that is an array" above, T-1670). BYROW and BYCOL refuse anything but a LAMBDA with `#VALUE!`, whatever it is: an error
 (`BYCOL(A1:B3,NA())`), a number (`BYCOL(A1:B3,1)`), an unknown `_xleta.` name, and a bare function name read from a file
 (`BYCOL(A1:B3,COUNTA)`, `BYROW(A1:B3,SUM)`: unknown names, xlsx-storage.md). `MAKEARRAY(2,2,_xleta.ABS)` (too many
-arguments) and `BYROW(A1:B3,_xleta.NOW)` give an error excel-graph cannot decode (left pending).
+arguments) and `BYROW(A1:B3,_xleta.NOW)` give an error excel-graph cannot decode (left pending); read through ROWS, COLUMNS and
+INDEX it is a whole-call `#VALUE!` ("LAMBDA helpers refuse a function they cannot call", T-3655).
 `_xleta.IF` called with one argument is accepted, not an argument-count error: it gives `#VALUE!` for a condition that is
 not an error, whatever it is (TRUE, FALSE, 1, 0, text, a blank cell; so `ISLOGICAL(f(TRUE))` is FALSE and `f(TRUE)+1`
 `#VALUE!`), passes an error on (`f(NA())` `#N/A`), and lifts over an array or range condition element by element
@@ -1748,6 +1749,53 @@ is `#VALUE!` from 2^31 columns, EXPAND's threshold ("Arrays past the grid").
 Ours: both sizes read first, then validated; columns past the grid under the cell bound (T-2408).
 Status: VERIFIED (excel-graph)
 Tasks: T-2308, T-2408, T-2452
+
+## LAMBDA helpers refuse a function they cannot call
+Rule: MAKEARRAY, MAP, BYROW, BYCOL, SCAN and REDUCE are one `#VALUE!` for the whole call (not an array of errors, and not the
+argument's own error) when their function argument is not a function that takes the number of arguments they pass (MAKEARRAY,
+SCAN and REDUCE two, BYROW and BYCOL one, MAP one per array). So:
+- a LAMBDA with too few or too many required parameters: `MAKEARRAY(2,2,LAMBDA(x,7))`, `LAMBDA(7)`, `LAMBDA(a,b,c,a+b)`,
+  `LAMBDA([r],ISOMITTED(r))` (one optional parameter cannot take two), also bound by LET (`LET(f,LAMBDA(x,x),MAKEARRAY(2,2,f))`),
+  and `MAKEARRAY(1,1,LAMBDA(x,7))` for a single element (probes/t3655-makearray-arity-sizes rows 2-4, 9, 11, 13, 27; ROWS,
+  COLUMNS and INDEX of each are `#VALUE!`, ERROR.TYPE 3); `BYROW({1;2},LAMBDA(a,b,a))`, `BYCOL({1,2},LAMBDA(a,b,a))`,
+  `MAP({1,2},LAMBDA(a,b,a))`, `MAP({1,2},{3,4},LAMBDA(a,a))`, `SCAN(0,{1,2},LAMBDA(a,a))`, `REDUCE(0,{1,2},LAMBDA(a,a))`,
+  `REDUCE(0,{1,2},LAMBDA(a,b,c,a))` and `BYROW({1;2},LAMBDA(7))` alike (rows 55-60; probes/t3655-lambda-helper-function-argument
+  rows 8, 22);
+- optional parameters may go unpassed and fill the count: `MAKEARRAY(2,2,LAMBDA(r,[c],r))` is 1, 1; 2, 2 with `ISOMITTED(c)`
+  FALSE (both passed), `LAMBDA(r,c,[d],ISOMITTED(d))` TRUE everywhere, `LAMBDA([r],[c],r+c)` and `LAMBDA(r,c,[d],[e],r+c)` 2, 3;
+  3, 4 (rows 5-8, 10); `MAP({1,2},{3,4},LAMBDA(a,b,[c],a+b))`, `MAP({1,2},LAMBDA([a],[b],a))`, `BYROW({1;2},LAMBDA([a],[b],a))` and
+  `SCAN(0,{1,2},LAMBDA(a,b,[c],a+b))` run (function-argument rows 23-26);
+- a function passed by name whose catalog argument counts exclude the count passed: `MAKEARRAY(2,2,_xleta.NOW)`,
+  `_xleta.XLOOKUP` (rows 15-16), `_xleta.ABS`, `MAP({1,2},_xleta.POWER)`, `MAP({1,2},_xleta.NOW)`, `BYROW({1;2},_xleta.NOW)` and
+  `SCAN(0,{1,2},_xleta.ABS)` (function-argument rows 15-19), while `MAKEARRAY(2,2,_xleta.ROUND)` (1, 2 on the diagonal),
+  `_xleta.SUM` and `_xleta.IF` run (row 14; function-argument rows 20-21); `_xleta.IF` with one argument is the known exception
+  ("Functions passed by name");
+- anything else: a number, text, TRUE, a cell holding a number or text, a range, an array constant, an empty argument
+  (`MAKEARRAY(2,2,)`), and an error, whose own error is not passed on: `MAKEARRAY(2,2,NA())`, `MAKEARRAY(2,2,1/0)`,
+  `MAP({1,2},NA())`, `MAP({1,2},1/0)`, `SCAN(0,{1,2},NA())`, `REDUCE(0,{1,2},NA())`, `BYROW({1;2},NA())` and `BYCOL({1,2},1/0)` are all
+  `#VALUE!` (rows 17-26, 61-62; function-argument rows 1-11).
+MAKEARRAY checks its sizes first: `MAKEARRAY(NA(),1,5)` and `MAKEARRAY(NA(),1,LAMBDA(x,1))` are `#N/A`,
+`MAKEARRAY(1,1/0,LAMBDA(x,1))` `#DIV/0!` (function-argument rows 12-14); an invalid size and a bad function are both `#VALUE!`
+(rows 48-54). A LAMBDA that returns a LAMBDA is a `#CALC!` element, not this error (`MAKEARRAY(2,2,LAMBDA(r,c,LAMBDA(x,7)))` is
+2x2, function-argument row 27). Evidence: probes/t3655-makearray-arity-sizes and probes/t3655-lambda-helper-function-argument
+(excel-graph, 2026-11-01, T-3655).
+Ours: every helper takes its caller from `Model::helper_caller` (lambda.rs), which checks the function once before any element
+(`FunctionValue` parameter counts; `eta_takes_count` reads `arg_counts::takes_count`); before T-3655 a wrong count was
+`#VALUE!` per element and MAP, SCAN, REDUCE and MAKEARRAY passed an error argument on.
+Unprobed: whether MAP's, SCAN's and REDUCE's array errors come before the function check (the engine checks the function first;
+BYROW and BYCOL read the array first).
+Status: VERIFIED (excel-graph)
+Tasks: T-3655
+
+## MAKEARRAY sizes: zero, negative, booleans, text and references
+Rule: a size is read as a number the way an arithmetic operand is, then must be a whole number of at least 1. 0, -1, 0.5 and
+-0.5 are `#VALUE!` in either position (`MAKEARRAY(0,0,..)` too), as is FALSE and a blank cell (0); TRUE is 1
+(`MAKEARRAY(TRUE,2,..)` is 1x2, `(2,TRUE,..)` 2x1, also a cell holding TRUE); numeric text, typed or in a cell, is its number
+(`"2"`, `" 2 "`, `"1.0"` and a cell holding the text "2" give 2, 2, 1 and 2), and other text (`"a"`) is `#VALUE!`; 1 is a 1x1 array
+(probes/t3655-makearray-arity-sizes rows 28-47, excel-graph, 2026-11-01, T-3655). The engine matched every cell before T-3655.
+Empty text, error kinds and range arguments are T-2874's; sizes within an ulp of a whole number T-2345's.
+Status: VERIFIED (excel-graph)
+Tasks: T-3655
 
 ## SORTBY with a single-value by_array or a fractional sort_order
 Rule: a by_array sorts the array's rows when it is one column as tall as the array, and its columns when it is one row as wide

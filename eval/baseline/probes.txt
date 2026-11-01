@@ -1810,6 +1810,8 @@ C	probes/t3575-fraction-after-elapsed-b.case.json	30
 C	probes/t3575-fraction-after-elapsed.case.json	15
 C	probes/t3631-rand-randbetween-invariant.case.json	61
 C	probes/t3631-randarray-invariant.case.json	45
+C	probes/t3655-lambda-helper-function-argument.case.json	108
+C	probes/t3655-makearray-arity-sizes.case.json	313
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
 C	probes/table-edits/plain-range-delete-rows-across-edge.case.json	10
