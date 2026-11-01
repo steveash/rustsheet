@@ -90,6 +90,7 @@ ERF's cancellation region gets an explicit treatment.
 - Semantics:
   - statistics.md, T-1778 two-argument bullet: the cancellation cells past 1e-4.
   - statistics.md, T-1040 entry: no argument size is an error for the four functions, up to |x| = 4.5E+298, the
-    two-argument form included. Off the 0.125 grid, ERFC.PRECISE near DBL_MIN is up to 4E-14 off the math.
+    two-argument form included. Off the 0.125 grid, ERFC and ERFC.PRECISE in the deep tail are up to 4.9E-14
+    off the math.
 - Follow-up: T-3794 (owner ruling on R3 for the cancellation region, blocked on the owner).
 - Eval delta: none in the gated suites (tools, tables and sidecars only).

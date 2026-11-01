@@ -343,8 +343,9 @@ Status: VERIFIED (values); the formulation that reproduces the tail error is ope
 No argument size is an error: ERF, ERF.PRECISE, ERFC and ERFC.PRECISE answer a number at every one of the 480
 Gate A points, |x| up to 4.5E+298 (ERFC is 0 for a huge positive x and 2 for a huge negative one; ERF is ±1),
 two-argument ERF included (eval/accuracy/tables/ERF*/s1, excel-graph, 2026-11-01, T-3784).
-Off the grid, the 1e-15 bound does not hold near DBL_MIN: `ERFC.PRECISE(26.5432)` is 2.231994182662762E-308
-against the math's 2.2319941826628525E-308 (4.05E-14 relative; ERFC.PRECISE/s1 A76). That fits the rounding of x*x
+Off the grid, the 1e-15 bound does not hold in the deep tail: `ERFC(23.3041724687551)` is 3.349736741467125E-238
+against the math's 3.34973674146696E-238 (4.9E-14 relative; ERFC/s1 A56) and `ERFC.PRECISE(26.5432)` is
+2.231994182662762E-308 against 2.2319941826628525E-308 (4.05E-14; ERFC.PRECISE/s1 A76). That fits the rounding of x*x
 in the ERFC kernel's EXP(-fl(x*x)) (T-1778 entry); on the 0.125 grid x*x is exact.
 
 ## ERFC core factor: candidates that do not reproduce Excel (T-1187)

@@ -23,9 +23,10 @@ Sources:
 
 The two-argument cancellation region (decision 0188 R3). Because Excel subtracts two rounded values, its error
 relative to erf(b) - erf(a) is up to about 2^-52 * max(|erf a|, |erf b|) / |erf(b) - erf(a)|: where the two values
-nearly cancel (b a few ulps above a, or both deep in the same tail, as `ERF(5,6)`), Excel is more than 1e-4 off the
-math: 602 of the 915 two-argument cells of probes-numeric `t1916-erf-wrappers` are (up to a relative 3.28, with the
-opposite sign). Those are R3 candidates, and their ruling is the owner's (T-3794). The table leaves the region out,
+nearly cancel (b a few ulps above a, or both deep in the same tail), Excel can be more than 1e-4 off the math: 602
+of the 915 two-argument cells of probes-numeric `t1916-erf-wrappers` are, up to a relative 3.28 with the opposite
+sign (`ERF(0.5000000000000002,0.5000000000000003)` is -2.220446049250313E-16 against 9.756E-17). A milder deep-tail
+pair such as `ERF(5,6)` is only 9.3E-7 off but still inside the excluded region below. Those are R3 candidates, and their ruling is the owner's (T-3794). The table leaves the region out,
 so the gate does not depend on that ruling: a two-argument point is redrawn while |erf(b) - erf(a)| < `CANCEL` *
 max(|erf a|, |erf b|), which bounds Excel's subtraction error near 2.2E-7 relative, far inside R3's 1e-4. The
 region's Excel cells stay in `t1916-erf-wrappers`, so no behaviour goes unchecked; they are just not Gate A
