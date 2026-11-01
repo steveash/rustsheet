@@ -139,6 +139,8 @@ pub(super) fn format_fraction(
         format!("{numerator}")
     };
     let denominator_digits = format!("{denominator}");
+    // A numeral byte maps every digit the fraction prints (`[$-1B000409]# ?/?` on 12.5 is
+    // "一二 一/二"; probes/t3532-numeral-digit-fields C14), the denominator's own digits too (unprobed).
     let denominator_text = match &fraction.denominator {
         Denominator::Fixed(digits) if fixed.is_some() => digits.clone(),
         // The code's own digits print, cut to the picked denominator's length: 512/625 under
@@ -149,6 +151,7 @@ pub(super) fn format_fraction(
         }
         Denominator::Placeholders(_) => fill_left(&denominator_digits, &denominator_kinds),
     };
+    let denominator_text = part.numerals.digits(&denominator_text);
 
     let separator = separator_kind(
         blank.then_some(blank_spaces),
@@ -179,13 +182,13 @@ pub(super) fn format_fraction(
             _ if in_separator && separator == Separator::Dropped => {}
             _ if in_separator && separator == Separator::Spaces => push_spaces(&mut text, token),
             TextToken::Digit(_) if index < fraction.numerator_start => {
-                text.push_str(&integer_fill.next().unwrap_or_default());
+                text.push_str(&part.numerals.digits(&integer_fill.next().unwrap_or_default()));
             }
             _ if in_fraction && blank && !blank_spaces => {}
             // Every placeholder and literal of a blank fraction takes its width in spaces.
             _ if in_fraction && blank => push_spaces(&mut text, token),
             TextToken::Digit(_) if in_fraction => {
-                text.push_str(&numerator_fill.next().unwrap_or_default());
+                text.push_str(&part.numerals.digits(&numerator_fill.next().unwrap_or_default()));
             }
             TextToken::Literal(c) => text.push(*c),
             TextToken::Text(t) => text.push_str(t),
