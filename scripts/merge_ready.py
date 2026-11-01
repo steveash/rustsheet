@@ -49,6 +49,8 @@ import merge_lock
 import tasks
 from gh_client import Client, GhError, field_of, int_of, label_names, text_of  # noqa: F401 (re-exported)
 from merge_lock import GitError, git
+from suite_meta import suites_on
+from visible_lock import RETIRED_LOCK, VISIBLE_PARITY, case_on, in_commit, visible_rises
 
 ROOT = Path(__file__).resolve().parent.parent
 REMOTE = "origin"
@@ -470,32 +472,23 @@ class Repo:
         return [p for p in out.split("\0") if p]
 
     def checked_baselines(self) -> set[str]:
-        """The known-failure lists CI's eval gate checks against the engine: `eval/baseline/<suite>.txt`
-        of every suite on the fetched `main` with `gate = true` and no `[fetch]` (the eval job fetches
-        nothing). Fetched suites (poi, corpus-bench), ungated ones and visible-parity.json are out."""
-        main = f"refs/merge-ready/{BASE_BRANCH}"
-        found = set()
-        suites = git("ls-tree", "--name-only", f"{main}:eval/suites", root=self.root, check=False)
-        for suite in suites.stdout.split() if suites.returncode == 0 else []:
-            shown = git("show", f"{main}:eval/suites/{suite}/suite.toml", root=self.root, check=False)
-            if shown.returncode != 0:
-                continue
-            try:
-                meta = tomllib.loads(shown.stdout)
-            except tomllib.TOMLDecodeError:
-                continue
-            name = meta.get("name", suite)  # CI names the list after the suite's `name`
-            if meta.get("gate") is True and "fetch" not in meta and isinstance(name, str):
-                found.add(f"{BASELINE_DIR}{name}.txt")
-        return found
+        """The lists CI's eval gate checks against the engine: `eval/baseline/<suite>.txt` of every
+        suite on the fetched `main` with `gate = true` and no `[fetch]` (the eval job fetches
+        nothing), and the visible-parity lock (decision 0219). Fetched suites (poi, corpus-bench)
+        and ungated ones are out."""
+        suites = suites_on(self.root, f"refs/merge-ready/{BASE_BRANCH}")
+        # CI names each list after the suite's `name`.
+        return {VISIBLE_PARITY} | {f"{BASELINE_DIR}{s.name}.txt" for s in suites if s.gated and not s.fetched}
 
     def carry_problem(self, prev: str, head: str) -> str | None:
         """Why `head` is not a carry-over merge of `main` into `prev` (SPEC-0027 section 2,
         "Carry-over"), or None when it is: a merge commit whose first parent is `prev`, whose
         second parent is on `main`, and whose tree is the plain merge of its parents
         (`git merge-tree --write-tree`), except that the content of a list in `checked_baselines`
-        may differ, without a failure line neither parent had: a conflict there resolved and the
-        lists re-recorded (decision 0093). The eval
+        may differ, without a failure line neither parent had or a visible-parity line that
+        `visible_rises` refuses (decision 0219): a conflict there resolved and the
+        lists re-recorded (decision 0093). The retired `RETIRED_LOCK` may be deleted when `main`
+        has none (a PR from before decision 0219 modified it). The eval
         gate on the head, which marking requires green, checks exactly those lists (decision 0207).
         Anything else (another file, an addition, deletion, rename or mode change) breaks the carry."""
         parents = self.git("rev-list", "--parents", "-n", "1", head).split()[1:]
@@ -512,7 +505,8 @@ class Repo:
         # After the tree: the conflicted paths, a blank line, then informational messages.
         rest = lines[1:]
         conflicted = rest[: rest.index("")] if "" in rest else rest
-        lists = self.checked_baselines()
+        retired = not in_commit(self.root, parents[1], RETIRED_LOCK)
+        lists = self.checked_baselines() | ({RETIRED_LOCK} if retired else set())
         if any(p not in lists for p in conflicted):
             return "the merge is not clean: it conflicts outside the eval-gated baseline lists"
         raw = self.git("diff-tree", "-r", "-z", "--no-renames", tree, head).split("\0")
@@ -521,7 +515,9 @@ class Repo:
             if not meta:
                 continue
             old_mode, new_mode, *_, status = meta.lstrip(":").split()
-            if path not in lists or status != "M" or old_mode != "100644" or new_mode != "100644":
+            if path == RETIRED_LOCK and retired and status == "D":
+                continue
+            if path == RETIRED_LOCK or path not in lists or status != "M" or old_mode != "100644" or new_mode != "100644":
                 return (f"the merge is not clean: {path} differs from a plain merge of its parents, "
                         "and only the content of an eval-gated baseline list may")
             added = self.new_failures(path, parents, head)
@@ -531,14 +527,20 @@ class Repo:
         return None
 
     def new_failures(self, path: str, parents: Sequence[str], head: str) -> list[str]:
-        """The known-failure lines (`F` and `TF`) of list `path` in `head` that no parent's list has.
-        The eval gate only checks that a list matches the engine, so a regression recorded in a
-        merge would pass it; the carry refuses one instead (decision 0207)."""
+        """The known-failure lines (`F` and `TF`) of list `path` in `head` that no parent's list has;
+        for the visible-parity lock, its `visible_rises` against `main` (the second parent). The eval
+        gate only checks that a list matches the engine (and holds each case to the lock), so a
+        regression recorded in a merge would pass it; the carry refuses one (decisions 0207, 0219)."""
+
+        def text(commit: str) -> str:
+            shown = git("show", f"{commit}:{path}", root=self.root, check=False)
+            return shown.stdout if shown.returncode == 0 else ""
+
+        if path == VISIBLE_PARITY:
+            return visible_rises(text(head), text(parents[1]), case_on(self.root, parents[1]))
 
         def failures(commit: str) -> set[str]:
-            shown = git("show", f"{commit}:{path}", root=self.root, check=False)
-            text = shown.stdout if shown.returncode == 0 else ""
-            return {line for line in text.splitlines() if line.startswith(("F\t", "TF\t"))}
+            return {line for line in text(commit).splitlines() if line.startswith(("F\t", "TF\t"))}
 
         known = set().union(*(failures(c) for c in parents))
         return sorted(failures(head) - known)

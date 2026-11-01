@@ -10,6 +10,11 @@ by part on the IM* text (`Fit.complex_text`).
 - `im-hyperbolic`: the old cells the selectors were fitted on (T-2231, T-2535, T-2629, T-2778).
 - `im-hyperbolic-fresh`: the fresh log-uniform sweep no fit saw
   (probes-numeric/t3525-im-hyperbolic-fresh-sweep, docs/research/t3525/gen_sweep.py).
+- `im-small-imag`: IMSIN and IMCOS with |y| <= 0.0105, drawn after T-3545 froze their small-y kernel
+  (probes-numeric/t3545-imsin-imcos-small-imag-sweep, docs/research/t3545/gen_sweep.py).
+- `im-hyperbolic-log`: the log form's cells (|x| near 708-710.5) T-3546 chose Excel's EXP on, and
+  `im-hyperbolic-log-fresh`, its sweep drawn after that choice (docs/research/t3546/libm-exp.patch
+  makes the libm build).
 """
 
 from __future__ import annotations
@@ -64,34 +69,63 @@ _NOTES = [
     "Engine builds are the selector's candidates: --build NAME=PATH; docs/research/t3525/*.patch make them.",
 ]
 
+
+def _fit(name: str, description: str, cases: list[str]) -> Fit:
+    """One IM* fit: the shared pattern, reference, error cells and complex-text scoring."""
+    return Fit(
+        name=name,
+        description=description,
+        cases=cases,
+        pattern=PATTERN,
+        candidates=candidates,
+        errors=True,
+        complex_text=True,
+        notes=_NOTES,
+    )
+
+
 FITS = [
-    Fit(
-        name="im-hyperbolic",
-        description="IMSINH/IMCOSH/IMSIN/IMCOS on the cells the T-2231/T-2629 selectors were fitted on",
-        cases=[
+    _fit(
+        "im-hyperbolic",
+        "IMSINH/IMCOSH/IMSIN/IMCOS on the cells the T-2231/T-2629 selectors were fitted on",
+        [
             "probes/eng-im-overflow-edges",
             "probes/eng-im-overflow-edges-2",
             "probes/t2535-imsinh-imcosh-kernel-sweep",
             "probes/t2629-imcosh-imsinh-y-sweep",
             "probes/t2778-imsinh-sign-sweep",
         ],
-        pattern=PATTERN,
-        candidates=candidates,
-        errors=True,
-        complex_text=True,
-        notes=_NOTES,
     ),
-    Fit(
-        name="im-hyperbolic-fresh",
-        description="IMSINH/IMCOSH/IMSIN/IMCOS on T-3525's fresh log-uniform sweep (decision 0188 R4.2)",
-        cases=[
+    _fit(
+        "im-hyperbolic-fresh",
+        "IMSINH/IMCOSH/IMSIN/IMCOS on T-3525's fresh log-uniform sweep (decision 0188 R4.2)",
+        [
             "probes-numeric/t3525-im-hyperbolic-fresh-sweep",
             "probes-numeric/t3525-im-hyperbolic-log-band-sweep",
         ],
-        pattern=PATTERN,
-        candidates=candidates,
-        errors=True,
-        complex_text=True,
-        notes=_NOTES,
+    ),
+    _fit(
+        "im-small-imag",
+        "IMSIN/IMCOS with a small imaginary part, T-3545's sweep drawn after the freeze",
+        [
+            "probes-numeric/t3545-imsin-imcos-small-imag-sweep",
+            "probes-numeric/t3545-imsin-imcos-tiny-imag-sweep",
+        ],
+    ),
+    _fit(
+        "im-hyperbolic-log",
+        "IMSINH/IMCOSH in log space: the cells T-3546 chose Excel's EXP on (cut and band probes)",
+        [
+            "probes/eng-im-overflow-edges",
+            "probes/eng-im-overflow-edges-2",
+            "probes-numeric/t3525-im-hyperbolic-log-band-sweep",
+            "probes-numeric/t3546-imsinh-neg-cut-coarse",
+            "probes-numeric/t3546-imsinh-neg-cut-fine",
+        ],
+    ),
+    _fit(
+        "im-hyperbolic-log-fresh",
+        "IMSINH/IMCOSH in log space on T-3546's sweep drawn after choosing Excel's EXP (decision 0188 R4.2)",
+        ["probes-numeric/t3546-im-hyperbolic-log-exp-fresh-sweep"],
     ),
 ]

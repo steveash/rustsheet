@@ -20,3 +20,22 @@ accuracy/BETA.DIST/s1!Calc!A184	T-3577	cdf at tiny shapes: the engine is 0; Exce
 accuracy/BETA.DIST/s1!Calc!A186	T-3577	cdf at a huge beta: Excel #NUM!, the engine and the math 0
 accuracy/BETA.DIST/s1!Calc!A187	T-3577	cdf at tiny shapes: the engine is 0; Excel matches the math
 accuracy/BETA.DIST/s1!Calc!A193	T-3577	cdf at tiny shapes: the engine is 0; Excel matches the math
+accuracy/NPER/s1!Calc!A121	T-3367	R3 point: the engine reproduces Excel's tiny-rate NPER, not the math
+accuracy/NPER/s1!Calc!A130	T-3367	R3 point: the engine reproduces Excel's tiny-rate NPER, not the math
+accuracy/NPER/s1!Calc!A133	T-3367	R3 point: the engine reproduces Excel's tiny-rate NPER, not the math
+accuracy/NPER/s1!Calc!A135	T-3367	R3 point: the engine reproduces Excel's tiny-rate NPER, not the math
+accuracy/NPER/s1!Calc!A142	T-3367	R3 point: the engine reproduces Excel's tiny-rate NPER, not the math
+accuracy/NPER/s1!Calc!A143	T-3367	R3 point: the engine reproduces Excel's tiny-rate NPER, not the math
+accuracy/NPER/s1!Calc!A151	T-3367	R3 point: the engine reproduces Excel's tiny-rate NPER, not the math
+accuracy/NPER/s1!Calc!A152	T-3367	R3 point: the engine reproduces Excel's tiny-rate NPER, not the math
+accuracy/NPER/s1!Calc!A153	T-3367	R3 point: the engine reproduces Excel's tiny-rate NPER, not the math
+accuracy/NPER/s1!Calc!A156	T-3367	R3 point: the engine reproduces Excel's tiny-rate NPER, not the math
+accuracy/NPER/s1!Calc!A158	T-3367	R3 point: the engine reproduces Excel's tiny-rate NPER, not the math
+accuracy/NPER/s1!Calc!A162	T-3367	R3 point: the engine reproduces Excel's tiny-rate NPER, not the math
+accuracy/RATE/s1!Calc!A19	T-3585	Excel #NUM! where the math has a root
+accuracy/RATE/s1!Calc!A128	T-3585	Excel #NUM! where the math has a root
+accuracy/RATE/s1!Calc!A129	T-3585	Excel #NUM! where the math has a root
+accuracy/RATE/s1!Calc!A137	T-3585	Excel #NUM! where the math has a root
+accuracy/RATE/s1!Calc!A158	T-3585	Excel #NUM! where the math has a root
+accuracy/RATE/s1!Calc!A278	T-3585	Excel #NUM! where the math has a root
+accuracy/RATE/s1!Calc!A291	T-3585	Excel #NUM! where the math has a root

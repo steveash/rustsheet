@@ -23,6 +23,8 @@ IRR returns Excel's value to 15 significant digits on the conventional cash-flow
   stop variant gives Excel's bits (the T-3347 entry lists the variants tried).
 - Cells: probes/t3347-irr-conventional-num A10-A13, A16, A17, A19, A37-A40; probes-numeric/t3347-irr-conventional-sweep
   (the numeric_close cells after T-3347; `make eval-show CASE=...`). Exact roots in each case's `.roots.tsv`.
+- Digit cells of T-3347's hold-out, right type, beyond 15 digits (gap triage 2026-11-01; its `#NUM!` cells are T-3411's):
+- probes-numeric/t3347-irr-conventional-holdout.case.json (4): P!A12, A20, A22, A41
 - Code: `irr_conventional`, `irr_newton` in crates/rustsheet-engine/src/functions/financial/financial_util.rs.
 - Related: T-2928 (blocked: the v = 0 fallback's digits, the same question for non-conventional flows).
 - Any fit follows decision 0188 R4 (hold-out split, fresh sweep, `FITTED` tag via T-3361).
