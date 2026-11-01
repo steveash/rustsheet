@@ -289,6 +289,7 @@ probes/table-edits/table-insert-row-this-row-above-header.case.json	15
 probes/table-edits/table-insert-row-this-row-inside-data.case.json	13
 probes/text-elapsed-two-tokens.case.json	1
 probes/text-locale-calendars.case.json	2
+probes/text-locale-regional-lcids-2.case.json	21
 probes/typed-mixed-fraction-number-format.case.json	1
 probes/xirr-back-dated-stop.case.json	1
 probes/xnpv-empty-values-cell.case.json	1
