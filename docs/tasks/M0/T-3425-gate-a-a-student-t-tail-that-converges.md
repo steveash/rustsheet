@@ -3,7 +3,7 @@ id: T-3425
 title: "Gate A: a Student t tail that converges at df above 5E6 in the generator"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
