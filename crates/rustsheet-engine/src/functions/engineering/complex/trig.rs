@@ -267,7 +267,8 @@ pub(super) fn imcos((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
         return num_error(cell);
     }
     let (y_sinh, y_cosh) = trig_sinh_cosh(y);
-    finite_complex_result(x.cos() * y_cosh, -x.sin() * y_sinh, suffix, cell)
+    let (x_sin, x_cos) = trig_sin_cos(x);
+    finite_complex_result(x_cos * y_cosh, -x_sin * y_sinh, suffix, cell)
 }
 
 pub(super) fn imcosh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
@@ -437,7 +438,8 @@ pub(super) fn imsin((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> C
         return num_error(cell);
     }
     let (y_sinh, y_cosh) = trig_sinh_cosh(y);
-    finite_complex_result(x.sin() * y_cosh, x.cos() * y_sinh, suffix, cell)
+    let (x_sin, x_cos) = trig_sin_cos(x);
+    finite_complex_result(x_sin * y_cosh, x_cos * y_sinh, suffix, cell)
 }
 
 pub(super) fn imsinh((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult {
