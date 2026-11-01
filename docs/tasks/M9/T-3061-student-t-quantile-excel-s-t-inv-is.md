@@ -89,6 +89,11 @@ of Excel's value. Time-boxed (decision 0056).
   - `t_upper_quantile` serves T.INV.2T/TINV. CONFIDENCE.T is `fn_confidence_t` in normal.rs.
   - Keep directive 5: the work stays bounded, and the lift table charges `T_QUANTILE_WEIGHT`.
 
+- T-2511 (2026-10-31) implemented this rule (`t_dist::t_rounded_y_quantile`): 65 of the 75 cells are within 15
+  digits. Left: probes-numeric m9-t-inv-2t A112, A126; m9-confidence-t A35, A40, A45; m9-t-nonint-df A60, A66;
+  m9-t-edges A38; t1518-t-df-cut A17; probes stat-argument-modes H518. At q = 0.05 Excel's y is about 2 ulps from the
+  nearest crossing (statistics.md); the bit-level remainder is T-3399.
+
 ## Acceptance criteria
 - [ ] At least the 60 cells that fit with the correctly rounded y are within half a unit of the 15th significant
       digit of Excel's value in `make eval`, bit-exact where the fit says 0 ulp. The 15 that need Excel's own y pass

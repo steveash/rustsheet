@@ -47,6 +47,12 @@ budget runs out at a smaller shape than statrs' 3.5E8 (T-1872's 3-million-sample
 is now `#NUM!` (530,000 terms over its cdfs), shape 3E8 still finishes. docs/excel-semantics/statistics.md
 "Incomplete gamma: accurate kernel (T-0971)" and "Incomplete gamma: per-call cap and lifting (T-1872)".
 
+T-3131 (2026-10-31, unit test `a_call_past_its_cap_is_nan`): `gamma_quantile(1E7, 1, 0.5)` and `(3E7, 1E-6, 1E-5)`
+are already NaN on main 1248554ae, before and after T-3131's Wilson-Hilferty start, so the cap binds well below 3E8
+now. The start uses the lower tail's probability, so for a tiny upper-tail p (`CHISQ.INV.RT(1E-300,df)`, the lower tail
+rounding to 1) it is NaN and the refinement halves the whole range, which can spend the budget sooner from about
+shape 2E6 to 1E9 (statrs' search also took the lower tail). The re-run sweep should cover both tails.
+
 Gap triage 2026-10-31c (`make eval` on origin/main 0c917f9fe, excel-graph): 20 more POISSON and POISSON.DIST cdf
 cells, 1 or 2 ulp off and within 15 significant digits, that no open task listed. All have a mean below about
 4(k + 1) (mostly the lower-tail P near 1 at k above the mean, and the centre at k = mean = 100), so not the deep upper
@@ -90,3 +96,14 @@ tail T-3269 owns. Examples, Excel vs ours:
 
 ## Phase 1 triage (T-0090, 2026-10-27)
 Two visibly-off gen-m9 cells matched this parked task: IRR gen-m9/d0854366830dcdee Calc!A216 is handed to T-2131 and FREQUENCY gen-m9/fd9fa22d212080d6 Calc!A32 (an error-kind cell) to T-2636.
+
+## Cells added by gap triage (2026-10-31m)
+`make eval` on origin/main 900fbc1bf (excel-graph). An ownership check over every failing Excel cell
+(`scripts/exit_owners.py`'s `owned` rule over the open task files of origin/main and of every `origin/agent/*` branch
+pushed since 2026-10-29) found these cells named by no open task. All are within 15 significant digits of Excel (Phase
+1b), so they join this deferred owner of their kernel. POISSON.DIST/POISSON cumulative cells, 1 to 2 ulp (the upper
+incomplete gamma at a small integer shape): `POISSON(2,3,TRUE)` Excel 0.4231900811268434, ours ...4353, and its coerced-
+argument twins on t1048; POISSON.xlsx D8, D10.
+- probes-numeric/t1048-poisson.case.json (12): Calc!A3, B3, A5, B5, A13, B13, A17, B17, A22, B22, A27, B27
+- ironcalc-calc/STATISTICAL/POISSON.xlsx (2): POISSON.DIST!D8, D10
+- gen-m9/b9a32ce9a1fd0d71.case.json (1): Calc!A69

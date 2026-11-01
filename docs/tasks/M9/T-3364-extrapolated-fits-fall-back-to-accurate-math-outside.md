@@ -26,6 +26,10 @@ and true-quantile branches keep matching Excel.
     `ASYMPTOTIC_MIN_SHAPE`).
 - The `FITTED(T-XXXX, n_cells, range)` tag comes from T-3361; this task uses each site's recorded range.
 - T-3354 (P0) may touch the F density first; build on it.
+- From T-3350 (2026-10-31), cells on the R3 closed-form branch (ours is Excel's closed form, about 2.66E-4 from the
+  math; owned with T-3272 for the digits):
+  - probes/t3350-chisq-inv-huge-df A301:A351 (visibly off: A301, A313, A325, A326, A337, A338, A349, A350, A351);
+  - probes-numeric/t3350-r4-chisq-inv-sweep A122, A127, A155 (outside both Gate A bounds).
 
 ## Acceptance criteria
 - [ ] Each piece above applies only inside its recorded `FITTED` range; outside it the code computes the accurate value

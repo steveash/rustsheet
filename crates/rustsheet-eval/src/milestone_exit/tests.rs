@@ -136,6 +136,7 @@ fn probe_failure_fails_alone() {
         "a bit-level probe failure is Phase 1b's (decision 0114)"
     );
     r.probe_milestones[0].visibly_off = 1;
+    r.probe_milestones[0].r1c_off = 1; // unclassified: R1(c) counts it
     let row = m5(&r);
     assert_eq!(row.probes_met, Some(false));
     assert!(!row.exit);
@@ -276,6 +277,7 @@ fn m2_needs_ten_thousand_gen_cells_none_visibly_off_and_no_coverage() {
     // A visibly-off probe of the M0-M2 row is not met.
     let mut r = m2_report((M2_MIN_SCORED, 0));
     r.probe_milestones[1].visibly_off = 1;
+    r.probe_milestones[1].r1c_off = 1; // unclassified: R1(c) counts it
     assert_eq!(row(&r, "M2").probes_met, Some(false));
 }
 
@@ -444,6 +446,7 @@ fn m7_needs_ten_thousand_gen_cells_at_the_rate_and_no_extent_failure() {
     // A visibly-off M7 probe cell is not met.
     let mut r = m7_report((M7_MIN_SCORED, 0));
     r.probe_milestones[1].visibly_off = 1;
+    r.probe_milestones[1].r1c_off = 1; // unclassified: R1(c) counts it
     assert!(!row(&r, "M7").exit);
 }
 
@@ -746,6 +749,7 @@ fn m9_a_function_below_the_rate_fails_alone() {
 fn m9_a_visibly_off_probe_fails_alone() {
     let mut r = m9_report(73_160, 0, false);
     r.probe_milestones.last_mut().unwrap().visibly_off = 1;
+    r.probe_milestones.last_mut().unwrap().r1c_off = 1; // unclassified: R1(c) counts it
     let row = m9(&r);
     assert_eq!(row.probes_met, Some(false));
     assert_eq!((row.calc_met, row.rate_met), (Some(true), Some(true)));
@@ -851,6 +855,7 @@ fn m8_a_blocked_subset_case_fails_alone() {
 fn m8_a_visibly_off_probe_fails_alone() {
     let mut r = m8_report(0, Some((2_000, 0)));
     r.probe_milestones.last_mut().unwrap().visibly_off = 1;
+    r.probe_milestones.last_mut().unwrap().r1c_off = 1; // unclassified: R1(c) counts it
     let row = m8(&r);
     assert_eq!(row.probes_met, Some(false));
     assert!(row.more_suites.iter().all(|s| s.met == Some(true)));
@@ -895,6 +900,7 @@ fn m10_report(
     r.probe_milestones.push(MilestoneRow {
         milestone: "M10".into(),
         visibly_off: probe_off,
+        r1c_off: probe_off,
         text_items: 415,
         text_failing: probe_text_failing,
         ..MilestoneRow::default()
@@ -986,3 +992,5 @@ fn m10_without_gen_m10_is_not_applicable() {
     assert_eq!((row.gen_met, row.gen_text_items), (None, None));
     assert!(!row.exit);
 }
+
+mod r1c;

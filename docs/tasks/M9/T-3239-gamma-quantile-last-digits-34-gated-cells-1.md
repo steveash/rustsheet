@@ -76,3 +76,23 @@ probe of `DOLLARDE(0.1,28)-10/28` would show, or this cell is an exception to th
 
 ## Out of scope
 - Visibly-off quantile cells (T-3146, T-3238).
+
+## Cells added by gap triage (2026-10-31m)
+`make eval` on origin/main 900fbc1bf (excel-graph). An ownership check over every failing Excel cell
+(`scripts/exit_owners.py`'s `owned` rule over the open task files of origin/main and of every `origin/agent/*` branch
+pushed since 2026-10-29) found these cells named by no open task. All are within 15 significant digits of Excel (Phase
+1b), so they join this deferred owner of their kernel. Gamma quantiles 1 to 6 ulp off: GAMMA.INV at shape 0.5 on t3012
+(A23, A24 at scale 1; B20 to B24 at scale 1E15), and CHISQ.INV, CHISQ.INV.RT, CHIINV, GAMMA.INV and GAMMAINV on gen-m9
+and the stat argument-modes probe.
+- probes/t3012-gamma-inv-small-shape.case.json (7): S!A23, A24, B20, B21, B22, B23, B24
+- probes/stat-argument-modes.case.json (1): Sheet1!H144
+- gen-m9/06b4e8f5de409d5e.case.json (2): Calc!A215, A250
+- gen-m9/4250f880ab640c49.case.json (1): Calc!A5
+- gen-m9/4e55500bb8ad3cd8.case.json (1): Calc!A111
+- gen-m9/60b0b6e69ad35a45.case.json (1): Calc!A88
+- gen-m9/984cba67bbe6972b.case.json (2): Calc!A13, A141
+- gen-m9/a013a45a8fbcab4f.case.json (1): Calc!A338
+- gen-m9/a5828d3925575713.case.json (1): Calc!A326
+- gen-m9/c468f5046aadfbbc.case.json (1): Calc!A14
+- gen-m9/cde551ea787f713a.case.json (1): Calc!A347
+- gen-m9/eced4bb6a0234c9e.case.json (1): Calc!A173

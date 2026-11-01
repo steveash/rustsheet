@@ -1,6 +1,7 @@
 //! [`Txn::log_typed_fill`]: the cells and the table a typed formula changes beside its own cell,
 //! as a calculated column (T-2958, T-3024), or a typed formula or constant changes by growing its
-//! table (T-2968, T-3218).
+//! table (T-2968, T-3218), and [`Txn::set_table_column_formula`], a column marked calculated as a
+//! loaded workbook marks it (T-3033).
 
 use super::diff::Key;
 use super::{Txn, Undo};
@@ -8,6 +9,27 @@ use crate::error::{EditError, RefError};
 use crate::refs::CellRef;
 
 impl Txn<'_> {
+    /// Makes column `column` (0-based, within the table) of table `table` a calculated column
+    /// whose formula is `formula`, in file form without `=` (xlsx's `calculatedColumnFormula`), as
+    /// a workbook Excel saved with one loads: no cell changes, and a formula typed into the column
+    /// later re-fills every data row (docs/excel-semantics/references.md "Calculated columns",
+    /// rule 9).
+    ///
+    /// # Errors
+    /// [`EditError::Table`] when there is no such table or column.
+    pub fn set_table_column_formula(
+        &mut self,
+        table: &str,
+        column: usize,
+        formula: &str,
+    ) -> Result<(), EditError> {
+        let before = (self.model.set_table_column_formula(table, column, formula))
+            .map_err(EditError::Table)?;
+        self.sheet_op = true;
+        self.undo.push(Undo::TableBefore(Box::new(before)));
+        Ok(())
+    }
+
     /// Logs what typing `text` into `cell` (engine `key`, on sheet index `sheet`) writes besides
     /// the cell: the other rows of its table column that it fills as a calculated column, and the
     /// table as it was, which the fill marks as a calculated column or the text grows by a

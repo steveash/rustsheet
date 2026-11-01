@@ -7,6 +7,8 @@
 //! - `call.rs`: `lift_call` and its read phase, for the functions in the table.
 //! - `driver.rs`: the broadcasting core, `lift_values`, which the *IF(S), AGGREGATE, IFS, SWITCH
 //!   and lookup lifts call directly (moved from `if_ifs.rs` by T-1784).
+//! - `keyed.rs`: `lift_values_keyed`, a lookup's lift over a tailed key continued from its head
+//!   to its tail (SPEC-0020 Amendment 2, T-3221).
 //! - `broadcast_arg.rs`: `BroadcastArg`, a branch of IF over an array condition, IFERROR's and
 //!   IFNA's fallback or an arm of CHOOSE over an index array, broadcast over the output (T-1564).
 //!
@@ -16,6 +18,7 @@ mod arg_buf;
 mod broadcast_arg;
 mod call;
 mod driver;
+mod keyed;
 mod kinds;
 mod table_functions;
 #[cfg(test)]
@@ -24,6 +27,8 @@ mod tests;
 pub(crate) use arg_buf::ArgBuf;
 pub(crate) use broadcast_arg::BroadcastArg;
 pub(crate) use driver::{broadcast_shape, grid_dims, Kernel, LiftCost, LiftOptions, LiftedArg};
+#[cfg(test)]
+pub(crate) use keyed::LIFT_TALLY;
 pub(crate) use kinds::{ArgKind, ArgKinds, CallResult};
 pub(crate) use table_functions::lifting_table_functions;
 

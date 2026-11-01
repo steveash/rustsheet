@@ -1,0 +1,25 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "source": {
+  "kind": "excel-graph",
+  "application": "fixture (not Excel output)",
+  "produced_at": "2026-10-31T00:00:00Z",
+  "input_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+ },
+ "sheets": {
+  "Calc": {
+   "A1": {
+    "t": "n",
+    "v": 1.4142135623730951
+   },
+   "A2": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "A3": {
+    "t": "n",
+    "v": 3
+   }
+  }
+ }
+}

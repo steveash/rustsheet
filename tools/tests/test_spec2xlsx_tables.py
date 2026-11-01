@@ -200,3 +200,21 @@ def test_calculated_column_writes_the_formula_and_leaves_the_cells() -> None:
 def test_calculated_column_must_be_inside_the_table() -> None:
     with pytest.raises(ValueError, match="calculated column"):
         _parts({"tables": [{"name": "Data", "ref": "A1:B5", "calculated": {"D": "=1"}}]})
+
+
+def test_table_without_a_header_row_names_its_columns_column1_on() -> None:
+    parts = _parts({"tables": [{"name": "Data", "ref": "A2:B4", "header_row": False}]})
+    table = parts["xl/tables/table1.xml"]
+    assert 'ref="A2:B4"' in table
+    assert 'headerRowCount="0"' in table
+    assert '<tableColumn id="1" name="Column1"/>' in table
+    assert '<tableColumn id="2" name="Column2"/>' in table
+    # The data starts on the table's first row, which keeps its own cells.
+    assert '<c r="A2" t="s">' in parts["xl/worksheets/sheet1.xml"]
+
+
+def test_table_without_a_header_row_needs_one_data_row_and_no_filter() -> None:
+    one_row = _parts({"tables": [{"name": "Data", "ref": "A2:B2", "header_row": False}]})
+    assert 'ref="A2:B2"' in one_row["xl/tables/table1.xml"]
+    with pytest.raises(ValueError, match="no filter or calculated column"):
+        _parts({"tables": [{"name": "Data", "ref": "A2:B4", "header_row": False, "filter": True}]})

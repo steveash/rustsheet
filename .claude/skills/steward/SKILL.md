@@ -33,7 +33,8 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   cannot move between a PR's green CI and its merge. On a head that meets (a) and (b):
   1. `make merge-lock-wait PR=<n>`, run in the background (decision 0145): it queues you and exits
      0 once the lock is yours, 3 if the PR is done, 1 after 45 min, 2 on an error (re-run the
-     wait). Do other work (your next task) until it exits, instead of retrying later; never merge
+     wait), 5 in `train` mode for any PR but the emergency-flip PR (decision 0204: mark it ready
+     instead). Do other work (your next task) until it exits, instead of retrying later; never merge
      without the lock.
   2. Holding it: if the branch is behind, merge `origin/main` in and push. For a branch
      without conflicts this is its only merge of `main` (decision 0121). A clean merge needs no
@@ -78,6 +79,12 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
     work-loop step 6.3; an idle ejected branch is resumed like any idle agent branch. `make
     mark-ready` removes `merge-train-ejected` when it marks the PR again (decision 0177). A PR
     that conflicts only with another PR of its batch is deferred, not ejected: it stays ready.
+    Any session may clear a `conflict with main` ejection whose conflicts are all in the
+    eval-gated, non-fetched suites' `eval/baseline/<suite>.txt` lists and
+    `eval/baseline/visible-parity.txt` (decision 0219): run `make catch-up
+    PR=<n>`, which merges `main` in, re-records the lists and pushes, then `make mark-ready
+    PR=<n> CARRY=1` once CI is green (decision 0207). Any other conflict stays with the PR's
+    worker.
   - **Stall fallback** (`train` mode only): any session may run one `make merge-train TRAIN=1`
     pass when a PR has been ready for more than 45 min (by its marker's `updated_at`), the last
     CI run on `merge-train/current` was created more than 45 min ago (workflow-runs
@@ -146,12 +153,40 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   In `train` mode (decision 0157 amending 0050) these are the conditions for **marking** an
   orphaned PR ready (`make mark-ready` with the verdict records of your own panel), not for
   merging it, and the up-to-date condition drops out: the train provides it. A PR whose worker
-  already marked it ready, on its current head, is not orphaned. In `shadow` mode, mark it ready
-  and then merge it per the per-PR flow, as its worker would.
+  already marked it ready, on its current head, is not orphaned (in `shadow` mode, see "Stranded
+  ready PRs" below). In `shadow` mode, mark it ready and then merge it per the per-PR flow, as its
+  worker would.
+- **Stranded ready PRs** (`shadow` mode only, decision 0194 amending 0050 and 0157): a worker
+  that marked its PR ready can end its session in the lock queue and leave the PR unmerged. The
+  daily run merges each such PR.
+  - **Finding them:** run `make merge-train-stats STRANDED=1`, which prints only the "stranded
+    PRs" line in seconds; the full report takes minutes. If even that cannot run, build the same
+    list with the GitHub MCP tools, by `stranded()`'s definition: open PRs labelled
+    `ready-to-merge`, not labelled `merge-train-ejected`, whose newest merge-ready marker comment
+    is older than `STRANDED_AFTER` (2 h). A PR with no marker is not on the list.
+  - **Merging one requires all of:**
+    - verdicts that hold on its current head: `make merge-ready-verify PR=<n>` passes, or you
+      run the applicable reviewers yourself on that head, as for an orphaned PR, and mark it
+      ready with their verdicts;
+    - CI green on the head;
+    - no review thread asking for changes without a later resolution;
+    - a task that is not `status: blocked`, and a task file that is `status: done` with an
+      Outcome.
+
+    Then merge it by the per-PR flow under the merge lock, as its worker would: merge `main` in
+    and wait for CI on the new head; regenerate baselines on a baseline-only conflict with `make
+    eval-baseline`, never by hand; run the up-to-date check, squash-merge with
+    `expectedHeadSha`, and remove `ready-to-merge`.
+  - **When a condition fails:** comment the blocker on the PR and leave it.
+  - **Report:** name each PR merged this way in the daily report.
+  - **Other modes:** in `lock` mode nothing is marked ready, and in `train` mode a stranded PR
+    triggers the emergency flip instead (below).
 - **Merge-train daily check** (SPEC-0027 "Daily thresholds"): in `shadow` and `train` mode, the
-  daily run runs `make merge-train-stats` (T-3076; until it exists, say so in docs/status.md and
-  skip the check) and records p90 latency, stranded PRs, the red-train rate and the bisection
-  runs in docs/status.md. In `train` mode, any of these triggers the emergency flip to `lock`
+  daily run runs `make merge-train-stats` (T-3076) and records p90 latency, stranded PRs, the
+  red-train rate and the bisection runs in docs/status.md. The full report reads every run and
+  job of the window and takes several minutes: let it finish (run it in the background), and if
+  it cannot, record the stranded PRs from "Stranded ready PRs" above and say the rest is
+  missing. In `train` mode, any of these triggers the emergency flip to `lock`
   ("Emergency flip to `lock`" above) and a P0: p90 latency over 60 min on any day; more than 2
   trains in a day needing more than 6 CI runs; a stranded PR (marked ready, unmerged after 2 h,
   not ejected); any tree-check failure. In `shadow` mode the numbers are only reported: they are
@@ -185,10 +220,15 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
 - **Sonnet queue buffer** (decision 0021): in the steward's queue step, also run
   `make ready-tasks TIER=sonnet`; below 10 ready, run the gap-triager and/or planner to cut
   sonnet-sized tasks by the tier rubric (never relabel a task to reach the number).
-- **Visible-parity lock** (decision 0093): task PRs never lower `eval/baseline/visible-parity.json`.
-  In the daily steward PR, after `make eval`, run `make eval-lower-visible-lock` and commit the lower
-  lock with the snapshot; "Progress dashboard" below comes next. When an open PR conflicts on the
-  lock, take `main`'s side and re-run `make eval-baseline`.
+- **Visible-parity lock** (decisions 0093, 0219): task PRs never lower the per-case lines of
+  `eval/baseline/visible-parity.txt`; a PR that adds cases records their lines with `make
+  eval-baseline`. In the daily steward PR, after `make eval`, run `make eval-lower-visible-lock` and
+  commit the lowered lines with the snapshot; "Progress dashboard" below comes next. When an open PR
+  conflicts on the lock, `make catch-up PR=<n>` resolves it: each case three-way from the merge base,
+  where a side that changed it wins and, if both did, the lower count. It then re-records. By hand,
+  merge the same way and run `make eval-baseline NEW_CASES=<file>`, where the file lists the case
+  files the PR adds (`git diff --diff-filter=A --name-only origin/main...HEAD`). Never record a line
+  above `main`'s for a case `main` has.
 - **Progress dashboard** (SPEC-0022, decision 0124): the daily run's order is `make eval`, then
   `make eval-lower-visible-lock`, then `make progress-report`, then the `progress-report` skill
   (routine step 2). Run `make progress-report` even when `make eval` failed or a suite was not

@@ -3,7 +3,7 @@ id: T-3131
 title: "Gamma quantiles: T-0972's remaining visibly-off cells and its statrs search start"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -39,11 +39,38 @@ the T-0972 bullet), so those cells need Excel's iteration, not more accuracy.
 T-0972's criterion 3 is also open: `inverse_cdf_within` (the ported statrs search) is still the refinement's start.
 
 ## Acceptance criteria
-- [ ] The eight cells above are within half a unit of Excel's 15th significant digit, with no new baseline line (or
-      decision 0083's allowance).
-- [ ] No statrs search left for the gamma quantile (`rg inverse_cdf_within`), with bounded iteration on untrusted
-      input (huge shape or scale, p near 0 and 1).
-- [ ] `make check` green; reviewers approve.
+- [x] Re-scoped (2026-10-31): A326 is within half a unit of Excel's 15th digit (it was on main already); the other
+      five cells (the two t1049-chisqinvrt cells, gen-m9 A371, A108 and A29; the A27 pair went to T-3272) are
+      Excel's landing point in the flat band of its double cdf, the open rule of T-3146, which now lists them. No new
+      baseline line.
+- [x] No statrs search left for the gamma quantile (`rg inverse_cdf_within` finds nothing), with bounded iteration on
+      untrusted input: at most 129 cdfs in one budget of `MAX_TERMS` terms (huge shape or scale, p near 0 and 1).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The five cells and 49 ulp lines of decision 0152 (now T-3146, T-3238 and T-3239, after T-3016); the CDF kernel (T-0971 follow-ups T-2367, T-2638).
+
+## Outcome (2026-10-31)
+`gamma_quantile` (`incomplete_gamma/mod.rs`) no longer starts from statrs' `Gamma::inverse_cdf` search (halve and
+double, 8 bisections, 4 Newton steps, up to about 2,120 cdfs). Its refinement (`special::refine_increasing`) starts from
+Wilson and Hilferty's a (1 - 1/(9a) + z/(3 sqrt a))^3 (`wilson_hilferty_start`, z by statrs' normal closed form), or
+from the whole range where that is not a positive finite number. `INVERSION_CDFS`, which the lifting table charges an
+inversion by, is 129 (was 2,250): a lifted GAMMA.INV, GAMMAINV, CHISQ.INV, CHISQ.INV.RT or CHIINV element is now
+charged 129 cdfs per inversion, not 2,250, under the same 2^18 weight cap. Without any start (64 halvings of the whole range) the inversions near Temme's shape
+would spend their term budget sooner; with this one `gamma_quantile(2E6, 1, 1E-300)` still reproduces p, and
+`GAMMA.INV(0.5,1E7,1)` is NaN (`#NUM!`) as on main (DEVIATION in statistics.md).
+
+Eval (`make eval` on main 1248554ae and on this branch, excel-graph): four cells moved, none regressed.
+`make eval-baseline` without `--allow-regressions`: ironcalc-calc 394 -> 393 (GAMMA.xlsx F7 now Excel's
+1.9999999999999996). gen-m9 ecc87f80077959e0 A231 `CHISQ.INV.RT(NUMBERVALUE(...))` went from visibly off to within 15
+digits (Excel 0.3718455498968906, ours ...9045, was ...9034). gen-m9 35e8168aae2b00f8 A196 and 4bad303d32cc3f46 A289
+`GAMMAINV(0.5,...)` went from 1 ulp under Excel's 3.6720607488508965 to 1 ulp over. The doubles next to a crossing
+are not always monotone in the accurate cdf, so the start can move the landing by an ulp.
+
+Criterion 1: a 60-digit mpmath check puts every remaining cell in the flat band T-3146 describes. At Excel's double
+the true cdf of the tail it is given is within 0.73 ulp of p, while ours is within an ulp of the true quantile:
+`CHISQ.INV.RT(0.999,5)` -44 ulp (cdf +0.13), `(0.999,20)` -72 (+0.71), `CHISQ.INV.RT(0.9999,3)` +3,084 (-0.69),
+`CHIINV(0.975,5)` inside A108 +10 (-0.65), and A29 at the correctly rounded `T.DIST(6,6,TRUE)` -70 (-0.47).
+T-3146's two attempts found no search that lands there, so these five go to T-3146, listed in its "Also owned: T-3131's
+cells". A326 `CHISQ.INV(0.975,3)` was already within 15 digits on main (Excel +3.5 ulp, cdf +0.64; ours -0.5).
+

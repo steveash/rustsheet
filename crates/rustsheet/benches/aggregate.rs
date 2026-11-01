@@ -11,12 +11,13 @@
 //! growing prefix), and 12,000 per-row SUMIFS over 1,500 rows. Then SUMPRODUCT over whole-column
 //! expressions (T-0471): 400 `SUMPRODUCT((F:F=A1)*G:G)` over 2,000 rows. Last, the three
 //! consumers the SPEC-0020 amendment tails next (T-0488), each over 2,000 rows: UNIQUE under
-//! TEXTJOIN, LOOKUP's last-non-empty idiom, and SMALL over a 70,000-row range with `ROW()`.
+//! TEXTJOIN, LOOKUP's last-non-empty idiom, and SMALL over a 70,000-row range with `ROW()`, and
+//! a count through VLOOKUP over a whole-column key (T-3221) and INDEX of MATCH over one (T-3222).
 //! Then calipers `pv23_042`'s shape (T-0498): 1,000 four-criteria SUMIFS over formula columns of
 //! 20,000 rows that the calls themselves evaluate.
 //! `cargo bench -p rustsheet --bench aggregate` (`-- criteria`, `-- whole_column`, `-- rank`,
 //! `-- sumproduct` and `-- chained` run only the T-0449, T-0469, T-0465, T-0471 or T-0498 case,
-//! `-- tailed_consumers` only the T-0488 cases)
+//! `-- tailed_consumers` only the T-0488 cases and T-3221's lookup over a tailed key)
 //!
 //! One warm-up run, then `RUNS` measured recalculations; each case prints the fastest, the median
 //! and the spread.
@@ -181,6 +182,59 @@ fn lookup_last_workbook() -> Result<Workbook, Box<dyn Error>> {
     })
 }
 
+/// SPEC-0020 Amendment 2's lookup over a tailed key (T-3221): a key in A (one of 50), a table of
+/// the 50 keys and 0 (which a blank key finds) in Data!A1:B51, and `TAILED_CONSUMER_CALLS` copies
+/// of `SUM(--(VLOOKUP($A:$A,Data!$A$1:$B$51,2,FALSE)=x))` in C, each counting the keys of one
+/// value x.
+fn vlookup_count_workbook() -> Result<Workbook, Box<dyn Error>> {
+    common::filled_workbook(|tx| {
+        tx.add_sheet("Data")?;
+        for r in 1..=50 {
+            tx.set(format!("Data!A{r}").as_str(), format!("k{r}").as_str())?;
+            tx.set(format!("Data!B{r}").as_str(), f64::from(r))?;
+        }
+        tx.set("Data!A51", 0.0)?;
+        tx.set("Data!B51", 0.0)?;
+        for r in 1..=WHOLE_COLUMN_ROWS {
+            tx.set(
+                format!("A{r}").as_str(),
+                format!("k{}", r % 50 + 1).as_str(),
+            )?;
+        }
+        for r in 1..=TAILED_CONSUMER_CALLS {
+            let formula = format!(
+                "=SUM(--(VLOOKUP($A:$A,Data!$A$1:$B$51,2,FALSE)={}))",
+                r % 50 + 1
+            );
+            tx.set(format!("C{r}").as_str(), Input::Formula(formula))?;
+        }
+        Ok(())
+    })
+}
+
+/// SPEC-0020 Amendment 2's INDEX consumer (T-3222): the keys of `vlookup_count_workbook` in A
+/// and the 50 keys in Data!A1:A50, with `TAILED_CONSUMER_CALLS` copies of
+/// `INDEX(MATCH($A:$A,Data!$A$1:$A$50,0),n)` in C, n running down the head and into the tail.
+fn index_match_workbook() -> Result<Workbook, Box<dyn Error>> {
+    common::filled_workbook(|tx| {
+        tx.add_sheet("Data")?;
+        for r in 1..=50 {
+            tx.set(format!("Data!A{r}").as_str(), format!("k{r}").as_str())?;
+        }
+        for r in 1..=WHOLE_COLUMN_ROWS {
+            tx.set(
+                format!("A{r}").as_str(),
+                format!("k{}", r % 50 + 1).as_str(),
+            )?;
+        }
+        for r in 1..=TAILED_CONSUMER_CALLS {
+            let formula = format!("=INDEX(MATCH($A:$A,Data!$A$1:$A$50,0),{})", r * 150);
+            tx.set(format!("C{r}").as_str(), Input::Formula(formula))?;
+        }
+        Ok(())
+    })
+}
+
 /// Corpus-bench 59969's shape: two keys in Report!A and Report!B (one of 5 and one of 4) and an
 /// amount in Report!G, the two keys wanted in X1 and X2, and in Z the k-th matching amount for
 /// k = 1 to `TAILED_CONSUMER_CALLS`, through SMALL over `ROW()` of 70,000-row ranges.
@@ -266,7 +320,7 @@ type Build = fn() -> Result<Workbook, Box<dyn Error>>;
 
 /// Times each T-0488 shape.
 fn tailed_consumer_cases() -> Result<(), Box<dyn Error>> {
-    let cases: [(&str, Build); 3] = [
+    let cases: [(&str, Build); 5] = [
         (
             "TEXTJOIN(\",\",TRUE,UNIQUE(IF(A1=Zord!A:A,Zord!C:C,\"\")))",
             unique_textjoin_workbook,
@@ -278,6 +332,14 @@ fn tailed_consumer_cases() -> Result<(), Box<dyn Error>> {
         (
             "SMALL(IF((A2:A70000=x)*(B2:B70000=y),ROW(A2:A70000)),k)",
             small_row_workbook,
+        ),
+        (
+            "SUM(--(VLOOKUP($A:$A,Data!$A$1:$B$51,2,FALSE)=x))",
+            vlookup_count_workbook,
+        ),
+        (
+            "INDEX(MATCH($A:$A,Data!$A$1:$A$50,0),n)",
+            index_match_workbook,
         ),
     ];
     for (name, build) in cases {
