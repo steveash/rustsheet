@@ -3,7 +3,7 @@ id: T-3642
 title: "IM* trig and hyperbolic functions at extreme magnitudes: map where Excel gives #NUM! over both parts, all ten functions"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
