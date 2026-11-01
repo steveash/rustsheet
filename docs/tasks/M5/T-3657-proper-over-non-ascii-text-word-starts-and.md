@@ -3,7 +3,7 @@ id: T-3657
 title: "PROPER over non-ASCII text: word starts and case mapping beyond the probed characters"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
