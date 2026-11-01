@@ -3,11 +3,11 @@ id: T-3424
 title: "RATE's type at the noise floor: Gate A sweep cells where one side errs"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: blocked
 priority: P0
 size: M
 tier: opus
-depends_on: []
+depends_on: [T-3579]
 campaign: accuracy
 ---
 
@@ -79,3 +79,20 @@ cells, so RATE's Gate A fails until they are settled.
   bits, so they are not Excel's either. Next: per-cell comparison on the 16 cells (the experiment's watch list did not
   match the cell keys), then the residual's sum order and fused forms (pv·P + pmt·A as one extended sum before + fv,
   or the 80-bit sum kept across all three terms) under the same hold.
+- Second experiment (2026-11-01, opus run that did T-3389): the precision of each residual operation, on the same
+  hold model. The operations are 1+r, the power's products, P-1, the quotient by r, the two products and the two
+  sums. Each was twice-rounded or kept at 64 bits as in an x87 register, and P-1 was also tried exact: 64
+  combinations. They were scored on the 600 cells of t3348-rate-gate-a-sweep and t3348-rate-gate-a-fresh,
+  exploration only, no fit taken from them. The shipped form gives 584 types and 562 bits, and 0 of the 16. The best
+  on the 16 keeps 1+r and the power's products at 64 bits with P-1 exact: 5 of 16, with 581 types and 126 bits. The
+  best on all types keeps the two products at 64 bits: 588 types and 4 of 16, but 177 bits. Every variant loses 176
+  to 436 bits. So no precision change in the residual is Excel's noise. This also covers the fused forms the first
+  experiment named next: the two sums kept at 64 bits. T-3389 adds the algebraic forms and the step forms, also
+  negative, in financial.md "Not reproduced".
+
+## Blocked because
+Excel's residual in the noise floor is not determined by the evidence we have. Two experiments rule out the power
+routine, the residual's operation precision, the algebraic forms and the secant step forms. T-3389 shows that
+Excel's path leaves the model's trace before the hold, so a rule on the hold cannot settle the type either
+(decision 0198). T-3579 probes Excel's residual bits directly, with guess-seeded runs at nper 1. Unblock when it
+lands, and fit the residual from its cells. RATE's Gate A stays failed until then.
