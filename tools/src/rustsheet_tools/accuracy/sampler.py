@@ -52,6 +52,8 @@ def math_arg(param: Param, a: Arg) -> MathArg:
     """The math's view of a drawn argument: the exact double (or integer) or the logical."""
     if param.kind == "bool" or isinstance(a, bool):
         return bool(a)
+    if isinstance(a, tuple):
+        return tuple(mpmath.mpf(x) for x in a)
     return mpmath.mpf(a)
 
 
@@ -80,8 +82,13 @@ class Sampler:
 
     # -- per-parameter draws --------------------------------------------------------------
 
-    def finish(self, param: Param, x: float | bool) -> Arg:
-        """A drawn value as a writable literal of the parameter's kind."""
+    def finish(self, param: Param, x: Arg) -> Arg:
+        """A drawn value as a writable literal of the parameter's kind (an array element by
+        element: integers stay integers, reals take 15 digits)."""
+        if isinstance(x, tuple):
+            return tuple(
+                e if isinstance(e, int) and not isinstance(e, bool) else round15(float(e)) for e in x
+            )
         if param.kind == "bool":
             return bool(x)
         if param.kind == "int":
@@ -90,7 +97,7 @@ class Sampler:
 
     def inside(self, param: Param, a: Arg) -> Arg:
         """`a`, or the nearest literal inside the domain when rounding left it."""
-        if param.kind == "bool" or isinstance(a, bool) or param.domain.contains(float(a)):
+        if param.kind in ("bool", "array") or isinstance(a, (bool, tuple)) or param.domain.contains(float(a)):
             return a
         d = param.domain
         lower = float(a) < d.lo or (float(a) == d.lo and d.lo_open)

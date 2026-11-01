@@ -22,6 +22,7 @@ from collections.abc import Callable, Sequence
 
 import mpmath
 
+from rustsheet_tools.accuracy.defs.annuity import scalars
 from rustsheet_tools.accuracy.model import (
     Definition,
     Interval,
@@ -60,11 +61,7 @@ _CUMULATIVE = Param("cumulative", "bool", source="catalog")
 
 def _reals(args: Sequence[MathArg]) -> list[mpmath.mpf]:
     """The numeric arguments (every argument but the trailing cumulative flag)."""
-    out: list[mpmath.mpf] = []
-    for a in args[:-1]:
-        assert not isinstance(a, bool)
-        out.append(a)
-    return out
+    return scalars(args[:-1])
 
 
 def binom_pmf(k: mpmath.mpf, n: mpmath.mpf, p: mpmath.mpf) -> mpmath.mpf:
@@ -158,22 +155,19 @@ def integer_quantile(cdf: Tail, sf: Tail, q: mpmath.mpf, upper: bool, hi: float)
 
 
 def _binom_tail(q: mpmath.mpf, upper: bool, args: Sequence[MathArg]) -> mpmath.mpf:
-    _, n, p, _ = args
-    assert not isinstance(n, bool) and not isinstance(p, bool)
+    _, n, p = _reals(args)
     return integer_quantile(lambda k: binom_cdf(k, n, p), lambda k: binom_sf(k, n, p), q, upper, float(n))
 
 
 def _negbinom_tail(q: mpmath.mpf, upper: bool, args: Sequence[MathArg]) -> mpmath.mpf:
-    _, s, p, _ = args
-    assert not isinstance(s, bool) and not isinstance(p, bool)
+    _, s, p = _reals(args)
     return integer_quantile(
         lambda f: negbinom_cdf(f, s, p), lambda f: negbinom_sf(f, s, p), q, upper, COUNT_DRAW_HI
     )
 
 
 def _poisson_tail(q: mpmath.mpf, upper: bool, args: Sequence[MathArg]) -> mpmath.mpf:
-    _, m, _ = args
-    assert not isinstance(m, bool)
+    _, m = _reals(args)
     if m < 0:
         msg = "no tail map at a negative mean"
         raise ValueError(msg)
