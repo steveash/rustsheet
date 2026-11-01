@@ -696,6 +696,22 @@ impl Model {
                 if let (true, Some(size_error)) = (number_guess, &size_error) {
                     return size_error.clone();
                 }
+                // A boolean guess beside flows of different counts is `#VALUE!`, not the count's
+                // `#NUM!`: `XIRR(Data!C7:E8,{3 dates},<TRUE>)` (gen-m9/b6a02893a8d6b151 A226).
+                // Unseparated from the values range's numeric text `"1.5"` before T-3267.
+                if matches!(arguments.get(2), Some(CalcResult::Boolean(_)))
+                    && size_error.as_ref().is_some_and(|error| {
+                        matches!(
+                            error,
+                            CalcResult::Error {
+                                error: Error::NUM,
+                                ..
+                            }
+                        )
+                    })
+                {
+                    return CalcResult::new_error(Error::VALUE, cell, String::new());
+                }
                 let (values, dates) = match &flows {
                     Ok(flows) => flows,
                     Err(error) => return error.clone(),
