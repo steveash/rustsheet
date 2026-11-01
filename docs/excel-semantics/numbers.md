@@ -1050,10 +1050,13 @@ Tasks: T-2715, T-2756 (ROUNDUP)
 Rule: CEILING, CEILING.MATH (both modes), CEILING.PRECISE, FLOOR, FLOOR.MATH (both modes) and FLOOR.PRECISE are `#NUM!`
 when the ratio `number/significance` is beyond the double range, although the mathematical result (a multiple of the
 significance next to the number) is an ordinary double: `CEILING(6.78566159557368E+283,5.05874381382903E-127)` and
-`FLOOR.PRECISE(1.447176044413E+249,-1.38029997006174E-96)` are `#NUM!`. Every probed ratio was above 1E+300 times the double range, so where exactly the boundary lies
-(the binary quotient overflowing, or its 15-digit cut) is not pinned.
+`FLOOR.PRECISE(1.447176044413E+249,-1.38029997006174E-96)` are `#NUM!`. The tables bracket the boundary between 0.556 and 49 times the double range:
+`CEILING(-9.99999999999999E+307,-1)` and `FLOOR(-9.99999999999999E+307,-1)` (ratio 0.556 x DBL_MAX) are numbers, and
+`FLOOR.PRECISE(-3.85290564465378E+92,-4.37553180951326E-218)` (ratio 49 x DBL_MAX) is `#NUM!`. Where exactly it lies (the
+binary quotient overflowing, or its 15-digit cut) is not pinned.
 Evidence: eval/accuracy/tables CEILING/s1 A110, A120; CEILING.MATH/s1 A185, A198, A199; CEILING.PRECISE/s1 A111, A112;
-FLOOR.MATH/s1 A183, A184, A186, A191; FLOOR.PRECISE/s1 A114, A117, A119, A120 (15 cells, excel-graph, 2026-11-01, T-3673).
+FLOOR.MATH/s1 A183, A184, A186, A191; FLOOR.PRECISE/s1 A114, A117, A119, A120 (15 cells), and the numbers CEILING/s1 A75
+and FLOOR/s1 A72 (excel-graph, 2026-11-01, T-3673).
 Status: VERIFIED (excel-graph)
 Ours: matches (the infinite ratio gives a non-finite result, which `numbers_fn` turns into `#NUM!`).
 Implemented in: `snap_ratio` in crates/rustsheet-engine/src/functions/math_and_trigonometry/ceiling_floor.rs

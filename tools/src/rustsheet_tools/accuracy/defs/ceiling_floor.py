@@ -16,8 +16,9 @@ The sign and argument rules, all cited from numbers.md and gen/probe cells:
   is `#NUM!` (numbers.md, same entry, last sentence), and a negative significance with a negative
   number steps away from zero (`CEILING(-2.5,-1)` = -3, `FLOOR(-2.5,-1)` = -2: ceil and floor of the
   positive ratio, times the negative significance).
-- A zero significance gives 0, except in FLOOR, where it is `#DIV/0!` unless the number is 0 too
-  (the engine's `fn_floor`, gen-m5 cells of T-2648).
+- A zero significance gives 0, except in FLOOR, where a nonzero number gives `#DIV/0!` (the 3 FLOOR/s1
+  points of T-3673's tables). FLOOR(0,0) has no math value (`NoValueError`): no Excel cell evidences
+  it (the engine gives 0), and the draws never pair a zero number with a zero significance.
 - The .MATH and .PRECISE forms take |significance|; the .MATH forms' `mode`, when nonzero, turns a
   negative number's step toward zero into one away from zero (CEILING.MATH(-2.5,1,1) = -3). Modes
   are drawn as whole numbers: how Excel reads a fractional mode is not evidenced here.
@@ -39,7 +40,15 @@ from fractions import Fraction
 import mpmath
 
 from rustsheet_tools.accuracy.literal import MAX_LITERAL, MIN_LITERAL, Arg, decimal15, exponent10
-from rustsheet_tools.accuracy.model import Definition, DomainError, Interval, MathArg, Param, register
+from rustsheet_tools.accuracy.model import (
+    Definition,
+    DomainError,
+    Interval,
+    MathArg,
+    NoValueError,
+    Param,
+    register,
+)
 from rustsheet_tools.accuracy.sampler import decimal_literal, log_uniform, random_sign
 
 TIE_SOURCE = "numbers.md#floorprecise-a-16th-digit-tie-in-the-ratio-cut-goes-away-from-zero"
@@ -87,7 +96,10 @@ def snapped(function: str, number: float, significance: float, mode: int = 0) ->
     s = Fraction(decimal15(significance))
     if function in SIGNED:
         if s == 0:
-            if function == "FLOOR" and x != 0:
+            if function == "FLOOR":
+                if x == 0:
+                    msg = "FLOOR(0,0): no Excel evidence (the engine gives 0)"
+                    raise NoValueError(msg)
                 msg = "FLOOR of a nonzero number by a zero significance (#DIV/0!)"
                 raise DomainError(msg)
             return Decimal(0)

@@ -17,7 +17,7 @@ from rustsheet_tools.accuracy.defs.ceiling_floor import (
     FLOOR_PRECISE,
     cut15,
 )
-from rustsheet_tools.accuracy.model import Definition, DomainError
+from rustsheet_tools.accuracy.model import Definition, DomainError, NoValueError
 from rustsheet_tools.accuracy.sampler import STRATA, Sampler
 
 ALL = (CEILING, CEILING_MATH, CEILING_PRECISE, FLOOR, FLOOR_MATH, FLOOR_PRECISE)
@@ -53,9 +53,8 @@ def value(definition: Definition, *args: float) -> mpmath.mpf:
         (FLOOR_MATH, (-2.5, 1, 1), "-2"),
         (FLOOR_MATH, (-2.5, -1, 0), "-3"),
         (CEILING_MATH, (2.5, 1, 1), "3"),
-        # Zero significance: 0, and FLOOR of 0 by 0 is 0.
+        # Zero significance: 0 (FLOOR(0,0) has no evidence; see test_floor_zero_by_zero_has_no_value).
         (CEILING, (2.1, 0), "0"),
-        (FLOOR, (0, 0), "0"),
         (CEILING_MATH, (5, 0, 1), "0"),
         # numbers.md "CEILING and FLOOR of a subnormal ratio are 0" (probes/t2715).
         (CEILING_MATH, (1e-307, 10, 0), "0"),
@@ -85,6 +84,11 @@ def test_the_math_reproduces_numbers_md(
 def test_domain_errors(definition: Definition, args: tuple[float, ...]) -> None:
     with pytest.raises(DomainError):
         value(definition, *args)
+
+
+def test_floor_zero_by_zero_has_no_value() -> None:
+    with pytest.raises(NoValueError):
+        value(FLOOR, 0, 0)
 
 
 def test_cut15_ties_away_and_carries() -> None:
