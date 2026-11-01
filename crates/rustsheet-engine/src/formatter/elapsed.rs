@@ -151,6 +151,12 @@ fn clock_unit(token: &TextToken) -> Option<ElapsedUnit> {
     }
 }
 
+/// Whether a `.0` right after `token` is the fraction of the second: after any hour, minute or
+/// second token, clock or elapsed (probes/t3575-fraction-after-elapsed A1-A12).
+pub(super) fn takes_second_fraction(token: &TextToken) -> bool {
+    clock_unit(token).is_some() || elapsed_token(token).is_some()
+}
+
 /// Whether an elapsed token stands after a clock token of its own unit or a larger one, which
 /// makes the section `#VALUE!` for any value: `h [h]`, `h [m]`, `h [s]`, `h:mm [h]`, `mm:ss [m]`,
 /// `mm:ss [s]`, `s [s]`, `s.0 [s]`, `h d [h]`. A smaller clock unit first is valid (`s [h]`,

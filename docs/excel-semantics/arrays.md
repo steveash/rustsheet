@@ -2125,3 +2125,52 @@ Status: DEVIATION (decision 0014). Whether Excel accepts a CSE formula over more
 (probe pending, T-3436).
 Implemented in: crates/rustsheet-engine/src/model.rs (`set_user_array_formula`)
 Tasks: T-2896, T-3436
+
+## A one-cell error reference is a 1x1 array in TOCOL, TOROW and FILTER (T-3497)
+Rule: a one-cell reference to an error cell passed as TOCOL's or TOROW's `array`, or FILTER's `array` or `include`, is a 1x1
+array holding the error, not an error argument. The other arguments are checked first, and the error survives only as an element
+of the result. With Data!G9 holding `#DIV/0!`:
+- `TOROW(Data!G9,Data!G1)` (ignore 7) is `#VALUE!` (gen-m7/20df23f84a528470 Calc!A8724).
+- `TOCOL(Data!G9,3,Data!G2)` is `#CALC!`: ignore 3 drops the error, so nothing is left (gen-m7/7cd94f345acd55bb A8480).
+- `FILTER(Data!G9,Data!G2)` (include 0) is `#CALC!` (gen-m7/68e7f10771a7118a A10798).
+- `FILTER(Data!G9,(Data!A1:A12>0),Data!G4)` is `#VALUE!`: a 1x1 array against a 12-row include (gen-m7/ee81c689b5fde629 A1160).
+- `FILTER(Data!A1:D12,Data!G9,Data!G3)` is `#VALUE!` (gen-m7/d7a127bd9334c2b4 A2380).
+Evidence: gen-m7 arg-pairs batch (excel-graph, 2026-10-31, T-3497); the full cell list is in T-3506.
+Ours: the referenced error is returned before the other arguments are read (`#DIV/0!` in every cell above).
+Status: VERIFIED (excel-graph); not implemented
+Tasks: T-3506
+
+## TOCOL, TOROW and SORT: which bad argument wins (T-3497)
+Rule:
+- TOCOL and TOROW, `ignore` against an error in `scan_by_column`:
+  - A text ignore ("abc", "x", "") wins with `#VALUE!`: `TOROW(Data!A7:D7,"abc",#NULL!)` (gen-m7/1157e6d3a3c6ae12 Calc!A4393),
+    `TOCOL(Data!B3:C3,"",#NAME?)` (gen-m7/52ccea5df17b29a8 A5613), `TOCOL(Data!C5,Data!G6,Data!G9)` (52ccea5df17b29a8 A4454).
+  - An out-of-range number loses to the scan_by error: `TOCOL(Data!C3:E10,7,#DIV/0!)` (as Data!G1, Data!G9) is `#DIV/0!`
+    (gen-m7/7cd94f345acd55bb A11530), and so are `TOROW(Data!C5:D9,-2.5,..)` (1157e6d3a3c6ae12 A1160) and
+    `TOCOL(Data!A1:D9,-2.5,..)` (52ccea5df17b29a8 A1038).
+  - A range ignore lifts, and each element follows the two rules above. `TOCOL(Data!D$11,Data!C3:D4,Data!G9)` spills `#VALUE!`
+    for its text element and `#DIV/0!` for its 7 (52ccea5df17b29a8 A10676:B10676). `TOCOL(Data!D11:E11,Data!A1:B2,#NULL!)` is
+    `#NULL!` for the number elements and `#VALUE!` only for the text one (A10615:B10616).
+- SORT, a bad `sort_index` or `sort_order` against an error in a later argument:
+  - A blank sort_index or sort_order wins with `#VALUE!`. Examples: `SORT(0.3,Data!H1,-1,#NAME?)` (gen-m7/75534bc7e1ce6474
+    A4027); `SORT(1,Data!H2,Data!G9)` (gen-m7/91b6b88061b805b1 A5308); `SORT(Data!B3:D8,Data!A3,#DIV/0!,#NUM!)` with A3 blank
+    (gen-m7/8217549f0b417328 A611); `SORT(Data!A4:B6,2,Data!H2,Data!G9)` (8217549f0b417328 A1770);
+    `SORT(Data!D7:E12,Data!G8,Data!E7,Data!G9)` with E7 blank (75534bc7e1ce6474 A1526).
+  - A text or FALSE sort_index loses to the later error. Examples: `SORT(Data!C4,"",Data!B10:D12,#DIV/0!)` is `#DIV/0!`
+    (75534bc7e1ce6474 A245); `SORT({#DIV/0!;2;#VALUE!},"abc",#NULL!)` is `#NULL!` (91b6b88061b805b1 A367);
+    `SORT(0.5,Data!G8,Data!G9)` (FALSE index) is `#DIV/0!` (91b6b88061b805b1 A2990, passing);
+    `SORT(Data!C8,Data!A6:B8,Data!G8,Data!G9)` is `#DIV/0!` (75534bc7e1ce6474 A11652, passing).
+Evidence: gen-m7 arg-pairs batch (excel-graph, 2026-10-31, T-3497); the failing cells are listed in T-3507.
+Ours: TOCOL and TOROW return the scan_by error for a text ignore as well. SORT returns `#VALUE!` for a text sort_index and the
+later error for a blank one.
+Status: VERIFIED (excel-graph) for the cells named; the order among more than two bad arguments is UNVERIFIED (T-3507)
+Tasks: T-3507
+
+## SORT's lifted by_col spreads an argument error (T-3497)
+Rule: SORT lifts over a multi-cell `by_col` (T-2319). When it fails on another argument, the error fills `by_col`'s shape.
+`SORT(Data!B3,#NUM!,Data!B1:D1,Data!A1:B2)` spills a 2x2 of `#NUM!` (gen-m7/75534bc7e1ce6474 Calc!A3051:B3052), and
+`SORT(#REF!,Data!A7:D9,1,Data!A1:B2)` spills `#REF!` (gen-m7/d2945e939d6fe742 A5979:B5980).
+Evidence: gen-m7 arg-pairs batch (excel-graph, 2026-10-31, T-3497); the full cell list is in T-3508.
+Ours: a single error in the anchor; the other three cells stay empty.
+Status: VERIFIED (excel-graph); not implemented
+Tasks: T-3508

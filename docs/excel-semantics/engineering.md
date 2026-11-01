@@ -784,7 +784,7 @@ Edges probed by T-2077 (probes/eng-im-overflow-edges, excel-graph):
 - A blank cell argument met earlier in IMPRODUCT (a blank inside a range is UNVERIFIED, T-2231) makes the running product 0, so a later overflow cannot
   happen: `IMPRODUCT(<blank>,"1E200","1E200")` is `0`; the blank last is `#VALUE!` (the overflow
   came first). Implemented.
-- IMSIN and IMCOS are `#NUM!` when `exp(|imaginary part|)` overflows (|y| above about 709.78 by analogy with SINH/COSH in numbers.md; probed only at 710.4 and 711, T-2231),
+- IMSIN and IMCOS are `#NUM!` when `exp(|imaginary part|)` overflows (|y| above about 709.78 by analogy with SINH/COSH in numbers.md; probed only at 710.4 and 711, T-2231; for y < 0 already below ln(DBL_MIN) = -708.396, and for y > 0 from (709.7, 709.75], T-3589 and T-3616),
   whatever the real part (`IMSIN("1.5+710.4i")`, `IMCOS("710.4i")`), although `cosh y` is still
   finite there. IMCOSH and IMSINH are `#NUM!` for a zero imaginary part when `exp(|x|)` overflows
   (`IMCOSH("710.4+0i")`) but answer text with a nonzero one (`IMCOSH("710.4+1.5i")` is
@@ -932,8 +932,46 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   `IMSIN("0+5.67641786435809E-15i")` (A118) is 5.77315972805081E-15i, where the math is 5.6764178643581E-15 (relative
   error 1.7e-2; A79 4.6e-4). That is above decision 0188 R3's threshold, but R3 lists no case for it and there is
   no owner ruling, so Excel's value is matched (directive 1). `IMSIN("1E-200+1E-200i")` is still "1E-200"
-  (u = 1) and `IMCOS("150-0.002i")` keeps its digits. Still open: `IMSIN("0.981793650815856-183.167307387565i")`
-  (|y| above the band, EXP pair) differs in the 15th digit. Status: VERIFIED (excel-graph). Ours: `trig_sinh_cosh`.
+  (u = 1) and `IMCOS("150-0.002i")` keeps its digits. The form has no upper cut either (next entry, T-3589).
+  Status: VERIFIED (excel-graph). Ours: `trig_sinh_cosh`.
+- **Below |x| = 0.01 IMSINH's sinh is the ascending Taylor sum, its cosh the reciprocal form; IMSIN and IMCOS keep
+  the reciprocal form past |y| = 20 (T-3589).** The last 5 cells of probes-numeric/t3525-im-hyperbolic-fresh-sweep
+  each sit near a 15-digit rounding tie, where libm (below 0.01) and the EXP pair (above 20) land on the other side:
+  `IMSINH("-0.00878860151333914")` is -0.00878871465166476 (libm ...477), `IMCOSH("0.001258575663522")`
+  1.00000079200646 (libm ...645, the math 1.00000079200645495), the real part of
+  `IMSINH("0.00313307442770563-0.855889226338187i")` 0.00205388173561626 (libm ...625), and
+  `IMCOS("0.981793650815856-183.167307387565i")` has real part 9.82267943792204E+78 (EXP pair ...205E+78; the same
+  part is IMSIN's imaginary one). Candidates scored on every oracle text of the suites (114 IMSINH and IMCOSH texts
+  with 0 < |x| <= 0.01, 97 IMSIN and IMCOS texts with |y| > 20): libm sinh and cosh 111; the form `(1/u ∓ u)/2`
+  for both 25; Kahan expm1 sinh (the worksheet SINH's) 111-112; Horner `x(1 + x²(1/6 + x²/120))` with the form's cosh
+  112; the series summed in ascending order (`x + x³/6 + x⁵/120`, with or without the next term, each term from
+  the one before or as a power over a factorial) with the form's cosh or `(EXP(x) + EXP(-x))/2` 114; with libm's
+  cosh 113 (B16). For IMSIN and IMCOS past 20: the EXP pair 95, libm sinh and cosh 95, Excel's SIN and COS for the real
+  part 95, a double-double (near-exact) cosh 91, the reciprocal form `(u ± 1/u)/2` with u = EXP(y) 97. The
+  reciprocal is lopsided in y: for y < -20 cosh y is `1/EXP(y)`, not `EXP(-y)`, which is what moves C117/D117 and
+  keeps C103 (`IMCOS("0.353978044697258+159.485827748447i")` real part 8.60970638262128E+68, below the math's
+  ...2855). Frozen as: sinh x the ascending series until a term leaves the sum unchanged and cosh x the reciprocal
+  form at |x| <= 0.01 (IMSINH, IMCOSH, IMSECH, IMCSCH); the reciprocal form for every |y| in IMSIN and IMCOS. Then
+  checked on two sweeps drawn after the freeze (decision 0188 R4, excel-graph): probes-numeric/t3589-im-hyperbolic-small-x-sweep
+  (600 cells, |x| log-uniform in [1e-6, 0.01], IMSINH, IMCOSH, IMSECH, IMCSCH) and
+  t3589-imsin-imcos-large-imag-sweep (300 cells, |y| uniform in [20, 709.7], both signs). The fit lab
+  (`im-hyperbolic-t3589-fresh`, the 600 IMSINH, IMCOSH, IMSIN and IMCOS cells) has the model at 599 (hold-out train
+  438/439, test 161/161), the previous engine 587, the correctly rounded value 578; all 300 large-|y| cells fit (the EXP
+  pair 296). By digits over all six functions the model misses 7 of the 600 small-x cells, the previous engine
+  15: IMSINH 0 (was 5), IMCOSH 1 (4), IMCSCH 3 (4), IMSECH 3 (2). The IMSECH misses are real arguments where Excel's
+  `1/cosh x` is one ulp off the form's (`IMSECH("6.17632662504393E-06")` 0.999999999980927, ours ...926), so IMSECH and
+  IMCSCH below 0.01 (and one IMCOSH text) are not fully explained (T-3609). 11 more cells there differ only in notation (14 digits at exponent
+  -6 written plain, T-3560). Gate A: all 900 fresh cells are within 1e-9 of the 50-digit value. The cut at 0.01 did not
+  move (FITTED, T-3525); the series and libm give the same digits at 0.01 itself. The reciprocal also explains an
+  asymmetry at the top of the range: for y < 0, u = EXP(y) leaves the normal range below ln(DBL_MIN) =
+  -708.3964185322641, Excel's EXP gives 0 there, and `1/u` overflows, so IMSIN and IMCOS are `#NUM!` from there
+  down, while positive y answers up to 709.7: `IMSIN("0.5-708.39641853i")` is
+  1.07732499684388E+307-1.97203017901663E+307i and `IMSIN("0.5-708.396419i")` `#NUM!` (both functions, every probed
+  y from -708.396419 to -709.78; probes-numeric/t3589-imsin-imcos-negative-cut-probe, 22 cells, and
+  t3589-imsin-imcos-subnormal-exp-probe, 52 cells, excel-graph). Ours: `trig_exp_overflows`. The same probe shows
+  positive y turning `#NUM!` between 709.7 and 709.75, below exp's overflow (T-3616). Status: VERIFIED (excel-graph) for
+  IMSINH, IMCOSH, IMSIN and IMCOS; UNVERIFIED for IMSECH and IMCSCH below 0.01. Ours: `inverse_exp_sinh_cosh`,
+  `sinh_series` and `trig_sinh_cosh` in functions/engineering/complex/trig.rs.
 - **An IM* part with 14 significant digits at exponent -6 is plain text (T-3545).** `IMSIN("0-1.03615953980931E-06i")`
   is `-0.0000010361595398356i` (21 characters without the sign, probes-numeric/t3545-imsin-imcos-small-imag-sweep
   A128), and so are A43, B49 and B81 there (`IMCOS("-0.856146645807608+1.42428827512383E-06i")` is

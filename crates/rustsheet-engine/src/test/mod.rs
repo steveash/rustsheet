@@ -117,6 +117,7 @@ mod test_recalc_budget;
 mod test_row_column_styles;
 mod test_set_user_input;
 mod test_shared_formulas;
+mod test_sheet_data_hint;
 mod test_sheet_markup;
 mod test_sheet_qualified_ref_error;
 mod test_sheet_scoped_name_qualified;
