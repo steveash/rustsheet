@@ -44,7 +44,7 @@ def test_the_tail_in_the_stalled_band_matches_the_complementary_series() -> None
 
 
 @pytest.mark.parametrize("df", [5395690, 1e10])
-def test_the_tail_converges_across_the_root_searchs_bracket(df: float) -> None:
+def test_the_tail_converges_across_the_root_search_bracket(df: float) -> None:
     # T.INV's root search evaluates the tail from x = -e^-60 to -e^710 (`lower_quantile`); before T-3425 mpmath raised
     # NoConvergence from about |x| = 90 up to about √df. Each value agrees at 60 and 80 digits (the table's check).
     d = mp(df)
