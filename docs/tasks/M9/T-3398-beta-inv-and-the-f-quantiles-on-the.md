@@ -3,7 +3,7 @@ id: T-3398
 title: "BETA.INV and the F quantiles on the ported CDF (T-2511 remainder)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -41,6 +41,15 @@ half a unit of Excel's 15th significant digit, or each one still off is named wi
   which are named above only as the measurement's evidence.
 - Rule: statistics.md "BETA.INV solves Excel's own CDF to the crossing (T-1745)" (155 of 188 rows).
 
+## Cells added by the gap triage (2026-10-31, filed against T-2511 before it closed)
+Visibly-off m9-beta-inv cells no open task owned (`make exit-owners MILESTONE=M9`, `rate:BETA.INV`, eval on a64f963e).
+Each is the same point as a t1745-beta-inv-roundtrip row this task took over from T-2511, where Excel's x is a crossing of its
+own cdf (BETA.DIST at x is p, or p lies between x and a neighbour) but our cdf there is a few ulps off Excel's and our
+search does not land on our own crossing (A31: ours is 9.5E-15 off the 50-digit root, Excel 1E-15):
+- probes-numeric/m9-beta-inv: Calc!A31, Calc!A102, Calc!A103 (t1745 rows 30, 99, 100)
+The other 12 visibly-off m9-beta-inv cells at small shapes, where Excel's cdf is flat or its search stops off the
+crossing, are T-3388's; the 5 `#NUM!` cells at p = 0.9999999999 are T-3351's.
+
 ## Acceptance criteria
 - [ ] Each of the five functions meets the Phase 1 rate, or the Outcome names every cell still visibly off with an
       owner.
@@ -49,3 +58,25 @@ half a unit of Excel's 15th significant digit, or each one still off is named wi
 
 ## Out of scope
 - The Student-t quantiles (T-2511, T-3061, T-3399).
+
+
+## Outcome
+Done 2026-10-31 for BETA.INV and BETAINV; the F quantiles move to T-3485, which owns their cells and carries the
+measurements.
+- BETA.INV's search now crosses BETA.DIST's own kernel where it is closed or ported (`bratio::beta_search_tails`,
+  new), not the older Cephes-based search tails, taking the even-significand end of the final bracket (`beta.rs`
+  `beta_quantile`). On the branches not ported yet the search keeps the bounded Cephes kernel: BETA.DIST's accurate
+  half-integer series there costs 0.32 ms a cdf (a = 170, b = 1.5, x = 0.99), 7.8 ms a BETA.INV, past the lift
+  weight; with the bounded fallback that call is 29 us and the slowest timed 0.41 ms (release; T-3398 review). A
+  subnormal root flushes to 0, so `BETAINV(0.5,1E-5,1)` stays `#NUM!` (probes/t2435-dist-extremes S!A71).
+  `incomplete_beta::beta_reg_complement` is now test-only.
+- Eval against main (gen-m9, ironcalc-calc, probes, probes-numeric): 9 visibly-off cells fixed (BETA.INV 8, BETAINV 1),
+  0 newly visibly off. Attributed cells within 15 digits: BETA.INV 87.28% -> 88.82%, BETAINV 89.92% -> 90.76%. The
+  bounded fallback gives up 2 of the 11 cells the series would fix.
+- Gated: 7 known failures fixed (gen-m9/c18dbf21f11093f3 A400; ironcalc BETADIST_BETAINV.xlsx H15, H32, H43, H45, H60,
+  H61). 5 regress, numeric and within 2 ulp, recorded under decision 0083's standing allowance: BETADIST_BETAINV.xlsx
+  H2 (2 ulp), H25 (1), H63 (2), H64 (2), H67 (1). Ungated, 4 probes-numeric cells move by 2 ulp (m9-beta-inv A128,
+  A130; t1745-beta-inv-roundtrip J124, J126). T-3491 names all nine.
+- Measured and not taken (statistics.md): the nearer end on the same kernel (16 fixed, 1 newly visibly off, H16) and
+  the older tails with the nearer end (7 / 1).
+- Still visibly off: BETA.INV 58, BETAINV 11 (T-3387 and T-3388 own Excel's stop rule; T-2633 the chained cells).

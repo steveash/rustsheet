@@ -126,3 +126,12 @@ Each cell below has F.INV, F.INV.RT, FINV, BETA.INV or BETAINV as its only non-g
 ## Out of scope
 - Visibly-off F and beta quantile cells (T-2500, T-2633, T-1871) and the port itself (T-2511).
 - T.INV, T.INV.2T and TINV (T-0967, T-3061).
+
+## Cells added by gap triage (2026-10-31m)
+`make eval` on origin/main 900fbc1bf (excel-graph). An ownership check over every failing Excel cell
+(`scripts/exit_owners.py`'s `owned` rule over the open task files of origin/main and of every `origin/agent/*` branch
+pushed since 2026-10-29) found these cells named by no open task. All are within 15 significant digits of Excel (Phase
+1b), so they join this deferred owner of their kernel. Beta and F quantiles at p 0.4 on the stat argument-modes probe, 1
+to 3 ulp: BETA.INV/BETAINV(0.4,2,3), F.INV(0.4,5,5), F.INV.RT and FINV(0.4,5,5); and CONFIDENCE.T(0.4,2,15), 1 ulp, a
+Student t quantile Excel takes through the same beta quantile (statistics.md, T-3061).
+- probes/stat-argument-modes.case.json (6): Sheet1!H90, H95, H173, H231, H236, H241

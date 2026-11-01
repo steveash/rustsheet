@@ -1,0 +1,33 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3410: what Excel for the web gives for the two ironcalc-calc cells whose cached values come from another Excel build. IRR at an exact zero root: flows {-4,4} (IRR.xlsx Two Values!C4 caches 2^-52), the same with an explicit guess, reversed signs, {-1,1}, and three flows {-2,1,1} whose exact root is 0; A4:B4 hold -4 and 4 as in IRR.xlsx. IMCOS of 4+3i (COMPLEXs.xlsx Sheet1!K25 caches the imaginary part as 7.58155274274655 from Mac Excel).",
+ "tags": [
+  "M9",
+  "probe",
+  "financial",
+  "T-3410"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A4": -4,
+    "B4": 4,
+    "C1": "=IRR({-4,4})",
+    "C2": "=IRR({-4,4},0.1)",
+    "C3": "=IRR({4,-4})",
+    "C4": "=IRR(A4:B4)",
+    "C5": "=IRR({-1,1})",
+    "C6": "=IRR({-2,1,1})",
+    "C7": "=IRR({-4,4})=0",
+    "C8": "=IRR({-4,4},-0.5)",
+    "C9": "=IMAGINARY(IMCOS(\"4+3i\"))",
+    "C10": "=IMREAL(IMCOS(\"4+3i\"))",
+    "C11": "=IMCOS(\"4+3i\")",
+    "C12": "=IMAGINARY(IMCOS(COMPLEX(4,3)))",
+    "C13": "=IMAGINARY(IMCOS(\"4+3i\"))-7.58155274274654"
+   }
+  }
+ ],
+ "expected": {}
+}

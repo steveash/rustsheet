@@ -66,6 +66,9 @@ disagree, the verifier wins.
   - r3-m1-residual's min = 1 rule extends to a < 1 with b = 1 on one shape, (0.37, 1); the engine's GAMMALN is off on
     24 of 66 arguments below 1.
   - r3-fdensity: "ln x is a stored Excel LN product" is not established.
+- T-2512 (2026-10-31): `r3-bgrat`, bgrat for b ≠ 1/2. L140 bup+bgrat at 1 < b < 2 is RN(W + D), with W from Excel's
+  density in bup's orientation and D Excel's direct bgrat increment. The visible gap there is the density's lnB, and
+  TOMS's 15·eps hand-off to grat1 is why plain bgrat lost. Recorded in statistics.md's T-2464 integrated-model entry.
 
 ## Verifier code is deliberately independent
 Each `verify-*` directory holds a verifier's own parser, scorer and model re-implementation (`vlib.py`, `vparse.py`,

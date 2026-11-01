@@ -909,7 +909,7 @@ impl Parser {
             let only_literals = tokens
                 .iter()
                 .all(|t| t.is_literal() || matches!(t, TextToken::General));
-            if general_count > 1 || !only_literals || is_date || comma > 0 {
+            if general_count > 1 || !(only_literals || is_date) || comma > 0 {
                 return ParsePart::Error(ErrorPart::default());
             }
             // Excel: `%` beside `General` prints, no scaling (probes/text-format-general-company A3).

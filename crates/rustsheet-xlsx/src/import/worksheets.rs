@@ -32,6 +32,7 @@ use super::{
     columns::load_columns,
     conditional_formatting::load_conditional_formatting,
     iso_date::iso8601_to_date_system_serial,
+    merged_cells,
     shared_strings::{decode_xlsx_escapes, SharedStringTable},
     sheet_data::{read_sheet_data, SheetDataXml, SheetPart},
     tables::load_table,
@@ -111,8 +112,10 @@ fn load_merge_cells(ws: &XmlNode) -> Result<Vec<MergedCell>, XlsxError> {
     // </mergeCells>
     // Malformed, single-cell and overlapping entries are skipped: the engine
     // invariants are that merged ranges span more than one cell and never
-    // intersect each other.
+    // intersect each other. The first of any intersecting ranges is kept, through an index, since
+    // checking each range against every kept one is quadratic (T-3454).
     let mut merged_cells: Vec<MergedCell> = Vec::new();
+    let mut kept = merged_cells::KeptRanges::default();
     let merge_cells_nodes = ws
         .children()
         .filter(|n| n.has_tag_name("mergeCells"))
@@ -131,18 +134,15 @@ fn load_merge_cells(ws: &XmlNode) -> Result<Vec<MergedCell>, XlsxError> {
             if width < 1 || height < 1 || (width == 1 && height == 1) {
                 continue;
             }
-            if merged_cells
-                .iter()
-                .any(|m| m.intersects(row, column, width, height))
-            {
-                continue;
-            }
-            merged_cells.push(MergedCell {
+            let range = MergedCell {
                 row,
                 column,
                 width,
                 height,
-            });
+            };
+            if kept.keep(&range) {
+                merged_cells.push(range);
+            }
         }
     }
     Ok(merged_cells)
@@ -824,23 +824,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
 
     let merged_cells = load_merge_cells(ws)?;
 
-    // Covered cells of a merged range must not hold content (an engine
-    // invariant); Excel leaves them empty but third-party producers sometimes
-    // leave values behind, so we clear them here (keeping their styles).
-    for merged_cell in &merged_cells {
-        for row in merged_cell.row..=merged_cell.last_row() {
-            for column in merged_cell.column..=merged_cell.last_column() {
-                if row == merged_cell.row && column == merged_cell.column {
-                    continue;
-                }
-                if let Some(cell) = sheet_data.cell_mut(row, column) {
-                    *cell = Cell::EmptyCell {
-                        s: cell.get_style(),
-                    };
-                }
-            }
-        }
-    }
+    merged_cells::clear_covered_cells(&mut sheet_data, &merged_cells);
 
     let links = load_hyperlinks(ws, &settings.hyperlink_rels)?;
 

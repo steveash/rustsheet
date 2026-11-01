@@ -13,6 +13,7 @@ from rustsheet_tools.fitlab.kernels import (
     ftest,
     ftest_adhoc,
     gamma,
+    im_hyperbolic,
     irr_fallback,
     irr_secant_d,
     mirr,
@@ -41,6 +42,7 @@ MODULES = [
     ftest,
     ftest_adhoc,
     fisher_expon_harmean,
+    im_hyperbolic,
 ]
 
 
