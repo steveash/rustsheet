@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import random
 import re
-from decimal import Decimal
 
 import mpmath
 import pytest

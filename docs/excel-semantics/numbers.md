@@ -313,7 +313,9 @@ above says ROUNDUP keeps the sign of `num_digits` and takes its magnitude modulo
 10^43376 then overflows, so the rule predicts `#NUM!`, which is what the engine returns. In the same draw,
 `ROUNDUP(-3.41521682833705E-207,-11541)`, `ROUNDUP(-2.33253918200575E+106,-678)` and `ROUNDUP(7712487.6865209,-400)`
 were `#NUM!`, and `ROUNDUP(4.72880001004526E+149,22178)` was the value. Every earlier huge-`num_digits` probe used a
-small value.
+small value. The same value at -320 is `#NUM!` (committed: eval/accuracy/tables/ROUNDUP/s1 Calc!A111, `ROUNDUP(6.4421516092447E+265,-320)`).
+One candidate fits every cell above: a 16-bit count of the kept digits, `num_digits` + e + 1. At -320 the count is -54
+(`#NUM!`); at -43,376 it is -43,110, which wraps to +22,426 (the value comes back).
 Evidence: excel-graph, 2026-11-01, T-3555's first ROUNDUP Gate A draw. That batch was replaced before commit (its
 point was a math domain error against an Excel number), so T-3627 re-probes the cell.
 Status: UNVERIFIED (one cell; T-3627 probes for the rule)

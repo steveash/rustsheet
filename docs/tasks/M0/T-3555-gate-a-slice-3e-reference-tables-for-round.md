@@ -57,7 +57,7 @@ function is defined so that Excel's documented decimal behavior is not counted a
       failing point with its owner task, in `known-failures.tsv` under T-3379's rules, and lists every point where
       Excel is more than G = 1e-4 off the math. The expected number of such points is 0; any point listed is
       evidence against the rule.
-- [x] The probes-numeric math sidecars are regenerated with the new definitions and committed. `make eval` shows no
+- [x] The probes-numeric math sidecars are regenerated with the new definitions and committed (no sidecar changed; see the Outcome). `make eval` shows no
       cell of `probes/round-family` or `probes/roundup-wrapped-scaling` leaving the R1(c) envelope.
 - [x] `make check` green; reviewers approve.
 
@@ -73,14 +73,16 @@ function is defined so that Excel's documented decimal behavior is not counted a
   and `round15` now uses it too. Unit tests are in `tools/tests/test_accuracy_rounding.py`, with the numbers.md values
   the acceptance lists. `ROUNDUP(1.5,-400)` is a math domain error.
 - Tables: `eval/accuracy/tables/{ROUND,ROUNDUP,ROUNDDOWN}/s1`, 120 points each (48/18/18/24/12 by stratum), filled
-  from excel-graph on 2026-11-01. `rustsheet-eval accuracy`: 1762 points, 0 failing, 0 table defects. Missing tables
-  went from 310 to 307 (main had 310, not 323, when this task started). No known-failures lines: every new point is
+  from excel-graph on 2026-11-01. `rustsheet-eval accuracy` on the head merged with main: 2362 points in 13 tables, 0 failing,
+  0 table defects. Missing tables went down by 3: 310 to 307 before the merge with main, 305 after it (main had 310, not
+  323, when this task started). No known-failures lines: every new point is
   in the envelope. Excel is more than G = 1e-4 off the math at 0 points. ROUNDUP's 5 domain-error points are all
   `#NUM!` in Excel.
 - The draws keep `num_digits` within ±400. The first ROUNDUP draw went to ±65,535 and hit a table defect:
   `ROUNDUP(6.4421516092447E+265,-43376)` is the value in Excel, not `#NUM!`. That contradicts the wrap rule, so I
   recorded it in numbers.md ("ROUNDUP of a huge value at a huge negative num_digits", UNVERIFIED) and filed T-3627 to
-  probe it. Then I replaced the batch before commit.
+  probe it. Then I replaced the batch before commit. The committed ROUNDUP s1 Calc!A111 (the same value at -320, `#NUM!`)
+  narrows the observation, and T-3627 cites it.
 - A `num_digits` beyond ±400, or a 16th-digit tie, has no math value (`NoValueError`). So `rustsheet-accuracy math`
   never gives an eval cell a math value from a rule that does not cover it.
 - `rustsheet-accuracy math --suite probes-numeric` changed no committed sidecar: no probes-numeric cell is a

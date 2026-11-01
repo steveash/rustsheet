@@ -25,6 +25,9 @@ file the engine task if the engine differs.
   `ROUNDUP(7712487.6865209,-400)` as `#NUM!`, and `ROUNDUP(4.72880001004526E+149,22178)` as the value. Every earlier
   probe of a huge negative `num_digits` used a small value (123.456, 0.5, 42, 1E+15; probes/round-huge-digits*,
   probes/roundup-wrapped-scaling), and `ROUNDUP(123.456,-65535)` is `#NUM!` there.
+- Committed evidence for the same value: `eval/accuracy/tables/ROUNDUP/s1` Calc!A111, `ROUNDUP(6.4421516092447E+265,-320)`,
+  is `#NUM!`. The 16-bit kept-digit count below fits every cell named here (-54 at -320; -43,110, which wraps to +22,426, at
+  -43,376), but `ROUNDUP(123.456,-65535)` (count -65,532, which wraps to +4) does not, so the count alone is not the rule.
 - Candidates to separate: a 16-bit count of the kept digits (`num_digits` + exponent + 1, as ROUND counts in 32 bits);
   a threshold at |`num_digits`| > 32,767; a dependence on the value's exponent. A probe grid of exponents (-300, -10, 0, 10,
   100, 265, 307) × `num_digits` (-32767, -32768, -32769, -43376, -65535 and a few between) for ROUNDUP and ROUNDDOWN

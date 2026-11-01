@@ -31,7 +31,9 @@ Points the draws meet, all inside the envelope of a correct engine:
 
 from __future__ import annotations
 
+import math
 import random
+import sys
 from collections.abc import Callable, Sequence
 from decimal import ROUND_DOWN, ROUND_HALF_UP, ROUND_UP, Context, Decimal
 
@@ -53,7 +55,7 @@ TWO_STAGE_SOURCE = "numbers.md#round-family-rounds-in-two-decimal-stages"
 WRAP_SOURCE = "numbers.md#round-family-huge-num_digits-wrap"
 DECISION = "decision 0223"
 MAX_DIGITS = 400  # |num_digits| drawn up to here (see the module docstring)
-DOUBLE_MAX = Decimal(1.7976931348623157e308)
+DOUBLE_MAX = Decimal(sys.float_info.max)
 # Wide enough for any quantize below: a 15-digit coefficient and exponents down to -400 - 323.
 _CONTEXT = Context(prec=40, Emax=10**6, Emin=-(10**6))
 _MODES = {"ROUND": ROUND_HALF_UP, "ROUNDUP": ROUND_UP, "ROUNDDOWN": ROUND_DOWN}
@@ -75,6 +77,9 @@ def decimal_round(function: str, number: float, num_digits: int) -> Decimal:
     half away from zero). DomainError when the result is beyond the double range; NoValueError
     outside what the rule covers: |`num_digits`| above `MAX_DIGITS` (Excel narrows it first) and a
     16th-digit tie. Neither can be drawn; an eval cell (`rustsheet-accuracy math`) gets no value."""
+    if not math.isfinite(number):
+        msg = "a non-finite number"
+        raise NoValueError(msg)
     if abs(num_digits) > MAX_DIGITS:
         msg = f"num_digits beyond ±{MAX_DIGITS}: Excel narrows it first ({WRAP_SOURCE})"
         raise NoValueError(msg)
@@ -83,7 +88,8 @@ def decimal_round(function: str, number: float, num_digits: int) -> Decimal:
         raise NoValueError(msg)
     cut = decimal15(number)
     unit = Decimal(1).scaleb(-num_digits, _CONTEXT)
-    if cut.as_tuple().exponent >= -num_digits:  # nothing is dropped
+    exponent = cut.as_tuple().exponent  # an int: `cut` is finite
+    if isinstance(exponent, int) and exponent >= -num_digits:  # nothing is dropped
         result = cut
     else:
         result = cut.quantize(unit, rounding=_MODES[function], context=_CONTEXT)
@@ -96,7 +102,7 @@ def decimal_round(function: str, number: float, num_digits: int) -> Decimal:
 def _value(function: str) -> Callable[[Sequence[MathArg]], mpmath.mpf]:
     def value(args: Sequence[MathArg]) -> mpmath.mpf:
         number, digits = args
-        assert not isinstance(number, bool) and not isinstance(digits, bool)
+        assert not isinstance(number, bool | tuple) and not isinstance(digits, bool | tuple)
         return mpmath.mpf(str(decimal_round(function, float(number), int(digits))))
 
     return value
