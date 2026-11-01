@@ -66,8 +66,8 @@ Diagnosis (statistics.md "BINOM.DIST and NEGBINOM.DIST at a large n", `docs/rese
 - A least-squares fit on 704 large-n cells of probes-numeric/t2513-r3-binom-pmf-n (runs of consecutive p) recovers
   fl(n p) and fl(n q) (coefficients 0.95 and 0.99) and -r(fl(2kv)) (-1.04, -0.88). Those are the engine's terms.
 - It leaves an unexplained rms of 0.77 |d| 2^-53, partly smooth along each run (lag-1 autocorrelation 0.56).
-- Ruled out as that rest (coefficients near 0): the roundings of v, k + M, s v, M v and d v, and fl(2kv) on a v held at
-  64 bits.
+- Ruled out as that rest: the roundings of v, k + M, s v and M v, and fl(2kv) on a v held at 64 bits (coefficients
+  near 0), and the rounding of d v (a negligible regressor: unstable coefficients and no fall in the residual).
 - The fit on the engine's own values returns its model exactly (residual 0.04), which validates the method.
 
 Next attempt: add candidate regressors to `pmf_regress.py` and keep any whose coefficient is near ±1 and whose

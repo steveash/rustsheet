@@ -2638,8 +2638,11 @@ same amount (up to 4.4E-12 from Excel, T-3447).
   - minus the rounding error of fl(2 k v) on each side (-1.04, -0.88) with v = fl(d / fl(k + M)) stored: the term the
     engine's bd0 series already carries (`loader::excel_bd0_series`);
   - a further error of rms 0.77 |d| 2^-53 (the error was 1.19 before the fit), partly smooth along each run (lag-1
-    autocorrelation 0.56). It is not the rounding of v, k + M, s v, M v or d v, nor fl(2 k v) on a 64-bit v
-    (coefficients near 0). It is UNVERIFIED and it is what keeps these cells off.
+    autocorrelation 0.56). It is not the rounding of v, k + M, s v or M v, nor fl(2 k v) on a 64-bit v (coefficients
+    near 0), nor of d v (a negligible regressor: unstable coefficients and no fall in the residual). It is UNVERIFIED
+    and it is what keeps these cells off.
+  - The evidence for these terms is statistical: a fit over the 704 excel-graph cells, not single cells. The fl(n p)
+    coefficient's standard error is about 0.07.
   - The same fit on the engine's values returns exactly its own model (1, 1, -1, -1, residual 0.04), which checks the
     method. Script: `docs/research/t3447/pmf_regress.py`.
 - What was wrong (ours before T-3352): past the double-double walk's 2^10 terms both functions fell back to statrs. Its
