@@ -79,3 +79,15 @@ these density and pmf cells:
 `defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1
 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off
 (then give it a `campaign:` stage instead).
+
+## Cells added by gap triage (2026-10-31m)
+`make eval` on origin/main 900fbc1bf (excel-graph). An ownership check over every failing Excel cell
+(`scripts/exit_owners.py`'s `owned` rule over the open task files of origin/main and of every `origin/agent/*` branch
+pushed since 2026-10-29) found these cells named by no open task. All are within 15 significant digits of Excel (Phase
+1b), so they join this deferred owner of their kernel. BETA.DIST densities at a = 5 and 10 (min(a,b) > 1), 1 to 24 ulp;
+A46 `BETA.DIST(0.5,5,50,FALSE)` is 24 ulp and A48 `BETA.DIST(0.9,5,50,FALSE)` 18 ulp off Excel, still inside 15 digits.
+Also two binomial-family pmfs of the stat argument-modes probe: `BINOM.DIST.RANGE(5,0.4,5)` (H117, Excel
+0.010240000000000008, ours ...003, against an exact 0.4^5) and `NEGBINOMDIST(5,5,0.4)` (H380, 2 ulp).
+- probes-numeric/m9-beta-dist-a5.case.json (10): Calc!A24, A28, A30, A32, A34, A36, A40, A46, A48, A50
+- probes-numeric/m9-beta-dist-a10.case.json (10): Calc!A22, A24, A26, A28, A30, A34, A36, A46, A50, A52
+- probes/stat-argument-modes.case.json (2): Sheet1!H117, H380

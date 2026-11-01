@@ -1,0 +1,13 @@
+228 cells; Excel is the correctly rounded double at 5
+  all (228 cells): label bit-exact within15 envelope max-ulp-vs-math
+     correctly rounded     5   101   228      0
+                  head     5   101   228      0
+                  main     5    92   228     10
+  x <= 30 (60 cells): label bit-exact within15 envelope max-ulp-vs-math
+     correctly rounded     5    54    60      0
+                  head     5    54    60      0
+                  main     5    49    60     10
+  x > 30 (168 cells): label bit-exact within15 envelope max-ulp-vs-math
+     correctly rounded     0    47   168      0
+                  head     0    47   168      0
+                  main     0    43   168      7

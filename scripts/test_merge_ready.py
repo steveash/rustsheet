@@ -6,6 +6,7 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import os
 import re
 import subprocess
 import sys
@@ -18,6 +19,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gh_client
 import merge_ready
+import visible_lock
 from gh_client import FakeGh, Reply
 from merge_ready import APPROVE, IGNORE, KEEP, UNLABEL, Marker, MarkerError
 
@@ -394,6 +396,20 @@ class Verify(PrFixture):
         self.comments = [self.comment(1, marker(self.head).render())]
         self.assertEqual(self.failures(), [("V3", UNLABEL)])
 
+    def test_a_shallow_clone_is_deepened_before_the_docs_only_check(self) -> None:
+        # Cloud sessions clone shallow, where `classify_range` counts every diff as code: before
+        # T-3499 each docs-only PR with skipped heavy jobs was ejected as CI red (#2574, #2577).
+        self.checks = green_checks(**dict.fromkeys(merge_ready.HEAVY_JOBS, "skipped"))
+        base = Path(self.tmp.name)
+        origin = (base / "origin.git").as_uri()
+        run("git", "clone", "-q", "--depth", "1", origin, str(base / "shallow"), cwd=base)
+        self.clone = base / "shallow"
+        self.assertEqual(self.git("rev-parse", "--is-shallow-repository"), "true")
+        self.assertEqual(self.failures(), [])
+        self.assertEqual(self.git("rev-parse", "--is-shallow-repository"), "false")
+        # A full clone is left as it is (a second `--unshallow` would fail).
+        self.assertEqual(self.failures(), [])
+
     def test_verdicts_must_cover_the_applicable_reviewers(self) -> None:
         self.comments = [
             self.comment(1, marker(self.head, reviewers={**APPROVED, "quality": "REQUEST_CHANGES"}).render())
@@ -644,6 +660,174 @@ class Mark(PrFixture):
         self.perform(again.actions()[0])
         verdict, _ = self.verify()
         self.assertTrue(verdict.ready, verdict.failures)
+
+    def baseline_conflict(self, pr_side: str, main_side: str, path: str = "eval/baseline/probes.txt") -> str:
+        """Marks a PR head that edits `path`, then moves `main` with a conflicting edit to it and
+        starts merging `main` into the PR (left conflicted). `main` holds a gated suite `probes`
+        and a fetched one `poi`. Returns the marked head."""
+        self.git("checkout", "-q", "main")
+        self.write("eval/suites/probes/suite.toml", 'name = "probes"\ngate = true\n')
+        self.write("eval/suites/poi/suite.toml", 'name = "poi"\ngate = true\n[fetch]\nurl = "x"\n')
+        if self.git("status", "--porcelain"):  # once per test
+            self.commit("suites")
+            self.git("push", "-q", "origin", "main")
+        self.git("checkout", "-q", "pr")
+        self.git("merge", "-q", "--no-edit", "main")
+        self.write(path, pr_side)
+        old = self.commit("pr edits a baseline")
+        self.git("push", "-q", "-f", "origin", "HEAD:refs/pull/7/head")
+        # A PR that edits eval/ needs excel-fidelity's approval, which carries over with the rest.
+        self.comments.append(self.comment(1, marker(old, reviewers={**APPROVED, "excel-fidelity": APPROVE}).render()))
+        self.git("checkout", "-q", "main")
+        self.write(path, main_side)
+        self.commit("main edits the same baseline")
+        self.git("push", "-q", "origin", "main")
+        self.git("checkout", "-q", "pr")
+        merge = subprocess.run(["git", "merge", "-q", "--no-edit", "main"], cwd=self.clone, capture_output=True)
+        self.assertNotEqual(merge.returncode, 0)  # the conflict this fixture is for
+        return old
+
+    def finish_merge(self) -> None:
+        self.git("add", "-A")
+        self.git("commit", "-q", "--no-edit")
+        self.head = self.git("rev-parse", "HEAD")
+        self.git("push", "-q", "-f", "origin", "HEAD:refs/pull/7/head")
+        self.pull["head"]["sha"] = self.head
+
+    def test_carry_accepts_a_merge_that_re_records_baselines(self) -> None:
+        # Decision 0207: a conflict only in eval/baseline/, resolved and re-recorded, carries over.
+        old = self.baseline_conflict("F\tprobes/a\tA1\n", "F\tprobes/b\tB1\n")
+        # What make eval-baseline wrote: main's failure kept, the PR's fixed, a check line added.
+        self.write("eval/baseline/probes.txt", "C\tprobes/b\t1\nF\tprobes/b\tB1\n")
+        self.finish_merge()
+        plan = self.plan(review=None, carry=True)
+        self.assertEqual((plan.marker.prev, plan.marker.head), (old, self.head))
+
+    def test_carry_refuses_a_failure_neither_parent_had(self) -> None:
+        # The eval gate accepts any list that matches the engine, so a regression recorded in the
+        # merge (decision 0207) must go back to the reviewers.
+        self.baseline_conflict("F\tprobes/a\tA1\n", "F\tprobes/b\tB1\n")
+        self.write("eval/baseline/probes.txt", "F\tprobes/a\tA1\nTF\tprobes/z\tZ9\n")
+        self.finish_merge()
+        self.refused("records failures neither parent had \\(TF\tprobes/z\tZ9\\)", review=None, carry=True)
+
+    def test_the_visible_parity_lock_is_a_checked_list(self) -> None:
+        self.baseline_conflict("F\tprobes/a\tA1\n", "F\tprobes/b\tB1\n")
+        self.assertIn(visible_lock.VISIBLE_PARITY, merge_ready.Repo(self.clone).checked_baselines())
+
+    def main_has_cases(self, *cases: str, lock: str = "") -> None:
+        """Commits case files `eval/suites/probes/cases/<case>` (the suite's root) and, when given,
+        the visible-parity lock `lock` to `main`."""
+        self.git("checkout", "-q", "main")
+        self.write("eval/suites/probes/suite.toml", 'name = "probes"\ngate = true\n')
+        for case in cases:
+            self.write(f"eval/suites/probes/cases/{case}", "{}\n")
+        if lock:
+            self.write(visible_lock.VISIBLE_PARITY, lock)
+        self.commit("main has cases")
+        self.git("push", "-q", "origin", "main")
+        self.git("checkout", "-q", "pr")
+
+    # Decision 0219's carry fixture: from a base with `a 3`, the PR adds a line for its own case
+    # `new` and leaves `a` alone; main lowers `a` to 1 (the steward) and adds `m`. The two edits
+    # touch the same hunk, so the merge conflicts on the lock.
+    VISIBLE_BASE = "# h\nprobes/a\t3\n"
+    VISIBLE_PR = "# h\nprobes/a\t3\nprobes/new\t4\n"
+    VISIBLE_MAIN = "# h\nprobes/a\t1\nprobes/m\t5\n"
+
+    def visible_conflict(self) -> str:
+        self.main_has_cases("a", "m", "old", lock=self.VISIBLE_BASE)
+        return self.baseline_conflict(self.VISIBLE_PR, self.VISIBLE_MAIN, path=visible_lock.VISIBLE_PARITY)
+
+    def test_carry_accepts_the_three_way_visible_parity_merge(self) -> None:
+        old = self.visible_conflict()
+        # main's lowering kept, main's and the PR's lines kept: what merge_catchup writes. The PR's
+        # own case (no case file on main) may then have any count, as its re-record writes it.
+        self.write(visible_lock.VISIBLE_PARITY, "# h\nprobes/a\t1\nprobes/m\t5\nprobes/new\t9\n")
+        self.finish_merge()
+        plan = self.plan(review=None, carry=True)
+        self.assertEqual((plan.marker.prev, plan.marker.head), (old, self.head))
+
+    def refuses_visible(self, resolved: str, refused: str) -> None:
+        self.visible_conflict()
+        self.write(visible_lock.VISIBLE_PARITY, resolved)
+        self.finish_merge()
+        self.refused(f"records failures neither parent had \\({refused}\\)", review=None, carry=True)
+
+    def test_carry_refuses_undoing_a_lowering_on_main(self) -> None:
+        # The higher parent's line (3), which undid main's lowering before the review (#2660 B1).
+        self.refuses_visible("# h\nprobes/a\t3\nprobes/m\t5\n", "probes/a\t3")
+
+    def test_carry_refuses_a_line_above_mains_for_a_case_on_main(self) -> None:
+        self.refuses_visible("# h\nprobes/a\t1\nprobes/m\t6\n", "probes/m\t6")
+
+    def test_carry_refuses_a_new_line_for_a_case_on_main(self) -> None:
+        self.refuses_visible("# h\nprobes/a\t1\nprobes/old\t1\n", "probes/old\t1")
+
+    def test_carry_accepts_deleting_the_retired_json_lock(self) -> None:
+        # A PR from before decision 0219 modified the json lock that main deleted: the catch-up
+        # deletes it, and the carry accepts that only while main has no json.
+        self.git("checkout", "-q", "main")
+        self.write(visible_lock.RETIRED_LOCK, '{"visibly_off_cells": 1}\n')
+        self.commit("json lock")
+        self.git("push", "-q", "origin", "main")
+        self.git("checkout", "-q", "pr")
+        self.git("merge", "-q", "--no-edit", "main")
+        self.write(visible_lock.RETIRED_LOCK, '{"visibly_off_cells": 2}\n')
+        old = self.commit("pr raises the json lock")
+        self.git("push", "-q", "-f", "origin", "HEAD:refs/pull/7/head")
+        self.comments.append(self.comment(1, marker(old, reviewers={**APPROVED, "excel-fidelity": APPROVE}).render()))
+        self.git("checkout", "-q", "main")
+        self.git("rm", "-q", visible_lock.RETIRED_LOCK)
+        self.commit("main retires the json lock")
+        self.git("push", "-q", "origin", "main")
+        self.git("checkout", "-q", "pr")
+        merge = subprocess.run(["git", "merge", "-q", "--no-edit", "main"], cwd=self.clone, capture_output=True)
+        self.assertNotEqual(merge.returncode, 0)  # modify/delete
+        self.git("rm", "-q", visible_lock.RETIRED_LOCK)
+        self.finish_merge()
+        plan = self.plan(review=None, carry=True)
+        self.assertEqual((plan.marker.prev, plan.marker.head), (old, self.head))
+
+    def test_carry_refuses_deleting_the_json_lock_while_main_has_it(self) -> None:
+        self.git("checkout", "-q", "main")
+        self.write(visible_lock.RETIRED_LOCK, '{"visibly_off_cells": 1}\n')
+        self.commit("json lock")
+        self.git("push", "-q", "origin", "main")
+        old = self.merge_main()
+        self.git("rm", "-q", visible_lock.RETIRED_LOCK)
+        self.git("commit", "-q", "--amend", "--no-edit")
+        self.head = self.git("rev-parse", "HEAD")
+        self.git("push", "-q", "-f", "origin", "HEAD:refs/pull/7/head")
+        self.pull["head"]["sha"] = self.head
+        self.assertNotEqual(old, self.head)
+        self.refused("only the content of an eval-gated baseline list may", review=None, carry=True)
+
+    def test_carry_refuses_a_conflict_outside_the_checked_lists(self) -> None:
+        self.baseline_conflict("pr side\n", "main side\n", path="scripts/x.py")
+        self.write("scripts/x.py", "resolved\n")
+        self.finish_merge()
+        self.refused("conflicts outside the eval-gated baseline lists", review=None, carry=True)
+        # A fetched suite's list is not checked by CI's eval gate, so it is not carried either.
+        self.baseline_conflict("F\tpoi/a\tA1\n", "F\tpoi/b\tB1\n", path="eval/baseline/poi.txt")
+        self.write("eval/baseline/poi.txt", "F\tpoi/c\tC1\n")
+        self.finish_merge()
+        self.refused("conflicts outside the eval-gated baseline lists", review=None, carry=True)
+
+    def test_carry_refuses_any_other_change_in_a_baseline_merge(self) -> None:
+        cases = {
+            "code": lambda: self.write("scripts/x.py", "slipped into the merge\n"),
+            "a new list": lambda: self.write("eval/baseline/extra.txt", "F\tx\tA1\n"),
+            "a fetched list": lambda: self.write("eval/baseline/poi.txt", "F\tpoi/x\tA1\n"),
+            "a mode change": lambda: os.chmod(self.clone / "eval/baseline/probes.txt", 0o755),
+        }
+        for name, edit in cases.items():
+            with self.subTest(name):
+                self.baseline_conflict(f"F\tprobes/{name}-pr\tA1\n", f"F\tprobes/{name}-main\tB1\n")
+                self.write("eval/baseline/probes.txt", f"F\tprobes/{name}-main\tB1\n")
+                edit()
+                self.finish_merge()
+                self.refused("only the content of an eval-gated baseline list may", review=None, carry=True)
 
     def test_carry_refuses_an_edited_merge_or_another_commit(self) -> None:
         self.merge_main()

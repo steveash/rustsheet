@@ -3,7 +3,7 @@ id: T-3211
 title: "Collation: SORT, SORTBY and UNIQUE under Excel's non-transitive pairwise accent rule, without a panicking sort (t3181 array cells)"
 milestone: M7
 lane: engine
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -41,12 +41,32 @@ directive 5: no panics) with accepted-deviation entries.
 - Tier opus: algorithm choice from oracle evidence, panic safety.
 
 ## Acceptance criteria
-- [ ] Every cell named above passes or is an accepted deviation with a decision-0014 entry;
+- [x] Every cell named above passes or is an accepted deviation with a decision-0014 entry;
       `make eval-check`: 0 regressions; `make eval-baseline` run.
-- [ ] A unit test sorts the Data strings of probes/t3201-collation-wrapped-run-pairs (554
+- [x] A unit test sorts the Data strings of probes/t3201-collation-wrapped-run-pairs (554
       intransitive triples) with the new sort, in several input orders, without panicking.
-- [ ] coercion.md's "Ours (T-3181)" text says what the sorts do now.
-- [ ] `make check` green; reviewers approve.
+- [x] coercion.md's "Ours (T-3181)" text says what the sorts do now.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Lookups (T-3210).
+
+## Outcome
+- Probe: probes/t3211-collation-sort-cycles (361 formula cells, 377 cells checked with Data; excel-graph 2026-10-31): every order of the two three-text
+  cycles and 32 eight-text shuffles under SORT/SORTBY ascending and descending, UNIQUE of collation-equal and
+  prefix pairs, and the 9x9 comparison matrix. Findings in coercion.md "Not a total order".
+- `functions::util::sort_indices_pairwise`: a stable natural merge sort (runs, descending ones reversed, pairwise
+  bottom-up merges) that ends on any comparator. SORT and SORTBY use it with `sort_key_cmp`, which now compares
+  texts with `compare_values_pairwise`. It reproduces every three-text cycle order and 68 of 88 eight-text rows;
+  no simple algorithm reproduced the rest (tried: see T-3418).
+- UNIQUE keys texts by `CollationKey` (`CellKey::Collated`) and joins a line to the first kept line of its bucket
+  that `cmp_text_pairwise` finds equal; rows and columns share one path.
+- Eval delta: probes known failures 2302 -> 2335: fixed 10 (all t3181-collation-prefix-arrays cells: A1-A9, B2),
+  new case t3211-collation-sort-cycles with 43 known failures owned by T-3418 (40 eight-text sort rows, UNIQUE
+  G4:I4); 0 regressions.
+- Unit test `the_pairwise_sort_ends_on_intransitive_texts` (test_collation.rs): the t3201 wrapped-run texts in five
+  input orders, both directions.
+- UNIQUE's pairwise walk of a bucket is charged to the formula's work budget (`text_units` of the texts compared
+  per comparison), so texts that share a key but are unequal cannot make it run quadratically (security review
+  round 2; unit test `unique_charges_the_pairwise_walk_of_a_shared_key_bucket`).
+- Follow-up: T-3418 (fit the eight-text orders and UNIQUE's sort-order grouping).
