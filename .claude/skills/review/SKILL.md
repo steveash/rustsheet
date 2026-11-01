@@ -42,10 +42,12 @@ combined tree is its gate (decision 0231). Any other path in the diff brings the
 4. Consolidate into a table: reviewer | verdict | blocking findings. A PR is mergeable only when
    every reviewer returned `APPROVE` (MINOR findings may be deferred as follow-up tasks).
    **Push once per round** (decision 0240): wait until every reviewer of the round has reported,
-   fix all of the round's findings in local commits, run `make check`, then push once and start
-   the next round on that head. Do not push while a reviewer of the round is still running, and
-   do not push fix by fix: each push starts a full CI run and cancels the one in flight, and a
-   reviewer still running is then reviewing a head that no longer counts (step 3).
+   fix the round's blocking findings (and any MINOR ones you choose to fix) in local commits, run
+   `make check`, then push once and start the next round on that head, where a reviewer whose
+   approval names an older head runs again (step 3). Do not push while a reviewer of the round is
+   still running, and do not push fix by fix: each push starts a full CI run and cancels the one
+   in flight, and a reviewer still running is then reviewing a head that no longer counts. Red-CI,
+   conflict and ejection fixes are not review-round fixes: push them when ready (steward skill).
 5. For each MINOR finding you choose not to fix, create a follow-up task or note why it is moot.
 6. Paste the table into the PR body ("Agent review" section).
 

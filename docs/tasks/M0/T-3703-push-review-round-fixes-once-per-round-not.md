@@ -24,7 +24,7 @@ then be pushed piecemeal.
 - [x] The `review` and `work-loop` skills say to collect all of a round's findings, fix them in
       one or more local commits, run `make check`, and push once per round (verdict records still
       name the reviewed head, as decision 0178 requires).
-- [x] A decision record (protected path `.claude/`); `make check` green; reviewers approve.
+- [x] A decision record (protected path `.claude/`); `make check` green; reviewers approve (round 1 on b246a9681: all three APPROVE with MINOR findings, fixed in round 2).
 
 ## Out of scope
 - Changing the review-round limit or the panel (T-3702).

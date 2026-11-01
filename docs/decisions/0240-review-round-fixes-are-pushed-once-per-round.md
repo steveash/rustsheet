@@ -14,8 +14,8 @@
     - a reviewer still running reviews a head that no longer counts (its record names the old
       head, decision 0178), so it runs again.
 - **Decision:** a worker pushes a review round's fixes once.
-  - It waits until every reviewer of the round has reported, fixes all of the round's findings
-    in local commits, and runs `make check`.
+  - It waits until every reviewer of the round has reported, fixes the round's blocking
+    findings (and any MINOR ones it chooses) in local commits, and runs `make check`.
   - Then it pushes once and runs the next round on that head.
 - **Consequences:**
   - A round costs one CI run and one set of reviewer runs. Verdict records still name the head
