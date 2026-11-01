@@ -195,9 +195,10 @@ fn fn_forecast_ets_family_not_implemented_yet() {
     model._set("A4", "=FORECAST.ETS.STAT({1,2,3}, {1,2,3}, 1)");
     model.evaluate();
 
-    assert_eq!(model._get_text("A1"), *"#N/IMPL!");
+    // FORECAST.ETS (T-3600) and FORECAST.ETS.SEASONALITY (T-3599) compute: the line continues,
+    // and three points show no season.
+    assert_eq!(model._get_text("A1"), *"5");
     assert_eq!(model._get_text("A2"), *"#N/IMPL!");
-    // FORECAST.ETS.SEASONALITY computes (T-3599): three points show no season.
     assert_eq!(model._get_text("A3"), *"0");
     assert_eq!(model._get_text("A4"), *"#N/IMPL!");
 }

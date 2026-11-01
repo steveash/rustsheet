@@ -51,6 +51,11 @@ const MAX_MISSING: f64 = 0.3;
 /// (directive 5). Past it, detection is `#NUM!`: a series of 16,385 points or more (a
 /// DEVIATION, statistics.md "FORECAST.ETS family: work caps").
 pub(super) const MAX_ACF_WORK: usize = 1 << 27;
+/// Most work one FORECAST.ETS-family call may spend over all its lifted elements: season
+/// detections (length × lags) plus fits (length × [`MAX_FILTER_RUNS`]), each charged once per
+/// distinct series and season. Past it the element is `#NUM!` (directive 5, a DEVIATION,
+/// statistics.md "FORECAST.ETS family: work caps"): two fits of the longest series fit.
+pub(super) const MAX_CALL_WORK: usize = 1 << 30;
 /// A time stamp's step count may miss a whole number by this much and still count as on the grid.
 const STEP_TOLERANCE: f64 = 1e-6;
 
@@ -134,6 +139,30 @@ pub(super) fn completion_setting(value: f64) -> Option<bool> {
     } else {
         None
     }
+}
+
+/// `seasonality`, truncated: 1 (the default) detects the season, 0 means none, 2 to 8,760 is the
+/// season length; anything else is `None` (`#NUM!`).
+pub(super) fn season_setting(value: f64) -> Option<Season> {
+    let truncated = value.trunc();
+    if truncated == 1.0 {
+        Some(Season::Detect)
+    } else if truncated == 0.0 {
+        Some(Season::Fixed(0))
+    } else if (2.0..=MAX_SEASON as f64).contains(&truncated) {
+        Some(Season::Fixed(truncated as usize))
+    } else {
+        None
+    }
+}
+
+/// What `seasonality` asks for.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub(super) enum Season {
+    /// Detect it ([`detect_season`]).
+    Detect,
+    /// This many steps; 0 means none.
+    Fixed(usize),
 }
 
 /// The settings that shape the series.
@@ -273,6 +302,20 @@ fn detect_axis(times: &[f64]) -> Result<Axis, Error> {
 pub(super) struct Series {
     /// The completed values, one per step from the first time stamp to the last.
     pub(super) y: Vec<f64>,
+    axis: Axis,
+}
+
+impl Series {
+    /// How many steps `target` lies after the last point (fractional between steps). A target
+    /// before the last time stamp is `#NUM!` (Microsoft's documentation of `target_date`).
+    pub(super) fn horizon(&self, target: f64) -> Result<f64, Error> {
+        let position = self.axis.position(target).ok_or(Error::NUM)?;
+        let horizon = position - (self.y.len() as f64 - 1.0);
+        if !horizon.is_finite() || horizon < -STEP_TOLERANCE {
+            return Err(Error::NUM);
+        }
+        Ok(horizon.max(0.0))
+    }
 }
 
 /// Builds the series: pairs `values` with `timeline` in reading order, sorts by time stamp,
@@ -356,7 +399,7 @@ pub(super) fn build_series(
     } else {
         slots.iter().map(|slot| slot.unwrap_or(0.0)).collect()
     };
-    Ok(Series { y })
+    Ok(Series { y, axis })
 }
 
 /// Missing points become the straight line between their known neighbours, or the nearest known
@@ -388,17 +431,28 @@ fn interpolate(slots: &[Option<f64>]) -> Vec<f64> {
     out
 }
 
+/// The intercept and slope of the least-squares line through the points (`xs[i]`, `ys[i]`): the
+/// mean and slope 0 when the x values do not vary.
+fn least_squares(xs: &[f64], ys: &[f64]) -> (f64, f64) {
+    let xs: Vec<Option<f64>> = xs.iter().copied().map(Some).collect();
+    let ys: Vec<Option<f64>> = ys.iter().copied().map(Some).collect();
+    let moments = PairedMoments::new(&xs, &ys);
+    moments.line().unwrap_or((moments.mean_y, 0.0))
+}
+
 /// The residuals of the least-squares line through `y` at x = 0, 1, 2, …
 fn detrend(y: &[f64]) -> Vec<f64> {
-    let xs: Vec<Option<f64>> = (0..y.len()).map(|index| Some(index as f64)).collect();
-    let ys: Vec<Option<f64>> = y.iter().copied().map(Some).collect();
-    let moments = PairedMoments::new(&xs, &ys);
-    let (intercept, slope) = moments.line().unwrap_or((moments.mean_y, 0.0));
-
+    let xs: Vec<f64> = (0..y.len()).map(|index| index as f64).collect();
+    let (intercept, slope) = least_squares(&xs, y);
     y.iter()
-        .enumerate()
-        .map(|(index, value)| value - (intercept + slope * index as f64))
+        .zip(&xs)
+        .map(|(value, x)| value - (intercept + slope * x))
         .collect()
+}
+
+/// The multiply-adds [`detect_season`] spends on a series of `n` points.
+pub(super) fn season_work(n: usize) -> usize {
+    n.saturating_mul((n / 2).min(MAX_SEASON))
 }
 
 /// The season length of `y`, 0 when it shows none: the lag of the highest local peak of the
@@ -409,10 +463,10 @@ pub(super) fn detect_season(y: &[f64]) -> Result<usize, Error> {
     if n < 4 {
         return Ok(0);
     }
-    let max_lag = (n / 2).min(MAX_SEASON);
-    if n.saturating_mul(max_lag) > MAX_ACF_WORK {
+    if season_work(n) > MAX_ACF_WORK {
         return Err(Error::NUM);
     }
+    let max_lag = (n / 2).min(MAX_SEASON);
     let residuals = detrend(y);
     let variance: f64 = residuals.iter().map(|r| r * r).sum();
     let scale: f64 = y.iter().map(|v| v * v).sum();
@@ -451,6 +505,9 @@ pub(super) fn detect_season(y: &[f64]) -> Result<usize, Error> {
     }
     Ok(best)
 }
+
+mod model;
+pub(super) use model::{fit, Fit, MAX_FILTER_RUNS};
 
 #[cfg(test)]
 mod tests;
