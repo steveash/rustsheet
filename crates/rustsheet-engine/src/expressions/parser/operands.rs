@@ -17,6 +17,7 @@ use super::structured_reference::{
 use super::*;
 use crate::functions::kinds::arg_counts;
 use crate::language::get_default_language;
+use crate::typed_input::TYPED_FORMULA_DOES_NOT_PARSE;
 
 impl Parser {
     /// The parse error for a token that cannot start an operand.
@@ -500,12 +501,11 @@ impl Parser {
         self.typed
     }
 
-    /// Why Excel refuses the formula just parsed when it is typed: it binds a LET name or LAMBDA
-    /// parameter spelled like a cell (`=LET(f1,1,f1+1)`; T-2040 Graph PATCH 400, decision 0103),
-    /// or it calls a function with fewer or more arguments than the function takes (`=PV(1)`,
-    /// also `=LET(Pv,LAMBDA(a,a),Pv(1))`, where the typed call is the function: T-2567 Graph
-    /// PATCH 400, T-2568), or it nests more function calls than Excel takes
-    /// ([`MAX_NESTED_CALLS`], T-3097). `None` when parsing stored text or nothing is refused.
+    /// Why Excel refuses the formula just parsed when it is typed: a LET name or LAMBDA parameter
+    /// spelled like a cell (T-2040, decision 0103), a call with a wrong argument count (`=PV(1)`,
+    /// T-2567, T-2568), too many nested calls ([`MAX_NESTED_CALLS`], T-3097), or `ANCHORARRAY(`
+    /// spelled as a call (T-3262, probes/t3262-anchor-typed-refused). `None` when parsing stored
+    /// text or nothing is refused.
     pub(crate) fn typed_refusal(&self) -> Option<String> {
         if !self.typed {
             return None;
@@ -517,6 +517,9 @@ impl Parser {
             return Some(format!(
                 "Formula: the LET or LAMBDA name '{name}' is spelled like a cell"
             ));
+        }
+        if self.spelled_anchorarray {
+            return Some(format!("{TYPED_FORMULA_DOES_NOT_PARSE}: ANCHORARRAY(...)"));
         }
         let name = self.wrong_count_call.as_ref()?;
         Some(format!(
@@ -596,6 +599,7 @@ impl Parser {
         // The spill range operator; typed `ANCHORARRAY(D1)` is `D1#` for Excel too
         // (probes/at-operand-formulatext J1, T-1109).
         if display_name.eq_ignore_ascii_case("ANCHORARRAY") {
+            self.spelled_anchorarray = true;
             if args.len() != 1 {
                 return Node::ParseErrorKind {
                     formula: self.lexer.get_formula(),

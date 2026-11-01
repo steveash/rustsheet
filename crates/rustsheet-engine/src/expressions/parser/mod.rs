@@ -625,6 +625,8 @@ pub struct Parser {
     /// The first call of a function with an argument count Excel refuses that the last parse
     /// read (see [`Parser::typed_refusal`]).
     wrong_count_call: Option<String>,
+    /// The last parse read `ANCHORARRAY(` spelled as a call (see [`Parser::typed_refusal`]).
+    spelled_anchorarray: bool,
     /// Function calls open on the current parse path ([`Parser::in_call`]).
     open_calls: usize,
     /// The most function calls open at once in the last parse (see
@@ -688,6 +690,7 @@ impl Parser {
             loaded: false,
             cell_shaped_binding: None,
             wrong_count_call: None,
+            spelled_anchorarray: false,
             open_calls: 0,
             deepest_calls: 0,
             workbook_file: None,
@@ -776,6 +779,7 @@ impl Parser {
         self.bound_names.clear();
         self.cell_shaped_binding = None;
         self.wrong_count_call = None;
+        self.spelled_anchorarray = false;
         self.open_calls = 0;
         self.deepest_calls = 0;
         self.top_level = true;

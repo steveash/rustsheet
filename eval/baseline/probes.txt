@@ -1727,6 +1727,7 @@ C	probes/t3201-collation-wrapped-run-pairs.case.json	1406
 C	probes/t3211-collation-sort-cycles.case.json	377
 C	probes/t3213-typed-parse-errors.case.json	25
 C	probes/t3248-snap-running-total-below-last.case.json	384
+C	probes/t3262-anchor-typed-refused.case.json	12
 C	probes/t3263-cf-abs-65.case.json	1
 C	probes/t3263-cf-long-299.case.json	1
 C	probes/t3263-dv-abs-65.case.json	1
