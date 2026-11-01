@@ -63,7 +63,7 @@ in numbers.md "Integer exponents: right-to-left square-and-multiply" and "Non-in
       DURATION and MDURATION lines in eval/baseline/probes.txt that are visibly off, with no new known-failure lines in
       any baseline (`make eval-baseline`).
 - [x] financial.md records the rule found (or the candidates scored, if time-boxed) and cites the cells above.
-- [ ] `make check` green (done); reviewers approve (pending: the agent panel has not run on this head).
+- [x] `make check` green; reviewers approve (round on the R4 head).
 
 ## Out of scope
 - Last-digit residue of these functions (T-1374), PRICEMAT (above), YIELD and ODDFYIELD (T-1592, T-2007).
@@ -101,3 +101,51 @@ close to correctly rounded and the engine not.
   T-2973: probes/yield-deep-discount-sweep S!F3 `YIELD(39681,45662,3,10,102,4)`: 13.005294552150495 vs
   13.005294552150497, 1 ulp. The same merge fixes 17 gen-m9 and 427 probes known failures.
 - Follow-ups: T-2972 (the 43 DURATION/MDURATION residue cells, `defer: phase-1b`), T-2973 (the six regressed cells).
+
+### Reviewer check 7: structural model, kind (c) (decision 0188 R4; review of ffa299fb3)
+The coupon-sum order was chosen by ranking candidate orders on the PRICE cells of probes/bond-extreme-coupon-yield,
+so it owes the hold-out and fresh-sweep guards (no `FITTED` tag). Script: docs/research/t2733/r4.py.
+
+*Hold-out (R4.1).* The split was fixed before any scoring in this round: the 522 PRICE, DURATION and MDURATION cells
+of probes/bond-extreme-coupon-yield; a cell is hold-out when sha256("T-2733:probes/bond-extreme-coupon-yield!" +
+cell)'s first byte is below 77 (145 hold-out, 377 train). Margin: the new order's hold-out bit-exact rate within 5
+percentage points of its train rate. The original fit saw every PRICE cell of this case, so the table shows
+consistency with the evidence, not generalization; the fresh sweep below is the operative test. Against Excel
+(excel-graph):
+
+| Candidate | Train bit-exact | Train within 4 ulp | Train within 15 digits | Hold-out bit-exact | Hold-out within 4 ulp | Hold-out within 15 digits |
+|---|---|---|---|---|---|---|
+| Old order (main) | 91/377 | 312 | 293 | 45/145 | 120 | 121 |
+| New order (T-2733) | 346/377 | 376 | 374 | 128/145 | 145 | 145 |
+| Correctly rounded (50-digit sums) | 92/377 | 339 | 308 | 36/145 | 129 | 118 |
+
+The new order beats the correctly rounded candidate on hold-out (128 against 36 bit-exact); its hold-out rate (88.3%)
+is within the margin of its train rate (91.8%). The correctly rounded values evaluate Excel's PRICE/DURATION sums at
+50 digits from the engine's (integer) COUPDAYBS, COUPDAYS, COUPDAYSNC and COUPNUM, with DSC = E - A on bases 2 and 3
+(financial.md, the DSR entry).
+
+*Fresh sweep (R4.2) and Gate A envelope (R2).* probes-numeric/t2733-price-r4-fresh was generated after the order was
+frozen (this branch's code is unchanged since ffa299fb3) and nothing was tuned on it: 300 bonds (PRICE, DURATION,
+MDURATION, so 900 points, plus Excel's coupon parts in D:G), settlement uniform 2000-2029, term log-uniform 0.1 to 30
+years, coupon rate, yield and redemption log-uniform, stratified 6 x 50 by rate band (1E-4 to 1, 1 to 1E4) and yield
+band (1E-4 to 1E-1, 1E-1 to 10, 10 to 1E4), frequency and basis uniform; seed T-2733/PRICE/r4-fresh-after-freeze
+(docs/research/t2733/gen_fresh.py), oracle excel-graph (2026-11-01). Math labels: 50-digit sums from Excel's own
+coupon parts.
+
+| Stratum (50 bonds, 150 points) | Within 15 digits of Excel | Within 1e-9 of math | Inside envelope | Outside |
+|---|---|---|---|---|
+| rate 1E-4..1, yield 1E-4..1E-1 | 150 | 150 | 150 | 0 |
+| rate 1E-4..1, yield 1E-1..10 | 149 | 150 | 150 | 0 |
+| rate 1E-4..1, yield 10..1E4 | 148 | 150 | 150 | 0 |
+| rate 1..1E4, yield 1E-4..1E-1 | 149 | 150 | 150 | 0 |
+| rate 1..1E4, yield 1E-1..10 | 148 | 150 | 150 | 0 |
+| rate 1..1E4, yield 10..1E4 | 150 | 150 | 150 | 0 |
+
+All 900 points are inside the envelope; none is outside. Bit-exact on the fresh sweep (`rustsheet-eval show`, all
+2100 cells including the 1200 coupon-part cells): new order 2006/2100, old order (main) 1827/2100, so the new order
+also wins out of sample (806 against 627 of the 900 PRICE/DURATION/MDURATION points). probes-numeric is ungated, so
+the case adds no baseline lines.
+
+*Eval after merging `main` at 2026-11-01 (fa1382038):* probes known failures 3284 -> 2862 (427 fixed), gen-m9 2859 ->
+2843 (17 fixed); the same six cells as above re-recorded under decision 0083's allowance (T-2973); 0 other
+regressions.
