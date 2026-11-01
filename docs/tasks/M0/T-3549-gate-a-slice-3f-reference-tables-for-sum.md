@@ -19,7 +19,7 @@ points.
 
 ## Context
 - `rustsheet-eval accuracy` on main as of 8ee20308 prints `missing tables 323`. Ten of them are M2 functions (the
-  current milestone), and no open task owns SUM or AVERAGE. T-3548 has ROUND, ROUNDUP and ROUNDDOWN. T-3550 (open PR #2656) exempts
+  current milestone), and no open task owns SUM or AVERAGE. T-3555 has ROUND, ROUNDUP and ROUNDDOWN. T-3550 (open PR #2656) exempts
   ABS, MIN, MAX, SUMIF and SUMIFS.
 - The math is the exact (mpmath) sum of the doubles of the written literals. AVERAGE divides that sum by the count.
 - Design question 1, the near-zero snap. docs/excel-semantics/numbers.md, "Near-zero snapping in addition and
@@ -49,7 +49,7 @@ points.
   `crates/rustsheet-engine/src/functions/math_and_trigonometry/sum.rs`. A long sum of mixed magnitudes can leave
   the 15-digit envelope of Excel while staying within ε = 1e-9 of the math. Report how many points pass only
   through the math side.
-- Tools: as in T-3548 (`rustsheet-accuracy generate`, `rustsheet-oracle fill -b excel-graph --suite accuracy`,
+- Tools: as in T-3555 (`rustsheet-accuracy generate`, `rustsheet-oracle fill -b excel-graph --suite accuracy`,
   `rustsheet-eval accuracy`, then `rustsheet-accuracy math --suite probes-numeric`).
 
 ## Acceptance criteria
