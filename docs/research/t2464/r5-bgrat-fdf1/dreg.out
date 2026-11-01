@@ -1,0 +1,38 @@
+
+(a, b0) = (30.7, 0.7), n = 1024: eps mean -4.70 sd 5.75
+  const + slope only: residual sd 5.745
+  + z=fl(-nu lnx)      coef   -6.450  feat sd  0.362  residual sd 5.249
+  + LN(z) abs          coef   +0.434  feat sd  0.578  residual sd 5.740
+  + b*LN(z) abs        coef   +0.795  feat sd  0.572  residual sd 5.727
+  + a*lnx abs          coef   -0.010  feat sd  2.310  residual sd 5.745
+  + 0.5bm1*lnx abs     coef   +5.982  feat sd  0.018  residual sd 5.744
+  + lnx vs ln(x) abs   coef   -0.422  feat sd  0.072  residual sd 5.745
+  + y=fl(1-x)          coef   +0.000  feat sd  0.000  residual sd 5.745
+  all: z=-6.43 LN(z)=+0.46 b*LN(z)=+0.70 a*lnx=+0.02 0.5bm1*lnx=+7.82 lnx=+0.01 y=+0.00 residual sd 5.225
+  lag   1 autocorr -0.041
+  lag   2 autocorr +0.032
+  lag   4 autocorr -0.073
+  lag   8 autocorr -0.058
+  lag  16 autocorr -0.013
+  lag  64 autocorr +0.064
+  64-point moving mean: sd 0.730 (white noise would give 0.653)
+  top FFT bins (cycles per run): 453:3.9x, 434:3.2x, 445:3.0x, 97:2.9x, 398:2.9x
+
+(a, b0) = (40.0, 0.030000000000000027), n = 1024: eps mean -1.63 sd 8.53
+  const + slope only: residual sd 8.522
+  + z=fl(-nu lnx)      coef   -2.910  feat sd  0.570  residual sd 8.359
+  + LN(z) abs          coef   +0.944  feat sd  0.289  residual sd 8.518
+  + b*LN(z) abs        coef  +19.798  feat sd  0.009  residual sd 8.520
+  + a*lnx abs          coef   +0.146  feat sd  1.088  residual sd 8.521
+  + 0.5bm1*lnx abs     coef  -21.490  feat sd  0.009  residual sd 8.520
+  + lnx vs ln(x) abs   coef  -11.625  feat sd  0.018  residual sd 8.520
+  + y=fl(1-x)          coef   +0.000  feat sd  0.000  residual sd 8.522
+  all: z=-2.92 LN(z)=+1.03 b*LN(z)=+22.21 a*lnx=+0.18 0.5bm1*lnx=-24.02 lnx=-12.37 y=+0.00 residual sd 8.344
+  lag   1 autocorr +0.017
+  lag   2 autocorr +0.057
+  lag   4 autocorr +0.004
+  lag   8 autocorr -0.026
+  lag  16 autocorr -0.012
+  lag  64 autocorr -0.036
+  64-point moving mean: sd 0.941 (white noise would give 1.043)
+  top FFT bins (cycles per run): 434:2.9x, 40:2.8x, 418:2.8x, 55:2.7x, 272:2.7x
