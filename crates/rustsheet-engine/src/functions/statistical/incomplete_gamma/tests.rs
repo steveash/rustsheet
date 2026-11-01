@@ -1,9 +1,11 @@
 #![allow(clippy::unwrap_used)]
+use super::half_integer::accurate_half_integer_upper;
 use super::huge_shape::{huge_shape_quantile, wilson_hilferty_quantile};
 use super::{
     cdf_terms_bound, continued_fraction_budget, excel_small_shape_lower,
     excel_small_shape_quantile, excel_tiny_quantile, gamma_cdf, gamma_density, gamma_quantile,
-    gamma_sf, gamma_ur, incomplete_gamma_pair, temme_pair, Tail, Terms, MAX_TERMS, TEMME_C,
+    gamma_quantile_within, gamma_sf, gamma_ur, incomplete_gamma_pair, temme_pair, Tail, Terms,
+    MAX_TERMS, TEMME_C,
 };
 use statrs::distribution::{ChiSquared, ContinuousCDF, DiscreteCDF, Gamma, Poisson};
 use statrs::function::gamma::{gamma_lr as statrs_lr, gamma_ur as statrs_ur};
@@ -183,9 +185,10 @@ fn the_pair_is_near_statrs() {
             near_upper(gamma_sf(&dist, x), dist.sf(x), shape, x * rate, scale),
             "sf Gamma({shape},{rate}) at {x}"
         );
-        // The quantile is the crossing of the cdf: wherever statrs' search (halve and double, 8
-        // bisections, 4 Newton steps, the start until T-3131) gets near p, ours is a number
-        // whose cdf is p. statrs' can stop far from the quantile (at p = 1.26E-291 and shape
+        // The quantile is the crossing of the cdf, refined from a Wilson-Hilferty start (T-3131).
+        // statrs' `inverse_cdf` (halve and double, 8 bisections, 4 Newton steps) is only the
+        // reference here: wherever it gets near p, ours is a number whose cdf is p. It can stop
+        // far from the quantile (at p = 1.26E-291 and shape
         // 14.3 it ends where the cdf is about 1E-88; 3E-8 off at shape 5.25, p = 0.0149).
         let theirs = dist.inverse_cdf(p);
         if (dist.cdf(theirs) / p - 1.0).abs() < 1e-6 {
@@ -329,14 +332,25 @@ fn a_call_past_its_cap_is_nan() {
         0.500_001_329_807_601_4_f64.to_bits()
     );
     // An inversion's cdfs share one budget: within it at shape 2E6 even at p = 1E-300 (from
-    // the Wilson-Hilferty start, T-3131), past it at 1E7 (NaN, `#NUM!`; also before T-3131).
+    // the Wilson-Hilferty start, T-3131). At 1E7 its series cdfs ran past it (NaN, `#NUM!`, at
+    // T-3131); from `QUANTILE_TEMME_SHAPE_MIN` each cdf is one term, so it is Excel's
+    // `CHISQ.INV(0.5,2E7)` = 19999999.333333336 halved (probes/t3350-chisq-inv-huge-df, T-3350).
     let back = gamma_cdf(
         &Gamma::new(2e6, 1.0).unwrap(),
         gamma_quantile(2e6, 1.0, 1e-300, Tail::Lower),
     );
     assert!((back / 1e-300 - 1.0).abs() < 1e-11);
-    // Past it the whole inversion is NaN: its cdfs draw on the one `MAX_TERMS` budget, not one each.
-    assert!(gamma_quantile(1e7, 1.0, 0.5, Tail::Lower).is_nan());
+    let median = gamma_quantile(1e7, 1.0, 0.5, Tail::Lower);
+    assert!(
+        (median / 9_999_999.666_666_668 - 1.0).abs() <= 1e-15,
+        "{median}"
+    );
+    // Past the shared budget the whole inversion is NaN (directive 5), on the series cdfs and on
+    // Temme's: one series cdf near the median at shape 1E4 takes about 730 terms, and the
+    // refinement needs more than three cdfs at any shape.
+    assert!(gamma_quantile_within(1e4, 1.0, 0.5, Tail::Lower, 1_000).is_nan());
+    assert!(gamma_quantile_within(1e4, 1.0, 0.5, Tail::Lower, MAX_TERMS).is_finite());
+    assert!(gamma_quantile_within(1e7, 1.0, 0.5, Tail::Upper, 3).is_nan());
 }
 
 // The continued fraction's own budget (T-2795) is at least twice the terms it needs at
@@ -370,7 +384,7 @@ fn the_continued_fraction_stays_within_half_its_budget() {
     assert_eq!(cdf_terms_bound(2.5), 256 + 44);
 }
 
-// Excel's quantiles in the tails and at a small shape, where statrs' search is off or NaN
+// Excel's quantiles in the tails and at a small shape, where statrs' `inverse_cdf` is off or NaN
 // (T-1543 probes-numeric/t1543-inverse-cdf-tiny-p; T-2255 gen-m9 triage). Each is within
 // half a unit of Excel's 15th significant digit.
 #[test]
@@ -407,6 +421,32 @@ fn quantiles_in_the_tails_are_excel_s() {
         (ours - 196_001.028_447_084_83).abs() < 1e-13 * ours,
         "{ours}"
     );
+}
+
+// From a shape of about 5E6 to the huge shape, the series' cdfs of one inversion pass the shared
+// budget near the median, and the quantile was NaN (`#NUM!`) where Excel has the true one
+// (probes/t3350-chisq-inv-huge-df, excel-graph; T-3350). Each is within half a unit of Excel's
+// 15th significant digit. CHISQ.INV.RT(p, df) is the upper tail at shape df/2, scale 2.
+#[test]
+fn quantiles_at_a_large_shape_below_the_huge_one_are_excel_s() {
+    let cases = [
+        // A40 `CHISQ.INV(1E-10,1E7)`, A55 `(0.5,2E7)`, A67 `(0.5,5E7)`, A75 `(1E-30,1E8)`.
+        (5e6, 1e-10, Tail::Lower, 9_971_577.524_441_81),
+        (1e7, 0.5, Tail::Lower, 19_999_999.333_333_336),
+        (2.5e7, 0.5, Tail::Lower, 49_999_999.333_333_336),
+        (5e7, 1e-30, Tail::Lower, 99_837_961.146_094_16),
+        // A228 `CHISQ.INV.RT(1-1E-15,1E7)`, A238 `(1-1E-6,2E7)`, A264 `(1-1E-15,1E8)`.
+        (5e6, 1.0 - 1e-15, Tail::Upper, 9_964_526.147_198_48),
+        (1e7, 1.0 - 1e-6, Tail::Upper, 19_969_951.100_390_22),
+        (5e7, 1.0 - 1e-15, Tail::Upper, 99_887_732.389_205_52),
+    ];
+    for (shape, p, tail, excel) in cases {
+        let ours = gamma_quantile(shape, 2.0, p, tail);
+        assert!(
+            (ours - excel).abs() <= 5e-15 * excel,
+            "{p} at shape {shape}: {ours:e}, Excel {excel:e}"
+        );
+    }
 }
 
 /// Excel's closed form at a huge shape (probes/t2982-gamma-inv-huge-shape, probes/
@@ -467,6 +507,19 @@ fn huge_shape_quantile_has_excels_three_regimes() {
     assert!(huge_shape_quantile(6e9, 1.0, 0.5, Tail::Lower, 0.0).is_nan());
     assert!(huge_shape_quantile(5e9, 1.0, 1e-100, Tail::Lower, -21.273_453_560_965_32).is_nan());
     assert!(huge_shape_quantile(1.2e10, 1.0, 0.5, Tail::Lower, 0.0).is_nan());
+    // The lower edge (probes/t3350-gamma-inv-band-lower-edge, T-3350): A10 `GAMMA.INV(1E-160,
+    // 1E9,1)` and A121 `GAMMA.INV(1E-70,1E10,1)` are values, A11 `(1E-180,1E9,1)` and A35
+    // `(1E-140,1.5E9,1)` are `#NUM!`.
+    assert!(close(
+        huge_shape_quantile(1e9, 1.0, 1e-160, Tail::Lower, -26.988_808_268_418_41),
+        999_146_781.393_535_1
+    ));
+    assert!(close(
+        huge_shape_quantile(1e10, 1.0, 1e-70, Tail::Lower, -17.741_643_174_195_34),
+        9_998_225_940.269_697
+    ));
+    assert!(huge_shape_quantile(1e9, 1.0, 1e-180, Tail::Lower, -28.642_286_179_286_17).is_nan());
+    assert!(huge_shape_quantile(1.5e9, 1.0, 1e-140, Tail::Lower, -25.227_503_820_942_285).is_nan());
     // A371 `CHISQ.INV.RT(1E-100,1E10)`: the right tail's closed form at shape 5E9.
     let ours = huge_shape_quantile(5e9, 2.0, 1e-100, Tail::Upper, 21.273_453_560_965_32);
     assert!(
@@ -689,4 +742,55 @@ fn a_tiny_quantile_above_shape_one_is_the_leading_factor_root() {
     // Outside the shapes it covers.
     assert_eq!(excel_tiny_quantile(1.0, 1e-300), None);
     assert_eq!(excel_tiny_quantile(25.0, 1e-300), None);
+}
+
+/// Units in the last place between two positive doubles.
+fn ulp_distance(a: f64, b: f64) -> u64 {
+    a.to_bits().abs_diff(b.to_bits())
+}
+
+// Q at the half-integer shapes 1/2, 3/2, 5/2 and 7/2 for x from a to 30a, by the accurate kernel
+// (`accurate_half_integer_upper`; CHISQ.DIST.RT takes it from a + 1 on), against mpmath's
+// `gammainc(a, x, inf, regularized=True)` at 50 digits rounded to a double (T-3285): within 1
+// ulp. The forward fraction was up to 19 ulp off here.
+#[test]
+fn half_integer_upper_tail_is_within_an_ulp_of_the_reference() {
+    // x = a * m for each multiplier m, and Q there for a = 1/2, 3/2, 5/2, 7/2.
+    const MULTIPLIERS: [f64; 11] = [1.0, 1.25, 1.5, 2.0, 3.0, 4.0, 6.0, 10.0, 15.0, 20.0, 30.0];
+    #[rustfmt::skip]
+    let reference: [(f64, [f64; 11]); 4] = [
+        (0.5, [0.3173105078629141, 0.2635524772829727, 0.2206713619198468, 0.15729920705028513, 0.0832645166635504, 0.04550026389635842,
+               0.01430587843542964, 0.0015654022580025497, 0.00010751117672950056, 7.744216431044084e-06, 4.3204630578274975e-08]),
+        (1.5, [0.39162517627108895, 0.28975578119338335, 0.21229028736013333, 0.11161022509471256, 0.029290886534888233, 0.007383160505359769,
+               0.000439849652838829, 1.3800570312932547e-06, 9.252702104537279e-10, 5.878230727906912e-13, 2.190570119285311e-19]),
+        (2.5, [0.41588018699550794, 0.28264729659406723, 0.186029833602867, 0.07523524614651218, 0.010362337915786437, 0.0012497305630313753,
+               1.4748581038443052e-05, 1.3857973367009593e-09, 9.302951809402614e-15, 5.28514836094324e-20, 1.3351378873003131e-30]),
+        (3.5, [0.42887985755305474, 0.2711068782822825, 0.16196449307942817, 0.05118135341306545, 0.0037701500511461666, 0.00021989245684579634,
+               5.199964130736563e-07, 1.4774294932825123e-12, 9.980081872157244e-20, 5.082977510439578e-27, 8.726509144840552e-42]),
+    ];
+    let mut exact = 0;
+    let points = reference
+        .iter()
+        .flat_map(|&(a, qs)| MULTIPLIERS.iter().zip(qs).map(move |(&m, q)| (a, a * m, q)));
+    for (a, x, q) in points {
+        let ours = accurate_half_integer_upper(a, x, &mut Terms(MAX_TERMS)).unwrap();
+        assert!(
+            ulp_distance(ours, q) <= 1,
+            "Q({a}, {x}) = {ours:e}, reference {q:e}"
+        );
+        exact += usize::from(ours == q);
+    }
+    // Rounded once from about 2^-100: every point is the correctly rounded double.
+    assert_eq!(exact, 44);
+    // Through CHISQ.DIST.RT's path, Excel's bits: `CHISQ.DIST.RT(10,5)` (probes-numeric/
+    // m9-chisq-dist-rt A19) and `CHISQ.DIST.RT(8,3.34)` (ironcalc-calc CHISQ.xlsx G3).
+    let sf = |a: f64, x: f64| gamma_sf(&Gamma::new(a, 1.0).unwrap(), x);
+    assert_eq!(
+        sf(2.5, 5.0).to_bits(),
+        0.075_235_246_146_512_18_f64.to_bits()
+    );
+    assert_eq!(
+        sf(1.5, 4.0).to_bits(),
+        0.046_011_705_689_231_37_f64.to_bits()
+    );
 }

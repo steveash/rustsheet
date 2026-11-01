@@ -1258,6 +1258,15 @@ sweep's 1035 COSH cells).
   The switch is bracketed by the sweep's cells, not derived (T-3385): the exp forms already miss
   `TANH(0.995054655025377)` and `TANH(±0.9950546550253772)`, where the expm1 forms match, and the expm1 forms first miss at
   `SINH(1.0375)` and `TANH(1.0375)` (and at 1.0625 and `TANH(1.4875)`; they match at 1.0125), so Excel's cut lies in 0.99505..1.0375 (`EXPM1_FORM_LIMIT` = 1 is tagged FITTED).
+- The switch lies between 1 - 5 ulp and 1 + 2 ulp (T-3395). probes-numeric `t3395-hyperbolic-form-switch` takes 60 six-decimal
+  points in 0.99505..1.0375 where the engine's expm1 and exp forms give different doubles for both functions: all 60
+  SINH and 60 TANH cells take the expm1 forms through 0.999773 and the exp forms from 1.000377 on. `-2` takes 47 more
+  where either function's forms differ, on (0.99977, 1.00038) and within 12 ulp of 1: every discriminating cell up to
+  0.9999999999999994 (1 - 5 ulp) is the expm1 forms, every one from 1.0000000000000004 (1 + 2 ulp) the exp forms.
+  At the doubles in between, 1 itself included, the two forms give the same double, so no cell can place the cut
+  more finely; `|x| < 1` fits every cell. Both probes are excel-graph (Excel for the web) only, and the cells that
+  discriminate differ by about 1 ulp, inside the 4-ulp web-against-desktop floor (docs/research/oracle-calibration.md):
+  the narrowed bracket is web-only until a desktop fill confirms it. Nothing is fitted to it (the cut stays 1).
 Ours: `functions/math_and_trigonometry/hyperbolic.rs` `sinh`, `tanh` (`expm1_pair`, `excel_expm1`).
 Status: VERIFIED (excel-graph); the expm1 kernel is below.
 

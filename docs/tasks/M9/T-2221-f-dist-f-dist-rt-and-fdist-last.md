@@ -148,3 +148,15 @@ criteria still unmet at that point move to a follow-up task without the campaign
 - probes-numeric/m9-legacy-fdist.case.json (20): Calc!A31, A37, A39, A46, A49, A50, A51, A57, A58, A59, A60, A61, A66, A67, A68, A71, A76, A77, A78, A79
 - probes-numeric/t1049-fdist.case.json (3): Calc!A13, A19, A33
 - probes-numeric/t1049-fdistrt.case.json (3): Calc!A10, A11, A26
+
+## Cells added by gap triage (2026-10-31m)
+`make eval` on origin/main 900fbc1bf (excel-graph). An ownership check over every failing Excel cell
+(`scripts/exit_owners.py`'s `owned` rule over the open task files of origin/main and of every `origin/agent/*` branch
+pushed since 2026-10-29) found these cells named by no open task. All are within 15 significant digits of Excel (Phase
+1b), so they join this deferred owner of their kernel. F.DIST, F.DIST.RT and FDIST at one df on the T-2220 d1-1 sweep, 1
+to 15 ulp (329 of them within 4), and the legacy FDIST/F.DIST.RT pair at (100, 100, 3), 2 ulp; and F.TEST/FTEST on the
+stat argument-modes probe, 2 ulp, whose value is an F.DIST.RT. The d1-1 line names the whole case: every failing cell of
+it not named by another open task is this task's.
+- probes-numeric/t2220-f-dist-sweep-d1-1.case.json: the whole case, its within-15-digit cells (348 at this run)
+- probes-numeric/m9-legacy-fdist.case.json (2): Calc!A69, A70
+- probes/stat-argument-modes.case.json (2): Sheet1!H248, H251
