@@ -301,8 +301,9 @@ const LN_GAMMA_1P_SERIES: [f64; 29] = [
 
 /// ln Gamma(1 + a) for 0 < a < [`SMALL_SHAPE`] to an ulp of its size, which `ln_gamma(1.0 + a)`
 /// is not: 1 + a rounds a to the ulp of 1, an absolute error that is a relative 1E-13 of Q at
-/// a of 1E-3.
-fn ln_gamma_1p_small(a: f64) -> f64 {
+/// a of 1E-3. The series is ln Gamma's Taylor series about 1, so it holds for -1/2 <= a < 0 too
+/// (bratio's bgrat takes ln Gamma(b) = ln Gamma(1 + (b - 1)) for 1/2 <= b < 1 from it).
+pub(in crate::functions::statistical) fn ln_gamma_1p_small(a: f64) -> f64 {
     let mut sum = 0.0;
     for &coefficient in LN_GAMMA_1P_SERIES.iter().rev() {
         sum = (sum + coefficient) * a;

@@ -569,6 +569,11 @@ pub(crate) fn dd_div_small(a: (f64, f64), k: f64) -> (f64, f64) {
     two_sum(q, remainder / k)
 }
 
+/// `-a` in double-double arithmetic (exact).
+pub(crate) fn dd_neg(a: (f64, f64)) -> (f64, f64) {
+    (-a.0, -a.1)
+}
+
 /// `a + b` in double-double arithmetic.
 pub(crate) fn dd_add(a: (f64, f64), b: (f64, f64)) -> (f64, f64) {
     let (s, e) = two_sum(a.0, b.0);

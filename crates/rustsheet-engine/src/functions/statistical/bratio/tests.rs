@@ -155,6 +155,46 @@ fn unported_points_keep_todays_kernel() {
     }
 }
 
+// L140 bup+bgrat with one bup term (1 < b0 < 2, a0 > 15, x0 > 0.7): RN(W + D), W from the density in
+// bup's orientation and D an accurate bgrat increment (T-3382). Excel's values, bit for bit, each
+// off before T-3382.
+#[test]
+fn l140_one_term_bup_bgrat_matches_excel() {
+    assert_eq!(branch(30.7, 1.7, 0.8117).0, Branch::L140BupBgrat);
+    for (x, a, b, excel) in [
+        // probes-numeric t2464-w2f-absweep Calc!A3079
+        (
+            0.8117,
+            30.699_999_999_999_1,
+            1.7,
+            0.006_917_415_711_258_284_f64,
+        ),
+        // t2464-w2f-absweep Calc!A3081
+        (
+            0.8117,
+            128_765_132.0 * 2f64.powi(-22) + 53_686_839.0 * 2f64.powi(-48),
+            1.7,
+            0.006_917_415_711_258_278,
+        ),
+        // t2464-w2f-xruns-2 Calc!A8667
+        (
+            127_506_841.0 * 2f64.powi(-27) + 40_265_043.0 * 2f64.powi(-53),
+            40.0,
+            1.03,
+            0.134_838_829_239_859_43,
+        ),
+        // t2464-w2f-xruns-2 Calc!A8869
+        (
+            15_938_355.0 * 2f64.powi(-24) + 13_421_751.0 * 2f64.powi(-50),
+            40.0,
+            1.03,
+            0.134_838_829_239_922_4,
+        ),
+    ] {
+        assert_eq!(cdf(x, a, b).to_bits(), excel.to_bits(), "{x} {a} {b}");
+    }
+}
+
 // L140 at a whole b0 and a0 > 8 runs bpser(a0, 1, x0) with ln B(a0, 1) = -LN(a0): Excel's
 // values (probes-numeric, excel-graph), each on today's kernel and off before T-2506.
 #[test]

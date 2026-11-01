@@ -2,9 +2,11 @@
 //! bpser(a0, b0', x0).
 
 use super::super::beta_density::beta_density_small_shape;
+use super::bgrat::bgrat_increment;
 use super::bpser::bpser;
 use super::EPS;
 use crate::arithmetic::{extended_quotient, extended_sum};
+use crate::x87_exp::dd_add;
 use crate::x87_register::Register;
 
 /// bratio's L140 for x0 <= 0.7 (a, b > 1, b0 < 40, b0·x0 > 0.7): with n = int(b0) and
@@ -23,6 +25,37 @@ pub(super) fn l140_bup_bpser(a0: f64, b0: f64, x0: f64, y0: f64) -> Option<f64> 
     let up = bup(b0_frac, a0, y0, x0, n)?;
     let series = bpser(a0, b0_frac, x0)?;
     Some(up + series)
+}
+
+/// bratio's L140 for x0 > 0.7 and a0 > 15 with one bup term (1 < b0 < 2): w = bgrat(a0, b0', x0, y0,
+/// bup(b0', a0, y0, x0, 1)) with b0' = b0 - 1, as Excel computes it, RN(W + D)
+/// (docs/research/t2464/r3-bgrat/RESULTS.md finding 1; statistics.md "Incomplete beta: the integrated
+/// model", L140 bup+bgrat at 1 < b < 2):
+/// - W = fl(x87(P·fl(x0·y0)/b0')) with P the beta density in bup's own orientation, Beta(b0', a0)
+///   at y0 (the engine's [`beta_density_small_shape`]);
+/// - D the bgrat increment `I_x0(a0, b0')`, accurate ([`bgrat_increment`]).
+///
+/// W is [`bup`]'s n = 1 value, but rounded once in a register where [`bup`] stores twice
+/// (fl(fl(P·fl(x·y))/a)): each form is the one its own branch's evidence picked. Here the register
+/// form wins on the hold-out half of T-2512's cells, 1,306 of 1,613 bit-exact against 1,046 for the
+/// stored one (RESULTS.md finding 1, `bupdens.out`). On [`bup`]'s own callers the prefactor's rounding
+/// is not yet scored (`bup_arith = "w4"` covers only its W loop): T-3770.
+///
+/// `None` for any other b0 (n > 1 terms: T-3383) and where either piece is not finite, so the caller
+/// keeps today's kernel.
+pub(super) fn l140_bup_bgrat(a0: f64, b0: f64, x0: f64, y0: f64) -> Option<f64> {
+    let b0_frac = b0 - 1.0;
+    if !(b0_frac > 0.0 && b0_frac < 1.0) {
+        return None;
+    }
+    let density = beta_density_small_shape(y0, b0_frac, a0)?;
+    let up = Register::load(density)
+        .mul(Register::load(x0 * y0))
+        .div(Register::load(b0_frac))
+        .store();
+    let increment = bgrat_increment(a0, b0_frac, x0, y0)?;
+    let w = dd_add((up, 0.0), increment).0;
+    w.is_finite().then_some(w)
 }
 
 /// TOMS 708 `bup(a, b, x, y, n)` = `I_x(a, b) - I_x(a + n, b)` for a whole n >= 1 and a <= 1, as

@@ -3245,6 +3245,20 @@ Rule: the entries above assembled in one TOMS 708 port (Excel's EXP, LN, GAMMALN
   LN or log1p by its own x, so the two orientations take different paths). With the exact increment in place of D it is still 1,726/3,072/3,072. With r2-bratio's density
   and D it falls to 89/2,154/2,356, so the visible gap there is the density's algdiv lnB, not bgrat. The engine's
   density with an accurate increment scores 282/2,824/3,042, against today's kernel at 26/113/344 (T-3382).
+  Ours since T-3382 (BETA.DIST's cdf and BETA.INV's search): `bup.rs` `l140_bup_bgrat`, W from the engine's density
+  and D from `bgrat.rs` `bgrat_increment` (bgrat in double-double, J_0 by Legendre's fraction); on the three w2f cases
+  the 3,070 cells it moves are 278 bit-exact and 3,037 within 15 digits (before: 26 and 342). Two cells
+  leave 15 digits by under 2 ulp, each nearer the true value than Excel's (xruns-1 Calc!A9161: Excel
+  0.00691741571126998, ours 0.006917415711269989, exact 0.0069174157112699826; A8909: 0.006917415711266625,
+  0.00691741571126663, exact 0.0069174157112666308). Fresh sweep after the freeze (probes-numeric
+  t3382-l140-sweep, 300 points log-uniform over the branch with a0 <= 1E4: a0 in (15, 1E4], 1 < b0 < 2, x0 > 0.7, z in
+  [0.5, 700]): exact / within 4 ulp / within 15 digits (half a unit in the 15th digit) 75/108/121 to 163/271/293. One
+  cell leaves 15 digits, A36 `BETA.DIST(0.885631573415804,910.722,1.7794281028534,TRUE)`: Excel 3.7274833320668723E-47,
+  before 3.727483332066869E-47, ours 3.7274833320668655E-47, exact 3.7274833320668590E-47 at the parsed doubles (Excel
+  3.6E-15 off the math, ours 1.8E-15). These cells stay Excel-targeted: ours being nearer the math is not a licence.
+  W rounds once in a register here where `bup`'s other callers store twice (fl(fl(P·fl(xy))/b0)): on this branch the
+  register form wins the hold-out, 1,306 of 1,613 bit-exact against 1,046 (`bupdens.out`); T-3568's n >= 2 bup+bgrat research
+  takes the same register form (below); on L140 bup+bpser, `bup`'s other caller, it is unscored (T-3770). n > 1 bup terms stay on today's kernel (T-3383).
 - **L140 bup+bgrat with n >= 2 bup terms (2 <= b0 < 40, a0 > 15, x0 > 0.7) is the same RN(W + D), with bup's powers
   of x through Excel's EXP (T-3568).** With n = int(b0) and c = b0 - n (c = 1 and n - 1 at an integer b0):
   - W = fl(ret · S). Here ret = x87(P·fl(x0·y0)/c), P is Excel's BETA.DIST(y0, c, a0, FALSE) (the density at the

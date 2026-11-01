@@ -19,7 +19,7 @@
 //! 10-36% above), but it beats the correctly rounded density on every region scored there.
 
 use crate::arithmetic::{extended_product, extended_quotient, extended_sum};
-use crate::x87_exp::{dd_add, dd_div, dd_mul, dd_to_extended, excel_exp_extended};
+use crate::x87_exp::{dd_add, dd_div, dd_mul, dd_neg, dd_to_extended, excel_exp_extended};
 use crate::x87_log10::{excel_ln, ln_double_double};
 use crate::x87_log1p::excel_log1p;
 use crate::x87_register::Register;
@@ -180,11 +180,11 @@ fn constant(a: f64, b: f64, side_one: bool) -> Register {
     // -ln B(a, b) + a ln(a/b) = ln(w)/2 + (h - 1/2) ln(h/o) - ln(2 pi)/2 - mu(a) - mu(b) + mu(h),
     // with (w, o) = (a, b) on side 1 and (b, a) on side 2 (Stirling's formula for each ln Gamma).
     let ln_w = ln_double_double(w);
-    let binet_sum = dd_add(dd_add(binet(h), neg(binet(a))), neg(binet(b)));
+    let binet_sum = dd_add(dd_add(binet(h), dd_neg(binet(a))), dd_neg(binet(b)));
     let exact = dd_add(
         dd_add(
             dd_add((ln_w.0 / 2.0, ln_w.1 / 2.0), bracket),
-            neg(HALF_LN_TWO_PI),
+            dd_neg(HALF_LN_TWO_PI),
         ),
         binet_sum,
     );
@@ -201,7 +201,7 @@ fn constant_offset(a: f64, b: f64, h: f64, w: f64, o: f64, bracket: (f64, f64)) 
         extended_quotient(w, o),
     )));
     let bracket_error =
-        dd_add(register_to_double_double(excel_bracket), neg(bracket)).0 / (f64::EPSILON / 2.0);
+        dd_add(register_to_double_double(excel_bracket), dd_neg(bracket)).0 / (f64::EPSILON / 2.0);
     let stirling = stirling_error(h) - stirling_error(a) - stirling_error(b) + SMALL_SHAPE_OFFSET;
     let small_shape = stirling + bracket_error;
     if a.min(b) * 2.0 >= LARGE_DF_MIN {
@@ -230,7 +230,7 @@ fn stirling_error(v: f64) -> f64 {
 
 /// (h - 1/2) ln(h/o) in double-double.
 fn exact_bracket(h: f64, o: f64) -> (f64, f64) {
-    let ln_ratio = dd_add(ln_double_double(h), neg(ln_double_double(o)));
+    let ln_ratio = dd_add(ln_double_double(h), dd_neg(ln_double_double(o)));
     dd_mul((h - 0.5, 0.0), ln_ratio)
 }
 
@@ -251,10 +251,6 @@ fn binet(v: f64) -> (f64, f64) {
     }
     sum = dd_add(dd_div((1.0, 0.0), (12.0, 0.0)), dd_mul(sum, z));
     dd_div(sum, (v, 0.0))
-}
-
-fn neg((hi, lo): (f64, f64)) -> (f64, f64) {
-    (-hi, -lo)
 }
 
 /// A double-double rounded to a register (RN64).
