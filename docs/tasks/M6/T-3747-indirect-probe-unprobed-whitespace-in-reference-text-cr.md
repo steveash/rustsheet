@@ -3,7 +3,7 @@ id: T-3747
 title: "INDIRECT: probe unprobed whitespace in reference text (CR, inner LF, spaces inside $A$1 and R[1]C, names)"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
