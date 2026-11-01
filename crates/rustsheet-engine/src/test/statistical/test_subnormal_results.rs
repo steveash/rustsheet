@@ -100,3 +100,37 @@ fn gamma_density_below_shape_three_is_the_log_form() {
         ],
     );
 }
+
+// T-3638: the subnormal right tail Q(a, x) of CHISQ.DIST.RT, CHIDIST and POISSON(k, mean, TRUE)
+// is flushed to 0 except on the exp closed form (df 2, k = 0), where Excel keeps it
+// (probes/t3638-subnormal-upper-tail B1:B42).
+#[test]
+fn subnormal_upper_tails_are_kept_or_flushed_as_in_excel() {
+    let rows: [(&str, &str); 14] = [
+        ("CHISQ.DIST.RT(1427.6,2)", "FALSE"),
+        ("CHIDIST(1455.2,2)", "FALSE"),
+        ("POISSON(0,713.8,TRUE)", "FALSE"),
+        ("CHISQ.DIST.RT(1419.9,1)", "TRUE"),
+        ("CHIDIST(1447.5,1)", "TRUE"),
+        ("CHISQ.DIST.RT(1458.2,7)", "TRUE"),
+        ("CHISQ.DIST.RT(1525.9,21)", "TRUE"),
+        ("CHIDIST(1553.8,21)", "TRUE"),
+        ("CHISQ.DIST.RT(1599.2,39)", "TRUE"),
+        ("POISSON(3,731.8,TRUE)", "TRUE"),
+        ("POISSON(9,774.7,TRUE)", "TRUE"),
+        ("POISSON(19,801.5,TRUE)", "TRUE"),
+        // Normal neighbours stay.
+        ("CHISQ.DIST.RT(1479.2,21)", "FALSE"),
+        ("POISSON(19,777.9,TRUE)", "FALSE"),
+    ];
+    let cells: Vec<(String, String, &str)> = rows
+        .iter()
+        .enumerate()
+        .map(|(i, (call, zero))| (format!("A{}", i + 1), format!("=({call})=0"), *zero))
+        .collect();
+    let cells: Vec<(&str, &str, &str)> = cells
+        .iter()
+        .map(|(a, f, z)| (a.as_str(), f.as_str(), *z))
+        .collect();
+    check_cells(&[], &cells);
+}

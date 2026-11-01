@@ -171,7 +171,16 @@ impl Model {
             return Err(num_error(cell));
         }
         let dist = chi_squared(df, cell)?;
-        non_negative(chi_squared_sf(&dist, x), cell)
+        // A subnormal right tail is 0 except at 2 degrees of freedom, the exp closed form, where
+        // Excel keeps it (`(x)=0` TRUE at df 1, 7, 21, 39, FALSE at df 2: probes/
+        // t3638-subnormal-upper-tail B1:B30).
+        let tail = chi_squared_sf(&dist, x);
+        let tail = if dist.shape() == 1.0 {
+            tail
+        } else {
+            flush_subnormal(tail)
+        };
+        non_negative(tail, cell)
     }
 
     /// `CHISQ.INV(probability, deg_freedom)`: both arguments lift over an array and a range
