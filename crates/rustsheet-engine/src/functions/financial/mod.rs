@@ -124,10 +124,15 @@ impl Model {
                                     values.push(value);
                                 }
                             }
-                            CalcResult::String(text)
-                                if range_text_as_number && self.cast_number(&text).is_some() =>
-                            {
-                                values.extend(self.cast_number(&text));
+                            CalcResult::String(text) if range_text_as_number => {
+                                match self.cast_number(&text) {
+                                    Some(value) => values.push(value),
+                                    None => {
+                                        if let Some(value) = handle_non_number_cell()? {
+                                            values.push(value);
+                                        }
+                                    }
+                                }
                             }
                             _ => {
                                 if let Some(value) = handle_non_number_cell()? {
@@ -667,8 +672,8 @@ impl Model {
                 // the dates' error, the size checks and the values' cells (T-2611:
                 // `XIRR(1E+21,<#VALUE!>,<#NUM!>)` is `#NUM!`, gen-m9/1dce4774f5c0e736 A189;
                 // `XIRR(<4 values>,<16 dates>,<#N/A>)` `#N/A`, 1b60bf99d71424e7 A29). A text guess
-                // that is not a number is its `#VALUE!` at the same point; a boolean guess reads as
-                // 1 or 0, as before, and only skips the size checks (its order is unprobed).
+                // that is not a number is its `#VALUE!` at the same point; a boolean guess beside
+                // different counts is `#VALUE!` (A226 below); beside equal counts it reads as 1 or 0.
                 if let Some(error) = &values_error {
                     return error.clone();
                 }
@@ -698,7 +703,8 @@ impl Model {
                 }
                 // A boolean guess beside flows of different counts is `#VALUE!`, not the count's
                 // `#NUM!`: `XIRR(Data!C7:E8,{3 dates},<TRUE>)` (gen-m9/b6a02893a8d6b151 A226).
-                // Unseparated from the values range's numeric text `"1.5"` before T-3267.
+                // Only a guess cell holding TRUE is evidenced; a literal TRUE and a boolean guess
+                // beside equal counts are unprobed (financial.md "XIRR", T-3267).
                 if matches!(arguments.get(2), Some(CalcResult::Boolean(_)))
                     && size_error.as_ref().is_some_and(|error| {
                         matches!(

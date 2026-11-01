@@ -1094,7 +1094,8 @@ fn fn_xirr_reads_numeric_text_in_range_cells() {
     model._set("F2", "1100");
     model._set("A1", "=XIRR(B1:B2,C1:C2)=XIRR(D1:D2,E1:E2)");
     model._set("A2", "=XIRR(F1:F2,E1:E2)");
-    model._set("A3", "=XIRR(D1:D2,{43831,44197,44562},TRUE)");
+    model._set("G1", "TRUE");
+    model._set("A3", "=XIRR(D1:D2,{43831,44197,44562},G1)");
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"TRUE");

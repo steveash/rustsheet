@@ -3684,9 +3684,9 @@ cells (`XIRR(1E+21,<#VALUE!>,<#NUM!>)` is `#NUM!`, 1dce4774f5c0e736 A189; `XIRR(
 `#N/A`, 1b60bf99d71424e7 A29; `XIRR(<text cells>,<5 dates>,<#VALUE!>)` `#VALUE!`, b72d952c5f52cb4d A50, whose guess is
 itself `#VALUE!`); then an error dates argument, before the values' cells are read (`XIRR(Data!B11:E11,<#N/A>)` with E11
 the text `" x "` is `#N/A`, 67a4c03afd63f988 A241). Ours reads a non-numeric text guess as its `#VALUE!` at the guess's
-point too, and a boolean guess as 1 or 0 that only skips the size checks, as before T-2611; neither order is evidenced
-(b6a02893a8d6b151 A226, a TRUE guess beside 6 values and 3 dates, is `#VALUE!`, but its values range holds the numeric
-text `"1.5"`, so it does not separate the guess from the reading). In the size checks one empty or numeric-text cell is not "a text, boolean
+point too. A boolean guess beside values and dates of different counts is `#VALUE!` (a guess cell holding TRUE beside 6
+values and 3 dates, b6a02893a8d6b151 A226); beside equal counts it is read as 1 or 0 as before T-2611 (unprobed), and a
+literal TRUE guess is unprobed too (T-3267). In the size checks one empty or numeric-text cell is not "a text, boolean
 or empty cell": one empty values cell against several dates (`XIRR(Data!D10:D10,Data!B7:E8)`, 1dce4774f5c0e736 A91;
 89f0aee953a55a45 A36; ba4ddb817a8e700e A339), one empty date cell against several values (`XIRR(Data!B6:C11,<empty>,0.5)`,
 89f0aee953a55a45 A330; d0854366830dcdee A133) and one numeric-text date `"1"` against 14 values (c0681a8b150ce301 A266) are
@@ -3698,7 +3698,8 @@ range, array or typed argument (T-3312). Settled for range cells (T-3267): numer
 the values and the dates (`XIRR(G1:G13,H1:H13)` over text cells equals the number flows, probes/xirr-back-dated-stop
 A31; `XIRR(Data!C9:C11,{39448,39508,39859},0.1)` with C11 `"1"` is `#NUM!`, 31474c20fc1dafd6 A351); non-numeric text is
 `#VALUE!`. A TRUE guess beside 6 values and 3 dates is `#VALUE!` (b6a02893a8d6b151 A226, whose range text `"1.5"` is
-numeric, so the guess decides it).
+numeric, so the guess decides it). Formatted numeric text in XIRR ranges (dates, currency, percent) is unprobed; ours
+reads it with the engine's text-to-number coercion.
 Order (XNPV, T-2428): the rate first, per element, where a boolean is `#VALUE!` (a cell, `XNPV(<TRUE>,..)`,
 1dce4774f5c0e736 A22, or an array element, `XNPV(SORT(<FALSE>),..)`, 5c6a23c4f6597f1c A258); then one values cell that is
 non-numeric text or a boolean is `#VALUE!`, before an error dates argument (`XNPV(-1,<FALSE>,<#N/A>)`, 3aa168259335be54
