@@ -1,4 +1,7 @@
-use super::elapsed::{elapsed_text, general_in_date_section, DisplayClock, ElapsedUnit};
+use super::elapsed::{
+    date_section_register, elapsed_text, elapsed_token, is_date_or_clock, DisplayClock,
+    FractionalSeconds,
+};
 use super::fraction::{comma_exponent, format_fraction};
 use super::general::{format_general, lead_abs};
 use crate::{
@@ -329,7 +332,11 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
         return format_error();
     }
     let mut value = value_original;
-    let general = ParsePart::General(GeneralPart {});
+    // A value no section takes prints in General, in the format's digits (`[$-2000409][>5]0` on 1
+    // is "١"; probes/t3532-numeral-digit-sections A2).
+    let general = ParsePart::General(GeneralPart {
+        numerals: parser.numerals,
+    });
     let part;
     let conditional = conditional_section(&parts, sections, value);
     match sections {
@@ -406,8 +413,8 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
     }
     match part {
         ParsePart::Error(..) => format_error(),
-        ParsePart::General(..) => Formatted {
-            text: general_text(value, locale),
+        ParsePart::General(p) => Formatted {
+            text: p.numerals.number(&general_text(value, locale)),
             color: None,
             error: None,
             unshowable: false,
@@ -451,8 +458,12 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             {
                 return invalid_date(value_original);
             }
-            // What `General` prints here (T-3378; number-formats.md "`General` in a date section").
-            let general_value = general_in_date_section(value, tokens, fraction_digits);
+            // What `General` prints here and what an elapsed token after a date or clock token
+            // counts from: `TEXT(5,"d [h] General")` is "5 12 0.5" but `"[h] d General"` "120 5 0.5"
+            // (T-3378, T-3419; number-formats.md "`General` in a date section").
+            let general_value = date_section_register(value, tokens, fraction_digits);
+            let register = FractionalSeconds::new(general_value, fraction_digits.unwrap_or(0));
+            let mut split = false;
             let clock = DisplayClock::new(value, fraction_digits);
             let (hours, minutes, seconds) = clock.hms;
             let elapsed_fraction = clock.elapsed.as_ref();
@@ -477,6 +488,9 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             let mut seen_era = false;
             let mut names = NameTokens::new(p);
             for token in tokens {
+                // Excel: a date or clock token leaves the register holding the serial's last
+                // component, so an elapsed token after it counts from that (T-3419).
+                split |= is_date_or_clock(token);
                 match token {
                     TextToken::Literal(c) => {
                         text = format!("{text}{c}");
@@ -498,13 +512,15 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                     }
                     TextToken::Digit(_) => {}
                     TextToken::Period => {}
-                    TextToken::General => text.push_str(&general_text(general_value, locale)),
+                    TextToken::General => {
+                        text.push_str(&p.numerals.number(&general_text(general_value, locale)));
+                    }
                     TextToken::Day => {
                         if !date_valid {
                             return invalid_date(value);
                         }
                         names.number();
-                        text = format!("{text}{ymd_day}");
+                        text.push_str(&p.numerals.field(&ymd_day.to_string()));
                     }
                     TextToken::DayPadded => {
                         if !date_valid {
@@ -512,7 +528,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         }
                         names.number();
                         let day = ymd_day as usize;
-                        text = format!("{text}{day:02}");
+                        text.push_str(&p.numerals.field(&format!("{day:02}")));
                     }
                     TextToken::Month => {
                         if !date_valid {
@@ -520,7 +536,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         }
                         names.number();
                         let month = ymd_month as usize;
-                        text = format!("{text}{month}");
+                        text.push_str(&p.numerals.field(&month.to_string()));
                     }
                     TextToken::MonthPadded => {
                         if !date_valid {
@@ -528,7 +544,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         }
                         names.number();
                         let month = ymd_month as usize;
-                        text = format!("{text}{month:02}");
+                        text.push_str(&p.numerals.field(&format!("{month:02}")));
                     }
                     TextToken::DayNameShort
                     | TextToken::DayName
@@ -576,9 +592,9 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         else {
                             return invalid_date(value);
                         };
-                        text.push_str(&year);
+                        text.push_str(&p.numerals.field(&year));
                     }
-                    TextToken::Hour => {
+                    TextToken::Hour | TextToken::HourPadded => {
                         let mut hour = hours as i32;
                         if p.use_ampm {
                             if hour == 0 {
@@ -587,26 +603,19 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                                 hour -= 12;
                             }
                         }
-                        text = format!("{text}{hour}");
-                    }
-                    TextToken::HourPadded => {
-                        let mut hour = hours as i32;
-                        if p.use_ampm {
-                            if hour == 0 {
-                                hour = 12;
-                            } else if hour > 12 {
-                                hour -= 12;
-                            }
-                        }
-                        text = format!("{text}{hour:02}");
+                        let hour = match token {
+                            TextToken::HourPadded => format!("{hour:02}"),
+                            _ => hour.to_string(),
+                        };
+                        text.push_str(&p.numerals.field(&hour));
                     }
                     TextToken::Second => {
                         let second = seconds as i32;
-                        text = format!("{text}{second}");
+                        text.push_str(&p.numerals.field(&second.to_string()));
                     }
                     TextToken::SecondPadded => {
                         let second = seconds as i32;
-                        text = format!("{text}{second:02}");
+                        text.push_str(&p.numerals.field(&format!("{second:02}")));
                     }
                     // Under a locale tag both print the locale's strings, so `A/P` becomes
                     // `AM/PM` (`[$-409]h A/P` is "6 PM", `[$-411]h a/p` "6 午後";
@@ -623,45 +632,36 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                     }
                     TextToken::Minute => {
                         let minute = minutes as i32;
-                        text = format!("{text}{minute}");
+                        text.push_str(&p.numerals.field(&minute.to_string()));
                     }
                     TextToken::MinutePadded => {
                         let minute = minutes as i32;
-                        text = format!("{text}{minute:02}");
+                        text.push_str(&p.numerals.field(&format!("{minute:02}")));
                     }
-                    TextToken::ElapsedHour => {
-                        let hour = elapsed_text(value, false, ElapsedUnit::Hour, elapsed_fraction);
-                        text = format!("{text}{hour}");
-                    }
-                    TextToken::ElapsedHourPadded => {
-                        let hour = elapsed_text(value, true, ElapsedUnit::Hour, elapsed_fraction);
-                        text = format!("{text}{hour}");
-                    }
-                    TextToken::ElapsedMinute => {
-                        let minute =
-                            elapsed_text(value, false, ElapsedUnit::Minute, elapsed_fraction);
-                        text = format!("{text}{minute}");
-                    }
-                    TextToken::ElapsedMinutePadded => {
-                        let minute =
-                            elapsed_text(value, true, ElapsedUnit::Minute, elapsed_fraction);
-                        text = format!("{text}{minute}");
-                    }
-                    TextToken::ElapsedSecond => {
-                        let second =
-                            elapsed_text(value, false, ElapsedUnit::Second, elapsed_fraction);
-                        text = format!("{text}{second}");
-                    }
-                    TextToken::ElapsedSecondPadded => {
-                        let second =
-                            elapsed_text(value, true, ElapsedUnit::Second, elapsed_fraction);
-                        text = format!("{text}{second}");
+                    TextToken::ElapsedHour
+                    | TextToken::ElapsedHourPadded
+                    | TextToken::ElapsedMinute
+                    | TextToken::ElapsedMinutePadded
+                    | TextToken::ElapsedSecond
+                    | TextToken::ElapsedSecondPadded => {
+                        if let Some((unit, padded)) = elapsed_token(token) {
+                            let count = if split {
+                                elapsed_text(general_value, padded, unit, register.as_ref())
+                            } else {
+                                elapsed_text(value, padded, unit, elapsed_fraction)
+                            };
+                            text.push_str(&p.numerals.number(&count));
+                        }
                     }
                     TextToken::SecondFraction(digits) => {
                         text.push('.');
                         match elapsed_fraction {
-                            Some(fraction) => text.push_str(&fraction.digits_text()),
-                            None => text.extend(std::iter::repeat_n('0', *digits)),
+                            Some(fraction) => {
+                                text.push_str(&p.numerals.digits(&fraction.digits_text()));
+                            }
+                            None => {
+                                text.extend(std::iter::repeat_n(p.numerals.digit('0'), *digits));
+                            }
                         }
                     }
                 }
@@ -810,7 +810,8 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         text = format!("{text}{value}");
                     }
                     TextToken::General => {
-                        text.push_str(&general_text(lead_abs(general_value, digit_count), locale));
+                        let general = general_text(lead_abs(general_value, digit_count), locale);
+                        text.push_str(&p.numerals.number(&general));
                     }
                     TextToken::Period => {
                         if p.precision == 0 {
@@ -838,7 +839,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                                 // (gen-m10 659cd5776d423ce3 F!J14; T-2227).
                                 let zero_mantissa = p.is_scientific && ln == 0 && digit.kind == '#';
                                 if zero_mantissa {
-                                    text = format!("{text}0");
+                                    text.push(p.numerals.digit('0'));
                                 } else if !(number_index < 0 && digit.kind == '#') {
                                     let c = if number_index < 0 {
                                         if digit.kind == '0' {
@@ -867,7 +868,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                                     } else {
                                         ""
                                     };
-                                    text = format!("{text}{c}{sep}");
+                                    text = format!("{text}{}{sep}", p.numerals.digit(c));
                                 }
                                 digit_index += 1;
                             } else {
@@ -883,7 +884,8 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                                     } else {
                                         ""
                                     };
-                                    text = format!("{}{}{}", text, int_part[i as usize], sep);
+                                    let c = p.numerals.digit(int_part[i as usize]);
+                                    text = format!("{text}{c}{sep}");
                                 }
                                 digit_index = number_index + 1;
                             }
@@ -892,19 +894,14 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                             let index = digit.index as usize;
                             if index < fract_part.len() {
                                 if needs_period {
-                                    text = format!(
-                                        "{}{}{}",
-                                        text, decimal_separator, fract_part[index]
-                                    );
-                                } else {
-                                    text = format!("{}{}", text, fract_part[index]);
+                                    text.push_str(&decimal_separator);
                                 }
+                                text.push(p.numerals.digit(fract_part[index]));
                             } else if digit.kind == '0' {
                                 if needs_period {
-                                    text = format!("{text}{decimal_separator}0");
-                                } else {
-                                    text = format!("{text}0");
+                                    text.push_str(&decimal_separator);
                                 }
+                                text.push(p.numerals.digit('0'));
                             } else if digit.kind == '?' {
                                 // A padding space, after the point when it is the first decimal:
                                 // `?.??` on 1000 is "1000.  " (gen-m10, T-1738).
@@ -942,7 +939,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                                         exponent_part[number_index as usize]
                                     };
 
-                                    text = format!("{text}{c}");
+                                    text.push(p.numerals.digit(c));
                                 }
                             } else {
                                 // Overflowing digits join the first exponent placeholder; later
@@ -950,7 +947,7 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                                 // "1.80E+308", probes/dbl-max-text-b, T-2106).
                                 let first = if index == 0 { 0 } else { number_index };
                                 for i in first..number_index + 1 {
-                                    text = format!("{}{}", text, exponent_part[i as usize]);
+                                    text.push(p.numerals.digit(exponent_part[i as usize]));
                                 }
                                 digit_index += number_index + 1;
                             }

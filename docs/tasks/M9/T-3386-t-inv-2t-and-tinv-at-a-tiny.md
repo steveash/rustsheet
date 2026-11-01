@@ -15,6 +15,8 @@ Decision 0188 R3 decides, with an owner ruling, whether T.INV.2T and TINV at a t
 the region is evidenced as committed points; until then Excel's value stays the target (directive 1).
 
 ## Context
+- Gate A known failures this task owns (T-3358, eval/accuracy/known-failures.tsv): accuracy/T.INV.2T/s1 A68 and A78, and accuracy/TINV/s1 A68 and A78 (Excel #NUM! at p = 2.2E-308; error mismatches, which R3 never excuses). The R3 candidates of this task's region are T.INV.2T/s1 A98, A99 (p 4.4E-242) and A103 and TINV/s1 A102, which are not marked (decision 0213). Removing the lines
+  once they pass is part of this task (a passing listed point fails the check as stale).
 - T-3349's fresh sweep (probes-numeric/t3349-t-inv-2t-sweep, excel-graph 2026-10-31, mpmath 60 digits): 42 of 300
   points have Excel more than 1e-4 relative off the math, every one at p from 1.38E-300 to 1.73E-110 and df from
   2490 to 1.3E8 (A211-A300, extreme and log-uniform strata). Example `T.INV.2T(6.68863396408457E-199,2490)`: Excel
@@ -24,6 +26,13 @@ the region is evidenced as committed points; until then Excel's value stays the 
   TINV, and these points reach p 1.7E-110, above that bound. A new R3 case or a wider region needs a decision record
   with an owner ruling (decision 0188 R3); no agent adds one alone.
 - docs/excel-semantics/statistics.md "Two-tailed Student-t quantile with p near 1 is accurate in Excel (T-3349)".
+
+- Another point over 1e-4, at df 1 near p = 1 (gap triage 2026-10-31i): `T.INV.2T(0.999999999999999,1)` is
+  1.6155696572206502E-15 in Excel against the exact 1.5695408241038844E-15 (2.9E-2 relative), from Excel's 1/TAN form
+  (statistics.md "Two-tailed Student-t quantile with p near 1 is accurate in Excel (T-3349)"). T-2858 (branch
+  agent/functions-stat/T-2858-t-inv-df1) takes the cell
+  and matches Excel per directive 1; if the ruling here is the math, its region should say whether df 1 near p = 1
+  is in it.
 
 ## Acceptance criteria
 - [ ] A decision record with the owner's ruling (follow the math, or match Excel) and the region's bounds, from

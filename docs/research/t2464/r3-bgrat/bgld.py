@@ -16,12 +16,13 @@ import bscore as score
 from common import split_cells, table, xlk
 
 LD = np.longdouble
-C = {(c["a"], c["b"], c["x"]): c for c in score.cells()}
 
 
-def q_cf(b, x, r, eps):
-    """TOMS grat1's continued fraction for Q(b, x), x >= 1.1, in longdouble (r = x^b e^-x / Gamma(b))."""
-    a2nm1, a2n, b2nm1, b2n, c = LD(1), LD(1), x, x + (1 - b), LD(1)
+def q_cf(b, x, r, eps, T=LD):
+    """TOMS grat1's continued fraction for Q(b, x), x >= 1.1, in longdouble (r = x^b e^-x / Gamma(b)); T = np.float64
+    runs it in doubles (T-3567)."""
+    b, x, r = T(b), T(x), T(r)
+    a2nm1, a2n, b2nm1, b2n, c = T(1), T(1), x, x + (1 - b), T(1)
     for _ in range(2000):
         a2nm1 = x * a2n + c * a2nm1
         b2nm1 = x * b2n + c * b2nm1
@@ -31,12 +32,13 @@ def q_cf(b, x, r, eps):
         a2n = a2nm1 + cma * a2n
         b2n = b2nm1 + cma * b2n
         an0 = a2n / b2n
-        if abs(an0 - am0) < LD(eps) * an0:
+        if abs(an0 - am0) < T(eps) * an0:
             break
     return r * an0
 
 
-def bgrat_ld(a, b, lnx, qmode, eps):
+def bgrat_ld(a, b, lnx, qmode, eps, efn=None):
+    """efn(a, b, nu) -> E overrides the extended E = exp(-(algdiv(b, a) + b ln nu)) (T-3567 r5-bgrat-fdf1)."""
     bL = LD(b)
     nu = LD(a) + LD(0.5) * (bL - 1)
     zd = float(-nu * LD(lnx))
@@ -45,9 +47,9 @@ def bgrat_ld(a, b, lnx, qmode, eps):
         rg = LD(float(1 / mpmath.gamma(b)))
         qx = LD(float(mpmath.gammainc(b, zd, mpmath.inf, regularized=True)))
     r = np.exp(bL * np.log(z) - z) * rg
-    E = np.exp(-(xlk._algdiv_ld(b, a) + bL * np.log(nu)))
+    E = np.exp(-(xlk._algdiv_ld(b, a) + bL * np.log(nu))) if efn is None else LD(efn(a, b, nu))
     u = r * E
-    q = qx if qmode == "exact" else q_cf(bL, z, r, eps)
+    q = qx if qmode == "exact" else LD(q_cf(bL, z, r, eps, np.float64 if qmode == "cfd" else LD))
     j = q / r
     s = j
     v = LD(0.25) / (nu * nu)
@@ -73,13 +75,19 @@ def bgrat_ld(a, b, lnx, qmode, eps):
     return float(u * s)
 
 
-g = defaultdict(list)
-for a, b0, x, _case, d in split_cells():
-    c = C[(a, b0, x)]
-    half = "hold" if c["row"]["hold"] else "tune"
-    for qm in ("exact", "cf"):
-        for e in (15e-15, 1e-15, 1e-17):
-            m = bgrat_ld(a, b0, c["lnx"], qm, e)
-            g[(f"Q {qm}, eps {e:g}", half)].append((m, d))
-            g[(f"Q {qm}, eps {e:g}", "ALL")].append((m, d))
-table(g, ("model", "half"))
+def main():
+    C = {(c["a"], c["b"], c["x"]): c for c in score.cells()}
+    g = defaultdict(list)
+    for a, b0, x, _case, d in split_cells():
+        c = C[(a, b0, x)]
+        half = "hold" if c["row"]["hold"] else "tune"
+        for qm in ("exact", "cf"):
+            for e in (15e-15, 1e-15, 1e-17):
+                m = bgrat_ld(a, b0, c["lnx"], qm, e)
+                g[(f"Q {qm}, eps {e:g}", half)].append((m, d))
+                g[(f"Q {qm}, eps {e:g}", "ALL")].append((m, d))
+    table(g, ("model", "half"))
+
+
+if __name__ == "__main__":
+    main()

@@ -892,8 +892,8 @@ Quirk: a format with two elapsed tokens is `#VALUE!` in both systems, also for a
 `TEXT(1.5,"[h]:[mm]")`, `TEXT(0.5,"[mm]:[ss]")` and `TEXT(-1.5,"[h]:[mm]")` (A9, A21, A22). `TEXT(-1.5,"[ss] AM/PM")`
 is `#VALUE!` in both systems too (A23). T-1366 probed the positive value: `TEXT(1.5,"[ss] AM/PM")`, `"[h] AM/PM"`,
 `"[mm] AM/PM"` and `"[s] A/P"` are `#VALUE!` (an elapsed token before the marker invalidates the format), but the marker
-first is valid: `TEXT(1.5,"AM/PM [h]")` = "PM 12" (the 12-hour clock applies to the elapsed hour too; the engine prints
-"PM 36", a known failure). `[h]_)` and `*-[h]` are plain literals/fill, so they behave like the lone token (`TEXT(-1.5,"[h]_)")`
+first is valid: `TEXT(1.5,"AM/PM [h]")` = "PM 12" (the elapsed hour after the marker counts from the register, 0.5 days; T-3419,
+number-formats.md "`General` in a date section"). `[h]_)` and `*-[h]` are plain literals/fill, so they behave like the lone token (`TEXT(-1.5,"[h]_)")`
 = "-36 ", `TEXT(-1.5,"*-[h]")` = "-36", positive "36 " and "36"); `TEXT(-2,"[<-1]d;0")` is `#VALUE!`; `TEXT(1.5,"[h] h")`
 = "36 36", `TEXT(1.5,"[ss]")` = "129600", `TEXT(0.6,"h AM/PM")` = "2 PM"
 (probes/text-elapsed-two-tokens, excel-graph 2026-10-26).
@@ -1312,3 +1312,13 @@ Rule: `NETWORKDAYS.INTL(31,4886,<blank>,{1,2;#N/A,""})` is `#NUM!`, the blank we
 Ours: implemented (T-2271's weekend read comes before the holidays' error; T-2583 pins it with a unit test).
 Status: VERIFIED (excel-graph), one cell
 Tasks: T-2583
+
+## gen-m6 arg-pairs batch (T-3495): DAYS error order and NETWORKDAYS.INTL on day 0
+Rule: DAYS: an error-valued argument wins in either position (`DAYS("abc",#NAME?)` is #NAME?, `DAYS("",#NAME?)` is #NAME?);
+the end date's range check comes before the start date's text check (`DAYS(-1,"abc")` and `DAYS(-1,"")` are #NUM!,
+`DAYS(Data!A1:B2,"abc")` is #NUM! at A493). NETWORKDAYS.INTL: every failing cell has a start or end on serial day 0
+(0 <= x < 1, including a blank cell): `NETWORKDAYS.INTL(0.5,54115,3,0.5)` is 38654, `NETWORKDAYS.INTL(39539,0,3,2)` is -28241.
+Evidence: gen-m6 a4a301d00b46acf3 (A79 A82 A85 A88 A241 A244 A307 A310 A493 A499) and the six NETWORKDAYS.INTL cells of T-3537.
+Ours: DAYS returns #VALUE! in all ten; NETWORKDAYS.INTL is one day off in the other direction.
+Status: UNVERIFIED (probe pending; cells are oracle values, the general rule is not probed)
+Tasks: T-3536, T-3537

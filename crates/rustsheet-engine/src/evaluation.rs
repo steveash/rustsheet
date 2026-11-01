@@ -293,8 +293,11 @@ pub(crate) struct Evaluation {
     /// The lookup search vectors built in this pass (`search_cache.rs`, T-0448). Dropped by
     /// `clear_pass_caches`.
     pub(crate) search_cache: crate::functions::lookup_and_reference::search_cache::SearchCache,
-    /// The criteria aggregates' range values and match sets of this pass (`ifs_cache.rs`, T-0449),
-    /// dropped by `clear_pass_caches`.
+    /// The ranges read once per pass and the cells budget of the pass caches (`range_values.rs`,
+    /// T-0449, T-3534), dropped by `clear_pass_caches`.
+    pub(crate) range_values: crate::range_values::RangeValues,
+    /// The criteria aggregates' match sets, indexes, block numbers and gathered values of this
+    /// pass (`ifs_cache.rs`, T-0449), dropped by `clear_pass_caches`.
     pub(crate) ifs_cache: crate::functions::statistical::ifs_cache::IfsCache,
     /// The running totals of this pass (`sum_prefix.rs`, T-3456).
     pub(crate) sum_prefixes: crate::functions::math_and_trigonometry::sum_prefix::SumPrefixes,
@@ -344,6 +347,7 @@ impl Evaluation {
     /// entry.
     pub(crate) fn clear_pass_caches(&mut self) {
         self.search_cache.clear();
+        self.range_values.clear();
         self.ifs_cache.clear();
         self.sum_prefixes.clear();
     }
@@ -373,6 +377,7 @@ impl Default for Evaluation {
             stack_base: 0,
             unwinding: false,
             search_cache: Default::default(),
+            range_values: Default::default(),
             ifs_cache: Default::default(),
             sum_prefixes: Default::default(),
             evaluating_reads: 0,

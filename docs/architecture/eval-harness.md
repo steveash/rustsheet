@@ -218,8 +218,10 @@ Only `pass` counts as passing. Case statuses:
   Each `argument_coverage[]` row's `unseen_pairs` (T-3277) lists the expected argument-class pairs
   (parameter names and `ArgClass` of each) that its `pairwise` share counts but no Excel-evidence call has passed.
 - `eval/baseline/<suite>.txt`: known failures (see `docs/process/quality-gates.md`).
-- `eval/baseline/visible-parity.json`: the visible-parity lock (decision 0088). Task PRs never lower
-  it; the steward does, daily, with `make eval-lower-visible-lock` (decision 0093).
+- `eval/baseline/visible-parity.txt`: the visible-parity lock (decisions 0088, 0219), one sorted
+  `case<TAB>count` line per case with in-scope visibly-off cells; `check` fails a case above its
+  line, and a case with no line allows none. `update-baseline` writes new cases' lines; task PRs
+  never lower a line; the steward does, daily, with `make eval-lower-visible-lock` (decision 0093).
 
 ## Gate A: the accuracy check
 Normative design: [SPEC-0029](../specs/SPEC-0029-gate-a-accuracy-gate.md) (decision 0188 R2; the
@@ -427,8 +429,12 @@ A cell the run did not classify counts too, so nothing reads as met early. Each 
 carry `probe_r1c_off`, `probe_phase1b` and `calc_r1c_off`, and `probes_met` and `calc_met` read them. The
 table prints the R1(c) count with the visibly-off total in parentheses when that is larger. M1's frozen
 probe list still counts every visibly-off cell. `phase1b_evidence` holds the classes per probes,
-probes-numeric and ironcalc-calc, and its line is printed under the exit table. The Phase 1 exit script and
-`exit_owners.py` read these fields from T-3428.
+probes-numeric and ironcalc-calc, and its line is printed under the exit table. The report also writes
+`r1c_left_out`, every left-out cell with its class. `scripts/exit_owners.py` lists a probe row's
+`r1c_off_cells`, drops the left-out cells from the ironcalc-calc listing and the R3 passes from the rate
+listing, and `--all-off` drops left-out cells outside Gate B's suites. `scripts/phase1_exit.py` reads
+Gate B for its `function rate` line, as `n/a` with the missing suites when the run did not measure it
+(T-3428, decision 0211).
 
 ## CLI
 ```

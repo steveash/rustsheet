@@ -4,11 +4,13 @@ use crate::arithmetic::flush_subnormal;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::lift::{div_error, num_error, number_or_error, value_error};
 use crate::functions::statistical::beta_density::beta_density_small_shape;
-use crate::functions::statistical::bratio::{beta_dist_lower_tail, beta_search_tails};
+use crate::functions::statistical::bratio::{
+    beta_dist_lower_tail, beta_search_tails, dispatch, Branch,
+};
 use crate::functions::statistical::incomplete_beta::beta_density;
 use crate::functions::statistical::inverse_beta::{beta_inverse_cdf, beta_quantile_crossing};
 use crate::functions::statistical::loader::excel_beta_density;
-use crate::functions::statistical::special::refine_increasing;
+use crate::functions::statistical::special::{nearest_crossing_from, refine_increasing};
 use crate::functions::Function;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
@@ -37,6 +39,9 @@ fn beta_quantile(alpha: f64, beta: f64, p: f64) -> f64 {
     if alpha > BETA_QUANTILE_STATRS_SHAPE_MAX || beta > BETA_QUANTILE_STATRS_SHAPE_MAX {
         return beta_quantile_crossing(alpha, beta, p);
     }
+    if let Some(x) = beta_quantile_shape_one(alpha, beta, p) {
+        return x;
+    }
     let estimate = if p >= BETA_QUANTILE_STATRS_P_MIN {
         beta_inverse_cdf(alpha, beta, p)
     } else {
@@ -45,23 +50,66 @@ fn beta_quantile(alpha: f64, beta: f64, p: f64) -> f64 {
     // A subnormal crossing is the underflow the caller reports as #NUM!, as the old search's 0 was
     // (`BETAINV(0.5,1E-5,1)`, probes/t2435-dist-extremes S!A71).
     let t = if p > 0.5 {
-        refine_increasing(
+        beta_crossing(
             |t| -beta_search_tails(t, 1.0 - t, alpha, beta).1,
             -(1.0 - p),
             estimate,
-            0.0,
-            1.0,
+            (alpha, beta),
         )
     } else {
-        refine_increasing(
+        beta_crossing(
             |t| beta_search_tails(t, 1.0 - t, alpha, beta).0,
             p,
             estimate,
-            0.0,
-            1.0,
+            (alpha, beta),
         )
     };
     flush_subnormal(t)
+}
+
+/// The crossing of the search's tail `f` with `target` (`refine_increasing`'s even-significand end
+/// of the final bracket), except where bratio takes basym at that point (both shapes above 100,
+/// near the mean): there the end of the bracket whose tail is nearer `target`
+/// (`special::nearest_crossing_from`). On the same kernel, that end is Excel's on 15 in-sample
+/// BETA.INV cells the even end misses and misses 5 it hits (probes-numeric/t3443-basym-a; +11
+/// exact on the hold-out, +5 on the fresh sweep), and it keeps
+/// `BETA.INV(G29,1000,1000,0.1,1)` at Excel's 0.555 (ironcalc-calc `BETADIST_BETAINV.xlsx` H29: the
+/// root's upper tail is one ulp above fl(1 - p), so the even end is the next double). Off basym the
+/// nearest end regresses gated cells at small shapes (`BETADIST_BETAINV.xlsx` H16, H60, H61), so
+/// it stays the even end there (docs/excel-semantics/statistics.md "BETA.DIST and F.DIST at basym
+/// points; BETA.INV takes the nearest end there (T-3443)").
+fn beta_crossing(f: impl Fn(f64) -> f64, target: f64, estimate: f64, shapes: (f64, f64)) -> f64 {
+    let t = refine_increasing(&f, target, estimate, 0.0, 1.0);
+    let at_basym =
+        dispatch(shapes.0, shapes.1, t, 1.0 - t).is_some_and(|d| d.branch == Branch::Basym);
+    if at_basym {
+        nearest_crossing_from(f, target, t, 0.0, 1.0)
+    } else {
+        t
+    }
+}
+
+/// The quantile at a shape of exactly 1 and p of 1E-15 or more, in closed form: p when both
+/// shapes are 1, `-expm1(log1p(-p)/beta)` when alpha is 1 and `exp(ln(p)/alpha)` when beta is 1.
+/// The crossing search cannot be used there: BETA.DIST's cdf at a shape of 1 forms its small tail
+/// as (0.5 - w) + 0.5 (T-3007), so it is flat over a band tens of doubles wide and the search
+/// stops anywhere in it (probes-numeric/m9-beta-inv A69 `BETA.INV(0.999,1,100)`: 40 ulp off by
+/// the search, Excel within an ulp of the 50-digit root). Over the 127 literal shape-1 cells in
+/// eval/ with 1E-15 <= p < 1 this form is within 15 digits of Excel at every one (80 bit-exact);
+/// `1 - (1-p)^(1/beta)` is not (A51 `BETA.INV(0.001,1,2.5)`, 640 ulp). Below 1E-15 Excel leaves
+/// the closed form (probes-numeric/t1543-inverse-cdf-tiny-p A73:A75, A86), so the search stays
+/// there. docs/excel-semantics/statistics.md "BETA.INV at a shape of 1 is the closed form to 15
+/// digits for p of 1E-15 or more (T-3664)".
+fn beta_quantile_shape_one(alpha: f64, beta: f64, p: f64) -> Option<f64> {
+    if p < BETA_QUANTILE_STATRS_P_MIN {
+        return None;
+    }
+    match (alpha == 1.0, beta == 1.0) {
+        (true, true) => Some(p),
+        (true, false) => Some(-((-p).ln_1p() / beta).exp_m1()),
+        (false, true) => Some((p.ln() / alpha).exp()),
+        (false, false) => None,
+    }
 }
 
 /// BETA.DIST's `cumulative`: a boolean, a number (TRUE unless 0), "TRUE" or "FALSE" in any case,
@@ -257,7 +305,7 @@ impl Model {
 
 #[cfg(test)]
 mod tests {
-    use super::beta_quantile;
+    use super::{beta_dist_lower_tail, beta_quantile};
 
     #[test]
     fn quantile_is_the_crossing_of_beta_dist_own_cdf() {
@@ -277,6 +325,23 @@ mod tests {
         assert_eq!(
             0.15 + beta_quantile(2.0, 2.5, 0.588_288_666_859_693_7) * (1.2 - 0.15),
             0.665_562_343_784_611_5
+        );
+    }
+
+    #[test]
+    fn quantile_at_basym_points_is_the_nearest_end() {
+        // G29: BETA.DIST(0.555,1000,1000,TRUE,0.1,1) = 0.6903551301985376 on basym.
+        let t = (0.555 - 0.1) / 0.9;
+        assert_eq!(
+            beta_dist_lower_tail(t, 1.0 - t, 1000.0, 1000.0),
+            0.690_355_130_198_537_6
+        );
+        // H29: BETA.INV(0.6903551301985376,1000,1000,0.1,1) = 0.555, where BETA.DIST's cdf is
+        // basym's and the root's upper tail is one ulp above fl(1 - p) (T-3443): the even end of
+        // the final bracket would map to 0.5550000000000002.
+        assert_eq!(
+            0.1 + beta_quantile(1000.0, 1000.0, 0.690_355_130_198_537_6) * 0.9,
+            0.555
         );
     }
 }

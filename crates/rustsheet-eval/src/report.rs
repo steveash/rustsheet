@@ -289,6 +289,10 @@ pub struct RunReport {
     /// R1(c)'s classes per probes, probes-numeric and ironcalc-calc: the Phase 1b evidence counts.
     #[serde(default)]
     pub phase1b_evidence: crate::r1c::Phase1bEvidence,
+    /// The visibly-off cells R1(c) leaves out of the count, by `case!Sheet!A1`, with their class
+    /// (`phase1b`, `r3_pass`, `m14_owned`): what `scripts/exit_owners.py` drops (T-3428).
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub r1c_left_out: std::collections::BTreeMap<String, crate::r1c::R1c>,
     /// How the M0–M2-only `ironcalc-calc` cells scored (M2 exit); `None` if the suite did not run.
     #[serde(default)]
     pub function_scope: Option<FunctionScope>,
@@ -345,8 +349,19 @@ pub(crate) fn attribute_cell(
     called: &BTreeSet<String>,
     cell: &CellResult,
 ) {
+    attribute_cell_to(functions, called, cell, |_| true);
+}
+
+/// [`attribute_cell`] toward only the functions of `called` that `keep` accepts. Whether the cell
+/// is a kept function's attributed cell is still decided on all of `called` (its sole call).
+pub(crate) fn attribute_cell_to(
+    functions: &mut BTreeMap<String, FunctionStat>,
+    called: &BTreeSet<String>,
+    cell: &CellResult,
+    keep: impl Fn(&str) -> bool,
+) {
     let sole = closeness::sole_call(called);
-    for f in called {
+    for f in called.iter().filter(|f| keep(f)) {
         functions
             .entry(f.clone())
             .or_insert_with(|| FunctionStat {

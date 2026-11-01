@@ -66,3 +66,13 @@ Owned cells:
 `defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1
 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off
 (then give it a `campaign:` stage instead).
+
+## Cells added by gap triage (2026-10-31m)
+`make eval` on origin/main 900fbc1bf (excel-graph). An ownership check over every failing Excel cell
+(`scripts/exit_owners.py`'s `owned` rule over the open task files of origin/main and of every `origin/agent/*` branch
+pushed since 2026-10-29) found these cells named by no open task. All are within 15 significant digits of Excel (Phase
+1b), so they join this deferred owner of their kernel. Student t cdf cells of the t1048 probe, 1 to 2 ulp (TDIST,
+T.DIST.RT, T.DIST.2T at df 3, 5 and 10), the kernel T.TEST runs; and T.TEST/TTEST type 2 on the stat argument-modes
+probe, 8 ulp (Excel 0.17488420899295304, ours ...326).
+- probes-numeric/t1048-tdist.case.json (16): Calc!A3, B3, A4, B4, A5, B5, A6, B6, B13, A20, A21, A22, B22, A23, B23, A25
+- probes/stat-argument-modes.case.json (4): Sheet1!H535, H536, H541, H542

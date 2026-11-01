@@ -16,8 +16,21 @@ from decimal import ROUND_HALF_EVEN, Decimal
 MAX_LITERAL = 9.99999999999999e307
 MIN_LITERAL = 2.22507385850721e-308
 
-Arg = float | int | bool
-"""One drawn argument: a real (float), an integer parameter (int) or a logical (bool)."""
+Scalar = float | int | bool
+Arg = Scalar | tuple[float | int, ...]
+"""One drawn argument: a real (float), an integer parameter (int), a logical (bool) or an array of
+numbers (a tuple, written as an array literal: IRR's flows, XIRR's dates)."""
+
+
+def decimal15(x: float) -> Decimal:
+    """The exact value of the double `x` cut half-even to 15 significant digits, as a decimal
+    (a carry gives the next power of ten: 9.9999999999999999 → 10.0000000000000). For a
+    15-digit literal this is the written decimal again: the double is within half an ulp of it,
+    far less than half a unit of the 15th digit."""
+    if x == 0:
+        return Decimal(0)
+    d = Decimal(x)
+    return d.quantize(Decimal(1).scaleb(d.adjusted() - 14), rounding=ROUND_HALF_EVEN)
 
 
 def round15(x: float) -> float:
@@ -29,9 +42,7 @@ def round15(x: float) -> float:
         return MAX_LITERAL if x > 0 else -MAX_LITERAL
     if magnitude < MIN_LITERAL:
         return MIN_LITERAL if x > 0 else -MIN_LITERAL
-    d = Decimal(x)
-    d = d.quantize(Decimal(1).scaleb(d.adjusted() - 14), rounding=ROUND_HALF_EVEN)
-    value = float(d)
+    value = float(decimal15(x))
     if abs(value) >= MAX_LITERAL:  # 9.999999999999999E+307 rounds up to 1E+308
         return MAX_LITERAL if x > 0 else -MAX_LITERAL
     return value
@@ -54,7 +65,10 @@ def neighbour(b: float, up: bool) -> float:
 
 def text(a: Arg) -> str:
     """`a` as formula text: TRUE/FALSE, an integer's digits (15-digit exponent form above 1E15),
-    or a real's 15 significant digits in Excel's exponent style (`1.87E-297`)."""
+    a real's 15 significant digits in Excel's exponent style (`1.87E-297`), or an array literal of
+    those (`{-1000,300.5,800}`)."""
+    if isinstance(a, tuple):
+        return "{" + ",".join(text(x) for x in a) + "}"
     if isinstance(a, bool):
         return "TRUE" if a else "FALSE"
     if isinstance(a, int) and abs(a) < 10**15:

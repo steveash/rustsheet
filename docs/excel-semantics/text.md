@@ -480,12 +480,20 @@ TEXTSPLIT splits at the same disjoint matches: `TEXTSPLIT("aaa","aa")` is "","a"
 `TEXTSPLIT("-2.5",{"2.5","-2.5"})` "","", `TEXTSPLIT("ababa","aba")` splits only at unit 0, `TEXTSPLIT("xabcx",{"b","abc"})` "x","x".
 Evidence: probes/t3335-textbefore-overlapping-instances A1-A58, C1-E29 (excel-graph, 2026-10-31, T-3335);
 gen-m9/cde551ea787f713a Calc!A37 (`TEXTBEFORE("-2.5",{2.5,-2.5},2)` inside BETADIST, `#N/A`); gen-m7/a470dc9e165bdb20
-Calc!A1441 (excel-graph). The backward step is inferred from these cells: whether it is the match's length or the
-shortest delimiter's (they agree on every cell) is unprobed, as is a forward scan's step past a match whose delimiter
-list holds a shorter entry starting inside it.
+Calc!A1441 (excel-graph). The backward step is the counted match's own length in UTF-16 units, not the shortest or
+longest delimiter's nor a count of characters: `TEXTAFTER("abcab",{"ab","c"},-2)` is "cab" in either list order (a
+shortest-delimiter step would reach the "c" and give "ab"), `TEXTAFTER("abcab",{"ab","c","zzzz"},-2)` still "cab",
+`TEXTBEFORE("abcc",{"c","bc"},-2)` "ab", `TEXTAFTER("abcab",{"ab","c"},-3)` `#N/A` (the "c" is stepped over, never
+counted) and with match_end 1 the whole text; `TEXTBEFORE("abzab😀c",{"b😀c","abz","bz"},-2)` is "" (four units back
+from "b😀c" reach "abz"; three characters back would reach "bz" and give "a"). match_mode 1 steps the same
+(`TEXTAFTER("ABCAB",{"ab","c"},-2,1)` "CAB"). Forward, the scan resumes after the counted match even when a shorter
+list entry starts inside it: `TEXTBEFORE("abcb",{"abc","b"},2)` is "abc" in either list order (not "a"),
+`TEXTBEFORE("😀bcb",{"😀bc","b"},2)` "😀bc", `TEXTBEFORE("abcbc",{"abc","c"},2)` "abcb"; TEXTSPLIT agrees
+(`TEXTSPLIT("abcb",{"abc","b"})` is "","",""). Evidence: probes/t3375-textbefore-scan-steps A1-A14, B1-B10
+(excel-graph, 2026-10-31, T-3375).
 Ours: matches (`Instances::Disjoint` in functions/text/util.rs; TEXTSPLIT's `split_grid` already scanned disjointly).
 Status: VERIFIED (excel-graph)
-Tasks: T-3335
+Tasks: T-3335, T-3375
 
 ## TEXTSPLIT of empty text is #VALUE!
 Rule: TEXTSPLIT of empty text is `#VALUE!` whatever its valid other arguments: a literal `""`, a blank cell and an empty-string cell,
@@ -959,9 +967,44 @@ Status: VERIFIED (excel-graph)
 Tasks: T-1307
 
 ## UPPER, LOWER and PROPER: one-to-one case mapping, final-sigma context (T-1747)
-Rule: UPPER, LOWER and PROPER all use the simple one-to-one mapping, so characters whose full mapping expands stay unchanged in every case (ᾳ, ẖ, ẘ, ﬀ, ﬃ, ﬆ, և, ß, ŉ, ǰ, ﬁ; `UPPER("ß")` is `ß`, not "SS"). ΐ upper-cases to Ϊ in UPPER and PROPER (LOWER leaves it; ΰ to Ϋ in UPPER is unprobed, carried over from PROPER). İ is the exception to consistency: PROPER and LOWER fold it to I / i (`LOWER("aİb İc")` is `aib ic`) but UPPER leaves it as İ. A capital Σ lowers to the final ς in LOWER and PROPER when the next character is the end of the text, a space, a straight apostrophe or `-`, and to σ when a letter or digit, a combining mark (probed: U+0301, U+0308; the rest of U+0300-U+036F is assumed, other combining blocks and U+200C/U+200D/U+2018 are unprobed and give ς), a curly apostrophe (U+2019) or a zero-width space (U+200B) follows. In LOWER a lone `Σ`, `Σ ` and `1Σ` give ς (no preceding letter needed), but `Σ`+U+0308 gives σ̈; lower-case σ is never changed (`LOWER("ασ")` is `ασ`). PROPER keeps a word-initial Σ capital.
+Rule: UPPER, LOWER and PROPER all use the simple one-to-one mapping, so characters whose full mapping expands stay unchanged in every case (ᾳ, ẖ, ẘ, ﬀ, ﬃ, ﬆ, և, ß, ŉ, ǰ, ﬁ; `UPPER("ß")` is `ß`, not "SS"). ΐ upper-cases to Ϊ in UPPER and PROPER (LOWER leaves it), and ΰ to Ϋ in UPPER (probes/t3298-case-mapping-sweep; see "UPPER and LOWER use an old per-character case table" below for every other character). İ is the exception to consistency: PROPER and LOWER fold it to I / i (`LOWER("aİb İc")` is `aib ic`) but UPPER leaves it as İ. A capital Σ lowers to the final ς in LOWER and PROPER when the next character is the end of the text, a space, a straight apostrophe or `-`, and to σ when a letter or digit, a combining mark (probed: U+0301, U+0308; the rest of U+0300-U+036F is assumed, other combining blocks and U+200C/U+200D/U+2018 are unprobed and give ς), a curly apostrophe (U+2019) or a zero-width space (U+200B) follows. In LOWER a lone `Σ`, `Σ ` and `1Σ` give ς (no preceding letter needed), but `Σ`+U+0308 gives σ̈; lower-case σ is never changed (`LOWER("ασ")` is `ασ`). PROPER keeps a word-initial Σ capital.
 Evidence: probes/case-mapping-expanding (excel-graph, 2026-10-17, 81 cells; engine matches all).
 Status: VERIFIED (excel-graph). Implemented in: `lower_case`, `upper_case`, `proper_case` (functions/text/string_format.rs). Tasks: T-1747
+
+## UPPER and LOWER use an old per-character case table (T-3298)
+Rule: UPPER and LOWER map a character only if Excel's own case table has it, and that table is far older than current
+Unicode (it reads like the Windows NT-era tables): many letters whose case pair Unicode added later are left unchanged.
+Swept over all 3037 code points whose Rust std (rustc 1.97) `to_lowercase` or `to_uppercase` differs from itself, BMP and
+supplementary. Where Excel maps a character it gives Rust's one-to-one mapping, except as listed here.
+- UPPER leaves these unchanged (code point ranges of the swept characters: every swept character inside a range is unchanged, and the characters
+  in a range that were not swept are not claimed):
+  00B5, 017F, 019B, 023F-0240, 0250-0252, 025C, 0261, 0264-0266, 026A, 026C, 0271, 0282, 0287, 029D-029E, 0345,
+  0371-0373, 0377, 037B-037D, 03D7-03D9, 03F2-03F5, 03F8, 03FB, 0515-052F, 10D0-10FA, 10FD-10FF, 13F8-13FD, 1C80-1C8A,
+  1D79, 1D8E, 1E9B, 1EFB-1F07, 1F10-1F15, 1F20-1F27, 1F30-1F37, 1F40-1F45, 1F51, 1F53, 1F55, 1F57, 1F60-1F67, 1F70-1F7D, 1FB0-1FB1,
+  1FBE, 1FD0-1FD1, 1FE0-1FE1, 1FE5, 2170-217F, 2C30-2C5F, 2C73, 2C81-2CE3, 2CEC-2CEE, 2CF3, 2D00-2D27, 2D2D,
+  A641-A66D, A681-A69B, A723-A72F, A733-A76F, A77A-A77C, A77F-A787, A78C, A791-A794, A797-A7A9, A7B5-A7C3, A7C8-A7CA,
+  A7CD-A7DB, A7F6, AB53, AB70-ABBF, and every supplementary-plane letter swept (Deseret 10428-1044F, Osage 104D8-104FB,
+  Vithkuqi 10597-105BC, Old Hungarian 10CC0-10CF2, Garay 10D70-10D85, Warang Citi 118C0-118DF, Medefaidrin
+  16E60-16E7F, 16EBB-16ED3, Adlam 1E922-1E943). So `UPPER("µ")` is `µ`, `UPPER("ſ")` `ſ`, Georgian Mkhedruli,
+  Glagolitic, Coptic, Cherokee, the small Roman numerals and most of Greek Extended stay as they are.
+- UPPER drops the tonos of the Greek accented vowels: ά έ ή ί ό ύ ώ give Α Ε Η Ι Ο Υ Ω (Rust: Ά Έ Ή Ί Ό Ύ Ώ), and ΐ ΰ give
+  Ϊ Ϋ (Rust has no one-to-one mapping for them).
+- LOWER leaves these unchanged: 0370-0372, 0376, 037F, 03CF, 03D8, 03F4, 03F7-03FA, 03FD-03FF, 0514-052E, 10C7, 10CD,
+  13A0-13F5, 1C89, 1C90-1CBA, 1CBD-1CBF, 1E9E, 1EFA-1EFE, 1F08-1F0F, 1F18-1F1D, 1F28-1F2F, 1F38-1F3F, 1F48-1F4D,
+  1F59-1F5F, 1F68-1F6F, 1F88-1F8F, 1F98-1F9F, 1FA8-1FAF, 1FB8-1FBC, 1FC8-1FCC, 1FD8-1FDB, 1FE8-1FEC, 1FF8-1FFC, 2126,
+  212A-212B, 2160-216F, 2C00-2C2F, 2C6D-2C72, 2C7E-2CE2, 2CEB-2CED, 2CF2, A640-A66C, A680-A69A, A722-A72E, A732-A76E,
+  A779-A786, A78B-A78D, A790-A792, A796-A7DC, A7F5, and every supplementary-plane capital swept (10400-10427,
+  104B0-104D3, 10570-10595, 10C80-10CB2, 10D50-10D65, 118A0-118BF, 16E40-16E5F, 16EA0-16EB8, 1E900-1E921). So
+  `LOWER("ẞ")` is `ẞ`, and the Ohm, Kelvin and Ångström signs (U+2126, U+212A, U+212B) stay as they are.
+- LOWER maps Georgian Asomtavruli U+10A0-U+10C5 to Mkhedruli U+10D0-U+10F5 (Rust: to Nuskhuri U+2D00-U+2D25), and
+  İ (U+0130) to i (Rust's full mapping is i+U+0307; T-1747 already had `LOWER("aİb")`).
+A surrogate pair is never case-mapped (no supplementary letter changes in either direction).
+Characters whose full mapping expands (ß, ŉ, ǰ, the ligatures U+FB00-U+FB17, the Greek with ypogegrammeni) stay
+unchanged, as T-1747 found.
+Evidence: probes/t3298-case-mapping-sweep Calc!A1:A50 (UPPER of 1580 characters, 32 per cell, Data!A) and
+Calc!B1:B47 (LOWER of 1488, Data!B) (excel-graph, 2026-10-31).
+Status: VERIFIED (excel-graph). Not implemented: the engine maps every character through Rust's tables
+(`simple_case`), so the cells listed in eval/baseline/probes.txt fail. Tasks: T-3298 (probe), T-3583 (engine).
 
 ## ARRAYTOTEXT: a single empty cell is #VALUE!, an empty cell in a larger range is empty text
 Rule: `ARRAYTOTEXT` of a reference to one empty cell is `#VALUE!` in both formats, and so are a 1x1 range of an empty
@@ -1020,7 +1063,7 @@ one with a `%` gets `0.00%` whatever the denominator (`3 1/2%`, `-3 1/2%`, `2 5/
 and `3 1/200` (three digits fit no `??/??`) is `3` plus six spaces. Typed `-$3 1/2%` stays text, like `$3 1/2%`, but the cell still gets `0.00%` (A15 ENTERED numberFormat)
 (probes/typed-mixed-fraction-number-format, excel-graph, 2026-10-30, T-3237; raw ENTERED lines and displayed text in
 docs/research/typed-mixed-fraction-number-format-2026-10-30.md).
-Ours: all implemented (`mixed_fraction`, mixed_fraction.rs, read through `value_number_text_with`, cast.rs; `parse_number`, parse_formatted.rs; `parse_separated`, date_text.rs).
+Ours: all implemented, T-3251 added the leading-`-` text path (`mixed_fraction`, mixed_fraction.rs, read through `value_number_text_with`, cast.rs; `parse_number`, parse_formatted.rs; `parse_separated`, date_text.rs).
 Status: VERIFIED (excel-graph); implemented (T-3151, T-2646).
 Tasks: T-2646, T-3151, T-3178
 

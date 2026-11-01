@@ -203,6 +203,40 @@ class RedTrain(StageFixture):
             self.assertTrue(all(r.endswith(merge_train.INFRA_CONCLUSIONS) for r in reasons), reasons)
         self.assertFalse(jobs("failure", "success")[0].endswith(merge_train.INFRA_CONCLUSIONS))
 
+    def test_a_running_train_ci_is_red_at_its_first_failed_job(self) -> None:
+        """Decision 0212: the train does not wait for the slowest job of a run that already failed."""
+        run_ = {"id": 1, "path": merge_ready.CI_WORKFLOW, "event": "push", "status": "in_progress",
+                "conclusion": None, "check_suite_id": 5}
+
+        def check(k: int, name: str, status: str, conclusion: str | None, suite: int = 5) -> dict[str, object]:
+            return {"id": k, "name": name, "status": status, "conclusion": conclusion,
+                    "app": {"id": merge_ready.ACTIONS_APP_ID}, "check_suite": {"id": suite}}
+
+        eval_job, slow = merge_ready.HEAVY_JOBS[0], "rust (test 2/2)"
+        running = [check(1, eval_job, "in_progress", None), check(2, slow, "in_progress", None)]
+        failed = [check(1, eval_job, "completed", "failure"), check(2, slow, "in_progress", None)]
+        other = [check(1, eval_job, "completed", "failure", suite=9), check(2, slow, "in_progress", None)]
+        cancelled = [check(1, eval_job, "completed", "cancelled"), check(2, slow, "in_progress", None)]
+        state = merge_ready.ci_state
+        events = merge_train.TRAIN_EVENTS
+        self.assertEqual(state([run_], running, False, events, early=True)[0], merge_ready.PENDING)
+        self.assertEqual(state([run_], failed, False, events, early=True),
+                         (merge_ready.RED, [f"{eval_job}: failure"]))
+        self.assertEqual(state([run_], failed, False, events)[0], merge_ready.PENDING)  # a PR head's read waits
+        self.assertEqual(state([run_], other, False, events, early=True)[0], merge_ready.PENDING)  # another run's job
+        self.assertEqual(state([run_], cancelled, False, events, early=True)[0], merge_ready.PENDING)
+        self.assertFalse(f"{eval_job}: failure".endswith(merge_train.INFRA_CONCLUSIONS))  # red, not infrastructure
+        # A cancelled shard makes the summary job fail; that is infrastructure, read once the run completes.
+        summary = merge_ready.RUST_SUMMARY_JOB
+        cancelled_shard = [check(1, slow, "completed", "cancelled"), check(2, summary, "completed", "failure"),
+                           check(3, eval_job, "in_progress", None)]
+        self.assertEqual(state([run_], cancelled_shard, False, events, early=True)[0], merge_ready.PENDING)
+        # The newest check run per name counts, as on the completed path.
+        rerun = [check(1, eval_job, "completed", "failure"), check(4, eval_job, "in_progress", None)]
+        self.assertEqual(state([run_], rerun, False, events, early=True)[0], merge_ready.PENDING)
+        queued = {**run_, "status": "queued"}
+        self.assertEqual(state([queued], failed, False, events, early=True)[0], merge_ready.RED)
+
     def test_a_forged_or_malformed_state_record_is_ignored(self) -> None:
         good = merge_train.Resume("a" * 40, ((4, "b" * 40),))
         self.assertEqual(merge_train.Resume.parse(good.render()), good)

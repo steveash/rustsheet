@@ -307,6 +307,31 @@ Status: VERIFIED
 Implemented in: `effective_digits` in crates/rustsheet-engine/src/decimal_round.rs (T-0218).
 Tasks: T-0218, T-0268
 
+## ROUNDUP of a huge value at a huge negative num_digits
+Observation (T-3555): `ROUNDUP(6.4421516092447E+265,-43376)` is 6.4421516092447E+265, the value unchanged. The rule
+above says ROUNDUP keeps the sign of `num_digits` and takes its magnitude modulo 65,536, which leaves -43,376. The unit
+10^43376 then overflows, so the rule predicts `#NUM!`, which is what the engine returns. In the same draw,
+`ROUNDUP(-3.41521682833705E-207,-11541)`, `ROUNDUP(-2.33253918200575E+106,-678)` and `ROUNDUP(7712487.6865209,-400)`
+were `#NUM!`, and `ROUNDUP(4.72880001004526E+149,22178)` was the value. Every earlier huge-`num_digits` probe used a
+small value. The same value at -320 is `#NUM!` (committed: eval/accuracy/tables/ROUNDUP/s1 Calc!A111, `ROUNDUP(6.4421516092447E+265,-320)`).
+One candidate fits every cell above: a 16-bit count of the kept digits, `num_digits` + e + 1. At -320 the count is -54
+(`#NUM!`); at -43,376 it is -43,110, which wraps to +22,426 (the value comes back). But it does not fit
+`ROUNDUP(123.456,-65535)`, which is `#NUM!` (probes/round-huge-digits-wrap) though its count -65,532 wraps to +4, so
+the count alone is not the rule.
+Evidence: excel-graph, 2026-11-01, T-3555's first ROUNDUP Gate A draw. That batch was replaced before commit (its
+point was a math domain error against an Excel number), so T-3627 re-probes the cell.
+Status: UNVERIFIED (one cell; T-3627 probes for the rule)
+Tasks: T-3627
+
+## ROUND one ulp above the nearest double (observation)
+Observation (T-3555): `ROUND(4.91499999999999E-06,8)` is 4.9100000000000004E-06 in Excel, 1 ulp above 4.91E-06, the
+double nearest the decimal result. That contradicts "ROUND family rounds in two decimal stages", which says ROUND returns
+the nearest double. It is the only such cell among the 120 ROUND points. The engine returns 4.91E-06, which is within
+Gate A's envelope and below the reproducibility floor, so it is not a fit target.
+Evidence: eval/accuracy/tables/ROUND/s1 Calc!A61 (excel-graph, 2026-11-01).
+Status: UNVERIFIED (one cell)
+Tasks: T-3555
+
 ## MOD is #NUM! for a huge quotient
 Rule: `MOD(n,d)` is `#NUM!` when `|n/d| >= 1.1259E+12` (exactly that decimal, not a power of two):
 `MOD(1125899999999,1)` = 0, `MOD(1125900000000,1)` = `#NUM!`. It depends only on the quotient, not on
@@ -1058,6 +1083,9 @@ probes/t2771-roundup-subnormal-cuts (20 subnormal arguments from 5E-324 to 2.2E-
 num_digits rows 22-33), t2771-roundup-subnormal-sign (eleven arguments from 1E-320 to 2E-309, ten forms each) and
 t2771-roundup-subnormal-threshold (k = 2^48 - 2 to 2^49) and t2771-roundup-subnormal-sign-controls (negative arguments
 built without unary minus, cell references, huge num_digits), all excel-graph, 2026-10-27.
+Also eval/accuracy/tables/ROUNDUP/s1 Calc!A76 (excel-graph, 2026-11-01, T-3555): `ROUNDUP(8.90029543402884E-308,309)` is
+8.9E-308. The rounded-down part stays normal and the unit 1E-309 is flushed, so the result is below its argument.
+ROUND/s1 A73 and ROUNDDOWN/s1 A81 and A84 (±2.22507385850721E-308 at 320) are 0.
 Status: VERIFIED (excel-graph)
 Implemented in: `round_function` and `round_decimal` in crates/rustsheet-engine/src/decimal_round.rs
 Tasks: T-2756, T-2771
@@ -1066,7 +1094,7 @@ Tasks: T-2756, T-2771
 Rule: `-x` of a positive subnormal x below 2^-1026 (k·2^-1074 with k < 2^48) is +x; from 2^-1026 up it is -x. `0-x`
 keeps the sign at every size, and `-1*x` is 0 (a subnormal product is flushed, "Subnormal results become 0"). Every
 probed operand is an inline expression; unary minus on a cell reference, range or array, a tiny negative operand and
-a chain such as `--x` are unprobed. The engine applies the rule to the whole chain's parity and to every operand kind (T-2942 probes the rest).
+a chain such as `--x` are unprobed. The engine applies the rule to the whole chain's parity per group, as when each group was evaluated alone (T-3338: `-(-x)` of a tiny negative x is +|x|, `--x` is x), and to every operand kind (T-2942 probes the rest, the group forms included; pinned by `unary_minus_of_a_tiny_subnormal_through_groups`).
 Evidence: probes/t2771-roundup-subnormal-sign-controls B and C (k = 12345 and 2^48 - 1 against 2^48 and 2^50 + 3),
 excel-graph, 2026-10-27; t2771-roundup-subnormal-sign and -threshold read the same switch through the ROUND family.
 Status: VERIFIED (excel-graph) for a positive operand
@@ -1821,8 +1849,48 @@ Values are from Excel for the web, which can differ from desktop in the last dig
 Status: VERIFIED (these two values, web).
 
 ## GEOMEAN in-range root
-Rule: when the plain product P of the values is a normal double, GEOMEAN is closest to
-`r = exp(ln(P) / n)` in doubles, with two exceptions: a single value is returned as is, and when
+Rule: when the plain product P of the values is a normal double, GEOMEAN keeps P's power of two out of
+the logarithm. With P = m·2^E (m in [1, 2)) and E = q·n + r, q truncated toward zero, it is closest to
+`exp(ln(m·2^r)/n)·2^q` in doubles, and a single value is returned as is (T-3502). Where |E| < n (most
+probes with values near 1) that is `r = exp(ln(P)/n)`. Past it, r carries ln's rounding error at
+|ln P| up to 700 into the root: on the fresh log-uniform sweep probes-numeric/t3502-geomean-fresh
+(180 sets of 2 to 200 values within spans of up to 1E+100, centres 1E-150 to 1E+150, and 60 sets
+whose product is an exact n-th power; excel-graph, 2026-10-31) r is up to 194 ulps off and visibly
+off on 79 cells, while the split root matches 169 cells bit for bit and is within 1 ulp on all 180.
+`GEOMEAN(1.03908E+87,4.05961E+81,2.31055E+83)` is 9.91477561834331E+83, where r is
+9.914775618343302E+83 (A41). Exact roots mostly come out exact without any special case:
+GEOMEAN(3,3), GEOMEAN(1,9), GEOMEAN(7,7) and n copies of 3, 7 or 0.1 (n = 2 to 200) are 3, 3, 7 and
+3, 7 and 0.1. Scored (T-3502, fit lab `geomean-snap` and `geomean-snap-fresh`, decision 0188 R4
+hold-out split; in-range-many and the Copies sheet by hand, their SEQUENCE arguments are not literals):
+
+| model | literal probes (69) | train / test | in-range-many (72) | Copies (35) | fresh sweep (180) | train / test |
+|---|---|---|---|---|---|---|
+| split root, q toward zero | 62 | 43/49, 19/20 | 71 | 34 | 169 | 110/119, 59/61 |
+| split root, q floored | 62 | 43/49, 19/20 | 53 | 35 | 154 | 104/119, 50/61 |
+| correctly rounded root of P | 52 | 36/49, 16/20 | 70 | 34 | 159 | 105/119, 54/61 |
+| correctly rounded geometric mean | 47 | 31/49, 16/20 | 70 | 34 | 150 | 101/119, 49/61 |
+| r, snapped to the root of P when it multiplies back | 38 | 26/49, 12/20 | 71 | 34 | 83 | 55/119, 28/61 |
+| r, snapped to its 15-digit value (T-1123) | 36 | 25/49, 11/20 | 71 | 34 | 58 | 40/119, 18/61 |
+| r | 25 | 19/49, 6/20 | 67 | 12 | 17 | 11/119, 6/61 |
+
+The T-1123 snap (below, "Before T-3502") was a fit on values near 1, where |E| < n and the split
+root is r: it did not generalize (58 of 180 fresh cells). The correctly rounded root of P breaks
+ironcalc-calc GEOMEAN C23 and G27 and the P = 3 and P = 10.704 sets of geomean-same-product, which
+the split root keeps. Against the T-1123 engine the split root fixes gen-m9 26 and probes 32 known
+failures and moves 4 probes cells one ulp off the bit: geomean-root-refinement A23, A33, A34 and A44,
+sets of 5 to 12 values in [0.3, 9] (|E| >= n there), where Excel gives r. Excel's root is still not
+exactly any model in doubles (see below, a library root of up to about 0.8 ulp); T-3526 owns the
+remaining misses (decision 0218).
+The model was chosen on the T-1123 probes and the fit lab's train side of the fresh sweep (q toward zero against
+q floored: in-range-many 71 against 53, train 110 against 104). After it was frozen, a second sweep with a new seed,
+probes-numeric/t3502-geomean-postfreeze (same strata, seed 35020), gives the split root 172 of 180 (train 118/124,
+test 54/56), the correctly rounded geometric mean 165 (110/124, 55/56), the 15-digit snap 70 and r 25. The
+hold-out that decided is the first sweep's (test 59/61 against 49/61, the model chosen on train only); pooled
+over the T-1123 probes and both sweeps (fit lab `geomean-all`, supplementary since it includes the cells that chose
+the model) the split root is 271/292 on train and 132/137 on test, the correctly rounded mean 242/292 and 120/137. Every split-root miss on both sweeps is within 1.3E-16
+relative of the 50-digit mpmath root, inside Gate A's envelope.
+
+Before T-3502: GEOMEAN was taken as closest to `r = exp(ln(P) / n)` in doubles, with two exceptions: a single value is returned as is, and when
 r's 15-digit value c differs from r and c multiplied by itself n times (left to right, as P is
 formed) gives P back, the result is c. So an exact root is exact: GEOMEAN(3,3), GEOMEAN(1,9),
 GEOMEAN(1,1,27), GEOMEAN(2,4.5), GEOMEAN(3,27) are 3, 3, 3, 3, 9, and n copies of 3, 7 or 0.1
@@ -1898,10 +1966,12 @@ copies of one value, 50-1100; T-1113), probes/geomean-single-and-copies (Single:
 n copies with Excel's PRODUCT, EXP(LN(P)/n), P^(1/n), LN(P); T-1123), probes/geomean-root-refinement
 (T-1123), probes/geomean-same-product (T-0288), ironcalc-calc GEOMEAN C23, B27, G27, probes/geomean-overflow-count H1,
 probes/geomean-overflow-cut-3 C1, C5, C11, E1. Oracle: excel-graph, 2026-10-07 and 2026-10-08.
-Status: VERIFIED for the probed cells; the formulation is a best fit (26 one-ulp misses in the 159 cells
-scored above, plus 8 in geomean-same-product and subtotal-reference-operands-d H28).
-Implemented in: functions/statistical/geomean.rs
-Tasks: T-1113, T-1108, T-1123, T-0288, T-1284, T-2794
+probes-numeric/t3502-geomean-fresh and t3502-geomean-postfreeze (180 cells each, excel-graph, 2026-10-31, T-3502).
+Status: VERIFIED for the probed cells; the split root is a structural model, not exact: one-ulp misses on 11 of
+180 fresh cells, 8 of 180 post-freeze cells, 7 of the 69 literal in-range probe cells (geomean-root-refinement
+A17, A23, A28, A33, A34, A37, A44), geomean-in-range-many A2 and Copies A35 (T-3526).
+Implemented in: functions/statistical/geomean.rs (`split_root`)
+Tasks: T-1113, T-1108, T-1123, T-0288, T-1284, T-2794, T-3502, T-3526
 
 ## GCD / LCM argument bound
 Rule: GCD and LCM accept arguments up to and including 2^53 (as doubles) and `#NUM!` above:
@@ -2235,6 +2305,7 @@ Status: VERIFIED. Implemented (T-1318, T-1584): A2, A6, A8, A12, A13, B9, B10, B
 Operands of the lift (probes/randbetween-lift-operands, 18 cells, all scalar-returning so nothing spills; excel-graph, 2026-10-16, T-1316): a boolean element of an array bound is an error element, not 1 or 0 (`COUNT(RANDBETWEEN({TRUE;1},{2;2}))` = 1, `SUM(...)` `#VALUE!`), like a scalar boolean; text elements read as number text (`{"5";"6"}` gives 2 numbers) and `"x"` or `""` elements are errors; a scalar error beside an array bound spreads over the broadcast shape (`ROWS(RANDBETWEEN(SEQUENCE(3),NA()))` = 3). A multi-cell range bound is `#VALUE!` as a whole (`RANDBETWEEN(D1:D3,10)`, even from a row the range intersects: no lift and no implicit intersection), so only array values lift, never ranges; a single-cell reference is a scalar.
 T-1782 (probes/randbetween-bound-errors, 22 cells, excel-graph, 2026-10-17): a scalar `TRUE` or `FALSE` beside an array bound is `#VALUE!` in every element, in either position (`ERROR.TYPE(INDEX(RANDBETWEEN(SEQUENCE(3),TRUE),1))` = 3, likewise `FALSE`, `RANDBETWEEN(TRUE,SEQUENCE(3,1,5))`, `RANDBETWEEN({1;1},{TRUE;TRUE})`), not 1 or 0 (so `COUNT(RANDBETWEEN(SEQUENCE(3),TRUE))` = 0); `ROWS` keeps the broadcast shape. When both bounds are errors the **top's error wins**, whatever the kinds and whether lifted or scalar: `RANDBETWEEN({#N/A},{"x"})` is `#VALUE!` but `RANDBETWEEN({"x"},{#N/A})` is `#N/A`; `({#DIV/0!},{#N/A})` is `#N/A`, `({#N/A},{#DIV/0!})` is `#DIV/0!`; `({TRUE},{#N/A})` `#N/A`, `({#N/A},{TRUE})` `#VALUE!`; scalars `(#N/A,"x")` `#VALUE!`, `("x",#N/A)` `#N/A`, `(#DIV/0!,#N/A)` `#N/A`; a scalar `NA()` beside `{"x";"y"}` follows the same order. Per element, `({"x";#N/A},{#DIV/0!;"x"})` is `#DIV/0!` then `#VALUE!`. Ours: implemented (T-1782) by reading the top first in `fn_randbetween`.
 T-1793 (probes/randbetween-range-error-bounds, 20 cells, excel-graph, 2026-10-17): a multi-cell range bound is an operand that is `#VALUE!` and takes its turn in the same top-first order: `RANDBETWEEN(D1:D3,NA())` is `#N/A` (the top error wins over the range), `RANDBETWEEN(D1:D3,1/0)` `#DIV/0!`, `RANDBETWEEN(NA(),D1:D3)` and `(1/0,D1:D3)` `#VALUE!` (the range top wins); a range beside text or a boolean is `#VALUE!` either way. Beside an array bound the range is broadcast, not a whole-result error: `ROWS(RANDBETWEEN(D1:D3,{5;6}))` = 2 (also with the range on top and for `SEQUENCE(4)`: 4), and per element the top's error wins, so `RANDBETWEEN(D1:D3,{5;#N/A})` is `#VALUE!` at row 1 and `#N/A` at row 2, `RANDBETWEEN({5;#N/A},D1:D3)` is `#VALUE!` at row 2 (A19; the range on top is always `#VALUE!`). The range counts as one scalar error, not by its own shape: `RANDBETWEEN(D1:D3,{5,#N/A})` is a 1x2 result whose element 2 is `#N/A` (A20). Ours: implemented (T-1793): a range bound is an error operand of `lift_number_operands`.
+T-3631 (probes/t3631-rand-randbetween-invariant R!A1:A30, B1:B31 and probes/t3631-randarray-invariant A!A1:A36, B1:B5, D1:E2; 106 scored cells, excel-graph, 2026-11-01, each filled twice with identical values; decision 0225 reads Gate B for the three functions on them): unlike RANDBETWEEN, RANDARRAY takes **boolean bounds and counts as numbers**: `RANDARRAY(1,1,TRUE,TRUE)` is 1 and `RANDARRAY(TRUE)` is a 1x1 draw, not `#VALUE!` (`IFERROR(AND(RANDARRAY(TRUE)>=0),"err")` is TRUE), while `RANDBETWEEN(1,FALSE)` is `#VALUE!` like `(TRUE,TRUE)`. RANDBETWEEN reads padded number text (`RANDBETWEEN(" 4 ","4")` = 4), rejects `""` (`#VALUE!`), passes a literal error through (`(#DIV/0!,1)`, `(1,#N/A)`), and the CEILING/FLOOR rule above also holds for `(0.5,0.9)` = 1, `(-2.5,-2.5)` = -2 and `(2.0000001,2.9)` = 3; `RANDBETWEEN(1E15,1E15)` is exactly 1E15 on every one of 1000 draws (`MIN` and `MAX` of `RANDBETWEEN(SEQUENCE(1000,1,1E15,0),1E15)`, R!B24 and R!B31), although the double spacing there is 0.125, so `bottom + r` unclamped would round to 1E15+1 for r >= 0.9375: Excel's draw never leaves `[bottom, top]` at that scale (ours clamps to `top`, `randbetween_draw`). Likewise RANDARRAY with min = max returns exactly that value on 1000 draws (0.5, -2 and `"1.5"`: A!A31:A36). RANDARRAY gives `#CALC!` for 0 columns (`RANDARRAY(1,0)`) as for 0 rows, passes `#N/A` through (`RANDARRAY(#N/A)`), reads number text bounds (`"1.5"` gives 1.5 without whole_number), and `AND(RANDARRAY(5,5)>=0)`, `AND(RANDARRAY(4,4)<1)` and the whole-number range checks hold. RAND is in [0,1) for every comparison form probed (LET, IFS, SWITCH, `RAND()^1<1`, `SUM(RAND(),RAND())<2`). Ours matches all 106 cells.
 
 ## SERIESSUM with x = 0
 Rule: SERIESSUM with x = 0 (a literal 0 or a blank) is `#NUM!` when any term's power `n + i*m` is zero or negative, whatever its

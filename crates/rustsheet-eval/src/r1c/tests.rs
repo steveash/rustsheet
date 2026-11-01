@@ -161,6 +161,10 @@ fn the_run_classes_and_the_phase_1b_counts_per_suite() {
     assert_eq!(run.class("probes/t.case.json!S!A1"), R1c::Phase1b);
     assert!(run.counts("probes/t.case.json!S!A2"));
     assert!(run.counts("probes/never-classified.case.json!S!A1"));
+    assert_eq!(
+        run.left_out().into_iter().collect::<Vec<_>>(),
+        [("probes/t.case.json!S!A1".to_string(), R1c::Phase1b)]
+    );
     let evidence = run.phase1b();
     assert_eq!(
         evidence.suites.keys().collect::<Vec<_>>(),

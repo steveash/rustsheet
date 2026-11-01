@@ -2496,10 +2496,11 @@ row (`h < r <= t`, so at its first data row and its totals row too: T-2321) and
 shrinks it when the deleted rows are inside them, data edges included, with a data row left (T-2338), drops
 its totals row on a delete of exactly that row (T-2338), and then every structured reference to it keeps its
 text, in cell formulas on any sheet, conditional formats and defined names (T-2297, `table_edits.rs`). A delete
-of its only data row keeps the row and clears the table's cells of it (`Model::last_data_row`, T-2338), and a
-plain range shrinks on a delete of its edge rows (`Displacement::range_corners`, T-2338). Every other edit
-that crosses a table (a delete touching the header row, of every data row at once, a column edit inside
-it, row and column moves, cell shifts) leaves the table as it is, and an edit that changes the area a
+of exactly every data row, one row or several, keeps the first data row, clears the table's cells of it and
+deletes the others (`Model::kept_data_row`, T-2338, T-3259), and a plain range shrinks on a delete of its edge
+rows (`Displacement::range_corners`, T-2338). Every other edit that crosses a table (a delete touching the
+header row, a column edit inside it, row and column moves, cell shifts) leaves the table as it is, and an
+edit that changes the area a
 structured reference resolves to rewrites it to the displaced plain range (the fallback of SPEC-0016); one
 that leaves the area unchanged keeps the text. A `#This Row` reference keeps the fallback rule even when
 its table follows the edit: on another sheet, a row off the data rows keeps its text and so reads the
@@ -2563,8 +2564,9 @@ Right/Left):
   T-3019) behaves as the one-row deletes do. Rows 4-7 at once, every data row, keep the table's first data row,
   cleared: `ROWS(Sales)` 1, `#All` 2, `ROW(Sales[#Headers])` 3, `SUM(Sales[Qty])` and `COUNTA(Sales[Region])` 0,
   `=SUM(S!C4:C7)` becomes `=SUM(S!C4:C4)` (0), and the cells below move three rows, not four (`=S!C10` reads
-  `=S!C7`, `=SUM(S!C9:C10)` reads `=SUM(S!C6:C7)`) (table-delete-rows-all-data-once; the engine deletes all four
-  rows, T-3259). Rows 6-7 at once, the last two data rows, shrink the table to rows 4-5 (`ROWS(Sales)` 2,
+  `=S!C7`, `=SUM(S!C9:C10)` reads `=SUM(S!C6:C7)`) (table-delete-rows-all-data-once;
+  implemented since T-3259 by `Model::kept_data_row`, which clears the first data row and deletes the
+  rest). Rows 6-7 at once, the last two data rows, shrink the table to rows 4-5 (`ROWS(Sales)` 2,
   `SUM(Sales[Qty])` 3, `S!C4:C7` becomes `S!C4:C5`), a range wholly inside the deleted rows is `=SUM(S!#REF!)`,
   `=SUM(S!C7:C9)` straddling the bottom edge becomes `=SUM(S!C6:C7)`, and `=S!C10` reads `=S!C8`
   (table-delete-rows-last-two; the engine matches). A table without a header row (spec `"header_row": false`,
@@ -2723,8 +2725,17 @@ stored cells come from spec2xlsx, which writes no `calculatedColumnFormula`):
    typed into C2 fills C2:C4, C3 is cleared (an empty entry), then `=[@Col]*3` typed into C4: only C4 changes (C2 stays 2,
    C3 stays blank with FORMULATEXT `#N/A`, C4 is 12), the same as a constant in C3 (t2957-constant-then-refill)
    (t3025-blank-beside-calculated). The engine matches (it blocks the fill for a blank beside formulas).
-(T-2969 probes a stored column formula.)
-Evidence: probes/t2957-* (excel-graph, 2026-10-27): fill-one-totals C2:C4, F2:F5, G5; refill-second C2:C4, F2:F4;
+(A stored column formula does not fill on load: xlsx-storage.md, T-2969.)
+9. **A stored `calculatedColumnFormula` makes the column a calculated column after load** (T-3033, excel-graph
+   2026-11-01). (a) As 8a, but the file's `<tableColumn>` for Calc holds `calculatedColumnFormula` `A2*2`: `=A5*3` typed
+   into the blank C5 re-fills C2:C5 (3, 6, 12, 24; F2:F5 `=A2*3` to `=A5*3`) (t3033-calculated-refill-after-load).
+   (b) The structured form, column formula `T[[#This Row],[Col]]*2` stored in C2:C4 and `=T[[#This Row],[Col]]*3`
+   typed into C5: C2:C5 all become `=[@Col]*3` (t3033-calculated-refill-after-load-structured). (c) With the column
+   formula stored in all of C2:C5, `=A4*3` typed over the occupied C4 re-fills every row too
+   (t3033-calculated-overwrite-after-load). So what makes a column calculated is the file's column formula, not its
+   cells: the same cells without it are not re-filled (rule 8a).
+Evidence: probes/t3033-calculated-refill-after-load, -refill-after-load-structured, -overwrite-after-load C2:C5,
+F2:F5 (rule 9). probes/t2957-* (excel-graph, 2026-10-27): fill-one-totals C2:C4, F2:F5, G5; refill-second C2:C4, F2:F4;
 constant-exception C2, C4, F2:F4; constant-then-refill C2, C4, F2:F4; existing-constant C3, F2:F4; a1-reference
 C2:C4, F2:F4; expand-right-data D2:D4, F1:F4, H1:H4; expand-right-header F1:F4, H1:H4.
 The constant 5 in C3 (constant-exception, constant-then-refill) and the blank C4 (existing-constant) are not
@@ -2735,13 +2746,12 @@ Ours (T-2958, T-3024): a formula typed into a table's data rows (`Model::set_typ
 one shared formula and the column is a calculated column (`Model::calculated_column`, calculated_columns.rs), by
 writing that shared formula, which is stored relative to its cell, so an A1 formula fills shifted. A column is a
 calculated column when its `TableColumn::calculated_column_formula` is set, which a typed formula that fills or
-re-fills it does (only whether it is set is read; its text, the first data row's formula in English, is an engine
-choice); a typed constant
+re-fills it does (only whether it is set is read; its text is the first data row's formula in file form, T-3033); a typed constant
 keeps it. So a column of identical stored formulas is not re-filled (rule 8a). It stays set until the column is
 removed: clearing or overwriting the column's cells does not clear it, an engine choice (what Excel does is unprobed). A blank cell beside formulas blocks the
-fill, as in Excel (rule 8e). The column formula is neither read from nor written to xlsx yet
-(T-2969 probes whether Excel honors it on load; T-3033 then imports and exports it), so a column Excel saved as
-calculated is, after import, no calculated column for a typed re-fill. A stored formula (`Input::StoredFormula`, xlsx import) never fills;
+fill, as in Excel (rule 8e). The column formula is read from and written to xlsx (T-3033; Excel does not fill on load,
+T-2969), so a column Excel saved as calculated is, after import, a calculated column for a typed re-fill, as in Excel
+(rule 9). A stored formula (`Input::StoredFormula`, xlsx import) never fills;
 the facade logs the filled cells and the table as it was, so they are one edit with the typed cell. The eval adapter
 types `entered` cells after the tables and every stored cell, as the oracle types them after load. The unqualified `[@Col]` the probes type resolves to the
 table holding the cell since T-2979 (below).

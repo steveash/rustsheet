@@ -41,9 +41,10 @@ Work is partitioned into **lanes** so that parallel workers rarely touch the sam
 | `research` | `docs/research`, `docs/excel-semantics` | probes, calibration, algorithm studies |
 
 **Concurrency policy (Max-subscription friendly):**
-- The workers are the routines in `routines.md`: by default one sonnet and one opus worker, each
-  looping over tasks of its tier for up to ~110 minutes and 10 tasks per run (decisions 0022,
-  0025), plus an optional second sonnet worker. Each walks the `**Critical lane:**` list in `docs/status.md`, then
+- The workers are the routines in `routines.md`: by default one sonnet and one opus worker, plus
+  an optional second sonnet worker. Each loops over tasks of its tier: new tasks for up to ~80
+  minutes and 10 tasks per run, then landing its own PRs until minute 110 (decisions 0022, 0025,
+  0229). Each walks the `**Critical lane:**` list in `docs/status.md`, then
   `functions` (every `functions-*` lane; allowlist and rules in `routines.md`).
 - One task in flight per lane. `make next-task` enforces it: it skips tasks claimed by a pushed
   branch and lanes with a branch that moved in the last 2 hours (handoffs, and branches whose task
@@ -127,7 +128,8 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
    - `train`: mark the PR ready and move on to the next task; the merger merges it, and an
      ejection comes back to its worker as a PR comment.
 
-   Any agent may flip the switch back to `lock` at once with a one-file flip PR (the `steward`
+   Any agent may flip the switch back to `lock` at once on a correctness failure, and otherwise
+   only with the owner's approval (decision 0224), with a one-file flip PR (the `steward`
    skill's "Emergency flip to `lock`"). Once the merge queue is on, enqueue with auto-merge
    instead and skip the up-to-date check (decision 0053; dormant). The squash commit title and
    the task's Outcome are the record; the steward's daily run lists merged work in

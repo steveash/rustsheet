@@ -4,94 +4,20 @@
 //! the bit, the first error, the same circular marks and the same work charged, under iteration
 //! too.
 
-use crate::expressions::types::CellReferenceIndex;
-use crate::expressions::utils::{column_to_number, number_to_column};
-use crate::test::util::new_empty_model;
-use crate::types::Iteration;
+use crate::expressions::utils::number_to_column;
+use crate::test::pass_cache_runs::{cell, Runs};
 use crate::Model;
 
-/// Each cell's stored value and circular mark, and the work units the last recalculation spent, after `cells` are set and evaluated (then
-/// `edits` set and evaluated again), with the pass caches on and off; and the states the cached
-/// run kept in its last pass.
-fn cached_and_walked(
-    cells: &[(String, String)],
-    edits: &[(String, String)],
-    iterate: bool,
-) -> (Vec<(String, String, String)>, usize) {
-    let run = |no_pass_caches: bool| {
-        let mut model = new_empty_model();
-        if iterate {
-            model.workbook.settings.iteration = Some(Iteration {
-                max_iterations: 20,
-                max_change: 0.001,
-            });
-        }
-        model.evaluation.no_pass_caches = no_pass_caches;
-        for (cell, value) in cells {
-            model._set(cell, value);
-        }
-        model.evaluate();
-        for (cell, value) in edits {
-            model._set(cell, value);
-        }
-        if !edits.is_empty() {
-            model.evaluate();
-        }
-        let mut values: Vec<String> = cells.iter().map(|(cell, _)| state(&model, cell)).collect();
-        // The work charged: the cached path charges the range node as the walk does.
-        let spent = model
-            .evaluation
-            .last_recalc
-            .as_ref()
-            .map(|last| last.spent());
-        values.push(format!("spent {spent:?}"));
-        (values, model.evaluation.sum_prefixes.kept())
-    };
-    let (cached, kept) = run(false);
-    let (walked, _) = run(true);
-    let names = cells
-        .iter()
-        .map(|(cell, _)| cell.clone())
-        .chain(["(work)".to_string()]);
-    (
-        names
-            .zip(cached.into_iter().zip(walked))
-            .map(|(cell, (cached, walked))| (cell, cached, walked))
-            .collect(),
-        kept,
-    )
+/// The states the cached run kept in its last pass.
+fn kept(model: &Model) -> usize {
+    model.evaluation.sum_prefixes.kept()
 }
 
-/// The stored value of Sheet1's `cell`, exactly, and whether it is marked circular.
-fn state(model: &Model, cell: &str) -> String {
-    let split = cell.find(|c: char| c.is_ascii_digit()).unwrap();
-    let at = CellReferenceIndex {
-        sheet: 0,
-        row: cell[split..].parse().unwrap(),
-        column: column_to_number(&cell[..split]).unwrap(),
-    };
-    let circular = model
-        .evaluation
-        .circular
-        .contains(&crate::evaluation::key(at));
-    format!(
-        "{:?} {} circular={circular}",
-        model._get_cell(cell),
-        model._get_text(cell)
-    )
-}
-
-/// Asserts the cached and walked runs agree everywhere; returns the states kept.
+/// [`crate::test::pass_cache_runs::assert_alike`], counting the states kept.
 fn assert_alike(cells: &[(String, String)], edits: &[(String, String)], iterate: bool) -> usize {
-    let (results, kept) = cached_and_walked(cells, edits, iterate);
-    for (cell, cached, walked) in &results {
-        assert_eq!(cached, walked, "{cell}");
-    }
-    kept
-}
-
-fn cell(name: String, value: &str) -> (String, String) {
-    (name, value.to_string())
+    let Runs { cached, .. } =
+        crate::test::pass_cache_runs::assert_alike(cells, edits, iterate, &kept);
+    cached
 }
 
 /// What column A holds at `row`: numbers that cancel to near zero, text, booleans, numeric text,
@@ -190,4 +116,84 @@ fn running_totals_over_a_cycle_match_the_walk() {
     let edits = [cell("H1".into(), "5")];
     assert_alike(&cells, &edits, true);
     assert_alike(&cells, &edits, false);
+}
+
+/// `starts` totals, each from its own start at an error cell, so that each entry holds no state.
+fn error_starts(starts: usize) -> Vec<(String, String)> {
+    let mut cells = Vec::new();
+    for row in 1..=starts + 1 {
+        cells.push(cell(format!("A{row}"), "=1/0"));
+    }
+    for row in 1..=starts {
+        cells.push(cell(
+            format!("B{row}"),
+            &format!("=SUM(A{row}:A{})", row + 1),
+        ));
+    }
+    cells
+}
+
+/// The model of `cells` evaluated with the cache's limit set to `limit`.
+fn evaluated_with_limit(cells: &[(String, String)], limit: usize) -> Model {
+    let mut model = crate::test::util::new_empty_model();
+    model.evaluation.sum_prefixes.limit = limit;
+    for (cell, value) in cells {
+        model._set(cell, value);
+    }
+    model.evaluate();
+    model
+}
+
+/// An entry that stopped at an error in its first cell holds no state and still counts against
+/// the limit (T-3470), so a lowered limit bounds the entries and the walk answers past it.
+#[test]
+fn entries_without_states_count_against_the_limit() {
+    let cells = error_starts(20);
+    assert_eq!(assert_alike(&cells, &[], false), 20);
+    // A new entry reserves room for every state it may keep (here two) before it reads.
+    let model = evaluated_with_limit(&cells, 5);
+    let kept = model.evaluation.sum_prefixes.kept();
+    assert!((1..=5).contains(&kept), "{kept}");
+    for row in 1..=20 {
+        assert_eq!(model._get_text(&format!("B{row}")), "#DIV/0!", "B{row}");
+    }
+}
+
+/// A hit keeps nothing new, so at a full limit the totals already kept are still read from the
+/// cache: the cells read are those of a limit with room to spare.
+#[test]
+fn hits_need_no_room_under_the_limit() {
+    let mut cells = Vec::new();
+    for row in 1..=10 {
+        cells.push(cell(format!("A{row}"), &row.to_string()));
+        cells.push(cell(format!("B{row}"), &format!("=SUM($A$1:A{row})")));
+        cells.push(cell(
+            format!("C{row}"),
+            &format!("=SUM($A$1:A{})", 11 - row),
+        ));
+    }
+    let reads = |limit: usize| {
+        let model = evaluated_with_limit(&cells, limit);
+        assert_eq!(model.evaluation.sum_prefixes.kept(), 10, "{limit}");
+        assert_eq!(model._get_text("C1"), "55");
+        model.evaluation.cell_reads
+    };
+    assert_eq!(reads(10), reads(1_000));
+}
+
+/// A hit on an entry that stopped at an error needs no room either: at a full limit the longer
+/// totals from that start read the error from the cache, not their cells.
+#[test]
+fn error_hits_need_no_room_under_the_limit() {
+    let mut cells = vec![cell("A1".into(), "=1/0"), cell("A2".into(), "2")];
+    for row in 1..=10 {
+        cells.push(cell(format!("B{row}"), &format!("=SUM($A$1:A{})", row + 1)));
+    }
+    let reads = |limit: usize| {
+        let model = evaluated_with_limit(&cells, limit);
+        assert_eq!(model.evaluation.sum_prefixes.kept(), 1, "{limit}");
+        assert_eq!(model._get_text("B10"), "#DIV/0!");
+        model.evaluation.cell_reads
+    };
+    assert_eq!(reads(2), reads(1_000));
 }

@@ -50,16 +50,19 @@
 //! reads them ([`BlockNumbers`], T-3230), once per block and pass. Those numbers are charged to
 //! the cells budget beside the block's values, so such a block counts twice.
 //!
-//! Directive 5: ranges between [`MIN_CACHED_CELLS`] and [`MAX_CACHED_CELLS`] cells are cached;
-//! all cached values of a pass hold at most [`MAX_CACHED_CELLS`] cells and all match sets at most
-//! [`MAX_CACHED_BITS`] bits; past that the walks run as before.
+//! The range values themselves, and when a range can be read without evaluating anything, are
+//! `range_values.rs`'s (T-3534), which every pass cache shares.
+//!
+//! Directive 5: the range values, indexes, block numbers and gathered values of a pass draw on
+//! `range_values.rs`'s cells budget ([`crate::range_values::MAX_CACHED_CELLS`]) and all match sets
+//! on at most [`MAX_CACHED_BITS`] bits; past that the walks run as before.
 
 use std::collections::HashMap;
 use std::mem::Discriminant;
 use std::sync::Arc;
 
 use crate::calc_result::{CalcResult, Range};
-use crate::evaluation::{key, CellState, FormulaCell, KeyBuild};
+use crate::evaluation::KeyBuild;
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::criteria::{
@@ -68,29 +71,18 @@ use crate::functions::criteria::{
 use crate::functions::util::collation::{collation_key, CollationKey};
 use crate::model::Model;
 use crate::number_format::cmp_excel_precision;
-use crate::types::Cell;
+#[cfg(test)]
+use crate::range_values::RangeValues;
+use crate::range_values::{rect_cell, rect_of, RangeState, RangeView, RectKey};
 
 use super::if_ifs::Criterion;
-
-/// Ranges with fewer cells are cheaper to walk again than to cache.
-const MIN_CACHED_CELLS: usize = 64;
-
-/// Cells (values, not bytes) all cached ranges of one pass may hold together; also the largest
-/// range cached.
-const MAX_CACHED_CELLS: usize = 4_000_000;
 
 /// Bits all match sets of one pass may hold together, their keys' text included (4 MB).
 const MAX_CACHED_BITS: usize = 32_000_000;
 
-/// Cached ranges per column span that a block inside them is read from (a bound on the search).
-const MAX_PARENTS: usize = 16;
-
 /// Distinct criteria tested on a range by the walk before its values are indexed: an index costs
 /// a sort, which one criterion does not repay.
 const INDEX_AFTER_MISSES: u32 = 2;
-
-/// A block of one sheet: sheet, top row, left column, bottom row, right column.
-type RectKey = (u32, i32, i32, i32, i32);
 
 /// A criterion, as `build_criteria` reads it: two equal keys build the same predicate.
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -138,17 +130,6 @@ impl CriterionKey {
 /// cells matched (T-0498).
 type Chain = Vec<(RectKey, CriterionKey)>;
 
-/// A range's place in the cache, or its place at the cells a [`Chain`] matches.
-enum RangeState {
-    /// Its values, row by row.
-    Ready(Arc<[CalcResult]>),
-    /// Not cacheable yet: the cells before `checked` (row by row) can be read without
-    /// evaluating anything; the cell at `checked` could not when last looked at.
-    Waiting { checked: usize },
-    /// Never cacheable in this pass (a circular cell, or over the budget).
-    Never,
-}
-
 /// The cells of a cached block read as numbers, as an arithmetic operator reads them
 /// (`Model::calc_result_to_number`: a blank is 0, a boolean 1 or 0, a text its number), for
 /// SUMPRODUCT's `block*mask*...` argument (T-3230).
@@ -178,26 +159,6 @@ enum IndexState {
     Never,
 }
 
-/// The cells of a block read from a cached range: `values[offset..offset + len]`, where the
-/// cached range is `rect`.
-pub(super) struct RangeView {
-    rect: RectKey,
-    values: Arc<[CalcResult]>,
-    offset: usize,
-    len: usize,
-}
-
-impl RangeView {
-    /// The block's `index`-th value, row by row.
-    pub(super) fn get(&self, index: usize) -> Option<&CalcResult> {
-        if index < self.len {
-            self.values.get(self.offset + index)
-        } else {
-            None
-        }
-    }
-}
-
 /// What [`Model::ifs_leading_matches`] finds: the cells every criteria range before the first one
 /// not cacheable yet matches, and from that range on, each range's cached values or `None`.
 pub(super) struct LeadingMatches {
@@ -213,18 +174,14 @@ pub(super) fn range_cell(range: &Range, index: usize) -> CellReferenceIndex {
 /// The criteria ranges' values and match sets of the current pass.
 #[derive(Default)]
 pub(crate) struct IfsCache {
-    ranges: HashMap<RectKey, RangeState, KeyBuild>,
     matches: HashMap<(RectKey, CriterionKey), Arc<[u64]>>,
     indexes: HashMap<RectKey, IndexState, KeyBuild>,
     numbers: HashMap<RectKey, Arc<BlockNumbers>, KeyBuild>,
-    /// The cached ranges of each (sheet, left column, right column), as (top row, bottom row).
-    parents: HashMap<(u32, i32, i32), Vec<(i32, i32)>>,
     /// A range's values at the cells a chain matches, in row order (module docs, T-0498).
     gathered: HashMap<(RectKey, Chain), RangeState>,
     /// The cells a chain matches whose last link is not cached as a whole, as a bit set over the
     /// range's cells (T-0498).
     chains: HashMap<Chain, Arc<[u64]>>,
-    cells: usize,
     bits: usize,
     /// Match sets cut from a larger cached range's, for the tests of T-0465.
     #[cfg(test)]
@@ -251,14 +208,11 @@ pub(crate) struct CacheCounts {
 impl IfsCache {
     /// Forgets everything: a new pass, or cells whose state was reset.
     pub(crate) fn clear(&mut self) {
-        self.ranges.clear();
         self.matches.clear();
         self.indexes.clear();
         self.numbers.clear();
-        self.parents.clear();
         self.gathered.clear();
         self.chains.clear();
-        self.cells = 0;
         self.bits = 0;
         #[cfg(test)]
         {
@@ -277,15 +231,14 @@ impl IfsCache {
             .count()
     }
 
-    /// How many ranges are in each state, for the tests of T-0498.
+    /// How many ranges are in each state, `values` holding the whole ranges, for the tests of
+    /// T-0498.
     #[cfg(test)]
-    pub(crate) fn counts(&self) -> CacheCounts {
-        let count = |wanted: fn(&RangeState) -> bool| {
-            self.ranges.values().filter(|state| wanted(state)).count()
-        };
+    pub(crate) fn counts(&self, values: &RangeValues) -> CacheCounts {
+        let (ready, waiting) = values.counts();
         CacheCounts {
-            ready: count(|state| matches!(state, RangeState::Ready(_))),
-            waiting: count(|state| matches!(state, RangeState::Waiting { .. })),
+            ready,
+            waiting,
             gathered: self
                 .gathered
                 .values()
@@ -301,143 +254,7 @@ impl IfsCache {
     }
 }
 
-/// The block `range` covers.
-fn rect_of(range: &Range) -> RectKey {
-    (
-        range.left.sheet,
-        range.left.row,
-        range.left.column,
-        range.right.row,
-        range.right.column,
-    )
-}
-
-/// The position of the `index`-th cell of `rect`, counting row by row.
-fn rect_cell(rect: RectKey, index: usize) -> CellReferenceIndex {
-    let (sheet, top, left, _, right) = rect;
-    let width = usize::try_from(right - left + 1).unwrap_or(1).max(1);
-    CellReferenceIndex {
-        sheet,
-        row: top + i32::try_from(index / width).unwrap_or(0),
-        column: left + i32::try_from(index % width).unwrap_or(0),
-    }
-}
-
-/// How many cells `rect` holds.
-fn rect_size(rect: RectKey) -> usize {
-    let (_, top, left, bottom, right) = rect;
-    let rows = usize::try_from(bottom - top + 1).unwrap_or(0);
-    let columns = usize::try_from(right - left + 1).unwrap_or(0);
-    rows.saturating_mul(columns)
-}
-
 impl Model {
-    /// Whether reading `at` evaluates nothing and marks nothing: a constant or a blank, a formula
-    /// cell already evaluated in this pass, or a spill cell whose anchor is. `None` for a
-    /// circular cell or a cycle member under iterative calculation (whose reader joins it, where
-    /// the lazy walk may not read it), which never becomes readable this way.
-    pub(crate) fn read_is_inert(&self, at: CellReferenceIndex) -> Option<bool> {
-        if self.evaluation.circular.contains(&key(at)) || self.is_cycle_member(at) {
-            return None;
-        }
-        let evaluated = |at: CellReferenceIndex| {
-            self.evaluation.cells.get(&key(at)) == Some(&CellState::Evaluated)
-        };
-        Some(match self.fetch_cell(at) {
-            None => true,
-            Some(Cell::SpillCell { a, .. }) => {
-                let anchor = CellReferenceIndex {
-                    sheet: at.sheet,
-                    row: a.0,
-                    column: a.1,
-                };
-                if self.is_cycle_member(anchor) {
-                    return None;
-                }
-                matches!(self.fetch_cell(anchor), Some(Cell::ArrayFormula { .. }))
-                    && evaluated(anchor)
-            }
-            Some(cell) => FormulaCell::of(cell).is_none() || evaluated(at),
-        })
-    }
-
-    /// The values of `rect` row by row, when they can be read without evaluating anything (module
-    /// docs), from a cached range that holds it when there is one; `None` when the caller must
-    /// walk.
-    fn ifs_range_values(&mut self, rect: RectKey) -> Option<RangeView> {
-        if !self.pass_cache_safe() {
-            return None;
-        }
-        let size = rect_size(rect);
-        if !(MIN_CACHED_CELLS..=MAX_CACHED_CELLS).contains(&size) {
-            return None;
-        }
-        let whole = |rect: RectKey, values: &Arc<[CalcResult]>| RangeView {
-            rect,
-            values: values.clone(),
-            offset: 0,
-            len: size,
-        };
-        let (sheet, top, left, bottom, right) = rect;
-        let cache = &self.evaluation.ifs_cache;
-        let parent = cache
-            .parents
-            .get(&(sheet, left, right))
-            .and_then(|blocks| {
-                blocks
-                    .iter()
-                    .find(|&&(first, last)| first <= top && bottom <= last)
-            })
-            .map(|&(first, last)| (sheet, first, left, last, right));
-        if let Some(parent) = parent {
-            if let Some(RangeState::Ready(values)) = cache.ranges.get(&parent) {
-                let rows_above = usize::try_from(top - parent.1).unwrap_or(0);
-                let width = usize::try_from(right - left + 1).unwrap_or(1);
-                return Some(RangeView {
-                    offset: rows_above * width,
-                    ..whole(parent, values)
-                });
-            }
-        }
-        let checked = match cache.ranges.get(&rect) {
-            Some(RangeState::Ready(values)) => return Some(whole(rect, values)),
-            Some(RangeState::Never) => return None,
-            Some(RangeState::Waiting { checked }) => *checked,
-            None => 0,
-        };
-        for index in checked..size {
-            let state = match self.read_is_inert(rect_cell(rect, index)) {
-                Some(true) => continue,
-                Some(false) => RangeState::Waiting { checked: index },
-                None => RangeState::Never,
-            };
-            self.evaluation.ifs_cache.ranges.insert(rect, state);
-            return None;
-        }
-        if self.evaluation.ifs_cache.cells + size > MAX_CACHED_CELLS {
-            self.evaluation
-                .ifs_cache
-                .ranges
-                .insert(rect, RangeState::Never);
-            return None;
-        }
-        // Every read is inert: it records what it saw, as the walk's first read does.
-        let values: Arc<[CalcResult]> = (0..size)
-            .map(|index| self.evaluate_cell(rect_cell(rect, index)))
-            .collect();
-        if !self.pass_cache_safe() {
-            return None;
-        }
-        let cache = &mut self.evaluation.ifs_cache;
-        cache.cells += size;
-        cache.ranges.insert(rect, RangeState::Ready(values.clone()));
-        let blocks = cache.parents.entry((sheet, left, right)).or_default();
-        if blocks.len() < MAX_PARENTS {
-            blocks.push((top, bottom));
-        }
-        Some(whole(rect, &values))
-    }
-
     /// The cells of the block `left:right` read as numbers ([`BlockNumbers`]), when its values can
     /// be read without evaluating anything (module docs); `None` when the caller must walk.
     pub(crate) fn block_numbers(
@@ -452,8 +269,8 @@ impl Model {
         if let Some(numbers) = self.evaluation.ifs_cache.numbers.get(&rect) {
             return Some(numbers.clone());
         }
-        let view = self.ifs_range_values(rect)?;
-        if self.evaluation.ifs_cache.cells.saturating_add(view.len) > MAX_CACHED_CELLS {
+        let view = self.range_values(rect)?;
+        if !self.evaluation.range_values.fits(view.len) {
             return None;
         }
         let mut first_error = None;
@@ -472,9 +289,13 @@ impl Model {
             values,
             first_error,
         });
-        let cache = &mut self.evaluation.ifs_cache;
-        cache.cells += view.len;
-        cache.numbers.insert(rect, numbers.clone());
+        if !self.evaluation.range_values.charge(view.len) {
+            return None;
+        }
+        self.evaluation
+            .ifs_cache
+            .numbers
+            .insert(rect, numbers.clone());
         Some(numbers)
     }
 
@@ -501,11 +322,13 @@ impl Model {
             })
             .sum();
         let cost = values.len().saturating_add(text_units);
-        if cache.cells.saturating_add(cost) > MAX_CACHED_CELLS {
-            cache.indexes.insert(rect, IndexState::Never);
+        if !self.evaluation.range_values.charge(cost) {
+            self.evaluation
+                .ifs_cache
+                .indexes
+                .insert(rect, IndexState::Never);
             return None;
         }
-        cache.cells += cost;
         let index = Arc::new(ValueIndex::of(values));
         cache.indexes.insert(rect, IndexState::Ready(index.clone()));
         Some(index)
@@ -622,7 +445,7 @@ impl Model {
         let mut chain: Option<Chain> = Some(Vec::new());
         for ((range, criterion), matches) in rects.iter().zip(criteria).zip(matchers) {
             let rect = rect_of(range);
-            let view = self.ifs_range_values(rect);
+            let view = self.range_values(rect);
             if !rest.is_empty() {
                 rest.push(view);
                 continue;
@@ -697,7 +520,7 @@ impl Model {
 
     /// The values of `rect` at the cells `chain` matches (`matched`), row by row, once none of them
     /// evaluates anything when read ([`Model::read_is_inert`]); the check resumes where it stopped,
-    /// as [`Model::ifs_range_values`]'s does. `None` when the caller must walk.
+    /// as [`Model::range_values`]'s does. `None` when the caller must walk.
     fn gathered_values(
         &mut self,
         rect: RectKey,
@@ -733,7 +556,7 @@ impl Model {
             return None;
         }
         let size = count_bits(matched);
-        if self.evaluation.ifs_cache.cells.saturating_add(size) > MAX_CACHED_CELLS {
+        if !self.evaluation.range_values.fits(size) {
             self.evaluation
                 .ifs_cache
                 .gathered
@@ -747,9 +570,11 @@ impl Model {
         if !self.pass_cache_safe() {
             return None;
         }
-        let cache = &mut self.evaluation.ifs_cache;
-        cache.cells += size;
-        cache
+        if !self.evaluation.range_values.charge(size) {
+            return None;
+        }
+        self.evaluation
+            .ifs_cache
             .gathered
             .insert(key, RangeState::Ready(values.clone()));
         Some(values)
@@ -765,7 +590,7 @@ impl Model {
         criterion: &CalcResult,
         matches: &Criterion<'_>,
     ) -> Option<usize> {
-        let view = self.ifs_range_values(rect_of(range))?;
+        let view = self.range_values(rect_of(range))?;
         if let Some(IndexState::Ready(index)) = self.evaluation.ifs_cache.indexes.get(&view.rect) {
             if let Some(indexed) = self.indexed(criterion) {
                 let window = view.offset..view.offset + view.len;
@@ -790,9 +615,10 @@ impl Model {
         )
     }
 
-    /// The cached values of `range` (`ifs_range_values`) for the SUMIFS-shaped walks' value range.
+    /// The cached values of `range` ([`Model::range_values`]) for the SUMIFS-shaped walks' value
+    /// range.
     pub(super) fn ifs_values(&mut self, range: &Range) -> Option<RangeView> {
-        self.ifs_range_values(rect_of(range))
+        self.range_values(rect_of(range))
     }
 }
 
