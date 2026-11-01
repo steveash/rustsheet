@@ -543,15 +543,17 @@ any waiter. In `train` mode only mergers take the lock, plus anyone merging the 
 Constants:
 - `BATCH_MAX = 5`;
 - `TRAIN_REF = refs/heads/merge-train/current` (`merge-train/shadow` in shadow mode);
-- `CI_TIMEOUT = 10 min`: the longest a CI wait may take. PR and train CI runs take about 4.9–5.4
-  min wall, so 10 min is about twice a normal run. At 15 min, the budget gate below cut the
+- `CI_TIMEOUT = 15 min` (*as amended by decision 0242*; it was 10 min while train CI took
+  about 5 min, and runs now take 10–11 min): the longest a CI wait may take. When this section
+  was written, PR and train CI runs took about 4.9–5.4 min wall, so 10 min was about twice a
+  normal run. At 15 min, the budget gate below cut the
   section 6 example (culprit at `P_5` of 5) off at its fourth run. Without a resume that
   livelocked: the performance review's `sim6.py` measured 25–237 runs per merge. A run that
-  really takes longer than 10 min is an infrastructure failure (section 6);
+  really takes longer than `CI_TIMEOUT` is an infrastructure failure (section 6);
 - `MERGE_BUDGET = 2.5 min` per PR that a CI run can merge: the pre-squash wait of up to 2 min,
   the merge call, and the checks. Its consequence: a full batch of 5 reserves 12.5 min after its
-  CI wait, so a 5-PR train needs `10 + 12.5 = 22.5` min of hold budget left before its CI wait
-  starts;
+  CI wait, so a 5-PR train needs `15 + 12.5 = 27.5` min of hold budget left before its CI wait
+  starts (22.5 min at the original 10-min timeout);
 - `HOLD_BUDGET = 40 min`, counted from the moment the lock is acquired.
 
 **Write policy** (one rule, applied by the script's single GitHub client):

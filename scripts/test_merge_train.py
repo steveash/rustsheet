@@ -839,7 +839,7 @@ class MergeStage(StageFixture):
         self.assertEqual(self.stage.log[-1], "ejected #2: ci-red")
         # An infrastructure failure is retried once on a fresh commit, then stops ejecting nobody.
         for ci, dispatches, words in ((["none"], 2, "even after a dispatch, twice"),
-                                      (["pending"], 0, "took over 10 min, twice")):
+                                      (["pending"], 0, f"took over {merge_train.CI_TIMEOUT // 60} min, twice")):
             with self.subTest(ci=ci):
                 self.setUp()
                 self.gh.ci = ci
