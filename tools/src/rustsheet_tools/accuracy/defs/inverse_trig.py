@@ -111,11 +111,13 @@ def _one_arg(
     domain: Interval,
     draw: Callable[[str, random.Random], list[Arg]],
     sources: tuple[str, ...],
+    *,
+    name: str = "number",
 ) -> Definition:
     return register(
         Definition(
             function=function,
-            params=(Param("number", "real", domain, source=sources[0]),),
+            params=(Param(name, "real", domain, source=sources[0]),),
             value=lambda args: kernel(_one(args)),
             draw=draw,
             sources=sources,
@@ -128,8 +130,12 @@ ASIN = _one_arg("ASIN", mpmath.asin, _UNIT, _unit_draw, (DOMAIN_SOURCE,))
 ACOS = _one_arg("ACOS", mpmath.acos, _UNIT, _unit_draw, (DOMAIN_SOURCE, ACOS_SOURCE))
 ATAN = _one_arg("ATAN", mpmath.atan, Interval(), _real_draw, ("catalog",))
 ACOT = _one_arg("ACOT", lambda x: mpmath.pi / 2 - mpmath.atan(x), Interval(), _real_draw, (ACOT_SOURCE,))
-DEGREES = _one_arg("DEGREES", lambda x: x * 180 / mpmath.pi, Interval(), _real_draw, (RADIANS_SOURCE,))
-RADIANS = _one_arg("RADIANS", lambda x: x * mpmath.pi / 180, Interval(), _real_draw, (RADIANS_SOURCE,))
+DEGREES = _one_arg(
+    "DEGREES", lambda x: x * 180 / mpmath.pi, Interval(), _real_draw, (RADIANS_SOURCE,), name="angle"
+)
+RADIANS = _one_arg(
+    "RADIANS", lambda x: x * mpmath.pi / 180, Interval(), _real_draw, (RADIANS_SOURCE,), name="angle"
+)
 
 ATAN2 = register(
     Definition(
