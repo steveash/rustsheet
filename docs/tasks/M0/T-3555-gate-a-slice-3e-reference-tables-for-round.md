@@ -3,7 +3,7 @@ id: T-3555
 title: "Gate A slice 3e: reference tables for ROUND, ROUNDUP and ROUNDDOWN, with the math read at the written decimal"
 milestone: M0
 lane: harness
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -48,21 +48,51 @@ function is defined so that Excel's documented decimal behavior is not counted a
 - Engine code: `crates/rustsheet-engine/src/decimal_round.rs` (`round_decimal`, T-0106, T-0268).
 
 ## Acceptance criteria
-- [ ] One definition each for ROUND, ROUNDUP and ROUNDDOWN. Their unit tests reproduce the numbers.md values
+- [x] One definition each for ROUND, ROUNDUP and ROUNDDOWN. Their unit tests reproduce the numbers.md values
       `ROUND(2.675,2)` = 2.68, `ROUND(1.005,2)` = 1.01, `ROUND(-2.5,0)` = -3, `ROUNDDOWN(123456789.123,-5)` =
       123400000 and `ROUND(1.5,-400)` = 0, and they treat `ROUNDUP(1.5,-400)` as a domain error.
-- [ ] The decimal-math rule is recorded (decision record or SPEC-0029 note) and cited in the definitions.
-- [ ] `eval/accuracy/tables/{ROUND,ROUNDUP,ROUNDDOWN}/s1.{case,math,oracle}.json` are generated, filled and committed.
+- [x] The decimal-math rule is recorded (decision record or SPEC-0029 note) and cited in the definitions.
+- [x] `eval/accuracy/tables/{ROUND,ROUNDUP,ROUNDDOWN}/s1.{case,math,oracle}.json` are generated, filled and committed.
       `rustsheet-eval accuracy` reports `missing tables` 3 lower than before the change. The Outcome names every
       failing point with its owner task, in `known-failures.tsv` under T-3379's rules, and lists every point where
       Excel is more than G = 1e-4 off the math. The expected number of such points is 0; any point listed is
       evidence against the rule.
-- [ ] The probes-numeric math sidecars are regenerated with the new definitions and committed. `make eval` shows no
+- [x] The probes-numeric math sidecars are regenerated with the new definitions and committed (no sidecar changed; see the Outcome). `make eval` shows no
       cell of `probes/round-family` or `probes/roundup-wrapped-scaling` leaving the R1(c) envelope.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - MROUND, TRUNC, INT, CEILING and FLOOR (M5; T-3551, filed with T-3550 in #2656, classifies them).
 - Engine changes for failing points (file them as tasks with the cells).
 - Arguments computed by a formula, which can carry a 16th digit (numbers.md's stage-1 tie). Eval suites own that
   case, not the tables.
+
+## Outcome
+- Definitions: `tools/src/rustsheet_tools/accuracy/defs/rounding.py`. The math is the argument's 15-digit decimal,
+  rounded at `num_digits` (decision 0223, cited in the module docstring). `literal.decimal15` is the one 15-digit cut,
+  and `round15` now uses it too. Unit tests are in `tools/tests/test_accuracy_rounding.py`, with the numbers.md values
+  the acceptance lists. `ROUNDUP(1.5,-400)` is a math domain error.
+- Tables: `eval/accuracy/tables/{ROUND,ROUNDUP,ROUNDDOWN}/s1`, 120 points each (48/18/18/24/12 by stratum), filled
+  from excel-graph on 2026-11-01. `rustsheet-eval accuracy` on the head merged with main: 2362 points in 13 tables, 0 failing,
+  0 table defects. Missing tables went down by 3: 310 to 307 before the merge with main, 305 after it (main had 310, not
+  323, when this task started). No known-failures lines: every new point is
+  in the envelope. ROUNDUP's 5 domain-error points are all `#NUM!` in Excel.
+- Excel is more than G = 1e-4 off the math (relative, with no floor) at 5 points. Decision 0223 lists them: ROUND
+  A73, ROUNDDOWN A81 and A84, and ROUNDUP A74 and A76. All five are the subnormal flush of T-2756, not the decimal
+  rule. The engine matches Excel to the bit there, and the 1e-300 floor keeps each in the envelope. A first count
+  in this Outcome said 0 because it applied that floor; the Excel-fidelity review caught it.
+- ROUND/s1 A61, `ROUND(4.91499999999999E-06,8)`: Excel gives 4.9100000000000004E-06, 1 ulp above the double
+  nearest 4.91E-06, which the engine returns. It is in the envelope and below the reproducibility floor. I recorded
+  it in numbers.md as an observation against "return the nearest double".
+- The draws keep `num_digits` within ±400. The first ROUNDUP draw went to ±65,535 and hit a table defect:
+  `ROUNDUP(6.4421516092447E+265,-43376)` is the value in Excel, not `#NUM!`. That contradicts the wrap rule, so I
+  recorded it in numbers.md ("ROUNDUP of a huge value at a huge negative num_digits", UNVERIFIED) and filed T-3627 to
+  probe it. Then I replaced the batch before commit. The committed ROUNDUP s1 Calc!A111 (the same value at -320, `#NUM!`)
+  narrows the observation, and T-3627 cites it.
+- A `num_digits` beyond ±400, or a 16th-digit tie, has no math value (`NoValueError`). So `rustsheet-accuracy math`
+  never gives an eval cell a math value from a rule that does not cover it.
+- `rustsheet-accuracy math --suite probes-numeric` changed no committed sidecar: no probes-numeric cell is a
+  one-call ROUND, ROUNDUP or ROUNDDOWN with literal arguments. It also wrote a sidecar for
+  `t3567-r5-fdf1-hold` (F.DIST, not this task's), which I left out. probes/round-family (53) and
+  probes/roundup-wrapped-scaling (480) still pass in full (eval/baseline/probes.txt `C` lines), so no cell leaves the
+  R1(c) envelope.
