@@ -1,0 +1,18 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-3590: a lone AMORDEGRC that leaves 485 (fraction-state-l), filled just before -h to test whether the left-over value survives into the next workbook the Excel service calculates",
+  "tags": [
+    "M9",
+    "financial",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=AMORDEGRC(2400,39679,39813,300,2,0.15,1)"
+      }
+    }
+  ],
+  "expected": {}
+}

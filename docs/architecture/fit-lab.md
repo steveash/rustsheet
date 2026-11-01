@@ -16,6 +16,7 @@ uv run rustsheet-fitlab erfc-tail --top 10     # the T-1187 grid, about 5,800 ca
 uv run rustsheet-fitlab xirr                   # T-1525 solvers: also xirr-oos, irr, irr-fallback, rate, yield-one-period, yield
 uv run rustsheet-fitlab beta-dist              # T-1744: I_x(a,b); also f-dist, t-dist
 uv run rustsheet-fitlab norm-s-inv             # T-1746: NORM.S.INV, AS 241 tails vs the unfitted centre
+uv run rustsheet-fitlab im-hyperbolic --build no-band=/path/to/rustsheet-eval   # T-3525: IM* text, a 2nd build
 uv run rustsheet-fitlab erfc-tail --only 'bu_even' --worst 10 --no-engine
 uv run rustsheet-fitlab --case probes-numeric/t1040-erfc \
     --pattern '^=ERFC\((.*)\)$' --candidate math:erfc --candidate mymod:my_erfc   # ad hoc
@@ -74,7 +75,7 @@ other than a number, misses that cell and is counted under `err`. It does not st
 
 - **Sweep:** an oracle-filled `.case.json` plus its `.oracle.json` sidecar, found through
   `rustsheet-eval cases` (`snapshot.suite_cases`). No xlsx is parsed. Only cells whose Excel value
-  is a number are scored, plus error cells when the `Fit` sets `errors=True`: a candidate signals an
+  is a number are scored, plus error cells when the `Fit` sets `errors=True` (and IM* text when it sets `complex_text=True`, below): a candidate signals an
   error by raising `ExcelError` (code `#NUM!` by default), the same error is an exact match, and another
   error or a number is a miss (not counted under `err`, only as not comparable). Text and bool cells are counted as non-numeric.
 - **Never Gate A's tables:** a case of the `accuracy` suite (`accuracy/<FUNCTION>/<batch>`, SPEC-0029)
@@ -103,6 +104,16 @@ other than a number, misses that cell and is counted under `err`. It does not st
 - **The engine:** a pseudo-candidate read from `rustsheet-eval show --all <case>`
   (`snapshot.show_cells`). It needs the release harness binary, which `snapshot.eval_binary`
   builds on first use. `--no-engine` skips it.
+- **Other engine builds:** `--build NAME=PATH` (repeatable; `run(..., builds=...)`) scores another
+  `rustsheet-eval` binary the same way, as the candidate `engine build: NAME`. This is how a tuned
+  selector is compared with its accurate form (decision 0188 R4): build the engine once with the
+  selector removed, into its own `CARGO_TARGET_DIR`, and pass that binary (T-3525).
+- **Complex text:** a fit with `complex_text=True` also keeps cells whose Excel value is an IM*
+  function's text (`sweep.parse_complex_text`: `1.5-2i`, `-0.5j`, `i`), with the real part as
+  `expected` and the imaginary part as `expected_im`. A candidate returns the IM* text or a Python
+  complex, and the cell is scored part by part: exact when both parts are equal, its ulp distance
+  the larger of the two, within 15 digits or 1e-9 only when both parts are. The engine's text is
+  read the same way. Both parts are 15-digit values, so a part is exact when its 15 digits match.
 
 ## Add a candidate or a fit
 

@@ -3,7 +3,7 @@ id: T-2080
 title: "CORREL, PEARSON, RSQ: probe inexact constant series and overflow-scale data"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -21,8 +21,11 @@ may return a finite value where Excel may say `#DIV/0!`. Data near 1E200 overflo
 and 1E154/1E200-scale pairs, for CORREL, PEARSON and RSQ.
 
 ## Acceptance criteria
-- [ ] A filled probe case covers the inputs above; the engine matches every cell, or the entry records what stays open.
-- [ ] `make check` green; reviewers approve.
+- [x] A filled probe case covers the inputs above; the engine matches every cell, or the entry records what stays open.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/correl-inexact-constant-overflow` (79 cells, excel-graph). Inexact constant series already matched. Overflowing sums of squares are `#NUM!` in Excel (checked before the zero-variance `#DIV/0!`, after the pair count) for CORREL, PEARSON, RSQ and, on x's sum, SLOPE, INTERCEPT, STEYX, FORECAST; `PairedMoments` now returns the error kind and all 79 cells pass. Not a numeric fit (a structural overflow rule, no tuned constants). Open: y-only overflow for STEYX.

@@ -117,6 +117,14 @@ Each cell below has GAMMA.INV, GAMMAINV, CHISQ.INV, CHISQ.INV.RT or CHIINV as it
 - ironcalc-calc/STATISTICAL/CHISQ.xlsx (1): Sheet1!I2
 - probes/t2436/8d3588d8df0812df.case.json (1): Calc!A1
 
+Cells added on 2026-11-01 from draft PR #2503 (gap triage 2026-10-31b, never merged). T-3337 says this task owns
+them, but no cell list named them. They are the probes-numeric/m9-legacy-chiinv moderate-p cells, all within
+15 digits: 1 to 2 ulp, except df 1 at 7 to 10 ulp (`CHIINV(0.05,1)` A31/A32 at 10 ulp, `CHIINV(0.5,1)` A41/A42 at
+7 ulp). A 100-digit check on #2503's branch puts the exact lower quantile of the double 1-p 2 ulp from Excel at
+p = 0.05 and 0.5, so the engine's df-1 path itself loses 5 to 8 ulp there. Re-list them after T-3337, T-3146 and
+T-3336 land, since those change this kernel.
+- probes-numeric/m9-legacy-chiinv.case.json (34): Calc!A7, A8, A11, A12, A15, A16, A17, A18, A19, A20, A21, A22, A25, A26, A31, A32, A35, A36, A39, A40, A41, A42, A45, A46, A51, A52, A55, A56, A57, A58, A61, A62, A85, A86
+
 ## Acceptance criteria
 - [ ] These known-failure lines disappear from the baselines, with no new ones in any baseline (`make eval-baseline`,
       `make eval-check`: 0 regressions):

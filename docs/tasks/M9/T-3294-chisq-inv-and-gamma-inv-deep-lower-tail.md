@@ -28,6 +28,27 @@ docs/excel-semantics/statistics.md, in the T-2561 entry.
 - From T-3350 (2026-10-31): probes/t3350-chisq-inv-huge-df A25 `CHISQ.INV(1E-300,5E6)`: Excel 4883759.33683749,
   ours 4883759.3368374165, the 50-digit math 4883759.3368374156 (Excel 1.5E-14 off it; the same deep lower tail at a
   larger shape).
+- From T-3505 (2026-11-01): probes/t3505-gamma-inv-budget-band, GAMMA.INV at p = 1E-300 at a large shape, visibly off
+  Excel (ours unchanged from main before T-3505; Excel up to 2.6E-14 from the 50-digit math, at A97):
+  - A1 `GAMMA.INV(1E-300,290000,1)`: Excel 270504.056927792, ours 270504.05692779087;
+  - A13 `GAMMA.INV(1E-300,300000,1)`: Excel 280163.04318130726, ours 280163.04318130354;
+  - A85 `GAMMA.INV(1E-300,7990464.81598859,1)`: Excel 7886198.933526138, ours 7886198.933525968;
+  - A97 `GAMMA.INV(1E-300,8000000,1)`: Excel 7895671.652693168, ours 7895671.652692964;
+  - A145 `GAMMA.INV(1E-300,35481338.9233576,1)`: Excel 35261120.321770474, ours 35261120.3217704.
+
+Evidence from T-3311 (docs/excel-semantics/statistics.md, T-3311 paragraphs of "Deep lower tail at a shape above
+1"): Excel's deep-tail quantile is Newton steps from the leading-factor root on the leading-factor series form, and
+the root is iterate 0. In probes-numeric/t3311-fresh-sweep, of the 64 cells the engine leaves visibly off at shapes
+1 to 20 (61 of them at p below 1E-20), Excel's value is an exact iterate at 58 and the root at 8 (shapes 2.2 to 18).
+T-3311's rule (the first iterate whose cdf is nearest p, `incomplete_gamma::closed_form::excel_newton_quantile`),
+applied without its cut or range, is bit-exact at 50 and within 15 digits at 62. T-3311 ships it only at shapes 1.5 to
+5 and p 1E-200 to 1E-12, after T-2561's root. So the root test this task looks for may be "the root is the nearest
+iterate", which would replace `TINY_QUANTILE_CHECK` and widen that range; the fresh sweep is not a hold-out for it
+any more, so a new sweep is owed (decision 0188 R4). Note the two tests measure the root on different cdfs:
+`TINY_QUANTILE_CHECK` on the accurate pair, `excel_newton_quantile` on `excel_form_lower` (Excel's form); a unified
+root test should use one (T-3403 has the same note).
+- Gap triage 2026-11-01f: T-3659 (deferred, Phase 1b) owns the 73 visibly-off deep-tail cells below shape 20 of
+  T-3311's second fresh sweep (that case is named there, not here), evidence for the same root test.
 
 ## Acceptance criteria
 - [ ] A31 is within half a unit of Excel's 15th digit, or the Outcome records why it cannot be reached.

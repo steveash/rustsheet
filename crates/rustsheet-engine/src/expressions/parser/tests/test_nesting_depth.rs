@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use crate::expressions::parser::tests::utils::new_parser;
 use crate::expressions::parser::{
     Node, MAX_FORMULA_DEPTH, MAX_PARENTHESES, MAX_SIGNS, MAX_VALUE_OPERATORS, TOO_DEEP_MESSAGE,
-    TOO_MANY_OPERATORS_MESSAGE,
+    TOO_MANY_OPERATORS_MESSAGE, TOO_MANY_SIGNS_MESSAGE,
 };
 use crate::expressions::types::CellReferenceRC;
 
@@ -38,6 +38,10 @@ fn on_small_stack(f: impl FnOnce() + Send + 'static) {
 
 fn is_too_deep(node: &Node) -> bool {
     matches!(node, Node::ParseErrorKind { message, .. } if message == TOO_DEEP_MESSAGE)
+}
+
+fn has_too_many_signs(node: &Node) -> bool {
+    matches!(node, Node::ParseErrorKind { message, .. } if message == TOO_MANY_SIGNS_MESSAGE)
 }
 
 fn has_too_many_operators(node: &Node) -> bool {
@@ -152,6 +156,56 @@ fn parenthesis_runs_nest_as_deep_as_excel_allows() {
     });
 }
 
+/// T-3338: a parenthesis or a call after a run of signs costs 2 of `MAX_SIGNS`, so Excel's 1,022
+/// signs before `(1)`, `((1))` and `ABS(1)` load and 1,023 are refused, stored and typed
+/// (probes/t3266-minus-paren-*, -minus-paren2-*, -plus-paren-*, -minus-abs-*; the refused stored
+/// ones keep no sidecar, so they are pinned here).
+#[test]
+fn signs_before_a_parenthesis_or_a_call_stop_two_short_of_the_cap() {
+    on_small_stack(|| {
+        for (sign, operand) in [("-", "(1)"), ("-", "((1))"), ("+", "(1)"), ("-", "ABS(1)")] {
+            let run = |count: usize| format!("{}{operand}", sign.repeat(count));
+            let fits = parse(&run(MAX_SIGNS - 2));
+            assert!(
+                !matches!(fits, Node::ParseErrorKind { .. }),
+                "{sign}{operand}"
+            );
+            assert!(
+                has_too_many_signs(&parse(&run(MAX_SIGNS - 1))),
+                "{sign}{operand}"
+            );
+        }
+    });
+}
+
+/// T-3338: `-(` nests to Excel's 256-parenthesis cap and 257 levels are refused
+/// (probes/t3266-nested-paren-*), and the signs of every level count together toward
+/// `MAX_SIGNS`: 200 levels around 824 minus signs and `1` load and 825 are refused, as 50 around
+/// 974 and 975 (probes/t3266-nested-200-824, -825, -50-974, -975).
+#[test]
+fn signed_parentheses_nest_to_the_parenthesis_cap() {
+    on_small_stack(|| {
+        for open in ["-(", "+(", "--(", "-( ", " - ( "] {
+            let fits = parse(&nested(open, "1", ")", MAX_PARENTHESES));
+            assert!(!matches!(fits, Node::ParseErrorKind { .. }), "{open}");
+            let past = parse(&nested(open, "1", ")", MAX_PARENTHESES + 1));
+            assert!(is_too_deep(&past), "{open}");
+        }
+        for (levels, signs) in [(200, 824), (50, 974)] {
+            let around =
+                |count: usize| nested("-(", &format!("{}1", "-".repeat(count)), ")", levels);
+            assert!(!matches!(
+                parse(&around(signs)),
+                Node::ParseErrorKind { .. }
+            ));
+            assert!(has_too_many_signs(&parse(&around(signs + 1))), "{levels}");
+        }
+        // A level holding more than the signed group inside it still costs an operand's depth.
+        let summed = parse(&nested("-(1+", "1", ")", MAX_PARENTHESES));
+        assert!(is_too_deep(&summed));
+    });
+}
+
 /// T-3197: a call at the head of a group reserves one and a half levels of nesting and adds one
 /// level to the tree, so Excel's 65 calls each wrapped in parentheses parse
 /// (probes/t3097-nesting-paren-abs-65), up to 72 levels; one more is too deep.
@@ -225,23 +279,43 @@ fn unary_minus_runs_nest_up_to_the_limit() {
     on_small_stack(|| {
         // Each minus is its own node (`--x` coerces, T-0132), and so is each plus kept in the
         // formula text (T-2723), but a sign adds no depth: a run is bounded by `MAX_SIGNS`,
-        // Excel's cap, and a very long one is a parse error, never a stack overflow (T-3193). A
-        // minus directly before a number is not counted (Excel takes 1,024 before `1`); the
-        // plus directly before a number folds into it and adds no node.
-        let node = parse(&format!("{}1", "-".repeat(MAX_SIGNS + 1)));
+        // Excel's cap on the signs plus the operand's cost, and a very long one is a parse
+        // error, never a stack overflow (T-3193). A number directly after the signs costs 0
+        // (Excel takes 1,024 before `1`), a string 1; the plus directly before a number folds
+        // into it and adds no node, but counts (T-3266).
+        let node = parse(&format!("{}1", "-".repeat(MAX_SIGNS)));
         assert!(matches!(node, Node::UnaryKind { .. }));
-        assert!(is_too_deep(&parse(&format!(
+        assert!(has_too_many_signs(&parse(&format!(
             "{}1",
-            "-".repeat(MAX_SIGNS + 2)
+            "-".repeat(MAX_SIGNS + 1)
         ))));
-        assert!(is_too_deep(&parse(&format!("{}1", "-".repeat(10_000)))));
-        let node = parse(&format!("{}\"a\"", "+".repeat(MAX_SIGNS)));
+        assert!(has_too_many_signs(&parse(&format!(
+            "{}1",
+            "-".repeat(10_000)
+        ))));
+        let node = parse(&format!("{}1", "+".repeat(MAX_SIGNS)));
         assert!(matches!(node, Node::UnaryPlus { .. }));
-        assert!(is_too_deep(&parse(&format!(
-            "{}\"a\"",
+        assert!(has_too_many_signs(&parse(&format!(
+            "{}1",
             "+".repeat(MAX_SIGNS + 1)
         ))));
-        assert!(is_too_deep(&parse(&format!("{}1", "+".repeat(10_000)))));
+        let node = parse(&format!("{}\"a\"", "+".repeat(MAX_SIGNS - 1)));
+        assert!(matches!(node, Node::UnaryPlus { .. }));
+        assert!(has_too_many_signs(&parse(&format!(
+            "{}\"a\"",
+            "+".repeat(MAX_SIGNS)
+        ))));
+        // A number after a space costs 1 (probes/t3266-minus-spaced-1023).
+        let spaced = |count: usize| format!("{} 1", "-".repeat(count));
+        assert!(!matches!(
+            parse(&spaced(MAX_SIGNS - 1)),
+            Node::ParseErrorKind { .. }
+        ));
+        assert!(has_too_many_signs(&parse(&spaced(MAX_SIGNS))));
+        assert!(has_too_many_signs(&parse(&format!(
+            "{}1",
+            "+".repeat(10_000)
+        ))));
         assert!(matches!(parse("+1"), Node::NumberKind(_)));
     });
 }
@@ -252,7 +326,7 @@ fn unary_minus_run_at_the_limit_evaluates() {
         // The longest run that parses must also evaluate (one iterative pass,
         // `apply_unary_chain`) and print on a small stack.
         let mut model = crate::test::util::new_empty_model();
-        let minuses = "-".repeat(MAX_SIGNS + 1);
+        let minuses = "-".repeat(MAX_SIGNS);
         model._set("A1", &format!("={minuses}1"));
         model._set("A2", &format!("={}TRUE", &minuses[1..]));
         model.evaluate();
@@ -459,7 +533,8 @@ fn sign_runs_at_the_cap_survive_every_walk_under_the_deepest_nesting() {
             format!("{}{run}{cell}{}", "(1+".repeat(levels), ")".repeat(levels))
         };
         for space in ["", " ", "\n "] {
-            let run = signs(MAX_SIGNS, space);
+            // A reference after the signs costs 1 of `MAX_SIGNS`.
+            let run = signs(MAX_SIGNS - 1, space);
             let levels = (1..MAX_FORMULA_DEPTH)
                 .rev()
                 .find(|&levels| !is_too_deep(&parse(&nested_over(levels, &run, "C1"))))
@@ -469,7 +544,7 @@ fn sign_runs_at_the_cap_survive_every_walk_under_the_deepest_nesting() {
             model._set("C1", "2");
             model._set("A1", &format!("={}", nested_over(levels, &run, "C1")));
             model._set("A2", &format!("={run}C1"));
-            model._set("A3", &format!("=-({}C1)", signs(MAX_SIGNS - 1, space)));
+            model._set("A3", &format!("=-({}C1)", signs(MAX_SIGNS - 2, space)));
             model.evaluate();
             for cell in ["A1", "A2", "A3"] {
                 assert!(!model._get_text(cell).starts_with('#'), "{cell}");
@@ -483,13 +558,13 @@ fn sign_runs_at_the_cap_survive_every_walk_under_the_deepest_nesting() {
                 format!("={}", nested_over(levels, &run, "C2"))
             );
             assert_eq!(model._get_formula("A3"), format!("={run}C2"));
-            assert!(is_too_deep(&parse(&format!(
+            assert!(has_too_many_signs(&parse(&format!(
                 "{}C1",
-                signs(MAX_SIGNS + 1, space)
-            ))));
-            assert!(is_too_deep(&parse(&format!(
-                "-({}C1)",
                 signs(MAX_SIGNS, space)
+            ))));
+            assert!(has_too_many_signs(&parse(&format!(
+                "-({}C1)",
+                signs(MAX_SIGNS - 1, space)
             ))));
         }
     });

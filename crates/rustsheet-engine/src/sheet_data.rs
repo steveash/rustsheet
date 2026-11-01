@@ -31,7 +31,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use bitcode::{Decode, Encode};
 
 use crate::constants::{LAST_COLUMN, LAST_ROW};
-use crate::sheet_reads::ReadLog;
+use crate::sheet_reads::{PositionHint, ReadLog};
 use crate::types::Cell;
 
 const CHUNK_BITS: u32 = 10;
@@ -49,8 +49,8 @@ const LINEAR_SEARCH_LIMIT: usize = 8;
 /// here, so such rows survive a round trip. Removing the last cell of a row
 /// with `remove_cell` removes the row.
 ///
-/// Rows outside the sheet, below 1 or beyond the last row, cannot hold cells:
-/// writing to them does nothing and reading them finds nothing.
+/// Rows and columns outside the sheet (below 1, or beyond the last) hold no
+/// cells: writing to them does nothing and reading them finds nothing.
 #[derive(Encode, Decode, Debug, Clone, Default)]
 pub struct SheetData {
     /// `chunks[i]` holds rows `i * CHUNK_ROWS ..`, if any of them exists.
@@ -86,6 +86,9 @@ pub struct SheetData {
     /// serialised.
     #[bitcode(skip)]
     pub(crate) reads: ReadLog,
+    /// Where in its row [`SheetData::cell`] found its last cell (`PositionHint`).
+    #[bitcode(skip)]
+    hint: PositionHint,
 }
 
 #[derive(Encode, Decode, Debug, Clone)]
@@ -122,6 +125,13 @@ impl Row {
             }
             Err(self.cells.len())
         } else {
+            // A dense row holds its cells at their offset from the first: tried before bisecting.
+            let offset =
+                |&(first, _): &(i32, Cell)| usize::try_from(column.checked_sub(first)?).ok();
+            let at = |&g: &usize| self.cells.get(g).is_some_and(|(c, _)| *c == column);
+            if let Some(g) = self.cells.first().and_then(offset).filter(at) {
+                return Ok(g);
+            }
             self.cells.binary_search_by_key(&column, |(c, _)| *c)
         }
     }
@@ -222,7 +232,11 @@ impl SheetData {
     pub fn cell(&self, row: i32, column: i32) -> Option<&Cell> {
         self.reads.cell(row, column);
         let row = self.row(row)?;
+        if let Some((_, cell)) = row.cells.get(self.hint.get()).filter(|(c, _)| *c == column) {
+            return Some(cell);
+        }
         let index = row.position(column).ok()?;
+        self.hint.set(index);
         Some(&row.cells[index].1)
     }
 
@@ -237,6 +251,7 @@ impl SheetData {
 
     /// Puts a cell at a position and returns the one that was there.
     pub fn set_cell(&mut self, row: i32, column: i32, cell: Cell) -> Option<Cell> {
+        (1..=LAST_COLUMN).contains(&column).then_some(())?;
         let previous = self.row_or_insert(row)?.insert(column, cell);
         if previous.is_none() {
             self.index_cell(row, column);
@@ -614,10 +629,10 @@ impl SheetData {
         let Some(row_data) = self.row_or_insert(row) else {
             return;
         };
-        // Collected at its exact size: a row grown cell by cell from empty
-        // starts with room for four, and a sheet with a million short rows
-        // paid for that four times over.
-        let mut cells: Vec<(i32, Cell)> = cells.into_iter().collect();
+        // Collected at its exact size: a row grown cell by cell from empty starts with room for
+        // four, and a sheet with a million short rows paid for that four times over.
+        let on_sheet = |(column, _): &(i32, Cell)| (1..=LAST_COLUMN).contains(column);
+        let mut cells: Vec<(i32, Cell)> = cells.into_iter().filter(on_sheet).collect();
         cells.sort_by_key(|(column, _)| *column);
         // Of two cells in the same column the later one stays: it is moved
         // into the slot of the earlier one, which `dedup_by` then keeps.
