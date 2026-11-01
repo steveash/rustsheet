@@ -15,14 +15,14 @@ The eval run of **2026-11-01** at commit `1f30a9b1` (report.json `run`).
 _Written for the run of 2026-10-31; not yet updated for this run._
 
 <!-- progress:judgment bottom-line -->
-<!-- as-of: 2026-10-31 8406c606 -->
-Values still match Excel on real workbooks, and Phase 1 moved forward again. It has not exited: the M2, M6, M7, M8 and M9 exit rows are still open.
+<!-- as-of: 2026-11-01 1f30a9b1 -->
+Values still match Excel on real workbooks, but Phase 1 has not exited, and new probe evidence pulled the every-suite count back this run while the Gate B count rose.
 
-- **Phase 1 has not exited.** 434 of 506 in-scope functions meet the exit rate (decision 0118), +6 since the last complete run. On the user-representative suites of Gate B, the count is 448/506. The M1, M5 and M11 exit rows are met.
-- **Visibly-off numbers rose, from new evidence.** They grew by +29,780 to 71,189, while attributed Excel cells grew by +61,674. Judgment: this is new oracle coverage, not a regression; probes-numeric alone shows 70,341 visibly-off cells. Type, error or text cells fell by −106 to 761.
+- **Phase 1 has not exited.** 428 of 506 in-scope functions meet the exit rate (decision 0118), −6 since the last complete run. On the user-representative suites of Gate B, the count is 452/506. The M1, M5, M6 and M11 exit rows are met; M6 is newly met.
+- **The fall is new evidence, not a regression** (judgment). Attributed Excel cells grew by +76,640. Visibly-off numbers grew by +13,198 to 84,387, and type, error or text cells by +175 to 936. probes-numeric alone shows 83,765 visibly-off cells, and every gated suite reports 0 regressions in the steward's snapshot.
 - **Real-world files are close.** On calipers, 99.99% of 4,375,835 cells are bit-exact, and 165 of its 175 workbooks have every cell within 15 digits. Corpus-bench has a visibly-off cell in 1 of 320 workbooks, and poi in 3 of 115.
-- **The biggest gap is still numeric accuracy** (judgment). The 72 functions below the rate hold 71,143 visibly-off numbers and 268 type, error or text cells. Fixing only the latter would lift 9 of them.
-- **M2's probe exit is collation plus a new criteria probe.** The M0-M2 probes show 200 visibly-off cells and 212 known failures. Judgment: the rise is new coverage from the criteria operand probe of T-3334, owned by T-3404; the collation cells stay with T-3324, T-3325 and T-3329.
+- **The biggest gap is still numeric accuracy** (judgment). The 78 functions below the rate hold 83,766 visibly-off numbers and 930 type, error or text cells. Fixing only the latter would lift 19 of them, among them TEXT, VALUE, UPPER, LOWER and the FORECAST.ETS family.
+- **M2's probe exit is now text folding and collation.** The M0-M2 probes show 264 visibly-off cells and 264 known failures. Judgment: the rise is new coverage from the case-mapping sweep (T-3445, T-3583); collation stays with T-3324 and the criteria operand forms with T-3404.
 <!-- /progress:judgment -->
 
 <!-- progress:generated goals -->
@@ -338,13 +338,13 @@ Counts of the quality ratchets and knowledge files, with the change since 2026-1
 _Written for the run of 2026-10-31; not yet updated for this run._
 
 <!-- progress:judgment readiness -->
-<!-- as-of: 2026-10-31 8406c606 -->
+<!-- as-of: 2026-11-01 1f30a9b1 -->
 Ratings are the steward's judgment, grounded in the numbers they cite. The page measures computed values only, not speed or saving.
 
-- **Read and compute: likely.** calipers matches Excel bit for bit on 99.99% of 4,375,835 cells, and 165 of its 175 workbooks have no cell off in the 15 digits Excel shows. Corpus-bench has a visibly-off cell in 1 of 320 workbooks.
+- **Read and compute: likely.** calipers matches Excel bit for bit on 99.99% of 4,375,835 cells, and 165 of its 175 workbooks have no cell off in the 15 digits Excel shows. Real-world calls land within 15 digits 99.96% of the time, and corpus-bench has a visibly-off cell in 1 of 320 workbooks.
 - **Edit and recalc: likely.** The frozen M1 probe list for core calculation semantics has 0 known failures, with 89 of 89 cases run. The page does not measure recalculation after an edit.
 - **Large ranges: partly.** Every suite shows 0 timeouts, but the page does not measure recalculation time, and the dependency graph is Phase 2 work whose milestone row shows 4 blocked tasks. Judgment: large lookup or criteria ranges may be slow.
-- **Save and round-trip: partly.** Not measured: none of the page's numbers comes from writing a file. This rating is judgment, based on the export and structural-edit work on tables that is still open; the M8 row shows 21 tasks to do.
+- **Save and round-trip: partly.** Not measured: none of the page's numbers comes from writing a file. This rating is judgment, based on the export and structural-edit work on tables that is still open; the M8 row shows 22 tasks to do.
 <!-- /progress:judgment -->
 
 ## Risks
@@ -352,11 +352,11 @@ Ratings are the steward's judgment, grounded in the numbers they cite. The page 
 _Written for the run of 2026-10-31; not yet updated for this run._
 
 <!-- progress:judgment risks -->
-<!-- as-of: 2026-10-31 8406c606 -->
-1. **Statistical numerics.** 46 of 149 statistical functions have fewer than 99% of their cells within 15 digits. Judgment: most of the 71,189 visibly-off numbers sit here, mostly in the large-shape sweeps of probes-numeric. Owners: T-3250 (BETA.DIST density at large shapes) and T-3173 (F.DIST density).
-2. **Financial numerics.** 6 of 55 financial functions are below 99%, and the M9 probes show 673 visibly-off cells. Judgment: these are iterative fits whose last digits follow Excel's own algorithm, so this is slow, time-boxed work. Owner: T-2131 (IRR to 15 digits).
-3. **Milestone exits wait on new probe cells.** The M0-M2 probes have 200 visibly-off cells, the M7 probes 10 and the M8 probes 48. Judgment: the generated suites of these milestones are met, so these cells are the cheapest exits on the page, and they are newly probed rules, not regressions. Owners: T-3324 and T-3325 (M2, collation and digits of other scripts), T-3329 (M2, combining marks after a hyphen) and T-3404 (M2, criteria operand forms).
-4. **Everyday functions still off.** TEXT, the 37th most-used function, has 99.93% of its 33,648 attributed cells within 15 digits. Judgment: TEXT appears in ordinary workbooks, so each visibly-off cell matters more than its count suggests. Owner: T-1925 (numeral-system digits in locale tags).
+<!-- as-of: 2026-11-01 1f30a9b1 -->
+1. **Statistical numerics.** 45 of 149 statistical functions have fewer than 99% of their cells within 15 digits. Judgment: most of the 84,387 visibly-off numbers sit here, mostly in the large-shape sweeps of probes-numeric. Owners: T-3250 (BETA.DIST density at large shapes) and T-3173 (F.DIST density).
+2. **Financial numerics.** 4 of 55 financial functions are below 99%, and the M9 probes show 769 visibly-off cells. Judgment: these are iterative fits whose last digits follow Excel's own algorithm, so this is slow, time-boxed work. Owner: T-2131 (IRR to 15 digits).
+3. **Milestone exits wait on new probe cells.** The M0-M2 probes have 264 visibly-off cells, the M7 probes 43, the M8 probes 40 and the M10 probes 65. Judgment: the generated suites of these milestones are met, so these cells are the cheapest exits on the page, and they are newly probed rules, not regressions. Owners: T-3445 and T-3583 (M2, case folding), T-3324 (M2, collation of other scripts) and T-3404 (M2, criteria operand forms).
+4. **Everyday functions still off.** TEXT, the 37th most-used function, has 99.81% of its 34,276 attributed cells within 15 digits, and it is on the list the semantic fixes alone would lift. Judgment: TEXT appears in ordinary workbooks, so each visibly-off cell matters more than its count suggests. Owner: T-3649 (TEXT value-kind sweep).
 5. **Large ranges are unmeasured.** The page has no recalculation timing. Judgment: recalculation stays full until the dependency graph lands. Owner: T-0401 (blocked: Phase 2).
 <!-- /progress:judgment -->
 

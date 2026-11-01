@@ -4,7 +4,7 @@ title: "Measure merge-train throughput against arrivals and plan SPEC-0027's rev
 milestone: M2
 lane: harness
 status: todo
-priority: P1
+priority: P0
 size: S
 tier: opus
 depends_on: []
@@ -21,6 +21,12 @@ arrivals exceed what one 5-PR batch per merger run can carry (SPEC-0027 section 
   assumption of 5.4 min, and a squash in step mode takes about 1-2.5 min, so a hold fits one batch.
 - SPEC-0027 section 3 says to revisit (pipelined trains, a larger effective batch, a shorter CI)
   when arrivals stay at 8-10/h or the p90 latency in the "over 6/h" bucket passes 30 min.
+- Steward 2026-11-01 (19:47 UTC run): raised to P0 under the `steward` skill's "Stranded in
+  `train` mode" rule, which asks for a P0 naming the cause; this task already owns it. `make
+  merge-train-stats STRANDED=1` listed **31 stranded PRs** (#2778 ... #2668), up from 21 at
+  13:30 UTC. Trains merged batches of five at about 17:30, 18:26 and 20:01 UTC, one batch per
+  hour or less, while about 40 PRs were opened between 13:30 and 19:40 UTC. Cause found: arrivals
+  exceed one 5-PR batch per hold; the lock was never idle (each hold queued the next train).
 
 ## Acceptance criteria
 - [ ] From `make merge-train-stats` and the train ref's history: arrivals per hour, PRs merged per
