@@ -62,3 +62,7 @@ accuracy/IRR/s1!Calc!A270	T-3548	long conventional series: Excel #NUM! where the
 accuracy/IRR/s1!Calc!A237	T-3548	long conventional series: Excel #DIV/0!, the engine #NUM!, the math a root
 accuracy/IRR/s1!Calc!A248	T-3548	long conventional series: Excel #DIV/0!, the engine #NUM!, the math a root
 accuracy/IRR/s1!Calc!A268	T-3548	long conventional series: Excel #DIV/0!, the engine #NUM!, the math a root
+accuracy/T.DIST/e-T-3425!Calc!A90	T-3554	Excel #NUM! for the density at a huge x; the engine returns 0
+accuracy/T.DIST/e-T-3425!Calc!A103	T-3554	Excel #NUM! for the density at a huge x; the engine returns 0
+accuracy/T.DIST/e-T-3425!Calc!A116	T-3554	Excel #NUM! for the density at a huge x; the engine returns 0
+accuracy/T.INV/e-T-3425!Calc!A74	T-3363	quantile at df 1E10: the engine is 2.5E-6 off the math; Excel matches it

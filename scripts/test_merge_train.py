@@ -367,7 +367,7 @@ class DryRun(unittest.TestCase):
     def test_a_conflicting_pr_is_unlabelled(self) -> None:
         self.fake.replies[("GET", "repos/o/r/pulls/1")] = Reply({"mergeable_state": "dirty"})
         report = self.dry_run()
-        self.assertIn("would unlabel #1: conflict with main", report)
+        self.assertIn("would eject #1: conflict with main", report)
         self.assertIn("batch: #2", report)
 
 
@@ -446,6 +446,7 @@ class GitHub(Client):
         self.bad_tree = False
         self.lose_reply = False
         self.mergeable: object = True
+        self.dirty: set[int] = set()  # PRs whose mergeable_state is dirty (they conflict with main)
         # Like GitHub, a PR's test merge stays on the `main` it was computed on until the PR
         # changes, not when `main` moves (decision 0200).
         self.test_bases: dict[int, str] = {}
@@ -551,7 +552,8 @@ class GitHub(Client):
             else:
                 merge_commit = self.test_merge(pr) if self.mergeable is not None else None
             return {
-                "number": pr, "title": f"T-000{pr}: change {pr}", "mergeable_state": "clean",
+                "number": pr, "title": f"T-000{pr}: change {pr}",
+                "mergeable_state": "dirty" if pr in self.dirty else "clean",
                 "mergeable": self.mergeable, "merged": pr in self.merged, "merge_commit_sha": merge_commit,
                 "head": {"ref": f"agent/harness/T-000{pr}-x", "sha": self.heads[pr], "repo": {"full_name": "o/r"}},
             }
@@ -882,6 +884,19 @@ class MergeStage(StageFixture):
             ("DELETE", f"issues/3/labels/{label}", None),
             ("POST", "issues/3/labels", {"labels": [merge_ready.EJECTED_LABEL]}),
             ("POST", "issues/3/comments", {"body": f"merge train: {label} removed: {collision}"}),
+        ])
+
+    def test_a_ready_pr_github_marks_dirty_is_ejected_with_the_label(self) -> None:
+        # Decision 0224: step 2's conflict with main ejects like step 3's, so the janitor sees it.
+        self.gh.dirty.add(2)
+        self.assertEqual(self.run_stage(), 0, self.stage.log)
+        self.assertEqual(self.gh.merged, [1])
+        writes = [(r.method, r.path.removeprefix("repos/o/r/"), r.body) for r in self.gh.writes if "/2/" in r.path]
+        label = merge_ready.READY_LABEL
+        self.assertEqual(writes, [
+            ("DELETE", f"issues/2/labels/{label}", None),
+            ("POST", "issues/2/labels", {"labels": [merge_ready.EJECTED_LABEL]}),
+            ("POST", "issues/2/comments", {"body": f"merge train: {label} removed: conflict with main"}),
         ])
 
     def test_a_push_that_loses_its_lease_merges_nothing(self) -> None:

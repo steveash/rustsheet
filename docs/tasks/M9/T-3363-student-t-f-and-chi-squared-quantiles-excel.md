@@ -17,7 +17,7 @@ inverse algorithm, identified from evidence, instead of the statrs inverse-beta 
 the result generalizes to fresh points.
 
 ## Context
-- Gate A known failures this task owns (T-3358, eval/accuracy/known-failures.tsv): accuracy/T.INV/s1 A75 and A102, and accuracy/T.INV.2T/s1 A75 and A91 (quantiles at df from 7E7 to 1E10: the engine and Excel both off the math, differently). Removing the lines
+- Gate A known failures this task owns (T-3358, eval/accuracy/known-failures.tsv): accuracy/T.INV/s1 A75 and A102, and accuracy/T.INV.2T/s1 A75 and A91 (quantiles at df from 7E7 to 1E10: the engine and Excel both off the math, differently), and accuracy/T.INV/e-T-3425 A74 (T-3425; `T.INV(0.457202089545726,1E10)`: the engine is 2.5E-6 off while Excel matches the math). Removing the lines
   once they pass is part of this task (a passing listed point fails the check as stale).
 - Owner's 2026-10-31 assessment (decision 0188): on fresh stratified points these functions generalize badly (share
   within 15 digits, fresh against public): T.INV 30% vs 69%, T.INV.2T 14% vs 51%, F.INV 63% vs 78%. The cause is the

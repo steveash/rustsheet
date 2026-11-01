@@ -37,6 +37,10 @@ visibly-off pair below is within 15 digits of Excel (or the time-box outcome lis
   `CHISQ.DIST(x,1,TRUE)` bit-exactness at the landing points first (T-3336's CHISQ.DIST cells).
 - The 1-to-4-ulp df-1 cells (m9-chisq-inv-rt A1-A7, m9-legacy-chiinv A11-A62, t1049-chisqinvrt, t3148-gamma-quantile-flat-band
   A64-A112) are owned by T-3232 and T-3146; if the landing rule moves them, record which (they may pass with it).
+- A 100-digit mpmath check (draft PR #2503, 2026-10-31): Excel's `CHIINV(1e-09,1)` (A1) is, to the bit, the exact
+  quantile of the cdf value one double below q = fl(1-1E-9); ours is the exact quantile of q itself.
+  `NORM.S.INV((1+q)/2)^2` matches A1 but is 114 to 134,935 ulp off at p = 0.001, 0.995, 0.999 and 0.99999. That rules
+  out a df-1 normal closed form and points at the landing rule above.
 
 Cells:
 - probes-numeric/m9-legacy-chiinv.case.json (2): Calc!A1, A2

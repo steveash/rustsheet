@@ -6,6 +6,7 @@
 # do). A protected path (T-3379): every change needs a decision record. A line naming a function
 # that has a table, or that is not an in-scope numeric catalog function, fails the check.
 ABS	exact	the argument or its negation, with no rounding
+ARABIC	exact	a whole number from a Roman numeral (numbers.md "ARABIC of a blank cell, and padded numerals")
 AREAS	exact	counts the areas of a reference
 BITAND	exact	integer bit operation on values below 2^48
 BITLSHIFT	exact	integer bit shift on values below 2^48
@@ -21,33 +22,57 @@ COUNTBLANK	exact	counts cells
 COUNTIF	exact	counts cells
 COUNTIFS	exact	counts cells
 DATE	exact	an integer day serial
+DATEDIF	exact	whole days, months or years between truncated serials (dates.md "DATEDIF "MD" and "YD" day counts")
+DATEVALUE	exact	a whole serial from date text (dates.md "The en-US date-text grammar")
 DAY	exact	an integer part of a day serial
+DAYS	exact	the difference of the truncated serials (gen-m6: DAYS(45000.75,38535) and DAYS(0.5,20009) match Excel)
+DAYS360	exact	a 30/360 count of whole days between truncated serials (dates.md "Serials below 61 in DATEDIF, EDATE, DAYS360")
 DCOUNT	exact	counts database cells
 DCOUNTA	exact	counts database cells
+DECIMAL	composite	parses text in a base; numeric literals cannot drive it (engineering.md "DECIMAL of unreadable text"); gen-m5, gen-m9 and probes drive it
 DELTA	exact	returns 0 or 1
+EDATE	exact	a whole serial: the truncated start moved by whole months (dates.md: EDATE(0.5,1) = 31)
+EOMONTH	exact	a whole serial: a month's last day (dates.md: EOMONTH(0.5,1) = 59)
 ERROR.TYPE	exact	an error code
 FIND	exact	a character position
 FINDB	exact	a byte position
+GCD	exact	integer GCD of arguments up to 2^53 (numbers.md "GCD / LCM argument bound")
 GESTEP	exact	returns 0 or 1
 ISOWEEKNUM	exact	an integer week number
+LCM	exact	integer LCM, its result taken as the double at 2^53 (numbers.md "GCD / LCM argument bound")
 LEN	exact	a character count
 LENB	exact	a byte count
 MATCH	exact	a position
 MAX	exact	one of its arguments, with no rounding
+MDETERM	composite	a 2-D matrix argument the table's one-row array literal cannot write (arrays.md "MDETERM: partial-pivot LU"); gen-m5, gen-m9 and probes drive it
 MIN	exact	one of its arguments, with no rounding
+MINVERSE	composite	a 2-D matrix argument and an array result (arrays.md "MINVERSE: singularity rule"); gen-m5, gen-m9 and probes drive it
+MMULT	composite	2-D matrix arguments and an array result; gen-m5, gen-m9 and probes drive it
 MONTH	exact	an integer part of a day serial
+MUNIT	exact	an identity matrix of 0s and 1s (numbers.md "RADIANS, SQRTPI and MUNIT")
+N	exact	the number itself, 1 or 0 for a logical and 0 for text, with no rounding
+NETWORKDAYS	exact	a count of whole working days (dates.md "WORKDAY and NETWORKDAYS from serial 0")
+NETWORKDAYS.INTL	exact	a count of whole working days (dates.md "WORKDAY.INTL and NETWORKDAYS.INTL: weekend number coercion")
+NUMBERVALUE	composite	parses text with given separators; numeric literals cannot drive it; gen-m5, gen-m9 and probes drive it
+PI	exact	a constant with no arguments: the double nearest pi
 ROW	exact	a row number
 ROWS	exact	a row count
 SEARCH	exact	a character position
 SEARCHB	exact	a byte position
+SEQUENCE	composite	returns an array (arrays.md "Arrays past the grid: MAKEARRAY, SEQUENCE"); gen-m7, gen-m9 and probes drive it
 SHEET	exact	a sheet number
 SHEETS	exact	a sheet count
 SIGN	exact	returns -1, 0 or 1
+SUBTOTAL	composite	takes references only (references.md "SUBTOTAL and AREAS take references only"); gen-m5, gen-m6, gen-m7, gen-m9 and probes drive it
 SUMIF	composite	range and sum_range must be references; gen-m2, probes and ironcalc-calc drive it
 SUMIFS	composite	sum_range and criteria_range must be references; gen-m2, probes and ironcalc-calc drive it
+TIMEVALUE	composite	parses time text (dates.md "TIMEVALUE of "date time" text keeps serial-subtraction error"); gen-m6, gen-m9 and probes drive it
 TYPE	exact	a type code
 UNICODE	exact	a code point
+VALUE	composite	parses number text (criteria.md "read numbers with VALUE's grammar"); gen-m5, gen-m6, gen-m9 and probes drive it
 WEEKDAY	exact	an integer day of the week
 WEEKNUM	exact	an integer week number
+WORKDAY	exact	a whole serial over whole working days (dates.md "WORKDAY and NETWORKDAYS from serial 0")
+WORKDAY.INTL	exact	a whole serial over whole working days (dates.md "WORKDAY.INTL and NETWORKDAYS.INTL: weekend number coercion")
 XMATCH	exact	a position
 YEAR	exact	an integer part of a day serial
