@@ -3,7 +3,7 @@ id: T-3656
 title: "INDIRECT: probe and match reference text with spaces and reversed ranges"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
