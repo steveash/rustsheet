@@ -37,6 +37,7 @@ use super::correl::PairedMoments;
 use crate::expressions::token::Error;
 use crate::formatter::dates::excel_serial_to_ymd;
 use crate::functions::date_and_time::displayed_month_length;
+use crate::functions::math_and_trigonometry::gcd_lcm::gcd_i64;
 
 /// Most points `values` and `timeline` may each hold, and most points the completed series may
 /// span (gridcraft's limit; Excel's is unknown).
@@ -217,15 +218,6 @@ impl Axis {
     }
 }
 
-fn gcd(mut a: i64, mut b: i64) -> i64 {
-    while b != 0 {
-        let remainder = a % b;
-        a = b;
-        b = remainder;
-    }
-    a.abs()
-}
-
 /// The axis of sorted, distinct time stamps (at least two): a constant step, missing points
 /// allowed, or, for whole-day dates, a constant number of calendar months.
 fn detect_axis(times: &[f64]) -> Result<Axis, Error> {
@@ -283,7 +275,7 @@ fn detect_axis(times: &[f64]) -> Result<Axis, Error> {
             if difference <= 0 {
                 return Err(Error::NUM);
             }
-            step = gcd(step, difference);
+            step = gcd_i64(step, difference);
         }
     }
     let first_month = months.first().copied().ok_or(Error::NUM)?;
