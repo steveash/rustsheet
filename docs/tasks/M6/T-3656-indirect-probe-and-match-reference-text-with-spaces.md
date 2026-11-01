@@ -3,7 +3,7 @@ id: T-3656
 title: "INDIRECT: probe and match reference text with spaces and reversed ranges"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -27,11 +27,23 @@ text. Check what the reversed range normalises to with ROWS/COLUMNS/CELL("addres
 functions/lookup_and_reference/mod.rs and the reference-text parser it calls.
 
 ## Acceptance criteria
-- [ ] A probe case (excel-graph) covers the shapes above in A1 and R1C1 style.
-- [ ] The engine matches every probed cell; lookup.md states the rules.
-- [ ] Structured-reference spacing is left to T-3394.
-- [ ] Every quirk found is written up in docs/excel-semantics/lookup.md in the same PR, with its probe cells cited.
-- [ ] `make check` green; eval known failures only shrink (baseline updated); reviewers approve.
+- [x] A probe case (excel-graph) covers the shapes above in A1 and R1C1 style.
+- [x] The engine matches every probed cell; lookup.md states the rules.
+- [x] Structured-reference spacing is left to T-3394.
+- [x] Every quirk found is written up in docs/excel-semantics/lookup.md in the same PR, with its probe cells cited.
+- [x] `make check` green; eval known failures only shrink (baseline updated); reviewers approve.
 
 ## Out of scope
 - Structured-reference text (T-3394).
+
+## Outcome
+Probe `eval/suites/probes/cases/t3656-indirect-spaces-reversed` (excel-graph, 2026-11-01): 61 reference texts,
+each read with SUM, ROWS, COLUMNS and (same-sheet only) CELL("address"). Two engine bugs found and fixed:
+- Whitespace: INDIRECT refuses leading whitespace, tabs, NBSP, a space before `!` and a space-separated pair,
+  and drops trailing spaces/LF and spaces next to `:` or after `!`. The engine's lexer skipped all of them and
+  refused the colon spacing. New `indirect_reference_text` (expressions/utils) runs before both parsers.
+- Reversed A1 ranges (`B2:A1`, `C:A`, `3:1`, `Sheet2!B2:A1`) kept their corners reversed (SUM 0, ROWS
+  1.8e19); `indirect_of` now orders them with `Range::between`. R1C1 already ordered them.
+Written up in lookup.md ("INDIRECT reference text: where spaces are allowed", "INDIRECT of a reversed range
+is the range with its corners in order"). Web-only missing-sheet cells (resolved as external workbooks) were
+left out of the case. Structured-reference spacing stays with T-3394.

@@ -8,6 +8,7 @@ from rustsheet_tools.accuracy.defs import (
     fisher,
     rounding,
     student_t,
+    trig,
 )
 
-__all__ = ["annuity", "cashflow", "ceiling_floor", "discrete", "fisher", "rounding", "student_t"]
+__all__ = ["annuity", "cashflow", "ceiling_floor", "discrete", "fisher", "rounding", "student_t", "trig"]
