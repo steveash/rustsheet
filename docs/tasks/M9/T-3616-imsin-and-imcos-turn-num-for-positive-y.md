@@ -3,7 +3,7 @@ id: T-3616
 title: "IMSIN and IMCOS turn #NUM! for positive y between 709.7 and 709.75, below exp's overflow at 709.78: pin and implement the cut"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
