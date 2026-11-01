@@ -25,8 +25,9 @@ points.
 - Design question 1, the near-zero snap. docs/excel-semantics/numbers.md, "Near-zero snapping in addition and
   subtraction" (VERIFIED; T-0110, T-1131, T-3048, T-3066, T-3100, T-3145), says every SUM call returns exactly 0 when
   its final addition has opposite-sign addends and |result| < 8 ULP of the running total before the last addend.
-  AVERAGE snaps its sum before dividing. So `SUM(0.1,0.2,-0.3)` is 0, while the exact sum is 5.551115123125783e-17:
-  Excel's relative error is 1, far above G = 1e-4. This is a deliberate semantic rule, not an inaccurate kernel, so a
+  AVERAGE snaps its sum before dividing. So `SUM(0.1,0.2,-0.3)` is 0, while the exact sum of the doubles is
+  2.7755575615628914e-17 (5.551115123125783e-17 is Excel's unsnapped double total; decision 0224): Excel's relative
+  error is 1, far above G = 1e-4. This is a deliberate semantic rule, not an inaccurate kernel, so a
   decision 0188 R3 mark (follow the math) would be wrong. Settle one of these with a decision record:
   - (a) The definition includes the snap. It is a deterministic function of the doubles, so the math is 0 there.
   - (b) The definition is the plain exact sum, and the snap points are listed as Excel-over-G points that stay
