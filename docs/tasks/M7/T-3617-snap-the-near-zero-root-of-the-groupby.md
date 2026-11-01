@@ -24,4 +24,5 @@ GROUPBY and PIVOTBY snap the near-zero `+`/`-` root of their aggregation LAMBDA 
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- `GROUPBY(..,SUM)` (Calc!B44, B45): `#NAME?` in both Excel (graph) and the engine, already passing.
+- The helpers MAP, MAKEARRAY, BYROW, BYCOL, REDUCE, SCAN (T-3111).
