@@ -11,7 +11,7 @@ mod workday;
 mod yearfrac;
 use weekend::WeekendPattern;
 
-use crate::formatter::date_clock::{parse_date_clock_serial, SECONDS_PER_DAY_F64};
+use crate::formatter::date_clock::{parse_date_clock_serial, trim_spaces, SECONDS_PER_DAY_F64};
 
 pub(crate) fn is_leap_year(year: i32) -> bool {
     (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0)
@@ -213,7 +213,9 @@ impl Model {
     /// (probes/date-text-grammar B53: `DATEVALUE("1/2/2020 25:00")` is 43833, 3 Jan), with
     /// year-less text in [`Model::current_year`]. Excel: see docs/excel-semantics/dates.md.
     pub(crate) fn parse_datevalue_text(&self, value: &str) -> Option<i32> {
-        let (text, year) = (value.trim(), &|| self.current_year());
+        // Only the space character is trimmed: a tab, line break, no-break or ideographic space
+        // around the text is #VALUE!, as in VALUE (probes/date-text-shape-survey rows 84-88, 91).
+        let (text, year) = (trim_spaces(value), &|| self.current_year());
         let serial = if let Ok((serial, _)) = parse_date(text, self.locale, year) {
             serial
         } else {

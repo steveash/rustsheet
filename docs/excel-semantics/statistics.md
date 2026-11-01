@@ -926,19 +926,20 @@ PHI's read is probed separately). Every argument of these functions is `Lift`
 in the lifting table and each kernel reads its arguments in its scalar order; T.DIST.2T and TDIST read every argument
 before they check any ("Overflowing arguments, PERMUT's limit and argument error order" below). One scalar change
 here: BETA.DIST's `cumulative` given as a one-cell range was `#VALUE!` and is now its value (L11). BINOM.INV and
-CRITBINOM are `KernelWork::Weighted(4096)`: their search halves a `u64` interval at most 64 times, one incomplete-beta
-cdf each, up to about 65 us an element in release (`BINOM.INV(1E12,0.3,alpha)`). PERMUT is `Constant`: its product
+CRITBINOM are `KernelWork::Weighted(16384)` since T-3444: their search halves `[0, trials]` at most 31 times, one
+BINOM.DIST cdf each, up to about 200 us an element in release (`BINOM.INV(1E4,0.999,0.999999999999)`; it was 4096 at
+65 us before the search took BINOM.DIST's own cdf). PERMUT is `Constant`: its product
 stops once it is infinite, after at most 171 factors, where `PERMUT(1E15,1E15)` looped 10^15 times. The quantile searches of BETA.INV, F.INV,
 T.INV and CONFIDENCE.T lift since T-1848 (next section), and the incomplete-gamma functions (CHISQ.*, GAMMA.DIST,
 GAMMA.INV, POISSON) since T-1872 ("Incomplete gamma: per-call cap and lifting" below), and HYPGEOM.DIST, its cdf
 sum capped, and HYPGEOMDIST since T-1873 ("HYPGEOM.DIST: per-call cap and lifting" below).
-DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted BINOM.INV or CRITBINOM is charged 4096 units per element
-against the shared cell-visit cap of 2^27 (`limits::MAX_LIFTED_CELL_VISITS`), so one of more than 32,768 elements is
-`#ERROR!` before it runs where Excel computes it (`ROWS(BINOM.INV(5,0.4,SEQUENCE(40000)/40001))`, unit test
-`weighted_kernels_are_charged_their_weight`). At the worst case measured, 32,768 elements take about 2.1 s, the budget
-of the Bessel entries (engineering.md "BESSEL order cap").
+DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted BINOM.INV or CRITBINOM is charged 16384 units per element
+against the shared cell-visit cap of 2^27 (`limits::MAX_LIFTED_CELL_VISITS`), so one of more than 8,192 elements is
+`#ERROR!` before it runs where Excel computes it (`ROWS(BINOM.INV(5,0.4,SEQUENCE(10000)/10001))`, unit test
+`weighted_kernels_are_charged_their_weight`; 32,768 elements before T-3444). At the worst case measured, 8,192 elements
+take about 1.6 s, inside the budget of the Bessel entries (engineering.md "BESSEL order cap").
 Status: VERIFIED (excel-graph)
-Tasks: T-1290, T-1849, T-1755, T-1848
+Tasks: T-1290, T-1849, T-1755, T-1848, T-3444
 
 ## Quantile searches: per-call cap and lifting (T-1848)
 Rule: BETA.INV, BETAINV, F.INV, F.INV.RT, FINV, T.INV, T.INV.2T, TINV and CONFIDENCE.T lift every argument over an array
@@ -2655,6 +2656,28 @@ Implemented in: `crates/rustsheet-engine/src/functions/statistical/bratio/basym.
 Status: VERIFIED (excel-graph) to 1E-11 of the math; last digits UNVERIFIED (Excel's arithmetic in basym and in Loader's
 kernel at a large n not identified)
 Tasks: T-3352, T-3447, T-3443, T-3444, T-2586, T-2146
+
+## BINOM.DIST.RANGE and BINOM.INV at a large n sit on BINOM.DIST's own cdf (T-3444)
+Rule: Excel's BINOM.INV (and CRITBINOM, equal on every probe row) is the smallest k whose BINOM.DIST(k, n, p, TRUE) is
+at least alpha: on all 126 rows of probes/t3444-binom-range-inv-large-n Inv (n 1E4 to 2^31 - 2, p 0.3, 0.5 and 0.001,
+alpha 1E-6, 0.025, 0.3, 0.5, 0.975 and 0.999999) Excel's own cdf at the result is >= alpha and at the result minus one is
+below it, so the search is exact against BINOM.DIST, not an approximation. BINOM.DIST.RANGE(n, p, s1, s2) is Excel's
+BINOM.DIST(s2, n, p, TRUE) - BINOM.DIST(s1 - 1, n, p, TRUE) to the bit on 105 of the 126 Range rows (column A against
+column B), including every range starting at 0 (the cdf alone) and every range around the mean. A single-point range is
+Excel's BINOM.DIST pmf to the bit. The 21 that differ are all ranges from mean + 3 sd to mean + 5 sd, 2E-16 to 6E-14
+relative off that difference: there Excel takes another form, UNVERIFIED. A difference of upper tails,
+P(X > s1 - 1) - P(X > s2) with each tail bratio's w of I_p(k+1, n-k), lands within 1E-15 relative on 18 of the 21 rows
+(none bit-exact; A6 and A12 at n = 1E4 stay 1.6E-14 and 2.4E-14 off), but it was scored only on those rows and the
+probe has no range starting between the mean and mean + 3 sd, so it is a candidate (T-3740), not implemented.
+Status: VERIFIED (excel-graph, 2026-11-01) for BINOM.INV and the cdf-difference rows; the upper-tail form is
+UNVERIFIED.
+- Ours before T-3444: past the double-double walk both fell back to statrs, grossly wrong near the mean at a large n
+  (`BINOM.INV(1000000000,0.3,0.5)` 299998246 against a median of 300000000).
+- Ours now (T-3444): `binom.rs` `excel_binom_cdf` and `excel_binom_pmf` are BINOM.DIST's own paths. BINOM.INV's
+  bisection uses the cdf, and all 126 BINOM.INV and 126 CRITBINOM probe cells pass. BINOM.DIST.RANGE takes the pmf
+  for one point and the cdf from 0, then the double-double walk, then the cdf difference. Its probe misses are those
+  of BINOM.DIST's own last digits (T-3447) plus the 21 upper-tail rows (T-3740).
+Tasks: T-3444, T-3352, T-3447, T-3740, T-3741
 
 ## NEGBINOM.DIST's cdf is #NUM! at a huge number_s (T-3553)
 Rule: `NEGBINOM.DIST(f,s,p,TRUE)` is `#NUM!` at a huge number_s with enough failures, where the true cdf underflows
