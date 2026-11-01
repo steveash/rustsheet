@@ -772,6 +772,15 @@ impl UserModel {
     /// See also:
     /// * [`Model::range_clear_contents`]
     pub fn range_clear_contents(&mut self, range: &Area) -> Result<(), String> {
+        let diff_list = self.range_clear_contents_diffs(range)?;
+        self.push_diff_list(diff_list);
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// [`Self::range_clear_contents`] without pushing its history entry or evaluating: the diffs that
+    /// undo it, for an edit that records the clear with other changes as one step.
+    fn range_clear_contents_diffs(&mut self, range: &Area) -> Result<DiffList, String> {
         let sheet = range.sheet;
         // TODO: full rows/columns
         let mut old_value = Vec::new();
@@ -800,9 +809,7 @@ impl UserModel {
             old_value,
         }];
         diff_list.extend(link_diffs);
-        self.push_diff_list(diff_list);
-        self.evaluate_if_not_paused();
-        Ok(())
+        Ok(diff_list)
     }
 
     /// Returns the diffs that remove the links of the cells in `range`, so that
@@ -1085,11 +1092,30 @@ impl UserModel {
     ///
     /// See also [`Model::delete_rows`].
     pub fn delete_rows(&mut self, sheet: u32, row: i32, row_count: i32) -> Result<(), String> {
-        if let Some(area) = self.model.last_data_row(sheet, row, row_count) {
-            // The delete keeps a table's only data row and clears it ([`Model::delete_rows`],
-            // T-2338): record it as the clear it is, so undo restores the cells and moves nothing.
-            return self.range_clear_contents(&area);
-        }
+        let diff_list = if let Some(area) = self.model.last_data_row(sheet, row, row_count) {
+            // The delete keeps a table's first data row and clears it, and deletes the table's
+            // other data rows ([`Model::delete_rows`], T-2338, T-3259): one history step of the
+            // clear and the shorter delete, so undo restores both.
+            let mut diff_list = self.range_clear_contents_diffs(&area)?;
+            if row_count > 1 {
+                diff_list.extend(self.delete_rows_diffs(sheet, row + 1, row_count - 1)?);
+            }
+            diff_list
+        } else {
+            self.delete_rows_diffs(sheet, row, row_count)?
+        };
+        self.push_diff_list(diff_list);
+        self.evaluate_if_not_paused();
+        Ok(())
+    }
+
+    /// [`Self::delete_rows`] of plain rows without pushing its history entry or evaluating.
+    fn delete_rows_diffs(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        row_count: i32,
+    ) -> Result<DiffList, String> {
         let worksheet = self.model.workbook.worksheet(sheet)?;
         let mut old_data = Vec::new();
         // Collect data for all rows to be deleted
@@ -1138,9 +1164,7 @@ impl UserModel {
             count: row_count,
             old_data,
         });
-        self.push_diff_list(diff_list);
-        self.evaluate_if_not_paused();
-        Ok(())
+        Ok(diff_list)
     }
 
     /// Deletes `column_count` columns starting at `column`.

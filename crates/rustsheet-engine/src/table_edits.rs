@@ -55,7 +55,7 @@ enum Span {
 /// one-row deletes are probed, a wider one reaching a data edge is hand, T-2848). The first row of
 /// a table without a header row is a fallback, as for inserts (T-2845). A
 /// delete touching the header row is a fallback (Excel refuses it), and so is one of every data
-/// row (`Model::last_data_row` handles the one-row case) or one straddling the table's
+/// row (`Model::last_data_row` handles a delete of exactly every data row) or one straddling the table's
 /// edges (unprobed).
 fn row_span(
     (top, bottom): (i32, i32),
@@ -378,21 +378,24 @@ impl Model {
         self.resize_tables(sheet, edits.resized)
     }
 
-    /// The table on `sheet` whose only data row, under a header row, is `row`, when the row delete
-    /// of `row_count` rows at `row` is exactly that row: Excel then keeps the row and clears it, so
-    /// the table keeps one blank data row and nothing below it moves (T-2324
-    /// table-delete-row-all-data: `ROWS(Sales)` 1, `SUM(Sales[Qty])` 0, the plain `S!C4:C4` kept;
-    /// table-delete-row-all-data-below, T-2338: `=S!C10` reads `=S!C7` after four deletes at row 4,
-    /// three rows up, not four). Only the table's own cells of that row are cleared; what Excel does
-    /// to the row's cells outside the table, and to a table with a totals row, is unprobed (T-2848).
+    /// The first data row of the table on `sheet`, under a header row, whose data rows the row
+    /// delete of `row_count` rows at `row` covers exactly: Excel then keeps that row and clears it,
+    /// and deletes the table's other data rows, so the table keeps one blank data row and what is
+    /// below moves up `row_count - 1` rows (T-2324 table-delete-row-all-data: `ROWS(Sales)` 1,
+    /// `SUM(Sales[Qty])` 0, the plain `S!C4:C4` kept; table-delete-row-all-data-below, T-2338:
+    /// `=S!C10` reads `=S!C7` after four deletes at row 4; table-delete-rows-all-data-once, T-3259:
+    /// one delete of rows 4-7 gives the same, `ROWS(Sales[#All])` 2). Only the table's own cells of
+    /// the kept row are cleared; what Excel does to that row's cells outside the table, and to a
+    /// table with a totals row, is unprobed (T-2848).
     pub(crate) fn last_data_row(&self, sheet: u32, row: i32, row_count: i32) -> Option<Area> {
-        if row_count != 1 {
+        if row_count < 1 {
             return None;
         }
+        let last = row.checked_add(row_count - 1)?;
         let sheet_name = self.workbook.worksheet(sheet).ok()?.get_name();
         self.workbook.tables.values().find_map(|table| {
             let b = bounds(table)?;
-            let only = table.is_on_sheet(&sheet_name) && b.top < row && b.data == (row, row);
+            let only = table.is_on_sheet(&sheet_name) && b.top < row && b.data == (row, last);
             only.then_some(Area {
                 sheet,
                 row,

@@ -1108,8 +1108,14 @@ impl Model {
             return Err("Cannot delete rows because that would break an array formula".to_string());
         }
         if let Some(area) = self.last_data_row(sheet, row, row_count) {
-            // A table keeps its last data row, cleared (Model::last_data_row, T-2338).
-            return self.range_clear_contents(&area);
+            // A table keeps its first data row, cleared, and loses its other data rows
+            // (Model::last_data_row, T-2338, T-3259).
+            self.range_clear_contents(&area)?;
+            return if row_count > 1 {
+                self.delete_rows(sheet, row + 1, row_count - 1)
+            } else {
+                Ok(())
+            };
         }
         self.displace_pivots(sheet, PivotLines::Rows, row, -row_count)?;
         self.reset_dynamic_array_spills(sheet)?;

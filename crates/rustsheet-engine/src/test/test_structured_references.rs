@@ -221,7 +221,8 @@ fn row_deletes_keep_values() {
         (1, 1, false),
         (2, 1, true),
         (3, 1, true),
-        (2, 2, false),
+        // Every data row of the table (rows 2-3): it keeps one cleared row (T-3259).
+        (2, 2, true),
         (4, 1, true),
         (5, 1, true),
         (1, 5, false),
@@ -614,6 +615,43 @@ fn deleting_the_last_data_row_clears_it_and_undo_restores_it() {
     user.redo().unwrap();
     assert_eq!(value(user.get_model(), 0, 4, 3), "");
     assert_eq!(value(user.get_model(), 0, 7, 3), "99");
+}
+
+/// One delete of every data row keeps the first data row, cleared, and deletes the other three:
+/// what is below moves up three rows, not four, as four one-row deletes do
+/// (table-delete-rows-all-data-once, T-3259). In the user model it is one undo step.
+#[test]
+fn deleting_every_data_row_at_once_keeps_one_cleared_row() {
+    let mut model = edge_model(false);
+    model.set_user_input(0, 10, 3, "99".to_string()).unwrap();
+    model.set_user_input(1, 6, 1, "=S!C10".to_string()).unwrap();
+    model
+        .set_user_input(1, 7, 1, "=COUNTA(Sales[Region])".to_string())
+        .unwrap();
+    model
+        .set_user_input(1, 8, 1, "=ROWS(Sales[#All])".to_string())
+        .unwrap();
+    let mut user = crate::UserModel::from_model(model);
+    user.delete_rows(0, 4, 4).unwrap();
+    let model = user.get_model();
+    assert_eq!(model.workbook.tables["Sales"].reference, "B3:C4");
+    assert_eq!(formula(model, 1, 6, 1), "=S!C7");
+    assert_eq!(value(model, 1, 6, 1), "99");
+    assert_eq!(value(model, 1, 7, 1), "0");
+    assert_eq!(value(model, 1, 8, 1), "2");
+    assert_eq!(value(model, 0, 4, 3), "");
+    user.undo().unwrap();
+    let model = user.get_model();
+    // TODO(T-3634): undo restores the rows but not the table's extent (B3:C7), as for any delete
+    // of a table's bottom data rows.
+    assert_eq!(value(model, 0, 4, 3), "1");
+    assert_eq!(value(model, 0, 5, 3), "2");
+    assert_eq!(value(model, 0, 7, 3), "8");
+    assert_eq!(value(model, 0, 10, 3), "99");
+    user.redo().unwrap();
+    let model = user.get_model();
+    assert_eq!(value(model, 0, 4, 3), "");
+    assert_eq!(value(model, 0, 7, 3), "99");
 }
 
 #[test]
