@@ -5362,7 +5362,6 @@ F	probes/table-edits/table-insert-row-this-row-inside-data.case.json	F!G5
 F	probes/table-edits/table-insert-row-this-row-inside-data.case.json	F!G6
 F	probes/text-locale-calendars.case.json	S!A140
 F	probes/text-locale-calendars.case.json	S!A26
-F	probes/typed-mixed-fraction-number-format.case.json	Sheet1!B15
 F	probes/xirr-back-dated-stop.case.json	Sheet1!A31
 F	probes/xnpv-empty-values-cell.case.json	Sheet1!C8
 F	probes/yield-below-par-sweep.case.json	Y!A1
@@ -5518,4 +5517,3 @@ TC	probes/t2932-b2-calendar-twice.case.json	5
 TC	probes/t3029-b2-calendar-weekday.case.json	3
 TC	probes/t3101-b2-calendar-names.case.json	3
 TC	probes/typed-mixed-fraction-number-format.case.json	31
-TF	probes/typed-mixed-fraction-number-format.case.json	Sheet1!A15

@@ -3,7 +3,7 @@ id: T-3251
 title: "Typed minus-dollar mixed fraction with percent must stay text, not #ERROR!"
 milestone: M2
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,8 +22,11 @@ Gap triage 2026-11-01 (`make eval` on origin/main 408444f20): ours now leaves A1
 - probes/typed-mixed-fraction-number-format.case.json (2): Sheet1!A15, B15 Found by T-3237; `mixed_fraction` already rejects the input. Excel still gives that cell the number format `0.00%` (A15 ENTERED numberFormat), so the fix sets the format too.
 
 ## Acceptance criteria
-- [ ] A15/B15 of that probe pass (TF/F lines leave eval/baseline/probes.txt).
-- [ ] `make check` green; reviewers approve.
+- [x] A15/B15 of that probe pass (TF/F lines leave eval/baseline/probes.txt).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Typed `-$3 1/2%` no longer routes to the formula path (`formula_without_prefix`) and takes `0.00%` as text. Eval: probes/typed-mixed-fraction-number-format A15 (TF) and B15 (F) leave eval/baseline/probes.txt; no regressions.
