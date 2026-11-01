@@ -3,7 +3,7 @@ id: T-3492
 title: "gen-m5 arg-pairs batch: oracle-filled cells for the unseen argument-class pairs of SWITCH, IFS and IFNA"
 milestone: M5
 lane: functions-logic
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -48,3 +48,9 @@ gen-m5 gains an oracle-filled batch from `rustsheet-gen --policy arg-pairs` (T-3
 - Fixing the engine for the cells this batch finds (the owning tasks), beyond a one-line coercion fix in the
   function's own module that the PR also tests.
 - Single argument-kind probes (the research tasks named above) and other functions or milestones.
+
+## Outcome
+Added 5 gen-m5 cases (702 cells) from `--policy arg-pairs --functions SWITCH,IFS,IFNA`, filled by excel-graph.
+All 702 cells bit-exact on the first run, so no new known failures and no new owners needed. `pairwise` in
+report.json `argument_coverage` is now 1.0 for SWITCH, IFS and IFNA (was 0.63, 0.65, 0.68; 0 unseen pairs).
+gen-m5: 48685/48686 bit-exact; the one failure (bf8903e05ec369ca, Calc!A248) was already in the baseline.
