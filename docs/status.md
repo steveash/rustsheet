@@ -21,7 +21,13 @@ CI on `main` is green. Every `ci.yml` push run on `main` since the last run eith
 Merge train: `make merge-mode` reads `train` again. #2623 re-flipped it by owner ruling (decision 0208), and T-3488 (#2750, merged during this run) found the causes of the 2026-10-31 stall and raised the train's CI wait to 15 min (decision 0242).
 - **Stranded (daily threshold):** `make merge-train-stats STRANDED=1` at 19:47 UTC listed **31 stranded PRs**: #2778, #2777, #2775, #2774, #2773, #2772, #2771, #2770, #2769, #2768, #2766, #2765, #2764, #2762, #2761, #2760, #2759, #2758, #2757, #2753, #2752, #2751, #2750, #2748, #2746, #2745, #2742, #2733, #2730, #2676 and #2668. The train is moving but too slowly: batches of five merged at about 17:30, 18:26 and 20:01 UTC, while about 40 PRs were opened between 13:30 and 19:40 UTC. The lock was held by a train the whole time, with the next train queued.
 - Per decision 0224 that escalates, with no flip. It already had an owner, so I raised **T-3738** (throughput against arrivals, SPEC-0027's "Revisit") to **P0** with this evidence rather than file a duplicate. I also added to **T-3737** a second green-but-unmerged hold: train #2748 … #2750 went green at 19:25 UTC and squashed only at 20:01.
-- The full `make merge-train-stats` (p90 latency, red-train rate, bisection runs) stopped on a GitHub read reset (`connection reset by peer`), as it did last run, so those numbers are missing from this run.
+- `make merge-train-stats` (the first try stopped on a GitHub read reset; the retry at about 20:30 UTC finished):
+  - tree-check failures: 0, so no emergency flip;
+  - p90 marker-to-merge latency: 195.0 min on 2026-10-31 and 415.4 min on 2026-11-01, over the 60-min threshold, so it escalates;
+  - `merge-train/current`: 42 trains, red-train rate 14% (5/37), 22.0 bisection runs per day;
+  - the lock was held 73% of the time, and merge-stage CI runs per merged PR were 0.49;
+  - by then the stranded list had 35 PRs.
+  The latency and stranded thresholds both print `-> escalate`. Both are T-3738's evidence.
 - Ejected: #2534, #2638, #2657, #2684, #2687, #2749, #2755, #2763 and #2767 (`merge-train-ejected`); the janitor owns the mechanical ones.
 
 M2 is still current. M0–M2 probes (decision 0051) have 264 known failures, all 264 visibly off (200 last run), in three cases:
@@ -33,7 +39,7 @@ M2 is still current. M0–M2 probes (decision 0051) have 264 known failures, all
 
 Hygiene:
 - lint-debt: 91 allow entries (= last run);
-- duplicated lines: 2,893 (2,917 committed baseline; this PR ratchets `quality/duplication.json` down);
+- duplicated lines: 2,893 (2,917 committed baseline). I did not ratchet `quality/duplication.json` here: `quality/` is a protected path and needs a decision record (check_governance), so the next quality PR can take the drop;
 - oversized files: 8 (= last run).
 
 Merged since #2616 (fc4aeca4): 138 commits up to 1f30a9b1, plus the 5 during the run. None were reverted. All were committed by GitHub, each with its PR's `(#n)` suffix, from #2104 to #2747. Among them:
@@ -74,7 +80,11 @@ Spot-audit (2026-11-01; the last was 2026-10-25). I sampled 3 code PRs merged si
   - Excel fidelity found only extrapolations, all already in T-3419.
 - No real defect reached `main` in the sample, so no fix task was filed. Next audit on or after 2026-11-08.
 
-Step 9 (`train` mode): I ran one `make merge-train TRAIN=1` pass after the rest of this run. It queued behind the train holding the lock, so its result is in this PR's description, not here.
+Step 9 (`train` mode): one `make merge-train TRAIN=1` pass. It took the lock at about 20:44 UTC, after one train, and tested #2753, #2757, #2758, #2730 and #2761.
+- It deferred #2742 and #2733, which share history with #2730, and #2760, which conflicts with an earlier PR of the batch.
+- The eval gate failed. Bisection pinned the failure on #2753 (T-3588) alone, confirmed on `main`, so #2753 was ejected `ci-red`.
+- The hold budget then ran out with nothing merged.
+- `make janitor` runs after this commit; `gh api` writes work here, so not in step mode. Its dry run listed catch-ups for #2763, #2755, #2657, #2638 and #2534, and orphan comments for #2767, #2753 and #2684. Its results are in this PR's description.
 
 **Critical lane:** engine, harness, research
 
