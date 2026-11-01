@@ -16,8 +16,10 @@ from decimal import ROUND_HALF_EVEN, Decimal
 MAX_LITERAL = 9.99999999999999e307
 MIN_LITERAL = 2.22507385850721e-308
 
-Arg = float | int | bool
-"""One drawn argument: a real (float), an integer parameter (int) or a logical (bool)."""
+Scalar = float | int | bool
+Arg = Scalar | tuple[float | int, ...]
+"""One drawn argument: a real (float), an integer parameter (int), a logical (bool) or an array of
+numbers (a tuple, written as an array literal: IRR's flows, XIRR's dates)."""
 
 
 def round15(x: float) -> float:
@@ -54,7 +56,10 @@ def neighbour(b: float, up: bool) -> float:
 
 def text(a: Arg) -> str:
     """`a` as formula text: TRUE/FALSE, an integer's digits (15-digit exponent form above 1E15),
-    or a real's 15 significant digits in Excel's exponent style (`1.87E-297`)."""
+    a real's 15 significant digits in Excel's exponent style (`1.87E-297`), or an array literal of
+    those (`{-1000,300.5,800}`)."""
+    if isinstance(a, tuple):
+        return "{" + ",".join(text(x) for x in a) + "}"
     if isinstance(a, bool):
         return "TRUE" if a else "FALSE"
     if isinstance(a, int) and abs(a) < 10**15:

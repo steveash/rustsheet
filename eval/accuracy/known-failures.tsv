@@ -16,3 +16,45 @@ accuracy/T.INV.2T/s1!Calc!A78	T-3386	Excel #NUM! at p = 2.2E-308 where the quant
 accuracy/T.INV.2T/s1!Calc!A91	T-3363	quantile at df near 1E8 to 1E10: the engine and Excel are both off the math, differently
 accuracy/TINV/s1!Calc!A68	T-3386	Excel #NUM! at p = 2.2E-308 where the quantile is finite
 accuracy/TINV/s1!Calc!A78	T-3386	Excel #NUM! at p = 2.2E-308 where the quantile is finite
+accuracy/NPER/s1!Calc!A121	T-3367	R3 point: the engine reproduces Excel's tiny-rate NPER, not the math
+accuracy/NPER/s1!Calc!A130	T-3367	R3 point: the engine reproduces Excel's tiny-rate NPER, not the math
+accuracy/NPER/s1!Calc!A133	T-3367	R3 point: the engine reproduces Excel's tiny-rate NPER, not the math
+accuracy/NPER/s1!Calc!A135	T-3367	R3 point: the engine reproduces Excel's tiny-rate NPER, not the math
+accuracy/NPER/s1!Calc!A142	T-3367	R3 point: the engine reproduces Excel's tiny-rate NPER, not the math
+accuracy/NPER/s1!Calc!A143	T-3367	R3 point: the engine reproduces Excel's tiny-rate NPER, not the math
+accuracy/NPER/s1!Calc!A151	T-3367	R3 point: the engine reproduces Excel's tiny-rate NPER, not the math
+accuracy/NPER/s1!Calc!A152	T-3367	R3 point: the engine reproduces Excel's tiny-rate NPER, not the math
+accuracy/NPER/s1!Calc!A153	T-3367	R3 point: the engine reproduces Excel's tiny-rate NPER, not the math
+accuracy/NPER/s1!Calc!A156	T-3367	R3 point: the engine reproduces Excel's tiny-rate NPER, not the math
+accuracy/NPER/s1!Calc!A158	T-3367	R3 point: the engine reproduces Excel's tiny-rate NPER, not the math
+accuracy/NPER/s1!Calc!A162	T-3367	R3 point: the engine reproduces Excel's tiny-rate NPER, not the math
+accuracy/RATE/s1!Calc!A19	T-3585	Excel #NUM! where the math has a root
+accuracy/RATE/s1!Calc!A128	T-3585	Excel #NUM! where the math has a root
+accuracy/RATE/s1!Calc!A129	T-3585	Excel #NUM! where the math has a root
+accuracy/RATE/s1!Calc!A137	T-3585	Excel #NUM! where the math has a root
+accuracy/RATE/s1!Calc!A158	T-3585	Excel #NUM! where the math has a root
+accuracy/RATE/s1!Calc!A278	T-3585	Excel #NUM! where the math has a root
+accuracy/RATE/s1!Calc!A291	T-3585	Excel #NUM! where the math has a root
+accuracy/IRR/s1!Calc!A271	T-3347	conventional series, root near 0: the engine is #NUM! where Excel returns the root
+accuracy/IRR/s1!Calc!A280	T-3347	conventional series, root near 0: the engine is #NUM! where Excel returns the root
+accuracy/IRR/s1!Calc!A286	T-3347	conventional series, root near 0: the engine is #NUM! where Excel returns the root
+accuracy/IRR/s1!Calc!A288	T-3347	conventional series, root near 0: the engine is #NUM! where Excel returns the root
+accuracy/IRR/s1!Calc!A290	T-3347	conventional series, root near 0: the engine is #NUM! where Excel returns the root
+accuracy/IRR/s1!Calc!A298	T-3347	conventional series, root near 0: the engine is #NUM! where Excel returns the root
+accuracy/IRR/s1!Calc!A190	T-3548	conventional series: the engine is #NUM! where Excel returns the root
+accuracy/IRR/s1!Calc!A193	T-3548	conventional series: the engine is #NUM! where Excel returns the root
+accuracy/IRR/s1!Calc!A231	T-3548	conventional series: the engine is #NUM! where Excel returns the root
+accuracy/IRR/s1!Calc!A259	T-3548	conventional series: the engine is #NUM! where Excel returns the root
+accuracy/IRR/s1!Calc!A260	T-3548	conventional series: the engine is #NUM! where Excel returns the root
+accuracy/IRR/s1!Calc!A264	T-3548	conventional series: the engine is #NUM! where Excel returns the root
+accuracy/IRR/s1!Calc!A216	T-3548	long conventional series: Excel #NUM! where the engine returns the root
+accuracy/IRR/s1!Calc!A221	T-3548	long conventional series: Excel #NUM! where the engine returns the root
+accuracy/IRR/s1!Calc!A233	T-3548	long conventional series: Excel #NUM! where the engine returns the root
+accuracy/IRR/s1!Calc!A238	T-3548	long conventional series: Excel #NUM! where the engine returns the root
+accuracy/IRR/s1!Calc!A240	T-3548	long conventional series: Excel #NUM! where the engine returns the root
+accuracy/IRR/s1!Calc!A242	T-3548	long conventional series: Excel #NUM! where the engine returns the root
+accuracy/IRR/s1!Calc!A258	T-3548	long conventional series: Excel #NUM! where the engine returns the root
+accuracy/IRR/s1!Calc!A270	T-3548	long conventional series: Excel #NUM! where the engine returns the root
+accuracy/IRR/s1!Calc!A237	T-3548	long conventional series: Excel #DIV/0!, the engine #NUM!, the math a root
+accuracy/IRR/s1!Calc!A248	T-3548	long conventional series: Excel #DIV/0!, the engine #NUM!, the math a root
+accuracy/IRR/s1!Calc!A268	T-3548	long conventional series: Excel #DIV/0!, the engine #NUM!, the math a root

@@ -57,20 +57,43 @@ below, T-1450), non-ASCII letters (only `ü` is probed; the engine treats every 
     - With fraction digits `s.0`, `s.00` or `s.000`, the step is half of the last shown digit and General prints in
       units of that digit. `TEXT(5,"s.0 General")` = "0.0 0.5", `TEXT(45000,"s.0 General")` = "0.0 0.499997288",
       `TEXT(5,"s.00 General")` = "0.00 0.500000003", `TEXT(45000,"s.000 General")` = "0.000 0.499770977".
-      These are all whole serials. That the value is the seconds within the minute in those units when the time of day
-      has seconds (`TEXT(12345.678,"s.0 General")`) is an unprobed extrapolation; T-3419 probes it.
+      With a time of day that has seconds it is the shown fraction alone, in its own units, not the seconds within
+      the minute: `TEXT(12345.678,"s.0 General")` = "19.2 2.500000331", `TEXT(0.99999,"s.00 General")` = "59.14 14.1".
+      Fraction digits split the serial by themselves: `TEXT(5,"[s].0 General")` = "432000.0 0.5" and
+      `TEXT(5.25,"[s].0 General")` = "453600.0 0.5", not the value as with `[s]` alone.
   - With only elapsed tokens (`[h]`, `[m]`, `[s]`), General prints the value's magnitude. `TEXT(5.25,"[h] General")` =
     "126 5.25", `TEXT(0.001,"[s] General")` = "86 0.001", `TEXT(-5,"[h] General")` = "-120 5". A negative stays
-    formattable in the 1900 system, as with a lone elapsed token. Unprobed extrapolations, implemented this way and
-    probed by T-3419: `[m]` and `[s]` beside General on a negative, a serial past 9999-12-31 (`"[h] General"` on
-    3000000), and `"[s].0 General"`, which counts as elapsed-only.
+    formattable in the 1900 system, as with a lone elapsed token (`TEXT(-5,"[s] General")` = "-432000 5",
+    `TEXT(-5,"[m] General")` = "-7200 5"), and so does a serial past 9999-12-31 (`TEXT(3000000,"[h] General")` =
+    "72000000 3000000").
   - Otherwise as other date sections: `TEXT(-5,"d General")` and `TEXT(3000000,"d General")` are `#VALUE!`, text
     and booleans print as themselves (`TEXT("abc","d General")` = "abc"). In a 1904 workbook the day reads the 1904
     epoch and the residue is the same (`TEXT(0,"d General")` = "1 0.5").
-  - Open (T-3419): an elapsed token after a date token reads something else. `TEXT(5,"d [h] General")` is
-    "5 12 0.5", but `TEXT(5,"[h] d General")` is "120 5 0.5".
+  - **One register** (T-3419). The value General prints is Excel's one value register, and an elapsed `[h]`, `[m]`
+    or `[s]` that stands after a date or clock token (`d`, `yyyy`, `mm` as a month or a minute, `s`, `dddd`, `AM/PM`)
+    counts from it as a serial, with or without General in the section. The count rounds the register to the shown
+    second and truncates, as for a lone elapsed token. `TEXT(5,"d [h] General")` = "5 12 0.5", `"d [m] General"`
+    "5 720 0.5", `"d [s] General"` "5 43200 0.5", `TEXT(5,"d [h]")` = "5 12", `TEXT(12345.678,"d [h]")` = "18 472"
+    (19.69999995 days), `TEXT(12345.678,"d [m] General")` = "18 28368 19.69999995", `TEXT(45000,"d [h] General")` =
+    "15 12 0.499999803" (43199.98 s rounds to 12 h), `TEXT(5,"AM/PM [h]")` = "AM 12", `TEXT(5,"General d [h]")` =
+    "0.5 5 12". With fraction digits the register is the fraction residue: `TEXT(12345.678,"s.0 [h] General")` =
+    "19.2 60 2.500000331", and `TEXT(12345.678,"d [s].0 General")` = "18 216000.2 2.500000331", whose fraction digit
+    still reads the serial. An elapsed token before every date or clock token counts from the serial:
+    `TEXT(5,"[h] d General")` = "120 5 0.5". Clock tokens after the elapsed one read the serial:
+    `TEXT(12345.678,"d [h]:mm:ss")` = "18 472:16:19"; a bare `h` after `[h]` repeats the count
+    (`"d [h] h:mm"` is "18 472 472:16").
+  - An elapsed token after a clock token of its own unit or a larger one is `#VALUE!` for any value: `"h [h]"`,
+    `"hh [h]"`, `"h [m]"`, `"h [s]"`, `"h:mm [h]"`, `"d h [h]"`, `"h d [h]"`, `"mm:ss [m]"`, `"mm:ss [s]"`, `"s [s]"`,
+    `"ss [s]"`, `"s.0 [s]"`, with or without General. A smaller unit first is valid: `TEXT(12345.678,"s [h]")` =
+    "19 472", `TEXT(5,"ss [m] General")` = "00 720 0.5", `TEXT(5,"mm:ss [h] General")` = "00:00 12 0.5". A month `mm`
+    is no clock token: `TEXT(5,"mm [h] General")` = "01 12 0.5".
+  - Still unimplemented: fraction digits after `[h]` print (`TEXT(12345.678,"[h].0 General")` = "296296.2 2.500000331",
+    ours `#VALUE!`; T-3575).
+  - `TEXT(5,"d 0 General")` is `#VALUE!` (a digit placeholder beside a date token), and a literal comma in a date
+    section stays a literal: `TEXT(45000,"mmm d, yyyy General")` = "Mar 15, 2023 0.499999803".
   Evidence: probes/t3378-general-in-date-section (64 cells) and t3378-general-in-date-section-1904 (7 cells),
-  excel-graph 2026-10-31.
+  probes/t3419-elapsed-after-date-general (30 cells), t3419-elapsed-after-date-b (25 cells) and
+  t3419-elapsed-after-clock-c (14 cells), excel-graph 2026-10-31.
 - A one-section format holding `@` and other text applies General to a number: `TEXT(5,"x@")` = "5".
 Evidence: probes/text-format-bare-literals A1-A31, A57-A76 (excel-graph, 2026-10-15, T-1262); gen-m6/2c1a6e93a1974f48
 Calc!A15, gen-m6/63012866a9d8b7db Calc!A3 (excel-graph, 2026-10-09, T-1239).
@@ -795,7 +818,22 @@ Evidence: probes/text-locale-lunar-months-1900 (1206 cells), text-locale-lunar-e
 Evidence: probes/text-locale-calendars (145 cells), text-locale-calendars-detail (41), text-locale-japanese-year (20), text-locale-era-gregorian (23) (excel-graph, 2026-10-18).
 Implemented in: formatter/locale_tag.rs (`resolve_lcid`, `Calendar`, `japanese_era`), formatter/lunar_calendar.rs (lunar tables, `lunar_2101.bin` past 2100), format.rs (years, `e`, `g`).
 Status: VERIFIED (excel-graph)
-Tasks: T-1859, T-1613, T-1922, T-1923, T-1924, T-1925, T-2759
+
+### Numeral-system digits (bits 24-31 of a locale tag; T-1925)
+
+Evidence: probes/t1925-numeral-digits (cell row = N + 1; D: `#,##0.00` of 1020304.05 under `[$-N000409]`; A: `yyyy-mm-dd|e|mmmm` of 45000 under `[$-N000409]`, B: the same under `[$-N000411]`, C: `0.00|#,##0` of 1234567.89 under `[$-N000409]`).
+
+- The byte N changes the digits of the probed date fields (`yyyy`, `mm`, `dd`, `e`) and of plain numbers (the grouping `,` and decimal `.` stay ASCII); `mmmm` is untouched, and so is the month number of ja-JP's `3月` (the `3` stays ASCII under every numeral byte in the B column) while `e` in the same cell becomes native. Weekday, time fields and AM/PM are unprobed. With N = 0, 1 or 20-26 the LCID still applies: `[$-1000411]` prints the `5` and `3月` of ja-JP (B column), so a numeral byte must not drop the LCID's names or era. N = 0, 1 and 20-26 print ASCII digits.
+- Positional digit sets: 2 Arabic-Indic, 3 Persian, 4 Devanagari, 5 Bengali, 6 Gurmukhi, 7 Gujarati, 8 Odia, 9 Tamil, 10 Telugu, 11 Kannada, 12 Malayalam, 13 Thai, 14 Lao, 15 Tibetan, 16 Myanmar, 17 Ethiopic, 18 Khmer, 19 Mongolian. Tamil (9) and Ethiopic (17) have no zero digit, so a zero stays ASCII `0` (N=9: `௨0௨௩-0௩-௧௫`); column D confirms it in plain numbers (N=9 `௧,0௨0,௩0௪.0௫`, N=17 `፩,0፪0,፫0፬.0፭`).
+- 27-31 are CJK numerals. Date: 27 `二〇二三-〇三-十五` (positional year, day with 十), 28 `弐〇弐参-〇参-壱拾伍`, 29 fullwidth `２０２３-０３-１５`, 30 `二○二三-○三-十五` (N=27 uses 〇 U+3007, N=30 uses ○ U+25CB), 31 `贰零贰叁-零叁-壹拾伍`. Plain numbers are positional (D, N=27 `一,〇二〇,三〇四.〇五`, N=28 `壱,〇弐〇,参〇四.〇伍`, N=31 `壹,零贰零,叁零肆.零伍`; C, 27 `一二三四五六七.八九`, 28 `壱弐参四伍六七.八九`, 31 `壹贰叁肆伍陆柒.捌玖`).
+- Not implemented. Ours: a nonzero numeral byte drops the LCID entirely, so we also lose the ja-JP era and month names (B2 expects "2023-03-15|5|3月", we print "2023-03-15|2023|March"). `resolve_lcid` returns `Silent` for any N (TODO(T-3532) there). The probe cells are known failures in the baseline; the implementation is filed as T-3532.
+
+**Unrelated quirk the probe found (column C). Rule:** `TEXT(1234567.89,"[$-409]0.00|#,##0")` is "1234567.89|0": with a `#,##0` run after the decimal point and a literal, the integer part gets no thousands grouping and the trailing run prints just `0`. We print "1,234,567.89|0". This is why C1 fails with no numeral byte (probes/t1925-numeral-digits C1, C2, C21-C27); filed as T-3598.
+
+Status: VERIFIED (excel-graph)
+Implemented in: not implemented (T-3532)
+
+Tasks: T-1859, T-1613, T-1922, T-1923, T-1924, T-1925, T-2759, T-3532, T-3598
 
 ## Displayed text (`Range.text`) of a formatted cell (T-1610)
 Rule: excel-graph's `Range.text` is the cell's value under its number format, and it does not

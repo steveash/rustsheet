@@ -11,6 +11,7 @@ import mpmath
 import pytest
 
 from rustsheet_tools.accuracy import eval_math
+from rustsheet_tools.accuracy.defs.cashflow import IRR, XIRR
 from rustsheet_tools.accuracy.defs.student_t import T_DIST, cdf
 from rustsheet_tools.accuracy.eval_math import case_math, fit_args, math_path, single_call, write_suite
 from rustsheet_tools.accuracy.model import Definition, Interval, MathArg, NoValueError, Param
@@ -44,6 +45,21 @@ def test_fit_args_follows_the_parameters() -> None:
     assert fit_args(T_DIST, [1.5, 3.0]) == "argument count"
     assert fit_args(T_DIST, ["1", 3.0, True]) == "non-numeric argument"
     assert fit_args(T_DIST, [True, 3.0, True]) == "logical for a number"
+    assert (
+        fit_args(T_DIST, [[1.5, 2.0], 3.0, True]) == "non-numeric argument"
+    )  # a range for a scalar parameter
+
+
+def test_fit_args_reads_an_array_parameter_row_major() -> None:
+    assert fit_args(XIRR, [[[-100.0, 30.0], [80.0, 1.0]], [36526, 36600, 36700, 36800]]) == [
+        (-100.0, 30.0, 80.0, 1.0),
+        (36526.0, 36600.0, 36700.0, 36800.0),
+    ]
+    assert fit_args(IRR, [[-100.0, True]]) == "non-numeric array element"
+    assert fit_args(IRR, [[-100.0, "x"]]) == "non-numeric array element"
+    assert fit_args(IRR, [[-100.0, None]]) == "non-numeric array element"
+    assert fit_args(IRR, [[]]) == "non-numeric array element"
+    assert fit_args(IRR, [5.0]) == "scalar for an array"
 
 
 def test_case_math_writes_values_and_skips_what_it_cannot_read(tmp_path: Path) -> None:
