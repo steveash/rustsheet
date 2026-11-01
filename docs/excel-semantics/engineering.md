@@ -995,7 +995,7 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   real part -0.208738033086954, ours ...955): every pairing of the series, libm and form sinh with the form, libm and
   series cosh scores the same 105/111 complex IMCOSH and 71/75 complex IMCSCH texts and none fits these three (the
   other misses there are notation, T-3560). Status: VERIFIED (excel-graph) for the real IMSECH and IMCSCH kernels at
-  |x| <= 0.01; UNVERIFIED for B15, D15 and D29. Ours: `imsech`, `imcsch` in functions/engineering/complex/trig.rs.
+  |x| <= 0.01; UNVERIFIED for B15, D15 and D29 (T-3755 tries the trig and division candidates). Ours: `imsech`, `imcsch` in functions/engineering/complex/trig.rs.
 - **An IM* part with 14 significant digits at exponent -6 is plain text (T-3545).** `IMSIN("0-1.03615953980931E-06i")`
   is `-0.0000010361595398356i` (21 characters without the sign, probes-numeric/t3545-imsin-imcos-small-imag-sweep
   A128), and so are A43, B49 and B81 there (`IMCOS("-0.856146645807608+1.42428827512383E-06i")` is
