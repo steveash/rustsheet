@@ -21,7 +21,7 @@ The volatile functions, which neither exemption class fits, get a ruling.
 ## Context
 - `rustsheet-eval accuracy` on main (8ee20308) prints `missing tables 323`: M2 10, M5 74, M6 16, M7 2 and M9 221
   (`eval/catalog/scope.json`, `scope: in` and `returns: number`, minus `eval/accuracy/exempt.tsv`). Open tasks cover
-  M2 (T-3548, T-3549, T-3550) and decision 0188's 18 M9 functions (T-3358, T-3529, T-3535, T-3543). No task covers
+  M2 (T-3555, T-3549, T-3550) and decision 0188's 18 M9 functions (T-3358, T-3529, T-3535, T-3543). No task covers
   the 92 functions of M5, M6 and M7, so Gate A, a Phase 1 exit gate (decision 0188 R1(a)), cannot hold.
 - The 92 functions:
   - M5: ACOS, ACOSH, ACOT, ACOTH, AGGREGATE, ARABIC, ASIN, ASINH, ATAN, ATAN2, ATANH, CEILING, CEILING.MATH,
@@ -58,7 +58,7 @@ The volatile functions, which neither exemption class fits, get a ruling.
   that has a table fails the check, so check the open table tasks before exempting.
 - Group the functions that need a table into table tasks of at most about six functions each (an M task, like the
   T-3358 slices), by family: trig, hyperbolic, rounding, exp/log/power, combinatorics, date fractions. Create each
-  with `make new-task`, and depend on T-3548 for the rounding family so the decimal-math rule is reused.
+  with `make new-task`, and depend on T-3555 for the rounding family so the decimal-math rule is reused.
 
 ## Acceptance criteria
 - [ ] A decision record classifies each of the 92 functions (or the recounted list) as `exact`, `composite`, the

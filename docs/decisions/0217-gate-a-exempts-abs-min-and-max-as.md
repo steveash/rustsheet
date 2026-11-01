@@ -4,7 +4,7 @@
 - **Context:** Gate A (decision 0188 R2, SPEC-0029 "Gate A holds") holds only when every in-scope catalog
   function with `returns: number` has a reference table or an `exempt.tsv` line. `rustsheet-eval accuracy`
   on main printed `missing tables 323`. Ten of them are M2 functions, and M2 is the current milestone.
-  T-3548 gives ROUND, ROUNDUP and ROUNDDOWN tables, and T-3549 does the same for SUM and AVERAGE. That leaves
+  T-3555 gives ROUND, ROUNDUP and ROUNDDOWN tables, and T-3549 does the same for SUM and AVERAGE. That leaves
   five functions:
   - **ABS** (`number`, `mode: value`) returns its argument or the argument's negation. Both are exact in
     binary floating point, so there is no kernel whose rounding a table could measure. The coercion of a text
@@ -24,7 +24,7 @@
     1571 and 1528 attributed cells for them.
 - **Decision:** `eval/accuracy/exempt.tsv` lists ABS, MAX and MIN as `exact` and SUMIF and SUMIFS as
   `composite`, naming gen-m2, probes and ironcalc-calc as the suites that drive them.
-- **Consequences:** `missing tables` drops by 5, from 323 to 318. After T-3548 and T-3549, no M2 function is
+- **Consequences:** `missing tables` drops by 5, from 323 to 318. After T-3555 and T-3549, no M2 function is
   missing a table. The SUMIF and SUMIFS sums stay measured only by the eval suites, where Gate B counts
   them. If a later probe shows a scalar-literal form that Excel accepts for either function, a table task
   replaces the exemption, with its own decision record. AVERAGEIF, AVERAGEIFS, MINIFS, MAXIFS and the other

@@ -12,14 +12,14 @@ spec: docs/specs/SPEC-0029-gate-a-accuracy-gate.md
 ---
 
 ## Goal
-After this task, every M2 function that Gate A counts as missing has a table task (T-3548, T-3549) or an
+After this task, every M2 function that Gate A counts as missing has a table task (T-3555, T-3549) or an
 `exempt.tsv` line. The five M2 functions that need no reference table get their line, backed by a decision record.
 
 ## Context
 - `rustsheet-eval accuracy` on main (8ee20308) prints `missing tables 323`. Ten of them are M2 functions (M2 is the
   current milestone): ABS, AVERAGE, MAX, MIN, ROUND, ROUNDDOWN, ROUNDUP, SUM, SUMIF, SUMIFS. Count them with
   `eval/catalog/scope.json` (`scope: in`, `returns: number`) minus the functions named in `eval/accuracy/exempt.tsv`.
-  T-3548 owns the three rounding functions and T-3549 owns SUM and AVERAGE. This task owns the other five.
+  T-3555 owns the three rounding functions and T-3549 owns SUM and AVERAGE. This task owns the other five.
 - `eval/accuracy/exempt.tsv` classes (SPEC-0029 "Gate A holds"; T-3379):
   - `exact`: no floating-point kernel.
   - `composite`: a table of scalar literals cannot drive the function; the reason names the eval suites that do.
@@ -36,7 +36,7 @@ After this task, every M2 function that Gate A counts as missing has a table tas
   - If the evidence argues against one of these classes (for example, a scalar-literal form that Excel accepts),
     file a table task for that function instead of exempting it, and say so in the record.
 - A line naming a function that has a table, or that is not an in-scope numeric catalog function, fails the check
-  (exempt.tsv header). So this task must not touch the five functions of T-3548 and T-3549.
+  (exempt.tsv header). So this task must not touch the five functions of T-3555 and T-3549.
 
 ## Acceptance criteria
 - [x] A decision record justifies each of the five lines, citing the catalog modes and the semantics entries above.
@@ -46,7 +46,7 @@ After this task, every M2 function that Gate A counts as missing has a table tas
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
-- Tables for ROUND, ROUNDUP, ROUNDDOWN, SUM and AVERAGE (T-3548, T-3549).
+- Tables for ROUND, ROUNDUP, ROUNDDOWN, SUM and AVERAGE (T-3555, T-3549).
 - Exemptions for M5–M9 functions (T-3551 handles M5–M7; M9 is not filed yet).
 
 ## Outcome
