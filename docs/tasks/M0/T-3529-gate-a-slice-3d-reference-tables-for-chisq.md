@@ -65,13 +65,13 @@ In progress (2026-11-01; resumed by an opus run at 03:55 UTC after 2 h idle): fo
     uniform-asymptotic incomplete gamma in the generator.
   - The tiny-p R3 points of BETA.INV and CHISQ.INV.RT. No point is marked here, so no decision record is needed;
     T-3578 fixes their regions.
-- **probes-numeric math sidecars:** not done yet. The first session (budget reached) stopped
-  `rustsheet-accuracy math --suite probes-numeric` after more than 20 minutes and discarded its partial output.
-  T-3358's run took about 2 minutes. The slowdown is probably the new gamma definitions on probes-numeric's huge-shape
-  cells (shape 1E9 and above, where the series needs about 20·sqrt(a) terms). Before rerunning, make gamma.py's
-  `lower_tail`/`upper_tail` raise NoValueError above a shape cap (for example 1E8, the generator's reach; T-3578 owns
-  the larger shapes), so those cells are skipped rather than ground through.
-- **Remaining:** the sidecars as above, then `make check`, the review panel and marking the PR ready (#2668, draft).
+- **probes-numeric math sidecars:** regenerated with the new definitions and committed. The first session's run did
+  not finish in 20 minutes: the summed expansions take about 20·sqrt(a) terms, and probes-numeric has shapes from 1E9.
+  gamma.py now gives no value above a shape of 1E8 (`SHAPE_CAP`; NoValueError, so the cell is skipped), and the
+  larger shapes stay with T-3578. The run took 14.5 minutes for 341632 math cells in 137 cases (204 cells skipped as not converged
+  or too slow); 66 sidecars are new (BETA.*, CHISQ.*, GAMMA.INV and the legacy BETADIST, BETAINV and CHIINV cells) and
+  5 gain cells, about 34 MB.
+- **Remaining:** `make check`, the review panel and marking the PR ready (#2668, draft).
 - **Eval delta:** none. Gate A gains 4 tables (1391 points in 10 tables), and the eval suites, baselines and gates
   are unchanged.
 
