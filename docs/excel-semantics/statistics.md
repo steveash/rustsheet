@@ -5471,7 +5471,7 @@ Region (T-3358, from its R3-marked points; still bounded by p < 1e-150):
 - T.INV: p from 2.4E-259 to 9.0E-222 at df 10068 to 274584, plus the assessment's `T.INV(1.87E-297,3937)`.
 - F.INV: p from 2.2E-308 to 9.0E-245 at (d1, d2) of (17, 50), (39, 3), (1024, 56), (107702, 58) and (215432724, 6).
 
-The assessment's "df ≥ 1e6" does not hold for these points. Tables for BETA.INV and CHISQ.INV.RT are T-3529's, and
+The assessment's "df ≥ 1e6" does not hold for these points. Tables for BETA.INV and CHISQ.INV.RT are T-3529's and T-3578's (T-3529 landed CHISQ.INV.RT's s1 batch unmarked; T-3578 marks the region), and
 their regions are fixed there. Points of these functions outside the region are not covered, even where Excel is off by
 more than G, and they need an owner ruling:
 - T.INV and F.INV at p from 1.2E-69 to 8.2E-131 (accuracy/T.INV/s1 A91, A96; F.INV/s1 A164, A169), owned by T-3544;

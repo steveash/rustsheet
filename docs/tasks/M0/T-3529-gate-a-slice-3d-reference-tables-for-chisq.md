@@ -63,8 +63,8 @@ Done (2026-11-01) for four of the five tables; the rest is split to T-3578.
     runs, while the other four tables filled in the same runs.
   - The huge-shape batch with the R3 points of "GAMMA.INV at a huge shape, closed-form branch". It needs a
     uniform-asymptotic incomplete gamma in the generator.
-  - The BETA.INV tiny-p R3 points. The s1 batches hold no point in an R3 region, so no mark or decision record is
-    needed here.
+  - The tiny-p R3 points of BETA.INV and CHISQ.INV.RT. No point is marked here, so no decision record is needed;
+    T-3578 fixes their regions.
 - **probes-numeric math sidecars:** regenerated with the new definitions.
 - **Eval delta:** none. Gate A gains 4 tables (1391 points in 10 tables), and the eval suites, baselines and gates
   are unchanged.
