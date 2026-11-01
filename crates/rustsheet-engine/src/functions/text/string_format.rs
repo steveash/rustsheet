@@ -258,33 +258,38 @@ impl Model {
                 "Text too long".to_string(),
             ));
         }
-        // Every occurrence of the group character goes before anything else is read; text that is
-        // empty then is 0 (gen-m5/5704666097cbc5b2 Calc!A392).
-        let text = text.replace(group_sep, "");
+        let text = numbervalue_text(&text, decimal_sep, group_sep);
         let trimmed = text.trim();
         if trimmed.is_empty() {
             return Ok(0.0);
         }
 
-        // Handle percentage suffix
-        let (trimmed, pct_count) = {
-            let mut t = trimmed;
-            let mut count = 0u32;
-            while t.ends_with('%') {
-                t = &t[..t.len() - 1];
-                count += 1;
-            }
-            (t.trim_end(), count)
-        };
-
-        // Only a bare "%" run is left empty here; empty text returned 0 above.
-        if trimmed.is_empty() {
-            return Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "Empty string".to_string(),
-            ));
+        // A trailing run of "%" divides by 100 each; text of "%" signs alone is 0: `"%"` and
+        // `"%%"` (probes/t3647-numbervalue-percent-and-controls A10, A11).
+        let mut pct_count = 0u32;
+        let mut trimmed = trimmed;
+        while let Some(rest) = trimmed.strip_suffix('%') {
+            trimmed = rest;
+            pct_count += 1;
         }
+        if trimmed.is_empty() {
+            return Ok(0.0);
+        }
+        // One leading "%" counts too, also after a sign or "(", but not with currency: `"%1.5"`,
+        // `"-%1.5"`, `"%-1.5"` and `"(%1.5)"` read, `"%%1.5"`, `"%$1.5"` and `"$%1.5"` are #VALUE!
+        // (probes/t3647-numbervalue-percent-and-controls A1-A8; VALUE agrees on `"%1.5"`, A13).
+        let leading = strip_leading_percent(trimmed);
+        if let Some(rest) = &leading {
+            if rest.contains(['$', '€']) {
+                return Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "Percent with currency".to_string(),
+                ));
+            }
+            pct_count += 1;
+        }
+        let trimmed = leading.as_deref().unwrap_or(trimmed);
 
         let cleaned = trimmed.replace(decimal_sep, ".");
 
@@ -300,10 +305,7 @@ impl Model {
         // Then the text reads as VALUE reads it: currency, parentheses, dates and clock text past
         // 24 hours too (docs/excel-semantics/text.md "NUMBERVALUE reads text as VALUE does, with
         // its own separators"; gen-m5/033e65b92653f425 A161, ae9ed30812c4d62c A285,
-        // 6b831f5e2a20bc34 A227), but with every space removed first, so
-        // "12:30 PM" is "12:30PM" and #VALUE! where VALUE reads it (gen-m5/bbbd316c346ce645 A207,
-        // fc81c2f704bef138 A194, 6a8bb7cd6d7769ad A357 against 49bfbf67a1409563 A217).
-        let cleaned = cleaned.replace(' ', "");
+        // 6b831f5e2a20bc34 A227).
         let number = parse_excel_number(&cleaned)
             .or_else(|| self.parse_number_text(&cleaned, &["$", "€"], &|| self.current_year()));
         match number {
@@ -470,6 +472,35 @@ fn proper_case(s: &str) -> String {
     result
 }
 
+/// NUMBERVALUE's text once its group separators and whitespace are gone. The group character is
+/// removed only before the first decimal separator: after it, it stays, so a digit reads as a
+/// digit and anything else is #VALUE! (`NUMBERVALUE("1.5,2")` is #VALUE!, `("17582","7","8")`
+/// 1.582, `("1,2.3")` 12.3). Every space, tab, line feed and carriage return is removed wherever
+/// it is, but not other control characters or other spaces (NBSP, U+3000, U+202F): "1"&CHAR(9)&"234.5"
+/// is 1234.5 and "1"&CHAR(160)&"234.5" #VALUE! (docs/excel-semantics/text.md "NUMBERVALUE removes
+/// group separators only before the decimal separator"; probes/t3647-numbervalue-separator-placement
+/// rows 3, 22-27, 37, 39-41, probes/t3647-numbervalue-percent-and-controls A17-A29).
+fn numbervalue_text(text: &str, decimal_sep: char, group_sep: char) -> String {
+    let (head, tail) = text.find(decimal_sep).map_or((text, ""), |i| text.split_at(i));
+    head.chars()
+        .filter(|&c| c != group_sep)
+        .chain(tail.chars())
+        .filter(|c| !matches!(c, ' ' | '\t' | '\n' | '\r'))
+        .collect()
+}
+
+/// The text without its one leading "%", which may follow a leading sign or "(", or `None` when
+/// it has none (probes/t3647-numbervalue-percent-and-controls A1-A8).
+fn strip_leading_percent(text: &str) -> Option<String> {
+    if let Some(rest) = text.strip_prefix('%') {
+        return Some(rest.to_string());
+    }
+    let mut chars = text.chars();
+    let first = chars.next().filter(|c| matches!(c, '-' | '+' | '('))?;
+    let rest = chars.as_str().strip_prefix('%')?;
+    Some(format!("{first}{rest}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::format_abs;
@@ -518,3 +549,4 @@ mod tests {
         assert!(text.starts_with("17976931348623200000"));
     }
 }
+
