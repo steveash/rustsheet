@@ -429,7 +429,7 @@ Tasks: T-2793, T-2810
   (below, "neither `sqrt(x²+y²)` nor `hypot`"), unexplained. See "IMPOWER past the angle cut" for bases past the cut.
 - IMLN, IMLOG10 and IMLOG2 use the same modulus: `IMLN("0.7071067811865476+0.7071067811865476i")` is
   `-6.66133814775094E-16+0.785398163397448i` (ln of 0.9999999999999993; `sqrt` would give -7.77E-16), IMLOG10 `-2.89298239965986E-16+..`,
-  IMLOG2 `-9.61027951144476E-16+..` (probes/eng-imln-modulus A1, A6, A11; T-2117). That modulus is the double sum of the squares with
+  IMLOG2 `-9.61027951144476E-16+..` (probes/eng-imln-modulus A1, A6, A11; T-2117). IMSQRT keeps `sqrt(x²+y²)`: its first cell cannot tell (15 digits agree) and Excel's "0" for `3E-200+4E-200i` and `1E-170+1E-170i` (x² underflows; A18, A20) matches only that form. That modulus is the double sum of the squares with
   its root taken in x87 extended precision and rounded again to a double (`extended_sqrt`, numbers.md "Division
   rounds twice"), not `hypot` and not IMABS's scaled form (T-3643). The second rounding shows near |z| = 1:
   `0.999999999999999+1E-8i` sums to 1-17·2^-53, whose extended root is the midpoint 1-8.5·2^-53, which rounds to
@@ -454,9 +454,11 @@ Tasks: T-2793, T-2810
   digit high: `IMSQRT("0.999999999999999")` is `1` and `IMSQRT("-0.999999999999999")` `6.1257422745431E-17+1i`
   (ours 0.999999999999999: the engine's root is 1-5·2^-53, Excel's at least 1-4·2^-53; A5, A15 and the 1E-300,
   1E-20, 1E-8 imaginary columns of rows 5 and 15, 14 cells, phase-1b, unexplained).
-- IMSECH over the same grid: `#NUM!` for |y| ≥ 1E20 in every row (columns J, K, T, U; T-3642's argument cut), and
-  `IMSECH("0.999999999999999±10i")` and its negation one digit off in the 15th (H5, H15, R5, R15; phase-1b). Every
-  other IMSECH grid cell agrees with ours (t3643-imsech-grid). IMSQRT keeps `sqrt(x²+y²)`: its first cell cannot tell (15 digits agree) and Excel's "0" for `3E-200+4E-200i` and `1E-170+1E-170i` (x² underflows; A18, A20) matches only that form.
+- IMSECH over the same grid: `#NUM!` for |y| ≥ 1E20 when |x| ≤ 10 (rows 1-8 and 12-18 of columns J, K, T, U; 60
+  cells, T-3642's argument cut), while |x| ≥ 1E8 gives "0" there (`IMSECH("1E8+1E20i")`, `IMSECH("-1E300+1E20i")`,
+  `IMSECH("1E300+1E300i")`: J9, J10, J11, J19-J21, K19; the cosh overflow wins). `IMSECH("0.999999999999999±10i")` and
+  its negation are one digit off in the 15th (H5, H15, R5, R15; phase-1b, T-3795). Every other IMSECH grid cell
+  agrees with ours (t3643-imsech-grid).
 - IMLN, IMLOG10 and IMLOG2 are `#NUM!` when both parts are nonzero and `x²+y²` is infinite or subnormal: `1E153+1E153i` works,
   `1E154+1E154i` (sum 2E308) and `1E-154+1E-154i` (sum 2E-308 < 2.2250738585072014E-308) are `#NUM!`, `1.5E-154+1.5E-154i`
   (2.25E-308), `1E-160+1i` and `1.1E154+0.1E154i` work, and a zero part exempts the number (`IMLN("1E-160+0i")`,
@@ -644,8 +646,8 @@ angle"); cosh and sinh are libm's, except IMSECH's and IMCSCH's (IMSINH's `1/u` 
   `IMCSC("1+1E-9i")` is `1.18839510577812-7.6305972223263E-10i` and `IMCOT("1+1E-9i")`
   `0.642092615934331-1.41228292743739E-09i` (a real part of 1 keeps the kernel well conditioned).
 - UNVERIFIED: for |x| ≥ 2^27 (SIN's own `#NUM!` cut) the reciprocal kernels take libm's sine and cosine.
-- IMLOG2 (T-2231, superseding the T-2044 time-box; its modulus is now the logs' doubly rounded root, T-3643, which
-  fits the same cells): `ln` of IMABS's scaled modulus and the argument (`atan2`),
+- IMLOG2 (T-2231, superseding the T-2044 time-box; modulus model replaced by T-3643): `ln` of the logs' doubly
+  rounded modulus (above) and the argument (`atan2`),
   both times K = 1.4426950408889636, the double one ulp above log2 e (= `1/ln 2` with the double one ulp below ln 2).
   It fits all 103 distinct real and 103 imaginary parts of IMLOG2 cells in the eval suites (sweep N/O, COMPLEXs AH19,
   eng-im-overflow-edges A104-A109, gen-m9, eng-im-overflow-edges-2 A35-A44). The earlier candidate, dividing

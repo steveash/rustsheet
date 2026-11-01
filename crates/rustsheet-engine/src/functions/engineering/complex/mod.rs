@@ -345,7 +345,7 @@ impl Model {
             // ([`atan2_or_libm`]); its subnormal angle is 0 (`IMPOWER("1E20+1E-300i",1)` is
             // "1E+20") and a -0 imaginary part with x < 0 is +π, where `atan2` gave a tiny part and
             // -π.
-            let angle = atan2_or_libm(x, y) * n;
+            let angle = atan2_or_libm(x, y, None) * n;
             // An underflowed radius of 0 is "0" without reading the angle
             // (`IMPOWER("0.5i",134217728)`; probes/eng-impower-imdiv-edges A28-A35).
             if radius == 0.0 {
@@ -771,18 +771,22 @@ fn imlog2_parts(modulus: f64, angle: f64) -> (f64, f64) {
     (modulus.ln() * k, angle * k)
 }
 
-/// Whether the quotient `y/x` of Excel's ATAN2 kernel overflows (`#NUM!` in ATAN2). The logs are
-/// then `#NUM!` and IMSQRT's angle is 0 (probes/t3643-imlog10-grid J2, t3643-imsqrt-grid J2;
-/// T-3643).
+/// Whether the quotient `y/x` of Excel's ATAN2 kernel overflows (`#NUM!` in ATAN2): the logs are
+/// then `#NUM!` (probes/t3643-imlog10-grid J2; T-3643).
 fn angle_quotient_overflows(x: f64, y: f64) -> bool {
     matches!(excel_atan2(x, y), Err(Error::NUM))
 }
 
 /// The angle of `x + yi` for IMPOWER and IMSQRT: Excel's ATAN2 kernel ([`excel_atan2`]), and libm
 /// `atan2` where that kernel errs: a subnormal x, an overflowing y/x, or x = y = 0 (a zero modulus,
-/// whose angle does not change the result). The fallback is unprobed (T-2736).
-fn atan2_or_libm(x: f64, y: f64) -> f64 {
-    excel_atan2(x, y).unwrap_or_else(|_| f64::atan2(y, x))
+/// whose angle does not change the result). The fallback is unprobed (T-2736). `on_overflow`, when
+/// given, replaces the angle where y/x overflows: IMSQRT's 0 (probes/t3643-imsqrt-grid J2; T-3643).
+fn atan2_or_libm(x: f64, y: f64, on_overflow: Option<f64>) -> f64 {
+    match excel_atan2(x, y) {
+        Ok(angle) => angle,
+        Err(Error::NUM) => on_overflow.unwrap_or_else(|| f64::atan2(y, x)),
+        Err(_) => f64::atan2(y, x),
+    }
 }
 
 fn imreal((x, _, _): ComplexParts, _: CellReferenceIndex) -> CalcResult {
@@ -814,11 +818,7 @@ fn imsqrt((x, y, suffix): ComplexParts, cell: CellReferenceIndex) -> CalcResult 
         return complex_result(0.0, 0.0, suffix);
     }
     let r = f64::sqrt(xx + yy).sqrt();
-    let a = if angle_quotient_overflows(x, y) {
-        0.0
-    } else {
-        atan2_or_libm(x, y)
-    };
+    let a = atan2_or_libm(x, y, Some(0.0));
     let (sin, cos) = excel_sin_cos(a / 2.0);
     complex_result(r * cos, r * sin, suffix)
 }
