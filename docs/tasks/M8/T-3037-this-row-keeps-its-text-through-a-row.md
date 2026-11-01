@@ -3,7 +3,7 @@ id: T-3037
 title: "#This Row keeps its text through a row insert that moves or grows its table, and reads the formula's row in the new table (probes table-insert-row-this-row-*, -calc-column-*)"
 milestone: M8
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
