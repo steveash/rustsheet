@@ -407,6 +407,7 @@ C	probes/eng-im-large-part.case.json	36
 C	probes/eng-im-overflow-edges-2.case.json	114
 C	probes/eng-im-overflow-edges.case.json	116
 C	probes/eng-im-overflow.case.json	48
+C	probes/eng-im-part-plain-boundary.case.json	40
 C	probes/eng-im-small-part.case.json	28
 C	probes/eng-imdiv.case.json	24
 C	probes/eng-imexp-cap-window.case.json	40
