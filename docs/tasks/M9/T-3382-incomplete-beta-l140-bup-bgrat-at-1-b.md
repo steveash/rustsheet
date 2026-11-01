@@ -61,3 +61,5 @@ composition from T-2512's research, no constants chosen by score. Follow-up: n >
 Left to do (session budget ran out, 2026-11-01): compare the rest of probes-numeric (outside the gate) against main.
 Every cell the branch reaches in any other case must be checked, for example by `rustsheet-eval show` on main's binary
 and on this branch's, as was done for the three w2f cases. Then run the review panel. `make check` passed on 8711a50.
+
+Resumed 2026-11-01 by a later opus run (branch idle 2 h): doing the probes-numeric comparison and the review.
