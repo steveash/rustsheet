@@ -69,11 +69,13 @@ for key, hyp in case["hypotheses"].items():
         c["bit-exact"] += a == ex
         c["<=4ulp"] += ulps(a, ex) <= 4
         c["<=15d"] += digits15(a, ex)
-    elif ex is None and a is None:
+    elif ex is None and a is None and str(excel) == actual:
         c["both error"] += 1
         c["bit-exact"] += 1
         c["<=4ulp"] += 1
         c["<=15d"] += 1
+    elif ex is None and a is None:
+        c["error kinds differ"] += 1
     elif ex is None:
         c["excel error, engine number"] += 1
     else:
@@ -84,8 +86,10 @@ for key, hyp in case["hypotheses"].items():
         rel = abs(Decimal(a) - mv) / max(abs(mv), Decimal("1e-300"))
         in_math = rel <= Decimal("1e-9")
     c["<=1e-9 math"] += in_math
-    in_excel = (ex is not None and a is not None and digits15(a, ex)) or (ex is None and a is None)
-    mismatch = (ex is None) != (a is None)  # R2: an error against a number fails
+    same_error = ex is None and a is None and str(excel) == actual
+    in_excel = (ex is not None and a is not None and digits15(a, ex)) or same_error
+    # R2: an error against a number fails, and so does one error kind against another
+    mismatch = (ex is None) != (a is None) or (ex is None and a is None and not same_error)
     inside = (in_excel or in_math) and not mismatch
     c["inside envelope"] += inside
     if not inside:
@@ -114,6 +118,7 @@ cols = [
     "both error",
     "excel error, engine number",
     "excel number, engine error",
+    "error kinds differ",
 ]
 print("| Stratum | " + " | ".join(cols) + " |")
 print("|---|" + "---|" * len(cols))

@@ -64,13 +64,13 @@ const LARGE_SHAPE_OFFSET: f64 = -0.42;
 /// 61 bit-exact and 232 within 4 ulp of Excel, against 15 and 159 for the correctly rounded
 /// density, so the model is kept there (statistics.md "F density's small-shape constant past its
 /// fit set").
-/// FITTED(T-2586, 5246 cells, F.DIST min(d) 1..15 with max(d) up to 1E+10)
+/// FITTED(T-2586, 4946 cells, F.DIST df 1..10 and d1 1 with d2 up to 30; T-3478 sweep, 300 cells: min(d) 1..15 with max(d) up to 1E+10)
 const SMALL_SHAPE_OFFSET: f64 = 5.33;
 /// `sdmodel`'s e(1/2), fitted with [`SMALL_SHAPE_OFFSET`].
-/// FITTED(T-2586, 5246 cells, F.DIST min(d) 1..15 with max(d) up to 1E+10)
+/// FITTED(T-2586, 4946 cells, F.DIST df 1..10 and d1 1 with d2 up to 30; T-3478 sweep, 300 cells: min(d) 1..15 with max(d) up to 1E+10)
 const STIRLING_ERROR_HALF: f64 = 0.22;
 /// `sdmodel`'s e(1), fitted with [`SMALL_SHAPE_OFFSET`].
-/// FITTED(T-2586, 5246 cells, F.DIST min(d) 1..15 with max(d) up to 1E+10)
+/// FITTED(T-2586, 4946 cells, F.DIST df 1..10 and d1 1 with d2 up to 30; T-3478 sweep, 300 cells: min(d) 1..15 with max(d) up to 1E+10)
 const STIRLING_ERROR_ONE: f64 = 0.06;
 
 /// r3-loader-const's measured error of Excel's stirlerr at v = 1.5, 2, ..., 28 in units of 2^-53

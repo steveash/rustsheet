@@ -49,7 +49,7 @@ for a,f in cells.items():
     for name,(off,res,cap) in variants.items():
         r=irr(vals,g,off,res,cap)
         if r is None and e is None or (r is not None and e is not None and r==e): score[name]['==engine']+=1
-        if ex is None: ok = r is None
+        if ex is None: ok = r is None and o.get('v') == '#NUM!'  # a failed run is #NUM!
         else: ok = r is not None and r==ex
         score[name]['exact']+=ok
         score[name][st]+=ok

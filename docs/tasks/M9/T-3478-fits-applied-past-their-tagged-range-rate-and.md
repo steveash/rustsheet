@@ -39,8 +39,9 @@ T-3364 covers other extrapolated fits (GAMMA.INV, the Stirling error past df 56,
 - The Student-t cuts (T-3477) and T-3364's fits.
 
 ## Outcome
-All three fits were measured on fresh sweeps over the domains they serve, outside their fit sets, and each tag now
-names that wider range. None is bounded: each still beats the alternatives there, and for the F constants that
+All three fits were measured on fresh sweeps over the domains they serve, outside their fit sets. Each tag keeps its
+fit-set count and range and adds the sweep's range: for RATE and IRR, the extent of the points where Excel returns a
+root (review round 1). None is bounded: each still beats the alternatives there, and for the F constants that
 includes the accurate fallback. No engine code path or value changed, only doc comments and tags. quality/fitted.json
 is unchanged (86 tags, lock 86).
 
@@ -65,7 +66,9 @@ The sweep covers rate -0.999..100, nper 1..1E+5, |pv| and |fv| 1E-8..1E+12 and g
 | all axes wide | 50 | 47 | 47 | 16 | 47 | 5 |
 | **all** | 300 | 286 | 286 | 69 | 286 | 9 |
 
-Excel returns a number on 100 points, and the engine is bit-exact on all 100. 14 points are outside the envelope,
+Excel returns a number on 100 points, and the engine is bit-exact on all 100. Those roots lie at nper 1..22908, rate
+-0.985..21.3, guess -0.97..980, |pmt| 1.6E-47..1.9E+10 and |pv|, |fv| 1.1E-8..9.7E+11, the tag's second range. Past
+it (rates to 100, nper to 1E+5) the sweep only agrees with Excel's `#NUM!`, which does not test the constants. 14 points are outside the envelope,
 and on all 14 Excel is `#NUM!` while the engine returns a number:
 - 13 converge to the spurious root r = -1 of a type-1, fv = 0 annuity (Calc!A60, A76, A85, A88, A89, A131, A146,
   A171, A213, A237, A243, A256, A265). This is a new quirk, recorded in financial.md "RATE is #NUM! at the spurious
@@ -81,27 +84,34 @@ residual 1e-8 93.
 sweep uses conventional series and covers 2..150 flows, |c| 1E-12..1E+15, guess -0.9999..1E+8 and roots
 -0.9999..1E+6.
 
-| Stratum | Points | Bit-exact | Within 1e-9 of math | Inside envelope | Correctly rounded bit-exact | Excel number, engine error | Excel error, engine number |
-|---|---|---|---|---|---|---|---|
-| flows 42..150 | 50 | 29 | 21 | 29 | 1 | 21 | 0 |
-| abs c 1E-12..1E-6 or 1E+9..1E+15 | 50 | 42 | 32 | 43 | 2 | 2 | 5 |
-| root -0.9999..-0.99 | 50 | 47 | 16 | 47 | 13 | 0 | 3 |
-| root 99..1E+6 | 50 | 50 | 43 | 50 | 0 | 0 | 0 |
-| guess -0.9999..-0.99 or 100..1E+8 | 50 | 32 | 41 | 44 | 3 | 6 | 0 |
-| all axes wide | 50 | 32 | 39 | 40 | 1 | 4 | 5 |
-| **all** | 300 | 232 | 192 | 253 | 20 | 33 | 14 |
+| Stratum | Points | Bit-exact | Within 1e-9 of math | Inside envelope | Correctly rounded bit-exact | Excel number, engine error | Excel error, engine number | Error kinds differ |
+|---|---|---|---|---|---|---|---|---|
+| flows 42..150 | 50 | 29 | 21 | 29 | 1 | 21 | 0 | 0 |
+| abs c 1E-12..1E-6 or 1E+9..1E+15 | 50 | 42 | 32 | 43 | 2 | 2 | 5 | 0 |
+| root -0.9999..-0.99 | 50 | 47 | 16 | 47 | 13 | 0 | 3 | 0 |
+| root 99..1E+6 | 50 | 50 | 43 | 50 | 0 | 0 | 0 | 0 |
+| guess -0.9999..-0.99 or 100..1E+8 | 50 | 32 | 41 | 44 | 3 | 6 | 0 | 0 |
+| all axes wide | 50 | 29 | 39 | 37 | 1 | 4 | 6 | 3 |
+| **all** | 300 | 229 | 192 | 250 | 20 | 33 | 14 | 3 |
+
+Excel returns a root on 231 points: 2..148 flows, |c| 2.3E-15..4.0E+12, guess -0.9997..9.8E+7 and roots
+-0.9997..9.0E+5, the tag's second range. Review round 1 found that the first scorer counted two errors of different
+kinds as a match. It now compares the kinds, which moved 3 cells (A277, A290, A298: Excel `#DIV/0!`, engine `#NUM!`).
 
 The candidates were run through the fit lab's `irr_secant_d` replica with the 50-step cap and the retry
 (docs/research/t3478/irr_variants.py). The replica equals the engine on 284 cells; the other 16 reach the fallback.
-Bit-exact counts against Excel: the shipped offset 1e-3 and residual 1e-7 get 236, offset 1e-4 150, offset 1e-2 130,
-residual 1e-6 228 and residual 1e-8 221. So the fitted pair stays best past its fit set.
+Bit-exact counts against Excel (a failed run counts as `#NUM!`): the shipped offset 1e-3 and residual 1e-7 get 232,
+offset 1e-4 146, offset 1e-2 126, residual 1e-6 224 and residual 1e-8 217. So in aggregate the fitted pair stays best
+past its fit set. Per stratum it leads or ties everywhere except on the 42..150 flows, where residual 1e-6 gets 30
+against its 29.
 
-The 47 cells outside the envelope come from other parts of the solver, filed as T-3548:
+None of the 50 cells outside the envelope points to these two constants. They are filed as T-3548:
 - 33 return in Excel but are `#NUM!` in the engine: the step cap and the fallback, the family of T-3406, T-3411 and
   T-3347. A 100-step cap would gain 12 of them.
-- 13 are an Excel error where the engine returns the root.
-- A289 is `#DIV/0!` in Excel. The engine returns a wrong value there, because the absolute 1e-7 residual stop
-  passes at once on flows near 1E-11.
+- 17 are Excel errors: 13 where the engine returns the root, the 3 kind mismatches, and A289. These are recorded as a
+  new entry, financial.md "IRR is #NUM! or #DIV/0! on some conventional series it could solve" (rule unknown).
+  On A289 (`#DIV/0!` in Excel) the engine returns a wrong value, because the absolute 1e-7 residual stop passes at
+  once on flows near 1E-11.
 
 *F density*, t3478-f-density-r4-wide. The fit set covers df 1..10, and d1 = 1 with d2 up to 30. The sweep covers
 11 <= min(d) <= 15 with max(d) up to 1E+10, and min(d) <= 10 with max(d) 11..1E+10, which is every shape the
@@ -116,10 +126,12 @@ the constants are kept and the tag covers min(d) 1..15 with max(d) up to 1E+10.
 - Reproducibility floor (R4.4): no step targets bits below the floor.
 - No keep-matched branch was added.
 - Tags (R4.3):
-  - `OFFSET` and `TOLERANCE` (RATE): 1082 cells, nper 1..1E+5, |pv| and |fv| 1E-8..1E+12, guess -0.999..1000,
-    rate -0.999..100.
-  - `irr_secant` (IRR): 563 cells, 2..150 flows, |c| 1E-12..1E+15, guess -0.9999..1E+8, roots -0.9999..1E+6.
-  - The F constants: 5246 cells, min(d) 1..15 with max(d) up to 1E+10.
+  - Each tag keeps its fit-set count (782, 263, 4946) and range, and names the sweep separately.
+  - `OFFSET` and `TOLERANCE` (RATE): the sweep's 100 returned roots, at nper 1..22908, |pmt| 1.6E-47..1.9E+10,
+    |pv| and |fv| 1.1E-8..9.7E+11, guess -0.97..980 and rate -0.985..21.3.
+  - `irr_secant` (IRR): 231 Excel roots, at 2..148 flows, |c| 2.3E-15..4.0E+12, guess -0.9997..9.8E+7 and roots
+    -0.9997..9.0E+5.
+  - The F constants: 300 sweep cells, min(d) 1..15 with max(d) up to 1E+10.
 
 RATE's and IRR's swept boxes are finite. The solvers accept any double, so inputs past these boxes (for example
 amounts above 1E+15) are still unmeasured.
@@ -129,8 +141,9 @@ suite's known failures are unchanged, with 0 visibly-off cells in new cases.
 
 **Semantics.**
 - financial.md: new entries "RATE and IRR secant constants past their fit sets" and "RATE is #NUM! at the spurious
-  root r = -1", and the T-3478 cells added to "IRR on conventional flows where the secant fails".
+  root r = -1" and "IRR is #NUM! or #DIV/0! on some conventional series it could solve", and the T-3478 cells added to
+  "IRR on conventional flows where the secant fails".
 - statistics.md: new entry "F density's small-shape constant past its fit set".
 - Decision 0195's Consequences now record the outcome.
 
-**Follow-ups:** T-3547 (RATE at r = -1) and T-3548 (IRR's 47 wide-sweep cells).
+**Follow-ups:** T-3547 (RATE at r = -1) and T-3548 (IRR's 50 wide-sweep cells).

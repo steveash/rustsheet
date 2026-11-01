@@ -33,7 +33,7 @@ cells of probes-numeric/t3478-rate-r4-wide below, without losing a returning cel
 
 ## Acceptance criteria
 - [ ] A probe case (probes/, tag M9, excel-graph) bracketing the rule, listed here before the fix.
-- [ ] The 13 cells above are `#NUM!`; no gated cell regresses; the RATE fit set (960 cells) stays bit-exact.
+- [ ] The 13 cells above are `#NUM!`; no gated cell regresses; the RATE fit set stays bit-exact (the fit lab's `rate` cells with the cap probes, 960 cells, as T-3348 counts it).
 - [ ] financial.md's entry states the evidenced rule.
 - [ ] `make check` green; reviewers approve.
 
