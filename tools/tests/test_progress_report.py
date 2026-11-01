@@ -599,3 +599,60 @@ def test_real_world_line_weights_attributed_shares_by_calls() -> None:
         in (parity.real_world_line(weighted))
     )
     assert parity.real_world_line(weighted) in parity.block(weighted)
+
+
+def test_gate_lines_n_a_without_gate_b_gate_a_or_phase1b() -> None:
+    text = parity.gate_lines(data())
+    assert "Gate B (decision 0188 R1(b)): n/a (the report predates Gate B)." in text
+    assert "Gate A (decision 0188 R2): n/a (no `eval/runs/accuracy.json`" in text
+    assert "left out of the every-suite rate: n/a." in text
+    assert "(4 of 6) is information" in text
+
+
+def test_gate_lines_with_gate_b_gate_a_and_phase1b(tmp_path: Path) -> None:
+    r = report()
+    r["v15_checkpoint"]["gate_b"] = {
+        "measured": True,
+        "missing": [],
+        "suites": [],
+        "in_scope": 6,
+        "at_rate": 5,
+        "met": False,
+        "functions": [],
+    }
+    r["v15_checkpoint"]["phase1b_left_out"] = 7
+    acc = tmp_path / "accuracy.json"
+    acc.write_text(
+        json.dumps(
+            {
+                "points": [
+                    {"standing": "inside", "excel": 1.0},
+                    {"standing": "known_failure", "excel": 2.0},
+                ],
+                "stale_known_failures": [],
+                "bad_marks": [],
+                "bad_exemptions": [],
+                "missing_tables": ["FOO"],
+            }
+        )
+    )
+    p = compute(r, SCOPE, NO_BASELINES, PRIORS, acc)
+    text = parity.gate_lines(p)
+    assert "Gate B (decision 0188 R1(b)): not met, 5 of 6 functions at rate." in text
+    assert "does not hold, 1 of 2 points inside the envelope, 1 known failures, 0 failing" in text
+    assert "1 functions without a table" in text
+    assert "left out of the every-suite rate: 7 visibly-off cells." in text
+
+
+def test_gate_b_not_measured_names_the_missing_suites() -> None:
+    r = report()
+    r["v15_checkpoint"]["gate_b"] = {
+        "measured": False,
+        "missing": ["poi"],
+        "in_scope": 6,
+        "at_rate": 0,
+        "met": False,
+    }
+    assert "n/a, 0 of 6 functions at rate; not measured, the run did not score poi" in parity.gate_lines(
+        data(r)
+    )

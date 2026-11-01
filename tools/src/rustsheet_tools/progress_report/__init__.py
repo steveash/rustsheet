@@ -78,6 +78,7 @@ def main(argv: list[str] | None = None, git: history.Git | None = None) -> None:
     ap.add_argument("--scope", type=Path, default=repo / "eval" / "catalog" / "scope.json")
     ap.add_argument("--catalog", type=Path, default=repo / "eval" / "catalog" / "functions.yaml")
     ap.add_argument("--baselines", type=Path, default=repo / "eval" / "baseline", help="eval/baseline/")
+    ap.add_argument("--accuracy", type=Path, default=repo / "eval" / "runs" / "accuracy.json")
     ap.add_argument("--tasks", type=Path, default=repo / "eval" / "runs" / "latest" / "tasks.json")
     ap.add_argument("--milestones", type=Path, default=repo / goals.MILESTONES_MD)
     ap.add_argument(
@@ -211,7 +212,13 @@ def _evaluate(
     except ReportShapeError as e:
         return Stale(f"an older report shape ({e})", None)
     try:
-        data = compute(report, load_object(args.scope), args.baselines, evidence.load_priors(args.catalog))
+        data = compute(
+            report,
+            load_object(args.scope),
+            args.baselines,
+            evidence.load_priors(args.catalog),
+            args.accuracy,
+        )
         goal = goals.load(report)
         coverage = arguments.load(report)
     except ReportShapeError as e:
