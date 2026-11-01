@@ -12,6 +12,7 @@ mod general;
 pub mod lexer;
 pub mod locale_tag;
 mod lunar_calendar;
+pub mod numerals;
 mod parse_formatted;
 pub mod parser;
 

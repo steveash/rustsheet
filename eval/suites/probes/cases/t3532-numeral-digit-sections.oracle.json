@@ -1,0 +1,51 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "S": {
+   "A1": {
+    "t": "s",
+    "v": "\u0661\u0662 \u0662/\u0664"
+   },
+   "A2": {
+    "t": "s",
+    "v": "\u0661"
+   },
+   "A3": {
+    "t": "s",
+    "v": "\u0661\u0664\u0664\u0664|Sha'ban"
+   },
+   "A4": {
+    "t": "s",
+    "v": "\u0661\u0665"
+   },
+   "A5": {
+    "t": "s",
+    "v": "0"
+   },
+   "A6": {
+    "t": "s",
+    "v": "5"
+   },
+   "A7": {
+    "t": "s",
+    "v": "5"
+   },
+   "A8": {
+    "t": "s",
+    "v": "\u4e00\u4e8c \u516b/\u4e00\u516d"
+   },
+   "A9": {
+    "t": "s",
+    "v": "x"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "3cea77c2079f36a98d9c2130c1402bbe89803ae5efd17841e3d9f0bed570c41a",
+  "kind": "excel-graph",
+  "produced_at": "2026-11-01T10:19:28+00:00",
+  "version": null,
+  "workbook_name": "3ebb79c76744811a8e9565861f74eb1be839825268d55eb9acfc52f38c646bf0.xlsx"
+ }
+}
