@@ -12,28 +12,38 @@ use crate::{
     model::Model,
 };
 
-// 8_i64.pow(10);
-const OCT_MAX: i64 = 1_073_741_824;
-const OCT_MAX_HALF: i64 = 536_870_912;
-// 16_i64.pow(10)
-const HEX_MAX: i64 = 1_099_511_627_776;
-const HEX_MAX_HALF: i64 = 549_755_813_888;
-// Binary numbers are 10 bits and the most significant bit is the sign
+/// Every base-conversion input and result has at most this many digits; the top half of each
+/// 10-digit span is the two's-complement negatives (`BIN2DEC("1000000000")` is -512,
+/// `HEX2DEC("8000000000")` -549755813888; probes/base-conv-boundaries).
+const BASE_DIGITS: usize = 10;
 
-fn from_binary_to_decimal(value: f64) -> Result<i64, ()> {
-    let value = format!("{value}");
+/// The radixes of the three non-decimal bases.
+#[derive(Clone, Copy)]
+enum Radix {
+    Bin = 2,
+    Oct = 8,
+    Hex = 16,
+}
 
-    let Ok(result) = i64::from_str_radix(&value, 2) else {
-        return Err(());
-    };
-    if !(0..=1023).contains(&result) {
-        // 2^10
-        return Err(());
-    } else if result > 511 {
-        // 2^9
-        return Ok(result - 1024);
-    };
-    Ok(result)
+impl Radix {
+    /// `radix^10`: the count of 10-digit values (1024 for binary).
+    fn span(self) -> i64 {
+        (self as i64).pow(BASE_DIGITS as u32)
+    }
+
+    /// The first value whose 10-digit form has the sign bit set (512 for binary).
+    fn half(self) -> i64 {
+        self.span() / 2
+    }
+
+    /// `value` (0 or more) in this radix, upper-case, without padding.
+    fn digits(self, value: i64) -> String {
+        match self {
+            Radix::Bin => format!("{value:b}"),
+            Radix::Oct => format!("{value:o}"),
+            Radix::Hex => format!("{value:X}"),
+        }
+    }
 }
 
 impl Model {
@@ -64,7 +74,7 @@ impl Model {
         Ok((number, places))
     }
 
-    /// The digit text of a HEX/OCT `number`. Excel reads a blank cell and empty text as 0 in every
+    /// The digit text of a BIN/OCT/HEX `number`. Excel reads a blank cell and empty text as 0 in every
     /// base conversion (probes/eng-base-conv-blank, docs/excel-semantics/engineering.md).
     ///
     /// A boolean is `#VALUE!`, as in `BIN2DEC(TRUE)` (T-2420; engineering.md "Engineering function
@@ -85,31 +95,108 @@ impl Model {
         })
     }
 
-    /// The [`Self::base_digits`] of a HEX2*, OCT2DEC or OCT2HEX `number` read in `radix`: more
-    /// than ten digits (probes/eng-leading-plus-oct-bool A27:A33) or a non-digit is `#NUM!`.
-    /// OCT2BIN does not check the length.
-    fn ten_digit_value(
+    /// The signed value of a BIN2*, OCT2* or HEX2* `number` read in `radix`.
+    ///
+    /// The number's text ([`Self::base_digits`]; a number is read as its displayed text, so
+    /// `BIN2DEC(1E2)` reads "100" and `HEX2DEC(1E3)` reads "1000") must be at most ten
+    /// characters, every one a digit of `radix` (either case for hex), or it is `#NUM!`: an
+    /// 11-digit input even with leading zeros (`BIN2DEC("00000000001")`), a sign (`"+101"`,
+    /// `"-1"`), a space (`" 101"`, `"101 "`), a decimal point (`"1.0"`, `1.5`) or an exponent
+    /// (`"1E2"` in BIN2*, `1E+20`) (probes/base-conv-boundaries; T-2420, T-2544, T-3651).
+    /// A value in the top half of the 10-digit span is the two's-complement negative.
+    fn signed_base_value(
         value: &CalcResult,
-        radix: u32,
+        radix: Radix,
         cell: CellReferenceIndex,
     ) -> Result<i64, CalcResult> {
         let digits = Self::base_digits(value, cell)?;
-        if digits.len() > 10 {
+        let well_formed =
+            digits.len() <= BASE_DIGITS && digits.chars().all(|c| c.is_digit(radix as u32));
+        if !well_formed {
             return Err(num_error(cell));
         }
-        i64::from_str_radix(&digits, radix).map_err(|_| num_error(cell))
+        let unsigned = i64::from_str_radix(&digits, radix as u32).map_err(|_| num_error(cell))?;
+        Ok(if unsigned >= radix.half() {
+            unsigned - radix.span()
+        } else {
+            unsigned
+        })
     }
 
-    /// The `number` of a BIN2* call as a number. A blank cell or empty text is 0 (same probe as
-    /// `base_digits`); text that is not a number is `#NUM!`, not `#VALUE!` (T-2544;
-    /// engineering.md "Base conversions"). A boolean stays `#VALUE!`.
-    fn bin_digits(&self, value: &CalcResult, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
-        match value {
-            CalcResult::String(s) if s.is_empty() => Ok(0.0),
-            CalcResult::String(_) => self
-                .cast_number_no_bools_ref(value, cell)
-                .map_err(|_| num_error(cell)),
-            _ => self.cast_number_no_bools_ref(value, cell),
+    /// `value` written in `radix` as a conversion result.
+    ///
+    /// Outside the radix's 10-digit two's-complement range is `#NUM!` (`DEC2BIN(512)`,
+    /// `HEX2OCT("FFDFFFFFFF")`). A negative result is always ten digits and ignores a valid
+    /// `places` (`HEX2OCT("FFFFFFFFFF",4)` is "7777777777", probes/eng-gen-sample-edges C1, C6;
+    /// `DEC2BIN(-5,1)`, probes/base-conv-boundaries). A non-negative result is zero-padded to
+    /// `places`, and `places` shorter than it is `#NUM!` (`DEC2BIN(5,2)`).
+    fn write_base(
+        value: i64,
+        radix: Radix,
+        places: Option<i32>,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if !(-radix.half()..radix.half()).contains(&value) {
+            return num_error(cell);
+        }
+        if value < 0 {
+            return CalcResult::String(radix.digits(value + radix.span()).into());
+        }
+        let digits = radix.digits(value);
+        match places.map(|p| usize::try_from(p).unwrap_or(0)) {
+            Some(width) if width < digits.len() => num_error(cell),
+            Some(width) => CalcResult::String(format!("{digits:0>width$}").into()),
+            None => CalcResult::String(digits.into()),
+        }
+    }
+
+    /// A `from` to `to` conversion with optional places: BIN2HEX, HEX2BIN and the rest.
+    fn convert_base(
+        &self,
+        values: &[CalcResult],
+        from: Radix,
+        to: Radix,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let (number, places) = match self.number_and_places(values, cell) {
+            Ok(parts) => parts,
+            Err(e) => return e,
+        };
+        match Self::signed_base_value(number, from, cell) {
+            Ok(value) => Self::write_base(value, to, places, cell),
+            Err(e) => e,
+        }
+    }
+
+    /// A BIN2DEC, OCT2DEC or HEX2DEC conversion.
+    fn base_to_decimal(values: &[CalcResult], from: Radix, cell: CellReferenceIndex) -> CalcResult {
+        let [number] = values else {
+            return CalcResult::new_args_number_error(cell);
+        };
+        match Self::signed_base_value(number, from, cell) {
+            Ok(value) => CalcResult::Number(value as f64),
+            Err(e) => e,
+        }
+    }
+
+    /// A DEC2BIN, DEC2OCT or DEC2HEX conversion. The number is truncated toward zero
+    /// (`DEC2BIN(-1.5)` is "1111111111", `DEC2BIN(-0.5)` and `DEC2BIN(-512.9)` are "0" and
+    /// "1000000000"); numeric text is read as a number (`DEC2HEX(" 5")`, `DEC2HEX("1E1")`,
+    /// `DEC2HEX("$5")`; probes/base-conv-boundaries).
+    fn decimal_to_base(
+        &self,
+        values: &[CalcResult],
+        to: Radix,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let (number, places) = match self.number_and_places(values, cell) {
+            Ok(parts) => parts,
+            Err(e) => return e,
+        };
+        match self.dec_digits(number, cell) {
+            // A saturating cast: anything past i64 is far outside every range anyway.
+            Ok(f) => Self::write_base(f.trunc() as i64, to, places, cell),
+            Err(e) => e,
         }
     }
 
@@ -123,413 +210,85 @@ impl Model {
 
     // BIN2DEC(number)
     pub(crate) fn fn_bin2dec(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_call(Function::Bin2dec, args, cell, &mut |model, values| {
-            model.bin2dec_of(values, cell)
+        self.lift_call(Function::Bin2dec, args, cell, &mut |_model, values| {
+            Self::base_to_decimal(values, Radix::Bin, cell)
         })
-    }
-
-    fn bin2dec_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
-        let [number] = values else {
-            return CalcResult::new_args_number_error(cell);
-        };
-        let value = match self.bin_digits(number, cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        match from_binary_to_decimal(value) {
-            Ok(n) => CalcResult::Number(n as f64),
-            Err(()) => num_error(cell),
-        }
     }
 
     // BIN2HEX(number, [places])
     pub(crate) fn fn_bin2hex(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Bin2hex, args, cell, &mut |model, values| {
-            model.bin2hex_of(values, cell)
+            model.convert_base(values, Radix::Bin, Radix::Hex, cell)
         })
-    }
-
-    fn bin2hex_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
-        let (number, places) = match self.number_and_places(values, cell) {
-            Ok(parts) => parts,
-            Err(e) => return e,
-        };
-        let value = match self.bin_digits(number, cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let value = match from_binary_to_decimal(value) {
-            Ok(n) => n,
-            Err(()) => return num_error(cell),
-        };
-        if value < 0 {
-            CalcResult::String(format!("{:0width$X}", HEX_MAX + value, width = 9).into())
-        } else {
-            let result = format!("{value:X}");
-            if let Some(places) = places {
-                if places < result.len() as i32 {
-                    return num_error(cell);
-                }
-                return CalcResult::String(
-                    format!("{:0width$X}", value, width = places as usize).into(),
-                );
-            }
-            CalcResult::String(result.into())
-        }
     }
 
     // BIN2OCT(number, [places])
     pub(crate) fn fn_bin2oct(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Bin2oct, args, cell, &mut |model, values| {
-            model.bin2oct_of(values, cell)
+            model.convert_base(values, Radix::Bin, Radix::Oct, cell)
         })
     }
 
-    fn bin2oct_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
-        let (number, places) = match self.number_and_places(values, cell) {
-            Ok(parts) => parts,
-            Err(e) => return e,
-        };
-        let value = match self.bin_digits(number, cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let value = match from_binary_to_decimal(value) {
-            Ok(n) => n,
-            Err(()) => return num_error(cell),
-        };
-        if value < 0 {
-            CalcResult::String(format!("{:0width$o}", OCT_MAX + value, width = 9).into())
-        } else {
-            let result = format!("{value:o}");
-            if let Some(places) = places {
-                if places < result.len() as i32 {
-                    return num_error(cell);
-                }
-                return CalcResult::String(
-                    format!("{:0width$o}", value, width = places as usize).into(),
-                );
-            }
-            CalcResult::String(result.into())
-        }
-    }
-
+    // DEC2BIN(number, [places])
     pub(crate) fn fn_dec2bin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Dec2Bin, args, cell, &mut |model, values| {
-            model.dec2bin_of(values, cell)
+            model.decimal_to_base(values, Radix::Bin, cell)
         })
     }
 
-    fn dec2bin_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
-        let (number, places) = match self.number_and_places(values, cell) {
-            Ok(parts) => parts,
-            Err(e) => return e,
-        };
-        let value_raw = match self.dec_digits(number, cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let mut value = value_raw.trunc() as i64;
-        if !(-512..=511).contains(&value) {
-            return num_error(cell);
-        }
-        if value < 0 {
-            value += 1024;
-        }
-        let result = format!("{value:b}");
-        if let Some(places) = places {
-            if value_raw > 0.0 && places < result.len() as i32 {
-                return num_error(cell);
-            }
-            let result = format!("{:0width$b}", value, width = places as usize);
-            return CalcResult::String(result.into());
-        }
-        CalcResult::String(result.into())
-    }
-
+    // DEC2HEX(number, [places])
     pub(crate) fn fn_dec2hex(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Dec2hex, args, cell, &mut |model, values| {
-            model.dec2hex_of(values, cell)
+            model.decimal_to_base(values, Radix::Hex, cell)
         })
     }
 
-    fn dec2hex_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
-        let (number, places) = match self.number_and_places(values, cell) {
-            Ok(parts) => parts,
-            Err(e) => return e,
-        };
-        let value_raw = match self.dec_digits(number, cell) {
-            Ok(f) => f.trunc(),
-            Err(s) => return s,
-        };
-        let mut value = value_raw.trunc() as i64;
-        if !(-HEX_MAX_HALF..=HEX_MAX_HALF - 1).contains(&value) {
-            return num_error(cell);
-        }
-        if value < 0 {
-            value += HEX_MAX;
-        }
-        let result = format!("{value:X}");
-        if let Some(places) = places {
-            if value_raw > 0.0 && places < result.len() as i32 {
-                return num_error(cell);
-            }
-            let result = format!("{:0width$X}", value, width = places as usize);
-            return CalcResult::String(result.into());
-        }
-        CalcResult::String(result.into())
-    }
-
+    // DEC2OCT(number, [places])
     pub(crate) fn fn_dec2oct(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Dec2oct, args, cell, &mut |model, values| {
-            model.dec2oct_of(values, cell)
+            model.decimal_to_base(values, Radix::Oct, cell)
         })
-    }
-
-    fn dec2oct_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
-        let (number, places) = match self.number_and_places(values, cell) {
-            Ok(parts) => parts,
-            Err(e) => return e,
-        };
-        let value_raw = match self.dec_digits(number, cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let mut value = value_raw.trunc() as i64;
-
-        if !(-OCT_MAX_HALF..=OCT_MAX_HALF - 1).contains(&value) {
-            return num_error(cell);
-        }
-        if value < 0 {
-            value += OCT_MAX;
-        }
-        let result = format!("{value:o}");
-        if let Some(places) = places {
-            if value_raw > 0.0 && places < result.len() as i32 {
-                return num_error(cell);
-            }
-            let result = format!("{:0width$o}", value, width = places as usize);
-            return CalcResult::String(result.into());
-        }
-        CalcResult::String(result.into())
     }
 
     // HEX2BIN(number, [places])
     pub(crate) fn fn_hex2bin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Hex2bin, args, cell, &mut |model, values| {
-            model.hex2bin_of(values, cell)
+            model.convert_base(values, Radix::Hex, Radix::Bin, cell)
         })
-    }
-
-    fn hex2bin_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
-        let (number, places) = match self.number_and_places(values, cell) {
-            Ok(parts) => parts,
-            Err(e) => return e,
-        };
-        let mut value = match Self::ten_digit_value(number, 16, cell) {
-            Ok(v) => v,
-            Err(e) => return e,
-        };
-        if value < 0 {
-            return num_error(cell);
-        }
-
-        if value >= HEX_MAX_HALF {
-            value -= HEX_MAX;
-        }
-        if !(-512..=511).contains(&value) {
-            return num_error(cell);
-        }
-        // A negative result is always ten digits and ignores a valid `places`
-        // (`HEX2OCT("FFFFFFFFFF",4)` is "7777777777", probes/eng-gen-sample-edges C1, C6).
-        let negative = value < 0;
-        if negative {
-            value += 1024;
-        }
-        let result = format!("{value:b}");
-        if let Some(places) = places {
-            if !negative && places < result.len() as i32 {
-                return num_error(cell);
-            }
-            let result = format!("{:0width$b}", value, width = places as usize);
-            return CalcResult::String(result.into());
-        }
-        CalcResult::String(result.into())
     }
 
     // HEX2DEC(number)
     pub(crate) fn fn_hex2dec(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_call(Function::Hex2dec, args, cell, &mut |model, values| {
-            model.hex2dec_of(values, cell)
+        self.lift_call(Function::Hex2dec, args, cell, &mut |_model, values| {
+            Self::base_to_decimal(values, Radix::Hex, cell)
         })
     }
 
-    fn hex2dec_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
-        let [number] = values else {
-            return CalcResult::new_args_number_error(cell);
-        };
-        let mut value = match Self::ten_digit_value(number, 16, cell) {
-            Ok(v) => v,
-            Err(e) => return e,
-        };
-        if value < 0 {
-            return num_error(cell);
-        }
-
-        if value >= HEX_MAX_HALF {
-            value -= HEX_MAX;
-        }
-        CalcResult::Number(value as f64)
-    }
-
+    // HEX2OCT(number, [places])
     pub(crate) fn fn_hex2oct(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Hex2oct, args, cell, &mut |model, values| {
-            model.hex2oct_of(values, cell)
+            model.convert_base(values, Radix::Hex, Radix::Oct, cell)
         })
     }
 
-    fn hex2oct_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
-        let (number, places) = match self.number_and_places(values, cell) {
-            Ok(parts) => parts,
-            Err(e) => return e,
-        };
-        let mut value = match Self::ten_digit_value(number, 16, cell) {
-            Ok(v) => v,
-            Err(e) => return e,
-        };
-        if value < 0 {
-            return num_error(cell);
-        }
-
-        if value > HEX_MAX_HALF {
-            value -= HEX_MAX;
-        }
-        if !(-OCT_MAX_HALF..=OCT_MAX_HALF - 1).contains(&value) {
-            return num_error(cell);
-        }
-        // A negative result is always ten digits and ignores a valid `places`
-        // (`HEX2OCT("FFFFFFFFFF",4)` is "7777777777", probes/eng-gen-sample-edges C1, C6).
-        let negative = value < 0;
-        if negative {
-            value += OCT_MAX;
-        }
-        let result = format!("{value:o}");
-        if let Some(places) = places {
-            if !negative && places < result.len() as i32 {
-                return num_error(cell);
-            }
-            let result = format!("{:0width$o}", value, width = places as usize);
-            return CalcResult::String(result.into());
-        }
-        CalcResult::String(result.into())
-    }
-
+    // OCT2BIN(number, [places])
     pub(crate) fn fn_oct2bin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Oct2bin, args, cell, &mut |model, values| {
-            model.oct2bin_of(values, cell)
+            model.convert_base(values, Radix::Oct, Radix::Bin, cell)
         })
     }
 
-    fn oct2bin_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
-        let (number, places) = match self.number_and_places(values, cell) {
-            Ok(parts) => parts,
-            Err(e) => return e,
-        };
-        let value = match Self::base_digits(number, cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        let mut value = match i64::from_str_radix(&value, 8) {
-            Ok(f) => f,
-            Err(_) => {
-                return num_error(cell);
-            }
-        };
-        if value < 0 {
-            return num_error(cell);
-        }
-
-        if value >= OCT_MAX_HALF {
-            value -= OCT_MAX;
-        }
-        if !(-512..=511).contains(&value) {
-            return num_error(cell);
-        }
-        if value < 0 {
-            value += 1024;
-        }
-        let result = format!("{value:b}");
-        if let Some(places) = places {
-            if value < 512 && places < result.len() as i32 {
-                return num_error(cell);
-            }
-            let result = format!("{:0width$b}", value, width = places as usize);
-            return CalcResult::String(result.into());
-        }
-        CalcResult::String(result.into())
-    }
-
+    // OCT2DEC(number)
     pub(crate) fn fn_oct2dec(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_call(Function::Oct2dec, args, cell, &mut |model, values| {
-            model.oct2dec_of(values, cell)
+        self.lift_call(Function::Oct2dec, args, cell, &mut |_model, values| {
+            Self::base_to_decimal(values, Radix::Oct, cell)
         })
     }
 
-    fn oct2dec_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
-        let [number] = values else {
-            return CalcResult::new_args_number_error(cell);
-        };
-        let mut value = match Self::ten_digit_value(number, 8, cell) {
-            Ok(v) => v,
-            Err(e) => return e,
-        };
-        if value < 0 {
-            return num_error(cell);
-        }
-
-        if value >= OCT_MAX_HALF {
-            value -= OCT_MAX;
-        }
-        CalcResult::Number(value as f64)
-    }
-
+    // OCT2HEX(number, [places])
     pub(crate) fn fn_oct2hex(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.lift_call(Function::Oct2hex, args, cell, &mut |model, values| {
-            model.oct2hex_of(values, cell)
+            model.convert_base(values, Radix::Oct, Radix::Hex, cell)
         })
-    }
-
-    fn oct2hex_of(&self, values: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
-        let (number, places) = match self.number_and_places(values, cell) {
-            Ok(parts) => parts,
-            Err(e) => return e,
-        };
-        let mut value = match Self::ten_digit_value(number, 8, cell) {
-            Ok(v) => v,
-            Err(e) => return e,
-        };
-        if value < 0 {
-            return num_error(cell);
-        }
-
-        if value >= OCT_MAX_HALF {
-            value -= OCT_MAX;
-        }
-
-        if !(-HEX_MAX_HALF..=HEX_MAX_HALF - 1).contains(&value) {
-            return num_error(cell);
-        }
-        if value < 0 {
-            value += HEX_MAX;
-        }
-        let result = format!("{value:X}");
-        if let Some(places) = places {
-            if value < HEX_MAX_HALF && places < result.len() as i32 {
-                return num_error(cell);
-            }
-            let result = format!("{:0width$X}", value, width = places as usize);
-            return CalcResult::String(result.into());
-        }
-        CalcResult::String(result.into())
     }
 }
