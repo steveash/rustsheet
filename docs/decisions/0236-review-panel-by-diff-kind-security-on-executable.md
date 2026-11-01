@@ -25,6 +25,8 @@
     lists get every reviewer.
     - Such a diff holds only task files, decisions, specs, research and semantics notes, and
       suite cases, with nothing to execute.
+    - Docs that code reads keep it: `ci_changes.CODE_READ_PATHS` (docs/excel-semantics,
+      docs/progress, docs/milestones.md), which CI also treats as code.
     - Security's other targets keep it: crates, bindings, scripts, tools, CI, `.claude/`,
       `CLAUDE.md`, eval baselines and accuracy lists, and `quality/` (gate weakening).
   - **Excel fidelity is unchanged.**
@@ -44,6 +46,13 @@
   - So PRs marked or reviewed before the switch stay ready, and a session still running the old
     skill text keeps working until it reads the new one.
 - **Consequences:**
+  - Accepted residual risk: a script or source file under `docs/` (docs/research holds some
+    `.sh`, `.py` and `.c`) skips security when it is the only change. Nothing in the Makefile,
+    the workflows or the hooks runs files under `docs/` or `eval/suites/`. A change that starts
+    running one is outside the skip paths itself, so it gets security.
+  - The legacy fold lets `architecture=APPROVE quality=APPROVE` stand for `design`. It fails
+    closed (anything else folds to REQUEST_CHANGES), and records still have to name the head and
+    come from a writer, who could post any verdict anyway; so it grants nothing new.
   - A code PR runs two Sonnet reviewers instead of three, plus excel-fidelity where it applies. A
     task-only or docs-only PR runs one.
   - The steward's weekly spot-audit (0015) now also checks for misses by the narrower panel. A

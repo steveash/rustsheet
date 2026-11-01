@@ -16,8 +16,9 @@ combined tree is its gate (decision 0231). Any other path in the diff brings the
    - `reviewer-design` (always): architecture and code quality, one reviewer (decision 0236)
    - `reviewer-security` (unless every path is under docs or eval/suites; docs/process keeps it):
      a diff of only task files, decisions, specs, semantics notes and suite cases has nothing
-     executable to review (decision 0236). Any path outside those, or a list you are unsure of,
-     gets it.
+     executable to review (decision 0236). Docs that code reads (`ci_changes.CODE_READ_PATHS`:
+     docs/excel-semantics, docs/progress, docs/milestones.md) keep it too. Any path outside those,
+     or a list you are unsure of, gets it.
    - `reviewer-excel-fidelity` (if the diff touches crates/rustsheet-engine, crates/rustsheet-xlsx,
      eval/suites, or eval/baseline)
    - Not `reviewer-performance`: it is off while correctness comes first (decision 0081). A bench

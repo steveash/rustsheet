@@ -2,12 +2,14 @@
 
 The one definition is the `review` skill (.claude/skills/review/SKILL.md, step 3);
 scripts/test_merge_ready.py fails when this copy differs from it. `merge_ready` (markers, verdict
-records, `make mark-ready`) reads the panel from here. Standard library only.
+records, `make mark-ready`) reads the panel from here. Standard library and `ci_changes` only.
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+
+import ci_changes
 
 APPROVE = "APPROVE"
 
@@ -45,8 +47,9 @@ def under(path: str, roots: Iterable[str]) -> bool:
 
 
 def needs_security(path: str) -> bool:
-    """Whether a change to `path` needs the security reviewer (decision 0236)."""
-    return under(path, SECURITY_KEEP_PATHS) or not under(path, SECURITY_SKIP_PATHS)
+    """Whether a change to `path` needs the security reviewer (decision 0236). Docs that code
+    reads (`ci_changes.is_code_read`, e.g. docs/excel-semantics/) keep it, as CI treats them as code."""
+    return under(path, SECURITY_KEEP_PATHS) or ci_changes.is_code_read(path) or not under(path, SECURITY_SKIP_PATHS)
 
 
 def task_only(paths: Iterable[str]) -> bool:

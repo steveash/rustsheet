@@ -161,13 +161,17 @@ class Applicability(unittest.TestCase):
 
     def test_security_skips_only_docs_and_suite_data(self) -> None:
         # Decision 0236: the design reviewer always; security on any path outside docs/ (except
-        # docs/process/) and eval/suites/; every reviewer for unknown or empty paths.
+        # docs/process/ and the docs code reads) and eval/suites/; every reviewer for unknown or
+        # empty paths.
         need = merge_ready.applicable_reviewers
         self.assertEqual(need(["docs/tasks/M0/T-1.md", "docs/decisions/0001-x.md"]), ("design",))
-        self.assertEqual(need(["docs/excel-semantics/a.md"]), ("design",))
+        self.assertEqual(need(["docs/research/a.md", "docs/specs/SPEC-0001-x.md"]), ("design",))
         self.assertEqual(need(["eval/suites/probes/cases/a.case.json"]), ("design", "excel-fidelity"))
         for path in [
             "docs/process/review-policy.md",
+            "docs/excel-semantics/a.md",
+            "docs/milestones.md",
+            "docs/progress/a.md",
             ".claude/skills/review/SKILL.md",
             "CLAUDE.md",
             "eval/baseline/probes.txt",
