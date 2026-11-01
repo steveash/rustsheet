@@ -1,3 +1,4 @@
+use super::elapsed::takes_second_fraction;
 use super::lexer::{Compare, Lexer, Token};
 use super::locale_tag::{self, Calendar, DateNames, LocaleTag};
 use crate::locale::excel_date_names::EN_US;
@@ -361,17 +362,14 @@ impl Parser {
     /// Whether `m`/`mm` read just before `next_token` is a minute because `:ss` follows with no
     /// hour ahead of it: `mm:ss` on 123456.789 is "56:10", not a month (gen-m10 text cells,
     /// T-1733; number-formats.md).
-    ///
-    /// A `.0` fraction right after it makes it a minute too (`TEXT(12345.678,"mm.0")` = "16.2",
-    /// probes/t3575-fraction-after-elapsed A6, A12).
     fn minute_before_seconds(&mut self, next_token: &Token) -> bool {
-        match next_token {
-            Token::Literal(':') => {
-                matches!(self.lexer.peek_token(), Token::Second | Token::SecondPadded)
-            }
-            Token::Period => self.lexer.peek_token() == Token::Zero,
-            _ => false,
-        }
+        *next_token == Token::Literal(':')
+            && matches!(self.lexer.peek_token(), Token::Second | Token::SecondPadded)
+    }
+
+    /// A lone `mm.0` is a minute (probes/t3575 A6, A12); `m.0` and `mm.0` beside others are unprobed.
+    fn lone_mm_fraction(&mut self, next_token: &Token, padded: bool, lone: bool) -> bool {
+        padded && lone && *next_token == Token::Period && self.lexer.peek_token() == Token::Zero
     }
 
     fn parse_part(&mut self) -> ParsePart {
@@ -484,30 +482,12 @@ impl Parser {
                     tokens.push(TextToken::Literal('%'));
                     percent += 1;
                 }
-                // `.0`, `.00`, `.000` after a time token are the fraction of the second
-                // (number-formats.md "Elapsed-time tokens", "Fractional seconds in clock
-                // formats"); after an hour or minute token too (probes/t3575-fraction-after-
-                // elapsed A1-A12: `[h].0`, `[m].0`, `[hh].0`, `h.0`, `mm.0`); more zeros are
-                // unprobed and stay an error.
+                // `.0`, `.00`, `.000` after an h/m/s token are the fraction of the second
+                // (number-formats.md "Elapsed-time tokens"); more zeros are unprobed and stay
+                // an error.
                 Token::Period
                     if next_token == Token::Zero
-                        && matches!(
-                            tokens.last(),
-                            Some(
-                                TextToken::Hour
-                                    | TextToken::HourPadded
-                                    | TextToken::Minute
-                                    | TextToken::MinutePadded
-                                    | TextToken::ElapsedHour
-                                    | TextToken::ElapsedHourPadded
-                                    | TextToken::ElapsedMinute
-                                    | TextToken::ElapsedMinutePadded
-                                    | TextToken::Second
-                                    | TextToken::SecondPadded
-                                    | TextToken::ElapsedSecond
-                                    | TextToken::ElapsedSecondPadded
-                            )
-                        ) =>
+                        && tokens.last().is_some_and(takes_second_fraction) =>
                 {
                     let mut digits = 0;
                     while next_token == Token::Zero {
@@ -697,12 +677,12 @@ impl Parser {
                 }
                 Token::Month | Token::MonthPadded => {
                     let padded = matches!(token, Token::MonthPadded);
-                    let minute =
-                        (is_time && !minute_read) || self.minute_before_seconds(&next_token);
+                    let frac_minute = self.lone_mm_fraction(&next_token, padded, tokens.is_empty());
+                    let minute = (is_time && !minute_read)
+                        || self.minute_before_seconds(&next_token)
+                        || frac_minute;
                     minute_read |= minute;
-                    // A minute read from its `.0` fraction has no second token to mark the part
-                    // as a date/time one (`mm.0`, probes/t3575 A12).
-                    is_date = true;
+                    is_date |= !minute || frac_minute;
                     tokens.push(match (minute, padded) {
                         (true, false) => TextToken::Minute,
                         (true, true) => TextToken::MinutePadded,

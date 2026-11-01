@@ -40,6 +40,7 @@ Decisions 0083 and 0114: the cell is `#VALUE!` against text, so the stage is `se
 
 ## Outcome
 `.0`/`.00` after `h`, `hh`, `mm`, `[h]`, `[hh]`, `[m]` is the second fraction (probes/t3575-fraction-after-elapsed,
-15 cells, excel-graph). Parser matches all hour/minute tokens before the period; `mm.0` reads `mm` as a minute.
-Eval delta: probes known failures 3203 -> 3201 (T-3419 A19 plus the new case's `[h].0 General`-style cells fixed);
-no regressions. Finding in number-formats.md.
+15 cells, excel-graph). The parser accepts it after any hour/minute/second token; a lone padded `mm.0` reads as a
+minute. `m.0`, `mm.0` beside other tokens and `.000` after h/m are unprobed (follow-up: probe them).
+Eval delta: probes known failures 3203 -> 3201 (t3419-elapsed-after-date-b A19 and elapsed-no-seconds-boundary A32
+fixed; the new case is a fully passing C line); no regressions.

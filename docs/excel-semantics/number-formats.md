@@ -92,7 +92,10 @@ below, T-1450), non-ASCII letters (only `ü` is probed; the engine treats every 
     `"[h].00"` "296296.20", `"[m].0"` "17777776.2", `"[hh].0"` "296296.2", `"h.0"` "16.2", `"mm.0"` "16.2",
     `TEXT(5,"[h].0")` = "120.0", `"[m].0"` "7200.0", `"h.0"` "0.0", `"mm.0"` "00.0",
     `TEXT(12345.678,"[h].0 General")` = "296296.2 2.500000331", `TEXT(5.25,"[h].0 General")` = "126.0 0.5". The
-    digit is the serial's own tenth of a second, as with `[s].0`.
+    digit is the serial's own tenth of a second, as with `[s].0`. Only `.0` and `.00` are probed after an hour or
+    minute token (`.000` is unprobed there), and `mm.0` reads as a minute only alone: `m.0`, and `mm.0` beside other
+    tokens (`yyyy mm.0`, `d mm.0`), are unprobed and stay `#VALUE!` (a month). `[h]:mm.0` = "2:59.4" is the same
+    rule after a colon (elapsed-no-seconds-boundary A32).
   - `TEXT(5,"d 0 General")` is `#VALUE!` (a digit placeholder beside a date token), and a literal comma in a date
     section stays a literal: `TEXT(45000,"mmm d, yyyy General")` = "Mar 15, 2023 0.499999803".
   Evidence: probes/t3378-general-in-date-section (64 cells) and t3378-general-in-date-section-1904 (7 cells),
