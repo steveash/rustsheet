@@ -3,7 +3,7 @@ id: T-3668
 title: "Gate A slice 4a: reference tables for SIN, COS, TAN, COT, SEC and CSC"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
