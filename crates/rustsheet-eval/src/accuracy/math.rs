@@ -10,7 +10,9 @@
 //!
 //! The 50 digits are parsed to the nearest double (`str::parse`, correctly rounded): ε = 1e-9 is
 //! seven orders of magnitude above that rounding, so no big-decimal comparison is needed. A value
-//! whose `f` differs from the cell's formula is stale and never attaches.
+//! whose `f` differs from the cell's formula is stale and never attaches. An eval case's sidecar may
+//! also hold `"skipped"` (sheet → A1 → `{"f","why"}`): the cells the generator dropped, which only
+//! `rustsheet-accuracy math --check` reads (decision 0243); the runner skips that map.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -82,6 +84,10 @@ struct RawFile {
     format: String,
     source: MathSource,
     sheets: BTreeMap<String, BTreeMap<String, RawCell>>,
+    /// The candidate cells the generator dropped (T-3588): only `rustsheet-accuracy math --check`
+    /// reads them, so the runner skips the map.
+    #[serde(default, rename = "skipped")]
+    _skipped: Option<serde::de::IgnoredAny>,
 }
 
 /// A cell's math reference.
@@ -280,6 +286,19 @@ mod tests {
         ));
         assert_eq!(t.attach("Calc", at("A3"), Some("X()")), Attached::Missing);
         assert_eq!(t.attach("Other", at("A1"), Some("X()")), Attached::Missing);
+    }
+
+    #[test]
+    fn the_generator_s_skipped_cells_are_read_past() {
+        let text = r#"{"format":"rustsheet-math/v1","source":{"generator":"g"},
+            "sheets":{"Calc":{"A1":{"t":"n","v":"1.5","f":"X()"}}},
+            "skipped":{"Calc":{"A2":{"f":"=Y(1)","why":"no single value"}}}}"#;
+        let t = MathTable::parse(text).expect("a skipped map parses");
+        assert!(matches!(
+            t.attach("Calc", at("A1"), Some("X()")),
+            Attached::Value(_)
+        ));
+        assert_eq!(t.attach("Calc", at("A2"), Some("=Y(1)")), Attached::Missing);
     }
 
     #[test]

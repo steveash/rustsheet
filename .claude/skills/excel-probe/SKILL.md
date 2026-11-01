@@ -26,6 +26,10 @@ right: if the answer looks wrong, arbitrary or inconsistent, record it and match
 3. **Get oracle values**
    - If an Excel backend is available (`cd tools && uv run rustsheet-oracle status`):
      `uv run rustsheet-oracle fill -b excel-graph --suite probes` → commits `*.oracle.json`.
+     Then `uv run rustsheet-accuracy math --suite probes` (or `--suite probes-numeric`) writes the
+     `*.math.json` sidecars of the suite's Gate A one-call cells; commit them with the case.
+     `make check` fails while a case's sidecar is missing or stale (`make eval-math-check`,
+     decision 0243).
    - Otherwise leave the case pending (it shows as "pending" in reports), mark the task
      `blocked` on oracle with a link to the case, and pick other work. The scheduled oracle
      workflow (`.github/workflows/oracle.yml`) fills pending cases.

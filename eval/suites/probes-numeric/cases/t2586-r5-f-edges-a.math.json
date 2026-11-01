@@ -6999,5 +6999,21 @@
     "f": "=F.DIST(A99,1,1,FALSE)"
    }
   }
+ },
+ "skipped": {
+  "Calc": {
+   "B1": {
+    "f": "=F.DIST(A1,1,1,FALSE)",
+    "why": "no single value"
+   },
+   "B3": {
+    "f": "=F.DIST(A3,1,7,FALSE)",
+    "why": "no single value"
+   },
+   "B4": {
+    "f": "=F.DIST(A4,1,10000000000,FALSE)",
+    "why": "no single value"
+   }
+  }
  }
 }

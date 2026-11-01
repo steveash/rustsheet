@@ -1,0 +1,23 @@
+{
+ "format": "rustsheet-math/v1",
+ "source": {
+  "generator": "rustsheet-accuracy",
+  "version": "1",
+  "dps": 80,
+  "input_sha256": "d874590a68a48189b8a343754c65592e374c41c59751124ab7360e5a573713a6"
+ },
+ "sheets": {
+  "Calc": {
+   "A214": {
+    "t": "n",
+    "v": "15.083429804603660950695140833918499517502084857929",
+    "f": "=NPER(0.05/12,-231,3296,94,1)"
+   },
+   "A354": {
+    "t": "e",
+    "why": "flows of one sign: no rate",
+    "f": "=IRR(Data!B8:B9)"
+   }
+  }
+ }
+}

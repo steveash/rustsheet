@@ -159,5 +159,13 @@
     "f": "=F.DIST(1,3,7,TRUE)"
    }
   }
+ },
+ "skipped": {
+  "Calc": {
+   "A27": {
+    "f": "=F.DIST(0,1,7,FALSE)",
+    "why": "no single value"
+   }
+  }
  }
 }

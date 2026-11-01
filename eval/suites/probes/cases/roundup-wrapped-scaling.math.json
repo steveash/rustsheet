@@ -1,0 +1,2097 @@
+{
+ "format": "rustsheet-math/v1",
+ "source": {
+  "generator": "rustsheet-accuracy",
+  "version": "1",
+  "dps": 80,
+  "input_sha256": "ea3768e0e6f7ff2b0a061de02b0a287a34082aacbbcb377b18b8c95dc16e05d6"
+ },
+ "sheets": {
+  "Sheet1": {
+   "C1": {
+    "t": "n",
+    "v": "0.3",
+    "f": "=ROUNDUP(0.29,1)"
+   },
+   "C10": {
+    "t": "n",
+    "v": "2.68",
+    "f": "=ROUNDUP(2.675,2)"
+   },
+   "C11": {
+    "t": "n",
+    "v": "2.675",
+    "f": "=ROUNDUP(2.675,3)"
+   },
+   "C12": {
+    "t": "n",
+    "v": "2.675",
+    "f": "=ROUNDUP(2.675,4)"
+   },
+   "C13": {
+    "t": "n",
+    "v": "0.3",
+    "f": "=ROUNDUP(0.285,1)"
+   },
+   "C14": {
+    "t": "n",
+    "v": "0.29",
+    "f": "=ROUNDUP(0.285,2)"
+   },
+   "C15": {
+    "t": "n",
+    "v": "0.285",
+    "f": "=ROUNDUP(0.285,3)"
+   },
+   "C16": {
+    "t": "n",
+    "v": "0.285",
+    "f": "=ROUNDUP(0.285,4)"
+   },
+   "C17": {
+    "t": "n",
+    "v": "123.5",
+    "f": "=ROUNDUP(123.456,1)"
+   },
+   "C18": {
+    "t": "n",
+    "v": "123.46",
+    "f": "=ROUNDUP(123.456,2)"
+   },
+   "C19": {
+    "t": "n",
+    "v": "123.456",
+    "f": "=ROUNDUP(123.456,3)"
+   },
+   "C2": {
+    "t": "n",
+    "v": "0.29",
+    "f": "=ROUNDUP(0.29,2)"
+   },
+   "C20": {
+    "t": "n",
+    "v": "123.456",
+    "f": "=ROUNDUP(123.456,4)"
+   },
+   "C21": {
+    "t": "n",
+    "v": "1.1",
+    "f": "=ROUNDUP(1.1,1)"
+   },
+   "C22": {
+    "t": "n",
+    "v": "1.1",
+    "f": "=ROUNDUP(1.1,2)"
+   },
+   "C23": {
+    "t": "n",
+    "v": "1.1",
+    "f": "=ROUNDUP(1.1,3)"
+   },
+   "C24": {
+    "t": "n",
+    "v": "1.1",
+    "f": "=ROUNDUP(1.1,4)"
+   },
+   "C25": {
+    "t": "n",
+    "v": "0.1",
+    "f": "=ROUNDUP(0.07,1)"
+   },
+   "C26": {
+    "t": "n",
+    "v": "0.07",
+    "f": "=ROUNDUP(0.07,2)"
+   },
+   "C27": {
+    "t": "n",
+    "v": "0.07",
+    "f": "=ROUNDUP(0.07,3)"
+   },
+   "C28": {
+    "t": "n",
+    "v": "0.07",
+    "f": "=ROUNDUP(0.07,4)"
+   },
+   "C29": {
+    "t": "n",
+    "v": "8.3",
+    "f": "=ROUNDUP(8.255,1)"
+   },
+   "C3": {
+    "t": "n",
+    "v": "0.29",
+    "f": "=ROUNDUP(0.29,3)"
+   },
+   "C30": {
+    "t": "n",
+    "v": "8.26",
+    "f": "=ROUNDUP(8.255,2)"
+   },
+   "C31": {
+    "t": "n",
+    "v": "8.255",
+    "f": "=ROUNDUP(8.255,3)"
+   },
+   "C32": {
+    "t": "n",
+    "v": "8.255",
+    "f": "=ROUNDUP(8.255,4)"
+   },
+   "C33": {
+    "t": "n",
+    "v": "4.4",
+    "f": "=ROUNDUP(4.35,1)"
+   },
+   "C34": {
+    "t": "n",
+    "v": "4.35",
+    "f": "=ROUNDUP(4.35,2)"
+   },
+   "C35": {
+    "t": "n",
+    "v": "4.35",
+    "f": "=ROUNDUP(4.35,3)"
+   },
+   "C36": {
+    "t": "n",
+    "v": "4.35",
+    "f": "=ROUNDUP(4.35,4)"
+   },
+   "C37": {
+    "t": "n",
+    "v": "1234.6",
+    "f": "=ROUNDUP(1234.5678,1)"
+   },
+   "C38": {
+    "t": "n",
+    "v": "1234.57",
+    "f": "=ROUNDUP(1234.5678,2)"
+   },
+   "C39": {
+    "t": "n",
+    "v": "1234.568",
+    "f": "=ROUNDUP(1234.5678,3)"
+   },
+   "C4": {
+    "t": "n",
+    "v": "0.29",
+    "f": "=ROUNDUP(0.29,4)"
+   },
+   "C40": {
+    "t": "n",
+    "v": "1234.5678",
+    "f": "=ROUNDUP(1234.5678,4)"
+   },
+   "C41": {
+    "t": "n",
+    "v": "0.3",
+    "f": "=ROUNDUP(0.1+0.2,1)"
+   },
+   "C42": {
+    "t": "n",
+    "v": "0.3",
+    "f": "=ROUNDUP(0.1+0.2,2)"
+   },
+   "C43": {
+    "t": "n",
+    "v": "0.3",
+    "f": "=ROUNDUP(0.1+0.2,3)"
+   },
+   "C44": {
+    "t": "n",
+    "v": "0.3",
+    "f": "=ROUNDUP(0.1+0.2,4)"
+   },
+   "C45": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=ROUNDUP(1+2^-52,1)"
+   },
+   "C46": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=ROUNDUP(1+2^-52,2)"
+   },
+   "C47": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=ROUNDUP(1+2^-52,3)"
+   },
+   "C48": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=ROUNDUP(1+2^-52,4)"
+   },
+   "C49": {
+    "t": "n",
+    "v": "10.0",
+    "f": "=ROUNDUP(9.995,1)"
+   },
+   "C5": {
+    "t": "n",
+    "v": "1.1",
+    "f": "=ROUNDUP(1.005,1)"
+   },
+   "C50": {
+    "t": "n",
+    "v": "10.0",
+    "f": "=ROUNDUP(9.995,2)"
+   },
+   "C51": {
+    "t": "n",
+    "v": "9.995",
+    "f": "=ROUNDUP(9.995,3)"
+   },
+   "C52": {
+    "t": "n",
+    "v": "9.995",
+    "f": "=ROUNDUP(9.995,4)"
+   },
+   "C53": {
+    "t": "n",
+    "v": "0.6",
+    "f": "=ROUNDUP(0.57,1)"
+   },
+   "C54": {
+    "t": "n",
+    "v": "0.57",
+    "f": "=ROUNDUP(0.57,2)"
+   },
+   "C55": {
+    "t": "n",
+    "v": "0.57",
+    "f": "=ROUNDUP(0.57,3)"
+   },
+   "C56": {
+    "t": "n",
+    "v": "0.57",
+    "f": "=ROUNDUP(0.57,4)"
+   },
+   "C57": {
+    "t": "n",
+    "v": "0.1",
+    "f": "=ROUNDUP(0.00003,1)"
+   },
+   "C58": {
+    "t": "n",
+    "v": "0.01",
+    "f": "=ROUNDUP(0.00003,2)"
+   },
+   "C59": {
+    "t": "n",
+    "v": "0.001",
+    "f": "=ROUNDUP(0.00003,3)"
+   },
+   "C6": {
+    "t": "n",
+    "v": "1.01",
+    "f": "=ROUNDUP(1.005,2)"
+   },
+   "C60": {
+    "t": "n",
+    "v": "0.0001",
+    "f": "=ROUNDUP(0.00003,4)"
+   },
+   "C61": {
+    "t": "n",
+    "v": "5.1",
+    "f": "=ROUNDUP(5.015,1)"
+   },
+   "C62": {
+    "t": "n",
+    "v": "5.02",
+    "f": "=ROUNDUP(5.015,2)"
+   },
+   "C63": {
+    "t": "n",
+    "v": "5.015",
+    "f": "=ROUNDUP(5.015,3)"
+   },
+   "C64": {
+    "t": "n",
+    "v": "5.015",
+    "f": "=ROUNDUP(5.015,4)"
+   },
+   "C65": {
+    "t": "n",
+    "v": "0.2",
+    "f": "=ROUNDUP(0.145,1)"
+   },
+   "C66": {
+    "t": "n",
+    "v": "0.15",
+    "f": "=ROUNDUP(0.145,2)"
+   },
+   "C67": {
+    "t": "n",
+    "v": "0.145",
+    "f": "=ROUNDUP(0.145,3)"
+   },
+   "C68": {
+    "t": "n",
+    "v": "0.145",
+    "f": "=ROUNDUP(0.145,4)"
+   },
+   "C69": {
+    "t": "n",
+    "v": "-0.3",
+    "f": "=ROUNDUP(-0.29,1)"
+   },
+   "C7": {
+    "t": "n",
+    "v": "1.005",
+    "f": "=ROUNDUP(1.005,3)"
+   },
+   "C70": {
+    "t": "n",
+    "v": "-0.29",
+    "f": "=ROUNDUP(-0.29,2)"
+   },
+   "C71": {
+    "t": "n",
+    "v": "-0.29",
+    "f": "=ROUNDUP(-0.29,3)"
+   },
+   "C72": {
+    "t": "n",
+    "v": "-0.29",
+    "f": "=ROUNDUP(-0.29,4)"
+   },
+   "C73": {
+    "t": "n",
+    "v": "-123.5",
+    "f": "=ROUNDUP(-123.456,1)"
+   },
+   "C74": {
+    "t": "n",
+    "v": "-123.46",
+    "f": "=ROUNDUP(-123.456,2)"
+   },
+   "C75": {
+    "t": "n",
+    "v": "-123.456",
+    "f": "=ROUNDUP(-123.456,3)"
+   },
+   "C76": {
+    "t": "n",
+    "v": "-123.456",
+    "f": "=ROUNDUP(-123.456,4)"
+   },
+   "C77": {
+    "t": "n",
+    "v": "33333333333333300000.0",
+    "f": "=ROUNDUP(1E+20/3,1)"
+   },
+   "C78": {
+    "t": "n",
+    "v": "33333333333333300000.0",
+    "f": "=ROUNDUP(1E+20/3,2)"
+   },
+   "C79": {
+    "t": "n",
+    "v": "33333333333333300000.0",
+    "f": "=ROUNDUP(1E+20/3,3)"
+   },
+   "C8": {
+    "t": "n",
+    "v": "1.005",
+    "f": "=ROUNDUP(1.005,4)"
+   },
+   "C80": {
+    "t": "n",
+    "v": "33333333333333300000.0",
+    "f": "=ROUNDUP(1E+20/3,4)"
+   },
+   "C9": {
+    "t": "n",
+    "v": "2.7",
+    "f": "=ROUNDUP(2.675,1)"
+   },
+   "D1": {
+    "t": "n",
+    "v": "0.2",
+    "f": "=ROUNDDOWN(0.29,1)"
+   },
+   "D10": {
+    "t": "n",
+    "v": "2.67",
+    "f": "=ROUNDDOWN(2.675,2)"
+   },
+   "D11": {
+    "t": "n",
+    "v": "2.675",
+    "f": "=ROUNDDOWN(2.675,3)"
+   },
+   "D12": {
+    "t": "n",
+    "v": "2.675",
+    "f": "=ROUNDDOWN(2.675,4)"
+   },
+   "D13": {
+    "t": "n",
+    "v": "0.2",
+    "f": "=ROUNDDOWN(0.285,1)"
+   },
+   "D14": {
+    "t": "n",
+    "v": "0.28",
+    "f": "=ROUNDDOWN(0.285,2)"
+   },
+   "D15": {
+    "t": "n",
+    "v": "0.285",
+    "f": "=ROUNDDOWN(0.285,3)"
+   },
+   "D16": {
+    "t": "n",
+    "v": "0.285",
+    "f": "=ROUNDDOWN(0.285,4)"
+   },
+   "D17": {
+    "t": "n",
+    "v": "123.4",
+    "f": "=ROUNDDOWN(123.456,1)"
+   },
+   "D18": {
+    "t": "n",
+    "v": "123.45",
+    "f": "=ROUNDDOWN(123.456,2)"
+   },
+   "D19": {
+    "t": "n",
+    "v": "123.456",
+    "f": "=ROUNDDOWN(123.456,3)"
+   },
+   "D2": {
+    "t": "n",
+    "v": "0.29",
+    "f": "=ROUNDDOWN(0.29,2)"
+   },
+   "D20": {
+    "t": "n",
+    "v": "123.456",
+    "f": "=ROUNDDOWN(123.456,4)"
+   },
+   "D21": {
+    "t": "n",
+    "v": "1.1",
+    "f": "=ROUNDDOWN(1.1,1)"
+   },
+   "D22": {
+    "t": "n",
+    "v": "1.1",
+    "f": "=ROUNDDOWN(1.1,2)"
+   },
+   "D23": {
+    "t": "n",
+    "v": "1.1",
+    "f": "=ROUNDDOWN(1.1,3)"
+   },
+   "D24": {
+    "t": "n",
+    "v": "1.1",
+    "f": "=ROUNDDOWN(1.1,4)"
+   },
+   "D25": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=ROUNDDOWN(0.07,1)"
+   },
+   "D26": {
+    "t": "n",
+    "v": "0.07",
+    "f": "=ROUNDDOWN(0.07,2)"
+   },
+   "D27": {
+    "t": "n",
+    "v": "0.07",
+    "f": "=ROUNDDOWN(0.07,3)"
+   },
+   "D28": {
+    "t": "n",
+    "v": "0.07",
+    "f": "=ROUNDDOWN(0.07,4)"
+   },
+   "D29": {
+    "t": "n",
+    "v": "8.2",
+    "f": "=ROUNDDOWN(8.255,1)"
+   },
+   "D3": {
+    "t": "n",
+    "v": "0.29",
+    "f": "=ROUNDDOWN(0.29,3)"
+   },
+   "D30": {
+    "t": "n",
+    "v": "8.25",
+    "f": "=ROUNDDOWN(8.255,2)"
+   },
+   "D31": {
+    "t": "n",
+    "v": "8.255",
+    "f": "=ROUNDDOWN(8.255,3)"
+   },
+   "D32": {
+    "t": "n",
+    "v": "8.255",
+    "f": "=ROUNDDOWN(8.255,4)"
+   },
+   "D33": {
+    "t": "n",
+    "v": "4.3",
+    "f": "=ROUNDDOWN(4.35,1)"
+   },
+   "D34": {
+    "t": "n",
+    "v": "4.35",
+    "f": "=ROUNDDOWN(4.35,2)"
+   },
+   "D35": {
+    "t": "n",
+    "v": "4.35",
+    "f": "=ROUNDDOWN(4.35,3)"
+   },
+   "D36": {
+    "t": "n",
+    "v": "4.35",
+    "f": "=ROUNDDOWN(4.35,4)"
+   },
+   "D37": {
+    "t": "n",
+    "v": "1234.5",
+    "f": "=ROUNDDOWN(1234.5678,1)"
+   },
+   "D38": {
+    "t": "n",
+    "v": "1234.56",
+    "f": "=ROUNDDOWN(1234.5678,2)"
+   },
+   "D39": {
+    "t": "n",
+    "v": "1234.567",
+    "f": "=ROUNDDOWN(1234.5678,3)"
+   },
+   "D4": {
+    "t": "n",
+    "v": "0.29",
+    "f": "=ROUNDDOWN(0.29,4)"
+   },
+   "D40": {
+    "t": "n",
+    "v": "1234.5678",
+    "f": "=ROUNDDOWN(1234.5678,4)"
+   },
+   "D41": {
+    "t": "n",
+    "v": "0.3",
+    "f": "=ROUNDDOWN(0.1+0.2,1)"
+   },
+   "D42": {
+    "t": "n",
+    "v": "0.3",
+    "f": "=ROUNDDOWN(0.1+0.2,2)"
+   },
+   "D43": {
+    "t": "n",
+    "v": "0.3",
+    "f": "=ROUNDDOWN(0.1+0.2,3)"
+   },
+   "D44": {
+    "t": "n",
+    "v": "0.3",
+    "f": "=ROUNDDOWN(0.1+0.2,4)"
+   },
+   "D45": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=ROUNDDOWN(1+2^-52,1)"
+   },
+   "D46": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=ROUNDDOWN(1+2^-52,2)"
+   },
+   "D47": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=ROUNDDOWN(1+2^-52,3)"
+   },
+   "D48": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=ROUNDDOWN(1+2^-52,4)"
+   },
+   "D49": {
+    "t": "n",
+    "v": "9.9",
+    "f": "=ROUNDDOWN(9.995,1)"
+   },
+   "D5": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=ROUNDDOWN(1.005,1)"
+   },
+   "D50": {
+    "t": "n",
+    "v": "9.99",
+    "f": "=ROUNDDOWN(9.995,2)"
+   },
+   "D51": {
+    "t": "n",
+    "v": "9.995",
+    "f": "=ROUNDDOWN(9.995,3)"
+   },
+   "D52": {
+    "t": "n",
+    "v": "9.995",
+    "f": "=ROUNDDOWN(9.995,4)"
+   },
+   "D53": {
+    "t": "n",
+    "v": "0.5",
+    "f": "=ROUNDDOWN(0.57,1)"
+   },
+   "D54": {
+    "t": "n",
+    "v": "0.57",
+    "f": "=ROUNDDOWN(0.57,2)"
+   },
+   "D55": {
+    "t": "n",
+    "v": "0.57",
+    "f": "=ROUNDDOWN(0.57,3)"
+   },
+   "D56": {
+    "t": "n",
+    "v": "0.57",
+    "f": "=ROUNDDOWN(0.57,4)"
+   },
+   "D57": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=ROUNDDOWN(0.00003,1)"
+   },
+   "D58": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=ROUNDDOWN(0.00003,2)"
+   },
+   "D59": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=ROUNDDOWN(0.00003,3)"
+   },
+   "D6": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=ROUNDDOWN(1.005,2)"
+   },
+   "D60": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=ROUNDDOWN(0.00003,4)"
+   },
+   "D61": {
+    "t": "n",
+    "v": "5.0",
+    "f": "=ROUNDDOWN(5.015,1)"
+   },
+   "D62": {
+    "t": "n",
+    "v": "5.01",
+    "f": "=ROUNDDOWN(5.015,2)"
+   },
+   "D63": {
+    "t": "n",
+    "v": "5.015",
+    "f": "=ROUNDDOWN(5.015,3)"
+   },
+   "D64": {
+    "t": "n",
+    "v": "5.015",
+    "f": "=ROUNDDOWN(5.015,4)"
+   },
+   "D65": {
+    "t": "n",
+    "v": "0.1",
+    "f": "=ROUNDDOWN(0.145,1)"
+   },
+   "D66": {
+    "t": "n",
+    "v": "0.14",
+    "f": "=ROUNDDOWN(0.145,2)"
+   },
+   "D67": {
+    "t": "n",
+    "v": "0.145",
+    "f": "=ROUNDDOWN(0.145,3)"
+   },
+   "D68": {
+    "t": "n",
+    "v": "0.145",
+    "f": "=ROUNDDOWN(0.145,4)"
+   },
+   "D69": {
+    "t": "n",
+    "v": "-0.2",
+    "f": "=ROUNDDOWN(-0.29,1)"
+   },
+   "D7": {
+    "t": "n",
+    "v": "1.005",
+    "f": "=ROUNDDOWN(1.005,3)"
+   },
+   "D70": {
+    "t": "n",
+    "v": "-0.29",
+    "f": "=ROUNDDOWN(-0.29,2)"
+   },
+   "D71": {
+    "t": "n",
+    "v": "-0.29",
+    "f": "=ROUNDDOWN(-0.29,3)"
+   },
+   "D72": {
+    "t": "n",
+    "v": "-0.29",
+    "f": "=ROUNDDOWN(-0.29,4)"
+   },
+   "D73": {
+    "t": "n",
+    "v": "-123.4",
+    "f": "=ROUNDDOWN(-123.456,1)"
+   },
+   "D74": {
+    "t": "n",
+    "v": "-123.45",
+    "f": "=ROUNDDOWN(-123.456,2)"
+   },
+   "D75": {
+    "t": "n",
+    "v": "-123.456",
+    "f": "=ROUNDDOWN(-123.456,3)"
+   },
+   "D76": {
+    "t": "n",
+    "v": "-123.456",
+    "f": "=ROUNDDOWN(-123.456,4)"
+   },
+   "D77": {
+    "t": "n",
+    "v": "33333333333333300000.0",
+    "f": "=ROUNDDOWN(1E+20/3,1)"
+   },
+   "D78": {
+    "t": "n",
+    "v": "33333333333333300000.0",
+    "f": "=ROUNDDOWN(1E+20/3,2)"
+   },
+   "D79": {
+    "t": "n",
+    "v": "33333333333333300000.0",
+    "f": "=ROUNDDOWN(1E+20/3,3)"
+   },
+   "D8": {
+    "t": "n",
+    "v": "1.005",
+    "f": "=ROUNDDOWN(1.005,4)"
+   },
+   "D80": {
+    "t": "n",
+    "v": "33333333333333300000.0",
+    "f": "=ROUNDDOWN(1E+20/3,4)"
+   },
+   "D9": {
+    "t": "n",
+    "v": "2.6",
+    "f": "=ROUNDDOWN(2.675,1)"
+   }
+  }
+ },
+ "skipped": {
+  "Sheet1": {
+   "A1": {
+    "f": "=ROUNDUP(0.29,65537)",
+    "why": "no single value"
+   },
+   "A10": {
+    "f": "=ROUNDUP(2.675,65538)",
+    "why": "no single value"
+   },
+   "A11": {
+    "f": "=ROUNDUP(2.675,65539)",
+    "why": "no single value"
+   },
+   "A12": {
+    "f": "=ROUNDUP(2.675,65540)",
+    "why": "no single value"
+   },
+   "A13": {
+    "f": "=ROUNDUP(0.285,65537)",
+    "why": "no single value"
+   },
+   "A14": {
+    "f": "=ROUNDUP(0.285,65538)",
+    "why": "no single value"
+   },
+   "A15": {
+    "f": "=ROUNDUP(0.285,65539)",
+    "why": "no single value"
+   },
+   "A16": {
+    "f": "=ROUNDUP(0.285,65540)",
+    "why": "no single value"
+   },
+   "A17": {
+    "f": "=ROUNDUP(123.456,65537)",
+    "why": "no single value"
+   },
+   "A18": {
+    "f": "=ROUNDUP(123.456,65538)",
+    "why": "no single value"
+   },
+   "A19": {
+    "f": "=ROUNDUP(123.456,65539)",
+    "why": "no single value"
+   },
+   "A2": {
+    "f": "=ROUNDUP(0.29,65538)",
+    "why": "no single value"
+   },
+   "A20": {
+    "f": "=ROUNDUP(123.456,65540)",
+    "why": "no single value"
+   },
+   "A21": {
+    "f": "=ROUNDUP(1.1,65537)",
+    "why": "no single value"
+   },
+   "A22": {
+    "f": "=ROUNDUP(1.1,65538)",
+    "why": "no single value"
+   },
+   "A23": {
+    "f": "=ROUNDUP(1.1,65539)",
+    "why": "no single value"
+   },
+   "A24": {
+    "f": "=ROUNDUP(1.1,65540)",
+    "why": "no single value"
+   },
+   "A25": {
+    "f": "=ROUNDUP(0.07,65537)",
+    "why": "no single value"
+   },
+   "A26": {
+    "f": "=ROUNDUP(0.07,65538)",
+    "why": "no single value"
+   },
+   "A27": {
+    "f": "=ROUNDUP(0.07,65539)",
+    "why": "no single value"
+   },
+   "A28": {
+    "f": "=ROUNDUP(0.07,65540)",
+    "why": "no single value"
+   },
+   "A29": {
+    "f": "=ROUNDUP(8.255,65537)",
+    "why": "no single value"
+   },
+   "A3": {
+    "f": "=ROUNDUP(0.29,65539)",
+    "why": "no single value"
+   },
+   "A30": {
+    "f": "=ROUNDUP(8.255,65538)",
+    "why": "no single value"
+   },
+   "A31": {
+    "f": "=ROUNDUP(8.255,65539)",
+    "why": "no single value"
+   },
+   "A32": {
+    "f": "=ROUNDUP(8.255,65540)",
+    "why": "no single value"
+   },
+   "A33": {
+    "f": "=ROUNDUP(4.35,65537)",
+    "why": "no single value"
+   },
+   "A34": {
+    "f": "=ROUNDUP(4.35,65538)",
+    "why": "no single value"
+   },
+   "A35": {
+    "f": "=ROUNDUP(4.35,65539)",
+    "why": "no single value"
+   },
+   "A36": {
+    "f": "=ROUNDUP(4.35,65540)",
+    "why": "no single value"
+   },
+   "A37": {
+    "f": "=ROUNDUP(1234.5678,65537)",
+    "why": "no single value"
+   },
+   "A38": {
+    "f": "=ROUNDUP(1234.5678,65538)",
+    "why": "no single value"
+   },
+   "A39": {
+    "f": "=ROUNDUP(1234.5678,65539)",
+    "why": "no single value"
+   },
+   "A4": {
+    "f": "=ROUNDUP(0.29,65540)",
+    "why": "no single value"
+   },
+   "A40": {
+    "f": "=ROUNDUP(1234.5678,65540)",
+    "why": "no single value"
+   },
+   "A41": {
+    "f": "=ROUNDUP(0.1+0.2,65537)",
+    "why": "no single value"
+   },
+   "A42": {
+    "f": "=ROUNDUP(0.1+0.2,65538)",
+    "why": "no single value"
+   },
+   "A43": {
+    "f": "=ROUNDUP(0.1+0.2,65539)",
+    "why": "no single value"
+   },
+   "A44": {
+    "f": "=ROUNDUP(0.1+0.2,65540)",
+    "why": "no single value"
+   },
+   "A45": {
+    "f": "=ROUNDUP(1+2^-52,65537)",
+    "why": "no single value"
+   },
+   "A46": {
+    "f": "=ROUNDUP(1+2^-52,65538)",
+    "why": "no single value"
+   },
+   "A47": {
+    "f": "=ROUNDUP(1+2^-52,65539)",
+    "why": "no single value"
+   },
+   "A48": {
+    "f": "=ROUNDUP(1+2^-52,65540)",
+    "why": "no single value"
+   },
+   "A49": {
+    "f": "=ROUNDUP(9.995,65537)",
+    "why": "no single value"
+   },
+   "A5": {
+    "f": "=ROUNDUP(1.005,65537)",
+    "why": "no single value"
+   },
+   "A50": {
+    "f": "=ROUNDUP(9.995,65538)",
+    "why": "no single value"
+   },
+   "A51": {
+    "f": "=ROUNDUP(9.995,65539)",
+    "why": "no single value"
+   },
+   "A52": {
+    "f": "=ROUNDUP(9.995,65540)",
+    "why": "no single value"
+   },
+   "A53": {
+    "f": "=ROUNDUP(0.57,65537)",
+    "why": "no single value"
+   },
+   "A54": {
+    "f": "=ROUNDUP(0.57,65538)",
+    "why": "no single value"
+   },
+   "A55": {
+    "f": "=ROUNDUP(0.57,65539)",
+    "why": "no single value"
+   },
+   "A56": {
+    "f": "=ROUNDUP(0.57,65540)",
+    "why": "no single value"
+   },
+   "A57": {
+    "f": "=ROUNDUP(0.00003,65537)",
+    "why": "no single value"
+   },
+   "A58": {
+    "f": "=ROUNDUP(0.00003,65538)",
+    "why": "no single value"
+   },
+   "A59": {
+    "f": "=ROUNDUP(0.00003,65539)",
+    "why": "no single value"
+   },
+   "A6": {
+    "f": "=ROUNDUP(1.005,65538)",
+    "why": "no single value"
+   },
+   "A60": {
+    "f": "=ROUNDUP(0.00003,65540)",
+    "why": "no single value"
+   },
+   "A61": {
+    "f": "=ROUNDUP(5.015,65537)",
+    "why": "no single value"
+   },
+   "A62": {
+    "f": "=ROUNDUP(5.015,65538)",
+    "why": "no single value"
+   },
+   "A63": {
+    "f": "=ROUNDUP(5.015,65539)",
+    "why": "no single value"
+   },
+   "A64": {
+    "f": "=ROUNDUP(5.015,65540)",
+    "why": "no single value"
+   },
+   "A65": {
+    "f": "=ROUNDUP(0.145,65537)",
+    "why": "no single value"
+   },
+   "A66": {
+    "f": "=ROUNDUP(0.145,65538)",
+    "why": "no single value"
+   },
+   "A67": {
+    "f": "=ROUNDUP(0.145,65539)",
+    "why": "no single value"
+   },
+   "A68": {
+    "f": "=ROUNDUP(0.145,65540)",
+    "why": "no single value"
+   },
+   "A69": {
+    "f": "=ROUNDUP(-0.29,65537)",
+    "why": "no single value"
+   },
+   "A7": {
+    "f": "=ROUNDUP(1.005,65539)",
+    "why": "no single value"
+   },
+   "A70": {
+    "f": "=ROUNDUP(-0.29,65538)",
+    "why": "no single value"
+   },
+   "A71": {
+    "f": "=ROUNDUP(-0.29,65539)",
+    "why": "no single value"
+   },
+   "A72": {
+    "f": "=ROUNDUP(-0.29,65540)",
+    "why": "no single value"
+   },
+   "A73": {
+    "f": "=ROUNDUP(-123.456,65537)",
+    "why": "no single value"
+   },
+   "A74": {
+    "f": "=ROUNDUP(-123.456,65538)",
+    "why": "no single value"
+   },
+   "A75": {
+    "f": "=ROUNDUP(-123.456,65539)",
+    "why": "no single value"
+   },
+   "A76": {
+    "f": "=ROUNDUP(-123.456,65540)",
+    "why": "no single value"
+   },
+   "A77": {
+    "f": "=ROUNDUP(1E+20/3,65537)",
+    "why": "no single value"
+   },
+   "A78": {
+    "f": "=ROUNDUP(1E+20/3,65538)",
+    "why": "no single value"
+   },
+   "A79": {
+    "f": "=ROUNDUP(1E+20/3,65539)",
+    "why": "no single value"
+   },
+   "A8": {
+    "f": "=ROUNDUP(1.005,65540)",
+    "why": "no single value"
+   },
+   "A80": {
+    "f": "=ROUNDUP(1E+20/3,65540)",
+    "why": "no single value"
+   },
+   "A9": {
+    "f": "=ROUNDUP(2.675,65537)",
+    "why": "no single value"
+   },
+   "B1": {
+    "f": "=ROUNDDOWN(0.29,65537)",
+    "why": "no single value"
+   },
+   "B10": {
+    "f": "=ROUNDDOWN(2.675,65538)",
+    "why": "no single value"
+   },
+   "B11": {
+    "f": "=ROUNDDOWN(2.675,65539)",
+    "why": "no single value"
+   },
+   "B12": {
+    "f": "=ROUNDDOWN(2.675,65540)",
+    "why": "no single value"
+   },
+   "B13": {
+    "f": "=ROUNDDOWN(0.285,65537)",
+    "why": "no single value"
+   },
+   "B14": {
+    "f": "=ROUNDDOWN(0.285,65538)",
+    "why": "no single value"
+   },
+   "B15": {
+    "f": "=ROUNDDOWN(0.285,65539)",
+    "why": "no single value"
+   },
+   "B16": {
+    "f": "=ROUNDDOWN(0.285,65540)",
+    "why": "no single value"
+   },
+   "B17": {
+    "f": "=ROUNDDOWN(123.456,65537)",
+    "why": "no single value"
+   },
+   "B18": {
+    "f": "=ROUNDDOWN(123.456,65538)",
+    "why": "no single value"
+   },
+   "B19": {
+    "f": "=ROUNDDOWN(123.456,65539)",
+    "why": "no single value"
+   },
+   "B2": {
+    "f": "=ROUNDDOWN(0.29,65538)",
+    "why": "no single value"
+   },
+   "B20": {
+    "f": "=ROUNDDOWN(123.456,65540)",
+    "why": "no single value"
+   },
+   "B21": {
+    "f": "=ROUNDDOWN(1.1,65537)",
+    "why": "no single value"
+   },
+   "B22": {
+    "f": "=ROUNDDOWN(1.1,65538)",
+    "why": "no single value"
+   },
+   "B23": {
+    "f": "=ROUNDDOWN(1.1,65539)",
+    "why": "no single value"
+   },
+   "B24": {
+    "f": "=ROUNDDOWN(1.1,65540)",
+    "why": "no single value"
+   },
+   "B25": {
+    "f": "=ROUNDDOWN(0.07,65537)",
+    "why": "no single value"
+   },
+   "B26": {
+    "f": "=ROUNDDOWN(0.07,65538)",
+    "why": "no single value"
+   },
+   "B27": {
+    "f": "=ROUNDDOWN(0.07,65539)",
+    "why": "no single value"
+   },
+   "B28": {
+    "f": "=ROUNDDOWN(0.07,65540)",
+    "why": "no single value"
+   },
+   "B29": {
+    "f": "=ROUNDDOWN(8.255,65537)",
+    "why": "no single value"
+   },
+   "B3": {
+    "f": "=ROUNDDOWN(0.29,65539)",
+    "why": "no single value"
+   },
+   "B30": {
+    "f": "=ROUNDDOWN(8.255,65538)",
+    "why": "no single value"
+   },
+   "B31": {
+    "f": "=ROUNDDOWN(8.255,65539)",
+    "why": "no single value"
+   },
+   "B32": {
+    "f": "=ROUNDDOWN(8.255,65540)",
+    "why": "no single value"
+   },
+   "B33": {
+    "f": "=ROUNDDOWN(4.35,65537)",
+    "why": "no single value"
+   },
+   "B34": {
+    "f": "=ROUNDDOWN(4.35,65538)",
+    "why": "no single value"
+   },
+   "B35": {
+    "f": "=ROUNDDOWN(4.35,65539)",
+    "why": "no single value"
+   },
+   "B36": {
+    "f": "=ROUNDDOWN(4.35,65540)",
+    "why": "no single value"
+   },
+   "B37": {
+    "f": "=ROUNDDOWN(1234.5678,65537)",
+    "why": "no single value"
+   },
+   "B38": {
+    "f": "=ROUNDDOWN(1234.5678,65538)",
+    "why": "no single value"
+   },
+   "B39": {
+    "f": "=ROUNDDOWN(1234.5678,65539)",
+    "why": "no single value"
+   },
+   "B4": {
+    "f": "=ROUNDDOWN(0.29,65540)",
+    "why": "no single value"
+   },
+   "B40": {
+    "f": "=ROUNDDOWN(1234.5678,65540)",
+    "why": "no single value"
+   },
+   "B41": {
+    "f": "=ROUNDDOWN(0.1+0.2,65537)",
+    "why": "no single value"
+   },
+   "B42": {
+    "f": "=ROUNDDOWN(0.1+0.2,65538)",
+    "why": "no single value"
+   },
+   "B43": {
+    "f": "=ROUNDDOWN(0.1+0.2,65539)",
+    "why": "no single value"
+   },
+   "B44": {
+    "f": "=ROUNDDOWN(0.1+0.2,65540)",
+    "why": "no single value"
+   },
+   "B45": {
+    "f": "=ROUNDDOWN(1+2^-52,65537)",
+    "why": "no single value"
+   },
+   "B46": {
+    "f": "=ROUNDDOWN(1+2^-52,65538)",
+    "why": "no single value"
+   },
+   "B47": {
+    "f": "=ROUNDDOWN(1+2^-52,65539)",
+    "why": "no single value"
+   },
+   "B48": {
+    "f": "=ROUNDDOWN(1+2^-52,65540)",
+    "why": "no single value"
+   },
+   "B49": {
+    "f": "=ROUNDDOWN(9.995,65537)",
+    "why": "no single value"
+   },
+   "B5": {
+    "f": "=ROUNDDOWN(1.005,65537)",
+    "why": "no single value"
+   },
+   "B50": {
+    "f": "=ROUNDDOWN(9.995,65538)",
+    "why": "no single value"
+   },
+   "B51": {
+    "f": "=ROUNDDOWN(9.995,65539)",
+    "why": "no single value"
+   },
+   "B52": {
+    "f": "=ROUNDDOWN(9.995,65540)",
+    "why": "no single value"
+   },
+   "B53": {
+    "f": "=ROUNDDOWN(0.57,65537)",
+    "why": "no single value"
+   },
+   "B54": {
+    "f": "=ROUNDDOWN(0.57,65538)",
+    "why": "no single value"
+   },
+   "B55": {
+    "f": "=ROUNDDOWN(0.57,65539)",
+    "why": "no single value"
+   },
+   "B56": {
+    "f": "=ROUNDDOWN(0.57,65540)",
+    "why": "no single value"
+   },
+   "B57": {
+    "f": "=ROUNDDOWN(0.00003,65537)",
+    "why": "no single value"
+   },
+   "B58": {
+    "f": "=ROUNDDOWN(0.00003,65538)",
+    "why": "no single value"
+   },
+   "B59": {
+    "f": "=ROUNDDOWN(0.00003,65539)",
+    "why": "no single value"
+   },
+   "B6": {
+    "f": "=ROUNDDOWN(1.005,65538)",
+    "why": "no single value"
+   },
+   "B60": {
+    "f": "=ROUNDDOWN(0.00003,65540)",
+    "why": "no single value"
+   },
+   "B61": {
+    "f": "=ROUNDDOWN(5.015,65537)",
+    "why": "no single value"
+   },
+   "B62": {
+    "f": "=ROUNDDOWN(5.015,65538)",
+    "why": "no single value"
+   },
+   "B63": {
+    "f": "=ROUNDDOWN(5.015,65539)",
+    "why": "no single value"
+   },
+   "B64": {
+    "f": "=ROUNDDOWN(5.015,65540)",
+    "why": "no single value"
+   },
+   "B65": {
+    "f": "=ROUNDDOWN(0.145,65537)",
+    "why": "no single value"
+   },
+   "B66": {
+    "f": "=ROUNDDOWN(0.145,65538)",
+    "why": "no single value"
+   },
+   "B67": {
+    "f": "=ROUNDDOWN(0.145,65539)",
+    "why": "no single value"
+   },
+   "B68": {
+    "f": "=ROUNDDOWN(0.145,65540)",
+    "why": "no single value"
+   },
+   "B69": {
+    "f": "=ROUNDDOWN(-0.29,65537)",
+    "why": "no single value"
+   },
+   "B7": {
+    "f": "=ROUNDDOWN(1.005,65539)",
+    "why": "no single value"
+   },
+   "B70": {
+    "f": "=ROUNDDOWN(-0.29,65538)",
+    "why": "no single value"
+   },
+   "B71": {
+    "f": "=ROUNDDOWN(-0.29,65539)",
+    "why": "no single value"
+   },
+   "B72": {
+    "f": "=ROUNDDOWN(-0.29,65540)",
+    "why": "no single value"
+   },
+   "B73": {
+    "f": "=ROUNDDOWN(-123.456,65537)",
+    "why": "no single value"
+   },
+   "B74": {
+    "f": "=ROUNDDOWN(-123.456,65538)",
+    "why": "no single value"
+   },
+   "B75": {
+    "f": "=ROUNDDOWN(-123.456,65539)",
+    "why": "no single value"
+   },
+   "B76": {
+    "f": "=ROUNDDOWN(-123.456,65540)",
+    "why": "no single value"
+   },
+   "B77": {
+    "f": "=ROUNDDOWN(1E+20/3,65537)",
+    "why": "no single value"
+   },
+   "B78": {
+    "f": "=ROUNDDOWN(1E+20/3,65538)",
+    "why": "no single value"
+   },
+   "B79": {
+    "f": "=ROUNDDOWN(1E+20/3,65539)",
+    "why": "no single value"
+   },
+   "B8": {
+    "f": "=ROUNDDOWN(1.005,65540)",
+    "why": "no single value"
+   },
+   "B80": {
+    "f": "=ROUNDDOWN(1E+20/3,65540)",
+    "why": "no single value"
+   },
+   "B9": {
+    "f": "=ROUNDDOWN(2.675,65537)",
+    "why": "no single value"
+   },
+   "E1": {
+    "f": "=ROUNDUP(0.29,2147483649)",
+    "why": "no single value"
+   },
+   "E10": {
+    "f": "=ROUNDUP(2.675,2147483650)",
+    "why": "no single value"
+   },
+   "E11": {
+    "f": "=ROUNDUP(2.675,2147483651)",
+    "why": "no single value"
+   },
+   "E12": {
+    "f": "=ROUNDUP(2.675,2147483652)",
+    "why": "no single value"
+   },
+   "E13": {
+    "f": "=ROUNDUP(0.285,2147483649)",
+    "why": "no single value"
+   },
+   "E14": {
+    "f": "=ROUNDUP(0.285,2147483650)",
+    "why": "no single value"
+   },
+   "E15": {
+    "f": "=ROUNDUP(0.285,2147483651)",
+    "why": "no single value"
+   },
+   "E16": {
+    "f": "=ROUNDUP(0.285,2147483652)",
+    "why": "no single value"
+   },
+   "E17": {
+    "f": "=ROUNDUP(123.456,2147483649)",
+    "why": "no single value"
+   },
+   "E18": {
+    "f": "=ROUNDUP(123.456,2147483650)",
+    "why": "no single value"
+   },
+   "E19": {
+    "f": "=ROUNDUP(123.456,2147483651)",
+    "why": "no single value"
+   },
+   "E2": {
+    "f": "=ROUNDUP(0.29,2147483650)",
+    "why": "no single value"
+   },
+   "E20": {
+    "f": "=ROUNDUP(123.456,2147483652)",
+    "why": "no single value"
+   },
+   "E21": {
+    "f": "=ROUNDUP(1.1,2147483649)",
+    "why": "no single value"
+   },
+   "E22": {
+    "f": "=ROUNDUP(1.1,2147483650)",
+    "why": "no single value"
+   },
+   "E23": {
+    "f": "=ROUNDUP(1.1,2147483651)",
+    "why": "no single value"
+   },
+   "E24": {
+    "f": "=ROUNDUP(1.1,2147483652)",
+    "why": "no single value"
+   },
+   "E25": {
+    "f": "=ROUNDUP(0.07,2147483649)",
+    "why": "no single value"
+   },
+   "E26": {
+    "f": "=ROUNDUP(0.07,2147483650)",
+    "why": "no single value"
+   },
+   "E27": {
+    "f": "=ROUNDUP(0.07,2147483651)",
+    "why": "no single value"
+   },
+   "E28": {
+    "f": "=ROUNDUP(0.07,2147483652)",
+    "why": "no single value"
+   },
+   "E29": {
+    "f": "=ROUNDUP(8.255,2147483649)",
+    "why": "no single value"
+   },
+   "E3": {
+    "f": "=ROUNDUP(0.29,2147483651)",
+    "why": "no single value"
+   },
+   "E30": {
+    "f": "=ROUNDUP(8.255,2147483650)",
+    "why": "no single value"
+   },
+   "E31": {
+    "f": "=ROUNDUP(8.255,2147483651)",
+    "why": "no single value"
+   },
+   "E32": {
+    "f": "=ROUNDUP(8.255,2147483652)",
+    "why": "no single value"
+   },
+   "E33": {
+    "f": "=ROUNDUP(4.35,2147483649)",
+    "why": "no single value"
+   },
+   "E34": {
+    "f": "=ROUNDUP(4.35,2147483650)",
+    "why": "no single value"
+   },
+   "E35": {
+    "f": "=ROUNDUP(4.35,2147483651)",
+    "why": "no single value"
+   },
+   "E36": {
+    "f": "=ROUNDUP(4.35,2147483652)",
+    "why": "no single value"
+   },
+   "E37": {
+    "f": "=ROUNDUP(1234.5678,2147483649)",
+    "why": "no single value"
+   },
+   "E38": {
+    "f": "=ROUNDUP(1234.5678,2147483650)",
+    "why": "no single value"
+   },
+   "E39": {
+    "f": "=ROUNDUP(1234.5678,2147483651)",
+    "why": "no single value"
+   },
+   "E4": {
+    "f": "=ROUNDUP(0.29,2147483652)",
+    "why": "no single value"
+   },
+   "E40": {
+    "f": "=ROUNDUP(1234.5678,2147483652)",
+    "why": "no single value"
+   },
+   "E41": {
+    "f": "=ROUNDUP(0.1+0.2,2147483649)",
+    "why": "no single value"
+   },
+   "E42": {
+    "f": "=ROUNDUP(0.1+0.2,2147483650)",
+    "why": "no single value"
+   },
+   "E43": {
+    "f": "=ROUNDUP(0.1+0.2,2147483651)",
+    "why": "no single value"
+   },
+   "E44": {
+    "f": "=ROUNDUP(0.1+0.2,2147483652)",
+    "why": "no single value"
+   },
+   "E45": {
+    "f": "=ROUNDUP(1+2^-52,2147483649)",
+    "why": "no single value"
+   },
+   "E46": {
+    "f": "=ROUNDUP(1+2^-52,2147483650)",
+    "why": "no single value"
+   },
+   "E47": {
+    "f": "=ROUNDUP(1+2^-52,2147483651)",
+    "why": "no single value"
+   },
+   "E48": {
+    "f": "=ROUNDUP(1+2^-52,2147483652)",
+    "why": "no single value"
+   },
+   "E49": {
+    "f": "=ROUNDUP(9.995,2147483649)",
+    "why": "no single value"
+   },
+   "E5": {
+    "f": "=ROUNDUP(1.005,2147483649)",
+    "why": "no single value"
+   },
+   "E50": {
+    "f": "=ROUNDUP(9.995,2147483650)",
+    "why": "no single value"
+   },
+   "E51": {
+    "f": "=ROUNDUP(9.995,2147483651)",
+    "why": "no single value"
+   },
+   "E52": {
+    "f": "=ROUNDUP(9.995,2147483652)",
+    "why": "no single value"
+   },
+   "E53": {
+    "f": "=ROUNDUP(0.57,2147483649)",
+    "why": "no single value"
+   },
+   "E54": {
+    "f": "=ROUNDUP(0.57,2147483650)",
+    "why": "no single value"
+   },
+   "E55": {
+    "f": "=ROUNDUP(0.57,2147483651)",
+    "why": "no single value"
+   },
+   "E56": {
+    "f": "=ROUNDUP(0.57,2147483652)",
+    "why": "no single value"
+   },
+   "E57": {
+    "f": "=ROUNDUP(0.00003,2147483649)",
+    "why": "no single value"
+   },
+   "E58": {
+    "f": "=ROUNDUP(0.00003,2147483650)",
+    "why": "no single value"
+   },
+   "E59": {
+    "f": "=ROUNDUP(0.00003,2147483651)",
+    "why": "no single value"
+   },
+   "E6": {
+    "f": "=ROUNDUP(1.005,2147483650)",
+    "why": "no single value"
+   },
+   "E60": {
+    "f": "=ROUNDUP(0.00003,2147483652)",
+    "why": "no single value"
+   },
+   "E61": {
+    "f": "=ROUNDUP(5.015,2147483649)",
+    "why": "no single value"
+   },
+   "E62": {
+    "f": "=ROUNDUP(5.015,2147483650)",
+    "why": "no single value"
+   },
+   "E63": {
+    "f": "=ROUNDUP(5.015,2147483651)",
+    "why": "no single value"
+   },
+   "E64": {
+    "f": "=ROUNDUP(5.015,2147483652)",
+    "why": "no single value"
+   },
+   "E65": {
+    "f": "=ROUNDUP(0.145,2147483649)",
+    "why": "no single value"
+   },
+   "E66": {
+    "f": "=ROUNDUP(0.145,2147483650)",
+    "why": "no single value"
+   },
+   "E67": {
+    "f": "=ROUNDUP(0.145,2147483651)",
+    "why": "no single value"
+   },
+   "E68": {
+    "f": "=ROUNDUP(0.145,2147483652)",
+    "why": "no single value"
+   },
+   "E69": {
+    "f": "=ROUNDUP(-0.29,2147483649)",
+    "why": "no single value"
+   },
+   "E7": {
+    "f": "=ROUNDUP(1.005,2147483651)",
+    "why": "no single value"
+   },
+   "E70": {
+    "f": "=ROUNDUP(-0.29,2147483650)",
+    "why": "no single value"
+   },
+   "E71": {
+    "f": "=ROUNDUP(-0.29,2147483651)",
+    "why": "no single value"
+   },
+   "E72": {
+    "f": "=ROUNDUP(-0.29,2147483652)",
+    "why": "no single value"
+   },
+   "E73": {
+    "f": "=ROUNDUP(-123.456,2147483649)",
+    "why": "no single value"
+   },
+   "E74": {
+    "f": "=ROUNDUP(-123.456,2147483650)",
+    "why": "no single value"
+   },
+   "E75": {
+    "f": "=ROUNDUP(-123.456,2147483651)",
+    "why": "no single value"
+   },
+   "E76": {
+    "f": "=ROUNDUP(-123.456,2147483652)",
+    "why": "no single value"
+   },
+   "E77": {
+    "f": "=ROUNDUP(1E+20/3,2147483649)",
+    "why": "no single value"
+   },
+   "E78": {
+    "f": "=ROUNDUP(1E+20/3,2147483650)",
+    "why": "no single value"
+   },
+   "E79": {
+    "f": "=ROUNDUP(1E+20/3,2147483651)",
+    "why": "no single value"
+   },
+   "E8": {
+    "f": "=ROUNDUP(1.005,2147483652)",
+    "why": "no single value"
+   },
+   "E80": {
+    "f": "=ROUNDUP(1E+20/3,2147483652)",
+    "why": "no single value"
+   },
+   "E9": {
+    "f": "=ROUNDUP(2.675,2147483649)",
+    "why": "no single value"
+   },
+   "F1": {
+    "f": "=ROUNDUP(0.29,-65537)",
+    "why": "no single value"
+   },
+   "F10": {
+    "f": "=ROUNDUP(2.675,-65538)",
+    "why": "no single value"
+   },
+   "F11": {
+    "f": "=ROUNDUP(2.675,-65539)",
+    "why": "no single value"
+   },
+   "F12": {
+    "f": "=ROUNDUP(2.675,-65540)",
+    "why": "no single value"
+   },
+   "F13": {
+    "f": "=ROUNDUP(0.285,-65537)",
+    "why": "no single value"
+   },
+   "F14": {
+    "f": "=ROUNDUP(0.285,-65538)",
+    "why": "no single value"
+   },
+   "F15": {
+    "f": "=ROUNDUP(0.285,-65539)",
+    "why": "no single value"
+   },
+   "F16": {
+    "f": "=ROUNDUP(0.285,-65540)",
+    "why": "no single value"
+   },
+   "F17": {
+    "f": "=ROUNDUP(123.456,-65537)",
+    "why": "no single value"
+   },
+   "F18": {
+    "f": "=ROUNDUP(123.456,-65538)",
+    "why": "no single value"
+   },
+   "F19": {
+    "f": "=ROUNDUP(123.456,-65539)",
+    "why": "no single value"
+   },
+   "F2": {
+    "f": "=ROUNDUP(0.29,-65538)",
+    "why": "no single value"
+   },
+   "F20": {
+    "f": "=ROUNDUP(123.456,-65540)",
+    "why": "no single value"
+   },
+   "F21": {
+    "f": "=ROUNDUP(1.1,-65537)",
+    "why": "no single value"
+   },
+   "F22": {
+    "f": "=ROUNDUP(1.1,-65538)",
+    "why": "no single value"
+   },
+   "F23": {
+    "f": "=ROUNDUP(1.1,-65539)",
+    "why": "no single value"
+   },
+   "F24": {
+    "f": "=ROUNDUP(1.1,-65540)",
+    "why": "no single value"
+   },
+   "F25": {
+    "f": "=ROUNDUP(0.07,-65537)",
+    "why": "no single value"
+   },
+   "F26": {
+    "f": "=ROUNDUP(0.07,-65538)",
+    "why": "no single value"
+   },
+   "F27": {
+    "f": "=ROUNDUP(0.07,-65539)",
+    "why": "no single value"
+   },
+   "F28": {
+    "f": "=ROUNDUP(0.07,-65540)",
+    "why": "no single value"
+   },
+   "F29": {
+    "f": "=ROUNDUP(8.255,-65537)",
+    "why": "no single value"
+   },
+   "F3": {
+    "f": "=ROUNDUP(0.29,-65539)",
+    "why": "no single value"
+   },
+   "F30": {
+    "f": "=ROUNDUP(8.255,-65538)",
+    "why": "no single value"
+   },
+   "F31": {
+    "f": "=ROUNDUP(8.255,-65539)",
+    "why": "no single value"
+   },
+   "F32": {
+    "f": "=ROUNDUP(8.255,-65540)",
+    "why": "no single value"
+   },
+   "F33": {
+    "f": "=ROUNDUP(4.35,-65537)",
+    "why": "no single value"
+   },
+   "F34": {
+    "f": "=ROUNDUP(4.35,-65538)",
+    "why": "no single value"
+   },
+   "F35": {
+    "f": "=ROUNDUP(4.35,-65539)",
+    "why": "no single value"
+   },
+   "F36": {
+    "f": "=ROUNDUP(4.35,-65540)",
+    "why": "no single value"
+   },
+   "F37": {
+    "f": "=ROUNDUP(1234.5678,-65537)",
+    "why": "no single value"
+   },
+   "F38": {
+    "f": "=ROUNDUP(1234.5678,-65538)",
+    "why": "no single value"
+   },
+   "F39": {
+    "f": "=ROUNDUP(1234.5678,-65539)",
+    "why": "no single value"
+   },
+   "F4": {
+    "f": "=ROUNDUP(0.29,-65540)",
+    "why": "no single value"
+   },
+   "F40": {
+    "f": "=ROUNDUP(1234.5678,-65540)",
+    "why": "no single value"
+   },
+   "F41": {
+    "f": "=ROUNDUP(0.1+0.2,-65537)",
+    "why": "no single value"
+   },
+   "F42": {
+    "f": "=ROUNDUP(0.1+0.2,-65538)",
+    "why": "no single value"
+   },
+   "F43": {
+    "f": "=ROUNDUP(0.1+0.2,-65539)",
+    "why": "no single value"
+   },
+   "F44": {
+    "f": "=ROUNDUP(0.1+0.2,-65540)",
+    "why": "no single value"
+   },
+   "F45": {
+    "f": "=ROUNDUP(1+2^-52,-65537)",
+    "why": "no single value"
+   },
+   "F46": {
+    "f": "=ROUNDUP(1+2^-52,-65538)",
+    "why": "no single value"
+   },
+   "F47": {
+    "f": "=ROUNDUP(1+2^-52,-65539)",
+    "why": "no single value"
+   },
+   "F48": {
+    "f": "=ROUNDUP(1+2^-52,-65540)",
+    "why": "no single value"
+   },
+   "F49": {
+    "f": "=ROUNDUP(9.995,-65537)",
+    "why": "no single value"
+   },
+   "F5": {
+    "f": "=ROUNDUP(1.005,-65537)",
+    "why": "no single value"
+   },
+   "F50": {
+    "f": "=ROUNDUP(9.995,-65538)",
+    "why": "no single value"
+   },
+   "F51": {
+    "f": "=ROUNDUP(9.995,-65539)",
+    "why": "no single value"
+   },
+   "F52": {
+    "f": "=ROUNDUP(9.995,-65540)",
+    "why": "no single value"
+   },
+   "F53": {
+    "f": "=ROUNDUP(0.57,-65537)",
+    "why": "no single value"
+   },
+   "F54": {
+    "f": "=ROUNDUP(0.57,-65538)",
+    "why": "no single value"
+   },
+   "F55": {
+    "f": "=ROUNDUP(0.57,-65539)",
+    "why": "no single value"
+   },
+   "F56": {
+    "f": "=ROUNDUP(0.57,-65540)",
+    "why": "no single value"
+   },
+   "F57": {
+    "f": "=ROUNDUP(0.00003,-65537)",
+    "why": "no single value"
+   },
+   "F58": {
+    "f": "=ROUNDUP(0.00003,-65538)",
+    "why": "no single value"
+   },
+   "F59": {
+    "f": "=ROUNDUP(0.00003,-65539)",
+    "why": "no single value"
+   },
+   "F6": {
+    "f": "=ROUNDUP(1.005,-65538)",
+    "why": "no single value"
+   },
+   "F60": {
+    "f": "=ROUNDUP(0.00003,-65540)",
+    "why": "no single value"
+   },
+   "F61": {
+    "f": "=ROUNDUP(5.015,-65537)",
+    "why": "no single value"
+   },
+   "F62": {
+    "f": "=ROUNDUP(5.015,-65538)",
+    "why": "no single value"
+   },
+   "F63": {
+    "f": "=ROUNDUP(5.015,-65539)",
+    "why": "no single value"
+   },
+   "F64": {
+    "f": "=ROUNDUP(5.015,-65540)",
+    "why": "no single value"
+   },
+   "F65": {
+    "f": "=ROUNDUP(0.145,-65537)",
+    "why": "no single value"
+   },
+   "F66": {
+    "f": "=ROUNDUP(0.145,-65538)",
+    "why": "no single value"
+   },
+   "F67": {
+    "f": "=ROUNDUP(0.145,-65539)",
+    "why": "no single value"
+   },
+   "F68": {
+    "f": "=ROUNDUP(0.145,-65540)",
+    "why": "no single value"
+   },
+   "F69": {
+    "f": "=ROUNDUP(-0.29,-65537)",
+    "why": "no single value"
+   },
+   "F7": {
+    "f": "=ROUNDUP(1.005,-65539)",
+    "why": "no single value"
+   },
+   "F70": {
+    "f": "=ROUNDUP(-0.29,-65538)",
+    "why": "no single value"
+   },
+   "F71": {
+    "f": "=ROUNDUP(-0.29,-65539)",
+    "why": "no single value"
+   },
+   "F72": {
+    "f": "=ROUNDUP(-0.29,-65540)",
+    "why": "no single value"
+   },
+   "F73": {
+    "f": "=ROUNDUP(-123.456,-65537)",
+    "why": "no single value"
+   },
+   "F74": {
+    "f": "=ROUNDUP(-123.456,-65538)",
+    "why": "no single value"
+   },
+   "F75": {
+    "f": "=ROUNDUP(-123.456,-65539)",
+    "why": "no single value"
+   },
+   "F76": {
+    "f": "=ROUNDUP(-123.456,-65540)",
+    "why": "no single value"
+   },
+   "F77": {
+    "f": "=ROUNDUP(1E+20/3,-65537)",
+    "why": "no single value"
+   },
+   "F78": {
+    "f": "=ROUNDUP(1E+20/3,-65538)",
+    "why": "no single value"
+   },
+   "F79": {
+    "f": "=ROUNDUP(1E+20/3,-65539)",
+    "why": "no single value"
+   },
+   "F8": {
+    "f": "=ROUNDUP(1.005,-65540)",
+    "why": "no single value"
+   },
+   "F80": {
+    "f": "=ROUNDUP(1E+20/3,-65540)",
+    "why": "no single value"
+   },
+   "F9": {
+    "f": "=ROUNDUP(2.675,-65537)",
+    "why": "no single value"
+   }
+  }
+ }
+}

@@ -244,5 +244,85 @@
     "f": "=F.INV(0.999999,1E8,2)"
    }
   }
+ },
+ "skipped": {
+  "Calc": {
+   "A105": {
+    "f": "=F.INV(0.999999,1E10,6)",
+    "why": "not converged or too slow"
+   },
+   "A111": {
+    "f": "=F.INV(0.3,5,1E10)",
+    "why": "not converged or too slow"
+   },
+   "A113": {
+    "f": "=F.INV(0.3,1E10,5)",
+    "why": "not converged or too slow"
+   },
+   "A119": {
+    "f": "=F.INV(0.3,2,1E8)",
+    "why": "not converged or too slow"
+   },
+   "A125": {
+    "f": "=F.INV(0.3,6,1E10)",
+    "why": "not converged or too slow"
+   },
+   "A131": {
+    "f": "=F.INV(0.3,5,1E6)",
+    "why": "not converged or too slow"
+   },
+   "A23": {
+    "f": "=F.INV(0.025,5,1E10)",
+    "why": "not converged or too slow"
+   },
+   "A25": {
+    "f": "=F.INV(0.025,1E10,5)",
+    "why": "not converged or too slow"
+   },
+   "A3": {
+    "f": "=F.INV(0.5,1E10,5)",
+    "why": "not converged or too slow"
+   },
+   "A31": {
+    "f": "=F.INV(0.025,2,1E8)",
+    "why": "not converged or too slow"
+   },
+   "A37": {
+    "f": "=F.INV(0.025,6,1E10)",
+    "why": "not converged or too slow"
+   },
+   "A45": {
+    "f": "=F.INV(0.975,5,1E10)",
+    "why": "not converged or too slow"
+   },
+   "A47": {
+    "f": "=F.INV(0.975,1E10,5)",
+    "why": "not converged or too slow"
+   },
+   "A55": {
+    "f": "=F.INV(0.975,1E8,2)",
+    "why": "not converged or too slow"
+   },
+   "A61": {
+    "f": "=F.INV(0.975,1E10,6)",
+    "why": "not converged or too slow"
+   },
+   "A69": {
+    "f": "=F.INV(1E-6,1E10,5)",
+    "why": "not converged or too slow"
+   },
+   "A75": {
+    "f": "=F.INV(1E-6,2,1E8)",
+    "why": "not converged or too slow"
+   },
+   "A89": {
+    "f": "=F.INV(0.999999,5,1E10)",
+    "why": "not converged or too slow"
+   },
+   "A9": {
+    "f": "=F.INV(0.5,2,1E8)",
+    "why": "not converged or too slow"
+   }
+  }
  }
 }

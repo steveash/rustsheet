@@ -4124,5 +4124,13 @@
     "f": "=F.DIST(-1E-300,10,10,FALSE)"
    }
   }
+ },
+ "skipped": {
+  "Calc": {
+   "D1": {
+    "f": "=F.DIST(0,1,5,FALSE)",
+    "why": "no single value"
+   }
+  }
  }
 }

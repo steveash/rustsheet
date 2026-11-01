@@ -124,5 +124,17 @@
     "f": "=F.DIST(2,10000000000,5,FALSE)"
    }
   }
+ },
+ "skipped": {
+  "Calc": {
+   "A1": {
+    "f": "=F.INV(0.5,10000000000,5)",
+    "why": "not converged or too slow"
+   },
+   "A58": {
+    "f": "=F.INV(0.5,1E10,1E10)",
+    "why": "not converged or too slow"
+   }
+  }
  }
 }

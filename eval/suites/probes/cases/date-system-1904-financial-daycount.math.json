@@ -1,0 +1,18 @@
+{
+ "format": "rustsheet-math/v1",
+ "source": {
+  "generator": "rustsheet-accuracy",
+  "version": "1",
+  "dps": 80,
+  "input_sha256": "1a3920e74aa7928dd4258d9a382e4356ef372cc119dd2af0d1451127c62e7213"
+ },
+ "sheets": {
+  "S": {
+   "A40": {
+    "t": "n",
+    "v": "0.099713585934141241287216920352387027070528184272521",
+    "f": "=XIRR({-100,110},{0,366})"
+   }
+  }
+ }
+}

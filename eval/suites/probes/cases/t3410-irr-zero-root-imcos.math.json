@@ -1,0 +1,38 @@
+{
+ "format": "rustsheet-math/v1",
+ "source": {
+  "generator": "rustsheet-accuracy",
+  "version": "1",
+  "dps": 80,
+  "input_sha256": "5a6d861d9576e7a5c52f927f2d4888ed5831e38956fac4f7d2ca6d82416f3941"
+ },
+ "sheets": {
+  "Calc": {
+   "C1": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=IRR({-4,4})"
+   },
+   "C3": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=IRR({4,-4})"
+   },
+   "C4": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=IRR(A4:B4)"
+   },
+   "C5": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=IRR({-1,1})"
+   },
+   "C6": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=IRR({-2,1,1})"
+   }
+  }
+ }
+}
