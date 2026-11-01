@@ -62,10 +62,29 @@ def rerecord(root: Path, new_cases: Path) -> int:
     return subprocess.run(command, cwd=root, stdin=subprocess.DEVNULL, check=False).returncode
 
 
-def catch_up(root: Path, branch: str, record: Callable[[Path, Path], int] = rerecord) -> str:
+# What `catch_up` merges `main` into: given the checkout, the PR head and `main` (both fetched), the
+# commit to check out before the merge and the merge commit's message. `make renumber` passes one
+# that renumbers the PR's colliding ids first (scripts/merge_renumber.py, decision 0224).
+Rewrite = Callable[[Path, str, str], tuple[str, str]]
+
+
+def plain(root: Path, head: str, main: str) -> tuple[str, str]:
+    """The catch-up's own `Rewrite`: the PR head itself."""
+    return head, f"Merge {merge_ready.BASE_BRANCH} (make catch-up, decision 0207)"
+
+
+def catch_up(
+    root: Path,
+    branch: str,
+    record: Callable[[Path, Path], int] = rerecord,
+    rewrite: Rewrite = plain,
+    record_clean: bool = True,
+) -> str:
     """Merges `main` into `branch` as the module docstring says, as one merge commit that the carry
     rule accepts, and pushes it; returns the pushed head. Raises Refused when it cannot (nothing
-    pushed). The checkout's branch, or detached HEAD, is restored either way."""
+    pushed). The checkout's branch, or detached HEAD, is restored either way. `rewrite` gives the
+    commit the merge starts from (the merge commit's parents are still the PR head and `main`);
+    without `record_clean`, the lists are re-recorded only when one conflicted."""
     branch = gh_client.branch_name(branch)
     if git("status", "--porcelain", "--untracked-files=no", root=root).stdout.strip():
         raise Refused("the checkout has local changes")
@@ -76,10 +95,12 @@ def catch_up(root: Path, branch: str, record: Callable[[Path, Path], int] = rere
     main = f"refs/merge-ready/{merge_ready.BASE_BRANCH}"
     git("fetch", "-q", "--no-tags", REMOTE, f"+refs/heads/{branch}:{HEAD_REF}", root=root)
     lists = repo.checked_baselines()
+    head, main_sha = (git("rev-parse", ref, root=root).stdout.strip() for ref in (HEAD_REF, main))
     try:
         if git("merge-base", "--is-ancestor", main, HEAD_REF, root=root, check=False).returncode == 0:
             raise Refused(f"{branch} already contains {merge_ready.BASE_BRANCH}")
-        git("checkout", "-q", "--detach", HEAD_REF, root=root)
+        start_at, message = rewrite(root, head, main_sha)
+        git("checkout", "-q", "--detach", start_at, root=root)
         git("merge", "-q", "--no-ff", "--no-commit", main, root=root, check=False)
         if git("rev-parse", "-q", "--verify", "MERGE_HEAD", root=root, check=False).returncode:
             raise Refused(f"git could not start merging {merge_ready.BASE_BRANCH} into {branch}")
@@ -106,12 +127,12 @@ def catch_up(root: Path, branch: str, record: Callable[[Path, Path], int] = rere
         # The PR's own case files, from before the merge: after it, the tree's baseline lists the
         # PR's cases too, so only this list tells them from main's (decision 0219).
         added = visible_lock.added_case_files(root, main, HEAD_REF)
-        with tempfile.TemporaryDirectory() as tmp:
-            listed = Path(tmp) / "new-cases.txt"
-            listed.write_text("".join(f"{p}\n" for p in added), encoding="utf-8")
-            code = record(root, listed)
-        if code != 0:
-            raise Refused("make eval-baseline refused (a regression, or the eval did not run)")
+        if conflicted or record_clean:
+            with tempfile.TemporaryDirectory() as tmp:
+                listed = Path(tmp) / "new-cases.txt"
+                listed.write_text("".join(f"{p}\n" for p in added), encoding="utf-8")
+                if record(root, listed) != 0:
+                    raise Refused("make eval-baseline refused (a regression, or the eval did not run)")
         # The carry rule's visible-parity check, before anything is pushed: a line above main's
         # for one of main's cases (a PR's sanctioned raise) needs a merge by hand (decision 0219).
         lock_path = root / visible_lock.VISIBLE_PARITY
@@ -126,13 +147,29 @@ def catch_up(root: Path, branch: str, record: Callable[[Path, Path], int] = rere
             raise Refused(f"the re-record changed files the carry rule does not accept: {', '.join(others)}")
         if recorded:
             git("add", "--", *recorded, root=root)
-        git("commit", "-q", "--no-edit", root=root)  # one merge commit: main merged, lists re-recorded
-        head = git("rev-parse", "HEAD", root=root).stdout.strip()
-        git("push", "-q", REMOTE, f"HEAD:refs/heads/{branch}", root=root)
-        return head
+        # One merge commit of the PR head and main: main merged, lists re-recorded (and, from
+        # `make renumber`, ids renumbered). A push the branch moved under is refused, not forced.
+        tree = git("write-tree", root=root).stdout.strip()
+        pushed = git("commit-tree", tree, "-p", head, "-p", main_sha, "-m", message, root=root).stdout.strip()
+        git("push", "-q", REMOTE, f"{pushed}:refs/heads/{branch}", root=root)
+        return pushed
     finally:
         git("merge", "--abort", root=root, check=False)
         git("checkout", "-q", "-f", *([] if on else ["--detach"]), start, root=root, check=False)
+
+
+def pr_branch(client: gh_client.Client, pr: int) -> str:
+    """The branch of PR `pr`; Refused unless the PR is open, from this repository and based on
+    `main` (forks are refused: the tools build and push the PR's tree with this session's
+    credentials)."""
+    pull = client.pull(pr)
+    if merge_ready.field_of(pull, "merged") is True or merge_ready.text_of(pull, "state") != "open":
+        raise Refused(f"#{pr} is not open")
+    if merge_ready.text_of(pull, "head", "repo", "full_name") != merge_ready.text_of(pull, "base", "repo", "full_name"):
+        raise Refused(f"#{pr} comes from a fork")
+    if merge_ready.text_of(pull, "base", "ref") != merge_ready.BASE_BRANCH:
+        raise Refused(f"#{pr} is not based on {merge_ready.BASE_BRANCH}")
+    return merge_ready.text_of(pull, "head", "ref")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -147,16 +184,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
     try:
         pr = gh_client.number(args.pr)
-        pull = client.pull(pr)
-        if merge_ready.field_of(pull, "merged") is True or merge_ready.text_of(pull, "state") != "open":
-            raise Refused(f"#{pr} is not open")
-        if merge_ready.text_of(pull, "head", "repo", "full_name") != merge_ready.text_of(
-            pull, "base", "repo", "full_name"
-        ):
-            raise Refused(f"#{pr} comes from a fork")
-        if merge_ready.text_of(pull, "base", "ref") != merge_ready.BASE_BRANCH:
-            raise Refused(f"#{pr} is not based on {merge_ready.BASE_BRANCH}")
-        head = catch_up(ROOT, merge_ready.text_of(pull, "head", "ref"))
+        head = catch_up(ROOT, pr_branch(client, pr))
     except Refused as refusal:
         print(f"merge_catchup: not catching up #{args.pr}: {refusal}", file=sys.stderr)
         return 1

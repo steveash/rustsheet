@@ -45,6 +45,7 @@ from pathlib import Path
 
 import ci_changes
 import gh_client
+import id_renumber
 import merge_lock
 import tasks
 from gh_client import Client, GhError, field_of, int_of, label_names, text_of  # noqa: F401 (re-exported)
@@ -490,6 +491,8 @@ class Repo:
         lists re-recorded (decision 0093). The retired `RETIRED_LOCK` may be deleted when `main`
         has none (a PR from before decision 0219 modified it). The eval
         gate on the head, which marking requires green, checks exactly those lists (decision 0207).
+        Or, with the same exceptions, the tree is that of `prev` renumbered as `make renumber` does,
+        merged with `main` (`id_renumber.renumbered_merge`, decision 0224).
         Anything else (another file, an addition, deletion, rename or mode change) breaks the carry."""
         parents = self.git("rev-list", "--parents", "-n", "1", head).split()[1:]
         if len(parents) != 2 or parents[0] != prev:
@@ -497,14 +500,18 @@ class Repo:
         main = f"refs/merge-ready/{BASE_BRANCH}"
         if git("merge-base", "--is-ancestor", parents[1], main, root=self.root, check=False).returncode:
             return f"the merged commit is not on {BASE_BRANCH}"
-        merged = git("merge-tree", "--write-tree", "--name-only", *parents, root=self.root, check=False)
-        if merged.returncode not in (0, 1):
+        plain = id_renumber.merge_tree(self.root, *parents)
+        if plain is None:
             return "the merge could not be computed"
-        lines = merged.stdout.split("\n")
-        tree = lines[0].strip()
-        # After the tree: the conflicted paths, a blank line, then informational messages.
-        rest = lines[1:]
-        conflicted = rest[: rest.index("")] if "" in rest else rest
+        problem = self.tree_problem(*plain, parents, head)
+        try:
+            renumbered = id_renumber.renumbered_merge(self.root, parents, plain[0], head) if problem else None
+        except id_renumber.RenumberError as error:
+            return f"{problem} (as a renumber: {error})"
+        return problem if renumbered is None else self.tree_problem(*renumbered, parents, head)
+
+    def tree_problem(self, tree: str, conflicted: Sequence[str], parents: Sequence[str], head: str) -> str | None:
+        """`carry_problem`'s comparison of `head` with an expected merge `tree` and its conflicts."""
         retired = not in_commit(self.root, parents[1], RETIRED_LOCK)
         lists = self.checked_baselines() | ({RETIRED_LOCK} if retired else set())
         if any(p not in lists for p in conflicted):
@@ -891,7 +898,7 @@ def main(argv: list[str], root: Path = ROOT) -> int:
     mark = sub.add_parser("mark", help="mark a green, approved PR ready (the marker and the label)")
     mark.add_argument("--pr", required=True)
     mark.add_argument("--review", help='"security=APPROVE architecture=APPROVE quality=APPROVE ..."')
-    mark.add_argument("--carry", action="store_true", help="carry the verdicts over a merge of main (clean, or re-recording eval-gated baseline lists)")
+    mark.add_argument("--carry", action="store_true", help="carry the verdicts over a merge of main (clean, re-recording eval-gated baseline lists, or make renumber)")
     mark.add_argument("--by", default=os.environ.get("CLAUDE_CODE_SESSION_ID", ""), help="the marker id")
     mark.add_argument("--step", action="store_true", help="print the writes as step-mode actions")
     record = sub.add_parser("record", help="post a reviewer's verdict record for the local HEAD")

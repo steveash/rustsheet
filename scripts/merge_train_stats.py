@@ -24,6 +24,7 @@ Definitions the spec leaves open, fixed here:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import math
 import re
 import subprocess
@@ -542,7 +543,8 @@ class Stats:
         )
 
     def stranded(self) -> list[int]:
-        """Open PRs marked ready more than 2 h ago, unmerged and not ejected."""
+        """Open PRs marked ready more than 2 h ago, unmerged and not ejected, whose newest marker
+        names the current head: a stale marker waits on its worker or the janitor (decision 0224)."""
         found = []
         for pull in self.client.pulls():
             labels = merge_ready.label_names(pull)
@@ -550,13 +552,15 @@ class Stats:
                 continue
             pr = int_of(pull, "number")
             marks = [
-                when(text_of(c, "created_at"))
+                (at, text_of(c, "body"))
                 for c in self.client.comments(pr)
-                if merge_ready.has_marker(text_of(c, "body"))
+                if merge_ready.has_marker(text_of(c, "body")) and (at := when(text_of(c, "created_at")))
             ]
-            newest = max((m for m in marks if m is not None), default=None)
-            if newest is not None and self.now - newest > STRANDED_AFTER:
-                found.append(pr)
+            newest, body = max(marks, default=(None, ""))
+            with contextlib.suppress(merge_ready.MarkerError):
+                current = merge_ready.parse_marker(body).head == text_of(pull, "head", "sha")
+                if newest is not None and current and self.now - newest > STRANDED_AFTER:
+                    found.append(pr)
         self.emit("stranded PRs: " + (", ".join(f"#{pr}" for pr in found) or "none"))
         return found
 
@@ -611,7 +615,8 @@ class Stats:
         stranded: Sequence[int],
         tree_failures: int,
     ) -> None:
-        """The steward's daily thresholds; any one triggers the flip to `lock` and a P0."""
+        """The steward's daily thresholds (decision 0224): a tree-check failure, a correctness
+        failure, triggers the flip to `lock` and a P0; any other escalates (the steward skill)."""
         triggers = []
         for day in sorted({at.date() for at, _ in latencies}):
             p90 = percentile([v for at, v in latencies if at.date() == day], 0.9)
@@ -624,8 +629,9 @@ class Stats:
             if n > TRAINS_OVER_MAX
         ]
         triggers += [f"stranded #{pr}" for pr in stranded]
-        triggers += [f"{tree_failures} tree-check failure(s)"] if tree_failures else []
-        self.emit("daily thresholds: " + ("; ".join(triggers) + " -> flip to lock" if triggers else "ok"))
+        parts = ["; ".join(triggers) + " -> escalate"] if triggers else []
+        parts += [f"{tree_failures} tree-check failure(s) -> flip to lock"] if tree_failures else []
+        self.emit("daily thresholds: " + (" | ".join(parts) or "ok"))
 
     def bar(self, predictions: Sequence[Prediction], shadow_start: datetime | None) -> None:
         """T-2991's evidence and load bar, over every prediction since shadow started."""
