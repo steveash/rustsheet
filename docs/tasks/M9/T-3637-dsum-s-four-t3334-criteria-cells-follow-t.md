@@ -1,6 +1,6 @@
 ---
 id: T-3637
-title: "DSUM's four t3334 criteria cells follow T-3404's 1e2rule (M9 owner)"
+title: "DSUM's four t3334 criteria cells follow T-3404's 1e2$ rule (M9 owner)"
 milestone: M9
 lane: functions-text
 status: todo
