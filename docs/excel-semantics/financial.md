@@ -1974,6 +1974,11 @@ T-3067 notes (float64 fit, 2026-10-28; nothing changed in the kernel):
   ...9655, I1 `CUMPRINC(1E-4,60,100000,3,3,0)` -1662.087365975419 against J1 -1662.0873659754193 (I2 and J2 agree).
   Our PPMT has Excel's bits on every C and J cell. Our CUMPRINC is 1 to 3 ulps off on 59 of the case's 104 principals,
   so 38 of its CUMIPMT cells are visibly off (F2 is T-3413's; the other 37 and their principals were T-3552's, now T-3731's).
+- T-3731 attempt 2 (2026-11-01) found no form either. On the 425 type 0 one-period principals of the three tiny-rate
+  cases, the best of about 30 forms (attempt 1's two hypotheses: the interest on an L-error-free balance, and the
+  amortization loop in doubles and in x87 registers; PPMT's kernel on `log1p` or on the unrounded x87 L; double-double
+  payments; `pmt - IPMT`) is 145 bit-exact, against the engine's 120. Against `pmt·exp(-j·log1p)` the miss is a per-rate
+  value from -3 to +3 ulps with ±1 ulp of scatter within a rate. The table is in the T-3731 task file.
 - How one period of CUMPRINC differs from PPMT, measured (T-3552 attempt 1, excel-graph 2026-11-01:
   probes/fin-cumprinc-dyadic-rates, 296 cells, and probes/fin-cumprinc-single-period-rate-scan, 720 cells):
   - At rates that are powers of two (2^-16, 2^-14, 2^-10), where every `·r` and `/r` is exact, a one-period

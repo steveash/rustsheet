@@ -3,7 +3,7 @@ id: T-3731
 title: "CUMPRINC at a tiny rate over short ranges, attempt 2 (decision 0056): the 37 visibly-off CUMIPMT cells of fin-cumipmt-tiny-rate-structure, on T-3552's dyadic and rate-scan evidence"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: blocked
 priority: P1
 size: M
 tier: opus
@@ -87,6 +87,50 @@ Attempt 2 of T-3552's fit (decision 0056). On probes/fin-cumipmt-tiny-rate-struc
   2E-6 to 0.0083, nper 36 to 100, ranges up to 12 periods, both types). Outside the band the current form stays
   (R4.3).
 
+## Blocked because
+Time-boxed (decision 0056): attempt 2 scored the two hypotheses attempt 1 named, and every neighbour of them, on
+the one-period principals and found no form above 34% bit-exact (the engine has 28%). The kernel is unchanged.
+Attempt 3 needs a new idea first (see "Attempts", next step), not more candidates of these families.
+
+## Attempts (decision 0056)
+- Attempt 2 (2026-11-01, opus): no form found; nothing changed in the kernel. Scored bit-exact on the 425 type 0
+  one-period CUMPRINC cells of probes/fin-cumipmt-tiny-rate-structure, fin-cumprinc-single-period-rate-scan and
+  fin-cumprinc-dyadic-rates (oracle doubles read by Python's round-trip `json`, parsed back with Rust's `parse`).
+  The scorer is docs/research/t3731/scratch_scorer.rs (not compiled).
+
+  | Candidate (pmt = Excel's PMT bits, `compute_payment`; j = n-k+1) | exact | <=1 ulp | <=4 ulp |
+  |---|---|---|---|
+  | Current engine | 120 | 305 | 425 |
+  | Our PPMT kernel `-(A·EXP(-jL)·r)` | 138 | 325 | 425 |
+  | `pmt·exp(-j·log1p)` (libm or Excel's EXP) | 142 | 332 | 425 |
+  | `pmt·EXP(-j·L)` (`growth_log`) | 141 | 329 | 425 |
+  | Hypothesis 1: `pmt + r·B_{k-1}`, B from `exp(k·L)`/`expm1` in doubles | 145 | 323 | 425 |
+  | Same, B from `powf(1+r, k)` | 67 | 179 | 310 |
+  | Amortization loop from period 1 (`int = B·r`, `prin = pmt + int`, `B += prin`): doubles; x87 registers; x87 with stored principal or balance; double-double payment | 133-143 | 306-330 | 417-425 |
+  | Double-double payment (`payment_pair`) × `exp(-j·log1p)` or `EXP(-jL)`, one x87 rounding | 133-135 | 339-340 | 425 |
+  | PPMT kernel with `log1p` everywhere / A on L and Q on `log1p` | 120 / 140 | 315 / 329 | 424 / 425 |
+  | PPMT kernel with the atanh-series L unrounded (x87 register) in the exponent products, in A, Q or both | 123-142 | 298-329 | 425 |
+  | `pmt - IPMT` (Excel's IPMT form) on L / on `log1p` | 141 / 145 | 318 / 322 | 425 |
+  | Payment `pv·r/-expm1(-n·log1p)`, `(pv/-expm1)·r`, `pv·r/(1-exp)`, `pv·r/(1-(1+r)^-n)` (pow), `pv·r/-EXPM1(-nL)` × the matching discount | 1-134 | 2-318 | 16-425 |
+  | Balance difference `B_{k-1} - B_k` (FV form) in doubles / x87 | 3-9 | 5-18 | 12-37 |
+  | Powers `(1+r)^-j` by `powi` / `powf` | 9 / 28 | 41 / 69 | 121 / 130 |
+
+  - Hypothesis 2 (the geometric sum on the period-1 and period-k discounts separately) reduces to `pmt·v^j` over
+    one period, which the rows above cover.
+  - Residual structure: against `pmt·exp(-j·log1p)` the signed miss within one rate of the 60-rate scan stays within
+    ±1 ulp of a per-rate value, and that value runs from -3 to +3 ulps across rates (e.g. +3,+3,+3,+2,+2,+2 at
+    2.326E-6; -2,-2,-2,-2,-3,-2 at 7.943E-6). This agrees with attempt 1's "no constant fits a rate" (the ±1 ulp
+    scatter remains): Excel's one-period principal is a per-rate factor times a per-period discount, but neither the
+    factor (none of the payments above) nor the discount (none of the powers above) is ours.
+  - Next step for attempt 3: solve for the factor, not search for it. For each rate, find in 50-digit math the
+    interval of payments P that makes `P·D_k` round to Excel's value for every probed period k, for each of the
+    discounts D above. Then test whether the interval contains a recognisable rounding of the exact payment (for
+    example an 80-bit payment, or one built on `1/(1+r)` rather than `1+r`). If no discount admits a non-empty
+    interval for a rate, the period chain has a second rounding and the form is not a product.
+  - Note for reviewers of a later attempt: the misses are 1-3 ulps, below the 4-ulp web-against-desktop
+    reproducibility floor (docs/research/oracle-calibration.md), so any form fitted on them must clear R4's floor
+    guard. CUMIPMT amplifies the misses to visible size, which is why the task exists.
+
 ## Acceptance criteria
 - [ ] The 37 visibly-off CUMIPMT cells listed above are within half a unit of the 15th significant digit of Excel's
       value, and their 37 known-failure lines disappear from eval/baseline/probes.txt (`make eval-baseline`), with no
@@ -117,3 +161,8 @@ Attempt 2 of T-3552's fit (decision 0056). On probes/fin-cumipmt-tiny-rate-struc
 Decision 0083 (`campaign: visible`, decision 0114): done when the 37 visibly-off CUMIPMT cells above are within half a
 unit of the 15th significant digit of Excel's value. CUMPRINC cells still 1 to 3 ulps off after that move to a
 follow-up filed with `defer: phase-1b` and named in the Outcome.
+
+## Outcome
+Attempt 2 (decision 0056): no form found, and the kernel is unchanged. The candidates and their counts are in
+"Attempts" above; financial.md's entry records attempt 2. The 37 visibly-off CUMIPMT cells stay off, and the task is
+blocked time-boxed. Eval delta: none.
