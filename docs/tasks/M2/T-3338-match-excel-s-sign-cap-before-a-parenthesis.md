@@ -54,7 +54,7 @@ docs/excel-semantics/syntax.md "Formula nesting depth cap", in the T-3266 paragr
       `ABS(1)`; 257 levels of `-(` refused.
 - [x] A 256-level `-(` formula parses, evaluates, stringifies and round-trips xlsx without stack
       overflow (a test on a small thread stack, as the existing depth tests do).
-- [ ] syntax.md "Ours differs" sentence removed; `make check` green; reviewers approve. (Sentence
+- [x] syntax.md "Ours differs" sentence removed; `make check` green; reviewers approve. (Sentence
       removed and `make check` green; reviewers not yet run.)
 
 ## Out of scope
