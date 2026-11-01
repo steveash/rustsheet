@@ -127,6 +127,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          # scripts/new_case_owners.py diffs the branch against its merge base with origin/main (decision 0245).
+          fetch-depth: 0
       - uses: dtolnay/rust-toolchain@1.97
       - uses: Swatinem/rust-cache@v2
       # Decision 0125: one run of the suites judges both the baseline gate (eval-check) and the
