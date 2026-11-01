@@ -4999,7 +4999,7 @@ whole df/2 failed the same way, with the same edges (T-3505, probes/t3505-gamma-
 2.9E5 to 1E8 by p from 1E-300 to 1-1E-10; 120 were `#NUM!`, among them the held-out sweep's
 `GAMMA.INV(0.5,7990464.81598859,1)`, Excel 7990464.482655259). Since T-3350 every one of the 525 has Excel's type, and
 all but 5 are within 15 digits of Excel. The 5 are GAMMA.INV at p = 1E-300 (A1, A13, A85, A97, A145, shapes 2.9E5
-to 3.5E7), where Excel is not the true quantile (up to 2.2E-14 off the math, the deep lower-tail root of T-3294).
+to 3.5E7), where Excel is not the true quantile (up to 2.6E-14 off the 50-digit math at A97, the deep lower-tail root of T-3294).
 Status: VERIFIED (excel-graph) for the cells; the band's edges and the closed form's terms are fits (UNVERIFIED as forms)
 Tasks: T-2982, T-3070, T-3350, T-3396, T-3409, T-3505
 

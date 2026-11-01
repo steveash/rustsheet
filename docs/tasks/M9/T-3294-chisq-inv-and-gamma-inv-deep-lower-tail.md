@@ -29,7 +29,7 @@ docs/excel-semantics/statistics.md, in the T-2561 entry.
   ours 4883759.3368374165, the 50-digit math 4883759.3368374156 (Excel 1.5E-14 off it; the same deep lower tail at a
   larger shape).
 - From T-3505 (2026-11-01): probes/t3505-gamma-inv-budget-band, GAMMA.INV at p = 1E-300 at a large shape, visibly off
-  Excel (ours unchanged from main before T-3505; Excel up to 2.2E-14 from the math):
+  Excel (ours unchanged from main before T-3505; Excel up to 2.6E-14 from the 50-digit math, at A97):
   - A1 `GAMMA.INV(1E-300,290000,1)`: Excel 270504.056927792, ours 270504.05692779087;
   - A13 `GAMMA.INV(1E-300,300000,1)`: Excel 280163.04318130726, ours 280163.04318130354;
   - A85 `GAMMA.INV(1E-300,7990464.81598859,1)`: Excel 7886198.933526138, ours 7886198.933525968;

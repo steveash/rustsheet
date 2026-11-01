@@ -449,7 +449,7 @@ fn quantiles_at_a_large_shape_below_the_huge_one_are_excel_s() {
     }
 }
 
-// GAMMA.INV and GAMMAINV at scale 1 in the same band, where the shape is not a whole df/2: the
+// GAMMA.INV and GAMMAINV at scale 1 in the same band, mostly at shapes that are not a whole df/2: the
 // held-out sweep's `GAMMA.INV(0.5,7990464.81598859,1)` was `#NUM!` (probes-numeric/t3509-blind-*)
 // and probes/t3505-gamma-inv-budget-band has Excel's values (excel-graph; T-3505).
 #[test]
