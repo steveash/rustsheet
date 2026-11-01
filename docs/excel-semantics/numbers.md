@@ -329,7 +329,8 @@ Evidence: probes/t3627-roundup-rounddown-digits-by-exponent (x = 1.5E-300 to 1.5
 ±1000, ±32767, ±32768, ±65535) and probes/t3627-roundup-rounddown-huge-digits-place (x = 1.23456789012345E∓90 to
 E∓112; k = ±32768, ±40000, ±65535, 98304), excel-graph, 2026-11-01. Negative values round their magnitude
 and keep the sign: probes/t3627-roundup-rounddown-negative-x (x = -1.5E-300 to -1.5E+120, k = ±32768, ±65535 and 32767).
-The rule fits all 1,012 formula cells of the three cases.
+probes/t3627-roundup-rounddown-t3555-cells re-probes T-3555's draw cells quoted above, plus k = -32769 and -43376.
+The rule fits all 1,024 formula cells of the four cases.
 Status: VERIFIED (excel-graph)
 Implemented in: not yet in the engine (T-3635).
 Tasks: T-3555, T-3627, T-3635

@@ -1806,6 +1806,7 @@ C	probes/t3575-fraction-after-elapsed.case.json	15
 C	probes/t3627-roundup-rounddown-digits-by-exponent.case.json	620
 C	probes/t3627-roundup-rounddown-huge-digits-place.case.json	322
 C	probes/t3627-roundup-rounddown-negative-x.case.json	70
+C	probes/t3627-roundup-rounddown-t3555-cells.case.json	12
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
 C	probes/table-edits/plain-range-delete-rows-across-edge.case.json	10
@@ -5642,6 +5643,10 @@ F	probes/t3627-roundup-rounddown-negative-x.case.json	Sheet1!G6
 F	probes/t3627-roundup-rounddown-negative-x.case.json	Sheet1!H5
 F	probes/t3627-roundup-rounddown-negative-x.case.json	Sheet1!I3
 F	probes/t3627-roundup-rounddown-negative-x.case.json	Sheet1!I5
+F	probes/t3627-roundup-rounddown-t3555-cells.case.json	Sheet1!A1
+F	probes/t3627-roundup-rounddown-t3555-cells.case.json	Sheet1!A12
+F	probes/t3627-roundup-rounddown-t3555-cells.case.json	Sheet1!A2
+F	probes/t3627-roundup-rounddown-t3555-cells.case.json	Sheet1!A8
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F10
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F2
 F	probes/table-edits/table-convert-names-this-row.case.json	T!A2
