@@ -76,16 +76,3 @@ reaches them.
 ## Visible-parity stage
 Target (decision 0114): every one of the 588 visibly-off cells has an owner the campaign queue can pick, not only a
 time-boxed blocked task. This task changes no value.
-
-## Gap triage note (2026-11-01h)
-Recount on origin/main d2ddb42a7 with the status split above (`scripts/exit_owners.py`'s `owned` rule, open and
-undeferred owners minus the blocked ones). T-2509 and T-2507 have landed since this task was filed. 46 visibly-off
-cells now have T-0969 as their only owner:
-- 35 probes-numeric cells: t0969 `beta-prefactor` 27 (BETA.DIST, cdf column D 9 and density column E 18; x = 0.05 or
-  0.2, a 2.5 to 15, b 1.5 to 8), t0969 `beta-switch` 7 (column D, x = 0.03, a = 2.5, b 7.1 to 9.4) and t0969
-  `t-tail-grid` 1 (`T.DIST.RT(5.4513,500)`). Against mpmath at 50 digits, Excel is 4e-17 to 9.9e-15 relative off and
-  ours 1e-17 to 1.2e-14 off, so both are inside Gate A. That makes them dense-sweep last-digit cells, which decision
-  0188 R5 sends to Phase 1b, unlike the routing above assumed. Give them a `defer: phase-1b` owner rather than a
-  campaign task, unless Gate A says otherwise.
-- 11 gen-m9 cells, now owned by live tasks: the 9 T.TEST/TTEST cells by T-3730, the T.DIST.2T cell at df 1 by T-2930,
-  and the LOGEST cell by T-2690 (each task lists its cells).
