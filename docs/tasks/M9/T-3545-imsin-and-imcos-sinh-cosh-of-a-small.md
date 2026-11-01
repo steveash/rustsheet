@@ -3,7 +3,7 @@ id: T-3545
 title: "IMSIN and IMCOS sinh/cosh of a small imaginary part (|y| < 0.01): fit Excel's kernel"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
