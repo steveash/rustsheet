@@ -689,11 +689,13 @@ impl Parser {
                     let padded = matches!(token, Token::MonthPadded);
                     // Excel: `mm.0` is minutes with a second fraction (TEXT(5,"mm.0") is "00.0",
                     // probes/t3575-elapsed-fraction A13); bare `m.0` is unprobed.
+                    let fraction_follows = padded
+                        && next_token == Token::Period
+                        && self.lexer.peek_token() == Token::Zero;
                     let minute = (is_time && !minute_read)
                         || self.minute_before_seconds(&next_token)
-                        || (padded
-                            && next_token == Token::Period
-                            && self.lexer.peek_token() == Token::Zero);
+                        || fraction_follows;
+                    is_time |= fraction_follows;
                     minute_read |= minute;
                     is_date |= !minute;
                     tokens.push(match (minute, padded) {
