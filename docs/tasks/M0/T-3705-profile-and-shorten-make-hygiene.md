@@ -3,7 +3,7 @@ id: T-3705
 title: "Profile and shorten make hygiene"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
