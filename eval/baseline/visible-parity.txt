@@ -218,11 +218,6 @@ probes/stat-argument-modes.case.json	11
 probes/stat-order-floor-batch.case.json	1
 probes/stat-quantile-lift.case.json	9
 probes/t1924-locale-tag-extended-hex.case.json	17
-probes/t2065-lift-averagea.case.json	1
-probes/t2065-lift-maxa.case.json	1
-probes/t2065-lift-stdevs.case.json	1
-probes/t2065-lift-sumsq.case.json	1
-probes/t2065-lift-vars.case.json	1
 probes/t2429-hypgeom-huge-count.case.json	2
 probes/t2429-hypgeom-threshold.case.json	2
 probes/t2435-dist-extremes.case.json	29
@@ -232,7 +227,7 @@ probes/t2475-stat-subexpressions.case.json	4
 probes/t2496-fin-subexpressions.case.json	2
 probes/t2565-irr-guess-sweeps.case.json	1
 probes/t2576-error-type-cell-paired.case.json	10
-probes/t2577-indirect-ref-array.case.json	9
+probes/t2577-indirect-ref-array.case.json	6
 probes/t2753-gamma-density-ratio-sweep.case.json	6
 probes/t2779-hebrew-saka-names.case.json	1
 probes/t2829-ftest-a306-shapes.case.json	8

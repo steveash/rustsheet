@@ -366,6 +366,7 @@ fn score_milestones(
         .unwrap_or(BaselineMode::Cells);
     report.r1c = R1cCells::build(results, &milestones.r3, &milestones.phase1_exceptions);
     report.phase1b_evidence = report.r1c.phase1b();
+    report.r1c_left_out = report.r1c.left_out();
     report.probe_milestones =
         probe_milestones::summarize(&milestones.rules, results, probes_mode, &report.r1c);
     if let Some(scope) = report.function_scope.as_mut() {

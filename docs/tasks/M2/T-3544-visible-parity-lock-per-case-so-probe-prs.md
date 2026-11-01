@@ -50,16 +50,16 @@ on the visible-parity lock: the lock holds each case to its own count instead of
   suite's baseline).
 
 ## Outcome
-The lock is now per case, in `eval/baseline/visible-parity.txt`: 2,507 cells in 274 cases,
-generated on this branch with `update-baseline --allow-regressions --lower-visible-lock` while
+The lock is now per case, in `eval/baseline/visible-parity.txt`: 2,499 cells in 269 cases after
+merging main (b98b3c00d), generated with `update-baseline --allow-regressions --lower-visible-lock` while
 every suite baseline showed 0 regressions. The old cap was 2,509. `judge` returns the cases over
 their lines, plus the lock to write. Lines of removed cases are dropped on update. The merge
-tooling treats the file as an eval-gated list: `merge_ready.visible_rises` refuses a raised or
-new line in a carry, and `merge_ready.merge_visible` resolves conflicts in `make catch-up`.
+tooling treats the file as an eval-gated list: `visible_lock.visible_rises` refuses a raised or
+new line in a carry, and `visible_lock.merge_visible` resolves conflicts in `make catch-up`.
 After the owner's follow-up, `update-baseline --new-cases <file>` (`make eval-baseline
 NEW_CASES=`) makes the listed cases the only new ones. `make catch-up` lists the files the PR adds
 (`visible_lock.added_case_files`), so the five queued pre-lock probe PRs can record their cases'
 lines after merging `main`. The carry check (`visible_lock.visible_rises` with `case_on`) accepts
 a new or higher line only for a case whose case file `main` lacks. The merge tooling's lock
 helpers live in `scripts/visible_lock.py`, which keeps `merge_ready.py` under the file-size limit.
-Decision 0217 amends 0088, 0093 and 0207.
+Decision 0217 amends 0088, 0093 and 0207, and supersedes 0214.

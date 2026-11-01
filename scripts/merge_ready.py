@@ -47,7 +47,7 @@ import ci_changes
 import gh_client
 import merge_lock
 import tasks
-from gh_client import Client, GhError
+from gh_client import Client, GhError, field_of, int_of, label_names, text_of  # noqa: F401 (re-exported)
 from merge_lock import GitError, git
 from visible_lock import VISIBLE_PARITY, case_on, visible_rises
 
@@ -96,10 +96,12 @@ PERMISSION_REFUSED = "HTTP 403"
 ACTIONS_APP_ID = 15368
 CI_WORKFLOW = ".github/workflows/ci.yml"
 CHANGES_JOB = "changes (docs-only?)"
+# The rust shards' summary job: `failure` unless every shard succeeded, cancelled ones included.
+RUST_SUMMARY_JOB = "rust (fmt, clippy, test)"
 REQUIRED_JOBS = (
     CHANGES_JOB,
     "hygiene (ratchets, deny, machete, typos, governance)",
-    "rust (fmt, clippy, test)",
+    RUST_SUMMARY_JOB,
 )
 # Skipped counts as green for these only when the PR's diff is docs-only (`run_heavy=false`).
 HEAVY_JOBS = ("eval (Excel-compatibility gate)", "python (tools + bindings)")
@@ -318,29 +320,6 @@ def task_of_branch(branch: str) -> str | None:
     return match[1] if match else None
 
 
-# GitHub objects are JSON; these read one field of one without trusting its shape.
-def field_of(value: object, *keys: str) -> object:
-    for key in keys:
-        value = value.get(key) if isinstance(value, dict) else None
-    return value
-
-
-def text_of(value: object, *keys: str) -> str:
-    found = field_of(value, *keys)
-    return found if isinstance(found, str) else ""
-
-
-def label_names(pull: object) -> list[str]:
-    """The names of a PR's (or issue's) labels."""
-    labels = field_of(pull, "labels")
-    return [text_of(label, "name") for label in labels] if isinstance(labels, list) else []
-
-
-def int_of(value: object, *keys: str) -> int:
-    found = field_of(value, *keys)
-    return found if isinstance(found, int) and not isinstance(found, bool) else 0
-
-
 @dataclass
 class Authors:
     """Who counts as a writer of the repository (module docstring), one lookup per login."""
@@ -369,14 +348,15 @@ def ci_state(
     check_runs: Sequence[object],
     docs_only: bool | None,
     events: Sequence[str] = ("pull_request",),
+    early: bool = False,
 ) -> tuple[str, list[str]]:
     """GREEN, PENDING or RED for a PR head, with the jobs that are not green.
 
     `runs` are the head's workflow runs, `check_runs` its check runs, and `docs_only` whether the
     PR's diff is docs-only (`run_heavy=false`; None when it cannot be told, which counts as no).
     `events` are the run events that count: a PR head's `pull_request`, a train's `push` and
-    `workflow_dispatch` (SPEC-0027 section 4, step 6).
-    """
+    `workflow_dispatch` (SPEC-0027 section 4, step 6). With `early` (the train, decision 0212), a
+    running run is RED once a job concluded `failure` (`early_failures`)."""
     ci = [
         r
         for r in runs
@@ -385,18 +365,12 @@ def ci_state(
     if not ci:
         return PENDING, ["no ci.yml run yet"]
     run = max(ci, key=lambda r: int_of(r, "id"))
+    latest = latest_checks(run, check_runs)
     if text_of(run, "status") != "completed":
-        return PENDING, ["the ci.yml run is still running"]
+        failed = early_failures(latest) if early else []
+        return (RED, failed) if failed else (PENDING, ["the ci.yml run is still running"])
     if text_of(run, "conclusion") != "success":
         return RED, [f"the ci.yml run concluded {text_of(run, 'conclusion') or 'nothing'}"]
-    suite = field_of(run, "check_suite_id")
-    latest: dict[str, object] = {}
-    for check in check_runs:
-        if field_of(check, "app", "id") != ACTIONS_APP_ID or field_of(check, "check_suite", "id") != suite:
-            continue
-        name = text_of(check, "name")
-        if int_of(check, "id") > int_of(latest.get(name), "id"):
-            latest[name] = check
     pending, red = [], []
     for name in (*REQUIRED_JOBS, *HEAVY_JOBS):
         check = latest.get(name)
@@ -412,6 +386,27 @@ def ci_state(
     if red:
         return RED, red
     return (PENDING, pending) if pending else (GREEN, [])
+
+
+def latest_checks(run: object, check_runs: Sequence[object]) -> dict[str, object]:
+    """The newest check run per job name in `run`'s check suite (GitHub Actions only)."""
+    suite = field_of(run, "check_suite_id")
+    latest: dict[str, object] = {}
+    for check in check_runs:
+        if field_of(check, "app", "id") != ACTIONS_APP_ID or field_of(check, "check_suite", "id") != suite:
+            continue
+        name = text_of(check, "name")
+        if int_of(check, "id") > int_of(latest.get(name), "id"):
+            latest[name] = check
+    return latest
+
+
+def early_failures(latest: Mapping[str, object]) -> list[str]:
+    """A running suite's jobs that concluded `failure`, as "name: failure" (decision 0212). Not
+    `cancelled` or `timed_out` (infrastructure, read once the run completes), and not
+    RUST_SUMMARY_JOB, which fails for cancelled shards too; a failed shard reports itself."""
+    done = {n: c for n, c in latest.items() if text_of(c, "status") == "completed"}
+    return sorted(f"{n}: failure" for n, c in done.items() if n != RUST_SUMMARY_JOB and text_of(c, "conclusion") == "failure")
 
 
 @dataclass(frozen=True)
