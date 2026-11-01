@@ -30,3 +30,17 @@ unit tests; nobody has measured which of them dominates.
 
 ## Out of scope
 - Removing or weakening any ratchet.
+
+## Outcome
+Profile, 2026-11-01, local, on a machine busy with other jobs:
+- The nine ratchet scripts take about 10 s: `check_duplication.py` 6 s, the rest under 1.2 s each.
+- `unittest discover` over `scripts/` (28 modules, 464 tests) takes 455 s serial. The merge-train
+  modules dominate: `test_merge_train_red` 142 s, `test_merge_train` 115 s, `test_merge_ready` 61 s.
+- CI `make hygiene` was p50 104 s.
+
+Change (decision 0241): `make hygiene` runs one `unittest discover -p <file>` per module, one
+process per CPU, largest file first. The same 464 tests pass, and `xargs` fails when any module
+fails. Locally that took 144 s (the bound is the slowest module), against 455 s serial.
+
+The checkout of full history (about 25 s) stays: governance and `ci_changes` need the merge base.
+CI before/after: see the PR.
