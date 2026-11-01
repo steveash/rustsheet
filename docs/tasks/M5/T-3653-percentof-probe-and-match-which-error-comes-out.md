@@ -3,7 +3,7 @@ id: T-3653
 title: "PERCENTOF: probe and match which error comes out for error, text, boolean and coerced arguments"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
