@@ -3,7 +3,7 @@ id: T-2899
 title: "Probe the table column edits T-2339 generalised: ColumnN naming with gaps and case clashes, a multi-column insert in one op, deleting every column, a delete straddling an edge, a column range losing one end"
 milestone: M8
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
