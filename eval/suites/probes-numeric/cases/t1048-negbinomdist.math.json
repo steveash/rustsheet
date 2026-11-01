@@ -14,18 +14,18 @@
     "f": "=NEGBINOM.DIST(2,3,0.5,FALSE)"
    },
    "B10": {
-    "t": "n",
-    "v": "0.0",
+    "t": "e",
+    "why": "probability_s outside (0, 1)",
     "f": "=NEGBINOM.DIST(2,3,0,FALSE)"
    },
    "B11": {
-    "t": "n",
-    "v": "0.0",
+    "t": "e",
+    "why": "probability_s outside (0, 1)",
     "f": "=NEGBINOM.DIST(2,3,1,FALSE)"
    },
    "B12": {
-    "t": "n",
-    "v": "1.0",
+    "t": "e",
+    "why": "probability_s outside (0, 1)",
     "f": "=NEGBINOM.DIST(0,3,1,FALSE)"
    },
    "B14": {
@@ -40,12 +40,12 @@
    },
    "B16": {
     "t": "e",
-    "why": "probability_s outside [0, 1]",
+    "why": "probability_s outside (0, 1)",
     "f": "=NEGBINOM.DIST(2,3,-0.1,FALSE)"
    },
    "B17": {
     "t": "e",
-    "why": "probability_s outside [0, 1]",
+    "why": "probability_s outside (0, 1)",
     "f": "=NEGBINOM.DIST(2,3,1.1,FALSE)"
    },
    "B2": {

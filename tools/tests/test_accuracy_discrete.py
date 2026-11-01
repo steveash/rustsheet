@@ -1,4 +1,4 @@
-"""Gate A definitions of BINOM.DIST, NEGBINOM.DIST and POISSON.DIST (T-3543) against published values."""
+"""Gate A definitions of BINOM.DIST, NEGBINOM.DIST and POISSON.DIST (T-3553) against published values."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import mpmath
 import pytest
 
 from rustsheet_tools.accuracy.defs import discrete
-from rustsheet_tools.accuracy.model import REGISTRY, DomainError
+from rustsheet_tools.accuracy.model import REGISTRY, DomainError, NoValueError
 
 mp = mpmath.mpf
 
@@ -44,6 +44,9 @@ def test_binom_dist_domain_follows_excel() -> None:
 def test_negbinom_dist_matches_the_published_examples() -> None:
     assert near(value("NEGBINOM.DIST", 10, 5, 0.25, True), "0.3135141", 7)
     assert near(value("NEGBINOM.DIST", 10, 5, 0.25, False), "0.0550487", 7)
+    for p in (0, 1):  # open at both ends, unlike BINOM.DIST (statistics.md, T-1048)
+        with pytest.raises(DomainError):
+            value("NEGBINOM.DIST", 2, 3, p, False)
     total = mpmath.fsum(value("NEGBINOM.DIST", f, 4, 0.6, False) for f in range(12))
     assert mpmath.almosteq(value("NEGBINOM.DIST", 11, 4, 0.6, True), total, mp(10) ** -35)
 
@@ -56,6 +59,8 @@ def test_poisson_dist_matches_the_published_examples_and_the_negative_mean_quirk
     )  # statistics.md, "POISSON at x 0 with a negative mean"
     with pytest.raises(DomainError):
         value("POISSON.DIST", 1, -1, True)
+    with pytest.raises(NoValueError):  # EXP(1E+4) overflows a double: the sampler redraws
+        value("POISSON.DIST", 0, -1e4, True)
 
 
 def test_tail_maps_find_the_integer_quantile() -> None:

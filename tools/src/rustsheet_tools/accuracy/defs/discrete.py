@@ -7,8 +7,10 @@ Sources:
   one trial on, while the cdf there is 0.
 - statistics.md, "POISSON at x 0 with a negative mean": at x 0 a negative mean gives EXP(-mean), cumulative or not;
   at x 1 or more a negative mean is `#NUM!`.
-- Microsoft's documentation: number_s > trials, a probability outside [0, 1], number_f < 0, number_s < 1 (NEGBINOM)
-  and x < 0 are `#NUM!`.
+- statistics.md, "Legacy distribution names sweep, second family (T-1048)": NEGBINOM's probability is `#NUM!` at
+  p = 1 and at p = 0 (an open interval), where BINOM.DIST's is closed.
+- Microsoft's documentation: number_s > trials, a BINOM.DIST probability outside [0, 1], number_f < 0, number_s < 1
+  (NEGBINOM) and x < 0 are `#NUM!`.
 - The math: the binomial pmf C(n, k) p^k (1-p)^(n-k) and cdf I_{1-p}(n-k, k+1); the negative binomial pmf
   C(f+s-1, f) p^s (1-p)^f and cdf I_p(s, f+1) (Abramowitz and Stegun 26.5.24, 26.5.26, the regularized incomplete
   beta); the Poisson pmf e^-m m^x / x! and cdf Q(x+1, m), the regularized upper incomplete gamma (A&S 26.4.21).
@@ -42,6 +44,17 @@ _PROBABILITY = Param(
     extreme=(1e-300, 1e-6),
     source="Microsoft documentation",
 )
+NEGBINOM_P_SOURCE = "statistics.md#legacy-distribution-names-sweep-second-family-t-1048"
+# NEGBINOM.DIST's probability is open at both ends: accuracy/NEGBINOM.DIST/s1 A117 and A129 (p = 0) and A120 and A132
+# (p = 1) are #NUM! in Excel (excel-graph).
+_NEGBINOM_PROBABILITY = Param(
+    "probability_s",
+    "real",
+    Interval(0, 1),
+    typical=(0.01, 0.99),
+    extreme=(1e-300, 1e-6),
+    source=NEGBINOM_P_SOURCE,
+)
 _CUMULATIVE = Param("cumulative", "bool", source="catalog")
 
 
@@ -71,16 +84,12 @@ def binom_cdf(k: mpmath.mpf, n: mpmath.mpf, p: mpmath.mpf) -> mpmath.mpf:
 
 
 def negbinom_pmf(f: mpmath.mpf, s: mpmath.mpf, p: mpmath.mpf) -> mpmath.mpf:
-    """P(F = f) for the number of failures F before the s-th success."""
-    if p in (0, 1):
-        return mpmath.mpf(1 if (p == 1 and f == 0) else 0)
+    """P(F = f) for the number of failures F before the s-th success, 0 < p < 1."""
     return mpmath.binomial(f + s - 1, f) * p**s * (1 - p) ** f
 
 
 def negbinom_cdf(f: mpmath.mpf, s: mpmath.mpf, p: mpmath.mpf) -> mpmath.mpf:
     """P(F ≤ f): I_p(s, f+1)."""
-    if p in (0, 1):
-        return mpmath.mpf(p)
     return mpmath.betainc(s, f + 1, 0, p, regularized=True)
 
 
@@ -109,8 +118,6 @@ def binom_sf(k: mpmath.mpf, n: mpmath.mpf, p: mpmath.mpf) -> mpmath.mpf:
 
 def negbinom_sf(f: mpmath.mpf, s: mpmath.mpf, p: mpmath.mpf) -> mpmath.mpf:
     """P(F > f): I_{1-p}(f+1, s)."""
-    if p in (0, 1):
-        return mpmath.mpf(1 - p)
     return mpmath.betainc(f + 1, s, 0, 1 - p, regularized=True)
 
 
@@ -272,13 +279,13 @@ NEGBINOM_DIST = register(
         params=(
             _count("number_f", 0, (0, 30), (1e3, 1e12), "Microsoft documentation"),
             _count("number_s", 1, (1, 30), (1e3, 1e12), "Microsoft documentation"),
-            _PROBABILITY,
+            _NEGBINOM_PROBABILITY,
             _CUMULATIVE,
         ),
         value=_negbinom_dist,
         tail=_negbinom_tail,
         tail_param="number_f",
-        sources=(TRIALS_SOURCE, "Abramowitz and Stegun 26.5.24, 26.5.26"),
+        sources=(TRIALS_SOURCE, NEGBINOM_P_SOURCE, "Abramowitz and Stegun 26.5.24, 26.5.26"),
     )
 )
 

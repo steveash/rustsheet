@@ -31,7 +31,7 @@ probed and recorded in statistics.md.
 ## Acceptance criteria
 - [ ] A probe brackets the number_s cut and the failures cut, and tests whether the cut is a product or a sum of the two.
       statistics.md records the rule.
-- [ ] The engine matches every probed cell. The t3553 probe cells leave eval/baseline.
+- [ ] The engine matches every probed cell, including probes-numeric/t3553-negbinom-huge-s (an ungated suite).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

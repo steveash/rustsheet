@@ -60,8 +60,9 @@ class Param:
     domain has negative values the sign is drawn uniformly. `edges` are extra values worth a point
     beside the domain bounds (a documented limit such as df = 1E10 and its neighbour). `draw_hi` caps
     the magnitude of whole-domain draws where the math cannot evaluate the domain's far end (a
-    50-digit incomplete beta at a count of 1E+300); unlike a domain bound it claims nothing about
-    Excel, so it gets no edge points.
+    50-digit incomplete beta at a count of 1E+300) or the oracle cannot hold a point (a huge
+    negative POISSON.DIST mean); unlike a domain bound it claims nothing about Excel, so it gets no
+    edge points.
     """
 
     name: str

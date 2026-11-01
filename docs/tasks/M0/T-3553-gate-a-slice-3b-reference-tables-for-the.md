@@ -54,14 +54,17 @@ Done (2026-11-01). Renumbered from T-3543, an id collision with main (decision 0
     returns a wrong 0 at a count of 1E+300.
 - **Tables:** `s1` batches, filled from excel-graph:
   - BINOM.DIST, 197 points (39 domain errors);
-  - NEGBINOM.DIST, 197 points (10);
+  - NEGBINOM.DIST, 197 points (12);
   - POISSON.DIST, 120 points (15).
 - **Check:** all 514 points are inside the envelope, with 0 failing and 0 table defects. No known failures are added,
   and `rustsheet-accuracy verify` shows 0 differences. The T-3352 and T-3366 weaknesses did not show on these points.
 - **probes-numeric math sidecars:** 22 cases, 40,464 cells, regenerated with the new definitions.
 - **Excel findings** (statistics.md):
   - "NEGBINOM.DIST's cdf is #NUM! at a huge number_s": `#NUM!` from number_s 1E+13 at 28 failures. Probed in
-    probes-numeric/t3553-negbinom-huge-s (7 cells in eval/baseline), owned by the new T-3576.
+    probes-numeric/t3553-negbinom-huge-s, where the engine gives 0 at its 7 `#NUM!` cells (probes-numeric is
+    ungated); owned by the new T-3576.
+  - "Legacy distribution names sweep, second family (T-1048)" gains NEGBINOM.DIST's p = 0: the probability is open
+    at both ends, so the definition rejects p = 0 and p = 1 (table cells A117, A129, A120, A132).
   - "POISSON at x 0 with a negative mean" gains the oracle limit: `POISSON.DIST(2,-2.09435621420062E+249,TRUE)` keeps
     excel-graph from opening its workbook (bisected), so the table caps the mean at 1E+12.
 - **Carried fix:** `known-failures.tsv`'s four T.DIST density lines now name T-3554, following T-3358's renumber; that
