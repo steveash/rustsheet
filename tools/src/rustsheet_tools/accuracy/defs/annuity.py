@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import itertools
 import random
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 import mpmath
 
@@ -66,21 +66,21 @@ def present_value(
     return pv + pmt * (1 + r * (1 if due else 0)) * factor + fv * discount
 
 
-def rate(nper: int, pmt: mpmath.mpf, pv: mpmath.mpf, fv: mpmath.mpf, due: bool) -> mpmath.mpf:
-    """The unique root r > -1; DomainError with no root, NoValueError with several."""
-    changes = sign_changes(annuity_flows(nper, pmt, pv, fv, due))
+def unique_rate(flows: Sequence[mpmath.mpf], f: Callable[[mpmath.mpf], mpmath.mpf]) -> mpmath.mpf:
+    """The rate r > -1 at the root of `f`, the flows' value as a function of u = ln(1 + r), for time-ordered
+    `flows` with exactly one sign change (then the root is unique, Descartes' rule). DomainError with flows of one sign
+    (no rate: Excel's `#NUM!`), NoValueError with several sign changes (no evidenced root choice) or no bracket. The
+    bracket in u doubles from [-1, 1]; an end where f is exactly 0 is the root."""
+    changes = sign_changes(flows)
     if changes == 0:
         msg = "flows of one sign: no rate"
         raise DomainError(msg)
     if changes > 1:
         msg = "several sign changes: no evidenced root choice"
         raise NoValueError(msg)
-
-    def f(u: mpmath.mpf) -> mpmath.mpf:
-        return present_value(u, nper, pmt, pv, fv, due=due)
-
-    if f(mpmath.mpf(0)) == 0:  # pv + pmt·nper + fv = 0: the root is exactly 0, which no
-        return mpmath.mpf(0)  # relative bracket test reaches
+    # the flows sum to 0: the root is exactly 0, which no relative bracket test reaches
+    if f(mpmath.mpf(0)) == 0:
+        return mpmath.mpf(0)
     lo, hi = mpmath.mpf(-1), mpmath.mpf(1)
     for _ in range(MAX_BRACKET_DOUBLINGS):
         if (f(lo) > 0) != (f(hi) > 0) or f(lo) == 0 or f(hi) == 0:
@@ -90,10 +90,27 @@ def rate(nper: int, pmt: mpmath.mpf, pv: mpmath.mpf, fv: mpmath.mpf, due: bool) 
     raise NoValueError(msg)
 
 
+def rate(nper: int, pmt: mpmath.mpf, pv: mpmath.mpf, fv: mpmath.mpf, due: bool) -> mpmath.mpf:
+    """The unique root r > -1; DomainError with no root, NoValueError with several."""
+
+    def f(u: mpmath.mpf) -> mpmath.mpf:
+        return present_value(u, nper, pmt, pv, fv, due=due)
+
+    return unique_rate(annuity_flows(nper, pmt, pv, fv, due), f)
+
+
+def scalars(args: Sequence[MathArg]) -> list[mpmath.mpf]:
+    """The numeric arguments of a definition that takes no logical or array (its sampler draws numbers only)."""
+    out: list[mpmath.mpf] = []
+    for a in args:
+        assert not isinstance(a, (bool, tuple))
+        out.append(a)
+    return out
+
+
 def _rate(args: Sequence[MathArg]) -> mpmath.mpf:
-    nper, pmt, pv, fv, kind = args
-    assert not any(isinstance(a, bool) for a in args)
-    return rate(int(nper), mpmath.mpf(pmt), mpmath.mpf(pv), mpmath.mpf(fv), kind != 0)
+    nper, pmt, pv, fv, kind = scalars(args)
+    return rate(int(nper), pmt, pv, fv, kind != 0)
 
 
 def payment(r: float, nper: int, pv: float, fv: float, due: bool) -> float:
@@ -211,9 +228,8 @@ def nper(r: mpmath.mpf, pmt: mpmath.mpf, pv: mpmath.mpf, fv: mpmath.mpf, due: bo
 
 
 def _nper(args: Sequence[MathArg]) -> mpmath.mpf:
-    r, pmt, pv, fv, kind = args
-    assert not any(isinstance(a, bool) for a in args)
-    return nper(mpmath.mpf(r), mpmath.mpf(pmt), mpmath.mpf(pv), mpmath.mpf(fv), kind != 0)
+    r, pmt, pv, fv, kind = scalars(args)
+    return nper(r, pmt, pv, fv, kind != 0)
 
 
 def _nper_draw(stratum: str, rng: random.Random) -> list[Arg]:

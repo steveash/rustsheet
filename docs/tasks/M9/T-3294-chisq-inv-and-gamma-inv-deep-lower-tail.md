@@ -36,6 +36,18 @@ docs/excel-semantics/statistics.md, in the T-2561 entry.
   - A97 `GAMMA.INV(1E-300,8000000,1)`: Excel 7895671.652693168, ours 7895671.652692964;
   - A145 `GAMMA.INV(1E-300,35481338.9233576,1)`: Excel 35261120.321770474, ours 35261120.3217704.
 
+Evidence from T-3311 (docs/excel-semantics/statistics.md, T-3311 paragraphs of "Deep lower tail at a shape above
+1"): Excel's deep-tail quantile is Newton steps from the leading-factor root on the leading-factor series form, and
+the root is iterate 0. In probes-numeric/t3311-fresh-sweep, of the 64 cells the engine leaves visibly off at shapes
+1 to 20 (61 of them at p below 1E-20), Excel's value is an exact iterate at 58 and the root at 8 (shapes 2.2 to 18).
+T-3311's rule (the first iterate whose cdf is nearest p, `incomplete_gamma::closed_form::excel_newton_quantile`),
+applied without its cut or range, is bit-exact at 50 and within 15 digits at 62. T-3311 ships it only at shapes 1.5 to
+5 and p 1E-200 to 1E-12, after T-2561's root. So the root test this task looks for may be "the root is the nearest
+iterate", which would replace `TINY_QUANTILE_CHECK` and widen that range; the fresh sweep is not a hold-out for it
+any more, so a new sweep is owed (decision 0188 R4). Note the two tests measure the root on different cdfs:
+`TINY_QUANTILE_CHECK` on the accurate pair, `excel_newton_quantile` on `excel_form_lower` (Excel's form); a unified
+root test should use one (T-3403 has the same note).
+
 ## Acceptance criteria
 - [ ] A31 is within half a unit of Excel's 15th digit, or the Outcome records why it cannot be reached.
 - [ ] A probe sweeps shapes 1.5 to 19.5 (step 1) by p = 1E-50, 1E-100, 1E-150, 1E-200, 1E-250 and 1E-300 of
