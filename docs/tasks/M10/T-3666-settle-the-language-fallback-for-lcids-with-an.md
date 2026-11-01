@@ -1,5 +1,5 @@
 ---
-id: T-3382
+id: T-3666
 title: "Settle the language fallback for LCIDs with an unknown sublanguage (0x2412)"
 milestone: M10
 lane: functions-text
