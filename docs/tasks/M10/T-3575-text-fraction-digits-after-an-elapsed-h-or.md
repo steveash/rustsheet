@@ -3,7 +3,7 @@ id: T-3575
 title: "TEXT: fraction digits after an elapsed [h] print (TEXT(12345.678,\"[h].0 General\") is \"296296.2 2.500000331\")"
 milestone: M10
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -37,3 +37,9 @@ token.
 
 ## Visible-parity stage
 Decisions 0083 and 0114: the cell is `#VALUE!` against text, so the stage is `semantics`.
+
+## Outcome
+`.0`/`.00` after any clock token (`h`, `hh`, `[h]`, `[hh]`, `[m]`, `mm`) is now the second fraction; shared
+check `takes_second_fraction` in formatter/elapsed.rs. New probe `t3575-elapsed-fraction` (14 cells, excel-graph)
+passes; finding in number-formats.md. Eval delta: probes baseline -2 known failures
+(t3419-elapsed-after-date-b A19, elapsed-no-seconds-boundary A32), +1 fully passing case. Bare `m.0` unprobed.
