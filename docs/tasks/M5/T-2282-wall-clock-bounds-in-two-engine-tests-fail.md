@@ -3,7 +3,7 @@ id: T-2282
 title: "Wall-clock bounds in two engine tests fail on a loaded machine"
 milestone: M5
 lane: quality
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
