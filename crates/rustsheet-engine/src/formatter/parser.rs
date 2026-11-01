@@ -222,9 +222,10 @@ pub struct Parser {
     /// Whether the format ends in a `;`, so an empty section follows the last part.
     ends_in_separator: bool,
     lexer: Lexer,
-    /// The numeral system of the latest locale tag: a later section with no tag of its own keeps
-    /// it (`[$-2000409]0;(0)` on -5 is "(٥)"; probes/t3532-numeral-digit-fields A17).
-    numerals: Numerals,
+    /// The numeral system of the first section's locale tag, which every section prints in: a
+    /// later section's tag changes no digits, even its own (`[$-2000409]0;(0)` on -5 is "(٥)",
+    /// `0;[$-2000409]0;0` "5"; probes/t3532-numeral-digit-fields A17, t3532-numeral-digit-sections).
+    pub numerals: Numerals,
 }
 
 /// The most digits of a second a format may show (`.000`, poi/ElapsedFormatTests A2).
@@ -785,8 +786,9 @@ impl Parser {
                 Token::Locale(tag, tag_numerals) => {
                     repeated_locale |= locale.is_some();
                     locale = Some(tag);
-                    numerals = tag_numerals;
-                    self.numerals = tag_numerals;
+                    if self.parts.is_empty() {
+                        (numerals, self.numerals) = (tag_numerals, tag_numerals);
+                    }
                 }
                 Token::Scientific | Token::ScientificMinus => {
                     if !is_scientific {

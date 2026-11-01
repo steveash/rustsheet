@@ -163,7 +163,7 @@ pub(super) fn format_fraction(
     };
     let denominator_digits = format!("{denominator}");
     // A numeral byte maps every digit the fraction prints (`[$-1B000409]# ?/?` on 12.5 is
-    // "一二 一/二"; probes/t3532-numeral-digit-fields C14), the denominator's own digits too (unprobed).
+    // "一二 一/二"; probes/t3532-numeral-digit-fields C14), a fixed denominator too (`# ?/16` "一二 八/一六"; t3532-numeral-digit-sections A8).
     let denominator_text = match &fraction.denominator {
         Denominator::Fixed(digits) if fixed.is_some() => digits.clone(),
         // The code's own digits print, cut to the picked denominator's length: 512/625 under

@@ -25,7 +25,6 @@ use super::{
     dates::negative_serial_allowed,
     lexer::last_section_is_bare_at,
     locale_tag::Calendar,
-    numerals::Numerals,
     parser::{
         conditional_section, is_text_section, numeric_section_count, section_condition,
         section_tokens, ErrorPart, GeneralPart, ParsePart, Parser, TextToken,
@@ -333,8 +332,10 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
         return format_error();
     }
     let mut value = value_original;
+    // A value no section takes prints in General, in the format's digits (`[$-2000409][>5]0` on 1
+    // is "١"; probes/t3532-numeral-digit-sections A2).
     let general = ParsePart::General(GeneralPart {
-        numerals: Numerals::Ascii,
+        numerals: parser.numerals,
     });
     let part;
     let conditional = conditional_section(&parts, sections, value);
