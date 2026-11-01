@@ -3,7 +3,7 @@ id: T-3033
 title: "Import and export a table column's calculatedColumnFormula"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -26,10 +26,16 @@ import, no calculated column for a typed re-fill. Excel writes it in file form, 
 after a typed formula.
 
 ## Acceptance criteria
-- [ ] Import reads `<calculatedColumnFormula>` per T-2969's recorded rule. Export writes it for a column that has one,
+- [x] Import reads `<calculatedColumnFormula>` per T-2969's recorded rule. Export writes it for a column that has one,
       in file form. An xlsx round-trip test pins both.
-- [ ] references.md's Ours paragraph no longer says the column formula is not read or written.
-- [ ] `make check` green; reviewers approve.
+- [x] references.md's Ours paragraph no longer says the column formula is not read or written.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The fill rules themselves (T-2958, T-3024, T-3025).
+
+## Outcome
+Import keeps `<calculatedColumnFormula>` text on `TableColumn::calculated_column_formula` (no fill on load, per
+T-2969). Export writes it in file form: the first data row's formula as exported, the stored text if that cell has
+none. Round-trip test `a_calculated_column_keeps_its_column_formula`; xlsx-storage.md and references.md updated.
+Eval delta: none.

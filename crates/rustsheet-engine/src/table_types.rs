@@ -48,8 +48,8 @@ pub struct TableColumn {
     /// choice, not yet the file form xlsx stores. Set when a typed formula filled the column
     /// (T-3024); only a column that has one is re-filled by a different typed formula, since a
     /// column of identical stored formulas without it is not a calculated column
-    /// (docs/excel-semantics/references.md, "Calculated columns", rule 8). Neither read from nor
-    /// written to xlsx yet (T-2969, T-3033).
+    /// (docs/excel-semantics/references.md, "Calculated columns", rule 8). xlsx import keeps the
+    /// file's text; export writes the first data row's formula in file form (T-3033).
     pub calculated_column_formula: Option<String>,
 }
 

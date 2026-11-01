@@ -2723,7 +2723,7 @@ stored cells come from spec2xlsx, which writes no `calculatedColumnFormula`):
    typed into C2 fills C2:C4, C3 is cleared (an empty entry), then `=[@Col]*3` typed into C4: only C4 changes (C2 stays 2,
    C3 stays blank with FORMULATEXT `#N/A`, C4 is 12), the same as a constant in C3 (t2957-constant-then-refill)
    (t3025-blank-beside-calculated). The engine matches (it blocks the fill for a blank beside formulas).
-(T-2969 probes a stored column formula.)
+(A stored column formula does not fill on load: xlsx-storage.md, T-2969.)
 Evidence: probes/t2957-* (excel-graph, 2026-10-27): fill-one-totals C2:C4, F2:F5, G5; refill-second C2:C4, F2:F4;
 constant-exception C2, C4, F2:F4; constant-then-refill C2, C4, F2:F4; existing-constant C3, F2:F4; a1-reference
 C2:C4, F2:F4; expand-right-data D2:D4, F1:F4, H1:H4; expand-right-header F1:F4, H1:H4.
@@ -2739,9 +2739,8 @@ re-fills it does (only whether it is set is read; its text, the first data row's
 choice); a typed constant
 keeps it. So a column of identical stored formulas is not re-filled (rule 8a). It stays set until the column is
 removed: clearing or overwriting the column's cells does not clear it, an engine choice (what Excel does is unprobed). A blank cell beside formulas blocks the
-fill, as in Excel (rule 8e). The column formula is neither read from nor written to xlsx yet
-(T-2969 probes whether Excel honors it on load; T-3033 then imports and exports it), so a column Excel saved as
-calculated is, after import, no calculated column for a typed re-fill. A stored formula (`Input::StoredFormula`, xlsx import) never fills;
+fill, as in Excel (rule 8e). The column formula is read from and written to xlsx (T-3033; Excel does not fill on load, T-2969),
+so a column Excel saved as calculated is, after import, a calculated column for a typed re-fill. A stored formula (`Input::StoredFormula`, xlsx import) never fills;
 the facade logs the filled cells and the table as it was, so they are one edit with the typed cell. The eval adapter
 types `entered` cells after the tables and every stored cell, as the oracle types them after load. The unqualified `[@Col]` the probes type resolves to the
 table holding the cell since T-2979 (below).

@@ -326,3 +326,43 @@ fn filter_columns_of_every_kind_survive_an_export() {
     assert_eq!(table.filter_columns, filter_columns);
     assert!(table.has_filters);
 }
+
+/// A calculated column is written with its `calculatedColumnFormula` in file form and read back
+/// as a calculated column (T-3033; xlsx-storage.md "A calculated column is saved as
+/// `calculatedColumnFormula` plus one formula per row"); a column that was not filled gets none.
+#[test]
+fn a_calculated_column_keeps_its_column_formula() {
+    let mut model = new_empty_model();
+    for (row, column, input) in [(1, 1, "Qty"), (1, 2, "Dbl"), (2, 1, "2"), (3, 1, "3")] {
+        model
+            .set_user_input(0, row, column, input.to_string())
+            .unwrap();
+    }
+    model.add_table(0, "T", (1, 1, 3, 2), false).unwrap();
+    model
+        .set_user_input(0, 2, 2, "=T[@Qty]*2".to_string())
+        .unwrap();
+    // The fill on typed entry is the facade's; here the column is marked as it would be.
+    model.workbook.tables.get_mut("T").unwrap().columns[1].calculated_column_formula =
+        Some("T[@Qty]*2".to_string());
+    model.evaluate();
+
+    let temp_file_name = "temp_file_test_calculated_column.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+    let table_xml = part_text(temp_file_name, "xl/tables/table1.xml");
+    let reloaded = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    fs::remove_file(temp_file_name).unwrap();
+
+    assert!(
+        table_xml
+            .contains("<calculatedColumnFormula>T[[#This Row],[Qty]]*2</calculatedColumnFormula>"),
+        "{table_xml}"
+    );
+    assert_eq!(table_xml.matches("calculatedColumnFormula>").count(), 2);
+    let columns = &reloaded.workbook.tables["T"].columns;
+    assert_eq!(columns[0].calculated_column_formula, None);
+    assert_eq!(
+        columns[1].calculated_column_formula.as_deref(),
+        Some("T[[#This Row],[Qty]]*2")
+    );
+}
