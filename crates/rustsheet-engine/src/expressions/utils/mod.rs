@@ -464,6 +464,39 @@ pub(crate) fn quote_digit_leading_sheet(text: &str) -> std::borrow::Cow<'_, str>
     }
 }
 
+/// INDIRECT reference text (A1 or R1C1) with the spaces Excel accepts taken out, or `None` when
+/// its whitespace makes it no reference (`#REF!`). Any leading whitespace is refused; trailing
+/// spaces and line feeds are dropped; outside a quoted sheet name a space may only stand next to
+/// the range colon or after the `!`, and no other whitespace (tab, NBSP, a space between two
+/// references, a space before the `!`) is allowed (probes/t3656-indirect-spaces-reversed,
+/// docs/excel-semantics/lookup.md "INDIRECT reference text: where spaces are allowed").
+pub(crate) fn indirect_reference_text(text: &str) -> Option<String> {
+    if text.starts_with(char::is_whitespace) {
+        return None;
+    }
+    let text = text.trim_end_matches([' ', '\n']);
+    let mut out = String::with_capacity(text.len());
+    let mut quoted = false;
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\'' {
+            quoted = !quoted;
+        } else if !quoted && c == ' ' {
+            while chars.peek() == Some(&' ') {
+                chars.next();
+            }
+            if out.ends_with([':', '!']) || chars.peek() == Some(&':') {
+                continue;
+            }
+            return None;
+        } else if !quoted && c.is_whitespace() {
+            return None;
+        }
+        out.push(c);
+    }
+    Some(out)
+}
+
 /// The sheet name a `Sheet!` prefix spells: `'O''B'` is `O'B`, an unquoted prefix is itself.
 /// `None` for a quoted prefix without its closing quote.
 pub(crate) fn unquote_sheet_prefix(prefix: &str) -> Option<String> {

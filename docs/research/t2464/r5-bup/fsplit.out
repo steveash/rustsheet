@@ -1,0 +1,34 @@
+## tune
+
+| F rows | cells | FROZEN exact/w4/w15 |
+|---|---|---|
+| c=1 y0 != fl(1-x0) | 126 | 22/73/90 |
+| c=1 y0 = fl(1-x0) | 18 | 7/12/14 |
+| c=1/2 y0 != fl(1-x0) | 133 | 32/87/116 |
+| c=1/2 y0 = fl(1-x0) | 23 | 11/20/22 |
+
+| D = 0 with a normal true value: region, D branch | cells | true D range |
+|---|---|---|
+| beta, bgrat | 2 | 6.99e-307 to 2.9e-43 |
+| binom, bgrat | 37 | 1.44e-84 to 1.83e-17 |
+| bint, bgrat | 14 | 3.82e-94 to 3.37e-17 |
+| f, bgrat | 32 | 3.79e-34 to 2.64e-17 |
+| negb, bgrat | 32 | 8.73e-72 to 2.72e-18 |
+
+## hold
+
+| F rows | cells | FROZEN exact/w4/w15 |
+|---|---|---|
+| c=1 y0 != fl(1-x0) | 125 | 17/68/85 |
+| c=1 y0 = fl(1-x0) | 21 | 2/11/12 |
+| c=1/2 y0 != fl(1-x0) | 136 | 27/89/115 |
+| c=1/2 y0 = fl(1-x0) | 18 | 5/15/17 |
+
+| D = 0 with a normal true value: region, D branch | cells | true D range |
+|---|---|---|
+| beta, bgrat | 4 | 7.07e-308 to 6.42e-32 |
+| binom, bgrat | 40 | 1.11e-69 to 1.94e-18 |
+| bint, bgrat | 15 | 1.56e-78 to 1.7e-18 |
+| f, bgrat | 27 | 1.46e-43 to 4.55e-17 |
+| negb, bgrat | 39 | 4.07e-62 to 2.54e-17 |
+

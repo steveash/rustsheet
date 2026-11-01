@@ -1,4 +1,11 @@
+use std::collections::HashMap;
+
+use super::ets::{
+    self, build_series, completion_setting, detect_season, DuplicateAggregate, Point, SeriesOptions,
+};
+use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::date_and_time::error_kind;
 use crate::functions::lift::num_error;
 use crate::functions::Function;
 use crate::{
@@ -60,45 +67,102 @@ impl Model {
         })
     }
 
-    /// The FORECAST.ETS family is recognized but not implemented: an element is `#N/IMPL!` once
-    /// its arguments pass the step Excel takes before it forecasts. That step reads the arguments
-    /// in order, and the first that fails decides: a scalar argument's error, or text that is not
-    /// a number (`#VALUE!`), or an error given directly as `values` or `timeline`. Every scalar
-    /// argument lifts over an array and a multi-cell range (statistics.md "FORECAST.ETS family on
-    /// excel-graph: argument errors, text and lifting decide before the #N/A (T-2255)";
-    /// probes/forecast-ets-longer-series K38; probes/stat-argument-modes H268-H280; T-2028,
-    /// T-2424). `whole` are the positions of `values` and `timeline`, read here once.
+    /// The cells of `values` or `timeline` in reading order (an error cell is the error), or `#NUM!`
+    /// for more than [`ets::MAX_POINTS`] cells, checked before any is read. A range is read by
+    /// [`Model::evaluate_range`], which charges its cells to the formula's budget.
+    fn ets_points(
+        &mut self,
+        value: &CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Point>, CalcResult> {
+        let too_many = || CalcResult::new_error(Error::NUM, cell, String::new());
+        match value {
+            CalcResult::Range { left, right } => {
+                if left.sheet != right.sheet {
+                    return Err(CalcResult::new_error(Error::VALUE, cell, String::new()));
+                }
+                let (rows, columns) = value.shape();
+                if rows.saturating_mul(columns) > ets::MAX_POINTS {
+                    return Err(too_many());
+                }
+                let nodes = self.evaluate_range(*left, *right, cell)?;
+                nodes
+                    .iter()
+                    .flatten()
+                    .map(|node| array_point(node, cell))
+                    .collect()
+            }
+            CalcResult::Array(rows) => {
+                if rows.iter().map(Vec::len).sum::<usize>() > ets::MAX_POINTS {
+                    return Err(too_many());
+                }
+                rows.iter()
+                    .flatten()
+                    .map(|node| array_point(node, cell))
+                    .collect()
+            }
+            CalcResult::Number(number) => Ok(vec![Point::Number(*number)]),
+            CalcResult::EmptyCell | CalcResult::EmptyArg => Ok(vec![Point::Blank]),
+            CalcResult::Error { .. } => Err(value.clone()),
+            _ => Ok(vec![Point::Other]),
+        }
+    }
+
+    /// The FORECAST.ETS family's call: the argument step Excel takes before it forecasts, then
+    /// `element` for each element. The step reads the arguments in order, and the first that fails
+    /// decides: a scalar argument's error, or text that is not a number (`#VALUE!`), or an error
+    /// given directly as `values` or `timeline`. Every scalar argument lifts over an array and a
+    /// multi-cell range (statistics.md "FORECAST.ETS family on excel-graph: argument errors, text
+    /// and lifting decide before the #N/A (T-2255)"; probes/forecast-ets-longer-series K38;
+    /// probes/stat-argument-modes H268-H280; T-2028, T-2424). `whole` are the positions of
+    /// `values` and `timeline`, read here once; `element` gets the scalar arguments as numbers by
+    /// position (`None` at `whole` and past the arguments given).
     fn forecast_ets_lifted(
         &mut self,
         kind: Function,
         whole: [usize; 2],
         args: &[Node],
         cell: CellReferenceIndex,
+        element: fn(&mut EtsData, &[Option<f64>]) -> Result<f64, Error>,
     ) -> CalcResult {
         let mut direct_errors: [Option<CalcResult>; 2] = [None, None];
-        for (slot, &index) in direct_errors.iter_mut().zip(whole.iter()) {
+        let mut points: [Result<Vec<Point>, CalcResult>; 2] = [Ok(Vec::new()), Ok(Vec::new())];
+        for ((slot, read), &index) in direct_errors.iter_mut().zip(&mut points).zip(&whole) {
             if let Some(node) = args.get(index) {
                 let value = self.evaluate_node_with_reference(node, cell);
                 if value.is_error() {
                     *slot = Some(value);
+                } else {
+                    *read = self.ets_points(&value, cell);
                 }
             }
         }
+        let [values, timeline] = points.map(|read| read.map_err(|error| error_kind(&error)));
+        let mut data = EtsData::new(values, timeline);
         self.lift_call(kind, args, cell, &mut |model, values| {
+            let mut settings = vec![None; values.len()];
             for (index, value) in values.iter().enumerate() {
                 if let Some(position) = whole.iter().position(|&w| w == index) {
                     if let Some(error) = &direct_errors[position] {
                         return error.clone();
                     }
-                } else if let Err(error) = model.kernel_number(value, cell) {
-                    return error;
+                } else {
+                    match model.kernel_number(value, cell) {
+                        Ok(number) => settings[index] = Some(number),
+                        Err(error) => return error,
+                    }
                 }
             }
-            CalcResult::new_error(
-                Error::NIMPL,
-                cell,
-                "FORECAST.ETS family not implemented".to_string(),
-            )
+            match element(&mut data, &settings) {
+                Ok(number) if number.is_finite() => CalcResult::Number(number),
+                Ok(_) => num_error(cell),
+                Err(Error::NIMPL) => CalcResult::new_error(
+                    Error::NIMPL,
+                    cell,
+                    "FORECAST.ETS family not implemented".to_string(),
+                ),
+                Err(error) => CalcResult::new_error(error, cell, String::new()),
+            }
         })
     }
 
@@ -107,7 +171,7 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        self.forecast_ets_lifted(Function::ForecastEts, [1, 2], args, cell)
+        self.forecast_ets_lifted(Function::ForecastEts, [1, 2], args, cell, not_implemented)
     }
 
     pub(crate) fn fn_forecast_ets_confint(
@@ -115,7 +179,13 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        self.forecast_ets_lifted(Function::ForecastEtsConfint, [1, 2], args, cell)
+        self.forecast_ets_lifted(
+            Function::ForecastEtsConfint,
+            [1, 2],
+            args,
+            cell,
+            not_implemented,
+        )
     }
 
     pub(crate) fn fn_forecast_ets_seasonality(
@@ -123,7 +193,13 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        self.forecast_ets_lifted(Function::ForecastEtsSeasonality, [0, 1], args, cell)
+        self.forecast_ets_lifted(
+            Function::ForecastEtsSeasonality,
+            [0, 1],
+            args,
+            cell,
+            seasonality_element,
+        )
     }
 
     pub(crate) fn fn_forecast_ets_stat(
@@ -131,6 +207,92 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        self.forecast_ets_lifted(Function::ForecastEtsStat, [0, 1], args, cell)
+        self.forecast_ets_lifted(
+            Function::ForecastEtsStat,
+            [0, 1],
+            args,
+            cell,
+            not_implemented,
+        )
     }
+}
+
+/// The `values` and `timeline` of one FORECAST.ETS-family call, read once, and the season length
+/// of each series shape a lifted call asks for, computed once.
+struct EtsData {
+    values: Result<Vec<Point>, Error>,
+    timeline: Result<Vec<Point>, Error>,
+    seasons: HashMap<SeriesOptions, Result<usize, Error>>,
+}
+
+impl EtsData {
+    fn new(values: Result<Vec<Point>, Error>, timeline: Result<Vec<Point>, Error>) -> Self {
+        EtsData {
+            values,
+            timeline,
+            seasons: HashMap::new(),
+        }
+    }
+
+    /// The detected season length of the series `options` builds (an error in `values` comes
+    /// before one in `timeline`).
+    fn season(&mut self, options: SeriesOptions) -> Result<usize, Error> {
+        if let Some(season) = self.seasons.get(&options) {
+            return season.clone();
+        }
+        let season = match (&self.values, &self.timeline) {
+            (Err(error), _) | (_, Err(error)) => Err(error.clone()),
+            (Ok(values), Ok(timeline)) => {
+                build_series(values, timeline, options).and_then(|series| detect_season(&series.y))
+            }
+        };
+        self.seasons.insert(options, season.clone());
+        season
+    }
+}
+
+/// The series settings at `completion` and `aggregation` (the defaults when not given): `#NUM!`
+/// when either is out of range.
+fn series_options(
+    settings: &[Option<f64>],
+    completion: usize,
+    aggregation: usize,
+) -> Result<SeriesOptions, Error> {
+    let interpolate = match settings.get(completion).copied().flatten() {
+        Some(value) => completion_setting(value).ok_or(Error::NUM)?,
+        None => true,
+    };
+    let aggregate = match settings.get(aggregation).copied().flatten() {
+        Some(value) => DuplicateAggregate::from_setting(value).ok_or(Error::NUM)?,
+        None => DuplicateAggregate::Average,
+    };
+    Ok(SeriesOptions {
+        interpolate,
+        aggregate,
+    })
+}
+
+/// `FORECAST.ETS.SEASONALITY(values, timeline, [data_completion], [aggregation])`: the detected
+/// season length, 0 for none (unverified against Excel, decision 0221).
+fn seasonality_element(data: &mut EtsData, settings: &[Option<f64>]) -> Result<f64, Error> {
+    let options = series_options(settings, 2, 3)?;
+    data.season(options).map(|season| season as f64)
+}
+
+/// The members not implemented yet (T-3600, T-3601).
+fn not_implemented(_: &mut EtsData, _: &[Option<f64>]) -> Result<f64, Error> {
+    Err(Error::NIMPL)
+}
+
+/// One element of a `values` or `timeline` array or range as the series reads it; an error element
+/// is that error.
+fn array_point(node: &ArrayNode, cell: CellReferenceIndex) -> Result<Point, CalcResult> {
+    Ok(match node {
+        ArrayNode::Number(number) => Point::Number(*number),
+        ArrayNode::Empty => Point::Blank,
+        ArrayNode::Error(error) => {
+            return Err(CalcResult::new_error(error.clone(), cell, String::new()))
+        }
+        _ => Point::Other,
+    })
 }

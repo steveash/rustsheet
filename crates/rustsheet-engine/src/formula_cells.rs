@@ -18,7 +18,7 @@ use crate::model::Model;
 use crate::types::{ArrayKind, Cell};
 
 /// A printer of a parsed formula in the active locale and language, at a cell.
-type FormulaPrinter = fn(&Node, &CellReferenceRC, &Locale, &Language) -> String;
+type FormulaPrinter<'a> = &'a dyn Fn(&Node, &CellReferenceRC, &Locale, &Language) -> String;
 
 /// A shared formula as a sheet stores it: the tree evaluation and analysis read, with no
 /// whitespace in it, its static result and, for a formula written with whitespace, the tree as
@@ -75,7 +75,7 @@ impl Model {
         sheet: u32,
         row: i32,
         column: i32,
-        printer: FormulaPrinter,
+        printer: FormulaPrinter<'_>,
     ) -> Result<Option<String>, String> {
         let worksheet = self.workbook.worksheet(sheet)?;
         let Some(formula_index) = worksheet.cell(row, column).and_then(|c| c.get_formula()) else {
@@ -92,22 +92,26 @@ impl Model {
     }
 
     /// [`Model::get_cell_formula`] for a formula a structural edit moves `row_delta` rows; to
-    /// another row, every `#This Row` reference in it is printed as the area it is on the
-    /// cell's row (`$A$3`, or `#VALUE!` off the data rows), so the moved formula keeps reading the
-    /// row it read, as before SPEC-0016 step 2 (T-1699).
+    /// another row, every `#This Row` reference in it to a table not in `kept` (lowercase names)
+    /// is printed as the area it is on the cell's row (`$A$3`, or `#VALUE!` off the data rows),
+    /// so the moved formula keeps reading the row it read, as before SPEC-0016 step 2 (T-1699).
+    /// One to a table in `kept`, a table that follows the edit, keeps its text and reads its new
+    /// row in the edited table, as Excel does (T-3037, T-2845 table-insert-row-this-row-*).
     pub(crate) fn moved_text(
         &self,
         sheet: u32,
-        row: i32,
-        column: i32,
+        (row, column): (i32, i32),
         row_delta: i32,
+        kept: &[String],
     ) -> Result<Option<String>, String> {
-        let printer: FormulaPrinter = if row_delta == 0 {
-            to_localized_string
-        } else {
-            to_localized_string_this_row_lowered
-        };
-        self.formula_text_with(sheet, row, column, printer)
+        if row_delta == 0 {
+            return self.formula_text_with(sheet, row, column, &to_localized_string);
+        }
+        let printer =
+            |node: &Node, cell: &CellReferenceRC, locale: &Locale, language: &Language| {
+                to_localized_string_this_row_lowered(node, cell, kept, locale, language)
+            };
+        self.formula_text_with(sheet, row, column, &printer)
     }
 
     /// The style a formula written into the cell gets: the cell's, without a quote prefix.

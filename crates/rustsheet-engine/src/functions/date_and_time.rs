@@ -11,7 +11,7 @@ mod workday;
 mod yearfrac;
 use weekend::WeekendPattern;
 
-use crate::formatter::date_clock::{parse_date_clock_serial, SECONDS_PER_DAY_F64};
+use crate::formatter::date_clock::{parse_date_clock_serial, trim_spaces, SECONDS_PER_DAY_F64};
 
 pub(crate) fn is_leap_year(year: i32) -> bool {
     (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0)
@@ -21,7 +21,7 @@ pub(crate) fn is_leap_year(year: i32) -> bool {
 /// 29th (serial 60): DAYS360 counts 1900-02-29 as February's last day (`DAYS360(60,1)` = -59) and
 /// DATEDIF "MD" borrows 29 days from it (`DATEDIF(59,61,"MD")` = 2; probes/dates-early-1900-displayed,
 /// dates.md "Serials below 61 in DATEDIF, EDATE, DAYS360, WEEKNUM and YEARFRAC").
-fn displayed_month_length(year: i32, month: u32) -> u32 {
+pub(crate) fn displayed_month_length(year: i32, month: u32) -> u32 {
     match month {
         2 if year == 1900 || is_leap_year(year) => 29,
         2 => 28,
@@ -191,7 +191,7 @@ use crate::{
 
 /// The error kind of a failed argument evaluation. A non-error result is #VALUE! on purpose: the
 /// callers only pass the `Err` of a coercion, which is always an error.
-fn error_kind(result: &CalcResult) -> Error {
+pub(crate) fn error_kind(result: &CalcResult) -> Error {
     match result {
         CalcResult::Error { error, .. } => error.clone(),
         _ => Error::VALUE,
@@ -213,7 +213,9 @@ impl Model {
     /// (probes/date-text-grammar B53: `DATEVALUE("1/2/2020 25:00")` is 43833, 3 Jan), with
     /// year-less text in [`Model::current_year`]. Excel: see docs/excel-semantics/dates.md.
     pub(crate) fn parse_datevalue_text(&self, value: &str) -> Option<i32> {
-        let (text, year) = (value.trim(), &|| self.current_year());
+        // Only the space character is trimmed: a tab, line break, no-break or ideographic space
+        // around the text is #VALUE!, as in VALUE (probes/date-text-shape-survey rows 84-88, 91).
+        let (text, year) = (trim_spaces(value), &|| self.current_year());
         let serial = if let Ok((serial, _)) = parse_date(text, self.locale, year) {
             serial
         } else {

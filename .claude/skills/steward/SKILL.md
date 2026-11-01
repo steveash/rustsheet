@@ -70,7 +70,9 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
     GitHub MCP tools, exactly as printed (never add, skip, reorder or change one), then `make
     merge-ready-verify PR=<n>`. Who may mark: the PR's own worker after its panel approved, the
     steward for an orphaned PR after running the reviewers itself, and an opus run after
-    work-loop step 5c. The merger never marks or reviews.
+    work-loop step 5c. A task-only PR (every changed path a `.md` file under `docs/tasks/`) needs no
+    reviewer: any session may mark it once CI is green and it is not a draft (decision 0231). The
+    merger never marks or reviews.
   - **Any push** makes the marker stale: mark again after CI and the reviewers the change
     concerns. `CARRY=1` carries the verdicts over only for a head that is a merge of
     `origin/main` onto the marked head that is clean, a `make catch-up` or a `make renumber`,
@@ -91,7 +93,8 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
     Any other conflict stays with the PR's worker.
   - **The janitor** (`make janitor`, decision 0224; `DRY_RUN=1` lists its actions; `STEP=1`
     prints each GitHub write as a step-mode action to perform and ack with `make merge-train-ack
-    SEQ=<n>`, as the merger does, when the session cannot write through `gh api`) runs after
+    SEQ=<n>`, as the merger does, when the session cannot write through `gh api`; the ack prints the
+    next action, and `make merge-train-next` waits for one, decision 0238) runs after
     once per merger routine run, after its train passes, in `train` mode only, within a 25-min
     budget (no catch-up or renumber starts after it; the rest waits for the next run). It skips
     PRs labelled `merge-hold`: label a PR so to hold it against the janitor's pushes and
