@@ -4,6 +4,10 @@ description: Run RustSheet's multi-agent code review on the current branch versu
 ---
 # Multi-agent review
 
+A **task-only PR** (every changed path under `docs/tasks/`) gets no review: `make mark-ready`
+needs no verdict for it once CI is green, and the merge train's `tasks.py validate` on the
+combined tree is its gate (decision 0231). Any other path in the diff brings the full panel back.
+
 1. Make sure the branch is committed and `make check` passed (reviewers are not linters).
 2. Collect context: `git diff --stat origin/main...HEAD`, the task id (branch name) and its file.
 3. Launch these subagents **in parallel** (one message, multiple Agent calls), each with a

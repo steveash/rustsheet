@@ -69,6 +69,9 @@ LABELS = (READY_LABEL, EJECTED_LABEL, STOP_LABEL)
 ALWAYS_REVIEWERS = ("security", "architecture", "quality")
 EXCEL_FIDELITY = "excel-fidelity"
 EXCEL_FIDELITY_PATHS = ("crates/rustsheet-engine", "crates/rustsheet-xlsx", "eval/suites", "eval/baseline")
+# A diff only under this root files or edits tasks: it needs no reviewer, because the merge train's
+# `tasks.py validate` on the combined tree and CI's hygiene job are its gates (decision 0231).
+TASKS_ROOT = "docs/tasks"
 REVIEWERS = (*ALWAYS_REVIEWERS, EXCEL_FIDELITY)
 APPROVE = "APPROVE"
 NOT_APPLICABLE = "n/a"
@@ -305,9 +308,13 @@ def records_mode(text: str | None) -> str:
 
 
 def applicable_reviewers(paths: Iterable[str] | None) -> tuple[str, ...]:
-    """The reviewers a diff of `paths` needs; every reviewer when the paths are unknown (None)."""
+    """The reviewers a diff of `paths` needs; every reviewer when the paths are unknown (None), and
+    none for a task-only diff: at least one path, every one under `TASKS_ROOT` (decision 0231)."""
     if paths is None:
         return REVIEWERS
+    paths = list(paths)
+    if paths and all(p.startswith(TASKS_ROOT + "/") for p in paths):
+        return ()
     touches = any(p == root or p.startswith(root + "/") for p in paths for root in EXCEL_FIDELITY_PATHS)
     return REVIEWERS if touches else ALWAYS_REVIEWERS
 
