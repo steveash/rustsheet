@@ -26,16 +26,14 @@ from collections.abc import Sequence
 
 import mpmath
 
-from rustsheet_tools.accuracy.defs.annuity import MAX_BRACKET_DOUBLINGS, sign_changes
+from rustsheet_tools.accuracy.defs.annuity import unique_rate
 from rustsheet_tools.accuracy.literal import Arg
 from rustsheet_tools.accuracy.model import (
     Definition,
     DomainError,
     MathArg,
-    NoValueError,
     Param,
     register,
-    solve_bracket,
 )
 from rustsheet_tools.accuracy.sampler import log_uniform
 
@@ -48,28 +46,12 @@ FIRST_DATE = (36526, 47000)  # 2000-01-01 to 2028-09-04: integer date serials
 
 
 def flow_rate(flows: Sequence[mpmath.mpf], times: Sequence[mpmath.mpf]) -> mpmath.mpf:
-    """The unique r > -1 with sum c_i (1 + r)^(-t_i) = 0, `times` increasing from 0. DomainError with flows of one sign,
-    NoValueError with several sign changes (no evidenced root choice) or no bracket."""
-    changes = sign_changes(flows)
-    if changes == 0:
-        msg = "flows of one sign: no rate"
-        raise DomainError(msg)
-    if changes > 1:
-        msg = "several sign changes: no evidenced root choice"
-        raise NoValueError(msg)
+    """The rate of `flows` at `times` (increasing from 0): the unique root of sum c_i e^(-t_i·u), u = ln(1 + r)."""
 
     def f(u: mpmath.mpf) -> mpmath.mpf:
         return mpmath.fsum(c * mpmath.exp(-t * u) for c, t in zip(flows, times, strict=True))
 
-    if f(mpmath.mpf(0)) == 0:  # the flows sum to 0: the root is exactly 0
-        return mpmath.mpf(0)
-    lo, hi = mpmath.mpf(-1), mpmath.mpf(1)
-    for _ in range(MAX_BRACKET_DOUBLINGS):
-        if (f(lo) > 0) != (f(hi) > 0):
-            return mpmath.expm1(solve_bracket(f, lo, hi))
-        lo, hi = lo * 2, hi * 2
-    msg = "no root bracket"
-    raise NoValueError(msg)
+    return unique_rate(flows, f)
 
 
 def _array(a: MathArg) -> tuple[mpmath.mpf, ...]:

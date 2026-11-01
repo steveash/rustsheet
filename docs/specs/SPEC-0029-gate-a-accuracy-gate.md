@@ -113,8 +113,9 @@ are parsed by Rust's `str::parse::<f64>` (correctly rounded); a math value beyon
 tools/ only (pure Python, BSD; the engine and the bindings never depend on it).
 
 - **Definitions.** `accuracy/defs/<family>.py` registers, per function, a `Definition`: the parameters (name, kind
-  real or integer, valid domain with open or closed bounds, typical range, extreme range, optional tail map) and the
-  mpmath function at the working precision. Inverses solve the forward mpmath function with `mpmath.findroot` on a
+  real, integer, logical or array, valid domain with open or closed bounds, typical range, extreme range, optional tail
+  map) and the mpmath function at the working precision. An array (IRR's flows, XIRR's dates; T-3586) is written as an
+  array literal `{a,b,...}` with each element at most 15 significant digits, and its rules are the definition's. Inverses solve the forward mpmath function with `mpmath.findroot` on a
   bracket; solvers (IRR, RATE, XIRR, YIELD) solve their defining equation and return Excel's root by Excel's root
   choice where several exist (the definition cites the semantics entry; with no evidenced choice, points with several
   roots are not drawn). The parameter list comes from the catalog (`eval/catalog/functions.yaml`: names, order,

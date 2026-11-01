@@ -60,6 +60,13 @@ def test_array_literals_round_trip_through_the_formula() -> None:
     assert math_arg(XIRR.params[0], args[0]) == (mp(-1000.5), mp(300), mp(2.5e-7))
 
 
+def test_check_domain_leaves_arrays_to_the_definition() -> None:
+    # an array parameter has no interval: check_domain passes it on, and the definition's own rules apply
+    IRR.check_domain([(mp(-1), mp(2))])
+    with pytest.raises(DomainError):
+        IRR.evaluate([(mp(1), mp(2))])
+
+
 def test_draws_put_the_drawn_rate_at_the_root() -> None:
     rng = random.Random(7)
     sampler = Sampler(IRR, rng)
@@ -76,3 +83,27 @@ def test_draws_put_the_drawn_rate_at_the_root() -> None:
         assert isinstance(dates, tuple)
         assert all(isinstance(d, int) for d in dates) and list(dates) == sorted(dates)
         assert compute(XIRR, [Sampler(XIRR, rng).finish(XIRR.params[0], values), dates]).value is not None
+
+
+def test_each_stratum_draws_its_shape() -> None:
+    rng = random.Random(11)
+    one_sign = 0
+    for _ in range(60):  # the edge stratum's third shape: every flow one sign, no rate
+        (flows,) = _irr_draw("edge", rng)
+        assert isinstance(flows, tuple)
+        if all(f > 0 for f in flows) or all(f < 0 for f in flows):
+            one_sign += 1
+            with pytest.raises(DomainError):
+                IRR.evaluate([tuple(mp(f) for f in flows)])
+    assert one_sign > 0
+    tails = [_irr_draw("tail", rng)[0] for _ in range(30)]
+    assert all(isinstance(t, tuple) and len(t) >= 2 for t in tails)
+    extreme = [_irr_draw("extreme", rng)[0] for _ in range(5)]
+    assert all(isinstance(t, tuple) and 50 <= len(t) <= 200 for t in extreme)
+    spans = []
+    for _ in range(40):  # half of XIRR's extreme draws are two flows over 10 to 50 years (T-3353)
+        values, dates = _xirr_draw("extreme", rng)
+        assert isinstance(values, tuple) and isinstance(dates, tuple)
+        if len(values) == 2:
+            spans.append(int(dates[1]) - int(dates[0]))
+    assert spans and all(3650 <= s <= 18250 for s in spans)
