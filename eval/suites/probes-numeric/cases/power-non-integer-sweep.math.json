@@ -1,0 +1,18 @@
+{
+ "format": "rustsheet-math/v1",
+ "source": {
+  "generator": "rustsheet-accuracy",
+  "version": "1",
+  "dps": 80,
+  "input_sha256": "47550062e443399bb65e4ea7a80812215b39630601c4c922f50a7d7e9e4ce613"
+ },
+ "sheets": {
+  "Calc": {
+   "A193": {
+    "t": "e",
+    "why": "the positive power underflows, so 1 over it is #DIV/0!",
+    "f": "=POWER(1E-10,-33.5)"
+   }
+  }
+ }
+}

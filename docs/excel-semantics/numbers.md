@@ -695,6 +695,11 @@ mantissa, with relative error +1.92E-20.
 
 Evidence: probes-numeric (on branch `agent/research/T-1778-kernel-map`) `kmyst-erfc-expcol`, `kmyst-erfc-runs1..4`, `kmyst-erfc-stepmap1/2`, `kmyst-erfc-chiruns1..3`
 (excel-graph, 2026-10-18). Status: VERIFIED (structure); the last mismatches are OPEN.
+Below the smallest normal double (a < -708.4) excel-graph shows 0: `EXP(-714.100700559872)` (a true 7.4E-311) and 14
+other accuracy/EXP/s1 points down to `EXP(-1000)` (Calc!A50-A52, A57-A61, A64-A67, A69, A79, A80; seven of them below even
+the smallest subnormal) (excel-graph, 2026-11-01, T-3672). Graph reports a kept subnormal as 0 too, so
+these cells do not tell whether EXP flushes; the worksheet-EXP paragraph below (probes/subnormal-function-results) shows it
+keeps the subnormal.
 Ours: `crates/rustsheet-engine/src/x87_exp.rs` `excel_exp` implements V6 with integer x87 rounding and a double-double
 F2XM1 (T-1916). It reproduces the reference model, scoring 62,013 of 62,100 `EXP(A)` cells of `kmyst-erfc-r5expmap1/2`
 and every `EXP(-(x*x))` cell up to x = 26.55 except the near-ties. The ERFC kernel and, since T-1931, the worksheet EXP
@@ -1399,6 +1404,9 @@ itself, not 1/n: `(-8)^(1/3+8·2^-54)` is -2.0000000000000018.
 - `1/101 ± 28·2^-59` counts and `± 29·2^-59` does not (the 15th digit of 101.000000000000).
 - Literals: `0.333333333333333` counts (-1.9999999999999984), `0.33333333333333` does not; `0.0909090909090909` (1/11) counts,
   `0.142857142857143` (1/7, 1/y = 6.999999999999993) does not.
+  A negative exponent follows the same 15-digit cut, and 1/9 too: `POWER(-0.00297317823308491,-0.142857142857143)` and
+  `POWER(-0.362795461331778,0.111111111111111)` (1/y = 9.000000000000009) are `#NUM!` (accuracy/POWER/s1 Calc!A54, A53;
+  excel-graph, 2026-11-01, T-3672), while `POWER(-8,-0.333333333333333)` counts (-0.5000000000000004, A80).
 - Size: `1/(2^31-3)` and `1/(2^31-5)` count; `1/(2^31-1)`, `1/(2^31+1)`, `1/(2^40+1)` and `1/(2^52+1)` are #NUM!, although
   1/y is exactly the odd integer there. Not probed: negative exponents at the limit (`-1/(2^31-1)`, `-1/(2^31-3)`); the engine
   takes the limit on |1/y|.
