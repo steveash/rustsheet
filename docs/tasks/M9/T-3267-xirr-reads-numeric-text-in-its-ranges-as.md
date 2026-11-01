@@ -3,7 +3,7 @@ id: T-3267
 title: "XIRR reads numeric text in its ranges as numbers (xirr-back-dated-stop A31)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
