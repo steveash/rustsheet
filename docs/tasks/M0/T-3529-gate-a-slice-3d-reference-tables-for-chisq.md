@@ -79,3 +79,12 @@ Done (2026-11-01; resumed by an opus run after the branch sat idle for 2 h): fou
 - **Eval delta:** none. Gate A gains 4 tables (1391 points in 10 tables), and the eval suites, baselines and gates
   are unchanged.
 
+Merge follow-up (2026-11-01, after the merge train ejected #2668 for a conflict with main):
+- main is merged in. The defs registry and the CLI list test are unions with T-3553's cashflow and discrete
+  definitions.
+- probes-numeric's sidecars are regenerated with every definition. That covers the 7 add/add conflicts and the cases
+  that landed since.
+- t3350-r4-chisq-inv-sweep's sidecar is restored to its earlier output, because a 10 s wall-clock drop lost
+  Calc!A237 on this machine (T-3680).
+- The probes suite's sidecars wait for #2698 (T-3679).
+
