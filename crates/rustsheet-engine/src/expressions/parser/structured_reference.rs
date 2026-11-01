@@ -31,8 +31,9 @@ pub struct StructuredReference {
     /// table no longer exists, but Excel keeps the text (FORMULATEXT `=Sales[@Qty]`) and the
     /// cell evaluates `#VALUE!` (references.md, convert-to-range entry;
     /// probes/table-edits/table-convert-names-this-row, T-2763). It resolves against no table,
-    /// so a later table of the same name does not take it back (unprobed). Stored with the
-    /// engine-only `[!]` prefix ([`Self::stored_text`]); the xlsx export writes `#VALUE!`.
+    /// so a later table of the same name does not take it back (unprobed, TODO(T-3629)). Stored
+    /// with the engine-only `[!]` prefix ([`Self::stored_text`]); the xlsx export writes
+    /// `#VALUE!` (unprobed, TODO(T-3629)). Only an off-row `#This Row` reference is detached.
     pub detached: bool,
     /// The range of the table of a `#This Row` reference or of one written without the table
     /// name, as the table list the formula was parsed against had it: the printing cell decides
@@ -165,6 +166,8 @@ impl StructuredReference {
     /// The text of a [`Self::detached`] reference: with the table name, and a `#This Row` one in
     /// its `@` form, as Excel's FORMULATEXT prints `=Sales[@Qty]` for one written
     /// `=Sales[[#This Row],[Qty]]` (probes/table-edits/table-convert-names-this-row S!F2).
+    /// Only `#This Row` references are detached, and only their text is evidenced; any other
+    /// form would print its qualified text.
     fn detached_text(&self) -> String {
         if self.specifier == Some(TableSpecifier::ThisRow) {
             return format!("{}{}", self.table_name, self.text_with_name(false));

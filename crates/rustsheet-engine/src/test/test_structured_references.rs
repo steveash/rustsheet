@@ -917,7 +917,7 @@ fn convert_to_range_lowers_this_row_at_each_row() {
 }
 
 /// Convert to range: a `#This Row` reference off the data rows keeps its text, in its `@` form
-/// with the table name, evaluates `#VALUE!` through a reparse and a row insert, and is exported
+/// with the table name, evaluates `#VALUE!` through row and column inserts, and is exported
 /// as `#VALUE!` (probes/table-edits/table-convert-names-this-row S!F2, S!F10, T!A2, T-2763).
 #[test]
 fn convert_to_range_keeps_the_text_of_an_off_row_this_row() {
@@ -930,20 +930,19 @@ fn convert_to_range_keeps_the_text_of_an_off_row_this_row() {
         .unwrap();
     model.convert_table_to_range("Sales").unwrap();
     model.evaluate();
-    let check = |model: &Model, row: i32, column: i32| {
-        assert_eq!(value(model, 0, row, column), "#VALUE!");
-        assert_eq!(formula(model, 0, row, column), "=Sales[@Qty]*2");
-        assert_eq!(value(model, 1, 1, 4), "#VALUE!");
-        assert_eq!(formula(model, 1, 1, 4), "=Sales[@Qty]");
+    let check = |model: &Model, (sheet, row, column): (u32, i32, i32), text: &str| {
+        assert_eq!(value(model, sheet, row, column), "#VALUE!");
+        assert_eq!(formula(model, sheet, row, column), text);
     };
-    check(&model, 5, 4);
-    // A new table of the same name does not take the reference back (unprobed).
-    model.add_table(0, "Sales", (1, 1, 3, 2), false).unwrap();
-    // A row insert moves the cell down, a column insert along its row.
+    check(&model, (0, 5, 4), "=Sales[@Qty]*2");
+    check(&model, (1, 1, 4), "=Sales[@Qty]");
+    // A row insert moves the cell down, a column insert along its row; each re-enters it.
     model.insert_rows(0, 1, 1).unwrap();
     model.insert_columns(0, 3, 1).unwrap();
+    model.insert_rows(1, 1, 1).unwrap();
     model.evaluate();
-    check(&model, 6, 5);
+    check(&model, (0, 6, 5), "=Sales[@Qty]*2");
+    check(&model, (1, 2, 4), "=Sales[@Qty]");
     let Some(index) = model.workbook.worksheets[0]
         .cell(6, 5)
         .and_then(|cell| cell.get_formula())
@@ -956,6 +955,7 @@ fn convert_to_range_keeps_the_text_of_an_off_row_this_row() {
         column: 5,
     };
     let node = &model.parsed_formulas[0][usize::try_from(index).unwrap()].evaluated;
+    // TODO(T-3629): what Excel writes to the file is unprobed.
     assert_eq!(to_excel_string(node, &context), "#VALUE!*2");
     // Typed, the engine's `[!]` prefix is not a formula.
     assert!(model

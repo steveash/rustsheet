@@ -2639,10 +2639,10 @@ structured reference's text is `#REF!` (T-2911). Convert to range matches (T-234
 reference as the absolute area it lowered to (defined names too, T-2643). A cell with a `#This Row` reference
 off the data rows is kept as a *detached* structured reference (`StructuredReference::detached`, T-2763): it
 evaluates `#VALUE!` and prints `=Sales[@Qty]` as in Excel. It resolves against no table, so a later table of the
-same name does not take it back (unprobed); it is stored with an engine-only `[!]` prefix (`[!]Sales[[#This
+same name does not take it back (unprobed, T-3629); it is stored with an engine-only `[!]` prefix (`[!]Sales[[#This
 Row],[Qty]]`, which typed or loaded text refuses) so it survives reparses and structural edits, and the xlsx
 export writes it as `#VALUE!` (a file never holds a structured reference without its table part; what Excel
-writes for it is unprobed). One on a data row is lowered at its row, as Excel does (T-2643, T-2763). A deleted table or sheet matches
+writes for it is unprobed, T-3629). One on a data row is lowered at its row, as Excel does (T-2643, T-2763). A deleted table or sheet matches
 (T-2340): `delete_table` and `take_sheet` rewrite the stored text of every structured reference to the
 removed tables (bare `Sales` included) to `#REF!` (`Model::rewrite_table_references`, tables.rs), and an
 undo of the sheet delete (`restore_sheet`, `UserModel` undo) puts the old text back; a reference to a

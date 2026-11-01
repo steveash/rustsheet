@@ -50,4 +50,4 @@ The cross-sheet probe the task asked for (probes/table-edits/table-convert-cross
 2026-11-01): a `#This Row` on a data row from another sheet is lowered to `=S!$C5` (row relative), which the
 engine already did; recorded in references.md.
 Eval: probes/table-edits/table-convert-names-this-row S!F2, S!F10, T!A2 now pass (3 known failures removed);
-the new 6-cell probe passes; no new failures.
+the new 6-cell probe passes; no new failures. Follow-up: T-3629 (probe a re-created same-name table and the xlsx save and reload of a detached reference).
