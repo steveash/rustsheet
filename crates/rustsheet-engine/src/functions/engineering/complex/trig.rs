@@ -9,9 +9,14 @@ use crate::x87_exp::excel_exp;
 
 /// IMSIN and IMCOS are `#NUM!` once `exp(|y|)` overflows (|y| above about 709.78), whatever the
 /// real part, although `cosh y` is still finite there: `IMSIN("1.5+710.4i")`, `IMCOS("710.4i")`
-/// (probes/eng-im-overflow-edges A25-A27, A33-A35).
+/// (probes/eng-im-overflow-edges A25-A27, A33-A35). For negative y they are `#NUM!` sooner, once
+/// `u = EXP(y)` of [`trig_sinh_cosh`] leaves the normal range (y below `ln(DBL_MIN)` =
+/// -708.3964185322641): Excel's EXP gives 0 there and the reciprocal `1/u` overflows.
+/// `IMSIN("0.5-708.39641853i")` answers and `IMSIN("0.5-708.396419i")` is `#NUM!`, while
+/// `IMSIN("1.2+709.7i")` answers (probes-numeric/t3589-imsin-imcos-negative-cut-probe,
+/// t3589-imsin-imcos-subnormal-exp-probe; engineering.md, T-3589).
 fn trig_exp_overflows(y: f64) -> bool {
-    y.abs().exp().is_infinite()
+    y.abs().exp().is_infinite() || excel_exp(y) < f64::MIN_POSITIVE
 }
 
 /// IMCOSH and IMSINH are `#NUM!` for a zero imaginary part once `exp(|x|)` overflows, although
@@ -92,8 +97,9 @@ fn inverse_exp_sinh_cosh(x: f64) -> (f64, f64) {
     (sinh, cosh)
 }
 
-/// Bounds [`sinh_series`]'s loop: at |x| <= `INVERSE_EXP_LOW` the fourth term is below 1E-22 of
-/// the first and no longer changes the sum, so it stops after at most 4 terms.
+/// A hard cap on [`sinh_series`]'s loop, not a tuned value: at |x| <= `INVERSE_EXP_LOW` the fourth
+/// term is below 1E-22 of the first and no longer changes the sum, so the loop exits after at most
+/// 4 terms long before the cap.
 const SINH_SERIES_TERMS: u32 = 16;
 
 /// sinh x as the Taylor series `x + x³/3! + x⁵/5! + ...`, summed in that order in doubles, each
@@ -567,5 +573,28 @@ mod tests {
             text(imsin, 0.981_793_650_815_856, -183.167_307_387_565),
             "1.47021409465799E+79-9.82267943792204E+78i"
         );
+    }
+
+    // probes-numeric/t3589-imsin-imcos-negative-cut-probe A7, A8 (excel-graph): `1/EXP(y)` overflows
+    // once EXP(y) leaves the normal range, so negative y turns `#NUM!` at ln(DBL_MIN).
+    #[test]
+    fn imsin_is_num_once_exp_y_is_subnormal() {
+        assert_eq!(
+            text(imsin, 0.5, -708.396_418_53),
+            "1.07732499684388E+307-1.97203017901663E+307i"
+        );
+        let cell = CellReferenceIndex {
+            sheet: 0,
+            row: 1,
+            column: 1,
+        };
+        assert!(matches!(
+            imsin((0.5, -708.396_419, Suffix::I), cell),
+            CalcResult::Error { .. }
+        ));
+        assert!(matches!(
+            imcos((0.5, -708.396_419, Suffix::I), cell),
+            CalcResult::Error { .. }
+        ));
     }
 }

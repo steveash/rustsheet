@@ -784,7 +784,7 @@ Edges probed by T-2077 (probes/eng-im-overflow-edges, excel-graph):
 - A blank cell argument met earlier in IMPRODUCT (a blank inside a range is UNVERIFIED, T-2231) makes the running product 0, so a later overflow cannot
   happen: `IMPRODUCT(<blank>,"1E200","1E200")` is `0`; the blank last is `#VALUE!` (the overflow
   came first). Implemented.
-- IMSIN and IMCOS are `#NUM!` when `exp(|imaginary part|)` overflows (|y| above about 709.78 by analogy with SINH/COSH in numbers.md; probed only at 710.4 and 711, T-2231),
+- IMSIN and IMCOS are `#NUM!` when `exp(|imaginary part|)` overflows (|y| above about 709.78 by analogy with SINH/COSH in numbers.md; probed only at 710.4 and 711, T-2231; for y < 0 already below ln(DBL_MIN) = -708.396, and for y > 0 from (709.7, 709.75], T-3589 and T-3616),
   whatever the real part (`IMSIN("1.5+710.4i")`, `IMCOS("710.4i")`), although `cosh y` is still
   finite there. IMCOSH and IMSINH are `#NUM!` for a zero imaginary part when `exp(|x|)` overflows
   (`IMCOSH("710.4+0i")`) but answer text with a nonzero one (`IMCOSH("710.4+1.5i")` is
@@ -962,7 +962,14 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   `1/cosh x` is one ulp off the form's (`IMSECH("6.17632662504393E-06")` 0.999999999980927, ours ...926), so IMSECH and
   IMCSCH below 0.01 (and one IMCOSH text) are not fully explained (T-3609). 11 more cells there differ only in notation (14 digits at exponent
   -6 written plain, T-3560). Gate A: all 900 fresh cells are within 1e-9 of the 50-digit value. The cut at 0.01 did not
-  move (FITTED, T-3525); the series and libm give the same digits at 0.01 itself. Status: VERIFIED (excel-graph) for
+  move (FITTED, T-3525); the series and libm give the same digits at 0.01 itself. The reciprocal also explains an
+  asymmetry at the top of the range: for y < 0, u = EXP(y) leaves the normal range below ln(DBL_MIN) =
+  -708.3964185322641, Excel's EXP gives 0 there, and `1/u` overflows, so IMSIN and IMCOS are `#NUM!` from there
+  down, while positive y answers up to 709.7: `IMSIN("0.5-708.39641853i")` is
+  1.07732499684388E+307-1.97203017901663E+307i and `IMSIN("0.5-708.396419i")` `#NUM!` (both functions, every probed
+  y from -708.396419 to -709.78; probes-numeric/t3589-imsin-imcos-negative-cut-probe, 22 cells, and
+  t3589-imsin-imcos-subnormal-exp-probe, 52 cells, excel-graph). Ours: `trig_exp_overflows`. The same probe shows
+  positive y turning `#NUM!` between 709.7 and 709.75, below exp's overflow (T-3616). Status: VERIFIED (excel-graph) for
   IMSINH, IMCOSH, IMSIN and IMCOS; UNVERIFIED for IMSECH and IMCSCH below 0.01. Ours: `inverse_exp_sinh_cosh`,
   `sinh_series` and `trig_sinh_cosh` in functions/engineering/complex/trig.rs.
 - **An IM* part with 14 significant digits at exponent -6 is plain text (T-3545).** `IMSIN("0-1.03615953980931E-06i")`
