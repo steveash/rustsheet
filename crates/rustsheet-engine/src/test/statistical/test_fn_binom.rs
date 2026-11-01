@@ -349,3 +349,59 @@ fn test_negative_fractional_count_is_num_before_truncation() {
     assert_eq!(model._get_text("A3"), model._get_text("A4"));
     assert_eq!(model._get_text("A5"), model._get_text("A6"));
 }
+
+#[test]
+fn test_binom_inv_and_range_at_a_large_n_take_binom_dist_cdf() {
+    // probes/t3444-binom-range-inv-large-n Inv A91:A96 and Range A94 (excel-graph): BINOM.INV is the
+    // smallest k whose BINOM.DIST cdf reaches alpha, and a range from 0 is that cdf. statrs' cdf
+    // gave BINOM.INV(1000000000,0.3,0.5) 299998246 before T-3444.
+    let cases = [
+        ("=BINOM.INV(1000000000,0.3,0.5)", "300000000.0"),
+        ("=BINOM.INV(1000000000,0.3,0.025)", "299971598.0"),
+        ("=BINOM.INV(1000000000,0.3,0.975)", "300028403.0"),
+        ("=BINOM.INV(1000000000,0.3,1e-06)", "299931118.0"),
+        ("=CRITBINOM(1000000000,0.3,0.999999)", "300068885.0"),
+        ("=BINOM.INV(1000000000,0.3,0.3)", "299992401.0"),
+        (
+            "=BINOM.DIST.RANGE(1000000000,0.3,0,300000000)",
+            "0.5000156001249112",
+        ),
+    ];
+    let mut model = new_empty_model();
+    for (row, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, expected)) in cases.iter().enumerate() {
+        assert_eq!(
+            round_trip_value(&model, &format!("A{}", row + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
+}
+
+#[test]
+fn test_binom_dist_range_from_0_at_a_large_n_is_a_probability() {
+    // A range from 0 at a large n is BINOM.DIST's cdf, or statrs' where the kernel has no branch
+    // (T-3444): every result is in [0, 1], and no `lower - 1` is taken at lower = 0.
+    let mut formulas = Vec::new();
+    for n in ["10000", "1000000", "1000000000", "2147483646"] {
+        for p in ["1E-9", "0.001", "0.3", "0.999", "0.999999"] {
+            for upper in ["1", "2", "50", "5000"] {
+                formulas.push(format!("=BINOM.DIST.RANGE({n},{p},0,{upper})"));
+            }
+        }
+    }
+    let mut model = new_empty_model();
+    for (row, formula) in formulas.iter().enumerate() {
+        model._set(&format!("A{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, formula) in formulas.iter().enumerate() {
+        let value: f64 = round_trip_value(&model, &format!("A{}", row + 1))
+            .parse()
+            .unwrap_or(f64::NAN);
+        assert!((0.0..=1.0).contains(&value), "{formula}: {value}");
+    }
+}

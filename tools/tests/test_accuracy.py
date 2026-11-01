@@ -339,6 +339,9 @@ def test_cli_lists_and_generates(tmp_path: Path, capsys: pytest.CaptureFixture[s
     assert capsys.readouterr().out.split() == [
         "AVERAGE",
         "BINOM.DIST",
+        "COS",
+        "COT",
+        "CSC",
         "F.DIST",
         "F.INV",
         "IRR",
@@ -349,10 +352,13 @@ def test_cli_lists_and_generates(tmp_path: Path, capsys: pytest.CaptureFixture[s
         "ROUND",
         "ROUNDDOWN",
         "ROUNDUP",
+        "SEC",
+        "SIN",
         "SUM",
         "T.DIST",
         "T.INV",
         "T.INV.2T",
+        "TAN",
         "TINV",
         "XIRR",
     ]

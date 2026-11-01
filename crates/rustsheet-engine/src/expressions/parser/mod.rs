@@ -592,6 +592,9 @@ pub struct Parser {
     pending_start: usize,
     /// The signs written before the pending operand, read ahead with it.
     pending_prefix: Option<depth::Prefix>,
+    /// The table an unqualified structured reference names in a formula a row insert moves with
+    /// that table, before the parser's tables show it there (`Model::move_cell`, T-3037).
+    moved_table: Option<String>,
     /// Written groups open on the current parse path, bounded by [`MAX_PARENTHESES`].
     open_groups: usize,
     /// A group's content is about to be parsed: its first operand, unless another group, reserves
@@ -675,6 +678,7 @@ impl Parser {
             pending_operand: None,
             pending_start: 0,
             pending_prefix: None,
+            moved_table: None,
             open_groups: 0,
             group_head: false,
             open_signs: 0,

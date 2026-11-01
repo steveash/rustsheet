@@ -56,3 +56,18 @@ Link!C140 and L140; t2464-r2-tdist-p1 Calc!A10676, A10785, A11430, A8757, A9792.
   assertion on the bup + bgrat branch (a bit-exact t2464-r2-tdist-p1 part C cell); `dd_exp` returning `None` (or
   clamping) for |a| > 650 so its range is enforced in the function.
 
+
+## Cells added by gap triage (2026-11-01h)
+`make eval` on origin/main d2ddb42a7 (excel-graph). A status split of `scripts/exit_owners.py`'s `owned` rule found this
+visibly-off cell with blocked, time-boxed T-0969 as its only open owner. It is T.DIST.2T at df 1, the path this task
+moves onto the kernel:
+- gen-m9/928d08e3e1eecb5f.case.json (1): Calc!A231
+`T.DIST.2T(((1.005+Data!C6)*(Data!E$1-(-1))),1)` with C6 = -1 and E1 blank, so t = fl(1.005 - 1) =
+0.004999999999999893. Excel gives 0.9968169276635932 and ours 0.9968169276635881, which is the correctly rounded value
+(5e-15 relative from Excel, 23 ulp). Excel's value is exactly `I_y(1/2, 1/2)` at y = fl(1/fl(1 + fl(t·t))) =
+0.9999750006249845, which is the same as `1 - I_{fl(1-y)}(1/2, 1/2)`. The kernel's own complement,
+z = fl(fl(t·t)/fl(1 + fl(t·t))), gives our exact value instead (mpmath `betainc` at 50 digits, gap triage scratch).
+So at df 1, as at df 2 (statistics.md "Student t tails are one kernel call"), Excel's complement is fl(1 - y), at least
+at t = 0.005. Probe a df 1 run of t from 1e-8 to 1 before routing df 1 (the same probe as this task's T.TEST
+complement), and record the df 1 rule in that statistics.md entry. Cell split: T-0969 lists this cell too; T.TEST and
+TTEST cells of the same triage are T-3730's.
