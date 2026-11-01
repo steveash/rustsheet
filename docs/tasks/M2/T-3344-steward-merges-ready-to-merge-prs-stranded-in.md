@@ -3,7 +3,7 @@ id: T-3344
 title: "Steward merges ready-to-merge PRs stranded in shadow mode"
 milestone: M2
 lane: harness
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -41,11 +41,15 @@ Note: the edit touches `.claude/skills/steward/SKILL.md`, a protected path, so i
 decision record the governance gate asks for.
 
 ## Acceptance criteria
-- [ ] The `steward` skill says that in `shadow` mode the steward merges a `ready-to-merge` PR when
+- [x] The `steward` skill says that in `shadow` mode the steward merges a `ready-to-merge` PR when
       all of these hold:
       - **Idle:** the PR has been idle past `STRANDED_AFTER`. Reuse the definition in
         `scripts/merge_train_stats.py` `stranded()` (`make merge-train-stats` lists these PRs),
-        so the 2 h threshold has one source.
+        so the 2 h threshold has one source. When `make merge-train-stats` cannot run (no `gh`
+        authentication in the container, as on the 2026-10-31 05:47 UTC run, #2523), the steward
+        builds the same list from the GitHub MCP tools, by `stranded()`'s own definition: open PRs
+        labelled `ready-to-merge`, not labelled `merge-train-ejected`, whose newest merge-ready
+        marker comment is older than `STRANDED_AFTER`. A PR with no marker comment is not on the list.
       - **Verdicts on the current head:** `make merge-ready-verify PR=<n>` passes on the PR's
         current head, so the steward does not rely on the PR body's table. When the marker is
         stale or missing, the steward runs the reviewers on that head itself, as in the
@@ -63,14 +67,34 @@ decision record the governance gate asks for.
       - remove the label.
 
       In `train` mode the rule does not apply, because the train merges these PRs.
-- [ ] The steward's daily report names each PR it merged this way.
-- [ ] A decision record amends 0050 and 0157 for `shadow` mode. It reconciles the skill's line
+- [x] The `steward` skill documents both ways of finding the stranded PRs: `make merge-train-stats`,
+      and the GitHub-tools fallback above.
+- [x] The steward's daily report names each PR it merged this way.
+- [x] A decision record amends 0050 and 0157 for `shadow` mode. It reconciles the skill's line
       "A PR whose worker already marked it ready, on its current head, is not orphaned" with this
       sweep. It covers the edit to the protected `.claude/skills/steward/SKILL.md`.
-- [ ] SPEC-0027 is unchanged, or its "stranded" paragraph gains a one-line pointer to the sweep.
+- [x] SPEC-0027 is unchanged, or its "stranded" paragraph gains a one-line pointer to the sweep.
       The task's Outcome says which.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Turning on `train` mode (T-2991) and the merger routine (owner step).
 - Making the merge lock faster.
+
+## Outcome
+- **The sweep:** the `steward` skill's new "Stranded ready PRs" bullet sets out, for `shadow`
+  mode only, how to find stranded PRs, the conditions for merging one, the per-PR flow under the
+  lock, and that the daily report names each PR merged. The orphaned-PR rule points to it.
+  Decision 0194 amends 0050 and 0157.
+- **Finding stranded PRs:** the 2026-10-31 steward run's "`gh` cannot authenticate" was a
+  misreading. `gh api` works through the session proxy, although `gh auth status` reports a
+  failed login. The full `make merge-train-stats` report simply takes over 5 minutes, because it
+  reads every run, job and PR of the window, and the run stopped it after 90 s. So
+  `make merge-train-stats STRANDED=1` (`--stranded` in `scripts/merge_train_stats.py`) now prints
+  only the stranded-PR line, in about 5 s. The GitHub-tools fallback is kept for when even that
+  fails, and the daily-check bullet now says to let the full report finish.
+- **Tests:** two new ones in `scripts/test_merge_train_stats.py`. One checks that only the
+  ready, unejected PR with a newest marker past 2 h is listed, and that the newest marker counts.
+  The other checks that `--stranded` prints only that line.
+- **SPEC-0027:** unchanged. Its "stranded" definition is the one the sweep uses, and decision
+  0194 defines the sweep.

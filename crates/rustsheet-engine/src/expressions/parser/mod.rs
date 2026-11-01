@@ -57,6 +57,7 @@ use token::OpCompare;
 mod call_names;
 mod chain;
 mod contains_function;
+mod defined_names;
 mod depth;
 mod lambda;
 mod lists;
@@ -555,7 +556,12 @@ impl Node {
 pub struct Parser {
     lexer: lexer::Lexer,
     worksheets: Vec<String>,
+    /// The defined names. Whatever sets this field sets `name_index` too.
     defined_names: Vec<DefinedNameS>,
+    /// Each defined name's position in `defined_names`, by its scope and lower-cased name (the
+    /// key `Model::parsed_defined_names` uses), the first of names that fold alike: a lookup is
+    /// one probe, not a scan with two lower-casings per name (T-3195).
+    name_index: HashMap<(Option<u32>, String), usize>,
     context: CellReferenceRC,
     tables: HashMap<String, Table>,
     locale: &'static Locale,
@@ -647,10 +653,12 @@ impl Parser {
             column: 1,
             row: 1,
         };
+        let name_index = defined_names::index_names(&defined_names);
         Parser {
             lexer,
             worksheets,
             defined_names,
+            name_index,
             context,
             tables,
             locale,
@@ -712,6 +720,7 @@ impl Parser {
         defined_names: Vec<DefinedNameS>,
     ) {
         self.worksheets = worksheets;
+        self.name_index = defined_names::index_names(&defined_names);
         self.defined_names = defined_names;
     }
 
@@ -830,24 +839,6 @@ impl Parser {
         } else {
             TokenType::Backslash
         }
-    }
-
-    // Returns:
-    //  * None: If there is no defined name by that name
-    //  * Some((Some(index), formula)): If there is a defined name local to that sheet
-    //  * Some(None): If there is a global defined name
-    fn get_defined_name(&self, name: &str, sheet: u32) -> Option<(Option<u32>, String)> {
-        for (df_name, df_scope, df_formula) in &self.defined_names {
-            if name.to_lowercase() == df_name.to_lowercase() && df_scope == &Some(sheet) {
-                return Some((*df_scope, df_formula.to_owned()));
-            }
-        }
-        for (df_name, df_scope, df_formula) in &self.defined_names {
-            if name.to_lowercase() == df_name.to_lowercase() && df_scope.is_none() {
-                return Some((None, df_formula.to_owned()));
-            }
-        }
-        None
     }
 
     /// An expression at the current level; parentheses and argument lists call

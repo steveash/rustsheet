@@ -276,6 +276,18 @@ pub(crate) fn f_inverse_cdf(df1: f64, df2: f64, p: f64) -> f64 {
     df2 / (df1 * (1.0 / z - 1.0))
 }
 
+/// [`t_inverse_cdf`]'s y = `df/(df + t^2)` before its back-transform: AS 109's root of
+/// `I_y(df/2, 1/2)` = 2q for a one-sided q in (0, 1/2].
+pub(crate) fn t_quantile_beta_root(df: f64, q: f64) -> f64 {
+    inv_beta_reg_within(
+        0.5 * df,
+        0.5,
+        2.0 * q,
+        T_MAX_NEWTON_STEPS,
+        T_MAX_STEP_ADJUSTMENTS,
+    )
+}
+
 /// statrs' `StudentsT::inverse_cdf` (location 0, scale 1) with [`inv_beta_reg`]'s caps, at most
 /// [`T_MAX_NEWTON_STEPS`] Newton steps and [`T_MAX_STEP_ADJUSTMENTS`] adjustments: the quantile of `p` in [0, 1] of Student's t.
 pub(crate) fn t_inverse_cdf(df: f64, p: f64) -> f64 {

@@ -47,7 +47,9 @@ fn moved_input(spec: &CaseSpec, sheet: &str, addr: Addr) -> Addr {
             } else {
                 last.row
             };
-            (first.row < last_data).then_some((first.row + 1, last_data))
+            // Without a header row the data starts on the table's first row (T-3260).
+            let first_data = first.row + u32::from(t.header_row);
+            (first_data <= last_data).then_some((first_data, last_data))
         })
         .collect();
     let mut addr = addr;
@@ -191,6 +193,7 @@ fn unexpected(sheet: &str, addr: Addr, actual: Value) -> CellResult {
         listed_deviation: false,
         graph_subnormal: false,
         kind: CellKind::SpillExtent,
+        math: None,
     }
 }
 

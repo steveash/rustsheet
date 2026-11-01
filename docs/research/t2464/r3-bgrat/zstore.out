@@ -1,0 +1,14 @@
+| model | half | n | exact/w4/w15 |
+|---|---|---|---|
+| CR | ALL | 2908 | 208/1598/2091 |
+| CR | hold | 1536 | 112/853/1125 |
+| CR | tune | 1372 | 96/745/966 |
+| z87/ze(nu double) | ALL | 2908 | 212/1650/2133 |
+| z87/ze(nu double) | hold | 1536 | 107/891/1155 |
+| z87/ze(nu double) | tune | 1372 | 105/759/978 |
+| zs/ze(nu double) | ALL | 2908 | 212/1650/2133 |
+| zs/ze(nu double) | hold | 1536 | 107/891/1155 |
+| zs/ze(nu double) | tune | 1372 | 105/759/978 |
+| zs/ze(nu exact) | ALL | 2908 | 246/1881/2357 |
+| zs/ze(nu exact) | hold | 1536 | 142/1003/1260 |
+| zs/ze(nu exact) | tune | 1372 | 104/878/1097 |

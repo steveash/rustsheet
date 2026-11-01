@@ -1,6 +1,7 @@
 mod and_or_xor_not;
 mod bycol_byrow;
 mod lambda;
+mod lambda_scope;
 mod r#let;
 mod map_reduce;
 mod read_once;
@@ -8,9 +9,8 @@ mod scan;
 mod switch;
 
 pub(crate) use bycol_byrow::as_lambda;
-pub(crate) use lambda::{
-    Captures, FunctionValue, LambdaCaller, NamedLambdas, ScopeResult, SharedLambda,
-};
+pub(crate) use lambda::{Captures, FunctionValue, LambdaCaller, NamedLambdas, SharedLambda};
+pub(crate) use lambda_scope::ScopeResult;
 pub(crate) use r#let::{has_duplicate_parameter, same_variable};
 
 use crate::cast::calc_result_to_array_node;

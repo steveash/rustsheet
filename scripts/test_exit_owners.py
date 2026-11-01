@@ -234,6 +234,38 @@ class ExitOwners(TaskDir):
         self.assertNotIn(f"{GEN}!Calc!A1", listed)
         self.assertIn(f"{TRIG}!S!C51", listed)
 
+    def test_r1c_left_out_cells_leave_the_rows_and_r3_passes_leave_the_rate(self) -> None:
+        # Decision 0188 R1(c), R3, R7 (T-3427, T-3428): the calc row drops every left-out class,
+        # the probe row lists `r1c_off_cells`, and the rate keeps a Phase 1b cell (Gate B is the
+        # 15-digit share) but drops an R3 pass.
+        r = report()
+        r["milestone_exit"] = [
+            {
+                "milestone": "M9",
+                "gen_suite": "",
+                "gen_visibly_off_cells": [],
+                "calc_met": False,
+                "below_rate_functions": ["IRR"],
+                "probe_row": "M9",
+            }
+        ]
+        r["function_scope"]["rows"][0]["milestone"] = "M9"  # type: ignore[index]
+        r["probe_milestones"][0]["milestone"] = "M9"  # type: ignore[index]
+        r["probe_milestones"][0]["r1c_off_cells"] = [f"{PROBE}!P!B2"]  # type: ignore[index]
+        r["attributed_off"] = [
+            {"case": GEN, "cell": "Calc!A1", "function": "IRR", "formula": "IRR(A1:A3)"},
+            {"case": GEN, "cell": "Calc!A2", "function": "IRR", "formula": "IRR(A4:A6)"},
+        ]
+        r["r1c_left_out"] = {
+            f"{TRIG}!S!C51": "phase1b",
+            f"{GEN}!Calc!A1": "r3_pass",
+            f"{GEN}!Calc!A2": "phase1b",
+        }
+        self.assertEqual(
+            criteria_cells(r, "M9"),
+            [("rate:IRR", f"{GEN}!Calc!A2"), ("probes", f"{PROBE}!P!B2")],
+        )
+
     def test_cases_that_did_not_run_are_listed_whole(self) -> None:
         # Decision 0174: a gen or ironcalc-calc case that did not run fails its measure.
         gen2, calc = "gen-m2/abc.case.json", "ironcalc-calc/BIG.xlsx"
@@ -637,6 +669,21 @@ class AllOff(TaskDir):
                 ("probe M9", "P!B5", False),
             ],
         )
+
+    def test_cells_decision_0188_leaves_out_need_no_owner(self) -> None:
+        # T-3428: outside Gate B's suites every R1(c) left-out class drops; inside them only an
+        # R3 pass does. The probe rows contribute their `r1c_off_cells`.
+        r = self.report()
+        r["r1c_left_out"] = {f"{PROBE}!P!B2": "phase1b", f"{PROBE}!P!B4": "m14_owned"}
+        r["probe_milestones"][0]["r1c_off_cells"] = [f"{PROBE}!P!B3"]  # type: ignore[index]
+        listed = [(o.cell.criterion, o.cell.key) for o, _ in exit_owners.unowned_off(r, self.tasks)]
+        self.assertEqual(listed, [("GAMMA", "P!B3")])
+        # In a Gate B suite a Phase 1b cell still needs an owner; an R3 pass does not.
+        r["v15_checkpoint"] = {"gate_b": {"suites": ["probes"]}}
+        r["r1c_left_out"] = {f"{PROBE}!P!B2": "phase1b", f"{PROBE}!P!B3": "r3_pass"}
+        r["probe_milestones"][0]["r1c_off_cells"] = []  # type: ignore[index]  # its row counts neither
+        listed = [(o.cell.criterion, o.cell.key) for o, _ in exit_owners.unowned_off(r, self.tasks)]
+        self.assertEqual(listed, [("BETA.DIST", "P!B2"), ("unattributed", "P!B4")])
 
     def test_an_open_task_owns_its_cell_and_a_deferred_one_does_not(self) -> None:
         self.task("index-reference-args B3")

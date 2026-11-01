@@ -316,6 +316,11 @@ impl Model {
             return Err("A worksheet already exists with that name".to_string());
         }
         let sheet_id = match sheet_id {
+            // Rewritten formulas and defined names find a sheet by its id, and the id of an
+            // undone delete can come from a peer's diff (T-2896).
+            Some(id) if self.workbook.worksheets.iter().any(|w| w.sheet_id == id) => {
+                return Err(format!("A worksheet already has the id {id}"));
+            }
             Some(id) => id,
             None => self.get_new_sheet_id(),
         };

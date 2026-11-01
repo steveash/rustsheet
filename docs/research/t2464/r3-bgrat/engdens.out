@@ -1,0 +1,7 @@
+| model | n | exact/w4/w15 |
+|---|---|---|
+| P Excel + Excel D | 3072 | 2515/3072/3072 |
+| P Excel + exact F | 3072 | 1726/3072/3072 |
+| P engine + Excel D | 3072 | 478/3057/3057 |
+| P engine + exact F | 3072 | 282/2824/3042 |
+| engine today (BETA.DIST cdf) | 3072 | 26/113/344 |
