@@ -25,14 +25,42 @@ ASINH, ACOSH, ATANH and ACOTH each get a committed, oracle-filled `s1` Gate A ta
   accuracy`, `rustsheet-eval accuracy`, then `rustsheet-accuracy math --suite probes-numeric`).
 
 ## Acceptance criteria
-- [ ] One Gate A definition per function in `tools/src/rustsheet_tools/accuracy/defs/`, each citing its sources, with unit
+- [x] One Gate A definition per function in `tools/src/rustsheet_tools/accuracy/defs/`, each citing its sources, with unit
       tests against published or semantics-entry values.
-- [ ] `eval/accuracy/tables/<FUNCTION>/s1.{case,math,oracle}.json` for each function, generated, filled (excel-graph) and
+- [x] `eval/accuracy/tables/<FUNCTION>/s1.{case,math,oracle}.json` for each function, generated, filled (excel-graph) and
       committed; `rustsheet-eval accuracy` reports `missing tables` lower by 4. The Outcome names every failing point
       with its owner task (`known-failures.tsv`, T-3379's rules) and any R3 candidate (decision 0188 R3 needs an owner
       ruling).
-- [ ] The probes-numeric math sidecars are regenerated with the new definitions and committed.
+- [x] The probes-numeric math sidecars are regenerated with the new definitions and committed.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing the engine's kernels: each failing point gets its own task (`known-failures.tsv`).
+
+## Outcome
+- **Definitions** (`tools/src/rustsheet_tools/accuracy/defs/inverse_hyperbolic.py`): the true function of the double
+  of the written literal.
+  - ACOSH takes x >= 1, ATANH (-1, 1) and ACOTH |x| > 1 (numbers.md, T-1202 and T-1569: ±1 is `#NUM!` for ATANH and
+    ACOTH).
+  - ASINH and ACOSH are `#NUM!` where `x*x` overflows a double (T-2062). The exact cut in [1.3E154, 1.35E154] is
+    inferred, so the draws keep out of that band.
+  - Excel's plain log formulas (ASINH, ACOSH) and x87 kernels (ATANH, ACOTH) are kernel inaccuracy, not semantic rules.
+  - Tests: `tools/tests/test_accuracy_inverse_hyperbolic.py`.
+- **Tables:** `s1` for the four functions, 120 points each, filled from excel-graph.
+  - All 480 points are inside the envelope: 0 failing, 0 table defects, no known failures added.
+  - `missing tables` drops by 4 (277 to 273).
+  - Every domain-error point is an Excel `#NUM!` (ASINH 5, ACOSH 7, ATANH 3, ACOTH 8), and every number point is an
+    Excel number.
+  - ACOSH, ATANH and ACOTH: Excel is within 1.8E-9 relative of the math (ACOSH near 1, the cancellation of its
+    formula), 3.6E-13 (ATANH's log branch near 1E-4) and 4.6E-16. `ACOTH(-9.99999999999999E+307)` is 0 for a subnormal
+    true value, inside the absolute floor.
+  - **R3 candidates (left unmarked, no owner ruling):** 23 ASINH points where Excel is more than G = 1e-4 off the
+    math: 22 arguments from 8.5E-285 to 1.6E-17 where Excel's `ln(x + sqrt(x*x + 1))` is 0, and
+    `ASINH(6.3701662356807E-14)` (3.9e-4 relative). The engine reproduces Excel's formula there, so each passes on
+    Excel's side. The quirk is recorded in numbers.md.
+- **probes-numeric math sidecars:** new for m9-hyperbolic, t0917-acoth-switch, t0917-acoth-switch-edge,
+  t0917-hyperbolic-switchover, t2062-asinh-acosh-overflow and t2133-asinh-acosh-ln (743 numeric cells plus 15 `#NUM!`
+  cells). Excel is within 1e-4 everywhere and within 1e-9 except 7 m9 cells: ASINH at 1E-10 to 1E-9 and ACOSH near 1,
+  as numbers.md records.
+  - T-3670 (#2764) adds m9-hyperbolic and t0917-hyperbolic-switchover sidecars for the hyperbolic cells. Whichever of
+    the two merges second regenerates those two files with both families.
