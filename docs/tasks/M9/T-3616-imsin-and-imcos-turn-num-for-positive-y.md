@@ -23,6 +23,10 @@ IMSIN and IMCOS give `#NUM!` exactly where Excel does for large positive imagina
   T-2613); the IMSIN cut may be the same constant, or a product in Excel's form (`u = EXP(y)` with `u + 1/u`, or
   the parts' product with sin x) overflowing. Probe a fine bracket (709.70..709.75, several x, including x = 0)
   before choosing.
+- T-3642's grid adds 32 cells in this band: IMSIN and IMCOS of x+709.78i are `#NUM!` in Excel for every x probed
+  (0, 1E-308, 1E-300, 1E-200, 1E-20, 1, 20, 700, 705, 709, 709.5, 709.78, 710, 711, 715, 720), ours answers
+  (probes/im-trig-magnitude-grid columns A and B, rows 12, 31, 50, 69, 88, 107, 126, 145, 164, 183, 202, 221, 240,
+  259, 278, 297).
 - Negative y is done (T-3589: `#NUM!` once EXP(y) is subnormal, below -708.3964185322641).
 
 ## Acceptance criteria

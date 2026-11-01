@@ -20,6 +20,10 @@ are libm's, and only `IMCSCH("710.4+0i")` (probes/eng-im-overflow-edges A64) cov
 `excel-probe` skill: `IMCSCH("400")`, `IMCSCH("-400")`, `IMCSCH("710")`, `IMCSCH("709.5")`, `IMCSCH("25")`,
 `IMCSCH("100")`, and the same with `+0i`. Code: `imcsch` in crates/rustsheet-engine/src/functions/engineering/complex/trig.rs.
 
+T-3642's grid (probes/im-trig-magnitude-grid J134, J153, J172, excel-graph) has the real rows: `IMCSCH(COMPLEX(700,0))`
+1.97193530875195E-304, `(705,0)` 1.32867955959959E-306, `(709,0)` 2.43356150124685E-308; ours 0. The complex rows of
+the same x are listed in T-2668.
+
 ## Acceptance criteria
 - [ ] A probes case holds the inputs above with excel-graph values.
 - [ ] engineering.md "IM* reciprocal kernels" records the result; any mismatch is fixed here (if size S) or has a task.
