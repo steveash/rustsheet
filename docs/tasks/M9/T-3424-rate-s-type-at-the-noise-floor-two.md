@@ -62,7 +62,7 @@ cells, so RATE's Gate A fails until they are settled.
 ## Out of scope
 - The cells of the right type that are not Excel's bits (T-3389).
 
-## Progress notes (2026-10-31, opus run; in flight, not done)
+## Progress notes (2026-10-31, opus run; resumed 2026-11-01 after 3 h idle)
 - First experiment: the power form inside the residual. The T-3348 hold model (the engine's `compute_rate`) was re-run
   in Python with P = (1+r)^n from five forms, every other operation Excel's twice-rounded one, on the 1,260 literal
   RATE cells of t3348-rate-gate-a-sweep, t3348-rate-gate-a-fresh, t3348-rate-fv-nonzero and the fit lab's
