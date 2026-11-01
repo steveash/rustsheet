@@ -37,6 +37,14 @@ C	probes/aggregate-range-args.case.json	38
 C	probes/aggregate-range-function-num-grid.case.json	22
 C	probes/aggregate-range-k-first-cell.case.json	48
 C	probes/amor-argument-check-order.case.json	866
+C	probes/amordegrc-a76-bisect-a.case.json	1
+C	probes/amordegrc-a76-bisect-b.case.json	1
+C	probes/amordegrc-a76-bisect-c.case.json	1
+C	probes/amordegrc-a76-bisect-d.case.json	1
+C	probes/amordegrc-a76-bisect-e.case.json	1
+C	probes/amordegrc-a76-bisect-f.case.json	1
+C	probes/amordegrc-a76-bisect-g.case.json	1
+C	probes/amordegrc-a76-bisect-h.case.json	1
 C	probes/amordegrc-first-subtraction.case.json	12
 C	probes/amordegrc-fraction-alone-a.case.json	1
 C	probes/amordegrc-fraction-alone-b.case.json	1
