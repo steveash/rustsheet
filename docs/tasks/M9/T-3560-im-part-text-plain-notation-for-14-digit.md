@@ -3,7 +3,7 @@ id: T-3560
 title: "IM* part text: plain notation for 14-digit parts at exponent -6 (21 characters)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -31,3 +31,6 @@ IM* functions write a 14-significant-digit part at decimal exponent -6 in plain 
 
 ## Out of scope
 -
+
+## Outcome
+Probe probes/eng-im-part-plain-boundary (40 cells, excel-graph) shows the limit is 21 characters at exponents -6 to -8 (22 is E notation through -10); the code applies it to every negative exponent, extrapolated below -8 (follow-up probe filed). `value_to_text` now allows 21 for IM* parts below 1. The 4 t3545 cells pass; no other cell changed. Positive exponents unprobed and unchanged.

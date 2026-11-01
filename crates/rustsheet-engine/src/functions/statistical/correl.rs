@@ -53,33 +53,74 @@ impl PairedMoments {
         }
     }
 
+    /// `#NUM!` when a sum of squares of the deviations overflows to infinity, with at least two
+    /// pairs: Excel checks it before the zero-variance `#DIV/0!`, so `CORREL` of x = 1E200,
+    /// 2E200, 3E200 against a constant y is `#NUM!`, not `#DIV/0!`, while a single pair stays
+    /// `#DIV/0!` (probes/correl-inexact-constant-overflow Z31-Z79; statistics.md "Regression
+    /// pairs: sums about the means"). `needs_y` is false where only x's sum matters: SLOPE with
+    /// y of 1E200 scale is finite.
+    fn overflow(&self, needs_y: bool) -> Result<(), Error> {
+        let overflowed = !self.sxx.is_finite() || (needs_y && !self.syy.is_finite());
+        if self.n >= 2.0 && overflowed {
+            Err(Error::NUM)
+        } else {
+            Ok(())
+        }
+    }
+
     /// The correlation coefficient with the covariance and standard deviations taken over
     /// `divisor`: CORREL and PEARSON divide by `n`, RSQ squares the one over `n - 1`; that is
     /// the order Excel's last digits follow (probes/regression-pairs-a L, M, N columns).
-    pub(super) fn correlation(&self, divisor: f64) -> Option<f64> {
+    /// `#NUM!` on overflow (see [`Self::overflow`]), else `#DIV/0!` with fewer than two pairs
+    /// or a constant series.
+    pub(super) fn correlation(&self, divisor: f64) -> Result<f64, Error> {
+        self.overflow(true)?;
         if self.n < 2.0 || self.sxx == 0.0 || self.syy == 0.0 {
-            return None;
+            return Err(Error::DIV);
         }
         let r = (self.sxy / divisor) / ((self.sxx / divisor).sqrt() * (self.syy / divisor).sqrt());
-        r.is_finite().then_some(r)
+        if r.is_finite() {
+            Ok(r)
+        } else {
+            Err(Error::DIV)
+        }
     }
 
-    /// The slope of the regression line of y on x, `None` with fewer than two pairs or all x
-    /// equal.
-    pub(super) fn slope(&self) -> Option<f64> {
+    /// The slope of the regression line of y on x: `#NUM!` when x's sum of squares overflows,
+    /// else `#DIV/0!` with fewer than two pairs or all x equal.
+    pub(super) fn slope(&self) -> Result<f64, Error> {
+        self.overflow(false)?;
         if self.n < 2.0 || self.sxx == 0.0 {
-            return None;
+            return Err(Error::DIV);
         }
         let slope = self.sxy / self.sxx;
-        slope.is_finite().then_some(slope)
+        if slope.is_finite() {
+            Ok(slope)
+        } else {
+            Err(Error::DIV)
+        }
     }
 
     /// The intercept and slope of the regression line of y on x.
-    pub(super) fn line(&self) -> Option<(f64, f64)> {
+    pub(super) fn line(&self) -> Result<(f64, f64), Error> {
         let slope = self.slope()?;
         let intercept = self.mean_y - slope * self.mean_x;
-        intercept.is_finite().then_some((intercept, slope))
+        if intercept.is_finite() {
+            Ok((intercept, slope))
+        } else {
+            Err(Error::DIV)
+        }
     }
+}
+
+/// The error result of a [`PairedMoments`] failure: `#NUM!` for an overflow, else `#DIV/0!`.
+pub(super) fn moment_error(error: Error, cell: CellReferenceIndex) -> CalcResult {
+    let message = if error == Error::NUM {
+        "Invalid data"
+    } else {
+        "Divide by 0"
+    };
+    CalcResult::new_error(error, cell, message.to_string())
 }
 
 impl Model {
@@ -105,8 +146,8 @@ impl Model {
             Err(error) => return error,
         };
         match moments.correlation(moments.n) {
-            Some(r) => CalcResult::Number(r),
-            None => CalcResult::new_error(Error::DIV, cell, "Divide by 0".to_string()),
+            Ok(r) => CalcResult::Number(r),
+            Err(error) => moment_error(error, cell),
         }
     }
 
@@ -122,8 +163,8 @@ impl Model {
             Err(error) => return error,
         };
         match moments.slope() {
-            Some(slope) => CalcResult::Number(slope),
-            None => CalcResult::new_error(Error::DIV, cell, "Divide by 0".to_string()),
+            Ok(slope) => CalcResult::Number(slope),
+            Err(error) => moment_error(error, cell),
         }
     }
 
@@ -134,8 +175,8 @@ impl Model {
             Err(error) => return error,
         };
         match moments.line() {
-            Some((intercept, _)) => CalcResult::Number(intercept),
-            None => CalcResult::new_error(Error::DIV, cell, "Divide by 0".to_string()),
+            Ok((intercept, _)) => CalcResult::Number(intercept),
+            Err(error) => moment_error(error, cell),
         }
     }
 
@@ -146,8 +187,14 @@ impl Model {
             Err(error) => return error,
         };
         let div = || CalcResult::new_error(Error::DIV, cell, "Divide by 0".to_string());
-        // n - 2 degrees of freedom: two points are #DIV/0! (probes/regression-pairs-b M4).
-        if moments.n < 3.0 || moments.slope().is_none() {
+        // x's overflow is `#NUM!` even with two points, before the n < 3 `#DIV/0!`
+        // (probes/correl-inexact-constant-overflow Z65, Z69); n - 2 degrees of freedom make two
+        // points otherwise `#DIV/0!` (probes/regression-pairs-b M4).
+        let slope = moments.slope();
+        if let Err(Error::NUM) = slope {
+            return moment_error(Error::NUM, cell);
+        }
+        if moments.n < 3.0 || slope.is_err() {
             return div();
         }
         // Excel: Σ(y - ȳ)² less the explained part, sxy * sxy / sxx in that order

@@ -28,6 +28,21 @@ Excel, then spec the algorithm (docs/specs/, a task of its own if it is L) and i
 crates/rustsheet-engine/src/functions/statistical/forecast.rs. Until then the cells stay known failures, owned here so that
 none is unowned (decision 0083).
 
+Decision 0221 (owner ruling, 2026-11-01): until desktop values exist, the family computes gridcraft's AAA model,
+unverified (T-3599 SEASONALITY, T-3600 FORECAST.ETS, T-3601 CONFINT and STAT). This task still owns matching desktop
+Excel: replace whatever the desktop values contradict. The cells listed here stay known failures against the web's
+`#N/A` while the model computes numbers. T-3599 fixed 274 gen-m9 cells, all listed below (43a13a091907b402 A18,
+A302 and 67f5e0fe790e6bec A227 under "Cells added by the Phase 1 triage"). All are SEASONALITY calls whose `values`
+and `timeline` differ in size, which is `#N/A` both in the model and on the web, so they left eval/baseline/gen-m9.txt.
+The list keeps them as T-2255's triage record.
+
+The desktop probe should cover what decision 0221 ships unverified (statistics.md "FORECAST.ETS family: the model
+before Excel evidence"): a period-4 series, the error orderings of its steps 1 to 6, monthly and month-end timelines,
+duplicate time stamps under each aggregation (and an all-blank time stamp under COUNT and COUNTA), a range across
+two sheets, a blank time stamp beside a value, and the 30% missing rule. Step 3 (an error element in `values` or
+`timeline` before different sizes) is the likeliest to differ on desktop: start from the web `#N/A` cells with an error
+element inside `values` or `timeline` that the T-2255 section of statistics.md counts.
+
 Owned gen-m9 cells (T-2255 triage, excel-graph, 2026-10-22): 877 known-failure lines in eval/baseline/gen-m9.txt, 877 formulas.
 Examples:
 - gen-m9/05d44f6dd6cfc567 Calc!A275 `=LOGINV(ROUND(COUNT(Data!B7:B8,1e-15,"ABC"),3),IF((Data!$B12>Data!C6),FORECAST.ETS.CONFINT((-1),Data!B6:B11,Data!A5:D6),Data!D5),(HLOOKUP("x~*",Data!C10:C10,1)*(0.5*3.14159)))`: Excel #N/A, ours #N/IMPL!
