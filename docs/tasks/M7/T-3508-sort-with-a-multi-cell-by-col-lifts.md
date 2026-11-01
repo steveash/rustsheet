@@ -3,7 +3,7 @@ id: T-3508
 title: "SORT with a multi-cell by_col lifts an argument error to by_col's shape (gen-m7 arg-pairs)"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -33,9 +33,15 @@ When SORT's `by_col` is a multi-cell range and SORT fails on another argument, t
 Decision 0083: every cell listed under Context is visibly off (a wrong error type, or an error where Excel spills), so this task is in the campaign. Its target is that every cell it owns has Excel's type, error and text; the acceptance criteria state it.
 
 ## Acceptance criteria
-- [ ] Every cell listed under Context matches Excel, with a unit test for an erroring SORT over a 2x2 by_col.
-- [ ] Their lines leave eval/baseline/gen-m7.txt (`make eval-baseline`, 0 regressions).
-- [ ] `make check` green; reviewers approve.
+- [x] Every cell listed under Context matches Excel, with a unit test for an erroring SORT over a 2x2 by_col.
+- [x] Their lines leave eval/baseline/gen-m7.txt (`make eval-baseline`, 0 regressions).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Which error wins (T-3507) and the one-cell error array (T-3506).
+
+## Outcome
+- Done in T-3507's PR: reordering SORT's argument checks made the array, sort_index and sort_order errors each lifted call's
+  result, which is this rule (`fn_sort` in spill_functions.rs). Every cell above passes; their lines left
+  eval/baseline/gen-m7.txt. Unit test: test_fn_sort_lift.rs `an_argument_error_fills_the_lifted_shape` (2x1 and 1x2
+  by_col; the 2x2 case is the eval cells 75534bc7e1ce6474 A3051:B3052).

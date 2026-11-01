@@ -3,7 +3,7 @@ id: T-3507
 title: "TOCOL, TOROW and SORT argument-check order: which invalid argument beats an error in a later one (gen-m7 arg-pairs)"
 milestone: M7
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -36,9 +36,23 @@ TOCOL, TOROW and SORT choose the same error as Excel when one argument is invali
 Decision 0083: the cells listed under Context are visibly off (a wrong error type), except 52ccea5df17b29a8 A5613 and 75534bc7e1ce6474 A4027, which score `unsupported` (ours is `#NAME?`) and so are not in the visible-parity count. This task is in the campaign. Its target is that every cell it owns has Excel's type, error and text; the acceptance criteria state it.
 
 ## Acceptance criteria
-- [ ] Every cell listed under Context matches Excel; the rule is written into the arrays.md entry with the cells that fix it, and unit tests cover each branch.
-- [ ] Their lines leave eval/baseline/gen-m7.txt (`make eval-baseline`, 0 regressions).
-- [ ] `make check` green; reviewers approve.
+- [x] Every cell listed under Context matches Excel; the rule is written into the arrays.md entry with the cells that fix it, and unit tests cover each branch.
+- [x] Their lines leave eval/baseline/gen-m7.txt (`make eval-baseline`, 0 regressions).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - A one-cell error reference as the array (T-3506) and SORT's lifted by_col (T-3508).
+
+## Outcome
+- TOCOL and TOROW (`lift_flatten`): the ignore is cast to a number before the scan_by_column error is read, so a text ignore
+  is `#VALUE!` first; its range check (0 to 3) still comes after.
+- SORT (`sort_number_list`, `fn_sort`): a one-value sort_index or sort_order that is an error stays an error, a blank cell is
+  `#VALUE!`, and text reads as NaN, which fails validation after by_col, as a 2-D list already did. The array, sort_index
+  and sort_order errors are now each lifted call's result, ahead of by_col's: that keeps a `#VALUE!` sort_order spreading
+  over a lifted by_col (8217549f0b417328 A855:B856, which this reordering would otherwise have broken) and fixes every
+  T-3508 cell too, so T-3508 is done here.
+- Unit tests: test_fn_tocol_torow.rs `text_ignore_beats_a_scan_by_error`; test_fn_sort_lift.rs
+  `a_blank_key_beats_a_later_error_and_text_loses`, `an_argument_error_fills_the_lifted_shape`.
+- Eval delta: gen-m7 known failures 111 -> 57 (54 fixed: these 27 and T-3508's 27; 0 regressions), pass 99.78% -> 99.89%.
+  The 57 left are T-3506's. Visible-parity count 2763 in-scope cells (lock 2830, not lowered here).
+- arrays.md "TOCOL, TOROW and SORT: which bad argument wins" and "SORT's lifted by_col spreads an argument error" updated.
