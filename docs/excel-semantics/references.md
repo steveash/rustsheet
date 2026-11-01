@@ -2611,6 +2611,10 @@ Right/Left):
   header (S!F1), below the table (S!F9) and on another sheet (T!A1) it is `#VALUE!` after the convert and
   FORMULATEXT still prints `=Sales[@Qty]`, as the structured text of a table that no longer exists
   (table-convert-names-this-row, excel-graph 2026-10-25, T-2643).
+  One on a data row is lowered to the cell on its own row, column absolute and row relative, sheet-qualified from
+  another sheet: `=Sales[[#This Row],[Qty]]` in T!A5 is 2 and prints `=S!$C5`, `=Sales[@Qty]+100` in T!A6 104
+  (`=S!$C6+100`), and `=Sales[[#This Row],[Qty]]*10` beside the table in S!F5 20 (`=$C5*10`)
+  (table-convert-cross-sheet-this-row, excel-graph 2026-11-01, T-2763).
 - Delete table (`DELETE tables('Sales')`): every structured reference is `#REF!` (`SUM`, `ROWS`, `ROW`,
   `COLUMNS`, `COLUMN`) and prints as `#REF!` (`=SUM(#REF!)`); `COUNTA(Sales[Region])` is 1; and the table's
   cells are gone too: `SUM(S!C4:C7)` is 0 (table-delete-table).
@@ -2635,8 +2639,12 @@ one end prints its displaced plain area, and a delete of every column or one str
 `ColumnN` naming with gaps or case clashes and a multi-column insert: T-2899). INDIRECT of a
 structured reference's text is `#REF!` (T-2911). Convert to range matches (T-2342): `Model::convert_table_to_range` prints each structured
 reference as the absolute area it lowered to (defined names too, T-2643). A cell with a `#This Row` reference
-off the data rows is lowered at its own row (`Model::lower_this_row_references`, T-2643), so it is `#VALUE!` as
-in Excel, but FORMULATEXT prints `=#VALUE!` where Excel keeps `=Sales[@Qty]` (T-2763). A deleted table or sheet matches
+off the data rows is kept as a *detached* structured reference (`StructuredReference::detached`, T-2763): it
+evaluates `#VALUE!` and prints `=Sales[@Qty]` as in Excel. It resolves against no table, so a later table of the
+same name does not take it back (unprobed, T-3629); it is stored with an engine-only `[!]` prefix (`[!]Sales[[#This
+Row],[Qty]]`, which typed or loaded text refuses) so it survives reparses and structural edits, and the xlsx
+export writes it as `#VALUE!` (a file never holds a structured reference without its table part; what Excel
+writes for it is unprobed, T-3629). One on a data row is lowered at its row, as Excel does (T-2643, T-2763). A deleted table or sheet matches
 (T-2340): `delete_table` and `take_sheet` rewrite the stored text of every structured reference to the
 removed tables (bare `Sales` included) to `#REF!` (`Model::rewrite_table_references`, tables.rs), and an
 undo of the sheet delete (`restore_sheet`, `UserModel` undo) puts the old text back; a reference to a

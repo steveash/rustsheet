@@ -116,12 +116,30 @@ pub(super) fn reference_text(
     // included (Excel keeps `SUM(Table2[#Totals])`, cached `#REF!`: calc_test_tables/tables.xlsx
     // Sheet2!F4). Any other reference that lowers to an error comes from table metadata that does
     // not fit (directive 5), and is written as that error, which it evaluates to.
+    // A detached reference (its table converted to a range) lowers to `#VALUE!`, so the
+    // `ErrorKind` arm below writes it as `#VALUE!`; what Excel writes is unprobed (TODO(T-3629)).
     if export_to_excel {
         return match lowered {
             Node::ErrorKind(_) if reference.specifier != Some(TableSpecifier::Totals) => {
                 print(lowered, rewrite)
             }
             _ => reference.file_text(),
+        };
+    }
+    // A detached reference keeps its text through every edit. Only the display (no rewrite,
+    // at a cell) drops the `[!]` prefix: every other printer gives text the engine reads
+    // again, in R1C1 storage or re-entered in A1, which must stay detached (T-2763).
+    if reference.detached {
+        let displayed = matches!(
+            rewrite,
+            Rewrite::Displace(Displacement {
+                data: DisplaceData::None,
+                ..
+            })
+        );
+        return match context {
+            Some(cell) if displayed => reference.text_at(cell),
+            _ => reference.stored_text(),
         };
     }
     match rewrite {
@@ -148,9 +166,16 @@ pub(super) fn reference_text(
                 DeletedColumn::RangeEnd => {}
             }
         }
-        Rewrite::Lower(tables, _) => {
+        Rewrite::Lower(tables, row) => {
             let name = reference.table_name.to_lowercase();
-            return if tables.contains(&name) {
+            // Off its data rows a `#This Row` reference is not lowered: Excel keeps its text
+            // after the convert, and it evaluates `#VALUE!` (S!F1, S!F9, T!A1 of
+            // probes/table-edits/table-convert-names-this-row, T-2763).
+            let off_rows = row.and_then(|row| lowered.this_row_at(row))
+                == Some(Node::ErrorKind(token::Error::VALUE));
+            return if tables.contains(&name) && off_rows {
+                reference.detached_stored_text()
+            } else if tables.contains(&name) {
                 print(lowered, rewrite)
             } else {
                 written()
@@ -171,7 +196,7 @@ pub(super) fn reference_text(
                 written()
             };
         }
-        Rewrite::Displace(..) | Rewrite::Move(_) => {}
+        Rewrite::Displace(..) | Rewrite::Move(_) | Rewrite::Reenter => {}
     }
     // A structural edit the table does not follow, or a cut and paste, that changes the area
     // prints the changed area, as before SPEC-0016 (the fallback of SPEC-0016 "Structural

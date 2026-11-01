@@ -1814,6 +1814,7 @@ C	probes/t3631-randarray-invariant.case.json	45
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
 C	probes/table-edits/plain-range-delete-rows-across-edge.case.json	10
+C	probes/table-edits/table-convert-cross-sheet-this-row.case.json	6
 C	probes/table-edits/table-convert-names-this-row.case.json	13
 C	probes/table-edits/table-convert-same-sheet.case.json	7
 C	probes/table-edits/table-convert-to-range.case.json	12
@@ -5357,9 +5358,6 @@ F	probes/t3505-gamma-inv-budget-band.case.json	S!A96
 F	probes/t3505-gamma-inv-budget-band.case.json	S!A97
 F	probes/t3505-gamma-inv-budget-band.case.json	S!A98
 F	probes/t3505-gamma-inv-budget-band.case.json	S!A99
-F	probes/table-edits/table-convert-names-this-row.case.json	S!F10
-F	probes/table-edits/table-convert-names-this-row.case.json	S!F2
-F	probes/table-edits/table-convert-names-this-row.case.json	T!A2
 F	probes/table-edits/table-insert-row-calc-column-above-header.case.json	F!A1
 F	probes/table-edits/table-insert-row-calc-column-above-header.case.json	F!A2
 F	probes/table-edits/table-insert-row-calc-column-above-header.case.json	F!A3

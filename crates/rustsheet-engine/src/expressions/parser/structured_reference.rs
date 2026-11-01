@@ -2,7 +2,7 @@
 //! the area it resolves to (SPEC-0016).
 
 use super::super::lexer::{Lexer, LexerMode};
-use super::super::token::{TableReference, TableSpacing, TableSpecifier, TokenType};
+use super::super::token::{Error, TableReference, TableSpacing, TableSpecifier, TokenType};
 use super::{Node, Parser};
 use crate::expressions::types::CellReferenceRC;
 use crate::language::get_language;
@@ -27,6 +27,14 @@ pub struct StructuredReference {
     /// Written without the table name in a cell of the table (`=[@Col]*2`), which names the
     /// containing table (references.md "Structured references: this row, totals and ranges", T-2979).
     pub unqualified: bool,
+    /// A `#This Row` reference left behind by a convert to range off its table's data rows: its
+    /// table no longer exists, but Excel keeps the text (FORMULATEXT `=Sales[@Qty]`) and the
+    /// cell evaluates `#VALUE!` (references.md, convert-to-range entry;
+    /// probes/table-edits/table-convert-names-this-row, T-2763). It resolves against no table,
+    /// so a later table of the same name does not take it back (unprobed, TODO(T-3629)). Stored
+    /// with the engine-only `[!]` prefix ([`Self::stored_text`]); the xlsx export writes
+    /// `#VALUE!` (unprobed, TODO(T-3629)). Only an off-row `#This Row` reference is detached.
+    pub detached: bool,
     /// The range of the table of a `#This Row` reference or of one written without the table
     /// name, as the table list the formula was parsed against had it: the printing cell decides
     /// by it whether the reference prints without the table name (T-3241). `None` for any other
@@ -149,7 +157,34 @@ impl StructuredReference {
     /// missing argument is kept; a structured reference keeps some and normalizes the rest";
     /// probes/t2786-whitespace-structured-refs-runs F4:F15, T-2801).
     pub(crate) fn text(&self) -> String {
+        if self.detached {
+            return self.detached_text();
+        }
         self.text_with_name(!self.unqualified)
+    }
+
+    /// The text of a [`Self::detached`] reference: with the table name, and a `#This Row` one in
+    /// its `@` form, as Excel's FORMULATEXT prints `=Sales[@Qty]` for one written
+    /// `=Sales[[#This Row],[Qty]]` (probes/table-edits/table-convert-names-this-row S!F2).
+    /// Only `#This Row` references are detached, and only their text is evidenced; any other
+    /// form would print its qualified text.
+    fn detached_text(&self) -> String {
+        if self.specifier == Some(TableSpecifier::ThisRow) {
+            return format!("{}{}", self.table_name, self.text_with_name(false));
+        }
+        self.qualified_text()
+    }
+
+    /// This reference as one whose table a convert to range removed ([`Self::detached`]),
+    /// printed in storage form.
+    pub(crate) fn detached_stored_text(&self) -> String {
+        let detached = Self {
+            detached: true,
+            unqualified: false,
+            extent: None,
+            ..self.clone()
+        };
+        detached.stored_text()
     }
 
     /// [`Self::text`] as printed in `cell`. A `#This Row` reference written with the table name
@@ -165,6 +200,9 @@ impl StructuredReference {
     /// it moves before it reparses them, so a cell moved past the old extent may print with the
     /// name in between, which parses and is reparsed at once.
     pub(crate) fn text_at(&self, cell: &CellReferenceRC) -> String {
+        if self.detached {
+            return self.text();
+        }
         match &self.extent {
             Some(extent) => self.text_with_name(!extent.holds(cell, !self.unqualified)),
             None => self.text(),
@@ -197,9 +235,14 @@ impl StructuredReference {
 
     /// The text kept in storage (R1C1), which the parser reads back with no table to infer the
     /// name from: an unqualified reference keeps its table as a `[T]` prefix (`[T][[#This
-    /// Row],[Col]]`), so two tables on one sheet never share `[@Col]*2` (T-2979). Any other
-    /// reference is [`Self::text`].
+    /// Row],[Col]]`), so two tables on one sheet never share `[@Col]*2` (T-2979); a
+    /// [`Self::detached`] one has a `[!]` prefix before its qualified text (`[!]Sales[[#This
+    /// Row],[Qty]]`), which only the engine's own text reads (`Lexer::stored_detached_marker`).
+    /// Any other reference is [`Self::text`].
     pub(crate) fn stored_text(&self) -> String {
+        if self.detached {
+            return format!("[!]{}", self.qualified_text());
+        }
         if self.unqualified {
             let qualified = self.qualified_text();
             format!(
@@ -278,11 +321,15 @@ impl Parser {
     /// reference written without its table name, which names the table holding the formula's
     /// cell, its totals row included (`=[@Col]*2`, `=SUBTOTAL(109,[Col])`; references.md
     /// "Structured references: this row, totals and ranges", T-2979). Stored (R1C1) text carries
-    /// the table as a `[T]` prefix (`StructuredReference::stored_text`). Outside every table the
-    /// operand is refused, as before.
+    /// the table as a `[T]` prefix (`StructuredReference::stored_text`). The engine's own text,
+    /// stored or re-entered, may instead hold a detached reference's `[!]` prefix (T-2763).
+    /// Outside every table the operand is refused, as before.
     pub(super) fn unqualified_structured_reference(&mut self) -> Node {
         let refused =
             |parser: &mut Self| parser.unexpected_operand("Unexpected token: '['".to_string());
+        if self.lexer.stored_detached_marker() {
+            return self.detached_structured_reference();
+        }
         let table_name = if self.lexer.is_a1_mode() {
             let Some(name) = self.containing_table_name() else {
                 return refused(self);
@@ -322,6 +369,34 @@ impl Parser {
             }
         }
         node
+    }
+
+    /// The stored [`StructuredReference::detached`] reference after its `[!]` prefix: the
+    /// structured reference token that follows, resolved against no table, which evaluates
+    /// `#VALUE!` (T-2763). Anything else after the prefix is refused.
+    fn detached_structured_reference(&mut self) -> Node {
+        let TokenType::StructuredReference {
+            table_name,
+            specifier,
+            table_reference,
+            spacing,
+        } = self.lexer.next_token()
+        else {
+            return self.unexpected_operand("Unexpected token after '[!]'".to_string());
+        };
+        Node::StructuredReferenceKind {
+            reference: Box::new(StructuredReference {
+                table_name,
+                specifier,
+                table_reference,
+                spacing,
+                bare: false,
+                unqualified: false,
+                detached: true,
+                extent: None,
+            }),
+            lowered: Box::new(Node::ErrorKind(Error::VALUE)),
+        }
     }
 
     /// The table `name` names in the parser's table list. Table names match ignoring case

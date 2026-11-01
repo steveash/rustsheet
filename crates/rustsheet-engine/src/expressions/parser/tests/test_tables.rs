@@ -391,6 +391,7 @@ fn every_form_round_trips_through_the_printer() {
         spacing: TableSpacing::default(),
         bare: true,
         unqualified: false,
+        detached: false,
         extent: None,
     }];
     for specifier in &specifiers {
@@ -402,6 +403,7 @@ fn every_form_round_trips_through_the_printer() {
                 spacing: TableSpacing::default(),
                 bare: false,
                 unqualified: false,
+                detached: false,
                 extent: None,
             });
         }
@@ -418,6 +420,7 @@ fn every_form_round_trips_through_the_printer() {
                     spacing: TableSpacing::default(),
                     bare: false,
                     unqualified: false,
+                    detached: false,
                     extent: None,
                 });
             }
