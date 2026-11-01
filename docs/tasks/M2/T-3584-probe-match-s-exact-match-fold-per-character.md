@@ -1,5 +1,5 @@
 ---
-id: T-3444
+id: T-3584
 title: "Probe MATCH's exact-match fold per character where the t3298 sweep blocks disagree, and whether characters Excel's table lacks equal each other and empty text"
 milestone: M2
 lane: research
@@ -47,4 +47,4 @@ compare equal to one another.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- Implementing the fold (T-3445). UPPER and LOWER (T-3443).
+- Implementing the fold (T-3445). UPPER and LOWER (T-3583).

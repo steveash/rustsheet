@@ -662,8 +662,8 @@ nothing and 158 hit another position. By block:
   first such character of the other column, whatever it is: Calc!C17 position 22 (U+AB70 finds U+10C7), C15 position 4
   (U+0529 finds U+0524), C20 positions 1-5 (U+ABBB-U+ABBF find U+13F5), C37 and D37 (positions 1 and 5).
   UNVERIFIED: that they are characters with no sort weight, which characters are weightless, and whether they also
-  equal empty text (T-3444).
-- observed, not yet explained (T-3444): in Greek Extended MATCH equals each small dasia+oxia letter with the capital
+  equal empty text (T-3584).
+- observed, not yet explained (T-3584): in Greek Extended MATCH equals each small dasia+oxia letter with the capital
   psili+varia letter: U+1F05 ἅ finds U+1F0A Ἂ (Calc!C25 position 29 reads 26), U+1F15 finds U+1F1A, U+1F25 U+1F2A,
   U+1F35 U+1F3A, U+1F45 U+1F4A, U+1F65 U+1F6A, U+1F85 U+1F8A, U+1F95 U+1F9A, U+1FA5 U+1FAA (C26 positions 5, 11, 19,
   27; C27 positions 5, 13, 21, 29). These are Unicode 1.1 letters, so the late-addition reading above does not

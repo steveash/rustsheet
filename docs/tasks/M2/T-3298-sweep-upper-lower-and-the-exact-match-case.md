@@ -74,7 +74,7 @@ differs from the engine is stated in docs/excel-semantics/ and owned by a task.
   Glagolitic, Coptic and Greek Extended. It never folds a surrogate pair. Letters missing from Excel's table compare
   equal to one another. The findings are in text.md and lookup.md (the UNVERIFIED line is replaced).
 - Eval delta: new coverage 193 cells, 63 pass, 130 new known failures (eval/baseline/probes.txt), 0 regressions.
-  Owners: T-3443 (UPPER/LOWER, functions-text, sonnet) and T-3445 (fold_char, engine, opus, after T-3444, a research
+  Owners: T-3583 (UPPER/LOWER, functions-text, sonnet) and T-3445 (fold_char, engine, opus, after T-3584, a research
   probe of the per-character fold and the weightless-equality rule). `make exit-owners MILESTONE=M2` reports no
   t3298 cell. Its 3 remaining cells (t3266 nested, typed-mixed-fraction B15) predate this PR and are unrelated.
 - Train ejection (ci-red, 2026-10-31 20:52): the 130 new cells are visibly off, and the PR's baseline listed the case
@@ -84,3 +84,8 @@ differs from the engine is stated in docs/excel-semantics/ and owned by a task.
   the tool: main's lock carried slack from fixes the steward had not yet lowered (decision 0093). After merging main
   at 7a92b8858 (lock 2442) and re-running `make eval-baseline`, it reads 2563 (main's own count 2433 plus the 130
   cells); `make eval-gates` passes.
+- Conflict ejection (2026-10-31 23:10): `make catch-up` refused the `visible-parity.json` conflict. Merged main at
+  f8c8c86e4, took main's `probes.txt` and `visible-parity.json` and re-ran `make eval-baseline` (no
+  `--allow-regressions`): 1 new case, 130 new-coverage cells, 0 regressions; the tool raised main's lock 2621 by the
+  130 new cells to 2751. Main had meanwhile taken T-3443 and T-3444 for other tasks, so this PR's follow-ups were
+  renumbered with `make new-task`: T-3443 → T-3583 (UPPER/LOWER), T-3444 → T-3584 (MATCH fold probe).

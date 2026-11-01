@@ -1004,7 +1004,7 @@ unchanged, as T-1747 found.
 Evidence: probes/t3298-case-mapping-sweep Calc!A1:A50 (UPPER of 1580 characters, 32 per cell, Data!A) and
 Calc!B1:B47 (LOWER of 1488, Data!B) (excel-graph, 2026-10-31).
 Status: VERIFIED (excel-graph). Not implemented: the engine maps every character through Rust's tables
-(`simple_case`), so the cells listed in eval/baseline/probes.txt fail. Tasks: T-3298 (probe), T-3443 (engine).
+(`simple_case`), so the cells listed in eval/baseline/probes.txt fail. Tasks: T-3298 (probe), T-3583 (engine).
 
 ## ARRAYTOTEXT: a single empty cell is #VALUE!, an empty cell in a larger range is empty text
 Rule: `ARRAYTOTEXT` of a reference to one empty cell is `#VALUE!` in both formats, and so are a 1x1 range of an empty

@@ -1,5 +1,5 @@
 ---
-id: T-3443
+id: T-3583
 title: "UPPER and LOWER map only the characters in Excel's old case table (probes/t3298-case-mapping-sweep)"
 milestone: M2
 lane: functions-text
@@ -36,4 +36,4 @@ characters Excel's case table lacks unchanged and use Excel's own targets where 
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- MATCH's exact fold (T-3444, T-3445) and the collation (`fold` in collation.rs).
+- MATCH's exact fold (T-3584, T-3445) and the collation (`fold` in collation.rs).
