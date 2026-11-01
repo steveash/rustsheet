@@ -19,9 +19,12 @@ that does not read as a number (including empty text), before the `#N/A` of an x
 - T-3781 (gen-m9 arg-pairs batch, excel-graph 2026-11-01). `PERCENTRANK.INC(Data!H1,2,"abc")` (blank data) and
   `PERCENTRANK.EXC(Data!A$5,-1,"")` are `#VALUE!`; `PERCENTRANK(Data!G5,3,Data!G9)` (text data, G9 `#DIV/0!`) is `#DIV/0!`;
   `PERCENTRANK(Data!C8,"2.5",#NAME?)` is `#NAME?`, `PERCENTRANK.EXC(Data!H1,1,#NULL!)` `#NULL!`. Ours: `#N/A` for all of them.
+- For an x outside numeric data ours already matches (`PERCENTRANK(Data!G1,2,Data!G6)`, 157db6a46ed6535b A556, is `#VALUE!`
+  in both); every one of the 63 failing cells has data with no number (text, blank or boolean cells). The fix is in that
+  path.
 - This settles statistics.md's UNVERIFIED line under "Order statistics: the scalar argument's error before the no-number
   result; PERCENTRANK's #N/A before significance (T-2256)": a numeric but out-of-domain significance (-2.5, 0) still loses
-  to the `#N/A` (T-2472 matches that), but a non-numeric one wins. Recorded in statistics.md "PERCENTRANK: a text or error
+  to the `#N/A` (T-2472 matches that), but a non-numeric one wins. Recorded in statistics.md "PERCENTRANK: a non-numeric-text or error
   significance before the #N/A (T-3781)".
 - Numeric text and booleans coerce and keep the `#N/A` first, and those cells pass today: `PERCENTRANK.INC(Data!H1,2,"2.5")`,
   `(Data!H2,3,Data!G5)` (G5 = "12"), `(Data!H1,2,TRUE)` and `(Data!H2,3,Data!G8)` (G8 = FALSE) are `#N/A` (8cbdca3221390122
