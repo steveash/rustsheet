@@ -327,6 +327,7 @@ C	probes/date-text-glued-month-2.case.json	106
 C	probes/date-text-glued-month.case.json	178
 C	probes/date-text-grammar.case.json	138
 C	probes/date-text-locale.case.json	10
+C	probes/date-text-mixed-separator-typed.case.json	23
 C	probes/date-text-non-glued-timevalue.case.json	44
 C	probes/date-text-rejected-clock-formats.case.json	16
 C	probes/date-text-shape-survey-2.case.json	128
@@ -2222,6 +2223,8 @@ F	probes/bond-extreme-coupon-yield.case.json	Calc!C85
 F	probes/bond-extreme-coupon-yield.case.json	Calc!C89
 F	probes/bond-extreme-coupon-yield.case.json	Calc!C91
 F	probes/coup-calendar-edges.case.json	S!J12
+F	probes/date-text-mixed-separator-typed.case.json	S!B10
+F	probes/date-text-mixed-separator-typed.case.json	S!C10
 F	probes/eng-convert-boolean-unit.case.json	Sheet1!A29
 F	probes/eng-convert-boolean-unit.case.json	Sheet1!A7
 F	probes/eng-convert-boolean-unit.case.json	Sheet1!B8
