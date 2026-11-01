@@ -3,7 +3,7 @@ id: T-3646
 title: "Survey the en-US date text shapes DATEVALUE accepts and match them through the shared date-text reader"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
