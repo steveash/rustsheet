@@ -3,7 +3,7 @@ id: T-3440
 title: "Move the parser's Node, ArrayNode and completion types out of expressions/parser/mod.rs into parser/node.rs (the file is at 991 of its 1,000 lines)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
