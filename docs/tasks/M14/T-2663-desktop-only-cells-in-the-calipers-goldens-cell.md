@@ -26,6 +26,10 @@ behavior that Excel for the web, the Phase 1 oracle of record (decision 0039), d
   desktop golden gives 0 (color), the absPath-based path, `G`, 0, "", 1 and 15. Real models use
   `MID(CELL("filename",A1),FIND("]",CELL("filename",A1))+1,255)` to read the sheet name
   (pv26_011 and pv26_2_011 B3), so desktop parity here matters for everyday files.
+  The same `CELL("filename",Ticker0001_Validation_Sheet!$A2)` in two more goldens (desktop path text, ours
+  `#VALUE!`; found unowned by `make unowned-off ALL=1` on 2026-11-02):
+  - calipers/pv_goldens/pv26_001/golden.xlsx (1): Ticker0001_Validation_Sheet!A2
+  - calipers/pv_goldens/pv26_2_001/golden.xlsx (1): Ticker0001_Validation_Sheet!A2
 - `roundtrip/formula_stress_test` `Information!B3` `INFO(C3)`: desktop "16.0", web `#VALUE!` (T-2182).
 - `roundtrip/formulas_math_trig` row 22: `COS`, `TAN`, `SEC`, `COT` of `PI()/2` on Mac
   (COS 6.123233995736766E-17, ours 6.1257422745431E-17), like the Mac SIN(4) cells of decision 0074.

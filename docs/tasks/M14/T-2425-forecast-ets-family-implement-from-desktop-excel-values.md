@@ -260,6 +260,9 @@ probes/forecast-ets-longer-series (24- and 36-point series and a 12-point one; F
 `#N/IMPL!`, the same web gap as the gen-m9 cells above; no open M9 task named the case.
 - probes/forecast-ets-longer-series.case.json (41): Sheet1!K1, K2, K3, K4, K5, K6, K7, K8, K9, K10, K11, K12, K13, K14, K15, K16, K17, K18, K19, K20, K21, K22, K23, K24, K25, K26, K27, K28, K29, K30, K31, K32, K33, K34, K35, K36, K37, K39, K40, K41, K42
 
+Cells (gap triage 2026-11-02): the T-2371 probe's #N/A cells (excel-graph leaves the family #N/A; ours `#N/IMPL!`):
+- probes/forecast-ets-optional-settings-shape.case.json (12): Sheet1!M29, M30, M31, M32, M33, M34, M41, M42, M43, M44, M45, M46
+
 ## Acceptance criteria
 - [ ] Visible parity (gen-m9, T-2258): these 17 known-failure lines disappear from eval/baseline/gen-m9.txt
       (`make eval-baseline`), with no new known-failure lines in any baseline.
