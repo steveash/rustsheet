@@ -3,7 +3,7 @@ id: T-3674
 title: "Gate A slice 4g: reference tables for ECMA.CEILING, ISO.CEILING, MROUND, EVEN, ODD, INT and TRUNC"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
