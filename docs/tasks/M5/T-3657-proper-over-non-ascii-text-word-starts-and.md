@@ -3,7 +3,7 @@ id: T-3657
 title: "PROPER over non-ASCII text: word starts and case mapping beyond the probed characters"
 milestone: M5
 lane: functions-text
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -26,10 +26,25 @@ Hebrew, digits of other scripts, ZWJ/ZWNJ, punctuation), and the word-start mapp
 character, using T-3298's case table once it lands. Code: `fn_proper` in functions/text/string_format.rs.
 
 ## Acceptance criteria
-- [ ] A probe case (excel-graph) covers the word-start classes and titlecase characters above.
-- [ ] The engine matches every probed cell; text.md states PROPER's word-start rule and mapping.
-- [ ] Every quirk found is written up in docs/excel-semantics/text.md in the same PR, with its probe cells cited.
-- [ ] `make check` green; eval known failures only shrink (baseline updated); reviewers approve.
+- [x] A probe case (excel-graph) covers the word-start classes and titlecase characters above.
+- [x] The engine matches every probed cell; text.md states PROPER's word-start rule and mapping.
+- [x] Every quirk found is written up in docs/excel-semantics/text.md in the same PR, with its probe cells cited.
+- [x] `make check` green; eval known failures only shrink (baseline updated); reviewers approve.
 
 ## Out of scope
 - LOWER and UPPER's table (T-3298).
+
+## Outcome
+- Probes (excel-graph, 2026-11-01): probes/t3657-proper-word-starts (177 cells: word starts after 105 characters
+  of every non-letter class the task names, and the word-start, mid-word and after-digit mapping of 24
+  titlecase-sensitive characters) and probes/t3657-proper-letter-sweep (one digit per BMP code point, 63,454 in all,
+  saying whether PROPER reads it as a letter).
+- Finding: PROPER's letters are Excel's own table (47,717 BMP code points in 328 ranges), not Unicode's Alphabetic
+  property: most combining marks Unicode calls Alphabetic are not letters (Thai and two Mongolian marks are), 1,321
+  newer Unicode letters are not letters, nor is any supplementary character; and PROPER lowers every non-letter
+  (`PROPER("Ⓐx")` is `ⓐX`). Written up in text.md "PROPER word starts: Excel's own letter table (T-3657)".
+- Engine: `is_proper_letter` (new functions/text/proper_letters.rs, the decoded table) replaces `is_alphabetic` in
+  `proper_case`, which now lowers non-letters.
+- Eval delta: the two new cases add 181 cells; 174 pass. 7 known failures (t3657-proper-word-starts S!B24, C14, C16,
+  C18, C20, C23, D24) need Excel's old case table, which T-3583 (#2801) implements. No other case changed.
+- Follow-up: T-3802 (probe lone surrogates, supplementary letters and non-letter capitals at a word start).

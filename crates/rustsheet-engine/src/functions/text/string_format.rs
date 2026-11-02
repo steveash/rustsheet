@@ -15,6 +15,7 @@ use crate::{
     number_format::{cut_15_digits, group_thousands, increment_digits, parse_excel_number},
 };
 
+use super::proper_letters::is_proper_letter;
 use crate::functions::util::near_integer::near_integer_count;
 
 /// Formats a non-negative f64 with the given decimal places and optional thousands separator.
@@ -445,27 +446,25 @@ pub(super) fn upper_case(s: &str) -> String {
         .collect()
 }
 
-/// A word start is any character after a non-letter, digits included ("2Nd"). A capital sigma
-/// ending a word (see `sigma_is_final`) lowers to the final ς: "ΑΣ.ΑΣ-Σ ΑΣ1" is "Ας.Ας-Σ Ασ1"
-/// (probes/clean-proper-chars D7, D16, D25).
+/// A word start is a letter after a non-letter, digits included ("2Nd"). Letters are Excel's own
+/// table (`is_proper_letter`): many Unicode letters and marks are not letters to PROPER, and every
+/// non-letter is lowered, so a word-initial Ⓐ becomes ⓐ (probes/t3657-proper-word-starts B21:D21,
+/// probes/t3657-proper-letter-sweep). A capital sigma ending a word (see `sigma_is_final`) lowers to
+/// the final ς: "ΑΣ.ΑΣ-Σ ΑΣ1" is "Ας.Ας-Σ Ασ1" (probes/clean-proper-chars D7, D16, D25).
 fn proper_case(s: &str) -> String {
     let chars: Vec<char> = s.chars().collect();
     let mut result = String::with_capacity(s.len());
     let mut capitalize_next = true;
     for (i, &c) in chars.iter().enumerate() {
-        if c.is_alphabetic() {
-            if capitalize_next {
-                result.push(simple_case(c, true));
-                capitalize_next = false;
-            } else if c == 'Σ' && sigma_is_final(chars.get(i + 1).copied()) {
-                result.push('ς');
-            } else {
-                result.push(simple_case(c, false));
-            }
+        let letter = is_proper_letter(c);
+        if letter && capitalize_next {
+            result.push(simple_case(c, true));
+        } else if c == 'Σ' && sigma_is_final(chars.get(i + 1).copied()) {
+            result.push('ς');
         } else {
-            result.push(c);
-            capitalize_next = true;
+            result.push(simple_case(c, false));
         }
+        capitalize_next = !letter;
     }
     result
 }
