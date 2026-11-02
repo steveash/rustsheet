@@ -1820,6 +1820,7 @@ C	probes/t3532-numeral-digit-general.case.json	145
 C	probes/t3532-numeral-digit-sections.case.json	9
 C	probes/t3575-fraction-after-elapsed-b.case.json	30
 C	probes/t3575-fraction-after-elapsed.case.json	15
+C	probes/t3585-rate-num-near-minus-one.case.json	104
 C	probes/t3631-rand-randbetween-invariant.case.json	61
 C	probes/t3631-randarray-invariant.case.json	45
 C	probes/t3656-indirect-spaces-reversed.case.json	291
@@ -5918,6 +5919,13 @@ F	probes/t3532-numeral-digit-fields.case.json	S!F10
 F	probes/t3532-numeral-digit-fields.case.json	S!F14
 F	probes/t3532-numeral-digit-fields.case.json	S!G10
 F	probes/t3532-numeral-digit-fields.case.json	S!G14
+F	probes/t3585-rate-num-near-minus-one.case.json	Sheet1!G1
+F	probes/t3585-rate-num-near-minus-one.case.json	Sheet1!G18
+F	probes/t3585-rate-num-near-minus-one.case.json	Sheet1!G19
+F	probes/t3585-rate-num-near-minus-one.case.json	Sheet1!G2
+F	probes/t3585-rate-num-near-minus-one.case.json	Sheet1!H1
+F	probes/t3585-rate-num-near-minus-one.case.json	Sheet1!H18
+F	probes/t3585-rate-num-near-minus-one.case.json	Sheet1!H4
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F10
 F	probes/table-edits/table-convert-names-this-row.case.json	S!F2
 F	probes/table-edits/table-convert-names-this-row.case.json	T!A2

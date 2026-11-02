@@ -1242,19 +1242,36 @@ Status: VERIFIED (excel-graph)
 Implemented in: `compute_rate` (`OFFSET`, `TOLERANCE`), `irr_secant` (functions/financial/financial_util.rs)
 Tasks: T-3478, T-3548
 
-## RATE is #NUM! at the spurious root r = -1
-Rule: with type 1 and fv = 0 the FV residual is 0 at r = -1 whatever the annuity's real root, and the secant can
-converge there (step and |f| under 1e-7) to an iterate just above -1. Excel is `#NUM!` on such a run. On 13 points
-of probes-numeric/t3478-rate-r4-wide (Calc!A60, A76, A85, A88, A89, A131, A146, A171, A213, A237, A243, A256, A265;
-all type 1, fv 0) the iterate has 1 + r from 2.2E-16 to 3.7E-12 after 5 to 100 steps; for example
-`RATE(109,4.59691021898319,-4.87437591225121,0,1,0.000162862351807913)` is `#NUM!` where the secant stops at
--0.9999999999999378 (the real root is 16.567...). What Excel tests is not known: it returns 1 + r = 1.19E-7 at
-`RATE(2,0,-100)` (probes/rate-pmt-zero-cap A2), so a threshold on 1 + r would lie between 3.7E-12 and 1.19E-7,
-or the test is on the residual's root at -1 itself.
-Evidence: probes-numeric/t3478-rate-r4-wide (excel-graph, 2026-10-31; T-3478)
-Status: VERIFIED (excel-graph) for the cells; the rule is UNVERIFIED
-Ours: the engine returns the iterate (13 cells)
-Tasks: T-3547
+## RATE is #NUM! when 1 + r is 1e-7 or less
+Rule: a converged RATE iterate (step and |f| under 1e-7) is returned only when 1 + r is above 1e-7; at or below it the
+call is `#NUM!`. The bound is the same for a genuine root of the FV residual near -1, for the spurious root r = -1 that
+every type-1 residual with fv = 0 has (pv(1+r)^n + pmt(1+r)((1+r)^n - 1)/r + fv is 0 there whatever the annuity's
+real root), and for type 0 and type 1 alike. So the rule is a floor on 1 + r, not a test of r = -1 being a root. It is
+separate from the cap's looser test (1 + r > 1e-4 at the 200th iterate or a flat-secant hold, "RATE holds on a flat
+secant and runs on below -1").
+Evidence (excel-graph, 2026-11-01, T-3585): probes/t3585-rate-num-near-minus-one, roots with 1 + r = d for
+d = 1E-4, 1E-6, 1E-7, ..., 1E-15:
+- type 0, n = 1 (`RATE(1,100*d,-100)`, A1-A11): d 1E-4 and 1E-6 return (-0.9999, -0.999999); 1E-7 and below are
+  `#NUM!`.
+- type 1 with the spurious root shifted to -1 + d by fv (`RATE(77,-2757.6011275919,18790.0791146529,
+  2757.6011275919*d,1)`, B1-B11; `RATE(1,-50,-50,100*d,1)`, D1-D11): the same split; fv 0 (B12, D12) is `#NUM!`.
+- type 0 at n = 77 (`RATE(77,-2757.6011275919,18790.0791146529,-2757.6011275919/(d-1))`, C1-C11): 1E-7 returns
+  -0.9999998999965758 (1 + r = 1.0000034E-7); 1E-8 and below are `#NUM!`. With A3 (1 + r = 1E-7 to the double,
+  `#NUM!`) this brackets the floor at 1E-7 .. 1.0000034E-7; the engine uses the step bound 1e-7 itself.
+- the pmt-0 double root at -1 (`RATE(2,0,-1E+k)`, E1-E8 type 0, F1-F8 type 1): at pv -1E+2 to -1E+6 the secant
+  stops at 1 + r = 1.19E-7 and returns; from -1E+8 it creeps further (|f| < 1e-7 needs a smaller 1 + r) and is
+  `#NUM!`. Type 1 and type 0 agree.
+- Gate A's RATE table (accuracy/RATE/s1 A19, A128, A129, A137, A158) and 13 points of probes-numeric/t3478-rate-r4-wide
+  (Calc!A60, A76, A85, A88, A89, A131, A146, A171, A213, A237, A243, A256, A265): type 1, fv 0, real roots 0.17 to
+  16.6, where the secant converges to -1 with 1 + r from 1E-16 to 3.7E-12; Excel is `#NUM!` on all.
+Not this rule: accuracy/RATE/s1 A278 and A291 (huge pv, roots 6.2E-10 and 2.2E-6). There the engine's secant ends in
+a flat-secant hold in the residual's rounding noise, T-3424's kind. The probe's columns G and H scale their pv and pmt
+by 2^-k: Excel errs at k = 0 and 2 for A278 and at k = 0 and 6 (not 2 or 4) for A291, and fv changes the type at k = 0
+(A278 with fv 0 or 1 returns, with fv +-179.96 errs). An error that comes and goes with the scale is the noise floor,
+not a rule on the scale; the engine matches the probe's other 35 cells of G and H.
+Ours: `compute_rate` (functions/financial/financial_util.rs) checks 1 + r > 1e-7 at convergence (T-3585).
+Status: VERIFIED (excel-graph); the bound's exact value inside 1E-7 .. 1.0000034E-7 is not pinned
+Tasks: T-3585, T-3547, T-3424
 
 ## IRR is #NUM! or #DIV/0! on some conventional series it could solve
 Rule (unknown; the cells are what is known): on conventional series (one sign change, so one root in (-1, inf)),

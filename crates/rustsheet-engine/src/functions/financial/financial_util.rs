@@ -66,14 +66,16 @@ pub(crate) fn compute_rate(
     // bit-exact on all 100 points where Excel returns a number, where 1E-4 or the other side's
     // -1E-3 gets 8 and 14 (financial.md "RATE and IRR secant constants past their fit sets").
     // The tag's second range is where those 100 roots lie; past it (rates to 100, nper to 1E+5)
-    // the sweep only agrees with Excel's `#NUM!`. Its 14 cells off Excel are not this constant's
-    // (T-3547, the spurious root r = -1; T-3424).
+    // the sweep only agrees with Excel's `#NUM!`. Its 14 cells off Excel were not this constant's:
+    // 13 converged to the spurious root r = -1 (`#NUM!` since T-3585's floor on 1 + r) and one is
+    // T-3424's.
     /// FITTED(T-2005, 782 cells, RATE nper 1..1000, |pmt| 1E-6..1E+6, guess -0.5..10, rate -0.75..2; T-3478 sweep, 100 returned roots: nper 1..22908, |pmt| 1.6E-47..1.9E+10, |pv| and |fv| 1.1E-8..9.7E+11, guess -0.97..980, rate -0.985..21.3)
     const OFFSET: f64 = 0.001;
-    // Two uses. The step stop is not a fit: Microsoft's RATE documentation gives 0.0000001 as the
+    // Three uses. The step stop is not a fit: Microsoft's RATE documentation gives 0.0000001 as the
     // convergence bound. The residual stop |f| < 1e-7 is not documented and was chosen by scoring
     // (financial.md "RATE is a secant on the FV residual": |f| < 1e-6 scores 188, < 1e-8 181), as
-    // IRR's is (`irr_secant`). On T-3478's sweep 1e-7 keeps 100 of 100, 1e-6 92 and 1e-8 93.
+    // IRR's is (`irr_secant`). On T-3478's sweep 1e-7 keeps 100 of 100, 1e-6 92 and 1e-8 93. The
+    // third is the floor on 1 + r of a converged iterate (T-3585, below).
     /// FITTED(T-2005, 782 cells, RATE nper 1..1000, |pmt| 1E-6..1E+6, guess -0.5..10, rate -0.75..2; T-3478 sweep, 100 returned roots: nper 1..22908, |pmt| 1.6E-47..1.9E+10, |pv| and |fv| 1.1E-8..9.7E+11, guess -0.97..980, rate -0.985..21.3; the residual stop)
     const TOLERANCE: f64 = 1e-7;
     // Excel's looser test at the cap (T-2689): the 200th iterate is returned when its step and
@@ -129,7 +131,16 @@ pub(crate) fn compute_rate(
         };
         let step_size = (r2 - r1).abs();
         if step_size < TOLERANCE && f2.abs() < TOLERANCE {
-            return if r2 > -1.0 { Ok(r2) } else { Err(Error::NUM) };
+            // A converged iterate is returned only when 1 + r is above 1e-7, the step bound: roots
+            // with 1 + r from 1E-4 down to 1.0000034E-7 return and 1E-7 and below are `#NUM!`,
+            // genuine roots and the spurious root -1 of a type-1, fv-0 residual alike
+            // (probes/t3585-rate-num-near-minus-one; financial.md "RATE is #NUM! when 1 + r is
+            // 1e-7 or less", T-3585).
+            return if 1.0 + r2 > TOLERANCE {
+                Ok(r2)
+            } else {
+                Err(Error::NUM)
+            };
         }
         if (flat || step == RATE_MAX_STEPS)
             && step_size < RATE_CAP_TOLERANCE

@@ -46,6 +46,17 @@ cells, so RATE's Gate A fails until they are settled.
 
   A bound below 2.1e-5 alone would turn 5 gated cells Excel returns into `#NUM!` (probes/t3348-rate-fv-nonzero
   A113, A117, A126, A167, A183, held |f| 3.9e-5 to 7.2e-5).
+- **Gate A RATE table (2, from T-3585).** accuracy/RATE/s1 Calc!A278
+  `RATE(29,622792052.26538,-18060969526.6562,179.964221458841,0)` and A291
+  `RATE(43,-1768871036.99479,76057734597.4655,-42.6330901500337,0)` are `#NUM!` in Excel; the engine holds on a flat
+  secant at |f| 5.0e-7 and 3.0e-6 (steps 59 and 41) and returns -9.45E-10 (root 6.24E-10) and 2.2231784E-6. They are
+  carried in eval/accuracy/known-failures.tsv with this task as owner. probes/t3585-rate-num-near-minus-one columns G
+  and H scale their pv and pmt by 2^-k and vary fv: Excel's error comes and goes with the scale (A291 errs at k = 0
+  and 6, not 2 or 4), and the engine has Excel's type on the other 35 cells (financial.md "RATE is #NUM! when
+  1 + r is 1e-7 or less").
+- **probes-numeric/t3478-rate-r4-wide Calc!A285 (from T-3547).** `RATE(3,-27701521124.6443,83584699115.003,
+  -1296.87658562967,0,228.952995156186)` is `#NUM!` in Excel; the engine returns -0.0028749021254309863 (math
+  -0.00287490212542650...), |pv| 8E+10.
 - The lead is the residual's bits near the root, the same cause as T-3389's misses. A171's second iterate needs
   Excel's f to be about -2.71e-7 where the model has -1.67e-7. A residual form that reproduces Excel's noise likely
   settles both tasks; it will be a structural model under reviewer check 7, with its own hold-out and fresh sweep.
