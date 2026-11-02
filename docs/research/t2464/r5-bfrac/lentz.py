@@ -132,6 +132,7 @@ ALPHA_FORMS = {
     'w*x*u*v/(s*s)': lambda u, v, s, m, w, x, a, b, n: w * x * u * v / (s * s),
     'u*v/s/s*w*x': lambda u, v, s, m, w, x, a, b, n: u * v / s / s * w * x,
     'v/s/s*u*m*x*x': lambda u, v, s, m, w, x, a, b, n: v / s / s * u * m * x * x,
+    'v/s/s*u*n*(b-n)*x*x': lambda u, v, s, m, w, x, a, b, n: v / s / s * u * n * (b - n) * x * x,
 }
 BETA_FORMS = {
     'n + w/s + e2*X': lambda n, w, s, e2, X, a, lam, y, m, x: n + w / s + e2 * X,

@@ -5,8 +5,8 @@ it with the modified Lentz method of Numerical Recipes (betacf's loop), on terms
 
   lam = fl(a - fl((a+b)*x))            (both orientations; TOMS takes (a+b)*y - b when a > b)
   y   = fl(1 - x),  c = lam + 1,  b0 = c * (a/(a+1))
-  term n = 1, 2, ...:  u = a+n-1, v = a+b+n-1, s = a+2n-1 (exact), m = n*(b-n)
-      alpha_n = ALPHA(u, v, s, m, x)
+  term n = 1, 2, ...:  u = a+n-1, v = a+b+n-1, s = a+2n-1 (exact on the probed shapes)
+      alpha_n = v/s/s*u*n*(b-n)*x*x                       (left to right)
       beta_n  = n + fl(n*x*(b-n))/s + ((a+n)/(a+2n+1)) * (c + n*(y+1))
   r = 0 + 1/(b0 + alpha_1/(beta_1 + ...)) by Lentz from TINY: f = TINY, C = f, D = 0; the partial (1, b0); then for
       each term D = 1/(beta + alpha*D), C = beta + alpha/C, d = C*D, f = f*d, until |d - 1| <= EPS
@@ -19,18 +19,17 @@ beta_enum.py), not fitted constants."""
 EPS = 2.220446049250313e-15  # FITTED (2.1e-15, 2.5e-15): 10 * DBL_EPSILON
 TINY = 1e-30
 
-def alpha(u, v, s, m, x):
-    return ALPHA_FORM(u, v, s, m, x)
-
-ALPHA_FORM = None  # set below at the freeze
+def alpha(u, v, s, n, b, x):
+    """alpha_n = n(a+n-1)(a+b+n-1)(b-n)x^2/(a+2n-1)^2, left to right as v/s/s*u*n*(b-n)*x*x (alpha_enum.py)."""
+    return v / s / s * u * n * (b - n) * x * x
 
 def terms(a, b, x, y, lam):
     c = lam + 1.0
     n = 0.0
     while True:
         n += 1.0
-        u = a + n - 1.0; v = a + b + n - 1.0; s = a + 2.0 * n - 1.0; m = n * (b - n)
-        al = alpha(u, v, s, m, x)
+        u = a + n - 1.0; v = a + b + n - 1.0; s = a + 2.0 * n - 1.0
+        al = alpha(u, v, s, n, b, x)
         be = n + n * x * (b - n) / s + (a + n) / (a + 2.0 * n + 1.0) * (c + n * (y + 1.0))
         yield al, be
 
