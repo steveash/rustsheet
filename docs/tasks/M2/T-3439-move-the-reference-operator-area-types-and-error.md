@@ -3,7 +3,7 @@ id: T-3439
 title: "Move the reference-operator area types and error helpers out of reference_operators.rs into a submodule (the file is at 999 of its 1,000 lines)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
