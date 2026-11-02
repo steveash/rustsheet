@@ -5,9 +5,8 @@ mandates and fresh context. The worker that wrote the code only gives them the t
 
 | Reviewer | When | Blocks on |
 |---|---|---|
-| `reviewer-security` | always | panics/overflow on untrusted input, unbounded recursion/allocation, `unsafe`, I/O from evaluation, risky deps, secrets, CI permission/secret exposure, unjustified gate weakening |
-| `reviewer-architecture` | always | layering violations, code in the wrong module, contradicting `docs/architecture` or a spec, unplanned public API changes, mixed-purpose PRs |
-| `reviewer-quality` | always | redundant definitions (an equivalent helper already exists), new lint suppressions without reason, missing/weak tests, unreadable code, bare TODOs |
+| `reviewer-security` | every diff with a path outside `docs/` and `eval/suites/`, and any `docs/process/` change (decision 0236) | panics/overflow on untrusted input, unbounded recursion/allocation, `unsafe`, I/O from evaluation, risky deps, secrets, CI permission/secret exposure, unjustified gate weakening |
+| `reviewer-design` | always (one reviewer for architecture and quality, decision 0236) | layering violations, code in the wrong module, contradicting `docs/architecture` or a spec, unplanned public API changes, mixed-purpose PRs; redundant definitions (an equivalent helper already exists), new lint suppressions without reason, missing/weak tests, unreadable code, bare TODOs |
 | `reviewer-excel-fidelity` | engine, xlsx, eval changes | semantics without oracle evidence, eval regressions, unrecorded quirks, edge cases (blank vs "", coercion, error precedence, precision) |
 | `reviewer-performance` | off (decision 0081: correctness first; bench criteria allow up to 50% slower) | asymptotic regressions, per-cell allocations, missing benchmark evidence, unsound dirty propagation |
 

@@ -122,8 +122,8 @@ file and its acceptance criteria.
    - **Mark ready** (`shadow` and `train`): with the PR's head checked out (`HEAD` must equal the
      PR head), `make mark-ready PR=<n>`: it takes the verdicts from the verdict records the
      `review` skill posted on that head (decision 0178; the `steward` skill's "Merge train").
-     While `verdict_records = "warn"`, add `REVIEW="security=APPROVE architecture=APPROVE
-     quality=APPROVE [excel-fidelity=APPROVE]"` with your review table's verdicts on that head:
+     While `verdict_records = "warn"`, add `REVIEW="[security=APPROVE] design=APPROVE
+     [excel-fidelity=APPROVE]"` with your review table's verdicts on that head:
      it stands in for a reviewer whose record is missing, with a warning; never in `require`.
      If its GitHub writes are refused in your session, run
      it again with `STEP=1`, perform each printed JSON action in order with the GitHub MCP tools,

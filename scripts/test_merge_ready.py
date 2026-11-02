@@ -19,6 +19,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gh_client
 import merge_ready
+import review_panel
 import visible_lock
 from gh_client import FakeGh, Reply
 from merge_ready import APPROVE, IGNORE, KEEP, UNLABEL, Marker, MarkerError
@@ -26,7 +27,7 @@ from merge_ready import APPROVE, IGNORE, KEEP, UNLABEL, Marker, MarkerError
 ROOT = Path(__file__).resolve().parent.parent
 PAGE = "per_page=100&page=1"
 SUITE = 900
-APPROVED = {"security": "APPROVE", "architecture": "APPROVE", "quality": "APPROVE"}
+APPROVED = {"security": "APPROVE", "design": "APPROVE"}
 TASK = """---
 id: T-0001
 status: {status}
@@ -133,8 +134,8 @@ class MarkerFormat(unittest.TestCase):
             good.replace(self.HEAD, self.HEAD[:39]),
             good.replace("prev: none", "prev: HEAD"),
             good.replace("security=APPROVE", "sekurity=APPROVE"),
-            good.replace("quality=APPROVE", "quality=APPROVE quality=APPROVE"),
-            good.replace("quality=APPROVE", "quality=LGTM"),
+            good.replace("design=APPROVE", "design=APPROVE design=APPROVE"),
+            good.replace("design=APPROVE", "design=LGTM"),
             good.replace("task: T-0001", "task: T-1"),
             good.replace("marked-by: session-1", "marked-by: a b"),
             good.replace("head:", "Head:"),
@@ -149,32 +150,82 @@ class MarkerFormat(unittest.TestCase):
 
 class Applicability(unittest.TestCase):
     def test_excel_fidelity_exactly_for_the_skill_paths(self) -> None:
-        always = merge_ready.ALWAYS_REVIEWERS
-        self.assertEqual(merge_ready.applicable_reviewers(["scripts/x.py", "docs/a.md"]), always)
-        self.assertEqual(merge_ready.applicable_reviewers(["crates/rustsheet-engine-extra/x.rs"]), always)
-        self.assertEqual(merge_ready.applicable_reviewers(None), merge_ready.REVIEWERS)
+        code = ("design", "security")
+        need = merge_ready.applicable_reviewers
+        self.assertEqual(set(need(["scripts/x.py", "docs/a.md"])), set(code))
+        self.assertEqual(set(need(["crates/rustsheet-engine-extra/x.rs"])), set(code))
+        self.assertEqual(need(None), merge_ready.REVIEWERS)
         for root in merge_ready.EXCEL_FIDELITY_PATHS:
             with self.subTest(root):
-                self.assertEqual(merge_ready.applicable_reviewers([f"{root}/x"]), merge_ready.REVIEWERS)
+                self.assertIn("excel-fidelity", need([f"{root}/x"]))
+
+    def test_security_skips_only_docs_and_suite_data(self) -> None:
+        # Decision 0236: the design reviewer always; security on any path outside docs/ (except
+        # docs/process/ and the docs code reads) and eval/suites/; every reviewer for unknown or
+        # empty paths.
+        need = merge_ready.applicable_reviewers
+        self.assertEqual(need(["docs/tasks/M0/T-1.md", "docs/decisions/0001-x.md"]), ("design",))
+        self.assertEqual(need(["docs/research/a.md", "docs/specs/SPEC-0001-x.md"]), ("design",))
+        self.assertEqual(need(["eval/suites/probes/cases/a.case.json"]), ("design", "excel-fidelity"))
+        for path in [
+            "docs/process/review-policy.md",
+            "docs/excel-semantics/a.md",
+            "docs/milestones.md",
+            "docs/progress/a.md",
+            ".claude/skills/review/SKILL.md",
+            "CLAUDE.md",
+            "eval/baseline/probes.txt",
+            "quality/fitted.json",
+            "tools/src/x.py",
+            ".github/workflows/ci.yml",
+        ]:
+            with self.subTest(path):
+                self.assertIn("security", need(["docs/status.md", path]))
+        self.assertEqual(need([]), merge_ready.REVIEWERS)
+        # Order follows REVIEWERS whatever the paths' order.
+        self.assertEqual(need(["crates/rustsheet-engine/x.rs"]), merge_ready.REVIEWERS)
 
     def test_a_task_only_diff_needs_no_reviewer(self) -> None:
         tasks = ["docs/tasks/M9/T-0001-a.md", "docs/tasks/M10/T-0002-b.md"]
         self.assertEqual(merge_ready.applicable_reviewers(tasks), ())
-        # One path outside docs/tasks/ brings the panel back, as does an empty diff.
-        self.assertEqual(merge_ready.applicable_reviewers([*tasks, "docs/decisions/0001-x.md"]), merge_ready.ALWAYS_REVIEWERS)
-        self.assertEqual(merge_ready.applicable_reviewers(["docs/tasks.md"]), merge_ready.ALWAYS_REVIEWERS)
-        self.assertEqual(merge_ready.applicable_reviewers(["docs/tasks/README.md", "scripts/x.py"]), merge_ready.ALWAYS_REVIEWERS)
-        self.assertEqual(merge_ready.applicable_reviewers([]), merge_ready.ALWAYS_REVIEWERS)
-        self.assertEqual(merge_ready.applicable_reviewers(["docs/tasks/M9/run.sh"]), merge_ready.ALWAYS_REVIEWERS)
+        # One path outside docs/tasks/*.md brings the panel of decision 0236 back, as does an empty diff.
+        design = (merge_ready.DESIGN,)
+        self.assertEqual(merge_ready.applicable_reviewers([*tasks, "docs/decisions/0001-x.md"]), design)
+        self.assertEqual(merge_ready.applicable_reviewers(["docs/tasks.md"]), design)
+        self.assertEqual(merge_ready.applicable_reviewers(["docs/tasks/M9/run.sh"]), design)
+        self.assertEqual(
+            merge_ready.applicable_reviewers(["docs/tasks/README.md", "scripts/x.py"]), (merge_ready.SECURITY, *design)
+        )
+        self.assertEqual(merge_ready.applicable_reviewers([]), merge_ready.REVIEWERS)
 
     def test_the_list_matches_the_review_skill(self) -> None:
+        def paths_in(clause: str) -> tuple[str, ...]:
+            return tuple(p.strip() for p in re.split(r",|\bor\b", " ".join(clause.split())) if p.strip())
+
         skill = (ROOT / ".claude/skills/review/SKILL.md").read_text()
         always = tuple(re.findall(r"`reviewer-([a-z-]+)` \(always\)", skill))
-        self.assertEqual(always, merge_ready.ALWAYS_REVIEWERS)
+        self.assertEqual(always, review_panel.ALWAYS_REVIEWERS)
         clause = re.search(r"`reviewer-excel-fidelity` \(if the diff touches ([^)]*)\)", skill)
         assert clause is not None, "the review skill no longer names excel-fidelity's paths"
-        paths = tuple(p.strip() for p in re.split(r",|\bor\b", " ".join(clause[1].split())) if p.strip())
-        self.assertEqual(paths, merge_ready.EXCEL_FIDELITY_PATHS)
+        self.assertEqual(paths_in(clause[1]), review_panel.EXCEL_FIDELITY_PATHS)
+        clause = re.search(r"`reviewer-security` \(unless every path is under ([^;)]*); ([^)]*) keeps? it\)", skill)
+        assert clause is not None, "the review skill no longer names security's skip paths"
+        self.assertEqual(paths_in(clause[1]), review_panel.SECURITY_SKIP_PATHS)
+        self.assertEqual(paths_in(clause[2]), review_panel.SECURITY_KEEP_PATHS)
+
+    def test_legacy_architecture_and_quality_fold_into_design(self) -> None:
+        fold = merge_ready.with_legacy_design
+        self.assertEqual(fold({"architecture": "APPROVE", "quality": "APPROVE"}), {"design": "APPROVE"})
+        self.assertEqual(fold({"architecture": "APPROVE"}), {"design": "REQUEST_CHANGES"})
+        self.assertEqual(fold({"architecture": "APPROVE", "quality": "n/a"}), {"design": "REQUEST_CHANGES"})
+        # A design verdict of its own wins over the legacy pair.
+        self.assertEqual(fold({"design": "REQUEST_CHANGES", "architecture": "APPROVE", "quality": "APPROVE"}),
+                         {"design": "REQUEST_CHANGES"})
+        self.assertEqual(fold({"security": "APPROVE"}), {"security": "APPROVE"})
+        # A marker written before decision 0236 still parses, and renders in the new panel.
+        old = "security=APPROVE architecture=APPROVE quality=APPROVE excel-fidelity=n/a"
+        self.assertEqual(merge_ready.parse_reviewers(old),
+                         {"security": "APPROVE", "design": "APPROVE", "excel-fidelity": "n/a"})
 
     def test_the_job_names_match_ci(self) -> None:
         workflow = (ROOT / ".github/workflows/ci.yml").read_text()
@@ -432,7 +483,7 @@ class Verify(PrFixture):
 
     def test_verdicts_must_cover_the_applicable_reviewers(self) -> None:
         self.comments = [
-            self.comment(1, marker(self.head, reviewers={**APPROVED, "quality": "REQUEST_CHANGES"}).render())
+            self.comment(1, marker(self.head, reviewers={**APPROVED, "design": "REQUEST_CHANGES"}).render())
         ]
         self.assertEqual(self.failures(), [("V4", UNLABEL)])
         # An engine change needs excel-fidelity too.
@@ -493,7 +544,7 @@ class Verify(PrFixture):
 class Mark(PrFixture):
     """`mark` on the same PR #7, unmarked and unlabelled, its head checked out locally."""
 
-    REVIEW = "security=APPROVE architecture=APPROVE quality=APPROVE"
+    REVIEW = "security=APPROVE design=APPROVE"
 
     def setUp(self) -> None:
         super().setUp()
@@ -616,8 +667,8 @@ class Mark(PrFixture):
         self.refused("REVIEW", review=None)
         self.refused("REVIEW", carry=True)
         self.refused("unknown or repeated reviewer", review="security=APPROVE lint=APPROVE")
-        self.refused("no APPROVE from quality", review="security=APPROVE architecture=APPROVE")
-        self.refused("no APPROVE from quality", review=self.REVIEW.replace("quality=APPROVE", "quality=n/a"))
+        self.refused("no APPROVE from design", review="security=APPROVE")
+        self.refused("no APPROVE from design", review=self.REVIEW.replace("design=APPROVE", "design=n/a"))
         self.runs = [ci_run("", "in_progress")]
         self.refused("CI is pending")
         self.runs = [ci_run("failure")]
