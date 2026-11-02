@@ -3,10 +3,10 @@ id: T-3759
 title: "The task-only fast path counts only task files that are regular files"
 milestone: M0
 lane: quality
-status: in-progress
+status: todo
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -35,3 +35,22 @@ into the next one on a long line, and the new one-line docstring is dense (quali
 
 ## Out of scope
 - Content checks on task text.
+
+## Handoff
+Sonnet run, no code written; handing off as a design question (work-loop step 5b).
+- The panel logic now lives in `scripts/review_panel.py` (`task_only`, `applicable_reviewers`), not in
+  `merge_ready.py`; `merge_ready` re-exports it. `review_panel.py` says it imports only the standard
+  library and `ci_changes`, so using `tasks.TASK_FILE` there needs either an import exception or a shared
+  home for the pattern (directive 3: do not copy the regex).
+- `applicable_reviewers(paths)` sees names only. A regular-file check needs the head's file modes:
+  `Repo.changed_paths` (`merge_ready.py` ~l.471) runs `git diff --name-only`; `--raw -z` would give the
+  destination modes (120000 symlink, 160000 submodule). The result flows through `head_state` to the
+  two call sites (~l.662 `verify`, ~l.835 `mark`), so the signature or return shape of `changed_paths`
+  and `head_state` has to carry the modes.
+- `scripts/merge_ready.py` is at exactly 1,000 lines, so the plumbing needs a shrink or a move of code
+  into `review_panel.py` or another module first (check `scripts/check_file_size.py`).
+- Also needed per the task: re-wrap SPEC-0027's "Docs-only and task-only PRs" item, make decision 0231
+  say "task files" precisely (a decision-record edit; check the protected-path rules), and tests in
+  `scripts/test_merge_ready.py` for README.md alone, a symlink, and a mixed diff.
+- The steward skill (l.73) and the work-loop skill describe a task-only PR as "every changed path a `.md`
+  file under `docs/tasks/`"; they may need the same wording fix.
