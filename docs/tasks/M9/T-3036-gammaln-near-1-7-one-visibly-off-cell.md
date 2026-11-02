@@ -38,7 +38,7 @@ cell goes to a `defer: phase-1b` task with T-2122.
       (`make eval-check`) and no new visibly-off GAMMALN cell, or the Outcome scores the candidate sets and files the
       deferral.
 - [x] statistics.md's GAMMALN entry corrects "never visible at 15 digits" with this cell.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Excel's exact coefficients (T-2122).
@@ -55,4 +55,4 @@ Target (decision 0114): the one cell above within 15 digits, or explained and de
   stays within 15 digits of the math, not of Excel), so no swap can fix the cell without Excel's own coefficients. I did not score them on the
   rest of the eval, because the cell rules all four out. The cell goes to T-2122 (`defer: phase-1b`), in a "Cell added by T-3036" section.
 - statistics.md's GAMMALN entry: "never visible at 15 digits" is corrected with this cell and the scores.
-- No engine change; eval delta none.
+- No engine change; eval delta none. `make check` green on 6e09a09f; security and design approve.
