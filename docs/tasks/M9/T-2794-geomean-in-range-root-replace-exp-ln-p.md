@@ -3,7 +3,7 @@ id: T-2794
 title: "GEOMEAN in-range root: replace exp(ln P/n) where it is not faithful (16 gen-m9 cells, 2 visibly off)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
