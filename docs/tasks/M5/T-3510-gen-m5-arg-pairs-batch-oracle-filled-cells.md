@@ -48,3 +48,19 @@ gen-m5 gains an oracle-filled batch from `rustsheet-gen --policy arg-pairs` (T-3
 - Fixing the engine for the cells this batch finds (the owning tasks), beyond a one-line coercion fix in the
   function's own module that the PR also tests.
 - Single argument-kind probes (the research tasks named above) and other functions or milestones.
+
+## Landing notes
+Session stopped early at the owner's request; no PR opened. Work is on branch `agent/functions-text/T-3510-m5-text-arg-pairs`.
+- Done: ran `make eval`, then `rustsheet-gen --policy arg-pairs --milestone M5 --functions FIND,SEARCH,REPLACE,SUBSTITUTE,REPT,EXACT`
+  (18 new gen-m5 cases) and `rustsheet-oracle fill -b excel-graph --suite gen-m5` (18 sidecars, 0 failures). Both are committed.
+- Result of `make eval-check` on the new cases: 0 regressions in the baseline, but 23 new-coverage failures
+  (gen-m5 known failures 1 -> 24) and four visible-parity REGRESSION lines: 5136e04c4ce978c3 (8 cells),
+  5614fae2486f6dd5 (7), edae081ad96b1d56 (6), f01da2cf9f4f2105 (2); the lock allows 0 for each.
+- Not done: I did not check the `pairwise` share in report.json `argument_coverage` against the 0.9 target (18 cases
+  is probably too few; the policy may need more runs or a bigger count), did not run `make eval-baseline`, did not own the
+  failing cells (existing open task, or `make new-task` in this lane with `campaign: semantics` and a
+  `## Visible-parity stage` section naming each case stem and A1 names, decision 0159), did not record quirks in
+  docs/excel-semantics/, and did not run `make check`, the reviewers or open the PR.
+- Next step: `make eval-show CASE=<id>` on the four visible-parity cases and the 23 failing cells, group them by rule,
+  find or file the owning tasks, then `make eval-baseline` and `make unowned-off ALL=1`.
+- Do not hand-edit eval/baseline/ or the visible-parity lock.
