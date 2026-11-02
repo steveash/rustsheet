@@ -87,10 +87,11 @@ fn test_forecast_wrong_arg_count() {
     assert_eq!(model._get_text("A1"), "#ERROR!");
 }
 
-/// T-2028: the FORECAST.ETS family stays `#N/IMPL!`, but `target_date` and `statistic_type`
-/// read as numbers first (text is `#VALUE!`) and lift over a two-cell range.
+/// T-2028: `target_date` and `statistic_type` read as numbers first (text is `#VALUE!`) and lift
+/// over a two-cell range; then FORECAST.ETS computes (T-3600) and CONFINT and STAT are
+/// `#N/IMPL!` until T-3601.
 #[test]
-fn forecast_ets_family_reads_lifted_argument_then_is_not_implemented() {
+fn forecast_ets_family_reads_lifted_argument_first() {
     let mut model = new_empty_model();
     for row in 1..=8 {
         model._set(&format!("A{row}"), &format!("{}", row * 2));
@@ -108,7 +109,7 @@ fn forecast_ets_family_reads_lifted_argument_then_is_not_implemented() {
     let got: Vec<String> = (1..=8).map(|r| model._get_text(&format!("D{r}"))).collect();
     assert_eq!(
         got,
-        ["#N/IMPL!", "#VALUE!", "#N/IMPL!", "#VALUE!", "#N/IMPL!", "#VALUE!", "2", "2"]
+        ["18", "#VALUE!", "#N/IMPL!", "#VALUE!", "#N/IMPL!", "#VALUE!", "2", "2"]
     );
 }
 
@@ -143,8 +144,8 @@ fn forecast_ets_family_first_failing_argument_decides() {
         ("=FORECAST.ETS(9,A1:A8,B1:B8,\"x\",NA())", "#VALUE!"),
         ("=FORECAST.ETS.STAT(A1:A8,B1:B8,C1,NA())", "#VALUE!"),
         ("=FORECAST.ETS.SEASONALITY(A1:A8,B1:B8,\"x\")", "#VALUE!"),
-        // A call with no error or text is computed (SEASONALITY, T-3599) or not implemented yet.
-        ("=FORECAST.ETS(9,A1:A8,B1:B8,1,1,1)", "#N/IMPL!"),
+        // A call with no error or text is computed (T-3599, T-3600): a straight line continues.
+        ("=FORECAST.ETS(9,A1:A8,B1:B8,1,1,1)", "18"),
         ("=FORECAST.ETS.SEASONALITY(A1:A8,B1:B8,1,1)", "0"),
         // A two-row scalar argument lifts.
         ("=ROWS(FORECAST.ETS(9,A1:A8,B1:B8,{1;1}))", "2"),
@@ -160,6 +161,49 @@ fn forecast_ets_family_first_failing_argument_decides() {
             *expected,
             "{formula}"
         );
+    }
+}
+
+// FORECAST.ETS on exact data forecasts exactly (T-3600, decision 0221: the model is
+// unverified against Excel, but exact data has one answer whatever the fitted α, β and γ).
+#[test]
+fn forecast_ets_exact_data() {
+    let mut model = new_empty_model();
+    let season = [3.0, -1.0, -4.0, 2.0];
+    for t in 1..=24 {
+        model._set(&format!("A{t}"), &format!("{t}"));
+        model._set(&format!("B{t}"), &format!("{}", 3 + 2 * t));
+        let value = 10.0 + f64::from(t) + season[(t % 4) as usize];
+        model._set(&format!("C{t}"), &format!("{value}"));
+    }
+    let cells = [
+        // A straight line continues, between steps too.
+        ("=FORECAST.ETS(27,B1:B24,A1:A24)", "57"),
+        ("=FORECAST.ETS(24.5,B1:B24,A1:A24,0)", "52"),
+        ("=FORECAST.ETS(24,B1:B24,A1:A24)", "51"),
+        // An exactly repeating season with a trend repeats: t = 26 is 36 + season[2].
+        ("=FORECAST.ETS(26,C1:C24,A1:A24,4)", "32"),
+        ("=FORECAST.ETS(27,C1:C24,A1:A24)", "39"),
+        // A target before the last time stamp, and seasonality out of range, are #NUM!.
+        ("=FORECAST.ETS(23,B1:B24,A1:A24)", "#NUM!"),
+        ("=FORECAST.ETS(30,B1:B24,A1:A24,8761)", "#NUM!"),
+        ("=FORECAST.ETS(30,B1:B24,A1:A24,1,2)", "#NUM!"),
+        // Different sizes are #N/A.
+        ("=FORECAST.ETS(30,B1:B24,A1:A23)", "#N/A"),
+    ];
+    for (row, (formula, _)) in cells.iter().enumerate() {
+        model._set(&format!("E{}", row + 1), formula);
+    }
+    model.evaluate();
+    for (row, (formula, expected)) in cells.iter().enumerate() {
+        let text = model._get_text(&format!("E{}", row + 1));
+        match expected.parse::<f64>() {
+            Ok(number) => {
+                let actual: f64 = text.parse().unwrap_or(f64::NAN);
+                assert!((actual - number).abs() < 1e-9, "{formula}: {text}");
+            }
+            Err(_) => assert_eq!(text, *expected, "{formula}"),
+        }
     }
 }
 

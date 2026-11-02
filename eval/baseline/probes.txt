@@ -2965,7 +2965,6 @@ F	probes/forecast-ets-longer-series.case.json	Sheet1!K33
 F	probes/forecast-ets-longer-series.case.json	Sheet1!K34
 F	probes/forecast-ets-longer-series.case.json	Sheet1!K35
 F	probes/forecast-ets-longer-series.case.json	Sheet1!K36
-F	probes/forecast-ets-longer-series.case.json	Sheet1!K37
 F	probes/forecast-ets-longer-series.case.json	Sheet1!K39
 F	probes/forecast-ets-longer-series.case.json	Sheet1!K4
 F	probes/forecast-ets-longer-series.case.json	Sheet1!K40

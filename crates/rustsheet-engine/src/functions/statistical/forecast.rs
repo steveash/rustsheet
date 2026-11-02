@@ -1,7 +1,9 @@
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use super::ets::{
-    self, build_series, completion_setting, detect_season, DuplicateAggregate, Point, SeriesOptions,
+    self, build_series, completion_setting, detect_season, fit, fit_work, season_setting,
+    season_work, DuplicateAggregate, Fit, Point, Season, Series, SeriesOptions,
 };
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
@@ -171,7 +173,7 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        self.forecast_ets_lifted(Function::ForecastEts, [1, 2], args, cell, not_implemented)
+        self.forecast_ets_lifted(Function::ForecastEts, [1, 2], args, cell, forecast_element)
     }
 
     pub(crate) fn fn_forecast_ets_confint(
@@ -217,12 +219,17 @@ impl Model {
     }
 }
 
-/// The `values` and `timeline` of one FORECAST.ETS-family call, read once, and the season length
-/// of each series shape a lifted call asks for, computed once.
+/// The `values` and `timeline` of one FORECAST.ETS-family call, read once, and what a lifted
+/// call asks of them, computed once per series shape and season: the series, its detected
+/// season and the fitted model.
 struct EtsData {
     values: Result<Vec<Point>, Error>,
     timeline: Result<Vec<Point>, Error>,
+    series: HashMap<SeriesOptions, Result<Rc<Series>, Error>>,
     seasons: HashMap<SeriesOptions, Result<usize, Error>>,
+    fits: HashMap<(SeriesOptions, usize), Rc<Fit>>,
+    /// Work spent so far, against [`ets::MAX_CALL_WORK`].
+    work: usize,
 }
 
 impl EtsData {
@@ -230,24 +237,64 @@ impl EtsData {
         EtsData {
             values,
             timeline,
+            series: HashMap::new(),
             seasons: HashMap::new(),
+            fits: HashMap::new(),
+            work: 0,
         }
     }
 
-    /// The detected season length of the series `options` builds (an error in `values` comes
-    /// before one in `timeline`).
-    fn season(&mut self, options: SeriesOptions) -> Result<usize, Error> {
-        if let Some(season) = self.seasons.get(&options) {
-            return season.clone();
+    /// Charges `cost` to the call: `#NUM!` once the call's work would pass
+    /// [`ets::MAX_CALL_WORK`].
+    fn spend(&mut self, cost: usize) -> Result<(), Error> {
+        let work = self.work.saturating_add(cost);
+        if work > ets::MAX_CALL_WORK {
+            return Err(Error::NUM);
         }
-        let season = match (&self.values, &self.timeline) {
+        self.work = work;
+        Ok(())
+    }
+
+    /// The series `options` builds (an error in `values` comes before one in `timeline`).
+    fn series(&mut self, options: SeriesOptions) -> Result<Rc<Series>, Error> {
+        if let Some(series) = self.series.get(&options) {
+            return series.clone();
+        }
+        let series = match (&self.values, &self.timeline) {
             (Err(error), _) | (_, Err(error)) => Err(error.clone()),
-            (Ok(values), Ok(timeline)) => {
-                build_series(values, timeline, options).and_then(|series| detect_season(&series.y))
-            }
+            (Ok(values), Ok(timeline)) => build_series(values, timeline, options).map(Rc::new),
         };
-        self.seasons.insert(options, season.clone());
-        season
+        self.series.insert(options, series.clone());
+        series
+    }
+
+    /// The season length `season` asks for on the series `options` builds.
+    fn season(&mut self, options: SeriesOptions, season: Season) -> Result<usize, Error> {
+        let series = self.series(options)?;
+        match season {
+            Season::Fixed(length) => Ok(length),
+            Season::Detect => {
+                if let Some(detected) = self.seasons.get(&options) {
+                    return detected.clone();
+                }
+                self.spend(season_work(series.y.len()))?;
+                let detected = detect_season(&series.y);
+                self.seasons.insert(options, detected.clone());
+                detected
+            }
+        }
+    }
+
+    /// The model fitted to the series `options` builds, with season length `m`.
+    fn fit(&mut self, options: SeriesOptions, m: usize) -> Result<Rc<Fit>, Error> {
+        if let Some(fitted) = self.fits.get(&(options, m)) {
+            return Ok(Rc::clone(fitted));
+        }
+        let series = self.series(options)?;
+        self.spend(fit_work(series.y.len(), m))?;
+        let fitted = Rc::new(fit(&series.y, m));
+        self.fits.insert((options, m), Rc::clone(&fitted));
+        Ok(fitted)
     }
 }
 
@@ -276,10 +323,32 @@ fn series_options(
 /// season length, 0 for none (unverified against Excel, decision 0221).
 fn seasonality_element(data: &mut EtsData, settings: &[Option<f64>]) -> Result<f64, Error> {
     let options = series_options(settings, 2, 3)?;
-    data.season(options).map(|season| season as f64)
+    data.season(options, Season::Detect)
+        .map(|season| season as f64)
 }
 
-/// The members not implemented yet (T-3600, T-3601).
+/// `seasonality` at `index` (detect when not given): `#NUM!` when out of range.
+fn season_option(settings: &[Option<f64>], index: usize) -> Result<Season, Error> {
+    match settings.get(index).copied().flatten() {
+        Some(value) => season_setting(value).ok_or(Error::NUM),
+        None => Ok(Season::Detect),
+    }
+}
+
+/// `FORECAST.ETS(target_date, values, timeline, [seasonality], [data_completion],
+/// [aggregation])`: the model's forecast at `target_date` (unverified against Excel, decision
+/// 0221). The settings are checked in order, then the series is built, then `target_date` must
+/// not be before its last time stamp.
+fn forecast_element(data: &mut EtsData, settings: &[Option<f64>]) -> Result<f64, Error> {
+    let target = settings.first().copied().flatten().ok_or(Error::VALUE)?;
+    let season = season_option(settings, 3)?;
+    let options = series_options(settings, 4, 5)?;
+    let horizon = data.series(options)?.horizon(target)?;
+    let m = data.season(options, season)?;
+    Ok(data.fit(options, m)?.forecast(horizon))
+}
+
+/// The members not implemented yet (T-3601).
 fn not_implemented(_: &mut EtsData, _: &[Option<f64>]) -> Result<f64, Error> {
     Err(Error::NIMPL)
 }
@@ -295,4 +364,24 @@ fn array_point(node: &ArrayNode, cell: CellReferenceIndex) -> Result<Point, Calc
         }
         _ => Point::Other,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ets, fit_work, EtsData};
+    use crate::expressions::token::Error;
+
+    #[test]
+    fn a_call_spends_at_most_its_work_budget() {
+        let mut data = EtsData::new(Ok(Vec::new()), Ok(Vec::new()));
+        assert_eq!(data.spend(ets::MAX_CALL_WORK), Ok(()));
+        assert_eq!(data.spend(1), Err(Error::NUM));
+        // A fit of the longest series costs less than half the budget: two fit, a third does not.
+        assert!(2 * fit_work(ets::MAX_POINTS, 0) <= ets::MAX_CALL_WORK);
+        assert!(3 * fit_work(ets::MAX_POINTS, 0) > ets::MAX_CALL_WORK);
+        // A short series charges its season length too: a lifted `seasonality` array of long
+        // seasons over three points is cut off after about 57 fits, not run for thousands.
+        let fits = ets::MAX_CALL_WORK / fit_work(3, ets::MAX_SEASON);
+        assert!((50..64).contains(&fits), "{fits}");
+    }
 }

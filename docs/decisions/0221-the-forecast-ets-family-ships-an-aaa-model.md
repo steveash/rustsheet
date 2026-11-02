@@ -34,8 +34,12 @@
     regression. Every one is a SEASONALITY call whose `values` and `timeline` differ in size. That is `#N/A` in
     Microsoft's documentation and on excel-graph, so each matches Excel's own `#N/A`. None is evidence for the model.
     Calls that now compute a number stay known failures against the web's `#N/A`, owned by T-2425 as before.
+  - FORECAST.ETS (T-3600): `make eval-baseline` fixes 169 more cells (gen-m9 168, probes 1) with no regression. Each
+    expects Excel's `#N/A`, and each matches through the same size rule (130 top-level FORECAST.ETS calls, 39 nested
+    in another function). None is evidence for the fit.
   - Directive 5 deviations, listed in statistics.md: season detection is `#NUM!` past 2^27 multiply-adds (a series of
-    16,385 points or more), and `values` or `timeline` above 200,000 cells is `#NUM!`.
+    16,385 points or more), `values` or `timeline` above 200,000 cells is `#NUM!`, and one call's detections and fits
+    share a work budget of 2^30 (T-3600).
   - T-2425 and T-1553 keep their scope: desktop values, then matching them. Their M14 milestone and campaigns are
     unchanged.
   - Reviewers check the attribution and the UNVERIFIED marking. They do not ask for Excel evidence that this ruling

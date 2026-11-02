@@ -3,7 +3,7 @@ id: T-3600
 title: "FORECAST.ETS: AAA exponential-smoothing fit and forecast adapted from gridcraft (owner ruling, unverified against Excel)"
 milestone: M14
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -29,12 +29,21 @@ the work bounded (directive 5): the optimiser's evaluations times the series len
 per series and season, as `EtsData` does for SEASONALITY).
 
 ## Acceptance criteria
-- [ ] FORECAST.ETS computes the forecast; exact data forecast exactly (a straight line continues; an exactly repeating
+- [x] FORECAST.ETS computes the forecast; exact data forecast exactly (a straight line continues; an exactly repeating
       season repeats), shown by unit tests.
-- [ ] statistics.md's model section gains the fit and forecast rules (UNVERIFIED), and any new cap a DEVIATION.
-- [ ] `make eval-baseline` shows no regression (or each one is named and accepted under decision 0221 by the owner).
-- [ ] `make check` green; reviewers approve.
+- [x] statistics.md's model section gains the fit and forecast rules (UNVERIFIED), and any new cap a DEVIATION.
+- [x] `make eval-baseline` shows no regression (or each one is named and accepted under decision 0221 by the owner).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - CONFINT and STAT (T-3601).
 - Matching desktop Excel (T-2425).
+
+## Outcome
+FORECAST.ETS computes the AAA model adapted from gridcraft (statistical/ets/model.rs: initial states, filter, grid
+plus Nelder–Mead optimiser, forecast), unverified against Excel under decision 0221. `EtsData` memoises the series,
+detected season and fit per series shape and season, and one call's detections and fits share a work budget of 2^30
+(`MAX_CALL_WORK`, a DEVIATION), which also bounds the repeated SEASONALITY detections security noted on T-3599.
+Unit tests: a straight line and an exactly repeating season with a trend forecast exactly; `target_date` before the
+last point and an out-of-range `seasonality` are `#NUM!`. Eval: 169 cells fixed (gen-m9 168, probes 1), 0
+regressions, all size-mismatch `#N/A` matches.
