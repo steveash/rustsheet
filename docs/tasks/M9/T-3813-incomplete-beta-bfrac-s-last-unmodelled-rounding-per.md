@@ -9,6 +9,7 @@ size: M
 tier: opus
 depends_on: []
 campaign: accuracy
+defer: phase-1b
 ---
 
 ## Goal
@@ -16,6 +17,12 @@ The last unmodelled rounding in Excel's bfrac terms is found, so the T-3571 mode
 negatives are recorded with their counts.
 
 ## Context
+- Decision 0188 R5: parked as Phase 1b, like T-3323. T-3571's model puts all 1,200 fresh points inside Gate A's
+  envelope, so the remaining misses are last-digit work on dense probes-numeric cells. R4.4: the misses are mostly
+  1-3 ulp, inside the web-against-desktop floor (up to 4 ulp, docs/research/oracle-calibration.md), and every T-3571
+  probe is excel-graph only; so before fitting any rounding below 4 ulp, refill the probes (decision 0112) and check
+  them against desktop Excel. Until then the goal is limited to the 23 fresh points beyond 4 ulp (largest 11) and
+  the 12 beyond 15 digits.
 - T-3571 (docs/research/t2464/r5-bfrac/RESULTS.md section 4): the frozen Lentz model is bit-exact on 168/170 fresh
   points under 10 terms but 435/690 at 10-19, 69/232 at 20-29 and 22/108 beyond; misses are ±1-3 ulp. One-ulp nudges
   of a single β_n (three times as often as α_n) fix 409 of 468 tune misses (`nudge.py`), so one rounding per term in β

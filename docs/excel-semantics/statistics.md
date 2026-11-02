@@ -3122,7 +3122,7 @@ cdf = fl(fl(P*fl(x*y)) * f),  P = BETA.DIST(x, a, b, FALSE)
 Evidence: probes-numeric t3571-r5-bfrac-tune, -hold, -fresh; docs/research/t2464/r5-bfrac (`model.py`,
 `score_final.out`, `score_fresh.out`, `runs.out`, `lamab.out`).
 Ours: TOMS's forward recurrence in doubles with TOMS's λ (`functions/statistical/bratio/bfrac.rs`, T-2508).
-Status: VERIFIED (excel-graph) on the region above: 15 digits on 1,188 of 1,200 fresh points (the 12 misses are
+Status: VERIFIED (excel-graph) to 15 digits on the region above, bit-level PARTIAL: 15 digits on 1,188 of 1,200 fresh points (the 12 misses are
 18-42-term points, 3-10 ulp, T-3813) and 1,632 of 1,632 hold-out cells; bit-level open past 10 terms; outside the region
 UNVERIFIED
 Tasks: T-3571, T-3812, T-3813, T-3323

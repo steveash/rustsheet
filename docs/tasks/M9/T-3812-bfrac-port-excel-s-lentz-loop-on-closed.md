@@ -16,6 +16,9 @@ The engine's bfrac reproduces Excel's arithmetic: TOMS 708's continued fraction 
 Lentz loop on closed-form terms, with Excel's λ, as docs/research/t2464/r5-bfrac/model.py freezes it.
 
 ## Context
+- Decision 0188 R5 does not defer this port: its cells are not all within 15 digits of Excel today. On
+  t3571-r5-bfrac-fresh the TOMS recurrence the engine runs is within 15 digits on 844 of 1,200 points, the model on
+  1,188 (decision 0114's test), so the port is Gate A-level work, not last-digit reproduction.
 - T-3571 (docs/research/t2464/r5-bfrac/RESULTS.md, statistics.md "Incomplete beta bfrac is TOMS's fraction in a Lentz
   loop"): on Excel's own density the model scores 1,158/1,630/1,632 of 1,632 on probes-numeric t3571-r5-bfrac-hold and
   694/1,177/1,188 of 1,200 on t3571-r5-bfrac-fresh, against 162/977/1,384 and 86/532/844 for the TOMS recurrence the
