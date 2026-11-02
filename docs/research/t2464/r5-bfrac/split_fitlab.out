@@ -1,0 +1,13 @@
+margin 5%
+tune+hold: train 2231, test 937
+  FROZEN         train 1689/2229/2231 (75.7%)  test 705/934/937 (75.2%)
+  M0 (TOMS dbl)  train 271/1535/1991 (12.1%)  test 106/630/855 (11.3%)
+  CR             train 63/456/1156 (2.8%)  test 26/190/479 (2.8%)
+tune only: train 1076, test 460
+  FROZEN         train 864/1075/1076 (80.3%)  test 372/458/460 (80.9%)
+  M0 (TOMS dbl)  train 158/847/1020 (14.7%)  test 57/341/442 (12.4%)
+  CR             train 29/222/602 (2.7%)  test 15/105/252 (3.3%)
+all three: train 3099, test 1269
+  FROZEN         train 2190/3080/3087 (70.7%)  test 898/1260/1269 (70.8%)
+  M0 (TOMS dbl)  train 336/1923/2600 (10.8%)  test 127/774/1090 (10.0%)
+  CR             train 75/544/1342 (2.4%)  test 29/219/561 (2.3%)

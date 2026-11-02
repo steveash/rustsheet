@@ -36,6 +36,9 @@ Lentz loop on closed-form terms, with Excel's λ, as docs/research/t2464/r5-bfra
 - [ ] Unit tests pin a few cells of t3571-r5-bfrac-hold where the engine's density equals Excel's.
 - [ ] Eval: probes-numeric t3571-r5-bfrac-* and t2464-w2f-xruns-1's bfrac cells counted before and after in the
       Outcome; no eval regressions (or a decision record per decision 0082 for cells lost to the better model).
+- [ ] Gate A envelope rechecked with the engine's density on probes-numeric t3571-r5-bfrac-fresh (T-3571's 1,200 of
+      1,200 used Excel's density read off the sheet), every point outside listed; once BETA.DIST has a Gate A table
+      (T-3529), an `r4-T-3812` batch in `eval/accuracy/tables/BETA.DIST/` instead (decision 0188 R4.2).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

@@ -3,7 +3,7 @@ own pdf cell. Prints exact count and the residual (Excel's implied r minus model
 import subprocess, sys, statistics
 from fractions import Fraction as F
 from data import load
-EXE = sys.argv[1] if len(sys.argv) > 1 else '/tmp/claude-0/bffma'
+EXE = sys.argv[1] if len(sys.argv) > 1 else './bffma'  # cc -O0 -mfma -ffp-contract=off -o bffma bfrac_fma.c -lm
 case, blk = (sys.argv[2], int(sys.argv[3])) if len(sys.argv) > 3 else ('t2464-w2f-xruns-1', 7)
 rows = load(case, blk)
 inp = ''.join(f"{r['a'].hex()} {r['b'].hex()} {r['x'].hex()} {(1 - r['x']).hex()}\n" for r in rows)

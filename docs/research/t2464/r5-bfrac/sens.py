@@ -41,4 +41,3 @@ for i, nm in enumerate(names):
     k = np.polyfit(v, ee, 1)[0]
     print(f'{nm:15s} sd {v.std():.2f} corr {np.corrcoef(v, ee)[0,1]:+.3f} slope {k:+.2f}')
 print('ee mean %+.2f sd %.2f' % (ee.mean(), ee.std()))
-np.save('/tmp/claude-0/sensX.npy', X); np.save('/tmp/claude-0/ee_dbl.npy', ee)

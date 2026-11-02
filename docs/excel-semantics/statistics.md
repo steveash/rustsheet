@@ -3114,10 +3114,11 @@ cdf = fl(fl(P*fl(x*y)) * f),  P = BETA.DIST(x, a, b, FALSE)
   tagged `/// FITTED(T-3571, 1536 cells, a, b 40..5000, unswapped call (x below the mean), z -8..-0.2 sd)`.
 - Scores, on Excel's own density (bit-exact/w4/w15): hold-out 1,158/1,630/1,632 of 1,632 (TOMS doubles as ported
   162/977/1,384, CR 45/319/781); fresh sweep after the freeze, log-uniform (a, b) in [40, 5000], 694/1,177/1,188 of
-  1,200 (TOMS 86/532/844, CR 15/117/268), all 1,200 inside Gate A's envelope; w2's (100, 120) run 401/998/1,024 of
+  1,200 (TOMS 86/532/844, CR 15/117/268), all 1,200 inside Gate A's envelope; the fit lab's hash split on tune+hold,
+  train 75.7% and test 75.2% bit-exact (CR test 26 of 937); w2's (100, 120) run 401/998/1,024 of
   1,024 (w4's best 185).
 - Open: misses grow with the term count (99% bit-exact under 10 terms, 63% at 10-19, 30% at 20-29, 20% beyond),
-  ±1-3 ulp; one-ulp nudges of single β_n fix most of them, so one rounding inside β (or α) per term is still unmodelled.
+  mostly 1-3 ulp (23 of 1,200 fresh points beyond 4 ulp, the largest 11); one-ulp nudges of single β_n fix most of them, so one rounding inside β (or α) per term is still unmodelled.
 Evidence: probes-numeric t3571-r5-bfrac-tune, -hold, -fresh; docs/research/t2464/r5-bfrac (`model.py`,
 `score_final.out`, `score_fresh.out`, `runs.out`, `lamab.out`).
 Ours: TOMS's forward recurrence in doubles with TOMS's λ (`functions/statistical/bratio/bfrac.rs`, T-2508).

@@ -43,17 +43,26 @@ Python: any venv with numpy and mpmath (this run used one outside the repo; the 
    | t3571-r5-bfrac-fresh (built and filled after the freeze) | 1,200 | **694/1,177/1,188** | 86/532/844 | 15/117/268 |
    | t2464-w2f-xruns-1 (100, 120) run (w4's best 185 exact) | 1,024 | 401/998/1,024 | | |
 
-   - Hold-out rate 71.0% against tune 80.5%: inside the 10-point margin fixed before scoring (section 0), and far
-     above CR's 45. Gate A envelope on the fresh sweep: 1,200 of 1,200 inside (within 15 digits of Excel or 1e-9 of
-     50-digit math); none outside.
+   - Case split: hold-out rate 71.0% against tune 80.5%, inside the 10-point margin fixed before scoring (section 0),
+     and far above CR's 45.
+   - **Fit lab hash split** (R4.1, T-3360's `is_holdout`, about 30% held out, margin 5 points; `split_fitlab.py` →
+     `split_fitlab.out`): tune+hold FROZEN train 1,689/2,229/2,231 of 2,231 (75.7%), test 705/934/937 of 937 (75.2%),
+     CR test 26/190/479, M0 test 106/630/855; tune only train 80.3%, test 372/458/460 (80.9%), CR test 15; all three
+     probes train 70.7%, test 898/1,260/1,269 (70.8%), CR test 29. Accepted: test within 5 points of train, and above
+     CR on test. The case split above is the stricter extra check (every tune cell was tuned on).
+   - Gate A envelope on the fresh sweep: 1,200 of 1,200 inside (within 15 digits of Excel or 1e-9 of 50-digit math);
+     none outside.
    - The exact rate falls with the term count (fresh sweep, `score_extra.out`): 168/170 under 10 terms, 435/690 at
-     10-19, 69/232 at 20-29, 22/108 at 30+. Misses are ±1-3 ulp (`resid.py`: residual mean 0, sd 0.5 at 6 terms to 2.8
-     at 23 with the earlier α form). One more rounding per term is not modelled (section 4).
+     10-19, 69/232 at 20-29, 22/108 at 30+. Misses are mostly 1-3 ulp: of the 1,200 fresh points 254 are 1 ulp off,
+     152 2, 55 3, and 23 beyond 4 ulp, the largest 11 (`resid.py`: residual mean 0, sd 0.5 at 6 terms to 2.8 at 23
+     with the earlier α form). One more rounding per term is not modelled (section 4).
 5. **Region.** All three probes lie in a, b in [40, 5000] on the unswapped call (x below the mean, z from -8 to -0.2 sd); a0 < 40 with b0 >= 40, shapes above 5000, the swapped call and the
    band within 0.2 sd of the mean are not probed, so the model is claimed only on that region.
 6. **Fits.** EPS = 10·DBL_EPSILON is `/// FITTED(T-3571, 1536 cells, a, b 40..5000, unswapped call (x below the mean), z -8..-0.2 sd)`: a stop threshold chosen by scoring eight
    candidates on the tune probe; the scan brackets it in (2.1e-15, 2.5e-15) (`score_eps_tune.out`) and 10·DBL_EPSILON
-   is the natural constant inside. Everything else is structural, ranked among candidates (loop family, start, term
+   is the natural constant inside. Its ends move 168 and 58 of the 1,632 hold-out cells (exact 1,087 and 1,119
+   against 1,158) and 56 and 60 of the 1,200 fresh ones (682 and 661 against 694) (`eps_sens.py` → `eps_sens.out`),
+   so the constant is not tuned to the two tune runs that set the bracket. Everything else is structural, ranked among candidates (loop family, start, term
    forms, association): hold-out and fresh sweep above, no tag. TINY = 1e-30 is Numerical Recipes' FPMIN (1e-300
    scores lower, `score_loop_tune.out`). No step targets sub-ulp differences: every choice moved whole cells.
 
@@ -137,4 +146,4 @@ Python: any venv with numpy and mpmath (this run used one outside the repo; the 
 | `score_lentz.py`, `score_hyb.py`, `score_expl.py`, `score_loop.py`, `score_eps.py`, `score_b0.py`, `alpha_enum.py`, `beta_enum.py` | ranked structural choices | `*_tune.out` |
 | `termswap*.py`, `fixedn.py`, `nudge.py`, `resid.py` | diagnostics | `termswap.out`, `fixedn.out`, `nudge.out` |
 | `model.py` | the frozen model | |
-| `score_final.py`, `score_fresh.py`, `score_extra.py` | scores | `score_final.out`, `score_fresh.out`, `score_extra.out` |
+| `score_final.py`, `score_fresh.py`, `score_extra.py`, `split_fitlab.py`, `eps_sens.py` | scores, fit lab split, EPS bracket | `score_final.out`, `score_fresh.out`, `score_extra.out`, `split_fitlab.out`, `eps_sens.out` |

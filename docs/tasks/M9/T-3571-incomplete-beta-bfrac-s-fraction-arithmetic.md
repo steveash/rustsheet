@@ -48,6 +48,11 @@ bfrac's continued-fraction arithmetic is modelled as Excel evaluates it.
   TOMS doubles as ported 162/977/1,384); **fresh sweep** (built and filled after the freeze, log-uniform (a, b) in
   [40, 5000]) 694/1,177/1,188 of 1,200 (CR 15/117/268, TOMS 86/532/844); Gate A envelope 1,200 of 1,200 inside;
   w2's (100, 120) run 401/998/1,024 (w4's best 185).
+- Fit lab hash split (R4.1, `split_fitlab.out`, margin 5 points): tune+hold FROZEN train 1,689/2,229/2,231 of 2,231
+  (75.7%), test 705/934/937 of 937 (75.2%), CR test 26/190/479; all three probes train 70.7%, test 898/1,260/1,269
+  (70.8%), CR test 29: accepted.
+- EPS bracket ends move 168 and 58 hold-out cells and 56 and 60 fresh cells, each lowering the exact count
+  (`eps_sens.out`).
 - Region: the evidence covers a, b in [40, 5000] on the unswapped call (x below the mean, z from -8 to -0.2 sd); the semantics entry and T-3812 are limited to it.
 - Fits (decision 0188 R4): EPS = 10·DBL_EPSILON is `/// FITTED(T-3571, 1536 cells, a, b 40..5000, unswapped call (x below the mean), z -8..-0.2 sd)`, bracketed in
   (2.1e-15, 2.5e-15) by an 8-value scan; the loop family, start and term forms are structural choices ranked on tune
@@ -55,6 +60,7 @@ bfrac's continued-fraction arithmetic is modelled as Excel evaluates it.
 - Probes: probes-numeric t3571-r5-bfrac-tune, -hold, -fresh (excel-graph, 2026-11-02).
 - Negatives with counts: RESULTS.md section 3 (TOMS recurrence variants best 193/1,024; FMA masks 156; Steed 198;
   backward 160; x87 or FMA terms, other assemblies, other Lentz starts).
-- Open: one rounding per term past 10 terms (bit-exact 99% under 10 terms, 20% beyond 30); the swapped call's λ.
+- Open: one rounding per term past 10 terms (bit-exact 99% under 10 terms, 20% beyond 30; misses mostly 1-3 ulp,
+  23 fresh points beyond 4 ulp, the largest 11); the swapped call's λ.
 - Follow-ups: T-3812 (engine port, functions-stat, sonnet), T-3813 (the per-term rounding, research, opus).
 - Eval delta: none (research and probes only; the new probe cases have no engine-side expectations changed).
