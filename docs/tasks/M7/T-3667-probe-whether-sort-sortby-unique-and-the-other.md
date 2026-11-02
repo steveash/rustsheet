@@ -3,7 +3,7 @@ id: T-3667
 title: "Probe whether SORT, SORTBY, UNIQUE and the other array functions read a one-cell error reference as a 1x1 array"
 milestone: M7
 lane: functions-lookup
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -35,3 +35,9 @@ error (the other arguments checked first), as TOCOL, TOROW and FILTER do; each f
 
 ## Out of scope
 - TOCOL, TOROW and FILTER themselves (T-3506), and SORT's argument-check order (T-3507).
+
+## Outcome
+Probe `probes/one-cell-error-ref-array-functions` (78 cells, excel-graph): TAKE, DROP, CHOOSEROWS, CHOOSECOLS, VSTACK and
+HSTACK read a one-cell error reference as a 1x1 array; SORT, SORTBY, UNIQUE, EXPAND, WRAPROWS and WRAPCOLS return its error.
+TAKE/DROP already matched; CHOOSEROWS/CHOOSECOLS/VSTACK/HSTACK now use `one_cell_error_ref_as_array`. Recorded in arrays.md.
+Probe case 60/78 -> 78/78 cells.

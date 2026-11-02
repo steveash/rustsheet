@@ -2161,6 +2161,21 @@ still returns the error first.
 Status: VERIFIED (excel-graph)
 Tasks: T-3506
 
+## A one-cell error reference in the other array functions (T-3667)
+Rule: with C2 holding `#DIV/0!` (probes/one-cell-error-ref-array-functions, excel-graph, 2026-11-01; every cell paired with
+the literal error):
+- Read as a 1x1 array holding the error, the other arguments checked first, like TOCOL, TOROW and FILTER:
+  - `TAKE(C2,0)` is `#CALC!`, `TAKE(C2,"x")` `#VALUE!`, `DROP(C2,"x")` `#VALUE!`, `DROP(C2,1)` `#CALC!` (literal: `#DIV/0!`).
+  - `CHOOSEROWS(C2,2)`, `CHOOSECOLS(C2,2)` and `CHOOSECOLS(C2,0)` are `#VALUE!` (literal: `#DIV/0!`); `CHOOSEROWS(C2,1)` is the error.
+  - `VSTACK(D1:E1,C2)` spills `1, 4` over `#DIV/0!, #N/A`, and `HSTACK(D1:D3,C2)` stacks the error as a column, padded with
+    `#N/A`, where the literal error makes the whole call `#DIV/0!`; the error reference stays an element wherever it stands.
+- Not a 1x1 array, the reference's error returned whatever the later arguments: SORT, SORTBY, UNIQUE, EXPAND, WRAPROWS and
+  WRAPCOLS (`SORT(C2,5)`, `UNIQUE(C2,"x")`, `EXPAND(C2,"x")`, `WRAPROWS(C2,0)` are all `#DIV/0!`).
+Ours: implemented (T-3667): TAKE and DROP already kept the reference; CHOOSEROWS, CHOOSECOLS, VSTACK and HSTACK use
+`one_cell_error_ref_as_array`; the other six already match.
+Status: VERIFIED (excel-graph)
+Tasks: T-3667
+
 ## TOCOL, TOROW and SORT: which bad argument wins (T-3497)
 Rule:
 - TOCOL and TOROW, `ignore` against an error in `scan_by_column`:
