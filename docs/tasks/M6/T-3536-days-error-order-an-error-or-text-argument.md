@@ -3,7 +3,7 @@ id: T-3536
 title: "DAYS error order: an error or text argument beats #VALUE! (gen-m6 arg-pairs cells)"
 milestone: M6
 lane: functions-date
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -36,3 +36,6 @@ Cells:
 - a4a301d00b46acf3 A310
 - a4a301d00b46acf3 A493
 - a4a301d00b46acf3 A499
+
+## Outcome
+`fn_days` now reads errors first, then the arguments left to right (unreadable text `#VALUE!`, off-calendar number `#NUM!`). gen-m6/a4a301d00b46acf3 passes 174/174 (the ten listed cells fixed). Recorded in dates.md "DAYS error order".
