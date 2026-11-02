@@ -31,6 +31,9 @@ Points the draws meet, all inside the envelope of a correct engine:
   because the unit 1E-309 is flushed. The math keeps the decimal there, so Excel is more than G
   off it. Every such point is within Gate A's absolute floor 1e-300 of the math, and the engine
   matches Excel (decision 0223 lists the points).
+
+TRUNC (slice 4g, T-3674, decision 0246) is ROUNDDOWN under another name (numbers.md, "TRUNC is
+ROUNDDOWN", 56 probe cells) and shares its definition, draws included.
 """
 
 from __future__ import annotations
@@ -62,7 +65,9 @@ MAX_DIGITS = 400  # |num_digits| drawn up to here (see the module docstring)
 DOUBLE_MAX = Decimal(sys.float_info.max)
 # Wide enough for any quantize below: a 15-digit coefficient and exponents down to -400 - 323.
 _CONTEXT = Context(prec=40, Emax=10**6, Emin=-(10**6))
-_MODES = {"ROUND": ROUND_HALF_UP, "ROUNDUP": ROUND_UP, "ROUNDDOWN": ROUND_DOWN}
+# TRUNC is ROUNDDOWN with the same two stages, ties and wrap (numbers.md, "TRUNC is ROUNDDOWN").
+_MODES = {"ROUND": ROUND_HALF_UP, "ROUNDUP": ROUND_UP, "ROUNDDOWN": ROUND_DOWN, "TRUNC": ROUND_DOWN}
+TRUNC_SOURCE = "numbers.md#trunc-is-rounddown"
 
 
 def sixteenth_digit_tie(number: float) -> bool:
@@ -187,7 +192,8 @@ def _definition(function: str) -> Definition:
             ),
             value=_value(function),
             draw=_draw,
-            sources=(DECISION, TWO_STAGE_SOURCE, WRAP_SOURCE, "numbers.md#roundup-adds-the-unit-in-binary"),
+            sources=(DECISION, TWO_STAGE_SOURCE, WRAP_SOURCE, "numbers.md#roundup-adds-the-unit-in-binary")
+            + ((TRUNC_SOURCE, "decision 0246") if function == "TRUNC" else ()),
         )
     )
 
@@ -195,3 +201,4 @@ def _definition(function: str) -> Definition:
 ROUND = _definition("ROUND")
 ROUNDUP = _definition("ROUNDUP")
 ROUNDDOWN = _definition("ROUNDDOWN")
+TRUNC = _definition("TRUNC")

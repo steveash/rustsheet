@@ -48,6 +48,10 @@ from rustsheet_tools.accuracy.sampler import decimal_literal, log_uniform, rando
 TIE_SOURCE = "numbers.md#floorprecise-a-16th-digit-tie-in-the-ratio-cut-goes-away-from-zero-t-2652"
 SUBNORMAL_SOURCE = "numbers.md#ceiling-and-floor-of-a-subnormal-ratio-are-0-t-2715"
 DECISION = "decision 0244"
+ALIAS_DECISION = "decision 0246"
+# ECMA.CEILING is two-argument CEILING (numbers.md, "ECMA.CEILING", probes/ecma-ceiling); ISO.CEILING
+# is CEILING.PRECISE (every family entry above names it beside CEILING.PRECISE: ties, subnormal ratios).
+ALIAS_SOURCES = {"ECMA.CEILING": "numbers.md#ecmaceiling", "ISO.CEILING": TIE_SOURCE}
 SMALLEST_NORMAL = Fraction(2) ** -1022
 DOUBLE_MAX = Fraction(sys.float_info.max)
 # Exact for a whole number of steps (at most 16 digits) times a 15-digit significance.
@@ -247,20 +251,26 @@ def _draw(function: str) -> Callable[[str, random.Random], list[Arg]]:
     return draw
 
 
-def _definition(function: str) -> Definition:
+def _definition(function: str, rule: str | None = None) -> Definition:
+    """`function`'s definition; `rule` names the family member whose rule it shares (ECMA.CEILING
+    is CEILING, ISO.CEILING is CEILING.PRECISE)."""
+    rule = rule or function
     params = [
         Param("number", "real", Interval(), source=TIE_SOURCE),
         Param("significance", "real", Interval(), source=TIE_SOURCE),
     ]
-    if function in WITH_MODE:
+    if rule in WITH_MODE:
         params.append(Param("mode", "int", Interval(), source=DECISION))
+    sources: tuple[str, ...] = (DECISION, TIE_SOURCE, SUBNORMAL_SOURCE)
+    if rule != function:
+        sources += (ALIAS_SOURCES[function], ALIAS_DECISION)
     return register(
         Definition(
             function=function,
             params=tuple(params),
-            value=_value(function),
-            draw=_draw(function),
-            sources=(DECISION, TIE_SOURCE, SUBNORMAL_SOURCE),
+            value=_value(rule),
+            draw=_draw(rule),
+            sources=sources,
         )
     )
 
@@ -271,3 +281,5 @@ CEILING_PRECISE = _definition("CEILING.PRECISE")
 FLOOR = _definition("FLOOR")
 FLOOR_MATH = _definition("FLOOR.MATH")
 FLOOR_PRECISE = _definition("FLOOR.PRECISE")
+ECMA_CEILING = _definition("ECMA.CEILING", "CEILING")
+ISO_CEILING = _definition("ISO.CEILING", "CEILING.PRECISE")
