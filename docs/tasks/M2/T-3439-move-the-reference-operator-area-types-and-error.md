@@ -3,7 +3,7 @@ id: T-3439
 title: "Move the reference-operator area types and error helpers out of reference_operators.rs into a submodule (the file is at 999 of its 1,000 lines)"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -46,3 +46,6 @@ resolve with no edit. A private item that both files need becomes `pub(super)`, 
 ## Out of scope
 - Any change to what the range, intersection or union operators compute, or to the union area cap.
 - Splitting `impl Model` across files.
+
+## Outcome
+Moved the area types, RefArg family and error helpers into `reference_operators/areas.rs` (mod.rs now 609 lines). Bodies unchanged; a few private items became `pub(super)`; `TOO_MANY_AREAS` is re-exported under `cfg(test)` only (tests use it). Eval delta: 0 fixed, 0 regressions. `make check` green.
