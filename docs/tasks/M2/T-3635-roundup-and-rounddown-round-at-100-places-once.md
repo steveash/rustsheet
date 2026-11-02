@@ -3,7 +3,7 @@ id: T-3635
 title: "ROUNDUP and ROUNDDOWN round at 100 places once num_digits overflows 16 bits"
 milestone: M2
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -34,9 +34,15 @@ engine rounds at the narrowed value itself.
   more. Probe that (`excel-probe` skill) before changing TRUNC, or keep TRUNC on today's path.
 
 ## Acceptance criteria
-- [ ] The probe cells of the four t3627 cases pass (`make eval-show CASE=probes/t3627-roundup-rounddown-huge-digits-place`).
-- [ ] Unit tests in decimal_round.rs cover positive and negative k at 32,768 and 65,535, and 32,767.
-- [ ] `make eval-baseline` records the fixed cells; `make check` green; reviewers approve.
+- [x] The probe cells of the four t3627 cases pass (`make eval-show CASE=probes/t3627-roundup-rounddown-huge-digits-place`).
+- [x] Unit tests in decimal_round.rs cover positive and negative k at 32,768 and 65,535, and 32,767.
+- [x] `make eval-baseline` records the fixed cells; `make check` green; reviewers approve.
 
 ## Out of scope
 - ROUND, whose `num_digits` narrowing is different and matches every probed cell.
+
+## Outcome
+`effective_digits` (decimal_round.rs) now returns the 100-place rule for ROUNDUP/ROUNDDOWN when the narrowed
+magnitude is >= 32,768: positive k rounds at 100 places with ROUNDUP's unit 0, negative k at -100 with the unit
+overflowing (`#NUM!` when a digit is dropped). TRUNC has its own `RoundMode::Trunc` and stays on today's path
+(not probed). Eval: the four t3627 probe cases pass, 331 baselined cells removed; no regressions.

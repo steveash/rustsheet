@@ -28,6 +28,21 @@ pub(crate) enum RoundMode {
     Up,
     /// ROUNDDOWN: toward zero.
     Down,
+    /// TRUNC: toward zero like [`RoundMode::Down`], but it keeps the plain narrowed `num_digits`
+    /// past 32,767, which was not probed (T-3635).
+    Trunc,
+}
+
+/// What ROUNDUP's unit `10^-num_digits` becomes once a 16-bit-narrowed `num_digits` has magnitude
+/// 32,768 or more (T-3635).
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Unit {
+    /// The unit is the ordinary `10^-num_digits`.
+    Normal,
+    /// Positive `num_digits`: the unit underflows to 0, so ROUNDUP is ROUNDDOWN.
+    Zero,
+    /// Negative `num_digits`: the unit overflows, so ROUNDUP is `#NUM!` whenever a digit is dropped.
+    Overflow,
 }
 
 /// Significant digits Excel keeps before rounding.
@@ -46,19 +61,30 @@ const MAX_NUM_DIGITS: i64 = 10_000;
 ///   `k + exponent + 1`, in 32 bits with wraparound: past the top it wraps to a huge negative
 ///   count (`ROUND(42,2^31-1)` = 0, `ROUND(1E+15,1E+15)` = 0, while `ROUND(0.5,2^31-1)` = 0.5),
 ///   and past the bottom to a huge positive one (`ROUND(5E-10,-2147483640)` = 5E-10).
-fn effective_digits(num_digits: f64, exponent: i64, mode: RoundMode) -> i64 {
+///
+/// ROUNDUP and ROUNDDOWN (not TRUNC) whose narrowed magnitude is 32,768 or more round at 100
+/// places, 10^-100 for positive `k` and 10^100 for negative (numbers.md "ROUNDUP and ROUNDDOWN
+/// round at 100 places past a 16-bit `num_digits`"; probes/t3627-roundup-rounddown-*, excel-graph).
+fn effective_digits(num_digits: f64, exponent: i64, mode: RoundMode) -> (i64, Unit) {
     // NaN cannot come from a cell; the saturating casts would read it as 0.
     let truncated = num_digits.trunc();
     if mode == RoundMode::HalfAwayFromZero {
         let k = i64::from(truncated as i32);
         let kept = k + exponent + 1;
-        i64::from(kept as i32) - exponent - 1
+        (i64::from(kept as i32) - exponent - 1, Unit::Normal)
     } else {
         let magnitude = (truncated.abs().min(f64::from(u32::MAX)) as i64) % 65_536;
-        if truncated < 0.0 {
+        let signed = if truncated < 0.0 {
             -magnitude
         } else {
             magnitude
+        };
+        if mode == RoundMode::Trunc || magnitude < 32_768 {
+            (signed, Unit::Normal)
+        } else if signed < 0 {
+            (-100, Unit::Overflow)
+        } else {
+            (100, Unit::Zero)
         }
     }
 }
@@ -111,8 +137,8 @@ pub(crate) fn round_decimal(value: f64, num_digits: f64, mode: RoundMode) -> Opt
     let tie_away = mode != RoundMode::HalfAwayFromZero;
     let (mantissa, exponent) = significant_15(value.abs(), tie_away);
     // The clamp keeps the exponent arithmetic below small without changing any result.
-    let num_digits =
-        effective_digits(num_digits, exponent, mode).clamp(-MAX_NUM_DIGITS, MAX_NUM_DIGITS);
+    let (num_digits, unit) = effective_digits(num_digits, exponent, mode);
+    let num_digits = num_digits.clamp(-MAX_NUM_DIGITS, MAX_NUM_DIGITS);
     // `mantissa` has 15 digits; its last digit has place value 10^(exponent - 14).
     let last_place = exponent - (SIGNIFICANT_DIGITS - 1);
     let dropped = -num_digits - last_place;
@@ -120,8 +146,11 @@ pub(crate) fn round_decimal(value: f64, num_digits: f64, mode: RoundMode) -> Opt
         (mantissa, last_place, false)
     } else {
         let (kept, round_up) = round_off(mantissa, dropped, mode);
+        if unit == Unit::Overflow && round_up {
+            return None;
+        }
         if mode == RoundMode::Up {
-            (kept, -num_digits, round_up)
+            (kept, -num_digits, round_up && unit == Unit::Normal)
         } else {
             (kept + u64::from(round_up), -num_digits, false)
         }
@@ -186,7 +215,7 @@ fn round_off(mantissa: u64, dropped: i64, mode: RoundMode) -> (u64, bool) {
     let round_up = match mode {
         RoundMode::HalfAwayFromZero => rest >= unit - rest,
         RoundMode::Up => rest > 0,
-        RoundMode::Down => false,
+        RoundMode::Down | RoundMode::Trunc => false,
     };
     (kept, round_up)
 }
@@ -499,5 +528,37 @@ mod tests {
                 );
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod t3635_tests {
+    use super::{round_decimal, RoundMode};
+
+    #[test]
+    fn narrowed_digits_of_32768_or_more_round_at_100_places() {
+        let small = 1.234_567_890_123_45e-95;
+        for k in [32_768.0, 65_535.0] {
+            let down = round_decimal(small, k, RoundMode::Down);
+            assert_eq!(down, Some(1.23456e-95));
+            assert_eq!(round_decimal(small, k, RoundMode::Up), down);
+        }
+        for k in [-32_768.0, -65_535.0] {
+            assert_eq!(round_decimal(1.5e80, k, RoundMode::Down), Some(0.0));
+            assert_eq!(round_decimal(1.5e120, k, RoundMode::Up), Some(1.5e120));
+        }
+        assert_eq!(
+            round_decimal(1.234_567_890_123_45e105, -32_768.0, RoundMode::Up),
+            None
+        );
+    }
+
+    #[test]
+    fn narrowed_digits_of_32767_keep_their_place_and_trunc_is_unchanged() {
+        assert_eq!(round_decimal(1.5, 32_767.0, RoundMode::Up), Some(1.5));
+        assert_eq!(
+            round_decimal(1.5e80, -32_768.0, RoundMode::Trunc),
+            Some(0.0)
+        );
     }
 }
