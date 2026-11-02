@@ -3,7 +3,7 @@ id: T-3411
 title: "IRR on conventional flows: model what Excel does after its secant fails (Newton from v = 1 and the T-3406 candidates are refuted)"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: todo
 priority: P1
 size: M
 tier: opus
@@ -78,9 +78,27 @@ stage (PR #2529, blocked on its hold-out) and unblocks T-3347.
   (2) has a pass rate within 10 points of its own pass rate on t3411-irr-r4-fresh (sweeps generated the same way).
   Otherwise nothing ships and the task is blocked with these notes.
 
-## Landing notes
-2026-11-01 23:40, opus run: resumed from these notes (step 0.2; branch idle 2 h).
+## Progress notes
+2026-11-02, opus run (resumed from the landing notes below): the secant's cap moved to its own task, T-3806 (done in
+the same PR: Excel's cap is 136..214, the engine uses 213). The R4 sections above record the two rounds. What is still
+open, from an engine-faithful replica (Python, the engine's twice-rounded operators; scratch, not committed):
+- After the cap, the failing returns fall in two classes. (a) The secant's first step jumps far (d from -2 to -1.7E+7,
+  |NPV| up to 1E+290), the next step comes back to within a few ulp of d1 and the secant goes exactly flat: 38 cells
+  where Excel returns, 71 `#NUM!`, 7 `#DIV/0!` of t3406 and the t3347 holdout. Every step formula tried (11 orderings
+  of the secant update, plain or twice-rounded) goes flat on the same cells, so the flat is not a rounding accident
+  of the update. Inside one outlay family (t3406 A122-A132) Excel alternates number / `#NUM!` with nearly identical
+  first steps. `#DIV/0!` is Excel's answer exactly where log10 |NPV(d2)| is above 228 (226.2 `#NUM!`, 230.8
+  `#DIV/0!`; t3406 A83 at 303.8 is `#NUM!`), as if a later trial point 35..72 times farther out in v had its
+  discount leave the double range. (b) Stalls at the root with |NPV| above 1e-7: Excel returns, with the fallback's
+  digits (financial.md "IRR's secant runs up to 214 steps").
+- `irr_fallback` (Newton on the NPV polynomial from v = 0) run without a cap returns on 138 of 186 cells where Excel
+  returns and on 99 of 103 where Excel is `#NUM!`; returns and `#NUM!` interleave at every step count, so a larger
+  fallback cap is refuted as the model, though its digits are Excel's on 15 of 22 stalls.
+- Next step: model what Excel does at a flat secant (class a): the evidence says a flat secant is not the end of the
+  run in Excel; test a restart from the flat point (offset 1E-3 or the guess offset) or the fallback from v = 0 at
+  that point, scored on class (a) only, before touching class (b).
 
+## Landing notes (2026-11-01, superseded by the progress notes above)
 2026-11-01, opus run (stopped at the session's landing window; no PR opened, no code changed).
 - Branch head: the claim commit plus these notes. Nothing is implemented; CI and reviewers have not run.
 - Scored on the type (number, `#NUM!`, `#DIV/0!` read as an error) of 288 cells: probes/t3406-irr-num-boundary (144)

@@ -217,13 +217,16 @@ fn irr_from_discount(v: f64) -> Option<f64> {
     (x < IRR_FAR_ROOT_BOUND).then_some(x - 1.0)
 }
 
-/// The most steps of one run of [`irr_secant`]: Excel's cap is 213 or 214. Holdout A90
-/// (probes-numeric/t3347-irr-conventional-holdout) stops at its 213th step on Excel's exact digits,
-/// while the run from t3411-irr-r4-fresh A55's guess -0.99235 would stop at its 215th on digits
-/// Excel does not return (Excel's are those of the retry from 0.1, so its first run failed). Runs
-/// of 51 to 213 steps match Excel bit for bit on 9 more probe cells (financial.md "IRR's secant
-/// runs 213 steps", T-3411).
-/// FITTED(T-3411, 2 cells bracket the cap at 213..=214; 9 cells need 51..213 steps; IRR of 6..61 flows)
+/// The most steps of one run of [`irr_secant`]. Excel's cap lies in 136..=214: the level annuity
+/// `IRR({-72.25,1,...,1})` (probes/t3406-irr-num-boundary A5) stops at its 136th step on Excel's
+/// exact digits, while the run from probes-numeric/t3411-irr-r4-fresh A55's guess -0.99235 would
+/// stop at its 215th on digits Excel does not return (Excel's are those of the retry from 0.1, so
+/// its first run failed). Runs of 51 to 136 steps match Excel bit for bit on 7 probe cells. 213 was
+/// frozen in round 1 of T-3411 from a bracket that leaned on a stall rule since refuted, and passed
+/// round 2's fresh sweep (probes-numeric/t3411-irr-r4-fresh-2: 83 of 150 against main's 76, no cell
+/// lost); no evidence separates it from other values in the bracket (financial.md "IRR's secant
+/// runs up to 214 steps").
+/// FITTED(T-3411, 2 cells bracket the cap at 136..=214; 7 cells need 51..136 steps; IRR of 6..61 flows)
 const IRR_SECANT_STEPS: usize = 213;
 
 /// One run of IRR's secant from `guess`, or `None` when it fails (a flat secant, an iterate that

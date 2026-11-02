@@ -830,14 +830,15 @@ Tasks: T-3410
 Rule: Excel's caps on its IRR secant, XIRR's bracket walk and XIRR's bisection are unknown: no probe
 reaches them. The engine bounds each loop itself, so an untrusted workbook cannot make one cell iterate
 without end (CLAUDE.md directive 5). XIRR walks at most 100 points per chain and bisects at most 200
-steps. IRR's secant takes at most 50 steps per run, with one retry from 0.1, and then the fallback's Newton search
+steps. IRR's secant takes at most 213 steps per run, Excel's own cap ("IRR's secant runs up to 214 steps"), with one retry
+from 0.1, and then the fallback's Newton search
 at most 50 steps ("IRR's fallback when the secant fails"; Excel's own cap there lies between 29 and 119). A run that reaches its
 cap gives `#NUM!` (or, for IRR, moves on to the next stage). Every oracle cell of the fit sets finishes
 well inside the caps.
 Evidence: none for Excel; this is a resource limit, not an Excel observation. Probing Excel's caps, the
 fallback path and overflowing trial rates is T-1686.
 Status: DEVIATION (decision 0014)
-Implemented in: `xirr_bracket` (`WALK_CAP`), `compute_xirr` (`BISECTION_CAP`), `irr_secant` (`MAX_STEPS`),
+Implemented in: `xirr_bracket` (`WALK_CAP`), `compute_xirr` (`BISECTION_CAP`), `irr_secant` (`IRR_SECANT_STEPS`),
 `irr_fallback` (`IRR_FALLBACK_STEPS`) (functions/financial/financial_util.rs)
 Tasks: T-0916, T-1686
 
@@ -3646,12 +3647,40 @@ A11 (returns) and A12 (`#NUM!`).
 Evidence: probes/t3406-irr-num-boundary (inputs and 50-digit roots in its `.roots.tsv`;
 docs/research/t3406_irr_num_boundary.py); the candidate counts from docs/research/t3406_irr_secant_candidates.py
 Status: VERIFIED (excel-graph) for the cells; the rule is UNVERIFIED (unknown)
-Ours: the secant, `irr_fallback` (Newton from v = 0) then `#NUM!`: 76 of the 144 probe cells fail (28 + 26 `#NUM!`
-for a number, 22 `#NUM!` for `#DIV/0!`)
+Ours: the secant, `irr_fallback` (Newton from v = 0) then `#NUM!`: 74 of the 144 probe cells fail (with the secant's
+213-step cap of T-3411; 76 with 50 steps)
 Also: probes-numeric/t3478-irr-r4-wide (T-3478) adds 33 conventional series where Excel returns a root and the engine
 is `#NUM!`, 21 of them with 42 to 150 flows; a 100-step cap recovers 12 of the 33 and a 1000-step one 15, but only 2
 of the 21 long ones (T-3548).
-Tasks: T-3406, T-3411 (the model), T-3407 (`#DIV/0!`), T-3347, T-3548
+Tasks: T-3406, T-3411 (the cap; the model is open), T-3407 (`#DIV/0!`), T-3347, T-3548
+
+## IRR's secant runs up to 214 steps
+Rule: one run of IRR's secant (from the guess, then the retry from 0.1) takes at least 136 and at most 214 steps, not
+50. Runs that need 51 to 136 steps return Excel's digits bit for bit: probes-numeric/t3347-irr-conventional-holdout
+A23, A57, A50, A47 and A56 (51 to 75 steps) and probes/t3406-irr-num-boundary A26 and A5 (118, 136); the level annuity
+`IRR({-72.25,1,...,1})` (20 flows of 1) is -0.09999761744847369 after 136 steps. The upper bound: the run from
+probes-numeric/t3411-irr-r4-fresh A55's guess -0.99235 would stop at its 215th step on digits Excel does not return
+(Excel's are those of the retry from 0.1, so its first run failed); t3478-irr-r4-wide A240 (229 steps from guess
+-0.9997) and m9-fin-irr-rate A125 (`IRR({-100,10,10,10,10,110},10)`, 741 steps) agree. The engine uses 213, frozen
+before the fresh sweep t3411-irr-r4-fresh-2 (83 of 150 against 76 with 50 steps, no cell lost); nothing yet separates
+it from the rest of the bracket. Holdout A44 and A105 match Excel's digits only in runs of 1,068 and 2,406 steps, so
+Excel reaches the same last iterates there by another path (unexplained).
+Other findings of T-3411 (no rule yet):
+- Where the secant stalls at the root with |NPV| above 1e-7 (rounding noise; a flat secant right after a step under
+  1e-7, at |NPV| 1.2E-7 to 8.4E-5), Excel returns a number on all 22 such cells of the two probe cases above and
+  t3411-irr-r4-fresh, and its digits are those of `irr_fallback` (Newton on the NPV polynomial from v = 0) run past its
+  50-step cap on 15 of them (up to 179 steps; t3411-irr-r4-fresh A129 needs 9). It is not the stalled iterate: A129's
+  flat iterate is -0.010524456189355935, Excel's -0.010524456189355713. But no cap on that Newton search separates
+  Excel's returns from its errors: over the 285 probe cells where both secant runs fail, returns and `#NUM!`
+  interleave from 0 to 680 Newton steps.
+- A stall residual was tried and refuted: returning the stalled iterate when |NPV| < 1E-4 (Excel returns at 8.4E-5,
+  errs at 2.9E-4 on t3478-irr-r4-wide A52 and at 0.125 on `IRR({1E+15,1,-1E+15},0.05)`) passes 17 more eval cells and
+  5 more of t3411-irr-r4-fresh, but gives non-Excel digits (A129 above), so it is not Excel's rule.
+Evidence: probes-numeric/t3411-irr-r4-fresh and t3411-irr-r4-fresh-2 (excel-graph, 2026-11-02; fresh sweeps with
+50-digit roots in their `.math.tsv`, docs/research/t3411/gen_sweep.py), plus the cells named above
+Status: VERIFIED (excel-graph) for the cap's bracket; the stall findings are VERIFIED for the cells, the rule UNVERIFIED
+Implemented in: `irr_secant` (`IRR_SECANT_STEPS`, functions/financial/financial_util.rs)
+Tasks: T-3411
 
 ## IRR over an error element
 Rule: IRR (probes/fin-irr-error-array, T-2390, excel-graph) gives `#VALUE!`, whatever the kind, when its values hold an
