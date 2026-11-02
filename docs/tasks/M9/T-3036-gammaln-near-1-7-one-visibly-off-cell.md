@@ -3,7 +3,7 @@ id: T-3036
 title: "GAMMALN near 1.7: one visibly-off cell in the bpser sweep (probes-numeric t2464-r2-bpser-small-gl A3188)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
