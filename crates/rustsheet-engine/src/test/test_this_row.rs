@@ -252,9 +252,28 @@ fn the_export_keeps_this_row_on_every_row() {
     }
 }
 
-/// Structural edits keep today's values; one whose displaced area differs, or that moves the
-/// formula's cell to another row, prints that area, as a `#This Row` reference does under every
-/// edit of SPEC-0016 "Structural edits", whether its table follows the edit or not (T-2297).
+/// Re-enters, on `sheet` from `first_column`, the text of every `#This Row` formula into its twin
+/// cell, so each twin reads what a formula typed there after the edit reads.
+fn retype_twins(model: &mut Model, sheet: u32, first_column: i32) {
+    for i in 0..TEMPLATES.len() {
+        let column = first_column + 2 * i as i32;
+        for row in 1..=10 {
+            let text = formula(model, sheet, row, column);
+            if !text.is_empty() {
+                model.set_user_input(sheet, row, column + 1, text).unwrap();
+            }
+        }
+    }
+    model.evaluate();
+}
+
+/// Structural edits other than a row insert the table follows keep today's values; one whose
+/// displaced area differs, or that moves the formula's cell to another row, prints that area
+/// (T-2297; Excel's rule for them is unprobed, T-3739). Through a row insert the table follows
+/// (it moves or grows), every `#This Row` reference to it keeps its text and reads the cell's
+/// row in the edited table: on the table's sheet the cells move with their rows and read the
+/// same values, and on another sheet they stay and read the row they are on now, as Excel does
+/// (T-2845 table-insert-row-this-row-above-header, -inside-data; T-3037).
 #[test]
 fn structural_edits_keep_values() {
     type Edit = fn(&mut Model);
@@ -288,30 +307,36 @@ fn structural_edits_keep_values() {
         }),
         ("insert column left", |m| m.insert_columns(1, 1, 1).unwrap()),
     ];
+    let followed = ["insert above", "insert inside"];
+    let row_column = 2 * TEMPLATES.iter().position(|t| *t == "=ROW({x})").unwrap() as i32 + 1;
     let mut all = Vec::new();
     for (name, edit) in edits {
         let mut model = parity_model();
         edit(&mut model);
         model.evaluate();
         let first_column = if name == "insert column left" { 2 } else { 1 };
+        if followed.contains(&name) {
+            for row in 1..=8 {
+                assert_eq!(
+                    formula(&model, 1, row, row_column),
+                    "=ROW(Sales[[#This Row],[Qty]])",
+                    "{name} row {row}"
+                );
+            }
+            retype_twins(&mut model, 1, first_column);
+        }
         let mut found = mismatches(&model, 1, first_column, true);
         found.extend(mismatches(&model, 0, 5, true));
-        // The table moves or grows over row 6, and the reference on another sheet there was off
-        // the data rows (`#VALUE!`), which the edit does not change: it keeps its text and reads
-        // the table's row 6 (T-2297; whether Excel does is unprobed, T-2845).
-        if name == "insert above" || name == "insert inside" {
-            found.retain(|f| !f.contains(" on sheet 1 row 6: "));
-            let column = TEMPLATES.iter().position(|t| *t == "=ROW({x})").unwrap() as i32;
-            let column = 2 * column + 1;
-            assert_eq!(
-                formula(&model, 1, 6, column),
-                "=ROW(Sales[[#This Row],[Qty]])"
-            );
-            assert_eq!(value(&model, 1, 6, column), "6", "{name}");
-        }
         all.extend(found.into_iter().map(|f| format!("{name}: {f}")));
     }
     assert!(all.is_empty(), "{}", all.join("\n"));
+    // The insert above moves the table to A2:B6: row 2 is its header row now (`#VALUE!`) and row 6
+    // its last data row, as Excel reads them (T-2845 table-insert-row-this-row-above-header).
+    let mut model = parity_model();
+    model.insert_rows(0, 1, 1).unwrap();
+    model.evaluate();
+    let rows: Vec<String> = (2..=6).map(|r| value(&model, 1, r, row_column)).collect();
+    assert_eq!(rows, ["#VALUE!", "3", "4", "5", "6"]);
     // An edit of another sheet leaves the text of a formula on the table's sheet as it is.
     let mut model = parity_model();
     model.add_sheet("Other").unwrap();
@@ -445,5 +470,108 @@ fn a_defined_name_resolves_at_row_one() {
     for row in [1, 3, 5, 8] {
         assert_eq!(value(&model, 1, row, 1), "#VALUE!", "row {row}");
         assert_eq!(value(&model, 1, row, 2), "#VALUE!", "row {row}");
+    }
+}
+
+/// `Sales` on S!B3:D7 (Qty 1, 2, 4, 8; a calculated column D `=Sales[@Qty]*2`), `=Sales[@Qty]`
+/// beside it on S!E4:E7 and on F!A2:A8: the layout of T-2845's table-insert-row-this-row-* and
+/// -calc-column-* probes.
+fn probe_model() -> Model {
+    let mut model = Model::new_empty("book", "en", "UTC", "en").unwrap();
+    model.rename_sheet("Sheet1", "S").unwrap();
+    model.add_sheet("F").unwrap();
+    for (row, qty) in [(3, "Qty"), (4, "1"), (5, "2"), (6, "4"), (7, "8")] {
+        model.set_user_input(0, row, 2, "x".to_string()).unwrap();
+        model.set_user_input(0, row, 3, qty.to_string()).unwrap();
+    }
+    model.set_user_input(0, 3, 4, "Dbl".to_string()).unwrap();
+    model.add_table(0, "Sales", (3, 2, 7, 4), false).unwrap();
+    for row in 4..=7 {
+        let double = "=Sales[@Qty]*2".to_string();
+        model.set_user_input(0, row, 4, double).unwrap();
+        model
+            .set_user_input(0, row, 5, "=Sales[@Qty]".to_string())
+            .unwrap();
+    }
+    for row in 2..=8 {
+        model
+            .set_user_input(1, row, 1, "=Sales[@Qty]".to_string())
+            .unwrap();
+    }
+    model.evaluate();
+    model
+}
+
+/// The values of `sheet` column `column` on `rows`.
+fn column_values(
+    model: &Model,
+    sheet: u32,
+    column: i32,
+    rows: std::ops::RangeInclusive<i32>,
+) -> Vec<String> {
+    rows.map(|row| value(model, sheet, row, column)).collect()
+}
+
+/// A row insert the table follows keeps every `#This Row` reference to it as written, and each
+/// reads its cell's row in the moved or grown table (T-3037; excel-graph, T-2845).
+#[test]
+fn a_row_insert_the_table_follows_keeps_this_row() {
+    // Above the header row: the table moves to B4:D8.
+    let mut model = probe_model();
+    model.insert_rows(0, 3, 1).unwrap();
+    model.evaluate();
+    // A fixed cell on another sheet: row 4 is the header row now, row 8 comes onto the data rows.
+    assert_eq!(
+        column_values(&model, 1, 1, 2..=8),
+        ["#VALUE!", "#VALUE!", "#VALUE!", "1", "2", "4", "8"]
+    );
+    for row in 2..=8 {
+        assert_eq!(formula(&model, 1, row, 1), "=Sales[[#This Row],[Qty]]");
+    }
+    // The cells beside the table move with it and read the same values.
+    assert_eq!(column_values(&model, 0, 5, 5..=8), ["1", "2", "4", "8"]);
+    assert_eq!(formula(&model, 0, 8, 5), "=Sales[[#This Row],[Qty]]");
+    // The calculated column moves with the table, its last cell below the table's old last row.
+    assert_eq!(column_values(&model, 0, 4, 5..=8), ["2", "4", "8", "16"]);
+    assert_eq!(formula(&model, 0, 8, 4), "=[@Qty]*2");
+
+    // Inside the data rows: the table grows to B3:D8 and row 6 is a new blank data row.
+    let mut model = probe_model();
+    model.insert_rows(0, 6, 1).unwrap();
+    model.evaluate();
+    assert_eq!(
+        column_values(&model, 1, 1, 2..=8),
+        ["#VALUE!", "#VALUE!", "1", "2", "0", "4", "8"]
+    );
+    assert_eq!(column_values(&model, 0, 5, 4..=8), ["1", "2", "", "4", "8"]);
+    assert_eq!(formula(&model, 0, 8, 5), "=Sales[[#This Row],[Qty]]");
+    assert_eq!(column_values(&model, 0, 3, 7..=8), ["4", "8"]);
+}
+
+/// An unqualified structured reference in a formula a row insert or delete moves keeps its text,
+/// written without the table name, as an unmoved one beside it does (Excel never rewrites a
+/// structured reference to a table that follows the edit); the insert above the table moves its
+/// last row's formula below the table's old range, where it still names the table (T-3037).
+#[test]
+fn a_moved_unqualified_reference_keeps_its_text() {
+    type Edit = fn(&mut Model);
+    // Each edit with the first and last rows of the formulas after it.
+    let edits: [(Edit, [i32; 2]); 3] = [
+        (|m| m.insert_rows(0, 3, 1).unwrap(), [5, 8]),
+        (|m| m.insert_rows(0, 6, 1).unwrap(), [4, 8]),
+        (|m| m.delete_rows(0, 1, 1).unwrap(), [3, 6]),
+    ];
+    for (edit, rows) in edits {
+        let mut model = probe_model();
+        for row in 4..=7 {
+            let sum = "=SUM([Qty])".to_string();
+            model.set_user_input(0, row, 4, sum).unwrap();
+        }
+        edit(&mut model);
+        model.evaluate();
+        for row in rows {
+            assert_eq!(formula(&model, 0, row, 4), "=SUM([Qty])", "row {row}");
+            assert_eq!(value(&model, 0, row, 4), "15", "row {row}");
+        }
     }
 }

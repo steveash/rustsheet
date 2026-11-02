@@ -38,6 +38,10 @@ Known failures left in eval/baseline/probes.txt for probes/t2576-error-type-cell
   `is_marked_number`, now in functions/util.rs): probes/t2728-irr-guess-ref-mark A53 `IRR(IF(TRUE,CELL("row",..)))`, A55
   CHOOSE, A57 INDEX, A59 IFERROR, A61 a LAMBDA call are `#VALUE!` in Excel, ours `#NUM!`; they are in the sidecar but left
   out of the case's `check` list, so add them back to it when the mark follows the wrappers.
+- Gap triage 2026-11-01h: an IRR cell with the LET wrapper is checked, and so visibly off. Its only open owner was
+  blocked T-2928 (IRR's fallback digits, which names the case for other cells), so this task now owns it. The formula
+  is `IRR(LET(x,CELL("row",D2),x))`: Excel `#VALUE!`, ours `#NUM!` (financial.md "IRR's guess range" lists it).
+  - probes/irr-guess-edges-2.case.json (1): P!A37
 Carrying the mark through bindings needs a design (a value flag, not syntax); split if bigger than S.
 
 ## Acceptance criteria

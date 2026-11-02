@@ -253,28 +253,35 @@ impl Model {
         acc
     }
 
-    /// The finite numbers of the field among the matching records.
+    /// The finite numbers of the field among the matching records, or the first error (in record
+    /// order) a matching record's field cell holds: every aggregating D-function (all but DCOUNT,
+    /// DCOUNTA and DGET) returns that error, and an error in a record that does not match is
+    /// ignored (criteria.md "D-function front end across all twelve functions",
+    /// probes/db-front-end-sweep B74:M82).
     fn db_fold_numbers<T>(
         &mut self,
         query: &DbQuery,
         init: T,
         mut step: impl FnMut(T, f64) -> T,
-    ) -> T {
-        self.db_fold(query, init, |acc, value| match value {
-            CalcResult::Number(n) if n.is_finite() => step(acc, n),
-            _ => acc,
+    ) -> Result<T, CalcResult> {
+        self.db_fold(query, Ok(init), |acc, value| match (acc, value) {
+            (Ok(acc), CalcResult::Number(n)) if n.is_finite() => Ok(step(acc, n)),
+            (Ok(_), error @ CalcResult::Error { .. }) => Err(error),
+            (acc, _) => acc,
         })
     }
 
     /// DMAX and DMIN: the extreme `pick` chooses among the matching numbers, 0 when there are none.
     fn db_extreme(&mut self, query: &DbQuery, pick: fn(f64, f64) -> f64) -> CalcResult {
-        let best = self.db_fold_numbers(query, None, |best: Option<f64>, n| {
+        match self.db_fold_numbers(query, None, |best: Option<f64>, n| {
             Some(best.map_or(n, |current| pick(n, current)))
-        });
-        CalcResult::Number(best.unwrap_or(0.0))
+        }) {
+            Ok(best) => CalcResult::Number(best.unwrap_or(0.0)),
+            Err(error) => error,
+        }
     }
 
-    fn db_numbers(&mut self, query: &DbQuery) -> Vec<f64> {
+    fn db_numbers(&mut self, query: &DbQuery) -> Result<Vec<f64>, CalcResult> {
         self.db_fold_numbers(query, Vec::new(), |mut numbers, n| {
             numbers.push(n);
             numbers
@@ -292,9 +299,12 @@ impl Model {
                 // Rounds the total to a double after every addition, like SUM (numbers.md
                 // "Accumulators beyond SUM and AVERAGE", probes-numeric/daverage-accumulation).
                 let (sum, count) =
-                    model.db_fold_numbers(query, (0.0f64, 0usize), |(sum, count), n| {
+                    match model.db_fold_numbers(query, (0.0f64, 0usize), |(sum, count), n| {
                         (extended_sum(sum, n), count + 1)
-                    });
+                    }) {
+                        Ok(totals) => totals,
+                        Err(error) => return error,
+                    };
                 if count == 0 {
                     return CalcResult::Error {
                         error: Error::DIV,
@@ -383,7 +393,9 @@ impl Model {
     pub(crate) fn fn_dsum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.db_call(Function::Dsum, args, cell, false, |model, query, _| {
             // Each addition rounds twice like SUM's (probes-numeric/double-rounding-accumulators).
-            CalcResult::Number(model.db_fold_numbers(query, 0.0, extended_sum))
+            model
+                .db_fold_numbers(query, 0.0, extended_sum)
+                .map_or_else(|error| error, CalcResult::Number)
         })
     }
 
@@ -391,9 +403,12 @@ impl Model {
     pub(crate) fn fn_dproduct(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.db_call(Function::Dproduct, args, cell, false, |model, query, _| {
             let (product, has_numeric) =
-                model.db_fold_numbers(query, (1.0f64, false), |(product, _), n| {
+                match model.db_fold_numbers(query, (1.0f64, false), |(product, _), n| {
                     (product * n, true)
-                });
+                }) {
+                    Ok(totals) => totals,
+                    Err(error) => return error,
+                };
             // Excel returns 0 when no rows / no numeric values match for DPRODUCT
             CalcResult::Number(if has_numeric { product } else { 0.0 })
         })
@@ -402,7 +417,10 @@ impl Model {
     // =DSTDEV(database, field, criteria): sample standard deviation of matching numeric values
     pub(crate) fn fn_dstdev(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.db_call(Function::Dstdev, args, cell, false, |model, query, cell| {
-            let values = model.db_numbers(query);
+            let values = match model.db_numbers(query) {
+                Ok(values) => values,
+                Err(error) => return error,
+            };
             variance_result(&values, VarianceKind::Sample, true, "DSTDEV", cell)
         })
     }
@@ -410,7 +428,10 @@ impl Model {
     // =DVAR(database, field, criteria): sample variance of matching numeric values
     pub(crate) fn fn_dvar(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.db_call(Function::Dvar, args, cell, false, |model, query, cell| {
-            let values = model.db_numbers(query);
+            let values = match model.db_numbers(query) {
+                Ok(values) => values,
+                Err(error) => return error,
+            };
             variance_result(&values, VarianceKind::Sample, false, "DVAR", cell)
         })
     }
@@ -423,7 +444,10 @@ impl Model {
             cell,
             false,
             |model, query, cell| {
-                let values = model.db_numbers(query);
+                let values = match model.db_numbers(query) {
+                    Ok(values) => values,
+                    Err(error) => return error,
+                };
                 variance_result(&values, VarianceKind::Population, true, "DSTDEVP", cell)
             },
         )
@@ -432,7 +456,10 @@ impl Model {
     // =DVARP(database, field, criteria): population variance of matching numeric values
     pub(crate) fn fn_dvarp(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.db_call(Function::Dvarp, args, cell, false, |model, query, cell| {
-            let values = model.db_numbers(query);
+            let values = match model.db_numbers(query) {
+                Ok(values) => values,
+                Err(error) => return error,
+            };
             variance_result(&values, VarianceKind::Population, false, "DVARP", cell)
         })
     }

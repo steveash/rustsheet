@@ -926,19 +926,20 @@ PHI's read is probed separately). Every argument of these functions is `Lift`
 in the lifting table and each kernel reads its arguments in its scalar order; T.DIST.2T and TDIST read every argument
 before they check any ("Overflowing arguments, PERMUT's limit and argument error order" below). One scalar change
 here: BETA.DIST's `cumulative` given as a one-cell range was `#VALUE!` and is now its value (L11). BINOM.INV and
-CRITBINOM are `KernelWork::Weighted(4096)`: their search halves a `u64` interval at most 64 times, one incomplete-beta
-cdf each, up to about 65 us an element in release (`BINOM.INV(1E12,0.3,alpha)`). PERMUT is `Constant`: its product
+CRITBINOM are `KernelWork::Weighted(16384)` since T-3444: their search halves `[0, trials]` at most 31 times, one
+BINOM.DIST cdf each, up to about 200 us an element in release (`BINOM.INV(1E4,0.999,0.999999999999)`; it was 4096 at
+65 us before the search took BINOM.DIST's own cdf). PERMUT is `Constant`: its product
 stops once it is infinite, after at most 171 factors, where `PERMUT(1E15,1E15)` looped 10^15 times. The quantile searches of BETA.INV, F.INV,
 T.INV and CONFIDENCE.T lift since T-1848 (next section), and the incomplete-gamma functions (CHISQ.*, GAMMA.DIST,
 GAMMA.INV, POISSON) since T-1872 ("Incomplete gamma: per-call cap and lifting" below), and HYPGEOM.DIST, its cdf
 sum capped, and HYPGEOMDIST since T-1873 ("HYPGEOM.DIST: per-call cap and lifting" below).
-DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted BINOM.INV or CRITBINOM is charged 4096 units per element
-against the shared cell-visit cap of 2^27 (`limits::MAX_LIFTED_CELL_VISITS`), so one of more than 32,768 elements is
-`#ERROR!` before it runs where Excel computes it (`ROWS(BINOM.INV(5,0.4,SEQUENCE(40000)/40001))`, unit test
-`weighted_kernels_are_charged_their_weight`). At the worst case measured, 32,768 elements take about 2.1 s, the budget
-of the Bessel entries (engineering.md "BESSEL order cap").
+DEVIATION (decision 0014, CLAUDE.md directive 5): a lifted BINOM.INV or CRITBINOM is charged 16384 units per element
+against the shared cell-visit cap of 2^27 (`limits::MAX_LIFTED_CELL_VISITS`), so one of more than 8,192 elements is
+`#ERROR!` before it runs where Excel computes it (`ROWS(BINOM.INV(5,0.4,SEQUENCE(10000)/10001))`, unit test
+`weighted_kernels_are_charged_their_weight`; 32,768 elements before T-3444). At the worst case measured, 8,192 elements
+take about 1.6 s, inside the budget of the Bessel entries (engineering.md "BESSEL order cap").
 Status: VERIFIED (excel-graph)
-Tasks: T-1290, T-1849, T-1755, T-1848
+Tasks: T-1290, T-1849, T-1755, T-1848, T-3444
 
 ## Quantile searches: per-call cap and lifting (T-1848)
 Rule: BETA.INV, BETAINV, F.INV, F.INV.RT, FINV, T.INV, T.INV.2T, TINV and CONFIDENCE.T lift every argument over an array
@@ -1628,6 +1629,14 @@ a valid call from an invalid one. The only distinguishable result is a text `tar
 before the `#N/A`. So the web oracle gives no evidence for the algorithm or for most argument validation; it is a
 golden only for the type-coercion step (decision 0039). Catalog `oracle: none` is not used: the canary does not
 refuse these workbooks, Excel for the web just does not calculate the family.
+Shapes (probes/forecast-ets-optional-settings-shape, excel-graph, T-2371): every optional setting lifts over an array or range.
+`ROWS(FORECAST.ETS(9,B1:B8,A1:A8,{1;4}))` is 2 and `COLUMNS` 1; a `G1:G2` setting is the same 2x1; a `G1:H1` setting is 1x2;
+a 2x2 array is 2x2 (COLUMNS is checked only for FORECAST.ETS's seasonality; the other cells check ROWS), for
+seasonality, data_completion and aggregation, for CONFINT's `confidence_level` and for STAT's seasonality; STAT's
+`statistic_type` is probed only as a column array (`{1;2}` is 2 rows), and `{9;10}` as target_date is 2 rows. A boolean, number-text (`"9"`), error, or cell-held TRUE / `"9"`
+`target_date` or `statistic_type` is `#N/A`, which the web gives for every valid call, so it separates nothing; non-numeric
+text (`"x"`, literal or in a cell) is `#VALUE!` for the target_date of FORECAST.ETS and CONFINT and the statistic_type of STAT.
+Our kinds (functions/lift/kinds/statistical.rs `ETS_*`) match all of these; the 12 `#N/IMPL!` cells are the family's known state.
 Consequence: a validation-only engine (`#N/A` like excel-graph) would score on excel-graph values but would be wrong on
 desktop Excel. Until decision 0221 the family therefore stayed `#N/IMPL!` until desktop values exist (M14, Phase 4,
 T-1553). Since that owner ruling, it computes gridcraft's AAA model, unverified (the section "FORECAST.ETS family: the
@@ -2656,6 +2665,28 @@ Status: VERIFIED (excel-graph) to 1E-11 of the math; last digits UNVERIFIED (Exc
 kernel at a large n not identified)
 Tasks: T-3352, T-3447, T-3443, T-3444, T-2586, T-2146
 
+## BINOM.DIST.RANGE and BINOM.INV at a large n sit on BINOM.DIST's own cdf (T-3444)
+Rule: Excel's BINOM.INV (and CRITBINOM, equal on every probe row) is the smallest k whose BINOM.DIST(k, n, p, TRUE) is
+at least alpha: on all 126 rows of probes/t3444-binom-range-inv-large-n Inv (n 1E4 to 2^31 - 2, p 0.3, 0.5 and 0.001,
+alpha 1E-6, 0.025, 0.3, 0.5, 0.975 and 0.999999) Excel's own cdf at the result is >= alpha and at the result minus one is
+below it, so the search is exact against BINOM.DIST, not an approximation. BINOM.DIST.RANGE(n, p, s1, s2) is Excel's
+BINOM.DIST(s2, n, p, TRUE) - BINOM.DIST(s1 - 1, n, p, TRUE) to the bit on 105 of the 126 Range rows (column A against
+column B), including every range starting at 0 (the cdf alone) and every range around the mean. A single-point range is
+Excel's BINOM.DIST pmf to the bit. The 21 that differ are all ranges from mean + 3 sd to mean + 5 sd, 2E-16 to 6E-14
+relative off that difference: there Excel takes another form, UNVERIFIED. A difference of upper tails,
+P(X > s1 - 1) - P(X > s2) with each tail bratio's w of I_p(k+1, n-k), lands within 1E-15 relative on 18 of the 21 rows
+(none bit-exact; A6 and A12 at n = 1E4 stay 1.6E-14 and 2.4E-14 off), but it was scored only on those rows and the
+probe has no range starting between the mean and mean + 3 sd, so it is a candidate (T-3740), not implemented.
+Status: VERIFIED (excel-graph, 2026-11-01) for BINOM.INV and the cdf-difference rows; the upper-tail form is
+UNVERIFIED.
+- Ours before T-3444: past the double-double walk both fell back to statrs, grossly wrong near the mean at a large n
+  (`BINOM.INV(1000000000,0.3,0.5)` 299998246 against a median of 300000000).
+- Ours now (T-3444): `binom.rs` `excel_binom_cdf` and `excel_binom_pmf` are BINOM.DIST's own paths. BINOM.INV's
+  bisection uses the cdf, and all 126 BINOM.INV and 126 CRITBINOM probe cells pass. BINOM.DIST.RANGE takes the pmf
+  for one point and the cdf from 0, then the double-double walk, then the cdf difference. Its probe misses are those
+  of BINOM.DIST's own last digits (T-3447) plus the 21 upper-tail rows (T-3740).
+Tasks: T-3444, T-3352, T-3447, T-3740, T-3741
+
 ## NEGBINOM.DIST's cdf is #NUM! at a huge number_s (T-3553)
 Rule: `NEGBINOM.DIST(f,s,p,TRUE)` is `#NUM!` at a huge number_s with enough failures, where the true cdf underflows
 to 0.
@@ -2781,7 +2812,12 @@ The products' rounding errors are not carried. EXP(hi)·EXP(lo) and EXP(hi)·(1 
   no large smooth error, so the offset is most likely rounding of stored intermediates. That is an inference until a
   model reproduces it (T-3569). The pins are Excel for the web values, inside the web/desktop floor of up to 4 ulp. Fixed candidates reach at most 34 and 37 of 80 shapes
   (CR lnB, the best); TOMS-d 26 and 30. Excel's GAMMALN difference carried past 8, in either association, gets 0 and
-  1. Still open (T-3569: x87 storage variants of algdiv scored against the 156 per-shape pins).
+  1. **No x87 storage variant of TOMS algdiv explains the pins (T-3569 r5-algdiv, negative).** 65,792 variants (all 512
+  store subsets of h c x d s w u v r, extended, double or x87-stored, times alnrel, log b, final order, t² and the
+  GL + algdiv sum) were scored per shape. The best frozen tier (u stored, series alnrel, Excel's LN) reproduces 36 of 78
+  pinned shapes in-sample and 33 of 78 on the hold-out. The correctly rounded lnB gets 33 and 35, and TOMS-d 26 and 30.
+  All three are within 4 ulp on 76-78 shapes. The next evidence needed is desktop cells for these shapes (M14), not
+  more web-pin scoring (docs/research/t2464/r5-algdiv/RESULTS.md).
 - Rejected (T-2464): a cdf prefactor over x or x·y; x87 base-2 pow forms; GAMMA-ratio B; R lbeta, NSWC/Apache logBeta;
   TOMS gamln/gamln1 or LN(GAMMA) for lnΓ(v < 1) (GL beats them in every combination, `lgam_*.out`). For algdiv
   (`lnbcands.out`, `algsearch.out`): accurate algdiv, TOMS fully extended, correctly rounded or series alnrel, and
@@ -3985,8 +4021,15 @@ the double p): at 21 of its points with p from 0.99943 to 1.0000000006 and df fr
 `T.INV.2T(0.999999999999998,2)` = 2.8261664256307887E-15, 2.2E-15 off (A122). The probe cells above happen to sit
 within 15 digits; Excel's centre form is still unidentified (T-3414 sweeps it, T-3415 fits it, both Phase 1b).
 Ours: the centre crossing of `student_t_centre` (T-2724), within about 5E-16 of the exact value.
+Below 15 digits Excel is not correctly rounded there (gap triage 2026-10-31c, mpmath at 60 digits from the double p):
+on the 34 df >= 2 cells of probes/t3349-t-inv-2t-near-one that are not bit-exact, Excel is 5 to 24 ulp off the exact
+quantile on 16 and 0 to 4 ulp off on the other 18, while the engine is within 3 ulp on all of them. Excel's error grows
+as c = |1 - p| shrinks: A1 `T.INV.2T(0.999999999989522,2)` +5 ulp, A15 `T.INV.2T(0.999999999999999,2)` +22,
+A25 the same p at df 30 +24, A42 `T.INV(0.500000000001,2)` -11. A5 `CONFIDENCE.T(0.999999999989522,1,3)` is A1's
+value over SQRT(3) to the bit (Excel's A1 over SQRT(3) gives Excel's A5), so its visibly-off 15th digit comes from
+those T.INV.2T digits alone. Which quantity Excel's centre solves for is open (T-3421).
 Status: VERIFIED (excel-graph)
-Tasks: T-3349, T-2724, T-2858, T-3414, T-3415
+Tasks: T-3349, T-2724, T-2858, T-3414, T-3415, T-3421
 
 ## Inverse CDF functions at a tiny or near-1 probability (T-1543)
 Rule: NORM.INV, NORM.S.INV, LOGNORM.INV, CHISQ.INV, CHISQ.INV.RT, GAMMA.INV and BETA.INV return a value (or `#NUM!`) for p from 1E-300 to 1-1E-16; none panics or hangs in Excel.

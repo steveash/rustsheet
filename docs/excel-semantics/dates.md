@@ -361,7 +361,7 @@ DATEVALUE and column C VALUE of the text in column A; 63 forms):
   name never comes first in a separated form or with a year first (`"Jul-1-2026"`, `"Jul/1/2026"`,
   `"2023/Jan/15"`, `"2023-Jan-15"` are #VALUE!), and `"Jul. 1, 2026"`, `"July 1st, 2026"`,
   `"Wednesday, July 1, 2026"`, `"2026 July 1"` are #VALUE!.
-- **Years**: 2 or 4 digits; 2-digit years below 30 are 20xx (`"Jul 1, 26"` = 2026,
+- **Years**: 1, 2 or 4 digits (one digit is 200x, see the shape survey below); 2-digit years below 30 are 20xx (`"Jul 1, 26"` = 2026,
   `"Jul 1, 29"` = 2029, `"Jul 1, 30"` = 1930; also `"1 July 26"`, `"1/Jul/26"`). The date must exist and lie in 1900-01-01..9999-12-31
   (`"Feb 29, 2025"`, `"July 32, 2026"`, `"Jan 1, 1899"`, `"Jan 1, 10000"` are #VALUE!;
   `"Feb 29, 1900"` = 60).
@@ -394,6 +394,51 @@ DATEVALUE and column C VALUE of the text in column A; 63 forms):
   sum falls on (`DATEVALUE("1/2/2020 25:00")` = 43833, 3 Jan), and TIMEVALUE takes the time
   (D30, D55: 0.41666666666424135, 0.6909722222189885, with the serial-subtraction error). Anything else after the date is
   #VALUE! (`"2026-01-01 garbage"`, ISO `"2026-07-01T10:00"`).
+- **Shape survey** (T-3646; probes/date-text-shape-survey rows 1-120 and date-text-shape-survey-2
+  rows 1-32, excel-graph 2026-11-01; columns B DATEVALUE, C VALUE, D YEAR of the text, E TIMEVALUE in
+  the second; full dates use 2025 so a clock-year reading cannot pass; the three readers agree on
+  every row, VALUE adding the clock): accepted beyond the rules above:
+  - `/` and `-` mixed in one date: `"7/1-2025"`, `"7-1/2025"`, `"2025/07-01"`, `"2025-07/01"`,
+    `"1-Jul/2025"`, `"1/Jul-2025"`, `"7/1-25"`, `"7-1/5"`, `"1/Jul-5"`, `"2025-07/01 10:00"` (rows
+    73-78; survey-2 rows 15-20). A doubled separator is #VALUE! (`"7//1/2025"`, `"7/1--2025"`).
+  - A one-digit year is 200x after a month name as after a month number: `"1 Jul 5"`,
+    `"Jul 1, 5"`, `"1-Jul-5"`, `"July 1, 5"`, `"1 July 5"`, `"1/Jul/5"`, `"Jul 01, 5"` are
+    2005-07-01 and `"1-Jul-0"` 2000-07-01 (rows 22-26; survey-2 rows 24-28). Three-digit parts are
+    #VALUE!: `"7/1/025"`, `"007/01/2025"`, and a zero-padded four-digit year below 1900
+    (`"0025-07-01"`) is out of range (rows 6, 10, 11).
+  - The clock may come before the date: `"10:00 7/1/2025"`, `"10:00 AM 7/1/2025"`, `"10 AM 7/1/2025"`,
+    `"10:00 PM 7/1/2025"`, `"10:00 July 1, 2025"`, `"10:00 1-Jul-2025"`, `"10:00 1 Jul 2025"`,
+    `"10:00 Jul-2025"`, `"10:00:30 2025-07-01"`, `"10:00:30.5 7/1/2025"`, `"10:00  7/1/2025"` (row 113;
+    survey-2 rows 1-13); `"25:00 7/1/2025"` rolls into 2 July as a trailing `25:00` does. A clock on
+    both sides (`"10:00 7/1/2025 10:00"`), AM/PM after the date (`"10:00 7/1/2025 PM"`) and a comma
+    (`"10:00,7/1/2025"`) are #VALUE!.
+  - Also matched (already implemented): ISO `yyyy-mm-dd` and `yyyy/m/d` with or without leading
+    zeros, `mm/dd/yyyy` with leading zeros, `"12-07-01"` (month first, 2001-12-07), the years 1900 and
+    9999 at both ends (`"1/1/1900"` = 1, `"12/31/9999"` = 2958465, `"2/29/1900"` = 60) and 1899 and
+    10000 refused, `"July 2025"`, `"Jul 2025"`, `"Jul/2025"`, `"01-JUL-2025"`, `"1 Sept 2025"`, Feb 29
+    only in a leap year, inner space runs, and a clock with seconds, fractions (`10:00:30.123`) or
+    AM/PM after the date (rows 1-5, 7-9, 12, 17-21, 28-32, 35, 37-39, 45-47, 61-72, 79-83, 92-100,
+    102-108, 112, 115, 119-120).
+  Refused (#VALUE! in all three): dotted dates (`"1.7.2025"`, `"2025.07.01"`, `"7.1.25"`), a month
+  name after a year (`"2025 Jul 1"`, `"2025-Jul"`, `"2025 July"`), `"Jul 1 2025"`, `"July-1-2025"`,
+  `"1 july, 2025"`, a month abbreviation with a period (`"Sept. 1, 2025"`, `"1 Jul. 2025"`,
+  `"1-Jul.-2025"`, `"Jul.-2025"`), any weekday name, before or after, right or wrong
+  (`"Tuesday, July 1, 2025"`, `"Tue 1 Jul 2025"`, `"Monday, July 1, 2025"`, `"July 1, 2025 Tuesday"`),
+  ordinals (`"July 1st, 2025"`, `"1st July 2025"`, `"3rd of July 2025"`, `"1st-Jul-2025"`), a day or
+  month past its range (`"2/30/2025"`, `"4/31/2025"`, `"Feb 30, 2025"`, `"31-Apr-2025"`, `"0/1/2025"`,
+  `"7/0/2025"`, `"13/13/2025"`), the ISO `T` (`"2025-07-01T10:00Z"` too), a glued `am`
+  (`"10:00am"`), `a.m.`, a zone (`Z`, `+05:00`), `"7/1/2025 22:00 PM"`, a comma before the clock
+  (`"July 1, 2025, 10:00"`) and a clock joined by a hyphen (`"7/1/2025-10:00"`).
+  Whitespace is the space character only: DATEVALUE, like VALUE, does not trim a tab, line feed,
+  carriage return, no-break space or ideographic space (`CHAR(9)&"7/1/2025"`, `"7/1/2025"&CHAR(10)`,
+  `CHAR(160)&…`, `UNICHAR(12288)&…`: rows 84-88, 91), and one inside the text, between words or
+  between the date and the clock, is #VALUE! in DATEVALUE, VALUE, YEAR and TIMEVALUE (`"July"&
+  CHAR(160)&"1, 2025"`, `"7/1/2025"&CHAR(9)&"10:00"`, `"1"&CHAR(9)&"Jul"&CHAR(9)&"2025"`: row 89-90;
+  survey-2 rows 29-32). Before T-3646 the engine trimmed any whitespace in DATEVALUE and split words
+  on it. Implemented in `parse_year`, `parse_separated` and the word split of `parse_date`
+  (formatter/date_text.rs), `parse_date_clock_parts` (formatter/date_clock.rs, clock first),
+  `parse_datevalue_text` (trim) and `parse_time_string` (time_text.rs). The glued month-name shapes
+  are T-3299's (next section) and were not surveyed here.
 - **Year-less text** (`mmm-n`, `mmm/n`, `mmm n`, `n-mmm`, `n mmm`, `mmmm n`, and month-first `m/n`,
   `m-n`): a one- or two-digit `n` that is a valid day of that month *in the current year* gives that
   day of the current year: `"Jul-26"`, `"Jul 26"` and `"Jul/26"` are 26 July (46229 in 2026),
@@ -1312,3 +1357,13 @@ Rule: `NETWORKDAYS.INTL(31,4886,<blank>,{1,2;#N/A,""})` is `#NUM!`, the blank we
 Ours: implemented (T-2271's weekend read comes before the holidays' error; T-2583 pins it with a unit test).
 Status: VERIFIED (excel-graph), one cell
 Tasks: T-2583
+
+## gen-m6 arg-pairs batch (T-3495): DAYS error order and NETWORKDAYS.INTL on day 0
+Rule: DAYS: an error-valued argument wins in either position (`DAYS("abc",#NAME?)` is #NAME?, `DAYS("",#NAME?)` is #NAME?);
+the end date's range check comes before the start date's text check (`DAYS(-1,"abc")` and `DAYS(-1,"")` are #NUM!,
+`DAYS(Data!A1:B2,"abc")` is #NUM! at A493). NETWORKDAYS.INTL: every failing cell has a start or end on serial day 0
+(0 <= x < 1, including a blank cell): `NETWORKDAYS.INTL(0.5,54115,3,0.5)` is 38654, `NETWORKDAYS.INTL(39539,0,3,2)` is -28241.
+Evidence: gen-m6 a4a301d00b46acf3 (A79 A82 A85 A88 A241 A244 A307 A310 A493 A499) and the six NETWORKDAYS.INTL cells of T-3537.
+Ours: DAYS returns #VALUE! in all ten; NETWORKDAYS.INTL is one day off in the other direction.
+Status: UNVERIFIED (probe pending; cells are oracle values, the general rule is not probed)
+Tasks: T-3536, T-3537

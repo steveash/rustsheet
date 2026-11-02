@@ -66,6 +66,9 @@
 - **Consequences:**
   - `exempt.tsv` gains 25 lines now (16 `exact`, 9 `composite`). `missing tables` falls by 25: from 305 to 280 on this
     branch. No exemption is stale. T-3685 adds the three volatile lines later (280 to 277).
+  - Done (T-3685, 2026-11-01): the three lines name decision 0225 and T-3631's probe cases
+    `t3631-rand-randbetween-invariant` and `t3631-randarray-invariant` (missing tables then 277 to 274, other tables having
+    landed meanwhile).
   - The twelve table tasks and T-3685 bring M5, M6 and M7 to zero missing tables once they land.
   - M9's other functions (outside decision 0188's 18) are still unclassified. As T-3551 says, they need their own
     classification task once the M9 table slices settle the solver and distribution patterns.
