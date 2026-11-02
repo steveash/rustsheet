@@ -3,7 +3,7 @@ id: T-3649
 title: "TEXT: sweep format codes against each value kind to find where Excel gives #VALUE! and ours a string"
 milestone: M5
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -28,12 +28,25 @@ including a value that falls in a section the code leaves empty. Code: the forma
 crates/rustsheet-engine/src/formatter/ and `fn_text`.
 
 ## Acceptance criteria
-- [ ] A probe case (excel-graph) covers the families above against every value kind.
-- [ ] Every probed cell where Excel is `#VALUE!` is `#VALUE!` in ours and the reverse; number-formats.md states each rule.
-- [ ] Cells inside the open narrow TEXT probes' scope are handed to those tasks.
-- [ ] Every quirk found is written up in docs/excel-semantics/number-formats.md in the same PR, with its probe cells cited.
-- [ ] `make check` green; eval known failures only shrink (baseline updated); reviewers approve.
+- [x] A probe case (excel-graph) covers the families above against every value kind.
+- [x] Every probed cell where Excel is `#VALUE!` is `#VALUE!` in ours and the reverse; number-formats.md states each rule.
+- [x] Cells inside the open narrow TEXT probes' scope are handed to those tasks.
+- [x] Every quirk found is written up in docs/excel-semantics/number-formats.md in the same PR, with its probe cells cited.
+- [x] `make check` green; eval known failures only shrink (baseline updated); reviewers approve.
 
 ## Out of scope
 - Rendered text differences on valid codes (separate follow-ups).
 - Complexity-limit refits.
+
+## Outcome
+Probes `probes/text-value-kind-sweep` (68 codes, one per family and section shape, × number,
+negative, zero, date-time serial, text, TRUE, empty cell; 476 TEXT cells) and
+`probes/text-value-kind-sweep-b` (19 follow-up codes, 133 TEXT cells), excel-graph 2026-11-01.
+Every `#VALUE!` cell already matched Excel both ways; the rules are written up in number-formats.md
+"Which codes are `#VALUE!` for which value kind". The sweep found two rendering quirks, fixed here:
+a trailing `;` opens an empty section (`TEXT(0,"0;;")` is "", `TEXT(-5,"0;")` ""), and a section of
+only a color or a condition prints General (`TEXT(5,"[Red]")` is "5", `TEXT("abc","0;;;[Red]")`
+"abc"), each with its own number-formats.md entry. No cell fell inside the open narrow TEXT probes'
+scope (T-2230, T-2303, T-2745, T-2798, T-3089, T-3342), so nothing was handed off.
+Eval delta: +2 probe cases, 609 TEXT cells + 12 value cells, all pass (9 + 47 mismatches before the
+fix); no other cell changed in any suite (known failures unchanged, 0 regressions).
