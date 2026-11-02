@@ -394,6 +394,15 @@ DATEVALUE and column C VALUE of the text in column A; 63 forms):
   sum falls on (`DATEVALUE("1/2/2020 25:00")` = 43833, 3 Jan), and TIMEVALUE takes the time
   (D30, D55: 0.41666666666424135, 0.6909722222189885, with the serial-subtraction error). Anything else after the date is
   #VALUE! (`"2026-01-01 garbage"`, ISO `"2026-07-01T10:00"`).
+- **Typed mixed-separator dates and a leading-space clock** (T-3751; probes/date-text-mixed-separator-typed, excel-graph
+  2026-11-01; formats from the ENTERED log, docs/research/typed-mixed-separator-dates-2026-11-01.md): a date mixing `/`
+  and `-` typed into a cell is a number, and its format follows the date's shape, not the first separator: `7/1-2025`,
+  `7-1/2025`, `2025/07-01`, `2025-07/01` and `7/1-25` all become `m/d/yyyy` (A1-A4, A7); a month-name date, `1-Jul/2025`
+  and `1/Jul-2025`, becomes `d-mmm-yy` (A5, A6). A clock first, `10:00 7/1/2025`, typed is 45839.4166666667 with
+  `m/d/yyyy h:mm` (A10), but a leading space before it (` 10:00 7/1/2025`, ` 10:00 AM 7/1/2025`) leaves text with
+  `General` (A8, A9). The readers are looser: `=DATEVALUE(" 10:00 7/1/2025")` is 45839 and `=VALUE(" 10:00 7/1/2025")` is
+  45839.4166666667 (A12, A13), while `=0+" 10:00 7/1/2025"` is #VALUE! (A11). The engine's typed formats differ (`yyyy/mm/dd`,
+  `d/mmm/yyyy`, `m/d/yy`) and it keeps `10:00 7/1/2025` as text: T-3796. `CELL("format", ...)` is #VALUE! on excel-graph.
 - **Shape survey** (T-3646; probes/date-text-shape-survey rows 1-120 and date-text-shape-survey-2
   rows 1-32, excel-graph 2026-11-01; columns B DATEVALUE, C VALUE, D YEAR of the text, E TIMEVALUE in
   the second; full dates use 2025 so a clock-year reading cannot pass; the three readers agree on

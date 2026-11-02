@@ -1,0 +1,72 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3751: typed mixed-separator dates and a leading space before a leading clock (value, type, CELL format); coerced forms of the leading-space clock.",
+ "tags": [
+  "M2",
+  "probe",
+  "dates",
+  "date-text",
+  "T-3751"
+ ],
+ "expected": {},
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": {
+     "entered": "7/1-2025"
+    },
+    "B1": "=ISNUMBER(A1)",
+    "C1": "=IF(ISNUMBER(A1),A1,LEN(A1))",
+    "A2": {
+     "entered": "7-1/2025"
+    },
+    "B2": "=ISNUMBER(A2)",
+    "C2": "=IF(ISNUMBER(A2),A2,LEN(A2))",
+    "A3": {
+     "entered": "2025/07-01"
+    },
+    "B3": "=ISNUMBER(A3)",
+    "C3": "=IF(ISNUMBER(A3),A3,LEN(A3))",
+    "A4": {
+     "entered": "2025-07/01"
+    },
+    "B4": "=ISNUMBER(A4)",
+    "C4": "=IF(ISNUMBER(A4),A4,LEN(A4))",
+    "A5": {
+     "entered": "1-Jul/2025"
+    },
+    "B5": "=ISNUMBER(A5)",
+    "C5": "=IF(ISNUMBER(A5),A5,LEN(A5))",
+    "A6": {
+     "entered": "1/Jul-2025"
+    },
+    "B6": "=ISNUMBER(A6)",
+    "C6": "=IF(ISNUMBER(A6),A6,LEN(A6))",
+    "A7": {
+     "entered": "7/1-25"
+    },
+    "B7": "=ISNUMBER(A7)",
+    "C7": "=IF(ISNUMBER(A7),A7,LEN(A7))",
+    "A8": {
+     "entered": " 10:00 7/1/2025"
+    },
+    "B8": "=ISNUMBER(A8)",
+    "C8": "=IF(ISNUMBER(A8),A8,LEN(A8))",
+    "A9": {
+     "entered": " 10:00 AM 7/1/2025"
+    },
+    "B9": "=ISNUMBER(A9)",
+    "C9": "=IF(ISNUMBER(A9),A9,LEN(A9))",
+    "A10": {
+     "entered": "10:00 7/1/2025"
+    },
+    "B10": "=ISNUMBER(A10)",
+    "C10": "=IF(ISNUMBER(A10),A10,LEN(A10))",
+    "A11": "=0+\" 10:00 7/1/2025\"",
+    "A12": "=DATEVALUE(\" 10:00 7/1/2025\")",
+    "A13": "=VALUE(\" 10:00 7/1/2025\")"
+   }
+  }
+ ]
+}

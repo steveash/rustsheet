@@ -219,6 +219,7 @@ probes/amordegrc-fraction-state-ag.case.json	1
 probes/amordegrc-fraction-state-ah.case.json	1
 probes/bond-extreme-coupon-yield.case.json	62
 probes/coup-calendar-edges.case.json	1
+probes/date-text-mixed-separator-typed.case.json	2
 probes/elapsed-no-seconds-boundary.case.json	1
 probes/fin-cumipmt-gate-edges.case.json	14
 probes/fin-cumipmt-overflow-and-forms.case.json	2
