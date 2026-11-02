@@ -975,7 +975,7 @@ Thai vowel and tone marks U+0E31, U+0E34-U+0E3A, U+0E47-U+0E4E and the Mongolian
 mark is not a letter, including those Unicode calls Alphabetic: `PROPER("a"&UNICHAR(1456)&"bc")` (Hebrew sheva) is
 `A`+U+05B0+`Bc`, and so are Arabic U+0610 and U+064B, Devanagari U+0901, U+0903 and U+093C, Greek U+0345, Cyrillic U+0483
 and U+3099. 1,321 Unicode letters are not letters to PROPER, mostly ones the newer Unicode versions added (so
-`PROPER("aꟺbc")` is `AꟺBc`): among them the letters of U+02B9-U+02BA, U+02C6-U+02CF (`PROPER("aˆbc")` is `AˆBc`), U+0524-U+052F,
+`PROPER("aꟺbc")` is `AꟺBc`): among them the modifier letters ʹ and ʺ, the letters of U+02C6-U+02CF (`PROPER("aˆbc")` is `AˆBc`), U+0524-U+052F,
 U+0800-U+08C9 (Samaritan, Mandaic, Syriac supplement, extended Arabic), Georgian Mtavruli U+1C90-U+1CBF and U+10FD-U+10FF,
 Cherokee small letters U+13F8-U+13FD and U+AB70-U+ABBF, Latin Extended-D U+A788 and U+A78D-U+A7FA, U+A960-U+A97C,
 U+D7B0-U+D7FB, and the Bamum numerals U+A6E6-U+A6EF (Nl). Ordinary letters of every older script are letters
