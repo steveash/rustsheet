@@ -50,3 +50,4 @@ Today's engine is visibly off on 1,371 of the 1,650 column-A cells of t3568-r5-b
 ## Out of scope
 - The n >= 10 leftover that grows with the binade of (n - 1)·|ln y0| (open in T-3568's RESULTS.md, section 5).
 - The density's lnB (T-3569) and D to the bit (T-3383).
+- Column B's own `BETA.DIST(x, a, 1, TRUE)` cells that are visibly off (47, the a0 = 1 complement): T-3764.

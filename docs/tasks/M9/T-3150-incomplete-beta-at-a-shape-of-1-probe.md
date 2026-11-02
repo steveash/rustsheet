@@ -30,3 +30,5 @@ Excel's value is known, and matched, where a0 = 1 outside the closed forms has a
 
 ## Out of scope
 - Excel's w at a0 = 1 (T-3007).
+- The four t3568-r5-bup column-B cells with x^a below 2^-53 (fresh B744, hold B1130, B1546, tune B1609) are owned by
+  T-3764 with its other 43 column-B cells. Whichever task lands first takes them and records it in the other's file.
