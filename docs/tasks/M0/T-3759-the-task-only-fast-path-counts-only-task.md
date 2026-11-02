@@ -3,7 +3,7 @@ id: T-3759
 title: "The task-only fast path counts only task files that are regular files"
 milestone: M0
 lane: quality
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
