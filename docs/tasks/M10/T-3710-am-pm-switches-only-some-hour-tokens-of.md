@@ -17,7 +17,7 @@ depends_on: []
 Found by T-3532: probes/t3532-numeral-digit-fields row 10, all columns (numeral bytes 2-31; the quirk is not about digits, A10 is "١٣|١٣|٠٢|١٢|١:٠٢:١٢.٤٨ PM"). We switch every hour token ("1|01|..."). Semantics: number-formats.md "Numeral-system digits", the hour bullet. Probe first which hours switch (the hour nearest the marker, the hours after the last `|`-like literal, or those in the same time run as the marker) with ASCII codes (`h|h AM/PM`, `h AM/PM|h`, `h:mm|h:mm AM/PM`). Code: formatter/format.rs `TextToken::Hour`/`HourPadded` (`p.use_ampm`).
 
 ## Acceptance criteria
-- [ ] probes/t3532-numeral-digit-fields row 10 passes (A10-G10); a probe covers the ASCII forms.
+- [ ] probes/t3532-numeral-digit-fields row 10 passes (A10:G10); a probe covers the ASCII forms.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

@@ -22,6 +22,8 @@ FORMULATEXT of a formula with a structured reference shows what Excel shows, and
   `=Sales[@Qty]*2` inside table Sales. Ours prints the long form with the name. Cases: probes/table-edits
   table-insert-row-this-row-above-header, -this-row-inside-data, -calc-column-above-header, -calc-column-inside-data
   (the FORMULATEXT cells; their #This Row values are T-3037's).
+- Cells (gap triage 2026-11-02; the line above names this case only by its suffix, so `make exit-owners` missed it):
+  - probes/table-edits/table-insert-row-this-row-inside-data.case.json (11): F!B4:B8, G1:G6
 
 ## Acceptance criteria
 - [ ] Probe Excel FORMULATEXT for `T[@Qty]`, `T[[#This Row],[Qty]]`, `T[Qty]`; record in docs/excel-semantics/references.md.
