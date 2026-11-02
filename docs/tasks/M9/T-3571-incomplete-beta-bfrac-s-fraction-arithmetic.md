@@ -3,7 +3,7 @@ id: T-3571
 title: "Incomplete beta: bfrac's fraction arithmetic"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
