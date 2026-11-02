@@ -5291,7 +5291,6 @@ F	probes/t3406-irr-num-boundary.case.json	P!A141
 F	probes/t3406-irr-num-boundary.case.json	P!A142
 F	probes/t3406-irr-num-boundary.case.json	P!A143
 F	probes/t3406-irr-num-boundary.case.json	P!A144
-F	probes/t3406-irr-num-boundary.case.json	P!A26
 F	probes/t3406-irr-num-boundary.case.json	P!A27
 F	probes/t3406-irr-num-boundary.case.json	P!A28
 F	probes/t3406-irr-num-boundary.case.json	P!A29
@@ -5300,7 +5299,6 @@ F	probes/t3406-irr-num-boundary.case.json	P!A31
 F	probes/t3406-irr-num-boundary.case.json	P!A32
 F	probes/t3406-irr-num-boundary.case.json	P!A33
 F	probes/t3406-irr-num-boundary.case.json	P!A49
-F	probes/t3406-irr-num-boundary.case.json	P!A5
 F	probes/t3406-irr-num-boundary.case.json	P!A50
 F	probes/t3406-irr-num-boundary.case.json	P!A51
 F	probes/t3406-irr-num-boundary.case.json	P!A52
