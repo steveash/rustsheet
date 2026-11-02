@@ -91,3 +91,6 @@ long series near a root of 0) return Excel's digits instead of falling through t
   docs/research/t3411/. Otherwise, close #2822 and keep only the fresh sweeps and findings (a research PR).
 - Do not repeat: the stall rule (refuted by t3411-irr-r4-fresh A129, see T-3411); judging regressions by per-case
   pass counts (compare cell by cell, probes-numeric included).
+- CI: hygiene is red on 2b6f50979 and on 2f54f03e6. On 2f54f03e6 `check_governance.py` fails because
+  quality/fitted.json and quality/duplication.json changed without a decision record (`make new-decision`). Add the
+  record only once the cap itself is settled (fidelity findings 1-4); a cap that is dropped needs neither file changed.
