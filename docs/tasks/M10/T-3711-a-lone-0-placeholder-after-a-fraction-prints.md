@@ -16,6 +16,9 @@ depends_on: []
 ## Context
 Found by T-3532: probes/t3532-numeral-digit-fields row 14, all columns (A14 "١٢ ١/٢|٠ 12|5"; ours "١٢ ١/٢| 12|5" drops the zero, also with ASCII digits). Probe the neighbouring forms (`# ?/? 0`, `# ?/? #`, `# ?/? 00`, a value whose fraction is zero) before generalizing. Semantics: number-formats.md "Numeral-system digits" (fields bullet) and "Fraction formats". Code: formatter/fraction.rs `format_fraction`.
 
+Cells (gap triage 2026-11-02, the row-14 cells no task listed by name):
+- probes/t3532-numeral-digit-fields.case.json (5): S!B14, C14, D14, E14, F14
+
 ## Acceptance criteria
 - [ ] probes/t3532-numeral-digit-fields row 14 passes (A14-G14); a probe covers the neighbouring forms.
 - [ ] `make check` green; reviewers approve.
