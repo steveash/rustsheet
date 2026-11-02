@@ -1,6 +1,8 @@
-//! Excel's letter set for PROPER's word starts (docs/excel-semantics/text.md "PROPER word starts:
-//! Excel's own letter table", probes/t3657-proper-letter-sweep). Decoded from the excel-graph sweep
-//! of every BMP code point; generated, do not edit by hand.
+//! Excel's letter set for PROPER's word starts (T-3657; docs/excel-semantics/text.md "PROPER word starts:
+//! Excel's own letter table (T-3657)"). Decoded from probes/t3657-proper-letter-sweep.oracle.json: the
+//! digits of Calc!A1:A4, joined, give one digit per code point U+0020..=U+FFFD with the surrogates
+//! skipped, in ascending order (1 = letter); runs of 1 are the ranges below. Regenerate by decoding a
+//! fresh fill of that case the same way, never by editing a range by hand.
 
 /// The BMP code points PROPER treats as letters, as sorted inclusive ranges. Everything else,
 /// supplementary-plane characters included, is not a letter.

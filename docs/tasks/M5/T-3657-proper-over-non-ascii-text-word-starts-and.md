@@ -47,3 +47,4 @@ character, using T-3298's case table once it lands. Code: `fn_proper` in functio
   `proper_case`, which now lowers non-letters.
 - Eval delta: the two new cases add 181 cells; 174 pass. 7 known failures (t3657-proper-word-starts S!B24, C14, C16,
   C18, C20, C23, D24) need Excel's old case table, which T-3583 (#2801) implements. No other case changed.
+- Follow-up: T-3802 (probe lone surrogates, supplementary letters and non-letter capitals at a word start).
