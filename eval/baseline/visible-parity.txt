@@ -227,6 +227,7 @@ probes/fin-cumipmt-tiny-rate-structure.case.json	38
 probes/fin-cumprinc-near-1e15.case.json	4
 probes/fin-cumprinc-underflow-ends.case.json	4
 probes/forecast-ets-longer-series.case.json	41
+probes/forecast-ets-optional-settings-shape.case.json	12
 probes/growth-modes.case.json	10
 probes/irr-fallback-roots.case.json	7
 probes/irr-guess-edges-2.case.json	4

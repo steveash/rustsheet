@@ -3,7 +3,7 @@ id: T-2371
 title: "Probe FORECAST.ETS family optional settings as array or range, and boolean, text and error target_date"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-2028 lifted `target_date` and `statistic_type` (oracle-backed) and also made t
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/forecast-ets-optional-settings-shape (51 cells, excel-graph oracle). Excel lifts all optional settings over arrays and ranges, and `"x"` is `#VALUE!`; our kinds already match (39/51 cells pass; the other 12 are valid calls where we stay `#N/IMPL!` and the web gives `#N/A`, the family's known state). Findings in statistics.md. Eval: new case, 12 baselined known failures, no regressions.

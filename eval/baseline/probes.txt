@@ -523,6 +523,7 @@ C	probes/fin-vdb-schedule.case.json	78
 C	probes/fin-yield-odd-lift.case.json	51
 C	probes/fixed-dollar-length-bound.case.json	82
 C	probes/forecast-ets-longer-series.case.json	42
+C	probes/forecast-ets-optional-settings-shape.case.json	51
 C	probes/format-doubled-quotes.case.json	11
 C	probes/formula-length-nonbmp-33pieces.case.json	1
 C	probes/formula-length-nonbmp-8192u.case.json	1
@@ -2975,6 +2976,18 @@ F	probes/forecast-ets-longer-series.case.json	Sheet1!K6
 F	probes/forecast-ets-longer-series.case.json	Sheet1!K7
 F	probes/forecast-ets-longer-series.case.json	Sheet1!K8
 F	probes/forecast-ets-longer-series.case.json	Sheet1!K9
+F	probes/forecast-ets-optional-settings-shape.case.json	Sheet1!M29
+F	probes/forecast-ets-optional-settings-shape.case.json	Sheet1!M30
+F	probes/forecast-ets-optional-settings-shape.case.json	Sheet1!M31
+F	probes/forecast-ets-optional-settings-shape.case.json	Sheet1!M32
+F	probes/forecast-ets-optional-settings-shape.case.json	Sheet1!M33
+F	probes/forecast-ets-optional-settings-shape.case.json	Sheet1!M34
+F	probes/forecast-ets-optional-settings-shape.case.json	Sheet1!M41
+F	probes/forecast-ets-optional-settings-shape.case.json	Sheet1!M42
+F	probes/forecast-ets-optional-settings-shape.case.json	Sheet1!M43
+F	probes/forecast-ets-optional-settings-shape.case.json	Sheet1!M44
+F	probes/forecast-ets-optional-settings-shape.case.json	Sheet1!M45
+F	probes/forecast-ets-optional-settings-shape.case.json	Sheet1!M46
 F	probes/ftest-decomposition.case.json	Calc!A4
 F	probes/ftest-decomposition.case.json	Calc!A5
 F	probes/ftest-decomposition.case.json	Calc!A6
