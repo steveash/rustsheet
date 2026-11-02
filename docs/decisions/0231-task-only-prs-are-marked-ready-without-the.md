@@ -14,8 +14,10 @@
     the PR, with typos and governance. #2676's ejection on 2026-11-01 was such a catch: two
     triage PRs listed the same cells.
 - **Decision:**
-  - A diff whose every changed path is a `.md` file under `docs/tasks/` (at least one path) needs
-    no reviewer. `mark` and V4 require no verdict for it. CI green, not a draft, and the train's
+  - A diff whose every changed path is a task file (at least one path) needs no reviewer. A task
+    file is a path under `docs/tasks/` that matches `tasks.TASK_FILE` (`T-NNNN-<slug>.md`, so not
+    `docs/tasks/README.md`) and is a regular file at the PR head (mode 100644 or 100755; not a
+    symlink, a submodule or a deletion; T-3759). `mark` and V4 require no verdict for it. CI green, not a draft, and the train's
     id checks still apply. One path anywhere else brings the full panel back.
   - Any session may mark such a PR ready, including one it did not open.
 - **Consequences:**

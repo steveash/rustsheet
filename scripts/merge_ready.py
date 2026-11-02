@@ -468,14 +468,14 @@ class Repo:
             "fetch", "-q", "--no-tags", *deepen, REMOTE, f"+refs/heads/{BASE_BRANCH}:refs/merge-ready/{BASE_BRANCH}"
         )
 
-    def changed_paths(self, base: str, head: str) -> list[str] | None:
-        """The paths changed from the single merge base of `base` and `head` to `head`; None when
-        there is not exactly one merge base (every reviewer then applies)."""
+    def changed_paths(self, base: str, head: str) -> dict[str, str] | None:
+        """The paths changed from the single merge base of `base` and `head` to `head`, each to its mode
+        at `head` (000000: deleted; T-3759); None unless there is one merge base (all reviewers apply)."""
         bases = self.git("merge-base", "--all", base, head, check=False).split()
         if len(bases) != 1:
             return None
-        out = self.git("diff", "-z", "--no-renames", "--name-only", bases[0], head, "--")
-        return [p for p in out.split("\0") if p]
+        out = self.git("diff", "-z", "--no-renames", "--raw", bases[0], head, "--").split("\0")
+        return {path: meta.split()[1] for meta, path in zip(out[0::2], out[1::2], strict=False) if path}
 
     def checked_baselines(self) -> set[str]:
         """The lists CI's eval gate checks against the engine: `eval/baseline/<suite>.txt` of every
@@ -619,9 +619,9 @@ def pr_state_failures(pull: object, marked_task: str | None, head: str, repo: Re
 
 def head_state(
     client: Client, pull: object, head: str, repo: Repo
-) -> tuple[list[str] | None, str, list[str]]:
-    """The PR's changed paths (None when unknown: every reviewer applies) and its head's CI state
-    by the "green" rule, with the jobs that are not green. Fetches `main`.
+) -> tuple[dict[str, str] | None, str, list[str]]:
+    """The PR's changed paths with their head modes (None when unknown: every reviewer applies) and its
+    head's CI state by the "green" rule, with the jobs that are not green. Fetches `main`.
 
     `run_heavy=false` is told by the same classifier CI runs, because the proxy refuses the
     job-log download where CI prints it (decision 0149)."""
