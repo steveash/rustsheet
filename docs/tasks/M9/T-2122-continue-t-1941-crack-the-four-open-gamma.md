@@ -104,9 +104,17 @@ They are test points for the engine swap of `gamma_kernels.rs`.
 - Incomplete gamma / beta kernels (T-0971, T-0970).
 
 ## Deferred (decision 0114)
-`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead).
+`defer: phase-1b`: the cells this task owns are already within 15 significant digits of Excel, so it waits until Phase 1 exits. Remove the key only when the steward records the Phase 1 exit, or when an eval shows one of its cells visibly off (then give it a `campaign:` stage instead). Exception: the cell added by T-3036 (below) is visibly off and stays deferred here, because only Excel's own (1.5, 2] coefficients can close it (Excel is 4.2 ulp off the math there, the engine 1 ulp); it is not a trigger to remove the key.
 
 ## Cells added by gap triage (2026-10-30)
 `make eval` on origin/main 6a26b992a (excel-graph), `scripts/exit_owners.py`'s `owned` rule over every failing cell and the task files of origin/main and every pushed branch: two gen-m9 GAMMALN.PRECISE cells, 1 to 3 ulp off and none visibly off, that no open task names. Both arguments fall in K3's range: gen-m9/b8ee55934c5b824c A153 `GAMMALN.PRECISE((SQRTPI(Data!C3)-0.1))` with Data!C3 = 0.3 (argument about 0.871), Excel 0.08924278597232677, ours 0.08924278597232672; gen-m9/f2bd5f380ec002bf A241 `GAMMALN.PRECISE(ERF(Data!C4))` with Data!C4 = 1.005 (argument about 0.845), Excel 0.11110042471843157, ours 0.11110042471843155. Score K3 candidates on them too; the engine task this one files to swap `gamma_kernels.rs`'s arrays closes them.
 - gen-m9/b8ee55934c5b824c.case.json (1): Calc!A153
 - gen-m9/f2bd5f380ec002bf.case.json (1): Calc!A241
+
+## Cell added by T-3036 (2026-11-02)
+The one visibly-off GAMMALN cell of the (1.5, 2] kernel, deferred here by T-3036's acceptance criteria: probes-numeric/t2464-r2-bpser-small-gl
+Calc!A3188, `GAMMALN((56921738*2^-25+29850023*2^-51))`. Excel -0.09655332490423914, ours -0.09655332490423907 (5 ulp, just past half a unit of
+the 15th digit), the 40-digit lgamma -0.0965533249042390811: the engine is 1 ulp from the math and Excel 4.2 ulp. No measured coefficient set
+reaches Excel's value (d3ls ...907, pcD0 ...910, 80 ...910, L3b ...911; statistics.md, "GAMMALN is Excel's own x87 routine"), so only Excel's
+own coefficients close it. Score (1.5, 2] candidates on it. The gap triager should not re-file it: T-3036 already scored the known sets.
+- probes-numeric/t2464-r2-bpser-small-gl.case.json (1): Calc!A3188

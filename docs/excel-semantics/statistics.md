@@ -1854,8 +1854,13 @@ two models, not Excel's switch. Exact rates on the T-1941 GAMMALN.PRECISE cells 
 | x >= 8 | 1.000 (292,645 of 292,649) | 292,649 |
 
 The four x >= 8 misses are LN's FYL2X near-ties, where Excel's own LN column took the other neighbour in the same run, so
-the series is bit-exact given Excel's LN. The misses elsewhere are a few ulps (at most 7, in K3, on the committed 10,500-point sample), never visible
-at 15 digits; a correctly rounded lgamma (the fdlibm `lgamma` the engine used before) matches K2's data at 0.29-0.35 (HANDOFF2 §3).
+the series is bit-exact given Excel's LN. The misses elsewhere are a few ulps (at most 7, in K3, on the committed 10,500-point sample), visible
+at 15 digits only where GAMMALN is near 0: probes-numeric/t2464-r2-bpser-small-gl Calc!A3188, `GAMMALN(56921738*2^-25+29850023*2^-51)`
+(x = 1.6964000000000001, near the zero at 2) is -0.09655332490423914 in Excel and -0.09655332490423907 in ours, 5 ulp and just past half a
+unit of the 15th digit. There Excel is the one that is off: the 40-digit lgamma is -0.0965533249042390811, so ours is 1 ulp from it and
+Excel 4.2 ulp. None of the four measured (1.5, 2] coefficient sets of T-1941 (W6's `xl_chain_d3ls`, the engine's, gives ...907;
+`xl_chain_pcD0` and `xl_chain_80` ...910; `xl_chain_L3b` ...911) reaches Excel's ...914, so the cell waits for Excel's exact coefficients
+(T-2122; T-3036). Elsewhere the misses are invisible at 15 digits; a correctly rounded lgamma (the fdlibm `lgamma` the engine used before) matches K2's data at 0.29-0.35 (HANDOFF2 §3).
 Below 1 the K3 and (1.5, 2] gaps reach the beta density (T-2513). On probe t2513-r3-m1-residual-gl (Excel's GAMMALN at
 569 shape arguments) the engine model differs from Excel on 14 of 47 arguments below 1 (0.71: -2 ulps, 0.77: +2, 0.99:
 +2); the verifier, with its hold-out's 54 more, counts 24 of 66 below 1 and 19 of 541 from 1 on (verify-r3-m1-residual

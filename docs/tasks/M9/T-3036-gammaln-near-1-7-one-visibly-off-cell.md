@@ -3,7 +3,7 @@ id: T-3036
 title: "GAMMALN near 1.7: one visibly-off cell in the bpser sweep (probes-numeric t2464-r2-bpser-small-gl A3188)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -34,14 +34,25 @@ cell goes to a `defer: phase-1b` task with T-2122.
 - probes-numeric/t2464-r2-bpser-small-gl: GAMMALN 1 (Calc!A3188)
 
 ## Acceptance criteria
-- [ ] Calc!A3188 of probes-numeric/t2464-r2-bpser-small-gl is within 15 digits in `make eval`, with no gated loss
+- [x] Calc!A3188 of probes-numeric/t2464-r2-bpser-small-gl is within 15 digits in `make eval`, with no gated loss
       (`make eval-check`) and no new visibly-off GAMMALN cell, or the Outcome scores the candidate sets and files the
       deferral.
-- [ ] statistics.md's GAMMALN entry corrects "never visible at 15 digits" with this cell.
-- [ ] `make check` green; reviewers approve.
+- [x] statistics.md's GAMMALN entry corrects "never visible at 15 digits" with this cell.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Excel's exact coefficients (T-2122).
 
 ## Visible-parity stage
 Target (decision 0114): the one cell above within 15 digits, or explained and deferred.
+
+## Outcome
+- Deferred, as the second branch of the first criterion allows. The cell is Excel's error, not ours: at x = 1.6964000000000001 the 40-digit
+  lgamma (mpmath) is -0.0965533249042390811. The engine's -0.09655332490423907 is 1 ulp from it, and Excel's -0.09655332490423914 is 4.2 ulp
+  from it. The gap is 5 ulp, 7e-17 against the 5e-17 half unit of the 15th digit.
+- The four measured (1.5, 2] coefficient sets, scored at this cell with the stored-op chain `fl(fl(x-1)*fl(fl(x-2)*fl(N/D)))`:
+  `xl_chain_d3ls` (the engine's) ...907, `xl_chain_pcD0` ...910, `xl_chain_80` ...910 and `xl_chain_L3b` ...911. None reaches ...914 (each
+  stays within 15 digits of the math, not of Excel), so no swap can fix the cell without Excel's own coefficients. I did not score them on the
+  rest of the eval, because the cell rules all four out. The cell goes to T-2122 (`defer: phase-1b`), in a "Cell added by T-3036" section.
+- statistics.md's GAMMALN entry: "never visible at 15 digits" is corrected with this cell and the scores.
+- No engine change; eval delta none. `make check` green on 6e09a09f; security and design approve.
