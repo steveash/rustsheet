@@ -22,8 +22,8 @@ Points the draws meet, all inside the envelope of a correct engine:
   it Excel narrows a huge `num_digits` (numbers.md, "ROUND family: huge num_digits wrap"), which is
   argument semantics the eval suites own, as SPEC-0029 leaves integer truncation to them; and this
   slice's first draw found `ROUNDUP(6.4421516092447E+265,-43376)` = 6.4421516092447E+265 where the
-  wrap rule says `#NUM!` (numbers.md, "ROUNDUP of a huge value at a huge negative num_digits",
-  T-3627).
+  wrap rule says `#NUM!`: past a 16-bit `num_digits` ROUNDUP and ROUNDDOWN round at 100 places
+  (numbers.md, "ROUNDUP and ROUNDDOWN round at 100 places past a 16-bit num_digits", T-3627).
 - Excel flushes any decimal it converts to a double to 0 when that double would be subnormal: the
   result, and ROUNDUP's rounded-down part and unit (numbers.md, "ROUNDUP and ROUNDDOWN of a number
   whose 15-digit cut is subnormal"). So `ROUND(-2.22507385850721E-308,320)` is 0. And

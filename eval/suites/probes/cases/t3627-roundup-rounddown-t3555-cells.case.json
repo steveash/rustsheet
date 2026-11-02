@@ -1,0 +1,30 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "The ROUNDUP cells of T-3555's discarded first Gate A draw (6.4421516092447E+265 at -43376 and its neighbours) and negative num_digits strictly between -32768 and -65535 (-32769, -43376), re-probed for T-3627 (excel-fidelity review MINOR); see docs/excel-semantics/numbers.md",
+  "tags": [
+    "M2",
+    "probe",
+    "ROUNDUP",
+    "ROUNDDOWN"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=ROUNDUP(6.4421516092447E+265,-43376)",
+        "A2": "=ROUNDDOWN(6.4421516092447E+265,-43376)",
+        "A3": "=ROUNDUP(-3.41521682833705E-207,-11541)",
+        "A4": "=ROUNDUP(-2.33253918200575E+106,-678)",
+        "A5": "=ROUNDUP(7712487.6865209,-400)",
+        "A6": "=ROUNDUP(4.72880001004526E+149,22178)",
+        "A7": "=ROUNDUP(1.23456789012345E+105,-32769)",
+        "A8": "=ROUNDDOWN(1.23456789012345E+105,-32769)",
+        "A9": "=ROUNDUP(1.23456789012345E+95,-32769)",
+        "A10": "=ROUNDDOWN(1.23456789012345E+95,-32769)",
+        "A11": "=ROUNDUP(1.23456789012345E+105,-43376)",
+        "A12": "=ROUNDDOWN(1.23456789012345E+105,-43376)"
+      }
+    }
+  ],
+  "expected": {}
+}
