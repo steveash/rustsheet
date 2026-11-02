@@ -3,7 +3,7 @@ id: T-3759
 title: "The task-only fast path counts only task files that are regular files"
 milestone: M0
 lane: quality
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
@@ -36,7 +36,7 @@ into the next one on a long line, and the new one-line docstring is dense (quali
 ## Out of scope
 - Content checks on task text.
 
-## Handoff
+## Handoff (resumed)
 Sonnet run, no code written; handing off as a design question (work-loop step 5b).
 - The panel logic now lives in `scripts/review_panel.py` (`task_only`, `applicable_reviewers`), not in
   `merge_ready.py`; `merge_ready` re-exports it. `review_panel.py` says it imports only the standard
