@@ -217,14 +217,34 @@ fn irr_from_discount(v: f64) -> Option<f64> {
     (x < IRR_FAR_ROOT_BOUND).then_some(x - 1.0)
 }
 
-/// One run of IRR's secant from `guess`, or `None` when it fails (a flat secant, an iterate that
-/// is not a positive discount factor, or no stop in 50 steps). The state is d = 1 - v = r/(1 + r),
+/// The most steps of one run of [`irr_secant`]. Excel's cap lies in 213..=228: holdout A90's run
+/// (probes-numeric/t3347-irr-conventional-holdout) stops at its 213th step on Excel's exact digits,
+/// while t3478-irr-r4-wide A240's run from its guess -0.999692 would stop at its 229th on digits
+/// Excel does not return (Excel's are those of the retry from 0.1, so its first run failed). Runs
+/// of 51 to 213 steps match Excel bit for bit on 9 holdout and probe cells (financial.md "IRR's
+/// secant runs up to about 220 steps", T-3411). The value is the bracket's middle.
+/// FITTED(T-3411, 2 cells bracket the cap at 213..=228; 9 cells need 51..213 steps; IRR of 6..61 flows)
+const IRR_SECANT_STEPS: usize = 220;
+
+/// The residual under which a secant that has stopped moving (a zero step, or a flat secant after
+/// a step under 1e-7) returns its iterate although |NPV| is not under 1e-7: rounding noise in NPV
+/// can keep it above, and Excel returns there at |NPV| up to 8.4E-5
+/// (probes/t3406-irr-num-boundary A123) but is `#NUM!` from 2.9E-4 (probes-numeric/t3478-irr-r4-wide
+/// A52) and at 0.125 (`IRR({1E+15,1,-1E+15},0.05)`, probes/irr-guess-edges A37). An absolute bound,
+/// not one relative to the flows: Excel returns at 1E-15 of the largest flow and errs at 1.2E-16
+/// (financial.md "IRR's secant runs up to about 220 steps", T-3411).
+/// FITTED(T-3411, 22 stalled runs: returns at |NPV| 1.2E-7..8.4E-5, #NUM! at 2.9E-4..0.125)
+const IRR_STALL_RESIDUAL: f64 = 1e-4;
+
+/// One run of IRR's secant from `guess`, or `None` when it fails (a flat secant away from a root, an
+/// iterate that is not a positive discount factor, or no stop in [`IRR_SECANT_STEPS`] steps). The state is d = 1 - v = r/(1 + r),
 /// so from v = 0.5 down the iterates' v = 1 - d sit on Excel's grid of multiples of 2^-53
 /// (probes/t2565-irr-guess-sweeps), and each step is anchored on the newer iterate.
 /// Chosen by scoring on the fit set (financial.md "IRR is a secant in d = 1 - v"): the start offset
 /// of 1E-3 toward larger |NPV| (+1E-3 on both sides scores 121 of 263) and the 1E-7 residual stop
 /// (1E-6 scores 188, 1E-8 180). Not fits: the 1E-7 step stop is Microsoft's documented 0.00001
-/// percent, and `MAX_STEPS` is a directive-5 cap (financial.md "The IRR and XIRR solver caps").
+/// percent, and [`IRR_SECANT_STEPS`] is Excel's cap, also a directive-5 bound (financial.md "The IRR
+/// and XIRR solver caps").
 /// T-3478 measured both past the fit set on a fresh 300-point sweep (probes-numeric/t3478-irr-r4-wide):
 /// in aggregate the shipped pair scores 232 of 300 against Excel, against 146 and 126 for offsets
 /// 1E-4 and 1E-2 and 224 and 217 for residuals 1E-6 and 1E-8 (financial.md "RATE and IRR secant
@@ -232,31 +252,36 @@ fn irr_from_discount(v: f64) -> Option<f64> {
 /// Excel come from the step cap, the fallback, the residual's absolute scale and Excel errors not
 /// yet explained (T-3548).
 /// FITTED(T-1533, 263 cells, IRR of 2..41 flows, |c| 1E-6..1E+9, guess -0.99..100, roots -0.99..99; T-3478 sweep, 231 Excel roots: 2..148 flows, |c| 2.3E-15..4.0E+12, guess -0.9997..9.8E+7, roots -0.9997..9.0E+5)
-/// The zero-step stop's bound (below):
-/// FITTED(T-3120, 36 cells, IRR of {-2.5,-1,123456789.123} over a guess sweep)
 fn irr_secant(values: &[f64], guess: f64) -> Option<f64> {
-    const MAX_STEPS: usize = 50;
     let npv = |d: f64| irr_npv(values, 1.0 - d);
-    let largest_flow = values.iter().fold(0.0_f64, |m, c| m.max(c.abs()));
     let mut d0 = extended_quotient(guess, 1.0 + guess);
     let mut f0 = npv(d0)?;
     let mut d1 = d0 - if f0 > 0.0 { 1e-3 } else { -1e-3 };
     let mut f1 = npv(d1)?;
-    for _ in 0..MAX_STEPS {
+    for _ in 0..IRR_SECANT_STEPS {
         if f1 == f0 {
-            return None;
+            // A flat secant right after a step under 1e-7 has stalled at the root, where NPV's
+            // rounding noise is above 1e-7: Excel returns that iterate (21 cells of
+            // probes-numeric/t3347-irr-conventional-holdout and probes/t3406-irr-num-boundary).
+            // Elsewhere it is a failed run: `IRR({-649.62,1,...,1})` goes flat right after the
+            // step back from d = -9.08 and is still a number in Excel, but `(-1003.96,..)` is `#NUM!`.
+            let stalled = (d1 - d0).abs() < 1e-7 && f1.abs() < IRR_STALL_RESIDUAL;
+            return if stalled {
+                irr_from_discount(1.0 - d1)
+            } else {
+                None
+            };
         }
         let d2 = d1 - extended_quotient(f1 * (d1 - d0), f1 - f0);
         if !d2.is_finite() || d2 >= 1.0 {
             return None;
         }
         let f2 = npv(d2)?;
-        // A zero step also stops when NPV is within 1e-7 of the largest flow: on the 2^-53 grid
+        // A zero step also stops on a residual under [`IRR_STALL_RESIDUAL`]: on the 2^-53 grid
         // `IRR({-2500000,-1000000,123456789123000})` cannot get NPV under 1e-7 (1.2E-6 at
         // Excel's 7026.083663633989), yet Excel returns it (probes/t2565-irr-guess-sweeps
-        // A107-C141). The bound is fitted: anything from 1E-20 to 1E-7 of the largest flow
-        // scores the same, and an absolute residual from 1E-5 to 0.1 would too.
-        let stalled = d2 == d1 && f2.abs() < 1e-7 * largest_flow;
+        // A107-C141; T-3120 scored an absolute bound from 1E-5 to 0.1 the same there).
+        let stalled = d2 == d1 && f2.abs() < IRR_STALL_RESIDUAL;
         if (d2 - d1).abs() < 1e-7 && (f2.abs() < 1e-7 || stalled) {
             return irr_from_discount(1.0 - d2);
         }
@@ -278,7 +303,7 @@ const IRR_GUESS_BOUND: f64 = 9_007_199_254_740_992.0;
 /// Not Excel facts, kept from the fit: the d >= 1 (v <= 0) guard, no retry when the guess is
 /// already 0.1, and `#NUM!` for flows without a sign change. Where both runs fail,
 /// [`irr_fallback`] runs a Newton search from v = 0 (fitted, T-2727). A root with 1 + r at or past
-/// [`IRR_FAR_ROOT_BOUND`] is `#NUM!` from either. The 50-step cap is a directive-5 bound
+/// [`IRR_FAR_ROOT_BOUND`] is `#NUM!` from either. The [`IRR_SECANT_STEPS`] cap is also a directive-5 bound
 /// (financial.md "The IRR and XIRR solver caps").
 pub(crate) fn compute_irr(values: &[f64], guess: f64) -> Result<f64, (Error, String)> {
     // Excel: a guess at or above 2^53 is #VALUE! too, before the sign-change check:

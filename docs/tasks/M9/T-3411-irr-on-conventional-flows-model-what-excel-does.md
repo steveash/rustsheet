@@ -45,6 +45,21 @@ stage (PR #2529, blocked on its hold-out) and unblocks T-3347.
 ## Out of scope
 - The last digits (T-3408) and `#DIV/0!` (T-3407).
 
+## R4 plan (fixed 2026-11-02 before the fresh sweep is generated or scored)
+- Frozen model (commit "T-3411: freeze"): `irr_secant` runs up to `IRR_SECANT_STEPS` = 220 steps (was 50) and a
+  stalled run (a zero step, or a flat secant after a step under 1e-7) returns its iterate when |NPV| < 1e-4 absolute
+  (`IRR_STALL_RESIDUAL`; was 1e-7 of the largest flow, zero steps only). Both constants are bracketed by named
+  cells, not chosen by maximizing a score: cap 213..=228 (t3347 holdout A90 stops exactly at step 213; t3478 r4-wide
+  A240 would stop at 229 on digits Excel does not return), residual 8.4E-5..2.9E-4 (t3406 A123 returns; r4-wide A52
+  is `#NUM!`).
+- No hold-out split was fixed before the bracketing: every IRR case in eval was used. The fresh sweep below is the
+  out-of-sample test.
+- Fresh sweep: probes-numeric/t3411-irr-r4-fresh, 150 cells from docs/research/t3411/gen_sweep.py (seed
+  "T-3411/r4-fresh"), generated after the freeze, oracle-filled from excel-graph, 50-digit roots in its math.tsv.
+- Margin, stated now: on the fresh sweep the frozen model must (1) agree with Excel on the type (number vs error) on
+  at least as many cells as main's model (cap 50) and (2) have a bit-exact rate within 10 points of its rate on
+  t3478-irr-r4-wide (257/300 = 85.7%), the sweep that is generated the same way. Otherwise the model is not shipped.
+
 ## Landing notes
 2026-11-01 23:40, opus run: resumed from these notes (step 0.2; branch idle 2 h).
 
