@@ -7,7 +7,7 @@ status: in-progress
 priority: P2
 size: M
 tier: opus
-depends_on: [T-3551, T-3555]
+depends_on: [T-3551, T-3555, T-3673]
 ---
 
 ## Goal
