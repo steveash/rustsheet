@@ -3,7 +3,7 @@ id: T-3510
 title: "gen-m5 arg-pairs batch: oracle-filled cells for the unseen argument-class pairs of the M5 text search and replace functions (FIND, SEARCH, REPLACE, SUBSTITUTE, REPT, EXACT)"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
