@@ -255,6 +255,10 @@ forming with companions, 1E-15 and 1E+15 controls, and the cutoff sweep); genera
 predicts all 213 cells. Rivals that miss: a 15-digit cut of `q` (145 or 146 of 213, by cut variant: misses 1234.5 - 1 ulp and most seeded pairs), a
 tolerance of 4.5E-15 or 4.9E-15 (196, 207) or 5.3E-15 (203), an x87 quotient, and a decimal product (the products are
 binary). gen-m5/043ee562f32eb901 Calc!A199 is `MROUND(0.3,0.2)`.
+The sign and zero checks: a zero multiple gives 0 (`MROUND(1.1E-05,0)`, `MROUND(-0.005901617,0)`), a zero number gives 0
+whatever the multiple's sign (`MROUND(0,-0.0042017)`), and a nonzero number with a multiple of the opposite sign is `#NUM!`
+(`MROUND(17.9707,-0.0126)`, `MROUND(0.49999999999999,-1)`; 9 cells). Evidence: accuracy/MROUND/s1 (excel-graph,
+2026-11-02, T-3674).
 Status: VERIFIED (excel-graph, 213 cells); implemented (T-2167, `mround_value` in ceiling_floor.rs).
 
 ## ROUNDUP adds the unit in binary
@@ -1045,6 +1049,38 @@ functions, all matching the rule; probes/t2715-roundup-near-smallest-normal (the
 Status: VERIFIED (excel-graph)
 Implemented in: `snap_ratio` in crates/rustsheet-engine/src/functions/math_and_trigonometry/ceiling_floor.rs
 Tasks: T-2715, T-2756 (ROUNDUP)
+
+## CEILING and FLOOR cut the binary quotient, so CEILING can fall below its argument and FLOOR above it (T-3673)
+Rule: the CEILING/FLOOR family's 15-digit cut ("FLOOR.PRECISE: a 16th-digit tie in the ratio cut goes away from zero")
+is taken of the double quotient `number/significance`, not of the decimal ratio of the written arguments. Where the
+two sit on different sides of a 16th-digit tie, Excel's result is one unit of the cut's 15th digit away from the
+decimal reading, and a CEILING can come back below its own argument: `CEILING(9023487987474.29,0.002)` is
+9023487987474.28 (the exact ratio is the tie 4511743993737145, which would go up to 9023487987474.3, but the double
+quotient is 4511743993737144), and `FLOOR.MATH(405202879656.803,-0.0002,-1)` is 405202879656.802 (decimal reading
+405202879656.804). Above 1E+105 the same shows at `CEILING.MATH(7.34460155063567E+168,-2E-70,-1)` = 7.34460155063566E+168
+and `FLOOR.MATH(9.096E-120,-3.995E-225,-1)` = 9.096000000000019E-120.
+Evidence: eval/accuracy/tables CEILING/s1 A58, FLOOR.MATH/s1 A99, A173, CEILING.MATH/s1 A170 (excel-graph, 2026-11-01,
+T-3673).
+Status: VERIFIED (excel-graph)
+Ours: matches to the bit (`snap_ratio` cuts the double `value / significance`).
+Implemented in: `snap_ratio` in crates/rustsheet-engine/src/functions/math_and_trigonometry/ceiling_floor.rs
+Tasks: T-3673
+
+## CEILING and FLOOR are #NUM! when number/significance overflows (T-3673)
+Rule: CEILING, CEILING.MATH (both modes), CEILING.PRECISE, FLOOR, FLOOR.MATH (both modes) and FLOOR.PRECISE are `#NUM!`
+when the ratio `number/significance` is beyond the double range, although the mathematical result (a multiple of the
+significance next to the number) is an ordinary double: `CEILING(6.78566159557368E+283,5.05874381382903E-127)` and
+`FLOOR.PRECISE(1.447176044413E+249,-1.38029997006174E-96)` are `#NUM!`. The tables bracket the boundary between 0.556 and 49 times the double range:
+`CEILING(-9.99999999999999E+307,-1)` and `FLOOR(-9.99999999999999E+307,-1)` (ratio 0.556 x DBL_MAX) are numbers, and
+`FLOOR.PRECISE(-3.85290564465378E+92,-4.37553180951326E-218)` (ratio 49 x DBL_MAX) is `#NUM!`. Where exactly it lies (the
+binary quotient overflowing, or its 15-digit cut) is not pinned.
+Evidence: eval/accuracy/tables CEILING/s1 A110, A120; CEILING.MATH/s1 A185, A198, A199; CEILING.PRECISE/s1 A111, A112;
+FLOOR.MATH/s1 A183, A184, A186, A191; FLOOR.PRECISE/s1 A114, A117, A119, A120; FLOOR/e-T-3673 A9, A29, A32, A41, A52
+(20 cells), and the numbers CEILING/s1 A75 and FLOOR/s1 A72 (excel-graph, 2026-11-01, T-3673).
+Status: VERIFIED (excel-graph)
+Ours: matches (the infinite ratio gives a non-finite result, which `numbers_fn` turns into `#NUM!`).
+Implemented in: `snap_ratio` in crates/rustsheet-engine/src/functions/math_and_trigonometry/ceiling_floor.rs
+Tasks: T-3673
 
 ## ROUNDUP and ROUNDDOWN of a number whose 15-digit cut is subnormal (T-2756)
 Rule: the ROUND family first cuts x to 15 significant digits (round to nearest, "ROUND family rounds in two decimal

@@ -31,6 +31,9 @@ Points the draws meet, all inside the envelope of a correct engine:
   because the unit 1E-309 is flushed. The math keeps the decimal there, so Excel is more than G
   off it. Every such point is within Gate A's absolute floor 1e-300 of the math, and the engine
   matches Excel (decision 0223 lists the points).
+
+TRUNC (slice 4g, T-3674, decision 0246) is ROUNDDOWN under another name (numbers.md, "TRUNC is
+ROUNDDOWN", 56 probe cells) and shares its definition, draws included.
 """
 
 from __future__ import annotations
@@ -43,7 +46,7 @@ from decimal import ROUND_DOWN, ROUND_HALF_UP, ROUND_UP, Context, Decimal
 
 import mpmath
 
-from rustsheet_tools.accuracy.literal import MAX_LITERAL, MIN_LITERAL, Arg, decimal15
+from rustsheet_tools.accuracy.literal import MAX_LITERAL, MIN_LITERAL, Arg, decimal15, exponent10
 from rustsheet_tools.accuracy.model import (
     Definition,
     DomainError,
@@ -53,7 +56,7 @@ from rustsheet_tools.accuracy.model import (
     Param,
     register,
 )
-from rustsheet_tools.accuracy.sampler import log_uniform
+from rustsheet_tools.accuracy.sampler import decimal_literal, log_uniform, random_sign
 
 TWO_STAGE_SOURCE = "numbers.md#round-family-rounds-in-two-decimal-stages"
 WRAP_SOURCE = "numbers.md#round-family-huge-num_digits-wrap"
@@ -62,7 +65,9 @@ MAX_DIGITS = 400  # |num_digits| drawn up to here (see the module docstring)
 DOUBLE_MAX = Decimal(sys.float_info.max)
 # Wide enough for any quantize below: a 15-digit coefficient and exponents down to -400 - 323.
 _CONTEXT = Context(prec=40, Emax=10**6, Emin=-(10**6))
-_MODES = {"ROUND": ROUND_HALF_UP, "ROUNDUP": ROUND_UP, "ROUNDDOWN": ROUND_DOWN}
+# TRUNC is ROUNDDOWN with the same two stages, ties and wrap (numbers.md, "TRUNC is ROUNDDOWN").
+_MODES = {"ROUND": ROUND_HALF_UP, "ROUNDUP": ROUND_UP, "ROUNDDOWN": ROUND_DOWN, "TRUNC": ROUND_DOWN}
+TRUNC_SOURCE = "numbers.md#trunc-is-rounddown"
 
 
 def sixteenth_digit_tie(number: float) -> bool:
@@ -112,32 +117,16 @@ def _value(function: str) -> Callable[[Sequence[MathArg]], mpmath.mpf]:
     return value
 
 
-def _literal(rng: random.Random, digits: int, exponent: int, sign: float) -> float:
-    """A number with `digits` significant digits (the last one nonzero) and decimal exponent `exponent`."""
-    mantissa = rng.randrange(10 ** (digits - 1), 10**digits)
-    if mantissa % 10 == 0:
-        mantissa += rng.randrange(1, 10)
-    return sign * float(Decimal(mantissa).scaleb(exponent - digits + 1))
-
-
-def _exponent(x: float) -> int:
-    return decimal15(x).adjusted()
-
-
-def _sign(rng: random.Random) -> float:
-    return 1.0 if rng.random() < 0.5 else -1.0
-
-
 def _dropping_digits(rng: random.Random, x: float) -> int:
     """A `num_digits` from one past the leading digit (all dropped) to the 15th digit (none)."""
-    e = _exponent(x) if x != 0 else 0
+    e = exponent10(x) if x != 0 else 0
     return rng.randint(-e - 2, 14 - e)
 
 
 def _tie(rng: random.Random) -> list[Arg]:
     """A decimal half at the rounding digit (2.675 at 2, -2.5 at 0), or a 15-digit near-half
     just below or above it (…49999… / …50000…1)."""
-    sign, e = _sign(rng), rng.randint(-8, 12)
+    sign, e = random_sign(rng), rng.randint(-8, 12)
     if rng.random() < 0.5:
         kept = rng.randint(1, 14)  # digits kept before the dropped 5
         mantissa = rng.randrange(10 ** (kept - 1), 10**kept) * 10 + 5
@@ -155,8 +144,8 @@ def _edge(rng: random.Random) -> list[Arg]:
     """Zero, the leading digit exactly, nothing dropped, the literal range's ends and the
     `num_digits` bounds."""
     shape = rng.randrange(6)
-    x = _literal(rng, rng.randint(1, 15), rng.randint(-6, 12), _sign(rng))
-    e = _exponent(x)
+    x = decimal_literal(rng, rng.randint(1, 15), rng.randint(-6, 12), random_sign(rng))
+    e = exponent10(x)
     if shape == 0:
         return [0.0, rng.randint(-6, 10)]
     if shape == 1:  # rounding at the leading digit, or one above it
@@ -166,12 +155,12 @@ def _edge(rng: random.Random) -> list[Arg]:
     if shape == 3:  # everything dropped: 0, or ROUNDUP's unit, which overflows below -308
         return [x, -rng.choice((e + 2, 330, MAX_DIGITS))]
     if shape == 4:  # the largest literals, rounded near the double range's top
-        top = _literal(rng, rng.randint(1, 15), 307, _sign(rng))
+        top = decimal_literal(rng, rng.randint(1, 15), 307, random_sign(rng))
         return [
             min(top, MAX_LITERAL) if top > 0 else max(top, -MAX_LITERAL),
             rng.choice((-306, -307, -308, -309)),
         ]
-    low = _sign(rng) * MIN_LITERAL * rng.choice((1.0, 1.5, 4.0))
+    low = random_sign(rng) * MIN_LITERAL * rng.choice((1.0, 1.5, 4.0))
     return [low, rng.choice((300, 307, 308, 309, 320))]
 
 
@@ -183,12 +172,12 @@ def _draw(stratum: str, rng: random.Random) -> list[Arg]:
         return _tie(rng)
     if stratum == "edge":
         return _edge(rng)
-    sign = _sign(rng)
+    sign = random_sign(rng)
     if stratum == "log-uniform":
         x = sign * log_uniform(rng, MIN_LITERAL, MAX_LITERAL)
-        return [x, int(_sign(rng) * round(log_uniform(rng, 1, MAX_DIGITS)))]
+        return [x, int(random_sign(rng) * round(log_uniform(rng, 1, MAX_DIGITS)))]
     span = (-300, 306) if stratum == "extreme" else (-4, 8)
-    x = _literal(rng, rng.randint(1, 15), rng.randint(*span), sign)
+    x = decimal_literal(rng, rng.randint(1, 15), rng.randint(*span), sign)
     return [x, _dropping_digits(rng, x)]
 
 
@@ -203,7 +192,8 @@ def _definition(function: str) -> Definition:
             ),
             value=_value(function),
             draw=_draw,
-            sources=(DECISION, TWO_STAGE_SOURCE, WRAP_SOURCE, "numbers.md#roundup-adds-the-unit-in-binary"),
+            sources=(DECISION, TWO_STAGE_SOURCE, WRAP_SOURCE, "numbers.md#roundup-adds-the-unit-in-binary")
+            + ((TRUNC_SOURCE, "decision 0246") if function == "TRUNC" else ()),
         )
     )
 
@@ -211,3 +201,4 @@ def _definition(function: str) -> Definition:
 ROUND = _definition("ROUND")
 ROUNDUP = _definition("ROUNDUP")
 ROUNDDOWN = _definition("ROUNDDOWN")
+TRUNC = _definition("TRUNC")

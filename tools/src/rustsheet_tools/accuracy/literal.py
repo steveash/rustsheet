@@ -33,6 +33,11 @@ def decimal15(x: float) -> Decimal:
     return d.quantize(Decimal(1).scaleb(d.adjusted() - 14), rounding=ROUND_HALF_EVEN)
 
 
+def exponent10(x: float) -> int:
+    """The decimal exponent of `x`'s 15-digit cut (2.675 → 0, 1.2E-5 → -5)."""
+    return decimal15(x).adjusted()
+
+
 def round15(x: float) -> float:
     """`x` rounded half-even to 15 significant digits and clamped into the writable range."""
     if x == 0:

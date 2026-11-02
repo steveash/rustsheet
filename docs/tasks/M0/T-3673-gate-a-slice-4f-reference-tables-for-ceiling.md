@@ -3,7 +3,7 @@ id: T-3673
 title: "Gate A slice 4f: reference tables for CEILING, CEILING.MATH, CEILING.PRECISE, FLOOR, FLOOR.MATH and FLOOR.PRECISE"
 milestone: M0
 lane: harness
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -27,14 +27,48 @@ CEILING, CEILING.MATH, CEILING.PRECISE, FLOOR, FLOOR.MATH and FLOOR.PRECISE each
   accuracy`, `rustsheet-eval accuracy`, then `rustsheet-accuracy math --suite probes-numeric`).
 
 ## Acceptance criteria
-- [ ] One Gate A definition per function in `tools/src/rustsheet_tools/accuracy/defs/`, each citing its sources, with unit
+- [x] One Gate A definition per function in `tools/src/rustsheet_tools/accuracy/defs/`, each citing its sources, with unit
       tests against published or semantics-entry values.
-- [ ] `eval/accuracy/tables/<FUNCTION>/s1.{case,math,oracle}.json` for each function, generated, filled (excel-graph) and
+- [x] `eval/accuracy/tables/<FUNCTION>/s1.{case,math,oracle}.json` for each function, generated, filled (excel-graph) and
       committed; `rustsheet-eval accuracy` reports `missing tables` lower by 6. The Outcome names every failing point
       with its owner task (`known-failures.tsv`, T-3379's rules) and any R3 candidate (decision 0188 R3 needs an owner
       ruling).
-- [ ] The probes-numeric math sidecars are regenerated with the new definitions and committed.
-- [ ] `make check` green; reviewers approve.
+- [x] The probes-numeric math sidecars are regenerated with the new definitions and committed.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing the engine's kernels: each failing point gets its own task (`known-failures.tsv`).
+
+## Outcome
+- Definitions: `tools/src/rustsheet_tools/accuracy/defs/ceiling_floor.py`, one per function. The math reads the written
+  decimals and takes Excel's 15-digit ratio cut (ties away from zero) before the step, as decision 0223 does for the
+  ROUND family; decision 0244 records the reading and why a plain ceiling would put false R3 marks a whole step off
+  (`CEILING(100,1.01010101010101)`: 99.99999999999999, not 101.010101010101). Unit tests in
+  `tools/tests/test_accuracy_ceiling_floor.py` against the numbers.md tie, sign, zero and subnormal-ratio cells.
+  `decimal_literal` and `random_sign` moved from `defs/rounding.py` to `sampler.py` so both families share them; the
+  ROUND tables regenerate byte-identical.
+- Tables: `eval/accuracy/tables/{CEILING,CEILING.PRECISE,FLOOR,FLOOR.PRECISE}/s1` (120 points each) and
+  `{CEILING.MATH,FLOOR.MATH}/s1` (200 points each, with a whole-number `mode`), filled from excel-graph on 2026-11-01.
+  `FLOOR/e-T-3673` (60 log-uniform points) evidences FLOOR's overflow `#NUM!` (Excel-fidelity review).
+  `rustsheet-eval accuracy` at the head (after merging main): 4776 points in 28 tables, 0 failing, 0 table defects;
+  missing tables 6 fewer (265 at the head). No
+  known-failures lines: every new point is in the envelope.
+- All 41 math domain errors (32 in s1, 9 in FLOOR/e-T-3673) are errors of the same code in Excel (CEILING/FLOOR `#NUM!` for a positive number over a
+  negative significance, FLOOR `#DIV/0!` for a zero significance, and `#NUM!` at all 20 points whose ratio overflows, between 0.556 and 49 times the double range at the boundary).
+  FLOOR(0,0) and a result beyond the double range have no math value: no Excel cell evidences them.
+  The overflow rule was not recorded: new numbers.md entry "CEILING and FLOOR are #NUM! when number/significance
+  overflows" (VERIFIED, the engine already matches).
+- Excel is more than G = 1e-4 off the math (relative, no floor) at no point: no R3 candidate. Four points are one unit
+  of the cut's 15th digit off the math (CEILING/s1 A58, CEILING.MATH/s1 A170, FLOOR.MATH/s1 A99, A173; at most 4.9e-15),
+  where Excel cuts its binary quotient; the engine matches Excel to the bit there.
+- `_near_step`'s repeating-significance shape has few choices, so three s1 pairs repeat (CEILING A53/A55,
+  CEILING.MATH A103/A110, CEILING.PRECISE A49/A51); harmless, left as is since a batch is never rewritten.
+- `rustsheet-accuracy math --suite probes-numeric` changed no committed sidecar (no probes-numeric cell is a one-call
+  CEILING/FLOOR with literal arguments); the unrelated new sidecars it wrote were left out, as in T-3555.
+- Review history: blocked at the review-round limit after three excel-fidelity rounds (each round's findings were in
+  the docs and in unevidenced corners, all fixed); resumed per work-loop step 5c, merged `origin/main` (the trig
+  definitions landed alongside), and the full panel approved on cfbfeff6. The TIE_SOURCE anchor now carries its
+  `-t-2652` suffix (excel-fidelity nit). `SMALLEST_OVERFLOW_RATIO` is now the exact FLOOR.PRECISE/s1 A119 ratio
+  (48.98 x DBL_MAX) instead of a round-down to 48 x, so no unevidenced band is a domain error; no sampled ratio lies
+  between the two, so the tables are unchanged. The numbers.md binary-quotient title names FLOOR's mirror case too.
+  A duplicated import block with rounding.py (duplication ratchet) is gone: the model's errors are imported qualified.
