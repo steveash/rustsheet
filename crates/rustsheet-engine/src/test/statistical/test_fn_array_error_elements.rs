@@ -26,6 +26,18 @@ const CASES: &[(&str, &str)] = &[
     ("COVARIANCE.S({1,#N/A,3},(\"x\"*1))", "#VALUE!"),
     ("PEARSON({1,#N/A,3},{-1,0,1})", "#N/A"),
     ("TRIMMEAN({1,#N/A,3},0.2)", "#N/A"),
+    // An inner call's result is the outer call's own data error, which comes first, even when
+    // the inner call's value was an element error (gen-m9/1b31092a0d79e5f1 A363, T-3080).
+    ("SMALL((SMALL({1,#N/A,3},2)/1.005),\"a*\")", "#N/A"),
+    ("SMALL(SMALL({1,#N/A,3},2),\"x\")", "#N/A"),
+    ("SMALL(LARGE({1,#N/A,3},2),\"x\")", "#N/A"),
+    ("SMALL(IF(TRUE,SMALL({1,#N/A,3},2)),\"x\")", "#N/A"),
+    ("SMALL(LET(v,SMALL({1,#N/A,3},2),v),\"x\")", "#N/A"),
+    // A plain error that was never an element's (a guard, unchanged by T-3080).
+    ("SMALL(NA(),\"x\")", "#N/A"),
+    // An element error inside the array argument itself still loses to a text k.
+    ("SMALL({1,#N/A,3},\"x\")", "#VALUE!"),
+    ("LARGE({1,#N/A,3},\"x\")", "#VALUE!"),
 ];
 
 #[test]

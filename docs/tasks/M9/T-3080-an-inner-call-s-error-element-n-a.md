@@ -3,7 +3,7 @@ id: T-3080
 title: "An inner call's error-element #N/A stays tagged as an array element, so an outer SMALL lets a text k win (SMALL(SMALL({1,#N/A,3},2)/1.005,"a*") is #N/A in Excel, ours #VALUE!)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -46,3 +46,16 @@ argument still comes first"). Only an error element inside an array value still 
 ## Out of scope
 - Probing which error wins for an array *value* with an error element that comes from a nested call (for example,
   `SMALL(IF(TRUE,{1,#N/A,3}),"x")`). If the fix changes such a cell, file a probe task instead of guessing.
+
+## Outcome
+Done 2026-11-01. The element-error tag (`element_errors::ARRAY_ELEMENT_ERROR`, a message) is dropped in one place: when a
+built-in call's result leaves the call (`Model::call_by_reference_elements`, through `CalcResult::untagged`), so an inner call's
+error reaches an outer call, or an operator, as a plain error, and the outer call returns it as its data argument's own.
+An element error read from an array literal or range is tagged by the outer call's own reader and still loses to a text
+k (`SMALL({1,#N/A,3},"x")` stays `#VALUE!`). model.rs and functions/mod.rs (oversized, may only shrink) are
+untouched.
+- gen-m9/1b31092a0d79e5f1 Calc!A363 passes (its line leaves eval/baseline/gen-m9.txt); every other gated suite
+  unchanged, no regressions. SMALL had this as its only visibly-off attributed cell, so it reaches the Phase 1 rate.
+- Unit cases in test_fn_array_error_elements.rs: the three nested forms the gap triage listed are `#N/A`; the two
+  array-literal forms stay `#VALUE!`.
+- Follow-up T-3695: probe the extrapolated nested forms in Excel and move the tag to `CalcResult` (review).
