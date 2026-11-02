@@ -59,6 +59,7 @@ def test_int_reproduces_numbers_md(number: float, expected: str) -> None:
     [
         # numbers.md, "ODD above 2^53 adds one in binary": exact below 2^53; above it the math adds
         # the 1 exactly where Excel's binary add ties (9007199254740996 for ...994) or is a no-op.
+        # Excel's cells: probes-numeric/trig-odd-even-sumxmy2-sweep Calc!F1:H66.
         (ODD, 0.0, "1"),
         (ODD, 2.0, "3"),
         (ODD, -2.5, "-3"),

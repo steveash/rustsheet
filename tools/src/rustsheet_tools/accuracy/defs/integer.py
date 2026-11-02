@@ -18,10 +18,11 @@ Each reads one rule from numbers.md, VERIFIED on excel-graph cells:
   exact-ratio reading would put a decimal half such as 64.5 a whole step from Excel wherever the
   double quotient falls an ulp below it, a false decision 0188 R3 mark, as decision 0244 says of the
   CEILING family's cut. The result is the step count times |multiple| exactly (Excel multiplies in
-  binary, within an ulp), with the sign of `number`. A zero multiple gives 0; a number and a multiple
-  of opposite signs is `#NUM!` (the engine's `fn_mround`; arrays.md, "CEILING/FLOOR family and
-  MROUND lift over arrays", the gen cells). A double quotient that overflows has no math value: no
-  Excel cell evidences what MROUND does there.
+  binary, within an ulp), with the sign of `number`. A zero multiple gives 0 (MROUND/s1
+  `MROUND(1.1E-05,0)`, `MROUND(-0.005901617,0)`), and so does a zero number with a negative multiple
+  (`MROUND(0,-0.0042017)`); a nonzero number and a multiple of opposite signs is `#NUM!` (9 MROUND/s1
+  cells, `MROUND(17.9707,-0.0126)` among them; excel-graph 2026-11-02, numbers.md's MROUND entry).
+  A double quotient that overflows has no math value: no Excel cell evidences what MROUND does there.
 """
 
 from __future__ import annotations
@@ -29,12 +30,13 @@ from __future__ import annotations
 import math
 import random
 from collections.abc import Callable, Sequence
-from decimal import ROUND_HALF_UP, Context, Decimal
+from decimal import Decimal
 from fractions import Fraction
 
 import mpmath
 
 from rustsheet_tools.accuracy import model
+from rustsheet_tools.accuracy.defs.ceiling_floor import cut15
 from rustsheet_tools.accuracy.literal import MAX_LITERAL, MIN_LITERAL, Arg, exponent10
 from rustsheet_tools.accuracy.model import Definition, Interval, MathArg, Param, register
 from rustsheet_tools.accuracy.sampler import decimal_literal, log_uniform, random_sign
@@ -48,37 +50,24 @@ DECISION = "decision 0246"
 INT_CUT_BELOW = 1e15  # INT cuts below this magnitude and floors the double from here up
 # Excel's cutoff is the double nearest 0.5 - 5E-15, compared with the double fraction of `q`.
 MROUND_CUTOFF = Fraction(0.5 - 5e-15)
-_CUT_CONTEXT = Context(prec=40, Emax=10**6, Emin=-(10**6))
-
-
-def _floor(r: Fraction) -> int:
-    return r.numerator // r.denominator
-
-
-def _ceil(r: Fraction) -> int:
-    return -((-r.numerator) // r.denominator)
 
 
 def int_value(x: float) -> int:
     """INT: the floor of the 15-digit cut (ties away from zero) below 1E+15, of the double above."""
-    if abs(x) >= INT_CUT_BELOW or x == 0:
+    if abs(x) >= INT_CUT_BELOW:
         return math.floor(x)
-    exact = Decimal(x)
-    cut = exact.quantize(
-        Decimal(1).scaleb(exact.adjusted() - 14), rounding=ROUND_HALF_UP, context=_CUT_CONTEXT
-    )
-    return _floor(Fraction(cut))
+    return math.floor(cut15(Fraction(x)))
 
 
 def even_value(x: float) -> int:
     """EVEN: `ceil(|x|/2)*2` with the sign of `x`."""
-    steps = 2 * _ceil(abs(Fraction(x)) / 2)
+    steps = 2 * math.ceil(abs(Fraction(x)) / 2)
     return steps if x >= 0 else -steps
 
 
 def odd_value(x: float) -> int:
     """ODD: `ceil(|x|)`, the next odd number when it is even, with the sign of `x` (ODD(0) is 1)."""
-    c = _ceil(abs(Fraction(x)))
+    c = math.ceil(abs(Fraction(x)))
     if c % 2 == 0:
         c += 1
     return c if x >= 0 else -c
@@ -97,7 +86,7 @@ def mround_value(number: float, multiple: float) -> Fraction:
         msg = "the double quotient number/multiple overflows: no Excel evidence"
         raise model.NoValueError(msg)
     q = Fraction(quotient)
-    steps = _floor(q)
+    steps = math.floor(q)
     if q - steps >= MROUND_CUTOFF:
         steps += 1
     result = steps * abs(Fraction(multiple))

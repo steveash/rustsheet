@@ -24,7 +24,8 @@
   - INT's math is the floor of the written decimal (the 15-digit cut of a table literal is its written decimal; from
     1E+15 up the double is already whole). EVEN's and ODD's math is their rule at the double, exactly.
   - MROUND's step count is Excel's rule on the double quotient; the math is that count times |multiple| exactly, with
-    the sign of `number`. A zero multiple gives 0; opposite signs are a domain error (`#NUM!`); a double quotient that
+    the sign of `number`. A zero multiple gives 0; opposite signs are a domain error (`#NUM!`; both checks evidenced
+    by accuracy/MROUND/s1 itself, numbers.md's MROUND entry); a double quotient that
     overflows has no math value (no Excel cell evidences it). The draws avoid the cutoff `0.5 - 5E-15` itself.
   - Definitions: `tools/src/rustsheet_tools/accuracy/defs/integer.py` (INT, EVEN, ODD, MROUND), `defs/rounding.py`
     (TRUNC) and `defs/ceiling_floor.py` (ECMA.CEILING, ISO.CEILING).
