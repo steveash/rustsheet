@@ -183,4 +183,4 @@ mpmath 1.3.0 at 50 digits, P(|T| > t) = I_{df/(df+t^2)}(df/2, 1/2) solved for t)
   - The centre cut: t3349 A98 `T.INV.2T(0.921314149721905,4)` (c 0.0787; Excel 2.8E-16, ours 1.4E-14), T-3477's.
   - Last-digit cells that sit exactly on the 15-digit boundary, both sides within 4E-15 of the truth: m9-confidence-t
     A15; m9-t-inv A17; t3349 A38, A63, A107, A109, A235. To T-0967.
-  - t3349 A241, A251 and A299 (p below 2E-5) pass.
+  - t3349 A241, A251 and A299 (p below 2E-5) are within 15 digits.
