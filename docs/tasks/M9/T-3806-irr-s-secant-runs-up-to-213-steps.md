@@ -39,7 +39,8 @@ long series near a root of 0) return Excel's digits instead of falling through t
   +1, gen-m9/ba4ddb817a8e700e +1, probes/t3406-irr-num-boundary 68 -> 70, probes-numeric/t2927-irr-fallback-sweep
   40 -> 43, t3347-irr-conventional-holdout 101 -> 106, t3478-irr-r4-wide 229 -> 251 (of 300). New cases:
   probes-numeric/t3411-irr-r4-fresh 88/150 and t3411-irr-r4-fresh-2 83/150 (excel-graph, 2026-11-02); their other
-  cells are T-3411's open model (unexplained Excel errors on conventional flows) and enter the baseline as known failures.
+  cells are T-3411's open model (unexplained Excel errors on conventional flows); probes-numeric has no eval/baseline
+  file, so they show only in the eval report's gap list.
 - R4 guards (decision 0188; plans fixed in T-3411's task file before each sweep was generated):
   - Round 1 froze cap 220 plus a stall rule (return a stalled iterate at |NPV| < 1E-4). Its fresh sweep
     t3411-irr-r4-fresh: 93/150 against main's 80, but 62% missed the stated margin (within 10 points of 85.7% on
