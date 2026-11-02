@@ -1,0 +1,6 @@
+t3571-r5-bfrac-tune (300.0, 60.0, -7.0) fl((a+b)y) - b   [TOMS a>b]: +2.44/4.10 | fl(a - fl((a+b)x)): +2.36/3.21 | exact (a+b)(1-x) - b: +2.44/3.93 | (a+b)y - b, y exact, rounded once: +2.44/3.95
+t3571-r5-bfrac-tune (300.0, 60.0, -4.0) fl((a+b)y) - b   [TOMS a>b]: +2.46/7.33 | fl(a - fl((a+b)x)): +2.33/4.17 | exact (a+b)(1-x) - b: +2.46/7.08 | (a+b)y - b, y exact, rounded once: +2.46/7.08
+t3571-r5-bfrac-tune (300.0, 60.0, -1.0) fl((a+b)y) - b   [TOMS a>b]: -0.26/10.92 | fl(a - fl((a+b)x)): +0.65/4.65 | exact (a+b)(1-x) - b: -0.26/10.02 | (a+b)y - b, y exact, rounded once: -0.26/10.02
+t3571-r5-bfrac-hold (700.0, 90.0, -7.0) fl((a+b)y) - b   [TOMS a>b]: +0.12/6.43 | fl(a - fl((a+b)x)): +0.36/2.95 | exact (a+b)(1-x) - b: +0.16/6.13 | (a+b)y - b, y exact, rounded once: +0.18/6.15
+t3571-r5-bfrac-hold (700.0, 90.0, -4.0) fl((a+b)y) - b   [TOMS a>b]: +1.94/8.66 | fl(a - fl((a+b)x)): +2.14/3.39 | exact (a+b)(1-x) - b: +1.92/8.50 | (a+b)y - b, y exact, rounded once: +1.89/8.45
+t3571-r5-bfrac-hold (700.0, 90.0, -1.0) fl((a+b)y) - b   [TOMS a>b]: -1.60/18.28 | fl(a - fl((a+b)x)): -3.02/4.47 | exact (a+b)(1-x) - b: -1.42/17.84 | (a+b)y - b, y exact, rounded once: -1.42/17.79
