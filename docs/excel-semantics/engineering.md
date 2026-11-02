@@ -1108,7 +1108,11 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   12345678901234567 is already 1.23456789012345E+16). Ours matches every cell since T-3644 (`split_inumber`), except
   three that are VALUE's own grammar: "1,0000+2i" 10000+2i (VALUE reads a group of four digits), "%1+2i" 0.01+2i
   (a leading percent sign) and "1,+2i" `#NUM!` (VALUE refuses a trailing comma); coercion.md "Group commas and a
-  leading percent sign", T-3811. Unprobed (ours in brackets): a lone sign after spaces ("1+ i", " i") [1, as "i"];
+  leading percent sign", T-3811. A part keeps 15 significant digits, as VALUE does (probes/eng-inumber-grammar-digits,
+  excel-graph, 2026-11-02): `IMREAL("1.2345678901234567+2.2345678901234567i")` is 1.23456789012345 and its IMSUM
+  "1.23456789012345+2.23456789012345i", "0.30000000000000004" is 0.3, "123456789012345678" 1.23456789012345E+17 and
+  "9007199254740993+9007199254740993i" "9007199254740990+9007199254740990i" (matched since T-3644; the lexer-based
+  reader before it kept the 17-digit double). Unprobed (ours in brackets): a lone sign after spaces ("1+ i", " i") [1, as "i"];
   a tab before the suffix ("2"&tab&"i") [`#NUM!`]; year-less dates in a part ("1/2+2i"; no case keeps one, as its
   value moves with the current year) [read as VALUE reads it].
 - **Large parts in plain notation.** An IM* part is written in plain notation up to a decimal exponent of 20, zero-padded

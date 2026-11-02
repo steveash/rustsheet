@@ -3,7 +3,7 @@ id: T-3644
 title: "IM* inumber grammar: probe and match malformed complex text (signs, exponents, suffix, spacing, repeated parts)"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -36,3 +36,21 @@ parse and the printed result are covered.
 
 ## Out of scope
 - T-3059's whitespace and `$` shapes.
+
+## Outcome
+Four excel-graph probe cases (2026-11-02):
+- probes/eng-inumber-grammar: 65 inputs.
+- probes/eng-inumber-grammar-parts: 54 inputs.
+- probes/eng-inumber-grammar-digits: 6 inputs with 16 or more digits.
+- probes/eng-inumber-grammar-value: VALUE, `+0` and IMREAL side by side. Tagged M2.
+
+The inputs go through IMREAL, IMAGINARY and IMSUM.
+
+What they show: Excel splits inumber text at the first inner `+`/`-` that is not an exponent's sign, and reads each part as VALUE reads it. That covers sign runs, commas, percent, parentheses, dates, clock text and 15-digit truncation.
+
+What changed: `split_inumber` (complex/reading.rs) replaces the lexer-based `parse_complex_number` and `has_inner_minus`. The tab/NBSP/LF/CR edge rule now applies to each part.
+
+Eval delta: 0 fixed, 0 regressions. The grammar case passes 260/260 and the digits case 30/30. 24 new-case cells are baselined: eng-inumber-grammar-parts B18:D18, B20:D20, B32:D32 and eng-inumber-grammar-value B1:D3, B8:D9. They are VALUE's own number grammar ("1,0000", "%1", "1,"), not the IM* reader. They are recorded in coercion.md "Group commas and a leading percent sign" and handed to follow-up T-3811. So the "matches every probed cell" criterion is met except for those VALUE cells.
+
+engineering.md "How an inumber is read" lists every shape with its result. T-3059's whitespace and `$` shapes are untouched.
+

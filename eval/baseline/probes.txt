@@ -441,6 +441,7 @@ C	probes/eng-imsum-improduct-whole.case.json	45
 C	probes/eng-imtan-imcot-overflow.case.json	13
 C	probes/eng-inumber-currency-shapes.case.json	40
 C	probes/eng-inumber-date-boundary.case.json	46
+C	probes/eng-inumber-grammar-digits.case.json	30
 C	probes/eng-inumber-grammar-parts.case.json	216
 C	probes/eng-inumber-grammar-value.case.json	36
 C	probes/eng-inumber-grammar.case.json	260

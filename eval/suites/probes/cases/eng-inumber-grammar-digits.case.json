@@ -1,0 +1,48 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-3644: parts with 16 or more significant digits, read through IMREAL, IMAGINARY and IMSUM, to see whether a part keeps the digits past the 15th as VALUE drops them.",
+ "tags": [
+  "M9",
+  "probe",
+  "engineering",
+  "T-3644"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=\"1.2345678901234567+2.2345678901234567i\"",
+    "B1": "=IMREAL(A1)",
+    "C1": "=IMAGINARY(A1)",
+    "D1": "=IMSUM(A1)",
+    "E1": "=IMREAL(A1)-1.2345678901234",
+    "A2": "=\"1.2345678901234567\"",
+    "B2": "=IMREAL(A2)",
+    "C2": "=IMAGINARY(A2)",
+    "D2": "=IMSUM(A2)",
+    "E2": "=IMREAL(A2)-1.2345678901234",
+    "A3": "=\"0.30000000000000004\"",
+    "B3": "=IMREAL(A3)",
+    "C3": "=IMAGINARY(A3)",
+    "D3": "=IMSUM(A3)",
+    "E3": "=IMREAL(A3)-1.2345678901234",
+    "A4": "=\"123456789012345678\"",
+    "B4": "=IMREAL(A4)",
+    "C4": "=IMAGINARY(A4)",
+    "D4": "=IMSUM(A4)",
+    "E4": "=IMREAL(A4)-1.2345678901234",
+    "A5": "=\"1+0.30000000000000004i\"",
+    "B5": "=IMREAL(A5)",
+    "C5": "=IMAGINARY(A5)",
+    "D5": "=IMSUM(A5)",
+    "E5": "=IMREAL(A5)-1.2345678901234",
+    "A6": "=\"9007199254740993+9007199254740993i\"",
+    "B6": "=IMREAL(A6)",
+    "C6": "=IMAGINARY(A6)",
+    "D6": "=IMSUM(A6)",
+    "E6": "=IMREAL(A6)-1.2345678901234"
+   }
+  }
+ ],
+ "expected": {}
+}
