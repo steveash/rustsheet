@@ -694,6 +694,15 @@ Evidence: probes/eng-dec2base-empty-text A1:A18 (excel-graph, 2026-10-31); gen-m
 Status: VERIFIED (excel-graph); implemented (`dec_digits` in number_basis.rs).
 Tasks: T-3498
 
+## Base conversions: digit text, two's-complement ranges and places (T-3651)
+Rule: the `number` of every BIN2*, OCT2* and HEX2* conversion is read as text, a number as its displayed text, and must be at most ten characters, each a digit of the base (hex in either case: `HEX2DEC("1f")` is 31); anything else is `#NUM!`. So an 11-character input is `#NUM!` even when leading zeros make it a valid 10-digit value (`BIN2DEC("00000000001")`, `HEX2DEC("0FFFFFFFFFF")`, `OCT2BIN("00000000001")`; the number `BIN2DEC(11111111111)` too), and so are a sign (`BIN2DEC("+101")`, `"-101"`, `HEX2DEC("+1F")`, `HEX2DEC(-1)`), a leading or trailing space (`BIN2DEC(" 101")`, `"101 "`), a decimal point (`BIN2DEC("1.0")`, `"101.0"`, `BIN2DEC(1.5)`, `0.1`), an exponent in text (`BIN2DEC("1E2")`, `"1e2"`), `"0x1F"`, `"(101)"` and a number displayed in E notation (`HEX2DEC(1E+20)`, `BIN2DEC(1E+15)`). Unlike text, a typed number is read through its display: `BIN2DEC(1E2)` reads "100" and is 4, `HEX2DEC(1E3)` reads "1000" and is 4096, `OCT2DEC(1E3)` 512, while `HEX2DEC("1E3")` is 483 (hex digits) and `OCT2DEC("1E3")` `#NUM!`.
+Rule: the ten digits are two's complement: the top half of the span is negative (`BIN2DEC("1000000000")` -512, `"0111111111"` 511; `OCT2DEC("4000000000")` -536870912; `HEX2DEC("8000000000")` -549755813888, `"7FFFFFFFFF"` 549755813887). The target range of DEC2*, HEX2*, OCT2* and BIN2* alike is that of the target base: BIN -512..511 (`DEC2BIN(512)`, `HEX2BIN("200")`, `HEX2BIN("FFFFFFFDFF")`, `OCT2BIN("7777776777")`, `OCT2BIN("1000")` are `#NUM!`; `HEX2BIN("FFFFFFFE00")` is "1000000000"), OCT -536870912..536870911 (`HEX2OCT("20000000")` and `"FFDFFFFFFF"` `#NUM!`, `HEX2OCT("FFE0000000")` "4000000000", `DEC2OCT(536870912)` `#NUM!`), HEX -549755813888..549755813887 (`DEC2HEX(549755813888)` and `(-549755813889)` `#NUM!`).
+Rule: DEC2* truncate the number toward zero before the range check: `DEC2BIN(-1.5)` is "1111111111", `DEC2BIN(-0.5)` and `(0.5)` "0", `DEC2BIN(-512.9)` "1000000000", `DEC2BIN(511.9)` "111111111", `DEC2HEX(-549755813888.9)` "8000000000", `DEC2BIN(-1E-300)` "0". Numeric text is a number there, unlike in the other nine: `DEC2BIN(" 5")`, `"5 "`, `"+5"`, `"$5"`, `"5.5"` are "101", `DEC2BIN("1E1")` "1010", `DEC2BIN("-5")` "1111111011". (A date text such as "1/2" is its serial, which moves with the current year, so the probe leaves it out.)
+Rule: `places` is truncated and must be 1 to 10 (`DEC2BIN(5,0)`, `(5,11)`, `(5,-1)` `#NUM!`, also with a negative number: `DEC2BIN(-5,0)`, `(-5,11)`); it is read as a number, so numeric text works (`BIN2HEX("1","3")`, `(" 3")`, `("3.9")` "001", `("1E1")` "0000000001") while a boolean or other text is `#VALUE!` (`BIN2HEX("1",TRUE)`, `("1","x")`). A non-negative result shorter than `places` is zero-padded and one longer is `#NUM!` (`DEC2BIN(5,2)`, `DEC2BIN(5,2.9)`, `HEX2BIN("1F",2)`, `HEX2BIN("1F"," 3")`, `BIN2HEX("11111",1)`); a negative result is always ten digits whatever valid `places` is given (`DEC2BIN(-5,1)`, `HEX2OCT("FFFFFFFFFF",1)`, `OCT2HEX("7777777777",2.9)`).
+Evidence: probes/base-conv-boundaries A1:A425 (excel-graph, 2026-11-01; A322, A363, A404 left out).
+Status: VERIFIED (excel-graph); implemented (`signed_base_value`, `write_base` and `number_and_places` in number_basis.rs, one path for all twelve).
+Tasks: T-3651
+
 ## The second argument's error wins in the two-argument base conversions, DELTA and GESTEP
 Rule: DEC2BIN, DEC2HEX, DEC2OCT, BIN2OCT, BIN2HEX, HEX2BIN, HEX2OCT, OCT2BIN, OCT2HEX, DELTA and GESTEP read the second argument (`places`, `number2`, `step`) before the first, scalar or inside one array element. `DEC2BIN("x",NA())` is `#N/A` and `DEC2BIN(NA(),"x")` is `#VALUE!`; the same for all eleven. BESSELJ, BITLSHIFT, CONVERT, COMPLEX, IMPOWER and ERF instead report the first argument's error. In the nine base conversions an invalid places value wins too, not only its error: `DEC2BIN(NA(),0)` is `#NUM!` (gen-m9 sweep, "Base conversions" below; T-2545). Whether DELTA's and GESTEP's second argument also wins by value is unprobed.
 Evidence: probes/eng-first-vs-second-error A1:D11 (excel-graph, 2026-10-19); probes/eng-later-argument-lift M2, M8.
@@ -784,7 +793,7 @@ Edges probed by T-2077 (probes/eng-im-overflow-edges, excel-graph):
 - A blank cell argument met earlier in IMPRODUCT (a blank inside a range is UNVERIFIED, T-2231) makes the running product 0, so a later overflow cannot
   happen: `IMPRODUCT(<blank>,"1E200","1E200")` is `0`; the blank last is `#VALUE!` (the overflow
   came first). Implemented.
-- IMSIN and IMCOS are `#NUM!` when `exp(|imaginary part|)` overflows (|y| above about 709.78 by analogy with SINH/COSH in numbers.md; probed only at 710.4 and 711, T-2231; for y < 0 already below ln(DBL_MIN) = -708.396, and for y > 0 from (709.7, 709.75], T-3589 and T-3616),
+- IMSIN and IMCOS are `#NUM!` for large |imaginary part| (probed at 710.4 and 711, T-2231): for y < 0 already below ln(DBL_MIN) = -708.396 (T-3589), and for y > 0 above the constant 709.7, below exp's overflow at 709.78 (T-3616, "IMSIN and IMCOS positive overflow cut" below),
   whatever the real part (`IMSIN("1.5+710.4i")`, `IMCOS("710.4i")`), although `cosh y` is still
   finite there. IMCOSH and IMSINH are `#NUM!` for a zero imaginary part when `exp(|x|)` overflows
   (`IMCOSH("710.4+0i")`) but answer text with a nonzero one (`IMCOSH("710.4+1.5i")` is
@@ -969,7 +978,7 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   1.07732499684388E+307-1.97203017901663E+307i and `IMSIN("0.5-708.396419i")` `#NUM!` (both functions, every probed
   y from -708.396419 to -709.78; probes-numeric/t3589-imsin-imcos-negative-cut-probe, 22 cells, and
   t3589-imsin-imcos-subnormal-exp-probe, 52 cells, excel-graph). Ours: `trig_exp_overflows`. The same probe shows
-  positive y turning `#NUM!` between 709.7 and 709.75, below exp's overflow (T-3616). Status: VERIFIED (excel-graph) for
+  positive y turning `#NUM!` above 709.7, below exp's overflow ("IMSIN and IMCOS positive overflow cut", T-3616). Status: VERIFIED (excel-graph) for
   IMSINH, IMCOSH, IMSIN and IMCOS; for IMSECH and IMCSCH below 0.01 see the next entry (real x VERIFIED, three complex
   cells UNVERIFIED; T-3609). Ours: `inverse_exp_sinh_cosh`,
   `sinh_series` and `trig_sinh_cosh` in functions/engineering/complex/trig.rs.
@@ -1133,8 +1142,22 @@ Evidence: probes/besseli-overflow-cut-sweep (x = 709.50 to 709.78 step 0.01, ord
 Rule: BESSELI(x,n) is finite up to x = 709.7 (`BESSELI(709.7,0)` is 2.4788083687166675E+306, `(709.7,1)` 2.4770621409647947E+306, `(709.7,5)` 1.9147648105012915E+306) and `#NUM!` at every probed x above it, to 709.78 and on, at orders 0, 1 and 5. The cut is in (709.7, 709.70001], far below the true overflow of I0 near 713.98 and of `exp` at 709.78, so it is a constant in Excel's code, taken as 709.7.
 Rule (T-3005, probes/besseli-overflow-cut-negative, excel-graph, 2026-10-29): negative x has the same cut on |x|. `BESSELI(-709.7,n)` is finite for n = 0 to 5 with the sign of (-1)^n (`(-709.7,0)` 2.4788083687166675E+306, `(-709.7,1)` -2.4770621409647947E+306, `(-709.7,5)` -1.9147648105012915E+306), and `BESSELI(-709.70001,n)` for n = 0 to 5 and `(-709.75,1)` are `#NUM!`. Orders are not monotone at the cut: `(-709.7,3)` is -1.1560227990465618E+306, under half the magnitude of its neighbours (n = 2 is 2.4767E+306, n = 4 is 2.4609E+306; the mathematical I_3 is about 2.46E+306), an artifact of Excel's recurrence that positive x shares by symmetry. Ours takes |x| and matches all 13 cells.
 Status: VERIFIED (excel-graph)
-Implemented in: functions/engineering/transcendental/bessel_i.rs (`BESSELI_OVERFLOW_X`)
+Implemented in: functions/engineering/transcendental/bessel_i.rs (`BESSELI_OVERFLOW_X`, from `ENGINEERING_EXP_CUT` in functions/engineering/mod.rs, which IMSIN and IMCOS share)
 Tasks: T-2613, T-3005
+
+## IMSIN and IMCOS positive overflow cut (T-3616)
+Evidence: probes-numeric/t3616-imsin-imcos-positive-cut-probe (330 cells, excel-graph, 2026-11-01): IMSIN and IMCOS of
+x + yi for x = 0, 0.5, 1.2, -2.3, 3 and 1.5707963267949 at y = 709.7, 709.7 + 1E-12 .. 1E-6 (each power of ten),
+709.70001, 709.7001, 709.701, 709.705 to 709.75 step 0.005, and 709.699999999999, with EXP, COSH and SINH of each y.
+Rule: IMSIN and IMCOS are `#NUM!` once the imaginary part exceeds 709.7, whatever the real part: `IMSIN("709.7i")` is
+8.27492013840132E+307i and `IMCOS("0.5+709.7i")` answers, while every probed y from 709.700000000001 (the finest a
+15-digit text can write) up is `#NUM!` in all 12 columns. This is the same constant as BESSELI's cut ("BESSELI overflow
+point" above), not an overflow: EXP, COSH and SINH stay finite at every probed y (`EXP(709.75)` is
+1.7398368732641605E+308, `COSH(709.75)` 8.699184366320803E+307), and so are the product parts. Negative y keeps its own,
+earlier cut at ln(DBL_MIN) (T-3589).
+Status: VERIFIED (excel-graph)
+Implemented in: functions/engineering/mod.rs (`ENGINEERING_EXP_CUT`, shared with BESSELI), complex/trig.rs
+(`trig_exp_overflows`)
 
 ## BESSELJ and BIN2* cells of the T-2436 sub-expression probe
 Rule (excel-graph, 2026-10-24, probes/t2436): `BESSELJ(1E+15,100)` is `#NUM!` (caa1eed48b1883fe A399; matched since T-2547, the phase cut), and `BIN2DEC("Hello World")` and `BIN2HEX("#N/A",1)` (text cells) are `#NUM!` (matched since T-2544); an `IMSUM` of

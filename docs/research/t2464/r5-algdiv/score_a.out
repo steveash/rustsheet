@@ -1,0 +1,46 @@
+a: pinned shapes 78; variants 65792; TOMS-d 26
+36 ar=e st=u aln=ser lnb=xl fin=toms t2=sq gsum=d
+36 ar=e st=u aln=ser lnb=xl fin=toms t2=sq gsum=e
+36 ar=e st=u aln=ser lnb=xl fin=toms t2=bb gsum=d
+36 ar=e st=u aln=ser lnb=xl fin=toms t2=bb gsum=e
+36 ar=e st=u aln=ser lnb=xl fin=wuv t2=sq gsum=d
+36 ar=e st=u aln=ser lnb=xl fin=wuv t2=sq gsum=e
+36 ar=e st=u aln=ser lnb=xl fin=wuv t2=bb gsum=d
+36 ar=e st=u aln=ser lnb=xl fin=wuv t2=bb gsum=e
+36 ar=e st=u aln=ser lnb=xl fin=wvu t2=sq gsum=d
+36 ar=e st=u aln=ser lnb=xl fin=wvu t2=sq gsum=e
+36 ar=e st=u aln=ser lnb=xl fin=wvu t2=bb gsum=d
+36 ar=e st=u aln=ser lnb=xl fin=wvu t2=bb gsum=e
+36 ar=e st=u aln=ser lnb=xl fin=w(uv) t2=sq gsum=d
+36 ar=e st=u aln=ser lnb=xl fin=w(uv) t2=sq gsum=e
+36 ar=e st=u aln=ser lnb=xl fin=w(uv) t2=bb gsum=d
+36 ar=e st=u aln=ser lnb=xl fin=w(uv) t2=bb gsum=e
+36 ar=e st=hu aln=ser lnb=xl fin=toms t2=sq gsum=d
+36 ar=e st=hu aln=ser lnb=xl fin=toms t2=sq gsum=e
+36 ar=e st=hu aln=ser lnb=xl fin=toms t2=bb gsum=d
+36 ar=e st=hu aln=ser lnb=xl fin=toms t2=bb gsum=e
+36 ar=e st=hu aln=ser lnb=xl fin=wuv t2=sq gsum=d
+36 ar=e st=hu aln=ser lnb=xl fin=wuv t2=sq gsum=e
+36 ar=e st=hu aln=ser lnb=xl fin=wuv t2=bb gsum=d
+36 ar=e st=hu aln=ser lnb=xl fin=wuv t2=bb gsum=e
+36 ar=e st=hu aln=ser lnb=xl fin=wvu t2=sq gsum=d
+36 ar=e st=hu aln=ser lnb=xl fin=wvu t2=sq gsum=e
+36 ar=e st=hu aln=ser lnb=xl fin=wvu t2=bb gsum=d
+36 ar=e st=hu aln=ser lnb=xl fin=wvu t2=bb gsum=e
+36 ar=e st=hu aln=ser lnb=xl fin=w(uv) t2=sq gsum=d
+36 ar=e st=hu aln=ser lnb=xl fin=w(uv) t2=sq gsum=e
+36 ar=e st=hu aln=ser lnb=xl fin=w(uv) t2=bb gsum=d
+36 ar=e st=hu aln=ser lnb=xl fin=w(uv) t2=bb gsum=e
+36 ar=e st=cu aln=ser lnb=xl fin=toms t2=sq gsum=d
+36 ar=e st=cu aln=ser lnb=xl fin=toms t2=sq gsum=e
+36 ar=e st=cu aln=ser lnb=xl fin=toms t2=bb gsum=d
+36 ar=e st=cu aln=ser lnb=xl fin=toms t2=bb gsum=e
+36 ar=e st=cu aln=ser lnb=xl fin=wuv t2=sq gsum=d
+36 ar=e st=cu aln=ser lnb=xl fin=wuv t2=sq gsum=e
+36 ar=e st=cu aln=ser lnb=xl fin=wuv t2=bb gsum=d
+36 ar=e st=cu aln=ser lnb=xl fin=wuv t2=bb gsum=e
+score histogram (score: variants): {36: 4096, 35: 1024, 34: 8192, 33: 1024, 32: 6144, 31: 13312, 30: 13312, 28: 16, 27: 2064, 26: 32, 24: 64, 23: 16}
+
+real	11m0.179s
+user	24m58.736s
+sys	0m0.414s
