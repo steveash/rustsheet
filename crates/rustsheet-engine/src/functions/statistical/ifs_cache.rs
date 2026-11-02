@@ -663,7 +663,8 @@ impl ValueIndex {
     }
 
     /// How many cells of `values[window]` (`values` the indexed range's) `criterion` matches;
-    /// over the whole range a number criterion is counted from its run, without visiting it.
+    /// over the whole range a number criterion is counted from its run, without visiting it, and
+    /// over a window a number equality from its run's positions ([`positions_in_window`]).
     fn count(
         &self,
         criterion: &IndexedCriterion,
@@ -671,21 +672,24 @@ impl ValueIndex {
         matches: &dyn Fn(&CalcResult) -> bool,
         window: std::ops::Range<usize>,
     ) -> usize {
-        if let (IndexedCriterion::Number(op, target), true) =
-            (criterion, window == (0..values.len()))
-        {
-            let (low, high) = number_interval(&self.numbers, *op, *target);
-            let numbers = if *op == CriterionOp::Ne {
-                self.numbers.len() - (high - low)
-            } else {
-                high - low
-            };
-            let others = self
-                .others
-                .iter()
-                .filter(|&&position| values.get(position as usize).is_some_and(matches))
-                .count();
-            return numbers + others;
+        let whole = window == (0..values.len());
+        if let IndexedCriterion::Number(op, target) = criterion {
+            if whole || *op == CriterionOp::Eq {
+                let (low, high) = number_interval(&self.numbers, *op, *target);
+                let numbers = if !whole {
+                    positions_in_window(&self.numbers[low..high], &window)
+                } else if *op == CriterionOp::Ne {
+                    self.numbers.len() - (high - low)
+                } else {
+                    high - low
+                };
+                let others = self
+                    .others_in(&window)
+                    .iter()
+                    .filter(|&&position| values.get(position as usize).is_some_and(matches))
+                    .count();
+                return numbers + others;
+            }
         }
         let mut count = 0;
         self.for_each_match(criterion, values, matches, |position| {
@@ -694,6 +698,16 @@ impl ValueIndex {
             }
         });
         count
+    }
+
+    /// The positions of [`ValueIndex::others`] inside `window`; they ascend, as they were pushed.
+    fn others_in(&self, window: &std::ops::Range<usize>) -> &[u32] {
+        let before = |end: usize| {
+            self.others
+                .partition_point(|&position| (position as usize) < end)
+        };
+        let start = before(window.start);
+        &self.others[start..before(window.end).max(start)]
     }
 
     /// Calls `visit` with each position of `values` (the indexed range's) that `criterion`
@@ -756,6 +770,25 @@ fn number_interval(numbers: &[(f64, u32)], op: CriterionOp, target: f64) -> (usi
     };
     // Monotone predicates give `low <= high`; the clamp keeps the slices in bounds regardless.
     (low.min(high), high)
+}
+
+/// How many entries of `run` (a slice of [`ValueIndex::numbers`]) sit at positions in `window`.
+/// The sort breaks ties on the position, so positions ascend within each group of identical
+/// numbers, and each group is bisected: a rank-with-ties idiom's `COUNTIFS(I$11:I11,I11)` (calipers
+/// `pv26_002`) counts a value's ties above a row without visiting them all, which made the prefix
+/// counts of a column quadratic in its ties. An equality run holds the few numbers equal to the
+/// target at 15 digits, so it has few groups.
+fn positions_in_window(run: &[(f64, u32)], window: &std::ops::Range<usize>) -> usize {
+    let mut count = 0;
+    let mut rest = run;
+    while let Some(&(value, _)) = rest.first() {
+        let (group, tail) =
+            rest.split_at(rest.partition_point(|&(x, _)| x.total_cmp(&value).is_eq()));
+        let before = |end: usize| group.partition_point(|&(_, position)| (position as usize) < end);
+        count += before(window.end).saturating_sub(before(window.start));
+        rest = tail;
+    }
+    count
 }
 
 /// Sets bit `position` of `bits`.
