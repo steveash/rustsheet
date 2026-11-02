@@ -719,3 +719,34 @@ fn sort_error_argument_wins_over_invalid_sort_index_and_order() {
     assert_eq!(model._get_text("A2"), "#VALUE!");
     assert_eq!(model._get_text("A3"), "#VALUE!");
 }
+
+// T-3667: CHOOSEROWS, CHOOSECOLS, VSTACK and HSTACK read a one-cell error reference as a 1x1 array
+// (probes/one-cell-error-ref-array-functions, excel-graph; arrays.md "A one-cell error reference
+// is a 1x1 array ..."). A literal error is still the error.
+#[test]
+fn choose_and_stack_read_a_one_cell_error_reference_as_a_one_by_one_array() {
+    let mut model = new_empty_model();
+    model._set("G9", "=1/0");
+    model._set("D1", "1");
+    model._set("E1", "4");
+    model._set("A1", "=CHOOSEROWS(G9,2)");
+    model._set("A2", "=CHOOSECOLS(G9,0)");
+    model._set("A3", "=CHOOSEROWS(#DIV/0!,2)");
+    model._set("A4", "=CHOOSEROWS(G9,1)");
+    model._set("A5", "=VSTACK(D1:E1,G9)");
+    model._set("A8", "=HSTACK(G9,D1:E1)");
+    model._set("A10", "=VSTACK(D1:E1,#DIV/0!)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#VALUE!");
+    assert_eq!(model._get_text("A2"), "#VALUE!");
+    assert_eq!(model._get_text("A3"), "#DIV/0!");
+    assert_eq!(model._get_text("A4"), "#DIV/0!");
+    assert_eq!(model._get_text("A5"), "1");
+    assert_eq!(model._get_text("B5"), "4");
+    assert_eq!(model._get_text("A6"), "#DIV/0!");
+    assert_eq!(model._get_text("B6"), "#N/A");
+    assert_eq!(model._get_text("A8"), "#DIV/0!");
+    assert_eq!(model._get_text("B8"), "1");
+    assert_eq!(model._get_text("C8"), "4");
+    assert_eq!(model._get_text("A10"), "#DIV/0!");
+}

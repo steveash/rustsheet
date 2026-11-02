@@ -899,6 +899,7 @@ C	probes/oddl-accrint-february-day.case.json	49
 C	probes/off-grid-corners.case.json	6
 C	probes/offset-negative-height-width.case.json	80
 C	probes/omitted-arg-compare.case.json	10
+C	probes/one-cell-error-ref-array-functions.case.json	78
 C	probes/operand-wrap-text.case.json	30
 C	probes/operator-chain-limit.case.json	6
 C	probes/paired-typed-literals-error-tails.case.json	20
