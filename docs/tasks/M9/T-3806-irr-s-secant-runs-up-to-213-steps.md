@@ -3,7 +3,7 @@ id: T-3806
 title: "IRR's secant runs up to 213 steps, not 50 (Excel's cap is 136..214)"
 milestone: M9
 lane: functions-financial
-status: done
+status: in-progress
 priority: P1
 size: S
 tier: opus
@@ -61,3 +61,33 @@ long series near a root of 0) return Excel's digits instead of falling through t
   - Reproducibility: `cd tools && uv run python -I ../docs/research/t3411/gen_sweep.py <repo> [case name]` regenerates
     both cases' cells (seeds "T-3411/r4-fresh", "T-3411/r4-fresh-2").
 - Directive 5: the cap stays a bound (213 steps of an O(n) NPV per run, two runs).
+
+## Landing notes
+2026-11-02 01:05, opus run (session landing window; PR #2822 stays a draft, not marked ready).
+- Head: the commit adding these notes, on top of 2f54f03e6 (round-1 review fixes: FITTED tag format, comment wrap,
+  `check_fitted.py --update`, `check_duplication.py --update`). `make check` was running on 2b6f50979 when the window
+  closed (result unknown); CI has not been looked at.
+- Reviewers on 2b6f50979 (verdict records posted on #2822): security APPROVE, architecture APPROVE (3 MINOR), quality
+  REQUEST_CHANGES (malformed FITTED tag, fixed in 2f54f03e6, not re-reviewed). Excel fidelity returned
+  REQUEST_CHANGES after the head had moved, so no record was posted. Its findings are correct and still open:
+  1. **A lost cell**: probes-numeric/t3478-irr-r4-wide A227 (`IRR({-4.64118123183281E+17,...},-0.990669502541584)`) is
+     `#NUM!` in Excel and on main; with cap 213 the guess run converges at step 189 to -0.678168... The "0 regressions /
+     no cell lost" claims above are wrong: probes-numeric is not gated, and the per-case net (+22) hid it.
+  2. **No single cap fits**: r4-wide A201 and A221 match Excel only with a cap of 195 / 200 or more, while A227 needs
+     188 or less. The reviewer's sweep (totals over the six IRR cases): cap 50 = 594, 136 = 630, 170 = 639,
+     200..214 = 641, 215 = 640, 230 = 637. So "Excel's cap is 136..214" is not an Excel fact. A step cap alone is not
+     Excel's rule (the path or stop test differs on some long runs), and 200..214 is only the best-scoring range.
+  3. The Gate A envelope counts above wrongly count cells where Excel is `#NUM!` and the engine has a number as
+     inside: sweep 1 A31, A39, A45, A144, A148 (at most 89 inside, not 94), sweep 2 A50, A132, A146 (at most 92, not 95).
+  4. The FITTED range "IRR of 6..61 flows" does not match where the cap applies (every IRR call). R4.1: no hold-out
+     split was fixed, and sweep 1 fed the bracket before round 2 froze.
+  5. MINOR: financial.md "The IRR and XIRR solver caps" still says Excel's caps are unknown with no evidence; the replica
+     behind the step counts (scratch Python, twice-rounded operators) is not committed; the "baseline" wording
+     (already fixed in 2f54f03e6).
+- Next step for whoever resumes: decide whether to ship a best-scoring cap at all. If so, it needs (a) a decision on
+  losing A227 (a regression record, as decision 0082 did) or a cap at or below 188 that keeps it (check what
+  188 scores against 213); (b) the conflicting evidence and corrected counts in financial.md and the Outcome;
+  (c) a cell-hash hold-out (about 30%) scored for the chosen cap against 50; (d) the replica committed under
+  docs/research/t3411/. Otherwise, close #2822 and keep only the fresh sweeps and findings (a research PR).
+- Do not repeat: the stall rule (refuted by t3411-irr-r4-fresh A129, see T-3411); judging regressions by per-case
+  pass counts (compare cell by cell, probes-numeric included).
