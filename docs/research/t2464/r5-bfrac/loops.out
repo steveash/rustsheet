@@ -1,0 +1,12 @@
+toms               exact  156 mean +1.77 sd 3.21 corr +0.042 resid sd 4.84 iters 18-18
+toms eps2.2e-16    exact  147 mean +0.25 sd 3.34 corr +0.045 resid sd 4.92 iters 19-20
+toms no rescale    exact  158 mean +1.59 sd 2.89 corr +0.020 resid sd 4.70 iters 18-18
+lentz 1.5e-14      exact  161 mean +2.04 sd 3.46 corr +0.133 resid sd 4.76 iters 18-18
+lentz 1e-15        exact  128 mean +0.21 sd 3.54 corr +0.142 resid sd 4.79 iters 19-19
+lentz 2.2e-16      exact  137 mean +0.40 sd 3.55 corr +0.141 resid sd 4.79 iters 19-22
+steed 1.5e-14      exact  194 mean +2.90 sd 1.00 corr -0.036 resid sd 3.93 iters 18-18
+steed 2.2e-16      exact  198 mean +1.87 sd 1.03 corr +0.011 resid sd 3.89 iters 19-19
+backward 30        exact  160 mean +0.11 sd 0.88 corr +0.048 resid sd 3.82 iters 30-30
+backward 40        exact  160 mean +0.11 sd 0.88 corr +0.048 resid sd 3.82 iters 40-40
+backward 60        exact  160 mean +0.11 sd 0.88 corr +0.048 resid sd 3.82 iters 60-60
+backward 100       exact  160 mean +0.11 sd 0.88 corr +0.048 resid sd 3.82 iters 100-100

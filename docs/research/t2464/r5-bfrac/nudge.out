@@ -1,0 +1,16 @@
+misses 468 fixable by one nudge 409
+by kind {'a': 111.9, 'b': 297.1}
+('a', 1, 'first') 3.1
+('a', 2, 'first') 5.0
+('a', 3, 'first') 7.9
+('a', 4, 'mid') 5.7
+('a', 5, 'mid') 8.6
+('a', 6, 'last3') 15.6
+('a', 6, 'mid') 66.2
+('b', 1, 'first') 17.4
+('b', 2, 'first') 13.6
+('b', 3, 'first') 18.7
+('b', 4, 'mid') 16.8
+('b', 5, 'mid') 22.0
+('b', 6, 'last3') 55.0
+('b', 6, 'mid') 153.6

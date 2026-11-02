@@ -4,7 +4,7 @@ Each run is 96 consecutive doubles in x from an irregular start x0 = mu + z*sd (
 mean and sd) at z = -7, -4, -1, on shapes where TOMS 708 bratio takes bfrac (dispatch(); a run with any basym point is dropped). Row k:
 A = BETA.DIST(x, a, b, TRUE), B = BETA.DIST(x, a, b, FALSE). The z levels change how many fraction terms bfrac takes
 (6 to 40 here), so a fraction-arithmetic noise and a prefactor noise scale differently across them.
-Meta: [[row, a, b, z, x], ...].   usage: mkprobe.py [--write]"""
+Meta: [[row, a, b, z, x], ...].   usage: mkprobe.py [--fresh] [--write]   (--fresh: t3571-r5-bfrac-fresh, built after the model freeze)"""
 from __future__ import annotations
 import importlib.util, json, math, sys
 from pathlib import Path
@@ -45,13 +45,35 @@ def build(shapes):
                 meta.append([k, a, b, z, x])
     return cells, meta
 
+def build_fresh(seed=35719, count=1200):
+    """Fresh sweep (built after model.py's freeze): log-uniform a, b in [40, 5000] with 1-6 significant digits, x at
+    z uniform in [-8, -0.2] sd (15 significant digits), one point per shape; bfrac points only."""
+    import random
+    rnd = random.Random(seed)
+    cells, meta = {}, []
+    while len(meta) < count:
+        a = float(f"{math.exp(rnd.uniform(math.log(40), math.log(5000))):.{rnd.randint(1, 6)}g}")
+        b = float(f"{math.exp(rnd.uniform(math.log(40), math.log(5000))):.{rnd.randint(1, 6)}g}")
+        mu = a / (a + b); sd = math.sqrt(mu * (1 - mu) / (a + b + 1)); z = rnd.uniform(-8.0, -0.2)
+        x = float(f"{mu + z * sd:.15g}")
+        if x <= 1e-3 or dispatch(a, b, x, 1 - x) != 'bfrac': continue
+        k = len(meta) + 1
+        cells[f"A{k}"] = f"=BETA.DIST({w2p.num(x)},{w2p.num(a)},{w2p.num(b)},TRUE)"
+        cells[f"B{k}"] = f"=BETA.DIST({w2p.num(x)},{w2p.num(a)},{w2p.num(b)},FALSE)"
+        meta.append([k, a, b, round(z, 3), x])
+    return cells, meta
+
 def main():
-    for name, shapes in (("t3571-r5-bfrac-tune", TUNE), ("t3571-r5-bfrac-hold", HOLD)):
-        cells, meta = build(shapes)
+    sets = (("t3571-r5-bfrac-tune", TUNE), ("t3571-r5-bfrac-hold", HOLD))
+    if "--fresh" in sys.argv: sets = (("t3571-r5-bfrac-fresh", None),)
+    for name, shapes in sets:
+        cells, meta = build(shapes) if shapes else build_fresh()
         case = {"format": "rustsheet-case/v1",
-                "description": f"T-3571 r5-bfrac: BETA.DIST cdf and pdf on runs of 96 consecutive doubles in TOMS 708's "
-                               f"bfrac region at z = -7, -4, -1 sd ({'in-sample' if 'tune' in name else 'hold-out'}; "
-                               f"docs/research/t2464/r5-bfrac)",
+                "description": (f"T-3571 r5-bfrac: BETA.DIST cdf and pdf on runs of 96 consecutive doubles in TOMS 708's "
+                                f"bfrac region at z = -7, -4, -1 sd ({'in-sample' if 'tune' in name else 'hold-out'}; "
+                                if shapes else "T-3571 r5-bfrac fresh sweep (built after the model freeze): BETA.DIST cdf and "
+                                "pdf at log-uniform (a, b) in [40, 5000], one x per shape in TOMS 708's bfrac region (")
+                + "docs/research/t2464/r5-bfrac)",
                 "tags": ["M9", "probe", "statistics", "T-3571", "incomplete-beta"],
                 "sheets": [{"name": "Calc", "cells": cells}], "expected": {}}
         assert len(cells) <= 16384
