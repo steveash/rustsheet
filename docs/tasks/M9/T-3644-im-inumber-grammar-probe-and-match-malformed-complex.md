@@ -3,7 +3,7 @@ id: T-3644
 title: "IM* inumber grammar: probe and match malformed complex text (signs, exponents, suffix, spacing, repeated parts)"
 milestone: M9
 lane: functions-engineering
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
