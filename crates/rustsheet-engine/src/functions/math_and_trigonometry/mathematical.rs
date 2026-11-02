@@ -334,7 +334,7 @@ impl Model {
     /// first and wraps huge digit counts the same way (docs/excel-semantics/numbers.md
     /// "TRUNC is ROUNDDOWN", probes/trunc-decimal-stages).
     pub(crate) fn fn_trunc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.round_family(Function::Trunc, args, cell, RoundMode::Down)
+        self.round_family(Function::Trunc, args, cell, RoundMode::Trunc)
     }
 
     // (number, divisor); lifts element-wise over arrays and ranges (probes/geomean-overflow-cut-3 E4)
