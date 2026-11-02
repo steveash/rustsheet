@@ -732,6 +732,17 @@ Evidence: probes/typed-currency-percent-input (excel-graph, 2026-10-11).
 Status: VERIFIED
 Tasks: T-0283, T-1335
 
+## Group commas and a leading percent sign
+Rule (en-US): number text reads a group comma followed by four or more digits, and a leading percent sign: VALUE,
+`A1+0` and IMREAL of "1,0000" are 10000, of "1,000,0000" 10000000, of "1,0000.5" 10000.5 and of "%1" 0.01. A comma
+followed by fewer than three digits or by nothing, a leading comma and a doubled percent sign are refused: "1,",
+"1,00", ",1", "2,0" and "2%%" are #VALUE! (IMREAL #NUM!). Ours refuses "1,0000", "1,000,0000", "1,0000.5" and "%1",
+and reads "1," as 1.
+Evidence: probes/eng-inumber-grammar-value (excel-graph, 2026-11-02).
+Oracle: excel-graph, 2026-11-02.
+Status: VERIFIED
+Tasks: T-3811 (implements), T-3644 (found)
+
 ## Percent text is rounded once
 Rule (en-US): number text ending in `%` (VALUE, `0+"…"`, typed cell input) is the decimal text shifted two places and rounded to the nearest double once: `VALUE("23.123%")` = 0.23123, not the double 23.123 divided by 100 (0.23123000000000002). The 15-significant-digit truncation of number text applies before the shift: `12345.6789012345678%` = 123.456789012345. All three paths agree for `23.123%`, `-23.123%`, `0.07%`, `1.005%`, `12345.6789012345678%`, and the e-notation texts `23e-12%` (2.3e-13) and `1.5E-300%` (1.5e-302), and typed input is a number (ISNUMBER TRUE). The `%` operator in a formula (`=23.123%`) is a separate path and is not covered here.
 Evidence: probe `probes/percent-text-paths` (VALUE, `0+`, typed input; excel-graph); ironcalc-calc TEXT/T_VALUE_VALUETOTEXT.xlsx `Sheet1!I4` (cached 0.23123).
