@@ -3092,9 +3092,10 @@ in the next entry
 Tasks: T-2506, T-2508, T-2512
 
 ## Incomplete beta bfrac is TOMS's fraction in a Lentz loop, on closed-form terms (T-3571)
-Rule: where bratio takes bfrac (b0 >= 40, a, b > 1), Excel computes TOMS 708's continued fraction
-r = 1/(b0 + K(alpha_n/beta_n)) with Numerical Recipes' modified Lentz loop, not TOMS's rescaled forward recurrence, in
-doubles:
+Rule: where bratio takes bfrac, on the evidenced region a, b in [40, 5000] on the unswapped call (x below the mean, z from -8 to -0.2 sd), Excel computes TOMS 708's
+continued fraction r = 1/(b0 + K(alpha_n/beta_n)) with Numerical Recipes' modified Lentz loop, not TOMS's rescaled
+forward recurrence, in doubles (a0 < 40 with b0 >= 40, shapes above 5000, the swapped call and the band within 0.2 sd
+of the mean are not probed):
 ```
 lam = fl(a - fl((a+b)*x))  (also for a > b, where TOMS takes (a+b)*y - b),  y = fl(1 - x),  c = lam + 1
 b0 = c * (a/(a+1))
@@ -3109,7 +3110,8 @@ cdf = fl(fl(P*fl(x*y)) * f),  P = BETA.DIST(x, a, b, FALSE)
   that is 336 units (2,500, 3,000). brcomp is the worksheet density there too.
 - TOMS's loop shares none of Excel's noise (corr +0.04; best of 13,824 order, FMA and rescale variants 193 of 1,024
   bit-exact on w2's (100, 120) run). The Lentz loop with NR's start, b0 = c·(a/(a+1)) (not TOMS's c/c1), the α and β
-  forms above and the stop at 10·DBL_EPSILON (bracketed in (2.1e-15, 2.5e-15)) were ranked on the tune probe.
+  forms above were ranked on the tune probe; the stop at 10·DBL_EPSILON is a fit, bracketed in (2.1e-15, 2.5e-15),
+  tagged `/// FITTED(T-3571, 1536 cells, a, b 40..5000, unswapped call (x below the mean), z -8..-0.2 sd)`.
 - Scores, on Excel's own density (bit-exact/w4/w15): hold-out 1,158/1,630/1,632 of 1,632 (TOMS doubles as ported
   162/977/1,384, CR 45/319/781); fresh sweep after the freeze, log-uniform (a, b) in [40, 5000], 694/1,177/1,188 of
   1,200 (TOMS 86/532/844, CR 15/117/268), all 1,200 inside Gate A's envelope; w2's (100, 120) run 401/998/1,024 of
@@ -3119,8 +3121,9 @@ cdf = fl(fl(P*fl(x*y)) * f),  P = BETA.DIST(x, a, b, FALSE)
 Evidence: probes-numeric t3571-r5-bfrac-tune, -hold, -fresh; docs/research/t2464/r5-bfrac (`model.py`,
 `score_final.out`, `score_fresh.out`, `runs.out`, `lamab.out`).
 Ours: TOMS's forward recurrence in doubles with TOMS's λ (`functions/statistical/bratio/bfrac.rs`, T-2508).
-Status: VERIFIED (excel-graph) to 15 digits on the fresh sweep (1,188 of 1,200) and the hold-out (1,632 of 1,632);
-bit-level open past 10 terms
+Status: VERIFIED (excel-graph) on the region above: 15 digits on 1,188 of 1,200 fresh points (the 12 misses are
+18-42-term points, 3-10 ulp, T-3813) and 1,632 of 1,632 hold-out cells; bit-level open past 10 terms; outside the region
+UNVERIFIED
 Tasks: T-3571, T-3812, T-3813, T-3323
 
 ## Student t tails are one kernel call, K(n/2, 1/2, y, z), with bgrat at b = 1/2 in extended precision (T-2464)

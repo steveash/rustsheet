@@ -24,6 +24,8 @@ negatives are recorded with their counts.
   against n·x/s·(b-n)); α's v/s/s against v/(s·s) at large s; the (100, 120) cells (a = 100) are the weakest, so
   terms built from a/(a+1), 1/a or n/a first. Also probe the swapped call (x above the mean): λ's form there is not
   probed (T-3812 keeps the engine's).
+- Region: T-3571's probes cover only a, b in [40, 5000] on the unswapped call at z from -8 to -0.2 sd. Probe a0 < 40
+  with b0 >= 40, shapes above 5000, the swapped call and the near-mean band, so T-3812's gate can widen.
 - Work in docs/research/t2464/ in a new `r6-*` directory, importing r5-bfrac's `model.py`, `runs.py` and `lentz.py`.
   Score on the many-term runs of t3571-r5-bfrac-tune; hold out t3571-r5-bfrac-hold and -fresh.
 - Rules: positive controls first; a real hold-out; record negatives (decision 0056); truncate formula literals to 15

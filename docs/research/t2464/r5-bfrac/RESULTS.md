@@ -31,7 +31,8 @@ Python: any venv with numpy and mpmath (this run used one outside the repo; the 
    cdf = fl(fl(P * fl(x*y)) * f),  P = BETA.DIST(x, a, b, FALSE)   (Excel's own density)
    ```
    r = 1/(b0 + K(alpha_n/beta_n)) is exactly TOMS bfrac's fraction (the same alpha_n, beta_n and c/c1 = b0 in exact
-   arithmetic), so w4's λ sensitivity and tie response carry over; only the arithmetic differs.
+   arithmetic), so w4's λ sensitivity and tie response carry over; only the arithmetic differs. `model.py` is the
+   canonical model; `lentz.py` is the exploration module the ranking scripts share (its loop is the same).
 4. **Scores** (`score_final.out`, `score_fresh.out`, `score_extra.out`; M0 is TOMS bfrac as the engine ports it: R's
    order in doubles, eps 15·1e-15, TOMS's λ, on the same Excel density; CR is the correctly rounded I_x):
 
@@ -48,7 +49,9 @@ Python: any venv with numpy and mpmath (this run used one outside the repo; the 
    - The exact rate falls with the term count (fresh sweep, `score_extra.out`): 168/170 under 10 terms, 435/690 at
      10-19, 69/232 at 20-29, 22/108 at 30+. Misses are ±1-3 ulp (`resid.py`: residual mean 0, sd 0.5 at 6 terms to 2.8
      at 23 with the earlier α form). One more rounding per term is not modelled (section 4).
-5. **Fits.** EPS = 10·DBL_EPSILON is `FITTED(T-3571, 1536, bfrac a, b >= 40)`: a stop threshold chosen by scoring eight
+5. **Region.** All three probes lie in a, b in [40, 5000] on the unswapped call (x below the mean, z from -8 to -0.2 sd); a0 < 40 with b0 >= 40, shapes above 5000, the swapped call and the
+   band within 0.2 sd of the mean are not probed, so the model is claimed only on that region.
+6. **Fits.** EPS = 10·DBL_EPSILON is `/// FITTED(T-3571, 1536 cells, a, b 40..5000, unswapped call (x below the mean), z -8..-0.2 sd)`: a stop threshold chosen by scoring eight
    candidates on the tune probe; the scan brackets it in (2.1e-15, 2.5e-15) (`score_eps_tune.out`) and 10·DBL_EPSILON
    is the natural constant inside. Everything else is structural, ranked among candidates (loop family, start, term
    forms, association): hold-out and fresh sweep above, no tag. TINY = 1e-30 is Numerical Recipes' FPMIN (1e-300
