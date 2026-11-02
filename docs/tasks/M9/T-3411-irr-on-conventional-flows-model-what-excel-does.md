@@ -60,6 +60,24 @@ stage (PR #2529, blocked on its hold-out) and unblocks T-3347.
   at least as many cells as main's model (cap 50) and (2) have a bit-exact rate within 10 points of its rate on
   t3478-irr-r4-wide (257/300 = 85.7%), the sweep that is generated the same way. Otherwise the model is not shipped.
 
+## R4 round 1 result (fresh sweep t3411-irr-r4-fresh, scored once on the frozen model)
+- Main's model 80/150, frozen model 93/150 (15 fixed, 2 new digit misses). Criterion (1) passes (type mismatches
+  56 -> 44); criterion (2) fails: 62% is not within 10 points of 85.7%. Per the plan, the round-1 model is not shipped.
+- The sweep refutes cap 220: A55's run from guess -0.99235 would stop at its 215th step on digits Excel does not
+  return (Excel's are the retry's), so Excel's cap is 213 or 214.
+- It refutes the stall rule as Excel's mechanism: A129 goes flat at |NPV| 2.3E-5 and Excel's digits are those of
+  `irr_fallback` (Newton on the NPV polynomial from v = 0), not of the flat iterate. That fallback, uncapped, gives
+  Excel's exact digits on 15 of the 22 stalled cells (up to 179 steps), but no fallback cap separates Excel's
+  returns from its errors (returns and `#NUM!` interleave from 0 to 680 steps over the 285 cells where both
+  secant runs fail).
+
+## R4 plan, round 2 (fixed 2026-11-02 before the second sweep is generated or scored)
+- Frozen model: main's IRR with the secant cap 50 -> `IRR_SECANT_STEPS` = 213 and nothing else (no stall rule).
+- Fresh sweep 2: probes-numeric/t3411-irr-r4-fresh-2, 150 cells, gen_sweep.py with seed "T-3411/r4-fresh-2".
+- Margin: on sweep 2 the frozen model (1) gets no cell wrong that main's model gets right (type or digits) and
+  (2) has a pass rate within 10 points of its own pass rate on t3411-irr-r4-fresh (sweeps generated the same way).
+  Otherwise nothing ships and the task is blocked with these notes.
+
 ## Landing notes
 2026-11-01 23:40, opus run: resumed from these notes (step 0.2; branch idle 2 h).
 
