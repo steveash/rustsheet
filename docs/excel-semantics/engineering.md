@@ -1066,7 +1066,7 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   "2024-01-01", "1-2-2020", "1-Jan-2020", "2020-1-2", "1-1-1", "$-5", "2-" and "$1,000-" is `#NUM!`. Slash and
   month-name dates and clock text are read as VALUE reads them ("1/2/2020" 43832, "2024/01/01" 45292, "1/2/2020 3:00"
   43832.125, "Jan 1, 2020" 43831, "1/2/20" 43832, "12:00 PM" 0.5), and so are " -5", "- 5", "(5)", "1E-3%" 1E-05,
-  "1,000E-2" 10 and "3 1/2" 3.5. Ours matches all of these since T-2541 (`has_inner_minus`) except "3 1/2", which
+  "1,000E-2" 10 and "3 1/2" 3.5. Ours matches all of these since T-2541 (now `split_inumber`, T-3644) except "3 1/2", which
   VALUE does not read yet (text.md, T-2646).
   A currency sign, `$` or `€`, that starts the text or a part (after a `+` or `-` that is not an exponent's, spaces
   allowed on both sides) and stands before a digit or a `.` (past spaces) is dropped (probes/eng-inumber-reading A5,
@@ -1084,6 +1084,37 @@ show about Excel. Each item names the task that matches it. "Ours" is what RustS
   "1E$3" and "12$3i" [`#NUM!`]; leading spaces before NBSP, LF, CR or U+3000 (only tab is probed) [`#NUM!`]; one of
   the five followed by trailing spaces ("5"&tab&" ") [read]; these five inside the text; a leading tab on text over
   255 characters [`#VALUE!`]. T-3059 holds them.
+  The grammar (probes/eng-inumber-grammar A1:A65 and probes/eng-inumber-grammar-parts A1:A54, IMREAL, IMAGINARY and
+  IMSUM of one argument, excel-graph, 2026-11-02): trailing spaces are dropped and a last lower-case `i` or `j` is the
+  suffix. The first `+` or `-` past the first character (after leading spaces) that is not an exponent's sign splits
+  the rest into a real part and an imaginary coefficient, that sign is the coefficient's, and **each part is then read
+  as VALUE reads it**. So a sign run between the parts is read when the coefficient alone is VALUE text: "1+-2i" and
+  "1-+2i" are 1-2i, "1--2i" and "1++2i" 1+2i, "1+ -2i" 1-2i, "1- -2i" 1+2i, "-1+-2i" -1-2i, "1+-2E-3i" 1-0.002i,
+  "1+-$2i" 1-2i, "1--$2i" 1+2i; but "1---2i", "1+-+2i", "1+-i", "1--i" and "1-+j" are `#NUM!` ("--2", "-+2" and a lone
+  sign are not VALUE text; a lone sign is ±1 only with no real part: "i" 0+1i, "-i", "+i" "i"). A part reads what
+  VALUE reads: "1,000+2i" 1000+2i, "1+2,000i", "1,000.5-2,000.25i", "1,000,000i", "$1,000+2i", "50%+2i" 0.5+2i,
+  "1+50%i", "1%+2i" 0.01+2i, "1+2%j" "1+0.02j", "50%i", "-50%-2i", "1+-50%i", "1E2%+2i" 1+2i, "(1)+2i" -1+2i,
+  "1+(2)i" 1-2i, "1/2/2020+2i" 43832+2i, "1+1/2/2020i" 1+43832i, "1:00+2i" "0.0416666666666667+2i", "007+002i"
+  "7+2i", "1e5i" "100000i", "1E5j" "100000j", "1E+5+1E-5i" "100000+0.00001i", "1e5+2i", "1+2E3i", "1+2E-3i",
+  "1e+2+1e+2i", "-1E-2-1E-2i", "1.e2" "100", ".5i" "0.5i", "5.i" "5i", "1+5.i", "+.5-.5i", "1.+2i", spaces around
+  either part ("1 +2i", "1+ 2i", "1+2 i", "1 + 2 i", " 1+2i", "1+2i ") 1+2i; "1+0i", "-0", "-0i" and "0-0i" print
+  "0" or "1". Not read (`#NUM!`): a sign run before a lone first part ("++1", "+-1", "+-2i", "--2i", "-+2i"), a real
+  part with no suffix after a split ("1+2", "1+-2", "1+-", "1i+2", "1+2i+3"), a coefficient VALUE refuses ("1+2+3i",
+  "2i+3i", "2ii", "1+2ij", "1+2i i", "1+.i", ".i", "1+2e+i", "1+2%%i", "1 2i", "12 3i", "1+2,0i", "1,00+2i", "1,+2i",
+  ",1+2i"), a suffix that is not last or upper case ("i2", "1+i2", "1+2i3", "1+2i%", "I", "J", "1+2I", "1+2J"), an
+  exponent with two signs ("1E+-5+2i" splits at the second), "1e", "1e+", "e5", "1.2.3", "0x1", full-width digits
+  ("１+2i", "１２") and a tab on either side of the inner sign ("1+"&tab&"2i", "1"&tab&"+2i": the end-whitespace rule
+  above applies to each part). A number value is read whole (A58:A65: 1E5, 0.5, 50%, -0, 1000, -2.5E+21; the literal
+  12345678901234567 is already 1.23456789012345E+16). Ours matches every cell since T-3644 (`split_inumber`), except
+  three that are VALUE's own grammar: "1,0000+2i" 10000+2i (VALUE reads a group of four digits), "%1+2i" 0.01+2i
+  (a leading percent sign) and "1,+2i" `#NUM!` (VALUE refuses a trailing comma); coercion.md "Group commas and a
+  leading percent sign", T-3811. A part keeps 15 significant digits, as VALUE does (probes/eng-inumber-grammar-digits,
+  excel-graph, 2026-11-02): `IMREAL("1.2345678901234567+2.2345678901234567i")` is 1.23456789012345 and its IMSUM
+  "1.23456789012345+2.23456789012345i", "0.30000000000000004" is 0.3, "123456789012345678" 1.23456789012345E+17 and
+  "9007199254740993+9007199254740993i" "9007199254740990+9007199254740990i" (matched since T-3644; the lexer-based
+  reader before it kept the 17-digit double). Unprobed (ours in brackets): a lone sign after spaces ("1+ i", " i") [1, as "i"];
+  a tab before the suffix ("2"&tab&"i") [`#NUM!`]; year-less dates in a part ("1/2+2i"; no case keeps one, as its
+  value moves with the current year) [read as VALUE reads it].
 - **Large parts in plain notation.** An IM* part is written in plain notation up to a decimal exponent of 20, zero-padded
   past 15 significant digits (`IMPOWER("1-2i",59)` is "-331147245179666000000-252614032879411000000i";
   `IMSUM("123456789012345678901","0")` is "123456789012345000000"), and in E notation from exponent 21

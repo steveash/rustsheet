@@ -20,8 +20,8 @@ use crate::{
 mod parse;
 mod reading;
 mod trig;
-use parse::{parse_complex_number, Complex, Suffix};
-use reading::{has_inner_minus, strip_currency_symbols};
+use parse::{Complex, Suffix};
+use reading::{has_unread_edge, split_inumber, strip_currency_symbols, Inumber};
 use trig::{imcos, imcosh, imcot, imcsc, imcsch, imsec, imsech, imsin, imsinh, imtan};
 
 // This implements all functions with complex arguments in the standard
@@ -118,26 +118,41 @@ impl Model {
         if number_text_too_long(&value) {
             return Err(value_error(cell));
         }
-        // A tab, U+3000, NBSP, LF or CR at either end, past leading spaces, is `#NUM!`, where a space
-        // is read: `IMABS` of tab&"5", " "&tab&"5", "5"&tab, "3+4i"&LF and NBSP&"3+4i" are `#NUM!`
-        // (probes/eng-inumber-reading, probes/eng-inumber-currency-shapes A13:A26).
-        const UNREAD_EDGE: [char; 5] = ['\t', '\u{3000}', '\u{a0}', '\n', '\r'];
-        if value.trim_start_matches(' ').starts_with(UNREAD_EDGE) || value.ends_with(UNREAD_EDGE) {
-            return Err(num_error(cell));
-        }
-        // Text VALUE reads is a real number (`IMPOWER("$4.00",1)` "4", `IMCONJUGATE("2:24:00")` "0.1",
-        // `IMABS("1/2/2020")` 43832), except text with an inner minus sign that is not an exponent's:
-        // `IMABS` of "2024-01-01", "1-2-2020", "1-Jan-2020" and "$-5" is `#NUM!` where VALUE reads them,
-        // while " -5", "- 5", "1E-3%" and "1,000E-2" are read (probes/eng-inumber-reading A4,
-        // probes/eng-inumber-date-boundary column A).
-        match parse_complex_number(&strip_currency_symbols(&value)) {
-            Ok(z) => Ok(z),
-            Err(_) if has_inner_minus(&value) => Err(num_error(cell)),
-            Err(_) => self
-                .value_text_number(&value)
-                .map(|f| (f, 0.0, Suffix::Real))
-                .ok_or_else(|| num_error(cell)),
-        }
+        // Text is split into its parts and each part is read as VALUE reads it (engineering.md
+        // "How an inumber is read"): "1,000+2i", "50%+2i", "(1)+2i", "1/2/2020+2i" and "1--2i" are
+        // read (probes/eng-inumber-grammar, probes/eng-inumber-grammar-parts), and so is text
+        // VALUE reads as a real number (`IMPOWER("$4.00",1)` "4", `IMCONJUGATE("2:24:00")` "0.1").
+        // Text with an inner sign and no suffix is not: `IMABS("2024-01-01")` is `#NUM!`
+        // (probes/eng-inumber-date-boundary column A).
+        let text = strip_currency_symbols(&value);
+        let read = |part: &str| {
+            if has_unread_edge(part) {
+                None
+            } else {
+                self.value_text_number(part)
+            }
+        };
+        let parts = match split_inumber(&text).ok_or_else(|| num_error(cell))? {
+            Inumber::Real(real) => read(real).map(|x| (x, 0.0, Suffix::Real)),
+            Inumber::Complex {
+                real,
+                sign,
+                coefficient,
+                suffix,
+            } => {
+                let x = match real {
+                    Some(real) => read(real),
+                    None => Some(0.0),
+                };
+                let y = if coefficient.trim_matches(' ').is_empty() {
+                    Some(1.0)
+                } else {
+                    read(coefficient)
+                };
+                x.zip(y).map(|(x, y)| (x, sign * y, suffix))
+            }
+        };
+        parts.ok_or_else(|| num_error(cell))
     }
 
     /// A one-argument complex function, lifted: its argument lifts over an array and refuses a
