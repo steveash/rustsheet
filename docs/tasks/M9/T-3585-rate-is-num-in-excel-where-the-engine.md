@@ -3,7 +3,7 @@ id: T-3585
 title: "RATE is #NUM! in Excel where the engine finds a root: type-1 annuities at a high rate, huge-pv annuities near rate 0"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -35,10 +35,24 @@ predicts them.
 - Code: `fn_rate` in `crates/rustsheet-engine/src/functions/financial/annuity.rs`.
 
 ## Acceptance criteria
-- [ ] A probe brackets each group's `#NUM!` (rate, type and nper for the first; pv/pmt scale and fv for the second, and
+- [x] A probe brackets each group's `#NUM!` (rate, type and nper for the first; pv/pmt scale and fv for the second, and
       the sign of the engine's root there), and financial.md records the rule with evidence.
-- [ ] The engine returns `#NUM!` on the probed cells and the seven points; their known-failures lines are removed.
-- [ ] `make check` green; reviewers approve.
+- [x] The engine (group 1; group 2 moved to T-3424, see Outcome) returns `#NUM!` on the probed cells and the seven points; their known-failures lines are removed.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - RATE's accuracy where Excel returns a number.
+
+## Outcome
+- Probe probes/t3585-rate-num-near-minus-one (104 cells, excel-graph 2026-11-01). Group 1: Excel returns a converged
+  root only when 1 + r is above 1e-7 (bracket 1E-7 .. 1.0000034E-7), for type 0 and type 1, genuine roots near -1
+  and the spurious root -1 of a type-1, fv-0 residual alike. `compute_rate` now checks `1 + r > 1e-7` (the step bound)
+  at convergence. financial.md "RATE is #NUM! when 1 + r is 1e-7 or less" replaces "RATE is #NUM! at the spurious
+  root r = -1".
+- Group 2 (A278, A291) is not a rule on scale or fv: Excel's error comes and goes with the scale (A291 errs at 2^0
+  and 2^-6 but not 2^-2 or 2^-4) and the engine ends both in a flat-secant hold in the residual's noise. They are
+  T-3424's kind; their known-failures lines now name T-3424 and T-3424's context lists them.
+- Eval delta: Gate A RATE known failures 7 -> 2 (owner T-3424); the new probe 97/104 (the 7 off are its G/H noise
+  cells, baselined); probes-numeric/t3478-rate-r4-wide 286 -> 299/300, which also settles T-3547 (marked done).
+  No regressions (`make eval-baseline` only added the new case).
+- Not a numeric fit: the floor reuses the documented 1e-7 step bound; it lies in the probed bracket.

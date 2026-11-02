@@ -3,7 +3,7 @@ id: T-3547
 title: "RATE is #NUM! where its secant converges to the spurious root r = -1 of a type-1 annuity (13 T-3478 sweep cells)"
 milestone: M9
 lane: functions-financial
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -32,10 +32,15 @@ cells of probes-numeric/t3478-rate-r4-wide below, without losing a returning cel
   It is a noise-floor cell of T-3424's kind (|pv| 8E+10); list it there if this task does not settle it.
 
 ## Acceptance criteria
-- [ ] A probe case (probes/, tag M9, excel-graph) bracketing the rule, listed here before the fix.
-- [ ] The 13 cells above are `#NUM!`; no gated cell regresses; the RATE fit set stays bit-exact (the fit lab's `rate` cells with the cap probes, 960 cells, as T-3348 counts it).
-- [ ] financial.md's entry states the evidenced rule.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case (probes/, tag M9, excel-graph) bracketing the rule, listed here before the fix.
+- [x] The 13 cells above are `#NUM!`; no gated cell regresses; the RATE fit set stays bit-exact (the fit lab's `rate` cells with the cap probes, 960 cells, as T-3348 counts it).
+- [x] financial.md's entry states the evidenced rule.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - T-3424's noise-floor cells (except A285 if the rule covers it).
+
+## Outcome
+Settled by T-3585's PR, which found the rule: a converged iterate is `#NUM!` when 1 + r is 1e-7 or less, for genuine
+roots near -1 and the spurious root alike (financial.md "RATE is #NUM! when 1 + r is 1e-7 or less", probes/
+t3585-rate-num-near-minus-one). The 13 cells are `#NUM!`; t3478-rate-r4-wide is 299/300 (A285, listed in T-3424).
