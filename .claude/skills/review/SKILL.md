@@ -4,7 +4,7 @@ description: Run RustSheet's multi-agent code review on the current branch versu
 ---
 # Multi-agent review
 
-A **task-only PR** (every changed path a `.md` file under `docs/tasks/`) gets no review: `make mark-ready`
+A **task-only PR** (every changed path a task file: a regular `T-NNNN-*.md` under `docs/tasks/`, not README.md or a symlink) gets no review: `make mark-ready`
 needs no verdict for it once CI is green, and the merge train's `tasks.py validate` on the
 combined tree is its gate (decision 0231). Any other path in the diff brings the panel of step 3 back.
 

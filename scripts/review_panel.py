@@ -2,7 +2,8 @@
 
 The one definition is the `review` skill (.claude/skills/review/SKILL.md, step 3);
 scripts/test_merge_ready.py fails when this copy differs from it. `merge_ready` (markers, verdict
-records, `make mark-ready`) reads the panel from here. Standard library and `ci_changes` only.
+records, `make mark-ready`) reads the panel from here. Standard library, `ci_changes` and `tasks`
+(the task-file pattern) only.
 """
 
 from __future__ import annotations
@@ -10,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 
 import ci_changes
+import tasks
 
 APPROVE = "APPROVE"
 
@@ -24,6 +26,9 @@ SECURITY_KEEP_PATHS = ("docs/process",)
 EXCEL_FIDELITY = "excel-fidelity"
 EXCEL_FIDELITY_PATHS = ("crates/rustsheet-engine", "crates/rustsheet-xlsx", "eval/suites", "eval/baseline")
 REVIEWERS = (SECURITY, DESIGN, EXCEL_FIDELITY)
+# The head modes `git diff --raw` gives a regular file: a symlink (120000), a submodule (160000) or
+# a deletion (000000) is not a task file (T-3759).
+REGULAR_MODES = ("100644", "100755")
 # The panel before decision 0236. Markers and verdict records that name them still parse, and a
 # head both approved counts as approved by `design`, so PRs marked before the switch stay ready.
 LEGACY_DESIGN = ("architecture", "quality")
@@ -53,14 +58,21 @@ def needs_security(path: str) -> bool:
 
 
 def task_only(paths: Iterable[str]) -> bool:
-    """Whether every path is a task file, a `.md` under `docs/tasks/` (decision 0231)."""
-    return all(p.startswith("docs/tasks/") and p.endswith(".md") for p in paths)
+    """Whether every path is a task file (decision 0231, T-3759).
+
+    A task file matches `tasks.TASK_FILE` under `docs/tasks/` (so not docs/tasks/README.md) and is
+    a regular file at the head. Only a path-to-mode mapping can show that; plain names never qualify."""
+    modes = paths if isinstance(paths, Mapping) else {}
+    return all(
+        p.startswith("docs/tasks/") and tasks.TASK_FILE.search(p) and modes.get(p) in REGULAR_MODES for p in paths
+    )
 
 
-def applicable_reviewers(paths: Iterable[str] | None) -> tuple[str, ...]:
-    """The reviewers a diff of `paths` needs, in REVIEWERS order; every reviewer when the paths
-    are unknown (None) or empty, and none when the diff is task-only (decision 0231)."""
-    listed = None if paths is None else list(paths)
+def applicable_reviewers(paths: Iterable[str] | Mapping[str, str] | None) -> tuple[str, ...]:
+    """The reviewers a diff of `paths` (names, or names mapped to their head modes) needs, in
+    REVIEWERS order; every reviewer when the paths are unknown (None) or empty, and none when the
+    diff is task-only (decision 0231)."""
+    listed = paths if paths is None or isinstance(paths, Mapping) else list(paths)
     if not listed:
         return REVIEWERS
     if task_only(listed):

@@ -186,16 +186,27 @@ class Applicability(unittest.TestCase):
         self.assertEqual(need(["crates/rustsheet-engine/x.rs"]), merge_ready.REVIEWERS)
 
     def test_a_task_only_diff_needs_no_reviewer(self) -> None:
-        tasks = ["docs/tasks/M9/T-0001-a.md", "docs/tasks/M10/T-0002-b.md"]
-        self.assertEqual(merge_ready.applicable_reviewers(tasks), ())
+        need = merge_ready.applicable_reviewers
+        tasks = {"docs/tasks/M9/T-0001-a.md": "100644", "docs/tasks/M10/T-0002-b.md": "100755"}
+        self.assertEqual(need(tasks), ())
         # One path outside docs/tasks/*.md brings the panel of decision 0236 back, as does an empty diff.
         design = (merge_ready.DESIGN,)
-        self.assertEqual(merge_ready.applicable_reviewers([*tasks, "docs/decisions/0001-x.md"]), design)
-        self.assertEqual(merge_ready.applicable_reviewers(["docs/tasks.md"]), design)
-        self.assertEqual(merge_ready.applicable_reviewers(["docs/tasks/M9/run.sh"]), design)
-        self.assertEqual(
-            merge_ready.applicable_reviewers(["docs/tasks/README.md", "scripts/x.py"]), (merge_ready.SECURITY, *design)
-        )
+        self.assertEqual(need({**tasks, "docs/decisions/0001-x.md": "100644"}), design)
+        self.assertEqual(need({"docs/tasks.md": "100644"}), design)
+        self.assertEqual(need({"docs/tasks/M9/run.sh": "100644"}), design)
+        self.assertEqual(need({"docs/tasks/README.md": "100644", "scripts/x.py": "100644"}), (merge_ready.SECURITY, *design))
+
+    def test_only_regular_task_files_skip_the_panel(self) -> None:
+        # T-3759: README.md is process documentation, and a symlink, a submodule or a deletion is not
+        # a task file at the head; names without modes never qualify.
+        need, design = merge_ready.applicable_reviewers, (merge_ready.DESIGN,)
+        task = "docs/tasks/M9/T-0001-a.md"
+        self.assertEqual(need({"docs/tasks/README.md": "100644"}), design)
+        for mode in ("120000", "160000", "000000"):
+            with self.subTest(mode):
+                self.assertEqual(need({task: "100644", "docs/tasks/M9/T-0002-b.md": mode}), design)
+        self.assertEqual(need({task: "100644", "docs/tasks/README.md": "100644"}), design)
+        self.assertEqual(need([task]), design)
         self.assertEqual(merge_ready.applicable_reviewers([]), merge_ready.REVIEWERS)
 
     def test_the_list_matches_the_review_skill(self) -> None:
@@ -480,6 +491,20 @@ class Verify(PrFixture):
         self.pull["head"]["sha"] = self.head
         self.comments = [self.comment(1, marker(self.head, reviewers={}).render())]
         self.assertEqual(self.failures(), [])
+
+    def test_changed_paths_carry_head_modes(self) -> None:
+        # T-3759: a symlink named like a task file is mode 120000 at the head, so the PR is not
+        # task-only and its marker needs the panel's verdicts.
+        self.git("checkout", "-q", "-B", "pr", self.base_sha)
+        self.write("docs/tasks/M2/T-0001-x.md", TASK.format(status="done", outcome="## Outcome\n"))
+        (self.clone / "docs/tasks/M2/T-0002-y.md").symlink_to("../../../README")
+        self.head = self.commit("pr head")
+        self.git("push", "-q", "-f", "origin", "HEAD:refs/pull/7/head")
+        paths = merge_ready.Repo(self.clone).changed_paths(self.base_sha, self.head)
+        self.assertEqual(paths, {"docs/tasks/M2/T-0001-x.md": "100644", "docs/tasks/M2/T-0002-y.md": "120000"})
+        self.pull["head"]["sha"] = self.head
+        self.comments = [self.comment(1, marker(self.head, reviewers={}).render())]
+        self.assertEqual(self.failures(), [("V4", UNLABEL)])
 
     def test_verdicts_must_cover_the_applicable_reviewers(self) -> None:
         self.comments = [
