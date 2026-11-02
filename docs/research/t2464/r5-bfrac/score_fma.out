@@ -1,0 +1,29 @@
+n 1024
+mask  97 eps 1.5e-14  exact  156  resid mean +1.13 sd 4.91
+mask  96 eps 1.5e-14  exact  156  resid mean +1.22 sd 4.83
+mask  65 eps 1.5e-14  exact  156  resid mean +1.13 sd 4.91
+mask  64 eps 1.5e-14  exact  156  resid mean +1.22 sd 4.83
+mask  33 eps 1.5e-14  exact  156  resid mean +1.13 sd 4.91
+mask  32 eps 1.5e-14  exact  156  resid mean +1.22 sd 4.83
+mask   1 eps 1.5e-14  exact  156  resid mean +1.13 sd 4.91
+mask   0 eps 1.5e-14  exact  156  resid mean +1.22 sd 4.83
+mask 105 eps 1.5e-14  exact  155  resid mean +1.10 sd 4.83
+mask  73 eps 1.5e-14  exact  155  resid mean +1.10 sd 4.83
+mask  41 eps 1.5e-14  exact  155  resid mean +1.10 sd 4.83
+mask   9 eps 1.5e-14  exact  155  resid mean +1.10 sd 4.83
+mask 107 eps 1.5e-14  exact  154  resid mean +1.09 sd 4.91
+mask  75 eps 1.5e-14  exact  154  resid mean +1.09 sd 4.91
+mask  43 eps 1.5e-14  exact  154  resid mean +1.09 sd 4.91
+mask  11 eps 1.5e-14  exact  154  resid mean +1.09 sd 4.91
+mask 101 eps 1.5e-14  exact  149  resid mean +1.22 sd 4.97
+mask  69 eps 1.5e-14  exact  149  resid mean +1.22 sd 4.97
+mask  37 eps 1.5e-14  exact  149  resid mean +1.22 sd 4.97
+mask   5 eps 1.5e-14  exact  149  resid mean +1.22 sd 4.97
+mask 102 eps 1.5e-14  exact  148  resid mean +1.43 sd 4.93
+mask  70 eps 1.5e-14  exact  148  resid mean +1.43 sd 4.93
+mask  38 eps 1.5e-14  exact  148  resid mean +1.43 sd 4.93
+mask   6 eps 1.5e-14  exact  148  resid mean +1.43 sd 4.93
+mask 100 eps 1.5e-14  exact  147  resid mean +1.30 sd 4.92
+base (156, 0, '1.5e-14', 1.2220523796752951, 4.826680912207654)
+base (147, 0, '2.2e-16', 2.739297813164897, 4.903860940224213)
+base (142, 0, '1e-15', 2.7807427596853973, 4.898779387139982)

@@ -1,0 +1,6 @@
+t3571-r5-bfrac-hold eps 2.1e-15: exact 1087, cells differing from 10*DBL_EPSILON 168 of 1632
+t3571-r5-bfrac-hold eps 2.22e-15: exact 1158, cells differing from 10*DBL_EPSILON 0 of 1632
+t3571-r5-bfrac-hold eps 2.5e-15: exact 1119, cells differing from 10*DBL_EPSILON 58 of 1632
+t3571-r5-bfrac-fresh eps 2.1e-15: exact 682, cells differing from 10*DBL_EPSILON 56 of 1200
+t3571-r5-bfrac-fresh eps 2.22e-15: exact 694, cells differing from 10*DBL_EPSILON 0 of 1200
+t3571-r5-bfrac-fresh eps 2.5e-15: exact 661, cells differing from 10*DBL_EPSILON 60 of 1200

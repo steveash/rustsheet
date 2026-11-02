@@ -102,3 +102,6 @@ r2-impact/offcells.tsv
 *.pyc
 *.log
 r3-m1-residual/need_*.tsv
+r5-bfrac/exact_r_*.tsv
+r5-bfrac/runs_*.tsv
+r5-bfrac/bffma

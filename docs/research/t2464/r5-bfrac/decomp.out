@@ -1,0 +1,4 @@
+Excel implied fraction error (incl. assembly/final rounding): mean +3.00 sd 3.76
+double bfrac eps1.5e-14: mean +1.77 sd 3.21; corr with Excel +0.042
+double bfrac eps2.2e-16: mean +0.25 sd 3.34; corr with Excel +0.045
+assembly rounding fl(P*fl(xy)) sd 0.46, corr with Excel +0.102
