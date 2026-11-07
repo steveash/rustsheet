@@ -929,7 +929,7 @@ F	roundtrip-corpus-bench/127-32/1_127-32_input.xlsx	* 205 ed70b6a9be12566b
 F	roundtrip-corpus-bench/13-1/1_13-1_input.xlsx	* 253 80f4883d57df019c
 F	roundtrip-corpus-bench/130-9/1_130-9_input.xlsx	* 330 60411fc4f1f48d86
 F	roundtrip-corpus-bench/131-38/1_131-38_input.xlsx	* 188 d13ae1459e418eef
-F	roundtrip-corpus-bench/132-4/1_132-4_input.xlsx	* 1157 b44d20ec7f55093b
+F	roundtrip-corpus-bench/132-4/1_132-4_input.xlsx	* 217 1617c9fb65939c72
 F	roundtrip-corpus-bench/13894/1_13894_input.xlsx	* 372 4dabbeea664de7da
 F	roundtrip-corpus-bench/142-19/1_142-19_input.xlsx	* 190 2bef492f1dda506d
 F	roundtrip-corpus-bench/142-32/1_142-32_input.xlsx	* 295 88c145f059f9b3bb
@@ -964,9 +964,9 @@ F	roundtrip-corpus-bench/22-47/1_22-47_input.xlsx	* 390 1e5cca699c37ffd1
 F	roundtrip-corpus-bench/225-4/1_225-4_input.xlsx	* 198 86f0a2cabac7e0ac
 F	roundtrip-corpus-bench/23-28/1_23-28_input.xlsx	* 348 868e61d10b82de73
 F	roundtrip-corpus-bench/236-22/1_236-22_input.xlsx	* 199 509ffb3ee3503fe9
-F	roundtrip-corpus-bench/237-21/1_237-21_input.xlsx	* 603 6c031733857995b2
+F	roundtrip-corpus-bench/237-21/1_237-21_input.xlsx	* 470 6ab73e816820e1d3
 F	roundtrip-corpus-bench/247-14/1_247-14_input.xlsx	* 277 4c8aa12431241c76
-F	roundtrip-corpus-bench/248-48/1_248-48_input.xlsx	* 386 ded22ac6eeb59d7e
+F	roundtrip-corpus-bench/248-48/1_248-48_input.xlsx	* 359 427a8a2d25945f38
 F	roundtrip-corpus-bench/249-48/1_249-48_input.xlsx	* 290 072f49806bef326f
 F	roundtrip-corpus-bench/254-34/1_254-34_input.xlsx	* 267 b1a20aebb2fc48dd
 F	roundtrip-corpus-bench/263-1/1_263-1_input.xlsx	* 200 044915c6dc078c76
@@ -998,7 +998,7 @@ F	roundtrip-corpus-bench/334-11/1_334-11_input.xlsx	* 191 08417e21dbc6f3c1
 F	roundtrip-corpus-bench/33935/1_33935_input.xlsx	* 345 938057a43afd0ee1
 F	roundtrip-corpus-bench/34-5/1_34-5_input.xlsx	* 409 2dfc77f25add727f
 F	roundtrip-corpus-bench/341-40/1_341-40_input.xlsx	* 1 c30cd308b9f924ee
-F	roundtrip-corpus-bench/344-21/1_344-21_input.xlsx	* 499 152f9be44d66b99c
+F	roundtrip-corpus-bench/344-21/1_344-21_input.xlsx	* 234 4af37ede76daedb3
 F	roundtrip-corpus-bench/34469/1_34469_input.xlsx	* 1 6e56a12668a8e7ca
 F	roundtrip-corpus-bench/34493/1_34493_input.xlsx	* 932 2767ecbfbbf62ce4
 F	roundtrip-corpus-bench/353-19/1_353-19_input.xlsx	* 313 ef56cb7cc6de36a3
@@ -1078,7 +1078,7 @@ F	roundtrip-corpus-bench/50154/1_50154_input.xlsx	* 411 fee3ef975e23a894
 F	roundtrip-corpus-bench/50232/1_50232_input.xlsx	* 376 6df9e6f9bb04a9a2
 F	roundtrip-corpus-bench/504-10/1_504-10_input.xlsx	* 241 c73d881883fb30ac
 F	roundtrip-corpus-bench/50521/1_50521_input.xlsx	* 1 ace8f92efdf1be1f
-F	roundtrip-corpus-bench/510-3/1_510-3_input.xlsx	* 547 a1553085fe49a5bd
+F	roundtrip-corpus-bench/510-3/1_510-3_input.xlsx	* 379 759bd81e1e903f26
 F	roundtrip-corpus-bench/51030/1_51030_input.xlsx	* 19 86c662d7e419c6fd
 F	roundtrip-corpus-bench/51090/1_51090_input.xlsx	* 3 a49b9b9c964ab589
 F	roundtrip-corpus-bench/516-46/1_516-46_input.xlsx	* 242 4e2da091300c9eb5
@@ -1099,7 +1099,7 @@ F	roundtrip-corpus-bench/54238/1_54238_input.xlsx	* 1 74fb0b6705e27f10
 F	roundtrip-corpus-bench/545-35/1_545-35_input.xlsx	* 453 594f454ffc63bef4
 F	roundtrip-corpus-bench/55260/1_55260_input.xlsx	* 339 95932dbc560bbd77
 F	roundtrip-corpus-bench/55392/1_55392_input.xlsx	* 4 6e240c9397866dd2
-F	roundtrip-corpus-bench/55399/1_55399_input.xlsx	* 1515 9a6d975ca89322b7
+F	roundtrip-corpus-bench/55399/1_55399_input.xlsx	* 1090 c8f491f6afe573c1
 F	roundtrip-corpus-bench/55457/1_55457_input.xlsx	* 1 638dee45dd041963
 F	roundtrip-corpus-bench/55515/1_55515_input.xlsx	* 593 5982722002ba8fac
 F	roundtrip-corpus-bench/556-37/1_556-37_input.xlsx	* 203 2afd44e0812acb4b
@@ -1109,7 +1109,7 @@ F	roundtrip-corpus-bench/56-46/1_56-46_input.xlsx	* 201 5cab32cf0783cf7c
 F	roundtrip-corpus-bench/56274/1_56274_input.xlsx	* 1 6c5d06bf83282294
 F	roundtrip-corpus-bench/56419/1_56419_input.xlsx	* 377 d3e5363e0f13c652
 F	roundtrip-corpus-bench/567-21/1_567-21_input.xlsx	* 237 44bf6ab480fca708
-F	roundtrip-corpus-bench/56996/1_56996_input.xlsx	* 409 42c4f77790738cdd
+F	roundtrip-corpus-bench/56996/1_56996_input.xlsx	* 370 8d06eb2d835dd696
 F	roundtrip-corpus-bench/570-43/1_570-43_input.xlsx	* 450 974d32191bfbe753
 F	roundtrip-corpus-bench/57033/1_57033_input.xlsx	* 3 a49b9b9c964ab589
 F	roundtrip-corpus-bench/57105/1_57105_input.xlsx	* 1 81c5c6f52b27b47f
@@ -1117,7 +1117,7 @@ F	roundtrip-corpus-bench/57275/1_57275_input.xlsx	* 4 179036c506f93fa3
 F	roundtrip-corpus-bench/57354/1_57354_input.xlsx	* 1 c76aa7893e514757
 F	roundtrip-corpus-bench/57376/1_57376_input.xlsx	* 29999 ddd0fc8545feb05a
 F	roundtrip-corpus-bench/57427/1_57427_input.xlsx	* 1 61bdb7d633737ce0
-F	roundtrip-corpus-bench/575-15/1_575-15_input.xlsx	* 1084 43189e49515b87aa
+F	roundtrip-corpus-bench/575-15/1_575-15_input.xlsx	* 963 9e48bf6fd5418ab6
 F	roundtrip-corpus-bench/575-16/1_575-16_input.xlsx	* 242 44bfe6151ecbf178
 F	roundtrip-corpus-bench/577-40/1_577-40_input.xlsx	* 357 6f7efc2df646ab67
 F	roundtrip-corpus-bench/57783/1_57783_input.xlsx	* 1 03c83ab578454119

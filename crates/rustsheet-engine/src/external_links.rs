@@ -43,12 +43,21 @@ pub(crate) enum CachedBlanks {
 /// data is `#BLOCKED!`").
 #[derive(Encode, Decode, Debug, PartialEq, Clone, Default)]
 pub struct ExternalBook {
+    /// Where the linked workbook is, as the `externalLinkPath` relationship of its part stores it
+    /// (`56737.xlsx`, `file:///C:/Data/Book.xlsx`): never opened (directive 5), only saved back
+    /// so Excel can refresh the link (T-4143). Empty when the link names no target: it is not to a
+    /// workbook (DDE, OLE) or its part or relationship is missing.
+    pub target: String,
     /// Its sheet names in `sheetNames` order; a sheet's index here is its `sheetId` in the cache.
     pub sheet_names: Vec<String>,
     /// Its defined names; `sheet_id` is the index in `sheet_names` of a sheet-scoped name's sheet.
     pub defined_names: Vec<DefinedName>,
     /// The cached cell values, keyed by (sheet index, row, column).
     pub cells: HashMap<(u32, i32, i32), SpillValue>,
+    /// The sheets the cache has a `sheetData` element for, in order: only these are written back,
+    /// as Excel left out the rest (fixtures/external-link-uncached-lookups.xlsx caches no
+    /// `sheetData` for its sheet 3 and an empty one for sheet 4; T-4143).
+    pub cached_sheets: Vec<u32>,
     /// The sheets whose `sheetData` is marked `refreshError="1"`: Excel failed to refresh them, and
     /// a cell of one that the cache does not hold reads `#REF!`, not `#BLOCKED!`
     /// (`ERROR.TYPE('[1]56737'!$B$2)` is 4; fixtures/external-link-uncached-lookups Refs!B38, T-0472).

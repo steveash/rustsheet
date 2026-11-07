@@ -6,6 +6,7 @@ mod data_tables;
 mod doc_props;
 mod dxfs_styles;
 mod escape;
+mod external_links;
 mod patch;
 mod pivots;
 mod preserving;
@@ -69,6 +70,7 @@ fn get_content_types_xml(
         ));
     }
     content.extend(pivots.content_types());
+    content.extend(external_links::content_types(workbook));
     content.push(
         r#"<Override PartName="/xl/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>"#.to_string(),
     );
@@ -128,8 +130,15 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
         next_part += tables.len();
     }
     let pivots = PivotPlan::new(workbook, model.pivot_today());
-    // The workbook relates to its sheets as `rId1`..., then to its pivot caches.
+    // The workbook relates to its sheets as `rId1`..., then to its pivot caches, then to the
+    // workbooks it links to.
     let first_cache_id = workbook.worksheets.len() + 1;
+    let mut workbook_parts = pivots.workbook_relationships(first_cache_id);
+    let first_link_id = first_cache_id + workbook_parts.len();
+    workbook_parts.extend(external_links::workbook_relationships(
+        workbook,
+        first_link_id,
+    ));
     let mut zip = zip::ZipWriter::new(writer);
 
     let options = zip::write::SimpleFileOptions::default();
@@ -160,6 +169,7 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
         workbook::get_workbook_xml(
             workbook,
             selected_sheet,
+            &external_links::workbook_external_references(workbook, first_link_id),
             &pivots.workbook_pivot_caches(first_cache_id),
         )?
         .as_bytes(),
@@ -181,12 +191,7 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
     zip.add_directory("xl/_rels", options)?;
     zip.start_file(crate::import::WORKBOOK_RELS_PART, options)?;
     zip.write_all(
-        workbook_xml_rels::get_workbook_xml_rels(
-            workbook,
-            rich,
-            pivots.workbook_relationships(first_cache_id),
-        )
-        .as_bytes(),
+        workbook_xml_rels::get_workbook_xml_rels(workbook, rich, workbook_parts).as_bytes(),
     )?;
 
     zip.add_directory("xl/worksheets", options)?;
@@ -263,6 +268,7 @@ pub fn save_xlsx_to_writer<W: Write + Seek>(model: &Model, writer: W) -> Result<
     }
 
     pivots.write(workbook, &mut zip, options)?;
+    external_links::write(workbook, &mut zip, options)?;
 
     let writer = zip.finish()?;
     Ok(writer)

@@ -29,6 +29,7 @@ fn linked() -> Model {
         comment: None,
     };
     model.workbook.external_books.push(ExternalBook {
+        target: "56737.xlsx".to_string(),
         sheet_names: vec!["Uses".to_string(), "Defines".to_string()],
         defined_names: vec![
             name("NR_Global_B2", "='Defines'!$B$2", None),
@@ -36,6 +37,7 @@ fn linked() -> Model {
             name("Span", "='Defines'!$A$1:$B$2", None),
         ],
         cells,
+        cached_sheets: Vec::new(),
         refresh_error_sheets: Vec::new(),
     });
     model
@@ -294,6 +296,7 @@ fn cached_ranges_fixture() -> Model {
         ((0, 3, 1), SpillValue::Boolean(true)),
     ]);
     model.workbook.external_books.push(ExternalBook {
+        target: "56737.xlsx".to_string(),
         sheet_names: vec!["Uses".to_string()],
         defined_names: vec![DefinedName {
             name: "NR_Range".to_string(),
@@ -303,6 +306,7 @@ fn cached_ranges_fixture() -> Model {
             comment: None,
         }],
         cells,
+        cached_sheets: Vec::new(),
         refresh_error_sheets: Vec::new(),
     });
     model

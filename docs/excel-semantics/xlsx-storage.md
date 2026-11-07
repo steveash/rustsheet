@@ -764,6 +764,26 @@ Ours: `rustsheet_xlsx::compare` pins such a workbook's clock to `dcterms:modifie
 Status: VERIFIED (desktop, one workbook)
 Tasks: T-0468
 
+## Links to other workbooks are an externalLink part each, saved back as read
+Rule: each `externalReference` of workbook.xml (`[n]` in a formula is the n-th) points at an
+`xl/externalLinks/externalLinkN.xml` part with an `externalBook` whose `r:id` names an
+`externalLinkPath` relationship, `TargetMode="External"`, to the other workbook as stored (`56737.xlsx`), and the
+part's content type is `application/vnd.openxmlformats-officedocument.spreadsheetml.externalLink+xml`. The cache
+is `sheetNames`, `definedNames` (`refersTo`, `sheetId` for a sheet-scoped name) and a `sheetDataSet` in which
+Excel leaves some sheets out: fixtures/external-link-uncached-lookups.xlsx lists five sheet names but writes
+`sheetData` for sheets 0, 1, 2 (`refreshError="1"`, no cells) and 4 (empty), none for 3. Both kinds of
+uncached sheet read the same ("Lookups into a linked sheet with no cached data are `#N/A`", references.md).
+Evidence: the seven fixtures `external-link-*` (Excel-written), poi/ref-56737.xlsx.
+Ours (T-4143): the importer keeps the target (`ExternalBook::target`) and the sheets that had a `sheetData`
+(`cached_sheets`); the export (`export/external_links.rs`) writes one part per book in `[n]` order with
+`<externalReferences>` between `<sheets>` and `<definedNames>`, and a reload reads the same books. A cached number is
+written as Rust prints it and a cached error as the cell export does (`exported_error_literal`). A link that is
+not to a workbook (DDE, OLE) is read as an empty book with no target and saved as an empty `externalBook` with an
+empty target, which keeps every later `[n]`; how Excel opens that is unprobed, as is whether Excel opens our saved
+part without repair (no oracle round trip of a saved file yet).
+Status: VERIFIED (source files' structure); Excel's reading of our saved parts UNVERIFIED
+Tasks: T-4143
+
 ## Round trips
 
 What Excel itself rewrites when it saves a workbook. This decides which differences the round-trip suites

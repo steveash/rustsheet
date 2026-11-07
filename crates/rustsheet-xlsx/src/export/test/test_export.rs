@@ -546,7 +546,7 @@ fn defined_name_scoped_to_a_missing_sheet_is_an_export_error() {
         hidden: false,
         comment: None,
     });
-    let result = crate::export::workbook::get_workbook_xml(&model.workbook, 0, "");
+    let result = crate::export::workbook::get_workbook_xml(&model.workbook, 0, "", "");
     assert!(matches!(result, Err(XlsxError::Workbook(_))));
 }
 
