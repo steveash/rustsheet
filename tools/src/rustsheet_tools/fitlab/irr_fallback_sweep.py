@@ -7,6 +7,8 @@ Excel's value, 30 digits) and Excel's signed offset from it in ulps beside the c
 
   cd tools && uv run python -m rustsheet_tools.fitlab.irr_fallback_sweep case
   cd tools && uv run python -m rustsheet_tools.fitlab.irr_fallback_sweep roots
+
+T-3117 adds the same pair for the power-of-two case: `pow2-case` and `pow2-roots`.
 """
 
 from __future__ import annotations
@@ -122,6 +124,21 @@ def exact_root(flows: Flows, near: float) -> Decimal | None:
     return (lo + hi) / 2
 
 
+def root_and_offset(flows: Flows, value: object) -> tuple[str, str]:
+    """The exact root near Excel's `value` (30 digits) and Excel's signed offset from it in ulps, as TSV text.
+
+    Both are empty when `value` is an error; the root reads "no sign change" when the NPV has none near `value`.
+    Call inside a 60-digit decimal context.
+    """
+    if not isinstance(value, (int, float)):
+        return "", ""
+    root = exact_root(flows, float(value))
+    if root is None:
+        return "no sign change", ""
+    ulp = Decimal(math.ulp(float(root)))
+    return format(root, ".30g"), format((Decimal(float(value)) - root) / ulp, ".2f")
+
+
 def write_roots() -> None:
     oracle = json.loads(Path(f"{CASE}.oracle.json").read_text(encoding="utf-8"))["sheets"]["P"]
     lines = ["row\tfamily\tflows\texcel\texcel_guess_0.5\texact_root\toffset_ulps"]
@@ -132,22 +149,95 @@ def write_roots() -> None:
             b = oracle.get(f"B{i}", {})
             value = a.get("v", a.get("e"))
             guessed = b.get("v", b.get("e", "")) if b else ""
-            exact, offset = "", ""
-            if isinstance(value, (int, float)):
-                root = exact_root(flows, float(value))
-                if root is None:
-                    exact = "no sign change"
-                else:
-                    exact = format(root, ".30g")
-                    ulp = Decimal(math.ulp(float(root)))
-                    offset = format((Decimal(float(value)) - root) / ulp, ".2f")
+            exact, offset = root_and_offset(flows, value)
             row = (i, family, json.dumps(flows), value, guessed, exact, offset)
             lines.append("\t".join(str(t) for t in row))
     Path(f"{CASE}.roots.tsv").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+# T-3117: the same fallback path under exact power-of-two scaling and negation.
+CASE_POW2 = ROOT / "eval/suites/probes-numeric/cases/t3117-irr-pow2"
+POW2_J = [-30, -20, -10, -5, 0, 5, 10, 20, 30, 40]
+GUESS_J = [0, 20]
+
+
+def pow2_bases() -> list[tuple[str, Flows]]:
+    """The base flows of T-3117, by family name."""
+    out: list[tuple[str, Flows]] = [(f"k111 k={k}", [k, 1, 1, -1]) for k in [4, 5, 6, 7, 42, 70]]
+    out += [(f"N11111 N={n}", [-n, 1, 1, 1, 1, 1]) for n in [284, 400, 496]]
+    out.append(("abc", [0.3, -2.5, 1.005]))
+    return out
+
+
+def pow2_rows() -> list[tuple[int, str, Flows, int, bool, bool]]:
+    """(row, family, base flows, j, negated, has guess column) for every case row."""
+    rows: list[tuple[int, str, Flows, int, bool, bool]] = []
+    for family, flows in pow2_bases():
+        for j in POW2_J:
+            for negated in (False, True):
+                rows.append((len(rows) + 1, family, flows, j, negated, j in GUESS_J))
+    return rows
+
+
+def pow2_formula(flows: Flows, j: int, negated: bool, guess: str = "") -> str:
+    """`=IRR(array*2^j)`: Excel truncates a typed literal to 15 digits, so the scaling is done in the formula,
+    where a power of two is exact. The plain constant is kept for j = 0, not negated (the t2927 form)."""
+    array = "{" + ",".join(excel_number(x) for x in flows) + "}"
+    body = array if (j == 0 and not negated) else f"{'-' if negated else ''}{array}*2^{j}"
+    return f"=IRR({body}{',' + guess if guess else ''})"
+
+
+def pow2_flows(flows: Flows, j: int, negated: bool) -> Flows:
+    """The doubles the formula evaluates to (exact: the scale is a power of two)."""
+    return [(-x if negated else x) * 2.0**j for x in flows]
+
+
+def write_pow2_case() -> None:
+    cells: dict[str, str] = {}
+    for i, _, flows, j, negated, guessed in pow2_rows():
+        cells[f"A{i}"] = pow2_formula(flows, j, negated)
+        if guessed:
+            cells[f"B{i}"] = pow2_formula(flows, j, negated, "0.5")
+    description = (
+        "IRR's fallback path on flows scaled by exact powers of two and negated (T-3117). Flows {k,1,1,-1} for"
+        " k = 4, 5, 6, 7, 42, 70, {-N,1,1,1,1,1} for N = 284, 400, 496 and {0.3,-2.5,1.005}, each times 2^j for"
+        " j = -30, -20, -10, -5, 0, 5, 10, 20, 30, 40 and each negated. Written as =IRR({flows}*2^j) (exact in the"
+        " formula; a typed 17-digit literal would be cut to 15 digits); j = 0 positive is the plain constant."
+        " Column B: the same with guess 0.5 where j is 0 or 20."
+    )
+    case = {
+        "format": "rustsheet-case/v1",
+        "description": description,
+        "tags": ["M9", "probe"],
+        "sheets": [{"name": "P", "cells": cells}],
+        "expected": {},
+    }
+    Path(f"{CASE_POW2}.case.json").write_text(json.dumps(case, indent=1), encoding="utf-8")
+
+
+def write_pow2_roots() -> None:
+    oracle = json.loads(Path(f"{CASE_POW2}.oracle.json").read_text(encoding="utf-8"))["sheets"]["P"]
+    lines = ["row\tfamily\tj\tnegated\texcel\texcel_guess_0.5\texact_root\toffset_ulps"]
+    with localcontext() as ctx:
+        ctx.prec = 60
+        for i, family, base, j, negated, _ in pow2_rows():
+            a = oracle.get(f"A{i}", {})
+            b = oracle.get(f"B{i}", {})
+            value = a.get("v", a.get("e"))
+            guessed = b.get("v", b.get("e", "")) if b else ""
+            exact, offset = root_and_offset(pow2_flows(base, j, negated), value)
+            row = (i, family, j, int(negated), value, guessed, exact, offset)
+            lines.append("\t".join(str(t) for t in row))
+    Path(f"{CASE_POW2}.roots.tsv").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def main() -> None:
-    {"case": write_case, "roots": write_roots}[sys.argv[1]]()
+    {
+        "case": write_case,
+        "roots": write_roots,
+        "pow2-case": write_pow2_case,
+        "pow2-roots": write_pow2_roots,
+    }[sys.argv[1]]()
 
 
 if __name__ == "__main__":

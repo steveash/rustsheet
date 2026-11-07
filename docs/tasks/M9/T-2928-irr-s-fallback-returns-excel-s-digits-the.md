@@ -121,5 +121,8 @@ stay in eval/baseline/.
   (A74 against A12). So the step depends on the sign of P, as a secant's signed first offset does.
   (2) Where v < 1, Excel's results lie on a 2^-53 grid in v, as T-2565 found for the secant: 29 of the 32 distinct
   values, where chance gives 3.3. So the iterate is held as d = 1 - v or in a fixed-point form.
-- Reopen on new evidence: T-3117 probes the same families scaled by exact powers of two and negated. That separates an
-  absolute residual test from the iteration's arithmetic, which a 2^j scale does not change.
+- Reopen on new evidence: T-3117 probed the same families scaled by exact powers of two and negated
+  (probes-numeric/t3117-irr-pow2; financial.md "IRR's fallback when the secant fails", finding 7). Result: Excel's bits
+  do not move for j = -30..10 and change between j = 10 and 30 (to within about 1 ulp of the exact root), which pure arithmetic cannot do, so a test on
+  the flows' scale is the hypothesis, firing only for large scales; negated rows differ from positive ones at small j, so the
+  step is sign-dependent; j = 40 is `#NUM!` for six of the ten families. The steward can reopen this task from there.
