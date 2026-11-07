@@ -1,0 +1,49 @@
+# T-3469 R4.2 fresh sweep (decision 0188 R4.2): probes-numeric/t3469-fresh-sweep-3, 200 cells, filled once (excel-graph, 2026-11-07)
+# after the freeze a9735e107; the case was committed unfilled in c466178b2.
+# main = the merge base a300350e (T-3269's ratio form), built in its own worktree; t3469 = direct deviance (05f720862).
+# tools/.venv/bin/python -I docs/research/t3269/holdout.py --dir docs/research/t3469 --prefix fresh3 cells --only probes-numeric/t3469-fresh-sweep-3.case.json; mpmath; save main|t3469 BIN
+# tools/.venv/bin/python -I docs/research/t3269/holdout.py --dir docs/research/t3469 --prefix fresh3 report main t3469 --by-shape
+200 cells; fit set 0, of which in test: 0
+all: label | sweep: n exact <=4ulp 15dig envelope max-rel-err
+   correctly rounded |  200    2   20   44  200  1.04e-16
+                main |  200   38  168  174  200  9.62e-14
+               t3469 |  200   39  171  177  200  9.62e-14
+x <= 30: label | sweep: n exact <=4ulp 15dig envelope max-rel-err
+   correctly rounded |    8    0    2    5    8  7.03e-17
+                main |    8    0    7    8    8  1.88e-15
+               t3469 |    8    0    7    8    8  1.88e-15
+form's range (30 < x <= 600, a <= 11): label | sweep: n exact <=4ulp 15dig envelope max-rel-err
+   correctly rounded |  174    1   16   35  174  1.04e-16
+                main |  174   38  159  164  174  9.62e-14
+               t3469 |  174   39  162  167  174  9.62e-14
+x > 30 outside it: label | sweep: n exact <=4ulp 15dig envelope max-rel-err
+   correctly rounded |   18    1    2    4   18  9.20e-17
+                main |   18    0    2    2   18  3.40e-14
+               t3469 |   18    0    2    2   18  3.40e-14
+x > 30, bit-exact per shape (all splits)
+   a    n correctly        main      t3469
+  1.5   14          0          0          0
+  2.0   20          1          6          6
+  2.5   16          0          3          3
+  3.0   15          0          3          3
+  3.5   11          0          1          1
+  4.0   10          0          5          5
+  4.5    8          0          3          4
+  5.0    3          0          1          1
+  5.5    7          0          0          0
+  6.0   11          0          2          2
+  6.5    3          0          1          1
+  7.0    6          0          1          1
+  7.5    7          0          1          1
+  8.0    9          0          2          2
+  8.5    8          0          2          2
+  9.0    5          0          1          1
+  9.5   11          0          3          3
+ 10.0    7          0          2          2
+ 10.5    7          0          1          1
+ 11.0    3          0          0          0
+ 11.5    5          1          0          0
+ 12.0    6          0          0          0
+
+# tools/.venv/bin/python -I docs/research/t3269/holdout.py --dir docs/research/t3469 --prefix fresh3 compare main t3469
+main -> t3469: closer 4, farther 0, same 196

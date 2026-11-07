@@ -4,12 +4,15 @@
 //! There Excel is 10 to 400 ulp from the true Q (probes-numeric/t3284-gamma-deep-upper-tail,
 //! docs/excel-semantics/statistics.md "Excel's far upper tail (T-3269)"), and its error is the one
 //! T-2638 found above shape 20 away from the mode: the prefactor is Stirling's ratio form
-//! sqrt(a / 2 pi) exp(a ln(x/a) + (a - x) - correction(a)) ([`excel_ratio_exponent`],
-//! [`stirling_prefactor`]), whose exponent, rounded to a double, carries an ulp of a number near
-//! ln Q into the result. Over the 32 adjacent doubles of `POISSON(2,100+j*2^-46,TRUE)` Excel jumps
-//! by 64 ulp exactly where that exponent's rounding does. The continued fraction it multiplies is
-//! taken accurately ([`accurate_fraction`]); the correction is the exact Stirling error
-//! ([`stirlerr_exact`]), since TOMS's series is only good from 8.
+//! sqrt(a / 2 pi) exp(-B - correction(a)) ([`stirling_prefactor`]), whose exponent, rounded to a
+//! double, carries an ulp of a number near ln Q into the result. B is Loader's direct deviance
+//! a ln(a/x) + (x - a) ([`direct_deviance`]), not the ratio form a ln(x/a) + (a - x) T-3269 first
+//! took: the two round x/a and a/x differently, which put the ratio form 25 to 189 ulp off at
+//! the cells T-3469 owns (shape 6 at x = 38 and 42, x / a = 10). Over the 32 adjacent doubles of
+//! `POISSON(2,100+j*2^-46,TRUE)` Excel jumps by 64 ulp exactly where that exponent's rounding
+//! does. The continued fraction it multiplies is taken accurately ([`accurate_fraction`]); the
+//! correction is the exact Stirling error ([`stirlerr_exact`]), since TOMS's series is only good
+//! from 8.
 //!
 //! The form is applied only where it was measured (decision 0188 R4.3): x in
 //! ([`FAR_TAIL_MIN_X`], [`FAR_TAIL_MAX_X`]] at the multiples of 1/2 up to [`FAR_TAIL_MAX_SHAPE`].
@@ -21,7 +24,7 @@ use super::super::half_integer_beta::is_half_integer_shape;
 use super::super::loader::stirlerr_exact;
 use super::density::{direct_deviance, in_window, window_exponent};
 use super::fraction::accurate_fraction;
-use super::{excel_ratio_exponent, stirling_prefactor, Terms};
+use super::{stirling_prefactor, Terms};
 
 /// The x above which Excel takes the ratio form. Bracketed by the T-3269 boundary probe
 /// (probes-numeric/t3269-gamma-tail-switch, x from 26 to 40 by 0.5 at shapes 2 to 4): at shapes
@@ -54,7 +57,10 @@ pub(super) fn excel_far_upper(a: f64, x: f64, terms: &mut Terms) -> Option<f64> 
         return None;
     }
     let fraction = accurate_fraction(a, x, terms)?;
-    let prefactor = stirling_prefactor(a, excel_ratio_exponent(a, x), stirlerr_exact(a).0);
+    // Loader's direct deviance, not the ratio form a ln(x/a) + (a - x): x > a here, so the two
+    // differ by the rounding of x/a against a/x, which |ln Q| (30 to 90) amplifies to the 25 and 72
+    // ulp T-3469 found at Q(6, 42) and Q(10, 100).
+    let prefactor = stirling_prefactor(a, -direct_deviance(a, x), stirlerr_exact(a).0);
     let upper = prefactor * (fraction.0 + fraction.1);
     upper.is_normal().then_some(upper)
 }
@@ -142,6 +148,22 @@ pub(super) fn excel_window_upper(a: f64, x: f64, terms: &mut Terms) -> Option<f6
 #[cfg(test)]
 mod tests {
     use super::super::{gamma_ur, poisson_upper};
+
+    // Excel's far upper tail (T-3469): the Stirling prefactor's exponent is Loader's direct
+    // deviance a ln(a/x) + (x - a), not the ratio form a ln(x/a) + (a - x), which was 25 and 72
+    // ulp off at these cells (gen-m9/43c6227e0ff368c7 Calc!A108 `POISSON(5,42,-1)`,
+    // gen-m9/5919660b7bb4d195 Calc!A80 `POISSON(9,100,..)` and its twin probes-numeric/
+    // t1049-chisqdistrt Calc!A28 `CHISQ.DIST.RT(200,20)`).
+    #[test]
+    fn far_upper_tail_keeps_the_reciprocal_log_argument() {
+        let excel = [
+            (6.0, 42.0, 7.083_529_869_768_314e-13_f64),
+            (10.0, 100.0, 1.125_347_396_084_264e-31),
+        ];
+        for (a, x, q) in excel {
+            assert_eq!(poisson_upper(a, x).to_bits(), q.to_bits(), "Q({a}, {x})");
+        }
+    }
 
     // Excel's cdf far above the mean (T-4302): the prefactor with Loader's direct deviance
     // times the accurate fraction gives Excel's own bits at these cells

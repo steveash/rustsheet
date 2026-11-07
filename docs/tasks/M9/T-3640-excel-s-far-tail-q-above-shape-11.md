@@ -56,6 +56,10 @@ Cells this task owns:
   last-digit misses, ours minus Excel's value): Sheet1!A17 `CHISQ.DIST.RT(1412.0,7)` and A18 `CHIDIST(1412.0,7)`,
   A23 `CHISQ.DIST.RT(1479.2,21)` and A24 `CHIDIST(1479.2,21)`, A36 `POISSON(3,708.7,TRUE)`, A39 `POISSON(9,737.4,TRUE)`,
   A42 `POISSON(19,777.9,TRUE)`
+- probes-numeric/t3469-fresh-sweep-3.case.json (16, T-3469's R4.2 sweep, excel-graph 2026-11-07, outside the form's
+  range so the accurate kernel; ulps of Excel's value): past x = 600 at shapes 2 to 11, Calc!A176:A178 (322, 113,
+  252), A181:A183 (283, 72, 901), A185 (214); above shape 11 at 38 < x <= 355, A186 (32), A189 (17), A191 (73), A192
+  (34), A194:A197 (15, 129, 20, 12), A199 (124)
 
 ## Acceptance criteria
 - [ ] A model of Excel's switch (or form) above shape 11 and past x = 600 fitted on T-3639's train case and the

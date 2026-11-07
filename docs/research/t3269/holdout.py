@@ -17,12 +17,13 @@ placed FAR_TAIL_MIN_X) is train whatever its hash, so no fitted cell is in test.
                          (decision 0188 R2: 1e-9 relative of the math or within 15 digits of Excel) and the
                          largest relative error against the math, for each label and the correctly rounded Q;
                          `--by-shape` adds the far range's bit-exact count per shape
+  compare OLD NEW        per cell, NEW closer to / farther from / as far from Excel (ulps) as OLD; lists the farther
   near ACCURATE FORM     (FORM = `unrestricted`, the form at every shape, 952d0357b) per shape, cells next to the cut (30 < x <= 45) where FORM is closer to Excel than
                          ACCURATE, and farther, by more than the oracle's 4-ulp floor: FAR_TAIL_MAX_SHAPE's evidence
   --prefix P             file prefix (default holdout; the R4.2 sweep uses fresh2)
   --dir PATH             where the files live (default: beside this script)
 
-Usage (repo root): tools/.venv/bin/python -I docs/research/t3269/holdout.py [--prefix P] cells|mpmath|save|report|near
+Usage (repo root): tools/.venv/bin/python -I docs/research/t3269/holdout.py [--prefix P] cells|mpmath|save|report|compare|near
 """
 
 from __future__ import annotations
@@ -202,6 +203,17 @@ def main() -> None:
     def load(label: str) -> dict[str, float]:
         return {k: float(v) for k, v in json.loads((d / f"{prefix}-{label}.json").read_text()).items()}
 
+    if cmd == "compare":
+        old, new = load(args[1]), load(args[2])
+        tally = {"closer": 0, "farther": 0, "same": 0}
+        for r in rows:
+            e = float(r["excel"])
+            uo, un = ulps(old[r["key"]], e), ulps(new[r["key"]], e)
+            if un > uo:
+                print(f"farther {r['split']} {r['key']} {r['formula']} a={r['a']} x={r['x']} {uo} -> {un} ulp")
+            tally["closer" if un < uo else "farther" if un > uo else "same"] += 1
+        print(f"{args[1]} -> {args[2]}:", ", ".join(f"{k} {v}" for k, v in tally.items()))
+        return
     if cmd == "near":
         accurate, form = load(args[1]), load(args[2])
         print(f"30 < x <= {NEAR_X:g}, gaps over {ULP_FLOOR} ulp: shape | split closer/farther ...")
