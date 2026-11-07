@@ -1919,7 +1919,7 @@ RANK.EQ and RANK.AVG agree where probed): `number` coerces a boolean and numeric
 text included: `RANK(4,A1:A8,"1")` is `#VALUE!`. `order` is read before the data's error: with D2 = `#N/A`,
 `RANK(4,D1:D3,"x")` and `RANK(1,D1:D3,"x")` are `#VALUE!` and `RANK(4,D1:D3,1/0)` is `#DIV/0!`. So an element reads
 `number`, then `order`, then the data's error, then ranks (`#N/A` when absent). Before T-1999 a direct boolean was `#VALUE!`,
-`"1"` was an ascending order and the data's error came before `order`'s. Not probed: an `order` from a cell holding text, and `number`'s error against `order`'s (T-2019).
+`"1"` was an ascending order and the data's error came before `order`'s. Probed in T-2019 (probes/rank-order-text-cell H1-H12, excel-graph, 2026-11-07; RANK and RANK.AVG agree): an `order` read from a cell holding text is `#VALUE!` whether numeric (`RANK(4,A1:A8,K2)`, K2 = "1") or not ("x"), as typed text is. In a range `order` lifts per element: with M1:M2 = 1, "x", element 1 is 4 (ascending) and element 2 is `#VALUE!`. `number`'s error is read before `order`'s: `RANK("x",A1:A8,1/0)` is `#VALUE!` and `RANK(NA(),A1:A8,"x")` is `#N/A`.
 Probed in T-2000 (probes/stat-error-orders-t2000, excel-graph; D1:D3 = 1, `#N/A`, 3): T.TEST's `type` is read before the
 samples' error: `T.TEST(D1:D3,A1:A3,1,4)` is `#NUM!` and `T.TEST(D1:D3,A1:A3,1,"a")` is `#VALUE!`. FORECAST's `x` is read before the data's
 own validation: `FORECAST("a",A1:A2,B1:B3)` (unequal sizes, `#N/A` for a numeric `x`), `FORECAST("a",A1:A1,B1:B1)` (one

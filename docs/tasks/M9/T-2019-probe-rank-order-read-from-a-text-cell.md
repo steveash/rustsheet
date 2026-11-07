@@ -3,7 +3,7 @@ id: T-2019
 title: "Probe RANK order read from a text cell and the number-vs-order error order"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -30,3 +30,6 @@ M1:M2, `RANK("x",A1:A8,1/0)`, `RANK(NA(),A1:A8,"x")`, and RANK.AVG of the first.
 
 ## Out of scope
 - RANK's `ref` reading (T-1999, T-1303).
+
+## Outcome
+Probe `probes/rank-order-text-cell` (12 cells, excel-graph) shows text-cell `order` is `#VALUE!`, element-wise over ranges, and `number`'s error wins over `order`'s. The kernel already matched all 12 cells, so no code or baseline change; findings recorded in statistics.md. Eval delta: +12 checked cells in probes, 0 failures.

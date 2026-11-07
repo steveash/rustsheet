@@ -1120,6 +1120,7 @@ C	probes/rank-nonref-13.case.json	3
 C	probes/rank-nonref-14.case.json	4
 C	probes/rank-nonref-error-elements.case.json	31
 C	probes/rank-nonref-errors.case.json	44
+C	probes/rank-order-text-cell.case.json	12
 C	probes/rank-unknown-shape-ref.case.json	17
 C	probes/rate-cap-return-rule.case.json	74
 C	probes/rate-empty-arguments.case.json	10

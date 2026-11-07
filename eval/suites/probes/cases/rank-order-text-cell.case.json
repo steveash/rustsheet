@@ -1,0 +1,51 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-2019: RANK/RANK.AVG with `order` read from a cell holding text, a range holding text, and the error order between `number` and `order`.",
+  "tags": [
+    "M9",
+    "statistical",
+    "rank",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 4,
+        "A4": 3,
+        "A5": 7,
+        "A6": 5,
+        "A7": 8,
+        "A8": 6,
+        "K2": {
+          "t": "s",
+          "v": "1"
+        },
+        "K3": {
+          "t": "s",
+          "v": "x"
+        },
+        "M1": 1,
+        "M2": {
+          "t": "s",
+          "v": "x"
+        },
+        "H1": "=RANK(4,A1:A8,K2)",
+        "H2": "=RANK(4,A1:A8,K3)",
+        "H3": "=INDEX(RANK(4,A1:A8,M1:M2),1)",
+        "H11": "=INDEX(RANK(4,A1:A8,M1:M2),2)",
+        "H4": "=RANK(\"x\",A1:A8,1/0)",
+        "H5": "=RANK(NA(),A1:A8,\"x\")",
+        "H6": "=RANK.AVG(4,A1:A8,K2)",
+        "H7": "=RANK.AVG(4,A1:A8,K3)",
+        "H8": "=INDEX(RANK.AVG(4,A1:A8,M1:M2),1)",
+        "H12": "=INDEX(RANK.AVG(4,A1:A8,M1:M2),2)",
+        "H9": "=RANK.AVG(\"x\",A1:A8,1/0)",
+        "H10": "=RANK.AVG(NA(),A1:A8,\"x\")"
+      }
+    }
+  ],
+  "expected": {}
+}
