@@ -300,6 +300,7 @@ probes/t4793-growth-several-x.case.json	2
 probes/t4844-irr-guess-ladder.case.json	269
 probes/t4844-irr-pad-ladder.case.json	31
 probes/t4844-irr-stage-invariance.case.json	56
+probes/t4901-mround-blank-let-lambda-roundings.case.json	7
 probes/table-edits/t4274-calc-column-delete-row-2.case.json	1
 probes/yield-below-par-sweep.case.json	3
 probes/yield-deep-discount-cut.case.json	1

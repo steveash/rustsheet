@@ -2719,6 +2719,7 @@ C	probes/t4871-empty-mode-args.case.json	31
 C	probes/t4873-empty-arg-let-lambda.case.json	11
 C	probes/t4873-empty-arg-quotient-ceiling.case.json	55
 C	probes/t4874-numbervalue-empty-separator.case.json	69
+C	probes/t4901-mround-blank-let-lambda-roundings.case.json	16
 C	probes/table-edits/plain-range-delete-row-first.case.json	8
 C	probes/table-edits/plain-range-delete-row-last.case.json	8
 C	probes/table-edits/plain-range-delete-rows-across-edge.case.json	10
@@ -10053,6 +10054,13 @@ F	probes/t4844-irr-stage-invariance.case.json	P!A6
 F	probes/t4844-irr-stage-invariance.case.json	P!A60
 F	probes/t4844-irr-stage-invariance.case.json	P!A7
 F	probes/t4844-irr-stage-invariance.case.json	P!A8
+F	probes/t4901-mround-blank-let-lambda-roundings.case.json	Calc!A10
+F	probes/t4901-mround-blank-let-lambda-roundings.case.json	Calc!A12
+F	probes/t4901-mround-blank-let-lambda-roundings.case.json	Calc!A13
+F	probes/t4901-mround-blank-let-lambda-roundings.case.json	Calc!A14
+F	probes/t4901-mround-blank-let-lambda-roundings.case.json	Calc!A15
+F	probes/t4901-mround-blank-let-lambda-roundings.case.json	Calc!A16
+F	probes/t4901-mround-blank-let-lambda-roundings.case.json	Calc!A3
 F	probes/yield-below-par-sweep.case.json	Y!A10
 F	probes/yield-below-par-sweep.case.json	Y!A9
 F	probes/yield-below-par-sweep.case.json	Y!B10

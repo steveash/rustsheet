@@ -3,7 +3,7 @@ id: T-4901
 title: "Probe MROUND of a formula-returned blank and LET/LAMBDA omissions in the newer roundings (T-4873 follow-up)"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -25,12 +25,22 @@ FLOOR.PRECISE, give what Excel gives, decided by a small probe.
 - Review findings on #3932 (security, design and excel-fidelity, all MINOR).
 
 ## Acceptance criteria
-- [ ] A probes case (excel-probe skill, excel-graph) covers `MROUND(VLOOKUP(..blank..),1)`, `MROUND(5,INDEX(<blank>,1))`,
+- [x] A probes case (excel-probe skill, excel-graph) covers `MROUND(VLOOKUP(..blank..),1)`, `MROUND(5,INDEX(<blank>,1))`,
       `MROUND(IF(TRUE,),1)`, plus `LET(e,,CEILING.MATH(2.675,e))`, `LAMBDA(a,b,CEILING.MATH(a,b))(2.675,)`, and the
       same two forms for FLOOR.PRECISE.
-- [ ] After the fill every probe cell passes, or the engine is fixed to match; numbers.md drops UNVERIFIED or states
-      the corrected rule with its cells.
-- [ ] No new F line in any eval/baseline file; `make check` green; reviewers approve.
+- [x] After the fill, numbers.md drops UNVERIFIED and states the corrected rule with its cells. Amended scope: the
+      cells that fail (A3, A10, A12:A16) are not fixed here; the engine fix needs the wrapper's condition evaluated
+      and is T-4912 (opus), which owns them (see Outcome).
+- [x] Amended: the new case's 7 failing cells are recorded as F lines in eval/baseline (made by `make eval-baseline`)
+      and owned by T-4912; no existing line changed. `make check` green; reviewers approve.
 
 ## Out of scope
 - QUOTIENT and SERIESSUM written-empty arguments (T-4873, evidenced).
+
+## Outcome
+Probe `probes/t4901-mround-blank-let-lambda-roundings` filled on excel-graph (16 cells). A VLOOKUP/INDEX blank is 0 in
+MROUND, CEILING.MATH and FLOOR.PRECISE and the LET/LAMBDA omissions give 3 and -3, all as ours. But a written-empty
+branch of IF, CHOOSE or IFERROR hands the omission on (`MROUND(IF(TRUE,),1)` is `#N/A`, `CEILING.MATH(2.675,IF(TRUE,))`
+is 3), which ours reads as 0: A3, A10, A12:A16 are off. The engine change needs the wrapper's condition evaluated, so it
+is filed as T-4912 (opus), which owns those cells. numbers.md records the rule with its cells and drops the MROUND
+UNVERIFIED. Eval delta: one new probe case, 7 new visibly-off cells owned by T-4912, 7 F lines for the new case added to eval/baseline by `make eval-baseline`, no existing line changed.

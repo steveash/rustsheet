@@ -1,0 +1,35 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-4901: MROUND of a formula-returned blank, and LET/LAMBDA omissions in CEILING.MATH and FLOOR.PRECISE.",
+ "tags": [
+  "M7",
+  "probe",
+  "math",
+  "T-4901"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "C1": "x",
+    "A1": "=MROUND(VLOOKUP(\"x\",C1:D1,2,FALSE),1)",
+    "A2": "=MROUND(5,INDEX(D1:D2,1))",
+    "A3": "=MROUND(IF(TRUE,),1)",
+    "A4": "=LET(e,,CEILING.MATH(2.675,e))",
+    "A5": "=LAMBDA(a,b,CEILING.MATH(a,b))(2.675,)",
+    "A6": "=LET(e,,FLOOR.PRECISE(-2.5,e))",
+    "A7": "=LAMBDA(a,b,FLOOR.PRECISE(a,b))(-2.5,)",
+    "A8": "=CEILING.MATH(2.675,INDEX(D1:D2,1))",
+    "A9": "=FLOOR.PRECISE(-2.5,INDEX(D1:D2,1))",
+    "A10": "=MROUND(IF(FALSE,1,),1)",
+    "A11": "=MROUND(IF(FALSE,1),1)",
+    "A12": "=MROUND(CHOOSE(1,,2),1)",
+    "A13": "=QUOTIENT(IF(TRUE,),1)",
+    "A14": "=MROUND(5,IF(TRUE,))",
+    "A15": "=CEILING.MATH(2.675,IF(TRUE,))",
+    "A16": "=MROUND(IFERROR(,1),1)"
+   }
+  }
+ ],
+ "expected": {}
+}
