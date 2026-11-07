@@ -918,6 +918,8 @@ Rule: RANK, RANK.EQ and RANK.AVG need a reference as their second argument. An a
 `RANK(5,{7,1,5})`, `RANK.AVG(5,{7,1,5})`, `RANK.EQ(5,{7,1,5})`, `RANK(5,5)`, `RANK(5,"5")` or `RANK(5,TRUE)` (HTTP 501
 `unsupportedWorkbook`; `RANK(5,SORT(A1:C1))` as well), so their values are not observable through the web oracle (M14 desktop question, decision 0039).
 Evidence: probes/rank-nonref-06..08 (references), rank-nonref-12..14 (arrays), probes/multiarea-order-stats H14:J14 (excel-graph, 2026-10-09, T-1203).
+Lifted OFFSET/INDIRECT reference grids rank per element against their own ranges (docs/excel-semantics/lookup.md, probes/t4801,
+verified; ours matches).
 Ours: matches since T-1203: the RANK family returns a `#VALUE!` array of the argument's shape, and static analysis
 makes such a formula a dynamic-array anchor so it spills (since T-1999 the `ref` is `ArgKind::ReferenceByCaller`: static
 analysis broadcasts the array's shape with the lifted `number` and `order`, and the driver broadcasts its errors).

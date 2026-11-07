@@ -2709,6 +2709,7 @@ C	probes/t4772-blank-y-offset-indirect-let-xlookup.case.json	32
 C	probes/t4791-large-small-median-mixed-first-element.case.json	12
 C	probes/t4793-growth-one-factor-underflow.case.json	4
 C	probes/t4793-growth-several-x.case.json	10
+C	probes/t4801-rank-lifted-offset-indirect.case.json	217
 C	probes/t4844-irr-guess-ladder.case.json	468
 C	probes/t4844-irr-pad-ladder.case.json	48
 C	probes/t4844-irr-stage-invariance.case.json	60

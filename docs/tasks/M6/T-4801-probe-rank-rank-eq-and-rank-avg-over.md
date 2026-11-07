@@ -3,7 +3,7 @@ id: T-4801
 title: "Probe RANK, RANK.EQ and RANK.AVG over a lifted OFFSET or INDIRECT ref (T-4740 follow-up)"
 milestone: M6
 lane: functions-lookup
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -38,3 +38,9 @@ Excel's values for RANK, RANK.EQ and RANK.AVG whose `ref` is an array of referen
 
 ## Out of scope
 - LARGE and SMALL over the same grids (SPEC-0014 rule 5 covers them).
+
+## Outcome
+Probe `probes/t4801-rank-lifted-offset-indirect` (27 shapes, same-sheet and off-sheet, 217 cells) filled on excel-graph.
+Excel ranks each element of a lifted OFFSET/INDIRECT grid against its own range, identical on both sheet axes, errors
+element-wise; the per-element reading held, but the committed probe-3 prediction ({2;3}) was wrong (Excel and ours give {2;2}: 5 ranks 2nd in B1:B2 = 9,5). No data range has a tie, so RANK.AVG averaging over a lifted grid is not exercised (follow-up probe). Ours matches all 217 cells, so no fix task. Findings in docs/excel-semantics/lookup.md and
+statistics.md. Eval delta: +217 passing probe cells, no regressions.

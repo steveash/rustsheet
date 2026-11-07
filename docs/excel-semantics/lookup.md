@@ -1816,7 +1816,15 @@ reference it picks: `COUNTIF(XLOOKUP(2,..,"x"),">0")` is 1 (A25). An array crite
 `SORT(A1:A2)` as its range failed to open on Excel for the web (createSession 501 unsupportedWorkbook), so those
 forms are not probed: COUNTIF takes no computed array as a range. TAKE and DROP keep the shape
 and match (A13:C22).
-Tasks: T-2065, T-2063, T-2064, T-2823, T-2824, T-4570, T-4704, T-4739, T-4740, T-4741, T-4742, T-4826
+RANK, RANK.EQ and RANK.AVG over a lifted OFFSET or INDIRECT `ref` (probes/t4801-rank-lifted-offset-indirect, excel-graph,
+2026-11-07, T-4801; Data A1:A3 = 5,8,2, B1:B3 = 9,5,1; 27 probes on the references' own sheet and the same 27 off-sheet,
+identical results, so RANK does not split on that axis as LARGE/SMALL do): each element ranks against its own range.
+`RANK(5,OFFSET(A1,{0;1},0,2))` is `{2;#N/A}` (A1:A2 = 5,8; A2:A3 = 8,2 lacks 5); the 2-D shift `OFFSET(A1,{0;1},{0;1},2)`
+`{2;1}`; `INDIRECT({"A1:A2";"B1:B2"})` `{2;2}`; one-cell references `INDIRECT({"A1";"B1"})` `{1;#N/A}`; a bad address element
+is `#REF!` for that element only (`{2;#REF!}`). A lifted `number` ({5;9}) or `order` ({0;1}) beside the grid zips with it
+(`{2;#N/A}`); an error `number` or `order` gives that error in every element. ROWS is 2 and COLUMNS 1 for each.
+Matches ours in all 217 cells, no fix needed.
+Tasks: T-2065, T-2063, T-2064, T-2823, T-2824, T-4570, T-4704, T-4739, T-4740, T-4741, T-4742, T-4801, T-4826
 
 ## MATCH match_type that is a reference to an error cell is #REF! (excel-graph)
 Rule: `MATCH(30,A1:A5,M2)` with M2 `=NA()` gives `#REF!` (ERROR.TYPE 4) in Excel for the web, not the #N/A the
