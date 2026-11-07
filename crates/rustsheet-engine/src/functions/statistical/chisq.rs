@@ -6,7 +6,7 @@ use statrs::distribution::{Continuous, Gamma};
 
 use super::element_errors::array_element_error;
 use super::erf::{gamma_half_lower, gamma_half_upper};
-use super::gamma::log_form_density;
+use super::gamma::{huge_ratio_num_error, log_form_density};
 use super::incomplete_gamma::{
     gamma_cdf, gamma_density, gamma_quantile, gamma_sf, huge_shape_quantile, Tail, HUGE_SHAPE_MIN,
 };
@@ -175,6 +175,10 @@ impl Model {
             return Err(num_error(cell));
         }
         let dist = chi_squared(df, cell)?;
+        // At df 3 a finite x above 1.348E308 is #NUM!, as in GAMMA.DIST (probes/t4635-chisq-huge-x).
+        if huge_ratio_num_error(dist.shape(), x / 2.0) {
+            return Err(num_error(cell));
+        }
         let result = if cumulative && is_one_degree(&dist) {
             gamma_half_lower(x / 2.0)
         } else if cumulative {
@@ -225,6 +229,9 @@ impl Model {
             return Err(num_error(cell));
         }
         let dist = chi_squared(df, cell)?;
+        if huge_ratio_num_error(dist.shape(), x / 2.0) {
+            return Err(num_error(cell));
+        }
         // A subnormal right tail is 0 except at 2 degrees of freedom, the exp closed form, where
         // Excel keeps it (`(x)=0` TRUE at df 1, 7, 21, 39, FALSE at df 2: probes/
         // t3638-subnormal-upper-tail B1:B30).

@@ -23,6 +23,11 @@ T-4635 records state its R4 guards and cell counts exactly.
   88 and 104 cells in different places (84 straddling cells, 4 low-shape cells, 16 Cut-sheet cells); the Outcome
   calls the first fill a hold-out although it shaped the candidate list, and the sweep straddles the cut rather than
   being log-uniform.
+- Also unprobed: an overflowing y = x / beta above shape 1E300 (`OVERFLOW_SHAPES` in
+  tools/src/rustsheet_tools/accuracy/defs/gamma_dist.py stops there, T-4625), where the Gate A definition gives no
+  value; a cell there would say whether the overflowing-y `#NUM!` holds at every shape.
+- No Gate A batch covers CHISQ.DIST or CHISQ.DIST.RT at a huge x: x = 2y from 1E307 is a literal Excel for the web
+  refuses. A way to fill one (or a recorded reason there is none) closes that gap.
 - Probe design as in docs/research/t4635 (beta 1E-8, x = y * 1E-8; Excel for the web refuses a typed literal from
   1E307 up).
 
@@ -30,7 +35,7 @@ T-4635 records state its R4 guards and cell counts exactly.
 - [ ] A probe under eval/suites/probes with oracle values at shapes 1.0001, 1.001 and 1.002, y 4.6E307 to 1.79E308
       (cdf and density), settles which cut holds below 1.01; statistics.md records it, and the engine and the Gate A
       definition follow it.
-- [ ] A unit test in gamma.rs pins `huge_ratio_num_error` at shape 1.5 (5E307 no, 7E307 yes), 1.1 (1E280 no, 1E282
+- [x] A unit test in gamma.rs pins `huge_ratio_num_error` (T-4635's `huge_ratio_cuts`) at shape 1.5 (5E307 no, 7E307 yes), 1.1 (1E280 no, 1E282
       yes), 1.11 (1E306 no) and 1 (1.79E308 no).
 - [ ] The gamma.rs doc comment, docs/research/t4635/README.md and the T-4635 Outcome give the same fresh-sweep counts
       and say that the first fill shaped the candidate list.

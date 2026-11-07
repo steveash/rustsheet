@@ -1,0 +1,210 @@
+{
+ "format": "rustsheet-math/v1",
+ "source": {
+  "generator": "rustsheet-accuracy",
+  "version": "1",
+  "dps": 80,
+  "input_sha256": "7d8a17038cb72c2b7fa864c37746e5264ce01742d6774e2f04cddd816e32f199",
+  "definitions": {
+   "CHIDIST": "53d207f63c6e6e4f",
+   "CHISQ.DIST": "53d207f63c6e6e4f",
+   "CHISQ.DIST.RT": "53d207f63c6e6e4f",
+   "GAMMA.DIST": "53d207f63c6e6e4f"
+  },
+  "arguments_sha256": "e832f24a2e8bbbf86f5658de0a6d372b6b9b319325a945a93dede8c5bce0aba2"
+ },
+ "sheets": {
+  "Chi": {
+   "A1": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=CHISQ.DIST(1.3E300*1E8,3,TRUE)"
+   },
+   "A2": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=CHISQ.DIST(1.3E300*1E8,2,TRUE)"
+   },
+   "A3": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=CHISQ.DIST(1.3E300*1E8,4,TRUE)"
+   },
+   "A4": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(6.5E299*1E8,1.5,1,TRUE)"
+   },
+   "B1": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=CHISQ.DIST(1.4E300*1E8,3,TRUE)"
+   },
+   "B2": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=CHISQ.DIST(1.4E300*1E8,2,TRUE)"
+   },
+   "B3": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=CHISQ.DIST(1.4E300*1E8,4,TRUE)"
+   },
+   "B4": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(7E299*1E8,1.5,1,TRUE)"
+   },
+   "C1": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=CHISQ.DIST(1.79E300*1E8,3,TRUE)"
+   },
+   "C2": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=CHISQ.DIST(1.79E300*1E8,2,TRUE)"
+   },
+   "C3": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=CHISQ.DIST(1.79E300*1E8,4,TRUE)"
+   },
+   "D1": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHISQ.DIST(1.3E300*1E8,3,FALSE)"
+   },
+   "D2": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHISQ.DIST(1.3E300*1E8,2,FALSE)"
+   },
+   "D3": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHISQ.DIST(1.3E300*1E8,4,FALSE)"
+   },
+   "E1": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=CHISQ.DIST(1.4E300*1E8,3,FALSE)"
+   },
+   "E2": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHISQ.DIST(1.4E300*1E8,2,FALSE)"
+   },
+   "E3": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHISQ.DIST(1.4E300*1E8,4,FALSE)"
+   },
+   "F1": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=CHISQ.DIST(1.79E300*1E8,3,FALSE)"
+   },
+   "F2": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHISQ.DIST(1.79E300*1E8,2,FALSE)"
+   },
+   "F3": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHISQ.DIST(1.79E300*1E8,4,FALSE)"
+   },
+   "G1": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHISQ.DIST.RT(1.3E300*1E8,3)"
+   },
+   "G2": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHISQ.DIST.RT(1.3E300*1E8,2)"
+   },
+   "G3": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHISQ.DIST.RT(1.3E300*1E8,4)"
+   },
+   "H1": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=CHISQ.DIST.RT(1.4E300*1E8,3)"
+   },
+   "H2": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHISQ.DIST.RT(1.4E300*1E8,2)"
+   },
+   "H3": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHISQ.DIST.RT(1.4E300*1E8,4)"
+   },
+   "I1": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=CHISQ.DIST.RT(1.79E300*1E8,3)"
+   },
+   "I2": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHISQ.DIST.RT(1.79E300*1E8,2)"
+   },
+   "I3": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHISQ.DIST.RT(1.79E300*1E8,4)"
+   },
+   "J1": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHIDIST(1.3E300*1E8,3)"
+   },
+   "J2": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHIDIST(1.3E300*1E8,2)"
+   },
+   "J3": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHIDIST(1.3E300*1E8,4)"
+   },
+   "K1": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=CHIDIST(1.4E300*1E8,3)"
+   },
+   "K2": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHIDIST(1.4E300*1E8,2)"
+   },
+   "K3": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHIDIST(1.4E300*1E8,4)"
+   },
+   "L1": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=CHIDIST(1.79E300*1E8,3)"
+   },
+   "L2": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHIDIST(1.79E300*1E8,2)"
+   },
+   "L3": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHIDIST(1.79E300*1E8,4)"
+   }
+  }
+ }
+}

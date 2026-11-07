@@ -1,0 +1,55 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Rule R of T-4635 (docs/research/t4635) in the chi-squared functions: rows df 3, 2, 4; columns x 1.3E308, 1.4E308, 1.79E308 (computed) for CHISQ.DIST cdf (A-C), density (D-F), CHISQ.DIST.RT (G-I), CHIDIST (J-L). Row 4: GAMMA.DIST(x,1.5,1,TRUE) at x 6.5E307 and 7E307.",
+ "tags": [
+  "M9",
+  "statistical",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Chi",
+   "cells": {
+    "A1": "=CHISQ.DIST(1.3E300*1E8,3,TRUE)",
+    "D1": "=CHISQ.DIST(1.3E300*1E8,3,FALSE)",
+    "G1": "=CHISQ.DIST.RT(1.3E300*1E8,3)",
+    "J1": "=CHIDIST(1.3E300*1E8,3)",
+    "B1": "=CHISQ.DIST(1.4E300*1E8,3,TRUE)",
+    "E1": "=CHISQ.DIST(1.4E300*1E8,3,FALSE)",
+    "H1": "=CHISQ.DIST.RT(1.4E300*1E8,3)",
+    "K1": "=CHIDIST(1.4E300*1E8,3)",
+    "C1": "=CHISQ.DIST(1.79E300*1E8,3,TRUE)",
+    "F1": "=CHISQ.DIST(1.79E300*1E8,3,FALSE)",
+    "I1": "=CHISQ.DIST.RT(1.79E300*1E8,3)",
+    "L1": "=CHIDIST(1.79E300*1E8,3)",
+    "A2": "=CHISQ.DIST(1.3E300*1E8,2,TRUE)",
+    "D2": "=CHISQ.DIST(1.3E300*1E8,2,FALSE)",
+    "G2": "=CHISQ.DIST.RT(1.3E300*1E8,2)",
+    "J2": "=CHIDIST(1.3E300*1E8,2)",
+    "B2": "=CHISQ.DIST(1.4E300*1E8,2,TRUE)",
+    "E2": "=CHISQ.DIST(1.4E300*1E8,2,FALSE)",
+    "H2": "=CHISQ.DIST.RT(1.4E300*1E8,2)",
+    "K2": "=CHIDIST(1.4E300*1E8,2)",
+    "C2": "=CHISQ.DIST(1.79E300*1E8,2,TRUE)",
+    "F2": "=CHISQ.DIST(1.79E300*1E8,2,FALSE)",
+    "I2": "=CHISQ.DIST.RT(1.79E300*1E8,2)",
+    "L2": "=CHIDIST(1.79E300*1E8,2)",
+    "A3": "=CHISQ.DIST(1.3E300*1E8,4,TRUE)",
+    "D3": "=CHISQ.DIST(1.3E300*1E8,4,FALSE)",
+    "G3": "=CHISQ.DIST.RT(1.3E300*1E8,4)",
+    "J3": "=CHIDIST(1.3E300*1E8,4)",
+    "B3": "=CHISQ.DIST(1.4E300*1E8,4,TRUE)",
+    "E3": "=CHISQ.DIST(1.4E300*1E8,4,FALSE)",
+    "H3": "=CHISQ.DIST.RT(1.4E300*1E8,4)",
+    "K3": "=CHIDIST(1.4E300*1E8,4)",
+    "C3": "=CHISQ.DIST(1.79E300*1E8,4,TRUE)",
+    "F3": "=CHISQ.DIST(1.79E300*1E8,4,FALSE)",
+    "I3": "=CHISQ.DIST.RT(1.79E300*1E8,4)",
+    "L3": "=CHIDIST(1.79E300*1E8,4)",
+    "A4": "=GAMMA.DIST(6.5E299*1E8,1.5,1,TRUE)",
+    "B4": "=GAMMA.DIST(7E299*1E8,1.5,1,TRUE)"
+   }
+  }
+ ],
+ "expected": {}
+}

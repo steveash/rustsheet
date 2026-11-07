@@ -1,0 +1,1623 @@
+{
+ "format": "rustsheet-math/v1",
+ "source": {
+  "generator": "rustsheet-accuracy",
+  "version": "1",
+  "dps": 80,
+  "input_sha256": "0aa6d42d7c78e8b9dc09a0fb7ac6f987872358da7e114721e9fb7044b6c067d2",
+  "definitions": {
+   "CHIDIST": "53d207f63c6e6e4f",
+   "CHISQ.DIST": "53d207f63c6e6e4f",
+   "GAMMA.DIST": "53d207f63c6e6e4f"
+  },
+  "arguments_sha256": "17208efb160a74fdc68a2fb78032997eed857d19c01fd30b26069434710f91f5"
+ },
+ "sheets": {
+  "Cdf": {
+   "A1": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E208,1,1E-8,TRUE)"
+   },
+   "A10": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E208,1.99,1E-8,TRUE)"
+   },
+   "A11": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E208,2,1E-8,TRUE)"
+   },
+   "A12": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E208,2.01,1E-8,TRUE)"
+   },
+   "A13": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E208,2.1,1E-8,TRUE)"
+   },
+   "A14": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E208,2.25,1E-8,TRUE)"
+   },
+   "A15": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E208,2.4,1E-8,TRUE)"
+   },
+   "A16": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E208,2.45,1E-8,TRUE)"
+   },
+   "A17": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E208,2.49,1E-8,TRUE)"
+   },
+   "A18": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E208,2.5,1E-8,TRUE)"
+   },
+   "A19": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E208,2.51,1E-8,TRUE)"
+   },
+   "A2": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E208,1.01,1E-8,TRUE)"
+   },
+   "A3": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E208,1.1,1E-8,TRUE)"
+   },
+   "A4": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E208,1.25,1E-8,TRUE)"
+   },
+   "A5": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E208,1.4,1E-8,TRUE)"
+   },
+   "A6": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E208,1.5,1E-8,TRUE)"
+   },
+   "A7": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E208,1.6,1E-8,TRUE)"
+   },
+   "A8": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E208,1.75,1E-8,TRUE)"
+   },
+   "A9": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E208,1.9,1E-8,TRUE)"
+   },
+   "B1": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E250,1,1E-8,TRUE)"
+   },
+   "B10": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E250,1.99,1E-8,TRUE)"
+   },
+   "B11": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E250,2,1E-8,TRUE)"
+   },
+   "B12": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E250,2.01,1E-8,TRUE)"
+   },
+   "B13": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E250,2.1,1E-8,TRUE)"
+   },
+   "B14": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E250,2.25,1E-8,TRUE)"
+   },
+   "B15": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E250,2.4,1E-8,TRUE)"
+   },
+   "B16": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E250,2.45,1E-8,TRUE)"
+   },
+   "B17": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E250,2.49,1E-8,TRUE)"
+   },
+   "B18": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E250,2.5,1E-8,TRUE)"
+   },
+   "B19": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E250,2.51,1E-8,TRUE)"
+   },
+   "B2": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E250,1.01,1E-8,TRUE)"
+   },
+   "B3": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E250,1.1,1E-8,TRUE)"
+   },
+   "B4": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E250,1.25,1E-8,TRUE)"
+   },
+   "B5": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E250,1.4,1E-8,TRUE)"
+   },
+   "B6": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E250,1.5,1E-8,TRUE)"
+   },
+   "B7": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E250,1.6,1E-8,TRUE)"
+   },
+   "B8": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E250,1.75,1E-8,TRUE)"
+   },
+   "B9": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E250,1.9,1E-8,TRUE)"
+   },
+   "C1": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E290,1,1E-8,TRUE)"
+   },
+   "C10": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E290,1.99,1E-8,TRUE)"
+   },
+   "C11": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E290,2,1E-8,TRUE)"
+   },
+   "C12": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E290,2.01,1E-8,TRUE)"
+   },
+   "C13": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E290,2.1,1E-8,TRUE)"
+   },
+   "C14": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E290,2.25,1E-8,TRUE)"
+   },
+   "C15": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E290,2.4,1E-8,TRUE)"
+   },
+   "C16": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E290,2.45,1E-8,TRUE)"
+   },
+   "C17": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E290,2.49,1E-8,TRUE)"
+   },
+   "C18": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E290,2.5,1E-8,TRUE)"
+   },
+   "C19": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E290,2.51,1E-8,TRUE)"
+   },
+   "C2": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E290,1.01,1E-8,TRUE)"
+   },
+   "C3": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E290,1.1,1E-8,TRUE)"
+   },
+   "C4": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E290,1.25,1E-8,TRUE)"
+   },
+   "C5": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E290,1.4,1E-8,TRUE)"
+   },
+   "C6": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E290,1.5,1E-8,TRUE)"
+   },
+   "C7": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E290,1.6,1E-8,TRUE)"
+   },
+   "C8": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E290,1.75,1E-8,TRUE)"
+   },
+   "C9": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E290,1.9,1E-8,TRUE)"
+   },
+   "D1": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E298,1,1E-8,TRUE)"
+   },
+   "D10": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E298,1.99,1E-8,TRUE)"
+   },
+   "D11": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E298,2,1E-8,TRUE)"
+   },
+   "D12": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E298,2.01,1E-8,TRUE)"
+   },
+   "D13": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E298,2.1,1E-8,TRUE)"
+   },
+   "D14": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E298,2.25,1E-8,TRUE)"
+   },
+   "D15": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E298,2.4,1E-8,TRUE)"
+   },
+   "D16": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E298,2.45,1E-8,TRUE)"
+   },
+   "D17": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E298,2.49,1E-8,TRUE)"
+   },
+   "D18": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E298,2.5,1E-8,TRUE)"
+   },
+   "D19": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E298,2.51,1E-8,TRUE)"
+   },
+   "D2": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E298,1.01,1E-8,TRUE)"
+   },
+   "D3": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E298,1.1,1E-8,TRUE)"
+   },
+   "D4": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E298,1.25,1E-8,TRUE)"
+   },
+   "D5": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E298,1.4,1E-8,TRUE)"
+   },
+   "D6": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E298,1.5,1E-8,TRUE)"
+   },
+   "D7": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E298,1.6,1E-8,TRUE)"
+   },
+   "D8": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E298,1.75,1E-8,TRUE)"
+   },
+   "D9": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E298,1.9,1E-8,TRUE)"
+   },
+   "E1": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E299,1,1E-8,TRUE)"
+   },
+   "E10": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E299,1.99,1E-8,TRUE)"
+   },
+   "E11": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E299,2,1E-8,TRUE)"
+   },
+   "E12": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E299,2.01,1E-8,TRUE)"
+   },
+   "E13": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E299,2.1,1E-8,TRUE)"
+   },
+   "E14": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E299,2.25,1E-8,TRUE)"
+   },
+   "E15": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E299,2.4,1E-8,TRUE)"
+   },
+   "E16": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E299,2.45,1E-8,TRUE)"
+   },
+   "E17": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E299,2.49,1E-8,TRUE)"
+   },
+   "E18": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E299,2.5,1E-8,TRUE)"
+   },
+   "E19": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E299,2.51,1E-8,TRUE)"
+   },
+   "E2": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E299,1.01,1E-8,TRUE)"
+   },
+   "E3": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E299,1.1,1E-8,TRUE)"
+   },
+   "E4": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E299,1.25,1E-8,TRUE)"
+   },
+   "E5": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E299,1.4,1E-8,TRUE)"
+   },
+   "E6": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E299,1.5,1E-8,TRUE)"
+   },
+   "E7": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E299,1.6,1E-8,TRUE)"
+   },
+   "E8": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E299,1.75,1E-8,TRUE)"
+   },
+   "E9": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E299,1.9,1E-8,TRUE)"
+   },
+   "F1": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E300,1,1E-8,TRUE)"
+   },
+   "F10": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E300,1.99,1E-8,TRUE)"
+   },
+   "F11": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E300,2,1E-8,TRUE)"
+   },
+   "F12": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E300,2.01,1E-8,TRUE)"
+   },
+   "F13": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E300,2.1,1E-8,TRUE)"
+   },
+   "F14": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E300,2.25,1E-8,TRUE)"
+   },
+   "F15": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E300,2.4,1E-8,TRUE)"
+   },
+   "F16": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E300,2.45,1E-8,TRUE)"
+   },
+   "F17": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E300,2.49,1E-8,TRUE)"
+   },
+   "F18": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E300,2.5,1E-8,TRUE)"
+   },
+   "F19": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1E300,2.51,1E-8,TRUE)"
+   },
+   "F2": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E300,1.01,1E-8,TRUE)"
+   },
+   "F3": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E300,1.1,1E-8,TRUE)"
+   },
+   "F4": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E300,1.25,1E-8,TRUE)"
+   },
+   "F5": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E300,1.4,1E-8,TRUE)"
+   },
+   "F6": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E300,1.5,1E-8,TRUE)"
+   },
+   "F7": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E300,1.6,1E-8,TRUE)"
+   },
+   "F8": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E300,1.75,1E-8,TRUE)"
+   },
+   "F9": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E300,1.9,1E-8,TRUE)"
+   },
+   "G1": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1.5E300,1,1E-8,TRUE)"
+   },
+   "G10": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,1.99,1E-8,TRUE)"
+   },
+   "G11": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,2,1E-8,TRUE)"
+   },
+   "G12": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,2.01,1E-8,TRUE)"
+   },
+   "G13": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,2.1,1E-8,TRUE)"
+   },
+   "G14": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,2.25,1E-8,TRUE)"
+   },
+   "G15": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,2.4,1E-8,TRUE)"
+   },
+   "G16": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,2.45,1E-8,TRUE)"
+   },
+   "G17": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,2.49,1E-8,TRUE)"
+   },
+   "G18": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,2.5,1E-8,TRUE)"
+   },
+   "G19": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,2.51,1E-8,TRUE)"
+   },
+   "G2": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,1.01,1E-8,TRUE)"
+   },
+   "G3": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,1.1,1E-8,TRUE)"
+   },
+   "G4": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,1.25,1E-8,TRUE)"
+   },
+   "G5": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,1.4,1E-8,TRUE)"
+   },
+   "G6": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,1.5,1E-8,TRUE)"
+   },
+   "G7": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,1.6,1E-8,TRUE)"
+   },
+   "G8": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,1.75,1E-8,TRUE)"
+   },
+   "G9": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,1.9,1E-8,TRUE)"
+   },
+   "H1": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=GAMMA.DIST(1.7E300,1,1E-8,TRUE)"
+   },
+   "H10": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,1.99,1E-8,TRUE)"
+   },
+   "H11": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,2,1E-8,TRUE)"
+   },
+   "H12": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,2.01,1E-8,TRUE)"
+   },
+   "H13": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,2.1,1E-8,TRUE)"
+   },
+   "H14": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,2.25,1E-8,TRUE)"
+   },
+   "H15": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,2.4,1E-8,TRUE)"
+   },
+   "H16": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,2.45,1E-8,TRUE)"
+   },
+   "H17": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,2.49,1E-8,TRUE)"
+   },
+   "H18": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,2.5,1E-8,TRUE)"
+   },
+   "H19": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,2.51,1E-8,TRUE)"
+   },
+   "H2": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,1.01,1E-8,TRUE)"
+   },
+   "H3": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,1.1,1E-8,TRUE)"
+   },
+   "H4": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,1.25,1E-8,TRUE)"
+   },
+   "H5": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,1.4,1E-8,TRUE)"
+   },
+   "H6": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,1.5,1E-8,TRUE)"
+   },
+   "H7": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,1.6,1E-8,TRUE)"
+   },
+   "H8": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,1.75,1E-8,TRUE)"
+   },
+   "H9": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,1.9,1E-8,TRUE)"
+   }
+  },
+  "Chi": {
+   "A1": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=CHISQ.DIST(1E200,2,TRUE)"
+   },
+   "A2": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=CHISQ.DIST(1E200,3,TRUE)"
+   },
+   "A3": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=CHISQ.DIST(1E200,4,TRUE)"
+   },
+   "A4": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=CHISQ.DIST(1E200,5,TRUE)"
+   },
+   "B1": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=CHISQ.DIST(1E290,2,TRUE)"
+   },
+   "B2": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=CHISQ.DIST(1E290,3,TRUE)"
+   },
+   "B3": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=CHISQ.DIST(1E290,4,TRUE)"
+   },
+   "B4": {
+    "t": "n",
+    "v": "1.0",
+    "f": "=CHISQ.DIST(1E290,5,TRUE)"
+   },
+   "C1": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHIDIST(1E200,2)"
+   },
+   "C2": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHIDIST(1E200,3)"
+   },
+   "C3": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHIDIST(1E200,4)"
+   },
+   "C4": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHIDIST(1E200,5)"
+   },
+   "D1": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHIDIST(1E290,2)"
+   },
+   "D2": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHIDIST(1E290,3)"
+   },
+   "D3": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHIDIST(1E290,4)"
+   },
+   "D4": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=CHIDIST(1E290,5)"
+   }
+  },
+  "Pdf": {
+   "A1": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E208,1,1E-8,FALSE)"
+   },
+   "A10": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E208,1.99,1E-8,FALSE)"
+   },
+   "A11": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E208,2,1E-8,FALSE)"
+   },
+   "A12": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E208,2.01,1E-8,FALSE)"
+   },
+   "A13": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E208,2.1,1E-8,FALSE)"
+   },
+   "A14": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E208,2.25,1E-8,FALSE)"
+   },
+   "A15": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E208,2.4,1E-8,FALSE)"
+   },
+   "A16": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E208,2.45,1E-8,FALSE)"
+   },
+   "A17": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E208,2.49,1E-8,FALSE)"
+   },
+   "A18": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E208,2.5,1E-8,FALSE)"
+   },
+   "A19": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E208,2.51,1E-8,FALSE)"
+   },
+   "A2": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E208,1.01,1E-8,FALSE)"
+   },
+   "A3": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E208,1.1,1E-8,FALSE)"
+   },
+   "A4": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E208,1.25,1E-8,FALSE)"
+   },
+   "A5": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E208,1.4,1E-8,FALSE)"
+   },
+   "A6": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E208,1.5,1E-8,FALSE)"
+   },
+   "A7": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E208,1.6,1E-8,FALSE)"
+   },
+   "A8": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E208,1.75,1E-8,FALSE)"
+   },
+   "A9": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E208,1.9,1E-8,FALSE)"
+   },
+   "B1": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E250,1,1E-8,FALSE)"
+   },
+   "B10": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E250,1.99,1E-8,FALSE)"
+   },
+   "B11": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E250,2,1E-8,FALSE)"
+   },
+   "B12": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E250,2.01,1E-8,FALSE)"
+   },
+   "B13": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E250,2.1,1E-8,FALSE)"
+   },
+   "B14": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E250,2.25,1E-8,FALSE)"
+   },
+   "B15": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E250,2.4,1E-8,FALSE)"
+   },
+   "B16": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E250,2.45,1E-8,FALSE)"
+   },
+   "B17": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E250,2.49,1E-8,FALSE)"
+   },
+   "B18": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E250,2.5,1E-8,FALSE)"
+   },
+   "B19": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E250,2.51,1E-8,FALSE)"
+   },
+   "B2": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E250,1.01,1E-8,FALSE)"
+   },
+   "B3": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E250,1.1,1E-8,FALSE)"
+   },
+   "B4": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E250,1.25,1E-8,FALSE)"
+   },
+   "B5": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E250,1.4,1E-8,FALSE)"
+   },
+   "B6": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E250,1.5,1E-8,FALSE)"
+   },
+   "B7": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E250,1.6,1E-8,FALSE)"
+   },
+   "B8": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E250,1.75,1E-8,FALSE)"
+   },
+   "B9": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E250,1.9,1E-8,FALSE)"
+   },
+   "C1": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E290,1,1E-8,FALSE)"
+   },
+   "C10": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E290,1.99,1E-8,FALSE)"
+   },
+   "C11": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E290,2,1E-8,FALSE)"
+   },
+   "C12": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E290,2.01,1E-8,FALSE)"
+   },
+   "C13": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E290,2.1,1E-8,FALSE)"
+   },
+   "C14": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E290,2.25,1E-8,FALSE)"
+   },
+   "C15": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E290,2.4,1E-8,FALSE)"
+   },
+   "C16": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E290,2.45,1E-8,FALSE)"
+   },
+   "C17": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E290,2.49,1E-8,FALSE)"
+   },
+   "C18": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E290,2.5,1E-8,FALSE)"
+   },
+   "C19": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E290,2.51,1E-8,FALSE)"
+   },
+   "C2": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E290,1.01,1E-8,FALSE)"
+   },
+   "C3": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E290,1.1,1E-8,FALSE)"
+   },
+   "C4": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E290,1.25,1E-8,FALSE)"
+   },
+   "C5": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E290,1.4,1E-8,FALSE)"
+   },
+   "C6": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E290,1.5,1E-8,FALSE)"
+   },
+   "C7": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E290,1.6,1E-8,FALSE)"
+   },
+   "C8": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E290,1.75,1E-8,FALSE)"
+   },
+   "C9": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E290,1.9,1E-8,FALSE)"
+   },
+   "D1": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E298,1,1E-8,FALSE)"
+   },
+   "D10": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E298,1.99,1E-8,FALSE)"
+   },
+   "D11": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E298,2,1E-8,FALSE)"
+   },
+   "D12": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E298,2.01,1E-8,FALSE)"
+   },
+   "D13": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E298,2.1,1E-8,FALSE)"
+   },
+   "D14": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E298,2.25,1E-8,FALSE)"
+   },
+   "D15": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E298,2.4,1E-8,FALSE)"
+   },
+   "D16": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E298,2.45,1E-8,FALSE)"
+   },
+   "D17": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E298,2.49,1E-8,FALSE)"
+   },
+   "D18": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E298,2.5,1E-8,FALSE)"
+   },
+   "D19": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E298,2.51,1E-8,FALSE)"
+   },
+   "D2": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E298,1.01,1E-8,FALSE)"
+   },
+   "D3": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E298,1.1,1E-8,FALSE)"
+   },
+   "D4": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E298,1.25,1E-8,FALSE)"
+   },
+   "D5": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E298,1.4,1E-8,FALSE)"
+   },
+   "D6": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E298,1.5,1E-8,FALSE)"
+   },
+   "D7": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E298,1.6,1E-8,FALSE)"
+   },
+   "D8": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E298,1.75,1E-8,FALSE)"
+   },
+   "D9": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E298,1.9,1E-8,FALSE)"
+   },
+   "E1": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E299,1,1E-8,FALSE)"
+   },
+   "E10": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E299,1.99,1E-8,FALSE)"
+   },
+   "E11": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E299,2,1E-8,FALSE)"
+   },
+   "E12": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E299,2.01,1E-8,FALSE)"
+   },
+   "E13": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E299,2.1,1E-8,FALSE)"
+   },
+   "E14": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E299,2.25,1E-8,FALSE)"
+   },
+   "E15": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E299,2.4,1E-8,FALSE)"
+   },
+   "E16": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E299,2.45,1E-8,FALSE)"
+   },
+   "E17": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E299,2.49,1E-8,FALSE)"
+   },
+   "E18": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E299,2.5,1E-8,FALSE)"
+   },
+   "E19": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E299,2.51,1E-8,FALSE)"
+   },
+   "E2": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E299,1.01,1E-8,FALSE)"
+   },
+   "E3": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E299,1.1,1E-8,FALSE)"
+   },
+   "E4": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E299,1.25,1E-8,FALSE)"
+   },
+   "E5": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E299,1.4,1E-8,FALSE)"
+   },
+   "E6": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E299,1.5,1E-8,FALSE)"
+   },
+   "E7": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E299,1.6,1E-8,FALSE)"
+   },
+   "E8": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E299,1.75,1E-8,FALSE)"
+   },
+   "E9": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E299,1.9,1E-8,FALSE)"
+   },
+   "F1": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E300,1,1E-8,FALSE)"
+   },
+   "F10": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E300,1.99,1E-8,FALSE)"
+   },
+   "F11": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E300,2,1E-8,FALSE)"
+   },
+   "F12": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E300,2.01,1E-8,FALSE)"
+   },
+   "F13": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E300,2.1,1E-8,FALSE)"
+   },
+   "F14": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E300,2.25,1E-8,FALSE)"
+   },
+   "F15": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E300,2.4,1E-8,FALSE)"
+   },
+   "F16": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E300,2.45,1E-8,FALSE)"
+   },
+   "F17": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E300,2.49,1E-8,FALSE)"
+   },
+   "F18": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E300,2.5,1E-8,FALSE)"
+   },
+   "F19": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1E300,2.51,1E-8,FALSE)"
+   },
+   "F2": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E300,1.01,1E-8,FALSE)"
+   },
+   "F3": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E300,1.1,1E-8,FALSE)"
+   },
+   "F4": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E300,1.25,1E-8,FALSE)"
+   },
+   "F5": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E300,1.4,1E-8,FALSE)"
+   },
+   "F6": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E300,1.5,1E-8,FALSE)"
+   },
+   "F7": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E300,1.6,1E-8,FALSE)"
+   },
+   "F8": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E300,1.75,1E-8,FALSE)"
+   },
+   "F9": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1E300,1.9,1E-8,FALSE)"
+   },
+   "G1": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1.5E300,1,1E-8,FALSE)"
+   },
+   "G10": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,1.99,1E-8,FALSE)"
+   },
+   "G11": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,2,1E-8,FALSE)"
+   },
+   "G12": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,2.01,1E-8,FALSE)"
+   },
+   "G13": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,2.1,1E-8,FALSE)"
+   },
+   "G14": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,2.25,1E-8,FALSE)"
+   },
+   "G15": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,2.4,1E-8,FALSE)"
+   },
+   "G16": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,2.45,1E-8,FALSE)"
+   },
+   "G17": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,2.49,1E-8,FALSE)"
+   },
+   "G18": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,2.5,1E-8,FALSE)"
+   },
+   "G19": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,2.51,1E-8,FALSE)"
+   },
+   "G2": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,1.01,1E-8,FALSE)"
+   },
+   "G3": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,1.1,1E-8,FALSE)"
+   },
+   "G4": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,1.25,1E-8,FALSE)"
+   },
+   "G5": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,1.4,1E-8,FALSE)"
+   },
+   "G6": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,1.5,1E-8,FALSE)"
+   },
+   "G7": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,1.6,1E-8,FALSE)"
+   },
+   "G8": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,1.75,1E-8,FALSE)"
+   },
+   "G9": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.5E300,1.9,1E-8,FALSE)"
+   },
+   "H1": {
+    "t": "n",
+    "v": "0.0",
+    "f": "=GAMMA.DIST(1.7E300,1,1E-8,FALSE)"
+   },
+   "H10": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,1.99,1E-8,FALSE)"
+   },
+   "H11": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,2,1E-8,FALSE)"
+   },
+   "H12": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,2.01,1E-8,FALSE)"
+   },
+   "H13": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,2.1,1E-8,FALSE)"
+   },
+   "H14": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,2.25,1E-8,FALSE)"
+   },
+   "H15": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,2.4,1E-8,FALSE)"
+   },
+   "H16": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,2.45,1E-8,FALSE)"
+   },
+   "H17": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,2.49,1E-8,FALSE)"
+   },
+   "H18": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,2.5,1E-8,FALSE)"
+   },
+   "H19": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,2.51,1E-8,FALSE)"
+   },
+   "H2": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,1.01,1E-8,FALSE)"
+   },
+   "H3": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,1.1,1E-8,FALSE)"
+   },
+   "H4": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,1.25,1E-8,FALSE)"
+   },
+   "H5": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,1.4,1E-8,FALSE)"
+   },
+   "H6": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,1.5,1E-8,FALSE)"
+   },
+   "H7": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,1.6,1E-8,FALSE)"
+   },
+   "H8": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,1.75,1E-8,FALSE)"
+   },
+   "H9": {
+    "t": "e",
+    "why": "a huge finite x / beta (T-4635)",
+    "f": "=GAMMA.DIST(1.7E300,1.9,1E-8,FALSE)"
+   }
+  }
+ }
+}

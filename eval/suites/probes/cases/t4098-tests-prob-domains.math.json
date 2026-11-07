@@ -6,11 +6,11 @@
   "dps": 80,
   "input_sha256": "83fdfba23b266e1ee6d8fd413536d6814fe41bcfacc95a4e1eb782bdc4691120",
   "definitions": {
-   "CHISQ.TEST": "1c6c57fe197c6811",
-   "CHITEST": "1c6c57fe197c6811",
-   "PROB": "1c6c57fe197c6811",
-   "Z.TEST": "1c6c57fe197c6811",
-   "ZTEST": "1c6c57fe197c6811"
+   "CHISQ.TEST": "f116646c655c6077",
+   "CHITEST": "f116646c655c6077",
+   "PROB": "f116646c655c6077",
+   "Z.TEST": "f116646c655c6077",
+   "ZTEST": "f116646c655c6077"
   },
   "arguments_sha256": "8709fa6bdb39a933a668d20b929b1be828a3a227d068b254d446168e34f98c8a"
  },

@@ -6,8 +6,8 @@
   "dps": 80,
   "input_sha256": "62cd14a1bf920ae6ece1dbcc67a17c6b3db38453ca88ee942ede3af4f8f6d754",
   "definitions": {
-   "CHISQ.TEST": "1c6c57fe197c6811",
-   "CHITEST": "1c6c57fe197c6811"
+   "CHISQ.TEST": "f116646c655c6077",
+   "CHITEST": "f116646c655c6077"
   },
   "arguments_sha256": "135d16e8049df6a76bfbdb6f8a67c3cfd58807c3a74e65d37883c1d3dd7b961b"
  },

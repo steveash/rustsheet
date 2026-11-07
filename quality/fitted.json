@@ -13,7 +13,7 @@
   "crates/rustsheet-engine/src/functions/statistical/exponential.rs": 1,
   "crates/rustsheet-engine/src/functions/statistical/f_density.rs": 7,
   "crates/rustsheet-engine/src/functions/statistical/fisher.rs": 1,
-  "crates/rustsheet-engine/src/functions/statistical/gamma.rs": 6,
+  "crates/rustsheet-engine/src/functions/statistical/gamma.rs": 7,
   "crates/rustsheet-engine/src/functions/statistical/gamma_kernels.rs": 10,
   "crates/rustsheet-engine/src/functions/statistical/gammaln.rs": 1,
   "crates/rustsheet-engine/src/functions/statistical/gauss.rs": 1,

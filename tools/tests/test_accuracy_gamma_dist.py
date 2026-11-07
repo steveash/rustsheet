@@ -75,6 +75,11 @@ def test_semantics_values() -> None:
         (CHISQ_DIST, (1.0, 10000000001.0, True)),
         (CHISQ_DIST_RT, (1.0, 10000000001.0)),
         (CHISQ_DIST_RT, (-1.0, 3.0)),
+        # T-4635: a huge finite x / beta, y / shape * 4 overflowing (shape 1.5 at 7E307) and y^shape (1.1 at 1E282)
+        (GAMMA_DIST, (7e299, 1.5, 1e-8, True)),
+        (GAMMA_DIST, (1e274, 1.1, 1e-8, False)),
+        (CHISQ_DIST, (1.4e308, 3.0, True)),
+        (CHISQ_DIST_RT, (1.4e308, 3.0)),
     ],
 )
 def test_error_domain(definition: Definition, args: tuple[float | bool, ...]) -> None:
@@ -96,7 +101,23 @@ def test_evidenced_numbers_next_to_the_cuts() -> None:
     assert value(CHISQ_DIST, 4.5e-308, 1, True) > 1e-300
 
 
+def test_huge_finite_ratio_numbers() -> None:
+    # T-4635: numbers just below rule R's cuts, at shape 1 and below, and at df 2 and 4
+    assert value(GAMMA_DIST, 5e299, 1.5, 1e-8, True) == 1.0
+    assert value(GAMMA_DIST, 1e272, 1.1, 1e-8, True) == 1.0
+    assert value(GAMMA_DIST, 1e298, 1.25, 1e-8, True) == 1.0
+    assert value(GAMMA_DIST, 1.79e300, 0.7, 1e-8, True) == 1.0
+    assert value(GAMMA_DIST, 1.79e300, 4, 1e-8, True) == 1.0
+    assert value(CHISQ_DIST_RT, 1.3e308, 3) == 0.0
+    assert value(CHISQ_DIST_RT, 1.79e308, 4) == 0.0
+
+
 def test_no_value_regions() -> None:
+    # T-4635: y^shape overflowing between shapes 1.1 and 1.11, and y / shape * 4 alone below 1.01, are unprobed
+    with pytest.raises(NoValueError):
+        GAMMA_DIST.evaluate([mp(1e298), mp(1.105), mp(1e-8), True])
+    with pytest.raises(NoValueError):
+        GAMMA_DIST.evaluate([mp(5e299), mp(1.001), mp(1e-8), True])
     # rule 2 of T-3316: a computed 0 from shape 1E+55 can be #NUM!
     with pytest.raises(NoValueError):
         GAMMA_DIST.evaluate([mp(2e-10), mp(1e70), mp(1), True])

@@ -7,7 +7,7 @@
   "input_sha256": "c63386a1d65ab176462873ca1ef0f29917092f5cf0443a98510cf17a00d8be2c",
   "definitions": {
    "ERFC.PRECISE": "6f259dedefdf7d53",
-   "GAMMA.DIST": "01f5d761e8de8277",
+   "GAMMA.DIST": "53d207f63c6e6e4f",
    "LN": "9de1fa5084c01ced",
    "POISSON.DIST": "eee69c2ed987357d",
    "SQRT": "9de1fa5084c01ced"

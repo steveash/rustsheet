@@ -6,8 +6,8 @@
   "dps": 80,
   "input_sha256": "657e99e9ad720eb5e8162b175877af9b6d2e544680ccd39b8a948fa8151ed9a5",
   "definitions": {
-   "GAMMA.DIST": "01f5d761e8de8277",
-   "GAMMADIST": "01f5d761e8de8277"
+   "GAMMA.DIST": "53d207f63c6e6e4f",
+   "GAMMADIST": "53d207f63c6e6e4f"
   },
   "arguments_sha256": "99ccdc61e27feb4e030e21400d25ea60bdf5d59d2863916f3e7053a749ea6f76"
  },

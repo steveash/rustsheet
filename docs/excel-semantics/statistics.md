@@ -474,8 +474,33 @@ below 3.7E-188 and above 1E300 are unprobed.
 Found in T-4625, unexplained: at the finite x / beta = 1E308 (`GAMMA.DIST(1E300,a,1E-8,..)`) both forms are `#NUM!` at
 shapes 1.5 and 2 (same probe B9, F9, B10, B11) and a number (cdf 1, density 0) at shapes 0.5, 1, 2.5, 2.9, 3, 10 and
 1E5; shape 2 is a number at x / beta 1E200, 1E155, 1E154 and 1E150 (F10-I11). Neither y^a overflowing (2.5 is a
-number) nor a * y overflowing (1.5 is `#NUM!`) fits. Ours gives the numbers at all four (T-4635). A typed `1E308`
+number) nor a * y overflowing (1.5 is `#NUM!`) fits. T-4635 explains it: see the next section. A typed `1E308`
 literal makes Excel for the web refuse the workbook (as numbers.md notes), so the probe divides 1E300 instead.
+Status: VERIFIED
+
+## GAMMA.DIST at a huge finite x / beta (T-4635)
+Rule: with y = x / beta finite, `GAMMA.DIST(x,a,beta,..)` (both forms, and GAMMADIST) is `#NUM!` when a > 1 and
+y / a * 4 overflows a double (y above a * DBL_MAX / 4, so never from shape 4 up), and, for 1 < a <= 1.1, also when
+y^a overflows. At shape 1 and below a finite y is never `#NUM!`. CHISQ.DIST (both forms), CHISQ.DIST.RT and CHIDIST
+follow the same rule at y = x / 2, shape df / 2: only df 3 can reach it at a finite x (from x = 0.75 * DBL_MAX).
+Evidence (excel-graph 2026-11-07; generators and predictions in docs/research/t4635):
+- probes/t4635-gamma-dist-huge-ratio (320 cells): shapes 1 to 2.51 at y 1E216 to 1.7E308, beta 1E-8.
+- probes/t4635-gamma-dist-huge-ratio-cut (768 cells): the low regime's cuts at 1.01 (1E305 a number, 1E306 `#NUM!`),
+  1.02, 1.05 and 1.1 (1E280 a number, 1E282 `#NUM!`) are each y^a's overflow; 1.15 to 1.3 are numbers to 1E306. The
+  high regime's cuts bracket DBL_MAX / cut = 4 / a at every shape from 1.25 to 10 (1.25 and 1.5 `#NUM!` from 7E307, 2
+  from 9E307, 2.25 from 1.1E308, 3 from 1.4E308; 4 and 10 numbers at 1.79E308); shapes 0.5, 0.9, 0.99 and 1 are
+  numbers at 1.79E308. The Beta sheet repeats the verdicts at beta 1E-100 and 1E-200: the cut is on y, not on x.
+- probes/t4635-gamma-dist-huge-ratio-fresh, drawn after the rule froze: 21 seeded shapes from 1.25 to 3.47 at 0.97
+  (a number) and 1.03 (`#NUM!`) times the predicted cut, both forms, 84 of 84 as predicted; shapes 0.3 and 0.7 numbers
+  at 1.79E308; shapes 1.11 to 1.14 numbers at y 1E285 to 1E306, where y^a overflows (the low regime ends in
+  [1.1, 1.11)).
+- probes/t4635-chisq-huge-x: df 3 a number at x 1.3E308 and `#NUM!` at 1.4E308 and 1.79E308 in all four functions
+  (cdf 1, density, right tail 0 elsewhere); df 2 and 4 numbers; GAMMA.DIST(x,1.5,1,TRUE) a number at 6.5E307 and
+  `#NUM!` at 7E307.
+Implemented in: functions/statistical/gamma.rs `huge_ratio_num_error` (GAMMA.DIST, GAMMADIST) and chisq.rs. Unprobed:
+shapes strictly between 1.1 and 1.11 where y^a overflows, and y / a * 4 overflowing at a shape below 1.01 before y^a
+does (below about 1.002); the Gate A definition gives those points no value. The 4 / a looks like an internal
+quotient Excel takes before the kernel (perhaps a 4y / a-style switch test); no mechanism is evidenced.
 Status: VERIFIED
 
 ## GAMMA.DIST's density below shape 3 is a log-space form (T-2753, T-2852)

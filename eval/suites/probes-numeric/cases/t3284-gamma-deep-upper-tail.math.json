@@ -6,7 +6,7 @@
   "dps": 80,
   "input_sha256": "13ae22705096ba6765e7af34ae8c1a52c13b098d9ca8de91e7388acbd781f9b1",
   "definitions": {
-   "CHISQ.DIST.RT": "01f5d761e8de8277",
+   "CHISQ.DIST.RT": "53d207f63c6e6e4f",
    "POISSON": "eee69c2ed987357d"
   },
   "arguments_sha256": "d33e438a3f99e8af0d1653d76b94fbe443e949f60b6f0b42d2f81d6cdfe7a1f6"

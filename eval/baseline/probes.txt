@@ -2675,6 +2675,10 @@ C	probes/t4626-matrix-text-elements.case.json	28
 C	probes/t4627-pivot-field-name-collisions.case.json	105
 C	probes/t4628-deleted-sheet-reference-text.case.json	9
 C	probes/t4634-pivot-total-order-4.case.json	1643
+C	probes/t4635-chisq-huge-x.case.json	38
+C	probes/t4635-gamma-dist-huge-ratio-cut.case.json	768
+C	probes/t4635-gamma-dist-huge-ratio-fresh.case.json	104
+C	probes/t4635-gamma-dist-huge-ratio.case.json	320
 C	probes/t4642-backward-refill-b.case.json	5
 C	probes/t4642-backward-refill.case.json	5
 C	probes/t4642-fourth-tab-after.case.json	6
@@ -9479,10 +9483,6 @@ F	probes/t4590-growth-overflow.case.json	Int!C7
 F	probes/t4590-growth-overflow.case.json	Slope!A4
 F	probes/t4590-growth-overflow.case.json	Slope!A5
 F	probes/t4618-order-after-active-backward.case.json	Q!A1
-F	probes/t4625-gamma-dist-ratio-overflow.case.json	Sheet1!B10
-F	probes/t4625-gamma-dist-ratio-overflow.case.json	Sheet1!B11
-F	probes/t4625-gamma-dist-ratio-overflow.case.json	Sheet1!B9
-F	probes/t4625-gamma-dist-ratio-overflow.case.json	Sheet1!F9
 F	probes/t4742-countif-array-range-arg.case.json	Calc!A40
 F	probes/t4742-countif-array-range-arg.case.json	Calc!A41
 F	probes/t4742-countif-array-range-arg.case.json	Calc!C40

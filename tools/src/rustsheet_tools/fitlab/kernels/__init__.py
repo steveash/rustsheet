@@ -16,6 +16,7 @@ from rustsheet_tools.fitlab.kernels import (
     ftest,
     ftest_adhoc,
     gamma,
+    gamma_huge_ratio,
     geomean,
     im_hyperbolic,
     irr_driver,
@@ -53,6 +54,7 @@ MODULES = [
     im_hyperbolic,
     cumulative,
     devsq,
+    gamma_huge_ratio,
 ]
 
 

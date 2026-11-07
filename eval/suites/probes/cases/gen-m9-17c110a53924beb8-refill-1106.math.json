@@ -7,7 +7,7 @@
   "input_sha256": "6fdb08fbadcd363457791d506e416a494715cadef119ac607fa9295e4f8f3ff1",
   "definitions": {
    "ACOS": "7dff29acc723f91e",
-   "BETADIST": "25f060d19441eacc",
+   "BETADIST": "cd8804193472fd90",
    "HOUR": "6ee22fff0f9f7716",
    "NEGBINOMDIST": "eee69c2ed987357d",
    "NORMSDIST": "8e4045d7b4e4bcab",
