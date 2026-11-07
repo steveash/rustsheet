@@ -1,0 +1,11 @@
+{
+ "format": "rustsheet-export-case/v1",
+ "description": "T-4734's scratch run of probes/t4170-pivot-manual-groups exported: manual (discrete) groups: Product2 added over Product. Every pivot is a refreshOnLoad builder pivot the engine renders before the export writes its grouped cache (export/pivots/groups.rs); Excel re-renders it on open, and the probe's GETPIVOTDATA cells read it.",
+ "tags": [
+  "pivot",
+  "export",
+  "T-4177",
+  "M16"
+ ],
+ "source": "eval/suites/probes/cases/t4170-pivot-manual-groups.case.json"
+}

@@ -1,0 +1,106 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "pivots": [
+  {
+   "cache_fields": [
+    {
+     "name": "Region",
+     "shared_flags": {
+      "count": "2"
+     },
+     "shared_items": [
+      {
+       "t": "s",
+       "v": "East"
+      },
+      {
+       "t": "s",
+       "v": "West"
+      }
+     ]
+    },
+    {
+     "name": "Sales",
+     "shared_flags": {
+      "containsInteger": "1",
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "maxValue": "4",
+      "minValue": "1"
+     }
+    }
+   ],
+   "cells": {
+    "A3": {
+     "t": "e",
+     "v": "#SPILL!"
+    }
+   },
+   "col_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": []
+    }
+   ],
+   "col_page_count": 0,
+   "first_data_col": 0,
+   "first_data_row": 0,
+   "first_header_row": 0,
+   "location": "A3",
+   "name": "Blocked",
+   "row_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      0
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      1
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "row_page_count": 0,
+   "sheet": "P",
+   "text": {
+    "A3": "#SPILL!"
+   }
+  }
+ ],
+ "sheets": {
+  "Calc": {
+   "B1": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "B2": {
+    "t": "e",
+    "v": "#REF!"
+   }
+  },
+  "Data": {},
+  "P": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "c8efcd20c853cbdd051c3d4d77b5fbd399d8356e9f448cfa220caf64d390b775",
+  "kind": "excel-graph",
+  "produced_at": "2026-11-07T13:33:54+00:00",
+  "version": null,
+  "workbook_name": "6af5ef408fa4b8b3a34883ada00c4c3665c6ddf7d3a911d8fbe1dc405e95d065.xlsx"
+ }
+}

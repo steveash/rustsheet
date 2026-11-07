@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import contextlib
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -36,6 +37,44 @@ from rustsheet_tools.spec2xlsx import Entered, entered_cells, parse_a1, sheet_op
 
 class OracleError(RuntimeError):
     pass
+
+
+class GraphRequestError(OracleError):
+    """A Graph request answered with an error status: the full text (URL and body) for logs, and the
+    parsed `error.code` and `error.message` of its body, when it has them."""
+
+    def __init__(self, text: str, code: str | None, message: str | None) -> None:
+        super().__init__(text)
+        self.code = code
+        self.message = message
+
+
+# What `scrub` removes from Excel's error message before it is printed or committed: URLs, GUIDs
+# (request ids, item and drive ids) and host names (a site or tenant host).
+_URL = re.compile(r"\b[a-z][a-z0-9+.-]*://\S+", re.IGNORECASE)
+_GUID = re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", re.IGNORECASE)
+_HOST = re.compile(r"\b(?:[a-z0-9-]+\.)+[a-z]{2,}\b", re.IGNORECASE)
+_EMAIL = re.compile(r"[^\s<>@]+@[^\s<>@]+")
+
+
+def scrub(text: str) -> str:
+    """`text` without URLs, e-mail addresses, GUIDs and host names, each replaced by a placeholder."""
+    return _HOST.sub("<host>", _GUID.sub("<id>", _EMAIL.sub("<email>", _URL.sub("<url>", text))))
+
+
+class OracleRefusedError(OracleError):
+    """Excel would not open the workbook (SPEC-0033 `excel-refused`). The message is only Graph's error
+    code and its message, scrubbed (`scrub`), as the export case's sidecar commits it."""
+
+    def __init__(self, code: str, message: str | None) -> None:
+        super().__init__(f"{code}: {scrub(message or '')}".rstrip(": "))
+        self.code = code
+
+
+# Graph error codes with which Excel for the web refuses to open a workbook: an incompatible
+# feature (oracle-spike.md run 2), a file it calls corrupt (pivots.md "Case-variant text items make
+# Excel for the web call the file corrupt") and an unsupported one (oracle.md).
+OPEN_REFUSALS = ("OpenWorkbookBlockedWorkbook", "FileCorruptTryRepair", "WorkbookNotSupported")
 
 
 @dataclass(frozen=True)
@@ -137,15 +176,25 @@ _RANGE_EDITS = {
 SCOPES = ["Files.ReadWrite"]
 
 
-def _error_code(resp: requests.Response) -> str | None:
-    """The `error.code` of a Graph error response, or None when its body has none."""
+def _error_field(resp: requests.Response, key: str) -> str | None:
+    """The `error.<key>` of a Graph error response, or None when its body has none."""
     try:
         body = resp.json()
     except ValueError:
         return None
     error = body.get("error") if isinstance(body, dict) else None
-    code = error.get("code") if isinstance(error, dict) else None
-    return code if isinstance(code, str) else None
+    value = error.get(key) if isinstance(error, dict) else None
+    return value if isinstance(value, str) else None
+
+
+def _error_message(resp: requests.Response) -> str | None:
+    """The `error.message` of a Graph error response, or None when its body has none."""
+    return _error_field(resp, "message")
+
+
+def _error_code(resp: requests.Response) -> str | None:
+    """The `error.code` of a Graph error response, or None when its body has none."""
+    return _error_field(resp, "code")
 
 
 def _cache_path() -> Path:
@@ -306,8 +355,10 @@ class GraphBackend:
             if refusable and resp.status_code == 400 and _error_code(resp) == "InvalidArgument":
                 return resp
             if resp.status_code >= 400:
-                raise OracleError(
-                    f"{method} {self._redact(url)} -> {resp.status_code}: {self._redact(resp.text[:500])}"
+                raise GraphRequestError(
+                    f"{method} {self._redact(url)} -> {resp.status_code}: {self._redact(resp.text[:500])}",
+                    _error_code(resp),
+                    _error_message(resp),
                 )
             return resp
         raise OracleError(f"{method} {self._redact(url)}: retries exhausted")
@@ -401,9 +452,14 @@ class GraphBackend:
         ).json()
         item_url = f"{drive}/items/{item['id']}"
         try:
-            session = self._call(
-                "POST", f"{item_url}/workbook/createSession", json={"persistChanges": True}
-            ).json()
+            try:
+                session = self._call(
+                    "POST", f"{item_url}/workbook/createSession", json={"persistChanges": True}
+                ).json()
+            except GraphRequestError as e:
+                if e.code in OPEN_REFUSALS:
+                    raise OracleRefusedError(e.code, e.message) from e
+                raise
             sid = {"workbook-session-id": session["id"]}
             for entry in typed_entries(xlsx):
                 self._type_entry(item_url, sid, entry)

@@ -1,0 +1,11 @@
+{
+ "format": "rustsheet-export-case/v1",
+ "description": "probes/t4586-pivot-refresh-on-load exported: pivot A (Saved) has no refreshOnLoad and saved rowItems that list East only, stale against its source (East and West), which the export writes back as read; B (NoItems) has no refreshOnLoad and no rowItems; C (Edited) is a refreshOnLoad pivot the engine re-renders.",
+ "tags": [
+  "pivot",
+  "export",
+  "T-4177",
+  "M16"
+ ],
+ "source": "eval/suites/probes/cases/t4586-pivot-refresh-on-load.case.json"
+}

@@ -1,0 +1,97 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "pivots": [
+  {
+   "cache_fields": [
+    {
+     "name": "Region",
+     "shared_flags": {
+      "count": "2"
+     },
+     "shared_items": [
+      {
+       "t": "s",
+       "v": "East"
+      },
+      {
+       "t": "s",
+       "v": "West"
+      }
+     ]
+    },
+    {
+     "name": "Sales",
+     "shared_flags": {
+      "containsInteger": "1",
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "count": "3",
+      "maxValue": "4",
+      "minValue": "1"
+     },
+     "shared_items": [
+      {
+       "t": "n",
+       "v": "1"
+      },
+      {
+       "t": "n",
+       "v": "2"
+      },
+      {
+       "t": "n",
+       "v": "4"
+      }
+     ]
+    }
+   ],
+   "cells": {
+    "A3": {
+     "t": "s",
+     "v": "Row Labels"
+    },
+    "B3": {
+     "t": "s",
+     "v": "Sum of Sales"
+    }
+   },
+   "col_items": [],
+   "col_page_count": 0,
+   "first_data_col": 1,
+   "first_data_row": 1,
+   "first_header_row": 1,
+   "location": "A3:B3",
+   "name": "Blocked",
+   "row_items": [],
+   "row_page_count": 0,
+   "sheet": "P",
+   "text": {
+    "A3": "Row Labels",
+    "B3": "Sum of Sales"
+   }
+  }
+ ],
+ "sheets": {
+  "Calc": {
+   "B1": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "B2": {
+    "t": "e",
+    "v": "#REF!"
+   }
+  },
+  "Data": {},
+  "P": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "2fdaa0b0a90230b799a3514ff4ed1feb0acbd1a0122f1a362eba7b1c6a27d412",
+  "kind": "excel-graph",
+  "produced_at": "2026-11-07T13:34:04+00:00",
+  "version": null,
+  "workbook_name": "63291cdd063153ccad4e278aea42576131c5da663593bf7af71df63314dcdd7a.xlsx"
+ }
+}

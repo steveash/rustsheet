@@ -10,6 +10,7 @@
 //! rustsheet-eval show <case-id> [--all]         # per-cell detail for one case
 //! rustsheet-eval snapshot <file.xlsx>           # dump stored formulas/values as JSON
 //! rustsheet-eval cases <suite>                  # cases + sidecar paths as JSON (for tools)
+//! rustsheet-eval export <case> --out <xlsx>     # the package an engine-export case saves
 //! rustsheet-eval accuracy [--json PATH]         # Gate A: reference tables within the envelope
 //! ```
 #![allow(clippy::print_stdout, clippy::print_stderr)]
@@ -45,7 +46,7 @@ use rustsheet_eval::report::RunReport;
 use rustsheet_eval::roundtrip;
 use rustsheet_eval::run_meta::RunMeta;
 use rustsheet_eval::runner::{run_suites, CaseResult, RunOptions};
-use rustsheet_eval::suite::{BaselineMode, FetchState, Suite, SuiteKind, ACCURACY_DIR};
+use rustsheet_eval::suite::{BaselineMode, FetchState, Suite, ACCURACY_DIR};
 use rustsheet_eval::text_expect;
 use rustsheet_eval::v15_checkpoint;
 use rustsheet_eval::visible_parity::{self, VisibleCount};
@@ -163,6 +164,13 @@ enum Cmd {
     SubexprCase(rustsheet_eval::subexpr_case::Args),
     /// Print the stored formulas/values of an xlsx as JSON.
     Snapshot { path: PathBuf },
+    /// Write the package an engine-export case saves (T-4177): the file the oracle fill sends
+    /// to Excel and the case scores.
+    Export {
+        case: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+    },
     /// Print one suite's cases as JSON, as the harness discovers them: case and sidecar paths
     /// and, for xlsx cases, what an oracle fill needs to know (tools call this instead of
     /// re-implementing discovery).
@@ -196,61 +204,6 @@ enum Cmd {
         #[arg(long, default_value_t = 60)]
         timeout: u64,
     },
-}
-
-/// One line of `rustsheet-eval cases`.
-#[derive(serde::Serialize)]
-struct CaseListing {
-    id: String,
-    path: PathBuf,
-    sidecar: PathBuf,
-    /// xlsx only: number of formula cells (0 = nothing to score).
-    formula_cells: Option<usize>,
-    /// xlsx only: the suite scores this case against its own cached values when it has no sidecar.
-    trusts_cached_values: Option<bool>,
-    /// xlsx only: the suite's `use_cached_values`. When false its caches are no Excel evidence, so
-    /// the oracle fill never lets one replace a web number (decision 0073).
-    suite_uses_cached_values: Option<bool>,
-    /// xlsx only: why the workbook could not be read.
-    unreadable: Option<String>,
-}
-
-fn cmd_cases(root: &Path, name: &str) -> Result<ExitCode> {
-    let suite = Suite::load_named(root, name)?;
-    if suite.fetch_state() == FetchState::NotFetched {
-        bail!("suite {name} is not fetched (run `rustsheet-eval fetch --suite {name}`)");
-    }
-    let xlsx = suite.manifest.kind == SuiteKind::Xlsx;
-    let mut out = Vec::new();
-    for case in suite.cases()? {
-        let mut listing = CaseListing {
-            id: case.id,
-            path: case.path,
-            sidecar: case.sidecar,
-            formula_cells: None,
-            trusts_cached_values: None,
-            suite_uses_cached_values: xlsx.then_some(suite.manifest.use_cached_values),
-            unreadable: None,
-        };
-        if xlsx {
-            match load_snapshot(&listing.path) {
-                Ok(snap) => {
-                    listing.formula_cells = Some(
-                        snap.sheets
-                            .iter()
-                            .flat_map(|s| s.cells.values())
-                            .filter(|c| c.formula.is_some())
-                            .count(),
-                    );
-                    listing.trusts_cached_values = Some(suite.manifest.trusts_cached_values(&snap));
-                }
-                Err(e) => listing.unreadable = Some(e.to_string()),
-            }
-        }
-        out.push(listing);
-    }
-    println!("{}", serde_json::to_string_pretty(&out)?);
-    Ok(ExitCode::SUCCESS)
 }
 
 fn find_root(explicit: Option<PathBuf>) -> Result<PathBuf> {
@@ -838,8 +791,23 @@ fn load_snapshot(path: &Path) -> Result<WorkbookSnapshot> {
     Ok(read_snapshot(&bytes)?)
 }
 
+fn cmd_cases(root: &Path, suite: &str) -> Result<ExitCode> {
+    println!("{}", rustsheet_eval::case_listing::list(root, suite)?);
+    Ok(ExitCode::SUCCESS)
+}
+
+/// `rustsheet-eval export`: the package an engine-export case saves, written to `out`.
+fn cmd_export(case: &Path, out: &Path) -> Result<ExitCode> {
+    let bytes = rustsheet_eval::export_case::export(case).map_err(|e| anyhow!(e))?;
+    std::fs::write(out, bytes).with_context(|| out.display().to_string())?;
+    Ok(ExitCode::SUCCESS)
+}
+
 fn run() -> Result<ExitCode> {
     let cli = Cli::parse();
+    if let Cmd::Export { case, out } = &cli.cmd {
+        return cmd_export(case, out);
+    }
     if let Cmd::Snapshot { path } = &cli.cmd {
         println!("{}", serde_json::to_string_pretty(&load_snapshot(path)?)?);
         return Ok(ExitCode::SUCCESS);
@@ -951,7 +919,7 @@ fn run() -> Result<ExitCode> {
         Cmd::Cases { suite } => cmd_cases(&root, &suite),
         Cmd::Accuracy { json, timeout } => cmd_accuracy(&root, json, timeout),
         Cmd::Roundtrip { sel, flags } => cmd_roundtrip(&root, &sel, &flags),
-        Cmd::Snapshot { .. } | Cmd::Compare { .. } | Cmd::PackageDiff(_) => {
+        Cmd::Snapshot { .. } | Cmd::Compare { .. } | Cmd::PackageDiff(_) | Cmd::Export { .. } => {
             unreachable!("handled above")
         }
     }

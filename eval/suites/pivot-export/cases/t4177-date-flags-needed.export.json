@@ -1,0 +1,18 @@
+{
+ "format": "rustsheet-export-case/v1",
+ "description": "probes/t4170-pivot-date-levels exported with containsNonDate, minDate and maxDate removed from the sharedItems of Date, the field grouped in place by months, in each of its seven caches: the shape T-4734's first run sent, before the export wrote those flags. On that run Excel's refresh on open dropped the months and listed each date (pivots.md \"Excel for the web opens engine-exported grouped pivot caches\").",
+ "tags": [
+  "pivot",
+  "export",
+  "T-4177",
+  "M16"
+ ],
+ "source": "eval/suites/probes/cases/t4170-pivot-date-levels.case.json",
+ "patches": [
+  {
+   "part": "xl/pivotCache/pivotCacheDefinition*.xml",
+   "find": " containsNonDate=\"0\" minDate=\"2018-12-15T00:00:00\" maxDate=\"2021-01-15T00:00:00\"",
+   "replace": ""
+  }
+ ]
+}

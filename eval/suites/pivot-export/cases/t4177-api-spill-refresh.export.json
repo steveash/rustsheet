@@ -1,0 +1,57 @@
+{
+ "format": "rustsheet-export-case/v1",
+ "description": "t4177-api-spill.export.json with refreshOnLoad=\"1\" patched onto the cache: Excel refreshes the collapsed pivot on open, with P!A5 still in its way.",
+ "tags": [
+  "pivot",
+  "export",
+  "T-4177",
+  "M16"
+ ],
+ "spec": {
+  "format": "rustsheet-case/v1",
+  "sheets": [
+   {
+    "name": "Data",
+    "cells": {
+     "A1": "Region",
+     "B1": "Sales",
+     "A2": "East",
+     "B2": 1,
+     "A3": "West",
+     "B3": 2,
+     "A4": "East",
+     "B4": 4
+    }
+   },
+   {
+    "name": "P",
+    "cells": {
+     "A5": "x"
+    }
+   },
+   {
+    "name": "Calc",
+    "cells": {
+     "B1": "=GETPIVOTDATA(\"Sum of Sales\",P!$A$3,\"Region\",\"East\")",
+     "B2": "=GETPIVOTDATA(\"Sum of Sales\",P!$A$3)"
+    }
+   }
+  ]
+ },
+ "pivots": [
+  {
+   "name": "Blocked",
+   "source": "Data!A1:B4",
+   "location": "P!A3",
+   "row": "Region",
+   "value": "Sales"
+  }
+ ],
+ "patches": [
+  {
+   "part": "xl/pivotCache/pivotCacheDefinition*.xml",
+   "find": "<pivotCacheDefinition xmlns=",
+   "replace": "<pivotCacheDefinition refreshOnLoad=\"1\" xmlns="
+  }
+ ]
+}

@@ -50,34 +50,43 @@ indices only, `sharedItems` flags derived from the items, the case builder's ver
 on every cache field; a definition with only the non-default typed attributes, the kept rest, and for a pivot made
 through the API, generated `<items>` (`h="1"` on a hidden item) and no style or extension. For a `refreshOnLoad`
 pivot, Excel's re-rendered `location` and `rowItems`/`colItems` equal the engine's lines the export wrote.
-Evidence: T-4176 oracle runs (excel-graph, 2026-11-07, `rustsheet-oracle recalc` of three exported workbooks, not
-committed; recalc input_sha256 3eed9bc4…, 00144ae5… and c81db4c1…, in the order below):
-- crates/rustsheet-xlsx/tests/example.xlsx exported (an Excel-saved pivot over the Table `Table1`, no
-  `refreshOnLoad`): opened; Excel's saved `pivotTable1.xml` has our `location`, `rowItems` and `colItems`, and the
-  Sheet4 cells are unchanged. Without `refreshOnLoad` Excel saves a definition back as it read it (probes/t4586),
-  so this shows the file opens, not that the engine's lines are Excel's;
-- crates/rustsheet-xlsx/tests/pivot_tables.xlsx exported (two `refreshOnLoad` pivots, PivotSum with a column
-  field): opened and re-rendered; both pivots' `location`, `rowItems` and `colItems` equal the engine's, and every
-  constant cell of sheet P but L2, M5 and N5 (spill cells of the sheet's GETPIVOTDATA array formulas, which our
-  export writes as part of the formula) is equal. These two pivots are the only check of the engine's lines;
-- a cache of texts, a blank, a boolean, dates, numbers and `#N/A`, with a pivot holding nothing verbatim
-  (`refreshOnLoad` off): opened; Excel added its style info, `baseField="0" baseItem="0"` and an extension, and kept
-  the items as written. It was not re-rendered, so whether Excel lays out the generated `<items>` as the engine
-  does is open (T-4177).
+Evidence: the pivot-export suite (T-4177, eval/suites/pivot-export; excel-graph, 2026-11-07): each case is the
+engine's export of its workbook, and its sidecar is Excel's save of that file. Every case opened without refusal:
+- t4177-example.export.json (crates/rustsheet-xlsx/tests/example.xlsx, T-4176's first scratch run, input sha256
+  3eed9bc4… then; an Excel-saved pivot over the Table `Table1`, no `refreshOnLoad`): Excel saved our `location`,
+  `rowItems` and `colItems`, and all 58 scored cells equal. Without `refreshOnLoad` Excel saves a definition back as
+  it read it (probes/t4586), so this shows the file opens, not that the engine's lines are Excel's;
+- t4177-pivot-tables.export.json (pivot_tables.xlsx, the second run; two `refreshOnLoad` pivots, PivotSum with a
+  column field): re-rendered; both pivots' `location`, `rowItems` and `colItems` equal the engine's, and all 66 cells;
+- t4177-api-items.export.json (the third run: a pivot added through the API over texts, a blank, TRUE, a date, 7,
+  2.5 and `#N/A`, `refreshOnLoad` off): opened and kept the engine's cells; GETPIVOTDATA on `East`, `West`, the date
+  and the total read the exported cache as the engine does. t4177-api-items-refresh.export.json, the same with
+  `refreshOnLoad="1"` patched onto the cache, is re-rendered from the generated `<items>`: Excel's lines and every
+  value equal the engine's (its date item shows as `1/1/2020`, T-4943; GETPIVOTDATA on TRUE, 7 and 2.5 is T-4154);
+- t4177-stale-row-items.export.json (probes/t4586 exported): pivot A, no `refreshOnLoad`, whose saved rowItems list
+  East only although its source holds West too, is saved back with those lines as written and its cells; B (no
+  lines, no refresh) and C (refreshed) equal the engine's too. All 41 cells equal.
+A pivot the engine collapsed to `#SPILL!` (t4177-api-spill.export.json: no `rowItems`/`colItems`, a one-cell
+location, no `refreshOnLoad`) is not opened as collapsed: Excel saved location A3:B3 with only `Row Labels` and
+`Sum of Sales` and no lines, and GETPIVOTDATA on it gave `#REF!`. With `refreshOnLoad` patched
+on (t4177-api-spill-refresh) Excel's refresh collapsed it again (`#SPILL!` at A3) and saved rowItems 3 and colItems 1,
+as for its own collapsed pivots (probes/t4128-pivot-spike S). T-4942 owns the export's collapsed definition.
 Not checked, all UNVERIFIED (T-4654): the exported shared-item order is the engine's (a cache's old items first,
 new ones appended), not the order Excel was seen to save (source order first, stale items after; "Item casing when
 cache and source disagree, and date items", t4612); `containsNonDate` and `minDate`/`maxDate` are never written, except on a field grouped in place by dates (T-4734;
 next entry).
 The cache definition's unread attributes and elements are not kept: the export writes `numFmtId="0"`, the builder's
 version attributes and no refresh metadata or `extLst` (T-4735).
-Status: UNVERIFIED (probe pending: T-4177). The three runs above are scratch observations; T-4177's suite commits
-them as cases.
+Status: VERIFIED (excel-graph) for opening without repair, for the saved lines written back as read, and for a
+`refreshOnLoad` pivot's re-render (lines and cells) from saved or generated `<items>`; the collapsed `#SPILL!` pivot
+is not opened as Excel saves one (above, T-4942). The engine's own lines are compared with Excel's in each case's
+"Pivot layout" verdict, reported and not yet ratcheted (T-4944).
 Implemented in: crates/rustsheet-xlsx/src/export/pivots.rs, pivots/cache.rs, pivots/table.rs (T-4176). The export
 writes a pivot's saved `rowItems`/`colItems` back as read until the engine lays it out again (a render or refresh
 drops them, `OpaqueEntry::is_layout_lines`), then the engine's; and it drops, with a log line, a cache whose field
 holds two texts that differ only in case (next entry). A render that collapses to `#SPILL!` drops the saved lines
-too, and the export then writes the definition with no `rowItems`/`colItems`; what Excel saves for a collapsed
-pivot is UNVERIFIED (probe pending: T-4177).
+too, and the export then writes the definition with no `rowItems`/`colItems`, which Excel opens as a header-only
+pivot (t4177-api-spill above; T-4942).
 
 ## Excel for the web opens engine-exported grouped pivot caches
 Rule: Excel for the web opens, without repair, and renders a refreshOnLoad pivot whose grouped cache the engine's
@@ -98,22 +107,27 @@ saved for the same field is in the sidecar eval/suites/probes/cases/t4170-pivot-
 (`pivots[0].cache_fields[0].shared_flags`: `containsNonDate="0"`, `minDate` 2018-12-15, its first date, and
 `maxDate` 2021-01-16, a day past its last date 2021-01-15). Whether the last-plus-one-day `maxDate` matters is
 T-4654's.
-Evidence: T-4734 oracle runs (excel-graph, 2026-11-07, `rustsheet-oracle` `_recalc_cached` of engine exports, not
-committed): the probe workbooks built from their case specs, loaded by the importer and saved by the regenerating
-export (`save_xlsx_to_writer`), each compared with the probe's sidecar:
-- t4170-pivot-manual-groups (input sha256 df3fc476…): 7 pivots, all 196 pivot cells and 19 GETPIVOTDATA cells
-  equal the sidecar;
-- t4170-pivot-date-levels: first run (no `containsNonDate`, 0c8366fd…) 402 of 410 pivot cells and 14 of 21 formula
-  cells differ, the months dropped; with `containsNonDate="0"`, `minDate`, `maxDate` (e0579e72…) all 410 pivot
-  cells and 21 formula cells equal;
-- t4236-pivot-date-groups-no-blank (f3b660b2…): all 349 formula cells equal (179 differed before the flags);
-- t4228-pivot-range-groups (2b8ff5a0…): all 168 formula cells equal; t4128-pivot-spike (2371c560…, G a numeric
-  range group): its 3 exported pivots' cells and both formula cells equal (pivot K is not imported, so not exported);
-- an API-built cache (Amount grouped by tens, Date by months with Quarters and Years added, Product2 a manual group;
-  a2befb89…): GETPIVOTDATA on Years `2019`, `2020`, `<1/1/2019` and the grand total gave 15, 16, 32 and 63, the
-  engine's answers.
-Status: UNVERIFIED (probe pending: T-4177, which commits engine-export re-render cases; the runs above are scratch
-observations). Not checked: a group renamed through its item's `n`, groups over blanks, a 1904 workbook (the
+Evidence: T-4734's scratch runs (excel-graph, 2026-11-07, `_recalc_cached` of the engine's exports, input sha256
+df3fc476…, 0c8366fd… and e0579e72…, f3b660b2…, 2b8ff5a0…, 2371c560…, a2befb89…), committed by T-4177 as cases of
+eval/suites/pivot-export (excel-graph, 2026-11-07), each the engine's export of the probe built from its case:
+- t4177-manual-groups.export.json (t4170-pivot-manual-groups): opened; 7 pivots re-rendered, every pivot cell and
+  the engine's lines equal Excel's (the GETPIVOTDATA cells that fail are the probe's own, T-4154);
+- t4177-date-levels.export.json (t4170-pivot-date-levels, with `containsNonDate="0"`, `minDate`, `maxDate`):
+  opened; all 410 pivot cells and the lines equal (the failing GETPIVOTDATA cells are the probe's own, T-4154);
+- t4177-date-flags-needed.export.json, the same export with those three attributes removed (T-4734's first run):
+  opened, and Excel's refresh dropped the months in every pivot: DC lists the nine dates in DC!A4:A12 where
+  the months belong, DX keeps only its data header and grand total (511), GETPIVOTDATA on a month or level is `#REF!`. 125 cells differ from the
+  engine, which keeps the grouping (T-4941);
+- t4177-date-groups-no-blank.export.json (t4236): all 447 cells equal; t4177-range-groups.export.json (t4228): all
+  244 equal; t4177-spike.export.json (t4128): G (a numeric range group) and R equal, K differs by its sort as the
+  probe does (T-4768), and S's collapse is T-4942's;
+- t4177-grouped-cache.export.json: the cache shape of T-4734's API-built run as case-builder definitions (Amount
+  grouped in place by tens, Date by months with Quarters and Years, Product2 a manual group over Product, all in each
+  of three caches; the facade's `Txn::add_pivot_table` takes one range grouping of the row field, so it cannot build
+  the levels or the manual group): opened, and the three pivots' cells and lines equal the engine's; GETPIVOTDATA on
+  Years 2019, 2020 and `<1/1/2019` (31, 480 and 512 in Excel) and on the manual group are T-4154's.
+Status: VERIFIED (excel-graph), including that a field grouped in place by dates needs the flags. Which of the three
+it needs is T-4941's. Not checked: a group renamed through its item's `n`, groups over blanks, a 1904 workbook (the
 import refuses its date groups, so the export drops them), and whether `autoStart`/`autoEnd` on (the model keeps
 no such flag; the export writes them off, which keeps the bounds the engine groups by) would change Excel's refresh.
 Implemented in: crates/rustsheet-xlsx/src/export/pivots/groups.rs (`check`, `write_field_group`,

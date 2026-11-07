@@ -13,6 +13,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -55,6 +56,20 @@ def suite_cases(suite: str) -> list[dict[str, Any]]:
     )
     cases: list[dict[str, Any]] = json.loads(out.stdout)
     return cases
+
+
+def engine_export(case: Path) -> bytes:
+    """The package an engine-export case (`.export.json`, T-4177) saves: `rustsheet-eval export`,
+    the file the oracle opens in place of the case."""
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "export.xlsx"
+        subprocess.run(
+            [str(eval_binary()), "--root", str(repo_root()), "export", str(case), "--out", str(out)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return out.read_bytes()
 
 
 _SHOW_FIELD = re.compile(r"^    (formula|expected|actual)\s*: ?(.*)$")

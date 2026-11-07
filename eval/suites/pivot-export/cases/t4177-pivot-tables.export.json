@@ -1,0 +1,11 @@
+{
+ "format": "rustsheet-export-case/v1",
+ "description": "T-4176's second scratch run: crates/rustsheet-xlsx/tests/pivot_tables.xlsx, two refreshOnLoad pivots (PivotSum with a column field) that the engine re-renders before the export writes its own rowItems/colItems; Excel re-renders them again on open.",
+ "tags": [
+  "pivot",
+  "export",
+  "T-4177",
+  "M16"
+ ],
+ "source": "crates/rustsheet-xlsx/tests/pivot_tables.xlsx"
+}

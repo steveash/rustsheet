@@ -1,0 +1,72 @@
+{
+ "format": "rustsheet-export-case/v1",
+ "description": "The pivot of t4177-cache-dates-1900.export.json in a 1904 workbook (date_system 1904) over serials 0 (1904-01-01), 1, 2, 59, 60, 61 and 1462 (1908-01-02): the export writes each cache date as 1904-01-01 plus the serial. No refreshOnLoad.",
+ "tags": [
+  "pivot",
+  "export",
+  "T-4177",
+  "M16"
+ ],
+ "spec": {
+  "format": "rustsheet-case/v1",
+  "sheets": [
+   {
+    "name": "Data",
+    "cells": {
+     "A1": "Date",
+     "B1": "S",
+     "A2": 0,
+     "B2": 1,
+     "A3": 1,
+     "B3": 2,
+     "A4": 2,
+     "B4": 4,
+     "A5": 59,
+     "B5": 8,
+     "A6": 60,
+     "B6": 16,
+     "A7": 61,
+     "B7": 32,
+     "A8": 1462,
+     "B8": 64
+    },
+    "number_formats": {
+     "A2": "yyyy-mm-dd",
+     "A3": "yyyy-mm-dd",
+     "A4": "yyyy-mm-dd",
+     "A5": "yyyy-mm-dd",
+     "A6": "yyyy-mm-dd",
+     "A7": "yyyy-mm-dd",
+     "A8": "yyyy-mm-dd"
+    }
+   },
+   {
+    "name": "P",
+    "cells": {}
+   },
+   {
+    "name": "Calc",
+    "cells": {
+     "B1": "=GETPIVOTDATA(\"Sum of S\",P!$A$3,\"Date\",0)",
+     "B2": "=GETPIVOTDATA(\"Sum of S\",P!$A$3,\"Date\",1)",
+     "B3": "=GETPIVOTDATA(\"Sum of S\",P!$A$3,\"Date\",2)",
+     "B4": "=GETPIVOTDATA(\"Sum of S\",P!$A$3,\"Date\",59)",
+     "B5": "=GETPIVOTDATA(\"Sum of S\",P!$A$3,\"Date\",60)",
+     "B6": "=GETPIVOTDATA(\"Sum of S\",P!$A$3,\"Date\",61)",
+     "B7": "=GETPIVOTDATA(\"Sum of S\",P!$A$3,\"Date\",1462)",
+     "B8": "=GETPIVOTDATA(\"Sum of S\",P!$A$3)"
+    }
+   }
+  ],
+  "date_system": 1904
+ },
+ "pivots": [
+  {
+   "name": "Dates",
+   "source": "Data!A1:B8",
+   "location": "P!A3",
+   "row": "Date",
+   "value": "S"
+  }
+ ]
+}

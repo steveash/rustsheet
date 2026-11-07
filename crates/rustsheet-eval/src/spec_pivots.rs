@@ -175,7 +175,7 @@ fn pivot_input(
 
 /// A spec pivot's grouping as the engine takes it: `by` names a date group (pivot.py
 /// `_DATE_GROUPS`), and its absence a numeric range.
-fn range_group(group: &PivotGroupSpec) -> Result<PivotRangeGroup, EditError> {
+pub(crate) fn range_group(group: &PivotGroupSpec) -> Result<PivotRangeGroup, EditError> {
     let by = match group.by.as_deref() {
         None => None,
         Some(by) => Some(

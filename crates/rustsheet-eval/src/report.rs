@@ -582,7 +582,8 @@ impl RunReport {
             let errors = st(CaseStatus::EngineError)
                 + st(CaseStatus::Panic)
                 + st(CaseStatus::Timeout)
-                + st(CaseStatus::InvalidCase);
+                + st(CaseStatus::InvalidCase)
+                + st(CaseStatus::ExcelRefused);
             let crashes =
                 st(CaseStatus::EngineError) + st(CaseStatus::Panic) + st(CaseStatus::Timeout);
             let _ = writeln!(
@@ -680,6 +681,7 @@ impl RunReport {
                         | CaseStatus::Panic
                         | CaseStatus::Timeout
                         | CaseStatus::InvalidCase
+                        | CaseStatus::ExcelRefused
                 )
             })
             .collect();

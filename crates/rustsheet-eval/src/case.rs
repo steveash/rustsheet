@@ -613,6 +613,10 @@ pub struct OracleFile {
     /// T-4124.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub pivots: Vec<OraclePivot>,
+    /// Excel's error text when it would not open the workbook (an engine-export case, T-4177):
+    /// SPEC-0033's `excel-refused` verdict, which always fails. `sheets` is then empty.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub refused: Option<String>,
 }
 
 /// A pivot of an oracle sidecar: Excel's saved definition (location, layout lines, group labels)

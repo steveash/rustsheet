@@ -31,6 +31,18 @@ answers `#REF!` for a group, an ungrouped item or a pair where Excel answers the
 the grand total already agree; web.md "GETPIVOTDATA on manual groups and date levels"):
 - probes/t4170-pivot-manual-groups Calc!B1:B5, Calc!B8:B10, Calc!B12, Calc!B14
 
+Owner of these visibly-off cells (decision 0245; T-4177, the same causes on the engine's exports of the probes above
+and on API-built pivots, pivots.md "Excel for the web opens engine-exported pivot parts"): an item of a field on an
+axis that holds two or more fields (SPEC-0015 unknown 10); a boolean or number item (`TRUE`, 7, 2.5: Excel 8, 32 and
+256, the engine `#REF!`); and the grand total of a pivot collapsed to `#SPILL!` (Excel `#REF!`, the engine
+`#SPILL!`):
+- pivot-export/t4177-date-levels.export.json Calc!B1:B3, Calc!B5:B6, Calc!B8:B9, Calc!B11:B14
+- pivot-export/t4177-manual-groups.export.json Calc!B1:B5, Calc!B8:B10, Calc!B12, Calc!B14
+- pivot-export/t4177-grouped-cache.export.json Calc!B1:B3, Calc!B7:B9
+- pivot-export/t4177-api-items.export.json Calc!B3, Calc!B5:B6
+- pivot-export/t4177-api-items-refresh.export.json Calc!B3, Calc!B5:B6
+- pivot-export/t4177-api-spill-refresh.export.json Calc!B2
+
 ## Acceptance criteria
 - [ ] probes/getpivotdata-* pass; the SPEC-0015 unknowns T-2085 resolved are implemented.
 - [ ] `make check` green; reviewers approve.

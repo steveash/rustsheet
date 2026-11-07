@@ -20,6 +20,9 @@ pub enum SuiteKind {
     /// `.xlsx`/`.xlsm` workbooks loaded and saved again, scored for fidelity, not cell values
     /// (SPEC-0033). Such suites live under `eval/roundtrip/`, never `eval/suites/`.
     Roundtrip,
+    /// `.export.json` engine-export cases (T-4177, [`crate::export_case`]): each workbook is
+    /// saved by the engine's export, and that package is what Excel opens and the case scores.
+    Export,
 }
 
 /// Granularity of the no-regression baseline.
@@ -446,6 +449,7 @@ impl Suite {
             SuiteKind::Spec => &[".case.json"],
             // A macro-enabled workbook is where VBA preservation is measured (decision 0275 D5).
             SuiteKind::Roundtrip => &[".xlsx", ".xlsm"],
+            SuiteKind::Export => &[crate::export_case::EXPORT_CASE_EXT],
         };
         let mut out = Vec::new();
         for entry in WalkDir::new(&root).sort_by_file_name() {
@@ -479,7 +483,8 @@ impl Suite {
 }
 
 /// The sidecar path for a case path: same directory, `foo.xlsx` / `foo.xlsm` / `foo.case.json`
-/// → `foo.oracle.json`. With `oracle_dir`, `path` is the case's mirror path under that directory.
+/// / `foo.export.json` → `foo.oracle.json`. With `oracle_dir`, `path` is the case's mirror path
+/// under that directory.
 #[must_use]
 pub fn oracle_sidecar(path: &Path) -> PathBuf {
     let name = path
@@ -488,6 +493,7 @@ pub fn oracle_sidecar(path: &Path) -> PathBuf {
         .unwrap_or_default();
     let stem = name
         .strip_suffix(".case.json")
+        .or_else(|| name.strip_suffix(crate::export_case::EXPORT_CASE_EXT))
         .or_else(|| name.strip_suffix(".xlsx"))
         .or_else(|| name.strip_suffix(".xlsm"))
         .unwrap_or(&name);
@@ -714,7 +720,7 @@ mod tests {
 
     #[test]
     fn sidecar_name_strips_every_case_extension() {
-        for case in ["a.xlsx", "a.xlsm", "a.case.json"] {
+        for case in ["a.xlsx", "a.xlsm", "a.case.json", "a.export.json"] {
             assert_eq!(
                 oracle_sidecar(Path::new(case)),
                 PathBuf::from("a.oracle.json")

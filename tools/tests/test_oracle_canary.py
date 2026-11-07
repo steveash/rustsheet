@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import io
 import json
 import math
 import re
+import subprocess
 import zipfile
 from pathlib import Path
 from types import SimpleNamespace
@@ -13,7 +15,12 @@ from typing import Any
 import pytest
 
 from rustsheet_tools.oracle import canary, cli
-from rustsheet_tools.oracle.backends import OracleError, OracleInfo, force_full_calc_on_load
+from rustsheet_tools.oracle.backends import (
+    OracleError,
+    OracleInfo,
+    OracleRefusedError,
+    force_full_calc_on_load,
+)
 from rustsheet_tools.oracle.canary import CELLS, SHEET, canary_problems, checked_values, embed_canary
 from rustsheet_tools.snapshot import formula_values, snapshot
 from rustsheet_tools.spec2xlsx import build_xlsx
@@ -475,3 +482,80 @@ def test_namespace_prefixed_package_parts(tmp_path: Path) -> None:
     embedded = embed_canary(_repack(parts))
     assert '<ns0:Relationship Id="rIdRustSheetCanary"' in _unzip(embedded)[rels]
     assert len(canary_problems(_values(embedded, tmp_path))) == len(CELLS)
+
+
+# The oracle fill of engine-export cases (`.export.json`, T-4177): Excel opens the package the
+# engine saves, and its refusal is recorded as the case's `excel-refused` verdict.
+EXPORTED = build_xlsx(SPEC)
+
+
+class RefusingBackend(ExcelLikeBackend):
+    """Excel for the web refusing to open the workbook."""
+
+    name = "refusing"
+
+    def recalc(self, xlsx: bytes) -> tuple[bytes, OracleInfo]:
+        del xlsx
+        raise OracleRefusedError(
+            "OpenWorkbookBlockedWorkbook",
+            "Blocked at https://contoso.sharepoint.com/x by 8f2c7a10-3b4d-4e5f-9a6b-1c2d3e4f5a6b on contoso.sharepoint.com",
+        )
+
+
+@pytest.fixture
+def fill(cache_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    del cache_root
+    # The engine's export of the case, as `rustsheet-eval export` would write it.
+    monkeypatch.setattr(cli, "engine_export", lambda _: EXPORTED)
+    return tmp_path
+
+
+def _fill(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, backend: ExcelLikeBackend, name: str) -> int:
+    case = tmp_path / name
+    export = name.endswith(".export.json")
+    case.write_text(json.dumps({"format": "rustsheet-export-case/v1", "spec": SPEC} if export else SPEC))
+    monkeypatch.setattr(cli, "GOLDEN_BACKENDS", {backend.name})
+    monkeypatch.setattr(cli, "_backend", lambda _: backend)
+    entry = {"path": str(case), "sidecar": str(tmp_path / "x.oracle.json")}
+    monkeypatch.setattr(cli, "suite_cases", lambda _: [entry])
+    args = argparse.Namespace(
+        backend=backend.name, suite="s", force=False, limit=0, case=[], include_cached=False
+    )
+    return int(cli.cmd_fill(args))
+
+
+def test_an_export_case_sends_the_engine_export(fill: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    assert _fill(fill, monkeypatch, ExcelLikeBackend(), "x.export.json") == 0
+    sidecar = json.loads((fill / "x.oracle.json").read_text())
+    assert sidecar["source"]["input_sha256"] == hashlib.sha256(EXPORTED).hexdigest()
+    assert sidecar["sheets"] == {"Sheet1": {"B1": {"t": "n", "v": 6.0}}}
+    assert "refused" not in sidecar
+
+
+def test_a_refused_export_records_excel_s_error(fill: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    assert _fill(fill, monkeypatch, RefusingBackend(), "x.export.json") == 0
+    sidecar = json.loads((fill / "x.oracle.json").read_text())
+    assert sidecar["refused"] == "OpenWorkbookBlockedWorkbook: Blocked at <url> by <id> on <host>"
+    text = json.dumps(sidecar)
+    assert "8f2c7a10" not in text and "contoso" not in text
+    assert sidecar["sheets"] == {}
+    assert sidecar["source"]["input_sha256"] == hashlib.sha256(EXPORTED).hexdigest()
+
+
+def test_any_other_refused_case_is_a_failure(fill: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    assert _fill(fill, monkeypatch, RefusingBackend(), "x.case.json") == 1
+    assert not (fill / "x.oracle.json").exists()
+
+
+def test_a_failing_export_fails_that_case_and_the_fill_goes_on(
+    fill: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def broken(case: Path) -> bytes:
+        raise subprocess.CalledProcessError(
+            1, ["rustsheet-eval", "export", str(case)], stderr="patch of x: no part"
+        )
+
+    monkeypatch.setattr(cli, "engine_export", broken)
+    assert _fill(fill, monkeypatch, ExcelLikeBackend(), "x.export.json") == 1
+    assert not (fill / "x.oracle.json").exists()
+    assert "patch of x: no part" in capsys.readouterr().err

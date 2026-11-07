@@ -31,7 +31,7 @@ import tasks  # noqa: E402
 
 ROOT = exit_owners.ROOT
 # The case files a suite may hold (`rustsheet-eval`'s `SuiteKind`) and their oracle sidecar.
-CASE_SUFFIXES = (".case.json", ".xlsx", ".xlsm")
+CASE_SUFFIXES = (".case.json", ".export.json", ".xlsx", ".xlsm")
 SIDECAR = ".oracle.json"
 
 

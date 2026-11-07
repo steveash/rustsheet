@@ -472,18 +472,26 @@ So within a pivot cache, `1899-12-30T00:00:00` is 0, a time alone is `1899-12-30
 one day earlier than the cell calendar reads them. Since T-3182 the importer reads a cache `<d>` item dated 1899-12-30
 to 1900-02-28 on the OLE epoch in a 1900 workbook (`pivot_cache_date_serial`), and later dates with the cell rule
 (`iso8601_to_date_system_serial`); before, it rejected these dates and skipped the whole cache ("bad date"). The cutoff
-at 61 is inferred from where the two calendars agree (1900-03-01), not observed. UNVERIFIED: serial 60 (the phantom
-1900-02-29; the importer reads a cached `1900-02-29` as 60 and `1900-02-28` as 60 too) and serials 1 to 60 other than
-the one point above; whether `rangePr` dates follow the same rule (since T-4225 the importer reads `startDate` and
+at 61 is inferred from where the two calendars agree (1900-03-01), not observed. Serials 1, 2, 31, 59, 60 (the phantom
+1900-02-29) and 61 are VERIFIED since T-4177 (below). UNVERIFIED: a cached `1900-02-29` (the importer reads it as 60,
+as it reads `1900-02-28`); whether `rangePr` dates follow the same rule (since T-4225 the importer reads `startDate` and
 `endDate` with it, so 59932's `1899-12-30T00:00:00` start is serial 0, which matches its `<1/0/1900` label);
-1904 workbooks (a cache date before 1904-01-01 still skips the cache). No GETPIVOTDATA cell depends on it yet.
+a 1904 cache date before 1904-01-01 (the importer skips the cache). T-4177's GETPIVOTDATA cells (below) depend on it.
 Implemented in: crates/rustsheet-xlsx/src/import/iso_date.rs (`pivot_cache_date_serial`), import/pivots.rs (`read_item`)
 Implemented in: crates/rustsheet-xlsx/src/export/pivots/cache.rs (`date_text`, T-4176): the export writes the
 inverse, a 1900 workbook's cache date as 1899-12-30 plus the serial and a 1904 workbook's as 1904-01-01 plus it, to
-the second, so export then import is a fixed point. UNVERIFIED that Excel reads them so: serials 1 to 60, the
-phantom serial 60 (written as `1900-02-28T00:00:00`, the date serial 59 also reads as), and every 1904 cache date
-(probe pending: T-4177).
-Tasks: T-3182, T-4176
+the second, so export then import is a fixed point.
+Evidence (VERIFIED, excel-graph, 2026-11-07, T-4177): eval/suites/pivot-export t4177-cache-dates-1900.export.json, a
+pivot over date cells 1, 2, 31, 59, 60 (the phantom 1900-02-29), 61 and 62, and t4177-cache-dates-1904.export.json,
+the same in a 1904 workbook over 0, 1, 2, 59, 60, 61 and 1462. Without `refreshOnLoad` Excel reads the exported cache
+(`1899-12-31T00:00:00` … `1900-02-28T00:00:00` for 60, `1900-03-01T00:00:00` for 61; `1904-01-01T00:00:00` for 0 …
+`1908-01-02T00:00:00`) and GETPIVOTDATA on each serial finds its own item (1, 2, 4, … 64). With `refreshOnLoad`
+patched on (the `-refresh` cases) Excel rebuilds the cache from the cells and writes those same dates itself, with
+`containsNonDate="0"`, `minDate` the first date and `maxDate` a day past the last (`1900-03-03T00:00:00`,
+`1908-01-03T00:00:00`). So serial 60 is `1900-02-28T00:00:00` in a cache, and serial 59 is `1900-02-27T00:00:00`, not
+the cell calendar's 1900-02-28. Excel shows the refreshed items as dates (`2/29/1900` for 60; serial 0 of the 1904
+workbook as `12:00:00 AM`), the engine as serials (T-4943).
+Tasks: T-3182, T-4176, T-4177
 
 ## Structured references in the file
 Rule (excel-graph uploads of spec2xlsx files, 2026-10-16, T-1607): the file form of a structured reference

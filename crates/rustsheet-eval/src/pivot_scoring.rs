@@ -17,6 +17,7 @@ use crate::cellref::Addr;
 use crate::engine::Evaluated;
 use crate::runner::CaseResult;
 use crate::value::Value;
+use crate::xlsx_snapshot::{read_snapshot, PivotDef};
 
 /// Every cell of every sidecar pivot's area, as (sheet, cell, Excel's value). A cell key that does
 /// not parse is left out (the sidecar reader wrote it, so it never happens in practice).
@@ -60,6 +61,9 @@ pub enum LayoutVerdict {
     /// The location is Excel's, but the engine emits no `rowItems`/`colItems` to compare yet
     /// (T-4147).
     LinesNotEmitted,
+    /// The location is Excel's, but the `rowItems` or `colItems` the engine saves are not
+    /// (engine-export cases, T-4177).
+    LinesDiffer,
 }
 
 /// One sidecar pivot whose layout the engine does not match.
@@ -74,19 +78,38 @@ pub struct PivotLayout {
     pub engine_location: Option<String>,
     /// How many `rowItems` and `colItems` lines Excel saved.
     pub excel_lines: (usize, usize),
+    /// How many the engine saves, when its lines are compared.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub engine_lines: Option<(usize, usize)>,
     pub verdict: LayoutVerdict,
 }
 
+/// The pivots of the package `evaluated` saves, with the `rowItems`/`colItems` the engine
+/// writes for them (T-4177).
+///
+/// # Errors
+/// When the engine cannot save the workbook or the snapshot cannot read the package.
+pub(crate) fn saved_lines(evaluated: &dyn Evaluated) -> Result<Vec<PivotDef>, String> {
+    let bytes = evaluated.saved_package()?;
+    Ok(read_snapshot(&bytes).map_err(|e| e.to_string())?.pivots)
+}
+
 /// The layout of each sidecar pivot against the engine's pivots, matched by sheet and name
-/// (ignoring case, as Excel names them).
+/// (ignoring case, as Excel names them). With `saved`, the pivots of the package the engine
+/// saves ([`saved_lines`]), their `rowItems`/`colItems` are compared too, and a pivot whose
+/// location and lines are Excel's is left out.
 pub(crate) fn compare_layouts(
     pivots: &[OraclePivot],
     evaluated: &dyn Evaluated,
+    saved: Option<&[PivotDef]>,
 ) -> Vec<PivotLayout> {
     let places = evaluated.pivot_places();
+    let same = |sheet: &str, name: &str, d: &PivotDef| {
+        d.sheet.eq_ignore_ascii_case(sheet) && d.name.eq_ignore_ascii_case(name)
+    };
     pivots
         .iter()
-        .map(|p| {
+        .filter_map(|p| {
             let d = &p.definition;
             let place = places.iter().find(|e| {
                 e.sheet.eq_ignore_ascii_case(&d.sheet) && e.name.eq_ignore_ascii_case(&d.name)
@@ -103,21 +126,31 @@ pub(crate) fn compare_layouts(
                     format!("{first}:{last}")
                 }
             });
-            let verdict = match &engine_location {
-                None => LayoutVerdict::Missing,
-                Some(loc) if !loc.eq_ignore_ascii_case(&d.location) => {
+            let engine = saved.map(|all| all.iter().find(|e| same(&d.sheet, &d.name, e)));
+            let verdict = match (&engine_location, engine) {
+                (None, _) => LayoutVerdict::Missing,
+                (Some(loc), _) if !loc.eq_ignore_ascii_case(&d.location) => {
                     LayoutVerdict::LocationDiffers
                 }
-                Some(_) => LayoutVerdict::LinesNotEmitted,
+                (Some(_), None) => LayoutVerdict::LinesNotEmitted,
+                (Some(_), Some(Some(e)))
+                    if e.row_items == d.row_items && e.col_items == d.col_items =>
+                {
+                    return None
+                }
+                (Some(_), Some(_)) => LayoutVerdict::LinesDiffer,
             };
-            PivotLayout {
+            Some(PivotLayout {
                 sheet: d.sheet.clone(),
                 name: d.name.clone(),
                 excel_location: d.location.clone(),
                 engine_location,
                 excel_lines: (d.row_items.len(), d.col_items.len()),
+                engine_lines: engine
+                    .flatten()
+                    .map(|e| (e.row_items.len(), e.col_items.len())),
                 verdict,
-            }
+            })
         })
         .collect()
 }
@@ -240,7 +273,7 @@ mod tests {
             pivot("p", "here", "A3:B4", &[]),
         ];
         let engine = Places(vec![place("Moved", 4), place("Here", 3)]);
-        let got: Vec<LayoutVerdict> = compare_layouts(&pivots, &engine)
+        let got: Vec<LayoutVerdict> = compare_layouts(&pivots, &engine, None)
             .iter()
             .map(|l| l.verdict)
             .collect();
@@ -252,7 +285,7 @@ mod tests {
                 LayoutVerdict::LinesNotEmitted
             ]
         );
-        let moved = &compare_layouts(&pivots, &engine)[1];
+        let moved = &compare_layouts(&pivots, &engine, None)[1];
         assert_eq!(moved.engine_location.as_deref(), Some("A3:B5"));
         assert_eq!(moved.excel_lines, (1, 0));
     }
@@ -266,8 +299,11 @@ mod tests {
         );
         assert!(md.is_empty());
         let mut case = CaseResult::empty("probes/x", "probes", CaseStatus::Fail);
-        case.pivot_layout =
-            compare_layouts(&[pivot("P", "Gone", "A3:B4", &[])], &Places(Vec::new()));
+        case.pivot_layout = compare_layouts(
+            &[pivot("P", "Gone", "A3:B4", &[])],
+            &Places(Vec::new()),
+            None,
+        );
         write_markdown(&[case], &mut md);
         assert!(md.contains("## Pivot layout"));
         assert!(md.contains("| probes/x | P!Gone | A3:B4 | - | 1, 0 | Missing |"));

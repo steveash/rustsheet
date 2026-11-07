@@ -38,6 +38,9 @@ pub enum CaseStatus {
     Timeout,
     /// The case file itself is unreadable or malformed.
     InvalidCase,
+    /// Excel would not open the engine's export (SPEC-0033 `excel-refused`, T-4177): always a
+    /// failure, whatever the engine gives.
+    ExcelRefused,
 }
 
 impl CaseStatus {
@@ -356,6 +359,19 @@ struct PreparedCase {
     /// The spec case's pivot catalog ids and its sidecar pivot-area cell keys (T-4126).
     pivot_features: Vec<String>,
     pivot_keys: BTreeSet<String>,
+    /// An engine-export case (T-4177): its pivots' `rowItems`/`colItems` are compared with the
+    /// ones the engine saves, Excel's refusal is its verdict, and a note says when the export
+    /// changed since the sidecar's fill.
+    export: Option<ExportOutcome>,
+}
+
+/// What an engine-export case adds to its scoring (T-4177).
+#[derive(Default)]
+struct ExportOutcome {
+    /// Excel's error text, when the sidecar records that it would not open the file.
+    refused: Option<String>,
+    /// Why the result carries a note: the sidecar is of another package than the current one.
+    note: Option<String>,
 }
 
 /// Runs all cases of the given suites in parallel.
@@ -458,6 +474,7 @@ fn run_isolated(
         ..CaseResult::empty(&case.id, &suite.manifest.name, CaseStatus::Pending)
     };
     let pivot_keys = std::mem::take(&mut prepared.pivot_keys);
+    let export = prepared.export.as_mut().map(std::mem::take);
     // Cases without expectations still run: a panic, timeout or load error is a crash we can
     // catch before any oracle value exists (T-0007).
     let engine = Arc::clone(engine);
@@ -519,10 +536,30 @@ fn run_isolated(
             }
         }
     }
+    if let Some(export) = export {
+        apply_export(&mut result, export);
+    }
     CaseValues {
         result,
         check,
         values: check_values,
+    }
+}
+
+/// An engine-export case's refusal and note on its result: a case Excel refused fails as
+/// `excel-refused` unless the engine itself did not run it.
+fn apply_export(result: &mut CaseResult, export: ExportOutcome) {
+    if let Some(why) = export.refused {
+        if !result.status.did_not_run() {
+            result.status = CaseStatus::ExcelRefused;
+            result.message = Some(format!("excel-refused: {why}"));
+        }
+    }
+    if let Some(note) = export.note {
+        result.message = Some(match result.message.take() {
+            Some(m) => format!("{m}; {note}"),
+            None => note,
+        });
     }
 }
 
@@ -609,7 +646,13 @@ fn evaluate_prepared(
     } else {
         Vec::new()
     };
-    let layout = pivot_scoring::compare_layouts(&prepared.pivots, evaluated.as_ref());
+    // An export case's engine lines are the ones it would save (T-4177).
+    let lines = match prepared.export {
+        Some(_) => Some(pivot_scoring::saved_lines(evaluated.as_ref())?),
+        None => None,
+    };
+    let layout =
+        pivot_scoring::compare_layouts(&prepared.pivots, evaluated.as_ref(), lines.as_deref());
     let freshness = pivot_freshness::classify(&prepared.saved_pivots, evaluated.as_ref());
     Ok((
         cells,

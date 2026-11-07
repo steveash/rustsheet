@@ -1,0 +1,876 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "pivots": [
+  {
+   "cache_fields": [
+    {
+     "name": "Region",
+     "shared_flags": {
+      "count": "2"
+     },
+     "shared_items": [
+      {
+       "t": "s",
+       "v": "East"
+      },
+      {
+       "t": "s",
+       "v": "West"
+      }
+     ]
+    },
+    {
+     "name": "Product",
+     "shared_flags": {
+      "count": "3"
+     },
+     "shared_items": [
+      {
+       "t": "s",
+       "v": "A"
+      },
+      {
+       "t": "s",
+       "v": "B"
+      },
+      {
+       "t": "s",
+       "v": "C"
+      }
+     ]
+    },
+    {
+     "name": "Sales",
+     "shared_flags": {
+      "containsInteger": "1",
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "maxValue": "1000",
+      "minValue": "3"
+     }
+    }
+   ],
+   "cells": {
+    "A3": {
+     "t": "s",
+     "v": "Sum of Sales"
+    },
+    "A4": {
+     "t": "s",
+     "v": "Row Labels"
+    },
+    "A5": {
+     "t": "s",
+     "v": "East"
+    },
+    "A6": {
+     "t": "s",
+     "v": "West"
+    },
+    "A7": {
+     "t": "s",
+     "v": "Grand Total"
+    },
+    "B3": {
+     "t": "s",
+     "v": "Column Labels"
+    },
+    "B4": {
+     "t": "s",
+     "v": "A"
+    },
+    "B5": {
+     "t": "n",
+     "v": 1004.0
+    },
+    "B6": {
+     "t": "n",
+     "v": 20.0
+    },
+    "B7": {
+     "t": "n",
+     "v": 1024.0
+    },
+    "C3": {
+     "t": "empty"
+    },
+    "C4": {
+     "t": "s",
+     "v": "B"
+    },
+    "C5": {
+     "t": "n",
+     "v": 5.0
+    },
+    "C6": {
+     "t": "n",
+     "v": 7.0
+    },
+    "C7": {
+     "t": "n",
+     "v": 12.0
+    },
+    "D3": {
+     "t": "empty"
+    },
+    "D4": {
+     "t": "s",
+     "v": "C"
+    },
+    "D5": {
+     "t": "n",
+     "v": 3.0
+    },
+    "D6": {
+     "t": "empty"
+    },
+    "D7": {
+     "t": "n",
+     "v": 3.0
+    },
+    "E3": {
+     "t": "empty"
+    },
+    "E4": {
+     "t": "s",
+     "v": "Grand Total"
+    },
+    "E5": {
+     "t": "n",
+     "v": 1012.0
+    },
+    "E6": {
+     "t": "n",
+     "v": 27.0
+    },
+    "E7": {
+     "t": "n",
+     "v": 1039.0
+    }
+   },
+   "col_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      0
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      1
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      2
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "col_page_count": 0,
+   "first_data_col": 1,
+   "first_data_row": 2,
+   "first_header_row": 1,
+   "location": "A3:E7",
+   "name": "Refreshed",
+   "row_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      0
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      1
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "row_page_count": 0,
+   "sheet": "R",
+   "text": {
+    "A3": "Sum of Sales",
+    "A4": "Row Labels",
+    "A5": "East",
+    "A6": "West",
+    "A7": "Grand Total",
+    "B3": "Column Labels",
+    "B4": "A",
+    "B5": "1004",
+    "B6": "20",
+    "B7": "1024",
+    "C4": "B",
+    "C5": "5",
+    "C6": "7",
+    "C7": "12",
+    "D4": "C",
+    "D5": "3",
+    "D7": "3",
+    "E4": "Grand Total",
+    "E5": "1012",
+    "E6": "27",
+    "E7": "1039"
+   }
+  },
+  {
+   "cache_fields": [
+    {
+     "name": "Region",
+     "shared_flags": {
+      "count": "2"
+     },
+     "shared_items": [
+      {
+       "t": "s",
+       "v": "East"
+      },
+      {
+       "t": "s",
+       "v": "West"
+      }
+     ]
+    },
+    {
+     "name": "Product",
+     "shared_flags": {
+      "count": "3"
+     },
+     "shared_items": [
+      {
+       "t": "s",
+       "v": "A"
+      },
+      {
+       "t": "s",
+       "v": "B"
+      },
+      {
+       "t": "s",
+       "v": "C"
+      }
+     ]
+    },
+    {
+     "name": "Sales",
+     "shared_flags": {
+      "containsInteger": "1",
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "maxValue": "20",
+      "minValue": "3"
+     }
+    },
+    {
+     "name": "Double"
+    }
+   ],
+   "cells": {
+    "A10": {
+     "t": "s",
+     "v": "West Total"
+    },
+    "A11": {
+     "t": "s",
+     "v": "Grand Total"
+    },
+    "A3": {
+     "t": "empty"
+    },
+    "A4": {
+     "t": "s",
+     "v": "Row Labels"
+    },
+    "A5": {
+     "t": "s",
+     "v": "East"
+    },
+    "A6": {
+     "t": "empty"
+    },
+    "A7": {
+     "t": "s",
+     "v": "East Total"
+    },
+    "A8": {
+     "t": "s",
+     "v": "West"
+    },
+    "A9": {
+     "t": "empty"
+    },
+    "B10": {
+     "t": "empty"
+    },
+    "B11": {
+     "t": "empty"
+    },
+    "B3": {
+     "t": "empty"
+    },
+    "B4": {
+     "t": "s",
+     "v": "Product"
+    },
+    "B5": {
+     "t": "s",
+     "v": "B"
+    },
+    "B6": {
+     "t": "s",
+     "v": "A"
+    },
+    "B7": {
+     "t": "empty"
+    },
+    "B8": {
+     "t": "s",
+     "v": "B"
+    },
+    "B9": {
+     "t": "s",
+     "v": "A"
+    },
+    "C10": {
+     "t": "n",
+     "v": 27.0
+    },
+    "C11": {
+     "t": "n",
+     "v": 46.0
+    },
+    "C3": {
+     "t": "s",
+     "v": "Values"
+    },
+    "C4": {
+     "t": "s",
+     "v": "Sum of Sales"
+    },
+    "C5": {
+     "t": "n",
+     "v": 5.0
+    },
+    "C6": {
+     "t": "n",
+     "v": 14.0
+    },
+    "C7": {
+     "t": "n",
+     "v": 19.0
+    },
+    "C8": {
+     "t": "n",
+     "v": 7.0
+    },
+    "C9": {
+     "t": "n",
+     "v": 20.0
+    },
+    "D10": {
+     "t": "n",
+     "v": 54.1
+    },
+    "D11": {
+     "t": "n",
+     "v": 92.1
+    },
+    "D3": {
+     "t": "empty"
+    },
+    "D4": {
+     "t": "s",
+     "v": "Sum of Double"
+    },
+    "D5": {
+     "t": "n",
+     "v": 10.1
+    },
+    "D6": {
+     "t": "n",
+     "v": 28.1
+    },
+    "D7": {
+     "t": "n",
+     "v": 38.1
+    },
+    "D8": {
+     "t": "n",
+     "v": 14.1
+    },
+    "D9": {
+     "t": "n",
+     "v": 40.1
+    }
+   },
+   "col_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      0
+     ]
+    },
+    {
+     "i": 1,
+     "r": 0,
+     "x": [
+      1
+     ]
+    }
+   ],
+   "col_page_count": 0,
+   "first_data_col": 2,
+   "first_data_row": 2,
+   "first_header_row": 1,
+   "location": "A3:D11",
+   "name": "CalcTopSort",
+   "row_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      0,
+      1
+     ]
+    },
+    {
+     "i": 0,
+     "r": 1,
+     "x": [
+      2
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "default",
+     "x": [
+      0
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      1,
+      1
+     ]
+    },
+    {
+     "i": 0,
+     "r": 1,
+     "x": [
+      2
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "default",
+     "x": [
+      1
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "row_page_count": 0,
+   "sheet": "K",
+   "text": {
+    "A10": "West Total",
+    "A11": "Grand Total",
+    "A4": "Row Labels",
+    "A5": "East",
+    "A7": "East Total",
+    "A8": "West",
+    "B4": "Product",
+    "B5": "B",
+    "B6": "A",
+    "B8": "B",
+    "B9": "A",
+    "C10": "27",
+    "C11": "46",
+    "C3": "Values",
+    "C4": "Sum of Sales",
+    "C5": "5",
+    "C6": "14",
+    "C7": "19",
+    "C8": "7",
+    "C9": "20",
+    "D10": "54.1",
+    "D11": "92.1",
+    "D4": "Sum of Double",
+    "D5": "10.1",
+    "D6": "28.1",
+    "D7": "38.1",
+    "D8": "14.1",
+    "D9": "40.1"
+   }
+  },
+  {
+   "cache_fields": [
+    {
+     "name": "Region"
+    },
+    {
+     "name": "Product"
+    },
+    {
+     "name": "Sales",
+     "shared_flags": {
+      "containsInteger": "1",
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "maxValue": "20",
+      "minValue": "3"
+     }
+    },
+    {
+     "group_items": [
+      {
+       "t": "s",
+       "v": "<45000"
+      },
+      {
+       "t": "s",
+       "v": "45000-45100"
+      },
+      {
+       "t": "s",
+       "v": "45100-45200"
+      },
+      {
+       "t": "s",
+       "v": "45200-45300"
+      },
+      {
+       "t": "s",
+       "v": "45300-45400"
+      },
+      {
+       "t": "s",
+       "v": ">45400"
+      }
+     ],
+     "name": "Day",
+     "shared_flags": {
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "count": "6",
+      "maxValue": "45300",
+      "minValue": "45000"
+     },
+     "shared_items": [
+      {
+       "t": "n",
+       "v": "45000"
+      },
+      {
+       "t": "n",
+       "v": "45031"
+      },
+      {
+       "t": "n",
+       "v": "45031.5"
+      },
+      {
+       "t": "n",
+       "v": "45100"
+      },
+      {
+       "t": "n",
+       "v": "45300"
+      },
+      {
+       "t": "n",
+       "v": "45001"
+      }
+     ]
+    }
+   ],
+   "cells": {
+    "A3": {
+     "t": "s",
+     "v": "Row Labels"
+    },
+    "A4": {
+     "t": "s",
+     "v": "45000-45100"
+    },
+    "A5": {
+     "t": "s",
+     "v": "45100-45200"
+    },
+    "A6": {
+     "t": "s",
+     "v": "45300-45400"
+    },
+    "A7": {
+     "t": "s",
+     "v": "Grand Total"
+    },
+    "B3": {
+     "t": "s",
+     "v": "Sum of Sales"
+    },
+    "B4": {
+     "t": "n",
+     "v": 39.0
+    },
+    "B5": {
+     "t": "n",
+     "v": 7.0
+    },
+    "B6": {
+     "t": "n",
+     "v": 3.0
+    },
+    "B7": {
+     "t": "n",
+     "v": 49.0
+    }
+   },
+   "col_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": []
+    }
+   ],
+   "col_page_count": 0,
+   "first_data_col": 1,
+   "first_data_row": 1,
+   "first_header_row": 1,
+   "location": "A3:B7",
+   "name": "Grouped",
+   "row_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      1
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      2
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      4
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "row_page_count": 0,
+   "sheet": "G",
+   "text": {
+    "A3": "Row Labels",
+    "A4": "45000-45100",
+    "A5": "45100-45200",
+    "A6": "45300-45400",
+    "A7": "Grand Total",
+    "B3": "Sum of Sales",
+    "B4": "39",
+    "B5": "7",
+    "B6": "3",
+    "B7": "49"
+   }
+  },
+  {
+   "cache_fields": [
+    {
+     "name": "Region",
+     "shared_flags": {
+      "count": "2"
+     },
+     "shared_items": [
+      {
+       "t": "s",
+       "v": "East"
+      },
+      {
+       "t": "s",
+       "v": "West"
+      }
+     ]
+    },
+    {
+     "name": "Product",
+     "shared_flags": {
+      "count": "3"
+     },
+     "shared_items": [
+      {
+       "t": "s",
+       "v": "A"
+      },
+      {
+       "t": "s",
+       "v": "B"
+      },
+      {
+       "t": "s",
+       "v": "C"
+      }
+     ]
+    },
+    {
+     "name": "Sales",
+     "shared_flags": {
+      "containsInteger": "1",
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "maxValue": "20",
+      "minValue": "3"
+     }
+    }
+   ],
+   "cells": {
+    "A3": {
+     "t": "e",
+     "v": "#SPILL!"
+    }
+   },
+   "col_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      0
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      1
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      2
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "col_page_count": 0,
+   "first_data_col": 0,
+   "first_data_row": 0,
+   "first_header_row": 0,
+   "location": "A3",
+   "name": "Blocked",
+   "row_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      0
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      1
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "row_page_count": 0,
+   "sheet": "S",
+   "text": {
+    "A3": "#SPILL!"
+   }
+  }
+ ],
+ "sheets": {
+  "Data": {},
+  "DataF": {
+   "C2": {
+    "t": "n",
+    "v": 1000.0
+   }
+  },
+  "G": {},
+  "K": {},
+  "Q": {
+   "A1": {
+    "t": "n",
+    "v": 49.0
+   }
+  },
+  "R": {},
+  "S": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "6677cb9bfb2bdbf78ee47e0d1b5dcb6fca75a77c95f665946f7cd86fc941c47e",
+  "kind": "excel-graph",
+  "produced_at": "2026-11-07T13:36:52+00:00",
+  "version": null,
+  "workbook_name": "6665384f84f1b9d70805003a9b06aa024820cbbf34504b778e8c7d2493eee2d9.xlsx"
+ }
+}

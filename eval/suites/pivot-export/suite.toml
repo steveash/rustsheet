@@ -1,0 +1,10 @@
+name = "pivot-export"
+description = "Engine-exported pivots re-rendered by Excel (T-4177; docs/research/pivot-tables-2026-11-04/plan.md §6 layer 4): each case's workbook is saved by the engine's xlsx export, and Excel's re-render of that file (its formula values and pivot areas, the sidecar's pivots) is scored against the engine loading the same file. A sidecar with `refused` is SPEC-0033's excel-refused verdict."
+kind = "export"
+root = "cases"
+include = ["**/*.export.json"]
+license = "Apache-2.0"
+origin = "hand (inputs) + engine export + Excel oracle (expectations)"
+gate = true
+baseline = "cells"
+milestone = ["M16"]

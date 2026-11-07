@@ -1,0 +1,11 @@
+{
+ "format": "rustsheet-export-case/v1",
+ "description": "T-4176's first scratch run: crates/rustsheet-xlsx/tests/example.xlsx, an Excel-saved pivot over the Table Table1 without refreshOnLoad, loaded and saved by the engine's export. Excel opens it without re-rendering, so the case shows the file opens and keeps the saved cells.",
+ "tags": [
+  "pivot",
+  "export",
+  "T-4177",
+  "M16"
+ ],
+ "source": "crates/rustsheet-xlsx/tests/example.xlsx"
+}

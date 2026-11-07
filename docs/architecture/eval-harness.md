@@ -10,7 +10,7 @@ side by side.
 | key | meaning |
 |---|---|
 | `name`, `description`, `license`, `origin` | identity and provenance (license decides vendor vs fetch) |
-| `kind` | `xlsx` (workbooks) or `spec` (`*.case.json`); `roundtrip` only under `eval/roundtrip/` (below) |
+| `kind` | `xlsx` (workbooks), `spec` (`*.case.json`) or `export` (`*.export.json`, below); `roundtrip` only under `eval/roundtrip/` (below) |
 | `root`, `include`, `exclude` | where the cases are (globs relative to `root`) |
 | `use_cached_values` | for xlsx: Excel's cached `<v>` values are the oracle (when no sidecar exists) |
 | `require_excel_authored` | only trust caches written by Microsoft Excel (`docProps/app.xml`; XlsxWriter's fake `12.0000` rejected) |
@@ -38,6 +38,29 @@ Current suites:
   cached values and each pivot classified fresh or stale (below); `gate = false`, cell baselines.
 - `gen-pivot`: M16 pivot tables from `rustsheet-gen --milestone M16` (T-4132): 9 cases of up to 12 pivots (104 in all) over a covering
   array of the PV1 dimensions, oracle-filled and gated; its scored cells are the sidecars' pivot areas and their texts.
+
+## Engine-export suites
+A suite of `kind = "export"` (T-4177, `export_case.rs`; the `pivot-export` suite) scores the engine's xlsx export
+against Excel opening it. A case is a `<name>.export.json`:
+- `source`, a `.case.json` or `.xlsx` path relative to the repository root (no `..`, not absolute), or `spec`, an inline spec case. The workbook is
+  built as the cell suites build it, or loaded and recalculated, so a `refreshOnLoad` pivot renders;
+- `pivots`: pivots added through `Txn::add_pivot_table` (`name`, sheet-qualified `source` and `location`, `row`,
+  `column`, `value`, `function`, a spec pivot's `group`);
+- `patches`: text edits of the saved package (`part`, a glob over part names; `find`; `replace`). Every part the glob
+  matches must hold `find`, and every edit must match a part, so an export that moves under an edit fails the case.
+  They give a file the API cannot: a `refreshOnLoad` cache, or one without attributes the export writes.
+
+`rustsheet-eval export <case> --out <file>` writes the package, deterministic for one build, and the oracle fill
+sends that file to Excel. The case scores as an xlsx case of that package: its formula cells against the sidecar's
+values, and every cell of the sidecar's pivot areas as well, as a spec case scores them. The engine's own
+`rowItems`/`colItems`, read back from its save of the evaluated workbook, are compared with Excel's in the "Pivot
+layout" section (`LinesDiffer`); they are reported, not ratcheted. A sidecar with `refused` (Excel's error text,
+which the fill writes when Excel for the web will not open the file: `OracleRefusedError`) makes the case
+`excel_refused`, SPEC-0033's verdict, which always fails. The case is rebuilt from the current engine on every
+run, so when the sidecar's `input_sha256` is not the package's the result notes that the export changed since the
+fill.
+T-4180 must decide how SPEC-0033's `excel-refused` maps onto the round-trip `Verdict` (`roundtrip.rs`), given that
+the cell runner already has it as `CaseStatus::ExcelRefused`, so the two kinds report a refusal the same way.
 
 ## Round-trip suites
 `eval/roundtrip/<name>/suite.toml` (SPEC-0033, T-4172) uses the same manifest with `kind = "roundtrip"`:

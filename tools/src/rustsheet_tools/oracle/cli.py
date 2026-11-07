@@ -28,11 +28,12 @@ from pathlib import Path
 from typing import Any
 
 from rustsheet_tools import repo_root
-from rustsheet_tools.oracle.backends import BACKENDS, OracleError, OracleInfo
+from rustsheet_tools.oracle.backends import BACKENDS, OracleError, OracleInfo, OracleRefusedError
 from rustsheet_tools.oracle.calibrate import calibrate, to_markdown
 from rustsheet_tools.oracle.canary import checked_values, embed_canary
 from rustsheet_tools.snapshot import (
     compare_workbooks,
+    engine_export,
     formula_values,
     is_undecoded,
     pivot_areas,
@@ -42,6 +43,8 @@ from rustsheet_tools.snapshot import (
 from rustsheet_tools.spec2xlsx import build_xlsx
 
 GOLDEN_BACKENDS = {"excel-graph", "excel-desktop"}
+# An engine-export case (crates/rustsheet-eval/src/export_case.rs).
+EXPORT_SUFFIX = ".export.json"
 
 
 def _backend(name: str) -> Any:
@@ -107,6 +110,8 @@ def cmd_recalc(args: argparse.Namespace) -> int:
     raw = args.input.read_bytes()
     if args.input.name.endswith(".case.json"):
         raw = build_xlsx(json.loads(raw))
+    elif args.input.name.endswith(EXPORT_SUFFIX):
+        raw = engine_export(args.input)
     values, info, sha = _recalc_cached(backend, raw)
     print(json.dumps({"source": {**info.__dict__, "input_sha256": sha}, "sheets": values}, indent=2))
     return 0
@@ -135,42 +140,47 @@ def cmd_fill(args: argparse.Namespace) -> int:
     for entry in entries[: args.limit or None]:
         case, sidecar = Path(entry["path"]), Path(entry["sidecar"])
         is_spec = case.name.endswith(".case.json")
+        # An engine-export case (T-4177): Excel opens the package the engine saves; its cached
+        # values are the engine's, never Excel evidence to keep.
+        is_export = case.name.endswith(EXPORT_SUFFIX)
         if sidecar.exists() and not args.force:
             continue
-        if not is_spec:
-            reason = _skip_reason(entry, args.include_cached)
-            if reason:
-                skipped += 1
-                print(f"skip {case.name}: {reason}", file=sys.stderr)
-                continue
-        raw = case.read_bytes()
-        spec = json.loads(raw) if is_spec else None
-        xlsx = build_xlsx(spec) if spec else raw
+        if not is_spec and not is_export and (reason := _skip_reason(entry, args.include_cached)):
+            skipped += 1
+            print(f"skip {case.name}: {reason}", file=sys.stderr)
+            continue
+        try:
+            xlsx, spec = _fill_input(case, is_spec, is_export)
+        except subprocess.CalledProcessError as e:
+            failed += 1
+            print(f"FAIL {case}: rustsheet-eval export failed: {(e.stderr or '').strip()}", file=sys.stderr)
+            continue
         try:
             values, info, sha = _recalc_cached(backend, xlsx)
-            if not spec:
+            if not spec and not is_export:
                 conflicts += _drop_desktop_conflicts(
                     case, values, entry.get("suite_uses_cached_values") is not False
                 )
-            elif spec.get("invariant"):
+            elif spec and spec.get("invariant"):
                 _drop_varying_invariants(case, spec["invariant"], values, _recalc_fresh(backend, xlsx))
         except OracleError as e:
+            if is_export and isinstance(e, OracleRefusedError):
+                # SPEC-0033 `excel-refused`: the refusal is the export case's verdict.
+                _write_refused(case, sidecar, backend.name, xlsx, e)
+                done += 1
+                continue
             failed += 1
             print(f"FAIL {case}: {e}", file=sys.stderr)
             continue
-        oracle: dict[str, Any] = {
-            "format": "rustsheet-oracle/v1",
-            "source": {
-                "kind": info.kind,
-                "application": info.application,
-                "version": info.version,
-                "produced_at": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
-                "input_sha256": sha,
-                # The file name CELL("address") and CELL("filename") saw (T-2042).
-                **({"workbook_name": info.workbook_name} if info.workbook_name else {}),
-            },
-            "sheets": values,
-        }
+        oracle = _sidecar(
+            info.kind,
+            sha,
+            values,
+            application=info.application,
+            version=info.version,
+            # The file name CELL("address") and CELL("filename") saw (T-2042).
+            **({"workbook_name": info.workbook_name} if info.workbook_name else {}),
+        )
         if info.texts:  # displayed text of the cells the case lists in `text` (T-1610)
             oracle["text"] = info.texts
         if pivots := _recalculated_pivots(backend, sha, info.pivot_texts):
@@ -186,6 +196,42 @@ def cmd_fill(args: argparse.Namespace) -> int:
         f"{conflicts} web-vs-desktop conflicts left pending)"
     )
     return 1 if failed else 0
+
+
+def _fill_input(case: Path, is_spec: bool, is_export: bool) -> tuple[bytes, dict[str, Any] | None]:
+    """The workbook a case sends to the oracle, and its spec when it is a spec case: the package the
+    engine saves for an export case (`rustsheet-eval export`, which raises CalledProcessError when it
+    fails), the built spec, or the workbook itself."""
+    if is_export:
+        return engine_export(case), None
+    raw = case.read_bytes()
+    if is_spec:
+        spec: dict[str, Any] = json.loads(raw)
+        return build_xlsx(spec), spec
+    return raw, None
+
+
+def _write_refused(case: Path, sidecar: Path, backend: str, xlsx: bytes, e: OracleRefusedError) -> None:
+    """Writes the sidecar of an export case Excel would not open, its scrubbed error as `refused`."""
+    print(f"REFUSED {case}: {e}", file=sys.stderr)
+    refused = {**_sidecar(backend, hashlib.sha256(xlsx).hexdigest(), {}), "refused": str(e)}
+    sidecar.write_text(json.dumps(refused, indent=1, sort_keys=True) + "\n")
+
+
+def _sidecar(kind: str, sha: str, values: dict[str, dict[str, Any]], **source: Any) -> dict[str, Any]:
+    """An oracle sidecar's envelope: its format, the `source` of the run (`kind`, the input's sha256,
+    the time, and `source`'s further fields) and the formula `values`. An engine-export case Excel
+    would not open gets no values and Excel's error as `refused` (SPEC-0033 `excel-refused`, T-4177)."""
+    return {
+        "format": "rustsheet-oracle/v1",
+        "source": {
+            "kind": kind,
+            **source,
+            "produced_at": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
+            "input_sha256": sha,
+        },
+        "sheets": values,
+    }
 
 
 def cmd_calibrate(args: argparse.Namespace) -> int:

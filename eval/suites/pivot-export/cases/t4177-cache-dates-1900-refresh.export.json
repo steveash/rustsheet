@@ -1,0 +1,78 @@
+{
+ "format": "rustsheet-export-case/v1",
+ "description": "t4177-cache-dates-1900.export.json with refreshOnLoad=\"1\" patched onto the cache: Excel rebuilds the cache from the source on open, and the sidecar's cache_fields hold the dates as Excel itself writes them.",
+ "tags": [
+  "pivot",
+  "export",
+  "T-4177",
+  "M16"
+ ],
+ "spec": {
+  "format": "rustsheet-case/v1",
+  "sheets": [
+   {
+    "name": "Data",
+    "cells": {
+     "A1": "Date",
+     "B1": "S",
+     "A2": 1,
+     "B2": 1,
+     "A3": 2,
+     "B3": 2,
+     "A4": 31,
+     "B4": 4,
+     "A5": 59,
+     "B5": 8,
+     "A6": 60,
+     "B6": 16,
+     "A7": 61,
+     "B7": 32,
+     "A8": 62,
+     "B8": 64
+    },
+    "number_formats": {
+     "A2": "yyyy-mm-dd",
+     "A3": "yyyy-mm-dd",
+     "A4": "yyyy-mm-dd",
+     "A5": "yyyy-mm-dd",
+     "A6": "yyyy-mm-dd",
+     "A7": "yyyy-mm-dd",
+     "A8": "yyyy-mm-dd"
+    }
+   },
+   {
+    "name": "P",
+    "cells": {}
+   },
+   {
+    "name": "Calc",
+    "cells": {
+     "B1": "=GETPIVOTDATA(\"Sum of S\",P!$A$3,\"Date\",1)",
+     "B2": "=GETPIVOTDATA(\"Sum of S\",P!$A$3,\"Date\",2)",
+     "B3": "=GETPIVOTDATA(\"Sum of S\",P!$A$3,\"Date\",31)",
+     "B4": "=GETPIVOTDATA(\"Sum of S\",P!$A$3,\"Date\",59)",
+     "B5": "=GETPIVOTDATA(\"Sum of S\",P!$A$3,\"Date\",60)",
+     "B6": "=GETPIVOTDATA(\"Sum of S\",P!$A$3,\"Date\",61)",
+     "B7": "=GETPIVOTDATA(\"Sum of S\",P!$A$3,\"Date\",62)",
+     "B8": "=GETPIVOTDATA(\"Sum of S\",P!$A$3)"
+    }
+   }
+  ]
+ },
+ "pivots": [
+  {
+   "name": "Dates",
+   "source": "Data!A1:B8",
+   "location": "P!A3",
+   "row": "Date",
+   "value": "S"
+  }
+ ],
+ "patches": [
+  {
+   "part": "xl/pivotCache/pivotCacheDefinition*.xml",
+   "find": "<pivotCacheDefinition xmlns=",
+   "replace": "<pivotCacheDefinition refreshOnLoad=\"1\" xmlns="
+  }
+ ]
+}

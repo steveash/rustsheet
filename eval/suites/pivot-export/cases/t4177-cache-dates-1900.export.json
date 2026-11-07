@@ -1,0 +1,71 @@
+{
+ "format": "rustsheet-export-case/v1",
+ "description": "A pivot added through the API over date-formatted serials 1, 2, 31, 59, 60 (the phantom 1900-02-29), 61 and 62 of a 1900 workbook, S distinct powers of two. The export writes each cache date as 1899-12-30 plus the serial (60 as 1900-02-28T00:00:00; xlsx-storage.md \"Pivot cache dates below serial 61 use the 1899-12-30 epoch\"). No refreshOnLoad: Excel reads the exported cache dates, and Calc's GETPIVOTDATA cells on each serial show which item each one is to Excel.",
+ "tags": [
+  "pivot",
+  "export",
+  "T-4177",
+  "M16"
+ ],
+ "spec": {
+  "format": "rustsheet-case/v1",
+  "sheets": [
+   {
+    "name": "Data",
+    "cells": {
+     "A1": "Date",
+     "B1": "S",
+     "A2": 1,
+     "B2": 1,
+     "A3": 2,
+     "B3": 2,
+     "A4": 31,
+     "B4": 4,
+     "A5": 59,
+     "B5": 8,
+     "A6": 60,
+     "B6": 16,
+     "A7": 61,
+     "B7": 32,
+     "A8": 62,
+     "B8": 64
+    },
+    "number_formats": {
+     "A2": "yyyy-mm-dd",
+     "A3": "yyyy-mm-dd",
+     "A4": "yyyy-mm-dd",
+     "A5": "yyyy-mm-dd",
+     "A6": "yyyy-mm-dd",
+     "A7": "yyyy-mm-dd",
+     "A8": "yyyy-mm-dd"
+    }
+   },
+   {
+    "name": "P",
+    "cells": {}
+   },
+   {
+    "name": "Calc",
+    "cells": {
+     "B1": "=GETPIVOTDATA(\"Sum of S\",P!$A$3,\"Date\",1)",
+     "B2": "=GETPIVOTDATA(\"Sum of S\",P!$A$3,\"Date\",2)",
+     "B3": "=GETPIVOTDATA(\"Sum of S\",P!$A$3,\"Date\",31)",
+     "B4": "=GETPIVOTDATA(\"Sum of S\",P!$A$3,\"Date\",59)",
+     "B5": "=GETPIVOTDATA(\"Sum of S\",P!$A$3,\"Date\",60)",
+     "B6": "=GETPIVOTDATA(\"Sum of S\",P!$A$3,\"Date\",61)",
+     "B7": "=GETPIVOTDATA(\"Sum of S\",P!$A$3,\"Date\",62)",
+     "B8": "=GETPIVOTDATA(\"Sum of S\",P!$A$3)"
+    }
+   }
+  ]
+ },
+ "pivots": [
+  {
+   "name": "Dates",
+   "source": "Data!A1:B8",
+   "location": "P!A3",
+   "row": "Date",
+   "value": "S"
+  }
+ ]
+}

@@ -10,8 +10,11 @@ from rustsheet_tools.oracle.backends import (
     GRAPH,
     MAX_TEXT_BLOCK,
     GraphBackend,
+    GraphRequestError,
     LibreOfficeBackend,
     OracleError,
+    OracleRefusedError,
+    scrub,
     text_blocks,
     used_cells,
 )
@@ -366,3 +369,53 @@ def test_a_missing_text_cell_is_refused(graph: GraphBackend, monkeypatch: pytest
 def test_a_malformed_text_cell_is_refused() -> None:
     with pytest.raises(ValueError, match="must be Sheet!A1"):
         build_xlsx({"sheets": [{"name": "S", "cells": {"A1": 1}}], "text": ["A1"]})
+
+
+GUID = "8f2c7a10-3b4d-4e5f-9a6b-1c2d3e4f5a6b"
+HOST = "contoso.sharepoint.com"
+
+
+@pytest.mark.parametrize(
+    ("code", "refused"),
+    [
+        ("OpenWorkbookBlockedWorkbook", True),
+        ("FileCorruptTryRepair", True),
+        ("WorkbookNotSupported", True),
+        ("ItemNotFound", False),
+    ],
+)
+def test_a_workbook_excel_will_not_open_is_refused(
+    graph: GraphBackend, monkeypatch: pytest.MonkeyPatch, code: str, refused: bool
+) -> None:
+    fake = FakeGraph()
+    message = f"Cannot open https://{HOST}/sites/x/{GUID}.xlsx (request-id {GUID}) on {HOST}."
+
+    def call(method: str, url: str, **kw: Any) -> Any:
+        if url.endswith("/workbook/createSession"):
+            raise GraphRequestError(f"POST {url} -> 501: {message}", code, message)
+        return fake(method, url, **kw)
+
+    monkeypatch.setattr(graph, "_call", call)
+    with pytest.raises(OracleError) as e:
+        graph.recalc(build_xlsx({"sheets": [{"name": "S", "cells": {"A1": "=1"}}]}))
+    assert isinstance(e.value, OracleRefusedError) == refused
+    if refused:
+        # Only the code and the scrubbed message: no URL, GUID or host reaches a sidecar.
+        assert str(e.value) == f"{code}: Cannot open <url> (request-id <id>) on <host>."
+    assert fake.calls[-1] == "DELETE <item>"
+
+
+def test_scrub_drops_e_mail_addresses_whole() -> None:
+    assert scrub("owned by first.last@contoso.com and ann@x") == "owned by <email> and <email>"
+
+
+def test_an_error_status_carries_graph_s_code_and_message(
+    graph: GraphBackend, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    body = {"error": {"code": "FileCorruptTryRepair", "message": "The file is corrupt."}}
+    resp = SimpleNamespace(status_code=501, json=lambda: body, text=str(body), headers={})
+    monkeypatch.setattr(graph, "_token", lambda: "t")
+    monkeypatch.setattr(graph._session, "request", lambda *_, **__: resp)
+    with pytest.raises(GraphRequestError) as e:
+        graph._call("POST", "https://x/createSession")
+    assert (e.value.code, e.value.message) == ("FileCorruptTryRepair", "The file is corrupt.")

@@ -1,0 +1,67 @@
+{
+ "format": "rustsheet-export-case/v1",
+ "description": "T-4176's third scratch run: a pivot added through the API (Txn::add_pivot_table) over a cache of texts (East twice, West), a blank, TRUE, a date (2020-01-01), the numbers 7 and 2.5 and #N/A (=NA()), saved without refreshOnLoad, as the API saves every cache: the export generates its <items>. Excel opens it without a refresh, so its cells are the engine's; Calc's GETPIVOTDATA cells read the cache as Excel reads it.",
+ "tags": [
+  "pivot",
+  "export",
+  "T-4177",
+  "M16"
+ ],
+ "spec": {
+  "format": "rustsheet-case/v1",
+  "sheets": [
+   {
+    "name": "Data",
+    "cells": {
+     "A1": "Item",
+     "B1": "S",
+     "A2": "East",
+     "B2": 1,
+     "A3": "West",
+     "B3": 2,
+     "B4": 4,
+     "A5": true,
+     "B5": 8,
+     "A6": 43831,
+     "B6": 16,
+     "A7": 7,
+     "B7": 32,
+     "A8": "=NA()",
+     "B8": 64,
+     "A9": "East",
+     "B9": 128,
+     "A10": 2.5,
+     "B10": 256
+    },
+    "number_formats": {
+     "A6": "yyyy-mm-dd"
+    }
+   },
+   {
+    "name": "P",
+    "cells": {}
+   },
+   {
+    "name": "Calc",
+    "cells": {
+     "B1": "=GETPIVOTDATA(\"Sum of S\",P!$A$3,\"Item\",\"East\")",
+     "B2": "=GETPIVOTDATA(\"Sum of S\",P!$A$3,\"Item\",\"West\")",
+     "B3": "=GETPIVOTDATA(\"Sum of S\",P!$A$3,\"Item\",True)",
+     "B4": "=GETPIVOTDATA(\"Sum of S\",P!$A$3,\"Item\",DATE(2020,1,1))",
+     "B5": "=GETPIVOTDATA(\"Sum of S\",P!$A$3,\"Item\",7)",
+     "B6": "=GETPIVOTDATA(\"Sum of S\",P!$A$3,\"Item\",2.5)",
+     "B7": "=GETPIVOTDATA(\"Sum of S\",P!$A$3)"
+    }
+   }
+  ]
+ },
+ "pivots": [
+  {
+   "name": "Items",
+   "source": "Data!A1:B10",
+   "location": "P!A3",
+   "row": "Item",
+   "value": "S"
+  }
+ ]
+}

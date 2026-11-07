@@ -1,0 +1,279 @@
+{
+ "format": "rustsheet-export-case/v1",
+ "description": "T-4734's API-built cache as case-builder definitions: Amount grouped in place by tens (0 to 50), Date by months with Quarters and Years added, and Product2 a manual group over Product (G1 A and B, G2 C and D, E alone), every grouping in each of the three refreshOnLoad pivots' caches: Y rows Years, Quarters, Date; A rows Amount; M rows Product2, Product. The facade's Txn::add_pivot_table takes one range grouping of the row field, so it cannot add date levels or a manual group. Calc's GETPIVOTDATA reads the groups.",
+ "tags": [
+  "pivot",
+  "export",
+  "T-4177",
+  "M16"
+ ],
+ "spec": {
+  "format": "rustsheet-case/v1",
+  "sheets": [
+   {
+    "name": "Data",
+    "cells": {
+     "A1": "Product",
+     "B1": "Amount",
+     "C1": "Date",
+     "D1": "S",
+     "A2": "A",
+     "B2": 3,
+     "C2": 43480,
+     "D2": 1,
+     "A3": "B",
+     "B3": 12,
+     "C3": 43521,
+     "D3": 2,
+     "A4": "C",
+     "B4": 18,
+     "C4": 43600,
+     "D4": 4,
+     "A5": "D",
+     "B5": 25,
+     "C5": 43700,
+     "D5": 8,
+     "A6": "E",
+     "B6": 31,
+     "C6": 43830,
+     "D6": 16,
+     "A7": "A",
+     "B7": 44,
+     "C7": 43850,
+     "D7": 32,
+     "A8": "B",
+     "B8": 7,
+     "C8": 43950,
+     "D8": 64,
+     "A9": "C",
+     "B9": 29,
+     "C9": 44100,
+     "D9": 128,
+     "A10": "D",
+     "B10": 38,
+     "C10": 44190,
+     "D10": 256,
+     "A11": "E",
+     "B11": 46,
+     "C11": 43400,
+     "D11": 512
+    },
+    "number_formats": {
+     "C2": "yyyy-mm-dd",
+     "C3": "yyyy-mm-dd",
+     "C4": "yyyy-mm-dd",
+     "C5": "yyyy-mm-dd",
+     "C6": "yyyy-mm-dd",
+     "C7": "yyyy-mm-dd",
+     "C8": "yyyy-mm-dd",
+     "C9": "yyyy-mm-dd",
+     "C10": "yyyy-mm-dd",
+     "C11": "yyyy-mm-dd"
+    }
+   },
+   {
+    "name": "Y",
+    "cells": {},
+    "pivot_tables": [
+     {
+      "name": "GroupedY",
+      "source": "Data!A1:D11",
+      "location": "A3",
+      "definition": {
+       "rows": [
+        "Years",
+        "Quarters",
+        "Date"
+       ],
+       "data": [
+        {
+         "field": "S"
+        }
+       ],
+       "fields": {
+        "Amount": {
+         "group": {
+          "start": 0,
+          "end": 50,
+          "interval": 10
+         }
+        },
+        "Date": {
+         "date_group": {
+          "levels": [
+           "months",
+           "quarters",
+           "years"
+          ],
+          "start": 43466.0,
+          "end": 44196.0
+         }
+        },
+        "Product": {
+         "discrete": {
+          "name": "Product2",
+          "groups": [
+           {
+            "name": "G1",
+            "items": [
+             "A",
+             "B"
+            ]
+           },
+           {
+            "name": "G2",
+            "items": [
+             "C",
+             "D"
+            ]
+           }
+          ]
+         }
+        }
+       }
+      }
+     }
+    ]
+   },
+   {
+    "name": "A",
+    "cells": {},
+    "pivot_tables": [
+     {
+      "name": "GroupedA",
+      "source": "Data!A1:D11",
+      "location": "A3",
+      "definition": {
+       "rows": [
+        "Amount"
+       ],
+       "data": [
+        {
+         "field": "S"
+        }
+       ],
+       "fields": {
+        "Amount": {
+         "group": {
+          "start": 0,
+          "end": 50,
+          "interval": 10
+         }
+        },
+        "Date": {
+         "date_group": {
+          "levels": [
+           "months",
+           "quarters",
+           "years"
+          ],
+          "start": 43466.0,
+          "end": 44196.0
+         }
+        },
+        "Product": {
+         "discrete": {
+          "name": "Product2",
+          "groups": [
+           {
+            "name": "G1",
+            "items": [
+             "A",
+             "B"
+            ]
+           },
+           {
+            "name": "G2",
+            "items": [
+             "C",
+             "D"
+            ]
+           }
+          ]
+         }
+        }
+       }
+      }
+     }
+    ]
+   },
+   {
+    "name": "M",
+    "cells": {},
+    "pivot_tables": [
+     {
+      "name": "GroupedM",
+      "source": "Data!A1:D11",
+      "location": "A3",
+      "definition": {
+       "rows": [
+        "Product2",
+        "Product"
+       ],
+       "data": [
+        {
+         "field": "S"
+        }
+       ],
+       "fields": {
+        "Amount": {
+         "group": {
+          "start": 0,
+          "end": 50,
+          "interval": 10
+         }
+        },
+        "Date": {
+         "date_group": {
+          "levels": [
+           "months",
+           "quarters",
+           "years"
+          ],
+          "start": 43466.0,
+          "end": 44196.0
+         }
+        },
+        "Product": {
+         "discrete": {
+          "name": "Product2",
+          "groups": [
+           {
+            "name": "G1",
+            "items": [
+             "A",
+             "B"
+            ]
+           },
+           {
+            "name": "G2",
+            "items": [
+             "C",
+             "D"
+            ]
+           }
+          ]
+         }
+        }
+       }
+      }
+     }
+    ]
+   },
+   {
+    "name": "Calc",
+    "cells": {
+     "B1": "=GETPIVOTDATA(\"S\",Y!$A$3,\"Years\",2019)",
+     "B2": "=GETPIVOTDATA(\"S\",Y!$A$3,\"Years\",2020)",
+     "B3": "=GETPIVOTDATA(\"S\",Y!$A$3,\"Years\",\"<1/1/2019\")",
+     "B4": "=GETPIVOTDATA(\"S\",Y!$A$3)",
+     "B5": "=GETPIVOTDATA(\"S\",A!$A$3,\"Amount\",\"10-19\")",
+     "B6": "=GETPIVOTDATA(\"S\",A!$A$3,\"Amount\",\"40-49\")",
+     "B7": "=GETPIVOTDATA(\"S\",M!$A$3,\"Product2\",\"G1\")",
+     "B8": "=GETPIVOTDATA(\"S\",M!$A$3,\"Product2\",\"E\")",
+     "B9": "=GETPIVOTDATA(\"S\",Y!$A$3,\"Years\",2019,\"Quarters\",\"Qtr2\")"
+    }
+   }
+  ]
+ }
+}

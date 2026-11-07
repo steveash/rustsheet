@@ -163,6 +163,14 @@ ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx	1
 ironcalc-calc/STATISTICAL/GAMMA.xlsx	1
 ironcalc-calc/STATISTICAL/LINEST_LOGEST.xlsx	5
 ironcalc-calc/STATISTICAL/NORM_DIST.xlsx	9
+pivot-export/t4177-api-items-refresh.export.json	3
+pivot-export/t4177-api-items.export.json	3
+pivot-export/t4177-api-spill-refresh.export.json	1
+pivot-export/t4177-api-spill.export.json	4
+pivot-export/t4177-date-flags-needed.export.json	125
+pivot-export/t4177-date-levels.export.json	11
+pivot-export/t4177-grouped-cache.export.json	6
+pivot-export/t4177-manual-groups.export.json	10
 probes/accrint-zero-results.case.json	15
 probes/amordegrc-fraction-state-ai.case.json	1
 probes/fin-cumipmt-gate-edges.case.json	14

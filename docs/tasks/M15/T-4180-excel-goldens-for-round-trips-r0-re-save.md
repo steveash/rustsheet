@@ -21,6 +21,11 @@ Plan: docs/research/xlsx-round-trip-2026-11-04.md §4, "Excel as arbiter". The o
 Excel's save (docs/architecture/oracle.md). RQ1 (what Excel for the web drops that desktop keeps) must be answered
 first, for the features the probes cover. Record it in docs/excel-semantics/.
 
+Notes: T-4177 added the cell suite kind `export` (crates/rustsheet-eval/src/export_case.rs, eval/suites/pivot-export),
+where a refusal is `CaseStatus::ExcelRefused` from a sidecar's `refused` (Excel's Graph error code and message). This
+task decides how SPEC-0033's `excel-refused` maps onto the round-trip `Verdict` so the two kinds do not diverge
+(docs/architecture/eval-harness.md "Engine-export suites").
+
 ## Acceptance criteria
 - [ ] `rustsheet-oracle` has a round-trip mode producing R0 and R1 goldens for a suite.
 - [ ] RQ1 findings are in docs/excel-semantics/.
