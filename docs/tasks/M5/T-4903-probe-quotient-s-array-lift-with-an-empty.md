@@ -3,7 +3,7 @@ id: T-4903
 title: "Probe QUOTIENT's array lift with an empty argument and SERIESSUM's empty coefficients against an x/n/m error"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -25,12 +25,19 @@ in each element, and which error wins when SERIESSUM's coefficients are empty an
   the helper instead.
 
 ## Acceptance criteria
-- [ ] A probes case (excel-graph) has `INDEX(QUOTIENT({7,8},),1,2)`, `ROWS(QUOTIENT(,{2;4}))`, and
+- [x] A probes case (excel-graph) has `INDEX(QUOTIENT({7,8},),1,2)`, `ROWS(QUOTIENT(,{2;4}))`, and
       `SERIESSUM(1/0,1,1,)`, `SERIESSUM(2,"x",1,)` and `SERIESSUM(2,1,NA(),)`, each in a cell with room to spill.
       Their predictions are committed before the fill, and each cell passes.
-- [ ] numbers.md drops the UNVERIFIED note or states the order the probe shows.
-- [ ] let.rs uses `is_empty_argument` at the duplicated test.
-- [ ] `make check` green; reviewers approve.
+- [x] numbers.md drops the UNVERIFIED note or states the order the probe shows.
+- [x] let.rs uses `is_empty_argument` at the duplicated test.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The 2010+ roundings (T-4873 settled them).
+
+## Outcome
+Probe `t4903-empty-arg-quotient-seriessum-lift` (excel-graph, 2026-11-07), predictions committed before the fill, 8/8
+held: `INDEX(QUOTIENT({7,8},),1,2)` `#N/A`, `ROWS(QUOTIENT(,{2;4}))` 2, and SERIESSUM with empty coefficients gives
+`#DIV/0!`, `#VALUE!`, `#N/A` for an erroring x, n, m (x, n, m rank first, as the engine does; B4:B5 added after fidelity review because B3 `#N/A` could not tell an m error from the empty coefficients, A3 COLUMNS added for the lift). numbers.md lost its
+UNVERIFIED note. The let.rs duplicate was already gone on main (it uses `is_empty_argument`). No engine change; no
+math sidecar entries (no Gate A one-call cell); `math --check` current.

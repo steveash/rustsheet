@@ -2726,6 +2726,7 @@ C	probes/t4895-two-criteria-hand-hidden-control.case.json	18
 C	probes/t4895-two-criteria-hand-hidden-delete-one.case.json	18
 C	probes/t4895-two-criteria-number-format-control.case.json	18
 C	probes/t4895-two-criteria-number-format-delete-one.case.json	18
+C	probes/t4903-empty-arg-quotient-seriessum-lift.case.json	8
 C	probes/t4923-sqrtpi-factdouble-omitted.case.json	13
 C	probes/t4928-iseven-isodd-omitted.case.json	12
 C	probes/table-edits/plain-range-delete-row-first.case.json	8

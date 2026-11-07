@@ -1,0 +1,26 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-4903: QUOTIENT's array lift with a written-empty argument, and which error wins when SERIESSUM's coefficients are empty and x, n or m is an error. Predictions, committed before the fill: A1 #N/A, A2 2, B1 #DIV/0!, B2 #VALUE!, B3 #N/A (x, n and m are checked before the empty coefficients, as the engine does). Added after review, predictions committed before the refill: A3 2, B4 #DIV/0!, B5 #VALUE!.",
+ "tags": [
+  "M5",
+  "probe",
+  "math",
+  "T-4903"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=INDEX(QUOTIENT({7,8},),1,2)",
+    "A2": "=ROWS(QUOTIENT(,{2;4}))",
+    "A3": "=COLUMNS(QUOTIENT({7,8},))",
+    "B1": "=SERIESSUM(1/0,1,1,)",
+    "B2": "=SERIESSUM(2,\"x\",1,)",
+    "B3": "=SERIESSUM(2,1,NA(),)",
+    "B4": "=SERIESSUM(2,1,1/0,)",
+    "B5": "=SERIESSUM(2,1,\"x\",)"
+   }
+  }
+ ],
+ "expected": {}
+}
