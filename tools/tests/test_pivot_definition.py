@@ -293,7 +293,7 @@ def test_calculated_fields_page_fields_and_numeric_groups() -> None:
                 "data": [{"field": "Sales"}],
                 "fields": {"Region": {"xml": {"items": "<items/>"}}},
             },
-            "are ['autoSortScope', 'extLst']",
+            "are ['autoSortScope', 'extLst', 'groupItems']",
         ),
     ],
 )

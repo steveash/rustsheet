@@ -566,7 +566,7 @@ impl<'a> DefinedPivot<'a> {
                 let _ = write!(
                     fields,
                     r#"<cacheField name="{name}" numFmtId="0" databaseField="0">{}</cacheField>"#,
-                    f.group_xml
+                    raw_cache::group_items(f, &f.group_xml)?
                 );
                 continue;
             }
@@ -587,8 +587,9 @@ impl<'a> DefinedPivot<'a> {
             }
             let _ = write!(
                 fields,
-                r#"<cacheField name="{name}" numFmtId="0">{}{group}</cacheField>"#,
-                f.shared_items()?
+                r#"<cacheField name="{name}" numFmtId="0">{}{}</cacheField>"#,
+                f.shared_items()?,
+                raw_cache::group_items(f, &group)?
             );
         }
         let extra = attrs(self.d.get("cache"))?;
@@ -630,12 +631,16 @@ impl<'a> DefinedPivot<'a> {
                 f.listed().then(|| keys.collect())
             })
             .collect();
+        let names: Vec<&str> = database.iter().map(|f| f.name.as_str()).collect();
+        let raw = self.records_xml(&names)?;
         let mut rows = String::new();
         for r in 0..self.records {
             rows.push_str("<r>");
-            for (f, at) in database.iter().zip(&index) {
+            for (k, (f, at)) in database.iter().zip(&index).enumerate() {
                 let value = f.values.get(r).and_then(Option::as_ref);
-                if let Some(k) = at.as_ref().and_then(|at| at.get(&key(value))) {
+                if let Some(xml) = raw.get(&(r, k)) {
+                    rows.push_str(xml);
+                } else if let Some(k) = at.as_ref().and_then(|at| at.get(&key(value))) {
                     let _ = write!(rows, r#"<x v="{k}"/>"#);
                 } else if let (true, Some(Cached::Number(n))) = (f.role == Role::Dates, value) {
                     let _ = write!(rows, r#"<d v="{}"/>"#, groups::iso_date(*n)?);
@@ -887,5 +892,6 @@ mod export_tests;
 mod groups;
 mod item_order;
 mod pivot_field;
+mod raw_cache;
 #[cfg(test)]
 mod tests;

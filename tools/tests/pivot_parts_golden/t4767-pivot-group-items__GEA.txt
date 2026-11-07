@@ -1,0 +1,74 @@
+== cache_definition
+pivotCacheDefinition createdVersion=6 id=rId1 minRefreshableVersion=3 recordCount=8 refreshOnLoad=1 refreshedVersion=6
+  cacheSource type=worksheet
+    worksheetSource ref=A1:B9 sheet=Groups
+  cacheFields count=3
+    cacheField name=Product numFmtId=0
+      sharedItems count=6
+        s v=A
+        s v=B
+        s v=C
+        s v=D
+        s v=E
+        s v=F
+      fieldGroup par=2
+    cacheField name=S numFmtId=0
+      sharedItems containsInteger=1 containsNumber=1 containsSemiMixedTypes=0 containsString=0 maxValue=128 minValue=1
+    cacheField databaseField=0 name=Product2 numFmtId=0
+      fieldGroup base=0
+        discretePr count=6
+          x v=1
+          x v=1
+          x v=2
+          x v=2
+          x v=3
+          x v=0
+        groupItems count=4
+          s v=F
+          s v=Group2
+          s v=Group1
+          e b=1 bc=FF0000 c=1 cp=1 f=1 fc=00FF00 i=1 in=0 st=1 u=1 un=1 v=#N/A
+== cache_records
+pivotCacheRecords count=8
+  r
+    x v=0
+    n v=1
+  r
+    x v=1
+    n v=2
+  r
+    x v=2
+    n v=4
+  r
+    x v=3
+    n v=8
+  r
+    x v=4
+    n v=16
+  r
+    x v=5
+    n v=32
+  r
+    x v=0
+    n v=64
+  r
+    x v=2
+    n v=128
+== table
+pivotTableDefinition applyAlignmentFormats=0 applyBorderFormats=0 applyFontFormats=0 applyNumberFormats=0 applyPatternFormats=0 applyWidthHeightFormats=1 cacheId=1 createdVersion=6 dataCaption=Values indent=0 itemPrintTitles=1 minRefreshableVersion=3 name=P_GEA outline=1 outlineData=1 updatedVersion=6 useAutoFormatting=1
+  location firstDataCol=1 firstDataRow=1 firstHeaderRow=1 ref=A3:B4
+  pivotFields count=3
+    pivotField showAll=0
+    pivotField dataField=1 showAll=0
+    pivotField axis=axisRow showAll=0
+      items count=5
+        item x=1
+        item x=2
+        item x=3
+        item x=0
+        item t=default
+  rowFields count=1
+    field x=2
+  dataFields count=1
+    dataField baseField=0 baseItem=0 fld=1 name=Sum of S
+  pivotTableStyleInfo name=PivotStyleLight16 showColHeaders=1 showColStripes=0 showLastColumn=1 showRowHeaders=1 showRowStripes=0

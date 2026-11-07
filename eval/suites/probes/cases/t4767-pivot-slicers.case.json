@@ -1,0 +1,336 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-4767: does Excel for the web open a pivot with a slicer (pivot_slicers.py), and does the slicer's selection filter the pivot? Data!A1:D7 is Region, Product, Date, Sales over six records (East A 1, West A 2, East B 4, West B 8, North C 16, East C 32; Sales distinct powers of two, so a sum names its records). Each sheet holds a builder-v2 pivot at A3, rows Region, Sum of Sales, over its own cache, with nothing hidden, and a slicer on Region at E3 (slicer cache with pivotTables/pivotTable tabId and name, data/tabular pivotCacheId and items i x s; the cache's x14:pivotCacheDefinition pivotCacheId; the sheet's x14:slicerList; a drawing frame). SL: only East selected. SA: every item selected. SM: East and West selected, North nd=1, tabular sortOrder=descending customListSort=0 showMissing=0 crossFilter=none, slicer columnCount=2 showCaption=0 style=SlicerStyleLight2. SH: East selected, with the x15:slicerCacheHideItemsWithNoData extension (count=0). SD: East selected, x14:pivotCacheDefinition slicerData=0 (slicerData=1 is refused: pivots.md). SX: every item selected while the pivot hides West (pivotField item h=1): which one wins. TS: a table Sales over TS!A1:D7 (the Data records) with a table slicer on Region (x15:tableSlicerCache tableId column sortOrder=descending customListSort=0 crossFilter=none). The pivot cells are in the sidecar's pivots section; Q!A1 only makes the case scored.",
+ "tags": [
+  "probe",
+  "pivot",
+  "T-4767",
+  "M16"
+ ],
+ "pivot_features": [
+  "PV-1277",
+  "PV-1399",
+  "PV-1430",
+  "PV-1435",
+  "PV-1457",
+  "PV-1510",
+  "PV-1515"
+ ],
+ "sheets": [
+  {
+   "name": "Data",
+   "cells": {
+    "A1": "Region",
+    "B1": "Product",
+    "C1": "Date",
+    "D1": "Sales",
+    "A2": "East",
+    "B2": "A",
+    "C2": 43480,
+    "D2": 1,
+    "A3": "West",
+    "B3": "A",
+    "C3": 43530,
+    "D3": 2,
+    "A4": "East",
+    "B4": "B",
+    "C4": 43600,
+    "D4": 4,
+    "A5": "West",
+    "B5": "B",
+    "C5": 43800,
+    "D5": 8,
+    "A6": "North",
+    "B6": "C",
+    "C6": 43900,
+    "D6": 16,
+    "A7": "East",
+    "B7": "C",
+    "C7": 44000,
+    "D7": 32
+   },
+   "number_formats": {
+    "C2": "yyyy-mm-dd",
+    "C3": "yyyy-mm-dd",
+    "C4": "yyyy-mm-dd",
+    "C5": "yyyy-mm-dd",
+    "C6": "yyyy-mm-dd",
+    "C7": "yyyy-mm-dd"
+   }
+  },
+  {
+   "name": "SL",
+   "cells": {},
+   "pivot_tables": [
+    {
+     "name": "P_SL",
+     "source": "Data!A1:D7",
+     "location": "A3",
+     "definition": {
+      "rows": [
+       "Region"
+      ],
+      "data": [
+       {
+        "field": "Sales"
+       }
+      ]
+     }
+    }
+   ],
+   "slicers": [
+    {
+     "pivot": "P_SL",
+     "field": "Region",
+     "anchor": "E3",
+     "selected": [
+      "East"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "SA",
+   "cells": {},
+   "pivot_tables": [
+    {
+     "name": "P_SA",
+     "source": "Data!A1:D7",
+     "location": "A3",
+     "definition": {
+      "rows": [
+       "Region"
+      ],
+      "data": [
+       {
+        "field": "Sales"
+       }
+      ]
+     }
+    }
+   ],
+   "slicers": [
+    {
+     "pivot": "P_SA",
+     "field": "Region",
+     "anchor": "E3"
+    }
+   ]
+  },
+  {
+   "name": "SM",
+   "cells": {},
+   "pivot_tables": [
+    {
+     "name": "P_SM",
+     "source": "Data!A1:D7",
+     "location": "A3",
+     "definition": {
+      "rows": [
+       "Region"
+      ],
+      "data": [
+       {
+        "field": "Sales"
+       }
+      ]
+     }
+    }
+   ],
+   "slicers": [
+    {
+     "pivot": "P_SM",
+     "field": "Region",
+     "anchor": "E3",
+     "selected": [
+      "East",
+      "West"
+     ],
+     "item_attrs": {
+      "North": {
+       "nd": true
+      }
+     },
+     "tabular": {
+      "sortOrder": "descending",
+      "customListSort": false,
+      "showMissing": false,
+      "crossFilter": "none"
+     },
+     "slicer": {
+      "columnCount": 2,
+      "showCaption": false,
+      "style": "SlicerStyleLight2"
+     }
+    }
+   ]
+  },
+  {
+   "name": "SH",
+   "cells": {},
+   "pivot_tables": [
+    {
+     "name": "P_SH",
+     "source": "Data!A1:D7",
+     "location": "A3",
+     "definition": {
+      "rows": [
+       "Region"
+      ],
+      "data": [
+       {
+        "field": "Sales"
+       }
+      ]
+     }
+    }
+   ],
+   "slicers": [
+    {
+     "pivot": "P_SH",
+     "field": "Region",
+     "anchor": "E3",
+     "selected": [
+      "East"
+     ],
+     "cache_ext": "<extLst><x:ext uri=\"{470722E0-AACD-4C17-9CDC-17EF765DBC7E}\" xmlns:x15=\"http://schemas.microsoft.com/office/spreadsheetml/2010/11/main\"><x15:slicerCacheHideItemsWithNoData count=\"0\"/></x:ext></extLst>"
+    }
+   ]
+  },
+  {
+   "name": "SD",
+   "cells": {},
+   "pivot_tables": [
+    {
+     "name": "P_SD",
+     "source": "Data!A1:D7",
+     "location": "A3",
+     "definition": {
+      "rows": [
+       "Region"
+      ],
+      "data": [
+       {
+        "field": "Sales"
+       }
+      ]
+     }
+    }
+   ],
+   "slicers": [
+    {
+     "pivot": "P_SD",
+     "field": "Region",
+     "anchor": "E3",
+     "selected": [
+      "East"
+     ],
+     "pivot_cache": {
+      "slicerData": false
+     }
+    }
+   ]
+  },
+  {
+   "name": "SX",
+   "cells": {},
+   "pivot_tables": [
+    {
+     "name": "P_SX",
+     "source": "Data!A1:D7",
+     "location": "A3",
+     "definition": {
+      "rows": [
+       "Region"
+      ],
+      "data": [
+       {
+        "field": "Sales"
+       }
+      ],
+      "fields": {
+       "Region": {
+        "hidden": [
+         "West"
+        ]
+       }
+      }
+     }
+    }
+   ],
+   "slicers": [
+    {
+     "pivot": "P_SX",
+     "field": "Region",
+     "anchor": "E3"
+    }
+   ]
+  },
+  {
+   "name": "TS",
+   "cells": {
+    "A1": "Region",
+    "B1": "Product",
+    "C1": "Date",
+    "D1": "Sales",
+    "A2": "East",
+    "B2": "A",
+    "C2": 43480,
+    "D2": 1,
+    "A3": "West",
+    "B3": "A",
+    "C3": 43530,
+    "D3": 2,
+    "A4": "East",
+    "B4": "B",
+    "C4": 43600,
+    "D4": 4,
+    "A5": "West",
+    "B5": "B",
+    "C5": 43800,
+    "D5": 8,
+    "A6": "North",
+    "B6": "C",
+    "C6": 43900,
+    "D6": 16,
+    "A7": "East",
+    "B7": "C",
+    "C7": 44000,
+    "D7": 32
+   },
+   "number_formats": {
+    "C2": "yyyy-mm-dd",
+    "C3": "yyyy-mm-dd",
+    "C4": "yyyy-mm-dd",
+    "C5": "yyyy-mm-dd",
+    "C6": "yyyy-mm-dd",
+    "C7": "yyyy-mm-dd"
+   },
+   "tables": [
+    {
+     "name": "Sales",
+     "ref": "A1:D7"
+    }
+   ],
+   "slicers": [
+    {
+     "table": "Sales",
+     "column": "Region",
+     "anchor": "F3",
+     "table_slicer": {
+      "sortOrder": "descending",
+      "customListSort": false,
+      "crossFilter": "none"
+     }
+    }
+   ]
+  },
+  {
+   "name": "Q",
+   "cells": {
+    "A1": "=COUNTA(Data!A2:A7)"
+   }
+  }
+ ],
+ "expected": {}
+}

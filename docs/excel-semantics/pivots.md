@@ -1593,6 +1593,11 @@ Rule: Excel for the web refuses to open a workbook (createSession 501 `FileCorru
 - (T-4130) a pivotField with `hideNewItems="1"` or with `hiddenLevel="1"`;
 - (T-4130) a tuple list (`<tpls>`) under a cache shared item of any type (`s`, `n`, `m`, `e`). Under a record value
   (`pivotCacheRecords/r/*`) it opens.
+- (T-4767) a group item (`fieldGroup/groupItems/*`) with an `<x>` child (with or without `cp`), or with a tuple list
+  (`<tpls>`, with or without `c`); `cp` alone opens;
+- (T-4767) a timeline cache with a `<timelinePivotFilter>`, in every shape tried ("Capability matrix 3");
+- (T-4767) a pivot cache whose `x14:pivotCacheDefinition` has `slicerData="1"` while a pivot uses it (`slicerData="0"`
+  opens);
 - (T-4505) a calculated field (`cacheField@formula`) whose formula calls NOW(), TODAY(), RAND() or
   INDIRECT("A1"), holds an array constant (`SUM({1,2})+Units`) or a cell reference (`Data!C2*2`, `A1*2`), or
   names no field (`Foo*2`: the file is refused, it does not show #NAME?).
@@ -1876,9 +1881,85 @@ Evidence: these cases, all excel-graph, 2026-11-07, T-4130:
 
 The four tuple rows under records (`pivotCacheRecords/r/{e,m,n,s}/tpls/tpl@hier`) opened in scratch files only
 (previous entry), which are not committed: the case builder writes no tuples. Their catalog rows stay `unknown`.
-Status: VERIFIED (excel-graph) for opening and rendering; what each shape shows is the next entries'. UNVERIFIED
-(probe pending: T-4767, which teaches the builder to write tuples and commits the probe): that a tuple under a
-record value opens.
+Status: VERIFIED (excel-graph) for opening and rendering; what each shape shows is the next entries'. That a tuple
+under a record value opens is VERIFIED (excel-graph) by probes/t4767-pivot-record-tuples ("Capability matrix 3").
+
+## Capability matrix 3: grouping, slicers and timelines, and tuples under records
+Rule: Excel for the web opens and renders a pivot carrying any one of the catalog rows of the grouping and
+slicers-timelines families except these, which it refuses (`FileCorruptTryRepair`; "Pivot flags Excel for the web
+refuses"): a group item's `<x>` child and its tuple list (`<tpls>`), every `<timelinePivotFilter>` of a timeline cache,
+and `slicerData="1"` on a pivot cache a pivot uses. That covers every ST_GroupBy value (seconds, minutes, hours and days
+here; months, quarters and years in T-4170's probe; range in T-4128's), `fieldGroup` with `base` and `par`,
+`discretePr`, `rangePr` and its attributes, group items of every type (`b`, `d`, `e`, `m`, `n`, `s`) with every
+attribute (`u`, `f`, `c`, `cp`, and for `e`, `m`, `n`, `s` also `in`, `bc`, `fc`, `i`, `un`, `st`, `b`), a slicer (its
+cache, `tabular` and every `tabular` and item attribute, the slicers part), the x15 `slicerCacheHideItemsWithNoData`
+extension, a table slicer (`x15:tableSlicerCache` and its attributes), a timeline (its cache, `state` with `selection`
+and `bounds`, the timelines part, `level` and `selectionLevel`) and `x15:timelinePivotCacheDefinition` with
+`timelineData` 0 or 1. A tuple list under a record value (`pivotCacheRecords/r/{e,m,n,s}/tpls`) opens too. The
+catalog's `web` column (eval/catalog/pivot-features.tsv) records the answer per row and its `evidence` column names the
+probe and sheet: 89 grouping rows yes and 36 no, 56 slicers-timelines rows yes and 58 no, and the four record-tuple
+filtering rows (PV-0699, PV-0720, PV-0740, PV-0761) yes. The refused group-item rows were tried only whole: every
+refused `<x>` had its `v`, and every refused tuple list had a `<tpl>` with `fld`, `hier` and `item` together (and `c`
+on `tpls`, but for one `n` run without it). So the `no` of a single attribute row (PV-0146 to PV-0148, PV-0167 to
+PV-0169, PV-0187 to PV-0189, PV-0208 to PV-0210, the `x@v` and `tpls@c` rows) means refused with the others
+present, not that the attribute refuses alone.
+
+What the web renders (sidecar `pivots` sections):
+- **A slicer's selection filters the pivot.** With only East selected and nothing hidden in the pivot, the pivot shows
+  East alone (37); with East and West, both (47).
+- **The slicer wins over the pivot's own hidden items.** SX: every slicer item selected while the pivot hides West
+  renders East, West and North (63).
+- **A timeline's selection filters the pivot.** TL, 2019-01-01 to 2019-03-31: only A (3). With no selection (TN,
+  `filterType="unknown"`) nothing is filtered.
+- **The timeline wins over the pivot's own date filter.** TX: the pivot's own dateBetween filter for Q2 2019 is
+  replaced by the timeline's Q1 selection (A 3).
+- **A group item renders as its type.** `<b v="1">` shows the text TRUE; `<d v="2020-01-01T00:00:00">` the number
+  43831, displayed 1/1/2020; `<e v="#N/A">` the error #N/A; `<m/>` the text (blank); `<n v="7">` the number 7. The
+  saved cache keeps the item's type for `b`, `e`, `m` and `n` (the sidecar's `group_items`); it cannot tell a saved
+  `d` from an `s`, as the snapshot reads both as text. The engine shows the `d` item as 43831, not 1/1/2020
+  (GD!A6, GDA!A6; owner T-4957).
+- **Date levels below a day** label as T-4170's `date_labels` writes them: seconds and minutes `:00`, `:01`, ...;
+  hours `12 AM`, `6 AM`, `12 PM`, `6 PM`; days `15-Mar`. Only items with data are shown.
+- **A tuple under a record value changes nothing**: the cache is refreshed on load, and the pivot renders the source
+  (East 37, Grand Total 63) for an `n`, `m`, `e` or `s` record value carrying `<tpls>`.
+
+Also seen in Excel's saved files, from the oracle's cached downloads only. The sidecars record none of it, so all of
+it is UNVERIFIED (probe pending: T-4956, which makes the snapshot record it); no task implements the save, and T-4188
+owns slicer export. Excel saves a slicer's unselected items as the pivotField's `h="1"`, and a timeline's selection as
+a `dateBetween` pivot filter named after the field, with x15 `pivotFilter useWholeDay="1"`. It drops every
+group-item attribute (GBA ... GSA save as GB ... GN, and GSA as `<s v="North"/>`), the slicer item `nd`, the
+`slicerCacheHideItemsWithNoData@count`, `singleRangeFilterState="0"` and the whole
+`x15:timelinePivotCacheDefinition`; it keeps every `tabular` and `tableSlicerCache` attribute and every `slicer`
+attribute; it lists the slicer items in sorted order (East, North, West); and it adds `xr10:uid` to slicer and timeline
+caches and `scrollPosition` to the timeline.
+Evidence: these cases, all excel-graph, 2026-11-07, T-4767:
+- probes/t4767-pivot-group-items (GB, GBA, GD, GDA, GE, GEA, GM, GMA, GN, GNA, GSA; LS, LM, LH, LD);
+- probes/t4767-pivot-slicers (SL, SA, SM, SH, SD, SX, TS);
+- probes/t4767-pivot-timelines (TL, TN, TA, TD0, TD1, TX);
+- probes/t4767-pivot-record-tuples (RN, RM, RE, RS);
+- for the other rows, the probes the catalog cites (t4128-pivot-spike G, t4170-pivot-manual-groups MC,
+  t4170-pivot-date-levels DC).
+
+The refusals are T-4767 scratch runs (excel-graph, 2026-11-07), not committable: Excel saves nothing for a file it
+refuses. Group items: the MG sheet of probes/t4170-pivot-manual-groups with the group item North replaced by each type
+with `cp="1"` and `<x v="0"/>` (input sha256 969635cc… b, b562a7d7… d, 6ba24f07c0c67008… e, fd26a49c… m, eeced560… n,
+2c68c80a… s), with `<x v="0"/>` and no `cp` (bf825d02… b, 77312e37… n), and with `<tpls c="1"><tpl fld="0" hier="0"
+item="0"/></tpls>` (5f38eab7… e, 5fed053d… m, c8ecc774… n, 97b801b0… s; and with no `c`, bc5dd060… n); the same items
+plain, with every attribute, and with `cp` alone open. Timelines: a TL-shaped single-sheet file with a
+`<timelinePivotFilter name fld useWholeDay id>` holding an `x:autoFilter` whose filterColumn criterion is customFilters
+(f72042fc…, with `description`), dynamicFilter with every attribute (903d5094…), filters with `blank`,
+`calendarType`, a filter and a dateGroupItem with every attribute (cedc1c00…), top10 (9f61a096…), iconFilter
+(ef50bde2…), colorFilter (9a32a53d…), customFilters with a sortState and sortCondition with every attribute
+(8dc73d58…), and filterColumn `hiddenButton` and `showButton` (be63cd37…); also with a matching pivot filter in the
+pivot (bcc19446…), with no `mc:Ignorable` (ddaac467…), with no `id` (7c7d3b5d…), the minimal `<timelinePivotFilter
+fld="2"><x:autoFilter ref="A1"/></timelinePivotFilter>` (4a33fad9…), the autoFilter in the main namespace by default
+(5beb6318…) and with no `pivotTables` (ffb788ac…). The same file without the element opens (TL). Slicers: SD with
+`slicerData="1"` (8ae20179…).
+Status: VERIFIED (excel-graph) for opening and for what the pivot renders. Whether an Excel-saved timeline cache with
+a `timelinePivotFilter` opens on the web is UNVERIFIED (probe pending: T-4955): the web never saved one in these
+runs, and no Excel-saved file with one is in the surveyed corpora. Out of scope: desktop Excel (decision 0266).
+Implemented in: nothing yet. Grouping is T-4171's, slicers and timelines are T-4188's; the engine adapter ignores a
+spec's `slicers` and `timelines`, so it renders these pivots unfiltered.
 
 ## Pivot sorts and filters as Excel for the web renders them
 Rule, per shape (each its own pivot, rows Product unless said, Sum of Sales):

@@ -1,0 +1,914 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "pivots": [
+  {
+   "cache_fields": [
+    {
+     "name": "Region"
+    },
+    {
+     "name": "Product",
+     "shared_flags": {
+      "count": "3"
+     },
+     "shared_items": [
+      {
+       "t": "s",
+       "v": "A"
+      },
+      {
+       "t": "s",
+       "v": "B"
+      },
+      {
+       "t": "s",
+       "v": "C"
+      }
+     ]
+    },
+    {
+     "name": "Date",
+     "shared_flags": {
+      "containsDate": "1",
+      "containsNonDate": "0",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "count": "6",
+      "maxDate": "2020-06-19T00:00:00",
+      "minDate": "2019-01-15T00:00:00"
+     },
+     "shared_items": [
+      {
+       "t": "d",
+       "v": "2019-01-15T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2019-03-06T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2019-05-15T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2019-12-01T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2020-03-10T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2020-06-18T00:00:00"
+      }
+     ]
+    },
+    {
+     "name": "Sales",
+     "shared_flags": {
+      "containsInteger": "1",
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "maxValue": "32",
+      "minValue": "1"
+     }
+    }
+   ],
+   "cells": {
+    "A3": {
+     "t": "s",
+     "v": "Row Labels"
+    },
+    "A4": {
+     "t": "s",
+     "v": "A"
+    },
+    "A5": {
+     "t": "s",
+     "v": "Grand Total"
+    },
+    "B3": {
+     "t": "s",
+     "v": "Sum of Sales"
+    },
+    "B4": {
+     "t": "n",
+     "v": 3.0
+    },
+    "B5": {
+     "t": "n",
+     "v": 3.0
+    }
+   },
+   "col_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": []
+    }
+   ],
+   "col_page_count": 0,
+   "first_data_col": 1,
+   "first_data_row": 1,
+   "first_header_row": 1,
+   "location": "A3:B5",
+   "name": "P_TL",
+   "row_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      0
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "row_page_count": 0,
+   "sheet": "TL",
+   "text": {
+    "A3": "Row Labels",
+    "A4": "A",
+    "A5": "Grand Total",
+    "B3": "Sum of Sales",
+    "B4": "3",
+    "B5": "3"
+   }
+  },
+  {
+   "cache_fields": [
+    {
+     "name": "Region"
+    },
+    {
+     "name": "Product",
+     "shared_flags": {
+      "count": "3"
+     },
+     "shared_items": [
+      {
+       "t": "s",
+       "v": "A"
+      },
+      {
+       "t": "s",
+       "v": "B"
+      },
+      {
+       "t": "s",
+       "v": "C"
+      }
+     ]
+    },
+    {
+     "name": "Date",
+     "shared_flags": {
+      "containsDate": "1",
+      "containsNonDate": "0",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "count": "6",
+      "maxDate": "2020-06-19T00:00:00",
+      "minDate": "2019-01-15T00:00:00"
+     },
+     "shared_items": [
+      {
+       "t": "d",
+       "v": "2019-01-15T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2019-03-06T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2019-05-15T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2019-12-01T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2020-03-10T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2020-06-18T00:00:00"
+      }
+     ]
+    },
+    {
+     "name": "Sales",
+     "shared_flags": {
+      "containsInteger": "1",
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "maxValue": "32",
+      "minValue": "1"
+     }
+    }
+   ],
+   "cells": {
+    "A3": {
+     "t": "s",
+     "v": "Row Labels"
+    },
+    "A4": {
+     "t": "s",
+     "v": "A"
+    },
+    "A5": {
+     "t": "s",
+     "v": "B"
+    },
+    "A6": {
+     "t": "s",
+     "v": "C"
+    },
+    "A7": {
+     "t": "s",
+     "v": "Grand Total"
+    },
+    "B3": {
+     "t": "s",
+     "v": "Sum of Sales"
+    },
+    "B4": {
+     "t": "n",
+     "v": 3.0
+    },
+    "B5": {
+     "t": "n",
+     "v": 12.0
+    },
+    "B6": {
+     "t": "n",
+     "v": 48.0
+    },
+    "B7": {
+     "t": "n",
+     "v": 63.0
+    }
+   },
+   "col_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": []
+    }
+   ],
+   "col_page_count": 0,
+   "first_data_col": 1,
+   "first_data_row": 1,
+   "first_header_row": 1,
+   "location": "A3:B7",
+   "name": "P_TN",
+   "row_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      0
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      1
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      2
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "row_page_count": 0,
+   "sheet": "TN",
+   "text": {
+    "A3": "Row Labels",
+    "A4": "A",
+    "A5": "B",
+    "A6": "C",
+    "A7": "Grand Total",
+    "B3": "Sum of Sales",
+    "B4": "3",
+    "B5": "12",
+    "B6": "48",
+    "B7": "63"
+   }
+  },
+  {
+   "cache_fields": [
+    {
+     "name": "Region"
+    },
+    {
+     "name": "Product",
+     "shared_flags": {
+      "count": "3"
+     },
+     "shared_items": [
+      {
+       "t": "s",
+       "v": "A"
+      },
+      {
+       "t": "s",
+       "v": "B"
+      },
+      {
+       "t": "s",
+       "v": "C"
+      }
+     ]
+    },
+    {
+     "name": "Date",
+     "shared_flags": {
+      "containsDate": "1",
+      "containsNonDate": "0",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "count": "6",
+      "maxDate": "2020-06-19T00:00:00",
+      "minDate": "2019-01-15T00:00:00"
+     },
+     "shared_items": [
+      {
+       "t": "d",
+       "v": "2019-01-15T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2019-03-06T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2019-05-15T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2019-12-01T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2020-03-10T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2020-06-18T00:00:00"
+      }
+     ]
+    },
+    {
+     "name": "Sales",
+     "shared_flags": {
+      "containsInteger": "1",
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "maxValue": "32",
+      "minValue": "1"
+     }
+    }
+   ],
+   "cells": {
+    "A3": {
+     "t": "s",
+     "v": "Row Labels"
+    },
+    "A4": {
+     "t": "s",
+     "v": "A"
+    },
+    "A5": {
+     "t": "s",
+     "v": "Grand Total"
+    },
+    "B3": {
+     "t": "s",
+     "v": "Sum of Sales"
+    },
+    "B4": {
+     "t": "n",
+     "v": 3.0
+    },
+    "B5": {
+     "t": "n",
+     "v": 3.0
+    }
+   },
+   "col_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": []
+    }
+   ],
+   "col_page_count": 0,
+   "first_data_col": 1,
+   "first_data_row": 1,
+   "first_header_row": 1,
+   "location": "A3:B5",
+   "name": "P_TA",
+   "row_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      0
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "row_page_count": 0,
+   "sheet": "TA",
+   "text": {
+    "A3": "Row Labels",
+    "A4": "A",
+    "A5": "Grand Total",
+    "B3": "Sum of Sales",
+    "B4": "3",
+    "B5": "3"
+   }
+  },
+  {
+   "cache_fields": [
+    {
+     "name": "Region"
+    },
+    {
+     "name": "Product",
+     "shared_flags": {
+      "count": "3"
+     },
+     "shared_items": [
+      {
+       "t": "s",
+       "v": "A"
+      },
+      {
+       "t": "s",
+       "v": "B"
+      },
+      {
+       "t": "s",
+       "v": "C"
+      }
+     ]
+    },
+    {
+     "name": "Date",
+     "shared_flags": {
+      "containsDate": "1",
+      "containsNonDate": "0",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "count": "6",
+      "maxDate": "2020-06-19T00:00:00",
+      "minDate": "2019-01-15T00:00:00"
+     },
+     "shared_items": [
+      {
+       "t": "d",
+       "v": "2019-01-15T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2019-03-06T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2019-05-15T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2019-12-01T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2020-03-10T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2020-06-18T00:00:00"
+      }
+     ]
+    },
+    {
+     "name": "Sales",
+     "shared_flags": {
+      "containsInteger": "1",
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "maxValue": "32",
+      "minValue": "1"
+     }
+    }
+   ],
+   "cells": {
+    "A3": {
+     "t": "s",
+     "v": "Row Labels"
+    },
+    "A4": {
+     "t": "s",
+     "v": "A"
+    },
+    "A5": {
+     "t": "s",
+     "v": "Grand Total"
+    },
+    "B3": {
+     "t": "s",
+     "v": "Sum of Sales"
+    },
+    "B4": {
+     "t": "n",
+     "v": 3.0
+    },
+    "B5": {
+     "t": "n",
+     "v": 3.0
+    }
+   },
+   "col_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": []
+    }
+   ],
+   "col_page_count": 0,
+   "first_data_col": 1,
+   "first_data_row": 1,
+   "first_header_row": 1,
+   "location": "A3:B5",
+   "name": "P_TD0",
+   "row_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      0
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "row_page_count": 0,
+   "sheet": "TD0",
+   "text": {
+    "A3": "Row Labels",
+    "A4": "A",
+    "A5": "Grand Total",
+    "B3": "Sum of Sales",
+    "B4": "3",
+    "B5": "3"
+   }
+  },
+  {
+   "cache_fields": [
+    {
+     "name": "Region"
+    },
+    {
+     "name": "Product",
+     "shared_flags": {
+      "count": "3"
+     },
+     "shared_items": [
+      {
+       "t": "s",
+       "v": "A"
+      },
+      {
+       "t": "s",
+       "v": "B"
+      },
+      {
+       "t": "s",
+       "v": "C"
+      }
+     ]
+    },
+    {
+     "name": "Date",
+     "shared_flags": {
+      "containsDate": "1",
+      "containsNonDate": "0",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "count": "6",
+      "maxDate": "2020-06-19T00:00:00",
+      "minDate": "2019-01-15T00:00:00"
+     },
+     "shared_items": [
+      {
+       "t": "d",
+       "v": "2019-01-15T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2019-03-06T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2019-05-15T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2019-12-01T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2020-03-10T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2020-06-18T00:00:00"
+      }
+     ]
+    },
+    {
+     "name": "Sales",
+     "shared_flags": {
+      "containsInteger": "1",
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "maxValue": "32",
+      "minValue": "1"
+     }
+    }
+   ],
+   "cells": {
+    "A3": {
+     "t": "s",
+     "v": "Row Labels"
+    },
+    "A4": {
+     "t": "s",
+     "v": "A"
+    },
+    "A5": {
+     "t": "s",
+     "v": "Grand Total"
+    },
+    "B3": {
+     "t": "s",
+     "v": "Sum of Sales"
+    },
+    "B4": {
+     "t": "n",
+     "v": 3.0
+    },
+    "B5": {
+     "t": "n",
+     "v": 3.0
+    }
+   },
+   "col_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": []
+    }
+   ],
+   "col_page_count": 0,
+   "first_data_col": 1,
+   "first_data_row": 1,
+   "first_header_row": 1,
+   "location": "A3:B5",
+   "name": "P_TD1",
+   "row_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      0
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "row_page_count": 0,
+   "sheet": "TD1",
+   "text": {
+    "A3": "Row Labels",
+    "A4": "A",
+    "A5": "Grand Total",
+    "B3": "Sum of Sales",
+    "B4": "3",
+    "B5": "3"
+   }
+  },
+  {
+   "cache_fields": [
+    {
+     "name": "Region"
+    },
+    {
+     "name": "Product",
+     "shared_flags": {
+      "count": "3"
+     },
+     "shared_items": [
+      {
+       "t": "s",
+       "v": "A"
+      },
+      {
+       "t": "s",
+       "v": "B"
+      },
+      {
+       "t": "s",
+       "v": "C"
+      }
+     ]
+    },
+    {
+     "name": "Date",
+     "shared_flags": {
+      "containsDate": "1",
+      "containsNonDate": "0",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "count": "6",
+      "maxDate": "2020-06-19T00:00:00",
+      "minDate": "2019-01-15T00:00:00"
+     },
+     "shared_items": [
+      {
+       "t": "d",
+       "v": "2019-01-15T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2019-03-06T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2019-05-15T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2019-12-01T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2020-03-10T00:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2020-06-18T00:00:00"
+      }
+     ]
+    },
+    {
+     "name": "Sales",
+     "shared_flags": {
+      "containsInteger": "1",
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "maxValue": "32",
+      "minValue": "1"
+     }
+    }
+   ],
+   "cells": {
+    "A3": {
+     "t": "s",
+     "v": "Row Labels"
+    },
+    "A4": {
+     "t": "s",
+     "v": "A"
+    },
+    "A5": {
+     "t": "s",
+     "v": "Grand Total"
+    },
+    "B3": {
+     "t": "s",
+     "v": "Sum of Sales"
+    },
+    "B4": {
+     "t": "n",
+     "v": 3.0
+    },
+    "B5": {
+     "t": "n",
+     "v": 3.0
+    }
+   },
+   "col_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": []
+    }
+   ],
+   "col_page_count": 0,
+   "first_data_col": 1,
+   "first_data_row": 1,
+   "first_header_row": 1,
+   "location": "A3:B5",
+   "name": "P_TX",
+   "row_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      0
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "row_page_count": 0,
+   "sheet": "TX",
+   "text": {
+    "A3": "Row Labels",
+    "A4": "A",
+    "A5": "Grand Total",
+    "B3": "Sum of Sales",
+    "B4": "3",
+    "B5": "3"
+   }
+  }
+ ],
+ "sheets": {
+  "Data": {},
+  "Q": {
+   "A1": {
+    "t": "n",
+    "v": 6.0
+   }
+  },
+  "TA": {},
+  "TD0": {},
+  "TD1": {},
+  "TL": {},
+  "TN": {},
+  "TX": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "ab7870a7595423ac64b58c24aa9542314cc7f87f51e62e5fef562006dfef3249",
+  "kind": "excel-graph",
+  "produced_at": "2026-11-07T15:17:57+00:00",
+  "version": null,
+  "workbook_name": "d4eb418cd0b52b70315393aeaa6a25f551814ae69eb9860c1d38667899904688.xlsx"
+ }
+}

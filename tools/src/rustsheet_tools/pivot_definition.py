@@ -24,12 +24,15 @@ oracle-spike.md runs 1, 4-6). The definition maps one-to-one onto `pivotTableDef
                               "item_attrs": {"B": {"d": True}},          # other `<item>` attributes
                               "item_order": ["C", "A"],              # `<item>` order only (T-4164)
                               "xml": {"autoSortScope": "<autoSortScope>...</autoSortScope>",  # raw children
-                                      "extLst": "<extLst>...</extLst>"}}},  # after `items` (T-4130)
+                                      "extLst": "<extLst>...</extLst>",   # after `items` (T-4130)
+                                      "groupItems": "<groupItems>...</groupItems>"}}},  # its group's (T-4767)
        "calculated": [{"name": "Double", "formula": "Sales*2"}],    # calculated cache fields
        "calculated_items": [{"field": "Product", "name": "AB",       # calculated items (T-4130)
                              "formula": "A+B", "attrs": {}, "pivot_area": "<pivotArea>...</pivotArea>"}],
        "cache": {"missingItemsLimit": 0},                       # pivotCacheDefinition attributes
        "cache_names": ["Region", "Sales", "Sales_b", "Blank"],  # cacheField names in place of the header
+       "records_xml": [{"record": 0, "field": "Sales",          # a record value, raw (T-4767: tuples)
+                        "xml": "<n v=\\"1\\"><tpls c=\\"1\\">...</tpls></n>"}],
        "xml": {"filters": "<filters count=\\"1\\">...</filters>"},    # raw children, by slot
        "refresh_on_load": false,                                # the cache's refreshOnLoad (default true)
        "area": "A3:B6"}}                                        # the <location> ref (default A3:B4)
@@ -90,6 +93,7 @@ _DEFINITION_KEYS = {
     "refresh_on_load",
     "area",
     "calculated_items",
+    "records_xml",
 }
 _FIELD_KEYS = {
     "attrs",
@@ -187,6 +191,10 @@ _MANAGED_CALCULATED_ITEM = {"formula"}
 _CALCULATED_ITEM_KEYS = {"field", "name", "formula", "attrs", "pivot_area"}
 # A pivotField's children after `items`, in schema order: its raw-XML slots (T-4129, T-4130).
 _FIELD_SLOTS = ("autoSortScope", "extLst")
+# The value elements a `records_xml` entry may write (CT_Record's children).
+_RECORD_TAGS = ("m", "n", "b", "e", "s", "d", "x")
+# A grouped field's raw cache slot (T-4767): its `<groupItems>`, in place of the builder's in its `<fieldGroup>`.
+_GROUP_SLOT = "groupItems"
 # CT_pivotTableDefinition's children after `dataFields`, in schema order: the raw-XML slots.
 _SLOTS = ("formats", "conditionalFormats", "chartFormats", "pivotHierarchies", "filters", "extLst")
 # Saved layout lines (T-4586), raw: each goes right after its axis's fields element, in schema order.
@@ -657,7 +665,7 @@ class DefinedPivot:
                 continue
             if f.added:
                 fields.append(
-                    f'<cacheField name={quoteattr(f.name)} numFmtId="0" databaseField="0">{f.field_group}</cacheField>'
+                    f'<cacheField name={quoteattr(f.name)} numFmtId="0" databaseField="0">{self._group_items(f, f.field_group)}</cacheField>'
                 )
                 continue
             group = f.field_group
@@ -672,7 +680,7 @@ class DefinedPivot:
                     f'<groupItems count="{len(labels)}">{items}</groupItems></fieldGroup>'
                 )
             fields.append(
-                f'<cacheField name={quoteattr(f.name)} numFmtId="0">{f.shared_items()}{group}</cacheField>'
+                f'<cacheField name={quoteattr(f.name)} numFmtId="0">{f.shared_items()}{self._group_items(f, group)}</cacheField>'
             )
         extra = _attrs(self.d.get("cache"), _MANAGED_CACHE, f"pivot {self.name} cache")
         calculated = ""
@@ -705,12 +713,15 @@ class DefinedPivot:
     def cache_records(self) -> str:
         database = [f for f in self.fields if f.formula is None and not f.added]
         index = [{_key(v): k for k, v in enumerate(f.items)} for f in database]
+        raw = self._records_xml([f.name for f in database])
         rows = []
         for r in range(self.records):
             cells = []
-            for f, at in zip(database, index, strict=True):
+            for k, (f, at) in enumerate(zip(database, index, strict=True)):
                 v = f.values[r]
-                if f.listed:
+                if (r, k) in raw:
+                    cells.append(raw[(r, k)])
+                elif f.listed:
                     cells.append(f'<x v="{at[_key(v)]}"/>')
                 elif f.dates and isinstance(v, float):
                     cells.append(f'<d v="{iso_date(v)}"/>')
@@ -720,6 +731,31 @@ class DefinedPivot:
         return (
             f'<pivotCacheRecords xmlns="{MAIN_NS}" count="{self.records}">{"".join(rows)}</pivotCacheRecords>'
         )
+
+    def _records_xml(self, database: list[str]) -> dict[tuple[int, int], str]:
+        """The `records_xml` entries by (record, database field): each replaces that record value with the
+        author's element (T-4767: a value with `<tpls>`, which the builder does not write itself)."""
+        raw = self.d.get("records_xml") or []
+        where = f"pivot {self.name}: records_xml"
+        if not isinstance(raw, list) or len(raw) > pivot_groups.MAX_LIST:
+            raise ValueError(f"{where} is a list of at most {pivot_groups.MAX_LIST} entries")
+        out: dict[tuple[int, int], str] = {}
+        for e in raw:
+            if not isinstance(e, dict) or set(e) != {"record", "field", "xml"}:
+                raise ValueError(f"{where} entries are {{record, field, xml}}")
+            r, name = e["record"], e["field"]
+            if (
+                isinstance(r, bool)
+                or not isinstance(r, int)
+                or not 0 <= r < self.records
+                or name not in database
+            ):
+                raise ValueError(f"{where}: record {r!r} of field {name!r} is not in the cache")
+            tag = re.match(r"<([a-z]+)", str(e["xml"]).strip())
+            if tag is None or tag[1] not in _RECORD_TAGS or (r, database.index(name)) in out:
+                raise ValueError(f"{where}: each entry is one of {list(_RECORD_TAGS)}, once per record value")
+            out[(r, database.index(name))] = raw_element(e["xml"], tag[1], f"{where} {r} {name!r}")
+        return out
 
     def _pivot_field(self, f: _Field) -> str:
         spec = f.spec
@@ -808,9 +844,23 @@ class DefinedPivot:
         """The field's raw children after `items` (its `xml` slots `autoSortScope` and `extLst`), in
         schema order."""
         raw = f.spec.get("xml") or {}
-        if not isinstance(raw, dict) or set(raw) - set(_FIELD_SLOTS):
-            raise ValueError(f"pivot {self.name}: the xml slots of field {f.name!r} are {list(_FIELD_SLOTS)}")
+        if not isinstance(raw, dict) or set(raw) - {*_FIELD_SLOTS, _GROUP_SLOT}:
+            raise ValueError(
+                f"pivot {self.name}: the xml slots of field {f.name!r} are {[*_FIELD_SLOTS, _GROUP_SLOT]}"
+            )
         return "".join(self._raw(raw, slot) for slot in _FIELD_SLOTS)
+
+    def _group_items(self, f: _Field, group: str) -> str:
+        """`group` (a cache field's `<fieldGroup>`) with the field's raw `groupItems` slot in place of the
+        builder's `<groupItems>` (T-4767: group items of every type and attribute, which the builder does not
+        write itself). The field must be grouped."""
+        raw = f.spec.get("xml") or {}
+        if not isinstance(raw, dict) or _GROUP_SLOT not in raw:
+            return group
+        if "<groupItems" not in group:
+            raise ValueError(f"pivot {self.name}: field {f.name!r} has no group for its xml groupItems")
+        start, end = group.index("<groupItems"), group.index("</groupItems>") + len("</groupItems>")
+        return group[:start] + self._raw(raw, _GROUP_SLOT) + group[end:]
 
     def _page_item(self, i: int, item: Value | None, extra: str) -> str:
         if item is None:
@@ -900,16 +950,18 @@ class DefinedPivot:
         return f"<dataField{attrs}>{ext}</dataField>" if ext else f"<dataField{attrs}/>"
 
     def _raw(self, raw: dict[str, Any], slot: str, tag: str | None = None) -> str:
-        """The author's XML for `slot`: one `<slot>` (or `<tag>`) element, no declarations, DTDs or entities.
-        It is not parsed here (a malformed one is Excel's refusal to see, as `OpenWorkbookBlockedWorkbook`)."""
+        """The author's XML for `slot`: one `<slot>` (or `<tag>`) element (`raw_element`)."""
         if slot not in raw:
             return ""
-        text = str(raw[slot]).strip()
-        tag = tag or slot
-        whole = re.fullmatch(rf"<{tag}(?:\s[^<>]*)?(?:/>|>.*</{tag}>)", text, flags=re.DOTALL)
-        bare_amp = "&" in re.sub(r"&(?:amp|lt|gt|quot|apos);", "", text)
-        if whole is None or "<!" in text or "<?" in text or bare_amp:
-            raise ValueError(
-                f"pivot {self.name}: xml slot {slot} must be one <{tag}> element without declarations"
-            )
-        return text
+        return raw_element(raw[slot], tag or slot, f"pivot {self.name}: xml slot {slot}")
+
+
+def raw_element(raw: Any, tag: str, where: str) -> str:
+    """Raw XML an author gives: one `<tag>` element, no declarations, DTDs or entities. It is not parsed
+    here (a malformed one is Excel's refusal to see, as `OpenWorkbookBlockedWorkbook`)."""
+    text = str(raw).strip()
+    whole = re.fullmatch(rf"<{tag}(?:\s[^<>]*)?(?:/>|>.*</{tag}>)", text, flags=re.DOTALL)
+    bare_amp = "&" in re.sub(r"&(?:amp|lt|gt|quot|apos);", "", text)
+    if whole is None or "<!" in text or "<?" in text or bare_amp:
+        raise ValueError(f"{where} must be one <{tag}> element without declarations")
+    return text

@@ -17,14 +17,14 @@ PV-0015	aggregation	ST_DataConsolidateFunction=varp		values	yes	in	PV1	todo	prob
 PV-0016	sorting	ST_FieldSortType=ascending		layout	yes	in	PV2	todo	probes/t4130-pivot-sort SA
 PV-0017	sorting	ST_FieldSortType=descending		layout	yes	in	PV2	todo	probes/t4130-pivot-sort SD
 PV-0018	sorting	ST_FieldSortType=manual		layout	yes	in	PV2	todo	probes/t4130-pivot-sort SM
-PV-0019	grouping	ST_GroupBy=days		values	unknown	in	PV3	todo	
-PV-0020	grouping	ST_GroupBy=hours		values	unknown	in	PV3	todo	
-PV-0021	grouping	ST_GroupBy=minutes		values	unknown	in	PV3	todo	
-PV-0022	grouping	ST_GroupBy=months		values	unknown	in	PV3	todo	
-PV-0023	grouping	ST_GroupBy=quarters		values	unknown	in	PV3	todo	
-PV-0024	grouping	ST_GroupBy=range		values	unknown	in	PV3	todo	
-PV-0025	grouping	ST_GroupBy=seconds		values	unknown	in	PV3	todo	
-PV-0026	grouping	ST_GroupBy=years		values	unknown	in	PV3	todo	
+PV-0019	grouping	ST_GroupBy=days		values	yes	in	PV3	todo	probes/t4767-pivot-group-items LD
+PV-0020	grouping	ST_GroupBy=hours		values	yes	in	PV3	todo	probes/t4767-pivot-group-items LH
+PV-0021	grouping	ST_GroupBy=minutes		values	yes	in	PV3	todo	probes/t4767-pivot-group-items LM
+PV-0022	grouping	ST_GroupBy=months		values	yes	in	PV3	todo	probes/t4170-pivot-date-levels DC
+PV-0023	grouping	ST_GroupBy=quarters		values	yes	in	PV3	todo	probes/t4170-pivot-date-levels DC
+PV-0024	grouping	ST_GroupBy=range		values	yes	in	PV3	todo	probes/t4128-pivot-spike G
+PV-0025	grouping	ST_GroupBy=seconds		values	yes	in	PV3	todo	probes/t4767-pivot-group-items LS
+PV-0026	grouping	ST_GroupBy=years		values	yes	in	PV3	todo	probes/t4170-pivot-date-levels DC
 PV-0027	totals	ST_ItemType=avg		layout	yes	in	PV1	todo	probes/t4168-pivot-layout-options F1
 PV-0028	totals	ST_ItemType=blank		layout	yes	in	PV1	todo	probes/t4168-pivot-layout-options BR
 PV-0029	totals	ST_ItemType=count		layout	yes	in	PV1	todo	probes/t4168-pivot-layout-options F1; probes/t4622-pivot-count-subtotals CN
@@ -119,123 +119,123 @@ PV-0117	cache	pivotCacheDefinition		values	unknown	in	PV1	todo
 PV-0118	cache	pivotCacheDefinition/cacheFields		values	unknown	in	PV1	todo	
 PV-0119	cache	pivotCacheDefinition/cacheFields/cacheField		values	unknown	in	PV1	todo	
 PV-0120	metadata	pivotCacheDefinition/cacheFields/cacheField/extLst		none	unknown	round-trip only (decision 0274)	round-trip	todo	
-PV-0121	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup		values	unknown	in	PV3	todo	
-PV-0122	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/discretePr		values	unknown	in	PV3	todo	
-PV-0123	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/discretePr/x		values	unknown	in	PV3	todo	
-PV-0124	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/discretePr/x@v		values	unknown	in	PV3	todo	
-PV-0125	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/discretePr@count		values	unknown	in	PV3	todo	
-PV-0126	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems		values	unknown	in	PV3	todo	
-PV-0127	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/b		values	unknown	in	PV3	todo	
-PV-0128	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/b/x		values	unknown	in	PV3	todo	
-PV-0129	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/b/x@v	0	values	unknown	in	PV3	todo	
-PV-0130	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/b@c		values	unknown	in	PV3	todo	
-PV-0131	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/b@cp		values	unknown	in	PV3	todo	
-PV-0132	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/b@f		values	unknown	in	PV3	todo	
-PV-0133	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/b@u		values	unknown	in	PV3	todo	
-PV-0134	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/b@v		values	unknown	in	PV3	todo	
-PV-0135	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/d		values	unknown	in	PV3	todo	
-PV-0136	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/d/x		values	unknown	in	PV3	todo	
-PV-0137	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/d/x@v	0	values	unknown	in	PV3	todo	
-PV-0138	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/d@c		values	unknown	in	PV3	todo	
-PV-0139	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/d@cp		values	unknown	in	PV3	todo	
-PV-0140	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/d@f		values	unknown	in	PV3	todo	
-PV-0141	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/d@u		values	unknown	in	PV3	todo	
-PV-0142	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/d@v		values	unknown	in	PV3	todo	
-PV-0143	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e		values	unknown	in	PV3	todo	
-PV-0144	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e/tpls		values	unknown	in	PV3	todo	
-PV-0145	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e/tpls/tpl		values	unknown	in	PV3	todo	
-PV-0146	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e/tpls/tpl@fld		values	unknown	in	PV3	todo	
-PV-0147	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e/tpls/tpl@hier		values	unknown	in	PV3	todo	
-PV-0148	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e/tpls/tpl@item		values	unknown	in	PV3	todo	
-PV-0149	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e/tpls@c		values	unknown	in	PV3	todo	
-PV-0150	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e/x		values	unknown	in	PV3	todo	
-PV-0151	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e/x@v	0	values	unknown	in	PV3	todo	
-PV-0152	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e@b	false	values	unknown	in	PV3	todo	
-PV-0153	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e@bc		values	unknown	in	PV3	todo	
-PV-0154	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e@c		values	unknown	in	PV3	todo	
-PV-0155	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e@cp		values	unknown	in	PV3	todo	
-PV-0156	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e@f		values	unknown	in	PV3	todo	
-PV-0157	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e@fc		values	unknown	in	PV3	todo	
-PV-0158	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e@i	false	values	unknown	in	PV3	todo	
-PV-0159	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e@in		values	unknown	in	PV3	todo	
-PV-0160	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e@st	false	values	unknown	in	PV3	todo	
-PV-0161	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e@u		values	unknown	in	PV3	todo	
-PV-0162	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e@un	false	values	unknown	in	PV3	todo	
-PV-0163	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e@v		values	unknown	in	PV3	todo	
-PV-0164	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m		values	unknown	in	PV3	todo	
-PV-0165	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m/tpls		values	unknown	in	PV3	todo	
-PV-0166	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m/tpls/tpl		values	unknown	in	PV3	todo	
-PV-0167	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m/tpls/tpl@fld		values	unknown	in	PV3	todo	
-PV-0168	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m/tpls/tpl@hier		values	unknown	in	PV3	todo	
-PV-0169	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m/tpls/tpl@item		values	unknown	in	PV3	todo	
-PV-0170	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m/tpls@c		values	unknown	in	PV3	todo	
-PV-0171	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m/x		values	unknown	in	PV3	todo	
-PV-0172	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m/x@v	0	values	unknown	in	PV3	todo	
-PV-0173	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m@b	false	values	unknown	in	PV3	todo	
-PV-0174	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m@bc		values	unknown	in	PV3	todo	
-PV-0175	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m@c		values	unknown	in	PV3	todo	
-PV-0176	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m@cp		values	unknown	in	PV3	todo	
-PV-0177	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m@f		values	unknown	in	PV3	todo	
-PV-0178	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m@fc		values	unknown	in	PV3	todo	
-PV-0179	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m@i	false	values	unknown	in	PV3	todo	
-PV-0180	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m@in		values	unknown	in	PV3	todo	
-PV-0181	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m@st	false	values	unknown	in	PV3	todo	
-PV-0182	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m@u		values	unknown	in	PV3	todo	
-PV-0183	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m@un	false	values	unknown	in	PV3	todo	
-PV-0184	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n		values	unknown	in	PV3	todo	
-PV-0185	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n/tpls		values	unknown	in	PV3	todo	
-PV-0186	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n/tpls/tpl		values	unknown	in	PV3	todo	
-PV-0187	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n/tpls/tpl@fld		values	unknown	in	PV3	todo	
-PV-0188	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n/tpls/tpl@hier		values	unknown	in	PV3	todo	
-PV-0189	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n/tpls/tpl@item		values	unknown	in	PV3	todo	
-PV-0190	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n/tpls@c		values	unknown	in	PV3	todo	
-PV-0191	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n/x		values	unknown	in	PV3	todo	
-PV-0192	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n/x@v	0	values	unknown	in	PV3	todo	
-PV-0193	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n@b	false	values	unknown	in	PV3	todo	
-PV-0194	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n@bc		values	unknown	in	PV3	todo	
-PV-0195	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n@c		values	unknown	in	PV3	todo	
-PV-0196	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n@cp		values	unknown	in	PV3	todo	
-PV-0197	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n@f		values	unknown	in	PV3	todo	
-PV-0198	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n@fc		values	unknown	in	PV3	todo	
-PV-0199	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n@i	false	values	unknown	in	PV3	todo	
-PV-0200	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n@in		values	unknown	in	PV3	todo	
-PV-0201	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n@st	false	values	unknown	in	PV3	todo	
-PV-0202	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n@u		values	unknown	in	PV3	todo	
-PV-0203	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n@un	false	values	unknown	in	PV3	todo	
-PV-0204	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n@v		values	unknown	in	PV3	todo	
-PV-0205	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s		values	unknown	in	PV3	todo	
-PV-0206	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s/tpls		values	unknown	in	PV3	todo	
-PV-0207	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s/tpls/tpl		values	unknown	in	PV3	todo	
-PV-0208	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s/tpls/tpl@fld		values	unknown	in	PV3	todo	
-PV-0209	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s/tpls/tpl@hier		values	unknown	in	PV3	todo	
-PV-0210	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s/tpls/tpl@item		values	unknown	in	PV3	todo	
-PV-0211	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s/tpls@c		values	unknown	in	PV3	todo	
-PV-0212	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s/x		values	unknown	in	PV3	todo	
-PV-0213	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s/x@v	0	values	unknown	in	PV3	todo	
-PV-0214	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s@b	false	values	unknown	in	PV3	todo	
-PV-0215	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s@bc		values	unknown	in	PV3	todo	
-PV-0216	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s@c		values	unknown	in	PV3	todo	
-PV-0217	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s@cp		values	unknown	in	PV3	todo	
-PV-0218	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s@f		values	unknown	in	PV3	todo	
-PV-0219	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s@fc		values	unknown	in	PV3	todo	
-PV-0220	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s@i	false	values	unknown	in	PV3	todo	
-PV-0221	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s@in		values	unknown	in	PV3	todo	
-PV-0222	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s@st	false	values	unknown	in	PV3	todo	
-PV-0223	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s@u		values	unknown	in	PV3	todo	
-PV-0224	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s@un	false	values	unknown	in	PV3	todo	
-PV-0225	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s@v		values	unknown	in	PV3	todo	
-PV-0226	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems@count		values	unknown	in	PV3	todo	
-PV-0227	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/rangePr		values	unknown	in	PV3	todo	
-PV-0228	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/rangePr@autoEnd	true	values	unknown	in	PV3	todo	
-PV-0229	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/rangePr@autoStart	true	values	unknown	in	PV3	todo	
-PV-0230	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/rangePr@endDate		values	unknown	in	PV3	todo	
-PV-0231	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/rangePr@endNum		values	unknown	in	PV3	todo	
-PV-0232	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/rangePr@groupBy	range	values	unknown	in	PV3	todo	
-PV-0233	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/rangePr@groupInterval	1	values	unknown	in	PV3	todo	
-PV-0234	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/rangePr@startDate		values	unknown	in	PV3	todo	
-PV-0235	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/rangePr@startNum		values	unknown	in	PV3	todo	
-PV-0236	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup@base		values	unknown	in	PV3	todo	
-PV-0237	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup@par		values	unknown	in	PV3	todo	
+PV-0121	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup		values	yes	in	PV3	todo	probes/t4128-pivot-spike G; probes/t4170-pivot-manual-groups MC
+PV-0122	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/discretePr		values	yes	in	PV3	todo	probes/t4170-pivot-manual-groups MC
+PV-0123	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/discretePr/x		values	yes	in	PV3	todo	probes/t4170-pivot-manual-groups MC
+PV-0124	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/discretePr/x@v		values	yes	in	PV3	todo	probes/t4170-pivot-manual-groups MC
+PV-0125	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/discretePr@count		values	yes	in	PV3	todo	probes/t4170-pivot-manual-groups MC
+PV-0126	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems		values	yes	in	PV3	todo	probes/t4128-pivot-spike G; probes/t4170-pivot-manual-groups MC
+PV-0127	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/b		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GB
+PV-0128	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/b/x		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0129	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/b/x@v	0	values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0130	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/b@c		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GBA
+PV-0131	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/b@cp		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GBA
+PV-0132	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/b@f		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GBA
+PV-0133	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/b@u		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GBA
+PV-0134	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/b@v		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GB
+PV-0135	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/d		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GD
+PV-0136	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/d/x		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0137	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/d/x@v	0	values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0138	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/d@c		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GDA
+PV-0139	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/d@cp		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GDA
+PV-0140	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/d@f		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GDA
+PV-0141	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/d@u		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GDA
+PV-0142	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/d@v		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GD
+PV-0143	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GE
+PV-0144	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e/tpls		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0145	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e/tpls/tpl		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0146	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e/tpls/tpl@fld		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0147	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e/tpls/tpl@hier		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0148	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e/tpls/tpl@item		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0149	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e/tpls@c		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0150	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e/x		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0151	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e/x@v	0	values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0152	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e@b	false	values	yes	in	PV3	todo	probes/t4767-pivot-group-items GEA
+PV-0153	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e@bc		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GEA
+PV-0154	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e@c		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GEA
+PV-0155	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e@cp		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GEA
+PV-0156	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e@f		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GEA
+PV-0157	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e@fc		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GEA
+PV-0158	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e@i	false	values	yes	in	PV3	todo	probes/t4767-pivot-group-items GEA
+PV-0159	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e@in		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GEA
+PV-0160	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e@st	false	values	yes	in	PV3	todo	probes/t4767-pivot-group-items GEA
+PV-0161	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e@u		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GEA
+PV-0162	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e@un	false	values	yes	in	PV3	todo	probes/t4767-pivot-group-items GEA
+PV-0163	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/e@v		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GE
+PV-0164	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GM
+PV-0165	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m/tpls		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0166	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m/tpls/tpl		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0167	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m/tpls/tpl@fld		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0168	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m/tpls/tpl@hier		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0169	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m/tpls/tpl@item		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0170	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m/tpls@c		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0171	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m/x		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0172	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m/x@v	0	values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0173	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m@b	false	values	yes	in	PV3	todo	probes/t4767-pivot-group-items GMA
+PV-0174	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m@bc		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GMA
+PV-0175	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m@c		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GMA
+PV-0176	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m@cp		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GMA
+PV-0177	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m@f		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GMA
+PV-0178	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m@fc		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GMA
+PV-0179	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m@i	false	values	yes	in	PV3	todo	probes/t4767-pivot-group-items GMA
+PV-0180	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m@in		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GMA
+PV-0181	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m@st	false	values	yes	in	PV3	todo	probes/t4767-pivot-group-items GMA
+PV-0182	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m@u		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GMA
+PV-0183	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/m@un	false	values	yes	in	PV3	todo	probes/t4767-pivot-group-items GMA
+PV-0184	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GN
+PV-0185	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n/tpls		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0186	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n/tpls/tpl		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0187	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n/tpls/tpl@fld		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0188	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n/tpls/tpl@hier		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0189	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n/tpls/tpl@item		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0190	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n/tpls@c		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0191	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n/x		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0192	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n/x@v	0	values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0193	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n@b	false	values	yes	in	PV3	todo	probes/t4767-pivot-group-items GNA
+PV-0194	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n@bc		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GNA
+PV-0195	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n@c		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GNA
+PV-0196	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n@cp		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GNA
+PV-0197	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n@f		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GNA
+PV-0198	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n@fc		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GNA
+PV-0199	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n@i	false	values	yes	in	PV3	todo	probes/t4767-pivot-group-items GNA
+PV-0200	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n@in		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GNA
+PV-0201	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n@st	false	values	yes	in	PV3	todo	probes/t4767-pivot-group-items GNA
+PV-0202	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n@u		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GNA
+PV-0203	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n@un	false	values	yes	in	PV3	todo	probes/t4767-pivot-group-items GNA
+PV-0204	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/n@v		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GN
+PV-0205	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s		values	yes	in	PV3	todo	probes/t4170-pivot-manual-groups MC
+PV-0206	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s/tpls		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0207	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s/tpls/tpl		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0208	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s/tpls/tpl@fld		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0209	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s/tpls/tpl@hier		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0210	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s/tpls/tpl@item		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0211	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s/tpls@c		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0212	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s/x		values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0213	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s/x@v	0	values	no	in	PV3	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3")
+PV-0214	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s@b	false	values	yes	in	PV3	todo	probes/t4767-pivot-group-items GSA
+PV-0215	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s@bc		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GSA
+PV-0216	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s@c		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GSA
+PV-0217	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s@cp		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GSA
+PV-0218	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s@f		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GSA
+PV-0219	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s@fc		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GSA
+PV-0220	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s@i	false	values	yes	in	PV3	todo	probes/t4767-pivot-group-items GSA
+PV-0221	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s@in		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GSA
+PV-0222	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s@st	false	values	yes	in	PV3	todo	probes/t4767-pivot-group-items GSA
+PV-0223	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s@u		values	yes	in	PV3	todo	probes/t4767-pivot-group-items GSA
+PV-0224	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s@un	false	values	yes	in	PV3	todo	probes/t4767-pivot-group-items GSA
+PV-0225	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems/s@v		values	yes	in	PV3	todo	probes/t4170-pivot-manual-groups MC
+PV-0226	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/groupItems@count		values	yes	in	PV3	todo	probes/t4128-pivot-spike G; probes/t4170-pivot-manual-groups MC
+PV-0227	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/rangePr		values	yes	in	PV3	todo	probes/t4128-pivot-spike G
+PV-0228	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/rangePr@autoEnd	true	values	yes	in	PV3	todo	probes/t4128-pivot-spike G
+PV-0229	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/rangePr@autoStart	true	values	yes	in	PV3	todo	probes/t4128-pivot-spike G
+PV-0230	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/rangePr@endDate		values	yes	in	PV3	todo	probes/t4170-pivot-date-levels DC; probes/t4767-pivot-group-items LS
+PV-0231	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/rangePr@endNum		values	yes	in	PV3	todo	probes/t4128-pivot-spike G
+PV-0232	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/rangePr@groupBy	range	values	yes	in	PV3	todo	probes/t4170-pivot-date-levels DC; probes/t4767-pivot-group-items LS
+PV-0233	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/rangePr@groupInterval	1	values	yes	in	PV3	todo	probes/t4128-pivot-spike G
+PV-0234	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/rangePr@startDate		values	yes	in	PV3	todo	probes/t4170-pivot-date-levels DC; probes/t4767-pivot-group-items LS
+PV-0235	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup/rangePr@startNum		values	yes	in	PV3	todo	probes/t4128-pivot-spike G
+PV-0236	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup@base		values	yes	in	PV3	todo	probes/t4170-pivot-manual-groups MC
+PV-0237	grouping	pivotCacheDefinition/cacheFields/cacheField/fieldGroup@par		values	yes	in	PV3	todo	probes/t4170-pivot-manual-groups MC
 PV-0238	cache	pivotCacheDefinition/cacheFields/cacheField/mpMap		values	unknown	in	PV1	todo	
 PV-0239	cache	pivotCacheDefinition/cacheFields/cacheField/mpMap@v	0	values	unknown	in	PV1	todo	
 PV-0240	cache	pivotCacheDefinition/cacheFields/cacheField/sharedItems		values	unknown	in	PV1	todo	
@@ -697,7 +697,7 @@ PV-0695	cache	pivotCacheRecords/r/e		values	unknown	in	PV1	todo
 PV-0696	cache	pivotCacheRecords/r/e/tpls		values	unknown	in	PV1	todo	
 PV-0697	cache	pivotCacheRecords/r/e/tpls/tpl		values	unknown	in	PV1	todo	
 PV-0698	cache	pivotCacheRecords/r/e/tpls/tpl@fld		values	unknown	in	PV1	todo	
-PV-0699	filtering	pivotCacheRecords/r/e/tpls/tpl@hier		values	unknown	in	PV2	todo	UNVERIFIED: opened in T-4130 scratch runs, not committed (pivots.md "Capability matrix 2"); probe pending: T-4767
+PV-0699	filtering	pivotCacheRecords/r/e/tpls/tpl@hier		values	yes	in	PV2	todo	probes/t4767-pivot-record-tuples RE
 PV-0700	cache	pivotCacheRecords/r/e/tpls/tpl@item		values	unknown	in	PV1	todo	
 PV-0701	cache	pivotCacheRecords/r/e/tpls@c		values	unknown	in	PV1	todo	
 PV-0702	cache	pivotCacheRecords/r/e/x		values	unknown	in	PV1	todo	
@@ -718,7 +718,7 @@ PV-0716	cache	pivotCacheRecords/r/m		values	unknown	in	PV1	todo
 PV-0717	cache	pivotCacheRecords/r/m/tpls		values	unknown	in	PV1	todo	
 PV-0718	cache	pivotCacheRecords/r/m/tpls/tpl		values	unknown	in	PV1	todo	
 PV-0719	cache	pivotCacheRecords/r/m/tpls/tpl@fld		values	unknown	in	PV1	todo	
-PV-0720	filtering	pivotCacheRecords/r/m/tpls/tpl@hier		values	unknown	in	PV2	todo	UNVERIFIED: opened in T-4130 scratch runs, not committed (pivots.md "Capability matrix 2"); probe pending: T-4767
+PV-0720	filtering	pivotCacheRecords/r/m/tpls/tpl@hier		values	yes	in	PV2	todo	probes/t4767-pivot-record-tuples RM
 PV-0721	cache	pivotCacheRecords/r/m/tpls/tpl@item		values	unknown	in	PV1	todo	
 PV-0722	cache	pivotCacheRecords/r/m/tpls@c		values	unknown	in	PV1	todo	
 PV-0723	cache	pivotCacheRecords/r/m/x		values	unknown	in	PV1	todo	
@@ -738,7 +738,7 @@ PV-0736	cache	pivotCacheRecords/r/n		values	unknown	in	PV1	todo
 PV-0737	cache	pivotCacheRecords/r/n/tpls		values	unknown	in	PV1	todo	
 PV-0738	cache	pivotCacheRecords/r/n/tpls/tpl		values	unknown	in	PV1	todo	
 PV-0739	cache	pivotCacheRecords/r/n/tpls/tpl@fld		values	unknown	in	PV1	todo	
-PV-0740	filtering	pivotCacheRecords/r/n/tpls/tpl@hier		values	unknown	in	PV2	todo	UNVERIFIED: opened in T-4130 scratch runs, not committed (pivots.md "Capability matrix 2"); probe pending: T-4767
+PV-0740	filtering	pivotCacheRecords/r/n/tpls/tpl@hier		values	yes	in	PV2	todo	probes/t4767-pivot-record-tuples RN
 PV-0741	cache	pivotCacheRecords/r/n/tpls/tpl@item		values	unknown	in	PV1	todo	
 PV-0742	cache	pivotCacheRecords/r/n/tpls@c		values	unknown	in	PV1	todo	
 PV-0743	cache	pivotCacheRecords/r/n/x		values	unknown	in	PV1	todo	
@@ -759,7 +759,7 @@ PV-0757	cache	pivotCacheRecords/r/s		values	unknown	in	PV1	todo
 PV-0758	cache	pivotCacheRecords/r/s/tpls		values	unknown	in	PV1	todo	
 PV-0759	cache	pivotCacheRecords/r/s/tpls/tpl		values	unknown	in	PV1	todo	
 PV-0760	cache	pivotCacheRecords/r/s/tpls/tpl@fld		values	unknown	in	PV1	todo	
-PV-0761	filtering	pivotCacheRecords/r/s/tpls/tpl@hier		values	unknown	in	PV2	todo	UNVERIFIED: opened in T-4130 scratch runs, not committed (pivots.md "Capability matrix 2"); probe pending: T-4767
+PV-0761	filtering	pivotCacheRecords/r/s/tpls/tpl@hier		values	yes	in	PV2	todo	probes/t4767-pivot-record-tuples RS
 PV-0762	cache	pivotCacheRecords/r/s/tpls/tpl@item		values	unknown	in	PV1	todo	
 PV-0763	cache	pivotCacheRecords/r/s/tpls@c		values	unknown	in	PV1	todo	
 PV-0764	cache	pivotCacheRecords/r/s/x		values	unknown	in	PV1	todo	
@@ -1275,7 +1275,7 @@ PV-1273	olap-datamodel	x14:dataField@sourceField		none	unknown	out (decision 027
 PV-1274	olap-datamodel	x14:dataField@uniqueName		none	unknown	out (decision 0274)	out	todo	
 PV-1275	cache	x14:pivotCacheDefinition		values	unknown	in	PV1	todo	
 PV-1276	metadata	x14:pivotCacheDefinition@pivotCacheId		none	unknown	round-trip only (decision 0274)	round-trip	todo	
-PV-1277	slicers-timelines	x14:pivotCacheDefinition@slicerData	false	values	unknown	in	PV5	todo	
+PV-1277	slicers-timelines	x14:pivotCacheDefinition@slicerData	false	values	no	in	PV5	todo	slicerData=1 refused: T-4767 run (pivots.md "Capability matrix 3"); probes/t4767-pivot-slicers SD (slicerData=0 opens)
 PV-1278	olap-datamodel	x14:pivotCacheDefinition@supportAddCalcMems	false	none	unknown	out (decision 0274)	out	todo	
 PV-1279	olap-datamodel	x14:pivotCacheDefinition@supportSubqueryCalcMem	false	none	unknown	out (decision 0274)	out	todo	
 PV-1280	olap-datamodel	x14:pivotCacheDefinition@supportSubqueryNonVisual	false	none	unknown	out (decision 0274)	out	todo	
@@ -1397,8 +1397,8 @@ PV-1395	layout	x14:pivotTableDefinition@fillDownLabelsDefault	false	layout	yes	i
 PV-1396	layout	x14:pivotTableDefinition@hideValuesRow	false	layout	yes	in	PV1	todo	probes/t4129-pivot-layout-flags X14
 PV-1397	olap-datamodel	x14:pivotTableDefinition@visualTotalsForSets	false	none	unknown	out (decision 0274)	out	todo	
 PV-1398	olap-datamodel	x14:pivotTableDefinition@weightExpression		none	unknown	out (decision 0274)	out	todo	
-PV-1399	slicers-timelines	x14:slicerCacheDefinition		values	unknown	in	PV5	todo	
-PV-1400	slicers-timelines	x14:slicerCacheDefinition/data		values	unknown	in	PV5	todo	
+PV-1399	slicers-timelines	x14:slicerCacheDefinition		values	yes	in	PV5	todo	probes/t4767-pivot-slicers SL
+PV-1400	slicers-timelines	x14:slicerCacheDefinition/data		values	yes	in	PV5	todo	probes/t4767-pivot-slicers SL
 PV-1401	olap-datamodel	x14:slicerCacheDefinition/data/olap		none	unknown	out (decision 0274)	out	todo	
 PV-1402	olap-datamodel	x14:slicerCacheDefinition/data/olap/extLst		none	unknown	out (decision 0274)	out	todo	
 PV-1403	olap-datamodel	x14:slicerCacheDefinition/data/olap/levels		none	unknown	out (decision 0274)	out	todo	
@@ -1425,27 +1425,27 @@ PV-1423	olap-datamodel	x14:slicerCacheDefinition/data/olap/selections/selection/
 PV-1424	olap-datamodel	x14:slicerCacheDefinition/data/olap/selections/selection@n		none	unknown	out (decision 0274)	out	todo	
 PV-1425	olap-datamodel	x14:slicerCacheDefinition/data/olap/selections@count		none	unknown	out (decision 0274)	out	todo	
 PV-1426	olap-datamodel	x14:slicerCacheDefinition/data/olap@pivotCacheId		none	unknown	out (decision 0274)	out	todo	
-PV-1427	slicers-timelines	x14:slicerCacheDefinition/data/tabular		values	unknown	in	PV5	todo	
+PV-1427	slicers-timelines	x14:slicerCacheDefinition/data/tabular		values	yes	in	PV5	todo	probes/t4767-pivot-slicers SL
 PV-1428	metadata	x14:slicerCacheDefinition/data/tabular/extLst		none	unknown	round-trip only (decision 0274)	round-trip	todo	
-PV-1429	slicers-timelines	x14:slicerCacheDefinition/data/tabular/items		values	unknown	in	PV5	todo	
-PV-1430	slicers-timelines	x14:slicerCacheDefinition/data/tabular/items/i		values	unknown	in	PV5	todo	
-PV-1431	slicers-timelines	x14:slicerCacheDefinition/data/tabular/items/i@nd	false	values	unknown	in	PV5	todo	
-PV-1432	slicers-timelines	x14:slicerCacheDefinition/data/tabular/items/i@s	false	values	unknown	in	PV5	todo	
-PV-1433	slicers-timelines	x14:slicerCacheDefinition/data/tabular/items/i@x		values	unknown	in	PV5	todo	
-PV-1434	slicers-timelines	x14:slicerCacheDefinition/data/tabular/items@count		values	unknown	in	PV5	todo	
-PV-1435	slicers-timelines	x14:slicerCacheDefinition/data/tabular@crossFilter	showItemsWithDataAtTop	values	unknown	in	PV5	todo	
-PV-1436	slicers-timelines	x14:slicerCacheDefinition/data/tabular@customListSort	true	values	unknown	in	PV5	todo	
+PV-1429	slicers-timelines	x14:slicerCacheDefinition/data/tabular/items		values	yes	in	PV5	todo	probes/t4767-pivot-slicers SL
+PV-1430	slicers-timelines	x14:slicerCacheDefinition/data/tabular/items/i		values	yes	in	PV5	todo	probes/t4767-pivot-slicers SL
+PV-1431	slicers-timelines	x14:slicerCacheDefinition/data/tabular/items/i@nd	false	values	yes	in	PV5	todo	probes/t4767-pivot-slicers SM
+PV-1432	slicers-timelines	x14:slicerCacheDefinition/data/tabular/items/i@s	false	values	yes	in	PV5	todo	probes/t4767-pivot-slicers SL
+PV-1433	slicers-timelines	x14:slicerCacheDefinition/data/tabular/items/i@x		values	yes	in	PV5	todo	probes/t4767-pivot-slicers SL
+PV-1434	slicers-timelines	x14:slicerCacheDefinition/data/tabular/items@count		values	yes	in	PV5	todo	probes/t4767-pivot-slicers SL
+PV-1435	slicers-timelines	x14:slicerCacheDefinition/data/tabular@crossFilter	showItemsWithDataAtTop	values	yes	in	PV5	todo	probes/t4767-pivot-slicers SM
+PV-1436	slicers-timelines	x14:slicerCacheDefinition/data/tabular@customListSort	true	values	yes	in	PV5	todo	probes/t4767-pivot-slicers SM
 PV-1437	metadata	x14:slicerCacheDefinition/data/tabular@pivotCacheId		none	unknown	round-trip only (decision 0274)	round-trip	todo	
-PV-1438	slicers-timelines	x14:slicerCacheDefinition/data/tabular@showMissing	true	values	unknown	in	PV5	todo	
-PV-1439	slicers-timelines	x14:slicerCacheDefinition/data/tabular@sortOrder	ascending	values	unknown	in	PV5	todo	
+PV-1438	slicers-timelines	x14:slicerCacheDefinition/data/tabular@showMissing	true	values	yes	in	PV5	todo	probes/t4767-pivot-slicers SM
+PV-1439	slicers-timelines	x14:slicerCacheDefinition/data/tabular@sortOrder	ascending	values	yes	in	PV5	todo	probes/t4767-pivot-slicers SM
 PV-1440	metadata	x14:slicerCacheDefinition/extLst		none	unknown	round-trip only (decision 0274)	round-trip	todo	
-PV-1441	slicers-timelines	x14:slicerCacheDefinition/pivotTables		values	unknown	in	PV5	todo	
-PV-1442	slicers-timelines	x14:slicerCacheDefinition/pivotTables/pivotTable		values	unknown	in	PV5	todo	
-PV-1443	slicers-timelines	x14:slicerCacheDefinition/pivotTables/pivotTable@name		values	unknown	in	PV5	todo	
-PV-1444	slicers-timelines	x14:slicerCacheDefinition/pivotTables/pivotTable@tabId		values	unknown	in	PV5	todo	
+PV-1441	slicers-timelines	x14:slicerCacheDefinition/pivotTables		values	yes	in	PV5	todo	probes/t4767-pivot-slicers SL
+PV-1442	slicers-timelines	x14:slicerCacheDefinition/pivotTables/pivotTable		values	yes	in	PV5	todo	probes/t4767-pivot-slicers SL
+PV-1443	slicers-timelines	x14:slicerCacheDefinition/pivotTables/pivotTable@name		values	yes	in	PV5	todo	probes/t4767-pivot-slicers SL
+PV-1444	slicers-timelines	x14:slicerCacheDefinition/pivotTables/pivotTable@tabId		values	yes	in	PV5	todo	probes/t4767-pivot-slicers SL
 PV-1445	metadata	x14:slicerCacheDefinition@mc:Ignorable		none	unknown	round-trip only (decision 0274)	round-trip	todo	
-PV-1446	slicers-timelines	x14:slicerCacheDefinition@name		values	unknown	in	PV5	todo	
-PV-1447	slicers-timelines	x14:slicerCacheDefinition@sourceName		values	unknown	in	PV5	todo	
+PV-1446	slicers-timelines	x14:slicerCacheDefinition@name		values	yes	in	PV5	todo	probes/t4767-pivot-slicers SL
+PV-1447	slicers-timelines	x14:slicerCacheDefinition@sourceName		values	yes	in	PV5	todo	probes/t4767-pivot-slicers SL
 PV-1448	metadata	x14:slicerCacheDefinition@xr10:uid		none	unknown	round-trip only (decision 0274)	round-trip	todo	
 PV-1449	formatting	x14:slicerStyles		none	unknown	round-trip only (decision 0274)	round-trip	todo	
 PV-1450	formatting	x14:slicerStyles/slicerStyle		none	unknown	round-trip only (decision 0274)	round-trip	todo	
@@ -1455,15 +1455,15 @@ PV-1453	formatting	x14:slicerStyles/slicerStyle/slicerStyleElements/slicerStyleE
 PV-1454	formatting	x14:slicerStyles/slicerStyle/slicerStyleElements/slicerStyleElement@type		none	unknown	round-trip only (decision 0274)	round-trip	todo	
 PV-1455	formatting	x14:slicerStyles/slicerStyle@name		none	unknown	round-trip only (decision 0274)	round-trip	todo	
 PV-1456	formatting	x14:slicerStyles@defaultSlicerStyle		none	unknown	round-trip only (decision 0274)	round-trip	todo	
-PV-1457	slicers-timelines	x14:slicers		values	unknown	in	PV5	todo	
-PV-1458	slicers-timelines	x14:slicers/slicer		values	unknown	in	PV5	todo	
+PV-1457	slicers-timelines	x14:slicers		values	yes	in	PV5	todo	probes/t4767-pivot-slicers SL
+PV-1458	slicers-timelines	x14:slicers/slicer		values	yes	in	PV5	todo	probes/t4767-pivot-slicers SL
 PV-1459	metadata	x14:slicers/slicer/extLst		none	unknown	round-trip only (decision 0274)	round-trip	todo	
-PV-1460	slicers-timelines	x14:slicers/slicer@cache		values	unknown	in	PV5	todo	
-PV-1461	slicers-timelines	x14:slicers/slicer@caption		values	unknown	in	PV5	todo	
+PV-1460	slicers-timelines	x14:slicers/slicer@cache		values	yes	in	PV5	todo	probes/t4767-pivot-slicers SL
+PV-1461	slicers-timelines	x14:slicers/slicer@caption		values	yes	in	PV5	todo	probes/t4767-pivot-slicers SL
 PV-1462	ui	x14:slicers/slicer@columnCount	1	none	unknown	round-trip only (decision 0274)	round-trip	todo	
 PV-1463	ui	x14:slicers/slicer@level	0	none	unknown	round-trip only (decision 0274)	round-trip	todo	
 PV-1464	ui	x14:slicers/slicer@lockedPosition	false	none	unknown	round-trip only (decision 0274)	round-trip	todo	
-PV-1465	slicers-timelines	x14:slicers/slicer@name		values	unknown	in	PV5	todo	
+PV-1465	slicers-timelines	x14:slicers/slicer@name		values	yes	in	PV5	todo	probes/t4767-pivot-slicers SL
 PV-1466	ui	x14:slicers/slicer@rowHeight		none	unknown	round-trip only (decision 0274)	round-trip	todo	
 PV-1467	ui	x14:slicers/slicer@showCaption	true	none	unknown	round-trip only (decision 0274)	round-trip	todo	
 PV-1468	ui	x14:slicers/slicer@startItem	0	none	unknown	round-trip only (decision 0274)	round-trip	todo	
@@ -1508,107 +1508,107 @@ PV-1506	ui	x15:pivotTableUISettings/activeTabTopLevelEntity@type	0	none	unknown	
 PV-1507	metadata	x15:pivotTableUISettings/extLst		none	unknown	round-trip only (decision 0274)	round-trip	todo	
 PV-1508	ui	x15:pivotTableUISettings@relNeededHidden	false	none	unknown	round-trip only (decision 0274)	round-trip	todo	
 PV-1509	ui	x15:pivotTableUISettings@sourceDataName		none	unknown	round-trip only (decision 0274)	round-trip	todo	
-PV-1510	slicers-timelines	x15:slicerCacheHideItemsWithNoData		values	unknown	in	PV5	todo	
+PV-1510	slicers-timelines	x15:slicerCacheHideItemsWithNoData		values	yes	in	PV5	todo	probes/t4767-pivot-slicers SH
 PV-1511	olap-datamodel	x15:slicerCacheHideItemsWithNoData/slicerCacheOlapLevelName		none	unknown	out (decision 0274)	out	todo	
 PV-1512	olap-datamodel	x15:slicerCacheHideItemsWithNoData/slicerCacheOlapLevelName@count		none	unknown	out (decision 0274)	out	todo	
 PV-1513	olap-datamodel	x15:slicerCacheHideItemsWithNoData/slicerCacheOlapLevelName@uniqueName		none	unknown	out (decision 0274)	out	todo	
-PV-1514	slicers-timelines	x15:slicerCacheHideItemsWithNoData@count	0	values	unknown	in	PV5	todo	
-PV-1515	slicers-timelines	x15:tableSlicerCache		values	unknown	in	PV5	todo	
+PV-1514	slicers-timelines	x15:slicerCacheHideItemsWithNoData@count	0	values	yes	in	PV5	todo	probes/t4767-pivot-slicers SH
+PV-1515	slicers-timelines	x15:tableSlicerCache		values	yes	in	PV5	todo	probes/t4767-pivot-slicers TS
 PV-1516	metadata	x15:tableSlicerCache/extLst		none	unknown	round-trip only (decision 0274)	round-trip	todo	
-PV-1517	slicers-timelines	x15:tableSlicerCache@column		values	unknown	in	PV5	todo	
-PV-1518	slicers-timelines	x15:tableSlicerCache@crossFilter	showItemsWithDataAtTop	values	unknown	in	PV5	todo	
-PV-1519	slicers-timelines	x15:tableSlicerCache@customListSort	true	values	unknown	in	PV5	todo	
-PV-1520	slicers-timelines	x15:tableSlicerCache@sortOrder	ascending	values	unknown	in	PV5	todo	
-PV-1521	slicers-timelines	x15:tableSlicerCache@tableId		values	unknown	in	PV5	todo	
-PV-1522	slicers-timelines	x15:timelineCacheDefinition		values	unknown	in	PV5	todo	
+PV-1517	slicers-timelines	x15:tableSlicerCache@column		values	yes	in	PV5	todo	probes/t4767-pivot-slicers TS
+PV-1518	slicers-timelines	x15:tableSlicerCache@crossFilter	showItemsWithDataAtTop	values	yes	in	PV5	todo	probes/t4767-pivot-slicers TS
+PV-1519	slicers-timelines	x15:tableSlicerCache@customListSort	true	values	yes	in	PV5	todo	probes/t4767-pivot-slicers TS
+PV-1520	slicers-timelines	x15:tableSlicerCache@sortOrder	ascending	values	yes	in	PV5	todo	probes/t4767-pivot-slicers TS
+PV-1521	slicers-timelines	x15:tableSlicerCache@tableId		values	yes	in	PV5	todo	probes/t4767-pivot-slicers TS
+PV-1522	slicers-timelines	x15:timelineCacheDefinition		values	yes	in	PV5	todo	probes/t4767-pivot-timelines TL
 PV-1523	metadata	x15:timelineCacheDefinition/extLst		none	unknown	round-trip only (decision 0274)	round-trip	todo	
-PV-1524	slicers-timelines	x15:timelineCacheDefinition/pivotTables		values	unknown	in	PV5	todo	
-PV-1525	slicers-timelines	x15:timelineCacheDefinition/pivotTables/pivotTable		values	unknown	in	PV5	todo	
-PV-1526	slicers-timelines	x15:timelineCacheDefinition/pivotTables/pivotTable@name		values	unknown	in	PV5	todo	
-PV-1527	slicers-timelines	x15:timelineCacheDefinition/pivotTables/pivotTable@tabId		values	unknown	in	PV5	todo	
-PV-1528	slicers-timelines	x15:timelineCacheDefinition/state		values	unknown	in	PV5	todo	
-PV-1529	slicers-timelines	x15:timelineCacheDefinition/state/bounds		values	unknown	in	PV5	todo	
-PV-1530	slicers-timelines	x15:timelineCacheDefinition/state/bounds@endDate		values	unknown	in	PV5	todo	
-PV-1531	slicers-timelines	x15:timelineCacheDefinition/state/bounds@startDate		values	unknown	in	PV5	todo	
+PV-1524	slicers-timelines	x15:timelineCacheDefinition/pivotTables		values	yes	in	PV5	todo	probes/t4767-pivot-timelines TL
+PV-1525	slicers-timelines	x15:timelineCacheDefinition/pivotTables/pivotTable		values	yes	in	PV5	todo	probes/t4767-pivot-timelines TL
+PV-1526	slicers-timelines	x15:timelineCacheDefinition/pivotTables/pivotTable@name		values	yes	in	PV5	todo	probes/t4767-pivot-timelines TL
+PV-1527	slicers-timelines	x15:timelineCacheDefinition/pivotTables/pivotTable@tabId		values	yes	in	PV5	todo	probes/t4767-pivot-timelines TL
+PV-1528	slicers-timelines	x15:timelineCacheDefinition/state		values	yes	in	PV5	todo	probes/t4767-pivot-timelines TL
+PV-1529	slicers-timelines	x15:timelineCacheDefinition/state/bounds		values	yes	in	PV5	todo	probes/t4767-pivot-timelines TL
+PV-1530	slicers-timelines	x15:timelineCacheDefinition/state/bounds@endDate		values	yes	in	PV5	todo	probes/t4767-pivot-timelines TL
+PV-1531	slicers-timelines	x15:timelineCacheDefinition/state/bounds@startDate		values	yes	in	PV5	todo	probes/t4767-pivot-timelines TL
 PV-1532	metadata	x15:timelineCacheDefinition/state/extLst		none	unknown	round-trip only (decision 0274)	round-trip	todo	
-PV-1533	slicers-timelines	x15:timelineCacheDefinition/state/selection		values	unknown	in	PV5	todo	
-PV-1534	slicers-timelines	x15:timelineCacheDefinition/state/selection@endDate		values	unknown	in	PV5	todo	
-PV-1535	slicers-timelines	x15:timelineCacheDefinition/state/selection@startDate		values	unknown	in	PV5	todo	
-PV-1536	slicers-timelines	x15:timelineCacheDefinition/state@filterType		values	unknown	in	PV5	todo	
+PV-1533	slicers-timelines	x15:timelineCacheDefinition/state/selection		values	yes	in	PV5	todo	probes/t4767-pivot-timelines TL
+PV-1534	slicers-timelines	x15:timelineCacheDefinition/state/selection@endDate		values	yes	in	PV5	todo	probes/t4767-pivot-timelines TL
+PV-1535	slicers-timelines	x15:timelineCacheDefinition/state/selection@startDate		values	yes	in	PV5	todo	probes/t4767-pivot-timelines TL
+PV-1536	slicers-timelines	x15:timelineCacheDefinition/state@filterType		values	yes	in	PV5	todo	probes/t4767-pivot-timelines TL TN
 PV-1537	metadata	x15:timelineCacheDefinition/state@lastRefreshVersion		none	unknown	round-trip only (decision 0274)	round-trip	todo	
 PV-1538	metadata	x15:timelineCacheDefinition/state@minimalRefreshVersion		none	unknown	round-trip only (decision 0274)	round-trip	todo	
 PV-1539	metadata	x15:timelineCacheDefinition/state@pivotCacheId		none	unknown	round-trip only (decision 0274)	round-trip	todo	
-PV-1540	slicers-timelines	x15:timelineCacheDefinition/state@singleRangeFilterState	true	values	unknown	in	PV5	todo	
-PV-1541	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter		values	unknown	in	PV5	todo	
-PV-1542	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter		values	unknown	in	PV5	todo	
+PV-1540	slicers-timelines	x15:timelineCacheDefinition/state@singleRangeFilterState	true	values	yes	in	PV5	todo	probes/t4767-pivot-timelines TA
+PV-1541	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1542	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
 PV-1543	metadata	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/extLst		none	unknown	round-trip only (decision 0274)	round-trip	todo	
-PV-1544	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn		values	unknown	in	PV5	todo	
-PV-1545	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/colorFilter		values	unknown	in	PV5	todo	
-PV-1546	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/colorFilter@cellColor	true	values	unknown	in	PV5	todo	
+PV-1544	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1545	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/colorFilter		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1546	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/colorFilter@cellColor	true	values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
 PV-1547	formatting	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/colorFilter@dxfId		none	unknown	round-trip only (decision 0274)	round-trip	todo	
-PV-1548	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/customFilters		values	unknown	in	PV5	todo	
-PV-1549	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/customFilters/customFilter		values	unknown	in	PV5	todo	
-PV-1550	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/customFilters/customFilter@operator	equal	values	unknown	in	PV5	todo	
-PV-1551	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/customFilters/customFilter@val		values	unknown	in	PV5	todo	
-PV-1552	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/customFilters@and	false	values	unknown	in	PV5	todo	
-PV-1553	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/dynamicFilter		values	unknown	in	PV5	todo	
-PV-1554	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/dynamicFilter@maxVal		values	unknown	in	PV5	todo	
-PV-1555	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/dynamicFilter@maxValIso		values	unknown	in	PV5	todo	
-PV-1556	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/dynamicFilter@type		values	unknown	in	PV5	todo	
-PV-1557	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/dynamicFilter@val		values	unknown	in	PV5	todo	
-PV-1558	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/dynamicFilter@valIso		values	unknown	in	PV5	todo	
+PV-1548	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/customFilters		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1549	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/customFilters/customFilter		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1550	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/customFilters/customFilter@operator	equal	values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1551	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/customFilters/customFilter@val		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1552	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/customFilters@and	false	values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1553	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/dynamicFilter		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1554	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/dynamicFilter@maxVal		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1555	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/dynamicFilter@maxValIso		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1556	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/dynamicFilter@type		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1557	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/dynamicFilter@val		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1558	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/dynamicFilter@valIso		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
 PV-1559	metadata	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/extLst		none	unknown	round-trip only (decision 0274)	round-trip	todo	
-PV-1560	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/filters		values	unknown	in	PV5	todo	
-PV-1561	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/filters/dateGroupItem		values	unknown	in	PV5	todo	
-PV-1562	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/filters/dateGroupItem@dateTimeGrouping		values	unknown	in	PV5	todo	
-PV-1563	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/filters/dateGroupItem@day		values	unknown	in	PV5	todo	
-PV-1564	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/filters/dateGroupItem@hour		values	unknown	in	PV5	todo	
-PV-1565	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/filters/dateGroupItem@minute		values	unknown	in	PV5	todo	
-PV-1566	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/filters/dateGroupItem@month		values	unknown	in	PV5	todo	
-PV-1567	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/filters/dateGroupItem@second		values	unknown	in	PV5	todo	
-PV-1568	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/filters/dateGroupItem@year		values	unknown	in	PV5	todo	
-PV-1569	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/filters/filter		values	unknown	in	PV5	todo	
-PV-1570	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/filters/filter@val		values	unknown	in	PV5	todo	
-PV-1571	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/filters@blank	false	values	unknown	in	PV5	todo	
-PV-1572	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/filters@calendarType	none	values	unknown	in	PV5	todo	
-PV-1573	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/iconFilter		values	unknown	in	PV5	todo	
-PV-1574	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/iconFilter@iconId		values	unknown	in	PV5	todo	
-PV-1575	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/iconFilter@iconSet		values	unknown	in	PV5	todo	
-PV-1576	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/top10		values	unknown	in	PV5	todo	
-PV-1577	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/top10@filterVal		values	unknown	in	PV5	todo	
-PV-1578	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/top10@percent	false	values	unknown	in	PV5	todo	
-PV-1579	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/top10@top	true	values	unknown	in	PV5	todo	
-PV-1580	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/top10@val		values	unknown	in	PV5	todo	
-PV-1581	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn@colId		values	unknown	in	PV5	todo	
-PV-1582	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn@hiddenButton	false	values	unknown	in	PV5	todo	
-PV-1583	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn@showButton	true	values	unknown	in	PV5	todo	
-PV-1584	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/sortState		values	unknown	in	PV5	todo	
+PV-1560	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/filters		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1561	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/filters/dateGroupItem		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1562	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/filters/dateGroupItem@dateTimeGrouping		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1563	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/filters/dateGroupItem@day		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1564	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/filters/dateGroupItem@hour		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1565	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/filters/dateGroupItem@minute		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1566	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/filters/dateGroupItem@month		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1567	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/filters/dateGroupItem@second		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1568	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/filters/dateGroupItem@year		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1569	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/filters/filter		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1570	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/filters/filter@val		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1571	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/filters@blank	false	values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1572	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/filters@calendarType	none	values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1573	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/iconFilter		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1574	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/iconFilter@iconId		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1575	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/iconFilter@iconSet		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1576	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/top10		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1577	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/top10@filterVal		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1578	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/top10@percent	false	values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1579	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/top10@top	true	values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1580	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn/top10@val		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1581	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn@colId		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1582	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn@hiddenButton	false	values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1583	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/filterColumn@showButton	true	values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1584	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/sortState		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
 PV-1585	metadata	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/sortState/extLst		none	unknown	round-trip only (decision 0274)	round-trip	todo	
-PV-1586	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/sortState/sortCondition		values	unknown	in	PV5	todo	
-PV-1587	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/sortState/sortCondition@customList		values	unknown	in	PV5	todo	
-PV-1588	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/sortState/sortCondition@descending	false	values	unknown	in	PV5	todo	
+PV-1586	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/sortState/sortCondition		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1587	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/sortState/sortCondition@customList		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1588	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/sortState/sortCondition@descending	false	values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
 PV-1589	formatting	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/sortState/sortCondition@dxfId		none	unknown	round-trip only (decision 0274)	round-trip	todo	
-PV-1590	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/sortState/sortCondition@iconId		values	unknown	in	PV5	todo	
-PV-1591	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/sortState/sortCondition@iconSet	3Arrows	values	unknown	in	PV5	todo	
-PV-1592	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/sortState/sortCondition@ref		values	unknown	in	PV5	todo	
-PV-1593	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/sortState/sortCondition@sortBy	value	values	unknown	in	PV5	todo	
-PV-1594	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/sortState@caseSensitive	false	values	unknown	in	PV5	todo	
-PV-1595	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/sortState@columnSort	false	values	unknown	in	PV5	todo	
-PV-1596	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/sortState@ref		values	unknown	in	PV5	todo	
-PV-1597	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/sortState@sortMethod	none	values	unknown	in	PV5	todo	
-PV-1598	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter@ref		values	unknown	in	PV5	todo	
+PV-1590	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/sortState/sortCondition@iconId		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1591	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/sortState/sortCondition@iconSet	3Arrows	values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1592	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/sortState/sortCondition@ref		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1593	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/sortState/sortCondition@sortBy	value	values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1594	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/sortState@caseSensitive	false	values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1595	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/sortState@columnSort	false	values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1596	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/sortState@ref		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1597	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter/sortState@sortMethod	none	values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1598	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter@ref		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
 PV-1599	metadata	x15:timelineCacheDefinition/timelinePivotFilter/autoFilter@xr:uid		none	unknown	round-trip only (decision 0274)	round-trip	todo	
-PV-1600	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter@description		values	unknown	in	PV5	todo	
-PV-1601	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter@fld		values	unknown	in	PV5	todo	
+PV-1600	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter@description		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1601	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter@fld		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
 PV-1602	metadata	x15:timelineCacheDefinition/timelinePivotFilter@id		none	unknown	round-trip only (decision 0274)	round-trip	todo	
-PV-1603	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter@name		values	unknown	in	PV5	todo	
-PV-1604	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter@useWholeDay	false	values	unknown	in	PV5	todo	
+PV-1603	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter@name		values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
+PV-1604	slicers-timelines	x15:timelineCacheDefinition/timelinePivotFilter@useWholeDay	false	values	no	in	PV5	todo	refused: T-4767 runs, scratch files (pivots.md "Capability matrix 3"; every timelinePivotFilter shape tried)
 PV-1605	metadata	x15:timelineCacheDefinition@mc:Ignorable		none	unknown	round-trip only (decision 0274)	round-trip	todo	
-PV-1606	slicers-timelines	x15:timelineCacheDefinition@name		values	unknown	in	PV5	todo	
-PV-1607	slicers-timelines	x15:timelineCacheDefinition@sourceName		values	unknown	in	PV5	todo	
+PV-1606	slicers-timelines	x15:timelineCacheDefinition@name		values	yes	in	PV5	todo	probes/t4767-pivot-timelines TL
+PV-1607	slicers-timelines	x15:timelineCacheDefinition@sourceName		values	yes	in	PV5	todo	probes/t4767-pivot-timelines TL
 PV-1608	metadata	x15:timelineCacheDefinition@xr10:uid		none	unknown	round-trip only (decision 0274)	round-trip	todo	
-PV-1609	slicers-timelines	x15:timelinePivotCacheDefinition		values	unknown	in	PV5	todo	
-PV-1610	slicers-timelines	x15:timelinePivotCacheDefinition@timelineData	false	values	unknown	in	PV5	todo	
+PV-1609	slicers-timelines	x15:timelinePivotCacheDefinition		values	yes	in	PV5	todo	probes/t4767-pivot-timelines TD0 TD1
+PV-1610	slicers-timelines	x15:timelinePivotCacheDefinition@timelineData	false	values	yes	in	PV5	todo	probes/t4767-pivot-timelines TD0 TD1
 PV-1611	formatting	x15:timelineStyles		none	unknown	round-trip only (decision 0274)	round-trip	todo	
 PV-1612	formatting	x15:timelineStyles/timelineStyle		none	unknown	round-trip only (decision 0274)	round-trip	todo	
 PV-1613	formatting	x15:timelineStyles/timelineStyle/timelineStyleElements		none	unknown	round-trip only (decision 0274)	round-trip	todo	
@@ -1617,15 +1617,15 @@ PV-1615	formatting	x15:timelineStyles/timelineStyle/timelineStyleElements/timeli
 PV-1616	formatting	x15:timelineStyles/timelineStyle/timelineStyleElements/timelineStyleElement@type		none	unknown	round-trip only (decision 0274)	round-trip	todo	
 PV-1617	formatting	x15:timelineStyles/timelineStyle@name		none	unknown	round-trip only (decision 0274)	round-trip	todo	
 PV-1618	formatting	x15:timelineStyles@defaultTimelineStyle		none	unknown	round-trip only (decision 0274)	round-trip	todo	
-PV-1619	slicers-timelines	x15:timelines		values	unknown	in	PV5	todo	
-PV-1620	slicers-timelines	x15:timelines/timeline		values	unknown	in	PV5	todo	
+PV-1619	slicers-timelines	x15:timelines		values	yes	in	PV5	todo	probes/t4767-pivot-timelines TL
+PV-1620	slicers-timelines	x15:timelines/timeline		values	yes	in	PV5	todo	probes/t4767-pivot-timelines TL
 PV-1621	metadata	x15:timelines/timeline/extLst		none	unknown	round-trip only (decision 0274)	round-trip	todo	
-PV-1622	slicers-timelines	x15:timelines/timeline@cache		values	unknown	in	PV5	todo	
-PV-1623	slicers-timelines	x15:timelines/timeline@caption		values	unknown	in	PV5	todo	
+PV-1622	slicers-timelines	x15:timelines/timeline@cache		values	yes	in	PV5	todo	probes/t4767-pivot-timelines TL
+PV-1623	slicers-timelines	x15:timelines/timeline@caption		values	yes	in	PV5	todo	probes/t4767-pivot-timelines TL
 PV-1624	ui	x15:timelines/timeline@level		none	unknown	round-trip only (decision 0274)	round-trip	todo	
-PV-1625	slicers-timelines	x15:timelines/timeline@name		values	unknown	in	PV5	todo	
+PV-1625	slicers-timelines	x15:timelines/timeline@name		values	yes	in	PV5	todo	probes/t4767-pivot-timelines TL
 PV-1626	ui	x15:timelines/timeline@scrollPosition		none	unknown	round-trip only (decision 0274)	round-trip	todo	
-PV-1627	slicers-timelines	x15:timelines/timeline@selectionLevel		values	unknown	in	PV5	todo	
+PV-1627	slicers-timelines	x15:timelines/timeline@selectionLevel		values	yes	in	PV5	todo	probes/t4767-pivot-timelines TA
 PV-1628	ui	x15:timelines/timeline@showHeader	true	none	unknown	round-trip only (decision 0274)	round-trip	todo	
 PV-1629	ui	x15:timelines/timeline@showHorizontalScrollbar	true	none	unknown	round-trip only (decision 0274)	round-trip	todo	
 PV-1630	ui	x15:timelines/timeline@showSelectionLabel	true	none	unknown	round-trip only (decision 0274)	round-trip	todo	

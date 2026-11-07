@@ -1,0 +1,4746 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "pivots": [
+  {
+   "cache_fields": [
+    {
+     "name": "Product",
+     "shared_flags": {
+      "count": "6"
+     },
+     "shared_items": [
+      {
+       "t": "s",
+       "v": "A"
+      },
+      {
+       "t": "s",
+       "v": "B"
+      },
+      {
+       "t": "s",
+       "v": "C"
+      },
+      {
+       "t": "s",
+       "v": "D"
+      },
+      {
+       "t": "s",
+       "v": "E"
+      },
+      {
+       "t": "s",
+       "v": "F"
+      }
+     ]
+    },
+    {
+     "name": "S",
+     "shared_flags": {
+      "containsInteger": "1",
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "maxValue": "128",
+      "minValue": "1"
+     }
+    },
+    {
+     "group_items": [
+      {
+       "t": "s",
+       "v": "F"
+      },
+      {
+       "t": "s",
+       "v": "Group2"
+      },
+      {
+       "t": "s",
+       "v": "Group1"
+      },
+      {
+       "t": "b",
+       "v": true
+      }
+     ],
+     "name": "Product2"
+    }
+   ],
+   "cells": {
+    "A3": {
+     "t": "s",
+     "v": "Row Labels"
+    },
+    "A4": {
+     "t": "s",
+     "v": "Group2"
+    },
+    "A5": {
+     "t": "s",
+     "v": "Group1"
+    },
+    "A6": {
+     "t": "s",
+     "v": "TRUE"
+    },
+    "A7": {
+     "t": "s",
+     "v": "F"
+    },
+    "A8": {
+     "t": "s",
+     "v": "Grand Total"
+    },
+    "B3": {
+     "t": "s",
+     "v": "Sum of S"
+    },
+    "B4": {
+     "t": "n",
+     "v": 67.0
+    },
+    "B5": {
+     "t": "n",
+     "v": 140.0
+    },
+    "B6": {
+     "t": "n",
+     "v": 16.0
+    },
+    "B7": {
+     "t": "n",
+     "v": 32.0
+    },
+    "B8": {
+     "t": "n",
+     "v": 255.0
+    }
+   },
+   "col_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": []
+    }
+   ],
+   "col_page_count": 0,
+   "first_data_col": 1,
+   "first_data_row": 1,
+   "first_header_row": 1,
+   "location": "A3:B8",
+   "name": "P_GB",
+   "row_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      0
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      1
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      2
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      3
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "row_page_count": 0,
+   "sheet": "GB",
+   "text": {
+    "A3": "Row Labels",
+    "A4": "Group2",
+    "A5": "Group1",
+    "A6": "TRUE",
+    "A7": "F",
+    "A8": "Grand Total",
+    "B3": "Sum of S",
+    "B4": "67",
+    "B5": "140",
+    "B6": "16",
+    "B7": "32",
+    "B8": "255"
+   }
+  },
+  {
+   "cache_fields": [
+    {
+     "name": "Product",
+     "shared_flags": {
+      "count": "6"
+     },
+     "shared_items": [
+      {
+       "t": "s",
+       "v": "A"
+      },
+      {
+       "t": "s",
+       "v": "B"
+      },
+      {
+       "t": "s",
+       "v": "C"
+      },
+      {
+       "t": "s",
+       "v": "D"
+      },
+      {
+       "t": "s",
+       "v": "E"
+      },
+      {
+       "t": "s",
+       "v": "F"
+      }
+     ]
+    },
+    {
+     "name": "S",
+     "shared_flags": {
+      "containsInteger": "1",
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "maxValue": "128",
+      "minValue": "1"
+     }
+    },
+    {
+     "group_items": [
+      {
+       "t": "s",
+       "v": "F"
+      },
+      {
+       "t": "s",
+       "v": "Group2"
+      },
+      {
+       "t": "s",
+       "v": "Group1"
+      },
+      {
+       "t": "b",
+       "v": true
+      }
+     ],
+     "name": "Product2"
+    }
+   ],
+   "cells": {
+    "A3": {
+     "t": "s",
+     "v": "Row Labels"
+    },
+    "A4": {
+     "t": "s",
+     "v": "Group2"
+    },
+    "A5": {
+     "t": "s",
+     "v": "Group1"
+    },
+    "A6": {
+     "t": "s",
+     "v": "TRUE"
+    },
+    "A7": {
+     "t": "s",
+     "v": "F"
+    },
+    "A8": {
+     "t": "s",
+     "v": "Grand Total"
+    },
+    "B3": {
+     "t": "s",
+     "v": "Sum of S"
+    },
+    "B4": {
+     "t": "n",
+     "v": 67.0
+    },
+    "B5": {
+     "t": "n",
+     "v": 140.0
+    },
+    "B6": {
+     "t": "n",
+     "v": 16.0
+    },
+    "B7": {
+     "t": "n",
+     "v": 32.0
+    },
+    "B8": {
+     "t": "n",
+     "v": 255.0
+    }
+   },
+   "col_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": []
+    }
+   ],
+   "col_page_count": 0,
+   "first_data_col": 1,
+   "first_data_row": 1,
+   "first_header_row": 1,
+   "location": "A3:B8",
+   "name": "P_GBA",
+   "row_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      0
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      1
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      2
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      3
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "row_page_count": 0,
+   "sheet": "GBA",
+   "text": {
+    "A3": "Row Labels",
+    "A4": "Group2",
+    "A5": "Group1",
+    "A6": "TRUE",
+    "A7": "F",
+    "A8": "Grand Total",
+    "B3": "Sum of S",
+    "B4": "67",
+    "B5": "140",
+    "B6": "16",
+    "B7": "32",
+    "B8": "255"
+   }
+  },
+  {
+   "cache_fields": [
+    {
+     "name": "Product",
+     "shared_flags": {
+      "count": "6"
+     },
+     "shared_items": [
+      {
+       "t": "s",
+       "v": "A"
+      },
+      {
+       "t": "s",
+       "v": "B"
+      },
+      {
+       "t": "s",
+       "v": "C"
+      },
+      {
+       "t": "s",
+       "v": "D"
+      },
+      {
+       "t": "s",
+       "v": "E"
+      },
+      {
+       "t": "s",
+       "v": "F"
+      }
+     ]
+    },
+    {
+     "name": "S",
+     "shared_flags": {
+      "containsInteger": "1",
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "maxValue": "128",
+      "minValue": "1"
+     }
+    },
+    {
+     "group_items": [
+      {
+       "t": "s",
+       "v": "F"
+      },
+      {
+       "t": "s",
+       "v": "Group2"
+      },
+      {
+       "t": "s",
+       "v": "Group1"
+      },
+      {
+       "t": "s",
+       "v": "2020-01-01T00:00:00"
+      }
+     ],
+     "name": "Product2"
+    }
+   ],
+   "cells": {
+    "A3": {
+     "t": "s",
+     "v": "Row Labels"
+    },
+    "A4": {
+     "t": "s",
+     "v": "Group2"
+    },
+    "A5": {
+     "t": "s",
+     "v": "Group1"
+    },
+    "A6": {
+     "t": "n",
+     "v": 43831.0
+    },
+    "A7": {
+     "t": "s",
+     "v": "F"
+    },
+    "A8": {
+     "t": "s",
+     "v": "Grand Total"
+    },
+    "B3": {
+     "t": "s",
+     "v": "Sum of S"
+    },
+    "B4": {
+     "t": "n",
+     "v": 67.0
+    },
+    "B5": {
+     "t": "n",
+     "v": 140.0
+    },
+    "B6": {
+     "t": "n",
+     "v": 16.0
+    },
+    "B7": {
+     "t": "n",
+     "v": 32.0
+    },
+    "B8": {
+     "t": "n",
+     "v": 255.0
+    }
+   },
+   "col_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": []
+    }
+   ],
+   "col_page_count": 0,
+   "first_data_col": 1,
+   "first_data_row": 1,
+   "first_header_row": 1,
+   "location": "A3:B8",
+   "name": "P_GD",
+   "row_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      0
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      1
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      2
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      3
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "row_page_count": 0,
+   "sheet": "GD",
+   "text": {
+    "A3": "Row Labels",
+    "A4": "Group2",
+    "A5": "Group1",
+    "A6": "1/1/2020",
+    "A7": "F",
+    "A8": "Grand Total",
+    "B3": "Sum of S",
+    "B4": "67",
+    "B5": "140",
+    "B6": "16",
+    "B7": "32",
+    "B8": "255"
+   }
+  },
+  {
+   "cache_fields": [
+    {
+     "name": "Product",
+     "shared_flags": {
+      "count": "6"
+     },
+     "shared_items": [
+      {
+       "t": "s",
+       "v": "A"
+      },
+      {
+       "t": "s",
+       "v": "B"
+      },
+      {
+       "t": "s",
+       "v": "C"
+      },
+      {
+       "t": "s",
+       "v": "D"
+      },
+      {
+       "t": "s",
+       "v": "E"
+      },
+      {
+       "t": "s",
+       "v": "F"
+      }
+     ]
+    },
+    {
+     "name": "S",
+     "shared_flags": {
+      "containsInteger": "1",
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "maxValue": "128",
+      "minValue": "1"
+     }
+    },
+    {
+     "group_items": [
+      {
+       "t": "s",
+       "v": "F"
+      },
+      {
+       "t": "s",
+       "v": "Group2"
+      },
+      {
+       "t": "s",
+       "v": "Group1"
+      },
+      {
+       "t": "s",
+       "v": "2020-01-01T00:00:00"
+      }
+     ],
+     "name": "Product2"
+    }
+   ],
+   "cells": {
+    "A3": {
+     "t": "s",
+     "v": "Row Labels"
+    },
+    "A4": {
+     "t": "s",
+     "v": "Group2"
+    },
+    "A5": {
+     "t": "s",
+     "v": "Group1"
+    },
+    "A6": {
+     "t": "n",
+     "v": 43831.0
+    },
+    "A7": {
+     "t": "s",
+     "v": "F"
+    },
+    "A8": {
+     "t": "s",
+     "v": "Grand Total"
+    },
+    "B3": {
+     "t": "s",
+     "v": "Sum of S"
+    },
+    "B4": {
+     "t": "n",
+     "v": 67.0
+    },
+    "B5": {
+     "t": "n",
+     "v": 140.0
+    },
+    "B6": {
+     "t": "n",
+     "v": 16.0
+    },
+    "B7": {
+     "t": "n",
+     "v": 32.0
+    },
+    "B8": {
+     "t": "n",
+     "v": 255.0
+    }
+   },
+   "col_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": []
+    }
+   ],
+   "col_page_count": 0,
+   "first_data_col": 1,
+   "first_data_row": 1,
+   "first_header_row": 1,
+   "location": "A3:B8",
+   "name": "P_GDA",
+   "row_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      0
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      1
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      2
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      3
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "row_page_count": 0,
+   "sheet": "GDA",
+   "text": {
+    "A3": "Row Labels",
+    "A4": "Group2",
+    "A5": "Group1",
+    "A6": "1/1/2020",
+    "A7": "F",
+    "A8": "Grand Total",
+    "B3": "Sum of S",
+    "B4": "67",
+    "B5": "140",
+    "B6": "16",
+    "B7": "32",
+    "B8": "255"
+   }
+  },
+  {
+   "cache_fields": [
+    {
+     "name": "Product",
+     "shared_flags": {
+      "count": "6"
+     },
+     "shared_items": [
+      {
+       "t": "s",
+       "v": "A"
+      },
+      {
+       "t": "s",
+       "v": "B"
+      },
+      {
+       "t": "s",
+       "v": "C"
+      },
+      {
+       "t": "s",
+       "v": "D"
+      },
+      {
+       "t": "s",
+       "v": "E"
+      },
+      {
+       "t": "s",
+       "v": "F"
+      }
+     ]
+    },
+    {
+     "name": "S",
+     "shared_flags": {
+      "containsInteger": "1",
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "maxValue": "128",
+      "minValue": "1"
+     }
+    },
+    {
+     "group_items": [
+      {
+       "t": "s",
+       "v": "F"
+      },
+      {
+       "t": "s",
+       "v": "Group2"
+      },
+      {
+       "t": "s",
+       "v": "Group1"
+      },
+      {
+       "t": "e",
+       "v": "#N/A"
+      }
+     ],
+     "name": "Product2"
+    }
+   ],
+   "cells": {
+    "A3": {
+     "t": "s",
+     "v": "Row Labels"
+    },
+    "A4": {
+     "t": "s",
+     "v": "Group2"
+    },
+    "A5": {
+     "t": "s",
+     "v": "Group1"
+    },
+    "A6": {
+     "t": "s",
+     "v": "#N/A"
+    },
+    "A7": {
+     "t": "s",
+     "v": "F"
+    },
+    "A8": {
+     "t": "s",
+     "v": "Grand Total"
+    },
+    "B3": {
+     "t": "s",
+     "v": "Sum of S"
+    },
+    "B4": {
+     "t": "n",
+     "v": 67.0
+    },
+    "B5": {
+     "t": "n",
+     "v": 140.0
+    },
+    "B6": {
+     "t": "n",
+     "v": 16.0
+    },
+    "B7": {
+     "t": "n",
+     "v": 32.0
+    },
+    "B8": {
+     "t": "n",
+     "v": 255.0
+    }
+   },
+   "col_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": []
+    }
+   ],
+   "col_page_count": 0,
+   "first_data_col": 1,
+   "first_data_row": 1,
+   "first_header_row": 1,
+   "location": "A3:B8",
+   "name": "P_GE",
+   "row_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      0
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      1
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      2
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      3
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "row_page_count": 0,
+   "sheet": "GE",
+   "text": {
+    "A3": "Row Labels",
+    "A4": "Group2",
+    "A5": "Group1",
+    "A6": "#N/A",
+    "A7": "F",
+    "A8": "Grand Total",
+    "B3": "Sum of S",
+    "B4": "67",
+    "B5": "140",
+    "B6": "16",
+    "B7": "32",
+    "B8": "255"
+   }
+  },
+  {
+   "cache_fields": [
+    {
+     "name": "Product",
+     "shared_flags": {
+      "count": "6"
+     },
+     "shared_items": [
+      {
+       "t": "s",
+       "v": "A"
+      },
+      {
+       "t": "s",
+       "v": "B"
+      },
+      {
+       "t": "s",
+       "v": "C"
+      },
+      {
+       "t": "s",
+       "v": "D"
+      },
+      {
+       "t": "s",
+       "v": "E"
+      },
+      {
+       "t": "s",
+       "v": "F"
+      }
+     ]
+    },
+    {
+     "name": "S",
+     "shared_flags": {
+      "containsInteger": "1",
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "maxValue": "128",
+      "minValue": "1"
+     }
+    },
+    {
+     "group_items": [
+      {
+       "t": "s",
+       "v": "F"
+      },
+      {
+       "t": "s",
+       "v": "Group2"
+      },
+      {
+       "t": "s",
+       "v": "Group1"
+      },
+      {
+       "t": "e",
+       "v": "#N/A"
+      }
+     ],
+     "name": "Product2"
+    }
+   ],
+   "cells": {
+    "A3": {
+     "t": "s",
+     "v": "Row Labels"
+    },
+    "A4": {
+     "t": "s",
+     "v": "Group2"
+    },
+    "A5": {
+     "t": "s",
+     "v": "Group1"
+    },
+    "A6": {
+     "t": "s",
+     "v": "#N/A"
+    },
+    "A7": {
+     "t": "s",
+     "v": "F"
+    },
+    "A8": {
+     "t": "s",
+     "v": "Grand Total"
+    },
+    "B3": {
+     "t": "s",
+     "v": "Sum of S"
+    },
+    "B4": {
+     "t": "n",
+     "v": 67.0
+    },
+    "B5": {
+     "t": "n",
+     "v": 140.0
+    },
+    "B6": {
+     "t": "n",
+     "v": 16.0
+    },
+    "B7": {
+     "t": "n",
+     "v": 32.0
+    },
+    "B8": {
+     "t": "n",
+     "v": 255.0
+    }
+   },
+   "col_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": []
+    }
+   ],
+   "col_page_count": 0,
+   "first_data_col": 1,
+   "first_data_row": 1,
+   "first_header_row": 1,
+   "location": "A3:B8",
+   "name": "P_GEA",
+   "row_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      0
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      1
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      2
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      3
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "row_page_count": 0,
+   "sheet": "GEA",
+   "text": {
+    "A3": "Row Labels",
+    "A4": "Group2",
+    "A5": "Group1",
+    "A6": "#N/A",
+    "A7": "F",
+    "A8": "Grand Total",
+    "B3": "Sum of S",
+    "B4": "67",
+    "B5": "140",
+    "B6": "16",
+    "B7": "32",
+    "B8": "255"
+   }
+  },
+  {
+   "cache_fields": [
+    {
+     "name": "Product",
+     "shared_flags": {
+      "count": "6"
+     },
+     "shared_items": [
+      {
+       "t": "s",
+       "v": "A"
+      },
+      {
+       "t": "s",
+       "v": "B"
+      },
+      {
+       "t": "s",
+       "v": "C"
+      },
+      {
+       "t": "s",
+       "v": "D"
+      },
+      {
+       "t": "s",
+       "v": "E"
+      },
+      {
+       "t": "s",
+       "v": "F"
+      }
+     ]
+    },
+    {
+     "name": "S",
+     "shared_flags": {
+      "containsInteger": "1",
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "maxValue": "128",
+      "minValue": "1"
+     }
+    },
+    {
+     "group_items": [
+      {
+       "t": "s",
+       "v": "F"
+      },
+      {
+       "t": "s",
+       "v": "Group2"
+      },
+      {
+       "t": "s",
+       "v": "Group1"
+      },
+      {
+       "t": "empty"
+      }
+     ],
+     "name": "Product2"
+    }
+   ],
+   "cells": {
+    "A3": {
+     "t": "s",
+     "v": "Row Labels"
+    },
+    "A4": {
+     "t": "s",
+     "v": "Group2"
+    },
+    "A5": {
+     "t": "s",
+     "v": "Group1"
+    },
+    "A6": {
+     "t": "s",
+     "v": "(blank)"
+    },
+    "A7": {
+     "t": "s",
+     "v": "F"
+    },
+    "A8": {
+     "t": "s",
+     "v": "Grand Total"
+    },
+    "B3": {
+     "t": "s",
+     "v": "Sum of S"
+    },
+    "B4": {
+     "t": "n",
+     "v": 67.0
+    },
+    "B5": {
+     "t": "n",
+     "v": 140.0
+    },
+    "B6": {
+     "t": "n",
+     "v": 16.0
+    },
+    "B7": {
+     "t": "n",
+     "v": 32.0
+    },
+    "B8": {
+     "t": "n",
+     "v": 255.0
+    }
+   },
+   "col_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": []
+    }
+   ],
+   "col_page_count": 0,
+   "first_data_col": 1,
+   "first_data_row": 1,
+   "first_header_row": 1,
+   "location": "A3:B8",
+   "name": "P_GM",
+   "row_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      0
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      1
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      2
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      3
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "row_page_count": 0,
+   "sheet": "GM",
+   "text": {
+    "A3": "Row Labels",
+    "A4": "Group2",
+    "A5": "Group1",
+    "A6": "(blank)",
+    "A7": "F",
+    "A8": "Grand Total",
+    "B3": "Sum of S",
+    "B4": "67",
+    "B5": "140",
+    "B6": "16",
+    "B7": "32",
+    "B8": "255"
+   }
+  },
+  {
+   "cache_fields": [
+    {
+     "name": "Product",
+     "shared_flags": {
+      "count": "6"
+     },
+     "shared_items": [
+      {
+       "t": "s",
+       "v": "A"
+      },
+      {
+       "t": "s",
+       "v": "B"
+      },
+      {
+       "t": "s",
+       "v": "C"
+      },
+      {
+       "t": "s",
+       "v": "D"
+      },
+      {
+       "t": "s",
+       "v": "E"
+      },
+      {
+       "t": "s",
+       "v": "F"
+      }
+     ]
+    },
+    {
+     "name": "S",
+     "shared_flags": {
+      "containsInteger": "1",
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "maxValue": "128",
+      "minValue": "1"
+     }
+    },
+    {
+     "group_items": [
+      {
+       "t": "s",
+       "v": "F"
+      },
+      {
+       "t": "s",
+       "v": "Group2"
+      },
+      {
+       "t": "s",
+       "v": "Group1"
+      },
+      {
+       "t": "empty"
+      }
+     ],
+     "name": "Product2"
+    }
+   ],
+   "cells": {
+    "A3": {
+     "t": "s",
+     "v": "Row Labels"
+    },
+    "A4": {
+     "t": "s",
+     "v": "Group2"
+    },
+    "A5": {
+     "t": "s",
+     "v": "Group1"
+    },
+    "A6": {
+     "t": "s",
+     "v": "(blank)"
+    },
+    "A7": {
+     "t": "s",
+     "v": "F"
+    },
+    "A8": {
+     "t": "s",
+     "v": "Grand Total"
+    },
+    "B3": {
+     "t": "s",
+     "v": "Sum of S"
+    },
+    "B4": {
+     "t": "n",
+     "v": 67.0
+    },
+    "B5": {
+     "t": "n",
+     "v": 140.0
+    },
+    "B6": {
+     "t": "n",
+     "v": 16.0
+    },
+    "B7": {
+     "t": "n",
+     "v": 32.0
+    },
+    "B8": {
+     "t": "n",
+     "v": 255.0
+    }
+   },
+   "col_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": []
+    }
+   ],
+   "col_page_count": 0,
+   "first_data_col": 1,
+   "first_data_row": 1,
+   "first_header_row": 1,
+   "location": "A3:B8",
+   "name": "P_GMA",
+   "row_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      0
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      1
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      2
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      3
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "row_page_count": 0,
+   "sheet": "GMA",
+   "text": {
+    "A3": "Row Labels",
+    "A4": "Group2",
+    "A5": "Group1",
+    "A6": "(blank)",
+    "A7": "F",
+    "A8": "Grand Total",
+    "B3": "Sum of S",
+    "B4": "67",
+    "B5": "140",
+    "B6": "16",
+    "B7": "32",
+    "B8": "255"
+   }
+  },
+  {
+   "cache_fields": [
+    {
+     "name": "Product",
+     "shared_flags": {
+      "count": "6"
+     },
+     "shared_items": [
+      {
+       "t": "s",
+       "v": "A"
+      },
+      {
+       "t": "s",
+       "v": "B"
+      },
+      {
+       "t": "s",
+       "v": "C"
+      },
+      {
+       "t": "s",
+       "v": "D"
+      },
+      {
+       "t": "s",
+       "v": "E"
+      },
+      {
+       "t": "s",
+       "v": "F"
+      }
+     ]
+    },
+    {
+     "name": "S",
+     "shared_flags": {
+      "containsInteger": "1",
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "maxValue": "128",
+      "minValue": "1"
+     }
+    },
+    {
+     "group_items": [
+      {
+       "t": "s",
+       "v": "F"
+      },
+      {
+       "t": "s",
+       "v": "Group2"
+      },
+      {
+       "t": "s",
+       "v": "Group1"
+      },
+      {
+       "t": "n",
+       "v": 7.0
+      }
+     ],
+     "name": "Product2"
+    }
+   ],
+   "cells": {
+    "A3": {
+     "t": "s",
+     "v": "Row Labels"
+    },
+    "A4": {
+     "t": "s",
+     "v": "Group2"
+    },
+    "A5": {
+     "t": "s",
+     "v": "Group1"
+    },
+    "A6": {
+     "t": "n",
+     "v": 7.0
+    },
+    "A7": {
+     "t": "s",
+     "v": "F"
+    },
+    "A8": {
+     "t": "s",
+     "v": "Grand Total"
+    },
+    "B3": {
+     "t": "s",
+     "v": "Sum of S"
+    },
+    "B4": {
+     "t": "n",
+     "v": 67.0
+    },
+    "B5": {
+     "t": "n",
+     "v": 140.0
+    },
+    "B6": {
+     "t": "n",
+     "v": 16.0
+    },
+    "B7": {
+     "t": "n",
+     "v": 32.0
+    },
+    "B8": {
+     "t": "n",
+     "v": 255.0
+    }
+   },
+   "col_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": []
+    }
+   ],
+   "col_page_count": 0,
+   "first_data_col": 1,
+   "first_data_row": 1,
+   "first_header_row": 1,
+   "location": "A3:B8",
+   "name": "P_GN",
+   "row_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      0
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      1
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      2
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      3
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "row_page_count": 0,
+   "sheet": "GN",
+   "text": {
+    "A3": "Row Labels",
+    "A4": "Group2",
+    "A5": "Group1",
+    "A6": "7",
+    "A7": "F",
+    "A8": "Grand Total",
+    "B3": "Sum of S",
+    "B4": "67",
+    "B5": "140",
+    "B6": "16",
+    "B7": "32",
+    "B8": "255"
+   }
+  },
+  {
+   "cache_fields": [
+    {
+     "name": "Product",
+     "shared_flags": {
+      "count": "6"
+     },
+     "shared_items": [
+      {
+       "t": "s",
+       "v": "A"
+      },
+      {
+       "t": "s",
+       "v": "B"
+      },
+      {
+       "t": "s",
+       "v": "C"
+      },
+      {
+       "t": "s",
+       "v": "D"
+      },
+      {
+       "t": "s",
+       "v": "E"
+      },
+      {
+       "t": "s",
+       "v": "F"
+      }
+     ]
+    },
+    {
+     "name": "S",
+     "shared_flags": {
+      "containsInteger": "1",
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "maxValue": "128",
+      "minValue": "1"
+     }
+    },
+    {
+     "group_items": [
+      {
+       "t": "s",
+       "v": "F"
+      },
+      {
+       "t": "s",
+       "v": "Group2"
+      },
+      {
+       "t": "s",
+       "v": "Group1"
+      },
+      {
+       "t": "n",
+       "v": 7.0
+      }
+     ],
+     "name": "Product2"
+    }
+   ],
+   "cells": {
+    "A3": {
+     "t": "s",
+     "v": "Row Labels"
+    },
+    "A4": {
+     "t": "s",
+     "v": "Group2"
+    },
+    "A5": {
+     "t": "s",
+     "v": "Group1"
+    },
+    "A6": {
+     "t": "n",
+     "v": 7.0
+    },
+    "A7": {
+     "t": "s",
+     "v": "F"
+    },
+    "A8": {
+     "t": "s",
+     "v": "Grand Total"
+    },
+    "B3": {
+     "t": "s",
+     "v": "Sum of S"
+    },
+    "B4": {
+     "t": "n",
+     "v": 67.0
+    },
+    "B5": {
+     "t": "n",
+     "v": 140.0
+    },
+    "B6": {
+     "t": "n",
+     "v": 16.0
+    },
+    "B7": {
+     "t": "n",
+     "v": 32.0
+    },
+    "B8": {
+     "t": "n",
+     "v": 255.0
+    }
+   },
+   "col_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": []
+    }
+   ],
+   "col_page_count": 0,
+   "first_data_col": 1,
+   "first_data_row": 1,
+   "first_header_row": 1,
+   "location": "A3:B8",
+   "name": "P_GNA",
+   "row_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      0
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      1
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      2
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      3
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "row_page_count": 0,
+   "sheet": "GNA",
+   "text": {
+    "A3": "Row Labels",
+    "A4": "Group2",
+    "A5": "Group1",
+    "A6": "7",
+    "A7": "F",
+    "A8": "Grand Total",
+    "B3": "Sum of S",
+    "B4": "67",
+    "B5": "140",
+    "B6": "16",
+    "B7": "32",
+    "B8": "255"
+   }
+  },
+  {
+   "cache_fields": [
+    {
+     "name": "Product",
+     "shared_flags": {
+      "count": "6"
+     },
+     "shared_items": [
+      {
+       "t": "s",
+       "v": "A"
+      },
+      {
+       "t": "s",
+       "v": "B"
+      },
+      {
+       "t": "s",
+       "v": "C"
+      },
+      {
+       "t": "s",
+       "v": "D"
+      },
+      {
+       "t": "s",
+       "v": "E"
+      },
+      {
+       "t": "s",
+       "v": "F"
+      }
+     ]
+    },
+    {
+     "name": "S",
+     "shared_flags": {
+      "containsInteger": "1",
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "maxValue": "128",
+      "minValue": "1"
+     }
+    },
+    {
+     "group_items": [
+      {
+       "t": "s",
+       "v": "F"
+      },
+      {
+       "t": "s",
+       "v": "Group2"
+      },
+      {
+       "t": "s",
+       "v": "Group1"
+      },
+      {
+       "t": "s",
+       "v": "North"
+      }
+     ],
+     "name": "Product2"
+    }
+   ],
+   "cells": {
+    "A3": {
+     "t": "s",
+     "v": "Row Labels"
+    },
+    "A4": {
+     "t": "s",
+     "v": "Group2"
+    },
+    "A5": {
+     "t": "s",
+     "v": "Group1"
+    },
+    "A6": {
+     "t": "s",
+     "v": "North"
+    },
+    "A7": {
+     "t": "s",
+     "v": "F"
+    },
+    "A8": {
+     "t": "s",
+     "v": "Grand Total"
+    },
+    "B3": {
+     "t": "s",
+     "v": "Sum of S"
+    },
+    "B4": {
+     "t": "n",
+     "v": 67.0
+    },
+    "B5": {
+     "t": "n",
+     "v": 140.0
+    },
+    "B6": {
+     "t": "n",
+     "v": 16.0
+    },
+    "B7": {
+     "t": "n",
+     "v": 32.0
+    },
+    "B8": {
+     "t": "n",
+     "v": 255.0
+    }
+   },
+   "col_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": []
+    }
+   ],
+   "col_page_count": 0,
+   "first_data_col": 1,
+   "first_data_row": 1,
+   "first_header_row": 1,
+   "location": "A3:B8",
+   "name": "P_GSA",
+   "row_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      0
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      1
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      2
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      3
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "row_page_count": 0,
+   "sheet": "GSA",
+   "text": {
+    "A3": "Row Labels",
+    "A4": "Group2",
+    "A5": "Group1",
+    "A6": "North",
+    "A7": "F",
+    "A8": "Grand Total",
+    "B3": "Sum of S",
+    "B4": "67",
+    "B5": "140",
+    "B6": "16",
+    "B7": "32",
+    "B8": "255"
+   }
+  },
+  {
+   "cache_fields": [
+    {
+     "group_items": [
+      {
+       "t": "s",
+       "v": "<3/15/2023"
+      },
+      {
+       "t": "s",
+       "v": ":00"
+      },
+      {
+       "t": "s",
+       "v": ":01"
+      },
+      {
+       "t": "s",
+       "v": ":02"
+      },
+      {
+       "t": "s",
+       "v": ":03"
+      },
+      {
+       "t": "s",
+       "v": ":04"
+      },
+      {
+       "t": "s",
+       "v": ":05"
+      },
+      {
+       "t": "s",
+       "v": ":06"
+      },
+      {
+       "t": "s",
+       "v": ":07"
+      },
+      {
+       "t": "s",
+       "v": ":08"
+      },
+      {
+       "t": "s",
+       "v": ":09"
+      },
+      {
+       "t": "s",
+       "v": ":10"
+      },
+      {
+       "t": "s",
+       "v": ":11"
+      },
+      {
+       "t": "s",
+       "v": ":12"
+      },
+      {
+       "t": "s",
+       "v": ":13"
+      },
+      {
+       "t": "s",
+       "v": ":14"
+      },
+      {
+       "t": "s",
+       "v": ":15"
+      },
+      {
+       "t": "s",
+       "v": ":16"
+      },
+      {
+       "t": "s",
+       "v": ":17"
+      },
+      {
+       "t": "s",
+       "v": ":18"
+      },
+      {
+       "t": "s",
+       "v": ":19"
+      },
+      {
+       "t": "s",
+       "v": ":20"
+      },
+      {
+       "t": "s",
+       "v": ":21"
+      },
+      {
+       "t": "s",
+       "v": ":22"
+      },
+      {
+       "t": "s",
+       "v": ":23"
+      },
+      {
+       "t": "s",
+       "v": ":24"
+      },
+      {
+       "t": "s",
+       "v": ":25"
+      },
+      {
+       "t": "s",
+       "v": ":26"
+      },
+      {
+       "t": "s",
+       "v": ":27"
+      },
+      {
+       "t": "s",
+       "v": ":28"
+      },
+      {
+       "t": "s",
+       "v": ":29"
+      },
+      {
+       "t": "s",
+       "v": ":30"
+      },
+      {
+       "t": "s",
+       "v": ":31"
+      },
+      {
+       "t": "s",
+       "v": ":32"
+      },
+      {
+       "t": "s",
+       "v": ":33"
+      },
+      {
+       "t": "s",
+       "v": ":34"
+      },
+      {
+       "t": "s",
+       "v": ":35"
+      },
+      {
+       "t": "s",
+       "v": ":36"
+      },
+      {
+       "t": "s",
+       "v": ":37"
+      },
+      {
+       "t": "s",
+       "v": ":38"
+      },
+      {
+       "t": "s",
+       "v": ":39"
+      },
+      {
+       "t": "s",
+       "v": ":40"
+      },
+      {
+       "t": "s",
+       "v": ":41"
+      },
+      {
+       "t": "s",
+       "v": ":42"
+      },
+      {
+       "t": "s",
+       "v": ":43"
+      },
+      {
+       "t": "s",
+       "v": ":44"
+      },
+      {
+       "t": "s",
+       "v": ":45"
+      },
+      {
+       "t": "s",
+       "v": ":46"
+      },
+      {
+       "t": "s",
+       "v": ":47"
+      },
+      {
+       "t": "s",
+       "v": ":48"
+      },
+      {
+       "t": "s",
+       "v": ":49"
+      },
+      {
+       "t": "s",
+       "v": ":50"
+      },
+      {
+       "t": "s",
+       "v": ":51"
+      },
+      {
+       "t": "s",
+       "v": ":52"
+      },
+      {
+       "t": "s",
+       "v": ":53"
+      },
+      {
+       "t": "s",
+       "v": ":54"
+      },
+      {
+       "t": "s",
+       "v": ":55"
+      },
+      {
+       "t": "s",
+       "v": ":56"
+      },
+      {
+       "t": "s",
+       "v": ":57"
+      },
+      {
+       "t": "s",
+       "v": ":58"
+      },
+      {
+       "t": "s",
+       "v": ":59"
+      },
+      {
+       "t": "s",
+       "v": ">3/17/2023"
+      }
+     ],
+     "name": "When",
+     "shared_flags": {
+      "containsDate": "1",
+      "containsNonDate": "0",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "count": "6",
+      "maxDate": "2023-03-16T18:00:00",
+      "minDate": "2023-03-15T00:01:00"
+     },
+     "shared_items": [
+      {
+       "t": "d",
+       "v": "2023-03-15T06:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2023-03-15T12:15:00"
+      },
+      {
+       "t": "d",
+       "v": "2023-03-16T18:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2023-03-16T00:00:01"
+      },
+      {
+       "t": "d",
+       "v": "2023-03-15T00:01:00"
+      },
+      {
+       "t": "d",
+       "v": "2023-03-16T12:00:00"
+      }
+     ]
+    },
+    {
+     "name": "S",
+     "shared_flags": {
+      "containsInteger": "1",
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "maxValue": "32",
+      "minValue": "1"
+     }
+    }
+   ],
+   "cells": {
+    "A3": {
+     "t": "s",
+     "v": "Row Labels"
+    },
+    "A4": {
+     "t": "s",
+     "v": ":00"
+    },
+    "A5": {
+     "t": "s",
+     "v": ":01"
+    },
+    "A6": {
+     "t": "s",
+     "v": "Grand Total"
+    },
+    "B3": {
+     "t": "s",
+     "v": "Sum of S"
+    },
+    "B4": {
+     "t": "n",
+     "v": 55.0
+    },
+    "B5": {
+     "t": "n",
+     "v": 8.0
+    },
+    "B6": {
+     "t": "n",
+     "v": 63.0
+    }
+   },
+   "col_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": []
+    }
+   ],
+   "col_page_count": 0,
+   "first_data_col": 1,
+   "first_data_row": 1,
+   "first_header_row": 1,
+   "location": "A3:B6",
+   "name": "P_LS",
+   "row_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      1
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      2
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "row_page_count": 0,
+   "sheet": "LS",
+   "text": {
+    "A3": "Row Labels",
+    "A4": ":00",
+    "A5": ":01",
+    "A6": "Grand Total",
+    "B3": "Sum of S",
+    "B4": "55",
+    "B5": "8",
+    "B6": "63"
+   }
+  },
+  {
+   "cache_fields": [
+    {
+     "group_items": [
+      {
+       "t": "s",
+       "v": "<3/15/2023"
+      },
+      {
+       "t": "s",
+       "v": ":00"
+      },
+      {
+       "t": "s",
+       "v": ":01"
+      },
+      {
+       "t": "s",
+       "v": ":02"
+      },
+      {
+       "t": "s",
+       "v": ":03"
+      },
+      {
+       "t": "s",
+       "v": ":04"
+      },
+      {
+       "t": "s",
+       "v": ":05"
+      },
+      {
+       "t": "s",
+       "v": ":06"
+      },
+      {
+       "t": "s",
+       "v": ":07"
+      },
+      {
+       "t": "s",
+       "v": ":08"
+      },
+      {
+       "t": "s",
+       "v": ":09"
+      },
+      {
+       "t": "s",
+       "v": ":10"
+      },
+      {
+       "t": "s",
+       "v": ":11"
+      },
+      {
+       "t": "s",
+       "v": ":12"
+      },
+      {
+       "t": "s",
+       "v": ":13"
+      },
+      {
+       "t": "s",
+       "v": ":14"
+      },
+      {
+       "t": "s",
+       "v": ":15"
+      },
+      {
+       "t": "s",
+       "v": ":16"
+      },
+      {
+       "t": "s",
+       "v": ":17"
+      },
+      {
+       "t": "s",
+       "v": ":18"
+      },
+      {
+       "t": "s",
+       "v": ":19"
+      },
+      {
+       "t": "s",
+       "v": ":20"
+      },
+      {
+       "t": "s",
+       "v": ":21"
+      },
+      {
+       "t": "s",
+       "v": ":22"
+      },
+      {
+       "t": "s",
+       "v": ":23"
+      },
+      {
+       "t": "s",
+       "v": ":24"
+      },
+      {
+       "t": "s",
+       "v": ":25"
+      },
+      {
+       "t": "s",
+       "v": ":26"
+      },
+      {
+       "t": "s",
+       "v": ":27"
+      },
+      {
+       "t": "s",
+       "v": ":28"
+      },
+      {
+       "t": "s",
+       "v": ":29"
+      },
+      {
+       "t": "s",
+       "v": ":30"
+      },
+      {
+       "t": "s",
+       "v": ":31"
+      },
+      {
+       "t": "s",
+       "v": ":32"
+      },
+      {
+       "t": "s",
+       "v": ":33"
+      },
+      {
+       "t": "s",
+       "v": ":34"
+      },
+      {
+       "t": "s",
+       "v": ":35"
+      },
+      {
+       "t": "s",
+       "v": ":36"
+      },
+      {
+       "t": "s",
+       "v": ":37"
+      },
+      {
+       "t": "s",
+       "v": ":38"
+      },
+      {
+       "t": "s",
+       "v": ":39"
+      },
+      {
+       "t": "s",
+       "v": ":40"
+      },
+      {
+       "t": "s",
+       "v": ":41"
+      },
+      {
+       "t": "s",
+       "v": ":42"
+      },
+      {
+       "t": "s",
+       "v": ":43"
+      },
+      {
+       "t": "s",
+       "v": ":44"
+      },
+      {
+       "t": "s",
+       "v": ":45"
+      },
+      {
+       "t": "s",
+       "v": ":46"
+      },
+      {
+       "t": "s",
+       "v": ":47"
+      },
+      {
+       "t": "s",
+       "v": ":48"
+      },
+      {
+       "t": "s",
+       "v": ":49"
+      },
+      {
+       "t": "s",
+       "v": ":50"
+      },
+      {
+       "t": "s",
+       "v": ":51"
+      },
+      {
+       "t": "s",
+       "v": ":52"
+      },
+      {
+       "t": "s",
+       "v": ":53"
+      },
+      {
+       "t": "s",
+       "v": ":54"
+      },
+      {
+       "t": "s",
+       "v": ":55"
+      },
+      {
+       "t": "s",
+       "v": ":56"
+      },
+      {
+       "t": "s",
+       "v": ":57"
+      },
+      {
+       "t": "s",
+       "v": ":58"
+      },
+      {
+       "t": "s",
+       "v": ":59"
+      },
+      {
+       "t": "s",
+       "v": ">3/17/2023"
+      }
+     ],
+     "name": "When",
+     "shared_flags": {
+      "containsDate": "1",
+      "containsNonDate": "0",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "count": "6",
+      "maxDate": "2023-03-16T18:00:00",
+      "minDate": "2023-03-15T00:01:00"
+     },
+     "shared_items": [
+      {
+       "t": "d",
+       "v": "2023-03-15T06:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2023-03-15T12:15:00"
+      },
+      {
+       "t": "d",
+       "v": "2023-03-16T18:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2023-03-16T00:00:01"
+      },
+      {
+       "t": "d",
+       "v": "2023-03-15T00:01:00"
+      },
+      {
+       "t": "d",
+       "v": "2023-03-16T12:00:00"
+      }
+     ]
+    },
+    {
+     "name": "S",
+     "shared_flags": {
+      "containsInteger": "1",
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "maxValue": "32",
+      "minValue": "1"
+     }
+    }
+   ],
+   "cells": {
+    "A3": {
+     "t": "s",
+     "v": "Row Labels"
+    },
+    "A4": {
+     "t": "s",
+     "v": ":00"
+    },
+    "A5": {
+     "t": "s",
+     "v": ":01"
+    },
+    "A6": {
+     "t": "s",
+     "v": ":15"
+    },
+    "A7": {
+     "t": "s",
+     "v": "Grand Total"
+    },
+    "B3": {
+     "t": "s",
+     "v": "Sum of S"
+    },
+    "B4": {
+     "t": "n",
+     "v": 45.0
+    },
+    "B5": {
+     "t": "n",
+     "v": 16.0
+    },
+    "B6": {
+     "t": "n",
+     "v": 2.0
+    },
+    "B7": {
+     "t": "n",
+     "v": 63.0
+    }
+   },
+   "col_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": []
+    }
+   ],
+   "col_page_count": 0,
+   "first_data_col": 1,
+   "first_data_row": 1,
+   "first_header_row": 1,
+   "location": "A3:B7",
+   "name": "P_LM",
+   "row_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      1
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      2
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      16
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "row_page_count": 0,
+   "sheet": "LM",
+   "text": {
+    "A3": "Row Labels",
+    "A4": ":00",
+    "A5": ":01",
+    "A6": ":15",
+    "A7": "Grand Total",
+    "B3": "Sum of S",
+    "B4": "45",
+    "B5": "16",
+    "B6": "2",
+    "B7": "63"
+   }
+  },
+  {
+   "cache_fields": [
+    {
+     "group_items": [
+      {
+       "t": "s",
+       "v": "<3/15/2023"
+      },
+      {
+       "t": "s",
+       "v": "12 AM"
+      },
+      {
+       "t": "s",
+       "v": "1 AM"
+      },
+      {
+       "t": "s",
+       "v": "2 AM"
+      },
+      {
+       "t": "s",
+       "v": "3 AM"
+      },
+      {
+       "t": "s",
+       "v": "4 AM"
+      },
+      {
+       "t": "s",
+       "v": "5 AM"
+      },
+      {
+       "t": "s",
+       "v": "6 AM"
+      },
+      {
+       "t": "s",
+       "v": "7 AM"
+      },
+      {
+       "t": "s",
+       "v": "8 AM"
+      },
+      {
+       "t": "s",
+       "v": "9 AM"
+      },
+      {
+       "t": "s",
+       "v": "10 AM"
+      },
+      {
+       "t": "s",
+       "v": "11 AM"
+      },
+      {
+       "t": "s",
+       "v": "12 PM"
+      },
+      {
+       "t": "s",
+       "v": "1 PM"
+      },
+      {
+       "t": "s",
+       "v": "2 PM"
+      },
+      {
+       "t": "s",
+       "v": "3 PM"
+      },
+      {
+       "t": "s",
+       "v": "4 PM"
+      },
+      {
+       "t": "s",
+       "v": "5 PM"
+      },
+      {
+       "t": "s",
+       "v": "6 PM"
+      },
+      {
+       "t": "s",
+       "v": "7 PM"
+      },
+      {
+       "t": "s",
+       "v": "8 PM"
+      },
+      {
+       "t": "s",
+       "v": "9 PM"
+      },
+      {
+       "t": "s",
+       "v": "10 PM"
+      },
+      {
+       "t": "s",
+       "v": "11 PM"
+      },
+      {
+       "t": "s",
+       "v": ">3/17/2023"
+      }
+     ],
+     "name": "When",
+     "shared_flags": {
+      "containsDate": "1",
+      "containsNonDate": "0",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "count": "6",
+      "maxDate": "2023-03-16T18:00:00",
+      "minDate": "2023-03-15T00:01:00"
+     },
+     "shared_items": [
+      {
+       "t": "d",
+       "v": "2023-03-15T06:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2023-03-15T12:15:00"
+      },
+      {
+       "t": "d",
+       "v": "2023-03-16T18:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2023-03-16T00:00:01"
+      },
+      {
+       "t": "d",
+       "v": "2023-03-15T00:01:00"
+      },
+      {
+       "t": "d",
+       "v": "2023-03-16T12:00:00"
+      }
+     ]
+    },
+    {
+     "name": "S",
+     "shared_flags": {
+      "containsInteger": "1",
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "maxValue": "32",
+      "minValue": "1"
+     }
+    }
+   ],
+   "cells": {
+    "A3": {
+     "t": "s",
+     "v": "Row Labels"
+    },
+    "A4": {
+     "t": "s",
+     "v": "12 AM"
+    },
+    "A5": {
+     "t": "s",
+     "v": "6 AM"
+    },
+    "A6": {
+     "t": "s",
+     "v": "12 PM"
+    },
+    "A7": {
+     "t": "s",
+     "v": "6 PM"
+    },
+    "A8": {
+     "t": "s",
+     "v": "Grand Total"
+    },
+    "B3": {
+     "t": "s",
+     "v": "Sum of S"
+    },
+    "B4": {
+     "t": "n",
+     "v": 24.0
+    },
+    "B5": {
+     "t": "n",
+     "v": 1.0
+    },
+    "B6": {
+     "t": "n",
+     "v": 34.0
+    },
+    "B7": {
+     "t": "n",
+     "v": 4.0
+    },
+    "B8": {
+     "t": "n",
+     "v": 63.0
+    }
+   },
+   "col_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": []
+    }
+   ],
+   "col_page_count": 0,
+   "first_data_col": 1,
+   "first_data_row": 1,
+   "first_header_row": 1,
+   "location": "A3:B8",
+   "name": "P_LH",
+   "row_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      1
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      7
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      13
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      19
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "row_page_count": 0,
+   "sheet": "LH",
+   "text": {
+    "A3": "Row Labels",
+    "A4": "12 AM",
+    "A5": "6 AM",
+    "A6": "12 PM",
+    "A7": "6 PM",
+    "A8": "Grand Total",
+    "B3": "Sum of S",
+    "B4": "24",
+    "B5": "1",
+    "B6": "34",
+    "B7": "4",
+    "B8": "63"
+   }
+  },
+  {
+   "cache_fields": [
+    {
+     "group_items": [
+      {
+       "t": "s",
+       "v": "<3/15/2023"
+      },
+      {
+       "t": "s",
+       "v": "1-Jan"
+      },
+      {
+       "t": "s",
+       "v": "2-Jan"
+      },
+      {
+       "t": "s",
+       "v": "3-Jan"
+      },
+      {
+       "t": "s",
+       "v": "4-Jan"
+      },
+      {
+       "t": "s",
+       "v": "5-Jan"
+      },
+      {
+       "t": "s",
+       "v": "6-Jan"
+      },
+      {
+       "t": "s",
+       "v": "7-Jan"
+      },
+      {
+       "t": "s",
+       "v": "8-Jan"
+      },
+      {
+       "t": "s",
+       "v": "9-Jan"
+      },
+      {
+       "t": "s",
+       "v": "10-Jan"
+      },
+      {
+       "t": "s",
+       "v": "11-Jan"
+      },
+      {
+       "t": "s",
+       "v": "12-Jan"
+      },
+      {
+       "t": "s",
+       "v": "13-Jan"
+      },
+      {
+       "t": "s",
+       "v": "14-Jan"
+      },
+      {
+       "t": "s",
+       "v": "15-Jan"
+      },
+      {
+       "t": "s",
+       "v": "16-Jan"
+      },
+      {
+       "t": "s",
+       "v": "17-Jan"
+      },
+      {
+       "t": "s",
+       "v": "18-Jan"
+      },
+      {
+       "t": "s",
+       "v": "19-Jan"
+      },
+      {
+       "t": "s",
+       "v": "20-Jan"
+      },
+      {
+       "t": "s",
+       "v": "21-Jan"
+      },
+      {
+       "t": "s",
+       "v": "22-Jan"
+      },
+      {
+       "t": "s",
+       "v": "23-Jan"
+      },
+      {
+       "t": "s",
+       "v": "24-Jan"
+      },
+      {
+       "t": "s",
+       "v": "25-Jan"
+      },
+      {
+       "t": "s",
+       "v": "26-Jan"
+      },
+      {
+       "t": "s",
+       "v": "27-Jan"
+      },
+      {
+       "t": "s",
+       "v": "28-Jan"
+      },
+      {
+       "t": "s",
+       "v": "29-Jan"
+      },
+      {
+       "t": "s",
+       "v": "30-Jan"
+      },
+      {
+       "t": "s",
+       "v": "31-Jan"
+      },
+      {
+       "t": "s",
+       "v": "1-Feb"
+      },
+      {
+       "t": "s",
+       "v": "2-Feb"
+      },
+      {
+       "t": "s",
+       "v": "3-Feb"
+      },
+      {
+       "t": "s",
+       "v": "4-Feb"
+      },
+      {
+       "t": "s",
+       "v": "5-Feb"
+      },
+      {
+       "t": "s",
+       "v": "6-Feb"
+      },
+      {
+       "t": "s",
+       "v": "7-Feb"
+      },
+      {
+       "t": "s",
+       "v": "8-Feb"
+      },
+      {
+       "t": "s",
+       "v": "9-Feb"
+      },
+      {
+       "t": "s",
+       "v": "10-Feb"
+      },
+      {
+       "t": "s",
+       "v": "11-Feb"
+      },
+      {
+       "t": "s",
+       "v": "12-Feb"
+      },
+      {
+       "t": "s",
+       "v": "13-Feb"
+      },
+      {
+       "t": "s",
+       "v": "14-Feb"
+      },
+      {
+       "t": "s",
+       "v": "15-Feb"
+      },
+      {
+       "t": "s",
+       "v": "16-Feb"
+      },
+      {
+       "t": "s",
+       "v": "17-Feb"
+      },
+      {
+       "t": "s",
+       "v": "18-Feb"
+      },
+      {
+       "t": "s",
+       "v": "19-Feb"
+      },
+      {
+       "t": "s",
+       "v": "20-Feb"
+      },
+      {
+       "t": "s",
+       "v": "21-Feb"
+      },
+      {
+       "t": "s",
+       "v": "22-Feb"
+      },
+      {
+       "t": "s",
+       "v": "23-Feb"
+      },
+      {
+       "t": "s",
+       "v": "24-Feb"
+      },
+      {
+       "t": "s",
+       "v": "25-Feb"
+      },
+      {
+       "t": "s",
+       "v": "26-Feb"
+      },
+      {
+       "t": "s",
+       "v": "27-Feb"
+      },
+      {
+       "t": "s",
+       "v": "28-Feb"
+      },
+      {
+       "t": "s",
+       "v": "29-Feb"
+      },
+      {
+       "t": "s",
+       "v": "1-Mar"
+      },
+      {
+       "t": "s",
+       "v": "2-Mar"
+      },
+      {
+       "t": "s",
+       "v": "3-Mar"
+      },
+      {
+       "t": "s",
+       "v": "4-Mar"
+      },
+      {
+       "t": "s",
+       "v": "5-Mar"
+      },
+      {
+       "t": "s",
+       "v": "6-Mar"
+      },
+      {
+       "t": "s",
+       "v": "7-Mar"
+      },
+      {
+       "t": "s",
+       "v": "8-Mar"
+      },
+      {
+       "t": "s",
+       "v": "9-Mar"
+      },
+      {
+       "t": "s",
+       "v": "10-Mar"
+      },
+      {
+       "t": "s",
+       "v": "11-Mar"
+      },
+      {
+       "t": "s",
+       "v": "12-Mar"
+      },
+      {
+       "t": "s",
+       "v": "13-Mar"
+      },
+      {
+       "t": "s",
+       "v": "14-Mar"
+      },
+      {
+       "t": "s",
+       "v": "15-Mar"
+      },
+      {
+       "t": "s",
+       "v": "16-Mar"
+      },
+      {
+       "t": "s",
+       "v": "17-Mar"
+      },
+      {
+       "t": "s",
+       "v": "18-Mar"
+      },
+      {
+       "t": "s",
+       "v": "19-Mar"
+      },
+      {
+       "t": "s",
+       "v": "20-Mar"
+      },
+      {
+       "t": "s",
+       "v": "21-Mar"
+      },
+      {
+       "t": "s",
+       "v": "22-Mar"
+      },
+      {
+       "t": "s",
+       "v": "23-Mar"
+      },
+      {
+       "t": "s",
+       "v": "24-Mar"
+      },
+      {
+       "t": "s",
+       "v": "25-Mar"
+      },
+      {
+       "t": "s",
+       "v": "26-Mar"
+      },
+      {
+       "t": "s",
+       "v": "27-Mar"
+      },
+      {
+       "t": "s",
+       "v": "28-Mar"
+      },
+      {
+       "t": "s",
+       "v": "29-Mar"
+      },
+      {
+       "t": "s",
+       "v": "30-Mar"
+      },
+      {
+       "t": "s",
+       "v": "31-Mar"
+      },
+      {
+       "t": "s",
+       "v": "1-Apr"
+      },
+      {
+       "t": "s",
+       "v": "2-Apr"
+      },
+      {
+       "t": "s",
+       "v": "3-Apr"
+      },
+      {
+       "t": "s",
+       "v": "4-Apr"
+      },
+      {
+       "t": "s",
+       "v": "5-Apr"
+      },
+      {
+       "t": "s",
+       "v": "6-Apr"
+      },
+      {
+       "t": "s",
+       "v": "7-Apr"
+      },
+      {
+       "t": "s",
+       "v": "8-Apr"
+      },
+      {
+       "t": "s",
+       "v": "9-Apr"
+      },
+      {
+       "t": "s",
+       "v": "10-Apr"
+      },
+      {
+       "t": "s",
+       "v": "11-Apr"
+      },
+      {
+       "t": "s",
+       "v": "12-Apr"
+      },
+      {
+       "t": "s",
+       "v": "13-Apr"
+      },
+      {
+       "t": "s",
+       "v": "14-Apr"
+      },
+      {
+       "t": "s",
+       "v": "15-Apr"
+      },
+      {
+       "t": "s",
+       "v": "16-Apr"
+      },
+      {
+       "t": "s",
+       "v": "17-Apr"
+      },
+      {
+       "t": "s",
+       "v": "18-Apr"
+      },
+      {
+       "t": "s",
+       "v": "19-Apr"
+      },
+      {
+       "t": "s",
+       "v": "20-Apr"
+      },
+      {
+       "t": "s",
+       "v": "21-Apr"
+      },
+      {
+       "t": "s",
+       "v": "22-Apr"
+      },
+      {
+       "t": "s",
+       "v": "23-Apr"
+      },
+      {
+       "t": "s",
+       "v": "24-Apr"
+      },
+      {
+       "t": "s",
+       "v": "25-Apr"
+      },
+      {
+       "t": "s",
+       "v": "26-Apr"
+      },
+      {
+       "t": "s",
+       "v": "27-Apr"
+      },
+      {
+       "t": "s",
+       "v": "28-Apr"
+      },
+      {
+       "t": "s",
+       "v": "29-Apr"
+      },
+      {
+       "t": "s",
+       "v": "30-Apr"
+      },
+      {
+       "t": "s",
+       "v": "1-May"
+      },
+      {
+       "t": "s",
+       "v": "2-May"
+      },
+      {
+       "t": "s",
+       "v": "3-May"
+      },
+      {
+       "t": "s",
+       "v": "4-May"
+      },
+      {
+       "t": "s",
+       "v": "5-May"
+      },
+      {
+       "t": "s",
+       "v": "6-May"
+      },
+      {
+       "t": "s",
+       "v": "7-May"
+      },
+      {
+       "t": "s",
+       "v": "8-May"
+      },
+      {
+       "t": "s",
+       "v": "9-May"
+      },
+      {
+       "t": "s",
+       "v": "10-May"
+      },
+      {
+       "t": "s",
+       "v": "11-May"
+      },
+      {
+       "t": "s",
+       "v": "12-May"
+      },
+      {
+       "t": "s",
+       "v": "13-May"
+      },
+      {
+       "t": "s",
+       "v": "14-May"
+      },
+      {
+       "t": "s",
+       "v": "15-May"
+      },
+      {
+       "t": "s",
+       "v": "16-May"
+      },
+      {
+       "t": "s",
+       "v": "17-May"
+      },
+      {
+       "t": "s",
+       "v": "18-May"
+      },
+      {
+       "t": "s",
+       "v": "19-May"
+      },
+      {
+       "t": "s",
+       "v": "20-May"
+      },
+      {
+       "t": "s",
+       "v": "21-May"
+      },
+      {
+       "t": "s",
+       "v": "22-May"
+      },
+      {
+       "t": "s",
+       "v": "23-May"
+      },
+      {
+       "t": "s",
+       "v": "24-May"
+      },
+      {
+       "t": "s",
+       "v": "25-May"
+      },
+      {
+       "t": "s",
+       "v": "26-May"
+      },
+      {
+       "t": "s",
+       "v": "27-May"
+      },
+      {
+       "t": "s",
+       "v": "28-May"
+      },
+      {
+       "t": "s",
+       "v": "29-May"
+      },
+      {
+       "t": "s",
+       "v": "30-May"
+      },
+      {
+       "t": "s",
+       "v": "31-May"
+      },
+      {
+       "t": "s",
+       "v": "1-Jun"
+      },
+      {
+       "t": "s",
+       "v": "2-Jun"
+      },
+      {
+       "t": "s",
+       "v": "3-Jun"
+      },
+      {
+       "t": "s",
+       "v": "4-Jun"
+      },
+      {
+       "t": "s",
+       "v": "5-Jun"
+      },
+      {
+       "t": "s",
+       "v": "6-Jun"
+      },
+      {
+       "t": "s",
+       "v": "7-Jun"
+      },
+      {
+       "t": "s",
+       "v": "8-Jun"
+      },
+      {
+       "t": "s",
+       "v": "9-Jun"
+      },
+      {
+       "t": "s",
+       "v": "10-Jun"
+      },
+      {
+       "t": "s",
+       "v": "11-Jun"
+      },
+      {
+       "t": "s",
+       "v": "12-Jun"
+      },
+      {
+       "t": "s",
+       "v": "13-Jun"
+      },
+      {
+       "t": "s",
+       "v": "14-Jun"
+      },
+      {
+       "t": "s",
+       "v": "15-Jun"
+      },
+      {
+       "t": "s",
+       "v": "16-Jun"
+      },
+      {
+       "t": "s",
+       "v": "17-Jun"
+      },
+      {
+       "t": "s",
+       "v": "18-Jun"
+      },
+      {
+       "t": "s",
+       "v": "19-Jun"
+      },
+      {
+       "t": "s",
+       "v": "20-Jun"
+      },
+      {
+       "t": "s",
+       "v": "21-Jun"
+      },
+      {
+       "t": "s",
+       "v": "22-Jun"
+      },
+      {
+       "t": "s",
+       "v": "23-Jun"
+      },
+      {
+       "t": "s",
+       "v": "24-Jun"
+      },
+      {
+       "t": "s",
+       "v": "25-Jun"
+      },
+      {
+       "t": "s",
+       "v": "26-Jun"
+      },
+      {
+       "t": "s",
+       "v": "27-Jun"
+      },
+      {
+       "t": "s",
+       "v": "28-Jun"
+      },
+      {
+       "t": "s",
+       "v": "29-Jun"
+      },
+      {
+       "t": "s",
+       "v": "30-Jun"
+      },
+      {
+       "t": "s",
+       "v": "1-Jul"
+      },
+      {
+       "t": "s",
+       "v": "2-Jul"
+      },
+      {
+       "t": "s",
+       "v": "3-Jul"
+      },
+      {
+       "t": "s",
+       "v": "4-Jul"
+      },
+      {
+       "t": "s",
+       "v": "5-Jul"
+      },
+      {
+       "t": "s",
+       "v": "6-Jul"
+      },
+      {
+       "t": "s",
+       "v": "7-Jul"
+      },
+      {
+       "t": "s",
+       "v": "8-Jul"
+      },
+      {
+       "t": "s",
+       "v": "9-Jul"
+      },
+      {
+       "t": "s",
+       "v": "10-Jul"
+      },
+      {
+       "t": "s",
+       "v": "11-Jul"
+      },
+      {
+       "t": "s",
+       "v": "12-Jul"
+      },
+      {
+       "t": "s",
+       "v": "13-Jul"
+      },
+      {
+       "t": "s",
+       "v": "14-Jul"
+      },
+      {
+       "t": "s",
+       "v": "15-Jul"
+      },
+      {
+       "t": "s",
+       "v": "16-Jul"
+      },
+      {
+       "t": "s",
+       "v": "17-Jul"
+      },
+      {
+       "t": "s",
+       "v": "18-Jul"
+      },
+      {
+       "t": "s",
+       "v": "19-Jul"
+      },
+      {
+       "t": "s",
+       "v": "20-Jul"
+      },
+      {
+       "t": "s",
+       "v": "21-Jul"
+      },
+      {
+       "t": "s",
+       "v": "22-Jul"
+      },
+      {
+       "t": "s",
+       "v": "23-Jul"
+      },
+      {
+       "t": "s",
+       "v": "24-Jul"
+      },
+      {
+       "t": "s",
+       "v": "25-Jul"
+      },
+      {
+       "t": "s",
+       "v": "26-Jul"
+      },
+      {
+       "t": "s",
+       "v": "27-Jul"
+      },
+      {
+       "t": "s",
+       "v": "28-Jul"
+      },
+      {
+       "t": "s",
+       "v": "29-Jul"
+      },
+      {
+       "t": "s",
+       "v": "30-Jul"
+      },
+      {
+       "t": "s",
+       "v": "31-Jul"
+      },
+      {
+       "t": "s",
+       "v": "1-Aug"
+      },
+      {
+       "t": "s",
+       "v": "2-Aug"
+      },
+      {
+       "t": "s",
+       "v": "3-Aug"
+      },
+      {
+       "t": "s",
+       "v": "4-Aug"
+      },
+      {
+       "t": "s",
+       "v": "5-Aug"
+      },
+      {
+       "t": "s",
+       "v": "6-Aug"
+      },
+      {
+       "t": "s",
+       "v": "7-Aug"
+      },
+      {
+       "t": "s",
+       "v": "8-Aug"
+      },
+      {
+       "t": "s",
+       "v": "9-Aug"
+      },
+      {
+       "t": "s",
+       "v": "10-Aug"
+      },
+      {
+       "t": "s",
+       "v": "11-Aug"
+      },
+      {
+       "t": "s",
+       "v": "12-Aug"
+      },
+      {
+       "t": "s",
+       "v": "13-Aug"
+      },
+      {
+       "t": "s",
+       "v": "14-Aug"
+      },
+      {
+       "t": "s",
+       "v": "15-Aug"
+      },
+      {
+       "t": "s",
+       "v": "16-Aug"
+      },
+      {
+       "t": "s",
+       "v": "17-Aug"
+      },
+      {
+       "t": "s",
+       "v": "18-Aug"
+      },
+      {
+       "t": "s",
+       "v": "19-Aug"
+      },
+      {
+       "t": "s",
+       "v": "20-Aug"
+      },
+      {
+       "t": "s",
+       "v": "21-Aug"
+      },
+      {
+       "t": "s",
+       "v": "22-Aug"
+      },
+      {
+       "t": "s",
+       "v": "23-Aug"
+      },
+      {
+       "t": "s",
+       "v": "24-Aug"
+      },
+      {
+       "t": "s",
+       "v": "25-Aug"
+      },
+      {
+       "t": "s",
+       "v": "26-Aug"
+      },
+      {
+       "t": "s",
+       "v": "27-Aug"
+      },
+      {
+       "t": "s",
+       "v": "28-Aug"
+      },
+      {
+       "t": "s",
+       "v": "29-Aug"
+      },
+      {
+       "t": "s",
+       "v": "30-Aug"
+      },
+      {
+       "t": "s",
+       "v": "31-Aug"
+      },
+      {
+       "t": "s",
+       "v": "1-Sep"
+      },
+      {
+       "t": "s",
+       "v": "2-Sep"
+      },
+      {
+       "t": "s",
+       "v": "3-Sep"
+      },
+      {
+       "t": "s",
+       "v": "4-Sep"
+      },
+      {
+       "t": "s",
+       "v": "5-Sep"
+      },
+      {
+       "t": "s",
+       "v": "6-Sep"
+      },
+      {
+       "t": "s",
+       "v": "7-Sep"
+      },
+      {
+       "t": "s",
+       "v": "8-Sep"
+      },
+      {
+       "t": "s",
+       "v": "9-Sep"
+      },
+      {
+       "t": "s",
+       "v": "10-Sep"
+      },
+      {
+       "t": "s",
+       "v": "11-Sep"
+      },
+      {
+       "t": "s",
+       "v": "12-Sep"
+      },
+      {
+       "t": "s",
+       "v": "13-Sep"
+      },
+      {
+       "t": "s",
+       "v": "14-Sep"
+      },
+      {
+       "t": "s",
+       "v": "15-Sep"
+      },
+      {
+       "t": "s",
+       "v": "16-Sep"
+      },
+      {
+       "t": "s",
+       "v": "17-Sep"
+      },
+      {
+       "t": "s",
+       "v": "18-Sep"
+      },
+      {
+       "t": "s",
+       "v": "19-Sep"
+      },
+      {
+       "t": "s",
+       "v": "20-Sep"
+      },
+      {
+       "t": "s",
+       "v": "21-Sep"
+      },
+      {
+       "t": "s",
+       "v": "22-Sep"
+      },
+      {
+       "t": "s",
+       "v": "23-Sep"
+      },
+      {
+       "t": "s",
+       "v": "24-Sep"
+      },
+      {
+       "t": "s",
+       "v": "25-Sep"
+      },
+      {
+       "t": "s",
+       "v": "26-Sep"
+      },
+      {
+       "t": "s",
+       "v": "27-Sep"
+      },
+      {
+       "t": "s",
+       "v": "28-Sep"
+      },
+      {
+       "t": "s",
+       "v": "29-Sep"
+      },
+      {
+       "t": "s",
+       "v": "30-Sep"
+      },
+      {
+       "t": "s",
+       "v": "1-Oct"
+      },
+      {
+       "t": "s",
+       "v": "2-Oct"
+      },
+      {
+       "t": "s",
+       "v": "3-Oct"
+      },
+      {
+       "t": "s",
+       "v": "4-Oct"
+      },
+      {
+       "t": "s",
+       "v": "5-Oct"
+      },
+      {
+       "t": "s",
+       "v": "6-Oct"
+      },
+      {
+       "t": "s",
+       "v": "7-Oct"
+      },
+      {
+       "t": "s",
+       "v": "8-Oct"
+      },
+      {
+       "t": "s",
+       "v": "9-Oct"
+      },
+      {
+       "t": "s",
+       "v": "10-Oct"
+      },
+      {
+       "t": "s",
+       "v": "11-Oct"
+      },
+      {
+       "t": "s",
+       "v": "12-Oct"
+      },
+      {
+       "t": "s",
+       "v": "13-Oct"
+      },
+      {
+       "t": "s",
+       "v": "14-Oct"
+      },
+      {
+       "t": "s",
+       "v": "15-Oct"
+      },
+      {
+       "t": "s",
+       "v": "16-Oct"
+      },
+      {
+       "t": "s",
+       "v": "17-Oct"
+      },
+      {
+       "t": "s",
+       "v": "18-Oct"
+      },
+      {
+       "t": "s",
+       "v": "19-Oct"
+      },
+      {
+       "t": "s",
+       "v": "20-Oct"
+      },
+      {
+       "t": "s",
+       "v": "21-Oct"
+      },
+      {
+       "t": "s",
+       "v": "22-Oct"
+      },
+      {
+       "t": "s",
+       "v": "23-Oct"
+      },
+      {
+       "t": "s",
+       "v": "24-Oct"
+      },
+      {
+       "t": "s",
+       "v": "25-Oct"
+      },
+      {
+       "t": "s",
+       "v": "26-Oct"
+      },
+      {
+       "t": "s",
+       "v": "27-Oct"
+      },
+      {
+       "t": "s",
+       "v": "28-Oct"
+      },
+      {
+       "t": "s",
+       "v": "29-Oct"
+      },
+      {
+       "t": "s",
+       "v": "30-Oct"
+      },
+      {
+       "t": "s",
+       "v": "31-Oct"
+      },
+      {
+       "t": "s",
+       "v": "1-Nov"
+      },
+      {
+       "t": "s",
+       "v": "2-Nov"
+      },
+      {
+       "t": "s",
+       "v": "3-Nov"
+      },
+      {
+       "t": "s",
+       "v": "4-Nov"
+      },
+      {
+       "t": "s",
+       "v": "5-Nov"
+      },
+      {
+       "t": "s",
+       "v": "6-Nov"
+      },
+      {
+       "t": "s",
+       "v": "7-Nov"
+      },
+      {
+       "t": "s",
+       "v": "8-Nov"
+      },
+      {
+       "t": "s",
+       "v": "9-Nov"
+      },
+      {
+       "t": "s",
+       "v": "10-Nov"
+      },
+      {
+       "t": "s",
+       "v": "11-Nov"
+      },
+      {
+       "t": "s",
+       "v": "12-Nov"
+      },
+      {
+       "t": "s",
+       "v": "13-Nov"
+      },
+      {
+       "t": "s",
+       "v": "14-Nov"
+      },
+      {
+       "t": "s",
+       "v": "15-Nov"
+      },
+      {
+       "t": "s",
+       "v": "16-Nov"
+      },
+      {
+       "t": "s",
+       "v": "17-Nov"
+      },
+      {
+       "t": "s",
+       "v": "18-Nov"
+      },
+      {
+       "t": "s",
+       "v": "19-Nov"
+      },
+      {
+       "t": "s",
+       "v": "20-Nov"
+      },
+      {
+       "t": "s",
+       "v": "21-Nov"
+      },
+      {
+       "t": "s",
+       "v": "22-Nov"
+      },
+      {
+       "t": "s",
+       "v": "23-Nov"
+      },
+      {
+       "t": "s",
+       "v": "24-Nov"
+      },
+      {
+       "t": "s",
+       "v": "25-Nov"
+      },
+      {
+       "t": "s",
+       "v": "26-Nov"
+      },
+      {
+       "t": "s",
+       "v": "27-Nov"
+      },
+      {
+       "t": "s",
+       "v": "28-Nov"
+      },
+      {
+       "t": "s",
+       "v": "29-Nov"
+      },
+      {
+       "t": "s",
+       "v": "30-Nov"
+      },
+      {
+       "t": "s",
+       "v": "1-Dec"
+      },
+      {
+       "t": "s",
+       "v": "2-Dec"
+      },
+      {
+       "t": "s",
+       "v": "3-Dec"
+      },
+      {
+       "t": "s",
+       "v": "4-Dec"
+      },
+      {
+       "t": "s",
+       "v": "5-Dec"
+      },
+      {
+       "t": "s",
+       "v": "6-Dec"
+      },
+      {
+       "t": "s",
+       "v": "7-Dec"
+      },
+      {
+       "t": "s",
+       "v": "8-Dec"
+      },
+      {
+       "t": "s",
+       "v": "9-Dec"
+      },
+      {
+       "t": "s",
+       "v": "10-Dec"
+      },
+      {
+       "t": "s",
+       "v": "11-Dec"
+      },
+      {
+       "t": "s",
+       "v": "12-Dec"
+      },
+      {
+       "t": "s",
+       "v": "13-Dec"
+      },
+      {
+       "t": "s",
+       "v": "14-Dec"
+      },
+      {
+       "t": "s",
+       "v": "15-Dec"
+      },
+      {
+       "t": "s",
+       "v": "16-Dec"
+      },
+      {
+       "t": "s",
+       "v": "17-Dec"
+      },
+      {
+       "t": "s",
+       "v": "18-Dec"
+      },
+      {
+       "t": "s",
+       "v": "19-Dec"
+      },
+      {
+       "t": "s",
+       "v": "20-Dec"
+      },
+      {
+       "t": "s",
+       "v": "21-Dec"
+      },
+      {
+       "t": "s",
+       "v": "22-Dec"
+      },
+      {
+       "t": "s",
+       "v": "23-Dec"
+      },
+      {
+       "t": "s",
+       "v": "24-Dec"
+      },
+      {
+       "t": "s",
+       "v": "25-Dec"
+      },
+      {
+       "t": "s",
+       "v": "26-Dec"
+      },
+      {
+       "t": "s",
+       "v": "27-Dec"
+      },
+      {
+       "t": "s",
+       "v": "28-Dec"
+      },
+      {
+       "t": "s",
+       "v": "29-Dec"
+      },
+      {
+       "t": "s",
+       "v": "30-Dec"
+      },
+      {
+       "t": "s",
+       "v": "31-Dec"
+      },
+      {
+       "t": "s",
+       "v": ">3/17/2023"
+      }
+     ],
+     "name": "When",
+     "shared_flags": {
+      "containsDate": "1",
+      "containsNonDate": "0",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "count": "6",
+      "maxDate": "2023-03-16T18:00:00",
+      "minDate": "2023-03-15T00:01:00"
+     },
+     "shared_items": [
+      {
+       "t": "d",
+       "v": "2023-03-15T06:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2023-03-15T12:15:00"
+      },
+      {
+       "t": "d",
+       "v": "2023-03-16T18:00:00"
+      },
+      {
+       "t": "d",
+       "v": "2023-03-16T00:00:01"
+      },
+      {
+       "t": "d",
+       "v": "2023-03-15T00:01:00"
+      },
+      {
+       "t": "d",
+       "v": "2023-03-16T12:00:00"
+      }
+     ]
+    },
+    {
+     "name": "S",
+     "shared_flags": {
+      "containsInteger": "1",
+      "containsNumber": "1",
+      "containsSemiMixedTypes": "0",
+      "containsString": "0",
+      "maxValue": "32",
+      "minValue": "1"
+     }
+    }
+   ],
+   "cells": {
+    "A3": {
+     "t": "s",
+     "v": "Row Labels"
+    },
+    "A4": {
+     "t": "s",
+     "v": "15-Mar"
+    },
+    "A5": {
+     "t": "s",
+     "v": "16-Mar"
+    },
+    "A6": {
+     "t": "s",
+     "v": "Grand Total"
+    },
+    "B3": {
+     "t": "s",
+     "v": "Sum of S"
+    },
+    "B4": {
+     "t": "n",
+     "v": 19.0
+    },
+    "B5": {
+     "t": "n",
+     "v": 44.0
+    },
+    "B6": {
+     "t": "n",
+     "v": 63.0
+    }
+   },
+   "col_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": []
+    }
+   ],
+   "col_page_count": 0,
+   "first_data_col": 1,
+   "first_data_row": 1,
+   "first_header_row": 1,
+   "location": "A3:B6",
+   "name": "P_LD",
+   "row_items": [
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      75
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "x": [
+      76
+     ]
+    },
+    {
+     "i": 0,
+     "r": 0,
+     "t": "grand",
+     "x": [
+      0
+     ]
+    }
+   ],
+   "row_page_count": 0,
+   "sheet": "LD",
+   "text": {
+    "A3": "Row Labels",
+    "A4": "15-Mar",
+    "A5": "16-Mar",
+    "A6": "Grand Total",
+    "B3": "Sum of S",
+    "B4": "19",
+    "B5": "44",
+    "B6": "63"
+   }
+  }
+ ],
+ "sheets": {
+  "GB": {},
+  "GBA": {},
+  "GD": {},
+  "GDA": {},
+  "GE": {},
+  "GEA": {},
+  "GM": {},
+  "GMA": {},
+  "GN": {},
+  "GNA": {},
+  "GSA": {},
+  "Groups": {},
+  "LD": {},
+  "LH": {},
+  "LM": {},
+  "LS": {},
+  "Q": {
+   "A1": {
+    "t": "n",
+    "v": 8.0
+   }
+  },
+  "Times": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "1ce6a3e272f51b9b701f082a3d056ed784137bf6925b6c5ad66a15de43a42687",
+  "kind": "excel-graph",
+  "produced_at": "2026-11-07T15:17:57+00:00",
+  "version": null,
+  "workbook_name": "0caa383a030e1783b5592733ac121d9fd8568723860f235290fe8f6d672dc447.xlsx"
+ }
+}

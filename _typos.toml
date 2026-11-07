@@ -19,7 +19,9 @@ extend-exclude = [
 # C99 hex-float literals (0x1.79f85ba68804p-4) in comments citing research coefficients.
 # Generated eval case ids (16 lowercase hex digits, e.g. 4ab2ba98d26c8a5e) cited as evidence.
 # The DrawingML chart series tag `<c:ser>` (tools/src/rustsheet_tools/pivot_chart.py, T-4130).
-extend-ignore-re = ["-?0x[0-9a-fA-F]\\.[0-9a-fA-F]+p[-+]?[0-9]+", "\\b[0-9a-f]{16}\\b", "</?c:ser>"]
+# Braced GUIDs: the extension uris of Excel's parts (tools/src/rustsheet_tools/pivot_slicers.py, T-4767).
+extend-ignore-re = ["-?0x[0-9a-fA-F]\\.[0-9a-fA-F]+p[-+]?[0-9]+", "\\b[0-9a-f]{16}\\b", "</?c:ser>",
+  "\\{[0-9A-Fa-f]{8}(?:-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}\\}"]
 
 [default.extend-words]
 # Excel function names and spreadsheet jargon

@@ -1,0 +1,814 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-4767: does Excel for the web open group items of every type and attribute, and the date levels seconds, minutes, hours and days? Groups!A1:B9 is t4170-pivot-manual-groups' Data (Product, S: A 1, B 2, C 4, D 8, E 16, F 32, A 64, C 128). Each G sheet is its MG pivot (rows Product2, the discrete group of Product: Group2 = A, B; Group1 = C, D; North = E; F ungrouped) with the group item North written (the groupItems xml slot) as GB <b v=1>, GD <d v=2020-01-01T00:00:00>, GE <e v=#N/A>, GM <m>, GN <n v=7>, and GBA, GDA, GEA, GMA, GNA, GSA the same (GSA <s v=North>) with every attribute of its type: u=1 f=1 c=1 cp=1, and for e, m, n, s also in=0 bc=FF0000 fc=00FF00 i=1 un=1 st=1 b=1. A group item's x child and its tpls are refused (pivots.md), so none is here. Times!A1:B7 holds When (yyyy-mm-dd hh:mm:ss) and S over six records 2023-03-15 06:00:00 1, 12:15:00 2, 2023-03-16 18:00:00 4, 00:00:01 8, 2023-03-15 00:01:00 16, 2023-03-16 12:00:00 32; LS, LM, LH and LD group it in place by seconds, minutes, hours and days (rangePr groupBy, startDate 2023-03-15, endDate 2023-03-17, autoStart and autoEnd 0), rows When. The pivot cells are in the sidecar's pivots section; Q!A1 only makes the case scored.",
+ "tags": [
+  "probe",
+  "pivot",
+  "T-4767",
+  "M16"
+ ],
+ "pivot_features": [
+  "PV-0019",
+  "PV-0020",
+  "PV-0021",
+  "PV-0025",
+  "PV-0127",
+  "PV-0135",
+  "PV-0143",
+  "PV-0164",
+  "PV-0184",
+  "PV-0205"
+ ],
+ "sheets": [
+  {
+   "name": "Groups",
+   "cells": {
+    "A1": "Product",
+    "B1": "S",
+    "A2": "A",
+    "B2": 1,
+    "A3": "B",
+    "B3": 2,
+    "A4": "C",
+    "B4": 4,
+    "A5": "D",
+    "B5": 8,
+    "A6": "E",
+    "B6": 16,
+    "A7": "F",
+    "B7": 32,
+    "A8": "A",
+    "B8": 64,
+    "A9": "C",
+    "B9": 128
+   }
+  },
+  {
+   "name": "Times",
+   "cells": {
+    "A1": "When",
+    "B1": "S",
+    "A2": 45000.25,
+    "B2": 1,
+    "A3": 45000.510416666664,
+    "B3": 2,
+    "A4": 45001.75,
+    "B4": 4,
+    "A5": 45001.00001157408,
+    "B5": 8,
+    "A6": 45000.00069444445,
+    "B6": 16,
+    "A7": 45001.5,
+    "B7": 32
+   },
+   "number_formats": {
+    "A2": "yyyy-mm-dd hh:mm:ss",
+    "A3": "yyyy-mm-dd hh:mm:ss",
+    "A4": "yyyy-mm-dd hh:mm:ss",
+    "A5": "yyyy-mm-dd hh:mm:ss",
+    "A6": "yyyy-mm-dd hh:mm:ss",
+    "A7": "yyyy-mm-dd hh:mm:ss"
+   }
+  },
+  {
+   "name": "GB",
+   "cells": {},
+   "pivot_tables": [
+    {
+     "name": "P_GB",
+     "source": "Groups!A1:B9",
+     "location": "A3",
+     "definition": {
+      "rows": [
+       "Product2"
+      ],
+      "data": [
+       {
+        "field": "S"
+       }
+      ],
+      "fields": {
+       "Product": {
+        "discrete": {
+         "name": "Product2",
+         "groups": [
+          {
+           "name": "Group2",
+           "items": [
+            "A",
+            "B"
+           ]
+          },
+          {
+           "name": "Group1",
+           "items": [
+            "C",
+            "D"
+           ]
+          },
+          {
+           "name": "North",
+           "items": [
+            "E"
+           ]
+          }
+         ]
+        }
+       },
+       "Product2": {
+        "xml": {
+         "groupItems": "<groupItems count=\"4\"><s v=\"F\"/><s v=\"Group2\"/><s v=\"Group1\"/><b v=\"1\"/></groupItems>"
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "GBA",
+   "cells": {},
+   "pivot_tables": [
+    {
+     "name": "P_GBA",
+     "source": "Groups!A1:B9",
+     "location": "A3",
+     "definition": {
+      "rows": [
+       "Product2"
+      ],
+      "data": [
+       {
+        "field": "S"
+       }
+      ],
+      "fields": {
+       "Product": {
+        "discrete": {
+         "name": "Product2",
+         "groups": [
+          {
+           "name": "Group2",
+           "items": [
+            "A",
+            "B"
+           ]
+          },
+          {
+           "name": "Group1",
+           "items": [
+            "C",
+            "D"
+           ]
+          },
+          {
+           "name": "North",
+           "items": [
+            "E"
+           ]
+          }
+         ]
+        }
+       },
+       "Product2": {
+        "xml": {
+         "groupItems": "<groupItems count=\"4\"><s v=\"F\"/><s v=\"Group2\"/><s v=\"Group1\"/><b v=\"1\" u=\"1\" f=\"1\" c=\"1\" cp=\"1\"/></groupItems>"
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "GD",
+   "cells": {},
+   "pivot_tables": [
+    {
+     "name": "P_GD",
+     "source": "Groups!A1:B9",
+     "location": "A3",
+     "definition": {
+      "rows": [
+       "Product2"
+      ],
+      "data": [
+       {
+        "field": "S"
+       }
+      ],
+      "fields": {
+       "Product": {
+        "discrete": {
+         "name": "Product2",
+         "groups": [
+          {
+           "name": "Group2",
+           "items": [
+            "A",
+            "B"
+           ]
+          },
+          {
+           "name": "Group1",
+           "items": [
+            "C",
+            "D"
+           ]
+          },
+          {
+           "name": "North",
+           "items": [
+            "E"
+           ]
+          }
+         ]
+        }
+       },
+       "Product2": {
+        "xml": {
+         "groupItems": "<groupItems count=\"4\"><s v=\"F\"/><s v=\"Group2\"/><s v=\"Group1\"/><d v=\"2020-01-01T00:00:00\"/></groupItems>"
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "GDA",
+   "cells": {},
+   "pivot_tables": [
+    {
+     "name": "P_GDA",
+     "source": "Groups!A1:B9",
+     "location": "A3",
+     "definition": {
+      "rows": [
+       "Product2"
+      ],
+      "data": [
+       {
+        "field": "S"
+       }
+      ],
+      "fields": {
+       "Product": {
+        "discrete": {
+         "name": "Product2",
+         "groups": [
+          {
+           "name": "Group2",
+           "items": [
+            "A",
+            "B"
+           ]
+          },
+          {
+           "name": "Group1",
+           "items": [
+            "C",
+            "D"
+           ]
+          },
+          {
+           "name": "North",
+           "items": [
+            "E"
+           ]
+          }
+         ]
+        }
+       },
+       "Product2": {
+        "xml": {
+         "groupItems": "<groupItems count=\"4\"><s v=\"F\"/><s v=\"Group2\"/><s v=\"Group1\"/><d v=\"2020-01-01T00:00:00\" u=\"1\" f=\"1\" c=\"1\" cp=\"1\"/></groupItems>"
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "GE",
+   "cells": {},
+   "pivot_tables": [
+    {
+     "name": "P_GE",
+     "source": "Groups!A1:B9",
+     "location": "A3",
+     "definition": {
+      "rows": [
+       "Product2"
+      ],
+      "data": [
+       {
+        "field": "S"
+       }
+      ],
+      "fields": {
+       "Product": {
+        "discrete": {
+         "name": "Product2",
+         "groups": [
+          {
+           "name": "Group2",
+           "items": [
+            "A",
+            "B"
+           ]
+          },
+          {
+           "name": "Group1",
+           "items": [
+            "C",
+            "D"
+           ]
+          },
+          {
+           "name": "North",
+           "items": [
+            "E"
+           ]
+          }
+         ]
+        }
+       },
+       "Product2": {
+        "xml": {
+         "groupItems": "<groupItems count=\"4\"><s v=\"F\"/><s v=\"Group2\"/><s v=\"Group1\"/><e v=\"#N/A\"/></groupItems>"
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "GEA",
+   "cells": {},
+   "pivot_tables": [
+    {
+     "name": "P_GEA",
+     "source": "Groups!A1:B9",
+     "location": "A3",
+     "definition": {
+      "rows": [
+       "Product2"
+      ],
+      "data": [
+       {
+        "field": "S"
+       }
+      ],
+      "fields": {
+       "Product": {
+        "discrete": {
+         "name": "Product2",
+         "groups": [
+          {
+           "name": "Group2",
+           "items": [
+            "A",
+            "B"
+           ]
+          },
+          {
+           "name": "Group1",
+           "items": [
+            "C",
+            "D"
+           ]
+          },
+          {
+           "name": "North",
+           "items": [
+            "E"
+           ]
+          }
+         ]
+        }
+       },
+       "Product2": {
+        "xml": {
+         "groupItems": "<groupItems count=\"4\"><s v=\"F\"/><s v=\"Group2\"/><s v=\"Group1\"/><e v=\"#N/A\" u=\"1\" f=\"1\" c=\"1\" cp=\"1\" in=\"0\" bc=\"FF0000\" fc=\"00FF00\" i=\"1\" un=\"1\" st=\"1\" b=\"1\"/></groupItems>"
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "GM",
+   "cells": {},
+   "pivot_tables": [
+    {
+     "name": "P_GM",
+     "source": "Groups!A1:B9",
+     "location": "A3",
+     "definition": {
+      "rows": [
+       "Product2"
+      ],
+      "data": [
+       {
+        "field": "S"
+       }
+      ],
+      "fields": {
+       "Product": {
+        "discrete": {
+         "name": "Product2",
+         "groups": [
+          {
+           "name": "Group2",
+           "items": [
+            "A",
+            "B"
+           ]
+          },
+          {
+           "name": "Group1",
+           "items": [
+            "C",
+            "D"
+           ]
+          },
+          {
+           "name": "North",
+           "items": [
+            "E"
+           ]
+          }
+         ]
+        }
+       },
+       "Product2": {
+        "xml": {
+         "groupItems": "<groupItems count=\"4\"><s v=\"F\"/><s v=\"Group2\"/><s v=\"Group1\"/><m/></groupItems>"
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "GMA",
+   "cells": {},
+   "pivot_tables": [
+    {
+     "name": "P_GMA",
+     "source": "Groups!A1:B9",
+     "location": "A3",
+     "definition": {
+      "rows": [
+       "Product2"
+      ],
+      "data": [
+       {
+        "field": "S"
+       }
+      ],
+      "fields": {
+       "Product": {
+        "discrete": {
+         "name": "Product2",
+         "groups": [
+          {
+           "name": "Group2",
+           "items": [
+            "A",
+            "B"
+           ]
+          },
+          {
+           "name": "Group1",
+           "items": [
+            "C",
+            "D"
+           ]
+          },
+          {
+           "name": "North",
+           "items": [
+            "E"
+           ]
+          }
+         ]
+        }
+       },
+       "Product2": {
+        "xml": {
+         "groupItems": "<groupItems count=\"4\"><s v=\"F\"/><s v=\"Group2\"/><s v=\"Group1\"/><m u=\"1\" f=\"1\" c=\"1\" cp=\"1\" in=\"0\" bc=\"FF0000\" fc=\"00FF00\" i=\"1\" un=\"1\" st=\"1\" b=\"1\"/></groupItems>"
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "GN",
+   "cells": {},
+   "pivot_tables": [
+    {
+     "name": "P_GN",
+     "source": "Groups!A1:B9",
+     "location": "A3",
+     "definition": {
+      "rows": [
+       "Product2"
+      ],
+      "data": [
+       {
+        "field": "S"
+       }
+      ],
+      "fields": {
+       "Product": {
+        "discrete": {
+         "name": "Product2",
+         "groups": [
+          {
+           "name": "Group2",
+           "items": [
+            "A",
+            "B"
+           ]
+          },
+          {
+           "name": "Group1",
+           "items": [
+            "C",
+            "D"
+           ]
+          },
+          {
+           "name": "North",
+           "items": [
+            "E"
+           ]
+          }
+         ]
+        }
+       },
+       "Product2": {
+        "xml": {
+         "groupItems": "<groupItems count=\"4\"><s v=\"F\"/><s v=\"Group2\"/><s v=\"Group1\"/><n v=\"7\"/></groupItems>"
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "GNA",
+   "cells": {},
+   "pivot_tables": [
+    {
+     "name": "P_GNA",
+     "source": "Groups!A1:B9",
+     "location": "A3",
+     "definition": {
+      "rows": [
+       "Product2"
+      ],
+      "data": [
+       {
+        "field": "S"
+       }
+      ],
+      "fields": {
+       "Product": {
+        "discrete": {
+         "name": "Product2",
+         "groups": [
+          {
+           "name": "Group2",
+           "items": [
+            "A",
+            "B"
+           ]
+          },
+          {
+           "name": "Group1",
+           "items": [
+            "C",
+            "D"
+           ]
+          },
+          {
+           "name": "North",
+           "items": [
+            "E"
+           ]
+          }
+         ]
+        }
+       },
+       "Product2": {
+        "xml": {
+         "groupItems": "<groupItems count=\"4\"><s v=\"F\"/><s v=\"Group2\"/><s v=\"Group1\"/><n v=\"7\" u=\"1\" f=\"1\" c=\"1\" cp=\"1\" in=\"0\" bc=\"FF0000\" fc=\"00FF00\" i=\"1\" un=\"1\" st=\"1\" b=\"1\"/></groupItems>"
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "GSA",
+   "cells": {},
+   "pivot_tables": [
+    {
+     "name": "P_GSA",
+     "source": "Groups!A1:B9",
+     "location": "A3",
+     "definition": {
+      "rows": [
+       "Product2"
+      ],
+      "data": [
+       {
+        "field": "S"
+       }
+      ],
+      "fields": {
+       "Product": {
+        "discrete": {
+         "name": "Product2",
+         "groups": [
+          {
+           "name": "Group2",
+           "items": [
+            "A",
+            "B"
+           ]
+          },
+          {
+           "name": "Group1",
+           "items": [
+            "C",
+            "D"
+           ]
+          },
+          {
+           "name": "North",
+           "items": [
+            "E"
+           ]
+          }
+         ]
+        }
+       },
+       "Product2": {
+        "xml": {
+         "groupItems": "<groupItems count=\"4\"><s v=\"F\"/><s v=\"Group2\"/><s v=\"Group1\"/><s v=\"North\" u=\"1\" f=\"1\" c=\"1\" cp=\"1\" in=\"0\" bc=\"FF0000\" fc=\"00FF00\" i=\"1\" un=\"1\" st=\"1\" b=\"1\"/></groupItems>"
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "LS",
+   "cells": {},
+   "pivot_tables": [
+    {
+     "name": "P_LS",
+     "source": "Times!A1:B7",
+     "location": "A3",
+     "definition": {
+      "rows": [
+       "When"
+      ],
+      "data": [
+       {
+        "field": "S"
+       }
+      ],
+      "fields": {
+       "When": {
+        "date_group": {
+         "levels": [
+          "seconds"
+         ],
+         "start": 45000,
+         "end": 45002
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "LM",
+   "cells": {},
+   "pivot_tables": [
+    {
+     "name": "P_LM",
+     "source": "Times!A1:B7",
+     "location": "A3",
+     "definition": {
+      "rows": [
+       "When"
+      ],
+      "data": [
+       {
+        "field": "S"
+       }
+      ],
+      "fields": {
+       "When": {
+        "date_group": {
+         "levels": [
+          "minutes"
+         ],
+         "start": 45000,
+         "end": 45002
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "LH",
+   "cells": {},
+   "pivot_tables": [
+    {
+     "name": "P_LH",
+     "source": "Times!A1:B7",
+     "location": "A3",
+     "definition": {
+      "rows": [
+       "When"
+      ],
+      "data": [
+       {
+        "field": "S"
+       }
+      ],
+      "fields": {
+       "When": {
+        "date_group": {
+         "levels": [
+          "hours"
+         ],
+         "start": 45000,
+         "end": 45002
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "LD",
+   "cells": {},
+   "pivot_tables": [
+    {
+     "name": "P_LD",
+     "source": "Times!A1:B7",
+     "location": "A3",
+     "definition": {
+      "rows": [
+       "When"
+      ],
+      "data": [
+       {
+        "field": "S"
+       }
+      ],
+      "fields": {
+       "When": {
+        "date_group": {
+         "levels": [
+          "days"
+         ],
+         "start": 45000,
+         "end": 45002
+        }
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "Q",
+   "cells": {
+    "A1": "=COUNTA(Groups!A2:A9)"
+   }
+  }
+ ],
+ "expected": {}
+}

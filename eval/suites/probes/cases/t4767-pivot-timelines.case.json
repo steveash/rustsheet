@@ -1,0 +1,297 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-4767: does Excel for the web open a pivot with a timeline (pivot_slicers.py), and does the timeline's selection filter the pivot? Data!A1:D7 is t4767-pivot-slicers' (dates 2019-01-15 A 1, 2019-03-06 A 2, 2019-05-15 B 4, 2019-12-01 B 8, 2020-03-10 C 16, 2020-06-18 C 32). Each sheet holds a builder-v2 pivot at A3, rows Product, Sum of Sales, over its own cache with no filter, and a timeline on Date at E3 (timeline cache with pivotTables/pivotTable tabId and name and state minimalRefreshVersion lastRefreshVersion pivotCacheId filterType with bounds 2019-01-01 to 2021-01-01; the timelines part, level 2 and selectionLevel 2; the cache's x14:pivotCacheDefinition pivotCacheId; the sheet's x15:timelineRefs and the workbook's x15:timelineCacheRefs). TL: selection 2019-01-01 to 2019-03-31 (filterType dateBetween). TN: no selection (filterType unknown). TA: as TL with state singleRangeFilterState=0 and timeline level 1 selectionLevel 1. TD0 and TD1: as TL with the cache's x15:timelinePivotCacheDefinition timelineData 0 and 1. TX: as TL while the pivot has its own dateBetween filter on Date for 2019-04-01 to 2019-06-30: which one wins. Every timelinePivotFilter shape tried is refused (pivots.md), so none is here. The pivot cells are in the sidecar's pivots section; Q!A1 only makes the case scored.",
+ "tags": [
+  "probe",
+  "pivot",
+  "T-4767",
+  "M16"
+ ],
+ "pivot_features": [
+  "PV-1522",
+  "PV-1528",
+  "PV-1533",
+  "PV-1536",
+  "PV-1540",
+  "PV-1609",
+  "PV-1619"
+ ],
+ "sheets": [
+  {
+   "name": "Data",
+   "cells": {
+    "A1": "Region",
+    "B1": "Product",
+    "C1": "Date",
+    "D1": "Sales",
+    "A2": "East",
+    "B2": "A",
+    "C2": 43480,
+    "D2": 1,
+    "A3": "West",
+    "B3": "A",
+    "C3": 43530,
+    "D3": 2,
+    "A4": "East",
+    "B4": "B",
+    "C4": 43600,
+    "D4": 4,
+    "A5": "West",
+    "B5": "B",
+    "C5": 43800,
+    "D5": 8,
+    "A6": "North",
+    "B6": "C",
+    "C6": 43900,
+    "D6": 16,
+    "A7": "East",
+    "B7": "C",
+    "C7": 44000,
+    "D7": 32
+   },
+   "number_formats": {
+    "C2": "yyyy-mm-dd",
+    "C3": "yyyy-mm-dd",
+    "C4": "yyyy-mm-dd",
+    "C5": "yyyy-mm-dd",
+    "C6": "yyyy-mm-dd",
+    "C7": "yyyy-mm-dd"
+   }
+  },
+  {
+   "name": "TL",
+   "cells": {},
+   "pivot_tables": [
+    {
+     "name": "P_TL",
+     "source": "Data!A1:D7",
+     "location": "A3",
+     "definition": {
+      "rows": [
+       "Product"
+      ],
+      "data": [
+       {
+        "field": "Sales"
+       }
+      ]
+     }
+    }
+   ],
+   "timelines": [
+    {
+     "pivot": "P_TL",
+     "field": "Date",
+     "anchor": "E3",
+     "bounds": [
+      43466,
+      44197
+     ],
+     "selection": [
+      43466,
+      43555
+     ]
+    }
+   ]
+  },
+  {
+   "name": "TN",
+   "cells": {},
+   "pivot_tables": [
+    {
+     "name": "P_TN",
+     "source": "Data!A1:D7",
+     "location": "A3",
+     "definition": {
+      "rows": [
+       "Product"
+      ],
+      "data": [
+       {
+        "field": "Sales"
+       }
+      ]
+     }
+    }
+   ],
+   "timelines": [
+    {
+     "pivot": "P_TN",
+     "field": "Date",
+     "anchor": "E3",
+     "bounds": [
+      43466,
+      44197
+     ]
+    }
+   ]
+  },
+  {
+   "name": "TA",
+   "cells": {},
+   "pivot_tables": [
+    {
+     "name": "P_TA",
+     "source": "Data!A1:D7",
+     "location": "A3",
+     "definition": {
+      "rows": [
+       "Product"
+      ],
+      "data": [
+       {
+        "field": "Sales"
+       }
+      ]
+     }
+    }
+   ],
+   "timelines": [
+    {
+     "pivot": "P_TA",
+     "field": "Date",
+     "anchor": "E3",
+     "bounds": [
+      43466,
+      44197
+     ],
+     "selection": [
+      43466,
+      43555
+     ],
+     "state": {
+      "singleRangeFilterState": false
+     },
+     "timeline": {
+      "level": 1,
+      "selectionLevel": 1
+     }
+    }
+   ]
+  },
+  {
+   "name": "TD0",
+   "cells": {},
+   "pivot_tables": [
+    {
+     "name": "P_TD0",
+     "source": "Data!A1:D7",
+     "location": "A3",
+     "definition": {
+      "rows": [
+       "Product"
+      ],
+      "data": [
+       {
+        "field": "Sales"
+       }
+      ]
+     }
+    }
+   ],
+   "timelines": [
+    {
+     "pivot": "P_TD0",
+     "field": "Date",
+     "anchor": "E3",
+     "bounds": [
+      43466,
+      44197
+     ],
+     "selection": [
+      43466,
+      43555
+     ],
+     "timeline_pivot_cache": {
+      "timelineData": false
+     }
+    }
+   ]
+  },
+  {
+   "name": "TD1",
+   "cells": {},
+   "pivot_tables": [
+    {
+     "name": "P_TD1",
+     "source": "Data!A1:D7",
+     "location": "A3",
+     "definition": {
+      "rows": [
+       "Product"
+      ],
+      "data": [
+       {
+        "field": "Sales"
+       }
+      ]
+     }
+    }
+   ],
+   "timelines": [
+    {
+     "pivot": "P_TD1",
+     "field": "Date",
+     "anchor": "E3",
+     "bounds": [
+      43466,
+      44197
+     ],
+     "selection": [
+      43466,
+      43555
+     ],
+     "timeline_pivot_cache": {
+      "timelineData": true
+     }
+    }
+   ]
+  },
+  {
+   "name": "TX",
+   "cells": {},
+   "pivot_tables": [
+    {
+     "name": "P_TX",
+     "source": "Data!A1:D7",
+     "location": "A3",
+     "definition": {
+      "rows": [
+       "Product"
+      ],
+      "data": [
+       {
+        "field": "Sales"
+       }
+      ],
+      "xml": {
+       "filters": "<filters count=\"1\"><filter fld=\"2\" type=\"dateBetween\" evalOrder=\"-1\" id=\"1\" name=\"Date\"><autoFilter ref=\"A1\"><filterColumn colId=\"0\"><customFilters and=\"1\"><customFilter operator=\"greaterThanOrEqual\" val=\"43556\"/><customFilter operator=\"lessThanOrEqual\" val=\"43646\"/></customFilters></filterColumn></autoFilter></filter></filters>"
+      }
+     }
+    }
+   ],
+   "timelines": [
+    {
+     "pivot": "P_TX",
+     "field": "Date",
+     "anchor": "E3",
+     "bounds": [
+      43466,
+      44197
+     ],
+     "selection": [
+      43466,
+      43555
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Q",
+   "cells": {
+    "A1": "=COUNTA(Data!A2:A7)"
+   }
+  }
+ ],
+ "expected": {}
+}

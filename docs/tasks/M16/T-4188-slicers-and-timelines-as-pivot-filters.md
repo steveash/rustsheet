@@ -15,6 +15,10 @@ Slicer and timeline caches are imported as filter state on the pivots they drive
 
 ## Context
 excel-docs.md slicer/timeline rows; x14/x15 parts. Program: docs/research/pivot-tables-2026-11-04/plan.md; decision 0274.
+- Owner of the visibly-off cells of probes/t4767-pivot-slicers (decision 0245): the engine adapter ignores a spec's
+  `slicers`, so it renders the pivots unfiltered where Excel for the web applies the slicer's selection (SL, SM, SH,
+  SD) and lets it win over the pivot's hidden items (SX). Also owner of probes/t4767-pivot-timelines, whose timeline
+  selections Excel applies the same way (TL, TA, TD0, TD1, TX). Findings: pivots.md "Capability matrix 3" (T-4767).
 
 ## Acceptance criteria
 - [ ] Probes pass.

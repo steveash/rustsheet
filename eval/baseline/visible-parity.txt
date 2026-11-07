@@ -304,6 +304,8 @@ probes/t4742-countif-array-range-arg.case.json	3
 probes/t4755-two-criteria-filtered-table-delete-one.case.json	10
 probes/t4757-later-mark-sheet-names.case.json	1
 probes/t4765-growth-factor-edges.case.json	4
+probes/t4767-pivot-slicers.case.json	14
+probes/t4767-pivot-timelines.case.json	10
 probes/t4791-large-small-median-mixed-first-element.case.json	3
 probes/t4793-growth-one-factor-underflow.case.json	1
 probes/t4793-growth-several-x.case.json	2
