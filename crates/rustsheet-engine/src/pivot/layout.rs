@@ -17,7 +17,7 @@ pub use lines::{lay_out, AxisLine, PivotLayout, MAX_PIVOT_CELLS};
 pub use records::records_behind;
 pub(super) use render::item_text;
 pub use render::{
-    render, PivotCell, RenderedCell, ALL_ITEMS, BLANK_ITEM, COLUMN_LABELS, GRAND_TOTAL,
+    render, CellFormat, PivotCell, RenderedCell, ALL_ITEMS, BLANK_ITEM, COLUMN_LABELS, GRAND_TOTAL,
     MAX_PIVOT_TEXT_BYTES, MULTIPLE_ITEMS, ROW_LABELS, VALUES,
 };
 

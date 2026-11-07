@@ -394,8 +394,8 @@ pub(crate) fn probe_pivot_over(
     (cache, table)
 }
 
-/// A model holding the case's sheets, in order, and their cells: a text starting with `=` is a
-/// formula, evaluated by [`Model::evaluate`] like any other.
+/// A model holding the case's sheets, in order, their cells and their number formats: a text
+/// starting with `=` is a formula, evaluated by [`Model::evaluate`] like any other.
 pub(crate) fn probe_model(case: &Json) -> Model {
     let mut model = Model::new_empty("probe", "en", "UTC", "en").unwrap();
     for (index, spec) in (0u32..).zip(case["sheets"].as_array().unwrap()) {
@@ -417,9 +417,24 @@ pub(crate) fn probe_model(case: &Json) -> Model {
                     model.update_cell_with_number(index, row, column, n.as_f64().unwrap())
                 }
                 Json::Bool(b) => model.update_cell_with_bool(index, row, column, *b),
+                // A typed error cell, `{"t": "e", "v": "#N/A"}`, as its literal.
+                Json::Object(typed) if typed["t"] == "e" => {
+                    model.set_user_input(index, row, column, typed["v"].as_str().unwrap().into())
+                }
                 other => panic!("case cell {at}: {other}"),
             }
             .unwrap();
+        }
+        // The sheet's `number_formats`, so a refresh reads a date-formatted source as dates.
+        for (at, code) in spec["number_formats"].as_object().into_iter().flatten() {
+            let (column, row) = position(at);
+            let (row, column) = (
+                i32::try_from(row + 1).unwrap(),
+                i32::try_from(column + 1).unwrap(),
+            );
+            let mut style = model.get_style_for_cell(index, row, column).unwrap();
+            style.num_fmt = code.as_str().unwrap().to_string();
+            model.set_cell_style(index, row, column, &style).unwrap();
         }
     }
     model

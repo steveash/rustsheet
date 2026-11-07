@@ -741,3 +741,50 @@ fn value_cells_show_their_data_fields_number_format() {
         assert!(wrong.is_empty(), "{name}:\n{}", wrong.join("\n"));
     }
 }
+
+#[test]
+fn date_item_labels_show_as_short_dates() {
+    // pivots.md "Item casing when cache and source disagree, and date items": a date item's
+    // label shows as `m/d/yyyy`, with ` h:mm` when it has a time part, whatever the source
+    // format: t2085 D's source is `m/d/yyyy`, t4164's is `m/d/yyyy h:mm` (midnight reads
+    // `4/17/2024`, WOe1!A5; 12:00 reads `4/16/2024 12:00`, A4). Only the date labels are
+    // checked, on sheets whose filters this harness leaves out without changing the items shown.
+    let probes: [(&str, &[&str]); 3] = [
+        ("t2085-getpivotdata-items", &["D"]),
+        ("t4164-pivot-date-times", &["WOe1"]),
+        ("t4130-pivot-date-filters", &["DLit", "DOldEq"]),
+    ];
+    let mut wrong = Vec::new();
+    for (stem, names) in probes {
+        let oracle = read(stem, "oracle");
+        for &name in names {
+            let mut model = probe_in_model(stem, name);
+            model.evaluate();
+            refreshed(&mut model);
+            let pivots = oracle["pivots"].as_array().unwrap();
+            let pivot = pivots.iter().find(|p| p["sheet"] == name).unwrap();
+            let sheet = sheet_of(&model, name);
+            let mut seen = 0;
+            for (at, expected) in pivot["text"].as_object().unwrap() {
+                let expected = expected.as_str().unwrap();
+                if !expected.contains('/') {
+                    continue;
+                }
+                seen += 1;
+                let (column, row) = position(at);
+                let (row, column) = (
+                    i32::try_from(row + 1).unwrap(),
+                    i32::try_from(column + 1).unwrap(),
+                );
+                let mine = model.get_formatted_cell_value(sheet, row, column).unwrap();
+                if mine != expected {
+                    wrong.push(format!(
+                        "{stem} {name}!{at}: Excel {expected}, engine {mine:?}"
+                    ));
+                }
+            }
+            assert!(seen > 0, "{stem} {name} has no date label");
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
