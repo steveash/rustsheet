@@ -307,9 +307,11 @@ probes/t4765-growth-factor-edges.case.json	4
 probes/t4791-large-small-median-mixed-first-element.case.json	3
 probes/t4793-growth-one-factor-underflow.case.json	1
 probes/t4793-growth-several-x.case.json	2
+probes/t4838-irr-pole-runon.case.json	25
 probes/t4844-irr-guess-ladder.case.json	269
 probes/t4844-irr-pad-ladder.case.json	31
 probes/t4844-irr-stage-invariance.case.json	56
+probes/t4888-irr-stall-sweep.case.json	56
 probes/t4895-two-criteria-number-format-delete-one.case.json	14
 probes/table-edits/t4274-calc-column-delete-row-2.case.json	1
 probes/yield-below-par-sweep.case.json	3
